@@ -22,7 +22,7 @@ the boxes.
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ✅ |
 | 8 | Control-flow instructions | B. Interpreter | ✅ |
 | 9 | Arithmetic instructions | B. Interpreter | ✅ |
-| 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ⬜ |
+| 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ✅ |
 | 11 | Canvas operations & alpha rule | B. Interpreter | ⬜ |
 | 12 | Structured outputs | B. Interpreter | ⬜ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ⬜ |
@@ -238,17 +238,16 @@ the boxes.
 **Goal:** bit-exact `hash`, stream, `noise`, `fault`, `smooth`, `lerp`.
 
 **Work:**
-1. `hash` (splitmix32), stream ops (`stream.push/pop`, `rng.unit/range/index`) per §12.
-2. `noise`, `fault`, `smooth`, `lerp` per §12.4–12.6.
-3. Golden vectors: hash table for fixed inputs; unit() sequence for seed 1 (first 100 values); noise at lattice points and midpoints; fault interpolation corners.
-4. Determinism test: two separate VMs produce identical sequences.
+1. `runtime/seeded.cpp`: `hash` (splitmix32), `stream.push/pop` (frame save stack, underflow traps), `rng.unit/range/index` (Weyl-stream advance, pinned), `noise`, `fault` (triangular interpolation), `smooth`, `lerp` — all per the exact algorithms in spec §12.
+2. Golden vectors computed by an independent reference program from the spec formulas and pinned bit-exactly (hash table, unit sequences for seeds 0/1, noise/fault at lattice points, midpoints and negative coordinates, smooth/lerp clamping, index/range draws).
+3. Bytecode-level `stream.push/pop` restore test + two-VM bit-identical determinism test.
 
-**Deliverables:** primitive implementations + golden vector tests.
+**Deliverables:** `runtime/seeded.cpp`, `tests/seeded_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] All golden vectors match the spec formulas exactly.
-- [ ] `rng.index(0) == 0`; `rng.range` endpoints behave per spec.
-- [ ] `stream.push/pop` restores state exactly (bytecode-level test).
+- [x] All golden vectors match the spec formulas exactly.
+- [x] `rng.index(0) == 0`; `rng.range` endpoints behave per spec.
+- [x] `stream.push/pop` restores state exactly (bytecode-level test).
 
 ---
 

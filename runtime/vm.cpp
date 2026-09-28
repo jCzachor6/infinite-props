@@ -20,6 +20,9 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepArithmetic(ex, ins)) {
         return true;
     }
+    if (stepSeeded(ex, ins)) {
+        return true;
+    }
     return false; // remaining groups arrive with their phases
 }
 

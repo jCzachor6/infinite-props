@@ -96,5 +96,6 @@ bool stepCore(Execution& ex, Instruction ins);
 bool stepStack(Execution& ex, Instruction ins);
 bool stepControl(Execution& ex, Instruction ins);
 bool stepArithmetic(Execution& ex, Instruction ins);
+bool stepSeeded(Execution& ex, Instruction ins);
 
 } // namespace iprop::detail

@@ -19,6 +19,7 @@ add_executable(iprop_tests
     vm_test.cpp
     control_test.cpp
     arithmetic_test.cpp
+    seeded_test.cpp
     defense_test.cpp
     utf8_test.cpp
     support/test_support.cpp)
