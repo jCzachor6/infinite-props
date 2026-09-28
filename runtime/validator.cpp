@@ -544,10 +544,14 @@ void checkPartAcyclicity(const LoadedFile& file) {
 
 LoadedFile loadFile(std::span<const u8> data) {
     LoadedFile file;
-    file.layout = parseLayout(data);
-    file.pool = parseConsts(data, *file.layout.find(SectionId::Const));
-    file.meta = parseMeta(data, *file.layout.find(SectionId::Meta), file.pool);
-    file.code = parseCode(data, *file.layout.find(SectionId::Code), file.pool);
+    // The file owns its buffer: spans stay valid for the LoadedFile's whole
+    // lifetime (and after moves), independent of the caller's buffer.
+    file.storage.assign(data.begin(), data.end());
+    const auto bytes = std::span<const u8>(file.storage);
+    file.layout = parseLayout(bytes);
+    file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
+    file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
+    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool);
     return file;
 }
 

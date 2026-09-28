@@ -1,0 +1,205 @@
+; A seeded character portrait: a head with imported-style parts (hair over
+; the crown, eyes echoing a pupil anchor), seed-driven hair tint, variant-
+; driven face width, and pupil propagation into a root output.
+;
+; NOTE: parts are declared inline; cross-file imports arrive with the .ips
+; language (Phases 17-20).
+
+meta: size=64x64 origin=32,60 variants=8 archetypes=1 fuel=1000000
+input: color skin = #d9b58c
+input: color hairColor = #33291f
+output: point pupilCenter
+
+part hair:
+  meta: size=64x32 origin=32,4
+  input: color color = #33291f
+  fn draw ( i32, i32, color ) -> ( ):
+    ; darker rim
+    const.f32 32.0
+    const.f32 15.0
+    const.f32 18.0
+    const.f32 13.0
+    local.get 2
+    const.i32 -12
+    color.shade
+    oval
+    ; main mass
+    const.f32 32.0
+    const.f32 10.0
+    const.f32 17.0
+    const.f32 11.0
+    local.get 2
+    oval
+    ; side locks
+    const.f32 15.0
+    const.f32 14.0
+    const.f32 5.0
+    const.f32 10.0
+    local.get 2
+    const.i32 -6
+    color.shade
+    oval
+    const.f32 49.0
+    const.f32 14.0
+    const.f32 5.0
+    const.f32 10.0
+    local.get 2
+    const.i32 -6
+    color.shade
+    oval
+    ; highlight streak
+    const.f32 32.0
+    const.f32 7.0
+    const.f32 9.0
+    const.f32 4.0
+    local.get 2
+    const.i32 18
+    color.shade
+    oval
+    return
+  end
+end
+
+part eyes:
+  meta: size=16x8 origin=8,4
+  output: point pupil
+  fn draw ( i32, i32 ) -> ( ):
+    ; whites
+    const.f32 3.0
+    const.f32 4.0
+    const.f32 2.6
+    const.f32 1.9
+    const.color #f5efe2ff
+    oval
+    const.f32 13.0
+    const.f32 4.0
+    const.f32 2.6
+    const.f32 1.9
+    const.color #f5efe2ff
+    oval
+    ; pupils
+    const.f32 3.0
+    const.f32 4.0
+    const.f32 1.0
+    const.f32 1.2
+    const.color #221d18ff
+    oval
+    const.f32 13.0
+    const.f32 4.0
+    const.f32 1.0
+    const.f32 1.2
+    const.color #221d18ff
+    oval
+    ; echo the left pupil anchor
+    const.f32 3.0
+    const.f32 4.0
+    out.point pupil
+    return
+  end
+end
+
+fn draw ( i32, i32, color, color ) -> ( ):
+  locals: i32 f32
+  ; locals: 0=variant 1=archetype 2=skin 3=hairColor 4=tweak 5=faceRx
+
+  ; face width from the variant: rx = 12 + (variant % 5)
+  local.get 0
+  const.i32 5
+  i32.rem_s
+  local.set 4
+  local.get 4
+  i32.to.f32
+  const.f32 12.0
+  f32.add
+  local.set 5
+
+  ; seed-driven hair tint: the SECOND stream value (better distributed for
+  ; small seeds), scaled to -12..12
+  rng.unit
+  drop
+  rng.unit
+  const.f32 25.0
+  f32.mul
+  f32.to.i32
+  const.i32 12
+  i32.sub
+  local.set 4
+
+  ; neck
+  const.f32 29.0
+  const.f32 38.0
+  const.f32 6.0
+  const.f32 16.0
+  local.get 2
+  rect
+
+  ; ears
+  const.f32 17.0
+  const.f32 27.0
+  const.f32 4.0
+  const.f32 5.0
+  local.get 2
+  oval
+  const.f32 47.0
+  const.f32 27.0
+  const.f32 4.0
+  const.f32 5.0
+  local.get 2
+  oval
+
+  ; head
+  const.f32 32.0
+  const.f32 28.0
+  local.get 5
+  const.f32 17.0
+  local.get 2
+  oval
+
+  ; chin shading
+  const.f32 32.0
+  const.f32 37.0
+  local.get 5
+  const.f32 8.0
+  local.get 2
+  const.i32 -10
+  color.shade
+  oval
+
+  ; hair part over the crown (uniform = hairColor tinted by the seed)
+  local.get 3
+  local.get 4
+  color.shade
+  const.i32 0
+  const.i32 0
+  const.i32 0
+  const.f32 32.0
+  const.f32 2.0
+  part.draw hair
+
+  ; eyes part
+  const.i32 0
+  const.i32 0
+  const.i32 0
+  const.f32 32.0
+  const.f32 24.0
+  part.draw eyes
+
+  ; mouth
+  const.f32 29.0
+  const.f32 40.0
+  const.f32 35.0
+  const.f32 41.0
+  const.i32 1
+  const.color #8a5a3aff
+  line
+
+  ; seeded wear
+  const.i32 7
+  const.i32 13
+  weather
+
+  ; propagate the eye anchor
+  part.get.point pupil
+  out.point pupilCenter
+  return
+end

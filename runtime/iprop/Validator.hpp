@@ -6,19 +6,30 @@
 #include "iprop/Meta.hpp"
 
 #include <span>
+#include <vector>
 
 namespace iprop {
 
-// A fully parsed file. Function code spans and strings reference the byte
-// buffer passed to loadFile; it must outlive the LoadedFile and every VM
-// constructed from it. Hosts keep the file bytes alive for the whole
-// generation (e.g. the CLI holds the read buffer; a browser backend keeps
-// the ArrayBuffer). No copy is made: this is a zero-copy loader.
+// A fully parsed file. The LoadedFile OWNS its byte buffer: every span
+// (function code, strings) points into the internal storage, so the file is
+// self-contained and may be moved around freely. Move-only (a copy would
+// invalidate the spans); hosts keep the LoadedFile alive for the whole
+// generation.
 struct LoadedFile {
     FileLayout layout;
     ConstPool pool;
     AssetMeta meta;
     CodeSection code;
+
+    LoadedFile() = default;
+    LoadedFile(LoadedFile&&) noexcept = default;
+    LoadedFile& operator=(LoadedFile&&) noexcept = default;
+    LoadedFile(const LoadedFile&) = delete;
+    LoadedFile& operator=(const LoadedFile&) = delete;
+
+private:
+    friend LoadedFile loadFile(std::span<const u8> data);
+    std::vector<u8> storage;
 };
 
 // Parses a complete file: layout, consts, meta, code (Phases 3-5 rules).

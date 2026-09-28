@@ -27,7 +27,7 @@ the boxes.
 | 12 | Structured outputs | B. Interpreter | ✅ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ✅ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ✅ |
-| 15 | Example programs: rock & crystal ports | B. Interpreter | ⬜ |
+| 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ⬜ |
 | 16 | Golden test suite + CI | B. Interpreter | ⬜ |
 | 17 | `.ips` lexer | C. Language & compiler | ⬜ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ⬜ |
@@ -328,20 +328,33 @@ the boxes.
 
 ---
 
-### Phase 15 — Example programs: rock & crystal ports
+### Phase 15 — Example program: character portrait (assembler + sheet)
 
-**Goal:** proof of parity with QuantSpace.
+**Goal:** proof of parity with QuantSpace, using the flagship scenario — a
+composed portrait (face + imported hair and eyes parts) with uniforms,
+structured outputs and seeded variants.
 
 **Work:**
-1. Hand-assemble two `.iprop` fixtures (via the fixture assembler used in tests): a `PaRock`-equivalent (4 archetypes) and a `PaCrystal`-equivalent (with emission metadata and structured outputs).
-2. Variant sheets: render all variants × archetypes into one grid image (as in the QuantSpace preview tool).
-3. Visual comparison against QuantSpace `PaRock`/`PaCrystal` previews.
+1. `tools/ipa` — a minimal text assembler (opcodes + operands, auto-deduped
+   constant pools, named slots/parts/functions, meta/input/output
+   declarations) that emits `.iprop` bytes. Straight-line authoring; the
+   full `.ips` language arrives in Phases 17–20.
+2. `examples/eyes.ipa`, `examples/hair.ipa`, `examples/portrait.ipa` — a
+   stylized face: head/skin shading, hair part over the crown, eyes part
+   echoing a `pupil` output that the portrait propagates as `pupilCenter`,
+   mouth, seeded wear; variant-driven parameter tweaks.
+3. `tools/ipsheet` — renders a variant × seed grid PNG from a `.iprop`.
+4. Determinism test: two runs of the assembled portrait are bit-identical;
+   the composition outputs are pinned.
+5. Visual sheet attached for review (the QuantSpace preview workflow).
 
-**Deliverables:** `examples/rock.iprop`, `examples/crystal.iprop` + sheet renderer + sheets.
+**Deliverables:** `tools/ipa`, `tools/ipsheet`, `examples/*.ipa` +
+`examples/portrait.iprop`, `tests/assembler_test.cpp`, `tests/portrait_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Sheets render 4 archetypes × N variants, visibly matching the QuantSpace previews in shape/layout.
-- [ ] Crystal's structured outputs (collider, emission) are populated.
+- [ ] The assembled `portrait.iprop` validates and renders via `ipgen`.
+- [ ] The sheet shows distinct seeded variants with visible composition
+      (hair over face, eyes, propagated `pupilCenter`).
 - [ ] Sheets are attached to this phase for your review.
 
 ---
