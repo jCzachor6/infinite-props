@@ -123,6 +123,10 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         ex.push(Value(static_cast<i32>(hash32(static_cast<u32>(ex.popI32())))));
         ++ex.frame().ip;
         return true;
+    case Opcode::StreamState:
+        ex.push(Value(static_cast<i32>(ex.frame().stream)));
+        ++ex.frame().ip;
+        return true;
 
     case Opcode::Noise: {
         const u32 seed = static_cast<u32>(ex.popI32());

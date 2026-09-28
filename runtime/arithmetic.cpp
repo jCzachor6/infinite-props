@@ -272,8 +272,12 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const f32 t = std::clamp(ex.popF32(), 0.f, 1.f);
         const Color b = ex.popColor();
         const Color a = ex.popColor();
+        // Explicit fused multiply-add: the QuantSpace reference builds
+        // contract this expression, so the pinned formula reproduces its
+        // exact output bit for bit (spec §12.6). std::fma is deterministic.
         const auto channel = [t](u8 x, u8 y) {
-            return static_cast<u8>(static_cast<f32>(x) * (1.f - t) + static_cast<f32>(y) * t);
+            return static_cast<u8>(std::fma(static_cast<f32>(x), 1.f - t,
+                                            static_cast<f32>(y) * t));
         };
         ex.push(Value(Color{channel(a.r, b.r), channel(a.g, b.g), channel(a.b, b.b), a.a}));
         ++ex.frame().ip;

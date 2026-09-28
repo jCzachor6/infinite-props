@@ -114,6 +114,7 @@ enum class Opcode : u8 {
     RngRange = 0x63,
     RngIndex = 0x64,
     Hash = 0x65,
+    StreamState = 0x66,
 
     // Noise and helpers (§9.7)
     Noise = 0x70,

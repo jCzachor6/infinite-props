@@ -69,12 +69,12 @@ struct RefCanvas {
                 bool inside = false;
                 for (std::size_t i = 0; i < n; ++i) {
                     const std::size_t j = (i + n - 1) % n;
-                    const auto& a = pts[j];
-                    const auto& b = pts[i];
-                    if ((a.y > static_cast<f32>(py) + .5f) !=
-                            (b.y > static_cast<f32>(py) + .5f) &&
-                        static_cast<f32>(px) + .5f <
-                            (b.x - a.x) * (static_cast<f32>(py) + .5f - a.y) / (b.y - a.y) + a.x) {
+                    const auto& a = pts[i];
+                    const auto& d = pts[j];
+                    const float cx = static_cast<float>(px) + .5f;
+                    const float cy = static_cast<float>(py) + .5f;
+                    if ((a.y > cy) != (d.y > cy) &&
+                        cx < (d.x - a.x) * (cy - a.y) / (d.y - a.y) + a.x) {
                         inside = !inside;
                     }
                 }

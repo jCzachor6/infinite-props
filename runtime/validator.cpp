@@ -292,6 +292,9 @@ private:
             expect(at, ValueType::I32, "hash input");
             push(at, ValueType::I32);
             return;
+        case Opcode::StreamState:
+            push(at, ValueType::I32);
+            return;
 
         // Noise and helpers (§9.7).
         case Opcode::Noise:

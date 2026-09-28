@@ -402,6 +402,7 @@ Stream state is the frame's current stream (§8.2). Exact algorithms in §10.
 | 0x63 | rng.range | `[f32 f32] -> [f32]` | `a + (b-a) * unit()` |
 | 0x64 | rng.index | `[u32] -> [u32]` | uniform index in [0, n); n=0 → 0 |
 | 0x65 | hash | `[u32] -> [u32]` | splitmix32 hash |
+| 0x66 | stream.state | `[] -> [i32]` | push the current stream state (enables derived streams like `Random{hash(seed ^ const)}`) |
 
 ### 9.7 Noise and helpers
 
@@ -514,12 +515,18 @@ l = min p.x; r = max p.x; t = min p.y; b = max p.y
 for py = floor(t) .. ceil(b):
   for px = floor(l) .. ceil(r):
     inside = false
-    for i = 0 .. n-1 with j = (i-1 mod n):
-      if ((pj.y > py+0.5) != (pi.y > py+0.5)) and
-         (px+0.5 < (pi.x-pj.x)*(py+0.5-pj.y)/(pi.y-pj.y) + pj.x):
+    for i = 0 .. n-1:
+      j = (i-1 mod n)
+      a = points[i]; d = points[j]          // a = current, d = previous
+      cx = px + 0.5; cy = py + 0.5           // pixel centres
+      if (a.y > cy) != (d.y > cy) and
+         cx < (d.x-a.x)*(cy-a.y)/(d.y-a.y) + a.x:
         inside = !inside
     if inside: pixel(px, py, colour)
 ```
+
+The test uses pixel centres and the exact operation order of the QuantSpace
+reference rasterizer (bit-compatible edge pixels).
 
 Fuel cost: 1 + `(ceil(b)-floor(t)+1) * (ceil(r)-floor(l)+1)` visits.
 
@@ -622,9 +629,11 @@ else:         return at(ix+1,iy+1)*(u+v-1) + at(ix,iy+1)*(1-u) + at(ix+1,iy)*(1-
 
 - `smooth(t)` = `t*t*(3-2t)` with `t = clamp(t, 0, 1)`.
 - `lerp(a, b, t)` = `a*(1-t) + b*t` with `t = clamp(t, 0, 1)`.
-- `color.mix(a, b, t)`: channels `u8(a_ch*(1-t) + b_ch*t)`, conversion
-  truncates toward zero; `t` clamped. R, G and B are lerped; **A is copied
-  from the first colour**.
+- `color.mix(a, b, t)`: channels computed with an explicit fused
+  multiply-add — `u8(fma(a_ch, 1−t, b_ch·t))`, conversion truncates toward
+  zero; `t` clamped. R, G and B are lerped; **A is copied from the first
+  colour**. The explicit fma reproduces the QuantSpace reference builds
+  (whose compilers contract this expression) bit for bit.
 - `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`.
 
 ## 13. Determinism rules

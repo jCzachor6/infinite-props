@@ -57,20 +57,18 @@ TEST_CASE("two portrait runs are bit-identical (determinism)") {
     }
 }
 
-TEST_CASE("the portrait propagates the pupil anchor") {
+TEST_CASE("the portrait exposes the pupil anchor") {
     const auto loaded = loadExample();
     VM vm(loaded, {0, 0, 0, 0, 0, {}});
     vm.run();
     const auto result = vm.result();
-    REQUIRE(result.outputs.size() == 2);
+    REQUIRE(result.outputs.size() == 1);
     REQUIRE(result.outputs[0].name == "pupilCenter");
-    REQUIRE(result.outputs[1].name == "pupil");
-    // The parent's pupilCenter mirrors the eyes part's pupil output.
-    REQUIRE(result.outputs[0].points[0].x == result.outputs[1].points[0].x);
-    REQUIRE(result.outputs[0].points[0].y == result.outputs[1].points[0].y);
+    REQUIRE(result.outputs[0].points[0].x == 27.f);
+    REQUIRE(result.outputs[0].points[0].y == 28.f);
 }
 
-TEST_CASE("portrait variants and seeds differ") {
+TEST_CASE("portrait seeds differ; variants do not (QuantSpace parity)") {
     const auto loaded = loadExample();
     const auto render = [&](u32 seed, u32 variant) {
         VM vm(loaded, {seed, variant, 0, 0, 0, {}});
@@ -87,8 +85,8 @@ TEST_CASE("portrait variants and seeds differ") {
         }
         return true;
     };
-    // Different variants produce different faces (face width tweak).
-    REQUIRE_FALSE(same(render(0, 0), render(0, 7)));
-    // Different seeds produce different hair (tint tweak).
-    REQUIRE_FALSE(same(render(0, 0), render(3, 0)));
+    // The seed drives the whole identity, exactly like the game.
+    REQUIRE_FALSE(same(render(0, 0), render(1, 0)));
+    // The game has no variant concept; variants are ignored.
+    REQUIRE(same(render(0, 0), render(0, 7)));
 }

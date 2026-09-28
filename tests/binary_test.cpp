@@ -280,6 +280,7 @@ TEST_CASE("opcode values match spec section 9 exactly") {
         {Opcode::StreamPush, 0x60}, {Opcode::StreamPop, 0x61},
         {Opcode::RngUnit, 0x62}, {Opcode::RngRange, 0x63},
         {Opcode::RngIndex, 0x64}, {Opcode::Hash, 0x65},
+        {Opcode::StreamState, 0x66},
 
         {Opcode::Noise, 0x70}, {Opcode::Fault, 0x71}, {Opcode::Smooth, 0x72},
         {Opcode::Lerp, 0x73},
@@ -298,7 +299,7 @@ TEST_CASE("opcode values match spec section 9 exactly") {
 
     // The table must contain every opcode exactly once (sanity on top of the
     // value check: 87 opcodes in v0.1).
-    REQUIRE(table.size() == 87);
+    REQUIRE(table.size() == 88);
 
     for (const auto& [opcode, expected] : table) {
         INFO("opcode " << static_cast<unsigned>(expected));

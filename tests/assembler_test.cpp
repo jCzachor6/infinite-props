@@ -38,7 +38,7 @@ TEST_CASE("a minimal program assembles, validates and runs") {
           const.color #ff0000ff
           pixel
           return
-        end
+        endfn
     )";
     const auto result = runSource(source);
     REQUIRE(result.image.at(1, 1) == Color{255, 0, 0, 255});
@@ -59,7 +59,7 @@ TEST_CASE("constants are deduplicated into the pools") {
           drop
           drop
           return
-        end
+        endfn
     )";
     const auto bytes = assemble(source);
     auto loaded = loadFile(bytes);
@@ -77,7 +77,7 @@ TEST_CASE("negative and hex integer literals keep their bit patterns") {
           drop
           drop
           return
-        end
+        endfn
     )";
     const auto bytes = assemble(source);
     auto loaded = loadFile(bytes);
@@ -100,7 +100,7 @@ TEST_CASE("named output slots resolve to global indices") {
           const.f32 4.0
           out.list.rect colliders
           return
-        end
+        endfn
     )";
     const auto result = runSource(source);
     REQUIRE(result.outputs.size() == 2);
@@ -123,11 +123,11 @@ TEST_CASE("helpers and parts assemble with named references") {
             const.color #0000ffff
             pixel
             return
-          end
-        end
+          endfn
+        endpart
         fn paint ( ) -> ( ):
           return
-        end
+        endfn
         fn draw ( i32, i32 ) -> ( ):
           const.i32 0
           const.i32 0
@@ -137,7 +137,7 @@ TEST_CASE("helpers and parts assemble with named references") {
           part.draw stamp
           call paint
           return
-        end
+        endfn
     )";
     const auto result = runSource(source);
     REQUIRE(result.image.at(0, 0) == Color{0, 0, 255, 255});
@@ -149,7 +149,7 @@ TEST_CASE("assembler errors carry the offending line") {
         fn draw ( i32, i32 ) -> ( ):
           bogus.op 1
           return
-        end
+        endfn
     )"),
                         Catch::Matchers::ContainsSubstring("line 4"));
     REQUIRE_THROWS_WITH(assemble(R"(
@@ -157,7 +157,7 @@ TEST_CASE("assembler errors carry the offending line") {
         fn draw ( i32, i32 ) -> ( ):
           const.i32 nope
           return
-        end
+        endfn
     )"),
                         Catch::Matchers::ContainsSubstring("bad integer"));
     REQUIRE_THROWS_WITH(assemble(R"(
@@ -165,7 +165,7 @@ TEST_CASE("assembler errors carry the offending line") {
         fn draw ( i32, i32 ) -> ( ):
           out.point missing
           return
-        end
+        endfn
     )"),
                         Catch::Matchers::ContainsSubstring("unknown output slot"));
 }
@@ -175,7 +175,7 @@ TEST_CASE("the first function must be named draw") {
         meta: size=8x8
         fn main ( i32, i32 ) -> ( ):
           return
-        end
+        endfn
     )"),
                         Catch::Matchers::ContainsSubstring("draw"));
 }

@@ -110,6 +110,7 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"stream.push", {Opcode::StreamPush}}, {"stream.pop", {Opcode::StreamPop}},
         {"rng.unit", {Opcode::RngUnit}}, {"rng.range", {Opcode::RngRange}},
         {"rng.index", {Opcode::RngIndex}}, {"hash", {Opcode::Hash}},
+        {"stream.state", {Opcode::StreamState}},
 
         {"noise", {Opcode::Noise}}, {"fault", {Opcode::Fault}},
         {"smooth", {Opcode::Smooth}}, {"lerp", {Opcode::Lerp}},
@@ -462,14 +463,21 @@ std::vector<u8> assemble(const std::string& source) {
             continue;
         }
 
-        if (words[0] == "end") {
-            if (function != nullptr) {
-                function = nullptr;
-            } else if (part != nullptr) {
-                part = nullptr;
-            } else {
-                throw error("end without an open block");
+        if (words[0] == "endfn") {
+            if (function == nullptr) {
+                throw error("endfn without an open function");
             }
+            function = nullptr;
+            continue;
+        }
+        if (words[0] == "endpart") {
+            if (function != nullptr) {
+                throw error("endpart inside a function");
+            }
+            if (part == nullptr) {
+                throw error("endpart without an open part");
+            }
+            part = nullptr;
             continue;
         }
 

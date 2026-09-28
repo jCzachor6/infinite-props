@@ -149,6 +149,16 @@ TEST_CASE("stream.push/pop restores the previous stream exactly") {
     REQUIRE(bitsOf(second) == bitsOf(std::get<f32>(evalProg(b)[0])));
 }
 
+TEST_CASE("stream.state exposes the raw stream value") {
+    // stream.state before any draw equals the seed; after a unit it changes.
+    REQUIRE(evalProgI32(Prog{}.emit(0x66)) == 0); // seed 0
+    REQUIRE(evalProgI32(Prog{}.I(7).emit(0x60).emit(0x66)) == 7);
+    // The derived-stream pattern: Random{hash(seed ^ const)}.
+    REQUIRE(static_cast<u32>(evalProgI32(Prog{}.I(7).emit(0x60).emit(0x66)
+                                             .I(0xc4a7ac7e).emit(0x29).emit(0x65))) ==
+            static_cast<u32>(evalProgI32(Prog{}.I(0xc4a7ac7e ^ 7).emit(0x65))));
+}
+
 TEST_CASE("stream.pop on an empty save stack traps") {
     expectProgTrap(Prog{}.emit(0x61), "stream stack underflow");
 }

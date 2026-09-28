@@ -61,14 +61,16 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
     for (i32 py = y0; py <= y1; ++py) {
         for (i32 px = x0; px <= x1; ++px) {
             bool inside = false;
+            const f32 cx = static_cast<f32>(px) + .5f;
+            const f32 cy = static_cast<f32>(py) + .5f;
             for (std::size_t i = 0; i < n; ++i) {
                 const std::size_t j = (i + n - 1) % n;
-                const auto& a = points[j];
-                const auto& b = points[i];
-                if ((a.y > static_cast<f32>(py) + .5f) !=
-                        (b.y > static_cast<f32>(py) + .5f) &&
-                    static_cast<f32>(px) + .5f <
-                        (b.x - a.x) * (static_cast<f32>(py) + .5f - a.y) / (b.y - a.y) + a.x) {
+                const auto& a = points[i]; // current vertex
+                const auto& d = points[j]; // previous vertex
+                // Pixel centres and the QuantSpace operation order, for
+                // bit-compatible edge pixels (spec §11.2).
+                if ((a.y > cy) != (d.y > cy) &&
+                    cx < (d.x - a.x) * (cy - a.y) / (d.y - a.y) + a.x) {
                     inside = !inside;
                 }
             }

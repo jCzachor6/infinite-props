@@ -180,3 +180,15 @@ TEST_CASE("color.mix lerps RGB, clamps t and copies the first alpha") {
     const Color other{9, 9, 9, 9};
     REQUIRE(evalProgColor(Prog{}.C(src).C(other).F(0.f).emit(0x50)) == Color{1, 2, 3, 7});
 }
+
+TEST_CASE("color.mix uses the pinned fused multiply-add") {
+    // The QuantSpace reference build contracts x*(1-t)+y*t into an FMA; the
+    // pinned formula reproduces its output exactly. This vector is
+    // contraction-sensitive: unfused it truncates to 196, fused to 197.
+    const Color hair{208, 209, 199};
+    const Color skin{158, 101, 71};
+    const auto result = evalProgColor(Prog{}.C(hair).C(skin).F(0.22f).emit(0x50));
+    REQUIRE(result.r == 197);
+    REQUIRE(result.g == 185);
+    REQUIRE(result.b == 170);
+}
