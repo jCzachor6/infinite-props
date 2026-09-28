@@ -1,5 +1,6 @@
 #pragma once
 
+#include "iprop/Binary.hpp"
 #include "iprop/Consts.hpp"
 
 #include <cstdint>
@@ -25,6 +26,13 @@ struct OutputDecl {
     bool isList = false;
     u32 nameIndex = 0;
 };
+
+// Shared entry readers for the §4.1/§4.2 entry shapes; used by parseMeta and
+// by the part table parser in parseCode. Throw located FormatError on
+// unknown types/kinds, bad list flags, non-zero reserved bytes, or name
+// indices outside the const pool. Callers check name uniqueness.
+InputDecl readInputEntry(Reader& reader, const ConstPool& pool);
+OutputDecl readOutputEntry(Reader& reader, const ConstPool& pool);
 
 // Default emissive metadata (spec §4).
 struct Emission {

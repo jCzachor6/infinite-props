@@ -3,6 +3,7 @@ add_library(iprop_runtime
     format.cpp
     consts.cpp
     meta.cpp
+    code.cpp
     utf8.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)

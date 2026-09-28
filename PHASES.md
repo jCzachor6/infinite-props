@@ -17,7 +17,7 @@ the boxes.
 | 2 | Core types & binary I/O | A. Foundation | ✅ |
 | 3 | File parsing: header & section table | B. Interpreter | ✅ |
 | 4 | Parsing `const` & `meta` | B. Interpreter | ✅ |
-| 5 | Parsing `code` (functions & parts) | B. Interpreter | ⬜ |
+| 5 | Parsing `code` (functions & parts) | B. Interpreter | ✅ |
 | 6 | Validator | B. Interpreter | ⬜ |
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ⬜ |
 | 8 | Control-flow & stack instructions | B. Interpreter | ⬜ |
@@ -140,17 +140,17 @@ the boxes.
 **Goal:** the instruction streams and part table in memory.
 
 **Work:**
-1. Function table parsing (names, offsets, param/result/local types).
-2. Instruction stream slicing per function.
-3. Part table parsing (§6.3) with part meta (size, origin, uniforms, outputs).
-4. Fixture tests: multi-function file, part entries, malformed offsets/lengths.
+1. `runtime/iprop/Code.hpp` + `runtime/code.cpp`: `parseCode` for the function table (names, offsets, param/result/local types), contiguous instruction-stream slicing and the part table (function index, size, origin, I/O signature).
+2. Shared §4.1/§4.2 entry readers (`readInputEntry`/`readOutputEntry`) reused by `parseMeta` and part parsing.
+3. Spec §6.2 pinned: streams contiguous in function order, lengths % 4, `functionCount ≥ 1`.
+4. Fixture tests: multi-function file, part entries, malformed offsets/lengths battery.
 
-**Deliverables:** code-section parsing + tests.
+**Deliverables:** `runtime/iprop/Code.hpp`, `runtime/code.cpp`, `tests/code_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Functions/parts parse; streams are contiguous and within the section.
-- [ ] Function 0 identifiable as `draw` by name.
-- [ ] Malformed length/offset pairs rejected with located errors.
+- [x] Functions/parts parse; streams are contiguous and within the section.
+- [x] Function 0 identifiable as `draw` by name.
+- [x] Malformed length/offset pairs rejected with located errors.
 
 ---
 

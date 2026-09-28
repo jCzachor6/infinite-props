@@ -191,7 +191,8 @@ One entry per function:
 | 2 | `localCount` (additional locals beyond params) |
 | — | local types: `u8` each |
 
-- Function 0 is the **entry point** and MUST be named `draw`.
+- Function 0 is the **entry point** and MUST be named `draw`;
+  `functionCount` MUST be ≥ 1.
 - `draw` MUST have parameters `(i32 variant, i32 archetype)` followed by one
   parameter per root uniform, in `meta` input order, with matching types.
   `draw` MUST have zero results.
@@ -199,8 +200,11 @@ One entry per function:
 
 ### 6.2 Instruction stream
 
-Concatenated 4-byte instructions as defined in §8. Instructions of the same
-function MUST be contiguous.
+Concatenated 4-byte instructions as defined in §8. Streams are laid out
+contiguously in function order: function 0's stream starts at offset 0
+relative to the end of the function table, and each following stream starts
+exactly where the previous one ends. Every stream length MUST be a multiple
+of 4. `partCount` follows immediately after the concatenated streams.
 
 ### 6.3 Part table
 

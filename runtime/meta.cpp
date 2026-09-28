@@ -6,6 +6,46 @@
 
 namespace iprop {
 
+InputDecl readInputEntry(Reader& reader, const ConstPool& pool) {
+    const u8 rawType = reader.readU8();
+    if (rawType > 2) {
+        throw FormatError("unknown input type", reader.position() - 1);
+    }
+    InputDecl decl;
+    decl.type = static_cast<InputType>(rawType);
+    decl.nameIndex = reader.readU32();
+    if (decl.nameIndex >= pool.strings.size()) {
+        throw FormatError("input name outside const string pool", reader.position() - 4);
+    }
+    switch (decl.type) {
+    case InputType::Color: decl.colorDefault = reader.readColor(); break;
+    case InputType::F32: decl.f32Default = reader.readF32(); break;
+    case InputType::U32: decl.u32Default = reader.readU32(); break;
+    }
+    return decl;
+}
+
+OutputDecl readOutputEntry(Reader& reader, const ConstPool& pool) {
+    const u8 rawKind = reader.readU8();
+    if (rawKind > 2) {
+        throw FormatError("unknown output kind", reader.position() - 1);
+    }
+    const u8 listFlag = reader.readU8();
+    if (listFlag > 1) {
+        throw FormatError("invalid list flag", reader.position() - 1);
+    }
+    for (int k = 0; k < 2; ++k) { // reserved, MUST be 0 (spec §4.2)
+        if (reader.readU8() != 0) {
+            throw FormatError("reserved output bytes must be zero", reader.position() - 1);
+        }
+    }
+    const u32 nameIndex = reader.readU32();
+    if (nameIndex >= pool.strings.size()) {
+        throw FormatError("output name outside const string pool", reader.position() - 4);
+    }
+    return {static_cast<OutputKind>(rawKind), listFlag == 1, nameIndex};
+}
+
 const InputDecl* AssetMeta::findInput(std::string_view name, const ConstPool& pool) const {
     for (const auto& input : inputs) {
         if (pool.strings[input.nameIndex] == name) {
@@ -71,21 +111,7 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
     std::set<std::string> inputNames;
     for (u16 i = 0; i < inputCount; ++i) {
         const std::size_t entryStart = reader.position();
-        const u8 rawType = reader.readU8();
-        if (rawType > 2) {
-            throw FormatError("unknown input type", reader.position() - 1);
-        }
-        InputDecl decl;
-        decl.type = static_cast<InputType>(rawType);
-        decl.nameIndex = reader.readU32();
-        if (decl.nameIndex >= pool.strings.size()) {
-            throw FormatError("input name outside const string pool", reader.position() - 4);
-        }
-        switch (decl.type) {
-        case InputType::Color: decl.colorDefault = reader.readColor(); break;
-        case InputType::F32: decl.f32Default = reader.readF32(); break;
-        case InputType::U32: decl.u32Default = reader.readU32(); break;
-        }
+        InputDecl decl = readInputEntry(reader, pool);
         if (!inputNames.insert(pool.strings[decl.nameIndex]).second) {
             throw FormatError("duplicate input name", entryStart);
         }
@@ -97,27 +123,11 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
     std::set<std::string> outputNames;
     for (u16 i = 0; i < outputCount; ++i) {
         const std::size_t entryStart = reader.position();
-        const u8 rawKind = reader.readU8();
-        if (rawKind > 2) {
-            throw FormatError("unknown output kind", reader.position() - 1);
-        }
-        const u8 listFlag = reader.readU8();
-        if (listFlag > 1) {
-            throw FormatError("invalid list flag", reader.position() - 1);
-        }
-        for (int k = 0; k < 2; ++k) { // reserved, MUST be 0 (spec §4.2)
-            if (reader.readU8() != 0) {
-                throw FormatError("reserved output bytes must be zero", reader.position() - 1);
-            }
-        }
-        const u32 nameIndex = reader.readU32();
-        if (nameIndex >= pool.strings.size()) {
-            throw FormatError("output name outside const string pool", reader.position() - 4);
-        }
-        if (!outputNames.insert(pool.strings[nameIndex]).second) {
+        OutputDecl decl = readOutputEntry(reader, pool);
+        if (!outputNames.insert(pool.strings[decl.nameIndex]).second) {
             throw FormatError("duplicate output name", entryStart);
         }
-        meta.outputs.push_back({static_cast<OutputKind>(rawKind), listFlag == 1, nameIndex});
+        meta.outputs.push_back(decl);
     }
 
     if (!reader.empty()) {
