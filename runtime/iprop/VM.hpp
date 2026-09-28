@@ -2,11 +2,13 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Validator.hpp"
+#include "iprop/Value.hpp"
 
 #include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace iprop {
 
@@ -49,6 +51,12 @@ public:
     const Canvas& canvas() const;
     u64 fuel() const;       // remaining budget
     u64 fuelBudget() const; // total budget from meta.fuel
+
+    // Tooling hook: the entry frame's operand stack as it was when run()
+    // finished (empty for a validated draw, which has no results). Useful
+    // for debuggers and the IDE inspector; not part of the generation
+    // contract.
+    const std::vector<Value>& debugStack() const;
 
 private:
     struct Impl;

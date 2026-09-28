@@ -10,7 +10,10 @@
 namespace iprop {
 
 // A fully parsed file. Function code spans and strings reference the byte
-// buffer passed to loadFile; it must outlive the LoadedFile.
+// buffer passed to loadFile; it must outlive the LoadedFile and every VM
+// constructed from it. Hosts keep the file bytes alive for the whole
+// generation (e.g. the CLI holds the read buffer; a browser backend keeps
+// the ArrayBuffer). No copy is made: this is a zero-copy loader.
 struct LoadedFile {
     FileLayout layout;
     ConstPool pool;

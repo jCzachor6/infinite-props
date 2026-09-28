@@ -21,7 +21,7 @@ the boxes.
 | 6 | Validator | B. Interpreter | ✅ |
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ✅ |
 | 8 | Control-flow instructions | B. Interpreter | ✅ |
-| 9 | Arithmetic instructions | B. Interpreter | ⬜ |
+| 9 | Arithmetic instructions | B. Interpreter | ✅ |
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ⬜ |
 | 11 | Canvas operations & alpha rule | B. Interpreter | ⬜ |
 | 12 | Structured outputs | B. Interpreter | ⬜ |
@@ -216,17 +216,20 @@ the boxes.
 **Goal:** exact integer/float/colour arithmetic.
 
 **Work:**
-1. i32 add/sub/mul/div_s/div_u/rem_s/rem_u/and/or/xor/shl/shr_s/shr_u/neg/not + comparisons.
-2. f32 add/sub/mul/div/neg/abs/sqrt + comparisons + conversions (incl. NaN → 0, saturating infinities).
-3. `color.mix`, `color.shade` with pinned truncation.
-4. Test vectors: wraparound cases, `div_s` of INT32_MIN/-1, shl masking, div-by-zero traps, conversion edge cases.
+1. Full i32 group: mul, div_s/div_u, rem_s/rem_u, and/or/xor, shl/shr_s/shr_u (shift amounts masked with 31; portable arithmetic right shift), neg/not, all ten comparisons. Wraps in u32; div/rem by zero and `INT32_MIN / -1` trap.
+2. Full f32 group: add/sub/mul/div, IEEE comparisons (NaN predicates pinned), neg/abs/sqrt, conversions (NaN → 0, infinities saturate).
+3. Colour: `color.mix` (RGB lerp, alpha copied from the first colour, t clamped) and `color.shade` (channels clamped, alpha kept).
+4. `-ffp-contract=off` added to the build (spec §13.2: no FMA contraction) — required for bit-reproducible f32 results.
+5. `VM::debugStack()` tooling hook (the entry frame's final stack) so tests can inspect values.
+6. Spec: `INT32_MIN / -1` traps; `color.mix` alpha rule pinned.
+7. Vector tests incl. wraparound, shift masking, division traps, NaN/inf conversions, and a contraction-sensitive FMA detector.
 
-**Deliverables:** arithmetic opcode implementations + vector tests.
+**Deliverables:** `runtime/arithmetic.cpp` (complete), `tests/arithmetic_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] All pinned vectors pass, including wraparound and edge cases.
-- [ ] Div/rem by zero traps (both signed and unsigned).
-- [ ] `f32` ops are round-to-nearest-even with no FMA contraction (verified via crafted cases where contraction would change the result).
+- [x] All pinned vectors pass, including wraparound and edge cases.
+- [x] Div/rem by zero traps (both signed and unsigned).
+- [x] `f32` ops are round-to-nearest-even with no FMA contraction (verified via crafted cases where contraction would change the result).
 
 ---
 

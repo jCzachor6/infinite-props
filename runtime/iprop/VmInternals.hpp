@@ -52,6 +52,9 @@ struct Execution {
     u64 fuel = 0;
     std::vector<Frame> frames;
     std::vector<std::vector<ControlInfo>> control; // per function index
+    // The entry frame's stack when it exits; a tooling hook for debuggers
+    // and tests (valid draw programs leave it empty).
+    std::vector<Value> entryStack;
 
     explicit Execution(const LoadedFile& f) : file(f) {}
 

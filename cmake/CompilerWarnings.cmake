@@ -6,5 +6,8 @@ function(iprop_warnings target)
         target_compile_options(${target} PRIVATE /W4 /WX /permissive-)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+        # spec §13.2: implementations MUST NOT fuse multiply-add. Disable
+        # contraction so the VM's f32 results are bit-reproducible.
+        target_compile_options(${target} PRIVATE -ffp-contract=off)
     endif()
 endfunction()

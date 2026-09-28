@@ -127,7 +127,10 @@ void Execution::leaveFrame() {
     Frame finished = std::move(frames.back());
     frames.pop_back();
     if (frames.empty()) {
-        return; // entry finished; results are discarded
+        // Entry finished; its results are discarded by design, so the stack
+        // is captured as-is for tooling (debugStack) without a results check.
+        entryStack = std::move(finished.stack);
+        return;
     }
     const auto& fn = file.code.functions[finished.functionIndex];
     // The validated function leaves exactly its results on the stack, in
@@ -297,5 +300,6 @@ void VM::run() {
 const Canvas& VM::canvas() const { return impl_->ex.canvas; }
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
+const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
 
 } // namespace iprop

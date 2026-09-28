@@ -323,7 +323,9 @@ the `u16` operand field.
 ### 9.3 Integer
 
 All are `[i32 i32] -> [i32]` except where noted. Division/remainder by zero
-MUST trap (`divide by zero`).
+MUST trap (`divide by zero`); `div_s` of INT32_MIN by −1 MUST trap
+(`integer overflow`). `shl`/`shr` mask the shift amount with 31; `shr_s` is
+an arithmetic shift (two's-complement semantics).
 
 | Op | Mnemonic | | Op | Mnemonic |
 | -- | -------- | - | -- | -------- |
@@ -616,8 +618,9 @@ else:         return at(ix+1,iy+1)*(u+v-1) + at(ix,iy+1)*(1-u) + at(ix+1,iy)*(1-
 
 - `smooth(t)` = `t*t*(3-2t)` with `t = clamp(t, 0, 1)`.
 - `lerp(a, b, t)` = `a*(1-t) + b*t` with `t = clamp(t, 0, 1)`.
-- `color.mix(a, b, t)`: channel `u8(a_ch*(1-t) + b_ch*t)`, conversion
-  truncates toward zero; `t` clamped.
+- `color.mix(a, b, t)`: channels `u8(a_ch*(1-t) + b_ch*t)`, conversion
+  truncates toward zero; `t` clamped. R, G and B are lerped; **A is copied
+  from the first colour**.
 - `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`.
 
 ## 13. Determinism rules
