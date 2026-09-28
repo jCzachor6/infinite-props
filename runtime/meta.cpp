@@ -1,65 +1,10 @@
-#include "iprop/Asset.hpp"
+#include "iprop/Meta.hpp"
 
 #include "iprop/Binary.hpp"
 
 #include <set>
 
 namespace iprop {
-namespace {
-
-// RFC 3629 well-formedness: no overlong encodings, no surrogates, no values
-// above U+10FFFF, correct continuation bytes.
-bool validUtf8(std::span<const u8> bytes) {
-    std::size_t i = 0;
-    while (i < bytes.size()) {
-        const u8 lead = bytes[i];
-        if (lead < 0x80) {
-            ++i;
-            continue;
-        }
-        std::size_t len = 0;
-        u32 cp = 0;
-        if ((lead & 0xE0) == 0xC0) {
-            len = 1;
-            cp = lead & 0x1Fu;
-        } else if ((lead & 0xF0) == 0xE0) {
-            len = 2;
-            cp = lead & 0x0Fu;
-        } else if ((lead & 0xF8) == 0xF0) {
-            len = 3;
-            cp = lead & 0x07u;
-        } else {
-            return false;
-        }
-        if (i + len >= bytes.size()) {
-            return false;
-        }
-        for (std::size_t k = 1; k <= len; ++k) {
-            const u8 cont = bytes[i + k];
-            if ((cont & 0xC0) != 0x80) {
-                return false;
-            }
-            cp = (cp << 6) | (cont & 0x3Fu);
-        }
-        if (cp > 0x10FFFFu || (cp >= 0xD800u && cp <= 0xDFFFu)) {
-            return false;
-        }
-        const bool overlong = (len == 1 && cp < 0x80u) || (len == 2 && cp < 0x800u) ||
-                              (len == 3 && cp < 0x10000u);
-        if (overlong) {
-            return false;
-        }
-        i += len + 1;
-    }
-    return true;
-}
-
-// Bounded reader over a section payload with absolute (file-level) offsets.
-Reader sectionReader(std::span<const u8> data, const Section& section) {
-    return Reader(data, section.offset, static_cast<std::size_t>(section.offset) + section.size);
-}
-
-} // namespace
 
 const InputDecl* AssetMeta::findInput(std::string_view name, const ConstPool& pool) const {
     for (const auto& input : inputs) {
@@ -77,60 +22,6 @@ const OutputDecl* AssetMeta::findOutput(std::string_view name, const ConstPool& 
         }
     }
     return nullptr;
-}
-
-ConstPool parseConsts(std::span<const u8> data, const Section& section) {
-    if (section.id != SectionId::Const) {
-        throw FormatError("not a const section", section.offset);
-    }
-    Reader reader = sectionReader(data, section);
-    ConstPool pool;
-
-    const u32 stringCount = reader.readU32();
-    if (stringCount > kMaxConstPoolEntries) {
-        throw FormatError("string pool too large", reader.position() - 4);
-    }
-    pool.strings.reserve(stringCount);
-    for (u32 i = 0; i < stringCount; ++i) {
-        const u32 len = reader.readU32();
-        if (len > reader.remaining()) {
-            throw FormatError("string length exceeds section", reader.position() - 4);
-        }
-        const auto bytes = reader.readBytes(len);
-        if (!validUtf8(bytes)) {
-            throw FormatError("string is not valid UTF-8", reader.position() - len);
-        }
-        pool.strings.emplace_back(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-    }
-
-    const u32 intCount = reader.readU32();
-    if (intCount > kMaxConstPoolEntries) {
-        throw FormatError("int pool too large", reader.position() - 4);
-    }
-    pool.ints.reserve(intCount);
-    for (u32 i = 0; i < intCount; ++i) {
-        pool.ints.push_back(reader.readI32());
-    }
-
-    const u32 floatCount = reader.readU32();
-    if (floatCount > kMaxConstPoolEntries) {
-        throw FormatError("float pool too large", reader.position() - 4);
-    }
-    pool.floats.reserve(floatCount);
-    for (u32 i = 0; i < floatCount; ++i) {
-        pool.floats.push_back(reader.readF32());
-    }
-
-    const u32 colorCount = reader.readU32();
-    if (colorCount > kMaxConstPoolEntries) {
-        throw FormatError("color pool too large", reader.position() - 4);
-    }
-    pool.colors.reserve(colorCount);
-    for (u32 i = 0; i < colorCount; ++i) {
-        pool.colors.push_back(reader.readColor());
-    }
-
-    return pool;
 }
 
 AssetMeta parseMeta(std::span<const u8> data, const Section& section, const ConstPool& pool) {
@@ -164,7 +55,11 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
         throw FormatError("unknown meta flag bits", reader.position() - 2);
     }
     meta.hasEmission = (flags & 1u) != 0;
-    reader.skip(6); // reserved, must be zero — pinned by the format
+    for (int i = 0; i < 6; ++i) { // reserved, MUST be 0 (spec §4)
+        if (reader.readU8() != 0) {
+            throw FormatError("reserved meta bytes must be zero", reader.position() - 1);
+        }
+    }
     if (meta.hasEmission) {
         meta.emission.color = reader.readColor();
         meta.emission.offset = {reader.readF32(), reader.readF32()};
@@ -210,7 +105,11 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
         if (listFlag > 1) {
             throw FormatError("invalid list flag", reader.position() - 1);
         }
-        reader.skip(2); // reserved
+        for (int k = 0; k < 2; ++k) { // reserved, MUST be 0 (spec §4.2)
+            if (reader.readU8() != 0) {
+                throw FormatError("reserved output bytes must be zero", reader.position() - 1);
+            }
+        }
         const u32 nameIndex = reader.readU32();
         if (nameIndex >= pool.strings.size()) {
             throw FormatError("output name outside const string pool", reader.position() - 4);
@@ -219,6 +118,10 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
             throw FormatError("duplicate output name", entryStart);
         }
         meta.outputs.push_back({static_cast<OutputKind>(rawKind), listFlag == 1, nameIndex});
+    }
+
+    if (!reader.empty()) {
+        throw FormatError("trailing bytes in meta section", reader.position());
     }
 
     return meta;

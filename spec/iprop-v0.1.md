@@ -110,15 +110,16 @@ signature. Layout (offsets relative to the section start):
 | 32 | 2 | flags — bit 0: emission present; other bits MUST be 0 |
 | 34 | 6 | reserved, MUST be 0 |
 | 40 | 4 | emission colour (RGBA8), iff flags bit 0 |
-| 44 | 4 | `emissionX`, `emissionY` (f32), iff bit 0 |
-| 52 | 4 | `emissionRadius` (f32), iff bit 0 |
+| 44 | 4 | `emissionX` (f32), iff flags bit 0 |
+| 48 | 4 | `emissionY` (f32), iff flags bit 0 |
+| 52 | 4 | `emissionRadius` (f32), iff flags bit 0 |
 | — | 2 | `inputCount` — root uniform count |
 | — | — | input entries (§4.1) |
 | — | 2 | `outputCount` — root output-slot count |
 | — | — | output entries (§4.2) |
 
 (Emission fields are present only when the flag is set; `inputCount` follows
-at the first free offset in that case.)
+at offset 40 without emission, or at offset 56 with emission.)
 
 ### 4.1 Input entries (uniforms)
 
@@ -631,8 +632,13 @@ Hosts MUST reject a file that violates any of the following:
 - Header: magic, version major ≤ 0, reserved fields 0, unknown flag bits 0.
 - Section table: ids known, required sections present, no overlaps, bounds
   within file, `debug` presence matches the flag.
+- Sections MUST NOT overlap the header or the section table: every section
+  offset MUST be ≥ the end of the section table.
+- A section MUST be fully consumed by its parser: trailing bytes after the
+  last parsed field are an error.
 - `meta`: positive sizes, `variants ≥ 1`, `archetypes ≥ 1`, `fuel ≥ 1`,
-  unique input/output names, names resolve to const strings.
+  reserved bytes zero, unique input/output names, names resolve to const
+  strings.
 - `const`: string lengths within the section; UTF-8 well-formedness SHOULD be
   checked.
 - `code`: function 0 named `draw` with the §6.1 signature; all function

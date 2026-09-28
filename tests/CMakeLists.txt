@@ -13,7 +13,9 @@ add_executable(iprop_tests
     smoke_test.cpp
     binary_test.cpp
     format_test.cpp
-    asset_test.cpp)
+    asset_test.cpp
+    utf8_test.cpp
+    support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
     iprop::runtime

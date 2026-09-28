@@ -1,7 +1,9 @@
 add_library(iprop_runtime
     version.cpp
     format.cpp
-    asset.cpp)
+    consts.cpp
+    meta.cpp
+    utf8.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)
 

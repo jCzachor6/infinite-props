@@ -1,84 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <array>
-#include <cstddef>
-#include <initializer_list>
-#include <span>
-#include <vector>
+#include "support/test_support.hpp"
 
-#include "iprop/Binary.hpp"
-#include "iprop/Constants.hpp"
 #include "iprop/Format.hpp"
 
 using namespace iprop;
-
-namespace {
-
-// A valid file: header + table + payload bytes. Payload sizes may be zero.
-std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>& defs,
-                           u32 flags = 0, u16 minor = kVersionMinor) {
-    Writer w;
-    for (const u8 magic : kMagic) {
-        w.writeU8(magic);
-    }
-    w.writeU16(kVersionMajor);
-    w.writeU16(minor);
-    w.writeU32(flags);
-    w.writeU32(static_cast<u32>(defs.size()));
-    w.writeU32(0); // reserved
-
-    u32 offset = kHeaderSize + static_cast<u32>(defs.size()) * 12;
-    for (const auto& [id, size] : defs) {
-        w.writeU32(static_cast<u32>(id));
-        w.writeU32(offset);
-        w.writeU32(static_cast<u32>(size));
-        offset += static_cast<u32>(size);
-    }
-    for (const auto& [id, size] : defs) {
-        (void)id;
-        for (std::size_t i = 0; i < size; ++i) {
-            w.writeU8(0xAB);
-        }
-    }
-    return w.data();
-}
-
-// A raw header + table with caller-controlled fields; no payload bytes.
-std::vector<u8> rawLayout(u16 major, u16 minor, u32 flags, u32 count, u32 reserved,
-                          std::initializer_list<std::array<u32, 3>> entries) {
-    Writer w;
-    for (const u8 magic : kMagic) {
-        w.writeU8(magic);
-    }
-    w.writeU16(major);
-    w.writeU16(minor);
-    w.writeU32(flags);
-    w.writeU32(count);
-    w.writeU32(reserved);
-    for (const auto& [id, offset, size] : entries) {
-        w.writeU32(id);
-        w.writeU32(offset);
-        w.writeU32(size);
-    }
-    return w.data();
-}
-
-void appendZeros(std::vector<u8>& bytes, std::size_t n) {
-    bytes.insert(bytes.end(), n, 0);
-}
-
-void expectError(const std::vector<u8>& bytes, std::size_t at) {
-    bool threw = false;
-    try {
-        (void)parseLayout(bytes);
-    } catch (const FormatError& error) {
-        threw = true;
-        CHECK(error.offset == at);
-    }
-    REQUIRE(threw);
-}
-
-} // namespace
+using namespace test_support;
 
 TEST_CASE("valid layout parses and round-trips") {
     const auto bytes = makeLayout(
@@ -125,6 +52,13 @@ TEST_CASE("sections in any order are accepted") {
     const auto layout = parseLayout(bytes);
     REQUIRE(layout.sections.size() == 4);
     REQUIRE(layout.find(SectionId::Meta) != nullptr);
+}
+
+TEST_CASE("zero-size sections are accepted") {
+    const auto bytes = makeLayout({{SectionId::Meta, 0}, {SectionId::Const, 0}, {SectionId::Code, 0}});
+    const auto layout = parseLayout(bytes);
+    REQUIRE(layout.sections.size() == 3);
+    REQUIRE(layout.sections[0].size == 0);
 }
 
 TEST_CASE("bad magic fails at the mismatching byte") {
@@ -177,6 +111,13 @@ TEST_CASE("section outside file bounds fails") {
     auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 60, 4}, {2, 64, 4}, {3, 999, 4}});
     appendZeros(bytes, 100 - bytes.size());
     expectError(bytes, 20 + 2 * 12);
+}
+
+TEST_CASE("section overlapping the header or table fails") {
+    // 3 sections: table ends at 56, but the first section starts inside it.
+    auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 8, 4}, {2, 60, 4}, {3, 64, 4}});
+    appendZeros(bytes, 70 - bytes.size());
+    expectError(bytes, 20 + 0 * 12);
 }
 
 TEST_CASE("overlapping sections fail at the second entry") {

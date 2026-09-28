@@ -87,6 +87,11 @@ FileLayout parseLayout(std::span<const u8> data) {
             throw FormatError("section outside file bounds", entryAt);
         }
 
+        // Sections MUST NOT overlap the header or the table (spec §14).
+        if (offset < kHeaderSize + tableBytes) {
+            throw FormatError("section overlaps header or section table", entryAt);
+        }
+
         layout.sections.push_back({static_cast<SectionId>(rawId), offset, size});
     }
 
