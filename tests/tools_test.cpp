@@ -189,6 +189,17 @@ TEST_CASE("--size changes the output dimensions") {
     stbi_image_free(pixels);
 }
 
+TEST_CASE("an out-of-range variant fails through the VM") {
+    TempPath temp("fixture");
+    writeFixture(temp);
+    CapturedStdout captured;
+    const std::string file = temp.path.string();
+    const std::string png = temp.pngPath().string();
+    const char* args[] = {"ipgen", file.c_str(), "--variant", "5", "-o", png.c_str(), nullptr};
+    REQUIRE(ipgenMain(6, const_cast<char**>(args)) == 1);
+    REQUIRE(captured.errText().find("variant") != std::string::npos);
+}
+
 TEST_CASE("unknown options and missing files fail") {
     TempPath temp("fixture");
     writeFixture(temp);

@@ -170,6 +170,11 @@ void Execution::callPart(u16 partIndex) {
         std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeX) * scaleX)));
     const i32 subH =
         std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeY) * scaleY)));
+    // Runtime defense: a corrupt part meta must not trigger a huge allocation
+    // (the main canvas cap does not cover sub-canvases).
+    if (static_cast<u32>(subW) > kMaxCanvasSide || static_cast<u32>(subH) > kMaxCanvasSide) {
+        trap("part canvas too large");
+    }
     spend(static_cast<u64>(subW) * subH); // blit visits (spec §8.3/§10.5)
 
     PartCallState state;

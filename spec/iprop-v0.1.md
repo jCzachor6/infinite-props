@@ -683,11 +683,17 @@ Hosts MUST reject a file that violates any of the following:
 
 ## 16. Open questions (TBD before v1.0)
 
-- Part meta does not currently carry `variants`/`archetypes` counts; decide
-  whether part variant validation happens at compile time only (chosen for
-  v0.1) or needs runtime counts.
+- Part meta does not carry `variants`/`archetypes` counts; part variant
+  validation happens at compile time only (chosen for v0.1).
 - Alpha-manipulation instruction (reserved 0x52): add or drop.
-- `weather` default amount and whether it is an instruction or a library.
+- `weather` default amount: currently an explicit operand; whether it should
+  be optional is undecided.
 - Uniform list types (currently only scalars and colours).
-- Whether `f32` NaNs in geometry ops need explicit pinning (currently IEEE
-  propagation).
+- Consequence pinned by §11.1: translucent strokes on the transparent
+  sub-canvas yield alpha-0 pixels and are dropped by the part blit; parts
+  must paint with opaque colours (documented, not a bug).
+
+Resolved during implementation: header size (20 bytes), `poly` vertex count
+as an immediate operand, `part.get.*` reading global slot indices, the
+`INT32_MIN / -1` trap, `color.mix` alpha copying, the call-frame stream
+reference semantics, and the scaling rounding rule.

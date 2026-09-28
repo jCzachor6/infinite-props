@@ -29,7 +29,6 @@ add_executable(iprop_tests
     support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
-    iprop::runtime
     ipgen_lib
     Catch2::Catch2WithMain)
 

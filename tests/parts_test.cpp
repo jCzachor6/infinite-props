@@ -259,6 +259,102 @@ TEST_CASE("parts get their own stream; the caller's stream is untouched") {
     REQUIRE(bitsOf(result.outputs[1].points[0].x) == bitsOf(reference));
 }
 
+TEST_CASE("parts receive uniforms and variant/archetype as params") {
+    // Part with a colour uniform "tint": it echoes variant/archetype and the
+    // tint's red channel through its outputs.
+    std::vector<u8> partBody;
+    for (const auto b : ins(0x13, 0, 0)) partBody.push_back(b); // local.get 0 (variant)
+    for (const auto b : ins(0x4D, 0, 0)) partBody.push_back(b); // i32.to.f32
+    for (const auto b : ins(0x13, 0, 1)) partBody.push_back(b); // local.get 1 (archetype)
+    for (const auto b : ins(0x4D, 0, 0)) partBody.push_back(b); // i32.to.f32
+    for (const auto b : ins(0x90, 0, 0)) partBody.push_back(b); // out.point 0 (part slot)
+    for (const auto b : retIns()) partBody.push_back(b);
+
+    // Draw: part.draw with variant 3, archetype 4, tint uniform {200,...}.
+    // Stack order (spec §9.10): uniforms first (deepest), then seed,
+    // variant, archetype, atX, atY.
+    std::vector<u8> drawBody;
+    for (const auto b : ins(0x12, 0, 0)) drawBody.push_back(b); // tint (uniform)
+    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // seed 0
+    for (const auto b : ins(0x10, 0, 1)) drawBody.push_back(b); // variant 3 (idx 1)
+    for (const auto b : ins(0x10, 0, 2)) drawBody.push_back(b); // archetype 4 (idx 2)
+    for (const auto b : ins(0x11, 0, 0)) drawBody.push_back(b); // atX 0
+    for (const auto b : ins(0x11, 0, 0)) drawBody.push_back(b); // atY 0
+    for (const auto b : ins(0xA0, 0, 0)) drawBody.push_back(b); // part.draw 0
+    for (const auto b : retIns()) drawBody.push_back(b);
+
+    const auto result = runParts(
+        drawBody, {{kAnonymousName, {0, 0, 2}, {}, {}, partBody}},
+        {{1, 8, 8, 0, 0, {{0, 2, {200, 5, 5, 255}, 0, 0}}, {{0, 0, 3}}}},
+        {}, {"draw", "pupil", "tint", "echo"}, {0, 3, 4}, {0.f}, {{0, 0, 0, 255}});
+    // The part's echo output carries (variant, archetype) = (3, 4).
+    REQUIRE(result.outputs.size() == 1);
+    REQUIRE(result.outputs[0].name == "echo");
+    REQUIRE(result.outputs[0].points[0].x == 3.f);
+    REQUIRE(result.outputs[0].points[0].y == 4.f);
+}
+
+TEST_CASE("translucent part strokes are dropped by the blit (spec §11.1)") {
+    // The sub-canvas preserves destination alpha: a translucent stroke over
+    // the transparent sub-canvas yields alpha 0, so the blit skips it and
+    // the caller's pixels stay untouched.
+    std::vector<u8> partBody;
+    for (const auto b : ins(0x10, 0, 0)) partBody.push_back(b); // x = 0
+    for (const auto b : ins(0x10, 0, 0)) partBody.push_back(b); // y = 0
+    for (const auto b : ins(0x12, 0, 0)) partBody.push_back(b); // translucent colour
+    for (const auto b : ins(0x80, 0, 0)) partBody.push_back(b); // pixel
+    for (const auto b : retIns()) partBody.push_back(b);
+
+    std::vector<u8> drawBody;
+    // First paint an opaque background pixel, then the part over it.
+    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // x = 0
+    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // y = 0
+    for (const auto b : ins(0x12, 0, 1)) drawBody.push_back(b); // opaque colour
+    for (const auto b : ins(0x80, 0, 0)) drawBody.push_back(b); // pixel
+    pushPartCall(drawBody, 0);
+    for (const auto b : retIns()) drawBody.push_back(b);
+
+    const Color background{30, 40, 50, 255};
+    const Color translucent{255, 0, 0, 128};
+    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+                                 {{1, 8, 8, 0, 0, {}, {}}}, {}, {"draw"},
+                                 {0}, {0.f}, {translucent, background});
+    REQUIRE(result.image.at(0, 0) == background); // untouched by the part
+}
+
+TEST_CASE("part.get.rect and part.get.circle read their shapes") {
+    // Part: out.rect 1 = (1,2,3,4); out.circle 2 = (5,6,7).
+    std::vector<u8> partBody;
+    for (const auto b : ins(0x11, 0, 0)) partBody.push_back(b); // 1
+    for (const auto b : ins(0x11, 0, 1)) partBody.push_back(b); // 2
+    for (const auto b : ins(0x11, 0, 2)) partBody.push_back(b); // 3
+    for (const auto b : ins(0x11, 0, 3)) partBody.push_back(b); // 4
+    for (const auto b : ins(0x91, 0, 2)) partBody.push_back(b); // out.rect 2 (part slot)
+    for (const auto b : ins(0x11, 0, 4)) partBody.push_back(b); // 5
+    for (const auto b : ins(0x11, 0, 5)) partBody.push_back(b); // 6
+    for (const auto b : ins(0x11, 0, 6)) partBody.push_back(b); // 7
+    for (const auto b : ins(0x92, 0, 3)) partBody.push_back(b); // out.circle 3 (part slot)
+    for (const auto b : retIns()) partBody.push_back(b);
+
+    std::vector<u8> drawBody;
+    pushPartCall(drawBody, 0);
+    for (const auto b : ins(0x97, 0, 2)) drawBody.push_back(b); // part.get.rect 2
+    for (const auto b : ins(0x91, 0, 0)) drawBody.push_back(b); // out.rect 0 (root)
+    for (const auto b : ins(0x98, 0, 3)) drawBody.push_back(b); // part.get.circle 3
+    for (const auto b : ins(0x92, 0, 1)) drawBody.push_back(b); // out.circle 1 (root)
+    for (const auto b : retIns()) drawBody.push_back(b);
+
+    const auto result = runParts(
+        drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+        {{1, 8, 8, 0, 0, {}, {{1, 0, 1}, {2, 0, 2}}}},
+        {{1, 0, 1}, {2, 0, 2}},
+        {"draw", "box", "zone", "prect", "pcircle"},
+        {0}, {1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f}, {});
+    REQUIRE(result.outputs[0].rects[0].x == 1.f);
+    REQUIRE(result.outputs[0].rects[0].h == 4.f);
+    REQUIRE(result.outputs[1].circles[0].r == 7.f);
+}
+
 TEST_CASE("part.get without a part call traps") {
     // part.get.point 0 (the part's slot) before any part.draw: the register
     // is empty.
