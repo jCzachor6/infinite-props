@@ -26,6 +26,9 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepCanvas(ex, ins)) {
         return true;
     }
+    if (stepOutputs(ex, ins)) {
+        return true;
+    }
     return false; // remaining groups arrive with their phases
 }
 
@@ -276,6 +279,24 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     }
     root.stream = inputs.seed;
     impl_->ex.frames.push_back(std::move(root));
+
+    // Global output slots and resolved names: root outputs first, then each
+    // part's outputs in part order (spec §4.3).
+    const auto addSlot = [&](const OutputDecl& decl, const ConstPool& pool) {
+        detail::OutputSlot slot;
+        slot.kind = decl.kind;
+        slot.isList = decl.isList;
+        impl_->ex.outputSlots.push_back(std::move(slot));
+        impl_->ex.outputNames.push_back(pool.strings[decl.nameIndex]);
+    };
+    for (const auto& decl : file.meta.outputs) {
+        addSlot(decl, file.pool);
+    }
+    for (const auto& part : file.code.parts) {
+        for (const auto& decl : part.outputs) {
+            addSlot(decl, file.pool);
+        }
+    }
 }
 
 VM::~VM() = default;
@@ -307,5 +328,32 @@ const Canvas& VM::canvas() const { return impl_->ex.canvas; }
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
 const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
+
+GenerationResult VM::result() const {
+    GenerationResult result;
+    result.image = impl_->ex.canvas;
+    const auto& slots = impl_->ex.outputSlots;
+    result.outputs.reserve(slots.size());
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        NamedOutput output;
+        output.name = impl_->ex.outputNames[i];
+        output.kind = slots[i].kind;
+        output.isList = slots[i].isList;
+        output.points = slots[i].points;
+        output.rects = slots[i].rects;
+        output.circles = slots[i].circles;
+        result.outputs.push_back(std::move(output));
+    }
+    return result;
+}
+
+const NamedOutput* GenerationResult::find(std::string_view name) const {
+    for (const auto& output : outputs) {
+        if (output.name == name) {
+            return &output;
+        }
+    }
+    return nullptr;
+}
 
 } // namespace iprop

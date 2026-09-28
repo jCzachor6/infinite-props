@@ -24,7 +24,7 @@ the boxes.
 | 9 | Arithmetic instructions | B. Interpreter | ✅ |
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ✅ |
 | 11 | Canvas operations & alpha rule | B. Interpreter | ✅ |
-| 12 | Structured outputs | B. Interpreter | ⬜ |
+| 12 | Structured outputs | B. Interpreter | ✅ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ⬜ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ⬜ |
 | 15 | Example programs: rock & crystal ports | B. Interpreter | ⬜ |
@@ -275,17 +275,17 @@ the boxes.
 **Goal:** `out.*` writes and list semantics.
 
 **Work:**
-1. Output slot area (global numbering §4.3), singular write-once, list append-in-order.
-2. `out.point/rect/circle`, `out.list.*`.
-3. Result assembly into a typed `outputs` map with names from `meta`.
-4. Tests: singular overwrite, list order, name mapping.
+1. `runtime/iprop/Outputs.hpp` (OutputPoint/OutputRect/OutputCircle) + `runtime/outputs.cpp`: `out.point/rect/circle` and `out.list.*` — singular slots write-last, list slots append in program order, runtime slot/kind/list defenses.
+2. `VM::result()`: `GenerationResult` { image, named outputs } with resolved names, in global slot order (root first, then parts); `find()` by name.
+3. Global slot table and names built in the VM constructor (spec §4.3).
+4. Tests: last-write-wins, append order, rect/circle shapes, declaration order + find, empty declarations, unvalidated kind-mismatch trap.
 
-**Deliverables:** output implementations + tests.
+**Deliverables:** `runtime/iprop/Outputs.hpp`, `runtime/outputs.cpp`, `tests/outputs_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Final `outputs` map contains exactly the declared slots with correct names/types.
-- [ ] Lists preserve program order; singular slots hold the last written value.
-- [ ] Writing a slot of the wrong kind is impossible (validator/compile-time kind is fixed per opcode).
+- [x] Final `outputs` map contains exactly the declared slots with correct names/types.
+- [x] Lists preserve program order; singular slots hold the last written value.
+- [x] Writing a slot of the wrong kind is impossible (validator/compile-time kind is fixed per opcode).
 
 ---
 

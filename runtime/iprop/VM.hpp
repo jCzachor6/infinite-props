@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Canvas.hpp"
+#include "iprop/Outputs.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 
@@ -8,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iprop {
@@ -18,6 +20,28 @@ struct UniformValue {
     Color color{};
     f32 f = 0.f;
     u32 u = 0;
+};
+
+// One named output slot as delivered to the host (spec §5.4: "the name is
+// the contract"). Singular slots hold at most one value; list slots hold
+// every appended value in program order.
+struct NamedOutput {
+    std::string name;
+    OutputKind kind = OutputKind::Point;
+    bool isList = false;
+    std::vector<OutputPoint> points;
+    std::vector<OutputRect> rects;
+    std::vector<OutputCircle> circles;
+};
+
+// The generation result (spec §8.1/§5.4): the image plus every declared
+// structured output, in global slot order (root outputs first, then parts,
+// spec §4.3).
+struct GenerationResult {
+    Canvas image;
+    std::vector<NamedOutput> outputs;
+
+    const NamedOutput* find(std::string_view name) const;
 };
 
 // Host invocation inputs (spec §8.1). sizeX/sizeY = 0 means "use meta size".
@@ -57,6 +81,11 @@ public:
     // for debuggers and the IDE inspector; not part of the generation
     // contract.
     const std::vector<Value>& debugStack() const;
+
+    // The generation result (spec §5.4/§8.1): the canvas plus every
+    // declared structured output, named, in global slot order. Call after
+    // run().
+    GenerationResult result() const;
 
 private:
     struct Impl;

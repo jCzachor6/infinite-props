@@ -6,6 +6,7 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Instruction.hpp"
+#include "iprop/Outputs.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 
@@ -32,6 +33,17 @@ struct ControlInfo {
     std::size_t endIndex = kNone;  // index of the matching `end`
 };
 
+// One structured output slot (global numbering, spec §4.3). Singular slots
+// hold at most one value (a later write replaces it); list slots append in
+// program order.
+struct OutputSlot {
+    OutputKind kind = OutputKind::Point;
+    bool isList = false;
+    std::vector<OutputPoint> points;
+    std::vector<OutputRect> rects;
+    std::vector<OutputCircle> circles;
+};
+
 // One call frame (spec §8.2).
 struct Frame {
     u16 functionIndex = 0;
@@ -56,6 +68,9 @@ struct Execution {
     u64 fuel = 0;
     std::vector<Frame> frames;
     std::vector<std::vector<ControlInfo>> control; // per function index
+    // Global output slots and their resolved names (spec §4.3).
+    std::vector<OutputSlot> outputSlots;
+    std::vector<std::string> outputNames;
     // The entry frame's stack when it exits; a tooling hook for debuggers
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
@@ -102,5 +117,6 @@ bool stepControl(Execution& ex, Instruction ins);
 bool stepArithmetic(Execution& ex, Instruction ins);
 bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
+bool stepOutputs(Execution& ex, Instruction ins);
 
 } // namespace iprop::detail
