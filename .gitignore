@@ -1,0 +1,39 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+
+# CMake artifacts
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Compiled artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Generated assets and previews
+bin/
+*.png
+!tests/golden/*.png
+
+# Editor / website
+editor/node_modules/
+website/node_modules/
+editor/dist/
+website/dist/

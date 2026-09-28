@@ -1,0 +1,21 @@
+include(FetchContent)
+
+if(IPROP_FETCH_DEPS)
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.7.1
+        GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(Catch2)
+endif()
+
+add_executable(iprop_tests
+    smoke_test.cpp)
+
+target_link_libraries(iprop_tests PRIVATE
+    iprop::runtime
+    Catch2::Catch2WithMain)
+
+iprop_warnings(iprop_tests)
+
+add_test(NAME smoke COMMAND iprop_tests)
