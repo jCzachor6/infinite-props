@@ -1,5 +1,6 @@
 #pragma once
 
+#include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
 #include "iprop/Types.hpp"
 
@@ -24,6 +25,12 @@ struct Section {
     u32 offset = 0; // from the start of the file
     u32 size = 0;   // bytes
 };
+
+// A bounded Reader over a section payload; errors report absolute file
+// offsets (shared by every section parser).
+inline Reader sectionReader(std::span<const u8> data, const Section& section) {
+    return Reader(data, section.offset, static_cast<std::size_t>(section.offset) + section.size);
+}
 
 // Header + section table of a parsed .iprop file. Section *contents* are
 // parsed in later phases; this phase pins the layout contract of spec §2.

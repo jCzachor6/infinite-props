@@ -88,6 +88,13 @@ std::vector<u8> ins(u8 opcode, u8 aux, u16 operand) {
     return {opcode, aux, static_cast<u8>(operand & 0xFF), static_cast<u8>(operand >> 8)};
 }
 
+std::vector<u8> retIns() { return ins(0x09, 0, 0); }
+
+FuncSpec drawSpec(const std::vector<u8>& body, u32 nameIndex,
+                  const std::vector<u8>& params) {
+    return {nameIndex, params, {}, {}, body};
+}
+
 std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
                             const std::vector<PartSpec>& parts) {
     iprop::Writer w;

@@ -1,14 +1,12 @@
 #pragma once
 
 #include "iprop/Canvas.hpp"
-#include "iprop/Instruction.hpp"
 #include "iprop/Validator.hpp"
-#include "iprop/Value.hpp"
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <string>
-#include <vector>
 
 namespace iprop {
 
@@ -37,58 +35,24 @@ struct GenerationInputs {
 class VM {
 public:
     VM(const LoadedFile& file, const GenerationInputs& inputs);
+    ~VM();
+
+    VM(VM&&) noexcept;
+    VM& operator=(VM&&) noexcept;
+
+    VM(const VM&) = delete;
+    VM& operator=(const VM&) = delete;
 
     // Executes the entry function. Throws Trap on runtime errors.
     void run();
 
-    const Canvas& canvas() const { return canvas_; }
-    u64 fuel() const { return fuel_; }
-    u64 fuelBudget() const { return budget_; }
+    const Canvas& canvas() const;
+    u64 fuel() const;       // remaining budget
+    u64 fuelBudget() const; // total budget from meta.fuel
 
 private:
-    // Runtime label (spec §9.1): kind 0 = block, 1 = loop, 2 = if.
-    struct Label {
-        u8 kind = 0;
-        std::size_t cont = 0; // loop: start index; block/if: the `end` index
-        std::size_t end = 0;  // index of the matching `end`
-    };
-
-    // Precomputed matching indices for structured control flow.
-    struct ControlInfo {
-        std::size_t elseIndex = kNone; // index of `else`, or kNone
-        std::size_t endIndex = kNone;  // index of the matching `end`
-    };
-    static constexpr std::size_t kNone = static_cast<std::size_t>(-1);
-
-    // One call frame (spec §8.2).
-    struct Frame {
-        u16 functionIndex = 0;
-        std::vector<Value> locals; // params first, then declared locals
-        std::vector<Value> stack;  // operand stack
-        u32 stream = 0;            // current stream state
-        std::vector<u32> savedStreams;
-        std::size_t ip = 0; // instruction index within the function stream
-        std::vector<Label> labels;
-    };
-
-    void pushRootFrame();
-    void execute();
-    void step(Instruction ins);
-    void callFunction(u16 functionIndex);
-    void leaveFrame();
-    void ensureControl(u16 functionIndex);
-    Value pop();
-    void push(Value value);
-    void spend(u64 cost);
-    [[noreturn]] void trap(std::string message) const;
-
-    const LoadedFile& file_;
-    GenerationInputs inputs_;
-    Canvas canvas_;
-    u64 budget_ = 0;
-    u64 fuel_ = 0;
-    std::vector<Frame> frames_;
-    std::vector<std::vector<ControlInfo>> control_; // per function index
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
 };
 
 } // namespace iprop

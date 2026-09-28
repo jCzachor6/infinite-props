@@ -76,6 +76,14 @@ struct PartSpec {
 // One 4-byte instruction: opcode, aux, operand (little-endian).
 std::vector<u8> ins(u8 opcode, u8 aux, u16 operand);
 
+// A single `return` instruction.
+std::vector<u8> retIns();
+
+// The canonical draw function spec: (i32 variant, i32 archetype), named
+// "draw" (name index 0), no results.
+FuncSpec drawSpec(const std::vector<u8>& body, u32 nameIndex = 0,
+                  const std::vector<u8>& params = {0, 0});
+
 // `code` section bytes (spec §6): function table, contiguous streams, parts.
 std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
                             const std::vector<PartSpec>& parts);

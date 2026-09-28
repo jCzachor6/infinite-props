@@ -16,11 +16,6 @@ using namespace test_support;
 
 namespace {
 
-// The canonical draw signature: (i32 variant, i32 archetype), no results.
-FuncSpec drawFunction(const std::vector<u8>& instructions = {}) {
-    return {0, {0, 0}, {}, {}, instructions}; // name index 0 = "draw"
-}
-
 // Sizes of the fixed parts of a function entry with zero param/result/local
 // type bytes (name, offset, length, three u16 counts) = 18 bytes.
 constexpr std::size_t kEntryBase = 18;
@@ -49,7 +44,7 @@ TEST_CASE("a draw function with a uniform parses") {
     const std::vector<u8> instructions = {0x10, 0x00, 0x00, 0x00, // const.i32 0
                                           0x16, 0x00, 0x00, 0x00, // drop
                                           0x09, 0x00, 0x00, 0x00}; // return
-    const auto codeBytes = codeSection({drawFunction(instructions)}, {});
+    const auto codeBytes = codeSection({drawSpec(instructions)}, {});
     const auto bytes = fullFile(minimalMeta(), poolBytes, codeBytes);
     const auto layout = parseLayout(bytes);
     const auto pool = parseConsts(bytes, *layout.find(SectionId::Const));
@@ -72,7 +67,7 @@ TEST_CASE("a draw function with a uniform parses") {
 TEST_CASE("multi-function file with parts parses") {
     const auto poolBytes = namesPool({"draw", "hair", "eyes", "tint", "pupil"});
     const auto codeBytes = codeSection(
-        {drawFunction({0x09, 0x00, 0x00, 0x00}),                                   // draw
+        {drawSpec({0x09, 0x00, 0x00, 0x00}),                                   // draw
          {1, {0, 0, 2}, {}, {1, 0}, {0x09, 0x00, 0x00, 0x00}},                    // hair
          {kAnonymousName, {0, 0}, {}, {}, {0x09, 0x00, 0x00, 0x00}}},             // eyes
         {{1, 64, 32, 32.f, 4.f, {{0, 3, {10, 11, 12, 255}, 0, 0}}, {{0, 0, 4}}},
@@ -166,7 +161,7 @@ TEST_CASE("invalid code fixtures fail with located errors") {
     // First stream not at offset 0: patch the offset field (8-11) to 4;
     // contiguity error at the entry start (4).
     {
-        auto bytes = codeSection({drawFunction({0x09, 0, 0, 0})}, {});
+        auto bytes = codeSection({drawSpec({0x09, 0, 0, 0})}, {});
         bytes[8] = 4; // offset 4 instead of 0
         expectCodeError(bytes, pool, 4, "contiguous");
     }
@@ -174,7 +169,7 @@ TEST_CASE("invalid code fixtures fail with located errors") {
     // A gap between two streams: function 1 entry starts at 4 + 20 = 24
     // (draw entry = 18 + 2 param type bytes); its offset field at 28.
     {
-        FuncSpec a = drawFunction({0x09, 0, 0, 0});
+        FuncSpec a = drawSpec({0x09, 0, 0, 0});
         FuncSpec b = {kAnonymousName, {}, {}, {}, {0x09, 0, 0, 0}};
         auto bytes = codeSection({a, b}, {});
         bytes[28] = 8; // offset 8 instead of the contiguous 4
@@ -267,14 +262,14 @@ TEST_CASE("invalid code fixtures fail with located errors") {
     // draw function: part starts at 32, inCount 52-53, outCount 54-55,
     // output entry: kind 56, list 57, reserved 58-59.
     {
-        auto bytes = codeSection({drawFunction({0x09, 0, 0, 0})},
+        auto bytes = codeSection({drawSpec({0x09, 0, 0, 0})},
                                  {{0, 8, 8, 0, 0, {}, {{0, 0, 1}}}});
         bytes[58] = 0x01;
         expectCodeError(bytes, pool, 58, "reserved");
     }
     // Trailing bytes after the last part.
     {
-        auto bytes = codeSection({drawFunction({0x09, 0, 0, 0})}, {});
+        auto bytes = codeSection({drawSpec({0x09, 0, 0, 0})}, {});
         bytes.push_back(0xEE);
         expectCodeError(bytes, pool, bytes.size() - 1, "trailing");
     }
@@ -283,7 +278,7 @@ TEST_CASE("invalid code fixtures fail with located errors") {
 TEST_CASE("duplicate part input names fail at the second entry") {
     const auto pool = namesPool({"draw", "tint"});
     const auto codeBytes = codeSection(
-        {drawFunction({0x09, 0, 0, 0})},
+        {drawSpec({0x09, 0, 0, 0})},
         {{0, 8, 8, 0, 0, {{0, 1, {}, 0, 0}, {0, 1, {}, 0, 0}}, {}}});
     const auto bytes = fullFile(minimalMeta(), pool, codeBytes);
     const auto layout = parseLayout(bytes);
