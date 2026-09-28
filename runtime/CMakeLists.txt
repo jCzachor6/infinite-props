@@ -5,6 +5,7 @@ add_library(iprop_runtime
     meta.cpp
     code.cpp
     validator.cpp
+    vm.cpp
     utf8.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)

@@ -257,6 +257,8 @@ stack, and a **current stream** (u32) plus a save stack of streams.
 
 - The root `draw` frame's stream is initialised to the input `seed`.
 - A part frame's stream is initialised to the `seed` argument of `part.draw`.
+- A `call` frame **shares the caller's stream** (mutable, like a passed
+  reference), so helpers draw from the same sequence as their caller.
 - Streams are per-frame; they do not survive the call.
 
 ### 8.3 Fuel

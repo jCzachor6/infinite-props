@@ -19,7 +19,7 @@ the boxes.
 | 4 | Parsing `const` & `meta` | B. Interpreter | ✅ |
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ✅ |
 | 6 | Validator | B. Interpreter | ✅ |
-| 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ⬜ |
+| 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ✅ |
 | 8 | Control-flow & stack instructions | B. Interpreter | ⬜ |
 | 9 | Arithmetic instructions | B. Interpreter | ⬜ |
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ⬜ |
@@ -178,17 +178,17 @@ the boxes.
 **Goal:** the execution skeleton without opcode semantics.
 
 **Work:**
-1. `Frame` (params/locals/operand stack/stream + stream save stack), `VM` state (canvas, output slots, part-output register, fuel).
-2. Fuel accounting incl. per-instruction + composite visit costs (§8.3, §11).
-3. Trap mechanism (`divide by zero`, `fuel exhausted`, empty stream pop, `part.get` before call, …).
-4. Tests: frame lifecycle, fuel exhaustion, trap messages.
+1. `runtime/iprop/Value.hpp` (tagged variant value), `runtime/iprop/Canvas.hpp` (RGBA8 buffer + scale), `runtime/iprop/VM.hpp` + `runtime/vm.cpp`: `Frame` (params/locals/operand stack/stream + save stack), call/return frame lifecycle, fuel accounting (`Trap` with located offsets), canvas sizing/scaling, uniform defaults/overrides.
+2. Trap type in `Types.hpp`; `spec §8.2` note: `call` frames share the caller's stream.
+3. Scope note: the stack/data instructions (const/drop/dup/local.*, call, return) landed here so the skeleton is testable; Phase 8 is now purely structured control flow.
+4. Tests: frame lifecycle, locals, nested calls, implicit return, fuel exhaustion (located trap), variant/archetype traps, runtime underflow trap without validation, uniform defaults/overrides.
 
-**Deliverables:** `src/runtime/VM.*`, `Frame`, traps + tests.
+**Deliverables:** `runtime/iprop/{Value,Canvas,VM}.hpp`, `runtime/vm.cpp`, `tests/vm_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Locals and stacks behave per spec §8.
-- [ ] A program with fuel 10 exhausting at instruction 11 traps with `fuel exhausted`.
-- [ ] Traps carry precise, located messages.
+- [x] Locals and stacks behave per spec §8.
+- [x] A program with fuel 10 exhausting at instruction 11 traps with `fuel exhausted`.
+- [x] Traps carry precise, located messages.
 
 ---
 

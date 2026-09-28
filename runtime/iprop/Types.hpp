@@ -48,4 +48,10 @@ struct FormatError : std::runtime_error {
         : std::runtime_error(std::move(message)), offset(at) {}
 };
 
+// A runtime trap (spec §8.4): a defined error raised during execution with a
+// located message. Derives from FormatError so one catch handles both.
+struct Trap : FormatError {
+    using FormatError::FormatError;
+};
+
 } // namespace iprop
