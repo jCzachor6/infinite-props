@@ -23,7 +23,7 @@ the boxes.
 | 8 | Control-flow instructions | B. Interpreter | ✅ |
 | 9 | Arithmetic instructions | B. Interpreter | ✅ |
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ✅ |
-| 11 | Canvas operations & alpha rule | B. Interpreter | ⬜ |
+| 11 | Canvas operations & alpha rule | B. Interpreter | ✅ |
 | 12 | Structured outputs | B. Interpreter | ⬜ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ⬜ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ⬜ |
@@ -256,17 +256,17 @@ the boxes.
 **Goal:** pixel-exact rasterization.
 
 **Work:**
-1. Canvas (RGBA8, transparent init) sized per §8.1 with scaling.
-2. `pixel` with the §11.1 alpha rule (incl. destination-alpha preservation), `rect`, `poly`, `line`, `oval`, `weather`.
-3. Reference images: fixture programs whose outputs are compared pixel-by-pixel against values computed independently from the spec pseudocode.
-4. Bounds behaviour: out-of-bounds writes are no-ops.
+1. `runtime/canvas.cpp`: `pixel` (spec §11.1 alpha rule: opaque overwrites, translucent blends per channel with the destination alpha preserved, out-of-bounds no-ops), `rect`, `poly` (operand = vertex count, point-in-polygon at pixel centres), `line` (steps/thickness), `oval`, `weather` (per-pixel hash, skips transparent and bright-warm pixels).
+2. Composite visit costs charged by the instructions up front (spec §8.3 updated: mid-op `fuel exhausted` is defined); the per-instruction cost stays 1.
+3. Spec §8.1 pins the scaling rounding: multiply by (sX, sY), round to nearest, half away from zero.
+4. Reference tests: an independent test-side implementation of the §11 pseudocode compares every pixel; alpha-rule, fuel-visit, out-of-bounds and scaling cases pinned.
 
-**Deliverables:** canvas opcode implementations + reference-image tests.
+**Deliverables:** `runtime/canvas.cpp`, `tests/canvas_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Poly/line/oval/weather outputs match spec pseudocode exactly (incl. loop order and fuel visit counts).
-- [ ] Alpha rule test: translucent pixel over opaque keeps destination alpha.
-- [ ] Fuel cost of composite ops matches §11 formulas.
+- [x] Poly/line/oval/weather outputs match spec pseudocode exactly (incl. loop order and fuel visit counts).
+- [x] Alpha rule test: translucent pixel over opaque keeps destination alpha.
+- [x] Fuel cost of composite ops matches §11 formulas.
 
 ---
 

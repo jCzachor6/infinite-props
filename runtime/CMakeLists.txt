@@ -10,6 +10,7 @@ add_library(iprop_runtime
     control.cpp
     arithmetic.cpp
     seeded.cpp
+    canvas.cpp
     utf8.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)

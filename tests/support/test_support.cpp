@@ -339,9 +339,11 @@ void expectProgTrap(const Prog& prog, const char* messagePart) {
 }
 
 iprop::Canvas runProgCanvas(const Prog& prog, u32 sizeX, u32 sizeY) {
-    const auto bytes = buildProgFile(prog, sizeX, sizeY); // must outlive the spans
+    // The meta stays 8x8; the requested size goes to the VM so scaling
+    // applies (spec §8.1).
+    const auto bytes = buildProgFile(prog); // must outlive the spans
     auto loaded = iprop::loadFile(bytes);
-    iprop::VM vm(loaded, {});
+    iprop::VM vm(loaded, {0, 0, 0, sizeX, sizeY, {}});
     vm.run();
     return vm.canvas();
 }

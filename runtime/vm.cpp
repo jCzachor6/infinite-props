@@ -23,6 +23,9 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepSeeded(ex, ins)) {
         return true;
     }
+    if (stepCanvas(ex, ins)) {
+        return true;
+    }
     return false; // remaining groups arrive with their phases
 }
 
@@ -210,12 +213,6 @@ Value zeroValue(ValueType type) {
     return Value(i32{0});
 }
 
-// Per-instruction visit cost of composite operations (spec §8.3/§11). Canvas
-// operations fill this in during Phase 11; everything else costs 1 total.
-u64 visitCost(Instruction) {
-    return 0;
-}
-
 } // namespace
 
 struct VM::Impl {
@@ -297,7 +294,9 @@ void VM::run() {
             continue;
         }
         const auto ins = decodeInstruction(fn.code.subspan(frame.ip * 4, 4));
-        ex.spend(1 + visitCost(ins));
+        // 1 unit per instruction; composite canvas ops charge their visit
+        // counts themselves, up front (spec §8.3).
+        ex.spend(1);
         if (!detail::dispatch(ex, ins)) {
             ex.trap("opcode not implemented yet (interpreter phase pending)");
         }

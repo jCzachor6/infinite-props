@@ -244,8 +244,10 @@ inputs: seed: u32, variant: u32, archetype: u32, size: {x,y} u32, uniforms
 
 - The target canvas size is `size` if provided, else `meta.size`. The scale
   factor is `sX = size.x / meta.sizeX`, `sY = size.y / meta.sizeY` (f32).
-  All coordinates in the program are asset units; rasterization operates on
-  coordinates multiplied by `(sX, sY)` (§11).
+  All coordinates in the program are asset units; rasterization multiplies
+  them by `(sX, sY)`, then **rounds each product to the nearest integer,
+  half away from zero** (`std::round` semantics), before applying the §11
+  formulas.
 - `variant` and `archetype` MUST be `< meta.variants` and `< meta.archetypes`
   respectively; otherwise the call fails validation.
 - Uniforms not supplied by the host take their declared default values.
@@ -264,10 +266,11 @@ stack, and a **current stream** (u32) plus a save stack of streams.
 ### 8.3 Fuel
 
 Every instruction execution costs **1** unit, plus the elementary pixel-visit
-cost of composite instructions as defined in §11. The total cost of one
-`generate(...)` call MUST NOT exceed `meta.fuel`; exceeding it MUST abort with
-a defined error (`fuel exhausted`). This guarantees termination for every
-valid file.
+cost of composite instructions as defined in §11. Composite instructions
+charge their whole visit count up front, before drawing anything; exhausting
+the budget at any point MUST abort generation with a defined error
+(`fuel exhausted`). The total cost of one `generate(...)` call MUST NOT
+exceed `meta.fuel`; this guarantees termination for every valid file.
 
 ### 8.4 State
 
