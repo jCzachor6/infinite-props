@@ -188,6 +188,45 @@ TEST_CASE("skip beyond the end throws") {
     REQUIRE(threw);
 }
 
+TEST_CASE("bounded reader reports absolute offsets") {
+    std::vector<u8> bytes(40, 0xAA);
+    Reader r(bytes, 20, 30);
+    REQUIRE(r.position() == 20);
+    REQUIRE(r.remaining() == 10);
+    REQUIRE(r.readU8() == 0xAA);
+    r.skip(9); // positions 21..29, at the bound
+    REQUIRE(r.remaining() == 0);
+    bool threw = false;
+    try {
+        (void)r.readU8();
+    } catch (const FormatError& error) {
+        threw = true;
+        REQUIRE(error.offset == 30); // the bound, not a section-relative 10
+    }
+    REQUIRE(threw);
+}
+
+TEST_CASE("invalid reader bounds throw") {
+    std::vector<u8> bytes(10, 0);
+    bool threw = false;
+    try {
+        Reader r(bytes, 5, 3); // pos > end
+        (void)r;
+    } catch (const FormatError& error) {
+        threw = true;
+        REQUIRE(error.offset == 5);
+    }
+    REQUIRE(threw);
+    threw = false;
+    try {
+        Reader r(bytes, 0, 11); // end > size
+        (void)r;
+    } catch (const FormatError&) {
+        threw = true;
+    }
+    REQUIRE(threw);
+}
+
 TEST_CASE("writer pads to alignment") {
     Writer w;
     REQUIRE(w.size() == 0);

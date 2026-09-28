@@ -16,7 +16,7 @@ the boxes.
 | 1 | Repository skeleton | A. Foundation | ✅ |
 | 2 | Core types & binary I/O | A. Foundation | ✅ |
 | 3 | File parsing: header & section table | B. Interpreter | ✅ |
-| 4 | Parsing `const` & `meta` | B. Interpreter | ⬜ |
+| 4 | Parsing `const` & `meta` | B. Interpreter | ✅ |
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ⬜ |
 | 6 | Validator | B. Interpreter | ⬜ |
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ⬜ |
@@ -121,17 +121,17 @@ the boxes.
 **Goal:** constant pools and the I/O signature available to the VM.
 
 **Work:**
-1. `const` section parser: string/i32/f32/color pools with index bounds.
-2. `meta` section parser: sizes, origin, counts, fuel, emission, input/output signature (§4 of the spec).
-3. In-memory `AssetMeta` / `InputSig` / `OutputSig` structures.
-4. Fixture tests including the emission flag path and defaults.
+1. `runtime/iprop/Asset.hpp` + `runtime/asset.cpp`: `parseConsts` (string/i32/f32/color pools with UTF-8 validation) and `parseMeta` (sizes, origin, counts, fuel, emission block, input/output signature).
+2. In-memory `ConstPool` / `AssetMeta` / `InputDecl` / `OutputDecl` / `Emission` structures with name-resolution helpers.
+3. `Reader` gained a bounded-view constructor so section parsers report absolute file offsets.
+4. Fixture tests including the emission flag path, defaults and an invalid-fixture battery.
 
-**Deliverables:** const/meta parsing + tests.
+**Deliverables:** `runtime/iprop/Asset.hpp`, `runtime/asset.cpp`, `tests/asset_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] All `meta` fields parse per spec §4, both with and without emission.
-- [ ] String indices resolve; bad indices produce located errors.
-- [ ] Output slot numbering (root first) matches spec §4.3.
+- [x] All `meta` fields parse per spec §4, both with and without emission.
+- [x] String indices resolve; bad indices produce located errors.
+- [x] Output slot numbering (root first) matches spec §4.3.
 
 ---
 

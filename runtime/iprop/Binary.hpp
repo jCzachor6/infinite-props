@@ -14,11 +14,21 @@ namespace iprop {
 
 class Reader {
 public:
-    explicit Reader(std::span<const u8> data) : data_(data) {}
+    explicit Reader(std::span<const u8> data)
+        : data_(data), end_(data.size()) {}
+
+    // A bounded view over data: reads start at `pos` and end one byte before
+    // `end`. Offsets reported by errors are file offsets (pos_ is absolute).
+    Reader(std::span<const u8> data, std::size_t pos, std::size_t end)
+        : data_(data), pos_(pos), end_(end) {
+        if (pos > end || end > data_.size()) {
+            throw FormatError("invalid reader bounds", pos);
+        }
+    }
 
     std::size_t position() const { return pos_; }
-    std::size_t remaining() const { return data_.size() - pos_; }
-    bool empty() const { return pos_ == data_.size(); }
+    std::size_t remaining() const { return end_ - pos_; }
+    bool empty() const { return pos_ == end_; }
 
     void skip(std::size_t n) {
         require(n);
@@ -79,13 +89,14 @@ public:
 
 private:
     void require(std::size_t n) const {
-        if (pos_ > data_.size() || n > data_.size() - pos_) {
+        if (pos_ > end_ || n > end_ - pos_) {
             throw FormatError("unexpected end of input", pos_);
         }
     }
 
     std::span<const u8> data_;
     std::size_t pos_ = 0;
+    std::size_t end_ = 0; // one past the last readable byte (absolute offset)
 };
 
 class Writer {

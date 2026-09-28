@@ -12,7 +12,8 @@ endif()
 add_executable(iprop_tests
     smoke_test.cpp
     binary_test.cpp
-    format_test.cpp)
+    format_test.cpp
+    asset_test.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
     iprop::runtime
