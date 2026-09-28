@@ -20,7 +20,7 @@ the boxes.
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ✅ |
 | 6 | Validator | B. Interpreter | ✅ |
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ✅ |
-| 8 | Control-flow & stack instructions | B. Interpreter | ⬜ |
+| 8 | Control-flow instructions | B. Interpreter | ✅ |
 | 9 | Arithmetic instructions | B. Interpreter | ⬜ |
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ⬜ |
 | 11 | Canvas operations & alpha rule | B. Interpreter | ⬜ |
@@ -192,21 +192,22 @@ the boxes.
 
 ---
 
-### Phase 8 — Control-flow & stack instructions
+### Phase 8 — Control-flow instructions
 
-**Goal:** structured control flow and stack plumbing.
+**Goal:** structured control flow in the VM (the stack ops landed in Phase 7).
 
 **Work:**
-1. `nop`, `block`, `loop`, `if/else/end`, `br`, `br_if`, `call`, `return` with proper label tracking.
-2. `const.*`, `local.get/set/tee`, `drop`, `dup`.
-3. Tests: loops with counters, nested if/else, `br` to loop start, function calls with params/results, deep nesting.
+1. `runtime/control.cpp`: `block`/`loop`/`if`/`else`/`end`/`br`/`br_if` with WASM branch semantics — labels carry the entry stack height, branches unwind inner labels and restore the target height; `if` precomputes matching else/end via `ensureControl`.
+2. `runtime/arithmetic.cpp`: the minimal integer subset (add/sub/eq/le_s) needed to exercise loops; Phase 9 completes the group.
+3. `Execution` gained typed pops (`popI32`/`popF32`/`popColor`) that trap on type mismatch for unvalidated input.
+4. Tests pin exact execution paths via the fuel counter: sum 1..1000 (exactly 1000 iterations), nested if/else with an early `br`, both arms of a bare `if`, an infinite `br` loop exhausting fuel at the right instruction, `br` escaping ten nested blocks.
 
-**Deliverables:** control/stack opcode implementations + tests.
+**Deliverables:** `runtime/control.cpp`, `runtime/arithmetic.cpp`, `tests/control_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] A `loop`+`br_if` program sums 1..1000 correctly.
-- [ ] Nested `if/else` with early `br` behaves per spec.
-- [ ] `call` passes params and returns results; deep call chain works.
+- [x] A `loop`+`br_if` program sums 1..1000 correctly.
+- [x] Nested `if/else` with early `br` behaves per spec.
+- [x] `call` passes params and returns results; deep call chain works.
 
 ---
 

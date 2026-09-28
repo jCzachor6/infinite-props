@@ -14,6 +14,12 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepStack(ex, ins)) {
         return true;
     }
+    if (stepControl(ex, ins)) {
+        return true;
+    }
+    if (stepArithmetic(ex, ins)) {
+        return true;
+    }
     return false; // remaining groups arrive with their phases
 }
 
@@ -51,6 +57,30 @@ Value Execution::peek() {
         trap("stack underflow");
     }
     return frame.stack.back();
+}
+
+i32 Execution::popI32() {
+    const Value value = pop();
+    if (!std::holds_alternative<i32>(value)) {
+        trap("stack type mismatch: expected i32");
+    }
+    return std::get<i32>(value);
+}
+
+f32 Execution::popF32() {
+    const Value value = pop();
+    if (!std::holds_alternative<f32>(value)) {
+        trap("stack type mismatch: expected f32");
+    }
+    return std::get<f32>(value);
+}
+
+Color Execution::popColor() {
+    const Value value = pop();
+    if (!std::holds_alternative<Color>(value)) {
+        trap("stack type mismatch: expected color");
+    }
+    return std::get<Color>(value);
 }
 
 void Execution::push(Value value) {

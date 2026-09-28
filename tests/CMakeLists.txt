@@ -17,6 +17,7 @@ add_executable(iprop_tests
     code_test.cpp
     validator_test.cpp
     vm_test.cpp
+    control_test.cpp
     utf8_test.cpp
     support/test_support.cpp)
 

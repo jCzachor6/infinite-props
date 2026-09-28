@@ -16,11 +16,13 @@
 
 namespace iprop::detail {
 
-// Runtime label (spec §9.1): kind 0 = block, 1 = loop, 2 = if.
+// Runtime label (spec §9.1): kind 0 = block, 1 = loop, 2 = if. stackHeight is
+// the operand stack height at entry; branches restore it (WASM semantics).
 struct Label {
     u8 kind = 0;
-    std::size_t cont = 0; // loop: start index; block/if: the `end` index
+    std::size_t cont = 0; // loop: body start; block/if: unused
     std::size_t end = 0;  // index of the matching `end`
+    std::size_t stackHeight = 0;
 };
 
 // Precomputed matching indices for structured control flow.
@@ -62,6 +64,11 @@ struct Execution {
     Value peek();
     void push(Value value);
 
+    // Typed pops; trap on an empty stack or a type mismatch.
+    i32 popI32();
+    f32 popF32();
+    Color popColor();
+
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
 
@@ -78,10 +85,13 @@ struct Execution {
 // Per-group instruction dispatchers. Each returns true when it handled the
 // opcode; dispatch() falls through to a trap otherwise. Groups arrive with
 // their phases: core frame ops (vm.cpp, Phase 7), stack.cpp (Phase 7),
-// control.cpp (Phase 8), arithmetic.cpp (Phase 9), seeded.cpp (Phase 10),
-// canvas.cpp (Phase 11), outputs.cpp (Phase 12), parts.cpp (Phase 13).
+// control.cpp (Phase 8), arithmetic.cpp (Phase 8 minimal subset + Phase 9
+// remainder), seeded.cpp (Phase 10), canvas.cpp (Phase 11), outputs.cpp
+// (Phase 12), parts.cpp (Phase 13).
 bool dispatch(Execution& ex, Instruction ins);
 bool stepCore(Execution& ex, Instruction ins);
 bool stepStack(Execution& ex, Instruction ins);
+bool stepControl(Execution& ex, Instruction ins);
+bool stepArithmetic(Execution& ex, Instruction ins);
 
 } // namespace iprop::detail
