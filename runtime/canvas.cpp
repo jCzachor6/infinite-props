@@ -38,26 +38,6 @@ u64 visitCount(i64 dx, i64 dy) {
     return static_cast<u64>(dx) * static_cast<u64>(dy);
 }
 
-// §11.1: out-of-bounds writes are no-ops; opaque colours overwrite;
-// translucent colours blend per channel with the destination alpha kept.
-void putPixel(Execution& ex, i32 x, i32 y, const Color& src) {
-    Canvas& canvas = ex.canvas;
-    if (!canvas.contains(x, y)) {
-        return;
-    }
-    Color& dst = canvas.at(static_cast<u32>(x), static_cast<u32>(y));
-    if (src.a == 255) {
-        dst = src;
-        return;
-    }
-    const u32 a = src.a;
-    const u32 b = 255u - a;
-    dst = {static_cast<u8>((static_cast<u32>(src.r) * a + static_cast<u32>(dst.r) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.g) * a + static_cast<u32>(dst.g) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.b) * a + static_cast<u32>(dst.b) * b) / 255u),
-           dst.a}; // destination alpha preserved
-}
-
 // §11.2 point-in-polygon fill over scaled (f32) coordinates. Charges the
 // bounding-box visit count up front (spec §8.3/§11.2).
 void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& colour) {
@@ -93,13 +73,32 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
                 }
             }
             if (inside) {
-                putPixel(ex, px, py, colour);
+                compositePixel(ex, px, py, colour);
             }
         }
     }
 }
 
 } // namespace
+
+// §11.1 compositing, shared with the part blit (declared in VmInternals.hpp).
+void compositePixel(Execution& ex, i32 x, i32 y, const Color& src) {
+    Canvas& canvas = ex.canvas;
+    if (!canvas.contains(x, y)) {
+        return;
+    }
+    Color& dst = canvas.at(static_cast<u32>(x), static_cast<u32>(y));
+    if (src.a == 255) {
+        dst = src;
+        return;
+    }
+    const u32 a = src.a;
+    const u32 b = 255u - a;
+    dst = {static_cast<u8>((static_cast<u32>(src.r) * a + static_cast<u32>(dst.r) * b) / 255u),
+           static_cast<u8>((static_cast<u32>(src.g) * a + static_cast<u32>(dst.g) * b) / 255u),
+           static_cast<u8>((static_cast<u32>(src.b) * a + static_cast<u32>(dst.b) * b) / 255u),
+           dst.a}; // destination alpha preserved
+}
 
 // Canvas operations (spec §9.8, exact rasterization §11).
 bool stepCanvas(Execution& ex, Instruction ins) {
@@ -110,7 +109,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const Color colour = ex.popColor();
         const i32 y = scaledCoord(ex, static_cast<f32>(ex.popI32()), sY);
         const i32 x = scaledCoord(ex, static_cast<f32>(ex.popI32()), sX);
-        putPixel(ex, x, y, colour);
+        compositePixel(ex, x, y, colour);
         ++ex.frame().ip;
         return true;
     }
@@ -144,7 +143,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
                 const i32 ix = static_cast<i32>(std::round(ax + dx * t));
                 const i32 iy = static_cast<i32>(std::round(ay + dy * t));
                 for (i32 q = 0; q < thickness; ++q) {
-                    putPixel(ex, ix, iy + q, colour);
+                    compositePixel(ex, ix, iy + q, colour);
                 }
             }
         }
@@ -182,7 +181,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
                 const f32 nx = (static_cast<f32>(px) - x) / rx;
                 const f32 ny = (static_cast<f32>(py) - y) / ry;
                 if (nx * nx + ny * ny <= 1.f) {
-                    putPixel(ex, px, py, colour);
+                    compositePixel(ex, px, py, colour);
                 }
             }
         }

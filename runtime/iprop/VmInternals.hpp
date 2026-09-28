@@ -17,6 +17,9 @@
 
 namespace iprop::detail {
 
+// Sentinel: no part called yet / a slot owned by the root asset.
+inline constexpr u16 kNoPartIndex = 0xFFFFu;
+
 // Runtime label (spec §9.1): kind 0 = block, 1 = loop, 2 = if. stackHeight is
 // the operand stack height at entry; branches restore it (WASM semantics).
 struct Label {
@@ -57,6 +60,21 @@ struct Frame {
     // on return, their final stream state propagates back to the caller.
     // Root and part frames start their own stream and do not propagate.
     bool shareStream = false;
+    // Part frames render into their own sub-canvas (spec §10).
+    bool isPart = false;
+    // The index of the most recently called part in this frame (spec §9.9);
+    // kNoPartIndex before any part call.
+    u16 lastPart = kNoPartIndex;
+};
+
+// Saved caller state for one part call (spec §10): the caller's canvas is
+// moved aside while the part renders into its own sub-canvas, then restored
+// and blitted.
+struct PartCallState {
+    u16 partIndex = kNoPartIndex;
+    Canvas savedCanvas;
+    f32 targetX = 0.f; // blit origin in caller raster space
+    f32 targetY = 0.f;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -68,9 +86,13 @@ struct Execution {
     u64 fuel = 0;
     std::vector<Frame> frames;
     std::vector<std::vector<ControlInfo>> control; // per function index
-    // Global output slots and their resolved names (spec §4.3).
+    // Global output slots, their resolved names, and the owning part index
+    // (kNoPartIndex for root slots), spec §4.3/§9.9.
     std::vector<OutputSlot> outputSlots;
     std::vector<std::string> outputNames;
+    std::vector<u16> slotOwner;
+    // Saved caller state of active part calls, mirroring part frames.
+    std::vector<PartCallState> partCalls;
     // The entry frame's stack when it exits; a tooling hook for debuggers
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
@@ -96,6 +118,7 @@ struct Execution {
 
     // Frame lifecycle.
     void callFunction(u16 functionIndex);
+    void callPart(u16 partIndex);
     void leaveFrame();
 
     // Precomputes the matching else/end indices of a function's control flow.
@@ -103,6 +126,10 @@ struct Execution {
 
     [[noreturn]] void trap(std::string message) const;
 };
+
+// Composite one pixel onto the current canvas with the §11.1 alpha rule
+// (shared by the canvas ops and the part blit).
+void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
 
 // Per-group instruction dispatchers. Each returns true when it handled the
 // opcode; dispatch() falls through to a trap otherwise. Groups arrive with
@@ -118,5 +145,6 @@ bool stepArithmetic(Execution& ex, Instruction ins);
 bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);
+bool stepParts(Execution& ex, Instruction ins);
 
 } // namespace iprop::detail

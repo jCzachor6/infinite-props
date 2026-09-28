@@ -479,9 +479,10 @@ validation).
   4. Copies the part's structured outputs into the caller frame's
      **part-output register** (accessible via `part.get.*`).
   5. Blits the sub-canvas onto the caller's canvas: sub-pixel `(0,0)` maps to
-     caller pixel `(round(atX - partOriginX·sX), round(atY - partOriginY·sY))`;
-     each non-transparent sub-pixel is composited with the §11.1 rule.
-     Out-of-bounds target pixels are skipped.
+     caller pixel `(round(atX − partOriginX·sX), round(atY − partOriginY·sY))`;
+     each sub-pixel with alpha > 0 is composited with the §11.1 rule.
+     Out-of-bounds target pixels are skipped. The blit charges one visit per
+     sub-canvas pixel up front (spec §8.3).
 - Call order is paint order: later parts paint over earlier ones.
 - Parts MAY themselves call parts; registers and streams are per-frame, so
   nesting is deterministic.

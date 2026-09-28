@@ -12,6 +12,7 @@ add_library(iprop_runtime
     seeded.cpp
     canvas.cpp
     outputs.cpp
+    parts.cpp
     utf8.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)

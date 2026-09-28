@@ -22,6 +22,7 @@ add_executable(iprop_tests
     seeded_test.cpp
     canvas_test.cpp
     outputs_test.cpp
+    parts_test.cpp
     defense_test.cpp
     utf8_test.cpp
     support/test_support.cpp)

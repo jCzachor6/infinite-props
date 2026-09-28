@@ -25,7 +25,7 @@ the boxes.
 | 10 | Seeded primitives (hash/RNG/noise) | B. Interpreter | ✅ |
 | 11 | Canvas operations & alpha rule | B. Interpreter | ✅ |
 | 12 | Structured outputs | B. Interpreter | ✅ |
-| 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ⬜ |
+| 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ✅ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ⬜ |
 | 15 | Example programs: rock & crystal ports | B. Interpreter | ⬜ |
 | 16 | Golden test suite + CI | B. Interpreter | ⬜ |
@@ -294,17 +294,18 @@ the boxes.
 **Goal:** composition per spec §10.
 
 **Work:**
-1. Part frame creation (params, uniforms from stack, stream = passed seed).
-2. Sub-canvas rendering + blit with pinned pixel mapping (`round(at − origin·s)`).
-3. Part-output register + `part.get.*` (per-frame, nesting safe).
-4. Tests: portrait-style composition fixture, offset exactness, nesting determinism, out-of-bounds blit clipping.
+1. `runtime/parts.cpp` + `Execution::callPart`: `part.draw` creates a part frame with params (variant, archetype, uniforms), its own stream (spec §8.2) and its own sub-canvas (partSize × scale, rounded ≥ 1); the caller's canvas is moved aside and restored on exit, then blitted with the pinned mapping `round(atX − partOriginX·sX)` and the §11.1 rule (transparent sub-pixels skipped); the blit charges one visit per sub-pixel up front (spec §10.5 updated).
+2. `part.get.point/rect/circle`: reads the last-called part's global slots — ownership, kind, list and written checks with located traps; per-frame register (`lastPart`).
+3. Nested parts compose via the canvas move/restore stack; call order is paint order.
+4. `compositePixel` shared between the canvas ops and the blit.
+5. Tests: pinned blit origin, sub-canvas clipping, the portrait propagation case (`pupilCenter = eyes.outputs.pupil`), nesting offsets, paint order, stream isolation (part seed vs caller stream), part.get traps.
 
-**Deliverables:** part call implementations + tests.
+**Deliverables:** `runtime/parts.cpp`, `tests/parts_test.cpp`. The interpreter now implements every opcode (spec §9).
 
 **Acceptance criteria:**
-- [ ] Blit lands on the exact pinned pixels (fixture with origin 0 and known offset).
-- [ ] `part.get.*` reads the last part call's outputs; nesting is per-frame.
-- [ ] The same program + seed produces identical pixels across two VM instances.
+- [x] Blit lands on the exact pinned pixels (fixture with origin 0 and known offset).
+- [x] `part.get.*` reads the last part call's outputs; nesting is per-frame.
+- [x] The same program + seed produces identical pixels across two VM instances.
 
 ---
 

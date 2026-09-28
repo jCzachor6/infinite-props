@@ -29,7 +29,10 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepOutputs(ex, ins)) {
         return true;
     }
-    return false; // remaining groups arrive with their phases
+    if (stepParts(ex, ins)) {
+        return true;
+    }
+    return false; // everything is implemented once parts land (Phase 13)
 }
 
 // Frame-lifecycle instructions: nop, call, return (spec §9.1).
@@ -133,6 +136,67 @@ void Execution::callFunction(u16 functionIndex) {
     frames.push_back(std::move(next));
 }
 
+void Execution::callPart(u16 partIndex) {
+    if (partIndex >= file.code.parts.size()) {
+        trap("part index out of range");
+    }
+    if (frames.size() >= kMaxCallDepth) {
+        trap("call depth exceeds limit");
+    }
+    const auto& part = file.code.parts[partIndex];
+
+    // Stack order (spec §9.10): uniforms…, seed, variant, archetype, atX,
+    // atY — the top is popped first.
+    const f32 atY = popF32();
+    const f32 atX = popF32();
+    const i32 archetype = popI32();
+    const i32 variant = popI32();
+    const u32 seed = static_cast<u32>(popI32());
+    const auto& fn = file.code.functions[part.functionIndex];
+    // The part's params are (i32 variant, i32 archetype) + uniforms; the
+    // variant/archetype come from the part.draw arguments.
+    std::vector<Value> args(fn.params.size());
+    args[0] = Value(variant);
+    args[1] = Value(archetype);
+    for (std::size_t p = fn.params.size(); p > 2; --p) {
+        args[p - 1] = pop();
+    }
+
+    // Sub-canvas geometry (spec §10): partSize scaled, rounded to ≥ 1; the
+    // blit origin maps the part's origin onto the caller's raster space.
+    const f32 scaleX = canvas.scaleX;
+    const f32 scaleY = canvas.scaleY;
+    const i32 subW =
+        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeX) * scaleX)));
+    const i32 subH =
+        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeY) * scaleY)));
+    spend(static_cast<u64>(subW) * subH); // blit visits (spec §8.3/§10.5)
+
+    PartCallState state;
+    state.partIndex = partIndex;
+    state.targetX = atX - part.origin.x * scaleX;
+    state.targetY = atY - part.origin.y * scaleY;
+    state.savedCanvas = std::move(canvas); // the caller's canvas, moved aside
+    partCalls.push_back(std::move(state));
+
+    canvas.resize(static_cast<u32>(subW), static_cast<u32>(subH));
+    canvas.scaleX = scaleX;
+    canvas.scaleY = scaleY;
+
+    Frame next;
+    next.functionIndex = part.functionIndex;
+    next.locals = std::move(args);
+    for (const ValueType type : fn.locals) {
+        next.locals.push_back(type == ValueType::I32    ? Value(i32{0})
+                              : type == ValueType::F32  ? Value(f32{0.f})
+                                                        : Value(Color{}));
+    }
+    next.stream = seed; // spec §8.2: a part frame starts its own stream
+    next.isPart = true;
+    ++frames.back().ip; // the caller resumes after the part.draw instruction
+    frames.push_back(std::move(next));
+}
+
 void Execution::leaveFrame() {
     Frame finished = std::move(frames.back());
     frames.pop_back();
@@ -149,7 +213,25 @@ void Execution::leaveFrame() {
         trap("stack does not match declared results");
     }
     Frame& caller = frames.back();
-    if (finished.shareStream) {
+    if (finished.isPart) {
+        // Restore the caller's canvas and blit the sub-canvas (spec §10.5).
+        PartCallState state = std::move(partCalls.back());
+        partCalls.pop_back();
+        Canvas sub = std::move(canvas);
+        canvas = std::move(state.savedCanvas);
+        const i32 tx = static_cast<i32>(std::round(state.targetX));
+        const i32 ty = static_cast<i32>(std::round(state.targetY));
+        for (u32 sy = 0; sy < sub.height; ++sy) {
+            for (u32 sx = 0; sx < sub.width; ++sx) {
+                const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
+                if (src.a == 0) {
+                    continue; // transparent sub-pixels are not blitted
+                }
+                compositePixel(*this, tx + static_cast<i32>(sx), ty + static_cast<i32>(sy), src);
+            }
+        }
+        caller.lastPart = state.partIndex; // the part-output register
+    } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
     }
     for (Value& value : finished.stack) {
@@ -290,21 +372,22 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     root.stream = inputs.seed;
     impl_->ex.frames.push_back(std::move(root));
 
-    // Global output slots and resolved names: root outputs first, then each
-    // part's outputs in part order (spec §4.3).
-    const auto addSlot = [&](const OutputDecl& decl, const ConstPool& pool) {
+    // Global output slots, resolved names, and slot owners: root outputs
+    // first, then each part's outputs in part order (spec §4.3/§9.9).
+    const auto addSlot = [&](const OutputDecl& decl, const ConstPool& pool, u16 owner) {
         detail::OutputSlot slot;
         slot.kind = decl.kind;
         slot.isList = decl.isList;
         impl_->ex.outputSlots.push_back(std::move(slot));
         impl_->ex.outputNames.push_back(pool.strings[decl.nameIndex]);
+        impl_->ex.slotOwner.push_back(owner);
     };
     for (const auto& decl : file.meta.outputs) {
-        addSlot(decl, file.pool);
+        addSlot(decl, file.pool, detail::kNoPartIndex);
     }
-    for (const auto& part : file.code.parts) {
-        for (const auto& decl : part.outputs) {
-            addSlot(decl, file.pool);
+    for (std::size_t p = 0; p < file.code.parts.size(); ++p) {
+        for (const auto& decl : file.code.parts[p].outputs) {
+            addSlot(decl, file.pool, static_cast<u16>(p));
         }
     }
 }
