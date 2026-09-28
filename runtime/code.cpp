@@ -93,6 +93,8 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
         code.functions[i].code =
             data.subspan(streamBase + static_cast<std::size_t>(streamOffsets[i]),
                          static_cast<std::size_t>(streamLengths[i]));
+        code.functions[i].fileOffset =
+            streamBase + static_cast<std::size_t>(streamOffsets[i]);
     }
     reader.skip(static_cast<std::size_t>(regionEnd));
 

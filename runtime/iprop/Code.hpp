@@ -18,13 +18,15 @@ enum class ValueType : u8 {
 
 // One function declaration plus its instruction stream (spec §6.1/§6.2).
 // `code` is a view into the file buffer passed to parseCode; it stays valid
-// for as long as that buffer does.
+// for as long as that buffer does. `fileOffset` is the absolute offset of
+// `code[0]` in that buffer, used for located validation/trap errors.
 struct Function {
     u32 nameIndex = kAnonymousName;
     std::vector<ValueType> params;
     std::vector<ValueType> results;
     std::vector<ValueType> locals; // additional locals beyond params
     std::span<const u8> code;
+    std::size_t fileOffset = 0;
 
     bool isAnonymous() const { return nameIndex == kAnonymousName; }
 };

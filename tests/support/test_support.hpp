@@ -55,6 +55,34 @@ struct OutputSpec {
     u32 nameIndex;
 };
 
+// One §6.1 function entry (type lists) + its raw instruction bytes.
+struct FuncSpec {
+    u32 nameIndex;
+    std::vector<u8> paramTypes;
+    std::vector<u8> resultTypes;
+    std::vector<u8> localTypes;
+    std::vector<u8> instructions;
+};
+
+// One §6.3 part entry.
+struct PartSpec {
+    u32 funcIndex;
+    u32 sizeX, sizeY;
+    f32 ox, oy;
+    std::vector<InputSpec> inputs;
+    std::vector<OutputSpec> outputs;
+};
+
+// One 4-byte instruction: opcode, aux, operand (little-endian).
+std::vector<u8> ins(u8 opcode, u8 aux, u16 operand);
+
+// `code` section bytes (spec §6): function table, contiguous streams, parts.
+std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
+                            const std::vector<PartSpec>& parts);
+
+// A minimal valid meta (8x8, 1 variant, 1 archetype, no I/O).
+std::vector<u8> minimalMeta();
+
 // `meta` section bytes (spec §4).
 std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u32 variants,
                             u32 archetypes, u64 fuel, bool emission, Color emColor,
@@ -69,6 +97,10 @@ std::vector<u8> fullFile(const std::vector<u8>& meta, const std::vector<u8>& poo
 
 // A const pool holding only the given strings, enough for meta fixtures.
 std::vector<u8> namesPool(const std::vector<std::string>& names);
+
+// A const pool with the given names plus one entry in each value pool
+// (int 0, float 0.0, opaque black) for bodies that push constants.
+std::vector<u8> richPool(const std::vector<std::string>& names);
 
 // Asserts parseLayout throws FormatError at `at`.
 void expectError(const std::vector<u8>& bytes, std::size_t at);

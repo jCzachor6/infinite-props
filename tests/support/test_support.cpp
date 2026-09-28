@@ -84,6 +84,65 @@ std::vector<u8> constSection(const std::vector<std::string>& strings,
     return w.data();
 }
 
+std::vector<u8> ins(u8 opcode, u8 aux, u16 operand) {
+    return {opcode, aux, static_cast<u8>(operand & 0xFF), static_cast<u8>(operand >> 8)};
+}
+
+std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
+                            const std::vector<PartSpec>& parts) {
+    iprop::Writer w;
+    w.writeU32(static_cast<u32>(funcs.size()));
+    u32 offset = 0;
+    for (const auto& f : funcs) {
+        w.writeU32(f.nameIndex);
+        w.writeU32(offset);
+        w.writeU32(static_cast<u32>(f.instructions.size()));
+        offset += static_cast<u32>(f.instructions.size());
+        w.writeU16(static_cast<u16>(f.paramTypes.size()));
+        for (const u8 t : f.paramTypes) w.writeU8(t);
+        w.writeU16(static_cast<u16>(f.resultTypes.size()));
+        for (const u8 t : f.resultTypes) w.writeU8(t);
+        w.writeU16(static_cast<u16>(f.localTypes.size()));
+        for (const u8 t : f.localTypes) w.writeU8(t);
+    }
+    for (const auto& f : funcs) {
+        w.writeBytes(f.instructions);
+    }
+    w.writeU32(static_cast<u32>(parts.size()));
+    for (const auto& p : parts) {
+        w.writeU32(p.funcIndex);
+        w.writeU32(p.sizeX);
+        w.writeU32(p.sizeY);
+        w.writeF32(p.ox);
+        w.writeF32(p.oy);
+        w.writeU16(static_cast<u16>(p.inputs.size()));
+        for (const auto& in : p.inputs) {
+            w.writeU8(in.type);
+            w.writeU32(in.nameIndex);
+            if (in.type == 0) {
+                w.writeColor(in.c);
+            } else if (in.type == 1) {
+                w.writeF32(in.f);
+            } else {
+                w.writeU32(in.u);
+            }
+        }
+        w.writeU16(static_cast<u16>(p.outputs.size()));
+        for (const auto& out : p.outputs) {
+            w.writeU8(out.kind);
+            w.writeU8(out.list);
+            w.writeU8(0);
+            w.writeU8(0);
+            w.writeU32(out.nameIndex);
+        }
+    }
+    return w.data();
+}
+
+std::vector<u8> minimalMeta() {
+    return metaSection(8, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0, {}, {});
+}
+
 std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u32 variants,
                             u32 archetypes, u64 fuel, bool emission, Color emColor,
                             f32 emX, f32 emY, f32 emR,
@@ -163,6 +222,10 @@ std::vector<u8> fullFile(const std::vector<u8>& meta, const std::vector<u8>& poo
 
 std::vector<u8> namesPool(const std::vector<std::string>& names) {
     return constSection(names, {}, {}, {});
+}
+
+std::vector<u8> richPool(const std::vector<std::string>& names) {
+    return constSection(names, {0}, {0.f}, {{0, 0, 0, 255}});
 }
 
 void expectError(const std::vector<u8>& bytes, std::size_t at) {

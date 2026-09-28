@@ -415,12 +415,13 @@ All coordinates are asset units; rasterization multiplies them by `(sX, sY)`
 | 0x80 | pixel | `[i32 i32 c] -> []` | set one pixel (alpha rule §11.1) |
 | 0x81 | rect | `[f32 f32 f32 f32 c] -> []` | filled rectangle (x, y, w, h) |
 | 0x82 | line | `[f32 f32 f32 f32 i32 c] -> []` | polyline (ax, ay, bx, by, thickness) |
-| 0x83 | poly | `[c u32 2n×f32] -> []` | filled polygon; stack: color, then count, then x,y pairs |
+| 0x83 | poly n | `[c 2n×f32] -> []` | filled polygon; operand = vertex count n; stack: colour, then n x,y pairs |
 | 0x84 | oval | `[f32 f32 f32 f32 c] -> []` | filled ellipse (x, y, rx, ry) |
 | 0x85 | weather | `[u32 i32] -> []` | seeded wear (§11.6) |
 
-`poly` stack order (top first): colour, count, then `count` pairs `(x0,y0) …
-(xn,yn)` pushed in order.
+`poly` stack order (top first): colour, then `n` pairs `(x0,y0) … (xn,yn)`
+pushed in order. The vertex count is an immediate operand so the stack
+effect is statically known (spec §14 type checking).
 
 ### 9.9 Structured outputs
 
@@ -440,8 +441,11 @@ value. List slots append in program order.
 | 0x97 | part.get.rect S | `[] -> [f32 f32 f32 f32]` | read rect from last part call |
 | 0x98 | part.get.circle S | `[] -> [f32 f32 f32]` | read circle from last part call |
 
-`S` for `out.*` is the global slot index (§4.3); for `part.get.*` it is the
-last-called part's local slot index. `part.get.*` before any part call traps.
+`S` for both `out.*` and `part.get.*` is the **global slot index** (§4.3:
+root slots first, then part slots in part order). `part.get.*` reads the
+global slot `S`, which MUST belong to the most recently called part and MUST
+be a singular (non-list) slot; the runtime traps otherwise, and the validator
+rejects reads of root-owned slots.
 
 ### 9.10 Parts
 

@@ -18,7 +18,7 @@ the boxes.
 | 3 | File parsing: header & section table | B. Interpreter | ✅ |
 | 4 | Parsing `const` & `meta` | B. Interpreter | ✅ |
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ✅ |
-| 6 | Validator | B. Interpreter | ⬜ |
+| 6 | Validator | B. Interpreter | ✅ |
 | 7 | VM core: frames, stack, streams, fuel | B. Interpreter | ⬜ |
 | 8 | Control-flow & stack instructions | B. Interpreter | ⬜ |
 | 9 | Arithmetic instructions | B. Interpreter | ⬜ |
@@ -159,18 +159,17 @@ the boxes.
 **Goal:** full static validation of a loaded file, per spec §14.
 
 **Work:**
-1. Structural checks from Phases 3–5 consolidated.
-2. `draw` signature check (params `(i32 variant, i32 archetype)` + uniforms, zero results).
-3. Per-function validation: balanced structured control flow, branch depths, stack type-checking per instruction signature, const/local/slot/function/part index ranges, `aux == 0`, no reserved opcodes.
-4. Part checks: function signatures match part meta, acyclic call graph.
-5. An invalid-fixture battery (one case per rule).
+1. `runtime/iprop/Validator.hpp` + `runtime/validator.cpp`: `loadFile` (all four parsers) and `validate` per spec §14 — entry naming/signature, per-function structured control flow with stack type-checking (integer-only conditions), index ranges, reserved opcodes, part signatures, part-graph acyclicity via call-graph reachability + DFS.
+2. `runtime/iprop/Instruction.hpp`: 4-byte instruction decoder; `Function::fileOffset` for located errors.
+3. Spec fixes the validator required: `poly` takes its vertex count as an immediate operand (static stack effect), `part.get.*` uses global slot indices.
+4. Fixture battery: one invalid case per rule, each pinning message + file offset.
 
-**Deliverables:** `src/runtime/Validator.*` + fixture battery.
+**Deliverables:** `runtime/iprop/Validator.hpp`, `runtime/validator.cpp`, `runtime/iprop/Instruction.hpp`, `tests/validator_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] The valid fixture battery passes validation.
-- [ ] Every invalid case is rejected; none by accident (each test pins the specific rule violated).
-- [ ] Validation completes before any execution (single pass, no mutation).
+- [x] The valid fixture battery passes validation.
+- [x] Every invalid case is rejected; none by accident (each test pins the specific rule violated).
+- [x] Validation completes before any execution (single pass, no mutation).
 
 ---
 
