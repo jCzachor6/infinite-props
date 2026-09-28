@@ -14,7 +14,7 @@ the boxes.
 | # | Phase | Part | Status |
 | - | ----- | ---- | ------ |
 | 1 | Repository skeleton | A. Foundation | ✅ |
-| 2 | Core types & binary I/O | A. Foundation | ⬜ |
+| 2 | Core types & binary I/O | A. Foundation | ✅ |
 | 3 | File parsing: header & section table | B. Interpreter | ⬜ |
 | 4 | Parsing `const` & `meta` | B. Interpreter | ⬜ |
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ⬜ |
@@ -80,17 +80,17 @@ the boxes.
 **Goal:** the primitive vocabulary every later phase uses.
 
 **Work:**
-1. `src/core/Types.hpp`: fixed-width aliases, `Color`, `Vec2`.
-2. `src/core/Binary.hpp`: little-endian `Reader`/`Writer` with bounds checks and typed `readU8/16/32/64`, `readF32`, `readBytes`.
-3. `src/core/Constants.hpp`: magic bytes, section ids, opcode enum, version numbers, limits (max section size, max locals, max parts…).
+1. `runtime/iprop/Types.hpp`: fixed-width aliases, `Color`, `Vec2`, `FormatError`.
+2. `runtime/iprop/Binary.hpp`: little-endian `Reader`/`Writer` with bounds checks and typed `readU8/16/32/64`, `readF32`, `readBytes`, `readColor`.
+3. `runtime/iprop/Constants.hpp`: magic bytes, section ids, opcode enum, version numbers, limits (max section size, max locals, max parts…).
 4. Unit tests for reader/writer round-trips and error paths (truncation, out-of-bounds).
 
-**Deliverables:** `src/core/{Types,Binary,Constants}.hpp` + tests.
+**Deliverables:** `runtime/iprop/{Types,Binary,Constants}.hpp` + `tests/binary_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Round-trip tests pass for all widths, including values with high bit set.
-- [ ] Truncated input produces defined errors, never UB.
-- [ ] Opcode enum values match `spec/iprop-v0.1.md` §9 exactly.
+- [x] Round-trip tests pass for all widths, including values with high bit set.
+- [x] Truncated input produces defined errors, never UB.
+- [x] Opcode enum values match `spec/iprop-v0.1.md` §9 exactly.
 
 ---
 
