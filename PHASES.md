@@ -27,7 +27,7 @@ the boxes.
 | 12 | Structured outputs | B. Interpreter | ✅ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ✅ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ✅ |
-| 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ⬜ |
+| 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ✅ |
 | 16 | Golden test suite + CI | B. Interpreter | ⬜ |
 | 17 | `.ips` lexer | C. Language & compiler | ⬜ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ⬜ |
@@ -352,10 +352,10 @@ structured outputs and seeded variants.
 `examples/portrait.iprop`, `tests/assembler_test.cpp`, `tests/portrait_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] The assembled `portrait.iprop` validates and renders via `ipgen`.
-- [ ] The sheet shows distinct seeded variants with visible composition
+- [x] The assembled `portrait.iprop` validates and renders via `ipgen`.
+- [x] The sheet shows distinct seeded variants with visible composition
       (hair over face, eyes, propagated `pupilCenter`).
-- [ ] Sheets are attached to this phase for your review.
+- [x] Sheets are attached to this phase for your review.
 
 ---
 
