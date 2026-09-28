@@ -41,6 +41,10 @@ struct Frame {
     std::vector<u32> savedStreams;
     std::size_t ip = 0; // instruction index within the function stream
     std::vector<Label> labels;
+    // `call` frames share the caller's stream like a reference (spec §8.2):
+    // on return, their final stream state propagates back to the caller.
+    // Root and part frames start their own stream and do not propagate.
+    bool shareStream = false;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM

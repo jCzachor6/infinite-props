@@ -19,12 +19,6 @@ namespace {
 constexpr i32 kMin = std::numeric_limits<i32>::min();
 constexpr i32 kMax = std::numeric_limits<i32>::max();
 
-u32 bits(f32 value) {
-    u32 result = 0;
-    std::memcpy(&result, &value, sizeof(result));
-    return result;
-}
-
 } // namespace
 
 TEST_CASE("i32 add/sub/mul wrap in two's complement") {
@@ -130,12 +124,12 @@ TEST_CASE("f32 multiplication is not contracted into an FMA") {
     const f32 fused = std::fma(a, b, c);
     // The vector must actually be contraction-sensitive, or this test is
     // vacuous.
-    REQUIRE(bits(unfused) != bits(fused));
+    REQUIRE(bitsOf(unfused) != bitsOf(fused));
     REQUIRE(unfused == 0.f);
-    REQUIRE(bits(fused) == 0x28800000u); // 2^-46 in binary32
+    REQUIRE(bitsOf(fused) == 0x28800000u); // 2^-46 in binary32
 
     const auto result = evalProgF32(Prog{}.F(a).F(b).emit(0x42).F(c).emit(0x40));
-    REQUIRE(bits(result) == bits(unfused));
+    REQUIRE(bitsOf(result) == bitsOf(unfused));
 }
 
 TEST_CASE("f32 comparisons follow IEEE predicates") {

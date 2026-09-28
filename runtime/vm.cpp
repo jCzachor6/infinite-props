@@ -123,6 +123,7 @@ void Execution::callFunction(u16 functionIndex) {
                                                         : Value(Color{}));
     }
     next.stream = caller.stream; // spec §8.2: call frames share the stream
+    next.shareStream = true;     // ...like a reference: state propagates back
     frames.push_back(std::move(next));
 }
 
@@ -142,6 +143,9 @@ void Execution::leaveFrame() {
         trap("stack does not match declared results");
     }
     Frame& caller = frames.back();
+    if (finished.shareStream) {
+        caller.stream = finished.stream; // reference semantics (spec §8.2)
+    }
     for (Value& value : finished.stack) {
         caller.stack.push_back(std::move(value));
     }

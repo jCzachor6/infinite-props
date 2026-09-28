@@ -6,25 +6,16 @@
 
 #include "support/test_support.hpp"
 
+#include "iprop/VM.hpp"
+
 // Seeded primitives (spec §9.6/§9.7, exact algorithms §12). Golden vectors
 // were computed from the spec formulas by an independent reference program
 // and are pinned here bit-exactly.
 
+using namespace iprop;
 using namespace test_support;
 
 namespace {
-
-u32 bits(f32 value) {
-    u32 result = 0;
-    std::memcpy(&result, &value, sizeof(result));
-    return result;
-}
-
-f32 fromBits(u32 value) {
-    f32 result = 0.f;
-    std::memcpy(&result, &value, sizeof(result));
-    return result;
-}
 
 // stream.push(seed) followed by `count` rng.unit calls.
 std::vector<f32> unitSequence(u32 seed, unsigned count) {
@@ -72,48 +63,48 @@ TEST_CASE("rng.unit sequences match the pinned vectors") {
                          0x3f671548, 0x3f2ec6f7, 0x3e1186c4, 0x3f4677ec, 0x3d8f06b0};
     const auto s1 = unitSequence(1, 10);
     for (unsigned i = 0; i < 10; ++i) {
-        REQUIRE(bits(s1[i]) == seed1[i]);
+        REQUIRE(bitsOf(s1[i]) == seed1[i]);
     }
 
     const u32 seed0[] = {0x3bfe7280, 0x3c9f1a40, 0x3d78c1d0, 0x3ed74b42, 0x3caff6e0};
     const auto s0 = unitSequence(0, 5);
     for (unsigned i = 0; i < 5; ++i) {
-        REQUIRE(bits(s0[i]) == seed0[i]);
+        REQUIRE(bitsOf(s0[i]) == seed0[i]);
     }
 }
 
 TEST_CASE("noise matches the pinned vectors (lattice points and midpoints)") {
-    REQUIRE(bits(noiseAt(0.f, 0.f, 7)) == 0x3f148ba1u);
-    REQUIRE(bits(noiseAt(1.f, 0.f, 7)) == 0x3f60728du);
-    REQUIRE(bits(noiseAt(0.f, 1.f, 7)) == 0x3f6df2aau);
-    REQUIRE(bits(noiseAt(0.5f, 0.5f, 7)) == 0x3f4153acu);
-    REQUIRE(bits(noiseAt(3.7f, -2.2f, 7)) == 0x3f2fbbbcu);
-    REQUIRE(bits(noiseAt(10.25f, 10.75f, 7)) == 0x3f40b9f7u);
-    REQUIRE(bits(noiseAt(-0.5f, -0.25f, 3)) == 0x3ead603au); // negative coords
+    REQUIRE(bitsOf(noiseAt(0.f, 0.f, 7)) == 0x3f148ba1u);
+    REQUIRE(bitsOf(noiseAt(1.f, 0.f, 7)) == 0x3f60728du);
+    REQUIRE(bitsOf(noiseAt(0.f, 1.f, 7)) == 0x3f6df2aau);
+    REQUIRE(bitsOf(noiseAt(0.5f, 0.5f, 7)) == 0x3f4153acu);
+    REQUIRE(bitsOf(noiseAt(3.7f, -2.2f, 7)) == 0x3f2fbbbcu);
+    REQUIRE(bitsOf(noiseAt(10.25f, 10.75f, 7)) == 0x3f40b9f7u);
+    REQUIRE(bitsOf(noiseAt(-0.5f, -0.25f, 3)) == 0x3ead603au); // negative coords
 }
 
 TEST_CASE("fault matches the pinned vectors and agrees with noise at corners") {
-    REQUIRE(bits(faultAt(0.f, 0.f, 7)) == 0x3f148ba1u);
-    REQUIRE(bits(faultAt(1.f, 0.f, 7)) == 0x3f60728du);
-    REQUIRE(bits(faultAt(0.f, 1.f, 7)) == 0x3f6df2aau);
-    REQUIRE(bits(faultAt(0.5f, 0.5f, 7)) == 0x3f67329cu);
-    REQUIRE(bits(faultAt(3.7f, -2.2f, 7)) == 0x3f2f2202u);
-    REQUIRE(bits(faultAt(10.25f, 10.75f, 7)) == 0x3f3b63f4u);
-    REQUIRE(bits(faultAt(-0.5f, -0.25f, 3)) == 0x3e8ac167u);
+    REQUIRE(bitsOf(faultAt(0.f, 0.f, 7)) == 0x3f148ba1u);
+    REQUIRE(bitsOf(faultAt(1.f, 0.f, 7)) == 0x3f60728du);
+    REQUIRE(bitsOf(faultAt(0.f, 1.f, 7)) == 0x3f6df2aau);
+    REQUIRE(bitsOf(faultAt(0.5f, 0.5f, 7)) == 0x3f67329cu);
+    REQUIRE(bitsOf(faultAt(3.7f, -2.2f, 7)) == 0x3f2f2202u);
+    REQUIRE(bitsOf(faultAt(10.25f, 10.75f, 7)) == 0x3f3b63f4u);
+    REQUIRE(bitsOf(faultAt(-0.5f, -0.25f, 3)) == 0x3e8ac167u);
 
     // At lattice points the triangular interpolation reduces to the corner
     // value, so fault and noise agree there.
-    REQUIRE(bits(faultAt(0.f, 0.f, 7)) == bits(noiseAt(0.f, 0.f, 7)));
-    REQUIRE(bits(faultAt(1.f, 0.f, 7)) == bits(noiseAt(1.f, 0.f, 7)));
+    REQUIRE(bitsOf(faultAt(0.f, 0.f, 7)) == bitsOf(noiseAt(0.f, 0.f, 7)));
+    REQUIRE(bitsOf(faultAt(1.f, 0.f, 7)) == bitsOf(noiseAt(1.f, 0.f, 7)));
 }
 
 TEST_CASE("smooth and lerp clamp their inputs") {
-    REQUIRE(bits(evalProgF32(Prog{}.F(0.f).emit(0x72))) == 0x00000000u);
-    REQUIRE(bits(evalProgF32(Prog{}.F(0.25f).emit(0x72))) == 0x3e200000u);
-    REQUIRE(bits(evalProgF32(Prog{}.F(0.5f).emit(0x72))) == 0x3f000000u);
-    REQUIRE(bits(evalProgF32(Prog{}.F(1.f).emit(0x72))) == 0x3f800000u);
-    REQUIRE(bits(evalProgF32(Prog{}.F(2.f).emit(0x72))) == 0x3f800000u); // clamped
-    REQUIRE(bits(evalProgF32(Prog{}.F(-1.f).emit(0x72))) == 0x00000000u); // clamped
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).emit(0x72))) == 0x00000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.25f).emit(0x72))) == 0x3e200000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.5f).emit(0x72))) == 0x3f000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(1.f).emit(0x72))) == 0x3f800000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(2.f).emit(0x72))) == 0x3f800000u); // clamped
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-1.f).emit(0x72))) == 0x00000000u); // clamped
 
     const auto lerp = [](f32 t) { return evalProgF32(Prog{}.F(1.f).F(3.f).F(t).emit(0x73)); };
     REQUIRE(lerp(0.f) == 1.f);
@@ -134,9 +125,9 @@ TEST_CASE("rng.index and rng.range follow the pinned stream") {
     REQUIRE(index(100) == 62);
 
     // range(10, 20) with seed 1 uses the first unit() of the stream.
-    const f32 u = fromBits(0x3f1f5056u);
+    const f32 u = f32FromBits(0x3f1f5056u);
     const auto range = evalProgF32(Prog{}.I(1).emit(0x60).F(10.f).F(20.f).emit(0x63));
-    REQUIRE(bits(range) == bits(10.f + (20.f - 10.f) * u));
+    REQUIRE(bitsOf(range) == bitsOf(10.f + (20.f - 10.f) * u));
 }
 
 TEST_CASE("stream.push/pop restores the previous stream exactly") {
@@ -154,8 +145,8 @@ TEST_CASE("stream.push/pop restores the previous stream exactly") {
     REQUIRE(stackA.size() == 2);
     const f32 first = std::get<f32>(stackA[0]);
     const f32 second = std::get<f32>(stackA[1]);
-    REQUIRE(bits(first) == bits(std::get<f32>(evalProg(c)[0])));
-    REQUIRE(bits(second) == bits(std::get<f32>(evalProg(b)[0])));
+    REQUIRE(bitsOf(first) == bitsOf(std::get<f32>(evalProg(c)[0])));
+    REQUIRE(bitsOf(second) == bitsOf(std::get<f32>(evalProg(b)[0])));
 }
 
 TEST_CASE("stream.pop on an empty save stack traps") {
@@ -166,5 +157,42 @@ TEST_CASE("two VMs produce bit-identical sequences") {
     const Prog prog = Prog{}.F(3.7f).F(-2.2f).I(7).emit(0x70);
     const f32 a = evalProgF32(prog);
     const f32 b = evalProgF32(prog);
-    REQUIRE(bits(a) == bits(b));
+    REQUIRE(bitsOf(a) == bitsOf(b));
+}
+
+TEST_CASE("call frames share the caller's stream like a reference (spec §8.2)") {
+    // Draw: push stream 1, call a helper that consumes u0, drop, then two
+    // units — they must be u1 and u2, proving the helper's advances
+    // propagated back to the caller.
+    std::vector<u8> drawBody;
+    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // const.i32 1
+    for (const auto b : ins(0x60, 0, 0)) drawBody.push_back(b); // stream.push
+    for (const auto b : ins(0x08, 0, 1)) drawBody.push_back(b); // call 1
+    for (const auto b : ins(0x16, 0, 0)) drawBody.push_back(b); // drop (u0)
+    for (const auto b : ins(0x62, 0, 0)) drawBody.push_back(b); // unit → u1
+    for (const auto b : ins(0x62, 0, 0)) drawBody.push_back(b); // unit → u2
+
+    std::vector<u8> helperBody;
+    for (const auto b : ins(0x62, 0, 0)) helperBody.push_back(b); // unit
+    for (const auto b : ins(0x09, 0, 0)) helperBody.push_back(b); // return
+
+    const auto funcs = std::vector<FuncSpec>{
+        {0, {0, 0}, {}, {}, drawBody},
+        {kAnonymousName, {}, {1}, {}, helperBody}, // result: f32
+    };
+    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
+    const auto pool = constSection({"draw"}, {1}, {0.f}, {{0, 0, 0, 255}});
+    const auto bytes = fullFile(meta, pool, codeSection(funcs, {}));
+
+    auto loaded = loadFile(bytes);
+    VM vm(loaded, {});
+    vm.run();
+    const auto& stack = vm.debugStack();
+    REQUIRE(stack.size() == 2);
+    REQUIRE(std::holds_alternative<f32>(stack[0]));
+    REQUIRE(std::holds_alternative<f32>(stack[1]));
+
+    const auto reference = unitSequence(1, 3); // u0, u1, u2
+    REQUIRE(bitsOf(std::get<f32>(stack[0])) == bitsOf(reference[1]));
+    REQUIRE(bitsOf(std::get<f32>(stack[1])) == bitsOf(reference[2]));
 }

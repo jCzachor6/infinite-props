@@ -3,6 +3,7 @@
 // Shared fixture builders for interpreter tests. Keeps every test file
 // focused on assertions instead of re-implementing the binary layout.
 
+#include "iprop/Canvas.hpp"
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
 #include "iprop/Meta.hpp"
@@ -101,9 +102,9 @@ struct Prog {
     Prog& C(Color value); // const.color with pool dedup
 };
 
-// A complete single-draw file for a Prog (meta fuel 100000, pool from the
-// prog's constants).
-std::vector<u8> buildProgFile(const Prog& prog);
+// A complete single-draw file for a Prog (meta size/fuel configurable, pool
+// from the prog's constants).
+std::vector<u8> buildProgFile(const Prog& prog, u32 sizeX = 8, u32 sizeY = 8);
 
 // Runs without validation and returns the entry frame's final stack.
 std::vector<iprop::Value> evalProg(const Prog& prog);
@@ -111,8 +112,15 @@ i32 evalProgI32(const Prog& prog);
 f32 evalProgF32(const Prog& prog);
 Color evalProgColor(const Prog& prog);
 
+// Runs without validation and returns the canvas.
+iprop::Canvas runProgCanvas(const Prog& prog, u32 sizeX = 8, u32 sizeY = 8);
+
 // Expects run() to trap with a message mentioning `messagePart`.
 void expectProgTrap(const Prog& prog, const char* messagePart);
+
+// Bit-pattern helpers for exact f32 comparisons.
+u32 bitsOf(f32 value);
+f32 f32FromBits(u32 value);
 
 // `code` section bytes (spec §6): function table, contiguous streams, parts.
 std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,

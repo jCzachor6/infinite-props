@@ -287,8 +287,9 @@ foundColor:
     return *this;
 }
 
-std::vector<u8> buildProgFile(const Prog& prog) {
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
+std::vector<u8> buildProgFile(const Prog& prog, u32 sizeX, u32 sizeY) {
+    const auto meta =
+        metaSection(sizeX, sizeY, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
     const auto pool = constSection({"draw"}, prog.ints, prog.floats, prog.colors);
     return fullFile(meta, pool, codeSection({{0, {0, 0}, {}, {}, prog.body}}, {}));
 }
@@ -335,6 +336,26 @@ void expectProgTrap(const Prog& prog, const char* messagePart) {
         REQUIRE(std::string(error.what()).find(messagePart) != std::string::npos);
     }
     REQUIRE(threw);
+}
+
+iprop::Canvas runProgCanvas(const Prog& prog, u32 sizeX, u32 sizeY) {
+    const auto bytes = buildProgFile(prog, sizeX, sizeY); // must outlive the spans
+    auto loaded = iprop::loadFile(bytes);
+    iprop::VM vm(loaded, {});
+    vm.run();
+    return vm.canvas();
+}
+
+u32 bitsOf(f32 value) {
+    u32 result = 0;
+    std::memcpy(&result, &value, sizeof(result));
+    return result;
+}
+
+f32 f32FromBits(u32 value) {
+    f32 result = 0.f;
+    std::memcpy(&result, &value, sizeof(result));
+    return result;
 }
 
 void expectError(const std::vector<u8>& bytes, std::size_t at) {
