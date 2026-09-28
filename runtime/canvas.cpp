@@ -8,9 +8,34 @@ namespace iprop::detail {
 namespace {
 
 // Scaled, rounded coordinate (spec §8.1: multiply by the scale factor, then
-// round to the nearest integer, half away from zero).
-i32 scaledCoord(f32 value, f32 scale) {
-    return static_cast<i32>(std::round(value * scale));
+// round to the nearest integer, half away from zero). Non-finite or
+// out-of-range values trap: a cast out of i32 range would be UB.
+i32 scaledCoord(Execution& ex, f32 value, f32 scale) {
+    const f32 scaled = value * scale;
+    if (!std::isfinite(scaled) || scaled < -2147483648.f || scaled >= 2147483648.f) {
+        ex.trap("coordinate out of range");
+    }
+    return static_cast<i32>(std::round(scaled));
+}
+
+// A raster coordinate: floor/ceil must stay within i32 (spec §11 formulas).
+i32 coordToInt(Execution& ex, f32 value, const char* what) {
+    if (!std::isfinite(value) || value < -2147483648.f || value >= 2147483648.f) {
+        ex.trap(std::string("coordinate out of range (") + what + ")");
+    }
+    return static_cast<i32>(value);
+}
+
+// Saturating visit-count product: a huge bounding box costs the maximum
+// fuel, which then traps, instead of overflowing u64.
+u64 visitCount(i64 dx, i64 dy) {
+    if (dx <= 0 || dy <= 0) {
+        return 0;
+    }
+    if (static_cast<u64>(dx) > UINT64_MAX / static_cast<u64>(dy)) {
+        return UINT64_MAX;
+    }
+    return static_cast<u64>(dx) * static_cast<u64>(dy);
 }
 
 // §11.1: out-of-bounds writes are no-ops; opaque colours overwrite;
@@ -46,13 +71,11 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
         top = std::min(top, p.y);
         bottom = std::max(bottom, p.y);
     }
-    const i32 x0 = static_cast<i32>(std::floor(left));
-    const i32 x1 = static_cast<i32>(std::ceil(right));
-    const i32 y0 = static_cast<i32>(std::floor(top));
-    const i32 y1 = static_cast<i32>(std::ceil(bottom));
-    const u64 visits =
-        static_cast<u64>(x1 - x0 + 1) * static_cast<u64>(y1 - y0 + 1);
-    ex.spend(visits);
+    const i32 x0 = coordToInt(ex, std::floor(left), "poly x");
+    const i32 x1 = coordToInt(ex, std::ceil(right), "poly x");
+    const i32 y0 = coordToInt(ex, std::floor(top), "poly y");
+    const i32 y1 = coordToInt(ex, std::ceil(bottom), "poly y");
+    ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
 
     const std::size_t n = points.size();
     for (i32 py = y0; py <= y1; ++py) {
@@ -85,8 +108,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::Pixel: {
         const Color colour = ex.popColor();
-        const i32 y = scaledCoord(static_cast<f32>(ex.popI32()), sY);
-        const i32 x = scaledCoord(static_cast<f32>(ex.popI32()), sX);
+        const i32 y = scaledCoord(ex, static_cast<f32>(ex.popI32()), sY);
+        const i32 x = scaledCoord(ex, static_cast<f32>(ex.popI32()), sX);
         putPixel(ex, x, y, colour);
         ++ex.frame().ip;
         return true;
@@ -112,9 +135,10 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const f32 ax = ex.popF32() * sX;
         const f32 dx = bx - ax;
         const f32 dy = by - ay;
-        const i32 steps = std::max(1, static_cast<i32>(std::ceil(std::max(std::fabs(dx), std::fabs(dy)))));
+        const i32 steps = std::max(
+            1, coordToInt(ex, std::ceil(std::max(std::fabs(dx), std::fabs(dy))), "line length"));
         if (thickness > 0) {
-            ex.spend(static_cast<u64>(steps + 1) * static_cast<u64>(thickness));
+            ex.spend(visitCount(static_cast<i64>(steps) + 1, thickness));
             for (i32 i = 0; i <= steps; ++i) {
                 const f32 t = static_cast<f32>(i) / static_cast<f32>(steps);
                 const i32 ix = static_cast<i32>(std::round(ax + dx * t));
@@ -148,11 +172,11 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const f32 rx = ex.popF32() * sX;
         const f32 y = ex.popF32() * sY;
         const f32 x = ex.popF32() * sX;
-        const i32 y0 = static_cast<i32>(std::floor(y - ry));
-        const i32 y1 = static_cast<i32>(std::ceil(y + ry));
-        const i32 x0 = static_cast<i32>(std::floor(x - rx));
-        const i32 x1 = static_cast<i32>(std::ceil(x + rx));
-        ex.spend(static_cast<u64>(x1 - x0 + 1) * static_cast<u64>(y1 - y0 + 1));
+        const i32 y0 = coordToInt(ex, std::floor(y - ry), "oval y");
+        const i32 y1 = coordToInt(ex, std::ceil(y + ry), "oval y");
+        const i32 x0 = coordToInt(ex, std::floor(x - rx), "oval x");
+        const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
+        ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
         for (i32 py = y0; py <= y1; ++py) {
             for (i32 px = x0; px <= x1; ++px) {
                 const f32 nx = (static_cast<f32>(px) - x) / rx;

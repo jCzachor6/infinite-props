@@ -153,6 +153,7 @@ inline constexpr u32 kMaxSectionSize = 1u << 26; // 64 MiB
 inline constexpr u16 kMaxStackDepth = 512;
 inline constexpr u16 kMaxCallDepth = 256;
 inline constexpr u32 kMaxConstPoolEntries = 65536; // u16 index space
+inline constexpr u32 kMaxCanvasSide = 16384;       // canvas width/height cap
 
 // Function table: name index marking an unnamed function (spec §6.1).
 inline constexpr u32 kAnonymousName = 0xFFFFFFFFu;

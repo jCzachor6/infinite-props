@@ -178,11 +178,17 @@ void Execution::ensureControl(u16 functionIndex) {
             open.push_back(i);
             break;
         case Opcode::Else: {
+            if (open.empty()) {
+                break; // unbalanced; the runtime label checks trap instead
+            }
             const std::size_t opener = open.back();
             info[opener].elseIndex = i;
             break;
         }
         case Opcode::End: {
+            if (open.empty()) {
+                break; // unbalanced; the runtime label checks trap instead
+            }
             const std::size_t opener = open.back();
             open.pop_back();
             info[opener].endIndex = i;
@@ -236,9 +242,13 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
         throw Trap("archetype index out of range", 0);
     }
 
-    // Target canvas and scale (spec §8.1).
+    // Target canvas and scale (spec §8.1). The size cap is a runtime defense:
+    // a corrupt meta must not trigger a multi-gigabyte allocation.
     const u32 targetW = inputs.sizeX != 0 ? inputs.sizeX : file.meta.sizeX;
     const u32 targetH = inputs.sizeY != 0 ? inputs.sizeY : file.meta.sizeY;
+    if (targetW > kMaxCanvasSide || targetH > kMaxCanvasSide) {
+        throw Trap("canvas too large", 0);
+    }
     impl_->ex.canvas.resize(targetW, targetH);
     impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
     impl_->ex.canvas.scaleY = static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY);

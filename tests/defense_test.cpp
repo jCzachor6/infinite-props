@@ -1,10 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
+#include <string>
+
 #include "support/test_support.hpp"
+
+#include "iprop/VM.hpp"
 
 // Runtime defenses on UNVALIDATED input: the VM must trap with a located
 // message, never read out of bounds or misbehave (spec §8.4/§14).
 
+using namespace iprop;
 using namespace test_support;
 
 TEST_CASE("unvalidated type mismatches trap") {
@@ -29,4 +35,37 @@ TEST_CASE("out-of-range branches and dangling control flow trap") {
     expectProgTrap(Prog{}.I(1).emit(0x07, 5), "branch depth"); // br_if 5, taken
     expectProgTrap(Prog{}.emit(0x04), "else without");          // else, no if
     expectProgTrap(Prog{}.emit(0x05), "end without");           // end, no block
+    // An extra end after a balanced block: the second end traps instead of
+    // crashing the control-flow precompute.
+    expectProgTrap(Prog{}.emit(0x01).emit(0x05).emit(0x05), "end without");
+}
+
+TEST_CASE("non-finite or huge coordinates trap instead of UB") {
+    const f32 nan = std::numeric_limits<f32>::quiet_NaN();
+    // NaN in a poly vertex.
+    expectProgTrap(Prog{}.F(nan).F(0.f).F(4.f).F(0.f).F(0.f).F(4.f)
+                         .C(Color{1, 1, 1, 255}).emit(0x83, 3),
+                   "coordinate out of range");
+    // A huge oval (rx = 1e20f) whose bounding box would overflow i32.
+    expectProgTrap(Prog{}.F(0.f).F(0.f).F(1.0e20f).F(1.f)
+                         .C(Color{1, 1, 1, 255}).emit(0x84),
+                   "coordinate out of range");
+}
+
+TEST_CASE("an oversized canvas traps at construction") {
+    // meta sizeX above kMaxCanvasSide: the VM must refuse, not allocate.
+    const auto meta = metaSection(20000, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0, {}, {});
+    const auto pool = richPool({"draw"});
+    const auto bytes = fullFile(meta, pool, codeSection({drawSpec(retIns())}, {}));
+    auto loaded = loadFile(bytes);
+    validate(loaded);
+    bool threw = false;
+    try {
+        VM vm(loaded, {});
+        (void)vm;
+    } catch (const Trap& error) {
+        threw = true;
+        REQUIRE(std::string(error.what()).find("canvas too large") != std::string::npos);
+    }
+    REQUIRE(threw);
 }
