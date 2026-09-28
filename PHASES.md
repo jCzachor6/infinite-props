@@ -26,7 +26,7 @@ the boxes.
 | 11 | Canvas operations & alpha rule | B. Interpreter | ✅ |
 | 12 | Structured outputs | B. Interpreter | ✅ |
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ✅ |
-| 14 | CLI tool `ipgen` | B. Interpreter | ⬜ |
+| 14 | CLI tool `ipgen` | B. Interpreter | ✅ |
 | 15 | Example programs: rock & crystal ports | B. Interpreter | ⬜ |
 | 16 | Golden test suite + CI | B. Interpreter | ⬜ |
 | 17 | `.ips` lexer | C. Language & compiler | ⬜ |
@@ -314,16 +314,17 @@ the boxes.
 **Goal:** the first user-facing artifact.
 
 **Work:**
-1. `tools/ipgen`: `ipgen asset.iprop --seed N [--variant V] [--archetype A] [--size WxH] [--uniform name=value] -o out.png`.
-2. PNG writing (deterministic encoder settings) + JSON output of structured outputs and consumed fuel.
-3. Exit codes and error messages for invalid files/arguments.
+1. `tools/ipgen.hpp`/`tools/ipgen.cpp` (`ipgen_lib` + a thin `main.cpp`): `ipgen file.iprop --seed N --variant V --archetype A --size WxH --uniform name=value -o out.png`.
+2. PNG via pinned stb_image_write (vendored, SYSTEM includes), result JSON to stdout (outputs with names/kinds/values, fuel budget/spent, size), default PNG path `<stem>-<seed>.png`.
+3. Located errors with exit code 1 (invalid file, generation traps, bad arguments); `--uniform` values parsed per the declared input type (#RRGGBB/#RRGGBBAA, decimal numbers).
+4. Tests run the CLI in-process: PNG decode + pixel checks, JSON content, uniform override, bad uniform, corrupt file, --size, unknown options.
 
-**Deliverables:** `tools/ipgen` + usage in `--help`.
+**Deliverables:** `tools/ipgen.hpp`, `tools/ipgen.cpp`, `tools/main.cpp`, `tests/tools_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Generating the Phase 15 fixtures writes valid PNGs and correct JSON.
-- [ ] Bad magic/invalid file exits non-zero with a located error.
-- [ ] `--uniform` overrides apply; missing uniforms use declared defaults.
+- [x] Generating fixtures writes valid PNGs and correct JSON.
+- [x] Bad magic/invalid file exits non-zero with a located error.
+- [x] `--uniform` overrides apply; missing uniforms use declared defaults.
 
 ---
 

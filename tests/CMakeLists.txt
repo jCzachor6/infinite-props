@@ -23,13 +23,18 @@ add_executable(iprop_tests
     canvas_test.cpp
     outputs_test.cpp
     parts_test.cpp
+    tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
     support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
     iprop::runtime
+    ipgen_lib
     Catch2::Catch2WithMain)
+
+target_include_directories(iprop_tests SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party/stb)
 
 iprop_warnings(iprop_tests)
 
