@@ -47,7 +47,7 @@ outputs: image (RGBA8), structured outputs (points/rects/circles, singular or li
 
 ### 2.1 Header
 
-Fixed 24 bytes:
+Fixed 20 bytes:
 
 | Offset | Size | Field | Value |
 | ------ | ---- | ----- | ----- |

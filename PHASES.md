@@ -15,7 +15,7 @@ the boxes.
 | - | ----- | ---- | ------ |
 | 1 | Repository skeleton | A. Foundation | ✅ |
 | 2 | Core types & binary I/O | A. Foundation | ✅ |
-| 3 | File parsing: header & section table | B. Interpreter | ⬜ |
+| 3 | File parsing: header & section table | B. Interpreter | ✅ |
 | 4 | Parsing `const` & `meta` | B. Interpreter | ⬜ |
 | 5 | Parsing `code` (functions & parts) | B. Interpreter | ⬜ |
 | 6 | Validator | B. Interpreter | ⬜ |
@@ -101,17 +101,18 @@ the boxes.
 **Goal:** load a `.iprop` file into a structured in-memory representation.
 
 **Work:**
-1. `src/format/Header.hpp` + parser for the 24-byte header.
-2. Section table parsing into `Section` records.
-3. Error type with file offsets in messages.
-4. Fixture tests: valid minimal file; bad magic; wrong version; unknown flag bits; overlapping sections; truncated table.
+1. `runtime/iprop/Format.hpp` + `runtime/format.cpp`: parser for the 20-byte header and section table into `Header`/`Section`/`FileLayout`.
+2. Located `FormatError` messages with file offsets.
+3. Fixture tests: valid minimal file; bad magic; wrong version; unknown flag bits; overlapping/duplicate/out-of-bounds sections; truncated table; required-section and debug-flag consistency.
 
-**Deliverables:** header/section parsing code + tests.
+**Deliverables:** `runtime/iprop/Format.hpp`, `runtime/format.cpp`, `tests/format_test.cpp`.
+
+**Note:** fixed a spec inconsistency found by the tests — §2.1 said "24 bytes" but the field table sums to 20; the spec now pins 20 and `kHeaderSize` follows.
 
 **Acceptance criteria:**
-- [ ] Valid fixture parses; all fields round-trip.
-- [ ] Every invalid fixture fails with a defined, located error.
-- [ ] Version check matches spec §2.1 (major ≤ 0).
+- [x] Valid fixture parses; all fields round-trip.
+- [x] Every invalid fixture fails with a defined, located error.
+- [x] Version check matches spec §2.1 (major ≤ 0).
 
 ---
 

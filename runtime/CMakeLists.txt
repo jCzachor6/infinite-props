@@ -1,5 +1,6 @@
 add_library(iprop_runtime
-    version.cpp)
+    version.cpp
+    format.cpp)
 
 add_library(iprop::runtime ALIAS iprop_runtime)
 
