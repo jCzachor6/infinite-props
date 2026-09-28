@@ -6,6 +6,7 @@
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
 #include "iprop/Meta.hpp"
+#include "iprop/Value.hpp"
 
 #include <array>
 #include <cstddef>
@@ -83,6 +84,35 @@ std::vector<u8> retIns();
 // "draw" (name index 0), no results.
 FuncSpec drawSpec(const std::vector<u8>& body, u32 nameIndex = 0,
                   const std::vector<u8>& params = {0, 0});
+
+// A tiny program builder for VM tests: deduplicates constants into the
+// const pool and emits instructions. Programs leave values on the entry
+// stack and are executed WITHOUT validation; the VM's runtime checks still
+// apply and its debugStack() exposes the result.
+struct Prog {
+    std::vector<u8> body;
+    std::vector<i32> ints;
+    std::vector<f32> floats;
+    std::vector<Color> colors;
+
+    Prog& emit(u8 opcode, u16 operand = 0);
+    Prog& I(i32 value);  // const.i32 with pool dedup
+    Prog& F(f32 value);  // const.f32 with pool dedup
+    Prog& C(Color value); // const.color with pool dedup
+};
+
+// A complete single-draw file for a Prog (meta fuel 100000, pool from the
+// prog's constants).
+std::vector<u8> buildProgFile(const Prog& prog);
+
+// Runs without validation and returns the entry frame's final stack.
+std::vector<iprop::Value> evalProg(const Prog& prog);
+i32 evalProgI32(const Prog& prog);
+f32 evalProgF32(const Prog& prog);
+Color evalProgColor(const Prog& prog);
+
+// Expects run() to trap with a message mentioning `messagePart`.
+void expectProgTrap(const Prog& prog, const char* messagePart);
 
 // `code` section bytes (spec §6): function table, contiguous streams, parts.
 std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,

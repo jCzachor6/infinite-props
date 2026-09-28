@@ -218,12 +218,15 @@ TEST_CASE("entry naming and signature violations") {
 TEST_CASE("per-function instruction violations") {
     const auto pool = richPool({"draw"});
 
-    // Reserved opcode, aux byte, unknown opcode (all at instruction 0).
+    // Reserved opcode, aux byte, unknown opcode, reserved colour opcode
+    // (all at instruction 0).
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x0F, 0, 0))}, {})),
                         24, "reserved opcode");
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x00, 1, 0))}, {})),
                         24, "aux byte");
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0xA1, 0, 0))}, {})),
+                        24, "reserved opcode");
+    expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x52, 0, 0))}, {})),
                         24, "reserved opcode");
 
     // Stack underflow on the first instruction.

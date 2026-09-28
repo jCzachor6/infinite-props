@@ -5,7 +5,10 @@ namespace {
 
 // Shared branch mechanics: the target label stays active (its `end` pops
 // it); inner labels unwind and the stack restores the target's entry height.
-void branch(Frame& frame, u16 depth) {
+void branch(Execution& ex, Frame& frame, u16 depth) {
+    if (depth >= frame.labels.size()) {
+        ex.trap("branch depth out of range");
+    }
     const Label target = frame.labels[frame.labels.size() - 1 - depth];
     frame.labels.resize(frame.labels.size() - depth);
     frame.stack.resize(target.stackHeight);
@@ -53,6 +56,9 @@ bool stepControl(Execution& ex, Instruction ins) {
     }
 
     case Opcode::Else: {
+        if (frame.labels.empty()) {
+            ex.trap("else without if");
+        }
         // Reached by falling through the then-branch: restore the entry
         // height and skip the else body; the `end` pops the label.
         const Label label = frame.labels.back();
@@ -62,6 +68,9 @@ bool stepControl(Execution& ex, Instruction ins) {
     }
 
     case Opcode::End: {
+        if (frame.labels.empty()) {
+            ex.trap("end without block");
+        }
         const Label label = frame.labels.back();
         frame.labels.pop_back();
         frame.stack.resize(label.stackHeight);
@@ -70,14 +79,14 @@ bool stepControl(Execution& ex, Instruction ins) {
     }
 
     case Opcode::Br: {
-        branch(frame, ins.operand);
+        branch(ex, frame, ins.operand);
         return true;
     }
 
     case Opcode::BrIf: {
         const i32 condition = ex.popI32();
         if (condition != 0) {
-            branch(frame, ins.operand);
+            branch(ex, frame, ins.operand);
         } else {
             ++frame.ip;
         }

@@ -27,8 +27,8 @@ the exact same pixels on every platform.
 - Every commit must build with `-Werror` and pass `ctest`.
 - New VM or format behaviour requires tests, preferably pinned vectors or
   golden images.
-- Run the formatter (`.clang-format`, added with the first real sources)
-  before pushing.
+- Match the formatting of the surrounding code; no formatter config is
+  enforced yet.
 
 ## Building
 

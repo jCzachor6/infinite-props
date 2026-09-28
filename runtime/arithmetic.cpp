@@ -31,33 +31,51 @@ i32 f32ToI32(f32 value) {
     return static_cast<i32>(value); // truncates toward zero
 }
 
+// Shared shapes for the regular two-operand cases: pop, compute, push,
+// advance. Special cases (division, shifts, conversions) stay inline.
+void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
+    const u32 b = static_cast<u32>(ex.popI32());
+    const u32 a = static_cast<u32>(ex.popI32());
+    ex.push(Value(static_cast<i32>(fn(a, b))));
+    ++ex.frame().ip;
+}
+
+void i32Compare(Execution& ex, i32 (*fn)(i32, i32)) {
+    const i32 b = ex.popI32();
+    const i32 a = ex.popI32();
+    ex.push(Value(fn(a, b)));
+    ++ex.frame().ip;
+}
+
+void f32Binop(Execution& ex, f32 (*fn)(f32, f32)) {
+    const f32 b = ex.popF32();
+    const f32 a = ex.popF32();
+    ex.push(Value(fn(a, b)));
+    ++ex.frame().ip;
+}
+
+void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
+    const f32 b = ex.popF32();
+    const f32 a = ex.popF32();
+    ex.push(Value(fn(a, b)));
+    ++ex.frame().ip;
+}
+
 } // namespace
 
 // Integer, float and colour arithmetic (spec §9.3-§9.5, determinism §13).
 bool stepArithmetic(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     // --- Integer arithmetic (wraps in u32, spec §13.1) ---
-    case Opcode::I32Add: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) + static_cast<u32>(b))));
-        ++ex.frame().ip;
+    case Opcode::I32Add:
+        i32Binop(ex, [](u32 a, u32 b) { return a + b; });
         return true;
-    }
-    case Opcode::I32Sub: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) - static_cast<u32>(b))));
-        ++ex.frame().ip;
+    case Opcode::I32Sub:
+        i32Binop(ex, [](u32 a, u32 b) { return a - b; });
         return true;
-    }
-    case Opcode::I32Mul: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) * static_cast<u32>(b))));
-        ++ex.frame().ip;
+    case Opcode::I32Mul:
+        i32Binop(ex, [](u32 a, u32 b) { return a * b; });
         return true;
-    }
     case Opcode::I32DivS: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
@@ -153,148 +171,76 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     }
 
     // --- Integer comparisons (spec §9.3) ---
-    case Opcode::I32Eq: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a == b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32Eq:
+        i32Compare(ex, [](i32 a, i32 b) { return a == b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32Ne: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a != b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32Ne:
+        i32Compare(ex, [](i32 a, i32 b) { return a != b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32LtS: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a < b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32LtS:
+        i32Compare(ex, [](i32 a, i32 b) { return a < b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32LtU: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) < static_cast<u32>(b) ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32LtU:
+        i32Compare(ex, [](i32 a, i32 b) {
+            return static_cast<u32>(a) < static_cast<u32>(b) ? 1 : 0;
+        });
         return true;
-    }
-    case Opcode::I32GtS: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a > b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32GtS:
+        i32Compare(ex, [](i32 a, i32 b) { return a > b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32GtU: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) > static_cast<u32>(b) ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32GtU:
+        i32Compare(ex, [](i32 a, i32 b) {
+            return static_cast<u32>(a) > static_cast<u32>(b) ? 1 : 0;
+        });
         return true;
-    }
-    case Opcode::I32LeS: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a <= b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32LeS:
+        i32Compare(ex, [](i32 a, i32 b) { return a <= b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32LeU: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) <= static_cast<u32>(b) ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32LeU:
+        i32Compare(ex, [](i32 a, i32 b) {
+            return static_cast<u32>(a) <= static_cast<u32>(b) ? 1 : 0;
+        });
         return true;
-    }
-    case Opcode::I32GeS: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(a >= b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32GeS:
+        i32Compare(ex, [](i32 a, i32 b) { return a >= b ? 1 : 0; });
         return true;
-    }
-    case Opcode::I32GeU: {
-        const i32 b = ex.popI32();
-        const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) >= static_cast<u32>(b) ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::I32GeU:
+        i32Compare(ex, [](i32 a, i32 b) {
+            return static_cast<u32>(a) >= static_cast<u32>(b) ? 1 : 0;
+        });
         return true;
-    }
 
     // --- Float arithmetic (spec §9.4; no FMA contraction, spec §13.2) ---
-    case Opcode::F32Add: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a + b));
-        ++ex.frame().ip;
+    case Opcode::F32Add:
+        f32Binop(ex, [](f32 a, f32 b) { return a + b; });
         return true;
-    }
-    case Opcode::F32Sub: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a - b));
-        ++ex.frame().ip;
+    case Opcode::F32Sub:
+        f32Binop(ex, [](f32 a, f32 b) { return a - b; });
         return true;
-    }
-    case Opcode::F32Mul: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a * b));
-        ++ex.frame().ip;
+    case Opcode::F32Mul:
+        f32Binop(ex, [](f32 a, f32 b) { return a * b; });
         return true;
-    }
-    case Opcode::F32Div: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a / b));
-        ++ex.frame().ip;
+    case Opcode::F32Div:
+        f32Binop(ex, [](f32 a, f32 b) { return a / b; }); // IEEE: x/0 = inf
         return true;
-    }
-    case Opcode::F32Eq: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a == b ? 1 : 0))); // NaN compares false
-        ++ex.frame().ip;
+    case Opcode::F32Eq:
+        f32Compare(ex, [](f32 a, f32 b) { return a == b ? 1 : 0; }); // NaN: false
         return true;
-    }
-    case Opcode::F32Ne: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a != b ? 1 : 0))); // NaN compares true
-        ++ex.frame().ip;
+    case Opcode::F32Ne:
+        f32Compare(ex, [](f32 a, f32 b) { return a != b ? 1 : 0; }); // NaN: true
         return true;
-    }
-    case Opcode::F32Lt: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a < b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::F32Lt:
+        f32Compare(ex, [](f32 a, f32 b) { return a < b ? 1 : 0; });
         return true;
-    }
-    case Opcode::F32Gt: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a > b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::F32Gt:
+        f32Compare(ex, [](f32 a, f32 b) { return a > b ? 1 : 0; });
         return true;
-    }
-    case Opcode::F32Le: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a <= b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::F32Le:
+        f32Compare(ex, [](f32 a, f32 b) { return a <= b ? 1 : 0; });
         return true;
-    }
-    case Opcode::F32Ge: {
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(static_cast<i32>(a >= b ? 1 : 0)));
-        ++ex.frame().ip;
+    case Opcode::F32Ge:
+        f32Compare(ex, [](f32 a, f32 b) { return a >= b ? 1 : 0; });
         return true;
-    }
     case Opcode::F32Neg: {
         ex.push(Value(-ex.popF32()));
         ++ex.frame().ip;

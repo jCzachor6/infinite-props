@@ -3,7 +3,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "iprop/Binary.hpp"
+#include "iprop/VM.hpp"
 
+#include <cstring>
 #include <string>
 
 namespace test_support {
@@ -233,6 +235,106 @@ std::vector<u8> namesPool(const std::vector<std::string>& names) {
 
 std::vector<u8> richPool(const std::vector<std::string>& names) {
     return constSection(names, {0}, {0.f}, {{0, 0, 0, 255}});
+}
+
+Prog& Prog::emit(u8 opcode, u16 operand) {
+    for (const auto b : ins(opcode, 0, operand)) body.push_back(b);
+    return *this;
+}
+
+Prog& Prog::I(i32 value) {
+    u16 index = 0;
+    for (u16 i = 0; i < ints.size(); ++i) {
+        if (ints[i] == value) {
+            index = i;
+            goto foundInt;
+        }
+    }
+    ints.push_back(value);
+    index = static_cast<u16>(ints.size() - 1);
+foundInt:
+    emit(0x10, index);
+    return *this;
+}
+
+Prog& Prog::F(f32 value) {
+    u16 index = 0;
+    for (u16 i = 0; i < floats.size(); ++i) {
+        if (std::memcmp(&floats[i], &value, sizeof(f32)) == 0) {
+            index = i;
+            goto foundFloat;
+        }
+    }
+    floats.push_back(value);
+    index = static_cast<u16>(floats.size() - 1);
+foundFloat:
+    emit(0x11, index);
+    return *this;
+}
+
+Prog& Prog::C(Color value) {
+    u16 index = 0;
+    for (u16 i = 0; i < colors.size(); ++i) {
+        if (colors[i] == value) {
+            index = i;
+            goto foundColor;
+        }
+    }
+    colors.push_back(value);
+    index = static_cast<u16>(colors.size() - 1);
+foundColor:
+    emit(0x12, index);
+    return *this;
+}
+
+std::vector<u8> buildProgFile(const Prog& prog) {
+    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
+    const auto pool = constSection({"draw"}, prog.ints, prog.floats, prog.colors);
+    return fullFile(meta, pool, codeSection({{0, {0, 0}, {}, {}, prog.body}}, {}));
+}
+
+std::vector<iprop::Value> evalProg(const Prog& prog) {
+    // The file bytes must outlive the LoadedFile: its spans point into them.
+    const auto bytes = buildProgFile(prog);
+    auto loaded = iprop::loadFile(bytes);
+    iprop::VM vm(loaded, {});
+    vm.run();
+    return vm.debugStack();
+}
+
+i32 evalProgI32(const Prog& prog) {
+    const auto stack = evalProg(prog);
+    REQUIRE(stack.size() == 1);
+    REQUIRE(std::holds_alternative<i32>(stack[0]));
+    return std::get<i32>(stack[0]);
+}
+
+f32 evalProgF32(const Prog& prog) {
+    const auto stack = evalProg(prog);
+    REQUIRE(stack.size() == 1);
+    REQUIRE(std::holds_alternative<f32>(stack[0]));
+    return std::get<f32>(stack[0]);
+}
+
+Color evalProgColor(const Prog& prog) {
+    const auto stack = evalProg(prog);
+    REQUIRE(stack.size() == 1);
+    REQUIRE(std::holds_alternative<Color>(stack[0]));
+    return std::get<Color>(stack[0]);
+}
+
+void expectProgTrap(const Prog& prog, const char* messagePart) {
+    const auto bytes = buildProgFile(prog); // must outlive the LoadedFile spans
+    auto loaded = iprop::loadFile(bytes);
+    bool threw = false;
+    try {
+        iprop::VM vm(loaded, {});
+        vm.run();
+    } catch (const iprop::Trap& error) {
+        threw = true;
+        REQUIRE(std::string(error.what()).find(messagePart) != std::string::npos);
+    }
+    REQUIRE(threw);
 }
 
 void expectError(const std::vector<u8>& bytes, std::size_t at) {
