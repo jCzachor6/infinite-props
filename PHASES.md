@@ -44,7 +44,7 @@ the boxes.
 | 29 | IDE: live preview & seed controls | E. IDE | ✅ |
 | 30 | IDE: atlas browser & bytecode inspector | E. IDE | ✅ |
 | 31 | IDE: export & polish | E. IDE | ✅ |
-| 32 | Website: playground | F. Website & release | ⬜ |
+| 32 | Website: playground | F. Website & release | ✅ |
 | 33 | Website: docs & installation guides | F. Website & release | ⬜ |
 | 34 | Gallery, cross-backend conformance, v0.1.0 release | F. Website & release | ⬜ |
 
@@ -708,15 +708,23 @@ agents and real files):**
 **Goal:** the public demo.
 
 **Work:**
-1. Static site (framework pinned here) with an embedded playground reusing the editor WASM build.
-2. Shareable links encoding (program + seed) in the URL hash.
+1. `website/` — a static site (vanilla TS + Vite, the framework pinned here)
+   with the playground: the WASM reference interpreter (the html5 backend
+   build) rendering the example assets (portrait, plant, noise) into a
+   canvas with seed/variant/archetype controls clamped to the declared
+   ranges.
+2. Shareable links: the URL hash `#<asset>/<seed>/<variant>/<archetype>`
+   restores the exact view; a "Copy share link" button writes the current
+   hash. The same link always shows the same pixels (determinism).
+3. `prepare.sh` syncs the module and the binaries; `npm run build` emits
+   the static `dist/`.
 
 **Deliverables:** `website/` with a working playground.
 
 **Acceptance criteria:**
-- [ ] Playground runs example assets without a backend.
-- [ ] A shared link reproduces the exact program + seed view.
-- [ ] Site builds via a documented command.
+- [x] Playground runs example assets without a backend.
+- [x] A shared link reproduces the exact program + seed view.
+- [x] Site builds via a documented command.
 
 ---
 

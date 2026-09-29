@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iprop — the procedural asset format</title>
+<style>
+  :root {
+    --bg: #10161d;
+    --panel: #17212b;
+    --line: #2b3a46;
+    --text: #dce4ea;
+    --dim: #8aa4ae;
+    --accent: #90c5b9;
+    --warn: #e0a14a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 1.4rem 2rem 0;
+    max-width: 68rem;
+    width: 100%;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.1rem; margin: 0; }
+  h1 .dim { color: var(--accent); }
+  .sub { color: var(--dim); font-size: 0.75rem; }
+  .spacer { flex: 1; }
+  main {
+    flex: 1;
+    display: flex;
+    gap: 1.6rem;
+    padding: 1.4rem 2rem 2.5rem;
+    max-width: 68rem;
+    width: 100%;
+    margin: 0 auto;
+    align-items: flex-start;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 1.2rem 1.4rem;
+    flex: 1;
+  }
+  .card.side { flex: 0 0 17rem; }
+  h2 { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.8rem; }
+  #canvas-wrap { display: flex; justify-content: center; }
+  canvas {
+    image-rendering: pixelated;
+    background: #0a0f14;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    max-width: 100%;
+    width: 448px;
+    height: 448px;
+  }
+  .asset-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .asset-tab {
+    font: inherit;
+    font-size: 0.78rem;
+    background: #141d26;
+    color: var(--dim);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+  }
+  .asset-tab.active { color: var(--text); background: #22343f; border-color: var(--accent); }
+  .row { display: flex; align-items: center; gap: 0.6rem; margin: 0.65rem 0; font-size: 0.82rem; }
+  .row label { width: 4.6rem; color: var(--dim); }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  input[type=number] {
+    width: 6rem;
+    background: #141d26;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.25rem;
+    font: inherit;
+  }
+  button {
+    font: inherit;
+    font-size: 0.8rem;
+    color: #0c1218;
+    background: var(--accent);
+    border: none;
+    border-radius: 5px;
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.12); }
+  #status { color: var(--dim); font-size: 0.75rem; margin-top: 0.9rem; min-height: 1.1em; }
+  #status.error { color: var(--warn); }
+  .about { color: var(--dim); font-size: 0.75rem; line-height: 1.6; }
+  .about code { color: var(--text); }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 1rem 2rem;
+    color: var(--dim);
+    font-size: 0.72rem;
+    text-align: center;
+  }
+  @media (max-width: 48rem) {
+    main { flex-direction: column; }
+    .card, .card.side { flex: 1 1 auto; width: 100%; }
+    canvas { width: 100%; height: auto; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>iprop <span class="dim">·</span> playground</h1>
+  <div class="sub">a portable binary format and toolchain for seed-based procedural 2D assets —
+    this page runs the reference interpreter in your browser</div>
+  <div class="spacer"></div>
+  <button id="share">Copy share link</button>
+</header>
+
+<main>
+  <div class="card">
+    <div class="asset-tabs" id="assets"></div>
+    <div id="canvas-wrap"><canvas id="canvas" width="64" height="64"></canvas></div>
+    <div id="status">loading…</div>
+  </div>
+  <div class="card side">
+    <h2>controls</h2>
+    <div class="row"><label>seed</label>
+      <input type="range" id="seed-slider" min="0" max="4095" value="0">
+      <input type="number" id="seed-value" min="0" value="0"></div>
+    <div class="row"><label>variant</label>
+      <input type="range" id="variant-slider" min="0" max="7" value="0">
+      <input type="number" id="variant-value" min="0" max="7" value="0"></div>
+    <div class="row"><label>archetype</label>
+      <input type="range" id="archetype-slider" min="0" max="0" value="0">
+      <input type="number" id="archetype-value" min="0" max="0" value="0"></div>
+    <div class="about">
+      every frame is <code>generate(file, seed, variant, archetype)</code> —
+      deterministic: the same link always shows the same pixels. the assets
+      are compiled from the <code>.ips</code> sources in the repository.
+    </div>
+  </div>
+</main>
+
+<footer>iprop — format spec and toolchain · reference interpreter: WebAssembly</footer>
+
+<script src="/iprop.js"></script>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
