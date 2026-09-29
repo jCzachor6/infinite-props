@@ -642,6 +642,124 @@ function openInspector() {
     buildInspector();
 }
 
+// ---- export and import navigation (Phase 31) -------------------------------------------
+
+async function exportBinary() {
+    const entry = activeEntry();
+    if (!entry) {
+        vscode.window.showWarningMessage("iprop: open a .ips file first");
+        return;
+    }
+    try {
+        const compiled = await compileEntry(entry);
+        const target = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(entry.replace(/\.ips$/, ".iprop")),
+        });
+        if (!target) return;
+        fs.copyFileSync(compiled, target.fsPath);
+        const validator = toolBinary("validatorPath", "ipval");
+        if (validator) {
+            execFile(validator, [target.fsPath], { timeout: 15000 }, (error, stdout) => {
+                if (!error) {
+                    vscode.window.showInformationMessage("iprop: exported " + target.fsPath + " — ipval: valid");
+                } else {
+                    vscode.window.showErrorMessage("iprop: " + target.fsPath + " failed validation: " + (stdout || error.message));
+                }
+            });
+        } else {
+            vscode.window.showInformationMessage("iprop: exported " + target.fsPath);
+        }
+    } catch (message) {
+        vscode.window.showErrorMessage(String(message));
+    }
+}
+
+async function exportPng() {
+    const entry = activeEntry();
+    if (!entry) {
+        vscode.window.showWarningMessage("iprop: open a .ips file first");
+        return;
+    }
+    try {
+        const compiled = await compileEntry(entry);
+        const cell = await renderCell(compiled, previewState.seed >>> 0,
+            previewState.variant, previewState.archetype, previewState.uniforms);
+        const target = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(
+                entry.replace(/\.ips$/, "-" + (previewState.seed >>> 0) + ".png")),
+        });
+        if (!target) return;
+        fs.writeFileSync(target.fsPath, Buffer.from(cell.png, "base64"));
+        vscode.window.showInformationMessage("iprop: exported " + target.fsPath);
+    } catch (message) {
+        vscode.window.showErrorMessage(String(message));
+    }
+}
+
+async function exportSheet() {
+    const entry = activeEntry();
+    if (!entry) {
+        vscode.window.showWarningMessage("iprop: open a .ips file first");
+        return;
+    }
+    try {
+        const compiled = await compileEntry(entry);
+        const probe = JSON.parse((await renderCell(compiled, 0, 0, 0, {})).json);
+        const seedsPick = await vscode.window.showQuickPick(["4", "8", "12"], {
+            placeHolder: "seeds per variant (the grid columns)",
+        });
+        if (!seedsPick) return;
+        const seeds = parseInt(seedsPick, 10);
+        const target = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(entry.replace(/\.ips$/, "-sheet.png")),
+        });
+        if (!target) return;
+        const tool = toolBinary("sheetPath", "ipsheet");
+        if (!tool) {
+            vscode.window.showErrorMessage("iprop: ipsheet not found — set iprop.sheetPath");
+            return;
+        }
+        execFile(tool, [compiled, "--variants", String(probe.variants),
+            "--seeds", String(seeds), "--columns", String(seeds), "-o", target.fsPath],
+            { timeout: 30000 }, (error, _stdout, stderr) => {
+                if (error) {
+                    vscode.window.showErrorMessage("iprop: sheet export failed: " + (stderr || error.message));
+                } else {
+                    vscode.window.showInformationMessage("iprop: exported " + target.fsPath);
+                }
+            });
+    } catch (message) {
+        vscode.window.showErrorMessage(String(message));
+    }
+}
+
+// Lists the imports of the active file and opens the picked one.
+async function openImport() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !editor.document.fileName.endsWith(".ips")) {
+        vscode.window.showWarningMessage("iprop: open a .ips file first");
+        return;
+    }
+    const imports = [...editor.document.getText().matchAll(/^import\s+(\w+)\s+from\s+"([^"]+)"/gm)]
+        .map((m) => ({ alias: m[1], path: m[2] }));
+    if (imports.length === 0) {
+        vscode.window.showInformationMessage("iprop: this file imports nothing");
+        return;
+    }
+    const picked = await vscode.window.showQuickPick(
+        imports.map((imp) => ({ label: imp.alias, description: imp.path })), {
+            placeHolder: "open an imported part",
+        });
+    if (!picked) return;
+    const uri = vscode.Uri.file(path.resolve(path.dirname(editor.document.fileName), picked.description));
+    try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document);
+    } catch {
+        vscode.window.showErrorMessage("iprop: cannot open import '" + picked.description + "' — is the part file present?");
+    }
+}
+
 // ---- activation ---------------------------------------------------------------------
 
 // A clickable "preview" lens above every `asset <name> {` declaration.
@@ -678,6 +796,14 @@ function activate(context) {
         vscode.commands.registerCommand("iprop.atlas", openAtlas));
     context.subscriptions.push(
         vscode.commands.registerCommand("iprop.inspector", openInspector));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.exportBinary", exportBinary));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.exportPng", exportPng));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.exportSheet", exportSheet));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.openImport", openImport));
     context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection((e) => {
             if (inspectorPanel && e.textEditor.document.fileName.endsWith(".ips")) {

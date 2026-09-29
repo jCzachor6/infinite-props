@@ -55,6 +55,22 @@
       {
         "command": "iprop.inspector",
         "title": "iprop: Open Bytecode Inspector"
+      },
+      {
+        "command": "iprop.exportBinary",
+        "title": "iprop: Export .iprop"
+      },
+      {
+        "command": "iprop.exportPng",
+        "title": "iprop: Export PNG"
+      },
+      {
+        "command": "iprop.exportSheet",
+        "title": "iprop: Export Variant Sheet"
+      },
+      {
+        "command": "iprop.openImport",
+        "title": "iprop: Open Import\u2026"
       }
     ],
     "configuration": {
@@ -74,8 +90,45 @@
           "type": "string",
           "default": "",
           "description": "Path to the ipdis disassembler binary. Defaults to <workspace>/build/tools/ipdis."
+        },
+        "iprop.validatorPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ipval binary. Defaults to <workspace>/build/tools/ipval."
+        },
+        "iprop.sheetPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ipsheet binary. Defaults to <workspace>/build/tools/ipsheet."
         }
       }
-    }
+    },
+    "keybindings": [
+      {
+        "command": "iprop.preview",
+        "key": "alt+p",
+        "when": "editorLangId == ips"
+      },
+      {
+        "command": "iprop.atlas",
+        "key": "alt+a",
+        "when": "editorLangId == ips"
+      },
+      {
+        "command": "iprop.inspector",
+        "key": "alt+i",
+        "when": "editorLangId == ips"
+      },
+      {
+        "command": "iprop.exportBinary",
+        "key": "alt+e",
+        "when": "editorLangId == ips"
+      },
+      {
+        "command": "iprop.exportSheet",
+        "key": "alt+shift+e",
+        "when": "editorLangId == ips"
+      }
+    ]
   }
 }

@@ -27,6 +27,24 @@ external edits).
   --source` disassembly with the debug section's source map — the editor
   cursor highlights the matching instructions, and clicking an instruction
   jumps the editor to its source line.
+- **Export** (*iprop: Export .iprop / PNG / Variant Sheet*): one-click
+  exports — the `.iprop` is validated with `ipval` after saving, the PNG
+  uses the current seed/variant/archetype, the sheet grids the variants ×
+  a chosen seed count through `ipsheet`.
+- **Imports** (*iprop: Open Import…*): lists the imports of the active file
+  and opens the picked part; missing parts surface as compiler errors with
+  the file and line.
+
+## Keyboard shortcuts
+
+| Keys | Action |
+| ---- | ------ |
+| `Alt+P` | open the preview |
+| `Alt+A` | open the atlas |
+| `Alt+I` | open the bytecode inspector |
+| `Alt+E` | export the `.iprop` |
+| `Alt+Shift+E` | export the variant sheet |
+| `Cmd/Ctrl+S` | save (native) |
 
 ## Install
 
@@ -40,9 +58,9 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 
 ## Requirements
 
-- The compiled tools: `build/tools/ipc` and `build/tools/ipgen` in the
-  workspace root (build the desktop toolchain: `cmake --build build`).
-  Override the locations with the `iprop.compilerPath`/`iprop.rendererPath`
+- The compiled tools: `build/tools/ipc`, `ipgen`, `ipdis`, `ipval` and
+  `ipsheet` in the workspace root (build the desktop toolchain:
+  `cmake --build build`). Override the locations with the `iprop.*Path`
   settings.
 
 ## Layout

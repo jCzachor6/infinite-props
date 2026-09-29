@@ -43,7 +43,7 @@ the boxes.
 | 28 | IDE: editor | E. IDE | ✅ |
 | 29 | IDE: live preview & seed controls | E. IDE | ✅ |
 | 30 | IDE: atlas browser & bytecode inspector | E. IDE | ✅ |
-| 31 | IDE: export & polish | E. IDE | ⬜ |
+| 31 | IDE: export & polish | E. IDE | ✅ |
 | 32 | Website: playground | F. Website & release | ⬜ |
 | 33 | Website: docs & installation guides | F. Website & release | ⬜ |
 | 34 | Gallery, cross-backend conformance, v0.1.0 release | F. Website & release | ⬜ |
@@ -683,16 +683,21 @@ agents and real files):**
 **Goal:** ship-ready editor.
 
 **Work:**
-1. One-click `.iprop` export + PNG/variant-sheet export.
-2. Import composition UI: resolving `import` paths from the project files.
-3. Polish pass: keyboard shortcuts, error states, loading states.
+1. One-click exports: `.iprop` (validated with `ipval` after saving), a PNG
+   at the current seed/variant/archetype, and a variant sheet (grid through
+   `ipsheet`, seeds-per-variant picked) — all with save dialogs and error
+   messages.
+2. `iprop: Open Import…` lists the imports of the active file and opens the
+   picked part; missing imports surface as located compiler errors.
+3. Polish: keybindings (Alt+P/A/I/E, Alt+Shift+E), the shared
+   compileEntry/renderCell helpers, error/status states in every panel.
 
-**Deliverables:** export flows + polish.
+**Deliverables:** the export flows and the polish pass.
 
 **Acceptance criteria:**
-- [ ] Exported `.iprop` validates with `ipval`.
-- [ ] Imports resolve within the project; missing imports produce clear errors.
-- [ ] Shortcut list documented.
+- [x] Exported `.iprop` validates with `ipval`.
+- [x] Imports resolve within the project; missing imports produce clear errors.
+- [x] Shortcut list documented.
 
 ---
 
