@@ -31,7 +31,7 @@ Testing/
 bin/
 *.png
 !tests/golden/*.png
-!examples/*.png
+!examples/portrait-sheet.png
 
 # Editor / website
 editor/node_modules/
