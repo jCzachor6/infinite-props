@@ -92,6 +92,14 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
     if (name == "sqrt") return emitFixed({VT::F32}, Opcode::F32Sqrt);
     if (name == "sin") return emitFixed({VT::F32}, Opcode::F32Sin);
     if (name == "cos") return emitFixed({VT::F32}, Opcode::F32Cos);
+    if (name == "abs") return emitFixed({VT::F32}, Opcode::F32Abs);
+    if (name == "floor") return emitFixed({VT::F32}, Opcode::F32Floor);
+    if (name == "ceil") return emitFixed({VT::F32}, Opcode::F32Ceil);
+    if (name == "min") return emitFixed({VT::F32, VT::F32}, Opcode::F32Min);
+    if (name == "max") return emitFixed({VT::F32, VT::F32}, Opcode::F32Max);
+    if (name == "pow") return emitFixed({VT::F32, VT::F32}, Opcode::F32Pow);
+    if (name == "exp") return emitFixed({VT::F32}, Opcode::F32Exp);
+    if (name == "atan2") return emitFixed({VT::F32, VT::F32}, Opcode::F32Atan2);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):

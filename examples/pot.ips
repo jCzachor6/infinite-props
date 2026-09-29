@@ -20,7 +20,7 @@ asset pot {
   input color crumbColor = #365c38
 
   draw(v: i32, a: i32) {
-    half = (15 + widthN) / 2
+    half = floor((15.0 + widthN) / 2.0)
     topHalf = half + 1
 
     // the base and the opening
@@ -62,7 +62,7 @@ asset pot {
     } else {
       // a tapered pot with a checker band
       poly(color, 32 - topHalf, 44, 32 + topHalf, 44, 32 + half - 1, 56, 32 - half + 1, 56)
-      bx = 32 - topHalf + 2
+      bx = 32 - i32trunc(topHalf) + 2
       while (bx < 32 + topHalf - 1) {
         if (bx % 2 == 0) {
           pixel(bx, 49, shade(color, -26))

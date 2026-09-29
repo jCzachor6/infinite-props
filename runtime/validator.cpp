@@ -247,6 +247,13 @@ private:
             return;
         case Opcode::F32Neg: case Opcode::F32Abs: case Opcode::F32Sqrt:
         case Opcode::F32Sin: case Opcode::F32Cos:
+        case Opcode::F32Floor: case Opcode::F32Ceil: case Opcode::F32Exp:
+            expect(at, ValueType::F32, "float operand");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::F32Min: case Opcode::F32Max: case Opcode::F32Pow:
+        case Opcode::F32Atan2:
+            expect(at, ValueType::F32, "float operand");
             expect(at, ValueType::F32, "float operand");
             push(at, ValueType::F32);
             return;

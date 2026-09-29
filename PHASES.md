@@ -48,13 +48,16 @@ the Godot engine integration (the flagship adoption target).
   (the compiled output stays pixel-identical).
 
 ### 4. The math package
-- [ ] `4.1` expose `abs` (the `f32.abs` opcode already exists — language
+- [x] `4.1` expose `abs` (the `f32.abs` opcode already exists — language
   gap only).
-- [ ] `4.2` spec §9/§12: `f32.floor`, `f32.ceil`, `f32.min`, `f32.max`,
-  `f32.pow`, `f32.exp`, `f32.atan2` — pinned algorithms.
-- [ ] `4.3` runtime + bit-exact tests; the language builtins.
-- [ ] `4.4` proof: the plant/rock ports drop the integer tricks and the
-  `if`-based `min`/`max` workarounds.
+- [x] `4.2` spec §9/§12: `f32.floor`, `f32.ceil`, `f32.min`, `f32.max`,
+  `f32.pow`, `f32.exp`, `f32.atan2` — pinned algorithms (§12.8).
+- [x] `4.3` runtime + bit-exact tests; the language builtins.
+- [x] `4.4` proof: the plant port (pot + foliage) drops the integer tricks
+  (`half = (15 + widthN) / 2` → `floor((15.0 + widthN) / 2.0)`) and the
+  `if`-based `min`/`max` workarounds (`max(3.0, height / pairs)`) — 16
+  seeds stay pixel-identical. (No rock port exists yet; it inherits the
+  same `std::floor`/`std::max` idioms when it lands.)
 
 ### 5. Loop control
 - [ ] `5.1` `break` and `continue` in `while` loops (the VM's `br`/`br_if`).

@@ -109,6 +109,15 @@ enum class Opcode : u8 {
     ColorSetA = 0x52, // reserved in v0.1; validation rejects it
     F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
+    // The math package (§9.4/§12.8)
+    F32Floor = 0x54,
+    F32Ceil = 0x55,
+    F32Min = 0x56,
+    F32Max = 0x57,
+    F32Pow = 0x58,
+    F32Exp = 0x59,
+    F32Atan2 = 0x5A,
+
     // Seeded primitives (§9.6)
     StreamPush = 0x60,
     StreamPop = 0x61,

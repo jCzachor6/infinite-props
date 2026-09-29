@@ -41,9 +41,7 @@ asset flower {
       rect(31.0, crown + 56, 2.0, rim - crown, shade(leafMid, -28))
       pair = 0
       while (pair < pairs) {
-        stepY = height / pairs
-        if (stepY < 3.0) { stepY = 3.0 }
-        y = rim - 4.0 - pair * stepY
+        y = rim - 4.0 - pair * max(3.0, height / pairs)
         size = 4.4 - 0.8 * (pair % 2)
         side = -1
         if (pair % 2 == 1) { side = 1 }
@@ -132,9 +130,7 @@ asset flower {
       rect(31.0, crown + 58, 2.0, rim - crown - 2, shade(leafMid, -24))
       pair = 0
       while (pair < pairs) {
-        stepY = height / (pairs + 1)
-        if (stepY < 3.0) { stepY = 3.0 }
-        y = rim - 5.0 - pair * stepY
+        y = rim - 5.0 - pair * max(3.0, height / (pairs + 1))
         side = -1
         if (pair % 2 == 1) { side = 1 }
         lx = side * 3.4

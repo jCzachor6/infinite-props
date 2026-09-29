@@ -73,6 +73,13 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::F32ToI32: return "f32.to.i32";
     case Opcode::F32Sin: return "f32.sin";
     case Opcode::F32Cos: return "f32.cos";
+    case Opcode::F32Floor: return "f32.floor";
+    case Opcode::F32Ceil: return "f32.ceil";
+    case Opcode::F32Min: return "f32.min";
+    case Opcode::F32Max: return "f32.max";
+    case Opcode::F32Pow: return "f32.pow";
+    case Opcode::F32Exp: return "f32.exp";
+    case Opcode::F32Atan2: return "f32.atan2";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

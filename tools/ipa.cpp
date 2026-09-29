@@ -102,6 +102,10 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"f32.neg", {Opcode::F32Neg}}, {"f32.abs", {Opcode::F32Abs}},
         {"f32.sqrt", {Opcode::F32Sqrt}},
         {"f32.sin", {Opcode::F32Sin}}, {"f32.cos", {Opcode::F32Cos}},
+        {"f32.floor", {Opcode::F32Floor}}, {"f32.ceil", {Opcode::F32Ceil}},
+        {"f32.min", {Opcode::F32Min}}, {"f32.max", {Opcode::F32Max}},
+        {"f32.pow", {Opcode::F32Pow}}, {"f32.exp", {Opcode::F32Exp}},
+        {"f32.atan2", {Opcode::F32Atan2}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},

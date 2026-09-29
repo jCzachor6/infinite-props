@@ -361,6 +361,105 @@ asset t {
     CHECK_NOTHROW(validate(loaded));
 }
 
+TEST_CASE("the math builtins compile and match the hand-assembled reference") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+  draw(v: i32, a: i32) {
+    f = floor(1.5) + ceil(-1.5)
+    g = max(2.5, 3.0) + min(2.5, 3.0)
+    h = exp(0.0)
+    k = atan2(1.0, 1.0)
+    b = abs(-1.5)
+    p = {f + g + h + k + b, 0}
+  }
+})";
+    const auto loaded = loadFile(compileChecked(source));
+    CHECK_NOTHROW(validate(loaded));
+    const auto result = run(compileChecked(source), 0, 0);
+    // floor(1.5)=1, ceil(-1.5)=-1, max=3, min=2.5, exp(0)=1, atan2(1,1)=pi/4,
+    // abs=1.5 — the sum: 1-1+3+2.5+1+0.7854+1.5 = 8.7854.
+    REQUIRE(std::fabs(result.outputs[0].points[0].x - 8.785398f) < 1e-5f);
+}
+
+TEST_CASE("the math builtins emit the pinned opcodes") {
+    // The .ipa reference now speaks f32.floor/ceil/min/max/pow/exp/atan2;
+    // the .ips builtins must produce identical pixels.
+    const std::string source = R"(
+asset t {
+  size 8x8
+  draw(v: i32, a: i32) {
+    pixel(i32trunc(floor(2.7)), 0, #ff0000)
+    pixel(i32trunc(ceil(2.1)), 0, #00ff00)
+    pixel(i32trunc(min(1.5, 2.0)), 0, #0000ff)
+    pixel(i32trunc(max(1.5, 2.0)), 0, #ffff00)
+    pixel(i32trunc(pow(2.0, 3.0)), 0, #ff00ff)
+    pixel(i32trunc(exp(0.0)), 0, #00ffff)
+    pixel(i32trunc(atan2(1.0, 1.0) * 4.0), 0, #ffffff)
+  }
+})";
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+fn draw ( i32, i32 ) -> ( ):
+  const.f32 2.7
+  f32.floor
+  f32.to.i32
+  const.i32 0
+  const.color #ff0000
+  pixel
+  const.f32 2.1
+  f32.ceil
+  f32.to.i32
+  const.i32 0
+  const.color #00ff00
+  pixel
+  const.f32 1.5
+  const.f32 2.0
+  f32.min
+  f32.to.i32
+  const.i32 0
+  const.color #0000ff
+  pixel
+  const.f32 1.5
+  const.f32 2.0
+  f32.max
+  f32.to.i32
+  const.i32 0
+  const.color #ffff00
+  pixel
+  const.f32 2.0
+  const.f32 3.0
+  f32.pow
+  f32.to.i32
+  const.i32 0
+  const.color #ff00ff
+  pixel
+  const.f32 0.0
+  f32.exp
+  f32.to.i32
+  const.i32 0
+  const.color #00ffff
+  pixel
+  const.f32 1.0
+  const.f32 1.0
+  f32.atan2
+  const.f32 4.0
+  f32.mul
+  f32.to.i32
+  const.i32 0
+  const.color #ffffff
+  pixel
+endfn
+)";
+    const auto fromIps = run(compileChecked(source), 0, 0);
+    const auto fromIpa = run(assemble(ipa), 0, 0);
+    for (std::size_t i = 0; i < fromIps.canvas.pixels.size(); ++i) {
+        INFO("pixel " << i);
+        REQUIRE(fromIps.canvas.pixels[i] == fromIpa.canvas.pixels[i]);
+    }
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));

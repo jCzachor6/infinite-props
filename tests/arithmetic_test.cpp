@@ -239,6 +239,174 @@ TEST_CASE("the pinned sine agrees with libm to within 1 ulp on a grid") {
     }
 }
 
+TEST_CASE("the math package matches the pinned algorithm bit for bit") {
+    // Spec §12.8: floor/ceil are the IEEE operations; exp/pow/atan2 are the
+    // pinned double-precision polynomials. The bit patterns below are the
+    // frozen outputs — regenerate only with a spec update.
+    const f32 nan = std::numeric_limits<f32>::quiet_NaN();
+
+    struct Unary {
+        u32 input;
+        u32 expected;
+    };
+    const Unary expCases[] = {
+        {0x00000000u, 0x3F800000u}, // exp(0)
+        {0x3F800000u, 0x402DF854u}, // exp(1)
+        {0xBF800000u, 0x3EBC5AB2u}, // exp(-1)
+        {0x3F000000u, 0x3FD3094Cu}, // exp(0.5)
+        {0x40000000u, 0x40EC7326u}, // exp(2)
+        {0x3F317218u, 0x40000000u}, // exp(ln2) = 2 exactly
+        {0x40C90FDBu, 0x4405DF79u}, // exp(pi)
+        {0x42C80000u, 0x7F800000u}, // exp(100) overflows f32
+        {0x43000000u, 0x7F800000u}, // exp(128)
+        {0x42FE0000u, 0x7F800000u}, // exp(127)
+        {0x7F800000u, 0x7F800000u}, // exp(+inf)
+        {0xFF800000u, 0x00000000u}, // exp(-inf)
+        {0x7FC00000u, 0x7FC00000u}, // exp(NaN)
+    };
+    for (const Unary& testCase : expCases) {
+        INFO("exp input 0x" << std::hex << testCase.input);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.input)).emit(0x59))) ==
+                testCase.expected);
+    }
+
+    struct Binary {
+        u32 a;
+        u32 b;
+        u32 expected;
+    };
+    const Binary powCases[] = {
+        {0x40000000u, 0x41200000u, 0x44800000u}, // 2^10
+        {0x40000000u, 0xC0000000u, 0x3E800000u}, // 2^-2
+        {0x40000000u, 0x3F000000u, 0x3FB504F3u}, // 2^0.5 = sqrt(2)
+        {0x3F000000u, 0x40400000u, 0x3E000000u}, // 0.5^3
+        {0xC0000000u, 0x40400000u, 0xC1000000u}, // (-2)^3
+        {0xC0000000u, 0x40000000u, 0x40800000u}, // (-2)^2
+        {0xC0000000u, 0x3F000000u, 0x7FC00000u}, // (-2)^0.5 -> NaN
+        {0x00000000u, 0x40400000u, 0x00000000u}, // 0^3
+        {0x00000000u, 0xC0400000u, 0x7F800000u}, // 0^-3
+        {0x80000000u, 0x40400000u, 0x80000000u}, // (-0)^3 = -0
+        {0x80000000u, 0x40000000u, 0x00000000u}, // (-0)^2 = +0
+        {0x3F800000u, 0x447A0000u, 0x3F800000u}, // 1^1000
+        {0x7F800000u, 0x40000000u, 0x7F800000u}, // inf^2
+        {0x7F800000u, 0xC0000000u, 0x00000000u}, // inf^-2
+        {0xFF800000u, 0x40400000u, 0xFF800000u}, // (-inf)^3
+        {0xFF800000u, 0x40000000u, 0x7F800000u}, // (-inf)^2
+        {0x40490FDBu, 0x40000000u, 0x411DE9E7u}, // pi^2
+        {0x3F317218u, 0x40000000u, 0x3EF5FDF0u}, // ln2^2
+        {0x40A00000u, 0x00000000u, 0x3F800000u}, // 5^0 = 1
+        {0x7FC00000u, 0x00000000u, 0x3F800000u}, // NaN^0 = 1
+    };
+    for (const Binary& testCase : powCases) {
+        INFO("pow 0x" << std::hex << testCase.a << " ^ 0x" << testCase.b);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.a))
+                                           .F(f32FromBits(testCase.b))
+                                           .emit(0x58))) == testCase.expected);
+    }
+
+    const Binary atan2Cases[] = {
+        {0x3F800000u, 0x3F800000u, 0x3F490FDBu}, // (1,1) pi/4
+        {0x3F800000u, 0xBF800000u, 0x4016CBE4u}, // (1,-1) 3pi/4
+        {0xBF800000u, 0x3F800000u, 0xBF490FDBu}, // (-1,1) -pi/4
+        {0xBF800000u, 0xBF800000u, 0xC016CBE4u}, // (-1,-1) -3pi/4
+        {0x00000000u, 0x3F800000u, 0x00000000u}, // (0,1)
+        {0x00000000u, 0xBF800000u, 0x40490FDBu}, // (0,-1) pi
+        {0x80000000u, 0xBF800000u, 0xC0490FDBu}, // (-0,-1) -pi
+        {0x3F800000u, 0x00000000u, 0x3FC90FDBu}, // (1,0) pi/2
+        {0xBF800000u, 0x00000000u, 0xBFC90FDBu}, // (-1,0) -pi/2
+        {0x3F000000u, 0x3F000000u, 0x3F490FDBu}, // (0.5,0.5)
+        {0x3F000000u, 0xBF000000u, 0x4016CBE4u}, // (0.5,-0.5)
+        {0x40490FDBu, 0x40490FDBu, 0x3F490FDBu}, // (pi,pi)
+        {0x3F800000u, 0x7F800000u, 0x00000000u}, // (1,inf)
+        {0x7F800000u, 0x3F800000u, 0x3FC90FDBu}, // (inf,1)
+        {0x7F800000u, 0x7F800000u, 0x3F490FDBu}, // (inf,inf)
+        {0x7F800000u, 0xFF800000u, 0x4016CBE4u}, // (inf,-inf)
+        {0xFF800000u, 0x7F800000u, 0xBF490FDBu}, // (-inf,inf)
+        {0xFF800000u, 0x3F800000u, 0xBFC90FDBu}, // (-inf,1)
+        {0x3F800000u, 0xFF800000u, 0x40490FDBu}, // (1,-inf)
+        {0xBF800000u, 0xFF800000u, 0xC0490FDBu}, // (-1,-inf)
+        {0x00000000u, 0x00000000u, 0x00000000u}, // (0,0)
+        {0x80000000u, 0x80000000u, 0x80000000u}, // (-0,-0)
+    };
+    for (const Binary& testCase : atan2Cases) {
+        INFO("atan2 0x" << std::hex << testCase.a << ", 0x" << testCase.b);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.a))
+                                           .F(f32FromBits(testCase.b))
+                                           .emit(0x5A))) == testCase.expected);
+    }
+
+    // floor/ceil are the IEEE operations.
+    const Unary floorCases[] = {
+        {0x3FC00000u, 0x3F800000u}, // floor(1.5)
+        {0xBFC00000u, 0xC0000000u}, // floor(-1.5)
+        {0x40000000u, 0x40000000u}, // floor(2)
+        {0x7FC00000u, 0x7FC00000u}, // floor(NaN)
+        {0x7F800000u, 0x7F800000u}, // floor(+inf)
+    };
+    for (const Unary& testCase : floorCases) {
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.input)).emit(0x54))) ==
+                testCase.expected);
+    }
+    const Unary ceilCases[] = {
+        {0x3FC00000u, 0x40000000u}, // ceil(1.5)
+        {0xBFC00000u, 0xBF800000u}, // ceil(-1.5)
+    };
+    for (const Unary& testCase : ceilCases) {
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.input)).emit(0x55))) ==
+                testCase.expected);
+    }
+
+    // min/max: minNum/maxNum semantics (NaN ignored unless both are NaN).
+    REQUIRE(std::isnan(evalProgF32(Prog{}.F(nan).F(1.f).emit(0x56))) == false);
+    REQUIRE(evalProgF32(Prog{}.F(nan).F(1.f).emit(0x56)) == 1.f);
+    REQUIRE(evalProgF32(Prog{}.F(1.f).F(nan).emit(0x56)) == 1.f);
+    REQUIRE(std::isnan(evalProgF32(Prog{}.F(nan).F(nan).emit(0x56))));
+    REQUIRE(std::isnan(evalProgF32(Prog{}.F(nan).F(nan).emit(0x57))));
+    // -0 < +0 for the ordering.
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).emit(0x56))) == 0x80000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).emit(0x57))) == 0x00000000u);
+}
+
+TEST_CASE("the math package agrees with libm within the pinned tolerance") {
+    const auto ulp = [](f32 a, f32 b) {
+        if (std::isnan(a) && std::isnan(b)) {
+            return 0u;
+        }
+        if (std::isinf(a) && std::isinf(b) && std::signbit(a) == std::signbit(b)) {
+            return 0u;
+        }
+        const u32 x = bitsOf(a);
+        const u32 y = bitsOf(b);
+        return x > y ? x - y : y - x;
+    };
+    for (u32 i = 0; i < 2000; ++i) {
+        const u32 bits = i * 2654435761u + 0x9e3779b9u;
+        f32 value = f32FromBits((bits & 0x7FFFFFu) | 0x3F000000u); // in [0.5, 1)
+        value *= (i % 2 == 0 ? 1.f : -1.f);
+        value *= (i % 17 == 0 ? 8.f : 1.f);
+        const f32 gotExp = evalProgF32(Prog{}.F(value).emit(0x59));
+        const f32 wantExp = std::exp(value);
+        REQUIRE(ulp(gotExp, wantExp) <= 1u);
+
+        // pow over positive bases and moderate exponents.
+        const f32 base = 0.25f + f32FromBits(bits & 0x3FFFFFu) * 0.5f;
+        const f32 exponent = f32FromBits((bits >> 8) & 0x3FFFFFu) * 2.f - 4.f;
+        const f32 gotPow = evalProgF32(Prog{}.F(base).F(exponent).emit(0x58));
+        const f32 wantPow = std::pow(base, exponent);
+        REQUIRE(ulp(gotPow, wantPow) <= 2u);
+
+        // atan2 over the full circle.
+        const f32 y = f32FromBits(bits & 0x7FFFFFu) * 8.f - 4.f;
+        const f32 x = f32FromBits((bits >> 16) & 0x7FFFFFu) * 8.f - 4.f;
+        if (x == 0.f && y == 0.f) {
+            continue;
+        }
+        const f32 gotAtan = evalProgF32(Prog{}.F(y).F(x).emit(0x5A));
+        const f32 wantAtan = std::atan2(y, x);
+        REQUIRE(ulp(gotAtan, wantAtan) <= 1u);
+    }
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});
