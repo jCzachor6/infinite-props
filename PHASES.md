@@ -29,7 +29,7 @@ the boxes.
 | 14 | CLI tool `ipgen` | B. Interpreter | ✅ |
 | 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ✅ |
 | 16 | Golden test suite + CI | B. Interpreter | ✅ |
-| 17 | `.ips` lexer | C. Language & compiler | ⬜ |
+| 17 | `.ips` lexer | C. Language & compiler | ✅ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ⬜ |
 | 19 | Semantic analysis | C. Language & compiler | ⬜ |
 | 20 | Code generation → `.iprop` | C. Language & compiler | ⬜ |
@@ -400,16 +400,16 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** tokenization with source locations.
 
 **Work:**
-1. Token kinds per the sketch in `README.md` §7.2 (keywords, identifiers, numbers incl. hex colours, strings, operators, braces, comments).
-2. Line/column tracking; error messages with positions.
-3. Tests: full token stream of the sketch files, unterminated string, bad number, comment handling.
+1. `language/ips/Lexer.hpp` + `language/ips/Lexer.cpp` (new `language/` directory, `ips_lang` library): token kinds for keywords (`asset`, `input`, `output`, `import`, `from`, `draw`, `at`, `if/else/while/return`, `true/false`, `list`), type names, output kinds, integer/float/colour/string literals, all operators and punctuation, `//` and `/* */` comments.
+2. 1-based line/column tracking on every token; `LexError` with locations and a `formatError` caret-snippet renderer shared with later phases.
+3. Tests: the `README.md` §7.2 rock/portrait sketches tokenize, literal forms (hex, floats, exponents), escapes, comment skipping with exact locations, and a located-error battery.
 
-**Deliverables:** `src/lang/Lexer.*` + tests.
+**Deliverables:** `language/ips/Lexer.hpp`, `language/ips/Lexer.cpp`, `tests/lexer_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] The `README.md` §7.2 sketches tokenize into the expected stream.
-- [ ] Every error carries line/column and a caret-style snippet.
-- [ ] Comments and whitespace are skipped deterministically.
+- [x] The `README.md` §7.2 sketches tokenize into the expected stream.
+- [x] Every error carries line/column and a caret-style snippet.
+- [x] Comments and whitespace are skipped deterministically.
 
 ---
 

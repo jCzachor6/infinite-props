@@ -12,6 +12,7 @@ endif()
 add_executable(iprop_tests
     smoke_test.cpp
     stb_image_impl.cpp
+    lexer_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp
@@ -36,6 +37,7 @@ target_link_libraries(iprop_tests PRIVATE
     ipgen_lib
     ipa_lib
     ipsheet_lib
+    ips_lang
     Catch2::Catch2WithMain)
 
 target_include_directories(iprop_tests SYSTEM PRIVATE

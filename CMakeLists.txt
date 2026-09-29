@@ -17,6 +17,7 @@ option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)
 # Directory layout follows README.md §14: each component is a top-level
 # directory (runtime/, tools/, language/, compiler/, backends/, ...).
 add_subdirectory(runtime)
+add_subdirectory(language)
 add_subdirectory(tools)
 
 if(IPROP_BUILD_TESTS)
