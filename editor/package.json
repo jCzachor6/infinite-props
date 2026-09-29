@@ -43,6 +43,10 @@
       {
         "command": "iprop.preview",
         "title": "iprop: Open Preview"
+      },
+      {
+        "command": "iprop.reloadPreview",
+        "title": "iprop: Reload Preview"
       }
     ],
     "configuration": {

@@ -11,17 +11,41 @@ const fs = require("fs");
 const os = require("os");
 
 let diagnostics;
+let log;
 
 // ---- the compiler and renderer binaries -------------------------------------
 
 function toolBinary(configKey, toolName) {
     const configured = vscode.workspace.getConfiguration("iprop").get(configKey);
-    if (configured) return configured;
-    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (workspace) {
-        const candidate = path.join(workspace, "build", "tools", toolName);
-        if (fs.existsSync(candidate)) return candidate;
+    if (configured) {
+        log.appendLine("tool " + toolName + ": configured path " + configured);
+        return configured;
     }
+    const candidates = [];
+    // 1. The workspace root (the repository opened directly).
+    const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (workspace) candidates.push(path.join(workspace, "build", "tools", toolName));
+    // 2. Walk up from the entry file (or the active editor): the repository
+    //    may be opened at a subfolder (e.g. examples/), while the toolchain
+    //    lives at the repository root's build/tools. The active editor is
+    //    undefined while the preview panel has focus, hence the state.
+    const editor = vscode.window.activeTextEditor;
+    const from = editor ? path.dirname(editor.document.fileName)
+                        : (previewState.entry ? path.dirname(previewState.entry) : null);
+    let dir = from;
+    while (dir) {
+        candidates.push(path.join(dir, "build", "tools", toolName));
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+    }
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            log.appendLine("tool " + toolName + ": " + candidate);
+            return candidate;
+        }
+    }
+    log.appendLine("tool " + toolName + ": NOT FOUND (tried " + candidates.join(", ") + ")");
     return null;
 }
 
@@ -86,8 +110,9 @@ function compileActive() {
 
 // ---- the preview panel (Phase 29) -----------------------------------------------
 
-const previewState = { seed: 0, variant: 0, archetype: 0, uniforms: {} };
+const previewState = { seed: 0, variant: 0, archetype: 0, uniforms: {}, entry: null, compiled: false };
 let previewPanel = null;
+let renderTimer = null;
 
 function previewHtml() {
     return `<!doctype html>
@@ -131,6 +156,7 @@ function previewHtml() {
     const value = document.getElementById(valueId);
     slider.addEventListener("input", () => {
       value.value = slider.value;
+      document.getElementById("status").textContent = "rendering " + kind + " " + slider.value + "…";
       vscode.postMessage({ type: "slider", kind, value: parseInt(slider.value, 10) });
     });
     value.addEventListener("change", () => {
@@ -149,6 +175,15 @@ function previewHtml() {
     if (message.type === "render") {
       document.getElementById("preview").src = "data:image/png;base64," + message.png;
       const json = JSON.parse(message.json);
+      // Clamp the sliders to the declared ranges.
+      const variantSlider = document.getElementById("variant-slider");
+      const variantValue = document.getElementById("variant-value");
+      variantSlider.max = json.variants - 1;
+      variantValue.max = json.variants - 1;
+      const archetypeSlider = document.getElementById("archetype-slider");
+      const archetypeValue = document.getElementById("archetype-value");
+      archetypeSlider.max = json.archetypes - 1;
+      archetypeValue.max = json.archetypes - 1;
       status.textContent = "fuel: " + json.fuel.spent + " / " + json.fuel.budget;
       status.className = "";
       outputs.textContent = json.outputs.map((o) =>
@@ -173,6 +208,13 @@ function previewHtml() {
     } else if (message.type === "compiling") {
       status.textContent = "compiling…";
       status.className = "";
+    } else if (message.type === "clamp") {
+      const slider = document.getElementById(message.kind + "-slider");
+      const value = document.getElementById(message.kind + "-value");
+      if (slider && value) {
+        slider.value = 0;
+        value.value = 0;
+      }
     } else if (message.type === "error") {
       status.textContent = message.message;
       status.className = "error";
@@ -188,47 +230,105 @@ function post(message) {
     if (previewPanel) previewPanel.webview.postMessage(message);
 }
 
-function renderPreview() {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.languageId !== "ips") return;
-    const compiler = compilerBinary();
+function previewPaths() {
+    const tmp = os.tmpdir();
+    return { ipropPath: path.join(tmp, "iprop-preview.iprop"), pngPath: path.join(tmp, "iprop-preview.png") };
+}
+
+// Renders the already-compiled .iprop with the current controls. Slider and
+// uniform changes take this path (no recompilation), debounced so a drag
+// does not pile up concurrent renders. Deliberately does NOT read the
+// active editor: it is undefined while the preview panel has focus.
+function renderOnly() {
     const renderer = rendererBinary();
-    if (!compiler || !renderer) {
-        post({ type: "error", message: "iprop: compiler/renderer not found — set iprop.compilerPath/iprop.rendererPath or build the toolchain" });
+    if (!renderer) {
+        post({ type: "error", message: "iprop: renderer not found — set iprop.rendererPath or build the toolchain" });
         return;
     }
-    const entry = editor.document.fileName;
-    const cwd = path.dirname(entry);
-    const tmp = os.tmpdir();
-    const ipropPath = path.join(tmp, "iprop-preview.iprop");
-    const pngPath = path.join(tmp, "iprop-preview.png");
+    const { ipropPath, pngPath } = previewPaths();
+    if (!previewState.compiled || !fs.existsSync(ipropPath)) {
+        compileAndRender();
+        return;
+    }
+    const args = [ipropPath, "--seed", String(previewState.seed >>> 0),
+        "--variant", String(previewState.variant), "--archetype", String(previewState.archetype),
+        "-o", pngPath];
+    for (const [name, value] of Object.entries(previewState.uniforms)) {
+        args.push("--uniform", name + "=" + value);
+    }
+    log.appendLine("render: " + renderer + " " + args.slice(1).join(" "));
+    execFile(renderer, args, { timeout: 15000 }, (renderError, stdout, renderStderr) => {
+        if (renderError) {
+            log.appendLine("render failed: " + (renderStderr || renderError.message));
+            const detail = renderStderr || "";
+            if (detail.includes("variant index out of range")) {
+                previewState.variant = 0;
+                post({ type: "clamp", kind: "variant" });
+                renderOnly();
+                return;
+            }
+            if (detail.includes("archetype index out of range")) {
+                previewState.archetype = 0;
+                post({ type: "clamp", kind: "archetype" });
+                renderOnly();
+                return;
+            }
+            post({ type: "error", message: detail || "generation failed" });
+            return;
+        }
+        try {
+            const png = fs.readFileSync(pngPath).toString("base64");
+            post({ type: "render", png, json: stdout });
+        } catch {
+            post({ type: "error", message: "cannot read the rendered PNG" });
+        }
+    });
+}
 
+// Compiles the active .ips file (or the remembered entry when the panel has
+// focus), then renders. Edits take this path.
+function compileAndRender() {
+    const editor = vscode.window.activeTextEditor;
+    const entry = editor && editor.document.fileName.endsWith(".ips")
+        ? editor.document.fileName
+        : previewState.entry;
+    if (!entry) {
+        post({ type: "error", message: "iprop: open a .ips file to preview it" });
+        return;
+    }
+    const compiler = compilerBinary();
+    if (!compiler) {
+        post({ type: "error", message: "iprop: compiler not found — set iprop.compilerPath or build the toolchain" });
+        return;
+    }
+    const cwd = path.dirname(entry);
+    const { ipropPath, pngPath } = previewPaths();
+
+    // A failed compile must not leave a stale binary behind: remove the
+    // previous outputs so a broken edit cannot show an old image.
+    try { fs.unlinkSync(ipropPath); } catch {}
+    try { fs.unlinkSync(pngPath); } catch {}
+
+    log.appendLine("compile: " + compiler + " " + entry);
     post({ type: "compiling" });
     execFile(compiler, [entry, "-o", ipropPath], { cwd, timeout: 15000 }, (compileError, _out, stderr) => {
         if (compileError || !fs.existsSync(ipropPath)) {
+            previewState.compiled = false;
             const summary = stderr.split("\n").filter((l) => l.includes("error:")).join("\n") || "compilation failed";
             post({ type: "error", message: summary });
             return;
         }
-        const args = [ipropPath, "--seed", String(previewState.seed >>> 0),
-            "--variant", String(previewState.variant), "--archetype", String(previewState.archetype),
-            "-o", pngPath];
-        for (const [name, value] of Object.entries(previewState.uniforms)) {
-            args.push("--uniform", name + "=" + value);
-        }
-        execFile(renderer, args, { timeout: 15000 }, (renderError, stdout, renderStderr) => {
-            if (renderError) {
-                post({ type: "error", message: renderStderr || "generation failed" });
-                return;
-            }
-            try {
-                const png = fs.readFileSync(pngPath).toString("base64");
-                post({ type: "render", png, json: stdout });
-            } catch {
-                post({ type: "error", message: "cannot read the rendered PNG" });
-            }
-        });
+        previewState.compiled = true;
+        previewState.entry = entry;
+        renderOnly();
     });
+}
+
+// Debounced render for the sliders and uniforms: short enough to feel
+// continuous while dragging, long enough to coalesce the drag events.
+function scheduleRender() {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(renderOnly, 100);
 }
 
 function openPreview() {
@@ -242,22 +342,42 @@ function openPreview() {
     previewPanel.webview.html = previewHtml();
     previewPanel.onDidDispose(() => { previewPanel = null; });
     previewPanel.webview.onDidReceiveMessage((message) => {
+        log.appendLine("message: " + JSON.stringify(message));
         if (message.type === "slider") {
             if (message.kind === "seed") previewState.seed = message.value >>> 0;
             if (message.kind === "variant") previewState.variant = message.value >>> 0;
             if (message.kind === "archetype") previewState.archetype = message.value >>> 0;
-            renderPreview();
+            scheduleRender();
         } else if (message.type === "uniform") {
             previewState.uniforms[message.name] = message.value;
-            renderPreview();
+            scheduleRender();
         }
     });
-    renderPreview();
+    compileAndRender();
 }
 
 // ---- activation ---------------------------------------------------------------------
 
+// A clickable "preview" lens above every `asset <name> {` declaration.
+class IpsCodeLensProvider {
+    provideCodeLenses(document) {
+        const lenses = [];
+        for (let i = 0; i < document.lineCount; ++i) {
+            const match = document.lineAt(i).text.match(/^\s*asset\s+(\w+)\s*\{/);
+            if (match) {
+                lenses.push(new vscode.CodeLens(new vscode.Range(i, 0, i, 0), {
+                    title: "$(play) Preview " + match[1],
+                    command: "iprop.preview",
+                }));
+            }
+        }
+        return lenses;
+    }
+}
+
 function activate(context) {
+    log = vscode.window.createOutputChannel("iprop");
+    context.subscriptions.push(log);
     diagnostics = vscode.languages.createDiagnosticCollection("iprop");
     context.subscriptions.push(diagnostics);
 
@@ -265,17 +385,26 @@ function activate(context) {
         vscode.commands.registerCommand("iprop.compile", compileActive));
     context.subscriptions.push(
         vscode.commands.registerCommand("iprop.preview", openPreview));
+    context.subscriptions.push(
+        vscode.languages.registerCodeLensProvider({ language: "ips" },
+            new IpsCodeLensProvider()));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.reloadPreview", () => {
+            log.appendLine("manual reload requested");
+            if (previewPanel) compileAndRender();
+            else openPreview();
+        }));
 
     let timer = null;
     const schedule = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
             compileActive();
-            if (previewPanel) renderPreview();
+            if (previewPanel) compileAndRender();
         }, 500);
     };
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((e) => {
-        if (e.document.languageId === "ips") schedule();
+        if (e.document.fileName.endsWith(".ips")) schedule();
     }));
     context.subscriptions.push(
         vscode.window.onDidChangeActiveTextEditor(() => schedule()));
