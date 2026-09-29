@@ -17,6 +17,10 @@ external edits).
   errors in imported parts.
 - The active `.ips` file is treated as the entry asset; imports resolve
   relative to its folder.
+- **Live preview** (Cmd+Shift+P → *iprop: Open Preview*): a side panel with
+  the pixel-exact render, seed/variant/archetype sliders, uniform editors
+  for the declared inputs, the fuel readout and the structured outputs. A
+  debounced compile-on-edit refreshes it; compile errors show as an overlay.
 
 ## Install
 
@@ -30,9 +34,10 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 
 ## Requirements
 
-- The compiled compiler: `build/tools/ipc` in the workspace root (build the
-  desktop toolchain: `cmake --build build`). Override the location with the
-  `iprop.compilerPath` setting.
+- The compiled tools: `build/tools/ipc` and `build/tools/ipgen` in the
+  workspace root (build the desktop toolchain: `cmake --build build`).
+  Override the locations with the `iprop.compilerPath`/`iprop.rendererPath`
+  settings.
 
 ## Layout
 

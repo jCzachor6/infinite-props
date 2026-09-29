@@ -276,13 +276,38 @@ int ipgenMain(int argc, char* argv[]) {
         return fail("cannot write PNG '" + pngPath + "'");
     }
 
-    // Result JSON to stdout.
+    // Result JSON to stdout: the declared inputs (for uniform editors), the
+    // fuel readout and the structured outputs.
     std::ostringstream json;
     json << "{\n  \"seed\": " << options.seed << ",\n  \"variant\": " << options.variant
          << ",\n  \"archetype\": " << options.archetype << ",\n  \"size\": {\"x\": "
          << canvas.width << ", \"y\": " << canvas.height
          << "},\n  \"fuel\": {\"budget\": " << budget
-         << ", \"spent\": " << spent << "},\n  \"outputs\": [";
+         << ", \"spent\": " << spent << "},\n  \"inputs\": [";
+    for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
+        if (i != 0) {
+            json << ",";
+        }
+        const InputDecl& input = loaded.meta.inputs[i];
+        json << "\n    {\"name\": \"" << loaded.pool.strings.at(input.nameIndex) << "\", \"type\": \"";
+        switch (input.type) {
+        case InputType::Color: {
+            const Color& c = input.colorDefault;
+            char hex[16];
+            std::snprintf(hex, sizeof(hex), "#%02x%02x%02x%02x", c.r, c.g, c.b, c.a);
+            json << "color\", \"default\": \"" << hex << "\"";
+            break;
+        }
+        case InputType::F32:
+            json << "f32\", \"default\": " << input.f32Default;
+            break;
+        case InputType::U32:
+            json << "u32\", \"default\": " << input.u32Default;
+            break;
+        }
+        json << "}";
+    }
+    json << "\n  ],\n  \"outputs\": [";
     for (std::size_t i = 0; i < result.outputs.size(); ++i) {
         if (i != 0) {
             json << ",";

@@ -41,7 +41,7 @@ the boxes.
 | 26 | OpenGL backend host | D. Backends | ⬜ |
 | 27 | Vulkan backend host | D. Backends | ⬜ |
 | 28 | IDE: editor | E. IDE | ✅ |
-| 29 | IDE: live preview & seed controls | E. IDE | ⬜ |
+| 29 | IDE: live preview & seed controls | E. IDE | ✅ |
 | 30 | IDE: atlas browser & bytecode inspector | E. IDE | ⬜ |
 | 31 | IDE: export & polish | E. IDE | ⬜ |
 | 32 | Website: playground | F. Website & release | ⬜ |
@@ -636,16 +636,21 @@ agents and real files):**
 **Goal:** instant visual feedback.
 
 **Work:**
-1. Compile-on-save → run in WASM → preview canvas with pixel-exact rendering.
-2. Seed/variant/archetype sliders; uniform editors for declared inputs.
-3. Debounced rebuild with error overlay.
+1. `iprop.preview` opens a WebView panel: compile-on-edit through the native
+   `ipc` (with `-o` into a temp `.iprop`), render through `ipgen` into a
+   temp PNG, show the pixel-exact image (the reference renderer) plus the
+   fuel readout and the structured outputs.
+2. Seed/variant/archetype sliders (range + numeric input) and **uniform
+   editors** built from the declared inputs — `ipgen`'s result JSON now
+   lists the inputs (name/type/default) for that.
+3. Debounced rebuild with a compile-error overlay in the panel.
 
-**Deliverables:** preview pane + controls.
+**Deliverables:** the preview panel + controls in the VS Code extension.
 
 **Acceptance criteria:**
-- [ ] Editing `rock.ips` updates the preview without manual reload.
-- [ ] Seed slider changes regenerate deterministically (same seed → same pixels).
-- [ ] Compile errors render as an overlay with locations.
+- [x] Editing `.ips` updates the preview without manual reload.
+- [x] Seed slider changes regenerate deterministically (same seed → same pixels — the native renderer).
+- [x] Compile errors render as an overlay with locations.
 
 ---
 

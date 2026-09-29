@@ -4,16 +4,27 @@
   "description": "The .ips authoring tools: syntax highlighting and inline diagnostics from the compiler. Edit files, run CLI agents in the integrated terminal.",
   "version": "0.1.0",
   "publisher": "iprop",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Programming Languages"],
-  "activationEvents": ["onLanguage:ips"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:ips"
+  ],
   "main": "./extension.js",
   "contributes": {
     "languages": [
       {
         "id": "ips",
-        "extensions": [".ips"],
-        "aliases": ["iprop Source", "ips"],
+        "extensions": [
+          ".ips"
+        ],
+        "aliases": [
+          "iprop Source",
+          "ips"
+        ],
         "configuration": "./language-configuration.json"
       }
     ],
@@ -25,7 +36,14 @@
       }
     ],
     "commands": [
-      { "command": "iprop.compile", "title": "iprop: Compile" }
+      {
+        "command": "iprop.compile",
+        "title": "iprop: Compile"
+      },
+      {
+        "command": "iprop.preview",
+        "title": "iprop: Open Preview"
+      }
     ],
     "configuration": {
       "title": "iprop",
@@ -34,6 +52,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the ipc compiler binary. Defaults to <workspace>/build/tools/ipc."
+        },
+        "iprop.rendererPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ipgen renderer binary. Defaults to <workspace>/build/tools/ipgen."
         }
       }
     }
