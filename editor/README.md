@@ -34,6 +34,9 @@ npm install
 npm install-scripts approve node-pty esbuild electron
 npm run rebuild        # node-pty for the Electron ABI (node-gyp 11 is
                        # used, so Python 3.12+ works without distutils)
+# macOS Gatekeeper blocks the npm-downloaded Electron binary; lift the
+# quarantine once:
+xattr -dr com.apple.quarantine node_modules/electron/dist/Electron.app
 npm run dev            # build the renderer and launch the app
 ```
 
