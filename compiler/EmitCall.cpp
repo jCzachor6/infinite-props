@@ -52,6 +52,15 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         ins(Opcode::RngUnit);
         return VT::F32;
     }
+    if (name == "stream_push") {
+        emitArg(call.args[0], VT::I32);
+        ins(Opcode::StreamPush);
+        return VT::Void;
+    }
+    if (name == "stream_pop") {
+        ins(Opcode::StreamPop);
+        return VT::Void;
+    }
     if (name == "range") {
         emitArg(call.args[0], VT::F32);
         emitArg(call.args[1], VT::F32);
@@ -67,6 +76,7 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::Fault);
     }
     if (name == "smooth") return emitFixed({VT::F32}, Opcode::Smooth);
+    if (name == "sqrt") return emitFixed({VT::F32}, Opcode::F32Sqrt);
     if (name == "lerp") {
         return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Lerp);
     }

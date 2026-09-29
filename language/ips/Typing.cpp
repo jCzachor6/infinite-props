@@ -30,12 +30,15 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
     using V = ValueType;
     static const std::map<std::string, BuiltinSignature> table = {
         {"unit", {{}, V::F32}},
+        {"stream_push", {{V::I32}, V::Void}},
+        {"stream_pop", {{}, V::Void}},
         {"range", {{V::F32, V::F32}, V::F32}},
         {"index", {{V::I32}, V::I32}},
         {"hash", {{V::I32}, V::I32}},
         {"noise", {{V::F32, V::F32, V::I32}, V::F32}},
         {"fault", {{V::F32, V::F32, V::I32}, V::F32}},
         {"smooth", {{V::F32}, V::F32}},
+        {"sqrt", {{V::F32}, V::F32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
         {"mix", {{V::Color, V::Color, V::F32}, V::Color}},
         {"shade", {{V::Color, V::I32}, V::Color}},

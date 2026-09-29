@@ -14,6 +14,11 @@
 
 #include "ipa.hpp"
 
+#include "Compiler.hpp"
+
+#include "ips/Parser.hpp"
+#include "ips/Semantics.hpp"
+
 #include "iprop/VM.hpp"
 
 // The golden corpus: the semantics freeze (spec §15). Every entry is a
@@ -224,4 +229,41 @@ TEST_CASE("the image comparator detects a single changed pixel") {
     Canvas tampered = original;
     tampered.at(0, 0).r = static_cast<u8>(tampered.at(0, 0).r ^ 0xFF);
     REQUIRE_FALSE(pixelsEqual(tampered));
+}
+
+TEST_CASE("the .ips portrait port reproduces the golden images exactly") {
+    // Compile the composed .ips examples (portrait + hair/eyes parts) and
+    // check the same seeds as the golden .ipa entries — pixel-exact and
+    // with the pupil anchor propagated through eyes.outputs.pupil.
+    const auto readFile = [](const std::filesystem::path& path) {
+        std::ifstream stream(root / path);
+        REQUIRE(stream);
+        return std::string((std::istreambuf_iterator<char>(stream)), {});
+    };
+    const ips::Program hair = ips::parse(readFile("examples/hair.ips"));
+    const ips::Program eyes = ips::parse(readFile("examples/eyes.ips"));
+    const ips::Program portrait = ips::parse(readFile("examples/portrait.ips"));
+    ips::checkAsset(hair, {});
+    ips::checkAsset(eyes, {});
+    ips::checkAsset(portrait, {{"hair", partInfoOf(hair.asset)},
+                               {"eyes", partInfoOf(eyes.asset)}});
+
+    const auto bytes =
+        compileProgram(portrait, {{"hair", &hair}, {"eyes", &eyes}});
+    auto loaded = loadFile(bytes);
+    validate(loaded);
+
+    for (const u32 seed : {0u, 1u, 2u, 7u, 26u}) {
+        INFO("seed " << seed);
+        VM vm(loaded, {seed, 0, 0, 0, 0, {}});
+        vm.run();
+        const GenerationResult result = vm.result();
+        checkImage(result.image,
+                   ("tests/golden/portrait-seed" + std::to_string(seed) + ".png").c_str());
+        // The composed asset exposes the root output first, then the part
+        // slots (spec 4.3): the propagated pupilCenter plus the eyes part's
+        // own pupil anchor.
+        checkOutputs(result, {pointOutput("pupilCenter", 27.f, 28.f),
+                              pointOutput("pupil", 27.f, 28.f)});
+    }
 }

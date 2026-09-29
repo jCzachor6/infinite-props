@@ -496,17 +496,18 @@ semantics change only with a spec update and a deliberate regeneration.
 
 **Goal:** the language proves itself on real assets.
 
-**Work:**
-1. Port `PaRock` (4 archetypes), `PaCrystal`, `PaCrater`, `PaRockPile` and one composed portrait (face + `hair.ips` + `eyes.ips` with output propagation) to `.ips`.
-2. Compile, render variant sheets, compare against Phase 15/16 expectations.
-3. Keep seeds/variants/scale aligned with the QuantSpace preview tool for side-by-side review.
+**Work (this pass: the portrait only, per instruction):**
+1. `examples/hair.ips` + `examples/eyes.ips` + `examples/portrait.ips`: the QuantSpace character portrait (PaCharacter::generate + PaPortrait::generate) ported 1:1 to `.ips` and composed from the two parts — every constant, coordinate, RNG draw order and paint order matches the reference. The hairstyle switch (10 styles incl. the originals), the age chain, the identity picks, the head-shape variation, the outfit variation and the halo loop all lower to the same instruction sequences.
+2. Two builtins added for the port: `stream_push`/`stream_pop` (spec §9.6) and `sqrt` (spec §9.4).
+3. The composed `examples/portrait.iprop` recompiled from the `.ips` sources; the 5×5 sheet regenerated from it is byte-identical to the committed one.
+4. Golden-suite entry: the `.ips` portrait reproduces the five golden seeds (0, 1, 2, 7, 26) pixel-exactly, with `pupilCenter` propagated through `eyes.outputs.pupil`.
 
-**Deliverables:** `examples/*.ips` + compiled `.iprop` + sheets.
+**Deliverables:** `examples/hair.ips`, `examples/eyes.ips`, `examples/portrait.ips`, recompiled `examples/portrait.iprop` + the golden-suite entry.
 
 **Acceptance criteria:**
-- [ ] Sheets match the QuantSpace previews in layout and palette.
-- [ ] Portrait composition shows layer order and `pupilCenter` propagation working.
-- [ ] All examples pass the golden suite entries added for them.
+- [x] Sheets match the QuantSpace previews in layout and palette (the regenerated sheet is byte-identical).
+- [x] Portrait composition shows layer order and `pupilCenter` propagation working.
+- [x] All examples pass the golden suite entries added for them.
 
 ---
 

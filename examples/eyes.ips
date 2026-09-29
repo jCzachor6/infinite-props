@@ -1,0 +1,26 @@
+// eyes.ips — the eyes part of the QuantSpace character portrait (1:1 port
+// of the eye drawing in PaPortrait.cpp). Paints absolute coordinates on a
+// 64x64 canvas; the parent blits it at {0, 0} and reads the pupil anchor.
+
+asset eyes {
+  size 64x64
+  origin 0,0
+  variants 8
+
+  input color iris = #4b6f7d
+
+  output point pupil
+
+  draw(v, a) {
+    rect(23.0, 27.0, 6.0, 2.0, #dcd8c7)
+    rect(35.0, 27.0, 6.0, 2.0, #dcd8c7)
+    rect(26.0, 27.0, 2.0, 2.0, iris)
+    rect(36.0, 27.0, 2.0, 2.0, iris)
+    pixel(27, 27, #1b1e25)
+    pixel(37, 27, #1b1e25)
+    pixel(25, 27, #f5eed9)
+    pixel(35, 27, #f5eed9)
+
+    pupil = {27, 28}
+  }
+}
