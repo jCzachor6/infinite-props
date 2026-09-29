@@ -92,15 +92,16 @@ the Godot engine integration (the flagship adoption target).
   tests.
 - [ ] The rewritten ports are the proof: shorter sources, identical pixels.
 
-## Discovered issues (found during the v0.2 work)
+## Known divergences (acceptable while prototyping)
 
-- [ ] **The WASM backend diverges from the native reference on the golden
-  assets** (noise/shapes/portrait/plant) — present since Phase 24. The
-  conformance suite masks it: its FNV hashes were pinned from the divergent
-  WASM build. Partly fixed in 2.2 (the missing `-ffp-contract=off` flag was
-  added to the WASM target); the remaining pixel divergence needs a root
-  cause and a re-pin of `backends/html5/test/conformance.js` from the native
-  reference. The trig opcodes themselves are bit-exact across the backends.
+- **The WASM backend's pixel output diverges from the native reference on
+  some delicate assets** (noise/shapes/portrait/plant) — present since
+  Phase 24; the conformance suite's FNV hashes were pinned from the WASM
+  build. Fine for now: pre-1.0 everything is prototyping, and the
+  arithmetic flag that caused part of it (`-ffp-contract=off`) was already
+  applied to the WASM target in 2.2. **Before the 1.0 freeze**: reconcile
+  the backends and re-pin `backends/html5/test/conformance.js` from the
+  native reference.
 
 ## Deferred (out of v0.2)
 
