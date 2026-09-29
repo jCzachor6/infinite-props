@@ -306,10 +306,6 @@ TEST_CASE("compiler-only error cases carry locations") {
     // The v0.1 format has no i32 uniform type.
     expectError("asset t { size 8x8 input i32 x = 1 draw(v: i32, a: i32) { } }",
                 "input i32 is not supported");
-
-    // draw must not return a value.
-    expectError("asset t { size 8x8 draw(v: i32, a: i32) { return 1 } }",
-                "'draw' cannot return a value");
 }
 
 TEST_CASE("nested part imports are rejected") {

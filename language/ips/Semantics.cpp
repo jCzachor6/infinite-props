@@ -42,6 +42,15 @@ public:
             error(draw->location,
                   "'draw' must take exactly two parameters (variant, archetype)");
         }
+        for (const auto& param : draw->params) {
+            if (param.type != ParamType::I32) {
+                error(param.location, "the parameters of 'draw' must be i32 "
+                                      "(variant, archetype)");
+            }
+        }
+        if (draw->returnType.has_value()) {
+            error(draw->location, "'draw' cannot return a value");
+        }
         for (const auto& function : program_.asset.functions) {
             checkedFunctionSurface(function.name, function.location);
         }
@@ -58,7 +67,6 @@ private:
 
     // Per-function state.
     const Function* current_ = nullptr;
-    std::optional<ValueType> pendingReturn_;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
         throw SourceError{at, std::move(message)};
@@ -155,7 +163,7 @@ private:
     std::optional<FunctionSurface> checkedFunctionSurface(
         const std::string& name, const SourceLocation& at) {
         if (returnTypes_.count(name) != 0) {
-            return FunctionSurface{findFunction(name)->params.size(),
+            return FunctionSurface{declaredParamTypes(*findFunction(name)),
                                    returnTypes_[name]};
         }
         const Function* function = findFunction(name);
@@ -168,7 +176,7 @@ private:
         inProgress_.insert(name);
         checkFunction(*function);
         inProgress_.erase(name);
-        return FunctionSurface{function->params.size(), returnTypes_[name]};
+        return FunctionSurface{declaredParamTypes(*function), returnTypes_[name]};
     }
 
     void checkFunction(const Function& function) {
@@ -176,19 +184,19 @@ private:
         // the middle of another function's body: save and restore the
         // per-function state.
         const Function* savedCurrent = current_;
-        const std::optional<ValueType> savedPending = pendingReturn_;
         Typer::Scope savedScope = typer_.saveScope();
-        pendingReturn_ = std::nullopt;
 
         current_ = &function;
         typer_.enterFunction(program_, function, function.name == "draw");
         for (const auto& stmt : function.body) {
             checkStmt(stmt);
         }
-        returnTypes_[function.name] = pendingReturn_;
+        returnTypes_[function.name] = function.returnType.has_value()
+                                          ? std::optional<ValueType>(valueTypeOf(
+                                                *function.returnType))
+                                          : std::nullopt;
 
         current_ = savedCurrent;
-        pendingReturn_ = savedPending;
         typer_.restoreScope(std::move(savedScope));
     }
 
@@ -213,21 +221,38 @@ private:
                 checkStmt(s);
             }
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
-            if (ret->value) {
-                const ValueType type = typer_.typeOf(*ret->value);
-                if (!isStorable(type)) {
-                    error(ret->location,
-                          "cannot return " + std::string(typeName(type)) +
-                              " (only scalars can be returned)");
-                }
-                if (pendingReturn_.has_value() && *pendingReturn_ != type) {
-                    error(ret->location,
-                          "inconsistent return type: expected " +
-                              std::string(typeName(*pendingReturn_)) + ", got " +
-                              std::string(typeName(type)));
-                }
-                pendingReturn_ = type;
+            checkReturn(*ret);
+        }
+    }
+
+    void checkReturn(const ReturnStmt& ret) {
+        if (!ret.value) {
+            if (current_->returnType.has_value()) {
+                error(ret.location, "function '" + current_->name +
+                                        "' declares a return type but 'return' "
+                                        "has no value");
             }
+            return;
+        }
+        if (current_->name == "draw") {
+            error(ret.location, "'draw' cannot return a value");
+        }
+        const ValueType type = typer_.typeOf(*ret.value);
+        if (!isStorable(type)) {
+            error(ret.location,
+                  "cannot return " + std::string(typeName(type)) +
+                      " (only scalars can be returned)");
+        }
+        if (!current_->returnType.has_value()) {
+            error(ret.location, "function '" + current_->name +
+                                    "' returns a value but declares no return "
+                                    "type ('-> i32', '-> f32' or '-> color')");
+        }
+        const ValueType declared = valueTypeOf(*current_->returnType);
+        if (!argFits(declared, type)) {
+            error(ret.location, "return type of '" + current_->name + "' is " +
+                                    typeName(declared) + ", got " +
+                                    typeName(type));
         }
     }
 

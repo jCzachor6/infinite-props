@@ -56,6 +56,14 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
     return table;
 }
 
+std::vector<ValueType> declaredParamTypes(const Function& function) {
+    std::vector<ValueType> params;
+    for (const auto& param : function.params) {
+        params.push_back(valueTypeOf(param.type));
+    }
+    return params;
+}
+
 // ---- Typer -------------------------------------------------------------------
 
 Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}
@@ -71,7 +79,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     locals_.clear();
     for (const auto& param : function.params) {
-        locals_.emplace(param.name, ValueType::I32);
+        locals_.emplace(param.name, valueTypeOf(param.type));
     }
 }
 
@@ -279,22 +287,24 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     if (!surface.has_value()) {
         error(call.location, "undefined function '" + name.name + "'");
     }
-    if (surface->paramCount != call.args.size()) {
+    if (surface->params.size() != call.args.size()) {
         error(call.location,
               "function '" + name.name + "' expects " +
-                  std::to_string(surface->paramCount) +
+                  std::to_string(surface->params.size()) +
                   " arguments, got " + std::to_string(call.args.size()));
     }
-    for (const auto& arg : call.args) {
+    for (std::size_t i = 0; i < call.args.size(); ++i) {
+        const Arg& arg = call.args[i];
         if (arg.name.has_value()) {
             error(arg.location,
                   "function '" + name.name + "' does not take named arguments");
         }
         const ValueType got = typeOf(*arg.value);
-        if (!argFits(ValueType::I32, got)) {
+        if (!argFits(surface->params[i], got)) {
             error(locationOf(*arg.value),
-                  "argument of function '" + name.name +
-                      "' must be i32, got " + typeName(got));
+                  "argument " + std::to_string(i + 1) + " of '" + name.name +
+                      "' must be " + typeName(surface->params[i]) +
+                      ", got " + typeName(got));
         }
     }
     return surface->result.value_or(ValueType::Void);

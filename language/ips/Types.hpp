@@ -6,6 +6,8 @@
 // output writes and part-call placement — they cannot be stored in locals
 // (the VM's out.*/part.* instructions consume stack values directly).
 
+#include "ips/Ast.hpp"
+
 namespace iprop::ips {
 
 enum class ValueType {
@@ -33,5 +35,8 @@ ValueType promote(ValueType a, ValueType b);
 // i32 widens to f32 (the compiler inserts i32.to.f32); everything else must
 // match exactly.
 bool argFits(ValueType param, ValueType arg);
+
+// The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
+ValueType valueTypeOf(ParamType type);
 
 } // namespace iprop::ips

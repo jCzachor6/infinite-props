@@ -110,7 +110,8 @@ std::unique_ptr<Plan> Planner::plan() {
             return std::nullopt;
         }
         const PlannedFunction& info = self->functions[found->second];
-        return ips::FunctionSurface{info.ast->params.size(), info.langResult};
+        return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
+                                    info.langResult};
     };
 
     return std::move(plan_);
@@ -127,7 +128,8 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
         prepareFunction(name); // on demand
     }
     const PlannedFunction& info = plan_->functions[plan_->functionIndex.at(name)];
-    return ips::FunctionSurface{info.ast->params.size(), info.langResult};
+    return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
+                                info.langResult};
 }
 
 void Planner::planParts() {
@@ -261,9 +263,10 @@ void Planner::prepareFunction(const std::string& name) {
         }
     } else {
         for (const auto& param : ast->params) {
+            const ips::ValueType type = ips::valueTypeOf(param.type);
             info.slots.emplace(param.name, slot);
-            info.langTypes.emplace(param.name, ips::ValueType::I32);
-            info.params.push_back(ValueType::I32);
+            info.langTypes.emplace(param.name, type);
+            info.params.push_back(runtimeType(type));
             ++slot;
         }
     }
@@ -290,7 +293,14 @@ void Planner::prepareFunction(const std::string& name) {
                 if (ret->value) {
                     const ips::ValueType type =
                         plan_->typeEngine().typeOf(*ret->value);
-                    if (returnType.has_value() && *returnType != type) {
+                    if (ast->returnType.has_value()) {
+                        const ips::ValueType declared =
+                            ips::valueTypeOf(*ast->returnType);
+                        if (!ips::argFits(declared, type)) {
+                            error(ret->location,
+                                  "return type mismatch in '" + name + "'");
+                        }
+                    } else if (returnType.has_value() && *returnType != type) {
                         error(ret->location,
                               "inconsistent return type in '" + name + "'");
                     }
@@ -309,11 +319,17 @@ void Planner::prepareFunction(const std::string& name) {
 
     plan_->typeEngine().restoreScope(std::move(savedScope));
 
-    if (returnType.has_value()) {
+    if (ast->returnType.has_value()) {
+        const ips::ValueType declared = ips::valueTypeOf(*ast->returnType);
+        info.langResult = declared;
+        info.results.push_back(runtimeType(declared));
+    } else if (returnType.has_value()) {
+        // The checker rejects a missing declaration; keep the inference as a
+        // fallback for programs planned without a prior checkAsset.
         info.langResult = returnType;
         info.results.push_back(runtimeType(*returnType));
     }
-    if (name == "draw" && returnType.has_value()) {
+    if (name == "draw" && ast->returnType.has_value()) {
         error(ast->location, "'draw' cannot return a value");
     }
     preparing_.erase(name);

@@ -248,7 +248,7 @@ asset t {
     x = double(2)
     rect(0, 0, x, x, #ffffff)
   }
-  double(n: i32) {
+  double(n: i32) -> i32 {
     return n * 2
   }
 })";
@@ -261,23 +261,23 @@ asset t {
   draw(v: i32, a: i32) {
     x = later(1)
   }
-  later(n: i32) {
+  later(n: i32) -> i32 {
     return n + 1
   }
 })";
     CHECK_NOTHROW(checkAsset(parse(forward), {}));
 
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } f(n: i32) { return f(n) } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } f(n: i32) -> i32 { return f(n) } }",
         "recursive call");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1, 2) } f(n: i32) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1, 2) } f(n: i32) -> i32 { return n } }",
         "expects 1 arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { f(n = 1) } f(n: i32) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { f(n = 1) } f(n: i32) -> i32 { return n } }",
         "does not take named arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1.5) } f(n: i32) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1.5) } f(n: i32) -> i32 { return n } }",
         "must be i32");
     expectCheckError(
         "asset t { size 8x8 draw(v: i32, a: i32) { x = f() } f() { } }",
@@ -287,11 +287,61 @@ asset t {
         "asset t { size 8x8 draw(v: i32, a: i32) { f() } f() { } }"), {}));
 }
 
-TEST_CASE("inconsistent return types are rejected") {
+TEST_CASE("declared return types are checked against the body") {
+    // i32 return values widen to a declared f32 result.
+    CHECK_NOTHROW(checkAsset(parse(
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = g(a) } "
+        "g(n: i32) -> f32 { return n } }"), {}));
+    // A value that does not fit the declared type is rejected.
     expectCheckError(
         "asset t { size 8x8 draw(v: i32, a: i32) { x = f(a) } "
-        "f(n: i32) { if (n) { return 1 } return 2.5 } }",
-        "inconsistent return type");
+        "f(n: i32) -> i32 { if (n) { return 1 } return 2.5 } }",
+        "return type of 'f' is i32, got f32");
+    // A returning function must declare its return type (no inference).
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } "
+        "f(n: i32) { return n } }",
+        "declares no return type");
+    // A declared return type forbids bare returns.
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { f(1) } "
+        "f(n: i32) -> i32 { return } }",
+        "has no value");
+    // draw cannot declare a return type.
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) -> i32 { return 1 } }",
+        "'draw' cannot return a value");
+    expectCheckError(
+        "asset t { size 8x8 draw(v: f32, a: i32) { } }",
+        "the parameters of 'draw' must be i32");
+}
+
+TEST_CASE("typed parameters drive call-site validation") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  draw(v: i32, a: i32) {
+    x = h(1)         // an i32 argument widens to the f32 parameter
+    y = h(1.5)
+    c = tint(#ff0000)
+  }
+  h(u: f32) -> f32 {
+    return u
+  }
+  tint(c: color) -> color {
+    return shade(c, 1)
+  }
+})";
+    CHECK_NOTHROW(checkAsset(parse(source), {}));
+
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = h(#ff0000) } "
+        "h(u: f32) -> f32 { return u } }",
+        "argument 1 of 'h' must be f32, got color");
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { c = tint(1) } "
+        "tint(c: color) -> color { return c } }",
+        "argument 1 of 'tint' must be color, got i32");
 }
 
 TEST_CASE("part calls are validated against the part surface") {

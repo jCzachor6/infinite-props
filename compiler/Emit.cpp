@@ -140,6 +140,12 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
     } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
         if (ret->value) {
             emitExpr(*ret->value);
+            // A declared f32 result widens an i32 return value.
+            if (!current_->results.empty() &&
+                current_->results[0] == ValueType::F32 &&
+                plan_.typeEngine().typeOf(*ret->value) == ips::ValueType::I32) {
+                ins(Opcode::I32ToF32);
+            }
         }
         ins(Opcode::Return);
     }

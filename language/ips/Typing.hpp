@@ -42,10 +42,14 @@ struct BuiltinSignature {
 
 const std::map<std::string, BuiltinSignature>& builtinSignatures();
 
-// What the owner of a Typer knows about a user function: its parameter
-// count and its (possibly not-yet-known) return type.
+// The declared parameter types of a function, in declaration order (the
+// uniforms of a draw-like function are not part of its callable surface).
+std::vector<ValueType> declaredParamTypes(const Function& function);
+
+// What the owner of a Typer knows about a user function: its declared
+// parameter types and its (possibly not-yet-known) return type.
 struct FunctionSurface {
-    std::size_t paramCount = 0;
+    std::vector<ValueType> params;
     std::optional<ValueType> result;
 };
 

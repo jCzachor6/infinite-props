@@ -13,12 +13,16 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         if (ips::builtinSignatures().count(name->name) != 0) {
             return emitBuiltin(name->name, call);
         }
-        const u32 index = plan_.functionIndex.at(name->name);
-        for (const auto& arg : call.args) {
-            emitExpr(*arg.value);
+        const PlannedFunction& callee =
+            plan_.functions[plan_.functionIndex.at(name->name)];
+        for (std::size_t i = 0; i < call.args.size(); ++i) {
+            // The callee's declared parameter type drives the widening
+            // (i32 -> f32) so the stack matches the function table.
+            emitArg(call.args[i],
+                    ips::valueTypeOf(callee.ast->params[i].type));
         }
-        ins(Opcode::Call, 0, static_cast<u16>(index));
-        return plan_.functions[index].langResult.value_or(ips::ValueType::Void);
+        ins(Opcode::Call, 0, static_cast<u16>(plan_.functionIndex.at(name->name)));
+        return callee.langResult.value_or(ips::ValueType::Void);
     }
     if (std::holds_alternative<ips::Member>(*call.callee)) {
         emitPartCall(call);

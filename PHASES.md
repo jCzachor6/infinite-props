@@ -20,9 +20,9 @@ the Godot engine integration (the flagship adoption target).
 - [x] `1.1` grammar: parameters `name: type` (`u: f32`) and an explicit
   return type (`-> type`); types: `i32`, `f32`, `color`. The parameter type
   is mandatory — no backward compatibility before the 1.0 freeze.
-- [ ] `1.2` checker: parameters typed from the signature; call sites
+- [x] `1.2` checker: parameters typed from the signature; call sites
   validated against them; explicit returns checked against the body.
-- [ ] `1.3` compiler: parameter types into the function table; the
+- [x] `1.3` compiler: parameter types into the function table; the
   return-type lowering.
 - [ ] `1.4` proof: `ageFromUnit(u: f32) -> i32` and the `leaf(...)` helpers
   become real functions in the ports (no more inlining).

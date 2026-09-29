@@ -36,4 +36,13 @@ bool argFits(ValueType param, ValueType arg) {
     return param == ValueType::F32 && arg == ValueType::I32;
 }
 
+ValueType valueTypeOf(ParamType type) {
+    switch (type) {
+    case ParamType::I32: return ValueType::I32;
+    case ParamType::F32: return ValueType::F32;
+    case ParamType::Color: return ValueType::Color;
+    }
+    return ValueType::I32;
+}
+
 } // namespace iprop::ips
