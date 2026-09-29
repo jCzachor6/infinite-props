@@ -167,15 +167,41 @@ Function ParserImpl::parseFunction() {
 
 Function ParserImpl::parseFunctionAfterName(const Token& name) {
     expect(TokenKind::LParen, "'(' after the function name");
-    std::vector<std::string> params;
+    std::vector<Param> params;
     while (kind() != TokenKind::RParen) {
-        params.push_back(expectName("a parameter name").text);
+        const Token paramName = expectName("a parameter name");
+        expect(TokenKind::Colon, "':' and a parameter type");
+        const ParamType type = parseParamType();
+        params.push_back(Param{paramName.text, type, paramName.location});
         if (!match(TokenKind::Comma)) {
             break;
         }
     }
     expect(TokenKind::RParen, "')'");
-    return Function{name.text, std::move(params), parseBlock(), name.location};
+    std::optional<ParamType> returnType;
+    if (match(TokenKind::Arrow)) {
+        returnType = parseParamType();
+    }
+    return Function{name.text, std::move(params), returnType, parseBlock(),
+                    name.location};
+}
+
+ParamType ParserImpl::parseParamType() {
+    switch (kind()) {
+    case TokenKind::TypeI32:
+        advance();
+        return ParamType::I32;
+    case TokenKind::TypeF32:
+        advance();
+        return ParamType::F32;
+    case TokenKind::TypeColor:
+        advance();
+        return ParamType::Color;
+    case TokenKind::TypeU32:
+        failHere("u32 is a uniform-only type; parameters are i32, f32 or color");
+    default:
+        failExpected("a parameter type (i32, f32 or color)");
+    }
 }
 
 // ---- statements -------------------------------------------------------------

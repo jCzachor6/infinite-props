@@ -13,7 +13,7 @@ asset portrait {
 
   output point pupilCenter
 
-  pickSkin(i) {
+  pickSkin(i: i32) -> color {
     c = #e8bea6
     if (i == 0) { c = #f5cdaa }
     if (i == 1) { c = #e4b18b }
@@ -25,7 +25,7 @@ asset portrait {
     return c
   }
 
-  pickHair(i) {
+  pickHair(i: i32) -> color {
     c = #d0d1c7
     if (i == 0) { c = #221e22 }
     if (i == 1) { c = #452c21 }
@@ -37,7 +37,7 @@ asset portrait {
     return c
   }
 
-  pickEyes(i) {
+  pickEyes(i: i32) -> color {
     c = #838c8f
     if (i == 0) { c = #4b6f7d }
     if (i == 1) { c = #4b6948 }
@@ -46,7 +46,7 @@ asset portrait {
     return c
   }
 
-  pickClothing(i) {
+  pickClothing(i: i32) -> color {
     c = #434e5c
     if (i == 0) { c = #37576d }
     if (i == 1) { c = #446d65 }
@@ -56,13 +56,13 @@ asset portrait {
     return c
   }
 
-  pickAccent(i) {
+  pickAccent(i: i32) -> color {
     c = #e0a14a
     if (i == 0) { c = #90c5b9 }
     return c
   }
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     // ---- identity (PaCharacter::generate); RNG order preserved ----
     stream_push(hash(seed ^ 0xc4a7ac7e))
     female = index(2)

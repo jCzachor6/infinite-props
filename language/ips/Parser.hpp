@@ -29,7 +29,11 @@ Program parseTokens(const std::vector<Token>& tokens);
 //   originDecl := "origin" expr "," expr
 //   inputDecl  := "input" inputType ident "=" literal
 //   outputDecl := "output" "list"? outputKind ident
-//   function   := name "(" params ")" block
+//   function   := name "(" params ")" returnType? block
+//   params     := (param ("," param)*)?      // a trailing comma is allowed
+//   param      := ident ":" paramType        // the type is mandatory pre-1.0
+//   returnType := "->" paramType             // required iff the function returns
+//   paramType  := "i32" | "f32" | "color"
 //   block      := "{" (";" | statement)* "}"    // ';' is an optional separator
 //   statement  := varDecl | exprStmt | ifStmt | whileStmt | returnStmt
 //   varDecl    := ident "=" expr

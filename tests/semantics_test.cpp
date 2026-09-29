@@ -28,7 +28,7 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -47,7 +47,7 @@ asset hair {
   input f32   volume = 1.0
   output point top
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     top = {32, 4}
   }
 })";
@@ -62,7 +62,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     rect(0, 0, 64, 64, skin)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     pupilCenter = hair.outputs.top
@@ -95,7 +95,7 @@ void expectCheckError(const std::string& source, const char* messagePart) {
 }
 
 std::string wrap(const std::string& body) {
-    return "asset t { size 8x8 draw(v, a) { " + body + " } }";
+    return "asset t { size 8x8 draw(v: i32, a: i32) { " + body + " } }";
 }
 
 } // namespace
@@ -126,7 +126,7 @@ TEST_CASE("undefined names and functions are rejected with locations") {
 TEST_CASE("the seed builtin is read-only via inputs") {
     // `seed` alone resolves to the builtin; assigning to it is only possible
     // if the asset declares an input named seed — which is reserved.
-    expectCheckError("asset t { size 8x8 input u32 seed = 1 draw(v, a) { } }",
+    expectCheckError("asset t { size 8x8 input u32 seed = 1 draw(v: i32, a: i32) { } }",
                      "reserved");
     // Reading seed is fine.
     CHECK_NOTHROW(checkAsset(parse(wrap("x = seed ^ 3")), {}));
@@ -134,17 +134,17 @@ TEST_CASE("the seed builtin is read-only via inputs") {
 
 TEST_CASE("input default values must match the declared type") {
     expectCheckError(
-        "asset t { size 8x8 input color c = 5 draw(v, a) { } }",
+        "asset t { size 8x8 input color c = 5 draw(v: i32, a: i32) { } }",
         "default value");
     expectCheckError(
-        "asset t { size 8x8 input f32 f = #808d74 draw(v, a) { } }",
+        "asset t { size 8x8 input f32 f = #808d74 draw(v: i32, a: i32) { } }",
         "default value");
     expectCheckError(
-        "asset t { size 8x8 input i32 i = 2.5 draw(v, a) { } }",
+        "asset t { size 8x8 input i32 i = 2.5 draw(v: i32, a: i32) { } }",
         "default value");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 input color c = #808d74 input f32 f = 2.5 "
-        "input u32 u = 7 input i32 i = 3 draw(v, a) { } }"),
+        "input u32 u = 7 input i32 i = 3 draw(v: i32, a: i32) { } }"),
         {}));
 }
 
@@ -180,16 +180,16 @@ TEST_CASE("vector arity errors") {
 
 TEST_CASE("output slot kinds are checked") {
     expectCheckError(
-        "asset t { size 8x8 output rect r draw(v, a) { r = {1, 2} } }",
+        "asset t { size 8x8 output rect r draw(v: i32, a: i32) { r = {1, 2} } }",
         "expects rect, got point");
     expectCheckError(
-        "asset t { size 8x8 output point p draw(v, a) { p = {1, 2, 3, 4} } }",
+        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2, 3, 4} } }",
         "expects point, got rect");
     expectCheckError(
-        "asset t { size 8x8 output point p draw(v, a) { p = 5 } }",
+        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = 5 } }",
         "expects point, got i32");
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 output point p draw(v, a) { p = {1, 2} } }"),
+        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2} } }"),
         {}));
 }
 
@@ -202,20 +202,20 @@ TEST_CASE("locals cannot hold compounds and are typed on first assignment") {
 
 TEST_CASE("duplicate declarations and missing requirements") {
     expectCheckError("asset t { size 8x8 input color c = #ffffff input color c = #000000 "
-                     "draw(v, a) { } }", "duplicate input 'c'");
+                     "draw(v: i32, a: i32) { } }", "duplicate input 'c'");
     expectCheckError("asset t { size 8x8 output point p output point p "
-                     "draw(v, a) { } }", "duplicate output 'p'");
+                     "draw(v: i32, a: i32) { } }", "duplicate output 'p'");
     expectCheckError("asset t { size 8x8 input color p = #ffffff output point p "
-                     "draw(v, a) { } }", "collides with an input");
-    expectCheckError("asset t { size 8x8 draw(v, a) { } helper(x) { return 1 } "
-                     "helper(x) { return 2 } }", "duplicate function");
+                     "draw(v: i32, a: i32) { } }", "collides with an input");
+    expectCheckError("asset t { size 8x8 draw(v: i32, a: i32) { } helper(x: i32) { return 1 } "
+                     "helper(x: i32) { return 2 } }", "duplicate function");
     expectCheckError("import a from \"a.ips\" import a from \"a.ips\" "
-                     "asset t { size 8x8 draw(v, a) { } }",
+                     "asset t { size 8x8 draw(v: i32, a: i32) { } }",
                      {{"a", {}}}, "duplicate import alias");
-    expectCheckError("asset t { draw(v, a) { } }", "missing 'size'");
+    expectCheckError("asset t { draw(v: i32, a: i32) { } }", "missing 'size'");
     expectCheckError("asset t { size 8x8 }", "missing 'draw");
-    expectCheckError("asset t { size 8x8 draw(v) { } }", "exactly two parameters");
-    expectCheckError("asset t { size 8x8 input color at = #ffffff draw(v, a) { } }",
+    expectCheckError("asset t { size 8x8 draw(v: i32) { } }", "exactly two parameters");
+    expectCheckError("asset t { size 8x8 input color at = #ffffff draw(v: i32, a: i32) { } }",
                      "reserved");
 }
 
@@ -244,11 +244,11 @@ TEST_CASE("user functions: arity, types, returns, recursion") {
     const std::string valid = R"(
 asset t {
   size 8x8
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = double(2)
     rect(0, 0, x, x, #ffffff)
   }
-  double(n) {
+  double(n: i32) {
     return n * 2
   }
 })";
@@ -258,39 +258,39 @@ asset t {
     const std::string forward = R"(
 asset t {
   size 8x8
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = later(1)
   }
-  later(n) {
+  later(n: i32) {
     return n + 1
   }
 })";
     CHECK_NOTHROW(checkAsset(parse(forward), {}));
 
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = f(1) } f(n) { return f(n) } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } f(n: i32) { return f(n) } }",
         "recursive call");
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = f(1, 2) } f(n) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1, 2) } f(n: i32) { return n } }",
         "expects 1 arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { f(n = 1) } f(n) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { f(n = 1) } f(n: i32) { return n } }",
         "does not take named arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = f(1.5) } f(n) { return n } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1.5) } f(n: i32) { return n } }",
         "must be i32");
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = f() } f() { } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f() } f() { } }",
         "cannot store void");
     // A void function called as a statement is fine.
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 draw(v, a) { f() } f() { } }"), {}));
+        "asset t { size 8x8 draw(v: i32, a: i32) { f() } f() { } }"), {}));
 }
 
 TEST_CASE("inconsistent return types are rejected") {
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = f(a) } "
-        "f(n) { if (n) { return 1 } return 2.5 } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(a) } "
+        "f(n: i32) { if (n) { return 1 } return 2.5 } }",
         "inconsistent return type");
 }
 
@@ -300,41 +300,41 @@ TEST_CASE("part calls are validated against the part surface") {
     // Wrong positional arity.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, at = {0, 0}) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, at = {0, 0}) } }",
         hairParts(), "exactly three positional");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
         hairParts(), "exactly three positional");
 
     // Missing `at`.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, 3) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3) } }",
         hairParts(), "requires an 'at");
 
     // Wrong `at` type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, 3, at = 5) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = 5) } }",
         hairParts(), "'at' must be a point");
 
     // Unknown uniform.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
         hairParts(), "has no input 'bogus'");
 
     // Uniform of the wrong type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { hair.draw(1, 2, 3, at = {0, 0}, volume = #ffffff) } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}, volume = #ffffff) } }",
         hairParts(), "must be f32, got color");
 
     // Unknown part.
     expectCheckError(
         "import nope from \"nope.ips\"\nasset t { size 8x8 "
-        "draw(v, a) { nope.draw(1, 2, 3, at = {0, 0}) } }",
+        "draw(v: i32, a: i32) { nope.draw(1, 2, 3, at = {0, 0}) } }",
         "was not provided");
 }
 
@@ -343,14 +343,14 @@ TEST_CASE("part output reads are validated") {
 
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output point p "
-        "draw(v, a) { hair.draw(1, 2, 3, at = {0, 0}) p = hair.outputs.nope } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}) p = hair.outputs.nope } }",
         hairParts(), "has no output 'nope'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output rect r "
-        "draw(v, a) { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
+        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
         hairParts(), "expects rect, got point");
     expectCheckError(
-        "asset t { size 8x8 draw(v, a) { x = bogus.outputs.p } }",
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = bogus.outputs.p } }",
         "not an imported part");
 
     // List outputs cannot be read.
@@ -358,7 +358,7 @@ TEST_CASE("part output reads are validated") {
 asset lp {
   size 8x8
   output list point pts
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     pts = {1, 2}
   }
 })";
@@ -367,7 +367,7 @@ asset lp {
         {"lp", partInfoOf(listProgram.asset)}};
     expectCheckError(
         "import lp from \"lp.ips\"\nasset t { size 8x8 output point p "
-        "draw(v, a) { lp.draw(1, 2, 3, at = {0, 0}) p = lp.outputs.pts } }",
+        "draw(v: i32, a: i32) { lp.draw(1, 2, 3, at = {0, 0}) p = lp.outputs.pts } }",
         listParts, "cannot read list output");
 }
 
@@ -387,8 +387,8 @@ TEST_CASE("partInfoOf builds a part surface") {
 
 TEST_CASE("import cycles are rejected with the cycle path") {
     const std::map<std::string, std::string> files = {
-        {"a.ips", "import b from \"b.ips\"\nasset a { size 8x8 draw(v, a) { } }"},
-        {"b.ips", "import a from \"a.ips\"\nasset b { size 8x8 draw(v, a) { } }"},
+        {"a.ips", "import b from \"b.ips\"\nasset a { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"b.ips", "import a from \"a.ips\"\nasset b { size 8x8 draw(v: i32, a: i32) { } }"},
     };
     const auto loader = [&](std::string_view path) {
         const auto found = files.find(std::string(path));
@@ -412,9 +412,9 @@ TEST_CASE("import cycles are rejected with the cycle path") {
 
     // A three-file cycle not passing through the entry.
     const std::map<std::string, std::string> three = {
-        {"x.ips", "import y from \"y.ips\"\nasset x { size 8x8 draw(v, a) { } }"},
-        {"y.ips", "import z from \"z.ips\"\nasset y { size 8x8 draw(v, a) { } }"},
-        {"z.ips", "import y from \"y.ips\"\nasset z { size 8x8 draw(v, a) { } }"},
+        {"x.ips", "import y from \"y.ips\"\nasset x { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"y.ips", "import z from \"z.ips\"\nasset y { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"z.ips", "import y from \"y.ips\"\nasset z { size 8x8 draw(v: i32, a: i32) { } }"},
     };
     const auto loader3 = [&](std::string_view path) {
         const auto found = three.find(std::string(path));
@@ -437,9 +437,9 @@ TEST_CASE("import cycles are rejected with the cycle path") {
 TEST_CASE("import resolution returns dependencies first and reports bad files") {
     const std::map<std::string, std::string> files = {
         {"a.ips", "import b from \"b.ips\"\nimport c from \"c.ips\"\n"
-                  "asset a { size 8x8 draw(v, a) { } }"},
-        {"b.ips", "import c from \"c.ips\"\nasset b { size 8x8 draw(v, a) { } }"},
-        {"c.ips", "asset c { size 8x8 draw(v, a) { } }"},
+                  "asset a { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"b.ips", "import c from \"c.ips\"\nasset b { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"c.ips", "asset c { size 8x8 draw(v: i32, a: i32) { } }"},
     };
     const auto loader = [&](std::string_view path) {
         const auto found = files.find(std::string(path));

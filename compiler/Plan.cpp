@@ -244,7 +244,7 @@ void Planner::prepareFunction(const std::string& name) {
     if (drawLike) {
         info.params = {ValueType::I32, ValueType::I32}; // variant, archetype
         for (int i = 0; i < 2; ++i) {
-            const std::string& pname = ast->params[static_cast<std::size_t>(i)];
+            const std::string& pname = ast->params[static_cast<std::size_t>(i)].name;
             info.slots.emplace(pname, slot);
             info.langTypes.emplace(pname, ips::ValueType::I32);
             ++slot;
@@ -261,8 +261,8 @@ void Planner::prepareFunction(const std::string& name) {
         }
     } else {
         for (const auto& param : ast->params) {
-            info.slots.emplace(param, slot);
-            info.langTypes.emplace(param, ips::ValueType::I32);
+            info.slots.emplace(param.name, slot);
+            info.langTypes.emplace(param.name, ips::ValueType::I32);
             info.params.push_back(ValueType::I32);
             ++slot;
         }

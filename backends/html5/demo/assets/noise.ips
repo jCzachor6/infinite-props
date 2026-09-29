@@ -4,7 +4,7 @@
 asset noise {
   size 64x64
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     y = 0
     while (y < 64) {
       x = 0

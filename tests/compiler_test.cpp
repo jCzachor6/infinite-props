@@ -28,7 +28,7 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -47,7 +47,7 @@ asset t {
   input color base = #3355aa
   output point p
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = 2 + 3 * 4
     w = x - 6
     rect(0, 0, w, w, base)
@@ -196,7 +196,7 @@ TEST_CASE("constant folding collapses literal arithmetic") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = 2 + 3 * 4
     y = -5 + 2
   }
@@ -216,7 +216,7 @@ asset hair {
   origin 32,4
   input color color = #33291f
   output point top
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     rect(0, 0, 64, 32, color)
     top = {32, 4}
   }
@@ -227,7 +227,7 @@ asset eyes {
   origin 16,8
   input color color = #112233
   output point pupil
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     rect(0, 0, 32, 16, color)
     pupil = {16, 8}
   }
@@ -242,7 +242,7 @@ asset portrait {
   input  color skin = #d9b58c
   output point pupilCenter
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     rect(0, 0, 64, 64, skin)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4})
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24}, color = skin)
@@ -300,29 +300,29 @@ TEST_CASE("compiler-only error cases carry locations") {
     };
 
     // Origin must be a constant.
-    expectError("asset t { size 8x8 origin v,0 draw(v, a) { } }",
+    expectError("asset t { size 8x8 origin v,0 draw(v: i32, a: i32) { } }",
                 "origin must be a constant");
 
     // The v0.1 format has no i32 uniform type.
-    expectError("asset t { size 8x8 input i32 x = 1 draw(v, a) { } }",
+    expectError("asset t { size 8x8 input i32 x = 1 draw(v: i32, a: i32) { } }",
                 "input i32 is not supported");
 
     // draw must not return a value.
-    expectError("asset t { size 8x8 draw(v, a) { return 1 } }",
+    expectError("asset t { size 8x8 draw(v: i32, a: i32) { return 1 } }",
                 "'draw' cannot return a value");
 }
 
 TEST_CASE("nested part imports are rejected") {
     const std::string inner = R"(
 import leaf from "leaf.ips"
-asset inner { size 8x8 draw(v, a) { } }
+asset inner { size 8x8 draw(v: i32, a: i32) { } }
 )";
     const std::string leaf = R"(
-asset leaf { size 4x4 draw(v, a) { } }
+asset leaf { size 4x4 draw(v: i32, a: i32) { } }
 )";
     const std::string outer = R"(
 import inner from "inner.ips"
-asset outer { size 8x8 draw(v, a) { inner.draw(1, v, a, at = {0, 0}) } }
+asset outer { size 8x8 draw(v: i32, a: i32) { inner.draw(1, v, a, at = {0, 0}) } }
 )";
 
     const ips::Program innerProgram = ips::parse(inner);
@@ -344,15 +344,15 @@ TEST_CASE("&& and || short-circuit: side effects are skipped") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     c = 0 && mark()
     d = 1 && mark2()
   }
-  mark() {
+  mark() -> i32 {
     pixel(0, 0, #ff0000)
     return 1
   }
-  mark2() {
+  mark2() -> i32 {
     pixel(1, 1, #00ff00)
     return 1
   }
@@ -369,7 +369,7 @@ TEST_CASE("logical and bitwise not fold and lower correctly") {
 asset t {
   size 8x8
   output point p
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = !5
     y = ~0
     z = !v
@@ -387,7 +387,7 @@ TEST_CASE("f32 comparisons lower to the f32 opcodes") {
 asset t {
   size 8x8
   output point p
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = 2.5
     y = x < 3.0
     p = {y, 0}
@@ -401,7 +401,7 @@ TEST_CASE("division is not folded (the runtime trap is preserved)") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = 6 / 2
   }
 })";
@@ -418,7 +418,7 @@ asset t {
   output list point pts
   output circle c
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     pts = {1, 2}
     pts = {3, 4}
     c = {1, 2, 3}
@@ -448,7 +448,7 @@ TEST_CASE("part placement can read another part's output") {
 asset anchor {
   size 4x4
   output point spot
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     spot = {2, 3}
   }
 })";
@@ -459,7 +459,7 @@ asset composite {
   size 8x8
   output point p
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     anchor.draw(1, v, a, at = {0, 0})
     anchor.draw(2, v, a, at = anchor.outputs.spot)
     p = anchor.outputs.spot
@@ -491,7 +491,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     // u32 semantics: 0x80000000 >> 1 = 0x40000000
     a1 = 1 << 3
     b1 = 64 >> 2
@@ -517,7 +517,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     p = {round(0.5), round(-0.5)}
   }
 })";

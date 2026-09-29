@@ -68,6 +68,15 @@ const char* outputKindName(OutputKind outputKind) {
     return "?";
 }
 
+const char* paramTypeName(ParamType type) {
+    switch (type) {
+    case ParamType::I32: return "i32";
+    case ParamType::F32: return "f32";
+    case ParamType::Color: return "color";
+    }
+    return "?";
+}
+
 // Flattens `a.b.c` chains into (member a b c). `expr` must hold a Member.
 std::string printMemberChain(const Expr& expr) {
     std::vector<std::string> names;
@@ -207,16 +216,22 @@ std::vector<std::string> printStmtLines(const Stmt& stmt) {
 
 std::vector<std::string> printFunctionLines(const Function& function) {
     std::vector<std::string> lines;
-    // "(fn draw (v a)" — the single ')' closes the params list; the fn form
-    // itself stays open and is closed by closeLast after the body.
+    // "(fn draw ((v i32) (a i32))" — each param prints as a (name type)
+    // pair; the single ')' closes the params list, the fn form itself stays
+    // open and is closed by closeLast after the body.
     std::string header = "(fn " + function.name + " (";
     for (std::size_t i = 0; i < function.params.size(); ++i) {
         if (i != 0) {
             header += " ";
         }
-        header += function.params[i];
+        header += "(" + function.params[i].name + " " +
+                  paramTypeName(function.params[i].type) + ")";
     }
     header += ")";
+    if (function.returnType.has_value()) {
+        header += " -> ";
+        header += paramTypeName(*function.returnType);
+    }
     lines.push_back(std::move(header));
     for (const auto& stmt : function.body) {
         auto sub = printStmtLines(stmt);

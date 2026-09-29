@@ -27,7 +27,7 @@ asset t {
   input color base = #3355aa
   output point p
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = 2 + 3 * 4
     w = x - 6
     rect(0, 0, w, w, base)

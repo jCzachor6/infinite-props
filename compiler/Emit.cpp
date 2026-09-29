@@ -47,8 +47,12 @@ u32 Emitter::f32Scratch() {
 }
 
 bool Emitter::isParam(const std::string& name) const {
-    const auto& params = current_->ast->params;
-    return std::find(params.begin(), params.end(), name) != params.end();
+    for (const auto& param : current_->ast->params) {
+        if (param.name == name) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void Emitter::emitFunction(PlannedFunction& function) {

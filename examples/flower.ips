@@ -23,7 +23,7 @@ asset flower {
   input color bloom = #e89648
   input u32   detailState = 0
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     rim = -12.0
     crown = rim - height
     dState = detailState

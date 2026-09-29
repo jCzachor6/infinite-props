@@ -129,6 +129,7 @@ public:
     OutputDecl parseOutput();
     Function parseFunction();
     Function parseFunctionAfterName(const Token& name);
+    ParamType parseParamType();
     std::vector<Stmt> parseBlock();
     Stmt parseStatement();
     Stmt parseIdentifierStatement();

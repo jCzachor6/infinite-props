@@ -71,7 +71,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     locals_.clear();
     for (const auto& param : function.params) {
-        locals_.emplace(param, ValueType::I32);
+        locals_.emplace(param.name, ValueType::I32);
     }
 }
 

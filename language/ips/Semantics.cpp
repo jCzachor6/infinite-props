@@ -274,8 +274,12 @@ private:
     }
 
     bool isParam(const std::string& name) const {
-        const auto& params = current_->params;
-        return std::find(params.begin(), params.end(), name) != params.end();
+        for (const auto& param : current_->params) {
+            if (param.name == name) {
+                return true;
+            }
+        }
+        return false;
     }
 
     const InputDecl* findInput(const std::string& name) const {

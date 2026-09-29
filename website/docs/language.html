@@ -31,16 +31,17 @@ summary.</p>
   input  type name = default
   output [list] kind name
 
-  draw(v, a) { ... }
-  helper(...) { ... }
+  draw(v: i32, a: i32) { ... }
+  helper(u: f32, c: color) -> i32 { ... }
 }</code></pre>
 <ul>
 <li><code>draw(v, a)</code> is the entry point; <code>v</code> and
 <code>a</code> are the variant and archetype indices (validated against the
 declared counts).</li>
-<li>Helpers take <code>i32</code> parameters and may return one value
-(<code>i32</code>, <code>f32</code> or <code>color</code>). Recursion is not
-supported.</li>
+<li>Helpers declare their parameter types (<code>u: f32</code> — <code>i32</code>,
+<code>f32</code> or <code>color</code>; pre-1.0 the type is mandatory) and
+functions that return a value declare an explicit return type
+(<code>-> i32</code>). Recursion is not supported.</li>
 </ul>
 
 <h2 id="io">Inputs and outputs</h2>

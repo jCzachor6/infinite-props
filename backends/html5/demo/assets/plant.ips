@@ -12,7 +12,7 @@ asset plant {
   size 64x64
   origin 32,56
 
-  pickLeafDark(i) {
+  pickLeafDark(i: i32) -> color {
     c = #54625c
     if (i == 0) { c = #365c38 }
     if (i == 1) { c = #4c603e }
@@ -21,7 +21,7 @@ asset plant {
     return c
   }
 
-  pickLeafMid(i) {
+  pickLeafMid(i: i32) -> color {
     c = #728076
     if (i == 0) { c = #4e7c4a }
     if (i == 1) { c = #687e56 }
@@ -30,7 +30,7 @@ asset plant {
     return c
   }
 
-  pickLeafLight(i) {
+  pickLeafLight(i: i32) -> color {
     c = #96a092
     if (i == 0) { c = #6c9a62 }
     if (i == 1) { c = #8a986c }
@@ -39,7 +39,7 @@ asset plant {
     return c
   }
 
-  pickPot(i) {
+  pickPot(i: i32) -> color {
     c = #beb6a2
     if (i == 0) { c = #967864 }
     if (i == 1) { c = #7e7462 }
@@ -47,14 +47,14 @@ asset plant {
     return c
   }
 
-  pickBloom(i) {
+  pickBloom(i: i32) -> color {
     c = #c4788c
     if (i == 0) { c = #e89648 }
     if (i == 1) { c = #e2d6be }
     return c
   }
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     // ===== identity: the main seed stream =====
     leavesIndex = index(5)
     potIndex = index(8)

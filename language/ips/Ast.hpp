@@ -164,10 +164,25 @@ struct OutputDecl {
     SourceLocation location;
 };
 
+// The declared type of a function parameter or return value: the three
+// scalar types the VM can store in locals (spec §3/§9). Unlike `input`,
+// there is no u32 — parameters are always locals.
+enum class ParamType { I32, F32, Color };
+
+// One function parameter: a name plus its declared type. Pre-1.0 the type
+// is mandatory — untyped parameters are rejected (the language is not
+// backward compatible until the 1.0 freeze).
+struct Param {
+    std::string name;
+    ParamType type;
+    SourceLocation location;
+};
+
 // A function (the entry point is named `draw` and takes `(v, a)`).
 struct Function {
     std::string name;
-    std::vector<std::string> params;
+    std::vector<Param> params;
+    std::optional<ParamType> returnType; // declared with `-> type`
     std::vector<Stmt> body;
     SourceLocation location;
 };

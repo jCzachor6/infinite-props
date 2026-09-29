@@ -23,7 +23,7 @@ const std::string kRockSketch = R"(asset rock {
   input  color palette = #808d74
   output rect  collider
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -46,7 +46,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     face(v, a)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24})
@@ -62,7 +62,7 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     top = {32, 4}
   }
 })";
@@ -94,7 +94,12 @@ TEST_CASE("the rock sketch parses into the expected AST") {
     REQUIRE(asset.functions.size() == 1);
     const Function& draw = asset.functions[0];
     REQUIRE(draw.name == "draw");
-    REQUIRE(draw.params == std::vector<std::string>{"v", "a"});
+    REQUIRE(draw.params.size() == 2);
+    REQUIRE(draw.params[0].name == "v");
+    REQUIRE(draw.params[1].name == "a");
+    REQUIRE(draw.params[0].type == ParamType::I32);
+    REQUIRE(draw.params[1].type == ParamType::I32);
+    REQUIRE(!draw.returnType.has_value());
     REQUIRE(draw.body.size() == 5);
 
     // w = range(21, 31)
@@ -181,7 +186,7 @@ TEST_CASE("the hair sketch parses") {
 TEST_CASE("expression precedence and forms") {
     const std::string source = R"(
 asset expr {
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     x = a + b * c - -d / !e % ~f
     y = 1 + 2 * 3 == 7 && 1 < 2 || 0 > 1
     z = a.b.c.d(1, named = 2, 3)
@@ -244,10 +249,10 @@ TEST_CASE("size accepts both width x height and two integers") {
 TEST_CASE("user functions beyond draw parse") {
     const std::string source = R"(
 asset multi {
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     stone_mass(0, 0)
   }
-  helper(p) {
+  helper(p: i32) {
     return p
   }
 })";
@@ -262,7 +267,7 @@ TEST_CASE("while loops and list outputs parse") {
     const std::string source = R"(
 asset loop {
   output list point pts
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     i = 0
     while (i < 10) {
       i = i + 1
@@ -285,7 +290,7 @@ asset loop {
 TEST_CASE("semicolons are optional statement separators") {
     const std::string source = R"(
 asset semi {
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     w = 1;
     h = 2
     ;
@@ -313,7 +318,7 @@ asset semi {
 TEST_CASE("else-if chains and nested blocks parse") {
     const std::string source = R"(
 asset nested {
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     if (a) {
       x = 1
     } else if (b) {
@@ -343,6 +348,109 @@ asset nested {
     REQUIRE(std::holds_alternative<IfStmt>(loop->body[0]));
 }
 
+TEST_CASE("typed parameters and explicit return types parse") {
+    const std::string source = R"(
+asset typed {
+  draw(v: i32, a: i32) {
+    u = 1.5
+    n = ageFromUnit(u)
+  }
+  ageFromUnit(u: f32) -> i32 {
+    return i32trunc(u * 10)
+  }
+  leaf(x: f32, y: f32, rx: f32, ry: f32, lean: f32, c: color) -> color {
+    return shade(c, 1)
+  }
+})";
+    const Program program = parse(source);
+
+    const Function& draw = program.asset.functions[0];
+    REQUIRE(draw.params.size() == 2);
+    REQUIRE(draw.params[0].name == "v");
+    REQUIRE(draw.params[0].type == ParamType::I32);
+    REQUIRE(draw.params[1].type == ParamType::I32);
+    REQUIRE(!draw.returnType.has_value()); // void draws have no arrow
+
+    const Function& age = program.asset.functions[1];
+    REQUIRE(age.name == "ageFromUnit");
+    REQUIRE(age.params.size() == 1);
+    REQUIRE(age.params[0].name == "u");
+    REQUIRE(age.params[0].type == ParamType::F32);
+    REQUIRE(age.returnType == ParamType::I32);
+
+    const Function& leaf = program.asset.functions[2];
+    REQUIRE(leaf.params.size() == 6);
+    REQUIRE(leaf.params[0].type == ParamType::F32);
+    REQUIRE(leaf.params[4].type == ParamType::F32);
+    REQUIRE(leaf.params[5].name == "c");
+    REQUIRE(leaf.params[5].type == ParamType::Color);
+    REQUIRE(leaf.returnType == ParamType::Color);
+}
+
+TEST_CASE("untyped parameters are rejected pre-1.0") {
+    // The language breaks backward compatibility before the 1.0 freeze:
+    // every parameter must declare its type.
+    struct Case {
+        const char* source;
+        const char* messagePart;
+    };
+    const Case cases[] = {
+        {"asset m { draw(v, a) { } }", "':' and a parameter type"},
+        {"asset m { draw(v: i32, a) { } }", "':' and a parameter type"},
+        {"asset m { f(x, y: f32) { } }", "':' and a parameter type"},
+        {"asset m { f(x) -> i32 { return 1 } }", "':' and a parameter type"},
+    };
+    for (const Case& testCase : cases) {
+        INFO(testCase.source);
+        bool threw = false;
+        try {
+            (void)parse(testCase.source);
+        } catch (const SourceError& error) {
+            threw = true;
+            REQUIRE(std::string(error.message).find(testCase.messagePart) !=
+                    std::string::npos);
+        }
+        REQUIRE(threw);
+    }
+}
+
+TEST_CASE("u32 parameters are rejected") {
+    bool threw = false;
+    try {
+        (void)parse("asset u { draw(v: u32, a: i32) { } }");
+    } catch (const SourceError& error) {
+        threw = true;
+        REQUIRE(std::string(error.message).find("uniform-only") !=
+                std::string::npos);
+    }
+    REQUIRE(threw);
+}
+
+TEST_CASE("malformed parameter types produce one located error") {
+    struct Case {
+        const char* source;
+        const char* messagePart;
+    };
+    const Case cases[] = {
+        {"asset a { draw(v:) { } }", "parameter type"},
+        {"asset a { draw(v: blob) { } }", "parameter type"},
+        {"asset a { draw(v: i32, a: i32) -> { } }", "parameter type"},
+        {"asset a { f(x f32) { } }", "':' and a parameter type"},
+    };
+    for (const Case& testCase : cases) {
+        INFO(testCase.source);
+        bool threw = false;
+        try {
+            (void)parse(testCase.source);
+        } catch (const SourceError& error) {
+            threw = true;
+            REQUIRE(std::string(error.message).find(testCase.messagePart) !=
+                    std::string::npos);
+        }
+        REQUIRE(threw);
+    }
+}
+
 TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
     const Program program =
         parse("asset z { size 192X192 draw() { stone_mass() } }");
@@ -353,7 +461,7 @@ TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
 
 TEST_CASE("named arguments may come first") {
     const Program program =
-        parse("asset n { draw(v, a) { f(at = {0, 0}, 5) } }");
+        parse("asset n { draw(v: i32, a: i32) { f(at = {0, 0}, 5) } }");
     const auto& body = program.asset.functions[0].body;
     const auto* stmt = std::get_if<ExprStmt>(&body[0]);
     const auto* call = std::get_if<Call>(stmt->expr.get());
@@ -364,7 +472,7 @@ TEST_CASE("named arguments may come first") {
 
 TEST_CASE("string escapes survive in import paths") {
     const Program program = parse(R"(import hair from "dir\\sub.ips"
-asset p { draw(v, a) { } })");
+asset p { draw(v: i32, a: i32) { } })");
     REQUIRE(program.imports[0].path == "dir\\sub.ips");
 }
 
@@ -378,7 +486,7 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     top = {32, 4}
     tint = shade(color, -4)
     thing = color
@@ -441,18 +549,18 @@ TEST_CASE("malformed programs produce one located error") {
         {"asset rock { input bogus c = 1 }", "input type"},
         {"asset rock { output blob c }", "output kind"},
         {"asset rock { draw v }", "'(' after the function name"},
-        {"asset rock { draw(v, a) { w = } }", "expected an expression"},
-        {"asset rock { draw(v, a) { 5 = 3 } }", "expected a statement"},
-        {"asset rock { draw(v, a) { foo; } }", "must be a call"},
-        {"asset rock { draw(v, a) { if x { } } }", "'(' after 'if'"},
-        {"asset rock { draw(v, a) { if (x) 5 } }", "expected '{'"},
-        {"asset rock { draw(v, a) {", "unterminated"},
+        {"asset rock { draw(v: i32, a: i32) { w = } }", "expected an expression"},
+        {"asset rock { draw(v: i32, a: i32) { 5 = 3 } }", "expected a statement"},
+        {"asset rock { draw(v: i32, a: i32) { foo; } }", "must be a call"},
+        {"asset rock { draw(v: i32, a: i32) { if x { } } }", "'(' after 'if'"},
+        {"asset rock { draw(v: i32, a: i32) { if (x) 5 } }", "expected '{'"},
+        {"asset rock { draw(v: i32, a: i32) {", "unterminated"},
         {"import hair from \"hair.ips\"", "expected an 'asset' block"},
         {"import hair from 5", "quoted file path"},
         {"asset a { } asset b { }", "multiple asset blocks"},
-        {"asset rock { draw(v, a) { w = - } }", "expected an expression"},
-        {"asset rock { draw(v, a) { w = {1, 2 } }", "unterminated"},
-        {"asset rock { draw(v, a) { return 1 2 } }", "expected a statement"},
+        {"asset rock { draw(v: i32, a: i32) { w = - } }", "expected an expression"},
+        {"asset rock { draw(v: i32, a: i32) { w = {1, 2 } }", "unterminated"},
+        {"asset rock { draw(v: i32, a: i32) { return 1 2 } }", "expected a statement"},
     };
 
     for (const Case& testCase : cases) {
