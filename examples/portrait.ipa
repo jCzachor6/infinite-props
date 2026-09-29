@@ -562,6 +562,10 @@ fn drawHair ( i32, color, color ) -> ( ):
   local.get 2
   rect
   else
+  local.get 0
+  const.i32 5
+  i32.eq
+  if
     ; Long
   const.f32 16.0
   const.f32 48.0
@@ -587,6 +591,239 @@ fn drawHair ( i32, color, color ) -> ( ):
   const.f32 46.0
   local.get 1
   poly 11
+  else
+    ; ---- original styles (6-10) ----
+  local.get 0
+  const.i32 6
+  i32.eq
+  if
+    ; Mohawk: a spiked crest, shaved sides
+  const.f32 28.0
+  const.f32 10.0
+  const.f32 8.0
+  const.f32 10.0
+  local.get 1
+  rect
+  const.f32 24.0
+  const.f32 14.0
+  const.f32 30.0
+  const.f32 3.0
+  const.f32 27.0
+  const.f32 12.0
+  local.get 1
+  poly 3
+  const.f32 28.0
+  const.f32 14.0
+  const.f32 34.0
+  const.f32 2.0
+  const.f32 31.0
+  const.f32 12.0
+  local.get 1
+  const.i32 10
+  color.shade
+  poly 3
+  const.f32 32.0
+  const.f32 14.0
+  const.f32 38.0
+  const.f32 4.0
+  const.f32 35.0
+  const.f32 12.0
+  local.get 1
+  poly 3
+  const.f32 26.0
+  const.f32 14.0
+  const.f32 32.0
+  const.f32 6.0
+  const.f32 29.0
+  const.f32 12.0
+  local.get 1
+  const.i32 -8
+  color.shade
+  poly 3
+  else
+  local.get 0
+  const.i32 7
+  i32.eq
+  if
+    ; Topknot: swept base, a bun and an accent tie
+  const.f32 20.0
+  const.f32 16.0
+  const.f32 22.0
+  const.f32 9.0
+  const.f32 42.0
+  const.f32 9.0
+  const.f32 44.0
+  const.f32 17.0
+  const.f32 40.0
+  const.f32 15.0
+  const.f32 24.0
+  const.f32 15.0
+  local.get 1
+  poly 6
+  const.f32 32.0
+  const.f32 5.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  oval
+  const.f32 31.0
+  const.f32 4.0
+  const.f32 2.0
+  const.f32 2.0
+  local.get 1
+  const.i32 14
+  color.shade
+  oval
+  const.f32 28.0
+  const.f32 8.0
+  const.f32 8.0
+  const.f32 2.0
+  local.get 2
+  rect
+  else
+  local.get 0
+  const.i32 8
+  i32.eq
+  if
+    ; Afro: a big textured cloud
+  const.f32 32.0
+  const.f32 13.0
+  const.f32 16.0
+  const.f32 14.0
+  local.get 1
+  oval
+  const.f32 25.0
+  const.f32 9.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  const.i32 -12
+  color.shade
+  oval
+  const.f32 39.0
+  const.f32 11.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  const.i32 -12
+  color.shade
+  oval
+  const.f32 32.0
+  const.f32 5.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  const.i32 8
+  color.shade
+  oval
+  const.f32 20.0
+  const.f32 16.0
+  const.f32 3.0
+  const.f32 3.0
+  local.get 1
+  const.i32 -8
+  color.shade
+  oval
+  const.f32 44.0
+  const.f32 16.0
+  const.f32 3.0
+  const.f32 3.0
+  local.get 1
+  const.i32 -8
+  color.shade
+  oval
+  else
+  local.get 0
+  const.i32 9
+  i32.eq
+  if
+    ; Pigtails: a cap and two buns with accent ties
+  const.f32 22.0
+  const.f32 16.0
+  const.f32 25.0
+  const.f32 9.0
+  const.f32 39.0
+  const.f32 9.0
+  const.f32 42.0
+  const.f32 16.0
+  const.f32 40.0
+  const.f32 14.0
+  const.f32 24.0
+  const.f32 14.0
+  local.get 1
+  poly 6
+  const.f32 17.0
+  const.f32 19.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  oval
+  const.f32 16.0
+  const.f32 18.0
+  const.f32 2.0
+  const.f32 2.0
+  local.get 1
+  const.i32 12
+  color.shade
+  oval
+  const.f32 14.0
+  const.f32 18.0
+  const.f32 4.0
+  const.f32 2.0
+  local.get 2
+  rect
+  const.f32 47.0
+  const.f32 19.0
+  const.f32 4.0
+  const.f32 4.0
+  local.get 1
+  oval
+  const.f32 46.0
+  const.f32 18.0
+  const.f32 2.0
+  const.f32 2.0
+  local.get 1
+  const.i32 12
+  color.shade
+  oval
+  const.f32 44.0
+  const.f32 18.0
+  const.f32 4.0
+  const.f32 2.0
+  local.get 2
+  rect
+  else
+    ; Side-sweep
+  const.f32 16.0
+  const.f32 20.0
+  const.f32 20.0
+  const.f32 8.0
+  const.f32 44.0
+  const.f32 7.0
+  const.f32 46.0
+  const.f32 22.0
+  const.f32 40.0
+  const.f32 26.0
+  const.f32 24.0
+  const.f32 28.0
+  const.f32 18.0
+  const.f32 26.0
+  local.get 1
+  poly 7
+  const.f32 24.0
+  const.f32 12.0
+  const.f32 30.0
+  const.f32 24.0
+  const.i32 1
+  local.get 1
+  const.i32 14
+  color.shade
+  line
+  end
+  end
+  end
+  end
+  end
   end
   end
   end
@@ -596,7 +833,7 @@ fn drawHair ( i32, color, color ) -> ( ):
 endfn
 
 fn draw ( i32, i32 ) -> ( ):
-  locals: i32 i32 color color color color color i32 i32 i32 i32 f32 f32 i32 color i32 i32 f32 f32 f32 f32
+  locals: i32 i32 color color color color color i32 i32 i32 i32 f32 f32 i32 color i32 i32 f32 f32 f32 f32 i32 i32 i32
   ; ---- identity (PaCharacter::generate), RNG order preserved ----
   stream.state
   const.i32 3299323006
@@ -662,6 +899,56 @@ fn draw ( i32, i32 ) -> ( ):
   i32.eq
   i32.and
   local.set 12
+  ; ---- original hairstyles: ~40% of characters get one instead of the
+  ; game's style (extra draws; the base identity stays 1:1) ----
+  const.i32 5
+  rng.index
+  const.i32 2
+  i32.lt_s
+  if
+  const.i32 5
+  rng.index
+  const.i32 6
+  i32.add
+  local.set 9
+  end
+  ; ---- head-shape variation (added AFTER the identity draws, so the
+  ; base identity stays 1:1 with the game) ----
+  const.i32 3
+  rng.index
+  local.set 23
+  ; jaw = shape - 1  (-1 narrow .. +1 wide), then a strong sex shift:
+  ; females round the jaw by -2, males square it by +2 — the jaws of
+  ; the two sexes never overlap
+  local.get 23
+  const.i32 1
+  i32.sub
+  local.set 24
+  local.get 2
+  if
+  local.get 24
+  const.i32 2
+  i32.sub
+  local.set 24
+  else
+  local.get 24
+  const.i32 2
+  i32.add
+  local.set 24
+  end
+  ; w = 10 + faceWidth + shape, then females narrow the face by one
+  local.get 10
+  local.get 23
+  i32.add
+  const.i32 10
+  i32.add
+  local.get 2
+  if
+  const.i32 1
+  i32.sub
+  end
+  i32.to.f32
+  local.set 13
   ; ---- derived values ----
   local.get 10
   i32.to.f32
@@ -954,6 +1241,75 @@ fn draw ( i32, i32 ) -> ( ):
   const.f32 1.0
   const.color #b8c6c1ff
   rect
+  ; ---- outfit variation (extra draws; identity stays 1:1) ----
+  const.i32 4
+  rng.index
+  local.set 25
+  ; outfit 1: a lighter chest stripe
+  local.get 25
+  const.i32 1
+  i32.eq
+  if
+  const.f32 26.0
+  const.f32 55.0
+  const.f32 12.0
+  const.f32 2.0
+  local.get 7
+  local.get 7
+  const.i32 20
+  color.shade
+  const.f32 0.35
+  color.mix
+  rect
+  end
+  ; outfit 2: two dark chest pockets
+  local.get 25
+  const.i32 2
+  i32.eq
+  if
+  const.f32 20.0
+  const.f32 58.0
+  const.f32 6.0
+  const.f32 4.0
+  local.get 7
+  const.i32 -25
+  color.shade
+  rect
+  const.f32 38.0
+  const.f32 58.0
+  const.f32 6.0
+  const.f32 4.0
+  local.get 7
+  const.i32 -25
+  color.shade
+  rect
+  end
+  ; outfit 3: accent lapels on the collar
+  local.get 25
+  const.i32 3
+  i32.eq
+  if
+  const.f32 25.0
+  const.f32 48.0
+  const.f32 31.0
+  const.f32 54.0
+  const.f32 28.0
+  const.f32 52.0
+  const.f32 24.0
+  const.f32 49.0
+  local.get 8
+  poly 4
+  const.f32 39.0
+  const.f32 48.0
+  const.f32 32.0
+  const.f32 54.0
+  const.f32 36.0
+  const.f32 52.0
+  const.f32 40.0
+  const.f32 49.0
+  local.get 8
+  poly 4
+  end
   ; ---- ears ----
   const.f32 32.0
   local.get 13
@@ -993,10 +1349,16 @@ fn draw ( i32, i32 ) -> ( ):
   f32.add
   const.f32 35.0
   const.f32 38.0
+  local.get 24
+  i32.to.f32
+  f32.add
   const.f32 43.0
   const.f32 30.0
   const.f32 46.0
   const.f32 23.0
+  local.get 24
+  i32.to.f32
+  f32.sub
   const.f32 40.0
   const.f32 32.0
   local.get 13
@@ -1021,10 +1383,16 @@ fn draw ( i32, i32 ) -> ( ):
   f32.add
   const.f32 34.0
   const.f32 37.0
+  local.get 24
+  i32.to.f32
+  f32.add
   const.f32 41.0
   const.f32 30.0
   const.f32 44.0
   const.f32 24.0
+  local.get 24
+  i32.to.f32
+  f32.sub
   const.f32 39.0
   const.f32 33.0
   local.get 13
@@ -1043,6 +1411,9 @@ fn draw ( i32, i32 ) -> ( ):
   f32.add
   const.f32 34.0
   const.f32 37.0
+  local.get 24
+  i32.to.f32
+  f32.add
   const.f32 41.0
   const.f32 31.0
   const.f32 44.0

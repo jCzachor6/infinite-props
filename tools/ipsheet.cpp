@@ -55,7 +55,7 @@ int ipsheetMain(int argc, char* argv[]) {
                       << "Usage: ipsheet <file.iprop> [options]\n"
                       << "  --variants N   variant count (default: all declared)\n"
                       << "  --seeds N      seeds per variant (default 4)\n"
-                      << "  --columns N    grid columns (default: the variant count)\n"
+                      << "  --columns N    grid columns (default: the seed count)\n"
                       << "  -o PATH        output PNG (default: sheet.png)\n";
             return 0;
         } else if (arg == "--variants") {
@@ -110,11 +110,14 @@ int ipsheetMain(int argc, char* argv[]) {
         variants = loaded.meta.variants;
     }
     if (columns == 0) {
-        columns = variants;
+        columns = seeds;
     }
     const u32 cellW = loaded.meta.sizeX;
     const u32 cellH = loaded.meta.sizeY;
-    const u32 rows = (variants + columns - 1) / columns;
+    // Layout: row-major over (variant, seed) pairs — each variant gets a
+    // row of its seeds, wrapped to the requested column count.
+    const u32 cells = variants * seeds;
+    const u32 rows = (cells + columns - 1) / columns;
     std::vector<u8> rgba(
         static_cast<std::size_t>(columns) * cellW * rows * cellH * 4, 0);
 
@@ -127,8 +130,9 @@ int ipsheetMain(int argc, char* argv[]) {
                 VM vm(loaded, inputs);
                 vm.run();
                 const Canvas& canvas = vm.canvas();
-                const u32 cellX = v % columns;
-                const u32 cellY = v / columns;
+                const u32 cell = v * seeds + s;
+                const u32 cellX = cell % columns;
+                const u32 cellY = cell / columns;
                 for (u32 y = 0; y < canvas.height; ++y) {
                     for (u32 x = 0; x < canvas.width; ++x) {
                         const Color& pixel = canvas.at(x, y);

@@ -160,14 +160,139 @@ def emit_hairstyles():
                                        (43, 28), (40, 20), (29, 17), (24, 23)]),
                            f32(45.0), f32(22.0), f32(4.0), f32(2.0),
                            op("local.get", 2), op("rect")))
+    emit("  local.get 0")
+    i32(5)
+    op("i32.eq")
+    op("if")
     emit("    ; Long")
     hair_poly([(16, 48), (18, 19), (24, 11), (38, 11), (44, 19), (48, 49),
                (41, 46), (39, 22), (33, 17), (25, 24), (23, 46)])
+    op("else")
+    emit("    ; ---- original styles (6-10) ----")
+    style_case(6, lambda: emit_mohawk())
+    style_case(7, lambda: emit_topknot())
+    style_case(8, lambda: emit_afro())
+    style_case(9, lambda: emit_pigtails())
+    emit("    ; Side-sweep")
+    hair_poly([(16, 20), (20, 8), (44, 7), (46, 22), (40, 26), (24, 28), (18, 26)])
+    f32(24.0)
+    f32(12.0)
+    f32(30.0)
+    f32(24.0)
+    i32(1)
+    op("local.get", 1)
+    i32(14)
+    op("color.shade")
+    op("line")
+    for _ in range(4):
+        end_cases()  # close style_case(6-9)
+    end_cases()  # close the Long if
     for _ in range(5):
-        end_cases()
+        end_cases()  # close style_case(0-4)
     emit("  return")
     emit("endfn")
     emit("")
+
+
+def emit_mohawk():
+    emit("    ; Mohawk: a spiked crest, shaved sides")
+    f32(28.0)
+    f32(10.0)
+    f32(8.0)
+    f32(10.0)
+    op("local.get", 1)
+    op("rect")
+    for x0, x1, tip, shade in [(24, 30, 3, 0), (28, 34, 2, 10), (32, 38, 4, 0), (26, 32, 6, -8)]:
+        f32(repr(float(x0)))
+        f32(14.0)
+        f32(repr(float(x1)))
+        f32(repr(float(tip)))
+        f32(repr(float((x0 + x1) / 2)))
+        f32(12.0)
+        op("local.get", 1)
+        if shade:
+            i32(shade)
+            op("color.shade")
+        op("poly", 3)
+
+
+def emit_topknot():
+    emit("    ; Topknot: swept base, a bun and an accent tie")
+    for x, y in [(20, 16), (22, 9), (42, 9), (44, 17), (40, 15), (24, 15)]:
+        f32(repr(float(x)))
+        f32(repr(float(y)))
+    op("local.get", 1)
+    op("poly", 6)
+    f32(32.0)
+    f32(5.0)
+    f32(4.0)
+    f32(4.0)
+    op("local.get", 1)
+    op("oval")
+    f32(31.0)
+    f32(4.0)
+    f32(2.0)
+    f32(2.0)
+    op("local.get", 1)
+    i32(14)
+    op("color.shade")
+    op("oval")
+    f32(28.0)
+    f32(8.0)
+    f32(8.0)
+    f32(2.0)
+    op("local.get", 2)
+    op("rect")
+
+
+def emit_afro():
+    emit("    ; Afro: a big textured cloud")
+    f32(32.0)
+    f32(13.0)
+    f32(16.0)
+    f32(14.0)
+    op("local.get", 1)
+    op("oval")
+    for x, y, r, shade in [(25, 9, 4, -12), (39, 11, 4, -12), (32, 5, 4, 8),
+                           (20, 16, 3, -8), (44, 16, 3, -8)]:
+        f32(repr(float(x)))
+        f32(repr(float(y)))
+        f32(repr(float(r)))
+        f32(repr(float(r)))
+        op("local.get", 1)
+        i32(shade)
+        op("color.shade")
+        op("oval")
+
+
+def emit_pigtails():
+    emit("    ; Pigtails: a cap and two buns with accent ties")
+    for x, y in [(22, 16), (25, 9), (39, 9), (42, 16), (40, 14), (24, 14)]:
+        f32(repr(float(x)))
+        f32(repr(float(y)))
+    op("local.get", 1)
+    op("poly", 6)
+    for x in (17, 47):
+        f32(repr(float(x)))
+        f32(19.0)
+        f32(4.0)
+        f32(4.0)
+        op("local.get", 1)
+        op("oval")
+        f32(repr(float(x - 1)))
+        f32(18.0)
+        f32(2.0)
+        f32(2.0)
+        op("local.get", 1)
+        i32(12)
+        op("color.shade")
+        op("oval")
+        f32(repr(float(x - 3)))
+        f32(18.0)
+        f32(4.0)
+        f32(2.0)
+        op("local.get", 2)
+        op("rect")
 
 
 def emit_curls():
@@ -246,7 +371,11 @@ def emit_vertex(spec):
         f32(repr(float(spec[1])))
         return
     f32(repr(float(spec[1])))
-    op("local.get", 13 if spec[2] == "w" else 14)
+    if spec[2] == "jaw":
+        op("local.get", 24)
+        op("i32.to.f32")
+    else:
+        op("local.get", 13 if spec[2] == "w" else 14)
     op("f32.add" if kind == "add" else "f32.sub")
 
 
@@ -279,7 +408,7 @@ emit_age()
 emit_hairstyles()
 
 emit("fn draw ( i32, i32 ) -> ( ):")
-emit("  locals: i32 i32 color color color color color i32 i32 i32 i32 f32 f32 i32 color i32 i32 f32 f32 f32 f32")
+emit("  locals: i32 i32 color color color color color i32 i32 i32 i32 f32 f32 i32 color i32 i32 f32 f32 f32 f32 i32 i32 i32")
 
 # Locals: 0 variant, 1 archetype, 2 female, 3 age, 4 skin, 5 hair, 6 eyes,
 # 7 clothing, 8 accent, 9 hairstyle, 10 faceWidth, 11 freckles, 12 beard,
@@ -350,6 +479,58 @@ i32(0)
 op("i32.eq")
 op("i32.and")
 op("local.set", 12)
+
+emit("  ; ---- original hairstyles: ~40% of characters get one instead of the")
+emit("  ; game's style (extra draws; the base identity stays 1:1) ----")
+i32(5)
+op("rng.index")
+i32(2)
+op("i32.lt_s")
+op("if")
+i32(5)
+op("rng.index")
+i32(6)
+op("i32.add")
+op("local.set", 9)
+op("end")
+
+emit("  ; ---- head-shape variation (added AFTER the identity draws, so the")
+emit("  ; base identity stays 1:1 with the game) ----")
+i32(3)
+op("rng.index")
+op("local.set", 23)
+emit("  ; jaw = shape - 1  (-1 narrow .. +1 wide), then a strong sex shift:")
+emit("  ; females round the jaw by -2, males square it by +2 — the jaws of")
+emit("  ; the two sexes never overlap")
+op("local.get", 23)
+i32(1)
+op("i32.sub")
+op("local.set", 24)
+op("local.get", 2)
+op("if")
+op("local.get", 24)
+i32(2)
+op("i32.sub")
+op("local.set", 24)
+op("else")
+op("local.get", 24)
+i32(2)
+op("i32.add")
+op("local.set", 24)
+op("end")
+emit("  ; w = 10 + faceWidth + shape, then females narrow the face by one")
+op("local.get", 10)
+op("local.get", 23)
+op("i32.add")
+i32(10)
+op("i32.add")
+op("local.get", 2)
+op("if")
+i32(1)
+op("i32.sub")
+op("end")
+op("i32.to.f32")
+op("local.set", 13)
 
 emit("  ; ---- derived values ----")
 op("local.get", 10)
@@ -552,6 +733,62 @@ f32(1.0)
 color(BADGELINE)
 op("rect")
 
+emit("  ; ---- outfit variation (extra draws; identity stays 1:1) ----")
+i32(4)
+op("rng.index")
+op("local.set", 25)
+emit("  ; outfit 1: a lighter chest stripe")
+op("local.get", 25)
+i32(1)
+op("i32.eq")
+op("if")
+f32(26.0)
+f32(55.0)
+f32(12.0)
+f32(2.0)
+op("local.get", 7)
+op("local.get", 7)
+i32(20)
+op("color.shade")
+f32(0.35)
+op("color.mix")
+op("rect")
+op("end")
+emit("  ; outfit 2: two dark chest pockets")
+op("local.get", 25)
+i32(2)
+op("i32.eq")
+op("if")
+f32(20.0)
+f32(58.0)
+f32(6.0)
+f32(4.0)
+op("local.get", 7)
+i32(-25)
+op("color.shade")
+op("rect")
+f32(38.0)
+f32(58.0)
+f32(6.0)
+f32(4.0)
+op("local.get", 7)
+i32(-25)
+op("color.shade")
+op("rect")
+op("end")
+emit("  ; outfit 3: accent lapels on the collar")
+op("local.get", 25)
+i32(3)
+op("i32.eq")
+op("if")
+plain_poly([("lit", 25), ("lit", 48), ("lit", 31), ("lit", 54),
+            ("lit", 28), ("lit", 52), ("lit", 24), ("lit", 49)],
+           lambda: op("local.get", 8))
+plain_poly([("lit", 39), ("lit", 48), ("lit", 32), ("lit", 54),
+            ("lit", 36), ("lit", 52), ("lit", 40), ("lit", 49)],
+           lambda: op("local.get", 8))
+op("end")
+
 emit("  ; ---- ears ----")
 f32(32.0)
 op("local.get", 13)
@@ -577,18 +814,18 @@ op("oval")
 emit("  ; ---- face planes ----")
 plain_poly([("sub", 32, "w"), ("lit", 17), ("lit", 26), ("lit", 12),
             ("lit", 38), ("lit", 12), ("add", 32, "w"), ("lit", 19),
-            ("add", 31, "w"), ("lit", 35), ("lit", 38), ("lit", 43),
-            ("lit", 30), ("lit", 46), ("lit", 23), ("lit", 40),
+            ("add", 31, "w"), ("lit", 35), ("add", 38, "jaw"), ("lit", 43),
+            ("lit", 30), ("lit", 46), ("sub", 23, "jaw"), ("lit", 40),
             ("sub", 32, "w"), ("lit", 31)],
            lambda: color(OUTLINE))
 plain_poly([("sub", 33, "w"), ("lit", 18), ("lit", 27), ("lit", 14),
             ("lit", 37), ("lit", 14), ("add", 31, "w"), ("lit", 20),
-            ("add", 31, "w"), ("lit", 34), ("lit", 37), ("lit", 41),
-            ("lit", 30), ("lit", 44), ("lit", 24), ("lit", 39),
+            ("add", 31, "w"), ("lit", 34), ("add", 37, "jaw"), ("lit", 41),
+            ("lit", 30), ("lit", 44), ("sub", 24, "jaw"), ("lit", 39),
             ("sub", 33, "w"), ("lit", 30)],
            lambda: op("local.get", 4))
 plain_poly([("lit", 37), ("lit", 16), ("add", 31, "w"), ("lit", 20),
-            ("add", 31, "w"), ("lit", 34), ("lit", 37), ("lit", 41),
+            ("add", 31, "w"), ("lit", 34), ("add", 37, "jaw"), ("lit", 41),
             ("lit", 31), ("lit", 44), ("lit", 35), ("lit", 36)],
            lambda: (op("local.get", 4), i32(-32), op("color.shade")))
 plain_poly([("lit", 24), ("lit", 21), ("lit", 29), ("lit", 17),
