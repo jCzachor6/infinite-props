@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iprop — FAQ</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header>
+  <a class="logo" href="../">iprop</a>
+  <nav></nav>
+  <div id="search-wrap">
+    <input id="search" placeholder="search the docs…">
+    <div id="results"></div>
+  </div>
+</header>
+<main>
+<h1>FAQ</h1>
+
+<h2 id="determinism">Is the output really deterministic?</h2>
+<p>Yes, bit-exactly. Generation is a pure function of the inputs — the seed,
+the variant/archetype indices, the requested size and the uniform values.
+The seeded primitives (hash, stream draws, noise) are specification-pinned
+algorithms, and a golden corpus of committed images guards the pipeline:
+any change that alters a golden pixel is a breaking change.</p>
+
+<h2 id="seed">What are seed, variant and archetype?</h2>
+<ul>
+<li><strong>seed</strong> — the root of every random stream; the same seed
+always reproduces the same asset.</li>
+<li><strong>archetype</strong> — the coarse form (an asset declares
+<code>archetypes N</code>; think "boulder vs slab").</li>
+<li><strong>variant</strong> — the finer variation within an archetype
+(<code>variants N</code>).</li>
+</ul>
+<p>Both indices arrive as the validated <code>draw(v, a)</code> parameters,
+so an asset author decides exactly how they shape the output.</p>
+
+<h2 id="vm">Why a bytecode VM instead of shipping the code?</h2>
+<p>Bytecode is small, self-contained, portable and safe: hosts validate a
+binary before executing it, the instruction set pins every operation, and a
+fuel budget guarantees termination. The same binary runs on every backend —
+the browser, the tools, the future native hosts — with identical pixels.</p>
+
+<h2 id="parts">How do composed assets work?</h2>
+<p>An asset can import other assets as <em>parts</em> (<code>import hair
+from "hair.ips"</code>). The compiler links them into one self-contained
+binary; the parent calls <code>part.draw(seed, v, a, at = {x, y},
+uniforms…)</code> — call order is paint order — and reads the part's
+structured outputs through <code>part.outputs.name</code>.</p>
+
+<h2 id="contribute">How do I contribute?</h2>
+<p>The repository is organised in phases (<code>PHASES.md</code>): the
+frozen format spec (<code>spec/</code>), the runtime, the language and the
+compiler, the backends, the editor and this website. Contributions follow
+the phase plan; every change runs the desktop test suite and the golden
+corpus, and semantic changes require a spec update first.</p>
+</main>
+<footer>iprop — format spec and toolchain</footer>
+<script src="nav.js"></script>
+</body>
+</html>

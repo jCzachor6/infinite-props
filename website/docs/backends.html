@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iprop — backends</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header>
+  <a class="logo" href="../">iprop</a>
+  <nav></nav>
+  <div id="search-wrap">
+    <input id="search" placeholder="search the docs…">
+    <div id="results"></div>
+  </div>
+</header>
+<main>
+<h1>Backends and installation</h1>
+<p>All backends execute the same validated bytecode; the reference CPU
+interpreter is authoritative for correctness, and the conformance suite
+checks every backend against the golden corpus.</p>
+
+<h2 id="cli">The CLI toolchain</h2>
+<pre><code>cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel</code></pre>
+<p>Tools under <code>build/tools/</code>: <code>ipc</code> (compile),
+<code>ipgen</code> (render), <code>ipsheet</code> (grids), <code>ipdis</code>
+(disassemble), <code>ipval</code> (validate). Each prints
+<code>--help</code>.</p>
+
+<h2 id="html5">HTML5 / WASM</h2>
+<p>The reference interpreter compiled to WebAssembly — powers this
+playground and the IDE preview. Requires Emscripten.</p>
+<pre><code>mkdir -p build/wasm && cd build/wasm
+emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
+emmake make -j4
+cd ../.. && backends/html5/prepare.sh</code></pre>
+<p>The demo page (<code>backends/html5/demo/</code>) renders example sheets;
+the conformance suite (<code>node backends/html5/test/run-tests.js
+build/wasm</code>) checks the golden seeds. Details in
+<code>backends/html5/README.md</code>.</p>
+
+<h2 id="vscode">VS Code</h2>
+<pre><code>cd editor
+sh install.sh</code></pre>
+<p>Reload VS Code: syntax highlighting, compiler diagnostics, the live
+preview with seed controls, the atlas, the bytecode inspector and exports.
+The integrated terminal is the console for CLI agents.</p>
+
+<h2 id="native">Native hosts (planned)</h2>
+<p>The roadmap defines three native hosts — SFML (desktop window with
+<code>sf::Image</code> output), OpenGL and Vulkan (CPU raster → texture
+upload → presentation with atlas grids and seed cycling). They are not
+implemented yet; the CPU raster they present is already correct and
+conformant.</p>
+</main>
+<footer>iprop — format spec and toolchain</footer>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iprop — getting started</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header>
+  <a class="logo" href="../">iprop</a>
+  <nav></nav>
+  <div id="search-wrap">
+    <input id="search" placeholder="search the docs…">
+    <div id="results"></div>
+  </div>
+</header>
+<main>
+<h1>Getting started</h1>
+<p>iprop is a portable binary format and toolchain for <strong>seed-based
+procedural 2D assets</strong>: you author an asset in the <code>.ips</code>
+language, compile it to a self-contained <code>.iprop</code> binary, and any
+backend renders it — deterministically — from a seed.</p>
+
+<h2 id="install">Install the toolchain</h2>
+<p>The toolchain is C++20 with CMake. Clone the repository and build:</p>
+<pre><code>git clone &lt;repository-url&gt; iprop
+cd iprop
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel</code></pre>
+<p>This produces the tools under <code>build/tools/</code>:</p>
+<table>
+<tr><th>tool</th><th>what it does</th></tr>
+<tr><td><code>ipc</code></td><td>compile <code>.ips</code> → <code>.iprop</code></td></tr>
+<tr><td><code>ipgen</code></td><td>render a <code>.iprop</code> to a PNG + result JSON</td></tr>
+<tr><td><code>ipsheet</code></td><td>render a variant × seed grid</td></tr>
+<tr><td><code>ipdis</code></td><td>disassemble a binary (optionally with source lines)</td></tr>
+<tr><td><code>ipval</code></td><td>validate a binary</td></tr>
+</table>
+
+<h2 id="first-asset">Your first asset</h2>
+<p>Write <code>rock.ips</code>:</p>
+<pre><code>asset rock {
+  size 192x192
+  origin 96,170
+  variants 5
+  archetypes 4
+  input  color palette = #808d74
+  output rect  collider
+
+  draw(v, a) {
+    w = range(21, 31)
+    h = range(35, 49)
+    collider = {96 - 20, 170 - 23, 40, 23}
+    rect(-w * 0.10, 0, w * 0.87, h, palette)
+    if (index(3) == 0) {
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43,
+           shade(palette, -4))
+    }
+  }
+}</code></pre>
+<p>Compile it, then render a seed:</p>
+<pre><code>./build/tools/ipc rock.ips -o rock.iprop
+./build/tools/ipgen rock.iprop --seed 7 -o rock.png</code></pre>
+<p><code>ipgen</code> prints the result JSON (the structured outputs and the
+fuel readout). The same seed always renders the same pixels — on every
+platform and backend.</p>
+
+<h2 id="editor">The editor</h2>
+<p>For an authoring experience, use the VS Code extension (<code>editor/</code>
+in the repository):</p>
+<pre><code>cd editor
+sh install.sh</code></pre>
+<p>Reload VS Code and open any <code>.ips</code> file: syntax highlighting,
+inline diagnostics from the compiler, a live preview with seed controls, an
+atlas browser, a bytecode inspector and one-click exports. The integrated
+terminal is your console for CLI agents (opencode, codex) — they edit the
+files and the extension recompiles.</p>
+
+<div class="note">The compiled tools are expected at <code>&lt;workspace&gt;/build/tools</code>;
+every tool accepts a <code>-h</code>/<code>--help</code> flag with the exact
+options.</div>
+</main>
+<footer>iprop — format spec and toolchain</footer>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -3,6 +3,14 @@
 A static site with the playground: the reference interpreter compiled to
 WebAssembly, running the example assets entirely in the browser.
 
+## Docs
+
+Static documentation under `docs/` (multi-page Vite build): getting started
+(with a verifiable first-asset walkthrough), the `.ips` language reference,
+the format summary, the per-backend installation guides and the FAQ. A
+client-side section search lives in the header; the canonical spec is
+copied into the site (`public/spec/iprop-v0.1.md`) so the docs can link it.
+
 ## Playground
 
 - pick an asset (portrait / plant / noise) — every frame is
@@ -31,4 +39,5 @@ server).
 | ---- | ---- |
 | `index.html` | the page shell |
 | `src/main.ts` | the playground: the asset picker, the controls, the hash sync |
-| `public/` | the WASM module and the example binaries (synced by `prepare.sh`) |
+| `docs/` | the documentation pages |
+| `public/` | the WASM module, the example binaries, the spec copy and the docs assets (synced by `prepare.sh`) |

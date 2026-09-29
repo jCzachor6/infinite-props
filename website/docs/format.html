@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iprop — the format</title>
+<link rel="stylesheet" href="docs.css">
+</head>
+<body>
+<header>
+  <a class="logo" href="../">iprop</a>
+  <nav></nav>
+  <div id="search-wrap">
+    <input id="search" placeholder="search the docs…">
+    <div id="results"></div>
+  </div>
+</header>
+<main>
+<h1>The .iprop format</h1>
+<p>A self-contained binary: one file carries the metadata, the constants and
+the bytecode — no external resources. The canonical specification is
+<a href="../spec/iprop-v0.1.md">spec/iprop-v0.1.md</a> in the repository; this
+page summarises it.</p>
+
+<h2 id="layout">The file layout</h2>
+<pre><code>header (20 bytes)          magic "IPRP", version 0.1, flags, section count
+section table (12 bytes × N)   id, offset, size
+sections                    meta · const · code · debug (optional)</code></pre>
+<ul>
+<li>All multi-byte values are little-endian; sections are 4-byte aligned.</li>
+<li>The header flag bit 0 marks the debug section (spec §7); the validator
+rejects a flag/section mismatch.</li>
+</ul>
+
+<h2 id="sections">The sections</h2>
+<table>
+<tr><th>section</th><th>contents</th></tr>
+<tr><td><code>meta</code></td><td>the canvas size, the origin, the declared variants/archetypes, the fuel budget, the input uniform entries (type, name, default) and the output slot entries (kind, list flag, name)</td></tr>
+<tr><td><code>const</code></td><td>deduplicated pools: strings, <code>i32</code>, <code>f32</code> and colours — every instruction references them by index</td></tr>
+<tr><td><code>code</code></td><td>the function table (names, signatures, locals, stream offsets) followed by the concatenated instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
+<tr><td><code>debug</code></td><td>informative: per function, the local names and the source line of every instruction (§7); stripping it must not change execution</td></tr>
+</table>
+<p>Function 0 is the entry point <code>draw</code> with parameters
+<code>(i32 variant, i32 archetype)</code> followed by one parameter per
+uniform. The instruction set (spec §9) covers control flow, the operand
+stack, integer/float/colour arithmetic, the pinned seeded primitives, the
+canvas raster operations, the structured outputs and part calls.</p>
+
+<h2 id="determinism">Determinism</h2>
+<ul>
+<li>Generation is a pure function of the inputs: identical inputs produce
+identical images and outputs — bit-exact, across platforms and backends.</li>
+<li>The seeded primitives are specification-pinned instructions (not library
+calls): the splitmix32 hash, the Weyl-sequence stream, the value/fault
+noise — every operation's exact algorithm is written down (spec §11–§12).</li>
+<li>The colour helpers pin the fused-multiply-add behaviour, so compiled
+code matches the reference builds bit for bit.</li>
+<li>Every execution runs under a fuel budget (<code>meta.fuel</code>), which
+guarantees termination.</li>
+<li>A golden corpus of (program, seed) images is committed; any compiler or
+interpreter change that alters a golden image is a breaking change.</li>
+</ul>
+</main>
+<footer>iprop — format spec and toolchain</footer>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -45,7 +45,7 @@ the boxes.
 | 30 | IDE: atlas browser & bytecode inspector | E. IDE | ✅ |
 | 31 | IDE: export & polish | E. IDE | ✅ |
 | 32 | Website: playground | F. Website & release | ✅ |
-| 33 | Website: docs & installation guides | F. Website & release | ⬜ |
+| 33 | Website: docs & installation guides | F. Website & release | ✅ |
 | 34 | Gallery, cross-backend conformance, v0.1.0 release | F. Website & release | ⬜ |
 
 ---
@@ -733,16 +733,24 @@ agents and real files):**
 **Goal:** adoptability.
 
 **Work:**
-1. Documentation: getting started, language reference, format summary, spec links.
-2. Per-backend installation guides (HTML5, SFML, OpenGL, Vulkan) with copy-paste commands.
-3. FAQ + contribution guide links.
+1. `website/docs/` (a multi-page Vite build): getting started (a verifiable
+   first-asset walkthrough: build → author rock.ips → ipc → ipgen), the
+   `.ips` language reference (grammar, statements, operators, the full
+   builtin table, parts/composition), the format summary (layout, sections,
+   determinism rules), the per-backend installation guides (CLI toolchain,
+   HTML5/WASM, VS Code, the planned native hosts) and the FAQ with a
+   contribution pointer.
+2. The canonical spec is copied into the site (`public/spec/iprop-v0.1.md`)
+   and linked from the format page.
+3. A client-side section search in the docs header (substring over the
+   page sections with anchors).
 
-**Deliverables:** docs section of the website.
+**Deliverables:** the docs section of the website.
 
 **Acceptance criteria:**
-- [ ] A new user can install and generate their first asset following the guide (verified by following it).
-- [ ] Docs link the canonical spec files.
-- [ ] Search works.
+- [x] A new user can install and generate their first asset following the guide (verified by following it).
+- [x] Docs link the canonical spec files.
+- [x] Search works.
 
 ---
 
