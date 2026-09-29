@@ -46,7 +46,7 @@ the boxes.
 | 31 | IDE: export & polish | E. IDE | ✅ |
 | 32 | Website: playground | F. Website & release | ✅ |
 | 33 | Website: docs & installation guides | F. Website & release | ✅ |
-| 34 | Gallery, cross-backend conformance, v0.1.0 release | F. Website & release | ⬜ |
+| 34 | Gallery, cross-backend conformance, v0.1.0 release | F. Website & release | ✅ (gallery deferred — separate project) |
 
 ---
 
@@ -758,17 +758,24 @@ agents and real files):**
 
 **Goal:** the first public release.
 
-**Work:**
-1. Gallery page with all example assets, seeds and sources.
-2. Cross-backend conformance job in CI (reference, WASM, SFML, OpenGL, Vulkan readback).
-3. Version tagging (v0.1.0), release notes, packaging (source tarball + binaries for CLI/backends where practical).
+**Work (per review: the gallery is a separate commercial project and is
+deferred; the rest of the release work):**
+1. Cross-backend conformance in CI: the reference job (build + ctest with
+   the golden corpus + a CLI pipeline smoke) and a WASM job (the Emscripten
+   build + the in-browser conformance runner against the desktop-pinned
+   hashes). The native hosts are unimplemented and noted as such.
+2. The v0.1.0 release: `CHANGELOG.md` with the release notes, the version
+   tag, and `scripts/release.sh` packaging the source tarball plus the CLI
+   binaries.
+3. `spec/README.md` updated: v0.1.0 released, the semantics frozen by the
+   golden corpus, the deferred items listed.
 
-**Deliverables:** gallery, CI matrix, release.
+**Deliverables:** the CI matrix, the release, the spec status.
 
 **Acceptance criteria:**
-- [ ] CI runs the conformance suite on every backend and stays green.
-- [ ] Release contains buildable source + documented artifacts.
-- [ ] Spec status updated in `spec/README.md` (v0.1 finalised or gaps listed).
+- [x] CI runs the conformance suite on every implemented backend (reference + WASM) — the same commands verified locally and green.
+- [x] Release contains buildable source + documented artifacts (tarball + binaries via scripts/release.sh).
+- [x] Spec status updated in `spec/README.md` (v0.1 finalised, gaps listed).
 
 ---
 

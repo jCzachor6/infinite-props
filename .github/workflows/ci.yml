@@ -5,6 +5,9 @@ on:
   pull_request:
 
 jobs:
+  # The reference interpreter: the desktop toolchain and the full test suite
+  # (including the golden corpus, which freezes the semantics), plus a smoke
+  # of the CLI pipeline over the examples.
   build-test:
     strategy:
       fail-fast: false
@@ -22,3 +25,39 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Smoke the CLI pipeline
+        run: |
+          ./build/tools/ipc examples/portrait.ips -o /tmp/portrait.iprop
+          ./build/tools/ipc examples/plant.ips -o /tmp/plant.iprop
+          ./build/tools/ipval /tmp/portrait.iprop
+          ./build/tools/ipgen /tmp/portrait.iprop --seed 26 -o /tmp/portrait.png
+          ./build/tools/ipdis /tmp/portrait.iprop --source > /dev/null
+
+  # The HTML5/WASM backend: the same interpreter compiled to WebAssembly,
+  # checked by the in-browser conformance suite (Node runner) against the
+  # hashes pinned by the desktop reference.
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (native tools for prepare.sh)
+        run: cmake --build build --parallel --target ipa
+
+      - name: Setup Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build the WASM module
+        run: |
+          mkdir -p build/wasm && cd build/wasm
+          emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
+          emmake make -j4
+
+      - name: Conformance (in-browser interpreter vs the golden hashes)
+        run: |
+          backends/html5/prepare.sh
+          node backends/html5/test/run-tests.js build/wasm
