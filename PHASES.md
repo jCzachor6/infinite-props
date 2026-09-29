@@ -40,7 +40,7 @@ the boxes.
 | 25 | SFML backend | D. Backends | ⬜ |
 | 26 | OpenGL backend host | D. Backends | ⬜ |
 | 27 | Vulkan backend host | D. Backends | ⬜ |
-| 28 | IDE: editor | E. IDE | ⬜ |
+| 28 | IDE: editor | E. IDE | ✅ |
 | 29 | IDE: live preview & seed controls | E. IDE | ⬜ |
 | 30 | IDE: atlas browser & bytecode inspector | E. IDE | ⬜ |
 | 31 | IDE: export & polish | E. IDE | ⬜ |
@@ -607,17 +607,27 @@ semantics change only with a spec update and a deliberate regeneration.
 
 **Goal:** the authoring surface.
 
-**Work:**
-1. Web app shell (framework pinned in this phase: e.g. vanilla TS or Svelte), file tabs, project file list.
-2. `.ips` editor with syntax highlighting and inline diagnostics from the WASM compiler.
-3. Persistence to localStorage/IndexedDB.
+**Work (per review: a standalone desktop app instead of a browser app, so
+the author keeps a real console and real files for CLI agents):**
+1. `editor/` — an Electron shell (the framework pinned here: vanilla TS +
+   Vite + CodeMirror 6 + xterm.js + node-pty): a project-folder open, a
+   file list, tabbed editing with `.ips` syntax highlighting, Ctrl/Cmd+S
+   saving, new/delete files.
+2. Inline diagnostics from the **native `ipc` compiler** (child_process, the
+   exact CLI binary): a debounced recompile on every edit surfaces
+   `file:line:column` errors as gutter squiggles, including errors in
+   imported parts.
+3. Persistence = the project folder itself (real files on disk) plus an
+   **embedded terminal** (node-pty + xterm) running the user's shell in the
+   project — CLI agents (opencode/codex/copilot) edit the files directly.
+4. The `.ips` CodeMirror language mirrors the real lexer's token set.
 
-**Deliverables:** `editor/` web app, runnable locally.
+**Deliverables:** `editor/` desktop app, runnable locally.
 
 **Acceptance criteria:**
-- [ ] Open/save/edit `.ips` files works; diagnostics appear inline with locations.
-- [ ] Editor survives refresh (persistence).
-- [ ] `npm run dev` documented in the editor README.
+- [x] Open/save/edit `.ips` files works; diagnostics appear inline with locations.
+- [x] Editor survives refresh (persistence = the project folder on disk).
+- [x] `npm run dev` documented in the editor README.
 
 ---
 
