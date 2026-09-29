@@ -1,60 +1,71 @@
-# iprop v0.2 — plan (draft)
+# iprop v0.2 — plan: the language iteration
 
-The v0.2 plan, tracked like the v0.1 phases: numbered tasks with acceptance
-criteria, checked off as they land. This is a DRAFT awaiting the final task
-list — refine it together before implementing.
+Branch: `develop` (off the v0.1.0 release). Approved scope: five language
+tasks. The backends, the ecosystem and the gallery are deferred to v0.3+.
 
 ## Vision
 
-Two threads:
-
-1. **The game** — a simple playable game where every visible element is an
-   iprop: the level, the entities, the props. The structured outputs
-   (colliders, anchors, spawn lists) are the gameplay contract; the host is
-   a thin loop (input, physics over the output rects, camera, blitting).
-   Save = the seed.
-2. **The platform completion** — the deferred native backends (Part D) and
-   the language gaps hit while porting (typed function parameters).
+v0.2 rounds out the `.ips` language: typed function signatures, the missing
+math (trig and friends), constant arrays and loop control — each driven by
+the real gaps hit while porting QuantSpace assets. Every change keeps the
+existing golden corpus pixel-identical; new VM opcodes are additive spec
+changes with pinned algorithms and bit-exact tests.
 
 ## Tasks
 
-### 0. Setup
-- [ ] **0.1** the `develop` branch and this tracking document.
+### 1. Typed functions
+- [ ] `1.1` grammar: parameters `name: type` (`u: f32`) and an explicit
+  return type (`-> type`); types: `i32`, `f32`, `color`.
+- [ ] `1.2` checker: parameters typed from the signature; call sites
+  validated against them; explicit returns checked against the body.
+- [ ] `1.3` compiler: parameter types into the function table; the
+  return-type lowering.
+- [ ] `1.4` proof: `ageFromUnit(u: f32) -> i32` and the `leaf(...)` helpers
+  become real functions in the ports (no more inlining).
 
-### A. Game assets (.ips content)
-- [ ] **1** `dungeon.ips` — the level generator: floor tiles, wall rects,
-  `list point` spawns, the exit — with collider outputs.
-- [ ] **2** the entity set — `hero.ips`, `monster.ips`, `chest.ips`,
-  `torch.ips`: sprites with `rect` colliders and `point` anchors.
-- [ ] **3** the animated hero — walk-cycle frames from derived seeds
-  (`hash(seed ^ frameConst)`), the host caches the frames.
+### 2. Trig
+- [ ] `2.1` spec §9/§12: `f32.sin`, `f32.cos` opcodes with the pinned
+  algorithm (range reduction, bit-exactness) — additive, no golden changes.
+- [ ] `2.2` runtime: the opcodes + bit-exact tests.
+- [ ] `2.3` language: the `sin`/`cos` builtins (`f32 -> f32`).
+- [ ] `2.4` proof: the full `PaPlant` port — the missing species (the
+  succulent's petal ring, the arching fronds) and the original six-species
+  `index(6)` back.
 
-### B. The host (HTML5 first)
-- [ ] **4** the game loop — build the level from the outputs, the player
-  movement with collision against the collider rects, the camera, the blit.
-- [ ] **5** the save/restore — the whole state = seed + position; the URL
-  hash shares it (playground-style).
+### 3. Arrays
+- [ ] `3.1` grammar: asset-level constant arrays `palette name = [ e, e, … ]`
+  and indexing `name[i]` (i32 index).
+- [ ] `3.2` checker: homogeneous element types; the index type.
+- [ ] `3.3` compiler: indexing desugars to the if-ladder (the default value
+  = the last element — same semantics as the hand-written pickers); constant
+  indices fold. No VM change.
+- [ ] `3.4` proof: the portrait/plant pickers become palette data
+  (the compiled output stays pixel-identical).
 
-### C. Native backends (the deferred Part D)
-- [ ] **6** the SFML host — the desktop game/demo window (sf::Image output,
-  seed cycling), conformance vs the reference.
-- [ ] **7** the OpenGL host — CPU raster → texture → quad presentation,
-  atlas grid.
-- [ ] **8** the Vulkan host — parity with the OpenGL host, readback
-  conformance.
+### 4. The math package
+- [ ] `4.1` expose `abs` (the `f32.abs` opcode already exists — language
+  gap only).
+- [ ] `4.2` spec §9/§12: `f32.floor`, `f32.ceil`, `f32.min`, `f32.max`,
+  `f32.pow`, `f32.exp`, `f32.atan2` — pinned algorithms.
+- [ ] `4.3` runtime + bit-exact tests; the language builtins.
+- [ ] `4.4` proof: the plant/rock ports drop the integer tricks and the
+  `if`-based `min`/`max` workarounds.
 
-### D. Language v0.2
-- [ ] **9** typed function parameters (f32 params — unblocks the clean
-  ports; removes the ageFromUnit inline workaround).
-- [ ] **10** (open) trig in the VM — a spec change; decide whether it lands
-  in v0.2 (new opcodes, §9/§12 update, golden regen).
+### 5. Loop control
+- [ ] `5.1` `break` and `continue` in `while` loops (the VM's `br`/`br_if`).
+- [ ] `5.2` (optional) `for i in 0..n` sugar over `while`.
 
-### E. Release
-- [ ] **11** the v0.2.0 release — the cross-backend conformance green, the
-  CHANGELOG entry, the tag.
+## Cross-cutting acceptance
 
-## Open questions
+- [ ] The existing golden corpus stays pixel-identical (the new opcodes are
+  additive; the array desugaring preserves the compiled ladders).
+- [ ] Each new opcode has the pinned algorithm in the spec and bit-exact
+  tests.
+- [ ] The rewritten ports are the proof: shorter sources, identical pixels.
 
-1. The game: top-down dungeon crawler (the proposal) or something else?
-2. Scope: does v0.2 include the native backends (6–8) or focus on the game?
-3. Trig in the VM: add in v0.2, or defer to v0.3?
+## Deferred (out of v0.2)
+
+- The backends: the C API, SFML, Godot (agreed) — and Bevy, Unity (v0.3+).
+- The ecosystem: the GitHub remote/CI, the VS Code marketplace publication,
+  the v0.2.0 release (folded in when the code lands).
+- The commercial gallery (a separate project).
