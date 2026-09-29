@@ -1,7 +1,8 @@
 # iprop v0.2 — plan: the language iteration
 
-Branch: `develop` (off the v0.1.0 release). Approved scope: five language
-tasks. The backends, the ecosystem and the gallery are deferred to v0.3+.
+Branch: `develop` (off the v0.1.0 release). Approved scope: the five
+language tasks + the native backends (the C API, SFML, Godot). Bevy, Unity,
+the ecosystem and the gallery are deferred to v0.3+.
 
 ## Vision
 
@@ -9,7 +10,9 @@ v0.2 rounds out the `.ips` language: typed function signatures, the missing
 math (trig and friends), constant arrays and loop control — each driven by
 the real gaps hit while porting QuantSpace assets. Every change keeps the
 existing golden corpus pixel-identical; new VM opcodes are additive spec
-changes with pinned algorithms and bit-exact tests.
+changes with pinned algorithms and bit-exact tests. On top of the language,
+v0.2 lands the first native backends on one shared C API: the SFML host and
+the Godot engine integration (the flagship adoption target).
 
 ## Tasks
 
@@ -55,6 +58,30 @@ changes with pinned algorithms and bit-exact tests.
 - [ ] `5.1` `break` and `continue` in `while` loops (the VM's `br`/`br_if`).
 - [ ] `5.2` (optional) `for i in 0..n` sugar over `while`.
 
+### 6. The C API (the shared foundation)
+- [ ] `6.1` `backends/capi/` — the stable C API over the runtime:
+  `iprop_generate(bytes, seed, variant, archetype, size) -> RGBA + outputs +
+  meta`; the shared-library build + the public C header.
+- [ ] `6.2` conformance through the C API (the golden corpus via the C
+  entry point).
+- [ ] `6.3` the ABI policy: the versioning and stability rules (all the
+  native backends consume this one surface).
+
+### 7. The SFML host
+- [ ] `7.1` `backends/sfml/` — the native window: `sf::Image` output,
+  seed/variant cycling, the atlas view (SFML 3.1 from `base-code`).
+- [ ] `7.2` conformance vs the reference (the golden corpus through the
+  SFML path).
+- [ ] `7.3` the desktop demo loop — load an `.ips`/`.iprop`, cycle seeds,
+  export the PNG.
+
+### 8. Godot (the flagship engine backend)
+- [ ] `8.1` `backends/godot/` — the GDExtension (C++ over the C API).
+- [ ] `8.2` the Godot node/resource: `iprop_generate` → `Image`/`ImageTexture`
+  + the outputs exposed as the resource properties.
+- [ ] `8.3` the demo scene + the conformance; the pinned Godot version in
+  the docs.
+
 ## Cross-cutting acceptance
 
 - [ ] The existing golden corpus stays pixel-identical (the new opcodes are
@@ -65,7 +92,7 @@ changes with pinned algorithms and bit-exact tests.
 
 ## Deferred (out of v0.2)
 
-- The backends: the C API, SFML, Godot (agreed) — and Bevy, Unity (v0.3+).
+- Bevy and Unity (v0.3+ — glue over the now-established C API).
 - The ecosystem: the GitHub remote/CI, the VS Code marketplace publication,
   the v0.2.0 release (folded in when the code lands).
 - The commercial gallery (a separate project).
