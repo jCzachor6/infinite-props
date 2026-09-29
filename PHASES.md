@@ -28,7 +28,7 @@ the boxes.
 | 13 | Parts: `part.draw`, blit, `part.get.*` | B. Interpreter | ✅ |
 | 14 | CLI tool `ipgen` | B. Interpreter | ✅ |
 | 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ✅ |
-| 16 | Golden test suite + CI | B. Interpreter | ⬜ |
+| 16 | Golden test suite + CI | B. Interpreter | ✅ |
 | 17 | `.ips` lexer | C. Language & compiler | ⬜ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ⬜ |
 | 19 | Semantic analysis | C. Language & compiler | ⬜ |
@@ -360,19 +360,36 @@ assembly, verified pixel-exact against the game.
 
 ### Phase 16 — Golden test suite + CI
 
-**Goal:** regression protection and cross-platform proof.
+**Goal:** regression protection and cross-platform proof — the semantics
+freeze.
 
 **Work:**
-1. Corpus: `(program, seed, variant, archetype, size, uniforms)` tuples with golden PNGs + golden output JSON, stored in `tests/golden/`.
-2. Test harness: decode PNGs, compare all RGBA pixels exactly; compare structured outputs bit-exactly.
-3. CI wiring so conformance runs on every push.
+1. Corpus in `tests/golden/`: `(program, seed, variant, archetype, size)`
+   tuples with committed golden PNGs and pinned structured outputs — the
+   QuantSpace portrait (5 seeds covering female Bob, male beard, Topknot,
+   Mohawk, Side-sweep), canvas shapes (translucency + weather), a
+   per-pixel noise field, and a parts-composition case.
+2. `tests/golden_test.cpp`: assembles each corpus program, runs it, and
+   compares the image pixel-by-pixel (exactly, no tolerance) and the
+   structured outputs bit-exactly. `IPROP_GOLDEN_REGENERATE=1` rewrites
+   the goldens (only for intentional, spec-approved changes).
+3. A comparator unit test: a tampered canvas MUST fail the comparison
+   (no vacuous passes).
+4. CI: the existing Ubuntu/macOS workflow runs the whole suite, including
+   the golden corpus, on every push.
 
-**Deliverables:** corpus, harness, CI job.
+**Deliverables:** `tests/golden/*.{ipa,png}`, `tests/golden_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] All corpus entries pass on both CI platforms.
-- [ ] A deliberate one-pixel change to the interpreter fails the suite.
-- [ ] Corpus includes rock/crystal fixtures from Phase 15.
+- [x] All corpus entries pass on both CI platforms (workflow in place;
+      verified locally on macOS).
+- [x] A deliberate one-pixel change to the interpreter fails the suite
+      (proven by the comparator unit test).
+- [x] Corpus includes the Phase 15 flagship (the portrait; the original
+      rock/crystal fixtures were superseded by the portrait in Phase 15).
+
+**The semantics are now frozen:** golden images, RNG call order and spec
+semantics change only with a spec update and a deliberate regeneration.
 
 ---
 

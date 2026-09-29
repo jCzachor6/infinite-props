@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #include "ipgen.hpp"

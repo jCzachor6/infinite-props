@@ -1,0 +1,46 @@
+; Canvas-shapes corpus entry: rects, ovals, polys, lines, translucent
+; blending and weather, plus a structured output.
+meta: size=64x64 variants=1 archetypes=1 fuel=100000
+output: point anchor
+fn draw ( i32, i32 ) -> ( ):
+  const.f32 0.0
+  const.f32 0.0
+  const.f32 64.0
+  const.f32 64.0
+  const.color #20242aff
+  rect
+  const.f32 20.0
+  const.f32 20.0
+  const.f32 10.0
+  const.f32 8.0
+  const.color #c8323eff
+  oval
+  const.f32 44.0
+  const.f32 12.0
+  const.f32 56.0
+  const.f32 12.0
+  const.f32 50.0
+  const.f32 30.0
+  const.color #3ec87aff
+  poly 3
+  const.f32 8.0
+  const.f32 48.0
+  const.f32 56.0
+  const.f32 48.0
+  const.i32 3
+  const.color #e6c84aff
+  line
+  const.f32 24.0
+  const.f32 36.0
+  const.f32 16.0
+  const.f32 10.0
+  const.color #3c5cc8c0
+  oval
+  const.i32 11
+  const.i32 9
+  weather
+  const.f32 20.0
+  const.f32 20.0
+  out.point anchor
+  return
+endfn

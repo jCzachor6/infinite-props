@@ -11,8 +11,10 @@ endif()
 
 add_executable(iprop_tests
     smoke_test.cpp
+    stb_image_impl.cpp
     assembler_test.cpp
     portrait_test.cpp
+    golden_test.cpp
     binary_test.cpp
     format_test.cpp
     asset_test.cpp

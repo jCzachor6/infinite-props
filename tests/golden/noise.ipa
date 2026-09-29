@@ -1,0 +1,48 @@
+; Noise-field corpus entry: a per-pixel value-noise gradient.
+meta: size=64x64 variants=1 archetypes=1 fuel=2000000
+fn draw ( i32, i32 ) -> ( ):
+  locals: i32 i32 f32
+  const.i32 0
+  local.set 3
+  loop
+    const.i32 0
+    local.set 2
+    loop
+      local.get 2
+      local.get 3
+      local.get 2
+      i32.to.f32
+      const.f32 8.0
+      f32.div
+      local.get 3
+      i32.to.f32
+      const.f32 8.0
+      f32.div
+      const.i32 7
+      noise
+      local.set 4
+      const.color #1a2733ff
+      const.color #7fb8c8ff
+      local.get 4
+      color.mix
+      pixel
+      local.get 2
+      const.i32 1
+      i32.add
+      local.set 2
+      local.get 2
+      const.i32 64
+      i32.lt_s
+      br_if 0
+    end
+    local.get 3
+    const.i32 1
+    i32.add
+    local.set 3
+    local.get 3
+    const.i32 64
+    i32.lt_s
+    br_if 0
+  end
+  return
+endfn

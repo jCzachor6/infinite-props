@@ -1,0 +1,37 @@
+; Parts-composition corpus entry: a part with a structured output, called
+; by the root and propagated into a root output.
+meta: size=32x32 variants=1 archetypes=1 fuel=100000
+output: point center
+part stamp:
+  meta: size=16x16 origin=8,8
+  output: point spot
+  fn draw ( i32, i32 ) -> ( ):
+    const.f32 8.0
+    const.f32 8.0
+    const.f32 6.0
+    const.f32 5.0
+    const.color #c84a3cff
+    oval
+    const.f32 8.0
+    const.f32 8.0
+    out.point spot
+    return
+  endfn
+endpart
+fn draw ( i32, i32 ) -> ( ):
+  const.f32 0.0
+  const.f32 0.0
+  const.f32 32.0
+  const.f32 32.0
+  const.color #141d27ff
+  rect
+  const.i32 0
+  const.i32 0
+  const.i32 0
+  const.f32 16.0
+  const.f32 16.0
+  part.draw stamp
+  part.get.point spot
+  out.point center
+  return
+endfn
