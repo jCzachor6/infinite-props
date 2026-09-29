@@ -427,5 +427,6 @@ infinite-props/
 | 6 | Website, CI conformance across backends, first release |
 
 The detailed, clickable plan — 34 numbered phases with acceptance criteria —
-lives in [PHASES.md](PHASES.md). Say a phase number (e.g. "Phase 5") to start
-work on it.
+was tracked through the project's history (phases 1–16: the format and the
+VM; 17–23: the language and the compiler; 24: the HTML5 backend; 28–31: the
+editor; 32–34: the website and the v0.1.0 release).
