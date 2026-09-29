@@ -18,7 +18,8 @@ the exact same pixels on every platform.
    golden structured output is a breaking change unless the spec changed with
    it.
 4. **Work in phases.** Development follows the numbered phases in
-   [PHASES.md](PHASES.md). Pick a phase, implement it, satisfy its acceptance
+   the CHANGELOG and the commit history. Pick a task, implement it, satisfy
+   its acceptance
    criteria, then move on.
 
 ## Workflow
