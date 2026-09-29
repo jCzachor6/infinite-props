@@ -85,18 +85,13 @@ enum class TokenKind {
     OrOr,    // ||
 };
 
-// 1-based line/column.
-// (defined in SourceError.hpp — included above)
+// 1-based line/column lives in SourceError.hpp (included above).
 
 struct Token {
     TokenKind kind = TokenKind::End;
     std::string text; // the exact lexeme (literals and identifiers)
     SourceLocation location;
 };
-
-// A lexical error with a source location. Kept as an alias of SourceError
-// for compatibility; the parser throws the same type.
-using LexError = SourceError;
 
 // Lexes the whole source into a token vector ending with TokenKind::End.
 // Throws SourceError on malformed input.

@@ -14,6 +14,7 @@ add_executable(iprop_tests
     stb_image_impl.cpp
     lexer_test.cpp
     parser_test.cpp
+    printer_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp

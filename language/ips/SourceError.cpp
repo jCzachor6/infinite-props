@@ -19,7 +19,13 @@ std::string formatError(std::string_view source, const SourceError& error) {
         ++start;
     }
     std::size_t end = source.find('\n', start);
-    const std::string_view lineText = source.substr(start, end - start);
+    std::string_view lineText = source.substr(start, end - start);
+
+    // Tolerate CRLF sources: a trailing carriage return is not part of the
+    // logical line.
+    if (!lineText.empty() && lineText.back() == '\r') {
+        lineText.remove_suffix(1);
+    }
 
     out << lineText << "\n";
     if (error.location.column >= 1) {

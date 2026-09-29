@@ -30,10 +30,13 @@ Program parseTokens(const std::vector<Token>& tokens);
 //   inputDecl  := "input" inputType ident "=" literal
 //   outputDecl := "output" "list"? outputKind ident
 //   function   := name "(" params ")" block
-//   block      := "{" statement* "}"
+//   block      := "{" (";" | statement)* "}"    // ';' is an optional separator
 //   statement  := varDecl | exprStmt | ifStmt | whileStmt | returnStmt
 //   varDecl    := ident "=" expr
 //   exprStmt   := call
+//
+// Soft keywords (draw, at, color, f32/u32/i32, point/rect/circle) are valid
+// names in every name position; hard keywords stay reserved.
 //
 // Expressions use C-like precedence:
 //   || < && < | < ^ < & < ==/!= < </<=/>/>= < +,- < *,/,% < unary < postfix

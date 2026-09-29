@@ -4,12 +4,11 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Parser.hpp"
-#include "ips/Printer.hpp"
 #include "ips/SourceError.hpp"
 
 // The .ips parser: sketch grammars parse into the expected AST, malformed
-// programs produce exactly one located error, and the S-expression printer
-// round-trips for debugging.
+// programs produce exactly one located error, and edge-case grammar forms
+// (semicolons, else-if, soft keywords as values) are pinned.
 
 using namespace iprop::ips;
 
@@ -259,7 +258,7 @@ asset multi {
     REQUIRE(program.asset.functions[1].params.size() == 1);
 }
 
-TEST_CASE("while loops and list outputs parse and print") {
+TEST_CASE("while loops and list outputs parse") {
     const std::string source = R"(
 asset loop {
   output list point pts
@@ -281,11 +280,151 @@ asset loop {
     const auto* loop = std::get_if<WhileStmt>(&body[1]);
     REQUIRE(loop != nullptr);
     REQUIRE(loop->body.size() == 1);
+}
 
-    const std::string printed = printProgram(program);
-    REQUIRE(printed.find("(output list point pts)") != std::string::npos);
-    REQUIRE(printed.find("(while (< i 10)") != std::string::npos);
-    REQUIRE(printed.find("(let i (+ i 1))") != std::string::npos);
+TEST_CASE("semicolons are optional statement separators") {
+    const std::string source = R"(
+asset semi {
+  draw(v, a) {
+    w = 1;
+    h = 2
+    ;
+    x = 3;
+  }
+  helper() {
+    return;
+  }
+})";
+    const Program program = parse(source);
+    const auto& body = program.asset.functions[0].body;
+    REQUIRE(body.size() == 3);
+    REQUIRE(std::get_if<VarDecl>(&body[0])->name == "w");
+    REQUIRE(std::get_if<VarDecl>(&body[1])->name == "h");
+    REQUIRE(std::get_if<VarDecl>(&body[2])->name == "x");
+
+    // 'return;' is a bare return.
+    const auto& helper = program.asset.functions[1].body;
+    REQUIRE(helper.size() == 1);
+    const auto* ret = std::get_if<ReturnStmt>(&helper[0]);
+    REQUIRE(ret != nullptr);
+    REQUIRE(ret->value == nullptr);
+}
+
+TEST_CASE("else-if chains and nested blocks parse") {
+    const std::string source = R"(
+asset nested {
+  draw(v, a) {
+    if (a) {
+      x = 1
+    } else if (b) {
+      while (c) {
+        if (d) {
+          y = 2
+        }
+      }
+    } else {
+      x = 3
+    }
+  }
+})";
+    const Program program = parse(source);
+    const auto& body = program.asset.functions[0].body;
+    REQUIRE(body.size() == 1);
+    const auto* outer = std::get_if<IfStmt>(&body[0]);
+    REQUIRE(outer != nullptr);
+    REQUIRE(outer->thenBranch.size() == 1);
+    REQUIRE(outer->elseBranch.size() == 1); // a single nested if
+
+    const auto* elseIf = std::get_if<IfStmt>(&outer->elseBranch[0]);
+    REQUIRE(elseIf != nullptr);
+    REQUIRE(elseIf->thenBranch.size() == 1);
+    const auto* loop = std::get_if<WhileStmt>(&elseIf->thenBranch[0]);
+    REQUIRE(loop != nullptr);
+    REQUIRE(std::holds_alternative<IfStmt>(loop->body[0]));
+}
+
+TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
+    const Program program =
+        parse("asset z { size 192X192 draw() { stone_mass() } }");
+    REQUIRE(program.asset.sizeX == 192u);
+    REQUIRE(program.asset.sizeY == 192u);
+    REQUIRE(program.asset.functions[0].params.empty());
+}
+
+TEST_CASE("named arguments may come first") {
+    const Program program =
+        parse("asset n { draw(v, a) { f(at = {0, 0}, 5) } }");
+    const auto& body = program.asset.functions[0].body;
+    const auto* stmt = std::get_if<ExprStmt>(&body[0]);
+    const auto* call = std::get_if<Call>(stmt->expr.get());
+    REQUIRE(call->args.size() == 2);
+    REQUIRE(call->args[0].name == "at");
+    REQUIRE(!call->args[1].name.has_value());
+}
+
+TEST_CASE("string escapes survive in import paths") {
+    const Program program = parse(R"(import hair from "dir\\sub.ips"
+asset p { draw(v, a) { } })");
+    REQUIRE(program.imports[0].path == "dir\\sub.ips");
+}
+
+TEST_CASE("soft keywords work as values and names") {
+    // The hair sketch declares an input literally named `color`; using it as
+    // an expression identifier must parse.
+    const std::string source = R"(
+asset hair {
+  size 64x32
+  origin 32,4
+  input color color = #33291f
+  output point top
+
+  draw(v, a) {
+    top = {32, 4}
+    tint = shade(color, -4)
+    thing = color
+  }
+})";
+    const Program program = parse(source);
+    REQUIRE(program.asset.inputs[0].name == "color");
+    const auto& body = program.asset.functions[0].body;
+    REQUIRE(body.size() == 3);
+    // `tint = shade(color, -4)` — color as a positional argument.
+    const auto* tint = std::get_if<VarDecl>(&body[1]);
+    REQUIRE(tint != nullptr);
+    const auto* shadeCall = std::get_if<Call>(tint->value.get());
+    REQUIRE(shadeCall != nullptr);
+    REQUIRE(shadeCall->args.size() == 2);
+    REQUIRE(std::holds_alternative<Identifier>(*shadeCall->args[0].value));
+    // `thing = color` — color as the whole right-hand side.
+    const auto* thing = std::get_if<VarDecl>(&body[2]);
+    REQUIRE(thing != nullptr);
+    REQUIRE(std::holds_alternative<Identifier>(*thing->value));
+}
+
+TEST_CASE("size values out of range are rejected") {
+    bool threw = false;
+    try {
+        (void)parse("asset big { size 99999999999x1 }");
+    } catch (const SourceError& error) {
+        threw = true;
+        REQUIRE(std::string(error.message).find("width out of range") !=
+                std::string::npos);
+    }
+    REQUIRE(threw);
+}
+
+TEST_CASE("an empty program is one located error") {
+    bool threw = false;
+    try {
+        (void)parse("");
+    } catch (const SourceError& error) {
+        threw = true;
+        REQUIRE(error.location.line == 1);
+        REQUIRE(error.location.column == 1);
+        REQUIRE(std::string(error.message).find("expected an 'asset' block") !=
+                std::string::npos);
+    }
+    REQUIRE(threw);
 }
 
 TEST_CASE("malformed programs produce one located error") {
@@ -347,36 +486,6 @@ TEST_CASE("parse errors point at the right line and column") {
         REQUIRE(formatted.find("input color c = }") != std::string::npos);
         REQUIRE(formatted.find(std::string(18, ' ') + "^") != std::string::npos);
     }
-}
-
-TEST_CASE("the S-expression printer renders the rock sketch") {
-    const std::string expected = R"((program
-  (asset rock
-    (size 192 192)
-    (origin 96 170)
-    (variants 5)
-    (archetypes 4)
-    (input color palette #808d74)
-    (output rect collider)
-    (fn draw (v a)
-      (let w (call range 21 31))
-      (let h (call range 35 49))
-      (let collider (vector (- 96 20) (- 170 23) 40 23))
-      (expr (call stone_mass (* (neg w) 0.10) 0 (* w 0.87) h palette seed))
-      (if (== (call index 3) 0)
-        (expr (call stone_mass (* (neg w) 0.67) 2 (* w 0.39) (* h 0.43) (call shade palette (neg 4)) (call hash (^ seed 9467))))))))
-)";
-    REQUIRE(printProgram(parse(kRockSketch)) == expected);
-}
-
-TEST_CASE("the S-expression printer renders the portrait sketch") {
-    const std::string printed = printProgram(parse(kPortraitSketch));
-    REQUIRE(printed.find("(import hair \"hair.ips\")") != std::string::npos);
-    REQUIRE(printed.find("(import eyes \"eyes.ips\")") != std::string::npos);
-    REQUIRE(printed.find("(member hair draw)") != std::string::npos);
-    REQUIRE(printed.find("(member eyes outputs pupil)") != std::string::npos);
-    REQUIRE(printed.find("(at (vector 32 4))") != std::string::npos);
-    REQUIRE(printed.find("(color hairColor)") != std::string::npos);
 }
 
 TEST_CASE("parseTokens accepts a pre-lexed stream") {

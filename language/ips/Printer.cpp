@@ -13,7 +13,10 @@ std::string printExpr(const Expr& expr);
 // indentation; the caller indents them.
 std::vector<std::string> printStmtLines(const Stmt& stmt);
 
-void closeLast(std::vector<std::string>& lines) { lines.back() += ")"; }
+// Appends n closing parens to the last line.
+void closeLast(std::vector<std::string>& lines, const int n = 1) {
+    lines.back().append(static_cast<std::size_t>(n), ')');
+}
 
 void indentBy(std::vector<std::string>& lines, const int n) {
     const std::string pad(static_cast<std::size_t>(n), ' ');
@@ -160,14 +163,22 @@ std::vector<std::string> printStmtLines(const Stmt& stmt) {
             lines.insert(lines.end(), sub.begin(), sub.end());
         }
         if (!ifStmt->elseBranch.empty()) {
-            lines.push_back("(else");
+            // "(else" is a child of the if-form, so the whole else subtree
+            // sits one level deeper.
+            std::vector<std::string> elseLines;
+            elseLines.push_back("(else");
             for (const auto& s : ifStmt->elseBranch) {
                 auto sub = printStmtLines(s);
                 indentBy(sub, 2);
-                lines.insert(lines.end(), sub.begin(), sub.end());
+                elseLines.insert(elseLines.end(), sub.begin(), sub.end());
             }
+            indentBy(elseLines, 2);
+            lines.insert(lines.end(), elseLines.begin(), elseLines.end());
+            // An if-with-else opened two parens: "(if" and "(else".
+            closeLast(lines, 2);
+        } else {
+            closeLast(lines);
         }
-        closeLast(lines);
         return lines;
     }
     if (const auto* whileStmt = std::get_if<WhileStmt>(&stmt)) {
@@ -194,6 +205,8 @@ std::vector<std::string> printStmtLines(const Stmt& stmt) {
 
 std::vector<std::string> printFunctionLines(const Function& function) {
     std::vector<std::string> lines;
+    // "(fn draw (v a)" — the single ')' closes the params list; the fn form
+    // itself stays open and is closed by closeLast after the body.
     std::string header = "(fn " + function.name + " (";
     for (std::size_t i = 0; i < function.params.size(); ++i) {
         if (i != 0) {

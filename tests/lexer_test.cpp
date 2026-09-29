@@ -186,7 +186,7 @@ TEST_CASE("lexical errors carry locations") {
         bool threw = false;
         try {
             (void)lex(source);
-        } catch (const LexError& error) {
+        } catch (const SourceError& error) {
             threw = true;
             REQUIRE(error.location.line == line);
             REQUIRE(error.location.column == column);
@@ -208,8 +208,8 @@ TEST_CASE("formatError renders a caret snippet") {
     const std::string source = "asset rock {\n  bogus @ token\n}";
     try {
         (void)lex(source);
-        FAIL("expected a LexError");
-    } catch (const LexError& error) {
+        FAIL("expected a SourceError");
+    } catch (const SourceError& error) {
         const std::string formatted = formatError(source, error);
         REQUIRE(formatted.find("2:9: error:") != std::string::npos);
         REQUIRE(formatted.find("bogus @ token") != std::string::npos);
@@ -234,4 +234,53 @@ TEST_CASE("operators lex with correct arity") {
         INFO("operator " << i);
         REQUIRE(tokens[i].kind == expected[i]);
     }
+}
+
+TEST_CASE("CRLF sources track lines and strip carriage returns in errors") {
+    const std::string valid = "asset rock {\r\n  size 64x32\r\n}";
+    const auto tokens = lex(valid);
+    REQUIRE(tokens[0].location.line == 1);
+    REQUIRE(tokens[0].location.column == 1);
+
+    const std::string bad = "asset rock {\r\n  size 64x32\r\n  input color c = @\r\n}";
+    try {
+        (void)lex(bad);
+        FAIL("expected a SourceError");
+    } catch (const SourceError& error) {
+        REQUIRE(error.location.line == 3);
+        REQUIRE(error.location.column == 19);
+        const std::string formatted = formatError(bad, error);
+        REQUIRE(formatted.find("3:19: error:") != std::string::npos);
+        // The caret line must not contain a trailing carriage return.
+        REQUIRE(formatted.find("input color c = @\r") == std::string::npos);
+        REQUIRE(formatted.find("input color c = @") != std::string::npos);
+    }
+}
+
+TEST_CASE("tabs count as one column") {
+    const auto tokens = lex("a\tb");
+    REQUIRE(tokens.size() == 3); // a, b, End
+    REQUIRE(tokens[0].location.column == 1);
+    REQUIRE(tokens[1].location.column == 3);
+}
+
+TEST_CASE("colour literals accept eight digits and hex accepts uppercase X") {
+    const auto color8 = lex("#808d74ff");
+    REQUIRE(color8.size() == 2);
+    REQUIRE(color8[0].kind == TokenKind::Color);
+    REQUIRE(color8[0].text == "#808d74ff");
+
+    const auto hex = lex("0X1f");
+    REQUIRE(hex.size() == 2);
+    REQUIRE(hex[0].kind == TokenKind::Int);
+    REQUIRE(hex[0].text == "0x1f"); // normalised to lowercase prefix
+}
+
+TEST_CASE("tokenName covers the kinds used in diagnostics") {
+    REQUIRE(std::string(tokenName(TokenKind::End)) == "end of input");
+    REQUIRE(std::string(tokenName(TokenKind::Identifier)) == "identifier");
+    REQUIRE(std::string(tokenName(TokenKind::Int)) == "integer literal");
+    REQUIRE(std::string(tokenName(TokenKind::RBrace)) == "}");
+    REQUIRE(std::string(tokenName(TokenKind::KeywordAsset)) == "asset");
+    REQUIRE(std::string(tokenName(TokenKind::Arrow)) == "->");
 }

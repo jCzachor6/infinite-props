@@ -5,6 +5,7 @@ add_library(ips_lang STATIC
     ips/Lexer.cpp
     ips/SourceError.cpp
     ips/Parser.cpp
+    ips/ParserExpr.cpp
     ips/Printer.cpp)
 
 target_link_libraries(ips_lang PUBLIC iprop::runtime)
