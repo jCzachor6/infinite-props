@@ -283,7 +283,10 @@ int ipgenMain(int argc, char* argv[]) {
          << ",\n  \"archetype\": " << options.archetype << ",\n  \"size\": {\"x\": "
          << canvas.width << ", \"y\": " << canvas.height
          << "},\n  \"fuel\": {\"budget\": " << budget
-         << ", \"spent\": " << spent << "},\n  \"inputs\": [";
+         << ", \"spent\": " << spent
+         << "},\n  \"variants\": " << loaded.meta.variants
+         << ",\n  \"archetypes\": " << loaded.meta.archetypes
+         << ",\n  \"inputs\": [";
     for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
         if (i != 0) {
             json << ",";
