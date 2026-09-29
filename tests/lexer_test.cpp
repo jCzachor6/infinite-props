@@ -219,11 +219,12 @@ TEST_CASE("formatError renders a caret snippet") {
 }
 
 TEST_CASE("operators lex with correct arity") {
-    const auto tokens = lex("== != <= >= && || -> + - * / % ^ & | ~ ! = < >");
+    const auto tokens = lex("== != <= >= && || -> << >> + - * / % ^ & | ~ ! = < >");
     const std::vector<TokenKind> expected = {
         TokenKind::Equal,    TokenKind::NotEqual, TokenKind::LessEqual,
         TokenKind::GreaterEqual, TokenKind::AndAnd, TokenKind::OrOr,
-        TokenKind::Arrow,    TokenKind::Plus,     TokenKind::Minus,
+        TokenKind::Arrow,    TokenKind::Shl,      TokenKind::Shr,
+        TokenKind::Plus,     TokenKind::Minus,
         TokenKind::Star,     TokenKind::Slash,    TokenKind::Percent,
         TokenKind::Caret,    TokenKind::Amp,      TokenKind::Pipe,
         TokenKind::Tilde,    TokenKind::Bang,     TokenKind::Assign,

@@ -43,6 +43,8 @@ const char* binaryOp(Binary::Op op) {
     case Binary::Op::Xor: return "^";
     case Binary::Op::BitAnd: return "&";
     case Binary::Op::BitOr: return "|";
+    case Binary::Op::Shl: return "<<";
+    case Binary::Op::Shr: return ">>";
     }
     return "?";
 }

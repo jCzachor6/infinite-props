@@ -205,13 +205,17 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
     }
     case ips::Binary::Op::Xor:
     case ips::Binary::Op::BitAnd:
-    case ips::Binary::Op::BitOr: {
+    case ips::Binary::Op::BitOr:
+    case ips::Binary::Op::Shl:
+    case ips::Binary::Op::Shr: {
         emitExpr(*bin.left);
         emitExpr(*bin.right);
         switch (bin.op) {
         case ips::Binary::Op::Xor: ins(Opcode::I32Xor); break;
         case ips::Binary::Op::BitAnd: ins(Opcode::I32And); break;
         case ips::Binary::Op::BitOr: ins(Opcode::I32Or); break;
+        case ips::Binary::Op::Shl: ins(Opcode::I32Shl); break;
+        case ips::Binary::Op::Shr: ins(Opcode::I32ShrU); break; // u32 semantics
         default: break;
         }
         return ips::ValueType::I32;

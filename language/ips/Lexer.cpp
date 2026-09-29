@@ -232,6 +232,8 @@ std::vector<Token> lex(std::string_view source) {
             emit(kind, std::string(1, c), at);
         };
 
+        if (two('<', '<', TokenKind::Shl)) continue;
+        if (two('>', '>', TokenKind::Shr)) continue;
         if (two('=', '=', TokenKind::Equal)) continue;
         if (two('!', '=', TokenKind::NotEqual)) continue;
         if (two('<', '=', TokenKind::LessEqual)) continue;
@@ -329,6 +331,8 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::Caret: return "^";
     case TokenKind::Amp: return "&";
     case TokenKind::Pipe: return "|";
+    case TokenKind::Shl: return "<<";
+    case TokenKind::Shr: return ">>";
     case TokenKind::Tilde: return "~";
     case TokenKind::Bang: return "!";
     case TokenKind::AndAnd: return "&&";

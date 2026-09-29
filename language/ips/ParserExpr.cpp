@@ -91,7 +91,7 @@ std::unique_ptr<Expr> ParserImpl::parseEquality() {
 }
 
 std::unique_ptr<Expr> ParserImpl::parseComparison() {
-    auto left = parseAdditive();
+    auto left = parseShift();
     for (;;) {
         if (match(TokenKind::Less)) {
             left = binary(Binary::Op::Lt, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
@@ -101,6 +101,21 @@ std::unique_ptr<Expr> ParserImpl::parseComparison() {
             left = binary(Binary::Op::Gt, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
         } else if (match(TokenKind::GreaterEqual)) {
             left = binary(Binary::Op::Ge, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
+        } else {
+            return left;
+        }
+    }
+}
+
+std::unique_ptr<Expr> ParserImpl::parseShift() {
+    auto left = parseAdditive();
+    for (;;) {
+        if (match(TokenKind::Shl)) {
+            left = binary(Binary::Op::Shl, std::move(left), parseAdditive(),
+                          tokens_[pos_ - 1].location);
+        } else if (match(TokenKind::Shr)) {
+            left = binary(Binary::Op::Shr, std::move(left), parseAdditive(),
+                          tokens_[pos_ - 1].location);
         } else {
             return left;
         }

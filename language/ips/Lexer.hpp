@@ -79,6 +79,9 @@ enum class TokenKind {
     Caret,   // ^
     Amp,     // &
     Pipe,    // |
+    Shl,     // <<
+    Shr,     // >>
+
     Tilde,   // ~
     Bang,    // !
     AndAnd,  // &&

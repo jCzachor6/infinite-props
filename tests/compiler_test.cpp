@@ -484,3 +484,49 @@ asset composite {
     REQUIRE(p->points[0].x == 2.f);
     REQUIRE(p->points[0].y == 3.f);
 }
+
+TEST_CASE("shifts, i32trunc and round execute with VM semantics") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+
+  draw(v, a) {
+    // u32 semantics: 0x80000000 >> 1 = 0x40000000
+    a1 = 1 << 3
+    b1 = 64 >> 2
+    c1 = i32trunc(2.9)
+    p = {round(1.3), round(-1.3)}
+  }
+})";
+    const auto bytes = compileChecked(source);
+    const auto loaded = loadFile(bytes);
+    VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {}});
+    CHECK_NOTHROW(vm.run());
+    const GenerationResult result = vm.result();
+    const NamedOutput* p = result.find("p");
+    REQUIRE(p != nullptr);
+    REQUIRE(p->points.size() == 1);
+    REQUIRE(p->points[0].x == 1.f);  // round(1.3)
+    REQUIRE(p->points[0].y == -1.f); // round(-1.3) - half away from zero
+}
+
+TEST_CASE("round follows std::round at the half points") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+
+  draw(v, a) {
+    p = {round(0.5), round(-0.5)}
+  }
+})";
+    const auto bytes = compileChecked(source);
+    const auto loaded = loadFile(bytes);
+    VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {}});
+    vm.run();
+    const GenerationResult result = vm.result();
+    const NamedOutput* p = result.find("p");
+    REQUIRE(p->points[0].x == 1.f);  // 0.5 -> 1
+    REQUIRE(p->points[0].y == -1.f); // -0.5 -> -1
+}

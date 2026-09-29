@@ -77,6 +77,40 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
     }
     if (name == "smooth") return emitFixed({VT::F32}, Opcode::Smooth);
     if (name == "sqrt") return emitFixed({VT::F32}, Opcode::F32Sqrt);
+    if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
+    if (name == "round") {
+        // round-half-away-from-zero (std::round semantics, spec 8.1):
+        // x >= 0 ? trunc(x + 0.5) : -trunc(-x + 0.5). The value is kept in
+        // the f32 scratch (blocks have no results, so the arms store the
+        // outcome in the i32 scratch instead of yielding it).
+        // The i32 scratch takes the lower index (appended first).
+        const u16 i32Slot = static_cast<u16>(scratch());
+        const u16 f32Slot = static_cast<u16>(f32Scratch());
+        emitExpr(*call.args[0].value);
+        ins(Opcode::LocalSet, 0, f32Slot);
+        ins(Opcode::LocalGet, 0, f32Slot);
+        ins(Opcode::ConstF32, 0, static_cast<u16>(plan_.pools.addFloat(0)));
+        ins(Opcode::F32Ge);
+        ins(Opcode::If);
+        ins(Opcode::LocalGet, 0, f32Slot);
+        ins(Opcode::ConstF32, 0,
+            static_cast<u16>(plan_.pools.addFloat(0x3F000000u))); // 0.5
+        ins(Opcode::F32Add);
+        ins(Opcode::F32ToI32);
+        ins(Opcode::LocalSet, 0, i32Slot);
+        ins(Opcode::Else);
+        ins(Opcode::LocalGet, 0, f32Slot);
+        ins(Opcode::F32Neg);
+        ins(Opcode::ConstF32, 0,
+            static_cast<u16>(plan_.pools.addFloat(0x3F000000u)));
+        ins(Opcode::F32Add);
+        ins(Opcode::F32ToI32);
+        ins(Opcode::I32Neg);
+        ins(Opcode::LocalSet, 0, i32Slot);
+        ins(Opcode::End);
+        ins(Opcode::LocalGet, 0, i32Slot);
+        return VT::I32;
+    }
     if (name == "lerp") {
         return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Lerp);
     }

@@ -34,6 +34,7 @@ private:
     std::vector<u32> lines_;        // the .ips source line per instruction
     u32 currentLine_ = 0;           // the line attributed to new instructions
     bool scratchUsed_ = false;
+    bool f32ScratchUsed_ = false;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
 
@@ -41,7 +42,8 @@ private:
 
     void ins(Opcode opcode, u8 aux = 0, u16 operand = 0);
     void emitConst(const Value& value);
-    u32 scratch();
+    u32 scratch();    // the extra i32 local (short-circuit, round)
+    u32 f32Scratch(); // the extra f32 local (round)
     bool isParam(const std::string& name) const;
     u32 slotForOutput(const ips::Program* owner,
                       const ips::OutputDecl& output) const;

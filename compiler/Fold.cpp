@@ -120,6 +120,8 @@ bool fold(const ips::Expr& expr, Value& out) {
             case Binary::Op::Xor: out = static_cast<i32>(a ^ b); return true;
             case Binary::Op::BitAnd: out = static_cast<i32>(a & b); return true;
             case Binary::Op::BitOr: out = static_cast<i32>(a | b); return true;
+            case Binary::Op::Shl: out = static_cast<i32>(a << (b & 31)); return true;
+            case Binary::Op::Shr: out = static_cast<i32>(a >> (b & 31)); return true;
             default: return false; // div/mod: keep the runtime trap
             }
         }

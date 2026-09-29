@@ -146,6 +146,7 @@ public:
     std::unique_ptr<Expr> parseBitAnd();
     std::unique_ptr<Expr> parseEquality();
     std::unique_ptr<Expr> parseComparison();
+    std::unique_ptr<Expr> parseShift();
     std::unique_ptr<Expr> parseAdditive();
     std::unique_ptr<Expr> parseMultiplicative();
     std::unique_ptr<Expr> parseUnary();

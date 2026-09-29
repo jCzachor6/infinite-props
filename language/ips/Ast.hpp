@@ -79,6 +79,7 @@ struct Binary {
         Eq, Ne, Lt, Le, Gt, Ge,
         And, Or,        // && ||
         Xor, BitAnd, BitOr, // ^ & |
+        Shl, Shr,       // << >>
     };
     Op op = Op::Add;
     std::unique_ptr<Expr> left;

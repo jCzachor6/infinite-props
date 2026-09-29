@@ -32,11 +32,18 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-// One extra i32 local reused by every && / || in the function. Appended to
-// the function's locals; the assembler writes the table after all emission.
+// Extra locals reused within a function: one i32 (short-circuit, round) and
+// one f32 (round). Appended to the function's locals; the assembler writes
+// the table after all emission.
 u32 Emitter::scratch() {
     scratchUsed_ = true;
     return static_cast<u32>(current_->params.size() + current_->locals.size());
+}
+
+u32 Emitter::f32Scratch() {
+    f32ScratchUsed_ = true;
+    return static_cast<u32>(current_->params.size() + current_->locals.size() +
+                            (scratchUsed_ ? 1 : 0));
 }
 
 bool Emitter::isParam(const std::string& name) const {
@@ -61,6 +68,9 @@ void Emitter::emitFunction(PlannedFunction& function) {
     function.sourceLines = std::move(lines_);
     if (scratchUsed_) {
         function.locals.push_back(ValueType::I32);
+    }
+    if (f32ScratchUsed_) {
+        function.locals.push_back(ValueType::F32);
     }
     current_ = nullptr;
 }

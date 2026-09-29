@@ -39,6 +39,8 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"fault", {{V::F32, V::F32, V::I32}, V::F32}},
         {"smooth", {{V::F32}, V::F32}},
         {"sqrt", {{V::F32}, V::F32}},
+        {"i32trunc", {{V::F32}, V::I32}},
+        {"round", {{V::F32}, V::I32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
         {"mix", {{V::Color, V::Color, V::F32}, V::Color}},
         {"shade", {{V::Color, V::I32}, V::Color}},
@@ -438,6 +440,8 @@ ValueType Typer::typeBinary(const Binary& bin) {
     case Binary::Op::Xor:
     case Binary::Op::BitAnd:
     case Binary::Op::BitOr:
+    case Binary::Op::Shl:
+    case Binary::Op::Shr:
         if (left != ValueType::I32 || right != ValueType::I32) {
             error(bin.location, "integer operation requires i32 operands, got " +
                                      std::string(typeName(left)) + " and " +

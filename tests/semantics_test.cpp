@@ -158,6 +158,9 @@ TEST_CASE("type mismatches are rejected") {
                      "comparison requires numeric");
     expectCheckError(wrap("x = 1 && 2.5"), "integer operation requires i32");
     expectCheckError(wrap("x = 2.5 % 2"), "'%' requires i32");
+    expectCheckError(wrap("x = 2.5 << 1"), "integer operation requires i32");
+    expectCheckError(wrap("x = i32trunc(#ffffff)"), "must be f32");
+    CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 >> 1\ny = 1 << 3\nz = i32trunc(2.9)\nr = round(1.5)")), {}));
     CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 % 3")), {}));
     expectCheckError(wrap("x = \"text\""), "string literals");
 }
