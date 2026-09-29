@@ -53,8 +53,6 @@ struct SourceError : std::runtime_error {
         : std::runtime_error("line " + std::to_string(line) + ": " + message) {}
 };
 
-enum class OperandKind { None, IntConst, FloatConst, ColorConst, Index, Name, Depth, Count };
-
 struct OpDef {
     Opcode opcode;
     OperandKind operand = OperandKind::None;

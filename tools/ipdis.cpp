@@ -1,0 +1,276 @@
+#include "ipdis.hpp"
+
+#include "iprop/Code.hpp"
+#include "iprop/Consts.hpp"
+#include "iprop/Instruction.hpp"
+#include "iprop/Meta.hpp"
+#include "iprop/Validator.hpp"
+
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace iprop {
+namespace {
+
+const char* typeName(ValueType type) {
+    switch (type) {
+    case ValueType::I32: return "i32";
+    case ValueType::F32: return "f32";
+    case ValueType::Color: return "color";
+    }
+    return "?";
+}
+
+std::string floatText(f32 value) {
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), "%.9g", value);
+    return buffer;
+}
+
+std::string colorText(Color color) {
+    char buffer[16];
+    std::snprintf(buffer, sizeof(buffer), "#%02x%02x%02x%02x", color.r, color.g,
+                  color.b, color.a);
+    return buffer;
+}
+
+// Comma-separated for the fn signature (the assembler strips punctuation);
+// space-separated for the locals line (parsed on whitespace).
+std::string typeList(const std::vector<ValueType>& types, bool commas) {
+    std::string result;
+    for (std::size_t i = 0; i < types.size(); ++i) {
+        if (i != 0) {
+            result += commas ? ", " : " ";
+        }
+        result += typeName(types[i]);
+    }
+    return result;
+}
+
+std::string inputEntryText(const InputDecl& input, const ConstPool& pool) {
+    const std::string name = pool.strings.at(input.nameIndex);
+    switch (input.type) {
+    case InputType::Color:
+        return "input: color " + name + " = " + colorText(input.colorDefault);
+    case InputType::F32:
+        return "input: f32 " + name + " = " + floatText(input.f32Default);
+    case InputType::U32:
+        return "input: u32 " + name + " = " + std::to_string(input.u32Default);
+    }
+    return {};
+}
+
+std::string outputEntryText(const OutputDecl& output, const ConstPool& pool) {
+    std::string kind;
+    switch (output.kind) {
+    case OutputKind::Point: kind = "point"; break;
+    case OutputKind::Rect: kind = "rect"; break;
+    case OutputKind::Circle: kind = "circle"; break;
+    }
+    std::string result = "output: ";
+    if (output.isList) {
+        result += "list ";
+    }
+    result += kind + " " + pool.strings.at(output.nameIndex);
+    return result;
+}
+
+// One instruction line, with the operand resolved against the pools and the
+// name tables.
+struct Names {
+    const ConstPool* pool = nullptr;
+    std::vector<std::string> functions; // index -> name
+    std::vector<std::string> parts;     // index -> name
+    std::vector<std::string> slots;     // global slot index -> name
+};
+
+std::string instructionText(const Function& function,
+                            std::size_t instructionIndex, const Names& names) {
+    const Instruction ins = decodeInstruction(
+        function.code.subspan(instructionIndex * 4, 4));
+    const char* mnemonic = opcodeMnemonic(ins.opcode);
+    if (mnemonic == nullptr) {
+        return "reserved." + std::to_string(static_cast<u32>(ins.opcode));
+    }
+    switch (operandKind(ins.opcode)) {
+    case OperandKind::None:
+        return mnemonic;
+    case OperandKind::IntConst:
+        return std::string(mnemonic) + " " +
+               std::to_string(static_cast<i32>(names.pool->ints.at(ins.operand)));
+    case OperandKind::FloatConst:
+        // The pool stores f32 values, not bit patterns.
+        return std::string(mnemonic) + " " +
+               floatText(names.pool->floats.at(ins.operand));
+    case OperandKind::ColorConst:
+        return std::string(mnemonic) + " " +
+               colorText(names.pool->colors.at(ins.operand));
+    case OperandKind::Index:
+    case OperandKind::Depth:
+    case OperandKind::Count:
+        return std::string(mnemonic) + " " + std::to_string(ins.operand);
+    case OperandKind::Name:
+        if (ins.opcode == Opcode::Call) {
+            return std::string(mnemonic) + " " + names.functions.at(ins.operand);
+        }
+        if (ins.opcode == Opcode::PartDraw) {
+            return std::string(mnemonic) + " " + names.parts.at(ins.operand);
+        }
+        return std::string(mnemonic) + " " + names.slots.at(ins.operand);
+    }
+    return mnemonic;
+}
+
+void appendFunction(std::ostringstream& out, const std::string& name,
+                    const Function& function, const Names& names,
+                    bool indent) {
+    const auto parens = [](const std::vector<ValueType>& types) {
+        return types.empty() ? std::string("( )")
+                             : "( " + typeList(types, true) + " )";
+    };
+    const std::string pad = indent ? "  " : "";
+    out << pad << "fn " << name << " " << parens(function.params) << " -> "
+        << parens(function.results) << ":\n";
+    if (!function.locals.empty()) {
+        out << pad << "  locals: " << typeList(function.locals, false) << "\n";
+    }
+    const std::size_t count = function.code.size() / 4;
+    for (std::size_t i = 0; i < count; ++i) {
+        out << pad << "  " << instructionText(function, i, names) << "\n";
+    }
+    out << pad << "endfn\n";
+}
+
+} // namespace
+
+std::string disassemble(std::span<const u8> bytes) {
+    const auto loaded = loadFile(bytes);
+    validate(loaded);
+
+    const ConstPool& pool = loaded.pool;
+    const AssetMeta& meta = loaded.meta;
+    const CodeSection& code = loaded.code;
+
+    // Function names (anonymous functions get stable synthetic names).
+    Names names;
+    names.pool = &pool;
+    for (std::size_t i = 0; i < code.functions.size(); ++i) {
+        if (code.functions[i].isAnonymous()) {
+            names.functions.push_back("fn" + std::to_string(i));
+        } else {
+            names.functions.push_back(pool.strings.at(code.functions[i].nameIndex));
+        }
+    }
+
+    // Part names: the alias prefix of their draw function's name.
+    for (std::size_t i = 0; i < code.parts.size(); ++i) {
+        const std::string fnName = names.functions.at(code.parts[i].functionIndex);
+        const auto dot = fnName.find('.');
+        if (dot == std::string::npos) {
+            names.parts.push_back("part" + std::to_string(i));
+        } else {
+            names.parts.push_back(fnName.substr(0, dot));
+        }
+    }
+
+    // Global slot names: root outputs first, then part outputs (spec §4.3).
+    for (const auto& output : meta.outputs) {
+        names.slots.push_back(pool.strings.at(output.nameIndex));
+    }
+    for (const auto& part : code.parts) {
+        for (const auto& output : part.outputs) {
+            names.slots.push_back(pool.strings.at(output.nameIndex));
+        }
+    }
+
+    std::ostringstream out;
+    out << "meta: size=" << meta.sizeX << "x" << meta.sizeY
+        << " origin=" << floatText(meta.origin.x) << "," << floatText(meta.origin.y)
+        << " variants=" << meta.variants << " archetypes=" << meta.archetypes
+        << " fuel=" << meta.fuel << "\n";
+    for (const auto& input : meta.inputs) {
+        out << inputEntryText(input, pool) << "\n";
+    }
+    for (const auto& output : meta.outputs) {
+        out << outputEntryText(output, pool) << "\n";
+    }
+
+    // Part blocks first (the assembler grammar wants parts before functions).
+    for (std::size_t i = 0; i < code.parts.size(); ++i) {
+        const Part& part = code.parts[i];
+        out << "part " << names.parts[i] << ":\n";
+        out << "  meta: size=" << part.sizeX << "x" << part.sizeY
+            << " origin=" << floatText(part.origin.x) << ","
+            << floatText(part.origin.y) << "\n";
+        for (const auto& input : part.inputs) {
+            out << "  " << inputEntryText(input, pool) << "\n";
+        }
+        for (const auto& output : part.outputs) {
+            out << "  " << outputEntryText(output, pool) << "\n";
+        }
+        appendFunction(out, "draw", code.functions[part.functionIndex], names,
+                       true);
+        out << "endpart\n";
+    }
+
+    // Root functions (those the part table does not reference).
+    std::set<u32> partFunctions;
+    for (const auto& part : code.parts) {
+        partFunctions.insert(part.functionIndex);
+    }
+    for (std::size_t i = 0; i < code.functions.size(); ++i) {
+        if (partFunctions.count(static_cast<u32>(i)) == 0) {
+            appendFunction(out, names.functions[i], code.functions[i], names,
+                           false);
+        }
+    }
+    return out.str();
+}
+
+int ipdisMain(int argc, char* argv[]) {
+    std::string input;
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg == "-h" || arg == "--help") {
+            std::cout << "ipdis - disassemble an .iprop binary into .ipa text\n\n"
+                      << "Usage: ipdis <file.iprop>\n"
+                      << "The output can be reassembled with ipa.\n";
+            return 0;
+        }
+        if (!arg.empty() && arg[0] == '-') {
+            std::cerr << "ipdis: unknown option '" << arg << "'\n";
+            return 2;
+        }
+        if (input.empty()) {
+            input = arg;
+        } else {
+            std::cerr << "ipdis: multiple input files\n";
+            return 2;
+        }
+    }
+    if (input.empty()) {
+        std::cerr << "ipdis: no input file\n";
+        return 2;
+    }
+    std::ifstream stream(input, std::ios::binary);
+    if (!stream) {
+        std::cerr << "ipdis: cannot open '" << input << "'\n";
+        return 2;
+    }
+    const std::vector<u8> bytes((std::istreambuf_iterator<char>(stream)), {});
+    try {
+        std::cout << disassemble(bytes);
+    } catch (const FormatError& error) {
+        std::cerr << "ipdis: " << input << ": byte " << error.offset << ": "
+                  << error.what() << "\n";
+        return 1;
+    }
+    return 0;
+}
+
+} // namespace iprop

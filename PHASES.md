@@ -33,7 +33,7 @@ the boxes.
 | 18 | `.ips` parser → AST | C. Language & compiler | ✅ |
 | 19 | Semantic analysis | C. Language & compiler | ✅ |
 | 20 | Code generation → `.iprop` | C. Language & compiler | ✅ |
-| 21 | Disassembler & validator CLIs | C. Language & compiler | ⬜ |
+| 21 | Disassembler & validator CLIs | C. Language & compiler | ✅ |
 | 22 | QuantSpace asset ports in `.ips` | C. Language & compiler | ⬜ |
 | 23 | Debug section & source maps | C. Language & compiler | ⬜ |
 | 24 | HTML5 backend (Emscripten/WASM) | D. Backends | ⬜ |
@@ -479,15 +479,16 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** introspection and trust tooling.
 
 **Work:**
-1. `tools/ipdis`: readable disassembly (mnemonics, operands resolved to names, function/part boundaries).
-2. `tools/ipval`: standalone validator with a machine-readable report.
-3. Tests: disassemble→inspect golden fixtures; validator report for the invalid battery (Phase 6).
+1. `runtime/opcode_name.cpp` + `iprop/Instruction.hpp`: the spec §9 mnemonic table and operand kinds, shared by the disassembler (and later by the assembler, which dropped its private copy of the operand-kind enum).
+2. `tools/ipdis` (`ipdis.hpp`/`ipdis.cpp` + main): disassembles a validated file into `.ipa` text — meta/input/output, part blocks (size/origin/signature), function signatures with locals, and every instruction with operands resolved to names (constants, locals, functions, parts, global output slots). Feeding the output to `ipa` reassembles the same instruction streams.
+3. `tools/ipval` (`ipval.hpp`/`ipval.cpp` + main): standalone validator with a `ValidationReport` (the runtime validator is fail-fast, so the report carries the first violation with its byte offset); `--json` emits a machine-readable report. Exit codes: 0 valid, 1 invalid, 2 usage/I/O.
+4. Tests: a pinned golden disassembly, execution-parity round-trips (ipdis → ipa → VM) for the RNG-heavy rock and a part program with output propagation, `ipval` reports for truncated/bad-magic files, and the CLI exit-code contract.
 
-**Deliverables:** `tools/ipdis`, `tools/ipval`.
+**Deliverables:** `tools/ipdis`, `tools/ipval`, `runtime/opcode_name.cpp` + `tests/disasm_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] `ipdis` output is stable (golden files) and round-tripable to the same instructions.
-- [ ] `ipval` exit codes distinguish valid/invalid; report lists every violation found.
+- [x] `ipdis` output is stable (golden files) and round-tripable to the same instructions.
+- [x] `ipval` exit codes distinguish valid/invalid; report lists every violation found.
 
 ---
 

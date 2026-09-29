@@ -22,4 +22,22 @@ inline Instruction decodeInstruction(std::span<const u8> bytes) {
             static_cast<u16>(bytes[2] | (static_cast<u16>(bytes[3]) << 8))};
 }
 
+// The spec §9 mnemonic of an opcode, or nullptr for reserved opcodes.
+const char* opcodeMnemonic(Opcode opcode);
+
+// What an instruction's u16 operand means (spec §9). Used by the
+// disassembler and the assembler.
+enum class OperandKind {
+    None,
+    IntConst,   // const.i32: const-pool index
+    FloatConst, // const.f32: const-pool index
+    ColorConst, // const.color: const-pool index
+    Index,      // local.get/set/tee: local index
+    Name,       // call/part.draw/out.*/part.get.*: resolved at assembly
+    Depth,      // br/br_if: branch depth
+    Count,      // poly: vertex count
+};
+
+OperandKind operandKind(Opcode opcode);
+
 } // namespace iprop
