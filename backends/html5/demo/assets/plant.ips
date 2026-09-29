@@ -12,47 +12,11 @@ asset plant {
   size 64x64
   origin 32,56
 
-  pickLeafDark(i: i32) -> color {
-    c = #54625c
-    if (i == 0) { c = #365c38 }
-    if (i == 1) { c = #4c603e }
-    if (i == 2) { c = #264a46 }
-    if (i == 3) { c = #704430 }
-    return c
-  }
-
-  pickLeafMid(i: i32) -> color {
-    c = #728076
-    if (i == 0) { c = #4e7c4a }
-    if (i == 1) { c = #687e56 }
-    if (i == 2) { c = #3a645c }
-    if (i == 3) { c = #945a3a }
-    return c
-  }
-
-  pickLeafLight(i: i32) -> color {
-    c = #96a092
-    if (i == 0) { c = #6c9a62 }
-    if (i == 1) { c = #8a986c }
-    if (i == 2) { c = #588476 }
-    if (i == 3) { c = #bc7e4c }
-    return c
-  }
-
-  pickPot(i: i32) -> color {
-    c = #beb6a2
-    if (i == 0) { c = #967864 }
-    if (i == 1) { c = #7e7462 }
-    if (i == 2) { c = #6a7074 }
-    return c
-  }
-
-  pickBloom(i: i32) -> color {
-    c = #c4788c
-    if (i == 0) { c = #e89648 }
-    if (i == 1) { c = #e2d6be }
-    return c
-  }
+  palette darkLeaves = [#365c38, #4c603e, #264a46, #704430, #54625c]
+  palette midLeaves = [#4e7c4a, #687e56, #3a645c, #945a3a, #728076]
+  palette lightLeaves = [#6c9a62, #8a986c, #588476, #bc7e4c, #96a092]
+  palette pots = [#967864, #7e7462, #6a7074, #beb6a2]
+  palette blooms = [#e89648, #e2d6be, #c4788c]
 
   draw(v: i32, a: i32) {
     // ===== identity: the main seed stream =====
@@ -74,11 +38,11 @@ asset plant {
     rimDepth = 2.2 + index(3)
     heightN = index(15)
     height = 15.0 + heightN
-    leafDark = pickLeafDark(leavesIndex)
-    leafMid = pickLeafMid(leavesIndex)
-    leafLight = pickLeafLight(leavesIndex)
-    potColor = shade(pickPot(potIndex), potShade)
-    bloomColor = pickBloom(index(3))
+    leafDark = darkLeaves[leavesIndex]
+    leafMid = midLeaves[leavesIndex]
+    leafLight = lightLeaves[leavesIndex]
+    potColor = shade(pots[potIndex], potShade)
+    bloomColor = blooms[index(3)]
 
     // ===== paint order: foliage first, then the pot (its front face
     //      covers the stem bases) =====

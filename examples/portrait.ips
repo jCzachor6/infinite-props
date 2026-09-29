@@ -13,54 +13,11 @@ asset portrait {
 
   output point pupilCenter
 
-  pickSkin(i: i32) -> color {
-    c = #e8bea6
-    if (i == 0) { c = #f5cdaa }
-    if (i == 1) { c = #e4b18b }
-    if (i == 2) { c = #d19770 }
-    if (i == 3) { c = #bb7f59 }
-    if (i == 4) { c = #9e6547 }
-    if (i == 5) { c = #7e4f3b }
-    if (i == 6) { c = #654031 }
-    return c
-  }
-
-  pickHair(i: i32) -> color {
-    c = #d0d1c7
-    if (i == 0) { c = #221e22 }
-    if (i == 1) { c = #452c21 }
-    if (i == 2) { c = #694328 }
-    if (i == 3) { c = #a6572b }
-    if (i == 4) { c = #cda45b }
-    if (i == 5) { c = #e2cc9b }
-    if (i == 6) { c = #777479 }
-    return c
-  }
-
-  pickEyes(i: i32) -> color {
-    c = #838c8f
-    if (i == 0) { c = #4b6f7d }
-    if (i == 1) { c = #4b6948 }
-    if (i == 2) { c = #69482b }
-    if (i == 3) { c = #342e27 }
-    return c
-  }
-
-  pickClothing(i: i32) -> color {
-    c = #434e5c
-    if (i == 0) { c = #37576d }
-    if (i == 1) { c = #446d65 }
-    if (i == 2) { c = #7d4f40 }
-    if (i == 3) { c = #6d6384 }
-    if (i == 4) { c = #7b8376 }
-    return c
-  }
-
-  pickAccent(i: i32) -> color {
-    c = #e0a14a
-    if (i == 0) { c = #90c5b9 }
-    return c
-  }
+  palette skins = [#f5cdaa, #e4b18b, #d19770, #bb7f59, #9e6547, #7e4f3b, #654031, #e8bea6]
+  palette hairs = [#221e22, #452c21, #694328, #a6572b, #cda45b, #e2cc9b, #777479, #d0d1c7]
+  palette eyeColors = [#4b6f7d, #4b6948, #69482b, #342e27, #838c8f]
+  palette clothings = [#37576d, #446d65, #7d4f40, #6d6384, #7b8376, #434e5c]
+  palette accents = [#90c5b9, #e0a14a]
 
   // PaCharacterAge::sample — the inverse CDF of the broad discrete Gaussian
   // over ages 18..40 (PaCharacterAge.cpp), a single uniform draw.
@@ -99,11 +56,11 @@ asset portrait {
     index(16)
     // Age: the discrete Gaussian chain over 18..40 (PaCharacterAge.cpp).
     age = ageFromUnit(unit())
-    skinC = pickSkin(index(8))
-    hairC = pickHair(index(8))
-    eyeC = pickEyes(index(5))
-    clothingC = pickClothing(index(6))
-    accentC = pickAccent(index(2))
+    skinC = skins[index(8)]
+    hairC = hairs[index(8)]
+    eyeC = eyeColors[index(5)]
+    clothingC = clothings[index(6)]
+    accentC = accents[index(2)]
     hairstyle = index(3)
     // map to the HairStyle enum: females get Bob/Ponytail/Long (3..5),
     // males get Cropped/Swept/Curls (0..2)

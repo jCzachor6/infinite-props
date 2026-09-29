@@ -44,7 +44,7 @@ the Godot engine integration (the flagship adoption target).
 - [x] `3.3` compiler: indexing desugars to the if-ladder (the default value
   = the last element — same semantics as the hand-written pickers); constant
   indices fold. No VM change.
-- [ ] `3.4` proof: the portrait/plant pickers become palette data
+- [x] `3.4` proof: the portrait/plant pickers become palette data
   (the compiled output stays pixel-identical).
 
 ### 4. The math package
