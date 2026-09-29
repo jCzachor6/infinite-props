@@ -74,9 +74,10 @@ Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}
 }
 
 void Typer::enterFunction(const Program& owner, const Function& function,
-                          bool isDraw) {
+                          bool isDraw, std::string ns) {
     owner_ = &owner;
     isDraw_ = isDraw;
+    ns_ = std::move(ns);
     locals_.clear();
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
@@ -88,12 +89,13 @@ void Typer::declareLocal(const std::string& name, ValueType type) {
 }
 
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, locals_};
+    return Scope{owner_, isDraw_, ns_, locals_};
 }
 
 void Typer::restoreScope(Scope scope) {
     owner_ = scope.owner;
     isDraw_ = scope.isDraw;
+    ns_ = std::move(scope.ns);
     locals_ = std::move(scope.locals);
 }
 
@@ -283,7 +285,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     const std::optional<FunctionSurface> surface =
-        resolveFunction(name.name, call.location);
+        resolveFunction(name.name, call.location, ns_);
     if (!surface.has_value()) {
         error(call.location, "undefined function '" + name.name + "'");
     }

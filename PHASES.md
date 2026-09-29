@@ -24,8 +24,9 @@ the Godot engine integration (the flagship adoption target).
   validated against them; explicit returns checked against the body.
 - [x] `1.3` compiler: parameter types into the function table; the
   return-type lowering.
-- [ ] `1.4` proof: `ageFromUnit(u: f32) -> i32` and the `leaf(...)` helpers
-  become real functions in the ports (no more inlining).
+- [x] `1.4` proof: `ageFromUnit(u: f32) -> i32` and the `leaf(...)` helpers
+  become real functions in the ports (no more inlining). Pixels identical
+  (portrait + plant, 4 seeds each); the part-helper name resolution fixed.
 
 ### 2. Trig
 - [ ] `2.1` spec §9/§12: `f32.sin`, `f32.cos` opcodes with the pinned

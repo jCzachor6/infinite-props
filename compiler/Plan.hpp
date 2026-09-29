@@ -108,7 +108,8 @@ private:
 
     // The plan's Typer resolver, bound to the heap plan (stable address).
     std::optional<ips::FunctionSurface> resolveFunction(
-        const std::string& name, const ips::SourceLocation& at);
+        const std::string& name, const ips::SourceLocation& at,
+        const std::string& ns);
 
     const ips::InputDecl* ownerInput(const ips::Program* owner,
                                      const std::string& name) const;

@@ -62,8 +62,12 @@ void Emitter::emitFunction(PlannedFunction& function) {
     currentLine_ = 0;
     scratchUsed_ = false;
     ips::Typer::Scope savedScope = plan_.typeEngine().saveScope();
-    plan_.typeEngine().restoreScope(
-        ips::Typer::Scope{function.owner, function.drawLike, function.langTypes});
+    const std::string qualified = function.name;
+    const auto dot = qualified.find('.');
+    plan_.typeEngine().restoreScope(ips::Typer::Scope{
+        function.owner, function.drawLike,
+        dot != std::string::npos ? qualified.substr(0, dot + 1) : "",
+        function.langTypes});
     for (const auto& stmt : function.ast->body) {
         emitStmt(stmt);
     }

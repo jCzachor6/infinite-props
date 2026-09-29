@@ -26,7 +26,8 @@ public:
     Checker(const Program& program, const std::map<std::string, PartInfo>& parts)
         : program_(program), parts_(parts), typer_(parts) {
         typer_.resolveFunction = [this](const std::string& name,
-                                        const SourceLocation& at) {
+                                        const SourceLocation& at,
+                                        const std::string&) {
             return checkedFunctionSurface(name, at);
         };
     }

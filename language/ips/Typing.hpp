@@ -68,11 +68,14 @@ public:
     struct Scope {
         const Program* owner = nullptr;
         bool isDraw = false;
+        // The part alias prefix of the function being typed ("" for the
+        // entry asset): bare call names resolve within it first.
+        std::string ns;
         std::map<std::string, ValueType> locals;
     };
 
     void enterFunction(const Program& owner, const Function& function,
-                       bool isDraw);
+                       bool isDraw, std::string ns = "");
     void declareLocal(const std::string& name, ValueType type);
 
     Scope saveScope() const;
@@ -85,7 +88,8 @@ public:
     // problems of its own (e.g. recursion), using the supplied location. The
     // Typer reports "undefined function" itself.
     std::function<std::optional<FunctionSurface>(const std::string&,
-                                                 const SourceLocation&)>
+                                                 const SourceLocation&,
+                                                 const std::string&)>
         resolveFunction;
 
     // ---- typing -----------------------------------------------------------
@@ -98,6 +102,7 @@ private:
 
     const Program* owner_ = nullptr;
     bool isDraw_ = false;
+    std::string ns_;
     std::map<std::string, ValueType> locals_;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) const;

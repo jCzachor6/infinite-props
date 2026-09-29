@@ -13,15 +13,24 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         if (ips::builtinSignatures().count(name->name) != 0) {
             return emitBuiltin(name->name, call);
         }
-        const PlannedFunction& callee =
-            plan_.functions[plan_.functionIndex.at(name->name)];
+        // Bare names resolve to the entry's functions; inside a part, the
+        // part's own helpers.
+        std::string effective = name->name;
+        if (plan_.functionIndex.count(effective) == 0) {
+            const auto dot = current_->name.find('.');
+            if (dot != std::string::npos) {
+                effective = current_->name.substr(0, dot + 1) + name->name;
+            }
+        }
+        const u32 index = plan_.functionIndex.at(effective);
+        const PlannedFunction& callee = plan_.functions[index];
         for (std::size_t i = 0; i < call.args.size(); ++i) {
             // The callee's declared parameter type drives the widening
             // (i32 -> f32) so the stack matches the function table.
             emitArg(call.args[i],
                     ips::valueTypeOf(callee.ast->params[i].type));
         }
-        ins(Opcode::Call, 0, static_cast<u16>(plan_.functionIndex.at(name->name)));
+        ins(Opcode::Call, 0, static_cast<u16>(index));
         return callee.langResult.value_or(ips::ValueType::Void);
     }
     if (std::holds_alternative<ips::Member>(*call.callee)) {

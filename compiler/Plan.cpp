@@ -81,8 +81,9 @@ std::unique_ptr<Plan> Planner::plan() {
     }
     plan_->typer = std::make_unique<ips::Typer>(plan_->surfaces);
     plan_->typer->resolveFunction = [this](const std::string& name,
-                                           const ips::SourceLocation& at) {
-        return resolveFunction(name, at);
+                                           const ips::SourceLocation& at,
+                                           const std::string& ns) {
+        return resolveFunction(name, at, ns);
     };
 
     for (const auto& function : plan_->functions) {
@@ -100,12 +101,16 @@ std::unique_ptr<Plan> Planner::plan() {
 
     // Planning is complete: rebind the resolver to a self-contained lookup
     // over the heap plan, so the emitter can keep typing through the Typer
-    // after this Planner is gone.
+    // after this Planner is gone. Bare names resolve to the entry's
+    // functions, or — inside a part — to that part's own helpers first.
     Plan* self = plan_.get();
     plan_->typer->resolveFunction =
-        [self](const std::string& name, const ips::SourceLocation&)
-        -> std::optional<ips::FunctionSurface> {
-        const auto found = self->functionIndex.find(name);
+        [self](const std::string& name, const ips::SourceLocation&,
+               const std::string& ns) -> std::optional<ips::FunctionSurface> {
+        const std::string effective =
+            !ns.empty() && self->functionIndex.count(name) == 0 ? ns + name
+                                                                : name;
+        const auto found = self->functionIndex.find(effective);
         if (found == self->functionIndex.end()) {
             return std::nullopt;
         }
@@ -118,16 +123,23 @@ std::unique_ptr<Plan> Planner::plan() {
 }
 
 std::optional<ips::FunctionSurface> Planner::resolveFunction(
-    const std::string& name, const ips::SourceLocation&) {
+    const std::string& name, const ips::SourceLocation&,
+    const std::string& ns) {
+    // Bare names resolve to the entry's functions; inside a part, the part's
+    // own helpers take precedence over nothing else — the part prefix only
+    // applies when the bare name is not a known (entry) function.
+    const std::string effective =
+        !ns.empty() && registry_.count(name) == 0 ? ns + name : name;
     // The table slots were pre-created by planFunctions; a function counts
     // as resolved only once its body was prepared.
-    if (prepared_.count(name) == 0) {
-        if (registry_.count(name) == 0) {
+    if (prepared_.count(effective) == 0) {
+        if (registry_.count(effective) == 0) {
             return std::nullopt;
         }
-        prepareFunction(name); // on demand
+        prepareFunction(effective); // on demand
     }
-    const PlannedFunction& info = plan_->functions[plan_->functionIndex.at(name)];
+    const PlannedFunction& info =
+        plan_->functions[plan_->functionIndex.at(effective)];
     return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
                                 info.langResult};
 }
@@ -272,7 +284,9 @@ void Planner::prepareFunction(const std::string& name) {
     }
 
     ips::Typer::Scope savedScope = plan_->typeEngine().saveScope();
-    plan_->typeEngine().enterFunction(*owner, *ast, drawLike);
+    const std::string ns =
+        dot != std::string::npos ? name.substr(0, dot + 1) : "";
+    plan_->typeEngine().enterFunction(*owner, *ast, drawLike, ns);
     std::optional<ips::ValueType> returnType;
 
     const auto walk = [&](auto&& self, const std::vector<ips::Stmt>& body) -> void {

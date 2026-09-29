@@ -62,15 +62,10 @@ asset portrait {
     return c
   }
 
-  draw(v: i32, a: i32) {
-    // ---- identity (PaCharacter::generate); RNG order preserved ----
-    stream_push(hash(seed ^ 0xc4a7ac7e))
-    female = index(2)
-    index(16)
-    index(16)
-    // Age: the discrete Gaussian chain over 18..40 (PaCharacterAge.cpp).
+  // PaCharacterAge::sample — the inverse CDF of the broad discrete Gaussian
+  // over ages 18..40 (PaCharacterAge.cpp), a single uniform draw.
+  ageFromUnit(u: f32) -> i32 {
     age = 40
-    u = unit()
     if (u < 0.02280424168746939) { age = 18 }
     if (u < 0.049674205008708304) { age = 19 }
     if (u < 0.08084390776683863) { age = 20 }
@@ -93,6 +88,17 @@ asset portrait {
     if (u < 0.9191560922331614) { age = 37 }
     if (u < 0.9503257949912918) { age = 38 }
     if (u < 0.9771957583125306) { age = 39 }
+    return age
+  }
+
+  draw(v: i32, a: i32) {
+    // ---- identity (PaCharacter::generate); RNG order preserved ----
+    stream_push(hash(seed ^ 0xc4a7ac7e))
+    female = index(2)
+    index(16)
+    index(16)
+    // Age: the discrete Gaussian chain over 18..40 (PaCharacterAge.cpp).
+    age = ageFromUnit(unit())
     skinC = pickSkin(index(8))
     hairC = pickHair(index(8))
     eyeC = pickEyes(index(5))
