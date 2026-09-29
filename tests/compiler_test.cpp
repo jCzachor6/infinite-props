@@ -146,6 +146,15 @@ RunOutcome execute(const std::vector<u8>& bytes, u32 seed = 42) {
     return {result.image, result.outputs};
 }
 
+RunOutcome run(const std::vector<u8>& bytes, u32 variant, u32 archetype) {
+    const auto loaded = loadFile(bytes);
+    validate(loaded);
+    VM vm(loaded, GenerationInputs{42, variant, archetype, 0, 0, {}});
+    vm.run();
+    const GenerationResult result = vm.result();
+    return {result.image, result.outputs};
+}
+
 } // namespace
 
 TEST_CASE("compiled rock validates and runs") {
@@ -245,6 +254,111 @@ endfn
     // The pixels mark the truncated coords: 4 and 3.
     REQUIRE(fromIps.canvas.at(4, 0) == Color{255, 0, 0, 255});
     REQUIRE(fromIps.canvas.at(3, 1) == Color{0, 255, 0, 255});
+}
+
+TEST_CASE("palette indexing desugars to the picker ladder with pixel parity") {
+    // The palette + indexing form ...
+    const std::string palettes = R"(
+asset t {
+  size 8x8
+  variants 8
+  archetypes 8
+  palette leafDark = [#365c38, #4c603e, #264a46, #704430, #54625c]
+  draw(v: i32, a: i32) {
+    c = leafDark[v]
+    pixel(0, 0, c)
+    d = leafDark[a]
+    pixel(1, 0, d)
+  }
+})";
+    // ... and the hand-written picker it replaces.
+    const std::string picker = R"(
+asset t {
+  size 8x8
+  variants 8
+  archetypes 8
+  draw(v: i32, a: i32) {
+    c = pickLeafDark(v)
+    pixel(0, 0, c)
+    d = pickLeafDark(a)
+    pixel(1, 0, d)
+  }
+  pickLeafDark(i: i32) -> color {
+    c = #54625c
+    if (i == 0) { c = #365c38 }
+    if (i == 1) { c = #4c603e }
+    if (i == 2) { c = #264a46 }
+    if (i == 3) { c = #704430 }
+    return c
+  }
+})";
+
+    // Every (variant, archetype) combination renders identically.
+    for (u32 variant = 0; variant < 8; ++variant) {
+        for (u32 archetype = 0; archetype < 8; ++archetype) {
+            INFO("variant " << variant << " archetype " << archetype);
+            const auto fromPalettes = run(compileChecked(palettes), variant, archetype);
+            const auto fromPicker = run(compileChecked(picker), variant, archetype);
+            for (std::size_t i = 0; i < fromPalettes.canvas.pixels.size(); ++i) {
+                REQUIRE(fromPalettes.canvas.pixels[i] ==
+                        fromPicker.canvas.pixels[i]);
+            }
+        }
+    }
+}
+
+TEST_CASE("palette index semantics: the last element is the default") {
+    // Out-of-range and negative indices yield the last element, exactly
+    // like the hand-written pickers.
+    const std::string source = R"(
+asset t {
+  size 8x8
+  palette p = [#111111, #222222, #333333]
+  draw(v: i32, a: i32) {
+    pixel(0, 0, p[0])
+    pixel(1, 0, p[1])
+    pixel(2, 0, p[2])
+    pixel(3, 0, p[99])
+    pixel(4, 0, p[0 - 1])
+  }
+})";
+    const auto result = run(compileChecked(source), 0, 0);
+    REQUIRE(result.canvas.at(0, 0) == Color{0x11, 0x11, 0x11, 0xff});
+    REQUIRE(result.canvas.at(1, 0) == Color{0x22, 0x22, 0x22, 0xff});
+    REQUIRE(result.canvas.at(2, 0) == Color{0x33, 0x33, 0x33, 0xff});
+    REQUIRE(result.canvas.at(3, 0) == Color{0x33, 0x33, 0x33, 0xff});
+    REQUIRE(result.canvas.at(4, 0) == Color{0x33, 0x33, 0x33, 0xff});
+}
+
+TEST_CASE("constant palette indices fold away the ladder") {
+    const std::string folded = R"(
+asset t {
+  size 8x8
+  palette p = [#111111, #222222, #333333]
+  draw(v: i32, a: i32) {
+    c = p[0]
+  }
+})";
+    // The constant index needs no scratch locals (no ladder emitted): the
+    // function has exactly one extra local (the result 'c').
+    const auto loaded = loadFile(compileChecked(folded));
+    REQUIRE(loaded.code.entry().locals.size() == 1);
+}
+
+TEST_CASE("palette elements widen i32 indices and i32 palettes to f32 uses") {
+    // An i32 palette feeding an f32 context widens (i32.to.f32), like
+    // every other i32 expression.
+    const std::string source = R"(
+asset t {
+  size 8x8
+  palette w = [2, 4]
+  output point p
+  draw(v: i32, a: i32) {
+    p = {w[v] + 0.5, 1}
+  }
+})";
+    const auto loaded = loadFile(compileChecked(source));
+    CHECK_NOTHROW(validate(loaded));
 }
 
 TEST_CASE("two compilations are byte-identical") {

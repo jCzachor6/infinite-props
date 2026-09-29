@@ -46,6 +46,23 @@ u32 Emitter::f32Scratch() {
                             (scratchUsed_ ? 1 : 0));
 }
 
+u32 Emitter::colorScratch() {
+    colorScratchUsed_ = true;
+    return static_cast<u32>(current_->params.size() + current_->locals.size() +
+                            (scratchUsed_ ? 1 : 0) +
+                            (f32ScratchUsed_ ? 1 : 0));
+}
+
+// The extra local of the given scalar type (appended after the function's
+// own locals, in i32/f32/color order).
+u32 Emitter::scratchOf(ips::ValueType type) {
+    switch (type) {
+    case ips::ValueType::I32: return scratch();
+    case ips::ValueType::F32: return f32Scratch();
+    default: return colorScratch();
+    }
+}
+
 bool Emitter::isParam(const std::string& name) const {
     for (const auto& param : current_->ast->params) {
         if (param.name == name) {
@@ -79,6 +96,9 @@ void Emitter::emitFunction(PlannedFunction& function) {
     }
     if (f32ScratchUsed_) {
         function.locals.push_back(ValueType::F32);
+    }
+    if (colorScratchUsed_) {
+        function.locals.push_back(ValueType::Color);
     }
     current_ = nullptr;
 }

@@ -35,6 +35,9 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto* call = std::get_if<ips::Call>(&expr)) {
         return emitCall(*call);
     }
+    if (const auto* index = std::get_if<ips::Index>(&expr)) {
+        return emitIndex(*index);
+    }
     if (const auto* bin = std::get_if<ips::Binary>(&expr)) {
         return emitBinary(*bin);
     }
@@ -267,6 +270,90 @@ ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
         return ips::ValueType::I32;
     }
     error(un.location, "unsupported unary operator");
+}
+
+// `palette[i]` — the hand-written picker semantics, desugared: evaluate
+// the index once, default to the last element, override for every earlier
+// element. A constant index folds to the element (an out-of-range constant
+// yields the default, matching the runtime ladder). No VM change.
+ips::ValueType Emitter::emitIndex(const ips::Index& index) {
+    const auto* name = std::get_if<ips::Identifier>(index.object.get());
+    if (name == nullptr) {
+        error(locationOf(*index.object), "only palettes can be indexed");
+    }
+    const ips::PaletteDecl* palette = nullptr;
+    for (const auto& candidate : current_->owner->asset.palettes) {
+        if (candidate.name == name->name) {
+            palette = &candidate;
+            break;
+        }
+    }
+    if (palette == nullptr) {
+        error(name->location, "'" + name->name + "' is not a palette");
+    }
+
+    const auto elementType = [&](const ips::Expr& element) {
+        const auto* literal = std::get_if<ips::Literal>(&element);
+        if (literal == nullptr) {
+            error(locationOf(element), "palette elements must be literals");
+        }
+        switch (literal->kind) {
+        case ips::Literal::Kind::Int:
+        case ips::Literal::Kind::True:
+        case ips::Literal::Kind::False:
+            return ips::ValueType::I32;
+        case ips::Literal::Kind::Float:
+            return ips::ValueType::F32;
+        case ips::Literal::Kind::Color:
+            return ips::ValueType::Color;
+        case ips::Literal::Kind::String:
+            break;
+        }
+        error(locationOf(element), "palette elements must be literals");
+    };
+    const auto emitElement = [&](const ips::Expr& element) {
+        Value folded;
+        if (!foldExpression(element, folded)) {
+            error(locationOf(element), "palette elements must be literals");
+        }
+        emitConst(folded);
+    };
+
+    const ips::ValueType type = elementType(*palette->elements[0]);
+    const std::size_t count = palette->elements.size();
+
+    // Constant indices fold; the fold matches the ladder for the
+    // out-of-range and negative cases (the default element).
+    if (Value foldedIndex; foldExpression(*index.index, foldedIndex)) {
+        if (const auto* k = std::get_if<i32>(&foldedIndex)) {
+            const std::size_t chosen =
+                (*k >= 0 && static_cast<std::size_t>(*k) + 1 < count)
+                    ? static_cast<std::size_t>(*k)
+                    : count - 1;
+            emitElement(*palette->elements[chosen]);
+            return type;
+        }
+    }
+
+    // Runtime ladder.
+    emitExpr(*index.index);
+    const u16 indexSlot = static_cast<u16>(scratch());
+    ins(Opcode::LocalSet, 0, indexSlot);
+    const u16 resultSlot = static_cast<u16>(scratchOf(type));
+    emitElement(*palette->elements.back());
+    ins(Opcode::LocalSet, 0, resultSlot);
+    for (std::size_t k = 0; k + 1 < count; ++k) {
+        ins(Opcode::ConstI32, 0,
+            static_cast<u16>(plan_.pools.addInt(static_cast<u32>(k))));
+        ins(Opcode::LocalGet, 0, indexSlot);
+        ins(Opcode::I32Eq);
+        ins(Opcode::If);
+        emitElement(*palette->elements[k]);
+        ins(Opcode::LocalSet, 0, resultSlot);
+        ins(Opcode::End);
+    }
+    ins(Opcode::LocalGet, 0, resultSlot);
+    return type;
 }
 
 } // namespace iprop::compiler

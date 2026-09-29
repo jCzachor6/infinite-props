@@ -35,6 +35,7 @@ private:
     u32 currentLine_ = 0;           // the line attributed to new instructions
     bool scratchUsed_ = false;
     bool f32ScratchUsed_ = false;
+    bool colorScratchUsed_ = false;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
 
@@ -44,6 +45,8 @@ private:
     void emitConst(const Value& value);
     u32 scratch();    // the extra i32 local (short-circuit, round)
     u32 f32Scratch(); // the extra f32 local (round)
+    u32 colorScratch(); // the extra color local (palette ladders)
+    u32 scratchOf(ips::ValueType type); // the scratch for a scalar type
     bool isParam(const std::string& name) const;
     u32 slotForOutput(const ips::Program* owner,
                       const ips::OutputDecl& output) const;
@@ -61,6 +64,7 @@ private:
     ips::ValueType emitPartRead(const ips::Expr& expr);
     ips::ValueType emitBinary(const ips::Binary& bin);
     ips::ValueType emitUnary(const ips::Unary& un);
+    ips::ValueType emitIndex(const ips::Index& index);
     ips::ValueType emitCall(const ips::Call& call);
     void emitArg(const ips::Arg& arg, ips::ValueType expected);
     ips::ValueType emitBuiltin(const std::string& name, const ips::Call& call);
