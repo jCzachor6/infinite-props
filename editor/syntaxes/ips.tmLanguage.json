@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "ips",
+  "scopeName": "source.ips",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#colors" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.ips", "match": "//.*$" },
+        { "name": "comment.block.ips", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.ips",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "name": "constant.character.escape.ips", "match": "\\\\." }
+      ]
+    },
+    "colors": {
+      "name": "constant.other.color.ips",
+      "match": "#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?\\b"
+    },
+    "numbers": {
+      "name": "constant.numeric.ips",
+      "match": "\\b(0[xX][0-9a-fA-F]+|\\d+(\\.\\d+)?([eE][+-]?\\d+)?)\\b"
+    },
+    "keywords": {
+      "name": "keyword.control.ips",
+      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|return|true|false|list)\\b"
+    },
+    "types": {
+      "name": "storage.type.ips",
+      "match": "\\b(color|f32|u32|i32|point|rect|circle)\\b"
+    },
+    "operators": {
+      "name": "keyword.operator.ips",
+      "match": "->|==|!=|<=|>=|&&|\\|\\||<<|>>|[+\\-*/%^&|~!<>=]"
+    }
+  }
+}

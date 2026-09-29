@@ -1,36 +1,41 @@
 {
   "name": "iprop-studio",
+  "displayName": "iprop studio",
+  "description": "The .ips authoring tools: syntax highlighting and inline diagnostics from the compiler. Edit files, run CLI agents in the integrated terminal.",
   "version": "0.1.0",
-  "private": true,
-  "description": "The .ips authoring studio: a standalone editor with inline diagnostics from the compiler and an embedded terminal for CLI agents.",
-  "main": "electron/main.cjs",
-  "scripts": {
-    "build": "vite build",
-    "dev": "npm run build && electron .",
-    "watch": "vite build --watch",
-    "rebuild": "electron-rebuild -f -w node-pty"
-  },
-  "dependencies": {
-    "@codemirror/commands": "^6.6.0",
-    "@codemirror/language": "^6.10.2",
-    "@codemirror/legacy-modes": "^6.4.1",
-    "@codemirror/state": "^6.4.1",
-    "@codemirror/view": "^6.28.0",
-    "codemirror": "^6.0.1",
-    "node-pty": "^1.0.0",
-    "xterm": "^5.3.0",
-    "@codemirror/lint": "^6.8.1",
-    "@codemirror/theme-one-dark": "^6.1.2"
-  },
-  "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-rebuild": "^3.2.9",
-    "typescript": "^5.4.5",
-    "vite": "^5.3.1"
-  },
-  "allowScripts": {
-    "node-pty@1.1.0": true,
-    "esbuild@0.21.5": true,
-    "electron@31.7.7": true
+  "publisher": "iprop",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:ips"],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "ips",
+        "extensions": [".ips"],
+        "aliases": ["iprop Source", "ips"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "ips",
+        "scopeName": "source.ips",
+        "path": "./syntaxes/ips.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      { "command": "iprop.compile", "title": "iprop: Compile" }
+    ],
+    "configuration": {
+      "title": "iprop",
+      "properties": {
+        "iprop.compilerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ipc compiler binary. Defaults to <workspace>/build/tools/ipc."
+        }
+      }
+    }
   }
 }

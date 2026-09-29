@@ -607,27 +607,27 @@ semantics change only with a spec update and a deliberate regeneration.
 
 **Goal:** the authoring surface.
 
-**Work (per review: a standalone desktop app instead of a browser app, so
-the author keeps a real console and real files for CLI agents):**
-1. `editor/` — an Electron shell (the framework pinned here: vanilla TS +
-   Vite + CodeMirror 6 + xterm.js + node-pty): a project-folder open, a
-   file list, tabbed editing with `.ips` syntax highlighting, Ctrl/Cmd+S
-   saving, new/delete files.
+**Work (per review: a VS Code extension instead of the standalone Electron
+app — the author keeps the native editor, the integrated terminal for CLI
+agents and real files):**
+1. `editor/` — a VS Code extension: `.ips` as a language (TextMate grammar
+   mirroring the lexer's tokens — keywords, type names, colour/number
+   literals, comments, strings, operators) with a language configuration.
 2. Inline diagnostics from the **native `ipc` compiler** (child_process, the
-   exact CLI binary): a debounced recompile on every edit surfaces
-   `file:line:column` errors as gutter squiggles, including errors in
-   imported parts.
-3. Persistence = the project folder itself (real files on disk) plus an
-   **embedded terminal** (node-pty + xterm) running the user's shell in the
-   project — CLI agents (opencode/codex/copilot) edit the files directly.
-4. The `.ips` CodeMirror language mirrors the real lexer's token set.
+   exact CLI binary, default `<workspace>/build/tools/ipc`, overridable via
+   `iprop.compilerPath`): a debounced recompile on edit and on external
+   file changes (a `**/*.ips` watcher picks up CLI-agent edits) surfaces
+   `file:line:column` errors as squiggles and Problems-panel entries,
+   including errors in imported parts.
+3. The integrated terminal is the console for opencode/codex; `install.sh`
+   symlinks the extension into `~/.vscode/extensions/`.
 
-**Deliverables:** `editor/` desktop app, runnable locally.
+**Deliverables:** `editor/` VS Code extension.
 
 **Acceptance criteria:**
 - [x] Open/save/edit `.ips` files works; diagnostics appear inline with locations.
-- [x] Editor survives refresh (persistence = the project folder on disk).
-- [x] `npm run dev` documented in the editor README.
+- [x] Editor survives refresh (VS Code's native workspace/persistence).
+- [x] The install step documented in the editor README.
 
 ---
 
