@@ -339,3 +339,148 @@ asset outer { size 8x8 draw(v, a) { inner.draw(1, v, a, at = {0, 0}) } }
     }
     REQUIRE(threw);
 }
+
+TEST_CASE("&& and || short-circuit: side effects are skipped") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  draw(v, a) {
+    c = 0 && mark()
+    d = 1 && mark2()
+  }
+  mark() {
+    pixel(0, 0, #ff0000)
+    return 1
+  }
+  mark2() {
+    pixel(1, 1, #00ff00)
+    return 1
+  }
+})";
+    const RunOutcome outcome = execute(compileChecked(source));
+    // mark() must NOT have run (0 && ...); mark2() must have.
+    REQUIRE(outcome.canvas.at(0, 0).a == 0);
+    REQUIRE(outcome.canvas.at(1, 1) == Color{0, 255, 0, 255});
+}
+
+TEST_CASE("logical and bitwise not fold and lower correctly") {
+    // !5 folds to 0, ~0 folds to -1, and a runtime !v uses the eqz lowering.
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+  draw(v, a) {
+    x = !5
+    y = ~0
+    z = !v
+    p = {y, z}
+  }
+})";
+    const RunOutcome outcome = execute(compileChecked(source), /*seed=*/0);
+    REQUIRE(outcome.outputs[0].points.size() == 1);
+    REQUIRE(outcome.outputs[0].points[0].x == -1.f); // ~0
+    REQUIRE(outcome.outputs[0].points[0].y == 1.f);  // !v with v = 0
+}
+
+TEST_CASE("f32 comparisons lower to the f32 opcodes") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+  draw(v, a) {
+    x = 2.5
+    y = x < 3.0
+    p = {y, 0}
+  }
+})";
+    const RunOutcome outcome = execute(compileChecked(source));
+    REQUIRE(outcome.outputs[0].points[0].x == 1.f); // 2.5 < 3.0
+}
+
+TEST_CASE("division is not folded (the runtime trap is preserved)") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  draw(v, a) {
+    x = 6 / 2
+  }
+})";
+    const auto bytes = compileChecked(source);
+    const auto loaded = loadFile(bytes);
+    // const.i32 6, const.i32 2, i32.div_s, local.set — no folding.
+    REQUIRE(loaded.code.entry().code.size() == 16);
+}
+
+TEST_CASE("list outputs, circle outputs and poly compile and run") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output list point pts
+  output circle c
+
+  draw(v, a) {
+    pts = {1, 2}
+    pts = {3, 4}
+    c = {1, 2, 3}
+    poly(#ffffff, 0, 0, 4, 0, 2, 2)
+  }
+})";
+    const RunOutcome outcome = execute(compileChecked(source));
+    const NamedOutput* pts = outcome.outputs.empty() ? nullptr : &outcome.outputs[0];
+    REQUIRE(pts != nullptr);
+    REQUIRE(pts->isList);
+    REQUIRE(pts->points.size() == 2);
+    const NamedOutput* circle = outcome.outputs.size() > 1 ? &outcome.outputs[1] : nullptr;
+    REQUIRE(circle != nullptr);
+    REQUIRE(circle->circles.size() == 1);
+    // The poly painted the triangle interior.
+    bool painted = false;
+    for (const auto& pixel : outcome.canvas.pixels) {
+        if (pixel.a != 0) {
+            painted = true;
+        }
+    }
+    REQUIRE(painted);
+}
+
+TEST_CASE("part placement can read another part's output") {
+    const std::string anchor = R"(
+asset anchor {
+  size 4x4
+  output point spot
+  draw(v, a) {
+    spot = {2, 3}
+  }
+})";
+    const std::string composite = R"(
+import anchor from "anchor.ips"
+
+asset composite {
+  size 8x8
+  output point p
+
+  draw(v, a) {
+    anchor.draw(1, v, a, at = {0, 0})
+    anchor.draw(2, v, a, at = anchor.outputs.spot)
+    p = anchor.outputs.spot
+  }
+})";
+    const ips::Program anchorProgram = ips::parse(anchor);
+    const ips::Program compositeProgram = ips::parse(composite);
+    ips::checkAsset(anchorProgram, {});
+    ips::checkAsset(compositeProgram,
+                    {{"anchor", partInfoOf(anchorProgram.asset)}});
+
+    const auto bytes = compileProgram(compositeProgram,
+                                      {{"anchor", &anchorProgram}});
+    const auto loaded = loadFile(bytes);
+    CHECK_NOTHROW(validate(loaded));
+    VM vm(loaded, GenerationInputs{5, 0, 0, 0, 0, {}});
+    CHECK_NOTHROW(vm.run());
+    const GenerationResult result = vm.result();
+    const NamedOutput* p = result.find("p");
+    REQUIRE(p != nullptr);
+    REQUIRE(p->points.size() == 1);
+    REQUIRE(p->points[0].x == 2.f);
+    REQUIRE(p->points[0].y == 3.f);
+}

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
@@ -156,6 +157,8 @@ TEST_CASE("type mismatches are rejected") {
     expectCheckError(wrap("x = {1, 2, 3} == {4, 5, 6}"),
                      "comparison requires numeric");
     expectCheckError(wrap("x = 1 && 2.5"), "integer operation requires i32");
+    expectCheckError(wrap("x = 2.5 % 2"), "'%' requires i32");
+    CHECK_NOTHROW(checkAsset(parse(wrap("x = 7 % 3")), {}));
     expectCheckError(wrap("x = \"text\""), "string literals");
 }
 

@@ -8,6 +8,7 @@
 
 #include "Compiler.hpp"
 
+#include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
