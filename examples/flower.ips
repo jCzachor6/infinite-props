@@ -1,0 +1,192 @@
+// flower.ips — the foliage part of the QuantSpace interior plant (PaPlant):
+// four of the six species (Broadleaf, Spiky, Bushy, Flowering) plus a
+// sunflower species of our own. The Succulent and the Arching Fronds are
+// omitted — they draw petals/leaves with per-step trigonometric functions
+// of continuous angles, which the bytecode instruction set cannot express.
+//
+// Paints absolute coordinates on a 64x64 canvas; the parent blits it at
+// {0, 0}. The part's stream is the main seed stream (passed as the part
+// seed); the species' detail draws use the derived stream passed as the
+// detailState uniform.
+
+asset flower {
+  size 64x64
+  origin 0,0
+  variants 8
+
+  input u32   species = 0
+  input f32   height = 15.0
+  input u32   heightN = 0
+  input color leafDark = #365c38
+  input color leafMid = #4e7c4a
+  input color leafLight = #6c9a62
+  input color bloom = #e89648
+  input u32   detailState = 0
+
+  draw(v, a) {
+    rim = -12.0
+    crown = rim - height
+    dState = detailState
+
+    if (species == 0) {
+      // Broadleaf stem: leaf pairs along a stem, a lit crown leaf.
+      pairs = 3 + index(4)
+      rect(31.0, crown + 56, 2.0, rim - crown, shade(leafMid, -28))
+      pair = 0
+      while (pair < pairs) {
+        stepY = height / pairs
+        if (stepY < 3.0) { stepY = 3.0 }
+        y = rim - 4.0 - pair * stepY
+        size = 4.4 - 0.8 * (pair % 2)
+        side = -1
+        if (pair % 2 == 1) { side = 1 }
+        lx = side * size * 0.7
+        lc = leafMid
+        if (pair % 2 == 1) { lc = shade(leafMid, 12) }
+        // leaf(lx, y, size, size * 0.46, side * 1.6, lc)
+        poly(lc, 32 + lx - size, y + 56, 32 + lx + side * 1.6, y - size * 0.46 + 56, 32 + lx + size, y + 56, 32 + lx + side * 1.6, y + size * 0.46 + 56)
+        poly(shade(lc, 26), 32 + lx - size * 0.5, y - 0.4 + 56, 32 + lx + side * 1.6 * 0.45, y - size * 0.46 * 0.55 + 56, 32 + lx + size * 0.35, y - 0.4 + 56, 32 + lx + side * 1.6 * 0.45, y + size * 0.46 * 0.55 + 56)
+        line(32 + lx - size * 0.7, y + size * 0.46 * 0.3 + 56, 32 + lx + size * 0.7, y - size * 0.46 * 0.3 + 56, 1, shade(lc, -32))
+        pair = pair + 1
+      }
+      // leaf(0, crown - 1, 3.6, 3.4, 0, leafLight)
+      poly(leafLight, 28.4, crown - 1 + 56, 32, crown - 4.4 + 56, 35.6, crown - 1 + 56, 32, crown + 2.4 + 56)
+      poly(shade(leafLight, 26), 30.2, crown - 1.4 + 56, 32, crown - 2.87 + 56, 33.26, crown - 1.4 + 56, 32, crown + 0.87 + 56)
+      line(29.48, crown - 0.02 + 56, 34.52, crown - 1.98 + 56, 1, shade(leafLight, -32))
+    } else if (species == 1) {
+      // Spiky blades: pixel-stepped blades leaning from the detail stream.
+      blades = 5 + index(5)
+      blade = 0
+      while (blade < blades) {
+        stream_push(dState)
+        lean = range(-1.0, 1.0)
+        tallN = index(5)
+        tall = height * (0.6 + 0.4 * tallN / 4.0)
+        tipX = lean * tall * 0.42
+        bladeColor = leafMid
+        if (blade % 3 == 0) { bladeColor = shade(leafDark, 10) }
+        dState = seed
+        stream_pop()
+        steps = i32trunc(tall)
+        step = 0
+        while (step < steps) {
+          t = step / tall
+          x = tipX * t
+          y = rim - 2.0 - step
+          pixel(round(x) + 32, i32trunc(y) + 56, shade(bladeColor, i32trunc(18.0 * t)))
+          if (step % 2 == 1) {
+            pixel(round(x) + 33, i32trunc(y) + 56, shade(bladeColor, -14))
+          }
+          step = step + 1
+        }
+        blade = blade + 1
+      }
+    } else if (species == 2) {
+      // Bushy canopy: a stem and scattered clumps of leaves.
+      clumps = 6 + index(5)
+      rect(31.0, crown + 56, 2.0, rim - crown - 4, shade(leafDark, 12))
+      clump = 0
+      while (clump < clumps) {
+        stream_push(dState)
+        y = crown + 2.0 + index(11 + heightN)
+        x = range(-1.0, 1.0) * (2.0 + (y - rim) * -0.35)
+        r = 2.4 + index(3)
+        lean = range(-1.4, 1.4)
+        dState = seed
+        stream_pop()
+        lc = leafMid
+        if (clump % 3 == 0) { lc = shade(leafLight, -10) }
+        // leaf(x, y, r, r * 0.9, lean, lc)
+        poly(lc, 32 + x - r, y + 56, 32 + x + lean, y - r * 0.9 + 56, 32 + x + r, y + 56, 32 + x + lean, y + r * 0.9 + 56)
+        poly(shade(lc, 26), 32 + x - r * 0.5, y - 0.4 + 56, 32 + x + lean * 0.45, y - r * 0.9 * 0.55 + 56, 32 + x + r * 0.35, y - 0.4 + 56, 32 + x + lean * 0.45, y + r * 0.9 * 0.55 + 56)
+        line(32 + x - r * 0.7, y + r * 0.9 * 0.3 + 56, 32 + x + r * 0.7, y - r * 0.9 * 0.3 + 56, 1, shade(lc, -32))
+        clump = clump + 1
+      }
+    } else if (species == 3) {
+      // Flowering plant: leaf pairs, then five-petal blooms.
+      pairs = 2 + index(3)
+      rect(31.0, crown + 58, 2.0, rim - crown - 2, shade(leafMid, -24))
+      pair = 0
+      while (pair < pairs) {
+        stepY = height / (pairs + 1)
+        if (stepY < 3.0) { stepY = 3.0 }
+        y = rim - 5.0 - pair * stepY
+        side = -1
+        if (pair % 2 == 1) { side = 1 }
+        lx = side * 3.4
+        // leaf(lx, y, 3.8, 2.0, side * 1.4, leafMid)
+        poly(leafMid, 32 + lx - 3.8, y + 56, 32 + lx + side * 1.4, y - 2.0 + 56, 32 + lx + 3.8, y + 56, 32 + lx + side * 1.4, y + 2.0 + 56)
+        poly(shade(leafMid, 26), 32 + lx - 1.9, y - 0.4 + 56, 32 + lx + side * 0.63, y - 1.1 + 56, 32 + lx + 1.33, y - 0.4 + 56, 32 + lx + side * 0.63, y + 1.1 + 56)
+        line(32 + lx - 2.66, y + 0.6 + 56, 32 + lx + 2.66, y - 0.6 + 56, 1, shade(leafMid, -32))
+        pair = pair + 1
+      }
+      flowers = 2 + index(3)
+      flower = 0
+      while (flower < flowers) {
+        stream_push(dState)
+        fx = range(-4.0, 4.0)
+        fy = crown + range(0.0, 4.0)
+        dState = seed
+        stream_pop()
+        // five petals at the constant angles 2*pi*k/5
+        pixel(32 + round(fx + 1.8), round(fy + 0.0) + 56, bloom)
+        pixel(32 + round(fx + 0.55623059), round(fy + 1.71190173) + 56, bloom)
+        pixel(32 + round(fx - 1.45623059), round(fy + 1.05801345) + 56, bloom)
+        pixel(32 + round(fx - 1.45623059), round(fy - 1.05801345) + 56, bloom)
+        pixel(32 + round(fx + 0.55623059), round(fy - 1.71190173) + 56, bloom)
+        pixel(32 + round(fx), round(fy) + 56, shade(bloom, -46))
+        flower = flower + 1
+      }
+    } else {
+      // Sunflower: a tall stem, leaves of varying count and position, and a
+      // ray-floret head in one of four petal colours.
+      cy = 18.0 + index(4)
+      rect(31.0, cy + 2.0, 2.0, 54.0 - cy, shade(leafMid, -20))
+
+      // the petal colour: a sunflower variety
+      petalColor = #f2c14e
+      variety = index(4)
+      if (variety == 1) { petalColor = #e88b2e }
+      if (variety == 2) { petalColor = #c44e3c }
+      if (variety == 3) { petalColor = #f2e6c4 }
+
+      // two to four leaves spread along the stem
+      leafCount = 2 + index(3)
+      leafIndex = 0
+      while (leafIndex < leafCount) {
+        ly = 44.0 - leafIndex * (10.0 / leafCount) - index(3) * 0.8
+        lx = 27.0
+        lean = -1.2
+        if (index(2) == 1) {
+          lx = 37.0
+          lean = 1.2
+        }
+        lr = 3.2 + index(2) * 0.4
+        lc = leafMid
+        if (leafIndex % 2 == 1) { lc = shade(leafMid, 12) }
+        // leaf(lx, ly, lr, lr * 0.46, lean, lc)
+        poly(lc, lx - lr, ly, lx + lean, ly - lr * 0.46, lx + lr, ly, lx + lean, ly + lr * 0.46)
+        poly(shade(lc, 26), lx - lr * 0.5, ly - 0.4, lx + lean * 0.45, ly - lr * 0.46 * 0.55, lx + lr * 0.35, ly - 0.4, lx + lean * 0.45, ly + lr * 0.46 * 0.55)
+        line(lx - lr * 0.7, ly + lr * 0.46 * 0.3, lx + lr * 0.7, ly - lr * 0.46 * 0.3, 1, shade(lc, -32))
+        leafIndex = leafIndex + 1
+      }
+
+      // the ray florets: twelve petals at 30-degree steps
+      pixel(32 + round(4.5), round(cy + 0.0), petalColor)
+      pixel(32 + round(3.8971143), round(cy + 2.25), petalColor)
+      pixel(32 + round(2.25), round(cy + 3.8971143), petalColor)
+      pixel(32 + round(0.0), round(cy + 4.5), petalColor)
+      pixel(32 + round(-2.25), round(cy + 3.8971143), petalColor)
+      pixel(32 + round(-3.8971143), round(cy + 2.25), petalColor)
+      pixel(32 + round(-4.5), round(cy + 0.0), petalColor)
+      pixel(32 + round(-3.8971143), round(cy - 2.25), petalColor)
+      pixel(32 + round(-2.25), round(cy - 3.8971143), petalColor)
+      pixel(32 + round(0.0), round(cy - 4.5), petalColor)
+      pixel(32 + round(2.25), round(cy - 3.8971143), petalColor)
+      pixel(32 + round(3.8971143), round(cy - 2.25), petalColor)
+      // the disc: a two-tone dark centre
+      oval(32.0, cy, 3.4, 3.0, #7a4a1e)
+      oval(32.0, cy - 0.3, 2.2, 1.9, #5c3816)
+    }
+  }
+}

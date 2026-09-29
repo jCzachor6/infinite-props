@@ -1,0 +1,102 @@
+// pot.ips — the pot part of the QuantSpace interior plant (PaPlant): the
+// base, the soil opening, the front face (three styles), the side edges,
+// the rim lip, the tag and the decorative soil crumbs and water drops.
+// Paints absolute coordinates on a 64x64 canvas; the parent blits it at
+// {0, 0}. The crumbs/drops draw from the part's own stream (a derived seed
+// passed by the parent) — in the reference they share one detail stream
+// with the foliage; the split gives them a dedicated one.
+
+asset pot {
+  size 64x64
+  origin 0,0
+  variants 8
+
+  input color color = #967864
+  input u32   style = 0
+  input u32   widthN = 0
+  input f32   rimDepth = 2.2
+  input u32   tag = 0
+  input u32   drops = 0
+  input color crumbColor = #365c38
+
+  draw(v, a) {
+    half = (15 + widthN) / 2
+    topHalf = half + 1
+
+    // the base and the opening
+    rect(32 - half + 1, 56.0, 15.0 + widthN, 2.0, #282c30)
+    rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
+    oval(32.0, 44.0, topHalf, rimDepth, shade(color, 18))
+    oval(32.0, 43.7, topHalf - 1.6, rimDepth - 1.2, #3a3028)
+    oval(32.0, 43.5, topHalf - 3.2, rimDepth - 2.0, #26201c)
+
+    // the front face (closes the opening over the stem bases); six shapes
+    if (style == 0) {
+      // the game's trapezoid front
+      poly(color, 32 - topHalf, 44, 32 + topHalf, 44, half + 31, 56, 32 - half, 56)
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+    } else if (style == 1) {
+      // the game's plain front with a band
+      rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
+      rect(34 - topHalf, 50.0, topHalf * 2 - 4, 1.0, shade(color, -24))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -46))
+    } else if (style == 2) {
+      // the game's footed front with corner accents
+      rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
+      rect(32 - topHalf, 54.0, topHalf * 2, 2.0, shade(color, -52))
+      poly(shade(color, -34), 32 - topHalf, 51, 35 - topHalf, 48, 32 - topHalf, 46)
+      poly(shade(color, 20), 31 + topHalf, 51, 28 + topHalf, 48, 31 + topHalf, 46)
+      rect(34 - topHalf, 52.0, topHalf * 2 - 4, 1.0, shade(color, -28))
+    } else if (style == 3) {
+      // a shallow bowl: wide rim, narrow base
+      poly(color, 32 - topHalf, 44, 32 + topHalf, 44, 32 + half - 2, 56, 32 - half + 2, 56)
+      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 18))
+      rect(32 - half + 3, 52.0, (half - 3) * 2, 1.0, shade(color, -20))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+    } else if (style == 4) {
+      // a tall urn on a pedestal foot
+      poly(color, 32 - topHalf + 2, 44, 32 + topHalf - 2, 44, 32 + topHalf - 3, 50, 32 - topHalf + 3, 50)
+      rect(32 - 2, 50.0, 4.0, 6.0, shade(color, -18))
+      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 24))
+      rect(32 - 3, 56.0, 6.0, 1.0, shade(color, -46))
+    } else {
+      // a tapered pot with a checker band
+      poly(color, 32 - topHalf, 44, 32 + topHalf, 44, 32 + half - 1, 56, 32 - half + 1, 56)
+      bx = 32 - topHalf + 2
+      while (bx < 32 + topHalf - 1) {
+        if (bx % 2 == 0) {
+          pixel(bx, 49, shade(color, -26))
+        } else {
+          pixel(bx, 49, shade(color, 22))
+        }
+        bx = bx + 1
+      }
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+    }
+    rect(32 - topHalf, 44.0, 1.0, 12.0, shade(color, 14))
+    rect(31 + topHalf, 44.0, 1.0, 12.0, shade(color, -24))
+    rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 26))
+    rect(32 - topHalf, 46.0, topHalf * 2, 1.0, shade(color, -32))
+
+    // the tag
+    if (tag) {
+      rect(35.0, 38.0, 2.0, 6.0, #cecaba)
+      pixel(35, 38, #b0543c)
+      pixel(36, 40, #96c4ba)
+    }
+
+    // soil crumbs and water drops (the part's own stream)
+    crumbs = 2 + index(3)
+    crumb = 0
+    while (crumb < crumbs) {
+      cx = range(-half + 3.0, half - 3.0)
+      pixel(32 + i32trunc(cx), 42, shade(crumbColor, index(9) - 4))
+      crumb = crumb + 1
+    }
+    if (drops) {
+      dx = range(-half + 3.0, half - 3.0)
+      pixel(32 + i32trunc(dx), 48, #b0c4cc)
+      pixel(32 + i32trunc(dx), 50, #96b0be)
+    }
+  }
+}
