@@ -35,8 +35,8 @@ jobs:
           ./build/tools/ipdis /tmp/portrait.iprop --source > /dev/null
 
   # The HTML5/WASM backend: the same interpreter compiled to WebAssembly,
-  # checked by the in-browser conformance suite (Node runner) against the
-  # hashes pinned by the desktop reference.
+  # checked against fresh desktop renders, structured outputs and the
+  # frozen golden images as well as the shared in-browser hash suite.
   wasm:
     runs-on: ubuntu-latest
     steps:
@@ -45,8 +45,8 @@ jobs:
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build (native tools for prepare.sh)
-        run: cmake --build build --parallel --target ipa
+      - name: Build (native tools for asset preparation and comparison)
+        run: cmake --build build --parallel --target ipa ipc ipgen
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -57,7 +57,8 @@ jobs:
           emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
           emmake make -j4
 
-      - name: Conformance (in-browser interpreter vs the golden hashes)
+      - name: Conformance (WASM vs native pixels, outputs and golden hashes)
         run: |
-          backends/html5/prepare.sh
+          sh backends/html5/prepare.sh
+          node --test backends/html5/test/*.test.js
           node backends/html5/test/run-tests.js build/wasm

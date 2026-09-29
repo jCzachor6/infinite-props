@@ -12,7 +12,9 @@
     }
 })(typeof self !== "undefined" ? self : this, function () {
 
-    // Pinned by the desktop reference (ipgen + a hash over the RGBA).
+    // Pinned by the desktop reference (ipgen + a hash over decoded RGBA).
+    // native-conformance.js verifies these against both a fresh native
+    // render and tests/golden/*.png; never derive pins from WASM alone.
     const GOLDEN = [
         { file: "portrait.iprop", seed: 0, hash: 2250220605 },
         { file: "portrait.iprop", seed: 1, hash: 2936451835 },

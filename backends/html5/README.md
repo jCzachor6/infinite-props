@@ -12,27 +12,32 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `bindings.cpp` | the embind surface (`iprop::generate`) |
 | `CMakeLists.txt` | the Emscripten build |
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
-| `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/shapes) with a Regenerate button |
-| `demo/assets/` | the seed-varying `.ips` demo assets (noise, shapes) |
+| `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/plant) with a Regenerate button |
+| `demo/assets/` | the seed-varying `.ips` demo assets |
 | `test/conformance.js` | the shared conformance suite (browser + Node) |
 | `test/run-tests.js` | the Node test runner |
+| `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
+| `test/png.js` | RGBA8 PNG decoder for native comparisons; regression tests cover all five row filters |
+| `test/fixtures/loop1.ipa` | the three-pixel regression from the resolved divergence report |
 | `test/assets/` | the test binaries (synced by `prepare.sh`) |
 | `prepare.sh` | syncs the demo/conformance assets from the repo |
 
 ## Build
 
-Requirements: Emscripten (tested with 6.0.10), CMake, and the desktop build
-for `prepare.sh` (the `ipa` tool).
+Requirements: Emscripten (tested with 6.0.10), CMake, Node.js with `node:test`,
+and the desktop tools (`ipa`, `ipc`, `ipgen`).
 
 ```sh
-# 1. Build the WASM module (from the repository root):
-mkdir -p build/wasm && cd build/wasm
-emcmake cmake ../.. -DCMAKE_BUILD_TYPE=Release
-emmake make -j4
-cd ../..
+# From the repository root:
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel --target ipa ipc ipgen
+
+# 1. Build the WASM module:
+emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
+cmake --build build/wasm --parallel 4
 
 # 2. Sync the demo and test assets:
-backends/html5/prepare.sh
+sh backends/html5/prepare.sh
 
 # 3. Copy the module next to the demo:
 cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
@@ -43,13 +48,21 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 - **Demo:** serve `backends/html5/demo/` over HTTP (browsers block raw
   `file://` module loading) — e.g. `python3 -m http.server -d backends/html5/demo 8000`
   and open `http://localhost:8000`. The portrait sheet is pixel-identical to
-  `examples/portrait-sheet.png`; the noise/shapes assets are authored in
+  `examples/portrait-sheet.png`; the noise/plant assets are authored in
   `.ips` and vary with the seed (the golden fixtures are seed-independent
   by design, which is why the demo uses its own).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
-  runs the golden seeds (portrait 0/1/2/7/26, noise, shapes) and compares
-  FNV-1a hashes of the RGBA plus the `pupilCenter` output against values
-  pinned by the desktop reference. Exits 0 on success.
+  runs the seven browser golden entries, verifies their FNV-1a pins against
+  fresh native renders and the committed golden PNGs, and compares every
+  RGBA byte and structured output across both backends. It also compiles
+  the loop regression, noise, shapes, portrait, plant, parts, and demo noise
+  from source and compares seeds 0/1/2/7/26 (42 comparisons in total).
+  A second argument can override the native tools directory (`build/tools`
+  by default). Missing tools or mismatches fail the run.
+- **Harness tests:** `node --test backends/html5/test/*.test.js` —
+  tests all PNG filters, the pixel comparator and structured output
+  normalization. The PNG decoder uses reconstructed left pixels for
+  Sub/Average/Paeth; see [the resolved report](../../BUG-REPORT-wasm-divergence.md).
 
 ## API
 

@@ -2,10 +2,9 @@
 # with a small embind surface (generate(fileBytes, inputs) -> {data, ...}).
 #
 # Build (from the repository root):
-#   mkdir -p build/wasm && cd build/wasm
-#   emcmake cmake ../.. -DCMAKE_BUILD_TYPE=Release
-#   emmake make -j4
-# Outputs: iprop.js, iprop.wasm in this directory.
+#   emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
+#   cmake --build build/wasm --parallel 4
+# Outputs: iprop.js, iprop.wasm in build/wasm.
 
 cmake_minimum_required(VERSION 3.24)
 project(iprop_html5 LANGUAGES CXX)

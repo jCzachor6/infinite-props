@@ -92,16 +92,17 @@ the Godot engine integration (the flagship adoption target).
   tests.
 - [ ] The rewritten ports are the proof: shorter sources, identical pixels.
 
-## Known divergences (acceptable while prototyping)
+## Backend conformance
 
-- **The WASM backend's pixel output diverges from the native reference on
-  some delicate assets** (noise/shapes/portrait/plant) — present since
-  Phase 24; the conformance suite's FNV hashes were pinned from the WASM
-  build. Fine for now: pre-1.0 everything is prototyping, and the
-  arithmetic flag that caused part of it (`-ffp-contract=off`) was already
-  applied to the WASM target in 2.2. **Before the 1.0 freeze**: reconcile
-  the backends and re-pin `backends/html5/test/conformance.js` from the
-  native reference.
+- The reported WASM/native pixel divergence was a bug in the comparison
+  harness's PNG decoding: Sub/Average/Paeth read filtered left bytes
+  instead of reconstructed bytes. Correct decoding reproduces the native
+  reference exactly, including the third loop pixel `59 81 90 ff`.
+  The existing FNV pins match the native renders and frozen golden PNGs;
+  no runtime, golden images or pin changes are needed. The Node runner now
+  checks both backends directly across five seeds, all structured outputs,
+  and the pins' native provenance. The WASM `-ffp-contract=off` flag stays.
+  See [the resolved report](BUG-REPORT-wasm-divergence.md).
 
 ## Deferred (out of v0.2)
 

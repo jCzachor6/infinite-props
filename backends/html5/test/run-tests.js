@@ -1,9 +1,9 @@
 // run-tests.js — the Node conformance runner for the WASM backend.
 //
-//   node test/run-tests.js [path-to-build-dir]
+//   node test/run-tests.js [path-to-wasm-build-dir] [path-to-native-tools]
 //
-// Requires the emscripten build (iprop.js + iprop.wasm) and the test assets
-// next to this script. Exits 0 on success, 1 on failure.
+// Requires the emscripten build, native ipa/ipc/ipgen tools and the test
+// assets prepared by prepare.sh. Exits 0 on success, 1 on failure.
 
 "use strict";
 
@@ -11,7 +11,8 @@ const fs = require("fs");
 const path = require("path");
 
 const root = path.join(__dirname, "..");
-const buildDir = path.resolve(process.cwd(), process.argv[2] || path.join(root, "build"));
+const buildDir = path.resolve(process.cwd(), process.argv[2] || path.join(root, "../../build/wasm"));
+const toolsDir = path.resolve(process.cwd(), process.argv[3] || path.join(root, "../../build/tools"));
 
 async function main() {
     const createModule = require(path.join(buildDir, "iprop.js"));
@@ -27,11 +28,14 @@ async function main() {
     };
 
     const result = await conformance.run(iprop, fetchBytes);
-    if (result.passed) {
+    const native = require("./native-conformance.js").run(iprop, toolsDir);
+    if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
+        console.log("native/WASM: PASS (" + native.comparisons +
+                    " pixel-exact images and structured outputs; native pins verified)");
         process.exit(0);
     }
-    for (const failure of result.failures) {
+    for (const failure of result.failures.concat(native.failures)) {
         console.error("conformance: FAIL - " + failure);
     }
     process.exit(1);
