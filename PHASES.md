@@ -42,7 +42,7 @@ the boxes.
 | 27 | Vulkan backend host | D. Backends | ⬜ |
 | 28 | IDE: editor | E. IDE | ✅ |
 | 29 | IDE: live preview & seed controls | E. IDE | ✅ |
-| 30 | IDE: atlas browser & bytecode inspector | E. IDE | ⬜ |
+| 30 | IDE: atlas browser & bytecode inspector | E. IDE | ✅ |
 | 31 | IDE: export & polish | E. IDE | ⬜ |
 | 32 | Website: playground | F. Website & release | ⬜ |
 | 33 | Website: docs & installation guides | F. Website & release | ⬜ |
@@ -659,16 +659,22 @@ agents and real files):**
 **Goal:** the debug views.
 
 **Work:**
-1. Variant/archetype grid ("atlas browser") with per-cell seed labels.
-2. Disassembly view synced to the editor cursor via source maps.
-3. Structured outputs panel (values, lists) and fuel consumption readout.
+1. `iprop: Open Atlas` — a WebView grid of every variant × archetype cell
+   (rendered through the native `ipgen`, pixel-exact) with per-cell labels
+   and the seed in the header; clicking a cell sets the preview controls.
+2. `iprop: Open Bytecode Inspector` — the `ipdis --source` disassembly with
+   the debug section's source map: the editor cursor highlights the matching
+   instructions (and scrolls to them); clicking an instruction jumps the
+   editor to its source line.
+3. The structured outputs (values and lists) and the fuel readout live in
+   the preview panel (Phase 29); all three panels rebuild on edits.
 
-**Deliverables:** atlas browser, inspector panes.
+**Deliverables:** the atlas browser and the inspector panes.
 
 **Acceptance criteria:**
-- [ ] Grid renders all variants with their seeds.
-- [ ] Clicking a source line highlights the corresponding instructions.
-- [ ] Outputs panel shows the `outputs` map incl. lists.
+- [x] Grid renders all variants with their seeds.
+- [x] Clicking a source line highlights the corresponding instructions.
+- [x] Outputs panel shows the `outputs` map incl. lists.
 
 ---
 

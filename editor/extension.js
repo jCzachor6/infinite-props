@@ -113,6 +113,8 @@ function compileActive() {
 const previewState = { seed: 0, variant: 0, archetype: 0, uniforms: {}, entry: null, compiled: false };
 let previewPanel = null;
 let renderTimer = null;
+let atlasPanel = null;
+let inspectorPanel = null;
 
 function previewHtml() {
     return `<!doctype html>
@@ -233,6 +235,68 @@ function post(message) {
 function previewPaths() {
     const tmp = os.tmpdir();
     return { ipropPath: path.join(tmp, "iprop-preview.iprop"), pngPath: path.join(tmp, "iprop-preview.png") };
+}
+
+function activeEntry() {
+    const editor = vscode.window.activeTextEditor;
+    const entry = editor && editor.document.fileName.endsWith(".ips")
+        ? editor.document.fileName
+        : previewState.entry;
+    return entry || null;
+}
+
+// Compiles `entry` into the temp .iprop; resolves with the path, rejects
+// with the stderr summary.
+function compileEntry(entry) {
+    return new Promise((resolve, reject) => {
+        const compiler = compilerBinary();
+        if (!compiler) {
+            reject("iprop: compiler not found — set iprop.compilerPath or build the toolchain");
+            return;
+        }
+        const { ipropPath } = previewPaths();
+        try { fs.unlinkSync(ipropPath); } catch {}
+        log.appendLine("compile: " + compiler + " " + entry);
+        execFile(compiler, [entry, "-o", ipropPath], { cwd: path.dirname(entry), timeout: 15000 },
+            (error, _out, stderr) => {
+                if (error || !fs.existsSync(ipropPath)) {
+                    reject(stderr.split("\n").filter((l) => l.includes("error:")).join("\n") || "compilation failed");
+                    return;
+                }
+                resolve(ipropPath);
+            });
+    });
+}
+
+// Renders one cell of the given binary; resolves with { png (base64), json }.
+function renderCell(ipropPath, seed, variant, archetype, uniforms) {
+    return new Promise((resolve, reject) => {
+        const renderer = rendererBinary();
+        if (!renderer) {
+            reject("iprop: renderer not found — set iprop.rendererPath or build the toolchain");
+            return;
+        }
+        const pngPath = path.join(os.tmpdir(),
+            "iprop-cell-" + process.pid + "-" + Math.random().toString(36).slice(2) + ".png");
+        const args = [ipropPath, "--seed", String(seed >>> 0),
+            "--variant", String(variant), "--archetype", String(archetype), "-o", pngPath];
+        for (const [name, value] of Object.entries(uniforms || {})) {
+            args.push("--uniform", name + "=" + value);
+        }
+        execFile(renderer, args, { timeout: 15000 }, (error, stdout, stderr) => {
+            if (error) {
+                reject(stderr || "generation failed");
+                return;
+            }
+            try {
+                const png = fs.readFileSync(pngPath).toString("base64");
+                try { fs.unlinkSync(pngPath); } catch {}
+                resolve({ png, json: stdout });
+            } catch {
+                reject("cannot read the rendered PNG");
+            }
+        });
+    });
 }
 
 // Renders the already-compiled .iprop with the current controls. Slider and
@@ -356,6 +420,228 @@ function openPreview() {
     compileAndRender();
 }
 
+// ---- the atlas browser ---------------------------------------------------------------
+
+function atlasHtml() {
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 1rem; }
+  #grid { display: flex; flex-wrap: wrap; gap: 0.9rem; }
+  .cell { cursor: pointer; text-align: center; }
+  .cell img { image-rendering: pixelated; width: 96px; height: 96px; background: #0a0f14; border: 1px solid var(--vscode-panel-border); }
+  .cell .label { font-size: 0.75rem; color: var(--vscode-descriptionForeground); margin-top: 0.25rem; }
+  .cell.selected img { outline: 2px solid var(--vscode-focusBorder); }
+  #status { margin-bottom: 0.8rem; font-size: 0.8rem; }
+  #status.error { color: var(--vscode-errorForeground); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <div id="status">building the atlas…</div>
+  <div id="grid"></div>
+<script>
+  const vscode = acquireVsCodeApi();
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    const status = document.getElementById("status");
+    if (message.type === "grid") {
+      status.textContent = "variants × archetypes at seed " + message.seed + " — click a cell to preview it";
+      status.className = "";
+      const grid = document.getElementById("grid");
+      grid.textContent = "";
+      for (const cell of message.cells) {
+        const wrap = document.createElement("div");
+        wrap.className = "cell";
+        const img = document.createElement("img");
+        img.src = "data:image/png;base64," + cell.png;
+        const label = document.createElement("div");
+        label.className = "label";
+        label.textContent = "v" + cell.variant + " · a" + cell.archetype;
+        wrap.appendChild(img);
+        wrap.appendChild(label);
+        wrap.addEventListener("click", () => {
+          for (const node of grid.children) node.classList.remove("selected");
+          wrap.classList.add("selected");
+          vscode.postMessage({ type: "pick", variant: cell.variant, archetype: cell.archetype });
+        });
+        grid.appendChild(wrap);
+      }
+    } else if (message.type === "error") {
+      status.textContent = message.message;
+      status.className = "error";
+    }
+  });
+</script>
+</body>
+</html>`;
+}
+
+async function buildAtlas() {
+    const entry = activeEntry();
+    if (!entry) {
+        if (atlasPanel) atlasPanel.webview.postMessage({ type: "error", message: "open a .ips file first" });
+        return;
+    }
+    try {
+        const ipropPath = await compileEntry(entry);
+        // Learn the declared counts from a seed render.
+        const probe = await renderCell(ipropPath, previewState.seed >>> 0, 0, 0, previewState.uniforms);
+        const meta = JSON.parse(probe.json);
+        const cells = [];
+        for (let a = 0; a < meta.archetypes; ++a) {
+            for (let v = 0; v < meta.variants; ++v) {
+                const cell = await renderCell(ipropPath, previewState.seed >>> 0, v, a, previewState.uniforms);
+                cells.push({ variant: v, archetype: a, png: cell.png });
+            }
+        }
+        if (atlasPanel) {
+            atlasPanel.webview.postMessage({ type: "grid", seed: previewState.seed >>> 0, cells });
+        }
+    } catch (message) {
+        if (atlasPanel) atlasPanel.webview.postMessage({ type: "error", message: String(message) });
+    }
+}
+
+function openAtlas() {
+    if (atlasPanel) {
+        atlasPanel.reveal(vscode.ViewColumn.Beside);
+        return;
+    }
+    atlasPanel = vscode.window.createWebviewPanel(
+        "iprop.atlas", "iprop atlas", vscode.ViewColumn.Beside,
+        { enableScripts: true, retainContextWhenHidden: true });
+    atlasPanel.webview.html = atlasHtml();
+    atlasPanel.onDidDispose(() => { atlasPanel = null; });
+    atlasPanel.webview.onDidReceiveMessage((message) => {
+        if (message.type === "pick") {
+            previewState.variant = message.variant;
+            previewState.archetype = message.archetype;
+            if (previewPanel) scheduleRender();
+            else openPreview();
+        }
+    });
+    buildAtlas();
+}
+
+// ---- the bytecode inspector ------------------------------------------------------------
+
+function inspectorHtml() {
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: var(--vscode-editor-font-family); color: var(--vscode-foreground); padding: 0.6rem; font-size: 0.8rem; }
+  pre { margin: 0; white-space: pre; }
+  .ins { cursor: pointer; }
+  .ins:hover { background: var(--vscode-list-hoverBackground); }
+  .ins.hit { background: var(--vscode-editor-selectionBackground); }
+  .annot { color: var(--vscode-descriptionForeground); font-style: italic; }
+  #status { color: var(--vscode-descriptionForeground); margin-bottom: 0.6rem; }
+  #status.error { color: var(--vscode-errorForeground); white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <div id="status">compile the active .ips to disassemble it</div>
+  <pre id="code"></pre>
+<script>
+  const vscode = acquireVsCodeApi();
+  let sourceLines = [];
+  window.addEventListener("message", (event) => {
+    const message = event.data;
+    const status = document.getElementById("status");
+    if (message.type === "disassembly") {
+      status.textContent = message.note || "disassembly (source lines from the debug section)";
+      status.className = "";
+      const code = document.getElementById("code");
+      code.textContent = "";
+      sourceLines = [];
+      let currentLine = 0;
+      for (const line of message.text.split("\n")) {
+        const match = line.match(/^\s*; line (\d+)$/);
+        if (match) {
+          const annot = document.createElement("div");
+          annot.className = "annot";
+          annot.textContent = line;
+          code.appendChild(annot);
+          currentLine = parseInt(match[1], 10);
+          continue;
+        }
+        const row = document.createElement("div");
+        row.className = "ins";
+        row.textContent = line;
+        row.dataset.line = String(currentLine);
+        row.addEventListener("click", () => {
+          if (currentLine > 0) vscode.postMessage({ type: "goto", line: currentLine });
+        });
+        code.appendChild(row);
+        sourceLines.push({ node: row, line: currentLine });
+      }
+    } else if (message.type === "cursor") {
+      for (const entry of sourceLines) {
+        entry.node.classList.toggle("hit", entry.line === message.line);
+      }
+      const hit = sourceLines.find((entry) => entry.line === message.line);
+      if (hit) hit.node.scrollIntoView({ block: "center" });
+    } else if (message.type === "error") {
+      status.textContent = message.message;
+      status.className = "error";
+    }
+  });
+</script>
+</body>
+</html>`;
+}
+
+async function buildInspector() {
+    const entry = activeEntry();
+    if (!entry) {
+        if (inspectorPanel) inspectorPanel.webview.postMessage({ type: "error", message: "open a .ips file first" });
+        return;
+    }
+    try {
+        const ipropPath = await compileEntry(entry);
+        const disassembler = toolBinary("disassemblerPath", "ipdis");
+        if (!disassembler) {
+            if (inspectorPanel) inspectorPanel.webview.postMessage({ type: "error", message: "iprop: disassembler not found" });
+            return;
+        }
+        const { execFileSync } = require("child_process");
+        const text = execFileSync(disassembler, [ipropPath, "--source"], { encoding: "utf8" });
+        if (inspectorPanel) {
+            inspectorPanel.webview.postMessage({ type: "disassembly", text, note: entry });
+        }
+    } catch (message) {
+        if (inspectorPanel) inspectorPanel.webview.postMessage({ type: "error", message: String(message) });
+    }
+}
+
+function openInspector() {
+    if (inspectorPanel) {
+        inspectorPanel.reveal(vscode.ViewColumn.Beside);
+        return;
+    }
+    inspectorPanel = vscode.window.createWebviewPanel(
+        "iprop.inspector", "iprop bytecode", vscode.ViewColumn.Beside,
+        { enableScripts: true, retainContextWhenHidden: true });
+    inspectorPanel.webview.html = inspectorHtml();
+    inspectorPanel.onDidDispose(() => { inspectorPanel = null; });
+    inspectorPanel.webview.onDidReceiveMessage((message) => {
+        if (message.type === "goto") {
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                const line = Math.min(Math.max(0, message.line - 1), editor.document.lineCount - 1);
+                const range = new vscode.Range(line, 0, line, 0);
+                editor.selection = new vscode.Selection(range.start, range.start);
+                editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+            }
+        }
+    });
+    buildInspector();
+}
+
 // ---- activation ---------------------------------------------------------------------
 
 // A clickable "preview" lens above every `asset <name> {` declaration.
@@ -389,6 +675,19 @@ function activate(context) {
         vscode.languages.registerCodeLensProvider({ language: "ips" },
             new IpsCodeLensProvider()));
     context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.atlas", openAtlas));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.inspector", openInspector));
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorSelection((e) => {
+            if (inspectorPanel && e.textEditor.document.fileName.endsWith(".ips")) {
+                inspectorPanel.webview.postMessage({
+                    type: "cursor",
+                    line: e.selections[0].active.line + 1,
+                });
+            }
+        }));
+    context.subscriptions.push(
         vscode.commands.registerCommand("iprop.reloadPreview", () => {
             log.appendLine("manual reload requested");
             if (previewPanel) compileAndRender();
@@ -401,6 +700,8 @@ function activate(context) {
         timer = setTimeout(() => {
             compileActive();
             if (previewPanel) compileAndRender();
+            if (inspectorPanel) buildInspector();
+            if (atlasPanel) buildAtlas();
         }, 500);
     };
     context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((e) => {

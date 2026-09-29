@@ -21,6 +21,12 @@ external edits).
   the pixel-exact render, seed/variant/archetype sliders, uniform editors
   for the declared inputs, the fuel readout and the structured outputs. A
   debounced compile-on-edit refreshes it; compile errors show as an overlay.
+- **Atlas** (*iprop: Open Atlas*): a grid of every variant × archetype cell
+  at the current seed; clicking a cell drives the preview.
+- **Bytecode inspector** (*iprop: Open Bytecode Inspector*): the `ipdis
+  --source` disassembly with the debug section's source map — the editor
+  cursor highlights the matching instructions, and clicking an instruction
+  jumps the editor to its source line.
 
 ## Install
 

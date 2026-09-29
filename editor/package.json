@@ -47,6 +47,14 @@
       {
         "command": "iprop.reloadPreview",
         "title": "iprop: Reload Preview"
+      },
+      {
+        "command": "iprop.atlas",
+        "title": "iprop: Open Atlas"
+      },
+      {
+        "command": "iprop.inspector",
+        "title": "iprop: Open Bytecode Inspector"
       }
     ],
     "configuration": {
@@ -61,6 +69,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the ipgen renderer binary. Defaults to <workspace>/build/tools/ipgen."
+        },
+        "iprop.disassemblerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the ipdis disassembler binary. Defaults to <workspace>/build/tools/ipdis."
         }
       }
     }
