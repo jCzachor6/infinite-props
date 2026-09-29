@@ -12,7 +12,8 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `bindings.cpp` | the embind surface (`iprop::generate`) |
 | `CMakeLists.txt` | the Emscripten build |
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
-| `demo/index.html` | a demo page: a 5×5 portrait sheet plus noise/shapes |
+| `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/shapes) with a Regenerate button |
+| `demo/assets/` | the seed-varying `.ips` demo assets (noise, shapes) |
 | `test/conformance.js` | the shared conformance suite (browser + Node) |
 | `test/run-tests.js` | the Node test runner |
 | `test/assets/` | the test binaries (synced by `prepare.sh`) |
@@ -41,8 +42,10 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 
 - **Demo:** serve `backends/html5/demo/` over HTTP (browsers block raw
   `file://` module loading) — e.g. `python3 -m http.server -d backends/html5/demo 8000`
-  and open `http://localhost:8000`. The portrait sheet must be
-  pixel-identical to `examples/portrait-sheet.png`.
+  and open `http://localhost:8000`. The portrait sheet is pixel-identical to
+  `examples/portrait-sheet.png`; the noise/shapes assets are authored in
+  `.ips` and vary with the seed (the golden fixtures are seed-independent
+  by design, which is why the demo uses its own).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
   runs the golden seeds (portrait 0/1/2/7/26, noise, shapes) and compares
   FNV-1a hashes of the RGBA plus the `pupilCenter` output against values

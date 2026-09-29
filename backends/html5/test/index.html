@@ -17,7 +17,7 @@
 against hashes pinned by the desktop reference.</p>
 <div id="status">loading…</div>
 <ul id="failures"></ul>
-<script src="../iprop.js"></script>
+<script src="../demo/iprop.js"></script>
 <script src="../js/api.js"></script>
 <script src="conformance.js"></script>
 <script>
@@ -31,7 +31,12 @@ async function main() {
   const statusNode = document.getElementById("status");
   const failuresNode = document.getElementById("failures");
   try {
-    const iprop = await Iprop.create("../iprop.wasm");
+    if (location.protocol === "file:") {
+      throw new Error("this page fetches assets and cannot run from file:// — " +
+          "serve backends/html5 over HTTP, e.g.: python3 -m http.server -d backends/html5 8000 " +
+          "then open http://localhost:8000/test/");
+    }
+    const iprop = await Iprop.create("../demo/iprop.wasm");
     const result = await Conformance.run(iprop, loadBytes);
     if (result.passed) {
       statusNode.textContent = "PASS — " + Conformance.GOLDEN.length +

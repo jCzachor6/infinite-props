@@ -10,13 +10,16 @@ set -e
 cd "$(dirname "$0")/../.."
 mkdir -p backends/html5/demo backends/html5/test/assets
 
+# Demo assets: the portrait and the interior plant (pot + flower parts)
+# from examples, plus a seed-driven noise field authored in demo/assets/.
+# The .ips sources of the composed examples are mirrored into demo/assets/.
 cp examples/portrait.iprop backends/html5/demo/portrait.iprop
-cp examples/portrait.iprop backends/html5/test/assets/portrait.iprop
+./build/tools/ipc backends/html5/demo/assets/noise.ips -o backends/html5/demo/noise.iprop
+./build/tools/ipc backends/html5/demo/assets/shapes.ips -o backends/html5/demo/shapes.iprop
 
+# Conformance assets stay the golden fixtures (seed-independent by design).
+cp examples/portrait.iprop backends/html5/test/assets/portrait.iprop
 ./build/tools/ipa tests/golden/noise.ipa -o backends/html5/test/assets/noise.iprop
 ./build/tools/ipa tests/golden/shapes.ipa -o backends/html5/test/assets/shapes.iprop
-
-cp backends/html5/test/assets/noise.iprop backends/html5/demo/noise.iprop
-cp backends/html5/test/assets/shapes.iprop backends/html5/demo/shapes.iprop
 
 echo "assets synced"

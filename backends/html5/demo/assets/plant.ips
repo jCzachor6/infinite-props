@@ -1,0 +1,93 @@
+// plant.ips — the QuantSpace interior potted plant (PaPlant), composed
+// from the pot and flower parts. The identity draws, the two interleaved
+// RNG streams (the main seed stream and the derived detail stream
+// hash(seed ^ 0x6b1d4f27)) and the paint order match the reference: the
+// foliage is painted first, then the pot, whose front face covers the stem
+// bases — call order is paint order.
+
+import pot from "pot.ips"
+import flower from "flower.ips"
+
+asset plant {
+  size 64x64
+  origin 32,56
+
+  pickLeafDark(i) {
+    c = #54625c
+    if (i == 0) { c = #365c38 }
+    if (i == 1) { c = #4c603e }
+    if (i == 2) { c = #264a46 }
+    if (i == 3) { c = #704430 }
+    return c
+  }
+
+  pickLeafMid(i) {
+    c = #728076
+    if (i == 0) { c = #4e7c4a }
+    if (i == 1) { c = #687e56 }
+    if (i == 2) { c = #3a645c }
+    if (i == 3) { c = #945a3a }
+    return c
+  }
+
+  pickLeafLight(i) {
+    c = #96a092
+    if (i == 0) { c = #6c9a62 }
+    if (i == 1) { c = #8a986c }
+    if (i == 2) { c = #588476 }
+    if (i == 3) { c = #bc7e4c }
+    return c
+  }
+
+  pickPot(i) {
+    c = #beb6a2
+    if (i == 0) { c = #967864 }
+    if (i == 1) { c = #7e7462 }
+    if (i == 2) { c = #6a7074 }
+    return c
+  }
+
+  pickBloom(i) {
+    c = #c4788c
+    if (i == 0) { c = #e89648 }
+    if (i == 1) { c = #e2d6be }
+    return c
+  }
+
+  draw(v, a) {
+    // ===== identity: the main seed stream =====
+    leavesIndex = index(5)
+    potIndex = index(8)
+
+    // ===== the derived detail stream =====
+    stream_push(hash(seed ^ 0x6b1d4f27))
+    potShade = index(9) - 4
+    tag = unit() < 0.35
+    drops = unit() < 0.45
+    dSaved = seed
+    stream_pop()
+
+    // ===== main stream: the shape =====
+    species = index(5)
+    style = index(6)
+    widthN = index(6)
+    rimDepth = 2.2 + index(3)
+    heightN = index(15)
+    height = 15.0 + heightN
+    leafDark = pickLeafDark(leavesIndex)
+    leafMid = pickLeafMid(leavesIndex)
+    leafLight = pickLeafLight(leavesIndex)
+    potColor = shade(pickPot(potIndex), potShade)
+    bloomColor = pickBloom(index(3))
+
+    // ===== paint order: foliage first, then the pot (its front face
+    //      covers the stem bases) =====
+    flower.draw(seed, v, a, at = {0, 0}, species = species, height = height,
+                heightN = heightN, leafDark = leafDark, leafMid = leafMid,
+                leafLight = leafLight, bloom = bloomColor,
+                detailState = dSaved)
+    pot.draw(hash(seed ^ 0x7c1a9e4d), v, a, at = {0, 0}, color = potColor,
+             style = style, widthN = widthN, rimDepth = rimDepth,
+             tag = tag, drops = drops, crumbColor = leafDark)
+  }
+}

@@ -2,43 +2,126 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>iprop — HTML5 backend demo</title>
+<meta http-equiv="cache-control" content="no-cache">
+<title>iprop — HTML5/WASM demo</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #141d27; color: #dce4ea; margin: 2rem; }
-  h1 { font-size: 1.2rem; }
-  .grid { display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start; }
-  .cell { text-align: center; }
-  canvas { image-rendering: pixelated; background: #0c1218; border: 1px solid #314952; }
-  .label { margin-top: 0.4rem; font-size: 0.85rem; color: #8aa4ae; }
-  #status { margin-bottom: 1rem; color: #90c5b9; }
-  #status.error { color: #e0a14a; }
+  :root {
+    --bg: #10161d;
+    --panel: #17212b;
+    --line: #2b3a46;
+    --text: #dce4ea;
+    --dim: #8aa4ae;
+    --accent: #90c5b9;
+    --warn: #e0a14a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  header {
+    max-width: 76rem;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  h1 { font-size: 1.15rem; font-weight: 600; margin: 0; }
+  h1 .dim { color: var(--accent); }
+  .sub { color: var(--dim); font-size: 0.8rem; margin-top: 0.35rem; }
+  .toolbar { display: flex; align-items: center; gap: 0.9rem; }
+  button {
+    font: inherit;
+    font-size: 0.85rem;
+    color: #0c1218;
+    background: var(--accent);
+    border: none;
+    border-radius: 5px;
+    padding: 0.55rem 1.1rem;
+    cursor: pointer;
+  }
+  button:hover { filter: brightness(1.12); }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  #status { color: var(--dim); font-size: 0.8rem; min-height: 1.1em; }
+  #status.error { color: var(--warn); }
+  .grid {
+    max-width: 76rem;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: 1.4rem;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 1rem 1rem 1.1rem;
+  }
+  .card h2 { font-size: 0.9rem; font-weight: 600; margin: 0 0 0.15rem; }
+  .card .meta { color: var(--dim); font-size: 0.72rem; margin-bottom: 0.8rem; }
+  canvas {
+    display: block;
+    width: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #0a0f14;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  footer { max-width: 76rem; margin: 1.6rem auto 0; color: var(--dim); font-size: 0.72rem; }
 </style>
 </head>
 <body>
-<h1>iprop — HTML5/WASM demo (reference interpreter in your browser)</h1>
-<div id="status">loading…</div>
-<div class="grid">
-  <div class="cell">
+<header>
+  <div>
+    <h1>iprop <span class="dim">·</span> HTML5/WASM demo</h1>
+    <div class="sub">the reference interpreter compiled to WebAssembly — every frame below is
+      byte-identical to the desktop output for the same seed</div>
+  </div>
+  <div class="toolbar">
+    <button id="regenerate">Regenerate</button>
+    <div id="status">loading…</div>
+  </div>
+</header>
+
+<main class="grid">
+  <div class="card">
+    <h2>portrait.iprop</h2>
+    <div class="meta" id="meta-portrait">seeds –</div>
     <canvas id="portrait" width="64" height="64"></canvas>
-    <div class="label">portrait — a 5×5 sheet of identities (seeds 0–24),<br>pixel-identical to the desktop sheet</div>
   </div>
-  <div class="cell">
+  <div class="card">
+    <h2>plant.iprop</h2>
+    <div class="meta" id="meta-plant">seeds –</div>
+    <canvas id="plant" width="64" height="64"></canvas>
+  </div>
+  <div class="card">
+    <h2>noise.iprop</h2>
+    <div class="meta" id="meta-noise">seeds –</div>
     <canvas id="noise" width="64" height="64"></canvas>
-    <div class="label">noise — a per-pixel value-noise field</div>
   </div>
-  <div class="cell">
-    <canvas id="shapes" width="64" height="64"></canvas>
-    <div class="label">shapes — canvas primitives and blending</div>
-  </div>
-</div>
-<script src="../iprop.js"></script>
+</main>
+
+<footer>
+  generated in your browser — no server-side work. assets: the QuantSpace character
+  portrait from examples/ (composed from hair.ips + eyes.ips) and two seed-varying
+  demo assets authored in backends/html5/demo/assets/ (*.ips).
+</footer>
+
+<script src="iprop.js"></script>
 <script src="../js/api.js"></script>
 <script>
-async function loadBytes(name) {
-  const response = await fetch(name);
-  if (!response.ok) { throw new Error("cannot fetch " + name); }
-  return new Uint8Array(await response.arrayBuffer());
-}
+"use strict";
+
+const CELL = 64;
+const COLUMNS = 5;
+const SEEDS = 25;
 
 function status(text, isError) {
   const node = document.getElementById("status");
@@ -46,40 +129,77 @@ function status(text, isError) {
   node.className = isError ? "error" : "";
 }
 
-// Renders a variant sheet of one asset: a grid of seeds into a canvas.
-async function renderSheet(iprop, canvasId, file, columns, seeds) {
-  const bytes = await loadBytes(file);
-  const canvas = document.getElementById(canvasId);
-  const ctx = canvas.getContext("2d");
-  const cell = 64;
-  canvas.width = columns * cell;
-  canvas.height = Math.ceil(seeds / columns) * cell;
-  for (let seed = 0; seed < seeds; ++seed) {
-    const result = iprop.generate(bytes, { seed: seed });
+async function loadBytes(name) {
+  const response = await fetch(name);
+  if (!response.ok) { throw new Error("cannot fetch " + name); }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+// Renders one asset as a COLUMNS-wide grid of `count` seeds into its canvas.
+function renderSheet(canvas, bytes, baseSeed, count) {
+  const context = canvas.getContext("2d");
+  canvas.width = COLUMNS * CELL;
+  canvas.height = Math.ceil(count / COLUMNS) * CELL;
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < count; ++i) {
+    const result = iprop.generate(bytes, { seed: (baseSeed + i) >>> 0 });
     const image = new ImageData(
       new Uint8ClampedArray(result.data.buffer, result.data.byteOffset, result.data.byteLength),
       result.width, result.height);
-    const x = (seed % columns) * cell;
-    const y = Math.floor(seed / columns) * cell;
-    // Stash each frame in its own offscreen canvas for putImageData.
     const off = document.createElement("canvas");
     off.width = result.width;
     off.height = result.height;
     off.getContext("2d").putImageData(image, 0, 0);
-    ctx.drawImage(off, x, y, cell, cell);
+    const x = (i % COLUMNS) * CELL;
+    const y = Math.floor(i / COLUMNS) * CELL;
+    context.drawImage(off, x, y, CELL, CELL);
+  }
+}
+
+const ASSETS = [
+  { id: "portrait", file: "portrait.iprop", bytes: null },
+  { id: "noise", file: "noise.iprop", bytes: null },
+  { id: "plant", file: "plant.iprop", bytes: null },
+];
+
+let iprop = null;
+
+async function renderAll() {
+  for (const asset of ASSETS) {
+    const base = (Math.random() * 0xFFFFFFFF) >>> 0;
+    renderSheet(document.getElementById(asset.id), asset.bytes, base, SEEDS);
+    document.getElementById("meta-" + asset.id).textContent =
+      "seeds " + base + " – " + ((base + SEEDS - 1) >>> 0) + " (" + SEEDS + " variants of one asset)";
   }
 }
 
 async function main() {
+  const button = document.getElementById("regenerate");
   try {
-    const iprop = await Iprop.create("iprop.wasm");
-    status("running…");
-    await renderSheet(iprop, "portrait", "portrait.iprop", 5, 25);
-    await renderSheet(iprop, "noise", "noise.iprop", 1, 1);
-    await renderSheet(iprop, "shapes", "shapes.iprop", 1, 1);
-    status("done — every frame was generated by the WASM interpreter, byte for byte the desktop output.");
+    if (location.protocol === "file:") {
+      throw new Error("this page fetches assets and cannot run from file:// — serve the " +
+        "directory over HTTP, e.g.: python3 -m http.server -d backends/html5 8000, " +
+        "then open http://localhost:8000/demo/");
+    }
+    iprop = await Iprop.create("iprop.wasm");
+    for (const asset of ASSETS) {
+      asset.bytes = await loadBytes(asset.file);
+    }
+    await renderAll();
+    status("ready — deterministic: the same seed always gives the same pixels");
+    button.disabled = false;
+    button.addEventListener("click", async function () {
+      button.disabled = true;
+      status("regenerating…");
+      // Let the status repaint before the (fast) synchronous generation.
+      await new Promise(function (resolve) { setTimeout(resolve, 30); });
+      await renderAll();
+      status("ready — deterministic: the same seed always gives the same pixels");
+      button.disabled = false;
+    });
   } catch (error) {
     status("error: " + error, true);
+    button.disabled = true;
   }
 }
 
