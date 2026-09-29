@@ -123,6 +123,25 @@ private:
                       "duplicate function '" + function.name + "'");
             }
         }
+
+        std::set<std::string> paletteNames;
+        for (const auto& palette : program_.asset.palettes) {
+            if (!paletteNames.insert(palette.name).second) {
+                error(palette.location, "duplicate palette '" + palette.name + "'");
+            }
+            if (inputNames.count(palette.name) != 0 ||
+                outputNames.count(palette.name) != 0) {
+                error(palette.location,
+                      "palette '" + palette.name +
+                          "' collides with an input or output of the same name");
+            }
+            if (functions_.count(palette.name) != 0) {
+                error(palette.location,
+                      "palette '" + palette.name +
+                          "' collides with a function of the same name");
+            }
+            checkPaletteDecl(palette);
+        }
     }
 
     void checkInputDefault(const InputDecl& input) {
@@ -148,6 +167,58 @@ private:
             error(value->location,
                   "default value of input '" + input.name +
                       "' does not match its declared type");
+        }
+    }
+
+    // The ValueType of a literal expression (string literals are not
+    // values). Used for the palette element checks.
+    static ValueType literalType(const Literal& literal) {
+        switch (literal.kind) {
+        case Literal::Kind::Int:
+        case Literal::Kind::True:
+        case Literal::Kind::False:
+            return ValueType::I32;
+        case Literal::Kind::Float:
+            return ValueType::F32;
+        case Literal::Kind::Color:
+            return ValueType::Color;
+        case Literal::Kind::String:
+            return ValueType::Void; // rejected by the caller
+        }
+        return ValueType::Void;
+    }
+
+    void checkPaletteDecl(const PaletteDecl& palette) {
+        if (palette.name == "seed" || palette.name == "at" ||
+            palette.name == "v" || palette.name == "a") {
+            error(palette.location, "'" + palette.name + "' is a reserved name");
+        }
+        if (palette.elements.empty()) {
+            error(palette.location,
+                  "palette '" + palette.name + "' needs at least one element");
+        }
+        std::optional<ValueType> elementType;
+        for (const auto& element : palette.elements) {
+            const auto* literal = std::get_if<Literal>(element.get());
+            if (literal == nullptr) {
+                error(locationOf(*element),
+                      "palette elements must be literals (compile-time constants)");
+            }
+            const ValueType type = literalType(*literal);
+            if (type == ValueType::Void) {
+                error(locationOf(*element),
+                      "palette '" + palette.name +
+                          "' cannot hold string elements");
+            }
+            if (!elementType.has_value()) {
+                elementType = type;
+            } else if (*elementType != type) {
+                error(locationOf(*element),
+                      "palette '" + palette.name +
+                          "' must have elements of one type (" +
+                          typeName(*elementType) + " and " + typeName(type) +
+                          " found)");
+            }
         }
     }
 
@@ -276,6 +347,10 @@ private:
         if (findInput(decl.name) != nullptr) {
             error(decl.location, "cannot assign to input '" + decl.name + "'");
         }
+        if (findPalette(decl.name) != nullptr) {
+            error(decl.location,
+                  "cannot assign to palette '" + decl.name + "'");
+        }
         if (isParam(decl.name)) {
             error(decl.location, "cannot assign to parameter '" + decl.name + "'");
         }
@@ -321,6 +396,15 @@ private:
         for (const auto& output : program_.asset.outputs) {
             if (output.name == name) {
                 return &output;
+            }
+        }
+        return nullptr;
+    }
+
+    const PaletteDecl* findPalette(const std::string& name) const {
+        for (const auto& palette : program_.asset.palettes) {
+            if (palette.name == name) {
+                return &palette;
             }
         }
         return nullptr;

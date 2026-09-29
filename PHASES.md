@@ -40,7 +40,7 @@ the Godot engine integration (the flagship adoption target).
 ### 3. Arrays
 - [x] `3.1` grammar: asset-level constant arrays `palette name = [ e, e, … ]`
   and indexing `name[i]` (i32 index).
-- [ ] `3.2` checker: homogeneous element types; the index type.
+- [x] `3.2` checker: homogeneous element types; the index type.
 - [ ] `3.3` compiler: indexing desugars to the if-ladder (the default value
   = the last element — same semantics as the hand-written pickers); constant
   indices fold. No VM change.

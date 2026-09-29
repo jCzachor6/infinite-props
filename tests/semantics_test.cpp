@@ -100,6 +100,84 @@ std::string wrap(const std::string& body) {
 
 } // namespace
 
+TEST_CASE("palette declarations are checked") {
+    // A homogeneous palette of colours indexing cleanly.
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t {
+  size 8x8
+  palette leafDark = [#365c38, #4c603e, #264a46]
+  draw(v: i32, a: i32) {
+    c = leafDark[0]
+  }
+})"), {}));
+
+    // i32 and f32 palettes work too.
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t {
+  size 8x8
+  palette weights = [3, 1, 2]
+  palette levels = [0.5, 1.0]
+  draw(v: i32, a: i32) {
+    w = weights[v]
+    l = levels[0]
+  }
+})"), {}));
+
+    expectCheckError(
+        "asset t { size 8x8 palette p = [] draw(v: i32, a: i32) { } }",
+        "needs at least one element");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [#111111, 2] draw(v: i32, a: i32) { } }",
+        "elements of one type");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [#111111 + #000000] draw(v: i32, a: i32) { } }",
+        "must be literals");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [\"x\"] draw(v: i32, a: i32) { } }",
+        "string elements");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw(v: i32, a: i32) { } }",
+        "duplicate palette 'p'");
+    expectCheckError(
+        "asset t { size 8x8 palette seed = [#111111] draw(v: i32, a: i32) { } }",
+        "reserved name");
+    expectCheckError(
+        "asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw(v: i32, a: i32) { } }",
+        "collides with an input or output");
+    expectCheckError(
+        "asset t { size 8x8 palette f = [#111111] draw(v: i32, a: i32) { } f(x: i32) { return x } }",
+        "collides with a function");
+}
+
+TEST_CASE("palette indexing is type checked") {
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t {
+  size 8x8
+  palette leafDark = [#365c38, #4c603e, #264a46]
+  draw(v: i32, a: i32) {
+    c = leafDark[v]
+    d = leafDark[1 + 1]
+  }
+})"), {}));
+
+    expectCheckError(R"(
+asset t { size 8x8 palette p = [#111111] draw(v: i32, a: i32) { c = p[0.5] } })",
+        "palette index must be i32");
+    expectCheckError(wrap("c = missing[0]"), "'missing' is not a palette");
+    expectCheckError(R"(
+asset t { size 8x8 palette p = [#111111] draw(v: i32, a: i32) { c = p } })",
+        "must be indexed");
+    expectCheckError(wrap("c = 5[0]"), "only palettes can be indexed");
+    // A local cannot shadow a palette.
+    expectCheckError(R"(
+asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { p = 3 } })",
+        "cannot assign to palette 'p'");
+    // The element type flows into the assigned local.
+    expectCheckError(R"(
+asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { c = p[0] c = 0.5 } })",
+        "local 'c' is i32");
+}
+
 TEST_CASE("valid programs check cleanly") {
     CHECK_NOTHROW(checkAsset(parse(kValidRock), {}));
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));

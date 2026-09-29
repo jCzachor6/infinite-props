@@ -163,6 +163,9 @@ ValueType Typer::typeOf(const Expr& expr) {
     if (const auto* vector = std::get_if<VectorLit>(&expr)) {
         return typeVector(*vector);
     }
+    if (const auto* index = std::get_if<Index>(&expr)) {
+        return typeIndex(*index);
+    }
     if (const auto* bin = std::get_if<Binary>(&expr)) {
         return typeBinary(*bin);
     }
@@ -209,6 +212,13 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     }
     if (id.name == "seed") {
         return ValueType::I32;
+    }
+    // A bare palette name is not a value — it must be indexed.
+    for (const auto& palette : owner_->asset.palettes) {
+        if (palette.name == id.name) {
+            error(id.location, "palette '" + id.name + "' must be indexed ('" +
+                                   id.name + "[i]')");
+        }
     }
     error(id.location, "undefined name '" + id.name + "'");
 }
@@ -413,6 +423,46 @@ ValueType Typer::typeVector(const VectorLit& vector) {
               "elements, got " +
                   std::to_string(vector.elements.size()));
     }
+}
+
+// `palette[i]` — the index must be i32; the result is the (uniform) element
+// type. The checker guarantees literal, homogeneous elements.
+ValueType Typer::typeIndex(const Index& index) {
+    const auto* name = std::get_if<Identifier>(index.object.get());
+    if (name == nullptr) {
+        error(locationOf(*index.object), "only palettes can be indexed");
+    }
+    const PaletteDecl* palette = nullptr;
+    for (const auto& candidate : owner_->asset.palettes) {
+        if (candidate.name == name->name) {
+            palette = &candidate;
+            break;
+        }
+    }
+    if (palette == nullptr) {
+        error(name->location, "'" + name->name + "' is not a palette");
+    }
+    const ValueType indexType = typeOf(*index.index);
+    if (indexType != ValueType::I32) {
+        error(locationOf(*index.index),
+              "palette index must be i32, got " + std::string(typeName(indexType)));
+    }
+    // All elements share one type (checked by the semantic checker); the
+    // first element determines it.
+    const auto& first = std::get<Literal>(*palette->elements[0]);
+    switch (first.kind) {
+    case Literal::Kind::Int:
+    case Literal::Kind::True:
+    case Literal::Kind::False:
+        return ValueType::I32;
+    case Literal::Kind::Float:
+        return ValueType::F32;
+    case Literal::Kind::Color:
+        return ValueType::Color;
+    case Literal::Kind::String:
+        break;
+    }
+    error(name->location, "palette '" + name->name + "' has no valid elements");
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {
