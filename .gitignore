@@ -38,3 +38,8 @@ editor/node_modules/
 website/node_modules/
 editor/dist/
 website/dist/
+
+# HTML5 backend build outputs (rebuild with emcmake; see backends/html5/README.md)
+backends/html5/demo/iprop.js
+backends/html5/demo/iprop.wasm
+backends/html5/test/assets/

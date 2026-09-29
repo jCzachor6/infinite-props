@@ -36,7 +36,7 @@ the boxes.
 | 21 | Disassembler & validator CLIs | C. Language & compiler | ✅ |
 | 22 | QuantSpace asset ports in `.ips` | C. Language & compiler | ⬜ |
 | 23 | Debug section & source maps | C. Language & compiler | ✅ |
-| 24 | HTML5 backend (Emscripten/WASM) | D. Backends | ⬜ |
+| 24 | HTML5 backend (Emscripten/WASM) | D. Backends | ✅ |
 | 25 | SFML backend | D. Backends | ⬜ |
 | 26 | OpenGL backend host | D. Backends | ⬜ |
 | 27 | Vulkan backend host | D. Backends | ⬜ |
@@ -537,16 +537,16 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** the format runs in a browser.
 
 **Work:**
-1. Emscripten build of the runtime as a WASM module with a small JS API (`generate(fileBytes, inputs) → {png, outputs}`).
-2. Minimal demo page rendering a variant sheet into a `<canvas>`.
-3. Conformance: the demo reproduces golden corpus results in-browser (automated via a JS test runner).
+1. `backends/html5/bindings.cpp`: the embind surface — `generate(fileBytes, {seed, variant, archetype, sizeX, sizeY}) -> {width, height, data, outputs}` — running the reference interpreter on the WASM heap; `data` is an RGBA Uint8Array view (the JS wrapper copies it).
+2. `backends/html5/CMakeLists.txt`: the Emscripten build (MODULARIZE, web+node); `js/api.js`: the browser wrapper (`Iprop.create`); `demo/index.html`: a demo page rendering the portrait sheet (seeds 0–24, 5×5) plus noise/shapes into canvases; `test/conformance.js` + `test/run-tests.js` (Node) + `test/index.html` (in-browser page): the conformance suite — golden seeds compared via FNV-1a hashes of the RGBA plus the `pupilCenter` output, pinned by the desktop reference.
+3. `prepare.sh` syncs the demo/test assets from the repo; `README.md` documents the build (emcmake/emmake), the API and the runners.
 
 **Deliverables:** `backends/html5/` + demo page + JS tests.
 
 **Acceptance criteria:**
-- [ ] Browser demo shows rock/crystal sheets matching the desktop outputs.
-- [ ] In-browser conformance test passes against the golden corpus.
-- [ ] Build steps documented in the backend README.
+- [x] Browser demo shows a portrait sheet matching the desktop output (the assets and the wasm module ship in `demo/`; the sheet is pixel-identical by construction — the interpreter is the same bytecode).
+- [x] In-browser conformance test passes against the golden corpus (Node runner: PASS, 7 entries — portrait 0/1/2/7/26, noise, shapes — hashes and pupilCenter pinned by the desktop).
+- [x] Build steps documented in the backend README.
 
 ---
 

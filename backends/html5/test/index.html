@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>iprop — in-browser conformance</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #141d27; color: #dce4ea; margin: 2rem; }
+  #status { padding: 1rem; border-radius: 6px; }
+  .pass { background: #1e3a2e; color: #90c5b9; }
+  .fail { background: #4a2e1e; color: #e0a14a; }
+  li { margin: 0.3rem 0; }
+</style>
+</head>
+<body>
+<h1>iprop — in-browser conformance</h1>
+<p>Runs the WASM interpreter over the golden corpus and compares the output
+against hashes pinned by the desktop reference.</p>
+<div id="status">loading…</div>
+<ul id="failures"></ul>
+<script src="../iprop.js"></script>
+<script src="../js/api.js"></script>
+<script src="conformance.js"></script>
+<script>
+async function loadBytes(name) {
+  const response = await fetch("assets/" + name);
+  if (!response.ok) { throw new Error("cannot fetch assets/" + name); }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function main() {
+  const statusNode = document.getElementById("status");
+  const failuresNode = document.getElementById("failures");
+  try {
+    const iprop = await Iprop.create("../iprop.wasm");
+    const result = await Conformance.run(iprop, loadBytes);
+    if (result.passed) {
+      statusNode.textContent = "PASS — " + Conformance.GOLDEN.length +
+          " golden entries reproduced in the browser.";
+      statusNode.className = "pass";
+    } else {
+      statusNode.textContent = "FAIL — " + result.failures.length + " mismatch(es).";
+      statusNode.className = "fail";
+      for (const failure of result.failures) {
+        const item = document.createElement("li");
+        item.textContent = failure;
+        failuresNode.appendChild(item);
+      }
+    }
+  } catch (error) {
+    statusNode.textContent = "ERROR — " + error;
+    statusNode.className = "fail";
+  }
+}
+
+main();
+</script>
+</body>
+</html>
