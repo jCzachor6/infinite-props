@@ -19,6 +19,8 @@
 #include <variant>
 #include <vector>
 
+#include "ips/SourceError.hpp"
+
 namespace iprop::ips {
 
 // ---- Expressions ---------------------------------------------------------
@@ -33,11 +35,13 @@ struct Literal {
     enum class Kind { Int, Float, Color, String, True, False };
     Kind kind = Kind::Int;
     std::string text;
+    SourceLocation location;
 };
 
 // A bare name: `seed`, `v`, `a`, `palette`, `w`, ...
 struct Identifier {
     std::string name;
+    SourceLocation location;
 };
 
 // A dotted access: `eyes.outputs.pupil`. Chained member accesses nest:
@@ -45,12 +49,14 @@ struct Identifier {
 struct Member {
     std::unique_ptr<Expr> object;
     std::string name;
+    SourceLocation location;
 };
 
 // One call argument: either positional or named (`at = {32, 4}`).
 struct Arg {
     std::optional<std::string> name;
     std::unique_ptr<Expr> value;
+    SourceLocation location;
 };
 
 // A call: callee is an Identifier or Member expression, e.g. `range(21, 31)`
@@ -58,11 +64,13 @@ struct Arg {
 struct Call {
     std::unique_ptr<Expr> callee;
     std::vector<Arg> args;
+    SourceLocation location;
 };
 
 // A vector literal: `{32, 4}` or `{96 - 20, 170 - 23, 40, 23}`.
 struct VectorLit {
     std::vector<std::unique_ptr<Expr>> elements;
+    SourceLocation location;
 };
 
 struct Binary {
@@ -75,12 +83,14 @@ struct Binary {
     Op op = Op::Add;
     std::unique_ptr<Expr> left;
     std::unique_ptr<Expr> right;
+    SourceLocation location;
 };
 
 struct Unary {
     enum class Op { Neg, Not, BitNot };
     Op op = Op::Neg;
     std::unique_ptr<Expr> operand;
+    SourceLocation location;
 };
 
 struct Expr
@@ -98,28 +108,33 @@ struct Stmt;
 struct VarDecl {
     std::string name;
     std::unique_ptr<Expr> value;
+    SourceLocation location;
 };
 
 // A bare expression statement: a call, e.g. `face(v, a)` or
 // `hair.draw(...)`.
 struct ExprStmt {
     std::unique_ptr<Expr> expr;
+    SourceLocation location;
 };
 
 struct IfStmt {
     std::unique_ptr<Expr> condition;
     std::vector<Stmt> thenBranch;
     std::vector<Stmt> elseBranch;
+    SourceLocation location;
 };
 
 struct WhileStmt {
     std::unique_ptr<Expr> condition;
     std::vector<Stmt> body;
+    SourceLocation location;
 };
 
 // `return` with an optional value. A null value means a bare `return`.
 struct ReturnStmt {
     std::unique_ptr<Expr> value;
+    SourceLocation location;
 };
 
 struct Stmt : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt> {
@@ -137,6 +152,7 @@ struct InputDecl {
     InputType type = InputType::Color;
     std::string name;
     std::unique_ptr<Expr> defaultValue;
+    SourceLocation location;
 };
 
 // `output rect collider` or `output list point pts`
@@ -144,6 +160,7 @@ struct OutputDecl {
     OutputKind kind = OutputKind::Point;
     bool isList = false;
     std::string name;
+    SourceLocation location;
 };
 
 // A function (the entry point is named `draw` and takes `(v, a)`).
@@ -151,17 +168,20 @@ struct Function {
     std::string name;
     std::vector<std::string> params;
     std::vector<Stmt> body;
+    SourceLocation location;
 };
 
 // `import hair from "hair.ips"`
 struct Import {
     std::string alias;
     std::string path;
+    SourceLocation location;
 };
 
 // One asset block.
 struct Asset {
     std::string name;
+    SourceLocation location;
 
     std::optional<std::uint32_t> sizeX;
     std::optional<std::uint32_t> sizeY;
@@ -179,5 +199,10 @@ struct Program {
     std::vector<Import> imports;
     Asset asset;
 };
+
+// The source location of any expression node (for semantic diagnostics).
+inline SourceLocation locationOf(const Expr& expr) {
+    return std::visit([](const auto& node) { return node.location; }, expr);
+}
 
 } // namespace iprop::ips

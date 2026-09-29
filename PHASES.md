@@ -31,7 +31,7 @@ the boxes.
 | 16 | Golden test suite + CI | B. Interpreter | ✅ |
 | 17 | `.ips` lexer | C. Language & compiler | ✅ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ✅ |
-| 19 | Semantic analysis | C. Language & compiler | ⬜ |
+| 19 | Semantic analysis | C. Language & compiler | ✅ |
 | 20 | Code generation → `.iprop` | C. Language & compiler | ⬜ |
 | 21 | Disassembler & validator CLIs | C. Language & compiler | ⬜ |
 | 22 | QuantSpace asset ports in `.ips` | C. Language & compiler | ⬜ |
@@ -438,16 +438,17 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** compile-time correctness checks.
 
 **Work:**
-1. Name resolution: variables, functions, parts, uniform/output slots.
-2. Type checking per the spec's type system; integer-only conditions enforced.
-3. Import DAG resolution + cycle rejection; slot kind checks; uniform arity checks for part calls.
-4. Error reporting with source locations.
+1. AST nodes now carry source locations (`Ast.hpp` + parser), so every semantic error is reported at the offending node; `SourceError` derives from `std::exception`.
+2. `language/ips/Types.hpp`/`Types.cpp`: semantic types (i32/f32/color/point/rect/circle/void) mirroring the VM (spec §9); numeric promotion (mixed → f32), i32→f32 argument widening, scalar-only locals.
+3. `language/ips/Semantics.hpp`/`Semantics.cpp`: `checkAsset(program, parts)` — name resolution (locals, params, inputs, `seed`, user functions with lazy checking and recursion rejection), type checking (integer-only conditions, numeric/bitwise/logical rules, vector arity → point/circle/rect, storable-only locals and returns), output slot kind checks, part-call validation (`part.draw(seed, v, a, at = {x, y}, uniforms...)`: exactly 3 positional, required `at` point, uniform names/types against the part surface), part-output reads (`part.outputs.name`, list reads rejected), input default type checks, reserved names, duplicate declarations, missing `size`/`draw`. `partInfoOf` builds a part surface; `resolveImports` loads/parses the import DAG in dependency order and rejects cycles with the closing import's location.
+4. Builtins pinned to the VM primitive set (spec §6.4–6.5/§9): `unit`, `range`, `index`, `hash`, `noise`, `fault`, `smooth`, `lerp`, `mix`, `shade`, `pixel`, `rect`, `line`, `oval`, `weather`, `poly`.
+5. Tests: 20 new test cases covering every injected error with located messages plus the valid fixtures.
 
-**Deliverables:** `src/lang/Semantics.*` + tests.
+**Deliverables:** `language/ips/Types.hpp`/`Types.cpp`, `language/ips/Semantics.hpp`/`Semantics.cpp` + `tests/semantics_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] Valid programs pass; every injected error (undeclared var, type mismatch, float condition, wrong slot kind, import cycle, wrong uniform count) is caught with a located message.
-- [ ] Import cycles are rejected (A→B→A fixture).
+- [x] Valid programs pass; every injected error (undeclared var, type mismatch, float condition, wrong slot kind, import cycle, wrong uniform count) is caught with a located message.
+- [x] Import cycles are rejected (A→B→A fixture).
 
 ---
 

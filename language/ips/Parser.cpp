@@ -29,19 +29,20 @@ Program ParserImpl::parseProgram() {
 // ---- declarations -----------------------------------------------------------
 
 Import ParserImpl::parseImport() {
-    advance(); // 'import'
+    const SourceLocation at = advance().location; // 'import'
     const Token alias = expectName("an import alias");
     expect(TokenKind::KeywordFrom, "'from'");
     const Token path = expect(TokenKind::String, "a quoted file path");
-    return Import{alias.text, path.text};
+    return Import{alias.text, path.text, at};
 }
 
 Asset ParserImpl::parseAsset() {
-    advance(); // 'asset'
+    const SourceLocation at = advance().location; // 'asset'
     const Token name = expect(TokenKind::Identifier, "an asset name");
     expect(TokenKind::LBrace, "'{'");
     Asset asset;
     asset.name = name.text;
+    asset.location = at;
 
     while (kind() != TokenKind::RBrace) {
         if (kind() == TokenKind::End) {
@@ -131,7 +132,7 @@ InputDecl ParserImpl::parseInput() {
     advance();
     const Token name = expectName("an input name");
     expect(TokenKind::Assign, "'=' and a default value");
-    return InputDecl{type, name.text, parseLiteralValue()};
+    return InputDecl{type, name.text, parseLiteralValue(), name.location};
 }
 
 // The default value of an input is a literal; type checking happens in the
@@ -156,7 +157,7 @@ OutputDecl ParserImpl::parseOutput() {
     }
     advance();
     const Token name = expectName("an output name");
-    return OutputDecl{outputKind, isList, name.text};
+    return OutputDecl{outputKind, isList, name.text, name.location};
 }
 
 Function ParserImpl::parseFunction() {
@@ -174,7 +175,7 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
         }
     }
     expect(TokenKind::RParen, "')'");
-    return Function{name.text, std::move(params), parseBlock()};
+    return Function{name.text, std::move(params), parseBlock(), name.location};
 }
 
 // ---- statements -------------------------------------------------------------
@@ -216,18 +217,19 @@ Stmt ParserImpl::parseStatement() {
 Stmt ParserImpl::parseIdentifierStatement() {
     const Token name = advance();
     if (match(TokenKind::Assign)) {
-        return Stmt{VarDecl{name.text, parseExpr()}};
+        return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
-    auto expr = parsePostfixAfter(std::make_unique<Expr>(Identifier{name.text}));
+    auto expr = parsePostfixAfter(
+        std::make_unique<Expr>(Identifier{name.text, name.location}));
     if (!std::holds_alternative<Call>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call"};
     }
-    return Stmt{ExprStmt{std::move(expr)}};
+    return Stmt{ExprStmt{std::move(expr), name.location}};
 }
 
 Stmt ParserImpl::parseIf() {
-    advance(); // 'if'
+    const SourceLocation at = advance().location; // 'if'
     expect(TokenKind::LParen, "'(' after 'if'");
     auto condition = parseExpr();
     expect(TokenKind::RParen, "')' after the condition");
@@ -241,24 +243,24 @@ Stmt ParserImpl::parseIf() {
         }
     }
     return Stmt{IfStmt{std::move(condition), std::move(thenBranch),
-                       std::move(elseBranch)}};
+                       std::move(elseBranch), at}};
 }
 
 Stmt ParserImpl::parseWhile() {
-    advance(); // 'while'
+    const SourceLocation at = advance().location; // 'while'
     expect(TokenKind::LParen, "'(' after 'while'");
     auto condition = parseExpr();
     expect(TokenKind::RParen, "')' after the condition");
-    return Stmt{WhileStmt{std::move(condition), parseBlock()}};
+    return Stmt{WhileStmt{std::move(condition), parseBlock(), at}};
 }
 
 Stmt ParserImpl::parseReturn() {
-    advance(); // 'return'
+    const SourceLocation at = advance().location; // 'return'
     std::unique_ptr<Expr> value;
     if (kind() != TokenKind::RBrace && kind() != TokenKind::Semi) {
         value = parseExpr();
     }
-    return Stmt{ReturnStmt{std::move(value)}};
+    return Stmt{ReturnStmt{std::move(value), at}};
 }
 
 } // namespace detail
