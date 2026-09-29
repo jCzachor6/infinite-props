@@ -62,7 +62,7 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 - **Harness tests:** `node --test backends/html5/test/*.test.js` —
   tests all PNG filters, the pixel comparator and structured output
   normalization. The PNG decoder uses reconstructed left pixels for
-  Sub/Average/Paeth; see [the resolved report](../../BUG-REPORT-wasm-divergence.md).
+  Sub/Average/Paeth.
 
 ## API
 

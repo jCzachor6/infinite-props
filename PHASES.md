@@ -102,7 +102,6 @@ the Godot engine integration (the flagship adoption target).
   no runtime, golden images or pin changes are needed. The Node runner now
   checks both backends directly across five seeds, all structured outputs,
   and the pins' native provenance. The WASM `-ffp-contract=off` flag stays.
-  See [the resolved report](BUG-REPORT-wasm-divergence.md).
 
 ## Deferred (out of v0.2)
 
