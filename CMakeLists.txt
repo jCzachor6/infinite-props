@@ -18,6 +18,7 @@ option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)
 # directory (runtime/, tools/, language/, compiler/, backends/, ...).
 add_subdirectory(runtime)
 add_subdirectory(language)
+add_subdirectory(compiler)
 add_subdirectory(tools)
 
 if(IPROP_BUILD_TESTS)

@@ -16,6 +16,7 @@ add_executable(iprop_tests
     parser_test.cpp
     printer_test.cpp
     semantics_test.cpp
+    compiler_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp
@@ -41,6 +42,7 @@ target_link_libraries(iprop_tests PRIVATE
     ipa_lib
     ipsheet_lib
     ips_lang
+    iprop_compiler
     Catch2::Catch2WithMain)
 
 target_include_directories(iprop_tests SYSTEM PRIVATE

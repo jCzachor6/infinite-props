@@ -398,8 +398,15 @@ private:
         if (local != locals_.end()) {
             return local->second;
         }
-        if (const InputDecl* input = findInput(id.name)) {
-            return inputValueType(input->type);
+        // Uniforms are parameters of `draw` only.
+        if (current_ != nullptr && current_->name == "draw") {
+            if (const InputDecl* input = findInput(id.name)) {
+                return inputValueType(input->type);
+            }
+        }
+        if (findInput(id.name) != nullptr) {
+            error(id.location,
+                  "input '" + id.name + "' is only visible inside 'draw'");
         }
         if (id.name == "seed") {
             return ValueType::I32;

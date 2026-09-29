@@ -32,7 +32,7 @@ the boxes.
 | 17 | `.ips` lexer | C. Language & compiler | ✅ |
 | 18 | `.ips` parser → AST | C. Language & compiler | ✅ |
 | 19 | Semantic analysis | C. Language & compiler | ✅ |
-| 20 | Code generation → `.iprop` | C. Language & compiler | ⬜ |
+| 20 | Code generation → `.iprop` | C. Language & compiler | ✅ |
 | 21 | Disassembler & validator CLIs | C. Language & compiler | ⬜ |
 | 22 | QuantSpace asset ports in `.ips` | C. Language & compiler | ⬜ |
 | 23 | Debug section & source maps | C. Language & compiler | ⬜ |
@@ -457,17 +457,20 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** the compiler emits valid binaries.
 
 **Work:**
-1. Lowering AST → instruction stream (expression stack discipline, control-flow lowering, constant folding).
-2. Emission of header/`meta`/`const`/`code` sections + part table for imports.
-3. Deterministic output: byte-identical for identical input.
-4. Tests: compile the sketches, validate the result with the Phase 6 validator, and execute with the Phase 7+ VM; outputs match hand-assembled equivalents.
+1. `compiler/Compiler.hpp`/`Compiler.cpp` (new `compiler/` directory, `iprop_compiler` library): lowers checked ASTs to the instruction stream — stack discipline with type-directed opcode selection (i32 vs f32 variants, `i32.to.f32` widening), constant folding of literal arithmetic/comparisons/bitwise ops, short-circuit `&&`/`||` via a reused scratch local (blocks have no results), `if`/`while` control-flow lowering (`block`+`loop`+`br_if`), outputs as `out.*` with global slot indices (root first, then parts, spec §4.3), part calls as `part.draw` with uniforms in declaration order + defaults, part reads as `part.get.*`, `seed` as `stream.state`.
+2. Emission of header/`meta`/`const`/`code` sections and the part table; the output is dogfood-validated with the runtime validator before returning.
+3. Deterministic output: const pools deduplicated in fixed insertion order (names first, literals in traversal order).
+4. `tools/ipc.cpp`: the compiler CLI — resolves imports relative to the entry file, runs `resolveImports` + `checkAsset` per file with `file:line:col` caret errors, compiles and writes the binary.
+5. Compiler-only checks with located errors: non-constant origin, `input i32` (the v0.1 format has no i32 uniform type), nested part imports, `draw` returning a value.
+6. Semantic tightening: uniforms are parameters of `draw` — reading an input outside `draw` is now rejected by the checker (keeps the checker and compiler in agreement).
+7. Tests: compile+validate the rock sketch, byte-level determinism, execution parity with a hand-assembled `.ipa` fixture (identical canvas + outputs), parts with output propagation, folding (folded arithmetic leaves a 2-instruction stream), and the compiler-only error cases.
 
-**Deliverables:** `src/compiler/*` + `tools/ipc` (compiler CLI).
+**Deliverables:** `compiler/Compiler.hpp`/`Compiler.cpp`, `tools/ipc.cpp` + `tests/compiler_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] `ipc rock.ips -o rock.iprop` produces a file the validator accepts.
-- [ ] Compiled output executes identically to the hand-assembled fixtures (Phase 15).
-- [ ] Two compilations of the same source are byte-identical.
+- [x] `ipc rock.ips -o rock.iprop` produces a file the validator accepts.
+- [x] Compiled output executes identically to the hand-assembled fixtures (Phase 15).
+- [x] Two compilations of the same source are byte-identical.
 
 ---
 

@@ -1,3 +1,11 @@
+# ipc: compile .ips source into an .iprop binary
+
+add_executable(ipc
+    ipc.cpp)
+
+target_link_libraries(ipc PRIVATE iprop_compiler)
+iprop_warnings(ipc)
+
 # ipgen: generate a seed-based procedural asset (.iprop → PNG + JSON)
 # ipa: assemble .ipa text into .iprop binary
 # ipsheet: render a variant × seed grid PNG
