@@ -1,8 +1,6 @@
 #include "ips/Lexer.hpp"
 
 #include <map>
-#include <sstream>
-#include <stdexcept>
 #include <string>
 
 namespace iprop::ips {
@@ -53,8 +51,8 @@ std::vector<Token> lex(std::string_view source) {
     std::size_t column = 1;
 
     const auto location = [&]() { return SourceLocation{line, column}; };
-    const auto error = [&](SourceLocation at, std::string message) -> LexError {
-        return LexError{at, std::move(message)};
+    const auto error = [&](SourceLocation at, std::string message) -> SourceError {
+        return SourceError{at, std::move(message)};
     };
     const auto advance = [&]() -> char {
         const char c = source[pos++];
@@ -337,30 +335,6 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::OrOr: return "||";
     }
     return "?";
-}
-
-std::string formatError(std::string_view source, const LexError& error) {
-    std::ostringstream out;
-    out << error.location.line << ":" << error.location.column << ": error: "
-        << error.message << "\n";
-
-    // Extract the offending line.
-    std::size_t start = 0;
-    for (std::size_t i = 0; i + 1 < error.location.line; ++i) {
-        start = source.find('\n', start);
-        if (start == std::string_view::npos) {
-            break;
-        }
-        ++start;
-    }
-    std::size_t end = source.find('\n', start);
-    const std::string_view lineText = source.substr(start, end - start);
-
-    out << lineText << "\n";
-    if (error.location.column >= 1) {
-        out << std::string(error.location.column - 1, ' ') << "^\n";
-    }
-    return out.str();
 }
 
 } // namespace iprop::ips

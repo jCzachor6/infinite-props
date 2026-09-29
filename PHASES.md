@@ -30,7 +30,7 @@ the boxes.
 | 15 | Example program: character portrait (assembler + sheet) | B. Interpreter | ✅ |
 | 16 | Golden test suite + CI | B. Interpreter | ✅ |
 | 17 | `.ips` lexer | C. Language & compiler | ✅ |
-| 18 | `.ips` parser → AST | C. Language & compiler | ⬜ |
+| 18 | `.ips` parser → AST | C. Language & compiler | ✅ |
 | 19 | Semantic analysis | C. Language & compiler | ⬜ |
 | 20 | Code generation → `.iprop` | C. Language & compiler | ⬜ |
 | 21 | Disassembler & validator CLIs | C. Language & compiler | ⬜ |
@@ -418,16 +418,18 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** the sketch grammar parses.
 
 **Work:**
-1. Grammar: `asset` block, `import`, `input`/`output` declarations, functions, statements (assignment, call, `if/else`, `while` with constant bound, `return`), expressions.
-2. AST structures + parse errors with locations.
-3. Tests: both sketches parse; malformed programs fail with the right location.
+1. Grammar: `asset` block, `import`, `input`/`output` declarations, functions, statements (assignment, call, `if/else`, `while`, `return`), expressions with C-like precedence (`|| < && < | < ^ < & < ==/!= < comparisons < +,- < *,/,% < unary < postfix`).
+2. AST structures (`language/ips/Ast.hpp`: `Expr`/`Stmt` as forward-declarable variant wrappers), parser errors via the shared `SourceError` (now `std::exception`-derived) with locations; `size 192x192` (`WxH`) handling.
+3. Soft keywords: `draw`, `at`, `color`, `f32/u32/i32`, `point/rect/circle` are valid names (members, named args, input/output/import/param names) — the sketches need `hair.draw(...)`, `at = {...}`, `color = hairColor` and `input color color`; hard keywords stay reserved.
+4. S-expression AST printer (`language/ips/Printer.*`) for debugging and golden tests.
+5. Tests: all four sketches parse (rock/portrait/hair), 19 malformed programs each with one located error, caret-snippet location pinning, precedence battery, while/list coverage, pinned printer output.
 
-**Deliverables:** `src/lang/Parser.*`, `src/lang/Ast.hpp` + tests.
+**Deliverables:** `language/ips/Ast.hpp`, `language/ips/Parser.hpp`/`Parser.cpp`, `language/ips/Printer.hpp`/`Printer.cpp`, `language/ips/SourceError.hpp`/`SourceError.cpp` (shared diagnostics) + `tests/parser_test.cpp`.
 
 **Acceptance criteria:**
-- [ ] `rock`, `portrait`, `hair`, `eyes` sketches (README §7.2) parse.
-- [ ] 10+ malformed programs each produce exactly one located error.
-- [ ] AST round-trip printer exists for debugging.
+- [x] `rock`, `portrait`, `hair`, `eyes` sketches (README §7.2) parse.
+- [x] 10+ malformed programs each produce exactly one located error.
+- [x] AST round-trip printer exists for debugging.
 
 ---
 

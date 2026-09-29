@@ -13,6 +13,7 @@ add_executable(iprop_tests
     smoke_test.cpp
     stb_image_impl.cpp
     lexer_test.cpp
+    parser_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp

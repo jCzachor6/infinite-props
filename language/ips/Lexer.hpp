@@ -4,10 +4,11 @@
 // source locations. Purely mechanical — no grammar knowledge beyond the
 // lexical level.
 
-#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "ips/SourceError.hpp"
 
 namespace iprop::ips {
 
@@ -85,10 +86,7 @@ enum class TokenKind {
 };
 
 // 1-based line/column.
-struct SourceLocation {
-    std::size_t line = 1;
-    std::size_t column = 1;
-};
+// (defined in SourceError.hpp — included above)
 
 struct Token {
     TokenKind kind = TokenKind::End;
@@ -96,21 +94,15 @@ struct Token {
     SourceLocation location;
 };
 
-// A lexical error with a source location.
-struct LexError {
-    SourceLocation location;
-    std::string message;
-};
+// A lexical error with a source location. Kept as an alias of SourceError
+// for compatibility; the parser throws the same type.
+using LexError = SourceError;
 
 // Lexes the whole source into a token vector ending with TokenKind::End.
-// Throws LexError on malformed input.
+// Throws SourceError on malformed input.
 std::vector<Token> lex(std::string_view source);
 
 // Descriptive name of a token kind (diagnostics and tests).
 const char* tokenName(TokenKind kind);
-
-// Formats "line:col: error: <message>" plus the offending source line and
-// a caret pointing at the column.
-std::string formatError(std::string_view source, const LexError& error);
 
 } // namespace iprop::ips
