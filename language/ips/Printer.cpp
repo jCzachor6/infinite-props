@@ -142,6 +142,10 @@ std::string printExpr(const Expr& expr) {
         }
         return result + ")";
     }
+    if (const auto* index = std::get_if<Index>(&expr)) {
+        return "(index " + printExpr(*index->object) + " " +
+               printExpr(*index->index) + ")";
+    }
     if (const auto* bin = std::get_if<Binary>(&expr)) {
         return std::string("(") + binaryOp(bin->op) + " " + printExpr(*bin->left) +
                " " + printExpr(*bin->right) + ")";
@@ -274,6 +278,14 @@ std::vector<std::string> printAssetLines(const Asset& asset) {
         }
         line += outputKindName(output.kind);
         line += " " + output.name + ")";
+        child(std::move(line));
+    }
+    for (const auto& palette : asset.palettes) {
+        std::string line = "(palette " + palette.name;
+        for (const auto& element : palette.elements) {
+            line += " " + printExpr(*element);
+        }
+        line += ")";
         child(std::move(line));
     }
     for (const auto& function : asset.functions) {

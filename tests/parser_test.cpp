@@ -451,6 +451,86 @@ TEST_CASE("malformed parameter types produce one located error") {
     }
 }
 
+TEST_CASE("palette declarations and indexing parse") {
+    const std::string source = R"(
+asset p {
+  size 16x16
+  palette leafDark = [#365c38, #4c603e, #264a46, #704430, #54625c]
+  palette weights = [3, 1, 2]
+  palette trailing = [#ffffff,]
+
+  draw(v: i32, a: i32) {
+    c = leafDark[leavesIndex]
+    w = weights[0]
+  }
+})";
+    const Program program = parse(source);
+    const Asset& asset = program.asset;
+
+    REQUIRE(asset.palettes.size() == 3);
+
+    const PaletteDecl& leafDark = asset.palettes[0];
+    REQUIRE(leafDark.name == "leafDark");
+    REQUIRE(leafDark.elements.size() == 5);
+    REQUIRE(std::holds_alternative<Literal>(*leafDark.elements[0]));
+    REQUIRE(std::get_if<Literal>(leafDark.elements[0].get())->kind ==
+            Literal::Kind::Color);
+
+    const PaletteDecl& weights = asset.palettes[1];
+    REQUIRE(weights.name == "weights");
+    REQUIRE(weights.elements.size() == 3);
+    REQUIRE(std::holds_alternative<Literal>(*weights.elements[2]));
+
+    const PaletteDecl& trailing = asset.palettes[2];
+    REQUIRE(trailing.elements.size() == 1); // the trailing comma is allowed
+
+    // The index expressions in draw.
+    const auto& body = asset.functions[0].body;
+    REQUIRE(body.size() == 2);
+    const auto* c = std::get_if<VarDecl>(&body[0]);
+    REQUIRE(c != nullptr);
+    const auto* cIndex = std::get_if<Index>(c->value.get());
+    REQUIRE(cIndex != nullptr);
+    REQUIRE(std::holds_alternative<Identifier>(*cIndex->object));
+    REQUIRE(std::get_if<Identifier>(cIndex->object.get())->name == "leafDark");
+    REQUIRE(std::holds_alternative<Identifier>(*cIndex->index));
+
+    // An integer literal index.
+    const auto* w = std::get_if<VarDecl>(&body[1]);
+    const auto* wIndex = std::get_if<Index>(w->value.get());
+    REQUIRE(wIndex != nullptr);
+    REQUIRE(std::get_if<Literal>(wIndex->index.get())->kind == Literal::Kind::Int);
+}
+
+TEST_CASE("palette grammar errors are located") {
+    struct Case {
+        const char* source;
+        const char* messagePart;
+    };
+    const Case cases[] = {
+        {"asset a { size 8x8 palette = [#ffffff] }", "a palette name"},
+        {"asset a { size 8x8 palette p #ffffff }", "'='"},
+        {"asset a { size 8x8 palette p = #ffffff }", "'['"},
+        {"asset a { size 8x8 palette p = [#ffffff }", "']'"},
+        {"asset a { size 8x8 palette p = [#ffffff,", "unterminated palette"},
+        {"asset a { size 8x8 palette p = [#ffffff, }", "an expression"},
+        {"asset a { size 8x8 draw(v: i32, a: i32) { c = p[ } }", "an expression"},
+        {"asset a { size 8x8 draw(v: i32, a: i32) { c = p[0 } }", "']'"},
+    };
+    for (const Case& testCase : cases) {
+        INFO(testCase.source);
+        bool threw = false;
+        try {
+            (void)parse(testCase.source);
+        } catch (const SourceError& error) {
+            threw = true;
+            REQUIRE(std::string(error.message).find(testCase.messagePart) !=
+                    std::string::npos);
+        }
+        REQUIRE(threw);
+    }
+}
+
 TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
     const Program program =
         parse("asset z { size 192X192 draw() { stone_mass() } }");

@@ -127,6 +127,7 @@ public:
     InputDecl parseInput();
     std::unique_ptr<Expr> parseLiteralValue();
     OutputDecl parseOutput();
+    PaletteDecl parsePalette();
     Function parseFunction();
     Function parseFunctionAfterName(const Token& name);
     ParamType parseParamType();

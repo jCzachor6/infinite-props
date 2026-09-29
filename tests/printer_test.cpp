@@ -189,6 +189,21 @@ asset t {
             std::string::npos);
 }
 
+TEST_CASE("the printer renders palettes and indexes") {
+    const std::string source = R"(
+asset p {
+  size 8x8
+  palette leafDark = [#365c38, #4c603e, #54625c]
+  draw(v: i32, a: i32) {
+    c = leafDark[2]
+  }
+})";
+    const std::string printed = printProgram(parse(source));
+    REQUIRE(printed.find("(palette leafDark #365c38 #4c603e #54625c)") !=
+            std::string::npos);
+    REQUIRE(printed.find("(let c (index leafDark 2))") != std::string::npos);
+}
+
 TEST_CASE("the printer renders list outputs and while loops") {
     const std::string source = R"(
 asset loop {

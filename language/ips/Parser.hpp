@@ -24,11 +24,13 @@ Program parseTokens(const std::vector<Token>& tokens);
 //   program    := import* asset
 //   import     := "import" ident "from" string
 //   asset      := "asset" ident "{" (sizeDecl | originDecl | variantsDecl
-//                  | archetypesDecl | inputDecl | outputDecl | function)* "}"
+//                  | archetypesDecl | inputDecl | outputDecl | paletteDecl
+//                  | function)* "}"
 //   sizeDecl   := "size" int ("x" digits | int)
 //   originDecl := "origin" expr "," expr
 //   inputDecl  := "input" inputType ident "=" literal
 //   outputDecl := "output" "list"? outputKind ident
+//   paletteDecl := "palette" ident "=" "[" (expr ("," expr)*)? "]"
 //   function   := name "(" params ")" returnType? block
 //   params     := (param ("," param)*)?      // a trailing comma is allowed
 //   param      := ident ":" paramType        // the type is mandatory pre-1.0
@@ -39,10 +41,11 @@ Program parseTokens(const std::vector<Token>& tokens);
 //   varDecl    := ident "=" expr
 //   exprStmt   := call
 //
-// Soft keywords (draw, at, color, f32/u32/i32, point/rect/circle) are valid
-// names in every name position; hard keywords stay reserved.
+// Soft keywords (draw, at, color, f32/u32/i32, point/rect/circle, palette)
+// are valid names in every name position; hard keywords stay reserved.
 //
-// Expressions use C-like precedence:
+// Expressions use C-like precedence; postfix adds the palette index
+// `expr "[" expr "]"`:
 //   || < && < | < ^ < & < ==/!= < </<=/>/>= < +,- < *,/,% < unary < postfix
 
 } // namespace iprop::ips

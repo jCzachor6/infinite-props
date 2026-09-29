@@ -171,7 +171,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfix() {
 }
 
 // Continues a postfix chain on an already-parsed primary: member access
-// ('.' name) and calls ('(' args ')').
+// ('.' name), calls ('(' args ')') and palette indexing ('[' expr ']').
 std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) {
     for (;;) {
         if (match(TokenKind::Dot)) {
@@ -181,6 +181,13 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
         } else if (kind() == TokenKind::LParen) {
             const SourceLocation at = locationOf(*expr);
             expr = std::make_unique<Expr>(Call{std::move(expr), parseArgs(), at});
+        } else if (kind() == TokenKind::LBracket) {
+            const SourceLocation at = locationOf(*expr);
+            advance(); // '['
+            auto index = parseExpr();
+            expect(TokenKind::RBracket, "']' after the index");
+            expr = std::make_unique<Expr>(
+                Index{std::move(expr), std::move(index), at});
         } else {
             return expr;
         }

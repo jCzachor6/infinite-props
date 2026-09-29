@@ -73,6 +73,13 @@ struct VectorLit {
     SourceLocation location;
 };
 
+// An index into an asset-level palette: `palette[i]`.
+struct Index {
+    std::unique_ptr<Expr> object;
+    std::unique_ptr<Expr> index;
+    SourceLocation location;
+};
+
 struct Binary {
     enum class Op {
         Add, Sub, Mul, Div, Mod,
@@ -95,10 +102,10 @@ struct Unary {
 };
 
 struct Expr
-    : std::variant<Literal, Identifier, Member, Call, VectorLit, Binary,
+    : std::variant<Literal, Identifier, Member, Call, VectorLit, Index, Binary,
                    Unary> {
-    using std::variant<Literal, Identifier, Member, Call, VectorLit, Binary,
-                       Unary>::variant;
+    using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
+                       Binary, Unary>::variant;
 };
 
 // ---- Statements ----------------------------------------------------------
@@ -164,6 +171,16 @@ struct OutputDecl {
     SourceLocation location;
 };
 
+// `palette name = [ e, e, ... ]` — asset-level constant array data. The
+// elements are expressions (the checker requires them constant); the
+// compiler desugars `name[i]` into an if-ladder with the last element as
+// the default.
+struct PaletteDecl {
+    std::string name;
+    std::vector<std::unique_ptr<Expr>> elements;
+    SourceLocation location;
+};
+
 // The declared type of a function parameter or return value: the three
 // scalar types the VM can store in locals (spec §3/§9). Unlike `input`,
 // there is no u32 — parameters are always locals.
@@ -208,6 +225,7 @@ struct Asset {
 
     std::vector<InputDecl> inputs;
     std::vector<OutputDecl> outputs;
+    std::vector<PaletteDecl> palettes;
     std::vector<Function> functions;
 };
 

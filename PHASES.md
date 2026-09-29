@@ -38,7 +38,7 @@ the Godot engine integration (the flagship adoption target).
   `index(6)` back.
 
 ### 3. Arrays
-- [ ] `3.1` grammar: asset-level constant arrays `palette name = [ e, e, … ]`
+- [x] `3.1` grammar: asset-level constant arrays `palette name = [ e, e, … ]`
   and indexing `name[i]` (i32 index).
 - [ ] `3.2` checker: homogeneous element types; the index type.
 - [ ] `3.3` compiler: indexing desugars to the if-ladder (the default value

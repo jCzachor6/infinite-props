@@ -71,6 +71,8 @@ Asset ParserImpl::parseAsset() {
                 asset.archetypes =
                     toU32(expect(TokenKind::Int, "an archetype count"),
                           "archetype count");
+            } else if (declaration.text == "palette") {
+                asset.palettes.push_back(parsePalette());
             } else {
                 asset.functions.push_back(parseFunctionAfterName(declaration));
             }
@@ -158,6 +160,31 @@ OutputDecl ParserImpl::parseOutput() {
     advance();
     const Token name = expectName("an output name");
     return OutputDecl{outputKind, isList, name.text, name.location};
+}
+
+// `palette name = [ e, e, ... ]` — the 'palette' keyword was consumed by
+// parseAsset. The element list allows a trailing comma and may be empty
+// (the checker requires at least one element).
+PaletteDecl ParserImpl::parsePalette() {
+    const Token name = expectName("a palette name");
+    expect(TokenKind::Assign, "'=' and an array literal");
+    expect(TokenKind::LBracket, "'['");
+    std::vector<std::unique_ptr<Expr>> elements;
+    while (kind() != TokenKind::RBracket) {
+        if (kind() == TokenKind::End) {
+            failHere("unterminated palette (missing ']')");
+        }
+        elements.push_back(parseExpr());
+        if (!match(TokenKind::Comma)) {
+            break;
+        }
+        // Allow a trailing comma.
+        if (kind() == TokenKind::RBracket) {
+            break;
+        }
+    }
+    expect(TokenKind::RBracket, "']'");
+    return PaletteDecl{name.text, std::move(elements), name.location};
 }
 
 Function ParserImpl::parseFunction() {
