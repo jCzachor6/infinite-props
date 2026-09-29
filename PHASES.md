@@ -35,7 +35,7 @@ the boxes.
 | 20 | Code generation → `.iprop` | C. Language & compiler | ✅ |
 | 21 | Disassembler & validator CLIs | C. Language & compiler | ✅ |
 | 22 | QuantSpace asset ports in `.ips` | C. Language & compiler | ⬜ |
-| 23 | Debug section & source maps | C. Language & compiler | ⬜ |
+| 23 | Debug section & source maps | C. Language & compiler | ✅ |
 | 24 | HTML5 backend (Emscripten/WASM) | D. Backends | ⬜ |
 | 25 | SFML backend | D. Backends | ⬜ |
 | 26 | OpenGL backend host | D. Backends | ⬜ |
@@ -516,16 +516,17 @@ semantics change only with a spec update and a deliberate regeneration.
 **Goal:** debuggability.
 
 **Work:**
-1. Symbol names + `.ips` line → instruction offset map, emitted with the `debug` flag.
-2. Stripping: identical execution with/without the section.
-3. Consumer: `ipdis` annotates lines with source locations.
+1. `runtime/iprop/Debug.hpp` + `runtime/debug.cpp`: the debug section (spec §7) — per function (in table order) the local names (string-pool indices, 0xFFFFFFFF = unnamed) and the `.ips` source line of every instruction. `parseDebug` validates the payload; `stripDebug` removes the section — clearing the header flag, dropping the table entry and shifting the following sections — leaving the remaining bytes untouched.
+2. The compiler emits the section: the Emitter attributes each instruction to its statement/expression's source line (the AST locations were already in place), and the assembler writes the debug section with the flag set.
+3. `ipdis --source` annotates the disassembly with `; line N` and `; locals: ...` comments (the assembler ignores them, so the output still reassembles); `ipc --strip` strips after compiling.
+4. Tests: the flag + source map + local names, annotated disassembly, strip → byte-identical non-debug sections and identical pixels/outputs, no-op strip on debug-less files, and the CLI entry points.
 
 **Deliverables:** debug emission + stripping + annotated disassembly.
 
 **Acceptance criteria:**
-- [ ] `ipdis --source` shows `.ips` lines next to instructions.
-- [ ] Strip → run → identical pixels and outputs.
-- [ ] Debug section optionality matches the header flag.
+- [x] `ipdis --source` shows `.ips` lines next to instructions.
+- [x] Strip → run → identical pixels and outputs.
+- [x] Debug section optionality matches the header flag.
 
 ---
 

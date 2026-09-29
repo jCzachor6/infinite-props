@@ -1,6 +1,7 @@
 add_library(iprop_runtime
     version.cpp
     opcode_name.cpp
+    debug.cpp
     format.cpp
     consts.cpp
     meta.cpp

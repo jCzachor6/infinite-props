@@ -31,6 +31,8 @@ private:
     Plan& plan_;
     const PlannedFunction* current_ = nullptr;
     std::vector<Instruction> code_; // the IR of the function being emitted
+    std::vector<u32> lines_;        // the .ips source line per instruction
+    u32 currentLine_ = 0;           // the line attributed to new instructions
     bool scratchUsed_ = false;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);

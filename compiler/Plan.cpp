@@ -89,6 +89,15 @@ std::unique_ptr<Plan> Planner::plan() {
         prepareFunction(function.name);
     }
 
+    // The local names are known only after preparation: register them now,
+    // in function table order (deterministic).
+    for (const auto& function : plan_->functions) {
+        for (const auto& [name, unused] : function.slots) {
+            (void)unused;
+            plan_->pools.addString(name);
+        }
+    }
+
     // Planning is complete: rebind the resolver to a self-contained lookup
     // over the heap plan, so the emitter can keep typing through the Typer
     // after this Planner is gone.

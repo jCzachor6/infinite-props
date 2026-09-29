@@ -40,6 +40,7 @@ struct PlannedFunction {
     std::map<std::string, ips::ValueType> langTypes;
 
     std::vector<Instruction> code; // the emitted IR
+    std::vector<u32> sourceLines;  // one .ips line per instruction (debug)
 };
 
 // One global output slot (spec §4.3: root outputs first, then part outputs

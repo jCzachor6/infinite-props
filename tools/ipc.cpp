@@ -8,6 +8,8 @@
 
 #include "Compiler.hpp"
 
+#include "iprop/Debug.hpp"
+
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
@@ -38,13 +40,15 @@ int fail(const std::string& message) {
 int main(int argc, char* argv[]) {
     std::string input;
     std::string output;
+    bool strip = false;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip]\n"
                       << "Imports resolve relative to the entry file; the\n"
-                      << "output passes the runtime validator.\n";
+                      << "output passes the runtime validator. --strip removes\n"
+                      << "the debug section (identical execution).\n";
             return 0;
         }
         if (arg == "-o" || arg == "--output") {
@@ -52,6 +56,8 @@ int main(int argc, char* argv[]) {
                 return fail("missing value for " + arg);
             }
             output = argv[++i];
+        } else if (arg == "--strip") {
+            strip = true;
         } else if (!arg.empty() && arg[0] == '-') {
             return fail("unknown option '" + arg + "'");
         } else if (input.empty()) {
@@ -134,8 +140,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        const std::vector<iprop::u8> bytes =
+        std::vector<iprop::u8> bytes =
             iprop::compileProgram(entry, partPrograms);
+        if (strip) {
+            bytes = iprop::stripDebug(bytes);
+        }
 
         std::ofstream out(output, std::ios::binary);
         if (!out) {

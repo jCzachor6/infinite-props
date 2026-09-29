@@ -1,6 +1,7 @@
 #include "ipdis.hpp"
 
 #include "iprop/Code.hpp"
+#include "iprop/Debug.hpp"
 #include "iprop/Consts.hpp"
 #include "iprop/Instruction.hpp"
 #include "iprop/Meta.hpp"
@@ -126,9 +127,21 @@ std::string instructionText(const Function& function,
     return mnemonic;
 }
 
+// The assembled name list for one function's locals (index -> name).
+std::vector<const std::string*> localNames(const Function& function,
+                                           const DebugFunction& debug,
+                                           const ConstPool& pool) {
+    std::vector<const std::string*> names;
+    for (const u32 index : debug.localNames) {
+        names.push_back(index == kAnonymousName ? nullptr : &pool.strings.at(index));
+    }
+    names.resize(function.params.size() + function.locals.size(), nullptr);
+    return names;
+}
+
 void appendFunction(std::ostringstream& out, const std::string& name,
                     const Function& function, const Names& names,
-                    bool indent) {
+                    bool indent, const DebugFunction* debug) {
     const auto parens = [](const std::vector<ValueType>& types) {
         return types.empty() ? std::string("( )")
                              : "( " + typeList(types, true) + " )";
@@ -138,9 +151,23 @@ void appendFunction(std::ostringstream& out, const std::string& name,
         << parens(function.results) << ":\n";
     if (!function.locals.empty()) {
         out << pad << "  locals: " << typeList(function.locals, false) << "\n";
+        if (debug != nullptr) {
+            const auto namesInOrder =
+                localNames(function, *debug, *names.pool);
+            out << pad << "  ; locals:";
+            for (std::size_t i = function.params.size(); i < namesInOrder.size(); ++i) {
+                const auto* local = namesInOrder[i];
+                out << " " << (local != nullptr ? *local : "<scratch>");
+            }
+            out << "\n";
+        }
     }
     const std::size_t count = function.code.size() / 4;
     for (std::size_t i = 0; i < count; ++i) {
+        if (debug != nullptr && i < debug->lines.size() &&
+            (i == 0 || debug->lines[i] != debug->lines[i - 1])) {
+            out << pad << "  ; line " << debug->lines[i] << "\n";
+        }
         out << pad << "  " << instructionText(function, i, names) << "\n";
     }
     out << pad << "endfn\n";
@@ -148,7 +175,9 @@ void appendFunction(std::ostringstream& out, const std::string& name,
 
 } // namespace
 
-std::string disassemble(std::span<const u8> bytes) {
+
+
+std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
 
@@ -200,9 +229,24 @@ std::string disassemble(std::span<const u8> bytes) {
         out << outputEntryText(output, pool) << "\n";
     }
 
+    // The debug source map, when requested (one entry per function).
+    const DebugInfo* debugInfo = nullptr;
+    DebugInfo debugStorage;
+    if (annotated) {
+        if (const Section* debugSection = loaded.layout.find(SectionId::Debug)) {
+            debugStorage = parseDebug(bytes, *debugSection);
+            debugInfo = &debugStorage;
+        }
+    }
+
     // Part blocks first (the assembler grammar wants parts before functions).
     for (std::size_t i = 0; i < code.parts.size(); ++i) {
         const Part& part = code.parts[i];
+        const u32 functionIndex = part.functionIndex;
+        const DebugFunction* debug = nullptr;
+        if (debugInfo != nullptr && debugInfo->functions.size() == code.functions.size()) {
+            debug = &debugInfo->functions[functionIndex];
+        }
         out << "part " << names.parts[i] << ":\n";
         out << "  meta: size=" << part.sizeX << "x" << part.sizeY
             << " origin=" << floatText(part.origin.x) << ","
@@ -213,8 +257,8 @@ std::string disassemble(std::span<const u8> bytes) {
         for (const auto& output : part.outputs) {
             out << "  " << outputEntryText(output, pool) << "\n";
         }
-        appendFunction(out, "draw", code.functions[part.functionIndex], names,
-                       true);
+        appendFunction(out, "draw", code.functions[functionIndex], names, true,
+                       debug);
         out << "endpart\n";
     }
 
@@ -225,28 +269,43 @@ std::string disassemble(std::span<const u8> bytes) {
     }
     for (std::size_t i = 0; i < code.functions.size(); ++i) {
         if (partFunctions.count(static_cast<u32>(i)) == 0) {
+            const DebugFunction* debug = nullptr;
+            if (debugInfo != nullptr && debugInfo->functions.size() == code.functions.size()) {
+                debug = &debugInfo->functions[i];
+            }
             appendFunction(out, names.functions[i], code.functions[i], names,
-                           false);
+                           false, debug);
         }
     }
     return out.str();
 }
 
+std::string disassembleWithSource(std::span<const u8> bytes) {
+    return disassembleImpl(bytes, /*annotated=*/true);
+}
+
+std::string disassemble(std::span<const u8> bytes) {
+    return disassembleImpl(bytes, /*annotated=*/false);
+}
+
 int ipdisMain(int argc, char* argv[]) {
     std::string input;
+    bool source = false;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipdis - disassemble an .iprop binary into .ipa text\n\n"
-                      << "Usage: ipdis <file.iprop>\n"
-                      << "The output can be reassembled with ipa.\n";
+                      << "Usage: ipdis [--source] <file.iprop>\n"
+                      << "The output can be reassembled with ipa; --source\n"
+                      << "annotates it with the debug section's source map.\n";
             return 0;
         }
-        if (!arg.empty() && arg[0] == '-') {
+        if (arg == "--source") {
+            source = true;
+        } else if (!arg.empty() && arg[0] == '-') {
             std::cerr << "ipdis: unknown option '" << arg << "'\n";
             return 2;
-        }
-        if (input.empty()) {
+        } else if (input.empty()) {
             input = arg;
         } else {
             std::cerr << "ipdis: multiple input files\n";
@@ -264,7 +323,7 @@ int ipdisMain(int argc, char* argv[]) {
     }
     const std::vector<u8> bytes((std::istreambuf_iterator<char>(stream)), {});
     try {
-        std::cout << disassemble(bytes);
+        std::cout << (source ? disassembleWithSource(bytes) : disassemble(bytes));
     } catch (const FormatError& error) {
         std::cerr << "ipdis: " << input << ": byte " << error.offset << ": "
                   << error.what() << "\n";

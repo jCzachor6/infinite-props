@@ -18,6 +18,7 @@ add_executable(iprop_tests
     semantics_test.cpp
     compiler_test.cpp
     disasm_test.cpp
+    debug_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp

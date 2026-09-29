@@ -16,6 +16,7 @@ Emitter::Emitter(Plan& plan) : plan_(plan) {}
 
 void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     code_.push_back(Instruction{opcode, aux, operand});
+    lines_.push_back(currentLine_);
 }
 
 void Emitter::emitConst(const Value& value) {
@@ -46,6 +47,8 @@ bool Emitter::isParam(const std::string& name) const {
 void Emitter::emitFunction(PlannedFunction& function) {
     current_ = &function;
     code_.clear();
+    lines_.clear();
+    currentLine_ = 0;
     scratchUsed_ = false;
     ips::Typer::Scope savedScope = plan_.typeEngine().saveScope();
     plan_.typeEngine().restoreScope(
@@ -55,13 +58,23 @@ void Emitter::emitFunction(PlannedFunction& function) {
     }
     plan_.typeEngine().restoreScope(std::move(savedScope));
     function.code = std::move(code_);
+    function.sourceLines = std::move(lines_);
     if (scratchUsed_) {
         function.locals.push_back(ValueType::I32);
     }
     current_ = nullptr;
 }
 
+namespace {
+// The source line of a statement node.
+u32 stmtLine(const ips::Stmt& stmt) {
+    return static_cast<u32>(std::visit(
+        [](const auto& node) { return node.location.line; }, stmt));
+}
+} // namespace
+
 void Emitter::emitStmt(const ips::Stmt& stmt) {
+    currentLine_ = stmtLine(stmt);
     if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
         const ips::OutputDecl* output = nullptr;
         for (const auto& candidate : current_->owner->asset.outputs) {

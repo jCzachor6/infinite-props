@@ -9,6 +9,7 @@ namespace iprop::compiler {
 // ---- expressions -------------------------------------------------------------
 
 ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
+    currentLine_ = static_cast<u32>(ips::locationOf(expr).line);
     if (Value folded; foldExpression(expr, folded)) {
         emitConst(folded);
         if (std::holds_alternative<i32>(folded)) {

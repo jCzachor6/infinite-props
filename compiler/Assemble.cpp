@@ -168,16 +168,38 @@ std::vector<u8> Assembler::assemble() {
     }
 
     // ---- file (spec §2) ----
+    // ---- debug section (spec §7): local names + the .ips line per
+    //      instruction ----
+    Writer debug;
+    debug.writeU32(static_cast<u32>(plan_.functions.size()));
+    for (const auto& function : plan_.functions) {
+        std::vector<const std::string*> names(
+            function.params.size() + function.locals.size(), nullptr);
+        for (const auto& [name, slot] : function.slots) {
+            names.at(slot) = &name;
+        }
+        debug.writeU32(static_cast<u32>(names.size()));
+        for (const auto* name : names) {
+            debug.writeU32(name != nullptr ? plan_.pools.indexOf(*name)
+                                           : kAnonymousName);
+        }
+        debug.writeU32(static_cast<u32>(function.code.size()));
+        for (const u32 line : function.sourceLines) {
+            debug.writeU32(line);
+        }
+    }
+
+    // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
     file.writeU16(kVersionMajor);
     file.writeU16(kVersionMinor);
-    file.writeU32(0); // flags
-    file.writeU32(3); // section count
-    file.writeU32(0); // reserved
-    u32 offset = kHeaderSize + 3 * 12;
+    file.writeU32(kFlagDebug); // flags: debug section present
+    file.writeU32(4);          // section count
+    file.writeU32(0);          // reserved
+    u32 offset = kHeaderSize + 4 * 12;
     const auto section = [&](u32 id, const std::vector<u8>& bytes) {
         file.writeU32(id);
         file.writeU32(offset);
@@ -187,9 +209,11 @@ std::vector<u8> Assembler::assemble() {
     section(static_cast<u32>(SectionId::Meta), meta.data());
     section(static_cast<u32>(SectionId::Const), consts.data());
     section(static_cast<u32>(SectionId::Code), code.data());
+    section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
+    file.writeBytes(debug.data());
     return file.data();
 }
 
