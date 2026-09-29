@@ -2,8 +2,12 @@
 
 add_library(iprop_compiler STATIC
     Compiler.cpp
-    CompilerEmit.cpp
-    CompilerFold.cpp)
+    Plan.cpp
+    Fold.cpp
+    Emit.cpp
+    EmitExpr.cpp
+    EmitCall.cpp
+    Assemble.cpp)
 
 target_link_libraries(iprop_compiler PUBLIC iprop::runtime ips_lang)
 target_include_directories(iprop_compiler PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

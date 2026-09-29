@@ -1,11 +1,28 @@
-#include "CompilerDetail.hpp"
+#include "Fold.hpp"
 
-namespace iprop {
-namespace detail {
+#include "Literals.hpp"
 
-// ---- constant folding -------------------------------------------------------
+namespace iprop::compiler {
+namespace {
 
-bool Compiler::tryFold(const Expr& expr, Value& out) const {
+bool foldMixed(ips::Binary::Op op, f32 a, f32 b, Value& out) {
+    switch (op) {
+    case ips::Binary::Op::Add: out = a + b; return true;
+    case ips::Binary::Op::Sub: out = a - b; return true;
+    case ips::Binary::Op::Mul: out = a * b; return true;
+    case ips::Binary::Op::Div: out = a / b; return true;
+    case ips::Binary::Op::Eq: out = static_cast<i32>(a == b ? 1 : 0); return true;
+    case ips::Binary::Op::Ne: out = static_cast<i32>(a != b ? 1 : 0); return true;
+    case ips::Binary::Op::Lt: out = static_cast<i32>(a < b ? 1 : 0); return true;
+    case ips::Binary::Op::Le: out = static_cast<i32>(a <= b ? 1 : 0); return true;
+    case ips::Binary::Op::Gt: out = static_cast<i32>(a > b ? 1 : 0); return true;
+    case ips::Binary::Op::Ge: out = static_cast<i32>(a >= b ? 1 : 0); return true;
+    default: return false;
+    }
+}
+
+bool fold(const ips::Expr& expr, Value& out) {
+    using namespace ips;
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         switch (lit->kind) {
         case Literal::Kind::Int: {
@@ -46,7 +63,7 @@ bool Compiler::tryFold(const Expr& expr, Value& out) const {
     }
     if (const auto* un = std::get_if<Unary>(&expr)) {
         Value operand;
-        if (!tryFold(*un->operand, operand)) {
+        if (!fold(*un->operand, operand)) {
             return false;
         }
         if (const auto* i = std::get_if<i32>(&operand)) {
@@ -73,7 +90,7 @@ bool Compiler::tryFold(const Expr& expr, Value& out) const {
     if (const auto* bin = std::get_if<Binary>(&expr)) {
         Value left;
         Value right;
-        if (!tryFold(*bin->left, left) || !tryFold(*bin->right, right)) {
+        if (!fold(*bin->left, left) || !fold(*bin->right, right)) {
             return false;
         }
         const auto* li = std::get_if<i32>(&left);
@@ -132,21 +149,8 @@ bool Compiler::tryFold(const Expr& expr, Value& out) const {
     return false;
 }
 
-bool Compiler::foldMixed(Binary::Op op, f32 a, f32 b, Value& out) const {
-    switch (op) {
-    case Binary::Op::Add: out = a + b; return true;
-    case Binary::Op::Sub: out = a - b; return true;
-    case Binary::Op::Mul: out = a * b; return true;
-    case Binary::Op::Div: out = a / b; return true;
-    case Binary::Op::Eq: out = static_cast<i32>(a == b ? 1 : 0); return true;
-    case Binary::Op::Ne: out = static_cast<i32>(a != b ? 1 : 0); return true;
-    case Binary::Op::Lt: out = static_cast<i32>(a < b ? 1 : 0); return true;
-    case Binary::Op::Le: out = static_cast<i32>(a <= b ? 1 : 0); return true;
-    case Binary::Op::Gt: out = static_cast<i32>(a > b ? 1 : 0); return true;
-    case Binary::Op::Ge: out = static_cast<i32>(a >= b ? 1 : 0); return true;
-    default: return false;
-    }
-}
+} // namespace
 
-} // namespace detail
-} // namespace iprop
+bool foldExpression(const ips::Expr& expr, Value& out) { return fold(expr, out); }
+
+} // namespace iprop::compiler

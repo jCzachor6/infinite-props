@@ -1,0 +1,73 @@
+#pragma once
+
+// The lowering layer: turns checked ASTs into the instruction IR
+// (iprop::Instruction) recorded in the plan. The emitter types expressions
+// through the plan's shared Typer and allocates constant-pool entries as it
+// goes. It mutates only the current function's code/locals and the plan's
+// constant pools; the planning tables are read-only.
+
+#include <string>
+#include <vector>
+
+#include "iprop/Instruction.hpp"
+#include "iprop/Value.hpp"
+#include "ips/Ast.hpp"
+#include "ips/Types.hpp"
+#include "Plan.hpp"
+
+namespace iprop::compiler {
+
+class Emitter {
+public:
+    // `plan` must be fully planned (every function prepared); it is not
+    // modified except for the constant pools and the function being emitted.
+    explicit Emitter(Plan& plan);
+
+    // Emits one function's body into `function.code`. Appends the scratch
+    // local when the body uses short-circuit operators.
+    void emitFunction(PlannedFunction& function);
+
+private:
+    Plan& plan_;
+    const PlannedFunction* current_ = nullptr;
+    std::vector<Instruction> code_; // the IR of the function being emitted
+    bool scratchUsed_ = false;
+
+    [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
+
+    // ---- shared helpers -----------------------------------------------------
+
+    void ins(Opcode opcode, u8 aux = 0, u16 operand = 0);
+    void emitConst(const Value& value);
+    u32 scratch();
+    bool isParam(const std::string& name) const;
+    u32 slotForOutput(const ips::Program* owner,
+                      const ips::OutputDecl& output) const;
+    void emitOutputWrite(const ips::Program* owner,
+                         const ips::OutputDecl& output, const ips::Expr& value);
+
+    // ---- statements (Emit.cpp) ----------------------------------------------
+
+    void emitStmt(const ips::Stmt& stmt);
+
+    // ---- expressions (EmitExpr.cpp / EmitCall.cpp) ---------------------------
+
+    ips::ValueType emitExpr(const ips::Expr& expr);
+    void emitPointValue(const ips::Expr& expr);
+    ips::ValueType emitPartRead(const ips::Expr& expr);
+    ips::ValueType emitBinary(const ips::Binary& bin);
+    ips::ValueType emitUnary(const ips::Unary& un);
+    ips::ValueType emitCall(const ips::Call& call);
+    void emitArg(const ips::Arg& arg, ips::ValueType expected);
+    ips::ValueType emitBuiltin(const std::string& name, const ips::Call& call);
+    void emitPartCall(const ips::Call& call);
+
+    struct PartRead {
+        std::string alias;
+        const ips::OutputDecl* output = nullptr;
+        ips::OutputKind kind = ips::OutputKind::Point;
+    };
+    PartRead partReadInfo(const ips::Expr& expr) const;
+};
+
+} // namespace iprop::compiler
