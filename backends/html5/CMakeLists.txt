@@ -37,6 +37,11 @@ add_library(iprop_runtime STATIC
 
 target_include_directories(iprop_runtime PUBLIC ../../runtime)
 
+# Spec §13.2: no fused multiply-add — the WASM build must disable the
+# contraction like every other backend, or its pixels diverge from the
+# native reference.
+iprop_warnings(iprop_runtime)
+
 add_executable(iprop_html5
     bindings.cpp)
 

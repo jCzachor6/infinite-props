@@ -1,8 +1,7 @@
 // flower.ips — the foliage part of the QuantSpace interior plant (PaPlant):
-// four of the six species (Broadleaf, Spiky, Bushy, Flowering) plus a
-// sunflower species of our own. The Succulent and the Arching Fronds are
-// omitted — they draw petals/leaves with per-step trigonometric functions
-// of continuous angles, which the bytecode instruction set cannot express.
+// all six species (Broadleaf, Spiky, Succulent, Bushy, Flowering, Arching
+// Fronds) in the reference's order. The Succulent's petal ring and the
+// Fronds' arcs draw with the pinned sin/cos builtins (spec §12.7).
 //
 // Paints absolute coordinates on a 64x64 canvas; the parent blits it at
 // {0, 0}. The part's stream is the main seed stream (passed as the part
@@ -84,6 +83,32 @@ asset flower {
         blade = blade + 1
       }
     } else if (species == 2) {
+      // Succulent rosette: concentric ring ovals and an eight-petal ring
+      // around the rim; the petals jitter on the detail stream.
+      radius = 6.0 + index(4)
+      centre = rim - 3.0 - radius * 0.6
+      ring = 3
+      while (ring >= 0) {
+        r = radius * (0.4 + 0.2 * ring)
+        ringColor = leafMid
+        if (ring % 2 == 1) { ringColor = shade(leafDark, 8) }
+        oval(32.0, centre + 56, r, r * 0.72, ringColor)
+        oval(32.0, centre - 0.5 + 56, r * 0.62, r * 0.42, shade(ringColor, 22))
+        ring = ring - 1
+      }
+      oval(32.0, centre - 0.5 + 56, 1.6, 1.2, leafLight)
+      petal = 0
+      while (petal < 8) {
+        stream_push(dState)
+        angle = petal * 3.14159265359 / 4.0
+        if (unit() >= 0.5) { angle = angle + 0.2 }
+        dState = seed
+        stream_pop()
+        petalY = centre + sin(angle) * radius * 0.72
+        pixel(32 + round(cos(angle) * radius), round(petalY) + 56, shade(leafDark, -18))
+        petal = petal + 1
+      }
+    } else if (species == 3) {
       // Bushy canopy: a stem and scattered clumps of leaves.
       clumps = 6 + index(5)
       rect(31.0, crown + 56, 2.0, rim - crown - 4, shade(leafDark, 12))
@@ -101,7 +126,7 @@ asset flower {
         leaf(32 + x, y + 56, r, r * 0.9, lean, lc)
         clump = clump + 1
       }
-    } else if (species == 3) {
+    } else if (species == 4) {
       // Flowering plant: leaf pairs, then five-petal blooms.
       pairs = 2 + index(3)
       rect(31.0, crown + 58, 2.0, rim - crown - 2, shade(leafMid, -24))
@@ -134,52 +159,33 @@ asset flower {
         flower = flower + 1
       }
     } else {
-      // Sunflower: a tall stem, leaves of varying count and position, and a
-      // ray-floret head in one of four petal colours.
-      cy = 18.0 + index(4)
-      rect(31.0, cy + 2.0, 2.0, 54.0 - cy, shade(leafMid, -20))
-
-      // the petal colour: a sunflower variety
-      petalColor = #f2c14e
-      variety = index(4)
-      if (variety == 1) { petalColor = #e88b2e }
-      if (variety == 2) { petalColor = #c44e3c }
-      if (variety == 3) { petalColor = #f2e6c4 }
-
-      // two to four leaves spread along the stem
-      leafCount = 2 + index(3)
-      leafIndex = 0
-      while (leafIndex < leafCount) {
-        ly = 44.0 - leafIndex * (10.0 / leafCount) - index(3) * 0.8
-        lx = 27.0
-        lean = -1.2
-        if (index(2) == 1) {
-          lx = 37.0
-          lean = 1.2
+      // Arching fronds: pixel-stepped arcs shaped by sin(t * pi * 0.85),
+      // each frond leaning from the detail stream.
+      fronds = 4 + index(3)
+      frond = 0
+      while (frond < fronds) {
+        stream_push(dState)
+        lean = range(-1.0, 1.0)
+        arc = height * (0.5 + 0.5 * index(4) / 3.0)
+        dState = seed
+        stream_pop()
+        frondColor = leafMid
+        if (frond % 2 == 0) { frondColor = shade(leafDark, 10) }
+        steps = i32trunc(arc)
+        step = 0
+        while (step < steps) {
+          t = step / arc
+          x = lean * arc * 0.5 * sin(t * 3.14159265359 * 0.85)
+          y = rim - 2.0 - step
+          pixel(32 + round(x), i32trunc(y) + 56, shade(frondColor, i32trunc(20.0 * t)))
+          if (step > 2 && step % 3 != 1) {
+            pixel(32 + round(x) - 1, i32trunc(y) - 1 + 56, shade(frondColor, -12))
+            pixel(32 + round(x) + 1, i32trunc(y) + 56, shade(frondColor, 10))
+          }
+          step = step + 1
         }
-        lr = 3.2 + index(2) * 0.4
-        lc = leafMid
-        if (leafIndex % 2 == 1) { lc = shade(leafMid, 12) }
-        leaf(lx, ly, lr, lr * 0.46, lean, lc)
-        leafIndex = leafIndex + 1
+        frond = frond + 1
       }
-
-      // the ray florets: twelve petals at 30-degree steps
-      pixel(32 + round(4.5), round(cy + 0.0), petalColor)
-      pixel(32 + round(3.8971143), round(cy + 2.25), petalColor)
-      pixel(32 + round(2.25), round(cy + 3.8971143), petalColor)
-      pixel(32 + round(0.0), round(cy + 4.5), petalColor)
-      pixel(32 + round(-2.25), round(cy + 3.8971143), petalColor)
-      pixel(32 + round(-3.8971143), round(cy + 2.25), petalColor)
-      pixel(32 + round(-4.5), round(cy + 0.0), petalColor)
-      pixel(32 + round(-3.8971143), round(cy - 2.25), petalColor)
-      pixel(32 + round(-2.25), round(cy - 3.8971143), petalColor)
-      pixel(32 + round(0.0), round(cy - 4.5), petalColor)
-      pixel(32 + round(2.25), round(cy - 3.8971143), petalColor)
-      pixel(32 + round(3.8971143), round(cy - 2.25), petalColor)
-      // the disc: a two-tone dark centre
-      oval(32.0, cy, 3.4, 3.0, #7a4a1e)
-      oval(32.0, cy - 0.3, 2.2, 1.9, #5c3816)
     }
   }
 }

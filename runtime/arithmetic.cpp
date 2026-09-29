@@ -31,6 +31,66 @@ i32 f32ToI32(f32 value) {
     return static_cast<i32>(value); // truncates toward zero
 }
 
+// Spec §12.7: the pinned sine. Cody-Waite quadrant reduction and the Taylor
+// polynomials on [-pi/4, pi/4], all in double precision. Every operation is
+// a single IEEE round-to-nearest double op, so every backend reproduces the
+// result bit for bit — this MUST NOT be replaced with the platform libm.
+double sinCore(double x) {
+    constexpr double PIO2 = 1.57079632679489661923e+00;    // pi/2 (double)
+    constexpr double PIO2_HI = 1.57079632673412561417e+00; // 0x3FF921FB54400000
+    constexpr double PIO2_LO = 6.07710050650619224932e-11; // 0x3DD0B4611A626331
+    const double k = std::floor(x / PIO2 + 0.5); // the quadrant index
+    const double r = (x - k * PIO2_HI) - k * PIO2_LO; // |r| <= pi/4
+
+    // sin(r) and cos(r) in Horner form (the exact coefficients as written
+    // in the spec; the compiler must not contract any mul+add).
+    const double r2 = r * r;
+    const double s =
+        r * (1.0 + r2 * (-1.0 / 6.0 +
+                         r2 * (1.0 / 120.0 +
+                               r2 * (-1.0 / 5040.0 +
+                                     r2 * (1.0 / 362880.0 +
+                                           r2 * (-1.0 / 39916800.0))))));
+    const double c =
+        1.0 + r2 * (-0.5 +
+                    r2 * (1.0 / 24.0 +
+                          r2 * (-1.0 / 720.0 +
+                                r2 * (1.0 / 40320.0 +
+                                      r2 * (-1.0 / 3628800.0 +
+                                            r2 * (1.0 / 479001600.0))))));
+
+    // k mod 4, exact: the 0.25 scaling is a binary exponent shift and the
+    // subtraction is exact for the small result.
+    const double m = k - 4.0 * std::floor(k * 0.25);
+    if (m == 0.0) {
+        return s;
+    }
+    if (m == 1.0) {
+        return c;
+    }
+    if (m == 2.0) {
+        return -s;
+    }
+    return -c;
+}
+
+f32 f32Sin(f32 x) {
+    const double value = static_cast<double>(x);
+    if (std::isnan(value) || std::isinf(value)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    return static_cast<f32>(sinCore(value));
+}
+
+f32 f32Cos(f32 x) {
+    const double value = static_cast<double>(x);
+    if (std::isnan(value) || std::isinf(value)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    constexpr double PIO2 = 1.57079632679489661923e+00;
+    return static_cast<f32>(sinCore(value + PIO2));
+}
+
 // Shared shapes for the regular two-operand cases: pop, compute, push,
 // advance. Special cases (division, shifts, conversions) stay inline.
 void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
@@ -253,6 +313,16 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     }
     case Opcode::F32Sqrt: {
         ex.push(Value(std::sqrt(ex.popF32())));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::F32Sin: {
+        ex.push(Value(f32Sin(ex.popF32())));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::F32Cos: {
+        ex.push(Value(f32Cos(ex.popF32())));
         ++ex.frame().ip;
         return true;
     }

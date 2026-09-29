@@ -39,6 +39,8 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"fault", {{V::F32, V::F32, V::I32}, V::F32}},
         {"smooth", {{V::F32}, V::F32}},
         {"sqrt", {{V::F32}, V::F32}},
+        {"sin", {{V::F32}, V::F32}},
+        {"cos", {{V::F32}, V::F32}},
         {"i32trunc", {{V::F32}, V::I32}},
         {"round", {{V::F32}, V::I32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},

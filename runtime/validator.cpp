@@ -246,6 +246,7 @@ private:
             push(at, ValueType::I32);
             return;
         case Opcode::F32Neg: case Opcode::F32Abs: case Opcode::F32Sqrt:
+        case Opcode::F32Sin: case Opcode::F32Cos:
             expect(at, ValueType::F32, "float operand");
             push(at, ValueType::F32);
             return;

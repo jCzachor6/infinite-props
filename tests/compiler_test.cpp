@@ -187,6 +187,66 @@ TEST_CASE("compiled output executes identically to the hand-assembled fixture") 
     REQUIRE(fromIps.outputs[0].points[0].y == fromIpa.outputs[0].points[0].y);
 }
 
+TEST_CASE("the sin and cos builtins compile and match the hand-assembled reference") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+
+  draw(v: i32, a: i32) {
+    s = sin(0.5)
+    c = cos(1.25)
+    p = {s, c}
+    pixel(i32trunc(s * 10.0), 0, #ff0000)
+    pixel(i32trunc(c * 10.0), 1, #00ff00)
+  }
+})";
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+output: point p
+fn draw ( i32, i32 ) -> ( ):
+  locals: f32 f32
+  const.f32 0.5
+  f32.sin
+  local.set 2
+  const.f32 1.25
+  f32.cos
+  local.set 3
+  local.get 2
+  local.get 3
+  out.point p
+  local.get 2
+  const.f32 10.0
+  f32.mul
+  f32.to.i32
+  const.i32 0
+  const.color #ff0000
+  pixel
+  local.get 3
+  const.f32 10.0
+  f32.mul
+  f32.to.i32
+  const.i32 1
+  const.color #00ff00
+  pixel
+endfn
+)";
+    const auto fromIps = execute(compileChecked(source));
+    const auto fromIpa = execute(assemble(ipa));
+
+    for (std::size_t i = 0; i < fromIps.canvas.pixels.size(); ++i) {
+        INFO("pixel " << i);
+        REQUIRE(fromIps.canvas.pixels[i] == fromIpa.canvas.pixels[i]);
+    }
+    REQUIRE(fromIps.outputs[0].points.size() == 1);
+    // p = {sin(0.5), cos(1.25)} — the pinned values.
+    REQUIRE(std::fabs(fromIps.outputs[0].points[0].x - 0.47942555f) < 1e-6f);
+    REQUIRE(std::fabs(fromIps.outputs[0].points[0].y - 0.31532236f) < 1e-6f);
+    // The pixels mark the truncated coords: 4 and 3.
+    REQUIRE(fromIps.canvas.at(4, 0) == Color{255, 0, 0, 255});
+    REQUIRE(fromIps.canvas.at(3, 1) == Color{0, 255, 0, 255});
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));

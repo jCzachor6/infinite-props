@@ -101,6 +101,7 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"f32.le", {Opcode::F32Le}}, {"f32.ge", {Opcode::F32Ge}},
         {"f32.neg", {Opcode::F32Neg}}, {"f32.abs", {Opcode::F32Abs}},
         {"f32.sqrt", {Opcode::F32Sqrt}},
+        {"f32.sin", {Opcode::F32Sin}}, {"f32.cos", {Opcode::F32Cos}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},

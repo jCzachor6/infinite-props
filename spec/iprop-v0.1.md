@@ -363,6 +363,17 @@ Arithmetic `[f32 f32] -> [f32]`:
 | 0x42 | f32.mul | | 0x4C | f32.sqrt (`[f32]->[f32]`) |
 | | | | 0x4A | f32.neg (`[f32]->[f32]`) |
 
+Trigonometry (added in v0.2; `[f32] -> [f32]`, exact algorithm in §12.7):
+
+| Op | Mnemonic |
+| -- | -------- |
+| 0x4F | f32.sin |
+| 0x53 | f32.cos |
+
+`f32.cos` is defined as `f32.sin` of the argument plus π/2 (§12.7). The
+values sit in the two free gaps around the colour ops (0x50–0x52), which
+are already assigned.
+
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
 
@@ -636,12 +647,43 @@ else:         return at(ix+1,iy+1)*(u+v-1) + at(ix,iy+1)*(1-u) + at(ix+1,iy)*(1-
   (whose compilers contract this expression) bit for bit.
 - `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`.
 
+### 12.7 Trigonometry (v0.2)
+
+`f32.sin`/`f32.cos` are **not** the platform libm: implementations MUST use
+the pinned algorithm below so every backend agrees bit for bit. All
+arithmetic is double-precision IEEE-754 round-to-nearest-even (each `+`, `-`,
+`*`, `/` and `floor` below is one such operation); the final result is cast
+to binary32.
+
+```
+PIO2    = 1.57079632679489661923e+00   // the double nearest pi/2
+PIO2_HI = 1.57079632673412561417e+00   // 0x3FF921FB54400000
+PIO2_LO = 6.07710050650619224932e-11   // 0x3DD0B4611A626331
+
+sin(x):                             // x is the f32 input, exact in double
+    if x is NaN or infinite: return the canonical quiet NaN (0x7FC00000)
+    k = floor(x / PIO2 + 0.5)       // the quadrant index (nearest multiple)
+    r = (x - k * PIO2_HI) - k * PIO2_LO          // Cody-Waite remainder, |r| <= pi/4
+    s = r - r^3/3! + r^5/5! - r^7/7! + r^9/9! - r^11/11!   // Horner
+    c = 1 - r^2/2! + r^4/4! - r^6/6! + r^8/8! - r^10/10! + r^12/12!  // Horner
+    m = k - 4 * floor(k / 4)        // k mod 4, exact (0.25 scaling is exact)
+    return (f32) ( m==0 ? s : m==1 ? c : m==2 ? -s : -c )
+
+cos(x) = sin(x + PIO2)              // one double addition, then the above
+```
+
+The remainder's quadrant index is exact for |x| < 2^52·π/2 (all of binary32's
+range); the remainder itself carries ≥ 48 correct bits for |x| ≤ 2^40. Beyond
+that the result is still deterministic but its accuracy is not guaranteed —
+asset code operates on small angles, far inside the envelope.
+
 ## 13. Determinism rules
 
 1. Integer arithmetic is `u32`/`i32` two's-complement wrapping, exactly.
 2. `f32` operations are IEEE-754 binary32, round-to-nearest-even, with
    **no fused multiply-add**: implementations MUST NOT contract `mul`+`add`.
-3. `f32` division and `sqrt` are IEEE-correctly-rounded.
+3. `f32` division and `sqrt` are IEEE-correctly-rounded. `f32.sin`/`f32.cos`
+   are the pinned algorithm of §12.7 (never the platform libm).
 4. Conversions: `f32→i32` truncates toward zero (§9.4); `f32→u8` truncates
    toward zero.
 5. No operation depends on environment state: rounding mode, locale, time,

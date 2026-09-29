@@ -90,6 +90,8 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
     }
     if (name == "smooth") return emitFixed({VT::F32}, Opcode::Smooth);
     if (name == "sqrt") return emitFixed({VT::F32}, Opcode::F32Sqrt);
+    if (name == "sin") return emitFixed({VT::F32}, Opcode::F32Sin);
+    if (name == "cos") return emitFixed({VT::F32}, Opcode::F32Cos);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):

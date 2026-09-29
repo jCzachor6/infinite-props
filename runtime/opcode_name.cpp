@@ -71,6 +71,8 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::F32Sqrt: return "f32.sqrt";
     case Opcode::I32ToF32: return "i32.to.f32";
     case Opcode::F32ToI32: return "f32.to.i32";
+    case Opcode::F32Sin: return "f32.sin";
+    case Opcode::F32Cos: return "f32.cos";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

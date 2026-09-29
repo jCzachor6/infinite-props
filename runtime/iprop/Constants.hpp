@@ -101,11 +101,13 @@ enum class Opcode : u8 {
     F32Sqrt = 0x4C,
     I32ToF32 = 0x4D,
     F32ToI32 = 0x4E,
+    F32Sin = 0x4F,
 
     // Colour (§9.5)
     ColorMix = 0x50,
     ColorShade = 0x51,
     ColorSetA = 0x52, // reserved in v0.1; validation rejects it
+    F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
     // Seeded primitives (§9.6)
     StreamPush = 0x60,

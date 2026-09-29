@@ -29,11 +29,11 @@ the Godot engine integration (the flagship adoption target).
   (portrait + plant, 4 seeds each); the part-helper name resolution fixed.
 
 ### 2. Trig
-- [ ] `2.1` spec §9/§12: `f32.sin`, `f32.cos` opcodes with the pinned
+- [x] `2.1` spec §9/§12: `f32.sin`, `f32.cos` opcodes with the pinned
   algorithm (range reduction, bit-exactness) — additive, no golden changes.
-- [ ] `2.2` runtime: the opcodes + bit-exact tests.
-- [ ] `2.3` language: the `sin`/`cos` builtins (`f32 -> f32`).
-- [ ] `2.4` proof: the full `PaPlant` port — the missing species (the
+- [x] `2.2` runtime: the opcodes + bit-exact tests.
+- [x] `2.3` language: the `sin`/`cos` builtins (`f32 -> f32`).
+- [x] `2.4` proof: the full `PaPlant` port — the missing species (the
   succulent's petal ring, the arching fronds) and the original six-species
   `index(6)` back.
 
@@ -91,6 +91,16 @@ the Godot engine integration (the flagship adoption target).
 - [ ] Each new opcode has the pinned algorithm in the spec and bit-exact
   tests.
 - [ ] The rewritten ports are the proof: shorter sources, identical pixels.
+
+## Discovered issues (found during the v0.2 work)
+
+- [ ] **The WASM backend diverges from the native reference on the golden
+  assets** (noise/shapes/portrait/plant) — present since Phase 24. The
+  conformance suite masks it: its FNV hashes were pinned from the divergent
+  WASM build. Partly fixed in 2.2 (the missing `-ffp-contract=off` flag was
+  added to the WASM target); the remaining pixel divergence needs a root
+  cause and a re-pin of `backends/html5/test/conformance.js` from the native
+  reference. The trig opcodes themselves are bit-exact across the backends.
 
 ## Deferred (out of v0.2)
 

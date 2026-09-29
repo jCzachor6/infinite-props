@@ -160,6 +160,85 @@ TEST_CASE("conversions follow the pinned rules") {
     REQUIRE(evalProgI32(Prog{}.F(1.0e20f).emit(0x4E)) == kMax);     // out of range
 }
 
+TEST_CASE("f32.sin and f32.cos match the pinned algorithm bit for bit") {
+    // Spec §12.7: the Cody-Waite quadrant reduction plus the Taylor
+    // polynomials, all in double precision. The expected bit patterns below
+    // are the frozen outputs of that algorithm — any change is a breaking
+    // change (regenerate only together with a spec update).
+    struct Case {
+        u32 input; // the f32 bits
+        u32 sinBits;
+        u32 cosBits;
+    };
+    const Case cases[] = {
+        {0x00000000u, 0x00000000u, 0x3F800000u}, // zero
+        {0x80000000u, 0x80000000u, 0x3F800000u}, // -0: sin(-0) = -0
+        {0x3F490FDBu, 0x3F3504F3u, 0x3F3504F3u}, // pi/4
+        {0x3FC90FDBu, 0x3F800000u, 0xB33BBD2Eu}, // pi/2
+        {0x40490FDBu, 0xB3BBBD2Eu, 0xBF800000u}, // pi
+        {0x4096CBE4u, 0xBF800000u, 0x324CDE2Eu}, // 3pi/2
+        {0x40C90FDBu, 0x343BBD2Eu, 0x3F800000u}, // 2pi
+        {0xBFC90FDBu, 0xBF800000u, 0xB33BBD2Eu}, // -pi/2
+        {0x3F800000u, 0x3F576AA4u, 0x3F0A5140u}, // 1
+        {0xBF800000u, 0xBF576AA4u, 0x3F0A5140u}, // -1
+        {0x3F000000u, 0x3EF57744u, 0x3F60A940u}, // 0.5
+        {0x358637BDu, 0x358637BDu, 0x3F800000u}, // 1e-6: sin(x) = x, cos(x) = 1
+        {0x42C80000u, 0xBF01A12Eu, 0x3F5CC0EEu}, // 100 (reduction path)
+        {0x447A0000u, 0x3F53AE61u, 0x3F0FF813u}, // 1000
+        {0x501502F9u, 0xBEF99A60u, 0x3F5F84C6u}, // 1e10 (large, still pinned)
+        {0x3F333333u, 0x3F24EB73u, 0x3F43CCB3u}, // 0.7
+        {0x3EE4DD2Fu, 0x3EDD517Au, 0x3F66D8F4u}, // 0.447
+    };
+    for (const Case& testCase : cases) {
+        INFO("input 0x" << std::hex << testCase.input);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.input)).emit(0x4F))) ==
+                testCase.sinBits);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(testCase.input)).emit(0x53))) ==
+                testCase.cosBits);
+    }
+
+    // NaN and infinities yield the canonical quiet NaN (0x7FC00000).
+    const u32 canonical = 0x7FC00000u;
+    const f32 nan = std::numeric_limits<f32>::quiet_NaN();
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(nan).emit(0x4F))) == canonical);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(nan).emit(0x53))) == canonical);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(inf).emit(0x4F))) == canonical);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-inf).emit(0x53))) == canonical);
+}
+
+TEST_CASE("the pinned sine agrees with libm to within 1 ulp on a grid") {
+    // The pinned algorithm is not required to be correctly rounded — the
+    // spec only pins its exact output — but on the operating envelope
+    // (|x| <= 4096) it must be within 1 ulp of the mathematical value. The
+    // comparison against std::sin/std::cos (correctly rounded on macOS
+    // libm) bounds the polynomial and the reduction.
+    const auto ulp = [](f32 a, f32 b) {
+        if (std::isnan(a) && std::isnan(b)) {
+            return 0u;
+        }
+        const u32 x = bitsOf(a);
+        const u32 y = bitsOf(b);
+        const u32 diff = x > y ? x - y : y - x;
+        return diff;
+    };
+    for (u32 i = 0; i < 2000; ++i) {
+        // Deterministic pseudo-random f32s in [-4096, 4096], avoiding NaN.
+        u32 bits = i * 2654435761u + 0x9e3779b9u;
+        bits &= 0x7FFFFFu; // 23 mantissa bits
+        f32 value = f32FromBits(bits);
+        value *= (i % 2 == 0 ? 1.f : -1.f);
+        value *= (i % 17 == 0 ? 4096.f : 16.f);
+        const f32 gotSin = evalProgF32(Prog{}.F(value).emit(0x4F));
+        const f32 gotCos = evalProgF32(Prog{}.F(value).emit(0x53));
+        const f32 wantSin = std::sin(value);
+        const f32 wantCos = std::cos(value);
+        INFO("value " << value);
+        REQUIRE(ulp(gotSin, wantSin) <= 1u);
+        REQUIRE(ulp(gotCos, wantCos) <= 1u);
+    }
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

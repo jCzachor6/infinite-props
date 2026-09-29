@@ -68,7 +68,7 @@ asset plant {
     stream_pop()
 
     // ===== main stream: the shape =====
-    species = index(5)
+    species = index(6)
     style = index(6)
     widthN = index(6)
     rimDepth = 2.2 + index(3)
