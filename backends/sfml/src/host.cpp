@@ -179,23 +179,13 @@ int run(int argc, char** argv) {
     const auto uploadSingle = [&](const RenderedImage& image) {
         iprop::sfml_host::uploadTexture(texture, sprite,
             {image.width, image.height}, image.pixels.data());
-        const float scale = static_cast<float>(kWindowSize) /
-                            static_cast<float>(image.width > image.height
-                                                   ? image.width
-                                                   : image.height);
-        sprite.setScale({scale, scale});
-        sprite.setPosition(
-            {(static_cast<float>(kWindowSize) - scale * image.width) / 2.f,
-             (static_cast<float>(kWindowSize) - scale * image.height) / 2.f});
+        iprop::sfml_host::fitSprite(sprite, window.getSize());
     };
 
     const auto uploadAtlas = [&](const RenderedImage& atlasImage) {
         iprop::sfml_host::uploadTexture(atlasTexture, atlasSprite,
             {atlasImage.width, atlasImage.height}, atlasImage.pixels.data());
-        const float scale = static_cast<float>(kWindowSize) /
-                            static_cast<float>(atlasImage.width);
-        atlasSprite.setScale({scale, scale});
-        atlasSprite.setPosition({0.f, 0.f});
+        iprop::sfml_host::fitSprite(atlasSprite, window.getSize());
     };
 
     if (!screenshotPath.empty()) {

@@ -26,7 +26,7 @@ Without SFML the backend is skipped gracefully. This produces:
 ```
 
 - Loads the `.iprop` through the C API and draws the generated RGBA
-  (nearest-neighbour, integer-scaled to the 640×640 window).
+  (nearest-neighbour, fitted and centered in the 640×640 window).
 - **Left/Right** cycle the seed; **Up/Down** cycle the variant (wrapped at
   the meta's `variants`).
 - **A** toggles the atlas view: a 4×4 grid of variants (rows) × seeds
@@ -44,13 +44,13 @@ iprop_sfml file.iprop --seed 3 --export out.png         # the S-key path
 iprop_sfml file.iprop --seed 3 --atlas out.png          # the A-key atlas
 iprop_sfml file.iprop --seed 3 --screenshot out.png     # one windowed frame,
                                                         # read back from the
-                                                        # texture (needs a
+                                                        # window (needs a
                                                         # display)
 ```
 
-The export, the atlas (4×4 vs the per-tile `ipgen` assembly) and the
-screenshot readback were verified pixel-identical to the reference
-generator.
+The export contains the asset's native pixels; the atlas contains 4×4
+native tiles. The screenshot captures the 640×640 window, including its
+background, centered placement and scale.
 
 ## The conformance (7.2)
 
