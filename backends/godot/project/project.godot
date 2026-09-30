@@ -9,3 +9,5 @@ run/main_scene="res://demo.tscn"
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+textures/vram_compression/import_s3tc_bptc=true

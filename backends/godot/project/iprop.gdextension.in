@@ -1,0 +1,8 @@
+[configuration]
+entry_symbol = "iprop_godot_init"
+compatibility_minimum = "4.5"
+
+[libraries]
+; One selected library serves editor previews and game exports.
+@IPROP_GODOT_PLATFORM@.debug.@IPROP_GODOT_ARCH@ = "res://bin/@IPROP_GODOT_LIBRARY@"
+@IPROP_GODOT_PLATFORM@.release.@IPROP_GODOT_ARCH@ = "res://bin/@IPROP_GODOT_LIBRARY@"

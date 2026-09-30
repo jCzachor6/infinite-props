@@ -1,0 +1,5 @@
+{
+  "enabled_classes": [
+    "FileAccess", "Image", "ImageTexture", "Resource", "Sprite2D", "Texture2D", "OS"
+  ]
+}

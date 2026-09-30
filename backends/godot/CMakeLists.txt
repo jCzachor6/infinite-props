@@ -24,6 +24,13 @@ if(NOT EXISTS ${IPROP_GODOTCPP_DIR}/CMakeLists.txt)
 endif()
 
 # The bindings (the generated class headers come from the 4.5-stable API).
+if(NOT DEFINED GODOTCPP_TARGET)
+    if(CMAKE_BUILD_TYPE MATCHES "^(Release|MinSizeRel)$")
+        set(GODOTCPP_TARGET template_release CACHE STRING "Godot bindings target")
+    else()
+        set(GODOTCPP_TARGET template_debug CACHE STRING "Godot bindings target")
+    endif()
+endif()
 add_subdirectory(${IPROP_GODOTCPP_DIR} godot-cpp)
 
 # The extension library (8.1/8.2).
@@ -39,18 +46,53 @@ target_include_directories(iprop_godot SYSTEM PRIVATE
     $<TARGET_PROPERTY:godot-cpp,INTERFACE_INCLUDE_DIRECTORIES>)
 iprop_warnings(iprop_godot)
 
+if(APPLE)
+    set(IPROP_GODOT_PLATFORM macos)
+    set(IPROP_GODOT_EXPORT_PLATFORM macOS)
+elseif(WIN32)
+    set(IPROP_GODOT_PLATFORM windows)
+    set(IPROP_GODOT_EXPORT_PLATFORM "Windows Desktop")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(IPROP_GODOT_PLATFORM linux)
+    set(IPROP_GODOT_EXPORT_PLATFORM Linux)
+else()
+    message(FATAL_ERROR "The Godot backend supports macOS, Windows and Linux")
+endif()
+get_target_property(IPROP_GODOT_ARCH godot-cpp GODOTCPP_ARCH)
+if(GODOTCPP_TARGET STREQUAL "template_release")
+    set(IPROP_GODOT_FLAVOR release)
+else()
+    set(IPROP_GODOT_FLAVOR debug)
+endif()
+set(IPROP_GODOT_NAME "iprop-godot.${IPROP_GODOT_PLATFORM}.${IPROP_GODOT_FLAVOR}.${IPROP_GODOT_ARCH}")
+set(IPROP_GODOT_LIBRARY "${CMAKE_SHARED_LIBRARY_PREFIX}${IPROP_GODOT_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
 set_target_properties(iprop_godot PROPERTIES
-    OUTPUT_NAME "iprop-godot.macos.debug"
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/godot-project/bin)
+    OUTPUT_NAME "${IPROP_GODOT_NAME}"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/godot-project/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/godot-project/bin")
 
 # The assembled demo project (the sources + the demo assets + the built
 # library), ready for the Godot editor or the headless runs.
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
-foreach(file project.godot iprop.gdextension demo.tscn demo.gd conformance.gd)
+foreach(file project.godot demo.tscn demo.gd conformance.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
+configure_file(project/iprop.gdextension.in ${IPROP_GODOT_PROJECT}/iprop.gdextension @ONLY)
+set(IPROP_GODOT_RELEASE_TEMPLATE "" CACHE FILEPATH "Optional Godot release export template")
+set(IPROP_GODOT_EXPORT_TEMPLATE "${IPROP_GODOT_RELEASE_TEMPLATE}")
+if(APPLE AND IPROP_GODOT_RELEASE_TEMPLATE AND NOT IPROP_GODOT_ARCH STREQUAL "universal")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    set(IPROP_GODOT_EXPORT_TEMPLATE "${CMAKE_CURRENT_BINARY_DIR}/macos-template.${IPROP_GODOT_ARCH}.zip")
+    add_custom_command(OUTPUT "${IPROP_GODOT_EXPORT_TEMPLATE}"
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/prepare_macos_template.py
+                "${IPROP_GODOT_RELEASE_TEMPLATE}" "${IPROP_GODOT_ARCH}" "${IPROP_GODOT_EXPORT_TEMPLATE}"
+        DEPENDS "${IPROP_GODOT_RELEASE_TEMPLATE}" prepare_macos_template.py)
+    add_custom_target(godot_export_template DEPENDS "${IPROP_GODOT_EXPORT_TEMPLATE}")
+    add_dependencies(iprop_godot godot_export_template)
+endif()
+configure_file(project/export_presets.cfg.in ${IPROP_GODOT_PROJECT}/export_presets.cfg @ONLY)
 foreach(asset plant.iprop portrait.iprop)
     configure_file(${CMAKE_SOURCE_DIR}/examples/${asset}
                    ${IPROP_GODOT_PROJECT}/assets/${asset} COPYONLY)

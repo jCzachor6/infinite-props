@@ -1,8 +1,0 @@
-[configuration]
-
-entry_symbol = "iprop_godot_init"
-compatibility_minimum = "4.5"
-
-[libraries]
-
-macos.debug = "res://bin/libiprop-godot.macos.debug.dylib"

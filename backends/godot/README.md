@@ -19,9 +19,28 @@ cmake -S . -B build \
 cmake --build build --parallel
 ```
 
-Without the bindings the backend is skipped gracefully. The build
+`IPROP_GODOT=ON` requires the bindings (and the engine when tests are ON);
+`AUTO` skips missing bindings and `OFF` disables the backend. The build
 assembles a ready project under `build/godot-project/` (the project
 sources, the demo assets, the extension library and the extension list).
+The manifest is generated for the target OS and architecture. Library names
+include the bindings' actual debug/release flavor; a fresh Release configure
+defaults to `GODOTCPP_TARGET=template_release`. The selected library is used
+for both editor preview and game export. Use separate build directories for
+different bindings targets.
+
+The generated `export_presets.cfg` contains a `Release` preset:
+
+```
+godot --headless --path build/godot-project --export-release Release /tmp/iprop-game.zip
+```
+
+Install matching Godot 4.5.2 export templates, or pass the platform template
+through `-DIPROP_GODOT_RELEASE_TEMPLATE=/path/to/template` when configuring.
+For a single-architecture macOS build, pass Godot's `macos.zip` through that
+option: CMake prepares a matching template with `lipo` because Godot 4.5.2's
+official archive supplies universal binary names only. The demo enables both
+desktop texture import formats required by Godot's export validation.
 
 ## The extension (8.1/8.2)
 
