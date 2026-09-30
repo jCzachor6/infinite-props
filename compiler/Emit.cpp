@@ -43,12 +43,17 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
+u32 Emitter::allocateLocal(ValueType type) {
+    const u32 slot = static_cast<u32>(current_->params.size() + current_->locals.size());
+    current_->locals.push_back(type);
+    return slot;
+}
+
 // Allocate a typed local on first use. Its index stays fixed even when a
 // different temporary type is needed later in this function.
 u32 Emitter::allocateScratch(std::optional<u32>& slot, ValueType type) {
     if (!slot) {
-        slot = static_cast<u32>(current_->params.size() + current_->locals.size());
-        current_->locals.push_back(type);
+        slot = allocateLocal(type);
     }
     return *slot;
 }
@@ -263,6 +268,14 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
                               const ips::OutputDecl& output,
                               const ips::Expr& value) {
     const u32 slot = slotForOutput(owner, output);
+    if (output.kind == ips::OutputKind::Point) {
+        // Points take the vec2 shape: a literal pair, a bare part read or
+        // an unpacked vec2 value (see emitPointValue).
+        emitPointValue(value);
+        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
+            static_cast<u16>(slot));
+        return;
+    }
     if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
         for (const auto& element : vector->elements) {
             emitExpr(*element);
@@ -275,9 +288,7 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
     }
     switch (output.kind) {
     case ips::OutputKind::Point:
-        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
-            static_cast<u16>(slot));
-        break;
+        break; // handled above
     case ips::OutputKind::Rect:
         ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0,
             static_cast<u16>(slot));

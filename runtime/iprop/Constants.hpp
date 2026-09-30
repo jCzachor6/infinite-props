@@ -7,7 +7,7 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 2;
+inline constexpr u16 kVersionMinor = 3;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 
@@ -118,6 +118,13 @@ enum class Opcode : u8 {
     F32Exp = 0x59,
     F32Atan2 = 0x5A,
 
+    // Vec2 (spec §9.4; added in v0.3)
+    Vec2Make = 0x5B,
+    Vec2Add = 0x5C,
+    Vec2Sub = 0x5D,
+    Vec2Mul = 0x5E,
+    Vec2Div = 0x5F,
+
     // Seeded primitives (§9.6)
     StreamPush = 0x60,
     StreamPop = 0x61,
@@ -132,6 +139,14 @@ enum class Opcode : u8 {
     Fault = 0x71,
     Smooth = 0x72,
     Lerp = 0x73,
+
+    // Vec2 unary ops (spec §9.4; added in v0.3, placed after the helpers)
+    Vec2Neg = 0x74,
+    Vec2Len = 0x75,
+    Vec2Dot = 0x76,
+    Vec2Rot = 0x77,
+    Vec2X = 0x78,
+    Vec2Y = 0x79,
 
     // Canvas (§9.8)
     Pixel = 0x80,

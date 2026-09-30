@@ -280,9 +280,9 @@ TEST_CASE("input default values must match the declared type") {
 
 TEST_CASE("type mismatches are rejected") {
     expectCheckError(wrap("c = #33291f\nx = c + 1"), "arithmetic requires numeric");
-    expectCheckError(wrap("p = {1, 2}\nq = p * 2"), "cannot store point");
+    expectCheckError(wrap("p = {1, 2}\nq = p % 2"), "'%' requires i32");
     expectCheckError(wrap("x = #33291f * 2"), "arithmetic requires numeric");
-    expectCheckError(wrap("x = {1, 2} + 1"), "arithmetic requires numeric");
+    expectCheckError(wrap("x = {1, 2, 3} + 1"), "arithmetic requires numeric");
     expectCheckError(wrap("x = -#33291f"), "unary minus requires a numeric");
     expectCheckError(wrap("x = {1, 2, 3} == {4, 5, 6}"),
                      "comparison requires numeric");
@@ -295,6 +295,23 @@ TEST_CASE("type mismatches are rejected") {
     expectCheckError(wrap("x = \"text\""), "string literals");
 }
 
+TEST_CASE("unsupported vector-scalar operators are rejected by the checker") {
+    for (const std::string scalar : {"2", "2.0"}) {
+        for (const std::string op : {"+", "-"}) {
+            INFO("operator " << op << ", scalar " << scalar);
+            const std::string message = "operator '" + op + "' does not support";
+            expectCheckError(wrap("p = {4, 8} q = p " + op + " " + scalar),
+                             message.c_str());
+            expectCheckError(wrap("p = {4, 8} q = " + scalar + " " + op + " p"),
+                             message.c_str());
+        }
+        expectCheckError(wrap("p = {4, 8} q = " + scalar + " / p"),
+                         "operator '/' does not support");
+    }
+    expectCheckError(wrap("p = {4, 8} q = p * #ffffff"), "does not support");
+    expectCheckError(wrap("p = {4, 8} q = #ffffff / p"), "does not support");
+}
+
 TEST_CASE("conditions must be integers") {
     expectCheckError(wrap("if (1.5) { x = 1 }"), "condition must be an integer");
     expectCheckError(wrap("while ({1, 2}) { x = 1 }"), "condition must be an integer");
@@ -303,28 +320,29 @@ TEST_CASE("conditions must be integers") {
 }
 
 TEST_CASE("vector arity errors") {
-    expectCheckError(wrap("x = {1}"), "2 (point), 3 (circle) or 4 (rect)");
-    expectCheckError(wrap("x = {1, 2, 3, 4, 5}"), "2 (point), 3 (circle)");
+    expectCheckError(wrap("x = {1}"), "2 (vec2), 3 (circle) or 4 (rect)");
+    expectCheckError(wrap("x = {1, 2, 3, 4, 5}"), "2 (vec2), 3 (circle)");
     expectCheckError(wrap("x = {1, #808d74}"), "vector elements must be numeric");
 }
 
 TEST_CASE("output slot kinds are checked") {
     expectCheckError(
         "asset t { size 8x8 output rect r draw(v: i32, a: i32) { r = {1, 2} } }",
-        "expects rect, got point");
+        "expects rect, got vec2");
     expectCheckError(
         "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2, 3, 4} } }",
-        "expects point, got rect");
+        "expects vec2, got rect");
     expectCheckError(
         "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = 5 } }",
-        "expects point, got i32");
+        "expects vec2, got i32");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2} } }"),
         {}));
 }
 
 TEST_CASE("locals cannot hold compounds and are typed on first assignment") {
-    expectCheckError(wrap("p = {1, 2}"), "cannot store point in local 'p'");
+    expectCheckError(wrap("p = {1, 2, 3}"), "cannot store circle in local 'p'");
+    CHECK_NOTHROW(checkAsset(parse(wrap("p = {1, 2}\nq = p.x + p.y")), {}));
     expectCheckError(wrap("x = 1\nx = 2.5"), "local 'x' is i32");
     expectCheckError(wrap("x = 2.5\nx = 1"), "local 'x' is f32");
     CHECK_NOTHROW(checkAsset(parse(wrap("x = 1\nx = 2\ny = 2.5\ny = 3.5")), {}));
@@ -497,7 +515,7 @@ TEST_CASE("part calls are validated against the part surface") {
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = 5) } }",
-        hairParts(), "'at' must be a point");
+        hairParts(), "'at' must be a vec2");
 
     // Unknown uniform.
     expectCheckError(
@@ -528,7 +546,7 @@ TEST_CASE("part output reads are validated") {
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output rect r "
         "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
-        hairParts(), "expects rect, got point");
+        hairParts(), "expects rect, got vec2");
     expectCheckError(
         "asset t { size 8x8 draw(v: i32, a: i32) { x = bogus.outputs.p } }",
         "not an imported part");
@@ -677,7 +695,8 @@ TEST_CASE("type helpers behave") {
     REQUIRE(isNumeric(ValueType::F32));
     REQUIRE(!isNumeric(ValueType::Color));
     REQUIRE(isStorable(ValueType::Color));
-    REQUIRE(!isStorable(ValueType::Point));
+    REQUIRE(isStorable(ValueType::Vec2));
+    REQUIRE(!isStorable(ValueType::Rect));
     REQUIRE(promote(ValueType::I32, ValueType::I32) == ValueType::I32);
     REQUIRE(promote(ValueType::I32, ValueType::F32) == ValueType::F32);
     REQUIRE(argFits(ValueType::F32, ValueType::I32));

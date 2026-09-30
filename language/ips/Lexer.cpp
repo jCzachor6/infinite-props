@@ -30,6 +30,7 @@ const std::map<std::string, TokenKind>& keywords() {
         {"f32", TokenKind::TypeF32},
         {"u32", TokenKind::TypeU32},
         {"i32", TokenKind::TypeI32},
+        {"vec2", TokenKind::TypeVec2},
         {"point", TokenKind::KindPoint},
         {"rect", TokenKind::KindRect},
         {"circle", TokenKind::KindCircle},
@@ -307,6 +308,7 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::TypeF32: return "f32";
     case TokenKind::TypeU32: return "u32";
     case TokenKind::TypeI32: return "i32";
+    case TokenKind::TypeVec2: return "vec2";
     case TokenKind::KindPoint: return "point";
     case TokenKind::KindRect: return "rect";
     case TokenKind::KindCircle: return "circle";

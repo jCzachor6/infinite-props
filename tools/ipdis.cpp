@@ -23,6 +23,7 @@ const char* typeName(ValueType type) {
     case ValueType::I32: return "i32";
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
+    case ValueType::Vec2: return "vec2";
     }
     return "?";
 }

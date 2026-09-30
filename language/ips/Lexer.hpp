@@ -42,6 +42,7 @@ enum class TokenKind {
     TypeF32,
     TypeU32,
     TypeI32,
+    TypeVec2,
 
     // Output kinds.
     KindPoint,

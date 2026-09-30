@@ -17,11 +17,11 @@ ValueType inputValueType(InputType type) {
 
 ValueType outputValueType(OutputKind kind) {
     switch (kind) {
-    case OutputKind::Point: return ValueType::Point;
+    case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
     }
-    return ValueType::Point;
+    return ValueType::Vec2;
 }
 
 } // namespace
@@ -163,6 +163,22 @@ ValueType Typer::typeOf(const Expr& expr) {
         return typeIdentifier(*id);
     }
     if (std::holds_alternative<Member>(expr)) {
+        const auto& member = std::get<Member>(expr);
+        // Resolve the complete part-output path first, including outputs
+        // named x or y; a component access then types that point recursively.
+        const Path path = flatten(expr);
+        if (path.segments.size() == 2 && path.segments[0] == "outputs") {
+            return typePartRead(expr);
+        }
+        const ValueType object = typeOf(*member.object);
+        if (object == ValueType::Vec2) {
+            if (member.name == "x" || member.name == "y") {
+                return ValueType::F32;
+            }
+            error(member.location,
+                  "vec2 has only .x and .y components, got '" +
+                      member.name + "'");
+        }
         return typePartRead(expr);
     }
     if (const auto* call = std::get_if<Call>(&expr)) {
@@ -369,9 +385,9 @@ ValueType Typer::typePartCall(const Call& call) {
                 }
                 hasAt = true;
                 const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::Point) {
+                if (got != ValueType::Vec2) {
                     error(locationOf(*arg.value),
-                          "'at' must be a point {x, y}, got " +
+                          "'at' must be a vec2 {x, y}, got " +
                               std::string(typeName(got)));
                 }
                 continue;
@@ -423,12 +439,12 @@ ValueType Typer::typeVector(const VectorLit& vector) {
         return type;
     };
     switch (vector.elements.size()) {
-    case 2: return numericElements(ValueType::Point);
+    case 2: return numericElements(ValueType::Vec2);
     case 3: return numericElements(ValueType::Circle);
     case 4: return numericElements(ValueType::Rect);
     default:
         error(vector.location,
-              "vector literal must have 2 (point), 3 (circle) or 4 (rect) "
+              "vector literal must have 2 (vec2), 3 (circle) or 4 (rect) "
               "elements, got " +
                   std::to_string(vector.elements.size()));
     }
@@ -482,6 +498,23 @@ ValueType Typer::typeBinary(const Binary& bin) {
     case Binary::Op::Sub:
     case Binary::Op::Mul:
     case Binary::Op::Div:
+        if (left == ValueType::Vec2 || right == ValueType::Vec2) {
+            const bool vectors = left == ValueType::Vec2 && right == ValueType::Vec2;
+            const bool vectorScalar = left == ValueType::Vec2 && isNumeric(right) &&
+                                      (bin.op == Binary::Op::Mul || bin.op == Binary::Op::Div);
+            const bool scalarVector = isNumeric(left) && right == ValueType::Vec2 &&
+                                      bin.op == Binary::Op::Mul;
+            if (!vectors && !vectorScalar && !scalarVector) {
+                const char* op = bin.op == Binary::Op::Add ? "+"
+                                 : bin.op == Binary::Op::Sub ? "-"
+                                 : bin.op == Binary::Op::Mul ? "*" : "/";
+                error(bin.location,
+                      std::string("operator '") + op + "' does not support " +
+                          typeName(left) + " and " +
+                          typeName(right));
+            }
+            return ValueType::Vec2;
+        }
         if (!isNumeric(left) || !isNumeric(right)) {
             error(bin.location, "arithmetic requires numeric operands, got " +
                                      std::string(typeName(left)) + " and " +
@@ -529,9 +562,9 @@ ValueType Typer::typeUnary(const Unary& un) {
     const ValueType operand = typeOf(*un.operand);
     switch (un.op) {
     case Unary::Op::Neg:
-        if (!isNumeric(operand)) {
+        if (!isNumeric(operand) && operand != ValueType::Vec2) {
             error(un.location,
-                  "unary minus requires a numeric operand, got " +
+                  "unary minus requires a numeric or vec2 operand, got " +
                       std::string(typeName(operand)));
         }
         return operand;

@@ -112,6 +112,7 @@ struct Execution {
     i32 popI32();
     f32 popF32();
     Color popColor();
+    Vec2 popVec2();
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);

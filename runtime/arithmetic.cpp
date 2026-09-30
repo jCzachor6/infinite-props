@@ -580,6 +580,97 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::Vec2Make: {
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(Vec2{x, y}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Add: {
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        ex.push(Value(Vec2{a.x + b.x, a.y + b.y}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Sub: {
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        ex.push(Value(Vec2{a.x - b.x, a.y - b.y}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Mul: {
+        const Value right = ex.pop();
+        const Vec2 a = ex.popVec2();
+        if (const Vec2* b = std::get_if<Vec2>(&right)) {
+            ex.push(Value(Vec2{a.x * b->x, a.y * b->y}));
+        } else {
+            const f32 s = std::get<f32>(right);
+            ex.push(Value(Vec2{a.x * s, a.y * s}));
+        }
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Div: {
+        const Value right = ex.pop();
+        const Vec2 a = ex.popVec2();
+        if (const Vec2* b = std::get_if<Vec2>(&right)) {
+            ex.push(Value(Vec2{a.x / b->x, a.y / b->y}));
+        } else {
+            const f32 s = std::get<f32>(right);
+            ex.push(Value(Vec2{a.x / s, a.y / s}));
+        }
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Neg: {
+        const Vec2 v = ex.popVec2();
+        ex.push(Value(Vec2{-v.x, -v.y}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Len: {
+        const Vec2 v = ex.popVec2();
+        const f32 xx = v.x * v.x;
+        const f32 yy = v.y * v.y;
+        ex.push(Value(std::sqrt(xx + yy)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Dot: {
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        const f32 abx = a.x * b.x;
+        const f32 aby = a.y * b.y;
+        ex.push(Value(abx + aby));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Rot: {
+        const f32 angle = ex.popF32();
+        const Vec2 v = ex.popVec2();
+        const f32 c = f32Cos(angle);
+        const f32 s = f32Sin(angle);
+        const f32 xc = v.x * c;
+        const f32 ys = v.y * s;
+        const f32 xs = v.x * s;
+        const f32 yc = v.y * c;
+        ex.push(Value(Vec2{xc - ys, xs + yc}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2X: {
+        ex.push(Value(ex.popVec2().x));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Y: {
+        ex.push(Value(ex.popVec2().y));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::I32ToF32: {
         ex.push(Value(static_cast<f32>(ex.popI32())));
         ++ex.frame().ip;

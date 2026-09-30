@@ -486,6 +486,90 @@ TEST_CASE("the math package agrees with libm within the pinned tolerance") {
     }
 }
 
+TEST_CASE("vec2 make/add/sub are component-wise IEEE") {
+    const auto stack = evalProg(Prog{}.F(1.5f).F(2.5f).emit(0x5B));
+    REQUIRE(stack.size() == 1);
+    const auto v = std::get<Vec2>(stack[0]);
+    REQUIRE(v.x == 1.5f);
+    REQUIRE(v.y == 2.5f);
+
+    const auto add = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(2.f).emit(0x5B).F(0.5f).F(-1.f).emit(0x5B).emit(0x5C))[0]);
+    REQUIRE(add.x == 1.5f);
+    REQUIRE(add.y == 1.f);
+
+    const auto sub = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(2.f).emit(0x5B).F(0.5f).F(-1.f).emit(0x5B).emit(0x5D))[0]);
+    REQUIRE(sub.x == 0.5f);
+    REQUIRE(sub.y == 3.f);
+}
+
+TEST_CASE("vec2 mul/div accept scalars and vectors") {
+    // Scalar: {1, 2} * 3 = {3, 6}.
+    const auto scaled = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(2.f).emit(0x5B).F(3.f).emit(0x5E))[0]);
+    REQUIRE(scaled.x == 3.f);
+    REQUIRE(scaled.y == 6.f);
+    // Vector (Hadamard): {1, 2} * {3, 4} = {3, 8}.
+    const auto hadamard = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(2.f).emit(0x5B).F(3.f).F(4.f).emit(0x5B).emit(0x5E))[0]);
+    REQUIRE(hadamard.x == 3.f);
+    REQUIRE(hadamard.y == 8.f);
+    // Scalar division: {3, 6} / 2 = {1.5, 3}.
+    const auto divided = std::get<Vec2>(
+        evalProg(Prog{}.F(3.f).F(6.f).emit(0x5B).F(2.f).emit(0x5F))[0]);
+    REQUIRE(divided.x == 1.5f);
+    REQUIRE(divided.y == 3.f);
+    // Vector division: {6, 9} / {2, 3} = {3, 3}.
+    const auto vdivided = std::get<Vec2>(
+        evalProg(Prog{}.F(6.f).F(9.f).emit(0x5B).F(2.f).F(3.f).emit(0x5B).emit(0x5F))[0]);
+    REQUIRE(vdivided.x == 3.f);
+    REQUIRE(vdivided.y == 3.f);
+}
+
+TEST_CASE("vec2 neg/len/dot follow the pinned formulas") {
+    const auto neg = std::get<Vec2>(evalProg(Prog{}.F(1.f).F(-2.f).emit(0x5B).emit(0x74))[0]);
+    REQUIRE(neg.x == -1.f);
+    REQUIRE(neg.y == 2.f);
+
+    // len({3, 4}) = 5 exactly; len({-3, -4}) = 5.
+    REQUIRE(evalProgF32(Prog{}.F(3.f).F(4.f).emit(0x5B).emit(0x75)) == 5.f);
+    REQUIRE(evalProgF32(Prog{}.F(-3.f).F(-4.f).emit(0x5B).emit(0x75)) == 5.f);
+
+    // dot({2, 3}, {4, 5}) = 23.
+    REQUIRE(evalProgF32(
+                Prog{}.F(2.f).F(3.f).emit(0x5B).F(4.f).F(5.f).emit(0x5B).emit(0x76)) ==
+            23.f);
+}
+
+TEST_CASE("vec2 rot uses the pinned sin/cos — self-consistent with the opcodes") {
+    // rot({1, 0}, a) must equal {cos(a), sin(a)} from the same pinned
+    // algorithms the f32.cos/f32.sin opcodes use (spec §12.7).
+    const f32 angle = 1.2345f;
+    const auto rotated = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).F(angle).emit(0x77))[0]);
+    REQUIRE(rotated.x == evalProgF32(Prog{}.F(angle).emit(0x53))); // f32.cos
+    REQUIRE(rotated.y == evalProgF32(Prog{}.F(angle).emit(0x4F))); // f32.sin
+    // A quarter turn of {1, 0} lands near {0, 1} (the pinned cos(pi/2)
+    // is tiny but not exactly zero).
+    const f32 piOver2 = 1.57079632679f;
+    const auto quarter = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).F(piOver2).emit(0x77))[0]);
+    REQUIRE(std::fabs(quarter.x) < 1e-5f);
+    REQUIRE(quarter.y == evalProgF32(Prog{}.F(piOver2).emit(0x4F)));
+    // And the rotation of {0, 1} by pi/2 lands on {-1, 0}-ish: the
+    // counterclockwise sense.
+    const auto quarter2 = std::get<Vec2>(
+        evalProg(Prog{}.F(0.f).F(1.f).emit(0x5B).F(piOver2).emit(0x77))[0]);
+    REQUIRE(quarter2.x == -quarter.y);
+    REQUIRE(quarter2.y == quarter.x);
+}
+
+TEST_CASE("vec2 x/y extract the components") {
+    REQUIRE(evalProgF32(Prog{}.F(1.5f).F(2.5f).emit(0x5B).emit(0x78)) == 1.5f);
+    REQUIRE(evalProgF32(Prog{}.F(1.5f).F(2.5f).emit(0x5B).emit(0x79)) == 2.5f);
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

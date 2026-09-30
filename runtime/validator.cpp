@@ -2,6 +2,7 @@
 
 #include "iprop/Instruction.hpp"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@ const char* typeName(ValueType type) {
     case ValueType::I32: return "i32";
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
+    case ValueType::Vec2: return "vec2";
     }
     return "?";
 }
@@ -42,6 +44,13 @@ public:
         : file_(file), fn_(function), slots_(slots) {}
 
     void run() {
+        const auto hasVec2 = [](const std::vector<ValueType>& types) {
+            return std::find(types.begin(), types.end(), ValueType::Vec2) != types.end();
+        };
+        if (file_.layout.header.versionMinor < 3 &&
+            (hasVec2(fn_.params) || hasVec2(fn_.results) || hasVec2(fn_.locals))) {
+            fail(0, "vec2 types require format 0.3");
+        }
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
             const auto ins = decodeInstruction(fn_.code.subspan(i * 4, 4));
@@ -52,6 +61,11 @@ public:
             if (file_.layout.header.versionMinor < 2 &&
                 (opcode == 0x4F || (opcode >= 0x53 && opcode <= 0x5A))) {
                 fail(i, "trigonometry and math require format 0.2");
+            }
+            if (file_.layout.header.versionMinor < 3 &&
+                ((opcode >= 0x5B && opcode <= 0x5F) ||
+                 (opcode >= 0x74 && opcode <= 0x79))) {
+                fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
         }
@@ -260,6 +274,53 @@ private:
         case Opcode::F32Atan2:
             expect(at, ValueType::F32, "float operand");
             expect(at, ValueType::F32, "float operand");
+            push(at, ValueType::F32);
+            return;
+
+        // Vec2 (§9.4; added in v0.3).
+        case Opcode::Vec2Make:
+            expect(at, ValueType::F32, "vec2 y");
+            expect(at, ValueType::F32, "vec2 x");
+            push(at, ValueType::Vec2);
+            return;
+        case Opcode::Vec2Add:
+        case Opcode::Vec2Sub:
+            expect(at, ValueType::Vec2, "vector operand");
+            expect(at, ValueType::Vec2, "vector operand");
+            push(at, ValueType::Vec2);
+            return;
+        case Opcode::Vec2Mul:
+        case Opcode::Vec2Div: {
+            const ValueType right = pop(at, "vector operand");
+            expect(at, ValueType::Vec2, "vector operand");
+            if (right != ValueType::F32 && right != ValueType::Vec2) {
+                fail(at, std::string("type mismatch: expected f32 or vec2, found ") +
+                              typeName(right) + " (vector operand)");
+            }
+            push(at, ValueType::Vec2);
+            return;
+        }
+        case Opcode::Vec2Neg:
+            expect(at, ValueType::Vec2, "vector operand");
+            push(at, ValueType::Vec2);
+            return;
+        case Opcode::Vec2Len:
+            expect(at, ValueType::Vec2, "vector operand");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Vec2Dot:
+            expect(at, ValueType::Vec2, "vector operand");
+            expect(at, ValueType::Vec2, "vector operand");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Vec2Rot:
+            expect(at, ValueType::F32, "rotation angle");
+            expect(at, ValueType::Vec2, "vector operand");
+            push(at, ValueType::Vec2);
+            return;
+        case Opcode::Vec2X:
+        case Opcode::Vec2Y:
+            expect(at, ValueType::Vec2, "vector operand");
             push(at, ValueType::F32);
             return;
         case Opcode::I32ToF32:

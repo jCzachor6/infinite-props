@@ -12,18 +12,18 @@ format version (minor).
 
 ## A. `vec2` (the foundation — first)
 
-- [ ] `A.1` spec §3/§9: the `vec2` value type — the stack and local slots,
+- [x] `A.1` spec §3/§9: the `vec2` value type — the stack and local slots,
   the function params/results, the point outputs become `vec2`. The ops:
   `vec2.add/sub`, `vec2.mul/div` (vector × scalar and vector × vector),
   `vec2.neg`, `vec2.len`, `vec2.dot`, `vec2.rot` (rotation — the domain
   rotation for noise and shapes), `vec2.make`, `vec2.x/y` extraction.
-- [ ] `A.2` the runtime: the value kind, the arithmetic, the validator, the
+- [x] `A.2` the runtime: the value kind, the arithmetic, the validator, the
   opcode names, the assembler/disassembler.
-- [ ] `A.3` the language: the `vec2` type in the checker, the `{x, y}`
+- [x] `A.3` the language: the `vec2` type in the checker, the `{x, y}`
   literals, the operators, the `.x`/`.y` swizzles, the output writes as
   `vec2`.
-- [ ] `A.4` the compiler lowering + the `.ipa` surface.
-- [ ] `A.5` tests: the bit tables and the language tests; the proof — the
+- [x] `A.4` the compiler lowering + the `.ipa` surface.
+- [x] `A.5` tests: the bit tables and the language tests; the proof — the
   frozen corpus recompiles byte-identical (the old compound point literals
   lower to the same code).
 

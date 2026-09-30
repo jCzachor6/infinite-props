@@ -106,6 +106,12 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"f32.min", {Opcode::F32Min}}, {"f32.max", {Opcode::F32Max}},
         {"f32.pow", {Opcode::F32Pow}}, {"f32.exp", {Opcode::F32Exp}},
         {"f32.atan2", {Opcode::F32Atan2}},
+        {"vec2.make", {Opcode::Vec2Make}}, {"vec2.add", {Opcode::Vec2Add}},
+        {"vec2.sub", {Opcode::Vec2Sub}}, {"vec2.mul", {Opcode::Vec2Mul}},
+        {"vec2.div", {Opcode::Vec2Div}}, {"vec2.neg", {Opcode::Vec2Neg}},
+        {"vec2.len", {Opcode::Vec2Len}}, {"vec2.dot", {Opcode::Vec2Dot}},
+        {"vec2.rot", {Opcode::Vec2Rot}}, {"vec2.x", {Opcode::Vec2X}},
+        {"vec2.y", {Opcode::Vec2Y}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},
@@ -218,6 +224,10 @@ bool parseValueType(const std::string& text, ValueType& out) {
     }
     if (text == "color") {
         out = ValueType::Color;
+        return true;
+    }
+    if (text == "vec2") {
+        out = ValueType::Vec2;
         return true;
     }
     return false;

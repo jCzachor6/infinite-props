@@ -6,6 +6,21 @@
 #include <utility>
 
 namespace iprop {
+namespace {
+
+// Every frame starts each declared local with the same typed zero value.
+Value zeroValue(ValueType type) {
+    switch (type) {
+    case ValueType::I32: return Value(i32{0});
+    case ValueType::F32: return Value(f32{0.f});
+    case ValueType::Color: return Value(Color{});
+    case ValueType::Vec2: return Value(Vec2{});
+    }
+    return Value(i32{0});
+}
+
+} // namespace
+
 namespace detail {
 
 bool dispatch(Execution& ex, Instruction ins) {
@@ -96,6 +111,14 @@ Color Execution::popColor() {
     return std::get<Color>(value);
 }
 
+Vec2 Execution::popVec2() {
+    const Value value = pop();
+    if (!std::holds_alternative<Vec2>(value)) {
+        trap("stack type mismatch: expected vec2");
+    }
+    return std::get<Vec2>(value);
+}
+
 void Execution::push(Value value) {
     Frame& frame = frames.back();
     if (frame.stack.size() >= kMaxStackDepth) {
@@ -128,9 +151,7 @@ void Execution::callFunction(u16 functionIndex) {
     next.functionIndex = functionIndex;
     next.locals = std::move(args);
     for (const ValueType type : callee.locals) {
-        next.locals.push_back(type == ValueType::I32    ? Value(i32{0})
-                              : type == ValueType::F32  ? Value(f32{0.f})
-                                                        : Value(Color{}));
+        next.locals.push_back(zeroValue(type));
     }
     next.stream = caller.stream; // spec §8.2: call frames share the stream
     next.shareStream = true;     // ...like a reference: state propagates back
@@ -193,9 +214,7 @@ void Execution::callPart(u16 partIndex) {
     next.functionIndex = part.functionIndex;
     next.locals = std::move(args);
     for (const ValueType type : fn.locals) {
-        next.locals.push_back(type == ValueType::I32    ? Value(i32{0})
-                              : type == ValueType::F32  ? Value(f32{0.f})
-                                                        : Value(Color{}));
+        next.locals.push_back(zeroValue(type));
     }
     next.stream = seed; // spec §8.2: a part frame starts its own stream
     next.isPart = true;
@@ -297,20 +316,6 @@ void Execution::ensureControl(u16 functionIndex) {
 }
 
 } // namespace detail
-
-namespace {
-
-// Zero value for a declared local type (spec §8.2: locals start zeroed).
-Value zeroValue(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return Value(i32{0});
-    case ValueType::F32: return Value(f32{0.f});
-    case ValueType::Color: return Value(Color{});
-    }
-    return Value(i32{0});
-}
-
-} // namespace
 
 struct VM::Impl {
     detail::Execution ex;

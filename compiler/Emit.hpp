@@ -47,6 +47,7 @@ private:
     u32 f32Scratch(); // the extra f32 local (round)
     u32 colorScratch(); // the extra color local (palette ladders)
     u32 scratchOf(ips::ValueType type); // the scratch for a scalar type
+    u32 allocateLocal(ValueType type); // a distinct local for a live temporary
     u32 allocateScratch(std::optional<u32>& slot, ValueType type);
     bool isParam(const std::string& name) const;
     u32 slotForOutput(const ips::Program* owner,

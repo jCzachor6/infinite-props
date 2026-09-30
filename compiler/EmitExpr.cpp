@@ -29,7 +29,31 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         ins(Opcode::LocalGet, 0, static_cast<u16>(slot));
         return current_->langTypes.at(id->name);
     }
+    if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
+        // A {x, y} literal in a value context becomes the vec2; the
+        // 3/4-element compounds only flow into output writes.
+        if (vector->elements.size() != 2) {
+            error(ips::locationOf(expr),
+                  "rect/circle literals only flow into output writes");
+        }
+        for (const auto& element : vector->elements) {
+            emitExpr(*element);
+            if (plan_.typeEngine().typeOf(*element) == ips::ValueType::I32) {
+                ins(Opcode::I32ToF32);
+            }
+        }
+        ins(Opcode::Vec2Make);
+        return ips::ValueType::Vec2;
+    }
     if (std::holds_alternative<ips::Member>(expr)) {
+        const auto& member = std::get<ips::Member>(expr);
+        // Components yield f32; bare part outputs keep their compound type.
+        // This also distinguishes part.outputs.x from part.outputs.top.x.
+        if (plan_.typeEngine().typeOf(expr) == ips::ValueType::F32) {
+            emitExpr(*member.object);
+            ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
+            return ips::ValueType::F32;
+        }
         return emitPartRead(expr);
     }
     if (const auto* call = std::get_if<ips::Call>(&expr)) {
@@ -48,7 +72,9 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
 }
 
 // A point value used by output writes and part placement: a vector literal
-// {x, y} or a part read of a point.
+// {x, y} (the pair, as in v0.2), a bare part read of a point (the pair —
+// the v0.2 byte-identical lowering), or any other vec2 value (unpacked via
+// the swizzles).
 void Emitter::emitPointValue(const ips::Expr& expr) {
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         for (const auto& element : vector->elements) {
@@ -59,7 +85,30 @@ void Emitter::emitPointValue(const ips::Expr& expr) {
         }
         return;
     }
-    emitExpr(expr); // part.get.point
+    if (std::holds_alternative<ips::Member>(expr)) {
+        // part.outputs.<name> — the bare pair, byte-identical to v0.2.
+        const PartRead read = partReadInfo(expr);
+        const u32 part = plan_.partIndex.at(read.alias);
+        u32 slot = static_cast<u32>(plan_.rootSlots.size());
+        for (u32 i = 0; i < part; ++i) {
+            slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
+        }
+        for (const auto& output : plan_.parts[part]->asset.outputs) {
+            if (output.name == read.output->name) {
+                break;
+            }
+            ++slot;
+        }
+        ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
+        return;
+    }
+    // A general vec2 value: unpack to (x, y) with y on top.
+    emitExpr(expr);
+    ins(Opcode::Dup);
+    ins(Opcode::Vec2Y);
+    ins(Opcode::LocalSet, 0, static_cast<u16>(f32Scratch()));
+    ins(Opcode::Vec2X);
+    ins(Opcode::LocalGet, 0, static_cast<u16>(f32Scratch()));
 }
 
 Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
@@ -113,7 +162,8 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     switch (read.kind) {
     case ips::OutputKind::Point:
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
-        return ips::ValueType::Point;
+        ins(Opcode::Vec2Make);
+        return ips::ValueType::Vec2;
     case ips::OutputKind::Rect:
         ins(Opcode::PartGetRect, 0, static_cast<u16>(slot));
         return ips::ValueType::Rect;
@@ -129,12 +179,45 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
     const ips::ValueType rightType = plan_.typeEngine().typeOf(*bin.right);
     const bool f32op = leftType == ips::ValueType::F32 ||
                        rightType == ips::ValueType::F32;
+    const bool vec2op = leftType == ips::ValueType::Vec2 ||
+                        rightType == ips::ValueType::Vec2;
 
     switch (bin.op) {
     case ips::Binary::Op::Add:
     case ips::Binary::Op::Sub:
     case ips::Binary::Op::Mul:
     case ips::Binary::Op::Div: {
+        if (vec2op) {
+            const bool rightIsVector = rightType == ips::ValueType::Vec2;
+            if (bin.op == ips::Binary::Op::Mul && rightIsVector &&
+                leftType != ips::ValueType::Vec2) {
+                // Evaluate left first, but arrange the VM operands as (v, s).
+                // A distinct local keeps s alive across nested products and
+                // builtins that use the shared f32 scratch while evaluating v.
+                emitExpr(*bin.left);
+                if (leftType == ips::ValueType::I32) {
+                    ins(Opcode::I32ToF32);
+                }
+                const u16 scalar = static_cast<u16>(allocateLocal(ValueType::F32));
+                ins(Opcode::LocalSet, 0, scalar);
+                emitExpr(*bin.right);
+                ins(Opcode::LocalGet, 0, scalar);
+            } else {
+                emitExpr(*bin.left);
+                emitExpr(*bin.right);
+                if (rightType == ips::ValueType::I32) {
+                    ins(Opcode::I32ToF32);
+                }
+            }
+            switch (bin.op) {
+            case ips::Binary::Op::Add: ins(Opcode::Vec2Add); break;
+            case ips::Binary::Op::Sub: ins(Opcode::Vec2Sub); break;
+            case ips::Binary::Op::Mul: ins(Opcode::Vec2Mul); break;
+            case ips::Binary::Op::Div: ins(Opcode::Vec2Div); break;
+            default: break;
+            }
+            return ips::ValueType::Vec2;
+        }
         emitExpr(*bin.left);
         if (f32op && leftType == ips::ValueType::I32) {
             ins(Opcode::I32ToF32);
@@ -259,7 +342,12 @@ ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
     emitExpr(*un.operand);
     switch (un.op) {
     case ips::Unary::Op::Neg:
-        ins(operand == ips::ValueType::F32 ? Opcode::F32Neg : Opcode::I32Neg);
+        if (operand == ips::ValueType::Vec2) {
+            ins(Opcode::Vec2Neg);
+        } else {
+            ins(operand == ips::ValueType::F32 ? Opcode::F32Neg
+                                               : Opcode::I32Neg);
+        }
         return operand;
     case ips::Unary::Op::Not:
         ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));

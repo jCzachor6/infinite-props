@@ -80,6 +80,17 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::F32Pow: return "f32.pow";
     case Opcode::F32Exp: return "f32.exp";
     case Opcode::F32Atan2: return "f32.atan2";
+    case Opcode::Vec2Make: return "vec2.make";
+    case Opcode::Vec2Add: return "vec2.add";
+    case Opcode::Vec2Sub: return "vec2.sub";
+    case Opcode::Vec2Mul: return "vec2.mul";
+    case Opcode::Vec2Div: return "vec2.div";
+    case Opcode::Vec2Neg: return "vec2.neg";
+    case Opcode::Vec2Len: return "vec2.len";
+    case Opcode::Vec2Dot: return "vec2.dot";
+    case Opcode::Vec2Rot: return "vec2.rot";
+    case Opcode::Vec2X: return "vec2.x";
+    case Opcode::Vec2Y: return "vec2.y";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

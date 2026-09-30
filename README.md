@@ -247,8 +247,12 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
 - A `draw(variant, archetype)` entry point; variant/archetype indices arrive as
   validated integers.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
-  `f32` or `color`; pre-1.0 the type is mandatory) and functions that return
-  a value declare an explicit return type (`-> i32`).
+  `f32`, `color` or `vec2`; pre-1.0 the type is mandatory) and functions that
+  return a value declare an explicit return type (`-> i32`).
+- `vec2` values use `{x, y}` literals and `.x`/`.y` components, including
+  points read from parts. Vectors support `+`, `-`, `*` and `/` with another
+  vector, `*` and `/` with a scalar on the right, and scalar `*` vector.
+  Operands are evaluated left to right, including RNG calls.
 - `input`/`output` declarations define the asset's I/O signature: uniforms,
   and the named points, rects and circles written by `draw` (§5.4).
 - `import` declarations for composition: parts linked at compile time,

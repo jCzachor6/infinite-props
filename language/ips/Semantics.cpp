@@ -12,11 +12,11 @@ namespace {
 
 ValueType outputValueType(OutputKind kind) {
     switch (kind) {
-    case OutputKind::Point: return ValueType::Point;
+    case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
     }
-    return ValueType::Point;
+    return ValueType::Vec2;
 }
 
 // ---- the checker -----------------------------------------------------------

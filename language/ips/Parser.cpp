@@ -224,10 +224,13 @@ ParamType ParserImpl::parseParamType() {
     case TokenKind::TypeColor:
         advance();
         return ParamType::Color;
+    case TokenKind::TypeVec2:
+        advance();
+        return ParamType::Vec2;
     case TokenKind::TypeU32:
-        failHere("u32 is a uniform-only type; parameters are i32, f32 or color");
+        failHere("u32 is a uniform-only type; parameters are i32, f32, color or vec2");
     default:
-        failExpected("a parameter type (i32, f32 or color)");
+        failExpected("a parameter type (i32, f32, color or vec2)");
     }
 }
 

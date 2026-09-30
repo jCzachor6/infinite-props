@@ -95,6 +95,42 @@ TEST_CASE("format 0.1 remains supported and rejects every new math opcode") {
     }
 }
 
+TEST_CASE("vec2 parameter, result and local types require format 0.3") {
+    std::vector<u8> resultBody;
+    for (const auto& instruction : {ins(0x11, 0, 0), ins(0x11, 0, 0),
+                                    ins(0x5B, 0, 0), retIns()}) {
+        resultBody.insert(resultBody.end(), instruction.begin(), instruction.end());
+    }
+    std::vector<u8> localBody;
+    for (const auto& instruction : {ins(0x13, 0, 0), ins(0x16, 0, 0), retIns()}) {
+        localBody.insert(localBody.end(), instruction.begin(), instruction.end());
+    }
+    const std::vector<FuncSpec> helpers = {
+        {kAnonymousName, {3}, {}, {}, retIns()},
+        {kAnonymousName, {}, {3}, {}, resultBody},
+        {kAnonymousName, {}, {}, {3}, localBody}};
+    for (std::size_t i = 0; i < helpers.size(); ++i) {
+        INFO("vec2 type list " << i);
+        const std::vector<FuncSpec> functions = {drawSpec(retIns()), helpers[i]};
+        auto bytes = fullFile(minimalMeta(), richPool({"draw"}),
+                              codeSection(functions, {}));
+        REQUIRE_NOTHROW(validate(loadFile(bytes)));
+        for (const u8 minor : {u8{1}, u8{2}}) {
+            INFO("minor " << static_cast<unsigned>(minor));
+            bytes[6] = minor;
+            expectValidateError(bytes, streamRel(functions, 1),
+                                "vec2 types require format 0.3");
+        }
+    }
+    // Even an empty instruction stream must not bypass the type-version gate.
+    const std::vector<FuncSpec> functions = {
+        {0, {0, 0}, {}, {3}, {}}};
+    auto bytes = fullFile(minimalMeta(), richPool({"draw"}), codeSection(functions, {}));
+    REQUIRE_NOTHROW(validate(loadFile(bytes)));
+    bytes[6] = 2;
+    expectValidateError(bytes, streamRel(functions, 0), "vec2 types require format 0.3");
+}
+
 TEST_CASE("valid battery passes validation") {
     // 1. Trivial draw.
     {
