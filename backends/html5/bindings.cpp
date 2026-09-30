@@ -88,6 +88,36 @@ emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 variant,
                 c.set("r", circle.r);
                 circles.call<void>("push", c);
             }
+            // Export bits before widening to a JS Number, which can lose
+            // a NaN payload or sign. This is the exact conformance surface.
+            emscripten::val valueBits = emscripten::val::array();
+            const auto bits = [](f32 value) {
+                u32 encoded = 0;
+                std::memcpy(&encoded, &value, sizeof(encoded));
+                return encoded;
+            };
+            for (const auto& point : output.points) {
+                auto p = emscripten::val::object();
+                p.set("x", bits(point.x));
+                p.set("y", bits(point.y));
+                valueBits.call<void>("push", p);
+            }
+            for (const auto& rect : output.rects) {
+                auto r = emscripten::val::object();
+                r.set("x", bits(rect.x));
+                r.set("y", bits(rect.y));
+                r.set("w", bits(rect.w));
+                r.set("h", bits(rect.h));
+                valueBits.call<void>("push", r);
+            }
+            for (const auto& circle : output.circles) {
+                auto c = emscripten::val::object();
+                c.set("x", bits(circle.x));
+                c.set("y", bits(circle.y));
+                c.set("r", bits(circle.r));
+                valueBits.call<void>("push", c);
+            }
+            entry.set("valueBits", valueBits);
             entry.set("points", points);
             entry.set("rects", rects);
             entry.set("circles", circles);

@@ -3,6 +3,18 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { checkImage, nativeOutputs, wasmOutputs } = require("./native-conformance.js");
+const { wasmOutputBits } = require("./native-conformance.js");
+
+test("raw output comparison detects infinity, NaN signs/payloads and signed zero", () => {
+    const output = bits => [{ name: "edge", kind: 0, isList: false,
+                              valueBits: [{ x: bits, y: 0 }] }];
+    const canonical = wasmOutputBits(output(0x7fc00000));
+    for (const changed of [0xffc00000, 0x7fc00001, 0x7f800000, 0xff800000, 0]) {
+        assert.notDeepEqual(wasmOutputBits(output(changed)), canonical);
+    }
+    assert.notDeepEqual(wasmOutputBits(output(0x80000000)), wasmOutputBits(output(0)));
+    assert.throws(() => wasmOutputBits([{ name: "edge", kind: 0 }]), /missing raw/);
+});
 
 test("the backend comparator detects a single changed byte, including transparent RGB", () => {
     const expected = { width: 3, height: 1, data: Buffer.from("547b89ff557c8bff59819000", "hex") };

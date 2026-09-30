@@ -18,6 +18,7 @@ const sources = [
     ["shapes", "tests/golden/shapes.ipa"],
     ["portrait", "examples/portrait.ips"],
     ["plant", "examples/plant.ips"],
+    ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -55,8 +56,23 @@ function wasmOutputs(outputs) {
             name: output.name, kind, list: output.isList,
             values: output[kind + "s"].map(value => Object.fromEntries(
                 Object.entries(value).map(([key, number]) =>
-                    [key, Number.isFinite(number) ? number : null]))),
+                    [key, number]))),
         };
+    });
+}
+
+function wasmOutputBits(outputs) {
+    return outputs.map(output => {
+        const kind = ["point", "rect", "circle"][output.kind];
+        assert(kind, "unknown WASM output kind " + output.kind);
+        assert(Array.isArray(output.valueBits), "missing raw output bits");
+        for (const value of output.valueBits) {
+            for (const bits of Object.values(value)) {
+                assert(Number.isInteger(bits) && bits >= 0 && bits <= 0xffffffff,
+                       "invalid binary32 encoding");
+            }
+        }
+        return { name: output.name, kind, list: output.isList, values: output.valueBits };
     });
 }
 
@@ -70,11 +86,11 @@ function run(iprop, toolsDir) {
         try {
             const png = path.join(temporary, "native.png");
             const result = JSON.parse(execFileSync(tool("ipgen"),
-                [file, "--seed", String(seed), "-o", png], { encoding: "utf8" }));
+                [file, "--seed", String(seed), "--float-bits", "-o", png], { encoding: "utf8" }));
             const native = decodePng(fs.readFileSync(png));
             const wasm = iprop.generate(new Uint8Array(fs.readFileSync(file)), { seed });
             checkImage(wasm, native, label + " WASM/native");
-            assert.deepEqual(wasmOutputs(wasm.outputs), nativeOutputs(result.outputs),
+            assert.deepEqual(wasmOutputBits(wasm.outputs), result.outputs,
                              label + ": structured outputs");
             if (golden) {
                 assert.equal(fnv1a(native.data), golden.hash, label + ": native FNV pin");
@@ -86,6 +102,15 @@ function run(iprop, toolsDir) {
             if (path.basename(file) === "loop1.iprop") {
                 assert.deepEqual(native.data.subarray(0, 12),
                     Buffer.from("547b89ff557c8bff598190ff", "hex"), label + ": repro pixels");
+            }
+            if (path.basename(file) === "math-edges.iprop") {
+                const expected = [
+                    [0x3f800000, 0x3f800000], [0x7f800000, 0],
+                    [0x7fc00000, 0x7fc00000], [0x80000000, 0],
+                    [0x3f8db70d, 0xc0023454],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent math edge pins");
             }
             ++comparisons;
         } catch (error) {
@@ -108,4 +133,4 @@ function run(iprop, toolsDir) {
     return { passed: failures.length === 0, failures, comparisons };
 }
 
-module.exports = { run, checkImage, nativeOutputs, wasmOutputs };
+module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

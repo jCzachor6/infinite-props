@@ -7,6 +7,7 @@
 #include "iprop/VM.hpp"
 
 #include <cmath>
+#include <cstring>
 #include <iomanip>
 #include <ostream>
 #include <sstream>
@@ -17,7 +18,12 @@ namespace tools {
 
 // Formats an f32 with round-trip precision; non-finite values are null
 // (JSON has no infinities).
-inline std::string jsonNumber(f32 value) {
+inline std::string jsonNumber(f32 value, bool bits = false) {
+    if (bits) {
+        u32 encoded = 0;
+        std::memcpy(&encoded, &value, sizeof(encoded));
+        return std::to_string(encoded);
+    }
     if (!std::isfinite(value)) {
         return "null";
     }
@@ -47,7 +53,7 @@ inline std::string jsonEscape(const std::string& text) {
 }
 
 // Writes one named output as a JSON object.
-inline void writeOutputJson(std::ostream& out, const NamedOutput& output) {
+inline void writeOutputJson(std::ostream& out, const NamedOutput& output, bool bits = false) {
     out << "{\"name\":\"" << jsonEscape(output.name) << "\",\"kind\":\"";
     switch (output.kind) {
     case OutputKind::Point: out << "point"; break;
@@ -59,19 +65,19 @@ inline void writeOutputJson(std::ostream& out, const NamedOutput& output) {
     for (const auto& point : output.points) {
         if (!first) out << ",";
         first = false;
-        out << "{\"x\":" << jsonNumber(point.x) << ",\"y\":" << jsonNumber(point.y) << "}";
+        out << "{\"x\":" << jsonNumber(point.x, bits) << ",\"y\":" << jsonNumber(point.y, bits) << "}";
     }
     for (const auto& rect : output.rects) {
         if (!first) out << ",";
         first = false;
-        out << "{\"x\":" << jsonNumber(rect.x) << ",\"y\":" << jsonNumber(rect.y)
-            << ",\"w\":" << jsonNumber(rect.w) << ",\"h\":" << jsonNumber(rect.h) << "}";
+        out << "{\"x\":" << jsonNumber(rect.x, bits) << ",\"y\":" << jsonNumber(rect.y, bits)
+            << ",\"w\":" << jsonNumber(rect.w, bits) << ",\"h\":" << jsonNumber(rect.h, bits) << "}";
     }
     for (const auto& circle : output.circles) {
         if (!first) out << ",";
         first = false;
-        out << "{\"x\":" << jsonNumber(circle.x) << ",\"y\":" << jsonNumber(circle.y)
-            << ",\"r\":" << jsonNumber(circle.r) << "}";
+        out << "{\"x\":" << jsonNumber(circle.x, bits) << ",\"y\":" << jsonNumber(circle.y, bits)
+            << ",\"r\":" << jsonNumber(circle.r, bits) << "}";
     }
     out << "]}";
 }

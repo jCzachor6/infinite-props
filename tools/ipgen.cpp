@@ -22,6 +22,7 @@ namespace {
 
 struct Options {
     std::string file;
+    bool floatBits = false;
     u32 seed = 0;
     u32 variant = 0;
     u32 archetype = 0;
@@ -45,6 +46,7 @@ void printUsage(std::FILE* out) {
                  "  --uniform name=val  uniform override (repeatable); colours are\n"
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
                  "  -o, --output PATH   PNG output path (default: <stem>-<seed>.png)\n"
+                 "  --float-bits        encode output coordinates as raw binary32 bits\n"
                  "  -h, --help          show this help\n"
                  "\n"
                  "The result JSON (outputs and fuel) is printed to stdout.\n");
@@ -140,6 +142,8 @@ int ipgenMain(int argc, char* argv[]) {
         };
         if (arg == "-h" || arg == "--help") {
             wantHelp = true;
+        } else if (arg == "--float-bits") {
+            options.floatBits = true;
         } else if (arg == "--seed") {
             if (!parseU32(next("--seed"), options.seed)) invalid = "bad --seed value";
         } else if (arg == "--variant") {
@@ -316,7 +320,7 @@ int ipgenMain(int argc, char* argv[]) {
             json << ",";
         }
         json << "\n    ";
-        tools::writeOutputJson(json, result.outputs[i]);
+        tools::writeOutputJson(json, result.outputs[i], options.floatBits);
     }
     json << "\n  ]\n}\n";
     std::cout << json.str();

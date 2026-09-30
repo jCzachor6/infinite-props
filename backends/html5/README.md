@@ -86,3 +86,9 @@ default 0; a zero size means the asset's own size). `data` is a copied
   result so earlier results stay valid.
 - Rebuild the pinned hashes in `test/conformance.js` whenever the semantics
   change intentionally (spec update first).
+
+The native/WASM conformance compares every structured coordinate as raw
+binary32 bits. `ipgen --float-bits` emits those bits as JSON integers; the
+WASM binding exposes them in each slot's `valueBits` array before JS number
+conversion. The math edge fixture pins NaN signs, infinities, signed zero,
+infinite powers and unequal-magnitude angles.

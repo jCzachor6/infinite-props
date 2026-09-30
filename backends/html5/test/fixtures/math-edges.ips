@@ -1,0 +1,17 @@
+asset math {
+  size 8x8
+  output point powers
+  output point limits
+  output point nan
+  output point zeros
+  output point angle
+  draw(v: i32, a: i32) {
+    infinity = exp(100.0)
+    negative_nan = -pow(-2.0, 0.5)
+    powers = {pow(-1.0, infinity), pow(-1.0, -infinity)}
+    limits = {pow(-2.0, infinity), pow(-2.0, -infinity)}
+    nan = {min(negative_nan, negative_nan), max(negative_nan, negative_nan)}
+    zeros = {min(0.0, -0.0), max(-0.0, 0.0)}
+    angle = {atan2(2.0, 1.0), atan2(-2.0, -1.0)}
+  }
+}
