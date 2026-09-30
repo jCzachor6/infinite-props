@@ -1,8 +1,10 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <limits>
+#include <set>
 #include <string>
 
 #include <vector>
@@ -18,6 +20,23 @@ namespace {
 
 constexpr i32 kMin = std::numeric_limits<i32>::min();
 constexpr i32 kMax = std::numeric_limits<i32>::max();
+
+f32 unitFromBits(u32 bits) {
+    return static_cast<f32>(bits >> 8) * 0x1p-24f;
+}
+
+u32 ulp(f32 a, f32 b) {
+    if (a == b || (std::isnan(a) && std::isnan(b))) {
+        return 0;
+    }
+    const auto ordered = [](f32 value) {
+        const u32 bits = bitsOf(value);
+        return (bits & 0x80000000u) != 0 ? ~bits : bits | 0x80000000u;
+    };
+    const u32 x = ordered(a);
+    const u32 y = ordered(b);
+    return x > y ? x - y : y - x;
+}
 
 } // namespace
 
@@ -213,22 +232,15 @@ TEST_CASE("the pinned sine agrees with libm to within 1 ulp on a grid") {
     // (|x| <= 4096) it must be within 1 ulp of the mathematical value. The
     // comparison against std::sin/std::cos (correctly rounded on macOS
     // libm) bounds the polynomial and the reduction.
-    const auto ulp = [](f32 a, f32 b) {
-        if (std::isnan(a) && std::isnan(b)) {
-            return 0u;
-        }
-        const u32 x = bitsOf(a);
-        const u32 y = bitsOf(b);
-        const u32 diff = x > y ? x - y : y - x;
-        return diff;
-    };
+    std::set<u32> samples;
+    f32 minimum = 4096.f;
+    f32 maximum = -4096.f;
     for (u32 i = 0; i < 2000; ++i) {
-        // Deterministic pseudo-random f32s in [-4096, 4096], avoiding NaN.
-        u32 bits = i * 2654435761u + 0x9e3779b9u;
-        bits &= 0x7FFFFFu; // 23 mantissa bits
-        f32 value = f32FromBits(bits);
-        value *= (i % 2 == 0 ? 1.f : -1.f);
-        value *= (i % 17 == 0 ? 4096.f : 16.f);
+        const u32 bits = i * 2654435761u + 0x9e3779b9u;
+        const f32 value = unitFromBits(bits) * 8192.f - 4096.f;
+        samples.insert(bitsOf(value));
+        minimum = std::min(minimum, value);
+        maximum = std::max(maximum, value);
         const f32 gotSin = evalProgF32(Prog{}.F(value).emit(0x4F));
         const f32 gotCos = evalProgF32(Prog{}.F(value).emit(0x53));
         const f32 wantSin = std::sin(value);
@@ -237,6 +249,9 @@ TEST_CASE("the pinned sine agrees with libm to within 1 ulp on a grid") {
         REQUIRE(ulp(gotSin, wantSin) <= 1u);
         REQUIRE(ulp(gotCos, wantCos) <= 1u);
     }
+    REQUIRE(samples.size() > 1900);
+    REQUIRE(minimum < -4000.f);
+    REQUIRE(maximum > 4000.f);
 }
 
 TEST_CASE("the math package matches the pinned algorithm bit for bit") {
@@ -421,17 +436,11 @@ TEST_CASE("atan2 handles unequal magnitudes in every quadrant and near axes") {
 }
 
 TEST_CASE("the math package agrees with libm within the pinned tolerance") {
-    const auto ulp = [](f32 a, f32 b) {
-        if (std::isnan(a) && std::isnan(b)) {
-            return 0u;
-        }
-        if (std::isinf(a) && std::isinf(b) && std::signbit(a) == std::signbit(b)) {
-            return 0u;
-        }
-        const u32 x = bitsOf(a);
-        const u32 y = bitsOf(b);
-        return x > y ? x - y : y - x;
-    };
+    std::set<std::pair<u32, u32>> powers;
+    std::set<std::pair<u32, u32>> angles;
+    bool quadrants[4] = {};
+    f32 minimumBase = 4.f, maximumBase = 0.f;
+    f32 minimumExponent = 4.f, maximumExponent = -4.f;
     for (u32 i = 0; i < 2000; ++i) {
         const u32 bits = i * 2654435761u + 0x9e3779b9u;
         f32 value = f32FromBits((bits & 0x7FFFFFu) | 0x3F000000u); // in [0.5, 1)
@@ -442,21 +451,38 @@ TEST_CASE("the math package agrees with libm within the pinned tolerance") {
         REQUIRE(ulp(gotExp, wantExp) <= 1u);
 
         // pow over positive bases and moderate exponents.
-        const f32 base = 0.25f + f32FromBits(bits & 0x3FFFFFu) * 0.5f;
-        const f32 exponent = f32FromBits((bits >> 8) & 0x3FFFFFu) * 2.f - 4.f;
+        const f32 base = 0.25f + unitFromBits(bits) * 3.75f;
+        const u32 other = i * 2246822519u + 0x85ebca6bu;
+        const f32 exponent = unitFromBits(other) * 8.f - 4.f;
+        powers.emplace(bitsOf(base), bitsOf(exponent));
+        minimumBase = std::min(minimumBase, base);
+        maximumBase = std::max(maximumBase, base);
+        minimumExponent = std::min(minimumExponent, exponent);
+        maximumExponent = std::max(maximumExponent, exponent);
         const f32 gotPow = evalProgF32(Prog{}.F(base).F(exponent).emit(0x58));
         const f32 wantPow = std::pow(base, exponent);
         REQUIRE(ulp(gotPow, wantPow) <= 2u);
 
         // atan2 over the full circle.
-        const f32 y = f32FromBits(bits & 0x7FFFFFu) * 8.f - 4.f;
-        const f32 x = f32FromBits((bits >> 16) & 0x7FFFFFu) * 8.f - 4.f;
+        const f32 y = unitFromBits(bits) * 8.f - 4.f;
+        const f32 x = unitFromBits(other) * 8.f - 4.f;
+        angles.emplace(bitsOf(y), bitsOf(x));
+        quadrants[(y < 0.f ? 2 : 0) + (x < 0.f ? 1 : 0)] = true;
         if (x == 0.f && y == 0.f) {
             continue;
         }
         const f32 gotAtan = evalProgF32(Prog{}.F(y).F(x).emit(0x5A));
         const f32 wantAtan = std::atan2(y, x);
         REQUIRE(ulp(gotAtan, wantAtan) <= 1u);
+    }
+    REQUIRE(powers.size() > 1900);
+    REQUIRE(angles.size() > 1900);
+    REQUIRE(minimumBase < 0.3f);
+    REQUIRE(maximumBase > 3.9f);
+    REQUIRE(minimumExponent < -3.9f);
+    REQUIRE(maximumExponent > 3.9f);
+    for (const bool quadrant : quadrants) {
+        REQUIRE(quadrant);
     }
 }
 
