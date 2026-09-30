@@ -43,29 +43,29 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-// Extra locals reused within a function: one i32 (short-circuit, round) and
-// one f32 (round). Appended to the function's locals; the assembler writes
-// the table after all emission.
+// Allocate a typed local on first use. Its index stays fixed even when a
+// different temporary type is needed later in this function.
+u32 Emitter::allocateScratch(std::optional<u32>& slot, ValueType type) {
+    if (!slot) {
+        slot = static_cast<u32>(current_->params.size() + current_->locals.size());
+        current_->locals.push_back(type);
+    }
+    return *slot;
+}
+
 u32 Emitter::scratch() {
-    scratchUsed_ = true;
-    return static_cast<u32>(current_->params.size() + current_->locals.size());
+    return allocateScratch(scratchSlot_, ValueType::I32);
 }
 
 u32 Emitter::f32Scratch() {
-    f32ScratchUsed_ = true;
-    return static_cast<u32>(current_->params.size() + current_->locals.size() +
-                            (scratchUsed_ ? 1 : 0));
+    return allocateScratch(f32ScratchSlot_, ValueType::F32);
 }
 
 u32 Emitter::colorScratch() {
-    colorScratchUsed_ = true;
-    return static_cast<u32>(current_->params.size() + current_->locals.size() +
-                            (scratchUsed_ ? 1 : 0) +
-                            (f32ScratchUsed_ ? 1 : 0));
+    return allocateScratch(colorScratchSlot_, ValueType::Color);
 }
 
-// The extra local of the given scalar type (appended after the function's
-// own locals, in i32/f32/color order).
+// The extra local of the given scalar type.
 u32 Emitter::scratchOf(ips::ValueType type) {
     switch (type) {
     case ips::ValueType::I32: return scratch();
@@ -88,7 +88,9 @@ void Emitter::emitFunction(PlannedFunction& function) {
     code_.clear();
     lines_.clear();
     currentLine_ = 0;
-    scratchUsed_ = false;
+    scratchSlot_.reset();
+    f32ScratchSlot_.reset();
+    colorScratchSlot_.reset();
     labelKinds_.clear();
     loopLabels_.clear();
     forCount_ = 0;
@@ -105,15 +107,6 @@ void Emitter::emitFunction(PlannedFunction& function) {
     plan_.typeEngine().restoreScope(std::move(savedScope));
     function.code = std::move(code_);
     function.sourceLines = std::move(lines_);
-    if (scratchUsed_) {
-        function.locals.push_back(ValueType::I32);
-    }
-    if (f32ScratchUsed_) {
-        function.locals.push_back(ValueType::F32);
-    }
-    if (colorScratchUsed_) {
-        function.locals.push_back(ValueType::Color);
-    }
     current_ = nullptr;
 }
 

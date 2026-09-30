@@ -395,6 +395,34 @@ asset t {
     CHECK_NOTHROW(validate(loaded));
 }
 
+TEST_CASE("typed temporary locals keep stable slots in every emission order") {
+    const std::vector<std::string> statements = {
+        "c = colors[v] ", "x = round(range(1.25, 1.25)) ",
+        "flag = v == 0 || v == 1 && v < 2 "};
+    for (const auto& order : std::vector<std::vector<std::size_t>>{
+             {0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}}) {
+        const std::string body = statements[order[0]] + statements[order[1]] +
+                                 statements[order[2]];
+        const std::string source = "asset t { size 8x8 variants 3 "
+            "palette colors = [#112233, #445566] "
+            "draw(v: i32, a: i32) { " + body + "pixel(x, flag, c) "
+            "pixel(3, 0, helper(v)) } "
+            "helper(v: i32) -> color { " + body + "return c } "
+            "constant() -> i32 { return 1 } }";
+        INFO(body);
+        const auto bytes = compileChecked(source);
+        const auto loaded = loadFile(bytes);
+        REQUIRE(loaded.code.functions.back().locals.empty());
+        for (u32 v = 0; v < 3; ++v) {
+            const auto result = run(bytes, v, 0);
+            const Color expected = v == 0 ? Color{0x11, 0x22, 0x33, 0xff}
+                                           : Color{0x44, 0x55, 0x66, 0xff};
+            REQUIRE(result.canvas.at(1, v < 2 ? 1 : 0) == expected);
+            REQUIRE(result.canvas.at(3, 0) == expected);
+        }
+    }
+}
+
 TEST_CASE("the math builtins compile and match the hand-assembled reference") {
     const std::string source = R"(
 asset t {
