@@ -89,7 +89,8 @@ std::string printMemberChain(const Expr& expr) {
     if (const auto* base = std::get_if<Identifier>(current)) {
         result += " " + base->name;
     } else {
-        result += " " + printExpr(*current);
+        result += " ";
+        result += printExpr(*current);
     }
     // The walk collects names innermost-first; print them outermost-first.
     for (auto it = names.rbegin(); it != names.rend(); ++it) {
@@ -138,7 +139,8 @@ std::string printExpr(const Expr& expr) {
     if (const auto* vector = std::get_if<VectorLit>(&expr)) {
         std::string result = "(vector";
         for (const auto& element : vector->elements) {
-            result += " " + printExpr(*element);
+            result += " ";
+            result += printExpr(*element);
         }
         return result + ")";
     }
@@ -303,7 +305,8 @@ std::vector<std::string> printAssetLines(const Asset& asset) {
     for (const auto& palette : asset.palettes) {
         std::string line = "(palette " + palette.name;
         for (const auto& element : palette.elements) {
-            line += " " + printExpr(*element);
+            line += " ";
+            line += printExpr(*element);
         }
         line += ")";
         child(std::move(line));
