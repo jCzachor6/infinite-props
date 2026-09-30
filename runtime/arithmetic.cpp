@@ -287,6 +287,21 @@ f32 f32Pow(f32 x, f32 y) {
     return static_cast<f32>(r);
 }
 
+f32 f32MinMax(f32 a, f32 b, bool maximum) {
+    if (std::isnan(a)) {
+        return std::isnan(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
+    }
+    if (std::isnan(b)) {
+        return a;
+    }
+    if (a == 0.0f && b == 0.0f) {
+        const bool negative = maximum ? std::signbit(a) && std::signbit(b)
+                                      : std::signbit(a) || std::signbit(b);
+        return std::copysign(0.0f, negative ? -1.0f : 1.0f);
+    }
+    return maximum ? std::max(a, b) : std::min(a, b);
+}
+
 // Shared shapes for the regular two-operand cases: pop, compute, push,
 // advance. Special cases (division, shifts, conversions) stay inline.
 void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
@@ -535,14 +550,14 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::F32Min: {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(std::fmin(a, b)));
+        ex.push(Value(f32MinMax(a, b, false)));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Max: {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(std::fmax(a, b)));
+        ex.push(Value(f32MinMax(a, b, true)));
         ++ex.frame().ip;
         return true;
     }

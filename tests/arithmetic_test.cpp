@@ -377,6 +377,32 @@ TEST_CASE("the math package matches the pinned algorithm bit for bit") {
     REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).emit(0x57))) == 0x00000000u);
 }
 
+TEST_CASE("min and max canonicalize all NaNs and order signed zero explicitly") {
+    const u32 nans[] = {0x7fc00000u, 0xffc00000u, 0x7fc12345u,
+                        0xffc54321u, 0x7f800001u, 0xff800001u};
+    for (const u8 op : {u8{0x56}, u8{0x57}}) {
+        for (const u32 a : nans) {
+            for (const u32 b : nans) {
+                REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(a)).F(f32FromBits(b)).emit(op))) ==
+                        0x7fc00000u);
+            }
+            for (const f32 value : {0.f, -0.f, 1.f, -1.f,
+                                   std::numeric_limits<f32>::infinity()}) {
+                REQUIRE(bitsOf(evalProgF32(Prog{}.F(f32FromBits(a)).F(value).emit(op))) == bitsOf(value));
+                REQUIRE(bitsOf(evalProgF32(Prog{}.F(value).F(f32FromBits(a)).emit(op))) == bitsOf(value));
+            }
+        }
+        for (const f32 a : {0.f, -0.f}) {
+            for (const f32 b : {0.f, -0.f}) {
+                const bool negative = op == 0x56 ? std::signbit(a) || std::signbit(b)
+                                                 : std::signbit(a) && std::signbit(b);
+                REQUIRE(bitsOf(evalProgF32(Prog{}.F(a).F(b).emit(op))) ==
+                        (negative ? 0x80000000u : 0u));
+            }
+        }
+    }
+}
+
 TEST_CASE("atan2 handles unequal magnitudes in every quadrant and near axes") {
     for (const f32 y : {0.125f, 1.f, 2.f, 16.f, 1e-30f, 1e30f}) {
         for (const f32 x : {0.125f, 1.f, 2.f, 16.f, 1e-30f, 1e30f}) {
