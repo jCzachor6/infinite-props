@@ -111,6 +111,40 @@ func _init() -> void:
 			failures += 1
 			printerr("FAIL root output overwritten")
 
+	# Current compiler source, including a list with zero values. Native
+	# size/uniform overrides are covered by the C API; this adapter exposes
+	# the seed/variant/archetype parameters and default asset size/inputs.
+	var language := IpropAsset.new()
+	if language.load_file(args[0] + "/language.iprop") != OK:
+		failures += 1
+		printerr("FAIL language source fixture load")
+	else:
+		var colors := [Color8(0x11, 0x22, 0x33), Color8(0x44, 0x55, 0x66), Color8(0x77, 0x88, 0x99)]
+		for v in range(3):
+			for a in range(2):
+				var image := language.generate(26, v, a)
+				if image == null:
+					failures += 1
+					continue
+				if image.get_size() != Vector2i(8, 8) or image.get_pixel(0, 0) != Color8(0x33, 0x55, 0xaa) \
+						or image.get_pixel(a + 1, 1) != colors[v]:
+					failures += 1
+					printerr("FAIL language pixels v", v, " a", a)
+				if language.outputs["numeric"]["values"] != PackedFloat32Array([v + 1, a + 0.25]) \
+						or language.outputs["path"]["values"] != PackedFloat32Array([0, a, 2, a]) \
+						or not language.outputs["empty"]["values"].is_empty() \
+						or not language.outputs["empty"]["list"]:
+					failures += 1
+					printerr("FAIL language output values")
+				var math_bits: PackedByteArray = language.outputs["math"]["values"].to_byte_array()
+				if math_bits.decode_u32(0) != 0x3f8db70d or math_bits.decode_u32(4) != 0x3f800000:
+					failures += 1
+					printerr("FAIL language math bits")
+	var plant := IpropAsset.new()
+	if plant.load_file(args[0] + "/plant.iprop") != OK or plant.generate(26, 0, 0) == null:
+		failures += 1
+		printerr("FAIL compiled plant source")
+
 	# Empty/bad generations clear the sprite. Failed reloads preserve the
 	# complete prior asset; successful reloads notify existing sprite users.
 	var lifecycle := IpropAsset.new()

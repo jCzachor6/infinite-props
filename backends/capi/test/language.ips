@@ -1,0 +1,31 @@
+// Compiler-to-host fixture for the features introduced in 0.2.
+asset language {
+  size 8x8
+  variants 3
+  archetypes 2
+  input color base = #3355aa
+  palette nums = [1, 2, 3]
+  palette colors = [#112233, #445566, #778899]
+  output point numeric
+  output point math
+  output list point path
+  output list circle empty
+
+  helper(x: i32) -> f32 {
+    return x + 0.25
+  }
+
+  draw(v: i32, a: i32) {
+    c = colors[v]
+    n = round(helper(a))
+    pixel(0, 0, base)
+    pixel(n + 1, 1, c)
+    numeric = {nums[v], helper(a)}
+    math = {atan2(2, 1), pow(-1, exp(100))}
+    for i in 0..4 {
+      if (i == 1) { continue }
+      if (i == 3) { break }
+      path = {i, a}
+    }
+  }
+}

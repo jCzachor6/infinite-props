@@ -66,6 +66,17 @@ add_custom_command(OUTPUT ${owner_fixture}
 add_custom_target(capi_owners DEPENDS ${owner_fixture})
 add_dependencies(capi_golden capi_owners)
 
+foreach(source test/language.ips ../../examples/plant.ips)
+    get_filename_component(name ${source} NAME_WE)
+    set(out ${IPROP_CAPI_GOLDEN_DIR}/${name}.iprop)
+    file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)
+    add_custom_command(OUTPUT ${out}
+        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/${source} -o ${out}
+        DEPENDS ipc ${source} ${source_parts})
+    add_custom_target(capi_${name} DEPENDS ${out})
+    add_dependencies(capi_golden capi_${name})
+endforeach()
+
 add_executable(capi_conformance
     test/conformance.c)
 add_library(capi_png_decoder STATIC test/stb_image.c)

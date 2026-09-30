@@ -139,9 +139,11 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
                                              : 3;
         PackedFloat32Array values;
         values.resize(slot.count * floatsPerValue);
-        std::memcpy(values.ptrw(), slot.values,
-                    static_cast<size_t>(slot.count) * floatsPerValue *
-                        sizeof(float));
+        if (slot.count != 0) {
+            std::memcpy(values.ptrw(), slot.values,
+                        static_cast<size_t>(slot.count) * floatsPerValue *
+                            sizeof(float));
+        }
         entry["values"] = values;
         entry["name"] = String::utf8(slot.name);
         entry["owner"] = static_cast<int64_t>(slot.owner);

@@ -61,5 +61,8 @@ at five seeds, shapes, noise, parts) is assembled to `.iprop` at build
 time and driven through the C entry point, compared pixel-exactly against
 the committed golden PNGs and the pinned structured outputs, and the
 error paths are exercised (junk bytes → `IPROP_E_FORMAT` with a message;
-null arguments → `IPROP_E_ARGUMENT`). It runs under `ctest` as
+null arguments → `IPROP_E_ARGUMENT`). Current `.ips` sources also cover
+typed helpers, palettes, loop control, pinned math bits, empty lists,
+output owners, plant composition, variant/archetype combinations and
+size/uniform overrides. It runs under `ctest` as
 `capi_conformance`.

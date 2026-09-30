@@ -393,6 +393,109 @@ int main(int argc, char** argv) {
         }
     }
 
+    /* Compiled 0.2 source: palettes, typed helpers, loop control, math,
+       empty lists, variants/archetypes, size and uniform overrides. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/language.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        CHECK(bytes != NULL, "cannot read language fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "language fixture load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            const uint8_t colors[][3] = {{0x11,0x22,0x33}, {0x44,0x55,0x66}, {0x77,0x88,0x99}};
+            for (uint32_t v = 0; v < 3; ++v) {
+                for (uint32_t a = 0; a < 2; ++a) {
+                    iprop_generate_options options = {0};
+                    options.seed = 26;
+                    options.variant = v;
+                    options.archetype = a;
+                    /* A non-square size scales raster coordinates (2x, 3x)
+                       while structured outputs remain in asset units. */
+                    options.size_x = 16;
+                    options.size_y = 24;
+                    iprop_uniform base = {0};
+                    base.name = "base";
+                    base.type = IPROP_UNIFORM_COLOR;
+                    base.r = 0xee;
+                    base.g = 0xdd;
+                    base.b = 0xcc;
+                    base.a = 0xff;
+                    options.uniforms = &base;
+                    options.uniform_count = 1;
+                    iprop_result* result = NULL;
+                    CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                          "language generation v%u a%u: %s", v, a, err);
+                    if (result == NULL) continue;
+                    iprop_image image;
+                    iprop_result_image(result, &image);
+                    CHECK(image.width == 16 && image.height == 24, "language size override");
+                    CHECK(image.pixels[0] == 0xee && image.pixels[1] == 0xdd &&
+                          image.pixels[2] == 0xcc && image.pixels[3] == 0xff,
+                          "language uniform override");
+                    const size_t pixel = ((size_t)image.width * 3 + (a + 1) * 2) * 4;
+                    CHECK(memcmp(image.pixels + pixel, colors[v], 3) == 0 &&
+                          image.pixels[pixel + 3] == 0xff, "language palette pixel");
+                    CHECK(image.output_count == 4, "language output count");
+                    check_point(&image, 0, (float)(v + 1), (float)a + .25f);
+                    if (image.output_count == 4) {
+                        uint32_t angle_bits = 0;
+                        memcpy(&angle_bits, image.outputs[1].values, sizeof(angle_bits));
+                        CHECK(angle_bits == UINT32_C(0x3f8db70d) && image.outputs[1].values[1] == 1.f,
+                              "language math pins");
+                        const iprop_output* list = &image.outputs[2];
+                        CHECK(list->is_list && list->count == 2, "language loop list count");
+                        if (list->count == 2) {
+                            CHECK(list->values[0] == 0.f && list->values[1] == (float)a &&
+                                  list->values[2] == 2.f && list->values[3] == (float)a,
+                                  "language continue/break values");
+                        }
+                        CHECK(image.outputs[3].is_list && image.outputs[3].count == 0,
+                              "language empty circle list");
+                        for (uint32_t i = 0; i < 4; ++i) {
+                            CHECK(image.outputs[i].owner == 0, "language root owner");
+                        }
+                    }
+                    iprop_result_free(result);
+                }
+            }
+            iprop_program_free(program);
+        }
+    }
+
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/plant.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        options.seed = 26;
+        CHECK(bytes != NULL, "cannot read compiled plant");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "compiled plant load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "compiled plant generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.width == 64 && image.height == 64, "compiled plant size");
+            iprop_result_free(result);
+        }
+    }
+
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);
         return 1;

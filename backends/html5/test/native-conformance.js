@@ -18,6 +18,7 @@ const sources = [
     ["shapes", "tests/golden/shapes.ipa"],
     ["portrait", "examples/portrait.ips"],
     ["plant", "examples/plant.ips"],
+    ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
@@ -81,14 +82,17 @@ function run(iprop, toolsDir) {
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
     const failures = [];
-    function compare(file, seed, golden) {
-        const label = path.basename(file) + " seed " + seed;
+    function compare(file, seed, golden, options = {}) {
+        const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
         try {
             const png = path.join(temporary, "native.png");
-            const result = JSON.parse(execFileSync(tool("ipgen"),
-                [file, "--seed", String(seed), "--float-bits", "-o", png], { encoding: "utf8" }));
+            const args = [file, "--seed", String(seed), "--float-bits", "-o", png];
+            if (options.variant !== undefined) args.push("--variant", String(options.variant));
+            if (options.archetype !== undefined) args.push("--archetype", String(options.archetype));
+            if (options.sizeX !== undefined) args.push("--size", options.sizeX + "x" + options.sizeY);
+            const result = JSON.parse(execFileSync(tool("ipgen"), args, { encoding: "utf8" }));
             const native = decodePng(fs.readFileSync(png));
-            const wasm = iprop.generate(new Uint8Array(fs.readFileSync(file)), { seed });
+            const wasm = iprop.generate(new Uint8Array(fs.readFileSync(file)), { seed, ...options });
             checkImage(wasm, native, label + " WASM/native");
             assert.deepEqual(wasmOutputBits(wasm.outputs), result.outputs,
                              label + ": structured outputs");
@@ -112,6 +116,12 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent math edge pins");
             }
+            if (path.basename(file) === "language.iprop") {
+                assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
+                const v = options.variant || 0, a = options.archetype || 0;
+                assert.deepEqual(wasm.outputs[0].points, [{x: v + 1, y: a + 0.25}], label + ": typed helper/palette");
+                assert.deepEqual(wasm.outputs[2].points, [{x: 0, y: a}, {x: 2, y: a}], label + ": loop control");
+            }
             ++comparisons;
         } catch (error) {
             failures.push(label + ": " + error.message);
@@ -126,6 +136,13 @@ function run(iprop, toolsDir) {
             execFileSync(tool(source.endsWith(".ipa") ? "ipa" : "ipc"),
                          [path.join(repo, source), "-o", file]);
             for (const seed of seeds) compare(file, seed);
+            if (name === "language") {
+                for (let variant = 0; variant < 3; ++variant) {
+                    for (let archetype = 0; archetype < 2; ++archetype) {
+                        compare(file, 26, null, {variant, archetype, sizeX: 16, sizeY: 24});
+                    }
+                }
+            }
         }
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });

@@ -7,6 +7,7 @@
 // Usage: sfml_conformance <iprop-dir> <png-dir>
 
 #include "Host.hpp"
+#include "Render.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -127,6 +128,45 @@ int main(int argc, char** argv) {
 
         iprop_result_free(result);
         iprop_program_free(program);
+    }
+
+    // Current compiler source goes through the same GPU upload/draw path
+    // as the host, for every variant/archetype combination.
+    {
+        iprop::sfml_host::Program program(
+            iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/language.iprop")),
+            &iprop_program_free);
+        sf::Texture texture;
+        sf::Sprite sprite(texture);
+        sf::RenderTexture target({8, 8});
+        const sf::Color colors[] = {{0x11,0x22,0x33}, {0x44,0x55,0x66}, {0x77,0x88,0x99}};
+        for (std::uint32_t v = 0; v < 3; ++v) {
+            for (std::uint32_t a = 0; a < 2; ++a) {
+                iprop::sfml_host::Result result(
+                    iprop::sfml_host::generate(program.get(), 26, v, a), &iprop_result_free);
+                iprop_image image{};
+                iprop_result_image(result.get(), &image);
+                iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
+                target.clear(sf::Color::Transparent);
+                target.draw(sprite);
+                target.display();
+                const sf::Image rendered = target.getTexture().copyToImage();
+                CHECK(rendered.getPixel({0, 0}) == sf::Color(0x33,0x55,0xaa),
+                      "language default input pixel");
+                CHECK(rendered.getPixel({a + 1, 1}) == colors[v], "language rendered palette pixel");
+                CHECK(image.output_count == 4 && image.outputs[0].values[0] == static_cast<float>(v + 1) &&
+                      image.outputs[0].values[1] == static_cast<float>(a) + .25f,
+                      "language typed helper output");
+            }
+        }
+        iprop::sfml_host::Program plant(
+            iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/plant.iprop")),
+            &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26, 0, 0), &iprop_result_free);
+        iprop_image image{};
+        iprop_result_image(result.get(), &image);
+        iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
+        CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
     if (failures != 0) {
