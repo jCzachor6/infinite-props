@@ -197,6 +197,7 @@ ValueType Typer::typeLiteral(const Literal& lit) {
         error(lit.location,
               "string literals are only valid as import paths");
     }
+    error(lit.location, "unknown literal kind");
 }
 
 ValueType Typer::typeIdentifier(const Identifier& id) {
