@@ -85,11 +85,12 @@ the Godot engine integration (the flagship adoption target).
   export the PNG (`iprop_sfml`: arrows/A/S/Escape).
 
 ### 8. Godot (the flagship engine backend)
-- [ ] `8.1` `backends/godot/` — the GDExtension (C++ over the C API).
-- [ ] `8.2` the Godot node/resource: `iprop_generate` → `Image`/`ImageTexture`
+- [x] `8.1` `backends/godot/` — the GDExtension (C++ over the C API):
+  `IpropAsset` (Resource) + `IpropSprite2D` (node) over `ipropc`.
+- [x] `8.2` the Godot node/resource: `iprop_generate` → `Image`/`ImageTexture`
   + the outputs exposed as the resource properties.
-- [ ] `8.3` the demo scene + the conformance; the pinned Godot version in
-  the docs.
+- [x] `8.3` the demo scene + the conformance; the pinned Godot version in
+  the docs (Godot 4.5.2 + godot-cpp godot-4.5-stable).
 
 ## Cross-cutting acceptance
 

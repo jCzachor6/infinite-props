@@ -31,6 +31,7 @@ add_subdirectory(compiler)
 add_subdirectory(tools)
 add_subdirectory(backends/capi)
 add_subdirectory(backends/sfml)
+add_subdirectory(backends/godot)
 
 if(IPROP_BUILD_TESTS)
     add_subdirectory(tests)

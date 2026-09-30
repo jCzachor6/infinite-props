@@ -412,7 +412,7 @@ infinite-props/
   language/    # .ips grammar, parser, semantic rules
   compiler/    # lang → IR → bytecode; disassembler, validator
   runtime/     # Reference CPU interpreter (C++20)
-  backends/    # html5 (Emscripten), capi (the stable C API), sfml, opengl, vulkan
+  backends/    # html5 (Emscripten), capi (the stable C API), sfml, godot, opengl, vulkan
   editor/      # Web pseudo-IDE
   website/     # Playground, docs, gallery
   examples/    # .ips sources + compiled .iprop files
