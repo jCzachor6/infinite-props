@@ -30,6 +30,7 @@ add_subdirectory(language)
 add_subdirectory(compiler)
 add_subdirectory(tools)
 add_subdirectory(backends/capi)
+add_subdirectory(backends/sfml)
 
 if(IPROP_BUILD_TESTS)
     add_subdirectory(tests)

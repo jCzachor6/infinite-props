@@ -77,12 +77,12 @@ the Godot engine integration (the flagship adoption target).
   native backends consume this one surface — `backends/capi/README.md`).
 
 ### 7. The SFML host
-- [ ] `7.1` `backends/sfml/` — the native window: `sf::Image` output,
+- [x] `7.1` `backends/sfml/` — the native window: `sf::Image` output,
   seed/variant cycling, the atlas view (SFML 3.1 from `base-code`).
-- [ ] `7.2` conformance vs the reference (the golden corpus through the
-  SFML path).
-- [ ] `7.3` the desktop demo loop — load an `.ips`/`.iprop`, cycle seeds,
-  export the PNG.
+- [x] `7.2` conformance vs the reference (the golden corpus through the
+  SFML path: the C API + `sf::Image` + the export round-trip).
+- [x] `7.3` the desktop demo loop — load an `.ips`/`.iprop`, cycle seeds,
+  export the PNG (`iprop_sfml`: arrows/A/S/Escape).
 
 ### 8. Godot (the flagship engine backend)
 - [ ] `8.1` `backends/godot/` — the GDExtension (C++ over the C API).
