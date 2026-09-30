@@ -460,6 +460,14 @@ endfn
     }
 }
 
+TEST_CASE("the emitter safely rejects loop control without a loop") {
+    for (const std::string control : {"break", "continue"}) {
+        const auto program = ips::parse("asset t { size 8x8 "
+            "draw(v: i32, a: i32) {} helper() { " + control + " } }");
+        CHECK_THROWS_AS(compileProgram(program, {}), ips::SourceError);
+    }
+}
+
 TEST_CASE("break and continue lower to br on the loop labels") {
     // Sum the even i in 1..10, stopping early at i > 5: the contributes
     // 2 and 4 (continue skips the odds, break stops at 6) — the sum is 6.

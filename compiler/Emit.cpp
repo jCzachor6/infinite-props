@@ -215,12 +215,18 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         ins(Opcode::Br, 0, 0); // back to the condition
         ins(Opcode::End);
         ins(Opcode::End);
-    } else if (std::holds_alternative<ips::BreakStmt>(stmt)) {
+    } else if (const auto* brk = std::get_if<ips::BreakStmt>(&stmt)) {
+        if (loopLabels_.empty()) {
+            error(brk->location, "'break' outside a loop");
+        }
         const auto [blockIndex, loopIndex] = loopLabels_.back();
         (void)loopIndex;
         ins(Opcode::Br, 0,
             static_cast<u16>(labelKinds_.size() - 1 - blockIndex));
-    } else if (std::holds_alternative<ips::ContinueStmt>(stmt)) {
+    } else if (const auto* cont = std::get_if<ips::ContinueStmt>(&stmt)) {
+        if (loopLabels_.empty()) {
+            error(cont->location, "'continue' outside a loop");
+        }
         const auto [blockIndex, loopIndex] = loopLabels_.back();
         (void)blockIndex;
         ins(Opcode::Br, 0,

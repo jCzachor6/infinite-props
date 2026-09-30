@@ -647,6 +647,30 @@ TEST_CASE("import resolution returns dependencies first and reports bad files") 
     REQUIRE(threw);
 }
 
+TEST_CASE("loop control cannot escape into a lazily checked helper") {
+    for (const std::string control : {"break", "continue"}) {
+        for (const std::string loop : {"while (1)", "for i in 0..2"}) {
+            for (const bool helperFirst : {false, true}) {
+                INFO(control << ", " << loop << ", helper first " << helperFirst);
+                const std::string helper = "helper() { " + control + " }";
+                const std::string draw = "draw(v: i32, a: i32) { " + loop +
+                                         " { helper() break } }";
+                const std::string source = "asset t { size 8x8 " +
+                    (helperFirst ? helper + draw : draw + helper) + " }";
+                const std::string message = "'" + control + "' outside a loop";
+                expectCheckError(source, {}, message.c_str());
+            }
+        }
+    }
+    // Checking a valid helper must also restore the caller's loop context.
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t {
+  size 8x8
+  draw(v: i32, a: i32) { while (1) { helper() break } }
+  helper() { for i in 0..2 { continue } }
+})"), {}));
+}
+
 TEST_CASE("type helpers behave") {
     REQUIRE(std::string(typeName(ValueType::I32)) == "i32");
     REQUIRE(isNumeric(ValueType::I32));

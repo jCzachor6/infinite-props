@@ -258,6 +258,7 @@ private:
         // per-function state.
         const Function* savedCurrent = current_;
         Typer::Scope savedScope = typer_.saveScope();
+        const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
 
         current_ = &function;
         typer_.enterFunction(program_, function, function.name == "draw");
@@ -270,6 +271,7 @@ private:
                                           : std::nullopt;
 
         current_ = savedCurrent;
+        loopDepth_ = savedLoopDepth;
         typer_.restoreScope(std::move(savedScope));
     }
 
