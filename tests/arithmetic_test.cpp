@@ -296,6 +296,16 @@ TEST_CASE("the math package matches the pinned algorithm bit for bit") {
         {0x3F317218u, 0x40000000u, 0x3EF5FDF0u}, // ln2^2
         {0x40A00000u, 0x00000000u, 0x3F800000u}, // 5^0 = 1
         {0x7FC00000u, 0x00000000u, 0x3F800000u}, // NaN^0 = 1
+        {0xBF800000u, 0x7F800000u, 0x3F800000u}, // (-1)^+inf
+        {0xBF800000u, 0xFF800000u, 0x3F800000u}, // (-1)^-inf
+        {0xBF000000u, 0x7F800000u, 0x00000000u}, // (-0.5)^+inf
+        {0xBF000000u, 0xFF800000u, 0x7F800000u}, // (-0.5)^-inf
+        {0xC0000000u, 0x7F800000u, 0x7F800000u}, // (-2)^+inf
+        {0xC0000000u, 0xFF800000u, 0x00000000u}, // (-2)^-inf
+        {0x80000000u, 0x7F800000u, 0x00000000u}, // (-0)^+inf
+        {0x80000000u, 0xFF800000u, 0x7F800000u}, // (-0)^-inf
+        {0xFF800000u, 0x7F800000u, 0x7F800000u}, // (-inf)^+inf
+        {0xFF800000u, 0xFF800000u, 0x00000000u}, // (-inf)^-inf
     };
     for (const Binary& testCase : powCases) {
         INFO("pow 0x" << std::hex << testCase.a << " ^ 0x" << testCase.b);

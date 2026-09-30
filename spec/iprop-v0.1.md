@@ -750,6 +750,8 @@ then the exp2 edge cases and the cast to binary32).
 if y == 0: 1                    // even when x is NaN
 if x == 1: 1
 if x is NaN or y is NaN: canonical NaN
+if y is infinite and |x| == 1: 1
+if y is infinite: return (|x| > 1) == (y > 0) ? +inf : +0
 if x == +inf: return y > 0 ? +inf : +0
 if x == -inf: return (y odd integer) ? (y > 0 ? -inf : -0)
                                       : (y > 0 ? +inf : +0)
@@ -762,7 +764,7 @@ if x < 0 and y is an odd integer: r = -r
 return (f32)r
 ```
 
-"y is an integer" means `y == floor(y)` (exact for |y| < 2^52); "odd"
+"y is an integer" means `y` is finite and `y == floor(y)` (exact for |y| < 2^52); "odd"
 means `floor(y)` is odd.
 
 **atan2(y, x):**

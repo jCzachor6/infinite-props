@@ -98,10 +98,16 @@ constexpr double kLog2e = 1.44269504088896340736e+00;
 constexpr double kPi = 3.14159265358979323846e+00;
 constexpr double kPiOver2 = 1.57079632679489661923e+00;
 
-// exp2 for a finite argument: n = floor(x), 2^x = e^(f*ln2) * 2^n with the
-// Taylor series of degree 12 in Horner form. Everything in double; the
-// caller handles NaN/infinity and casts to f32.
+// exp2: n = floor(x), 2^x = e^(f*ln2) * 2^n with the Taylor series of
+// degree 12 in Horner form. Guard nonfinite intermediates before converting
+// the exponent to int; callers cast the result to f32.
 double exp2Core(double x) {
+    if (std::isnan(x)) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (std::isinf(x)) {
+        return x > 0.0 ? std::numeric_limits<double>::infinity() : 0.0;
+    }
     double n = std::floor(x);
     // Keep the exponent within the ldexp-safe range; the out-of-range
     // cases overflow/underflow to +/-inf / 0, exactly as the f32 cast
@@ -242,7 +248,16 @@ f32 f32Pow(f32 x, f32 y) {
     if (std::isnan(a) || std::isnan(b)) {
         return std::numeric_limits<f32>::quiet_NaN();
     }
-    const bool yInteger = b == std::floor(b);
+    if (std::isinf(b)) {
+        const double magnitude = std::fabs(a);
+        if (magnitude == 1.0) {
+            return 1.0f;
+        }
+        return (magnitude > 1.0) == (b > 0.0)
+                   ? std::numeric_limits<f32>::infinity()
+                   : 0.0f;
+    }
+    const bool yInteger = std::isfinite(b) && b == std::floor(b);
     const bool yOdd = yInteger && std::fmod(std::floor(b), 2.0) != 0.0;
     if (std::isinf(a)) {
         const bool neg = std::signbit(a);
