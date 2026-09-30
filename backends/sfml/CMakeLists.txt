@@ -24,6 +24,11 @@ if(SFML_FOUND)
     iprop_warnings(iprop_sfml)
 
     if(IPROP_BUILD_TESTS)
+        add_executable(sfml_render test/render.cpp)
+        target_link_libraries(sfml_render PRIVATE SFML::Graphics)
+        target_include_directories(sfml_render PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        iprop_warnings(sfml_render)
+        add_test(NAME sfml_render COMMAND sfml_render)
         # 7.2: the headless conformance over the corpus assembled by the
         # capi_golden target (backends/capi).
         add_executable(sfml_conformance

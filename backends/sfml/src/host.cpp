@@ -10,6 +10,7 @@
 //              [--export out.png] [--atlas out.png] [--screenshot out.png]
 
 #include "Host.hpp"
+#include "Render.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -169,21 +170,11 @@ int main(int argc, char** argv) {
     sf::Sprite sprite(texture);
     sf::Sprite atlasSprite(atlasTexture);
 
-    std::uint32_t imageWidth = 0;
-    std::uint32_t imageHeight = 0;
     bool atlas = false;
 
     const auto uploadSingle = [&](const RenderedImage& image) {
-        if (image.width != imageWidth || image.height != imageHeight) {
-            imageWidth = image.width;
-            imageHeight = image.height;
-            if (!texture.resize({image.width, image.height})) {
-                std::fprintf(stderr, "texture resize failed\n");
-                iprop_program_free(program);
-                std::exit(1);
-            }
-        }
-        texture.update(image.pixels.data());
+        iprop::sfml_host::uploadTexture(texture, sprite,
+            {image.width, image.height}, image.pixels.data());
         const float scale = static_cast<float>(kWindowSize) /
                             static_cast<float>(image.width > image.height
                                                    ? image.width
@@ -195,14 +186,8 @@ int main(int argc, char** argv) {
     };
 
     const auto uploadAtlas = [&](const RenderedImage& atlasImage) {
-        imageWidth = atlasImage.width;
-        imageHeight = atlasImage.height;
-        if (!atlasTexture.resize({atlasImage.width, atlasImage.height})) {
-            std::fprintf(stderr, "atlas texture resize failed\n");
-            iprop_program_free(program);
-            std::exit(1);
-        }
-        atlasTexture.update(atlasImage.pixels.data());
+        iprop::sfml_host::uploadTexture(atlasTexture, atlasSprite,
+            {atlasImage.width, atlasImage.height}, atlasImage.pixels.data());
         const float scale = static_cast<float>(kWindowSize) /
                             static_cast<float>(atlasImage.width);
         atlasSprite.setScale({scale, scale});
@@ -214,7 +199,12 @@ int main(int argc, char** argv) {
         window.clear(sf::Color(24, 24, 28));
         window.draw(sprite);
         window.display();
-        const sf::Image readback = texture.copyToImage();
+        sf::Texture capture;
+        if (!capture.resize(window.getSize())) {
+            throw std::runtime_error("screenshot allocation failed");
+        }
+        capture.update(window);
+        const sf::Image readback = capture.copyToImage();
         if (!readback.saveToFile(screenshotPath)) {
             std::fprintf(stderr, "screenshot to %s failed\n",
                          screenshotPath.c_str());
