@@ -21,6 +21,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(_WIN32) && !defined(IPROP_CAPI_STATIC)
+#if defined(IPROP_CAPI_BUILD)
+#define IPROP_API __declspec(dllexport)
+#else
+#define IPROP_API __declspec(dllimport)
+#endif
+#else
+#define IPROP_API
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -120,31 +130,31 @@ typedef struct {
  * `err`/`err_size` are non-null, copies a located message into `err`
  * (always NUL-terminated when err_size > 0). `out_program` is untouched
  * on failure. */
-iprop_status iprop_program_load(const uint8_t* bytes, size_t length,
+IPROP_API iprop_status iprop_program_load(const uint8_t* bytes, size_t length,
                                 iprop_program** out_program,
                                 char* err, size_t err_size);
 
 /* Frees a program. NULL is accepted. Any result generated from the
  * program stays valid (the result owns its data). */
-void iprop_program_free(iprop_program* program);
+IPROP_API void iprop_program_free(iprop_program* program);
 
 /* Copies the program's metadata. */
-void iprop_program_meta(const iprop_program* program, iprop_meta* out);
+IPROP_API void iprop_program_meta(const iprop_program* program, iprop_meta* out);
 
 /* Generates one image + the structured outputs for `options`. The
  * program must stay alive for the call; the returned result is
  * independent of it. On failure returns the status and, when
  * `err`/`err_size` are non-null, copies the message. */
-iprop_status iprop_generate(const iprop_program* program,
+IPROP_API iprop_status iprop_generate(const iprop_program* program,
                             const iprop_generate_options* options,
                             iprop_result** out_result,
                             char* err, size_t err_size);
 
 /* Frees a result. NULL is accepted. */
-void iprop_result_free(iprop_result* result);
+IPROP_API void iprop_result_free(iprop_result* result);
 
 /* Copies the result's image view (width/height/pixels/outputs). */
-void iprop_result_image(const iprop_result* result, iprop_image* out);
+IPROP_API void iprop_result_image(const iprop_result* result, iprop_image* out);
 
 #ifdef __cplusplus
 } /* extern "C" */

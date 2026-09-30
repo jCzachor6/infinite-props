@@ -7,6 +7,7 @@ add_library(iprop_capi SHARED
     iprop.cpp)
 
 target_link_libraries(iprop_capi PUBLIC iprop::runtime)
+target_compile_definitions(iprop_capi PRIVATE IPROP_CAPI_BUILD)
 target_include_directories(iprop_capi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(iprop_capi)
 
@@ -19,12 +20,17 @@ add_library(iprop_capi_static STATIC
     iprop.cpp)
 
 target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
+target_compile_definitions(iprop_capi_static PUBLIC IPROP_CAPI_STATIC)
 target_include_directories(iprop_capi_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(iprop_capi_static)
 
 set_target_properties(iprop_capi_static PROPERTIES
     OUTPUT_NAME ipropc
     POSITION_INDEPENDENT_CODE ON)
+if(WIN32)
+    # MSVC's static archive and the DLL import library both use .lib.
+    set_target_properties(iprop_capi_static PROPERTIES OUTPUT_NAME ipropc_static)
+endif()
 
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a

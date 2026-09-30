@@ -3,7 +3,7 @@
 # must not hide behind sloppy code.
 function(iprop_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /WX /permissive-)
+        target_compile_options(${target} PRIVATE /W4 /WX /permissive- /fp:strict)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
         # spec §13.2: implementations MUST NOT fuse multiply-add. Disable

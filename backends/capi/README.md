@@ -3,6 +3,10 @@
 The stable C interface every native host links against: SFML, Godot (the
 GDExtension wraps this library), the tools and any engine integration. It
 ships as a shared library and a static twin, both named `ipropc`.
+On Windows the static archive is named `ipropc_static` to avoid colliding
+with the DLL's import library. Shared consumers use the header's DLL import
+annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target
+propagates it automatically).
 
 ## The surface
 
