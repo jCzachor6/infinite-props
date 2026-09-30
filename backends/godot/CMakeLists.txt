@@ -131,3 +131,5 @@ if(IPROP_BUILD_TESTS)
         message(STATUS "the Godot binary not found — the godot conformance is skipped")
     endif()
 endif()
+
+include(${CMAKE_SOURCE_DIR}/cmake/InstallGodot.cmake)

@@ -8,6 +8,27 @@ with the DLL's import library. Shared consumers use the header's DLL import
 annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target
 propagates it automatically).
 
+## Installation
+
+```sh
+cmake --build build --parallel
+cmake --install build --prefix /path/to/iprop
+```
+
+An external CMake project uses `find_package(iprop 0.2 CONFIG REQUIRED)`
+with that prefix in `CMAKE_PREFIX_PATH`, then links `iprop::capi` (shared)
+or `iprop::capi_static`. The shared target can be consumed by a C-only
+project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
+and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
+The installed DLL/import library and static archive have distinct names.
+The shared library SONAME includes the pre-1.0 minor ABI version.
+
+The prefix includes all six CLI tools, examples, specifications and the
+enabled SFML/Godot integrations. Shared SFML libraries are included;
+Linux graphics/font libraries and the Godot engine/export templates are
+system dependencies. Godot's installed preset has empty template paths;
+set them locally before exporting, following its README.
+
 ## The surface
 
 `iprop.h` is the whole contract — C99, no C++ in the ABI:

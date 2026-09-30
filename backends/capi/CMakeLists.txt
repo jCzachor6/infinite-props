@@ -6,27 +6,35 @@
 add_library(iprop_capi SHARED
     iprop.cpp)
 
-target_link_libraries(iprop_capi PUBLIC iprop::runtime)
+add_library(iprop::capi ALIAS iprop_capi)
+target_link_libraries(iprop_capi PRIVATE iprop::runtime)
 target_compile_definitions(iprop_capi PRIVATE IPROP_CAPI_BUILD)
-target_include_directories(iprop_capi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(iprop_capi PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 iprop_warnings(iprop_capi)
 
 set_target_properties(iprop_capi PROPERTIES
     OUTPUT_NAME ipropc
     VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR})
+    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    EXPORT_NAME capi)
 
 add_library(iprop_capi_static STATIC
     iprop.cpp)
 
 target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
+add_library(iprop::capi_static ALIAS iprop_capi_static)
 target_compile_definitions(iprop_capi_static PUBLIC IPROP_CAPI_STATIC)
-target_include_directories(iprop_capi_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(iprop_capi_static PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 iprop_warnings(iprop_capi_static)
 
 set_target_properties(iprop_capi_static PROPERTIES
     OUTPUT_NAME ipropc
-    POSITION_INDEPENDENT_CODE ON)
+    POSITION_INDEPENDENT_CODE ON
+    EXPORT_NAME capi_static)
 if(WIN32)
     # MSVC's static archive and the DLL import library both use .lib.
     set_target_properties(iprop_capi_static PROPERTIES OUTPUT_NAME ipropc_static)

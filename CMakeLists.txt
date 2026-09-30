@@ -15,6 +15,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/CompilerWarnings.cmake)
+include(GNUInstallDirs)
 
 option(IPROP_BUILD_TESTS "Build the test suite" ON)
 option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)
@@ -43,3 +44,5 @@ add_subdirectory(backends/godot)
 if(IPROP_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+include(cmake/Install.cmake)

@@ -17,9 +17,9 @@ if(DEFINED IPROP_SFML_PREFIX)
 endif()
 
 if(IPROP_SFML STREQUAL "ON")
-    find_package(SFML 3.1 REQUIRED COMPONENTS Graphics Window System)
+    find_package(SFML 3.1 REQUIRED GLOBAL COMPONENTS Graphics Window System)
 else()
-    find_package(SFML 3.1 QUIET COMPONENTS Graphics Window System)
+    find_package(SFML 3.1 QUIET GLOBAL COMPONENTS Graphics Window System)
 endif()
 
 if(SFML_FOUND)
