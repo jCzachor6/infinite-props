@@ -862,6 +862,27 @@ asset portrait {
     REQUIRE(compileProgram(portraitProgram, parts) == bytes);
 }
 
+TEST_CASE("two aliases of the same imported program keep independent output slots") {
+    const auto part = ips::parse(R"(asset child { size 8x8 variants 2
+        output point p
+        draw(v: i32, a: i32) { p = {v + 1, 0} } })");
+    const auto root = ips::parse(R"(import first from "child.ips"
+        import second from "child.ips"
+        asset root { size 8x8
+          draw(v: i32, a: i32) {
+            first.draw(seed, 0, a, at = {0, 0})
+            second.draw(seed, 1, a, at = {0, 0})
+          } })");
+    ips::checkAsset(part, {});
+    ips::checkAsset(root, {{"first", partInfoOf(part.asset)},
+                           {"second", partInfoOf(part.asset)}});
+    const auto result = execute(compileProgram(root,
+        {{"first", &part}, {"second", &part}}));
+    REQUIRE(result.outputs.size() == 2);
+    REQUIRE(result.outputs[0].points[0].x == 1.f);
+    REQUIRE(result.outputs[1].points[0].x == 2.f);
+}
+
 TEST_CASE("helpers resolve within the root or owning part namespace") {
     const auto first = ips::parse(R"(asset first { size 8x8 output point p
       draw(v: i32, a: i32) { p = {helper(), 0} }

@@ -29,6 +29,7 @@ struct PlannedFunction {
     std::string name;
     const ips::Function* ast = nullptr;
     const ips::Program* owner = nullptr;
+    std::optional<u32> partOwner; // distinct even when aliases share one AST
     bool drawLike = false;
 
     std::vector<ValueType> params;  // runtime types

@@ -245,10 +245,7 @@ u32 Emitter::slotForOutput(const ips::Program* owner,
     if (owner == plan_.entry) {
         return plan_.rootSlotIndex.at(output.name);
     }
-    u32 part = 0;
-    while (plan_.parts[part] != owner) {
-        ++part;
-    }
+    const u32 part = current_->partOwner.value();
     u32 slot = static_cast<u32>(plan_.rootSlots.size());
     for (u32 i = 0; i < part; ++i) {
         slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());

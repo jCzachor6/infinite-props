@@ -259,6 +259,9 @@ void Planner::prepareFunction(const std::string& name) {
     PlannedFunction& info = plan_->functions.at(plan_->functionIndex.at(name));
     info.ast = ast;
     info.owner = owner;
+    if (dot != std::string::npos) {
+        info.partOwner = plan_->partIndex.at(name.substr(0, dot));
+    }
     info.drawLike = drawLike;
 
     u32 slot = 0;
