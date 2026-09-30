@@ -256,6 +256,12 @@ Stmt ParserImpl::parseStatement() {
         return parseIf();
     case TokenKind::KeywordWhile:
         return parseWhile();
+    case TokenKind::KeywordFor:
+        return parseFor();
+    case TokenKind::KeywordBreak:
+        return Stmt{BreakStmt{advance().location}};
+    case TokenKind::KeywordContinue:
+        return Stmt{ContinueStmt{advance().location}};
     case TokenKind::KeywordReturn:
         return parseReturn();
     default:
@@ -305,6 +311,20 @@ Stmt ParserImpl::parseWhile() {
     auto condition = parseExpr();
     expect(TokenKind::RParen, "')' after the condition");
     return Stmt{WhileStmt{std::move(condition), parseBlock(), at}};
+}
+
+Stmt ParserImpl::parseFor() {
+    const SourceLocation at = advance().location; // 'for'
+    if (kind() != TokenKind::Identifier) {
+        failExpected("the loop variable after 'for'");
+    }
+    const std::string variable = advance().text;
+    expect(TokenKind::KeywordIn, "'in' after the loop variable");
+    auto from = parseExpr();
+    expect(TokenKind::DotDot, "'..' between the loop bounds");
+    auto to = parseExpr();
+    return Stmt{ForStmt{std::move(variable), std::move(from), std::move(to),
+                        parseBlock(), at}};
 }
 
 Stmt ParserImpl::parseReturn() {

@@ -53,6 +53,17 @@ private:
     void emitOutputWrite(const ips::Program* owner,
                          const ips::OutputDecl& output, const ips::Expr& value);
 
+    // The runtime label kinds of the open control frames, outermost first
+    // (0 = block, 1 = loop). `break`/`continue` lower to `br` on the
+    // enclosing while's block/loop label; the depth is the distance from
+    // the innermost open label.
+    std::vector<u8> labelKinds_;
+    // The {block, loop} label indices of each open while, innermost last.
+    std::vector<std::pair<u32, u32>> loopLabels_;
+    // Counts the emitted for-loops to name their hidden bound locals; the
+    // Planner walks the same statements in the same order.
+    u32 forCount_ = 0;
+
     // ---- statements (Emit.cpp) ----------------------------------------------
 
     void emitStmt(const ips::Stmt& stmt);

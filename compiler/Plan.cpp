@@ -255,6 +255,7 @@ void Planner::prepareFunction(const std::string& name) {
     info.drawLike = drawLike;
 
     u32 slot = 0;
+    u32 forCount = 0; // names the hidden for-loop bound locals
     if (drawLike) {
         info.params = {ValueType::I32, ValueType::I32}; // variant, archetype
         for (int i = 0; i < 2; ++i) {
@@ -326,6 +327,27 @@ void Planner::prepareFunction(const std::string& name) {
             } else if (const auto* whileStmt =
                            std::get_if<ips::WhileStmt>(&stmt)) {
                 self(self, whileStmt->body);
+            } else if (const auto* forStmt =
+                           std::get_if<ips::ForStmt>(&stmt)) {
+                // The loop counter is a real local (the body reads it); the
+                // bound is a hidden local holding the once-evaluated upper
+                // bound. Both are planned here so their slots stay stable
+                // regardless of the scratch-local flags.
+                if (info.slots.count(forStmt->variable) == 0) {
+                    info.slots.emplace(forStmt->variable, slot);
+                    info.langTypes.emplace(forStmt->variable,
+                                           ips::ValueType::I32);
+                    plan_->typeEngine().declareLocal(forStmt->variable,
+                                                     ips::ValueType::I32);
+                    info.locals.push_back(ValueType::I32);
+                    ++slot;
+                }
+                const std::string boundName = "$for" + std::to_string(forCount);
+                ++forCount;
+                info.slots.emplace(boundName, slot);
+                info.locals.push_back(ValueType::I32);
+                ++slot;
+                self(self, forStmt->body);
             }
         }
     };

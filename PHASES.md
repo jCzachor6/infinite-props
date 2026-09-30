@@ -60,8 +60,12 @@ the Godot engine integration (the flagship adoption target).
   same `std::floor`/`std::max` idioms when it lands.)
 
 ### 5. Loop control
-- [ ] `5.1` `break` and `continue` in `while` loops (the VM's `br`/`br_if`).
-- [ ] `5.2` (optional) `for i in 0..n` sugar over `while`.
+- [x] `5.1` `break` and `continue` in `while` loops (the VM's `br`/`br_if`;
+  the compiler tracks the open labels to compute the branch depths, and the
+  checker rejects them outside loops).
+- [x] `5.2` (optional) `for i in 0..n` sugar over `while` — i32 counter,
+  bounds evaluated once (a hidden bound local), and `continue` runs the
+  increment (a `block/loop/block` lowering).
 
 ### 6. The C API (the shared foundation)
 - [ ] `6.1` `backends/capi/` — the stable C API over the runtime:

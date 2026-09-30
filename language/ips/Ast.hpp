@@ -145,8 +145,32 @@ struct ReturnStmt {
     SourceLocation location;
 };
 
-struct Stmt : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt> {
-    using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt>::variant;
+// `break` / `continue` — only valid inside a `while` body (checked in the
+// semantics pass); the compiler lowers them to `br` on the loop's labels.
+struct BreakStmt {
+    SourceLocation location;
+};
+
+struct ContinueStmt {
+    SourceLocation location;
+};
+
+// `for i in a..b { ... }` — an i32 counter loop over [a, b). The bounds are
+// evaluated once and the counter increments at the end of each pass; sugar
+// over the VM's block/loop/br (see the compiler lowering).
+struct ForStmt {
+    std::string variable;
+    std::unique_ptr<Expr> from;
+    std::unique_ptr<Expr> to;
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
+
+struct Stmt
+    : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
+                   BreakStmt, ContinueStmt, ForStmt> {
+    using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
+                       BreakStmt, ContinueStmt, ForStmt>::variant;
 };
 
 // ---- Declarations --------------------------------------------------------

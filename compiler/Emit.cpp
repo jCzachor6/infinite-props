@@ -15,6 +15,17 @@ Emitter::Emitter(Plan& plan) : plan_(plan) {}
 }
 
 void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
+    // Track the open control frames so that `break`/`continue` can compute
+    // the branch depth to the enclosing while's labels. Every label-pushing
+    // opcode has a matching End in the validated output, so the vector is
+    // balanced and empty at every function boundary.
+    if (opcode == Opcode::If || opcode == Opcode::Block) {
+        labelKinds_.push_back(0);
+    } else if (opcode == Opcode::Loop) {
+        labelKinds_.push_back(1);
+    } else if (opcode == Opcode::End) {
+        labelKinds_.pop_back();
+    }
     code_.push_back(Instruction{opcode, aux, operand});
     lines_.push_back(currentLine_);
 }
@@ -78,6 +89,9 @@ void Emitter::emitFunction(PlannedFunction& function) {
     lines_.clear();
     currentLine_ = 0;
     scratchUsed_ = false;
+    labelKinds_.clear();
+    loopLabels_.clear();
+    forCount_ = 0;
     ips::Typer::Scope savedScope = plan_.typeEngine().saveScope();
     const std::string qualified = function.name;
     const auto dot = qualified.find('.');
@@ -151,6 +165,8 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
     } else if (const auto* whileStmt = std::get_if<ips::WhileStmt>(&stmt)) {
         ins(Opcode::Block);
         ins(Opcode::Loop);
+        const u32 blockIndex = static_cast<u32>(labelKinds_.size()) - 2;
+        loopLabels_.push_back({blockIndex, blockIndex + 1});
         emitExpr(*whileStmt->condition);
         ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
         ins(Opcode::I32Eq);
@@ -161,6 +177,54 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         ins(Opcode::Br, 0, 0); // back to the loop start
         ins(Opcode::End);
         ins(Opcode::End);
+        loopLabels_.pop_back();
+    } else if (const auto* forStmt = std::get_if<ips::ForStmt>(&stmt)) {
+        // for i in a..b { body } lowers to: counter = a; bound = b (both
+        // evaluated once); then block/loop/block — the condition head, the
+        // body (continue branches to the end of the inner block, i.e. the
+        // increment), the increment, and the back edge.
+        const u16 counter =
+            static_cast<u16>(current_->slots.at(forStmt->variable));
+        const std::string boundName = "$for" + std::to_string(forCount_++);
+        const u16 bound = static_cast<u16>(current_->slots.at(boundName));
+        emitExpr(*forStmt->from);
+        ins(Opcode::LocalSet, 0, counter);
+        emitExpr(*forStmt->to);
+        ins(Opcode::LocalSet, 0, bound);
+        ins(Opcode::Block); // the break label
+        ins(Opcode::Loop);  // the condition head
+        const u32 breakIndex = static_cast<u32>(labelKinds_.size()) - 2;
+        ins(Opcode::LocalGet, 0, counter);
+        ins(Opcode::LocalGet, 0, bound);
+        ins(Opcode::I32LtS);
+        ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
+        ins(Opcode::I32Eq);
+        ins(Opcode::BrIf, 0, 1); // exit the block when counter >= bound
+        ins(Opcode::Block);      // the continue label (the increment frame)
+        const u32 continueIndex = static_cast<u32>(labelKinds_.size()) - 1;
+        loopLabels_.push_back({breakIndex, continueIndex});
+        for (const auto& s : forStmt->body) {
+            emitStmt(s);
+        }
+        loopLabels_.pop_back();
+        ins(Opcode::End); // the increment frame
+        ins(Opcode::LocalGet, 0, counter);
+        ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(1)));
+        ins(Opcode::I32Add);
+        ins(Opcode::LocalSet, 0, counter);
+        ins(Opcode::Br, 0, 0); // back to the condition
+        ins(Opcode::End);
+        ins(Opcode::End);
+    } else if (std::holds_alternative<ips::BreakStmt>(stmt)) {
+        const auto [blockIndex, loopIndex] = loopLabels_.back();
+        (void)loopIndex;
+        ins(Opcode::Br, 0,
+            static_cast<u16>(labelKinds_.size() - 1 - blockIndex));
+    } else if (std::holds_alternative<ips::ContinueStmt>(stmt)) {
+        const auto [blockIndex, loopIndex] = loopLabels_.back();
+        (void)blockIndex;
+        ins(Opcode::Br, 0,
+            static_cast<u16>(labelKinds_.size() - 1 - loopIndex));
     } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
         if (ret->value) {
             emitExpr(*ret->value);

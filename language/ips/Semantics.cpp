@@ -68,6 +68,7 @@ private:
 
     // Per-function state.
     const Function* current_ = nullptr;
+    std::uint32_t loopDepth_ = 0;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
         throw SourceError{at, std::move(message)};
@@ -289,12 +290,72 @@ private:
             }
         } else if (const auto* whileStmt = std::get_if<WhileStmt>(&stmt)) {
             checkCondition(*whileStmt->condition, whileStmt->location, "while");
+            ++loopDepth_;
             for (const auto& s : whileStmt->body) {
                 checkStmt(s);
             }
+            --loopDepth_;
+        } else if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
+            checkFor(*forStmt);
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             checkReturn(*ret);
+        } else if (const auto* brk = std::get_if<BreakStmt>(&stmt)) {
+            if (loopDepth_ == 0) {
+                error(brk->location, "'break' outside a loop");
+            }
+        } else if (const auto* cont = std::get_if<ContinueStmt>(&stmt)) {
+            if (loopDepth_ == 0) {
+                error(cont->location, "'continue' outside a loop");
+            }
         }
+    }
+
+    void checkFor(const ForStmt& forStmt) {
+        for (const Expr* bound : {forStmt.from.get(), forStmt.to.get()}) {
+            const ValueType type = typer_.typeOf(*bound);
+            if (type != ValueType::I32) {
+                error(locationOf(*bound),
+                      "'for' bounds must be i32, got " +
+                          std::string(typeName(type)));
+            }
+        }
+        if (forStmt.variable == "seed") {
+            error(forStmt.location, "'seed' is a reserved name");
+        }
+        if (findOutput(forStmt.variable) != nullptr) {
+            error(forStmt.location,
+                  "'for' variable '" + forStmt.variable +
+                      "' is an output (outputs cannot be loop counters)");
+        }
+        if (findInput(forStmt.variable) != nullptr) {
+            error(forStmt.location,
+                  "'for' variable '" + forStmt.variable +
+                      "' is an input (inputs cannot be loop counters)");
+        }
+        if (findPalette(forStmt.variable) != nullptr) {
+            error(forStmt.location,
+                  "'for' variable '" + forStmt.variable +
+                      "' is a palette (palettes cannot be loop counters)");
+        }
+        if (isParam(forStmt.variable)) {
+            error(forStmt.location,
+                  "cannot use parameter '" + forStmt.variable +
+                      "' as a loop counter");
+        }
+        const auto& locals = typer_.locals();
+        const auto existing = locals.find(forStmt.variable);
+        if (existing == locals.end()) {
+            typer_.declareLocal(forStmt.variable, ValueType::I32);
+        } else if (existing->second != ValueType::I32) {
+            error(forStmt.location, "local '" + forStmt.variable + "' is " +
+                                         typeName(existing->second) +
+                                         " but the loop counter is i32");
+        }
+        ++loopDepth_;
+        for (const auto& s : forStmt.body) {
+            checkStmt(s);
+        }
+        --loopDepth_;
     }
 
     void checkReturn(const ReturnStmt& ret) {

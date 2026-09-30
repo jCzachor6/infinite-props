@@ -231,7 +231,9 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
 
 - Text format with the `.ips` extension.
 - An `asset` block declares the metadata from §5.3.
-- Functions, locals, arithmetic, conditionals and bounded loops.
+- Functions, locals, arithmetic, conditionals and bounded loops (`while`
+  with `break`/`continue`, and `for i in a..b` sugar — both lowered to the
+  VM's `br`).
 - Built-in functions for every VM primitive in §6.4–6.5 (no floating-point
   conditions).
 - Deterministic, simple grammar; unambiguous parse errors; semantic checks

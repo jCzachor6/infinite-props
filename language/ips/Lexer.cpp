@@ -18,6 +18,10 @@ const std::map<std::string, TokenKind>& keywords() {
         {"if", TokenKind::KeywordIf},
         {"else", TokenKind::KeywordElse},
         {"while", TokenKind::KeywordWhile},
+        {"break", TokenKind::KeywordBreak},
+        {"continue", TokenKind::KeywordContinue},
+        {"for", TokenKind::KeywordFor},
+        {"in", TokenKind::KeywordIn},
         {"return", TokenKind::KeywordReturn},
         {"true", TokenKind::KeywordTrue},
         {"false", TokenKind::KeywordFalse},
@@ -241,6 +245,7 @@ std::vector<Token> lex(std::string_view source) {
         if (two('&', '&', TokenKind::AndAnd)) continue;
         if (two('|', '|', TokenKind::OrOr)) continue;
         if (two('-', '>', TokenKind::Arrow)) continue;
+        if (two('.', '.', TokenKind::DotDot)) continue;
 
         switch (c) {
         case '{': one(TokenKind::LBrace); continue;
@@ -290,6 +295,10 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::KeywordIf: return "if";
     case TokenKind::KeywordElse: return "else";
     case TokenKind::KeywordWhile: return "while";
+    case TokenKind::KeywordBreak: return "break";
+    case TokenKind::KeywordContinue: return "continue";
+    case TokenKind::KeywordFor: return "for";
+    case TokenKind::KeywordIn: return "in";
     case TokenKind::KeywordReturn: return "return";
     case TokenKind::KeywordTrue: return "true";
     case TokenKind::KeywordFalse: return "false";
@@ -313,6 +322,7 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::RBracket: return "]";
     case TokenKind::Comma: return ",";
     case TokenKind::Dot: return ".";
+    case TokenKind::DotDot: return "..";
     case TokenKind::Colon: return ":";
     case TokenKind::Semi: return ";";
     case TokenKind::Arrow: return "->";

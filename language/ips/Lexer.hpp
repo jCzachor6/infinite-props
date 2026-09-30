@@ -28,6 +28,10 @@ enum class TokenKind {
     KeywordIf,
     KeywordElse,
     KeywordWhile,
+    KeywordBreak,
+    KeywordContinue,
+    KeywordFor,
+    KeywordIn,
     KeywordReturn,
     KeywordTrue,
     KeywordFalse,
@@ -59,6 +63,7 @@ enum class TokenKind {
     RBracket,
     Comma,
     Dot,
+    DotDot, // ..
     Colon,
     Semi,
     Arrow, // ->

@@ -136,6 +136,7 @@ public:
     Stmt parseIdentifierStatement();
     Stmt parseIf();
     Stmt parseWhile();
+    Stmt parseFor();
     Stmt parseReturn();
 
     // ---- expressions (ParserExpr.cpp) -------------------------------------

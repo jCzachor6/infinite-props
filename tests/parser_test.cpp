@@ -287,6 +287,53 @@ asset loop {
     REQUIRE(loop->body.size() == 1);
 }
 
+TEST_CASE("for loops parse into their statements") {
+    const std::string source = R"(
+asset loop {
+  draw(v: i32, a: i32) {
+    for i in 0..10 {
+      pixel(i, 0, #ffffff)
+    }
+  }
+})";
+    const Program program = parse(source);
+    const auto& body = program.asset.functions[0].body;
+    const auto* loop = std::get_if<ForStmt>(&body[0]);
+    REQUIRE(loop != nullptr);
+    REQUIRE(loop->variable == "i");
+    REQUIRE(std::holds_alternative<Literal>(*loop->from));
+    REQUIRE(std::get<Literal>(*loop->from).kind == Literal::Kind::Int);
+    REQUIRE(std::get<Literal>(*loop->from).text == "0");
+    REQUIRE(std::get<Literal>(*loop->to).text == "10");
+    REQUIRE(loop->body.size() == 1);
+}
+
+TEST_CASE("break and continue parse into their statements") {
+    const std::string source = R"(
+asset loop {
+  draw(v: i32, a: i32) {
+    i = 0
+    while (i < 10) {
+      i = i + 1
+      if (i == 3) { continue }
+      if (i == 7) { break }
+    }
+  }
+})";
+    const Program program = parse(source);
+    const auto& body = program.asset.functions[0].body;
+    const auto* loop = std::get_if<WhileStmt>(&body[1]);
+    REQUIRE(loop != nullptr);
+    REQUIRE(loop->body.size() == 3);
+    const auto* inner = std::get_if<IfStmt>(&loop->body[1]);
+    REQUIRE(inner != nullptr);
+    REQUIRE(inner->thenBranch.size() == 1);
+    REQUIRE(std::holds_alternative<ContinueStmt>(inner->thenBranch[0]));
+    const auto* inner2 = std::get_if<IfStmt>(&loop->body[2]);
+    REQUIRE(inner2 != nullptr);
+    REQUIRE(std::holds_alternative<BreakStmt>(inner2->thenBranch[0]));
+}
+
 TEST_CASE("semicolons are optional statement separators") {
     const std::string source = R"(
 asset semi {

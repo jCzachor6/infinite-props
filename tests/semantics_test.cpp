@@ -178,6 +178,58 @@ asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { c = p[0] c = 0.5 } 
         "local 'c' is i32");
 }
 
+TEST_CASE("break and continue are rejected outside loops") {
+    expectCheckError(wrap("break"), "'break' outside a loop");
+    expectCheckError(wrap("continue"), "'continue' outside a loop");
+    // Inside an if, but still outside any loop: rejected too.
+    expectCheckError(wrap("if (1) { break }"), "'break' outside a loop");
+    expectCheckError(wrap("if (1) { continue }"), "'continue' outside a loop");
+    // Inside a loop, both are fine — also nested in an if.
+    CHECK_NOTHROW(checkAsset(parse(wrap(R"(
+        i = 0
+        while (i < 3) {
+          i = i + 1
+          if (i == 2) { continue }
+          if (i == 3) { break }
+        })")),
+        {}));
+    // In a helper function, the loop depth resets per function body.
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { }\n"
+        "  helper() { break } }",
+        "'break' outside a loop");
+}
+
+TEST_CASE("for loops are checked") {
+    // The bounds must be i32.
+    expectCheckError(wrap("for i in 0.0..5.0 { }"), "'for' bounds must be i32");
+    expectCheckError(wrap("for i in 0..5.5 { }"), "'for' bounds must be i32");
+    // The counter name cannot collide with the asset's I/O or a parameter.
+    expectCheckError("asset t { size 8x8 input u32 n = 1 "
+                     "draw(v: i32, a: i32) { for n in 0..2 { } } }",
+                     "inputs cannot be loop counters");
+    expectCheckError("asset t { size 8x8 output point p "
+                     "draw(v: i32, a: i32) { for p in 0..2 { } } }",
+                     "outputs cannot be loop counters");
+    expectCheckError(wrap("for v in 0..2 { }"),
+                     "cannot use parameter 'v' as a loop counter");
+    expectCheckError(wrap("for seed in 0..2 { }"), "reserved");
+    // A matching existing local is reused; a type clash is an error.
+    expectCheckError(wrap("x = 1.5\nfor x in 0..2 { }"),
+                     "but the loop counter is i32");
+    CHECK_NOTHROW(checkAsset(parse(wrap(R"(
+        x = 1
+        for x in 0..2 { } )")),
+        {}));
+    // break/continue are loop statements here too.
+    CHECK_NOTHROW(checkAsset(parse(wrap(R"(
+        for i in 0..3 {
+          if (i == 1) { continue }
+          if (i == 2) { break }
+        })")),
+        {}));
+}
+
 TEST_CASE("valid programs check cleanly") {
     CHECK_NOTHROW(checkAsset(parse(kValidRock), {}));
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));

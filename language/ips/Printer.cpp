@@ -206,12 +206,32 @@ std::vector<std::string> printStmtLines(const Stmt& stmt) {
         closeLast(lines);
         return lines;
     }
+    if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
+        lines.push_back("(for " + forStmt->variable + " " +
+                        printExpr(*forStmt->from) + " " +
+                        printExpr(*forStmt->to));
+        for (const auto& s : forStmt->body) {
+            auto sub = printStmtLines(s);
+            indentBy(sub, 2);
+            lines.insert(lines.end(), sub.begin(), sub.end());
+        }
+        closeLast(lines);
+        return lines;
+    }
     if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
         if (ret->value) {
             lines.push_back("(return " + printExpr(*ret->value) + ")");
         } else {
             lines.push_back("(return)");
         }
+        return lines;
+    }
+    if (std::get_if<BreakStmt>(&stmt) != nullptr) {
+        lines.push_back("(break)");
+        return lines;
+    }
+    if (std::get_if<ContinueStmt>(&stmt) != nullptr) {
+        lines.push_back("(continue)");
         return lines;
     }
     lines.push_back("(?)");
