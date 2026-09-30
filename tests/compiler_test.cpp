@@ -861,6 +861,35 @@ asset portrait {
     REQUIRE(compileProgram(portraitProgram, parts) == bytes);
 }
 
+TEST_CASE("helpers resolve within the root or owning part namespace") {
+    const auto first = ips::parse(R"(asset first { size 8x8 output point p
+      draw(v: i32, a: i32) { p = {helper(), 0} }
+      helper() -> i32 { return 1 } })");
+    const auto second = ips::parse(R"(asset second { size 8x8 output point p
+      draw(v: i32, a: i32) { p = {helper(2.5, 1), 0} }
+      helper(x: f32, y: i32) -> f32 { return x + y } })");
+    const auto root = ips::parse(R"(import first from "first.ips"
+      import second from "second.ips"
+      asset root { size 8x8 output point p
+        draw(v: i32, a: i32) {
+          first.draw(seed, v, a, at = {0, 0})
+          second.draw(seed, v, a, at = {0, 0})
+          p = {helper(7), 0}
+        }
+        helper(x: i32) -> i32 { return x }
+      })");
+    ips::checkAsset(first, {});
+    ips::checkAsset(second, {});
+    ips::checkAsset(root, {{"first", partInfoOf(first.asset)},
+                           {"second", partInfoOf(second.asset)}});
+    const auto result = execute(compileProgram(root,
+        {{"first", &first}, {"second", &second}}));
+    REQUIRE(result.outputs.size() == 3);
+    REQUIRE(result.outputs[0].points[0].x == 7.f);
+    REQUIRE(result.outputs[1].points[0].x == 1.f);
+    REQUIRE(result.outputs[2].points[0].x == 3.5f);
+}
+
 TEST_CASE("compiler-only error cases carry locations") {
     const auto expectError = [](const std::string& source, const char* part) {
         const ips::Program program = ips::parse(source);

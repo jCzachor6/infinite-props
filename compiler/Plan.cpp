@@ -27,6 +27,15 @@ ValueType runtimeType(ips::ValueType type) {
 
 } // namespace
 
+std::optional<u32> Plan::functionId(const std::string& name,
+                                    const std::string& ownerNamespace) const {
+    const auto found = functionIndex.find(ownerNamespace + name);
+    if (found == functionIndex.end()) {
+        return std::nullopt;
+    }
+    return found->second;
+}
+
 Planner::Planner(const ips::Program& entry,
                  const std::map<std::string, const ips::Program*>& parts)
     : entry_(entry), parts_(parts), plan_(std::make_unique<Plan>()) {
@@ -107,14 +116,11 @@ std::unique_ptr<Plan> Planner::plan() {
     plan_->typer->resolveFunction =
         [self](const std::string& name, const ips::SourceLocation&,
                const std::string& ns) -> std::optional<ips::FunctionSurface> {
-        const std::string effective =
-            !ns.empty() && self->functionIndex.count(name) == 0 ? ns + name
-                                                                : name;
-        const auto found = self->functionIndex.find(effective);
-        if (found == self->functionIndex.end()) {
+        const auto id = self->functionId(name, ns);
+        if (!id) {
             return std::nullopt;
         }
-        const PlannedFunction& info = self->functions[found->second];
+        const PlannedFunction& info = self->functions[*id];
         return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
                                     info.langResult};
     };
@@ -125,11 +131,13 @@ std::unique_ptr<Plan> Planner::plan() {
 std::optional<ips::FunctionSurface> Planner::resolveFunction(
     const std::string& name, const ips::SourceLocation&,
     const std::string& ns) {
-    // Bare names resolve to the entry's functions; inside a part, the part's
-    // own helpers take precedence over nothing else — the part prefix only
-    // applies when the bare name is not a known (entry) function.
-    const std::string effective =
-        !ns.empty() && registry_.count(name) == 0 ? ns + name : name;
+    // A part was checked as a standalone program: only its own helpers
+    // are visible, regardless of the parent asset's function names.
+    const auto id = plan_->functionId(name, ns);
+    if (!id) {
+        return std::nullopt;
+    }
+    const std::string& effective = plan_->functions[*id].name;
     // The table slots were pre-created by planFunctions; a function counts
     // as resolved only once its body was prepared.
     if (prepared_.count(effective) == 0) {
@@ -138,8 +146,7 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
         }
         prepareFunction(effective); // on demand
     }
-    const PlannedFunction& info =
-        plan_->functions[plan_->functionIndex.at(effective)];
+    const PlannedFunction& info = plan_->functions[*id];
     return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
                                 info.langResult};
 }

@@ -15,15 +15,18 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         }
         // Bare names resolve to the entry's functions; inside a part, the
         // part's own helpers.
-        std::string effective = name->name;
-        if (plan_.functionIndex.count(effective) == 0) {
-            const auto dot = current_->name.find('.');
-            if (dot != std::string::npos) {
-                effective = current_->name.substr(0, dot + 1) + name->name;
-            }
+        const auto dot = current_->name.find('.');
+        const std::string ns = dot == std::string::npos
+                                   ? "" : current_->name.substr(0, dot + 1);
+        const auto id = plan_.functionId(name->name, ns);
+        if (!id) {
+            error(call.location, "unknown function '" + name->name + "'");
         }
-        const u32 index = plan_.functionIndex.at(effective);
+        const u32 index = *id;
         const PlannedFunction& callee = plan_.functions[index];
+        if (call.args.size() != callee.ast->params.size()) {
+            error(call.location, "wrong argument count for '" + name->name + "'");
+        }
         for (std::size_t i = 0; i < call.args.size(); ++i) {
             // The callee's declared parameter type drives the widening
             // (i32 -> f32) so the stack matches the function table.

@@ -73,6 +73,8 @@ struct Plan {
     std::unique_ptr<ips::Typer> typer;
 
     ips::Typer& typeEngine() const { return *typer; }
+    std::optional<u32> functionId(const std::string& name,
+                                  const std::string& ownerNamespace) const;
 };
 
 // Resolves a checked entry program plus its imported parts into a Plan.
