@@ -31,7 +31,9 @@ OpenGL or Vulkan hosts, and produces the same pixels everywhere.
 - Define a versioned binary format (`.iprop`) for procedural 2D sprite assets.
 - Provide a human-writable language (`.ips`) that compiles to that format.
 - Provide a reference CPU interpreter written in C++20.
-- Provide backends for HTML5 (WASM), SFML, OpenGL and Vulkan.
+- Provide a stable C API as the shared foundation every native host links.
+- Provide backends for HTML5 (WASM), SFML, Godot (GDExtension), OpenGL and
+  Vulkan.
 - Provide a web-based pseudo-IDE for authoring and inspecting assets.
 - Provide a website with a playground, documentation, installation guides and a
   gallery.
@@ -235,7 +237,11 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   with `break`/`continue`, and `for i in a..b` sugar — both lowered to the
   VM's `br`).
 - Built-in functions for every VM primitive in §6.4–6.5 (no floating-point
-  conditions).
+  conditions), including the pinned `sin`/`cos` and the math package
+  (`abs`, `floor`, `ceil`, `min`, `max`, `pow`, `exp`, `atan2`).
+- Asset-level constant arrays (`palette name = [ e, e, … ]`) with integer
+  indexing; a bare palette name must be indexed (the default is the last
+  element).
 - Deterministic, simple grammar; unambiguous parse errors; semantic checks
   (type, fuel, canvas) reported with source locations.
 - A `draw(variant, archetype)` entry point; variant/archetype indices arrive as
@@ -342,8 +348,10 @@ interpreter is authoritative for correctness.
 | Backend | Technology | Role in v1 |
 | ------- | ---------- | ---------- |
 | reference | C++20 | Authoritative CPU interpreter; conformance arbiter |
+| capi | C99 + C++20 | The stable C API (`ipropc`); the foundation for every native host |
 | html5 | Emscripten/WASM | Browser execution; powers playground and IDE preview |
-| sfml | C++20 + SFML | Native desktop host; `sf::Image` output |
+| sfml | C++20 + SFML 3.1 | Native desktop host; `sf::Image` output |
+| godot | GDExtension over the C API | Engine integration: `IpropAsset`/`IpropSprite2D` |
 | opengl | C++20 + OpenGL | Execution host: CPU raster → texture upload |
 | vulkan | C++20 + Vulkan | Execution host: CPU raster → texture upload |
 
@@ -435,3 +443,12 @@ The detailed, clickable plan — 34 numbered phases with acceptance criteria —
 was tracked through the project's history (phases 1–16: the format and the
 VM; 17–23: the language and the compiler; 24: the HTML5 backend; 28–31: the
 editor; 32–34: the website and the v0.1.0 release).
+
+**Current state.** v0.1.0 is released (the format, the VM, the language and
+the HTML5 backend). v0.2 on `develop` rounds out the language — typed
+function signatures, the pinned trig and math packages, constant arrays
+(palettes) and loop control — and lands the native backends on the C API:
+the SFML window and the Godot GDExtension, each with its own conformance.
+The v0.2.0 release and the remaining ecosystem work (the GitHub remote/CI,
+the editor/website publications, Bevy and Unity glue) follow when the
+infrastructure lands.
