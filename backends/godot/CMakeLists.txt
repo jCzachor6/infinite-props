@@ -6,11 +6,18 @@
 # binary (default: ../.deps/Godot.app/Contents/MacOS/Godot). Without the
 # bindings the backend is skipped gracefully.
 
+if(IPROP_GODOT STREQUAL "OFF")
+    return()
+endif()
+
 set(IPROP_GODOTCPP_DIR
     "${CMAKE_SOURCE_DIR}/../.deps/godot-cpp"
     CACHE PATH "The godot-cpp checkout")
 
 if(NOT EXISTS ${IPROP_GODOTCPP_DIR}/CMakeLists.txt)
+    if(IPROP_GODOT STREQUAL "ON")
+        message(FATAL_ERROR "Required godot-cpp not found at ${IPROP_GODOTCPP_DIR}")
+    endif()
     message(STATUS
         "godot-cpp not found at ${IPROP_GODOTCPP_DIR} — the godot backend is skipped")
     return()
@@ -28,6 +35,9 @@ target_link_libraries(iprop_godot PRIVATE godot-cpp iprop_capi_static)
 target_include_directories(iprop_godot PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/backends/capi)
+target_include_directories(iprop_godot SYSTEM PRIVATE
+    $<TARGET_PROPERTY:godot-cpp,INTERFACE_INCLUDE_DIRECTORIES>)
+iprop_warnings(iprop_godot)
 
 set_target_properties(iprop_godot PROPERTIES
     OUTPUT_NAME "iprop-godot.macos.debug"
@@ -73,6 +83,9 @@ if(IPROP_BUILD_TESTS)
             DEPENDS capi_golden
             TIMEOUT 120)
     else()
+        if(IPROP_GODOT STREQUAL "ON")
+            message(FATAL_ERROR "Required Godot engine for conformance was not found")
+        endif()
         message(STATUS "the Godot binary not found — the godot conformance is skipped")
     endif()
 endif()

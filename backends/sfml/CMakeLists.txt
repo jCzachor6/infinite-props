@@ -8,11 +8,19 @@
 #
 # Without SFML the backend is skipped gracefully.
 
+if(IPROP_SFML STREQUAL "OFF")
+    return()
+endif()
+
 if(DEFINED IPROP_SFML_PREFIX)
     list(PREPEND CMAKE_PREFIX_PATH ${IPROP_SFML_PREFIX})
 endif()
 
-find_package(SFML 3.1 QUIET COMPONENTS Graphics Window System)
+if(IPROP_SFML STREQUAL "ON")
+    find_package(SFML 3.1 REQUIRED COMPONENTS Graphics Window System)
+else()
+    find_package(SFML 3.1 QUIET COMPONENTS Graphics Window System)
+endif()
 
 if(SFML_FOUND)
     # 7.1/7.3: the windowed host.

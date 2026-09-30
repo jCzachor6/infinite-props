@@ -29,6 +29,7 @@ set_target_properties(iprop_capi_static PROPERTIES
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a
 # C-only executable and compared against the committed golden PNGs.
+if(IPROP_BUILD_TESTS)
 set(IPROP_CAPI_GOLDEN_DIR ${CMAKE_BINARY_DIR}/capi-golden)
 file(MAKE_DIRECTORY ${IPROP_CAPI_GOLDEN_DIR})
 
@@ -71,7 +72,6 @@ target_include_directories(capi_conformance SYSTEM PRIVATE
 iprop_warnings(capi_conformance)
 add_dependencies(capi_conformance capi_golden)
 
-if(IPROP_BUILD_TESTS)
     add_test(NAME capi_conformance
         COMMAND capi_conformance
                 ${IPROP_CAPI_GOLDEN_DIR}

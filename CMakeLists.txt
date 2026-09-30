@@ -18,6 +18,13 @@ include(cmake/CompilerWarnings.cmake)
 
 option(IPROP_BUILD_TESTS "Build the test suite" ON)
 option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)
+foreach(backend SFML GODOT)
+    set(IPROP_${backend} AUTO CACHE STRING "Build ${backend}: AUTO, ON (required), OFF")
+    set_property(CACHE IPROP_${backend} PROPERTY STRINGS AUTO ON OFF)
+    if(NOT IPROP_${backend} MATCHES "^(AUTO|ON|OFF)$")
+        message(FATAL_ERROR "IPROP_${backend} must be AUTO, ON or OFF")
+    endif()
+endforeach()
 
 if(IPROP_BUILD_TESTS)
     enable_testing()
