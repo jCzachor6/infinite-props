@@ -27,6 +27,8 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_archetypes"), &IpropAsset::get_archetypes);
     ClassDB::bind_method(D_METHOD("get_fuel"), &IpropAsset::get_fuel);
     ClassDB::bind_method(D_METHOD("get_outputs"), &IpropAsset::get_outputs);
+    ClassDB::bind_method(D_METHOD("get_part_outputs"), &IpropAsset::get_part_outputs);
+    ClassDB::bind_method(D_METHOD("get_output_slots"), &IpropAsset::get_output_slots);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "origin"), "", "get_origin");
@@ -35,6 +37,10 @@ void IpropAsset::_bind_methods() {
     ADD_PROPERTY(PropertyInfo(Variant::INT, "fuel"), "", "get_fuel");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "outputs"), "",
                  "get_outputs");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "part_outputs"), "",
+                 "get_part_outputs");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "output_slots"), "",
+                 "get_output_slots");
 }
 
 IpropAsset::IpropAsset() = default;
@@ -48,6 +54,8 @@ Error IpropAsset::load_file(const String& path) {
     iprop_program_free(program_);
     program_ = nullptr;
     outputs_.clear();
+    part_outputs_.clear();
+    output_slots_.clear();
 
     if (!FileAccess::file_exists(path)) {
         UtilityFunctions::printerr("iprop: no such file: ", path);
@@ -82,6 +90,8 @@ Error IpropAsset::load_file(const String& path) {
 Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
                                 int64_t archetype) {
     outputs_.clear();
+    part_outputs_.clear();
+    output_slots_.clear();
     if (program_ == nullptr) {
         UtilityFunctions::printerr("iprop: generate before load_file");
         return Ref<Image>();
@@ -124,7 +134,17 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
                     static_cast<size_t>(slot.count) * floatsPerValue *
                         sizeof(float));
         entry["values"] = values;
-        outputs_[String::utf8(slot.name)] = entry;
+        entry["name"] = String::utf8(slot.name);
+        entry["owner"] = static_cast<int64_t>(slot.owner);
+        output_slots_.append(entry);
+        if (slot.owner == 0) {
+            outputs_[String::utf8(slot.name)] = entry;
+        } else {
+            const int64_t owner = slot.owner;
+            Dictionary part = part_outputs_.get(owner, Dictionary());
+            part[String::utf8(slot.name)] = entry;
+            part_outputs_[owner] = part;
+        }
     }
 
     iprop_result_free(result);

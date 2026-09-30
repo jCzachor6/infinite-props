@@ -52,6 +52,12 @@ foreach(source IN LISTS IPROP_CAPI_SOURCES)
 endforeach()
 
 add_custom_target(capi_golden DEPENDS ${IPROP_CAPI_IPROPS})
+set(owner_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-owners.iprop)
+add_custom_command(OUTPUT ${owner_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-owners.ips -o ${owner_fixture}
+    DEPENDS ipc test/output-owners.ips test/owner-first.ips test/owner-second.ips)
+add_custom_target(capi_owners DEPENDS ${owner_fixture})
+add_dependencies(capi_golden capi_owners)
 
 add_executable(capi_conformance
     test/conformance.c)

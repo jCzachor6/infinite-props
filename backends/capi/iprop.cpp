@@ -46,7 +46,7 @@ void copyError(const std::string& message, char* err, size_t errSize) {
 
 // Rebuilds the C output table from the C++ generation result. The packed
 // floats are reserved up front so the per-slot pointers never dangle.
-void fillResult(iprop_result* result) {
+void fillResult(iprop_result* result, const iprop::LoadedFile& file) {
     result->names.clear();
     result->packed.clear();
     result->outputs.clear();
@@ -74,9 +74,16 @@ void fillResult(iprop_result* result) {
     result->packed.reserve(floats);
 
     result->outputs.reserve(outputs.size());
+    size_t ownerEnd = file.meta.outputs.size();
+    uint32_t owner = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
+        while (i >= ownerEnd && owner < file.code.parts.size()) {
+            ownerEnd += file.code.parts[owner].outputs.size();
+            ++owner;
+        }
         const auto& output = outputs[i];
         iprop_output entry{};
+        entry.owner = owner;
         entry.is_list = output.isList ? 1 : 0;
         entry.name = result->names[i].c_str();
         switch (output.kind) {
@@ -212,7 +219,7 @@ iprop_status iprop_generate(const iprop_program* program,
         iprop::VM vm(program->file, inputs);
         vm.run();
         result->generation = vm.result();
-        fillResult(result.get());
+        fillResult(result.get(), program->file);
         *out_result = result.release();
         return IPROP_OK;
     } catch (const std::bad_alloc&) {

@@ -88,6 +88,29 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL shapes reload for the round-trip")
 
+	var owners := IpropAsset.new()
+	if owners.load_file(args[0] + "/output-owners.iprop") != OK or owners.generate(0, 0, 0) == null:
+		failures += 1
+		printerr("FAIL owner fixture load/generate")
+	else:
+		var slots: Array = owners.output_slots
+		if slots.size() != 9 or owners.outputs.size() != 3 or owners.part_outputs.size() != 2:
+			failures += 1
+			printerr("FAIL owner output counts")
+		for i in range(slots.size()):
+			var expected_owner := i / 3
+			var expected_value := 4.0 if i < 3 else (1.0 if i < 6 else 2.0)
+			if slots[i]["owner"] != expected_owner or slots[i]["values"][0] != expected_value:
+				failures += 1
+				printerr("FAIL ordered owner slot ", i)
+		for owner in [1, 2]:
+			for name in ["anchor", "collider", "zone"]:
+				if owners.part_outputs[owner][name]["values"][0] != float(owner):
+					failures += 1
+		if owners.outputs["anchor"]["values"][0] != 4.0:
+			failures += 1
+			printerr("FAIL root output overwritten")
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

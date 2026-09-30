@@ -29,7 +29,7 @@ extern "C" {
  * break the ABI freely (the library and the host are always built from
  * the same header). */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 1
+#define IPROP_API_VERSION_MINOR 2
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
@@ -100,6 +100,7 @@ typedef struct {
     const char* name;
     uint32_t count;
     const float* values;
+    uint32_t owner; /* 0 = root, N+1 = part N in the code part table */
 } iprop_output;
 
 /* The generated image plus the structured outputs. `pixels` is RGBA8,

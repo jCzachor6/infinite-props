@@ -29,8 +29,10 @@ sources, the demo assets, the extension library and the extension list).
   `.iprop` through the C API; `generate(seed, variant, archetype)`
   returns a Godot `Image` (RGBA8). The meta (`size`, `origin`, `variants`,
   `archetypes`, `fuel`) and the structured outputs are properties; each
-  output is a dictionary `{kind, list, values}` under its name in
-  `outputs`.
+  root output is a dictionary `{name, owner, kind, list, values}` under
+  its name in `outputs`. `part_outputs[owner][name]` holds part slots,
+  with owner N+1 for part N. `output_slots` preserves all slots in program
+  order, including repeated names; root slots have owner 0.
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed`/`variant`/`archetype`; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.

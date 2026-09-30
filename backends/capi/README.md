@@ -18,7 +18,8 @@ ships as a shared library and a static twin, both named `ipropc`.
   named structured outputs.
 - `iprop_result_image(result, &image)` — a borrowed view: width/height,
   the row-major RGBA8 pixels and the output slots (name, kind, list flag,
-  packed float values, in the global slot order of spec §4.3).
+  packed float values and owner, in the global slot order of spec §4.3).
+  `owner == 0` identifies the root; `owner == N+1` identifies part N.
 - `iprop_program_free` / `iprop_result_free`.
 
 Every pointer the host receives (pixels, output names, values) is borrowed
@@ -42,9 +43,10 @@ message.
 4. **Borrowed, not owned.** Pointers delivered to the host are valid
    until the owning handle's `_free`; handles are not shared between
    threads (no global state, so independent handles may run concurrently).
-5. **Append-only structs.** Within a major version, the public structs
-   may only gain trailing fields; the enums gain values in order (the
-   numeric values are ABI).
+5. **Struct layout is ABI.** Adding even a trailing field changes the ABI
+   (including array strides). API 0.2 adds the output owner; consumers must
+   rebuild against this header. A future stable ABI will need sized structs
+   or versioned entry points before extending layouts.
 6. **Ownership is explicit.** Success hands exactly one handle to the
    caller to free; failure hands none.
 

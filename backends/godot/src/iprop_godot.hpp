@@ -16,6 +16,7 @@
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -35,6 +36,8 @@ class IpropAsset : public godot::Resource {
     int64_t archetypes_ = 0;
     int64_t fuel_ = 0;
     godot::Dictionary outputs_{};
+    godot::Dictionary part_outputs_{};
+    godot::Array output_slots_{};
 
 protected:
     static void _bind_methods();
@@ -59,6 +62,8 @@ public:
     int64_t get_archetypes() const { return archetypes_; }
     int64_t get_fuel() const { return fuel_; }
     godot::Dictionary get_outputs() const { return outputs_; }
+    godot::Dictionary get_part_outputs() const { return part_outputs_; }
+    godot::Array get_output_slots() const { return output_slots_; }
 };
 
 class IpropSprite2D : public godot::Sprite2D {

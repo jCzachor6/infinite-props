@@ -353,6 +353,47 @@ int main(int argc, char** argv) {
         }
     }
 
+    /* Duplicate names in the root and two parts retain distinct owners.
+       The result must remain usable after freeing the program. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/output-owners.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        CHECK(bytes != NULL, "cannot read owner fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "owner fixture load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "owner fixture generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.output_count == 9, "owner fixture slot count");
+            const char* names[] = {"anchor", "collider", "zone"};
+            for (uint32_t i = 0; i < image.output_count; ++i) {
+                const iprop_output* slot = &image.outputs[i];
+                CHECK(slot->owner == i / 3, "slot %u owner %u", i, slot->owner);
+                CHECK(strcmp(slot->name, names[i % 3]) == 0, "slot %u name", i);
+                CHECK(slot->kind == (iprop_output_kind)(i % 3), "slot %u kind", i);
+                CHECK(slot->count == 1 && slot->values != NULL, "slot %u values", i);
+                if (slot->values != NULL) {
+                    CHECK(slot->values[0] == (i < 3 ? 4.f : i < 6 ? 1.f : 2.f),
+                          "slot %u value", i);
+                }
+            }
+            iprop_result_free(result);
+        }
+    }
+
     if (failures != 0) {
         fprintf(stderr, "%d failure(s)\n", failures);
         return 1;

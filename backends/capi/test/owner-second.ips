@@ -1,0 +1,11 @@
+asset second {
+  size 8x8
+  output point anchor
+  output rect collider
+  output circle zone
+  draw(v: i32, a: i32) {
+    anchor = {2, 0}
+    collider = {2, 0, 1, 1}
+    zone = {2, 0, 1}
+  }
+}
