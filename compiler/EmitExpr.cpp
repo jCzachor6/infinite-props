@@ -340,8 +340,9 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
     const u16 indexSlot = static_cast<u16>(scratch());
     ins(Opcode::LocalSet, 0, indexSlot);
     const u16 resultSlot = static_cast<u16>(scratchOf(type));
-    emitElement(*palette->elements.back());
-    ins(Opcode::LocalSet, 0, resultSlot);
+    // For i32/bool the result reuses the index local. Select exactly once
+    // before overwriting it, and leave the ladder after a match.
+    ins(Opcode::Block);
     for (std::size_t k = 0; k + 1 < count; ++k) {
         ins(Opcode::ConstI32, 0,
             static_cast<u16>(plan_.pools.addInt(static_cast<u32>(k))));
@@ -350,8 +351,12 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
         ins(Opcode::If);
         emitElement(*palette->elements[k]);
         ins(Opcode::LocalSet, 0, resultSlot);
+        ins(Opcode::Br, 0, 1);
         ins(Opcode::End);
     }
+    emitElement(*palette->elements.back());
+    ins(Opcode::LocalSet, 0, resultSlot);
+    ins(Opcode::End);
     ins(Opcode::LocalGet, 0, resultSlot);
     return type;
 }

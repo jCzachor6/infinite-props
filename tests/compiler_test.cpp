@@ -345,6 +345,40 @@ asset t {
     REQUIRE(loaded.code.entry().locals.size() == 1);
 }
 
+TEST_CASE("dynamic palettes preserve indices and default for every element type") {
+    const auto bytes = compileChecked(R"(
+asset t {
+  size 8x8
+  variants 8
+  palette ints = [1, 2, 0]
+  palette flags = [true, false, true]
+  palette floats = [1.25, 2.5, 3.75]
+  palette colors = [#112233, #445566, #778899]
+  output point numbers
+  output point flag
+  draw(v: i32, a: i32) {
+    numbers = {ints[v - 1], floats[v - 1]}
+    flag = {flags[v - 1], 0}
+    pixel(0, 0, colors[v - 1])
+  }
+})");
+    const i32 ints[] = {1, 2, 0};
+    const i32 flags[] = {1, 0, 1};
+    const f32 floats[] = {1.25f, 2.5f, 3.75f};
+    const Color colors[] = {{0x11, 0x22, 0x33, 0xff},
+                            {0x44, 0x55, 0x66, 0xff},
+                            {0x77, 0x88, 0x99, 0xff}};
+    for (u32 v = 0; v < 8; ++v) {
+        INFO("variant " << v);
+        const auto result = run(bytes, v, 0);
+        const u32 k = v == 1 ? 0 : v == 2 ? 1 : 2;
+        REQUIRE(result.outputs[0].points[0].x == ints[k]);
+        REQUIRE(result.outputs[0].points[0].y == floats[k]);
+        REQUIRE(result.outputs[1].points[0].x == flags[k]);
+        REQUIRE(result.canvas.at(0, 0) == colors[k]);
+    }
+}
+
 TEST_CASE("palette elements widen i32 indices and i32 palettes to f32 uses") {
     // An i32 palette feeding an f32 context widens (i32.to.f32), like
     // every other i32 expression.
