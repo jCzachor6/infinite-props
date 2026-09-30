@@ -65,10 +65,12 @@ or later; a file claiming version 0.1 while using them MUST be rejected.
 The 0.2 runtime also accepts 0.1 files using the frozen 0.1 instruction set.
 Section layouts, debug flags and all 0.1 opcode semantics are unchanged.
 
-Version 0.3 adds the `vec2` type (the type code `3`) and the vector ops
-(0x5B–0x5F, 0x74–0x79). These MUST appear only in files with minor version 3
-or later; a file claiming version 0.2 or earlier while using them MUST be
-rejected. All 0.1/0.2 layouts and semantics are otherwise unchanged.
+Version 0.3 adds the `vec2` type (the type code `3`), the vector ops
+(0x5B–0x5F, 0x74–0x79), signed-distance fields (0x7A–0x7F, 0x88), and
+quadratic/cubic strokes (0x86–0x87). These
+MUST appear only in files with minor version 3 or later; a file claiming
+version 0.2 or earlier while using them MUST be rejected. All 0.1/0.2
+layouts and semantics are otherwise unchanged.
 
 ### 2.2 Section table
 
@@ -440,6 +442,26 @@ Semantics (all f32 arithmetic IEEE-correctly-rounded, like §9.4):
 A `vec2` value also travels as a point output (§5.4): a point slot holds
 the pair directly.
 
+Signed-distance fields (added in v0.3; every operation is one IEEE-754
+round-to-nearest binary32 operation on the written operands, in the
+order written — `abs`, `min`/`max`, `sqrt` and the `vec2` ops from this
+section; Bézier nonfinite inputs and guarded iteration are defined in §12.9):
+
+| Op | Mnemonic | Stack |
+| -- | -------- | ----- |
+| 0x7A | dist.circle | `[vec2 vec2 f32] -> [f32]` (p, c, r) |
+| 0x7B | dist.rect | `[vec2 vec2 vec2] -> [f32]` (p, c, half) |
+| 0x7C | dist.roundrect | `[vec2 vec2 vec2 f32] -> [f32]` (p, c, half, radius) |
+| 0x7D | dist.line | `[vec2 vec2 vec2] -> [f32]` (p, a, b) |
+| 0x7E | dist.bezier | `[vec2 vec2 vec2 vec2] -> [f32]` (p, a, b, c) |
+| 0x7F | fill | `[f32 f32] -> [f32]` (d, w) |
+| 0x88 | dist.bezier.cubic | `[vec2 vec2 vec2 vec2 vec2] -> [f32]` (p, a, b, c, d) |
+
+The exact algorithms live in §12.9. `fill` converts a distance into a
+[0,1] coverage with a smoothstep edge of width `w`.
+The language overloads `dist.bezier(p, a, b, c)` and
+`dist.bezier(p, a, b, c, d)` select the quadratic and cubic opcodes.
+
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
 
@@ -503,6 +525,12 @@ All coordinates are asset units; rasterization multiplies them by `(sX, sY)`
 | 0x83 | poly n | `[c 2n×f32] -> []` | filled polygon; operand = vertex count n; stack: colour, then n x,y pairs |
 | 0x84 | oval | `[f32 f32 f32 f32 c] -> []` | filled ellipse (x, y, rx, ry) |
 | 0x85 | weather | `[u32 i32] -> []` | seeded wear (§11.6) |
+| 0x86 | curve | `[vec2 vec2 vec2 f32 c] -> []` | quadratic round-capped stroke (a, b, c, thickness, colour), §11.7 |
+| 0x87 | curve.cubic | `[vec2 vec2 vec2 vec2 f32 c] -> []` | cubic round-capped stroke (a, b, c, d, thickness, colour), §11.7 |
+
+The language's `curve(a, b, c, thickness, colour)` and
+`curve(a, b, c, d, thickness, colour)` select these opcodes. Both
+require format 0.3, as does `dist.bezier.cubic`.
 
 `poly` stack order (top first): colour, then `n` pairs `(x0,y0) … (xn,yn)`
 pushed in order. The vertex count is an immediate operand so the stack
@@ -650,6 +678,34 @@ canvas[x,y] = (tone(r), tone(g), tone(b), a)
 ```
 
 Fuel cost: 1 + width·height visits.
+
+### 11.7 curve(a, b, c [, d], thickness, colour) (v0.3)
+
+Control points are scaled by `(sX, sY)`. Like `line`, the thickness is
+in target pixels; here it is an `f32` diameter. The stroke has round caps
+and a hard edge. It composites each covered pixel once using §11.1.
+A nonfinite thickness traps; a nonpositive thickness draws nothing and
+costs only the instruction. For a positive thickness, nonfinite scaled
+controls or bounds outside `i32` trap with `coordinate out of range`.
+
+```
+radius = thickness * 0.5
+x0 = floor(min(control.x) - radius)
+x1 = ceil(max(control.x) + radius)
+y0 = floor(min(control.y) - radius)
+y1 = ceil(max(control.y) + radius)
+charge (x1-x0+1) * (y1-y0+1) visits before drawing
+for py = y0 .. y1:              // top to bottom
+  for px = x0 .. x1:            // left to right
+    distance = dist.bezier({(f32)px, (f32)py}, scaled controls...)
+    if distance <= radius: pixel(px, py, colour)
+```
+
+The distance is the bounded search in §12.9; samples are integer raster
+coordinates, as with `oval`. Bounds use the complete control hull, and
+the visit count includes off-canvas pixels. Implementations may skip
+off-canvas evaluations after charging the full count. Fuel cost is
+1 + the expanded bounding-box area; a visit-count overflow exhausts fuel.
 
 ## 12. Seeded primitives — exact algorithms
 
@@ -846,6 +902,139 @@ return 2 * a
 
 The identity `atan(t) = 2*atan(t / (1 + sqrt(1 + t^2)))` holds exactly in
 the reals; the error bounds match §12.7's envelope for |t| ≤ 2^40.
+
+### 12.9 Signed-distance fields (v0.3)
+
+The signed-distance functions below use the `vec2` operations of §9.4
+(`sub`, `add`, `mul` by a scalar, `len`, `dot`) and the scalar `abs`,
+`min`, `max`, `sqrt` — every step one IEEE-754 round-to-nearest binary32
+operation, evaluated in the written order. Negative distances are inside
+the shape.
+
+**dist.circle(p, c, r):**
+
+```
+return len(p - c) - r
+```
+
+**dist.rect(p, c, half):**
+
+```
+dx = abs(p.x - c.x) - half.x
+dy = abs(p.y - c.y) - half.y
+qx = max(dx, 0)
+qy = max(dy, 0)
+return sqrt(qx*qx + qy*qy) + min(max(dx, dy), 0)
+```
+
+**dist.roundrect(p, c, half, radius):**
+
+```
+qx = abs(p.x - c.x) - (half.x - radius)
+qy = abs(p.y - c.y) - (half.y - radius)
+ox = max(qx, 0)
+oy = max(qy, 0)
+return sqrt(ox*ox + oy*oy) + min(max(qx, qy), 0) - radius
+```
+
+**dist.line(p, a, b):**
+
+```
+ba = b - a                     // vec2.sub
+pa = p - a                     // vec2.sub
+t  = dot(pa, ba) / dot(ba, ba)
+h  = min(max(t, 0), 1)
+return len(pa - ba * h)        // vec2.mul by the scalar, vec2.sub, vec2.len
+```
+
+**dist.bezier(p, a, b, c)** — the quadratic Bézier on `0 <= t <= 1`.
+**dist.bezier(p, a, b, c, d)** — the cubic Bézier on the same interval.
+These are unsigned distance estimates from a fixed bounded search:
+five seeds, at most four Newton updates per seed, retaining both endpoints
+and every evaluated point. They never measure distance to an extension of
+the curve. Any nonfinite coordinate returns the canonical quiet NaN.
+When all controls coincide, return `len(a - p)` directly.
+
+Quadratic evaluation:
+
+```
+s = 1 - t
+w0 = s*s; w1 = (s+s)*t; w2 = t*t
+B(t)  = w0*a + w1*b + w2*c
+B'(t) = (s+s)*(b-a) + (t+t)*(c-b)
+q     = a - (b+b) + c
+B''(t) = q + q
+```
+
+Cubic evaluation:
+
+```
+s = 1 - t
+w0 = s*s*s; w1 = 3*s*s*t; w2 = 3*s*t*t; w3 = t*t*t
+B(t) = w0*a + w1*b + w2*c + w3*d
+v0 = 3*s*s; v1 = 6*s*t; v2 = 3*t*t
+B'(t) = v0*(b-a) + v1*(c-b) + v2*(d-c)
+q0 = a - (b+b) + c; q1 = b - (c+c) + d
+u0 = 6*s; u1 = 6*t
+B''(t) = u0*q0 + u1*q1
+```
+
+All sums/products above are left-associative, component by component.
+At `t=0` and `t=1`, `B(t)` returns the corresponding control endpoint
+directly. Both forms use this search:
+
+```
+best = min(len(a-p), len(lastControl-p))
+for each candidate t in {0, 0.25, 0.5, 0.75, 1}:
+    for step = 0 .. 4:
+        pt = B(t)
+        r = pt - p
+        distance = len(r)
+        if distance < best: best = distance
+        if step == 4: break
+        tangent = B'(t); curvature = B''(t)
+        f = dot(r, tangent)
+        tangentDot = dot(tangent, tangent)
+        curvatureDot = dot(r, curvature)
+        f' = tangentDot + curvatureDot
+        if f' == 0 or f' is nonfinite or f is nonfinite: break
+        next = t - f / f'
+        if next is nonfinite: break
+        t = min(max(next, 0), 1)
+return best
+```
+
+Each `dot` rounds its two products and their sum before the two dot
+results are added. A failed update retains the current point and all
+previous candidates; in particular, a zero derivative cannot discard a
+valid distance. No fused multiply-add is allowed.
+
+**fill(d, w)** — the smoothstep edge of width `w` around the zero
+isocontour; the coverage is 1 inside, 0 outside:
+
+```
+t = min(max(d / w + 0.5, 0), 1)
+return 1 - t*t*(3 - 2*t)
+```
+
+The following binary32 results are normative conformance pins:
+
+| Query | Result bits |
+| ----- | ----------- |
+| `dist.circle({3,4}, {0,0}, 3)` | `0x40000000` |
+| `dist.rect({5,5}, {0,0}, {2,3})` | `0x4066C15A` |
+| `dist.roundrect({0,0}, {0,0}, {2,3}, 1)` | `0xC0000000` |
+| `dist.roundrect({5,5}, {0,0}, {3,4}, 1)` | `0x4026C15A` |
+| `dist.line({3,4}, {0,0}, {2,0})` | `0x4083F07B` |
+| `fill(-0.5, 2)` | `0x3F580000` |
+| `dist.bezier({3,0}, {0,0}, {1,0}, {2,0})` | `0x3F800000` |
+| `dist.bezier({3,4}, {0,0}, {0,0}, {0,0})` | `0x40A00000` |
+| `dist.bezier({-2.625,3.625}, {-4,4.75}, {-1,0.875}, {-5.875,-1.5})` | `0x3F17C01B` |
+| `dist.bezier({-1.625,-3.375}, {-5,-1.75}, {-5.875,3.875}, {3.5,3.375})` | `0x406FBBB2` |
+| `dist.bezier({4,0}, {0,0}, {1,0}, {2,0}, {3,0})` | `0x3F800000` |
+| `dist.bezier({1.5,3}, {0,0}, {0,2}, {3,2}, {3,0})` | `0x3FC00000` |
+| `dist.bezier({1.625,3.375}, {-1,-1.75}, {-2.875,3.875}, {3.5,3.375}, {4,-2})` | `0x3FA79662` |
+| Either Bézier form with any nonfinite coordinate | `0x7FC00000` |
 
 ## 13. Determinism rules
 

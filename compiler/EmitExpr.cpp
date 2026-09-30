@@ -57,6 +57,9 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return emitPartRead(expr);
     }
     if (const auto* call = std::get_if<ips::Call>(&expr)) {
+        // Expression statements may not have been typed by the planner.
+        // Validate arity/types before the emitter indexes builtin arguments.
+        plan_.typeEngine().typeOf(expr);
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {

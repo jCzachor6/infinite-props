@@ -19,6 +19,7 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
 | `test/png.js` | RGBA8 PNG decoder for native comparisons; regression tests cover all five row filters |
 | `test/fixtures/loop1.ipa` | the three-pixel regression from the resolved divergence report |
+| `test/fixtures/bezier.ips` | SDF bit pins, bounded quadratic/cubic distances and both stroke forms |
 | `test/assets/` | the test binaries (synced by `prepare.sh`) |
 | `prepare.sh` | syncs the demo/conformance assets from the repo |
 
@@ -55,8 +56,9 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
   runs the seven browser golden entries, verifies their FNV-1a pins against
   fresh native renders and the committed golden PNGs, and compares every
   RGBA byte and structured output across both backends. It also compiles
-  the loop regression, noise, shapes, portrait, plant, parts, and demo noise
-  from source and compares seeds 0/1/2/7/26 (42 comparisons in total).
+  the loop regression, noise, shapes, portrait, plant, language, math edges,
+  SDF/Bézier queries and strokes, parts, and demo noise from source and
+  compares seeds 0/1/2/7/26, including scaled renders (64 comparisons in total).
   A second argument can override the native tools directory (`build/tools`
   by default). Missing tools or mismatches fail the run.
 - **Harness tests:** `node --test backends/html5/test/*.test.js` —

@@ -64,7 +64,8 @@ public:
             }
             if (file_.layout.header.versionMinor < 3 &&
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
-                 (opcode >= 0x74 && opcode <= 0x79))) {
+                 (opcode >= 0x74 && opcode <= 0x7F) ||
+                 (opcode >= 0x86 && opcode <= 0x88))) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -323,6 +324,50 @@ private:
             expect(at, ValueType::Vec2, "vector operand");
             push(at, ValueType::F32);
             return;
+
+        // Signed-distance fields (§9.4/§12.9; added in v0.3).
+        case Opcode::DistCircle:
+            expect(at, ValueType::F32, "circle radius");
+            expect(at, ValueType::Vec2, "circle centre");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::DistRect:
+            expect(at, ValueType::Vec2, "rect half extents");
+            expect(at, ValueType::Vec2, "rect centre");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::DistRoundRect:
+            expect(at, ValueType::F32, "corner radius");
+            expect(at, ValueType::Vec2, "rect half extents");
+            expect(at, ValueType::Vec2, "rect centre");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::DistLine:
+            expect(at, ValueType::Vec2, "line end");
+            expect(at, ValueType::Vec2, "line start");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::DistBezier:
+            expect(at, ValueType::Vec2, "bezier control");
+            expect(at, ValueType::Vec2, "bezier control");
+            expect(at, ValueType::Vec2, "bezier start");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::DistBezierCubic:
+            for (int i = 0; i < 4; ++i) expect(at, ValueType::Vec2, "bezier control");
+            expect(at, ValueType::Vec2, "field point");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Fill:
+            expect(at, ValueType::F32, "edge width");
+            expect(at, ValueType::F32, "field distance");
+            push(at, ValueType::F32);
+            return;
         case Opcode::I32ToF32:
             expect(at, ValueType::I32, "conversion operand");
             push(at, ValueType::F32);
@@ -403,6 +448,14 @@ private:
             expect(at, ValueType::Color, "line colour");
             expect(at, ValueType::I32, "line thickness");
             for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "line endpoint");
+            return;
+        case Opcode::Curve:
+        case Opcode::CurveCubic:
+            expect(at, ValueType::Color, "curve colour");
+            expect(at, ValueType::F32, "curve thickness");
+            for (int i = 0; i < (ins.opcode == Opcode::Curve ? 3 : 4); ++i) {
+                expect(at, ValueType::Vec2, "curve control");
+            }
             return;
         case Opcode::Poly: {
             if (op > kMaxStackDepth) fail(at, "poly vertex count exceeds limit");

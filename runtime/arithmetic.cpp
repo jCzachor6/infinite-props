@@ -82,6 +82,167 @@ f32 f32Sin(f32 x) {
     return static_cast<f32>(sinCore(value));
 }
 
+// ---- the signed-distance fields (spec §12.9) ------------------------------
+
+f32 distCircle(const Vec2& p, const Vec2& c, f32 r) {
+    const f32 dx = p.x - c.x;
+    const f32 dy = p.y - c.y;
+    const f32 length = std::sqrt(dx * dx + dy * dy);
+    return length - r;
+}
+
+f32 distRect(const Vec2& p, const Vec2& c, const Vec2& half) {
+    const f32 dx = std::fabs(p.x - c.x) - half.x;
+    const f32 dy = std::fabs(p.y - c.y) - half.y;
+    const f32 qx = std::fmax(dx, 0.f);
+    const f32 qy = std::fmax(dy, 0.f);
+    const f32 outer = std::sqrt(qx * qx + qy * qy);
+    const f32 inner = std::fmin(std::fmax(dx, dy), 0.f);
+    return outer + inner;
+}
+
+f32 distRoundRect(const Vec2& p, const Vec2& c, const Vec2& half, f32 radius) {
+    const f32 qx = std::fabs(p.x - c.x) - (half.x - radius);
+    const f32 qy = std::fabs(p.y - c.y) - (half.y - radius);
+    const f32 ox = std::fmax(qx, 0.f);
+    const f32 oy = std::fmax(qy, 0.f);
+    const f32 outer = std::sqrt(ox * ox + oy * oy);
+    const f32 inner = std::fmin(std::fmax(qx, qy), 0.f);
+    return outer + inner - radius;
+}
+
+f32 distLine(const Vec2& p, const Vec2& a, const Vec2& b) {
+    const f32 bax = b.x - a.x;
+    const f32 bay = b.y - a.y;
+    const f32 pax = p.x - a.x;
+    const f32 pay = p.y - a.y;
+    const f32 dotPa = pax * bax + pay * bay;
+    const f32 dotBa = bax * bax + bay * bay;
+    const f32 t = dotPa / dotBa;
+    const f32 h = std::fmin(std::fmax(t, 0.f), 1.f);
+    const f32 qx = pax - bax * h;
+    const f32 qy = pay - bay * h;
+    return std::sqrt(qx * qx + qy * qy);
+}
+
+bool finitePoint(const Vec2& p) {
+    return std::isfinite(p.x) && std::isfinite(p.y);
+}
+
+template <typename Point, typename Derivative, typename SecondDerivative>
+f32 bezierDistance(const Vec2& p, const Vec2& startPoint, const Vec2& endPoint,
+                   Point point, Derivative derivative, SecondDerivative secondDerivative) {
+    f32 best = std::min(distCircle(p, startPoint, 0.f), distCircle(p, endPoint, 0.f));
+    const f32 candidates[5] = {0.f, 0.25f, 0.5f, 0.75f, 1.f};
+    for (const f32 start : candidates) {
+        f32 t = start;
+        for (int step = 0; step <= 4; ++step) {
+            const Vec2 pt = point(t);
+            const f32 rx = pt.x - p.x;
+            const f32 ry = pt.y - p.y;
+            const f32 distance = std::sqrt(rx * rx + ry * ry);
+            best = std::min(best, distance);
+            if (step == 4) {
+                break;
+            }
+            const Vec2 dt = derivative(t);
+            const Vec2 dd = secondDerivative(t);
+            const f32 f = rx * dt.x + ry * dt.y;
+            // Each dot product rounds separately, exactly as vec2.dot does.
+            const f32 tangentDot = dt.x * dt.x + dt.y * dt.y;
+            const f32 curvatureDot = rx * dd.x + ry * dd.y;
+            const f32 fp = tangentDot + curvatureDot;
+            if (fp == 0.f || !std::isfinite(fp) || !std::isfinite(f)) {
+                break;
+            }
+            const f32 next = t - f / fp;
+            if (!std::isfinite(next)) {
+                break;
+            }
+            t = std::clamp(next, 0.f, 1.f);
+        }
+    }
+    return best;
+}
+
+f32 quadraticBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {
+    if (!finitePoint(p) || !finitePoint(a) || !finitePoint(b) || !finitePoint(c)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    if (a.x == b.x && b.x == c.x && a.y == b.y && b.y == c.y) {
+        return distCircle(p, a, 0.f);
+    }
+    const auto point = [&](f32 t) -> Vec2 {
+        if (t == 0.f) return a;
+        if (t == 1.f) return c;
+        const f32 s = 1.f - t;
+        const f32 w0 = s * s;
+        const f32 w1 = (s + s) * t;
+        const f32 w2 = t * t;
+        return {w0 * a.x + w1 * b.x + w2 * c.x,
+                w0 * a.y + w1 * b.y + w2 * c.y};
+    };
+    const auto derivative = [&](f32 t) -> Vec2 {
+        const f32 s = 1.f - t;
+        const f32 w0 = s + s;
+        const f32 w1 = t + t;
+        return {w0 * (b.x - a.x) + w1 * (c.x - b.x),
+                w0 * (b.y - a.y) + w1 * (c.y - b.y)};
+    };
+    const f32 ddx = a.x - (b.x + b.x) + c.x;
+    const f32 ddy = a.y - (b.y + b.y) + c.y;
+    const Vec2 dd{ddx + ddx, ddy + ddy};
+    return bezierDistance(p, a, c, point, derivative, [&](f32) { return dd; });
+}
+
+f32 cubicBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b,
+                        const Vec2& c, const Vec2& d) {
+    if (!finitePoint(p) || !finitePoint(a) || !finitePoint(b) ||
+        !finitePoint(c) || !finitePoint(d)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    if (a.x == b.x && b.x == c.x && c.x == d.x &&
+        a.y == b.y && b.y == c.y && c.y == d.y) {
+        return distCircle(p, a, 0.f);
+    }
+    const auto point = [&](f32 t) -> Vec2 {
+        if (t == 0.f) return a;
+        if (t == 1.f) return d;
+        const f32 s = 1.f - t;
+        const f32 w0 = s * s * s;
+        const f32 w1 = 3.f * s * s * t;
+        const f32 w2 = 3.f * s * t * t;
+        const f32 w3 = t * t * t;
+        return {w0 * a.x + w1 * b.x + w2 * c.x + w3 * d.x,
+                w0 * a.y + w1 * b.y + w2 * c.y + w3 * d.y};
+    };
+    const auto derivative = [&](f32 t) -> Vec2 {
+        const f32 s = 1.f - t;
+        const f32 w0 = 3.f * s * s;
+        const f32 w1 = 6.f * s * t;
+        const f32 w2 = 3.f * t * t;
+        return {w0 * (b.x - a.x) + w1 * (c.x - b.x) + w2 * (d.x - c.x),
+                w0 * (b.y - a.y) + w1 * (c.y - b.y) + w2 * (d.y - c.y)};
+    };
+    const Vec2 ab{a.x - (b.x + b.x) + c.x, a.y - (b.y + b.y) + c.y};
+    const Vec2 bc{b.x - (c.x + c.x) + d.x, b.y - (c.y + c.y) + d.y};
+    const auto secondDerivative = [&](f32 t) -> Vec2 {
+        const f32 w0 = 6.f * (1.f - t);
+        const f32 w1 = 6.f * t;
+        return {w0 * ab.x + w1 * bc.x, w0 * ab.y + w1 * bc.y};
+    };
+    return bezierDistance(p, a, d, point, derivative, secondDerivative);
+}
+
+f32 sdfFill(f32 d, f32 w) {
+    const f32 t0 = d / w;
+    const f32 t1 = t0 + 0.5f;
+    const f32 t = std::fmin(std::fmax(t1, 0.f), 1.f);
+    const f32 tt = t * t;
+    const f32 s = 3.f - 2.f * t;
+    return 1.f - tt * s;
+}
+
 f32 f32Cos(f32 x) {
     const double value = static_cast<double>(x);
     if (std::isnan(value) || std::isinf(value)) {
@@ -333,6 +494,16 @@ void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
 }
 
 } // namespace
+
+// Shared with the curve rasterizer so distance queries and strokes use the
+// same bounded, pinned search.
+f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {
+    return quadraticBezierDistance(p, a, b, c);
+}
+
+f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d) {
+    return cubicBezierDistance(p, a, b, c, d);
+}
 
 // Integer, float and colour arithmetic (spec §9.3-§9.5, determinism §13).
 bool stepArithmetic(Execution& ex, Instruction ins) {
@@ -668,6 +839,65 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     }
     case Opcode::Vec2Y: {
         ex.push(Value(ex.popVec2().y));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistCircle: {
+        const f32 r = ex.popF32();
+        const Vec2 c = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distCircle(p, c, r)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistRect: {
+        const Vec2 half = ex.popVec2();
+        const Vec2 c = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distRect(p, c, half)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistRoundRect: {
+        const f32 radius = ex.popF32();
+        const Vec2 half = ex.popVec2();
+        const Vec2 c = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distRoundRect(p, c, half, radius)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistLine: {
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distLine(p, a, b)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistBezier: {
+        const Vec2 c = ex.popVec2();
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distBezier(p, a, b, c)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistBezierCubic: {
+        const Vec2 d = ex.popVec2();
+        const Vec2 c = ex.popVec2();
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        const Vec2 p = ex.popVec2();
+        ex.push(Value(distBezier(p, a, b, c, d)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Fill: {
+        const f32 w = ex.popF32();
+        const f32 d = ex.popF32();
+        ex.push(Value(sdfFill(d, w)));
         ++ex.frame().ip;
         return true;
     }

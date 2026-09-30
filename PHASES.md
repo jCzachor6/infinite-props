@@ -29,13 +29,13 @@ format version (minor).
 
 ## 1 + 6. The SDF package and the Bézier strokes
 
-- [ ] `1.1` spec: `dist.circle`, `dist.rect`, `dist.roundrect`, `dist.line`
-  — the exact double-precision formulas (the distance functions), plus
+- [x] `1.1` spec: `dist.circle`, `dist.rect`, `dist.roundrect`, `dist.line`
+  — the pinned binary32 formulas (the distance functions), plus
   `fill(dist, w)` (the smoothstep threshold render).
-- [ ] `1.2` the runtime + the language builtins + the bit tables.
-- [ ] `6.1` spec: `dist.bezier` / `curve(...)` — the quadratic/cubic Bézier
+- [x] `1.2` the runtime + the language builtins + the bit tables.
+- [x] `6.1` spec: `dist.bezier` / `curve(...)` — the quadratic/cubic Bézier
   distance and the stroked rendering, same pinned style.
-- [ ] `6.2` the runtime + the builtins + the bit tables.
+- [x] `6.2` the runtime + the builtins + the bit tables.
 
 ## 2 + 7. The noise v2 (gradient, fbm, ridge, cell)
 

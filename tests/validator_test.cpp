@@ -249,6 +249,35 @@ TEST_CASE("valid battery passes validation") {
     }
 }
 
+TEST_CASE("Bezier additions validate stack types and require format 0.3") {
+    for (const u8 opcode : {u8{0x86}, u8{0x87}, u8{0x88}}) {
+        INFO("opcode " << static_cast<unsigned>(opcode));
+        const int vectors = opcode == 0x86 ? 3 : opcode == 0x87 ? 4 : 5;
+        Prog valid;
+        for (int i = 0; i < vectors; ++i) valid.F(0.f).F(0.f).emit(0x5B);
+        if (opcode != 0x88) valid.F(1.f).C({255, 0, 0, 255});
+        valid.emit(opcode);
+        if (opcode == 0x88) valid.emit(0x16);
+        REQUIRE_NOTHROW(validate(loadFile(buildProgFile(valid))));
+        Prog wrong;
+        for (int i = 0; i < vectors - 1; ++i) wrong.F(0.f).F(0.f).emit(0x5B);
+        wrong.F(0.f); // the last control (or query argument) has the wrong type
+        if (opcode != 0x88) wrong.F(1.f).C({255, 0, 0, 255});
+        const std::size_t at = wrong.body.size();
+        wrong.emit(opcode);
+        const std::vector<FuncSpec> functions = {drawSpec(wrong.body)};
+        expectValidateError(buildProgFile(wrong), streamRel(functions, 0) + at, "type mismatch");
+        // A bare opcode reaches its own version gate without a vec2.make
+        // instruction or type-list gate failing first.
+        const std::vector<FuncSpec> bare = {drawSpec(ins(opcode, 0, 0))};
+        auto legacy = fullFile(minimalMeta(), richPool({"draw"}), codeSection(bare, {}));
+        for (const u8 minor : {u8{1}, u8{2}}) {
+            legacy[6] = minor;
+            expectValidateError(legacy, streamRel(bare, 0), "require format 0.3");
+        }
+    }
+}
+
 TEST_CASE("entry naming and signature violations") {
     const auto pool = namesPool({"draw", "zzz", "palette"});
 

@@ -49,6 +49,13 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"pow", {{V::F32, V::F32}, V::F32}},
         {"exp", {{V::F32}, V::F32}},
         {"atan2", {{V::F32, V::F32}, V::F32}},
+        {"dist.circle", {{V::Vec2, V::Vec2, V::F32}, V::F32}},
+        {"dist.rect", {{V::Vec2, V::Vec2, V::Vec2}, V::F32}},
+        {"dist.roundrect", {{V::Vec2, V::Vec2, V::Vec2, V::F32}, V::F32}},
+        {"dist.line", {{V::Vec2, V::Vec2, V::Vec2}, V::F32}},
+        {"dist.bezier", {{V::Vec2, V::Vec2, V::Vec2, V::Vec2}, V::F32,
+                         {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::Vec2}}}},
+        {"fill", {{V::F32, V::F32}, V::F32}},
         {"i32trunc", {{V::F32}, V::I32}},
         {"round", {{V::F32}, V::I32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
@@ -57,6 +64,8 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"pixel", {{V::I32, V::I32, V::Color}, V::Void}},
         {"rect", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
         {"line", {{V::F32, V::F32, V::F32, V::F32, V::I32, V::Color}, V::Void}},
+        {"curve", {{V::Vec2, V::Vec2, V::Vec2, V::F32, V::Color}, V::Void,
+                   {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::F32, V::Color}}}},
         {"oval", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
         {"weather", {{V::I32, V::I32}, V::Void}},
         // poly takes a colour plus 2n vertex floats (n >= 3); the arity is
@@ -266,6 +275,17 @@ ValueType Typer::typeCall(const Call& call) {
         return typeUserCall(*name, call);
     }
     if (std::holds_alternative<Member>(*call.callee)) {
+        // The dotted builtin names (dist.circle, ...): the base `dist` is
+        // the reserved namespace; anything else is a part call.
+        const Path path = flatten(*call.callee);
+        if (path.base == "dist" && path.segments.size() == 1) {
+            const std::string full = "dist." + path.segments[0];
+            const auto builtin = builtinSignatures().find(full);
+            if (builtin != builtinSignatures().end()) {
+                Identifier synthetic{full, path.location};
+                return typeBuiltinCall(synthetic, call, builtin->second);
+            }
+        }
         return typePartCall(call);
     }
     error(call.location, "cannot call this expression");
@@ -297,10 +317,22 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return ValueType::Void;
     }
 
-    if (signature.params.size() != call.args.size()) {
+    const std::vector<ValueType>* params = &signature.params;
+    if (params->size() != call.args.size()) {
+        for (const auto& alternate : signature.alternateParams) {
+            if (alternate.size() == call.args.size()) {
+                params = &alternate;
+                break;
+            }
+        }
+    }
+    if (params->size() != call.args.size()) {
+        std::string arities = std::to_string(signature.params.size());
+        for (const auto& alternate : signature.alternateParams) {
+            arities += " or " + std::to_string(alternate.size());
+        }
         error(call.location,
-              "function '" + name.name + "' expects " +
-                  std::to_string(signature.params.size()) +
+              "function '" + name.name + "' expects " + arities +
                   " arguments, got " + std::to_string(call.args.size()));
     }
     for (std::size_t i = 0; i < call.args.size(); ++i) {
@@ -310,10 +342,10 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                   "function '" + name.name + "' does not take named arguments");
         }
         const ValueType got = typeOf(*arg.value);
-        if (!argFits(signature.params[i], got)) {
+        if (!argFits((*params)[i], got)) {
             error(locationOf(*arg.value),
                   "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(signature.params[i]) +
+                      "' must be " + typeName((*params)[i]) +
                       ", got " + typeName(got));
         }
     }

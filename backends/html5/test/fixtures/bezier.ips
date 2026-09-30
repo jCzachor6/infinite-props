@@ -1,0 +1,34 @@
+asset bezier {
+  size 8x8
+  output point quadratic
+  output point cubic
+  output point bits
+  output point constant
+  output point singular
+  output point nonfinite
+  output point basicSdf
+  output point rounded
+  output point edge
+
+  draw(v: i32, a: i32) {
+    quadratic = {dist.bezier({3,0}, {0,0}, {1,0}, {2,0}),
+                 dist.bezier({3,4}, {0,0}, {0,0}, {0,0})}
+    cubic = {dist.bezier({4,0}, {0,0}, {1,0}, {2,0}, {3,0}),
+             dist.bezier({1.5,3}, {0,0}, {0,2}, {3,2}, {3,0})}
+    bits = {dist.bezier({-2.625,3.625}, {-4,4.75}, {-1,0.875}, {-5.875,-1.5}),
+            dist.bezier({1.625,3.375}, {-1,-1.75}, {-2.875,3.875}, {3.5,3.375}, {4,-2})}
+    constant = {dist.bezier({3,4}, {0,0}, {0,0}, {0,0}, {0,0}),
+                dist.bezier({0,0}, {0,0}, {0,0}, {0,0}, {0,0})}
+    singular = {dist.bezier({1,-0.5}, {0,0}, {1,1}, {2,0}),
+                dist.bezier({0,0}, {0,0}, {0,0}, {2,0}, {2,0})}
+    nonfinite = {dist.bezier({sqrt(-1),0}, {0,0}, {1,1}, {2,0}),
+                 dist.bezier({0,0}, {0,0}, {1,1}, {2,0}, {pow(0,-1),0})}
+    basicSdf = {dist.circle({3,4}, {0,0}, 3), dist.rect({5,5}, {0,0}, {2,3})}
+    rounded = {dist.roundrect({0,0}, {0,0}, {2,3}, 1),
+               dist.roundrect({5,5}, {0,0}, {3,4}, 1)}
+    edge = {dist.line({3,4}, {0,0}, {2,0}), fill(-0.5, 2)}
+    curve({1,5}, {3,1}, {5,5}, 0.25, #0000ff)
+    curve({1,5}, {1,1}, {5,1}, {5,5}, 0.25, #ff0000)
+    curve({1,7}, {3,7}, {5,7}, 1, #00ff00)
+  }
+}

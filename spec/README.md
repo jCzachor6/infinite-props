@@ -11,7 +11,7 @@ that every compiler and interpreter MUST implement.
 | -------- | ------ | ----- |
 | [iprop-v0.1.md](iprop-v0.1.md) | **v0.1 — frozen** | File structure, meta/const/code/debug sections, VM semantics, full instruction set, seeded primitives, canvas operations, parts and composition, determinism rules, validation, conformance |
 | [iprop-v0.2.md](iprop-v0.2.md) | **v0.2 release candidate** | Version-gated trigonometry and math; all frozen 0.1 layouts and algorithms remain supported |
-| [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 in development** | The `vec2` value type and the vector ops; all frozen 0.1/0.2 layouts and algorithms remain supported |
+| [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 in development** | The `vec2` value type, vector ops, SDF queries and quadratic/cubic Bézier strokes; all frozen 0.1/0.2 layouts and algorithms remain supported |
 
 The `.ips` language compiles 1:1 to this contract; its reference lives in the
 toolchain (the grammar and the type rules in `language/`, the lowering in

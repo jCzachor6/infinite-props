@@ -132,6 +132,10 @@ struct Execution {
 // (shared by the canvas ops and the part blit).
 void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
 
+// Pinned quadratic/cubic distance queries (spec §12.9), also used by curve.
+f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c);
+f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d);
+
 // Per-group instruction dispatchers. Each returns true when it handled the
 // opcode; dispatch() falls through to a trap otherwise. Groups arrive with
 // their phases: core frame ops (vm.cpp, Phase 7), stack.cpp (Phase 7),

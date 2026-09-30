@@ -112,6 +112,13 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"vec2.len", {Opcode::Vec2Len}}, {"vec2.dot", {Opcode::Vec2Dot}},
         {"vec2.rot", {Opcode::Vec2Rot}}, {"vec2.x", {Opcode::Vec2X}},
         {"vec2.y", {Opcode::Vec2Y}},
+        {"dist.circle", {Opcode::DistCircle}},
+        {"dist.rect", {Opcode::DistRect}},
+        {"dist.roundrect", {Opcode::DistRoundRect}},
+        {"dist.line", {Opcode::DistLine}},
+        {"dist.bezier", {Opcode::DistBezier}},
+        {"dist.bezier.cubic", {Opcode::DistBezierCubic}},
+        {"fill", {Opcode::Fill}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},
@@ -126,6 +133,7 @@ const OpDef* lookup(const std::string& mnemonic) {
 
         {"pixel", {Opcode::Pixel}}, {"rect", {Opcode::Rect}},
         {"line", {Opcode::Line}}, {"poly", {Opcode::Poly, OperandKind::Count}},
+        {"curve", {Opcode::Curve}}, {"curve.cubic", {Opcode::CurveCubic}},
         {"oval", {Opcode::Oval}}, {"weather", {Opcode::Weather}},
 
         {"out.point", {Opcode::OutPoint, OperandKind::Name}},

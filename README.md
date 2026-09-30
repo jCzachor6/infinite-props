@@ -237,8 +237,13 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   with `break`/`continue`, and `for i in a..b` sugar — both lowered to the
   VM's `br`).
 - Built-in functions for every VM primitive in §6.4–6.5 (no floating-point
-  conditions), including the pinned `sin`/`cos` and the math package
-  (`abs`, `floor`, `ceil`, `min`, `max`, `pow`, `exp`, `atan2`).
+  conditions), including the pinned `sin`/`cos`, the math package
+  (`abs`, `floor`, `ceil`, `min`, `max`, `pow`, `exp`, `atan2`) and the
+  signed-distance fields (`dist.circle`/`dist.rect`/`dist.roundrect`/
+  `dist.line`/`dist.bezier` plus `fill`). `dist.bezier(p, a, b, c)` is
+  quadratic; an additional control point selects the cubic form.
+  `curve(a, b, c [, d], thickness, colour)` draws either form with round
+  caps; thickness is an `f32` diameter in target pixels.
 - Asset-level constant arrays (`palette name = [ e, e, … ]`) with integer
   indexing; a bare palette name must be indexed (the default is the last
   element).

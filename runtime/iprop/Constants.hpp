@@ -148,6 +148,15 @@ enum class Opcode : u8 {
     Vec2X = 0x78,
     Vec2Y = 0x79,
 
+    // Signed-distance fields (spec §9.4/§12.9; added in v0.3)
+    DistCircle = 0x7A,
+    DistRect = 0x7B,
+    DistRoundRect = 0x7C,
+    DistLine = 0x7D,
+    DistBezier = 0x7E,
+    Fill = 0x7F,
+    DistBezierCubic = 0x88, // placed in the post-canvas gap
+
     // Canvas (§9.8)
     Pixel = 0x80,
     Rect = 0x81,
@@ -155,6 +164,8 @@ enum class Opcode : u8 {
     Poly = 0x83,
     Oval = 0x84,
     Weather = 0x85,
+    Curve = 0x86,      // quadratic stroke, added in v0.3
+    CurveCubic = 0x87, // cubic stroke, added in v0.3
 
     // Structured outputs (§9.9)
     OutPoint = 0x90,

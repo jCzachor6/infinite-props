@@ -91,6 +91,13 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::Vec2Rot: return "vec2.rot";
     case Opcode::Vec2X: return "vec2.x";
     case Opcode::Vec2Y: return "vec2.y";
+    case Opcode::DistCircle: return "dist.circle";
+    case Opcode::DistRect: return "dist.rect";
+    case Opcode::DistRoundRect: return "dist.roundrect";
+    case Opcode::DistLine: return "dist.line";
+    case Opcode::DistBezier: return "dist.bezier";
+    case Opcode::DistBezierCubic: return "dist.bezier.cubic";
+    case Opcode::Fill: return "fill";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";
@@ -115,6 +122,8 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::Pixel: return "pixel";
     case Opcode::Rect: return "rect";
     case Opcode::Line: return "line";
+    case Opcode::Curve: return "curve";
+    case Opcode::CurveCubic: return "curve.cubic";
     case Opcode::Poly: return "poly";
     case Opcode::Oval: return "oval";
     case Opcode::Weather: return "weather";

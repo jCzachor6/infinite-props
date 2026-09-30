@@ -37,6 +37,22 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         return callee.langResult.value_or(ips::ValueType::Void);
     }
     if (std::holds_alternative<ips::Member>(*call.callee)) {
+        // The dotted builtin names (dist.circle, ...) — the base `dist` is
+        // the reserved namespace; anything else is a part call.
+        std::vector<std::string> reversed;
+        const ips::Expr* current = call.callee.get();
+        while (const auto* member = std::get_if<ips::Member>(current)) {
+            reversed.push_back(member->name);
+            current = member->object.get();
+        }
+        if (const auto* base = std::get_if<ips::Identifier>(current)) {
+            if (base->name == "dist" && reversed.size() == 1) {
+                const std::string full = "dist." + reversed[0];
+                if (ips::builtinSignatures().count(full) != 0) {
+                    return emitBuiltin(full, call);
+                }
+            }
+        }
         emitPartCall(call);
         return ips::ValueType::Void;
     }
@@ -103,6 +119,23 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
     if (name == "pow") return emitFixed({VT::F32, VT::F32}, Opcode::F32Pow);
     if (name == "exp") return emitFixed({VT::F32}, Opcode::F32Exp);
     if (name == "atan2") return emitFixed({VT::F32, VT::F32}, Opcode::F32Atan2);
+    if (name == "dist.circle")
+        return emitFixed({VT::Vec2, VT::Vec2, VT::F32}, Opcode::DistCircle);
+    if (name == "dist.rect")
+        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2}, Opcode::DistRect);
+    if (name == "dist.roundrect")
+        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::F32},
+                         Opcode::DistRoundRect);
+    if (name == "dist.line")
+        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2}, Opcode::DistLine);
+    if (name == "dist.bezier") {
+        if (call.args.size() == 5)
+            return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2},
+                             Opcode::DistBezierCubic);
+        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2},
+                         Opcode::DistBezier);
+    }
+    if (name == "fill") return emitFixed({VT::F32, VT::F32}, Opcode::Fill);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):
@@ -156,6 +189,12 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
     if (name == "line") {
         return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::I32,
                           VT::Color}, Opcode::Line);
+    }
+    if (name == "curve") {
+        if (call.args.size() == 6)
+            return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2, VT::F32, VT::Color},
+                             Opcode::CurveCubic);
+        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::F32, VT::Color}, Opcode::Curve);
     }
     if (name == "oval") {
         return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::Color},

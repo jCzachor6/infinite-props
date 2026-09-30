@@ -20,6 +20,7 @@ const sources = [
     ["plant", "examples/plant.ips"],
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
+    ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -116,6 +117,17 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent math edge pins");
             }
+            if (path.basename(file) === "bezier.iprop") {
+                const expected = [
+                    [0x3f800000, 0x40a00000], [0x3f800000, 0x3fc00000],
+                    [0x3f17c01b, 0x3fa79662], [0x40a00000, 0],
+                    [0x3f800000, 0], [0x7fc00000, 0x7fc00000],
+                    [0x40000000, 0x4066c15a], [0xc0000000, 0x4026c15a],
+                    [0x4083f07b, 0x3f580000],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent SDF/Bezier pins");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -142,6 +154,9 @@ function run(iprop, toolsDir) {
                         compare(file, 26, null, {variant, archetype, sizeX: 16, sizeY: 24});
                     }
                 }
+            }
+            if (name === "bezier") {
+                compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }
     } finally {

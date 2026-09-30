@@ -38,6 +38,7 @@ struct PartInfo {
 struct BuiltinSignature {
     std::vector<ValueType> params;
     ValueType result = ValueType::Void;
+    std::vector<std::vector<ValueType>> alternateParams = {};
 };
 
 const std::map<std::string, BuiltinSignature>& builtinSignatures();
