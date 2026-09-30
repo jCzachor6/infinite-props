@@ -1,6 +1,6 @@
-# `.iprop` Format and Virtual Machine — Specification v0.1 (Draft)
+# `.iprop` Format and Virtual Machine — Specification v0.1
 
-**Status:** Draft. Not yet implemented.
+**Status:** Released in 0.1.0; semantics frozen.
 **Scope:** This document specifies the binary file format and the execution
 semantics of the virtual machine. It does not specify the `.ips` language or
 the compiler (Phase 2).
@@ -363,33 +363,6 @@ Arithmetic `[f32 f32] -> [f32]`:
 | 0x42 | f32.mul | | 0x4C | f32.sqrt (`[f32]->[f32]`) |
 | | | | 0x4A | f32.neg (`[f32]->[f32]`) |
 
-Trigonometry (added in v0.2; `[f32] -> [f32]`, exact algorithm in §12.7):
-
-| Op | Mnemonic |
-| -- | -------- |
-| 0x4F | f32.sin |
-| 0x53 | f32.cos |
-
-`f32.cos` is defined as `f32.sin` of the argument plus π/2 (§12.7). The
-values sit in the two free gaps around the colour ops (0x50–0x52), which
-are already assigned.
-
-Math package (added in v0.2; exact algorithms in §12.8):
-
-| Op | Mnemonic | Stack |
-| -- | -------- | ----- |
-| 0x54 | f32.floor | `[f32] -> [f32]` |
-| 0x55 | f32.ceil | `[f32] -> [f32]` |
-| 0x56 | f32.min | `[f32 f32] -> [f32]` |
-| 0x57 | f32.max | `[f32 f32] -> [f32]` |
-| 0x58 | f32.pow | `[f32 f32] -> [f32]` |
-| 0x59 | f32.exp | `[f32] -> [f32]` |
-| 0x5A | f32.atan2 | `[f32 f32] -> [f32]` |
-
-Operand order (top first, as everywhere in §9): `f32.pow` pops `y`, then
-`x` and computes `pow(x, y)` (§12.8); `f32.atan2` pops `x`, then `y` and
-computes `atan2(y, x)`.
-
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
 
@@ -663,150 +636,12 @@ else:         return at(ix+1,iy+1)*(u+v-1) + at(ix,iy+1)*(1-u) + at(ix+1,iy)*(1-
   (whose compilers contract this expression) bit for bit.
 - `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`.
 
-### 12.7 Trigonometry (v0.2)
-
-`f32.sin`/`f32.cos` are **not** the platform libm: implementations MUST use
-the pinned algorithm below so every backend agrees bit for bit. All
-arithmetic is double-precision IEEE-754 round-to-nearest-even (each `+`, `-`,
-`*`, `/` and `floor` below is one such operation); the final result is cast
-to binary32.
-
-```
-PIO2    = 1.57079632679489661923e+00   // the double nearest pi/2
-PIO2_HI = 1.57079632673412561417e+00   // 0x3FF921FB54400000
-PIO2_LO = 6.07710050650619224932e-11   // 0x3DD0B4611A626331
-
-sin(x):                             // x is the f32 input, exact in double
-    if x is NaN or infinite: return the canonical quiet NaN (0x7FC00000)
-    k = floor(x / PIO2 + 0.5)       // the quadrant index (nearest multiple)
-    r = (x - k * PIO2_HI) - k * PIO2_LO          // Cody-Waite remainder, |r| <= pi/4
-    s = r - r^3/3! + r^5/5! - r^7/7! + r^9/9! - r^11/11!   // Horner
-    c = 1 - r^2/2! + r^4/4! - r^6/6! + r^8/8! - r^10/10! + r^12/12!  // Horner
-    m = k - 4 * floor(k / 4)        // k mod 4, exact (0.25 scaling is exact)
-    return (f32) ( m==0 ? s : m==1 ? c : m==2 ? -s : -c )
-
-cos(x) = sin(x + PIO2)              // one double addition, then the above
-```
-
-The remainder's quadrant index is exact for |x| < 2^52·π/2 (all of binary32's
-range); the remainder itself carries ≥ 48 correct bits for |x| ≤ 2^40. Beyond
-that the result is still deterministic but its accuracy is not guaranteed —
-asset code operates on small angles, far inside the envelope.
-
-### 12.8 The math package (v0.2)
-
-Like §12.7, every operation below is double-precision IEEE-754
-round-to-nearest (each `+`, `-`, `*`, `/`, `floor` and `sqrt` is one such
-operation); the final result is cast to binary32. The constants are the
-doubles written below and must not be replaced by the platform libm.
-
-```
-LN2   = 6.93147180559945309417e-01  (the double nearest ln 2)
-LOG2E = 1.44269504088896340736e+00  (the double nearest 1/ln 2)
-PI    = 3.14159265358979323846e+00  (the double nearest pi)
-PIO2  = 1.57079632679489661923e+00  (the double nearest pi/2)
-```
-
-**floor/ceil.** IEEE-754 floor and ceil — correctly rounded, like `sqrt`
-and division. `floor(NaN) = NaN`, `floor(±inf) = ±inf`; the same for
-`ceil`.
-
-**min/max.** IEEE minNum/maxNum: if exactly one operand is NaN, the result
-is the other operand; if both are NaN, the result is the canonical quiet
-NaN. The ordering treats `-0` as less than `+0`.
-
-**exp2(x)** — the core of `exp` and `pow`:
-
-```
-if x is NaN: canonical NaN
-if x == +inf: +inf
-if x == -inf: +0
-n = floor(x)                     // exact
-f = x - n                        // f in [0, 1), exact
-t = f * LN2                      // one rounding
-e = 1 + t + t^2/2! + t^3/3! + ... + t^12/12!      // Horner, double
-return (f32)(e * 2^n)            // the 2^n via the exact exponent step
-```
-
-**log2(x):**
-
-```
-if x is NaN or x < 0: canonical NaN
-if x == +inf: +inf
-if x == 0: -inf
-split x = m * 2^e with m in [1, 2)                // exact
-u = m - 1                        // u in [0, 1), exact
-v = u / (u + 2)                  // v in [0, 1/3]
-g = v + v^3/3 + v^5/5 + v^7/7 + ... + v^15/15     // Horner, double
-return (f32)(e + 2 * g / LN2)
-```
-
-**exp(x)** = exp2 of `x * LOG2E` (the product computed in double precision,
-then the exp2 edge cases and the cast to binary32).
-
-**pow(x, y):**
-
-```
-if y == 0: 1                    // even when x is NaN
-if x == 1: 1
-if x is NaN or y is NaN: canonical NaN
-if y is infinite and |x| == 1: 1
-if y is infinite: return (|x| > 1) == (y > 0) ? +inf : +0
-if x == +inf: return y > 0 ? +inf : +0
-if x == -inf: return (y odd integer) ? (y > 0 ? -inf : -0)
-                                      : (y > 0 ? +inf : +0)
-if x == +0:   return y > 0 ? +0 : +inf
-if x == -0:   return (y odd integer) ? (y > 0 ? -0 : -inf)
-                                      : (y > 0 ? +0 : +inf)
-if x < 0 and y is not an integer: canonical NaN
-r = exp2(y * log2(|x|))
-if x < 0 and y is an odd integer: r = -r
-return (f32)r
-```
-
-"y is an integer" means `y` is finite and `y == floor(y)` (exact for |y| < 2^52); "odd"
-means `floor(y)` is odd.
-
-**atan2(y, x):**
-
-```
-if y is NaN or x is NaN: canonical NaN
-if y == +0: return x > 0 ? +0 : (x == 0 ? +0 : +PI)
-if y == -0: return x > 0 ? -0 : (x == 0 ? -0 : -PI)
-if y == +inf: return x == +inf ? +PI/4 : (x == -inf ? +3PI/4 : +PI/2)
-if y == -inf: return x == +inf ? -PI/4 : (x == -inf ? -3PI/4 : -PI/2)
-if x == +inf: return +0          // y finite
-if x == -inf: return y >= 0 ? +PI : -PI
-if x == 0:    return y >= 0 ? +PI/2 : -PI/2
-t = min(|x|, |y|) / max(|x|, |y|) // t in [0, 1]
-r = atan(t)                      // the pinned atan below
-if |y| > |x|: r = PI/2 - r
-if y < 0: r = -r
-if x < 0: r = (y >= 0 ? PI : -PI) - r
-return (f32)r
-```
-
-**atan(t) on [0, 1]** — one half-angle reduction plus the Taylor series:
-
-```
-z = t / (1 + sqrt(1 + t^2))      // z in [0, tan(pi/8)) — one sqrt, exact per IEEE
-a = z - z^3/3 + z^5/5 - z^7/7 + z^9/9 - ... + z^17/17   // Horner, double
-return 2 * a
-```
-
-The identity `atan(t) = 2*atan(t / (1 + sqrt(1 + t^2)))` holds exactly in
-the reals; the error bounds match §12.7's envelope for |t| ≤ 2^40.
-
 ## 13. Determinism rules
 
 1. Integer arithmetic is `u32`/`i32` two's-complement wrapping, exactly.
 2. `f32` operations are IEEE-754 binary32, round-to-nearest-even, with
    **no fused multiply-add**: implementations MUST NOT contract `mul`+`add`.
-3. `f32` division and `sqrt` are IEEE-correctly-rounded. `f32.sin`/`f32.cos`
-   are the pinned algorithm of §12.7 (never the platform libm); the math
-   package (`f32.floor`/`f32.ceil`/`f32.min`/`f32.max`/`f32.pow`/`f32.exp`/
-   `f32.atan2`) follows §12.8. `floor`/`ceil` are the IEEE operations; the
-   transcendentals are the pinned polynomials.
+3. `f32` division and `sqrt` are IEEE-correctly-rounded.
 4. Conversions: `f32→i32` truncates toward zero (§9.4); `f32→u8` truncates
    toward zero.
 5. No operation depends on environment state: rounding mode, locale, time,

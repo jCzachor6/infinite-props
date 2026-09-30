@@ -19,11 +19,14 @@
 <h1>The .iprop format</h1>
 <p>A self-contained binary: one file carries the metadata, the constants and
 the bytecode — no external resources. The canonical specification is
-<a href="../spec/iprop-v0.1.md">spec/iprop-v0.1.md</a> in the repository; this
+<a href="../spec/iprop-v0.2.md">spec/iprop-v0.2.md</a> in the repository; this
 page summarises it.</p>
 
+<p>Format 0.2 gates the new trig/math opcodes. Its reader also accepts frozen
+0.1 files; a 0.1 file containing a 0.2-only opcode is rejected.</p>
+
 <h2 id="layout">The file layout</h2>
-<pre><code>header (20 bytes)          magic "IPRP", version 0.1, flags, section count
+<pre><code>header (20 bytes)          magic "IPRP", version 0.2, flags, section count
 section table (12 bytes × N)   id, offset, size
 sections                    meta · const · code · debug (optional)</code></pre>
 <ul>

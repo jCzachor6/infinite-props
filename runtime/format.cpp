@@ -35,7 +35,7 @@ FileLayout parseLayout(std::span<const u8> data) {
     layout.totalSize = data.size();
 
     // Version: interpreters reject files they cannot fully honour. This
-    // implementation knows 0.x with x <= 1.
+    // implementation knows 0.x with x <= 2.
     layout.header.versionMajor = reader.readU16();
     if (layout.header.versionMajor > kVersionMajor) {
         throw FormatError("unsupported format major version", 4);

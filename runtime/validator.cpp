@@ -48,6 +48,11 @@ public:
             if (ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
+            const auto opcode = static_cast<u8>(ins.opcode);
+            if (file_.layout.header.versionMinor < 2 &&
+                (opcode == 0x4F || (opcode >= 0x53 && opcode <= 0x5A))) {
+                fail(i, "trigonometry and math require format 0.2");
+            }
             step(i, ins);
         }
         if (!labels_.empty()) {

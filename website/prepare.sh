@@ -11,6 +11,6 @@ cp examples/portrait.iprop website/public/portrait.iprop
 cp examples/plant.iprop website/public/plant.iprop
 cp backends/html5/demo/noise.iprop website/public/noise.iprop
 mkdir -p website/public/spec
-cp spec/iprop-v0.1.md website/public/spec/iprop-v0.1.md
+cp spec/iprop-v0.1.md spec/iprop-v0.2.md website/public/spec/
 
 echo "playground assets synced"

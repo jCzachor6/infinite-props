@@ -68,6 +68,33 @@ std::vector<u8> partCall(u16 partIndex) {
 
 } // namespace
 
+TEST_CASE("format 0.1 remains supported and rejects every new math opcode") {
+    const auto legacyBody = retIns();
+    auto legacy = fullFile(minimalMeta(), richPool({"draw"}),
+                           codeSection({drawSpec(legacyBody)}, {}));
+    legacy[6] = 1;
+    REQUIRE_NOTHROW(validate(loadFile(legacy)));
+    for (const u8 opcode : {u8{0x4F}, u8{0x53}, u8{0x54}, u8{0x55}, u8{0x56},
+                            u8{0x57}, u8{0x58}, u8{0x59}, u8{0x5A}}) {
+        const unsigned args = opcode == 0x56 || opcode == 0x57 ||
+                              opcode == 0x58 || opcode == 0x5A ? 2 : 1;
+        std::vector<u8> body;
+        for (unsigned i = 0; i < args; ++i) {
+            const auto constant = ins(0x11, 0, 0);
+            body.insert(body.end(), constant.begin(), constant.end());
+        }
+        for (const auto& instruction : {ins(opcode, 0, 0), ins(0x16, 0, 0), retIns()}) {
+            body.insert(body.end(), instruction.begin(), instruction.end());
+        }
+        const std::vector<FuncSpec> functions = {drawSpec(body)};
+        auto bytes = fullFile(minimalMeta(), richPool({"draw"}), codeSection(functions, {}));
+        REQUIRE_NOTHROW(validate(loadFile(bytes)));
+        bytes[6] = 1;
+        expectValidateError(bytes, streamRel(functions, 0) + args * 4,
+                            "require format 0.2");
+    }
+}
+
 TEST_CASE("valid battery passes validation") {
     // 1. Trivial draw.
     {

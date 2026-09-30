@@ -13,7 +13,7 @@ TEST_CASE("valid layout parses and round-trips") {
     const auto layout = parseLayout(bytes);
 
     REQUIRE(layout.header.versionMajor == 0);
-    REQUIRE(layout.header.versionMinor == 1);
+    REQUIRE(layout.header.versionMinor == 2);
     REQUIRE(layout.header.flags == 0);
     REQUIRE_FALSE(layout.header.hasDebug());
     REQUIRE(layout.totalSize == bytes.size());
@@ -76,7 +76,7 @@ TEST_CASE("truncated header fails") {
 
 TEST_CASE("unsupported versions fail at their field offsets") {
     expectError(rawLayout(1, 1, 0, 1, 0, {{1, 0, 0}}), 4); // major 1
-    expectError(rawLayout(0, 2, 0, 1, 0, {{1, 0, 0}}), 6); // minor 2
+    expectError(rawLayout(0, 3, 0, 1, 0, {{1, 0, 0}}), 6); // minor 3
 }
 
 TEST_CASE("unknown flag bits fail") {

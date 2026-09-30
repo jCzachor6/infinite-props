@@ -13,7 +13,7 @@ the exact same pixels on every platform.
    `spec/` and get agreement before touching behaviour.
 2. **Determinism is sacred.** No environment-dependent behaviour: no
    time/threading in generation, no FMA contraction, integer control flow
-   only. When in doubt, read `spec/iprop-v0.1.md` §13.
+   only. When in doubt, read `spec/iprop-v0.2.md` §13 (0.1 remains frozen).
 3. **Golden tests are the law.** Any change that alters a golden image or a
    golden structured output is a breaking change unless the spec changed with
    it.
