@@ -22,7 +22,9 @@ target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
 target_include_directories(iprop_capi_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(iprop_capi_static)
 
-set_target_properties(iprop_capi_static PROPERTIES OUTPUT_NAME ipropc)
+set_target_properties(iprop_capi_static PROPERTIES
+    OUTPUT_NAME ipropc
+    POSITION_INDEPENDENT_CODE ON)
 
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a
