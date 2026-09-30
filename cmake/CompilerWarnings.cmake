@@ -4,6 +4,9 @@
 function(iprop_warnings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /WX /permissive- /fp:strict)
+        # Use the standard C file APIs on every platform. MSVC otherwise
+        # diagnoses fopen/strncpy as deprecated extensions under /WX.
+        target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
     else()
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
         # spec §13.2: implementations MUST NOT fuse multiply-add. Disable
