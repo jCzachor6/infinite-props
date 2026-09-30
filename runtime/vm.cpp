@@ -2,6 +2,7 @@
 
 #include "iprop/VmInternals.hpp"
 
+#include <cmath>
 #include <utility>
 
 namespace iprop {
