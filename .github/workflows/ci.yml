@@ -31,6 +31,12 @@ jobs:
       - name: Smoke the CLI pipeline
         run: cmake -DTOOLS=${{ github.workspace }}/build/tools -P scripts/cli_smoke.cmake
 
+      - name: Install and consume the relocated package
+        run: |
+          cmake --install build --prefix stage
+          cmake -E rename stage relocated
+          cmake -DPREFIX=${{ github.workspace }}/relocated -DWORK=${{ github.workspace }}/installed-smoke -P scripts/install_smoke.cmake
+
   # The HTML5/WASM backend: the same interpreter compiled to WebAssembly,
   # checked against fresh desktop renders, structured outputs and the
   # frozen golden images as well as the shared in-browser hash suite.
@@ -91,6 +97,7 @@ jobs:
         run: |
           cmake --build build --parallel 4
           xvfb-run -a ctest --test-dir build --output-on-failure
+          xvfb-run -a python3 scripts/release.py 0.2.0 build --check
 
   sanitizers:
     runs-on: ubuntu-latest

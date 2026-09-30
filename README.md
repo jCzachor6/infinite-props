@@ -456,3 +456,21 @@ are separate contracts. API 0.2 consumers must rebuild with the new header.
 The merge, release tag and publication have not happened yet. GitHub CI
 requires a remote; editor/website publication, Bevy and Unity glue remain
 separate ecosystem work.
+
+Prepare a local release package from a clean, committed checkout:
+
+```sh
+cmake -B build-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release --parallel
+scripts/release.sh 0.2.0 build-release
+```
+
+Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
+including those integrations; required mode fails on missing dependencies.
+Godot packages require `GODOTCPP_TARGET=template_release`. The script
+validates CTest, a moved installation, all six tools and external shared/static
+C API consumers before writing `dist/iprop-0.2.0.tar.gz` (committed source),
+`dist/iprop-0.2.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+The native archive records its source commit and included backends in
+`release.json`. Pass `--check` to validate an in-progress build without
+creating archives. Packaging does not tag, merge, push or publish.

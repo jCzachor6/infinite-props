@@ -6,8 +6,7 @@ nodes.
 
 ## Pinned versions (task 8.3)
 
-- **Godot 4.5.2** (`4.5.2-stable` — the last series with an official
-  godot-cpp release tag).
+- **Godot 4.5.2** (`4.5.2-stable`).
 - **godot-cpp** at `godot-4.5-stable`.
 
 Point CMake at the checkout and the engine binary when configuring:
@@ -41,6 +40,19 @@ For a single-architecture macOS build, pass Godot's `macos.zip` through that
 option: CMake prepares a matching template with `lipo` because Godot 4.5.2's
 official archive supplies universal binary names only. The demo enables both
 desktop texture import formats required by Godot's export validation.
+
+`cmake --install` also copies the project to `<prefix>/share/iprop/godot/`
+with its extension, demo assets and an export preset without build-machine
+template paths. Open that project with Godot. Set `custom_template/release`
+in its preset to your matching local template. For macOS arm64, prepare it
+from the official archive using the installed helper:
+
+```sh
+python3 prepare_macos_template.py /path/to/macos.zip arm64 /path/to/macos-arm64.zip
+```
+
+Use the resulting archive in the preset. The Godot engine and export
+templates are not included in the native package.
 
 ## The extension (8.1/8.2)
 
@@ -79,3 +91,6 @@ current image as a PNG.
 committed golden PNGs, the pinned `pupilCenter` output, and a PNG export
 round-trip. A hand-written `.godot/extension_list.cfg` replaces the
 editor scan so the fresh build trees work without an import step.
+Compiled 0.2 source fixtures additionally check palettes, typed helpers,
+loops, raw math bits, empty output lists, variants/archetypes, plant
+composition, duplicate output owners and transactional sprite lifecycle.

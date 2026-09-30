@@ -61,6 +61,15 @@ pixels through `sf::Image` (the same container the host uses on the way
 to the texture) and compares them pixel-exactly against the committed
 golden PNGs. The shapes entry additionally round-trips
 `saveToFile`/`loadFromFile` to pin the PNG export losslessly.
+Compiled `.ips` fixtures also exercise the 0.2 language features and plant
+composition. The source fixture is uploaded and drawn to `sf::RenderTexture`
+for every variant/archetype combination; `sfml_render` separately checks
+texture resizing and viewport fitting for single sprites and atlases.
+
+Installed hosts live at `<prefix>/bin/iprop_sfml` with selected shared
+SFML libraries under `<prefix>/lib` (DLLs under `bin` on Windows). A Linux
+installation still requires system graphics/font libraries and a display
+or Xvfb for rendering. Headless PNG export needs no window.
 
 Note: window titles stay ASCII — SFML's `String(std::string)` conversion
 is locale-dependent and non-ASCII literals can crash the macOS backend.

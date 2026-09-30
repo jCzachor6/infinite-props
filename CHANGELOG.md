@@ -25,6 +25,9 @@
   and Godot manifests/export presets for platform, architecture and flavor.
 - Added desktop CI, required native backend checks, sanitizers and expanded
   conformance. Updated language documentation and editor highlighting.
+- Added relocatable CMake installs/exports, minor-version shared-library
+  names, native packages with enabled backends and release checks from a
+  moved prefix, including external shared/static C API consumers.
 
 - Corrected the portrait example's inverse CDF to sample ages 18–40,
   rather than repeatedly overwriting the result with age 39. Regenerated
