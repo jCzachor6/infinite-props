@@ -218,143 +218,10 @@ fn ageFromUnit ( f32 ) -> ( i32 ):
   const.i32 40
   local.set 1
   local.get 0
-  const.f32 0.02280424168746939
+  const.f32 0.9771957583125306
   f32.lt
   if
-  const.i32 18
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.049674205008708304
-  f32.lt
-  if
-  const.i32 19
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.08084390776683863
-  f32.lt
-  if
-  const.i32 20
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.1164408256424196
-  f32.lt
-  if
-  const.i32 21
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.15646351621446092
-  f32.lt
-  if
-  const.i32 22
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.20076459628511978
-  f32.lt
-  if
-  const.i32 23
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.2490411763163319
-  f32.lt
-  if
-  const.i32 24
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.3008343862121714
-  f32.lt
-  if
-  const.i32 25
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.35553891819389627
-  f32.lt
-  if
-  const.i32 26
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.412422630991341
-  f32.lt
-  if
-  const.i32 27
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.47065530216358203
-  f32.lt
-  if
-  const.i32 28
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.529344697836418
-  f32.lt
-  if
-  const.i32 29
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.5875773690086589
-  f32.lt
-  if
-  const.i32 30
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.6444610818061037
-  f32.lt
-  if
-  const.i32 31
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.6991656137878286
-  f32.lt
-  if
-  const.i32 32
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.7509588236836681
-  f32.lt
-  if
-  const.i32 33
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.7992354037148802
-  f32.lt
-  if
-  const.i32 34
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.8435364837855391
-  f32.lt
-  if
-  const.i32 35
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.8835591743575805
-  f32.lt
-  if
-  const.i32 36
-  local.set 1
-  end
-  local.get 0
-  const.f32 0.9191560922331614
-  f32.lt
-  if
-  const.i32 37
+  const.i32 39
   local.set 1
   end
   local.get 0
@@ -365,10 +232,143 @@ fn ageFromUnit ( f32 ) -> ( i32 ):
   local.set 1
   end
   local.get 0
-  const.f32 0.9771957583125306
+  const.f32 0.9191560922331614
   f32.lt
   if
-  const.i32 39
+  const.i32 37
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.8835591743575805
+  f32.lt
+  if
+  const.i32 36
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.8435364837855391
+  f32.lt
+  if
+  const.i32 35
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.7992354037148802
+  f32.lt
+  if
+  const.i32 34
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.7509588236836681
+  f32.lt
+  if
+  const.i32 33
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.6991656137878286
+  f32.lt
+  if
+  const.i32 32
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.6444610818061037
+  f32.lt
+  if
+  const.i32 31
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.5875773690086589
+  f32.lt
+  if
+  const.i32 30
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.529344697836418
+  f32.lt
+  if
+  const.i32 29
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.47065530216358203
+  f32.lt
+  if
+  const.i32 28
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.412422630991341
+  f32.lt
+  if
+  const.i32 27
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.35553891819389627
+  f32.lt
+  if
+  const.i32 26
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.3008343862121714
+  f32.lt
+  if
+  const.i32 25
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.2490411763163319
+  f32.lt
+  if
+  const.i32 24
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.20076459628511978
+  f32.lt
+  if
+  const.i32 23
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.15646351621446092
+  f32.lt
+  if
+  const.i32 22
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.1164408256424196
+  f32.lt
+  if
+  const.i32 21
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.08084390776683863
+  f32.lt
+  if
+  const.i32 20
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.049674205008708304
+  f32.lt
+  if
+  const.i32 19
+  local.set 1
+  end
+  local.get 0
+  const.f32 0.02280424168746939
+  f32.lt
+  if
+  const.i32 18
   local.set 1
   end
   local.get 1

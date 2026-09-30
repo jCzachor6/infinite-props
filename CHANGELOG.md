@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased fixes for 0.2.0
+
+- Corrected the portrait example's inverse CDF to sample ages 18–40,
+  rather than repeatedly overwriting the result with age 39. Regenerated
+  the recipe binary and checked all portrait golden images and browser
+  hash pins. Age is currently sampled but unused by the renderer, so the
+  images and hash pins remain unchanged. VM 0.1 semantics are unchanged.
+
 ## v0.1.0 — 2026-09-29
 
 The first public release: a portable binary format and toolchain for

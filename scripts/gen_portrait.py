@@ -104,7 +104,8 @@ def emit_age():
     emit("  locals: i32")
     i32(AGES[-1])
     op("local.set", 1)
-    for index in range(len(AGES) - 1):
+    # Later assignments win, so visit broad thresholds before narrow ones.
+    for index in reversed(range(len(AGES) - 1)):
         op("local.get", 0)
         f32(repr(cumulative[index]))
         op("f32.lt")
