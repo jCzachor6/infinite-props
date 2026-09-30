@@ -377,6 +377,23 @@ TEST_CASE("the math package matches the pinned algorithm bit for bit") {
     REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).emit(0x57))) == 0x00000000u);
 }
 
+TEST_CASE("atan2 handles unequal magnitudes in every quadrant and near axes") {
+    for (const f32 y : {0.125f, 1.f, 2.f, 16.f, 1e-30f, 1e30f}) {
+        for (const f32 x : {0.125f, 1.f, 2.f, 16.f, 1e-30f, 1e30f}) {
+            for (const f32 sy : {-1.f, 1.f}) {
+                for (const f32 sx : {-1.f, 1.f}) {
+                    const f32 actual = evalProgF32(Prog{}.F(y * sy).F(x * sx).emit(0x5A));
+                    const f32 expected = std::atan2(y * sy, x * sx);
+                    INFO("atan2(" << y * sy << ", " << x * sx << ")");
+                    const u32 a = bitsOf(actual);
+                    const u32 b = bitsOf(expected);
+                    REQUIRE((a > b ? a - b : b - a) <= 2u);
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("the math package agrees with libm within the pinned tolerance") {
     const auto ulp = [](f32 a, f32 b) {
         if (std::isnan(a) && std::isnan(b)) {

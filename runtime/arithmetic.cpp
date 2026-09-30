@@ -223,7 +223,7 @@ f32 f32Atan2(f32 y, f32 x) {
     }
     const double ax = std::fabs(xx);
     const double ay = std::fabs(yy);
-    double r = atanCore(ay / std::max(ax, ay));
+    double r = atanCore(std::min(ax, ay) / std::max(ax, ay));
     if (ay > ax) {
         r = kPiOver2 - r;
     }

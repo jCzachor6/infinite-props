@@ -778,7 +778,7 @@ if y == -inf: return x == +inf ? -PI/4 : (x == -inf ? -3PI/4 : -PI/2)
 if x == +inf: return +0          // y finite
 if x == -inf: return y >= 0 ? +PI : -PI
 if x == 0:    return y >= 0 ? +PI/2 : -PI/2
-t = |y| / max(|x|, |y|)          // t in [0, 1]
+t = min(|x|, |y|) / max(|x|, |y|) // t in [0, 1]
 r = atan(t)                      // the pinned atan below
 if |y| > |x|: r = PI/2 - r
 if y < 0: r = -r
