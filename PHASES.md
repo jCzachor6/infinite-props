@@ -68,13 +68,13 @@ the Godot engine integration (the flagship adoption target).
   increment (a `block/loop/block` lowering).
 
 ### 6. The C API (the shared foundation)
-- [ ] `6.1` `backends/capi/` — the stable C API over the runtime:
+- [x] `6.1` `backends/capi/` — the stable C API over the runtime:
   `iprop_generate(bytes, seed, variant, archetype, size) -> RGBA + outputs +
-  meta`; the shared-library build + the public C header.
-- [ ] `6.2` conformance through the C API (the golden corpus via the C
-  entry point).
-- [ ] `6.3` the ABI policy: the versioning and stability rules (all the
-  native backends consume this one surface).
+  meta`; the shared-library build + the public C header (`iprop.h`, C99).
+- [x] `6.2` conformance through the C API (the golden corpus via the C
+  entry point: `capi_conformance`, a C-only consumer).
+- [x] `6.3` the ABI policy: the versioning and stability rules (all the
+  native backends consume this one surface — `backends/capi/README.md`).
 
 ### 7. The SFML host
 - [ ] `7.1` `backends/sfml/` — the native window: `sf::Image` output,

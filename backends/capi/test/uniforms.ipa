@@ -1,0 +1,27 @@
+; The C-API uniform-override fixture: three inputs (a colour, an f32 and
+; a u32) whose values paint three pixels on the diagonal, so the
+; conformance can assert each override path. The f32/u32 pixels shade a
+; FIXED colour — independent of the colour override.
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+input: color base = #3355aa
+input: f32 fx = 1.0
+input: u32 ux = 1
+fn draw ( i32, i32, color, f32, i32 ) -> ( ):
+  const.i32 0
+  const.i32 0
+  local.get 2
+  pixel
+  const.i32 1
+  const.i32 1
+  const.color #3355aaff
+  local.get 3
+  f32.to.i32
+  color.shade
+  pixel
+  const.i32 2
+  const.i32 2
+  const.color #3355aaff
+  local.get 4
+  color.shade
+  pixel
+endfn
