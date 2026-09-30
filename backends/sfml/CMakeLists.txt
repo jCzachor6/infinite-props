@@ -29,6 +29,11 @@ if(SFML_FOUND)
         target_include_directories(sfml_render PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
         iprop_warnings(sfml_render)
         add_test(NAME sfml_render COMMAND sfml_render)
+        add_test(NAME sfml_errors COMMAND ${CMAKE_COMMAND}
+            -DHOST=$<TARGET_FILE:iprop_sfml>
+            -DPROGRAM=${CMAKE_SOURCE_DIR}/examples/portrait.iprop
+            -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/error-test.png
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/test/errors.cmake)
         # 7.2: the headless conformance over the corpus assembled by the
         # capi_golden target (backends/capi).
         add_executable(sfml_conformance

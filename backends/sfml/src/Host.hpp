@@ -6,28 +6,32 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace iprop::sfml_host {
 
+using Program = std::unique_ptr<iprop_program, decltype(&iprop_program_free)>;
+using Result = std::unique_ptr<iprop_result, decltype(&iprop_result_free)>;
+
 // Reads a whole file; throws std::runtime_error on failure.
 inline std::vector<std::uint8_t> readFile(const std::string& path) {
-    std::FILE* file = std::fopen(path.c_str(), "rb");
+    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file(
+        std::fopen(path.c_str(), "rb"), &std::fclose);
     if (file == nullptr) {
         throw std::runtime_error("cannot open " + path);
     }
-    std::fseek(file, 0, SEEK_END);
-    const long size = std::ftell(file);
-    std::fseek(file, 0, SEEK_SET);
-    if (size < 0) {
-        std::fclose(file);
+    if (std::fseek(file.get(), 0, SEEK_END) != 0) {
+        throw std::runtime_error("cannot seek " + path);
+    }
+    const long size = std::ftell(file.get());
+    if (size < 0 || std::fseek(file.get(), 0, SEEK_SET) != 0) {
         throw std::runtime_error("cannot size " + path);
     }
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(size));
-    const std::size_t got = std::fread(bytes.data(), 1, bytes.size(), file);
-    std::fclose(file);
+    const std::size_t got = std::fread(bytes.data(), 1, bytes.size(), file.get());
     if (got != bytes.size()) {
         throw std::runtime_error("short read of " + path);
     }

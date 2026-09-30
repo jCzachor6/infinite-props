@@ -15,6 +15,7 @@
 #include <SFML/Graphics.hpp>
 
 #include <algorithm>
+#include <charconv>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -34,16 +35,16 @@ struct RenderedImage {
 
 RenderedImage generateSingle(iprop_program* program, std::uint32_t seed,
                              std::uint32_t variant) {
-    iprop_result* result = iprop::sfml_host::generate(program, seed, variant, 0);
+    const iprop::sfml_host::Result result(
+        iprop::sfml_host::generate(program, seed, variant, 0), iprop_result_free);
     iprop_image image;
-    iprop_result_image(result, &image);
+    iprop_result_image(result.get(), &image);
     RenderedImage out;
     out.width = image.width;
     out.height = image.height;
     out.pixels.assign(image.pixels,
                       image.pixels + static_cast<std::size_t>(image.width) *
                                          image.height * 4);
-    iprop_result_free(result);
     return out;
 }
 
@@ -90,15 +91,23 @@ bool savePng(const RenderedImage& image, const std::string& path) {
 
 std::string nextArg(int& index, int argc, char** argv, const char* option) {
     if (index + 1 >= argc) {
-        std::fprintf(stderr, "%s requires a value\n", option);
-        std::exit(2);
+        throw std::runtime_error(std::string(option) + " requires a value");
     }
     return argv[++index];
 }
 
+std::uint32_t parseU32(const std::string& token, const char* option) {
+    std::uint32_t value = 0;
+    const auto parsed = std::from_chars(token.data(), token.data() + token.size(), value);
+    if (parsed.ec != std::errc{} || parsed.ptr != token.data() + token.size()) {
+        throw std::runtime_error(std::string(option) + " requires a decimal u32: " + token);
+    }
+    return value;
+}
+
 } // namespace
 
-int main(int argc, char** argv) {
+int run(int argc, char** argv) {
     std::string path = "examples/plant.iprop";
     std::uint32_t seed = 0;
     std::uint32_t variant = 0;
@@ -108,11 +117,9 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--seed") {
-            seed = static_cast<std::uint32_t>(
-                std::stoul(nextArg(i, argc, argv, "--seed")));
+            seed = parseU32(nextArg(i, argc, argv, "--seed"), "--seed");
         } else if (arg == "--variant") {
-            variant = static_cast<std::uint32_t>(
-                std::stoul(nextArg(i, argc, argv, "--variant")));
+            variant = parseU32(nextArg(i, argc, argv, "--variant"), "--variant");
         } else if (arg == "--export") {
             exportPath = nextArg(i, argc, argv, "--export");
         } else if (arg == "--atlas") {
@@ -128,34 +135,31 @@ int main(int argc, char** argv) {
     }
 
     const auto bytes = iprop::sfml_host::readFile(path);
-    iprop_program* program = iprop::sfml_host::loadProgram(bytes);
+    const iprop::sfml_host::Program program(
+        iprop::sfml_host::loadProgram(bytes), iprop_program_free);
     iprop_meta meta;
-    iprop_program_meta(program, &meta);
+    iprop_program_meta(program.get(), &meta);
 
     // The one-shot modes — the same code paths the interactive keys use,
     // exercised without a window.
     if (!exportPath.empty()) {
-        const RenderedImage image = generateSingle(program, seed, variant);
+        const RenderedImage image = generateSingle(program.get(), seed, variant);
         if (!savePng(image, exportPath)) {
             std::fprintf(stderr, "export to %s failed\n", exportPath.c_str());
-            iprop_program_free(program);
             return 1;
         }
         std::printf("exported %s\n", exportPath.c_str());
-        iprop_program_free(program);
         return 0;
     }
     if (!atlasPath.empty()) {
         const RenderedImage atlas =
-            generateAtlas(program, meta, seed, variant);
+            generateAtlas(program.get(), meta, seed, variant);
         if (!savePng(atlas, atlasPath)) {
             std::fprintf(stderr, "atlas export to %s failed\n",
                          atlasPath.c_str());
-            iprop_program_free(program);
             return 1;
         }
         std::printf("atlas exported %s\n", atlasPath.c_str());
-        iprop_program_free(program);
         return 0;
     }
 
@@ -195,7 +199,7 @@ int main(int argc, char** argv) {
     };
 
     if (!screenshotPath.empty()) {
-        uploadSingle(generateSingle(program, seed, variant));
+        uploadSingle(generateSingle(program.get(), seed, variant));
         window.clear(sf::Color(24, 24, 28));
         window.draw(sprite);
         window.display();
@@ -208,20 +212,18 @@ int main(int argc, char** argv) {
         if (!readback.saveToFile(screenshotPath)) {
             std::fprintf(stderr, "screenshot to %s failed\n",
                          screenshotPath.c_str());
-            iprop_program_free(program);
             return 1;
         }
         std::printf("screenshot saved %s\n", screenshotPath.c_str());
-        iprop_program_free(program);
         return 0;
     }
 
     // The interactive loop.
     const auto refresh = [&]() {
         if (atlas) {
-            uploadAtlas(generateAtlas(program, meta, seed, variant));
+            uploadAtlas(generateAtlas(program.get(), meta, seed, variant));
         } else {
-            uploadSingle(generateSingle(program, seed, variant));
+            uploadSingle(generateSingle(program.get(), seed, variant));
         }
         window.setTitle("iprop - " + path + " - seed " +
                         std::to_string(seed) + " variant " +
@@ -267,7 +269,7 @@ int main(int argc, char** argv) {
                     break;
                 case sf::Keyboard::Key::S: {
                     const RenderedImage image =
-                        generateSingle(program, seed, variant);
+                        generateSingle(program.get(), seed, variant);
                     const std::string outPath =
                         "iprop-export-seed" + std::to_string(seed) +
                         "-variant" + std::to_string(variant) + ".png";
@@ -290,6 +292,14 @@ int main(int argc, char** argv) {
         window.display();
     }
 
-    iprop_program_free(program);
     return 0;
+}
+
+int main(int argc, char** argv) {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& error) {
+        std::fprintf(stderr, "iprop_sfml: %s\n", error.what());
+        return 1;
+    }
 }
