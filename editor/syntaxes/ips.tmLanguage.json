@@ -3,19 +3,43 @@
   "name": "ips",
   "scopeName": "source.ips",
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#colors" },
-    { "include": "#numbers" },
-    { "include": "#keywords" },
-    { "include": "#types" },
-    { "include": "#operators" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#colors"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#builtins"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#operators"
+    }
   ],
   "repository": {
     "comments": {
       "patterns": [
-        { "name": "comment.line.double-slash.ips", "match": "//.*$" },
-        { "name": "comment.block.ips", "begin": "/\\*", "end": "\\*/" }
+        {
+          "name": "comment.line.double-slash.ips",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.ips",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
       ]
     },
     "strings": {
@@ -23,7 +47,10 @@
       "begin": "\"",
       "end": "\"",
       "patterns": [
-        { "name": "constant.character.escape.ips", "match": "\\\\." }
+        {
+          "name": "constant.character.escape.ips",
+          "match": "\\\\."
+        }
       ]
     },
     "colors": {
@@ -36,7 +63,7 @@
     },
     "keywords": {
       "name": "keyword.control.ips",
-      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|return|true|false|list)\\b"
+      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|list|palette|size|origin|variants|archetypes)\\b"
     },
     "types": {
       "name": "storage.type.ips",
@@ -44,7 +71,11 @@
     },
     "operators": {
       "name": "keyword.operator.ips",
-      "match": "->|==|!=|<=|>=|&&|\\|\\||<<|>>|[+\\-*/%^&|~!<>=]"
+      "match": "\\.\\.|->|==|!=|<=|>=|&&|\\|\\||<<|>>|[+\\-*/%^&|~!<>=]"
+    },
+    "builtins": {
+      "name": "support.function.builtin.ips",
+      "match": "\\b(unit|stream_push|stream_pop|range|index|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|round|lerp|mix|shade|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
     }
   }
 }

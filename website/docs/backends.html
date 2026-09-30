@@ -26,7 +26,7 @@ checks every backend against the golden corpus.</p>
 cmake --build build --parallel</code></pre>
 <p>Tools under <code>build/tools/</code>: <code>ipc</code> (compile),
 <code>ipgen</code> (render), <code>ipsheet</code> (grids), <code>ipdis</code>
-(disassemble), <code>ipval</code> (validate). Each prints
+(disassemble), <code>ipval</code> (validate), <code>ipa</code> (assemble). Each prints
 <code>--help</code>.</p>
 
 <h2 id="html5">HTML5 / WASM</h2>
@@ -48,12 +48,26 @@ sh install.sh</code></pre>
 preview with seed controls, the atlas, the bytecode inspector and exports.
 The integrated terminal is the console for CLI agents.</p>
 
-<h2 id="native">Native hosts (planned)</h2>
-<p>The roadmap defines three native hosts — SFML (desktop window with
-<code>sf::Image</code> output), OpenGL and Vulkan (CPU raster → texture
-upload → presentation with atlas grids and seed cycling). They are not
-implemented yet; the CPU raster they present is already correct and
-conformant.</p>
+<h2 id="native">C API, SFML and Godot</h2>
+<p>The native integrations are implemented in 0.2. The C99 interface
+(<code>backends/capi/iprop.h</code>) ships shared and static libraries,
+with owned program/result handles, RGBA pixels and structured output owners.</p>
+<pre><code>cmake -B build -DCMAKE_BUILD_TYPE=Release \
+  -DIPROP_SFML=ON -DIPROP_SFML_PREFIX=/path/to/sfml \
+  -DIPROP_GODOT=ON -DIPROP_GODOTCPP_DIR=/path/to/godot-cpp \
+  -DIPROP_GODOT_BINARY=/path/to/godot
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure</code></pre>
+<p>SFML 3.1 provides the desktop sprite/atlas host, PNG exports and actual
+sprite render tests. Its source build requires CMake 3.28 or later. Godot
+4.5.2 with <code>godot-cpp</code> at <code>godot-4.5-stable</code> provides
+<code>IpropAsset</code> and <code>IpropSprite2D</code>; the generated demo
+project is under <code>build/godot-project/</code>. Output names remain
+separate between the root and each part.</p>
+<p><code>IPROP_SFML</code>/<code>IPROP_GODOT</code> accept <code>AUTO</code>
+(skip missing dependencies), <code>ON</code> (require them) or <code>OFF</code>.
+See the backend READMEs for exact library, export and ownership contracts.
+OpenGL, Vulkan, Bevy and Unity integrations remain future work.</p>
 </main>
 <footer>iprop — format spec and toolchain</footer>
 <script src="nav.js"></script>

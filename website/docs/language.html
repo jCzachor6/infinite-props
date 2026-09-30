@@ -67,6 +67,9 @@ inside <code>draw</code> they read as <code>i32</code>/<code>f32</code>/
 <pre><code>w = range(21, 31)      // declares and assigns a local (first use fixes its type)
 if (index(3) == 0) { ... } else if (...) { ... } else { ... }
 while (i &lt; 10) { ... }   // the condition is evaluated each iteration
+for i in 0..10 { ... }   // exclusive upper bound, evaluated once
+break                    // leave the innermost loop in this function
+continue                 // next iteration; for-loops still increment
 return [value]
 face(v, a)             // a call as a statement (values are dropped)</code></pre>
 <ul>
@@ -76,6 +79,18 @@ exactly. Scalars only — <code>i32</code>, <code>f32</code>, <code>color</code>
 <li>Semicolons are optional separators. Comments: <code>//</code> and
 <code>/* */</code>.</li>
 </ul>
+
+<h2 id="palettes">Constant palettes</h2>
+<pre><code>palette colors = [#112233, #445566, #778899]
+palette widths = [1, 2, 3]
+// inside draw or a helper:
+c = colors[v]
+w = widths[index(3)]</code></pre>
+<p>Palettes are non-empty arrays of literals of one scalar type:
+<code>i32</code> (including <code>true</code>/<code>false</code>),
+<code>f32</code> or <code>color</code>. The index must be an <code>i32</code>;
+negative or out-of-range indices select the last element. Palettes cannot
+be assigned to or used without an index.</p>
 
 <h2 id="expressions">Expressions and operators</h2>
 <pre><code>7   -3   2.5   #808d74   true   false   0x9e3779b9
@@ -106,6 +121,10 @@ writes and part placement.</li>
 <tr><td><code>noise(x, y, s)</code> / <code>fault(x, y, s)</code></td><td><code>f32</code></td><td>value / triangular noise</td></tr>
 <tr><td><code>smooth(t)</code> / <code>lerp(a, b, t)</code></td><td><code>f32</code></td><td>clamped helpers</td></tr>
 <tr><td><code>sqrt(x)</code> / <code>round(x)</code> / <code>i32trunc(x)</code></td><td><code>f32</code>/<code>i32</code></td><td>math and conversions</td></tr>
+<tr><td><code>sin(x)</code> / <code>cos(x)</code></td><td><code>f32</code></td><td>pinned trigonometry, angles in radians</td></tr>
+<tr><td><code>abs(x)</code> / <code>floor(x)</code> / <code>ceil(x)</code></td><td><code>f32</code></td><td>float magnitude and rounding</td></tr>
+<tr><td><code>min(x, y)</code> / <code>max(x, y)</code></td><td><code>f32</code></td><td>ignore one NaN; canonical NaN for two; signed-zero ordering</td></tr>
+<tr><td><code>pow(x, y)</code> / <code>exp(x)</code> / <code>atan2(y, x)</code></td><td><code>f32</code></td><td>pinned math; atan2 returns radians</td></tr>
 <tr><td><code>mix(a, b, t)</code> / <code>shade(c, n)</code></td><td><code>color</code></td><td>colour lerp / brightness shift</td></tr>
 <tr><td><code>pixel(x, y, c)</code> / <code>rect(...)</code> / <code>oval(...)</code></td><td>—</td><td>raster primitives (colour last)</td></tr>
 <tr><td><code>line(ax, ay, bx, by, t, c)</code></td><td>—</td><td>thicknessed line</td></tr>
@@ -119,7 +138,7 @@ writes and part placement.</li>
 asset portrait {
   size 64x64
   output point pupilCenter
-  draw(v, a) {
+  draw(v: i32, a: i32) {
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = #33291f)
     pupilCenter = hair.outputs.top
   }
