@@ -61,8 +61,11 @@ add_dependencies(capi_golden capi_owners)
 
 add_executable(capi_conformance
     test/conformance.c)
+add_library(capi_png_decoder STATIC test/stb_image.c)
+target_include_directories(capi_png_decoder SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party/stb)
 
-target_link_libraries(capi_conformance PRIVATE iprop_capi_static)
+target_link_libraries(capi_conformance PRIVATE iprop_capi_static capi_png_decoder)
 target_include_directories(capi_conformance SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(capi_conformance)
