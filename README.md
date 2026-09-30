@@ -449,6 +449,10 @@ the HTML5 backend). v0.2 on `develop` rounds out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-The v0.2.0 release and the remaining ecosystem work (the GitHub remote/CI,
-the editor/website publications, Bevy and Unity glue) follow when the
-infrastructure lands.
+Product 0.2.0 is prepared on `develop`; the CLI, C API, SFML and Godot
+have regression and conformance checks. The product version, format
+version (0.2, with 0.1 reader compatibility) and C API version (0.2)
+are separate contracts. API 0.2 consumers must rebuild with the new header.
+The merge, release tag and publication have not happened yet. GitHub CI
+requires a remote; editor/website publication, Bevy and Unity glue remain
+separate ecosystem work.

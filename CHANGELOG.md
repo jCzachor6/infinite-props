@@ -1,12 +1,39 @@
 # Changelog
 
-## Unreleased fixes for 0.2.0
+## v0.2.0 — prepared for release, 2026-09-30
+
+- Added typed function parameters and return values, constant palettes,
+  `while`/`for` loops, `break`/`continue`, and pinned trig/math builtins.
+- Format 0.2 gates the new math opcodes. Readers also accept frozen format
+  0.1 files; new writers emit format 0.2. Product, format and C API versions
+  are tracked separately.
+- Added the C99 shared/static API, SFML host and Godot 4.5.2 GDExtension.
+  API 0.2 includes output owners; adding that field changes struct layout,
+  so clients must rebuild. Godot exposes root outputs, outputs by part
+  owner and the complete ordered slot list.
+- Fixed function-local loop checks, typed temporary allocation, dynamic
+  numeric/bool palette selection and helper lookup in imported parts,
+  including repeated imports of the same source.
+- Fixed `pow` with infinite exponents, `atan2` for steep directions,
+  canonical NaNs and signed zero in `min`/`max`. Added independent edge
+  vectors and varied numeric samples; native/WASM compares raw output bits.
+- Fixed SFML texture rectangles, screenshot rendering, viewport fitting
+  and controlled errors for invalid CLI inputs. Godot reloads are
+  transactional; sprites refresh on asset changes and clear stale textures.
+- Fixed PIC for shared-library linking, Windows DLL exports and static
+  library naming, GCC header/warning issues, required backend configuration,
+  and Godot manifests/export presets for platform, architecture and flavor.
+- Added desktop CI, required native backend checks, sanitizers and expanded
+  conformance. Updated language documentation and editor highlighting.
 
 - Corrected the portrait example's inverse CDF to sample ages 18–40,
   rather than repeatedly overwriting the result with age 39. Regenerated
   the recipe binary and checked all portrait golden images and browser
   hash pins. Age is currently sampled but unused by the renderer, so the
   images and hash pins remain unchanged. VM 0.1 semantics are unchanged.
+
+This entry describes the local release candidate. Merge, tagging and
+publication are separate actions.
 
 ## v0.1.0 — 2026-09-29
 
