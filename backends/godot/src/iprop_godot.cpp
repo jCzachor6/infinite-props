@@ -8,6 +8,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <cstring>
+#include <limits>
 #include <vector>
 
 using namespace godot;
@@ -51,12 +52,6 @@ IpropAsset::~IpropAsset() {
 }
 
 Error IpropAsset::load_file(const String& path) {
-    iprop_program_free(program_);
-    program_ = nullptr;
-    outputs_.clear();
-    part_outputs_.clear();
-    output_slots_.clear();
-
     if (!FileAccess::file_exists(path)) {
         UtilityFunctions::printerr("iprop: no such file: ", path);
         return ERR_FILE_NOT_FOUND;
@@ -67,8 +62,9 @@ Error IpropAsset::load_file(const String& path) {
         return ERR_INVALID_DATA;
     }
     char error[512] = {};
+    iprop_program* candidate = nullptr;
     const iprop_status status = iprop_program_load(
-        bytes.ptr(), static_cast<size_t>(bytes.size()), &program_, error,
+        bytes.ptr(), static_cast<size_t>(bytes.size()), &candidate, error,
         sizeof(error));
     if (status != IPROP_OK) {
         UtilityFunctions::printerr(
@@ -77,13 +73,19 @@ Error IpropAsset::load_file(const String& path) {
         return ERR_INVALID_DATA;
     }
     iprop_meta meta;
-    iprop_program_meta(program_, &meta);
+    iprop_program_meta(candidate, &meta);
+    iprop_program_free(program_);
+    program_ = candidate;
+    outputs_.clear();
+    part_outputs_.clear();
+    output_slots_.clear();
     size_ = Vector2i(static_cast<int>(meta.size_x),
                      static_cast<int>(meta.size_y));
     origin_ = Vector2(meta.origin_x, meta.origin_y);
     variants_ = static_cast<int64_t>(meta.variants);
     archetypes_ = static_cast<int64_t>(meta.archetypes);
     fuel_ = static_cast<int64_t>(meta.fuel);
+    emit_changed();
     return OK;
 }
 
@@ -92,6 +94,13 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
     outputs_.clear();
     part_outputs_.clear();
     output_slots_.clear();
+    const auto validU32 = [](int64_t value) {
+        return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
+    };
+    if (!validU32(seed) || !validU32(variant) || !validU32(archetype)) {
+        UtilityFunctions::printerr("iprop: seed, variant and archetype must fit u32");
+        return Ref<Image>();
+    }
     if (program_ == nullptr) {
         UtilityFunctions::printerr("iprop: generate before load_file");
         return Ref<Image>();
@@ -187,17 +196,26 @@ void IpropSprite2D::_ready() {
 
 void IpropSprite2D::refresh() {
     if (asset_.is_null() || !asset_->is_loaded()) {
+        set_texture(Ref<Texture2D>());
         return;
     }
     const Ref<Image> image = asset_->generate(seed_, variant_, archetype_);
     if (image.is_null()) {
+        set_texture(Ref<Texture2D>());
         return;
     }
     set_texture(ImageTexture::create_from_image(image));
 }
 
 void IpropSprite2D::set_asset(const Ref<IpropAsset>& asset) {
+    const Callable changed(this, "refresh");
+    if (asset_.is_valid() && asset_->is_connected("changed", changed)) {
+        asset_->disconnect("changed", changed);
+    }
     asset_ = asset;
+    if (asset_.is_valid()) {
+        asset_->connect("changed", changed);
+    }
     refresh();
 }
 

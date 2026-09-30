@@ -36,6 +36,10 @@ sources, the demo assets, the extension library and the extension list).
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed`/`variant`/`archetype`; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.
+  Clearing the asset or a failed generation clears the texture. Successful
+  asset reloads emit `changed` and refresh its sprites; failed reloads keep
+  the previous program and metadata together. Generation arguments must be
+  integers in `0..4294967295`.
 
 ## The demo (8.3)
 

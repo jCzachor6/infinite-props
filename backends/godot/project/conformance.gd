@@ -111,6 +111,36 @@ func _init() -> void:
 			failures += 1
 			printerr("FAIL root output overwritten")
 
+	# Empty/bad generations clear the sprite. Failed reloads preserve the
+	# complete prior asset; successful reloads notify existing sprite users.
+	var lifecycle := IpropAsset.new()
+	var sprite := IpropSprite2D.new()
+	sprite.asset = lifecycle
+	if sprite.texture != null:
+		failures += 1
+	if lifecycle.load_file(args[0] + "/shapes.iprop") != OK or sprite.texture == null:
+		failures += 1
+	var old_size: Vector2i = lifecycle.size
+	if lifecycle.load_file(args[0] + "/missing.iprop") != ERR_FILE_NOT_FOUND \
+			or not lifecycle.is_loaded() or lifecycle.size != old_size or sprite.texture == null:
+		failures += 1
+		printerr("FAIL transactional asset reload")
+	sprite.variant = 99
+	if sprite.texture != null or not lifecycle.outputs.is_empty():
+		failures += 1
+		printerr("FAIL failed generation kept stale texture/outputs")
+	sprite.variant = 0
+	if sprite.texture == null:
+		failures += 1
+	sprite.asset = null
+	if sprite.texture != null:
+		failures += 1
+		printerr("FAIL null asset kept stale texture")
+	if lifecycle.generate(4294967296, 0, 0) != null or lifecycle.generate(0, -1, 0) != null:
+		failures += 1
+		printerr("FAIL Godot integer input truncation")
+	sprite.free()
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:
