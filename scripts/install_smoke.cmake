@@ -4,6 +4,14 @@ endif()
 get_filename_component(PREFIX "${PREFIX}" ABSOLUTE)
 get_filename_component(WORK "${WORK}" ABSOLUTE)
 file(MAKE_DIRECTORY "${WORK}")
+# Consume the source product version, so a new minor release cannot silently
+# leave the relocated-package check pinned to the previous minor.
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt" version_line
+    REGEX "^[ ]+VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
+string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" product_version "${version_line}")
+if(NOT product_version)
+    message(FATAL_ERROR "Cannot determine the source product version")
+endif()
 function(run)
     execute_process(COMMAND ${ARGV} RESULT_VARIABLE status
         OUTPUT_VARIABLE stdout ERROR_VARIABLE stderr)
@@ -29,7 +37,8 @@ foreach(mode shared static)
         set(use_static ON)
     endif()
     run("${CMAKE_COMMAND}" -S "${CMAKE_CURRENT_LIST_DIR}/install-consumer" -B "${WORK}/${mode}"
-        -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=${PREFIX}" -DUSE_STATIC=${use_static})
+        -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=${PREFIX}" -DUSE_STATIC=${use_static}
+        "-DIPROP_EXPECTED_VERSION=${product_version}")
     run("${CMAKE_COMMAND}" --build "${WORK}/${mode}" --config Release --parallel 2)
     set(consumer "${WORK}/${mode}/consumer${suffix}")
     if(EXISTS "${WORK}/${mode}/Release/consumer${suffix}")

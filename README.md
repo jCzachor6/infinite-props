@@ -478,13 +478,15 @@ VM; 17–23: the language and the compiler; 24: the HTML5 backend; 28–31: the
 editor; 32–34: the website and the v0.1.0 release).
 
 **Current state.** v0.1.0 is released (the format, the VM, the language and
-the HTML5 backend). v0.2 on `develop` rounds out the language — typed
+the HTML5 backend). v0.2 rounded out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-Product 0.2.0 is prepared on `develop`; the CLI, C API, SFML and Godot
+v0.3 on `develop` adds vectors, distance fields, curves, procedural noise,
+colour utilities and exact part transforms. Product 0.3.0 is prepared;
+the CLI, C API, SFML and Godot
 have regression and conformance checks. The product version, format
-version (0.2, with 0.1 reader compatibility) and C API version (0.2)
+version (0.3, with 0.1/0.2 reader compatibility) and C API version (0.2)
 are separate contracts. API 0.2 consumers must rebuild with the new header.
 The merge, release tag and publication have not happened yet. GitHub CI
 requires a remote; editor/website publication, Bevy and Unity glue remain
@@ -495,15 +497,15 @@ Prepare a local release package from a clean, committed checkout:
 ```sh
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release --parallel
-scripts/release.sh 0.2.0 build-release
+scripts/release.sh 0.3.0 build-release
 ```
 
 Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
 including those integrations; required mode fails on missing dependencies.
 Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
-C API consumers before writing `dist/iprop-0.2.0.tar.gz` (committed source),
-`dist/iprop-0.2.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+C API consumers before writing `dist/iprop-0.3.0.tar.gz` (committed source),
+`dist/iprop-0.3.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
 The native archive records its source commit and included backends in
 `release.json`. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.

@@ -15,7 +15,7 @@ cmake --build build --parallel
 cmake --install build --prefix /path/to/iprop
 ```
 
-An external CMake project uses `find_package(iprop 0.2 CONFIG REQUIRED)`
+An external CMake project uses `find_package(iprop 0.3 CONFIG REQUIRED)`
 with that prefix in `CMAKE_PREFIX_PATH`, then links `iprop::capi` (shared)
 or `iprop::capi_static`. The shared target can be consumed by a C-only
 project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
