@@ -1003,6 +1003,44 @@ TEST_CASE("the curve toolkit matches the pinned formulas") {
             bitsOf(evalProgF32(Prog{}.F(0.375f).emit(0x72))));
 }
 
+TEST_CASE("curve normalization uses clamp's minNum and signed-zero semantics") {
+    for (const u32 bits : {0x7FC00000u, 0xFFC00000u, 0x7FC01234u, 0xFFC01234u}) {
+        const f32 nan = f32FromBits(bits);
+        CAPTURE(bits);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).F(1.f).F(nan).emit(0xA1))) == 0);
+        REQUIRE(evalProgF32(Prog{}.F(nan).F(0.f).F(1.f).F(10.f).F(20.f).emit(0xA2)) == 10.f);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(nan).F(1.f).F(0.5f).emit(0xA1))) == 0);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).F(nan).F(0.5f).emit(0xA1))) == 0);
+        REQUIRE(evalProgF32(Prog{}.F(0.5f).F(nan).F(1.f).F(10.f).F(20.f).emit(0xA2)) == 10.f);
+        REQUIRE(evalProgF32(Prog{}.F(0.5f).F(0.f).F(nan).F(10.f).F(20.f).emit(0xA2)) == 10.f);
+    }
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).F(1.f).F(-0.f).F(-1.f).emit(0xA2))) ==
+            0x80000000u);
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(inf).emit(0xA1)) == 1.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(-inf).emit(0xA1)) == 0.f);
+}
+
+TEST_CASE("clamp uses pinned minNum and maxNum for NaN payloads and zero bounds") {
+    for (const u32 tBits : {0x7FC00000u, 0xFFC00000u, 0x7FC01234u, 0xFFC01234u}) {
+        const f32 t = f32FromBits(tBits);
+        for (const u32 aBits : {0x7FC00000u, 0xFFC00000u, 0x7FC01234u, 0xFFC01234u}) {
+            for (const u32 bBits : {0x7FC00000u, 0xFFC00000u, 0x7FC01234u, 0xFFC01234u}) {
+                CAPTURE(tBits, aBits, bBits);
+                REQUIRE(bitsOf(evalProgF32(Prog{}.F(t).F(f32FromBits(aBits))
+                                              .F(f32FromBits(bBits)).emit(0xA3))) == 0x7FC00000u);
+            }
+        }
+        REQUIRE(evalProgF32(Prog{}.F(t).F(0.f).F(1.f).emit(0xA3)) == 0.f);
+        REQUIRE(evalProgF32(Prog{}.F(2.f).F(t).F(1.f).emit(0xA3)) == 1.f);
+        REQUIRE(evalProgF32(Prog{}.F(2.f).F(t).F(t).emit(0xA3)) == 2.f);
+    }
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).F(-0.f).F(-0.f).emit(0xA3))) == 0x80000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-0.f).F(0.f).F(0.f).emit(0xA3))) == 0);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(1.f).F(0.f).F(-0.f).emit(0xA3))) == 0);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-1.f).F(0.f).F(-0.f).emit(0xA3))) == 0x80000000u);
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

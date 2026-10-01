@@ -75,6 +75,7 @@ struct PartCallState {
     Canvas savedCanvas;
     f32 targetX = 0.f; // blit origin in caller raster space
     f32 targetY = 0.f;
+    u8 transform = 0;  // the D4 transform kind (spec §10.5; the aux byte)
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -119,7 +120,7 @@ struct Execution {
 
     // Frame lifecycle.
     void callFunction(u16 functionIndex);
-    void callPart(u16 partIndex);
+    void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
 
     // Precomputes the matching else/end indices of a function's control flow.
@@ -135,6 +136,9 @@ void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
 // Pinned quadratic/cubic distance queries (spec §12.9), also used by curve.
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c);
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d);
+
+// Pinned minNum/maxNum (spec §12.8), shared by arithmetic and output bounds.
+f32 f32MinMax(f32 a, f32 b, bool maximum);
 
 // Per-group instruction dispatchers. Each returns true when it handled the
 // opcode; dispatch() falls through to a trap otherwise. Groups arrive with

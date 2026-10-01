@@ -486,6 +486,35 @@ TEST_CASE("part signature violations are located at the part function") {
     expectValidateError(bytes, rel, "part function signature");
 }
 
+TEST_CASE("part transform kinds are bounded and require format 0.3") {
+    for (u8 kind = 0; kind <= 8; ++kind) {
+        auto body = partCall(0);
+        const std::size_t callOffset = body.size() - 4;
+        body[callOffset + 1] = kind;
+        const auto end = retIns();
+        body.insert(body.end(), end.begin(), end.end());
+        const std::vector<FuncSpec> funcs = {
+            drawSpec(body), {kAnonymousName, {0,0}, {}, {}, retIns()}};
+        const auto bytes = fullFile(minimalMeta(), richPool({"draw"}),
+                                    codeSection(funcs, {{1, 4, 2, 0, 0, {}, {}}}));
+        const std::size_t rel = streamRel(funcs, 0) + callOffset;
+        if (kind == 8) {
+            expectValidateError(bytes, rel, "unknown part transform kind");
+            continue;
+        }
+        CHECK_NOTHROW(validate(loadFile(bytes)));
+        for (const u8 minor : {u8{1}, u8{2}}) {
+            auto legacy = bytes;
+            legacy[6] = minor;
+            if (kind == 0) {
+                CHECK_NOTHROW(validate(loadFile(legacy)));
+            } else {
+                expectValidateError(legacy, rel, "part transforms require format 0.3");
+            }
+        }
+    }
+}
+
 TEST_CASE("helper return type mismatch is located") {
     const auto pool = richPool({"draw"});
     std::vector<u8> body;

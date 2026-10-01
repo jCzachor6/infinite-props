@@ -1,5 +1,6 @@
 #include "ips/Typing.hpp"
 
+#include <set>
 #include <utility>
 
 namespace iprop::ips {
@@ -423,6 +424,7 @@ ValueType Typer::typePartCall(const Call& call) {
     // Exactly three positional arguments: seed, variant, archetype.
     std::size_t positional = 0;
     bool hasAt = false;
+    std::set<std::string> transforms;
     for (const auto& arg : call.args) {
         if (!arg.name.has_value()) {
             if (positional >= 3) {
@@ -447,6 +449,19 @@ ValueType Typer::typePartCall(const Call& call) {
                 if (got != ValueType::Vec2) {
                     error(locationOf(*arg.value),
                           "'at' must be a vec2 {x, y}, got " +
+                              std::string(typeName(got)));
+                }
+                continue;
+            }
+            if (*arg.name == "mirror_x" || *arg.name == "mirror_y" ||
+                *arg.name == "rot") {
+                if (!transforms.insert(*arg.name).second) {
+                    error(arg.location, "duplicate '" + *arg.name + "' argument");
+                }
+                const ValueType got = typeOf(*arg.value);
+                if (got != ValueType::I32) {
+                    error(locationOf(*arg.value),
+                          "'" + *arg.name + "' must be an integer, got " +
                               std::string(typeName(got)));
                 }
                 continue;

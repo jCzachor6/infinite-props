@@ -23,9 +23,11 @@ const sources = [
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],
+    ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
     ["colors", "backends/html5/test/fixtures/colors.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["parts", "tests/golden/parts.ipa"],
+    ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
 
@@ -170,6 +172,47 @@ function run(iprop, toolsDir) {
                         label + ": helper side effects and gain/ramp colours");
                 }
             }
+            if (path.basename(file) === "curve-toolkit.iprop") {
+                const expected = [
+                    [0, 0x41200000], [0x7fc00000, 0x7fc00000],
+                    [0x7fc00000, 0x7fc00000], [0x40000000, 0x3f800000],
+                    [0x80000000, 0x80000000], [0x3f800000, 0],
+                    [0x3e200000, 0x41700000],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": curve toolkit NaN and signed-zero pins");
+            }
+            if (path.basename(file) === "part-transforms.iprop") {
+                const kind = options.variant || 0;
+                const points = [[1,.5], [.5,3], [3,1.5], [1.5,1], [3,.5], [1,1.5], [.5,1], [1.5,3]];
+                const rects = [[.5,.25,2,1], [.25,1.5,1,2], [1.5,.75,2,1], [.75,.5,1,2],
+                               [1.5,.25,2,1], [.5,.75,2,1], [.25,.5,1,2], [.75,1.5,1,2]];
+                const fields = (names, values) => Object.fromEntries(names.map((name, i) => [name, values[i]]));
+                const expectedPoint = fields(["x", "y"], points[kind]);
+                const expectedRect = fields(["x", "y", "w", "h"], rects[kind]);
+                const expectedCircle = {...expectedPoint, r: .25};
+                // Assert independent values as well as native/WASM agreement:
+                // root reads, part writes, helpers, and each list kind.
+                const values = nativeOutputs(wasmOutputs(wasm.outputs)).map(slot => slot.values);
+                for (const slot of [0, 3, 4, 7]) assert.deepEqual(values[slot], [expectedPoint], label);
+                for (const slot of [1, 5, 8]) assert.deepEqual(values[slot], [expectedRect], label);
+                for (const slot of [2, 6, 9]) assert.deepEqual(values[slot], [expectedCircle], label);
+                if (kind === 6) {
+                    assert.deepEqual(result.outputs[10].values[0],
+                                     {x: 0x80000000, y: 0x80000000, w: 0, h: 0}, label + ": zero bounds");
+                    assert.deepEqual(result.outputs[11].values[0],
+                                     {x: 0x7fc00000, y: 0x7fc00000, w: 0x7fc00000, h: 0x7fc00000},
+                                     label + ": canonical NaN bounds");
+                }
+                if (native.width === 12) {
+                    const red = [[0,0], [0,3], [3,1], [1,0], [3,0], [0,1], [0,0], [1,3]][kind];
+                    const blue = [[3,1], [1,0], [0,0], [0,3], [0,1], [3,0], [1,3], [0,0]][kind];
+                    const pixel = ([x, y]) => native.data.subarray(((y + 1) * 12 + x + 3) * 4,
+                                                                 ((y + 1) * 12 + x + 3) * 4 + 4);
+                    assert.deepEqual(pixel(red), Buffer.from([255,0,0,255]), label + ": rotated red pixel");
+                    assert.deepEqual(pixel(blue), Buffer.from([0,0,255,255]), label + ": rotated blue pixel");
+                }
+            }
             if (path.basename(file) === "colors.iprop" && native.width === 8) {
                 assert.deepEqual(native.data.subarray(0, 64), Buffer.from(
                     "ff8000ffff7f00ff7fff00ff00ff7fff007fffff7f00ffffff007fffff007fff" +
@@ -225,6 +268,12 @@ function run(iprop, toolsDir) {
             execFileSync(tool(source.endsWith(".ipa") ? "ipa" : "ipc"),
                          [path.join(repo, source), "-o", file]);
             for (const seed of seeds) compare(file, seed);
+            if (name === "part-transforms") {
+                for (let variant = 0; variant < 8; ++variant) {
+                    if (variant !== 0) compare(file, 26, null, {variant});
+                    compare(file, 26, null, {variant, sizeX: 24, sizeY: 24});
+                }
+            }
             if (name === "language") {
                 for (let variant = 0; variant < 3; ++variant) {
                     for (let archetype = 0; archetype < 2; ++archetype) {
@@ -233,7 +282,7 @@ function run(iprop, toolsDir) {
                 }
             }
             if (name === "bezier" || name === "noise-v2" || name === "curves" ||
-                name === "colors" || name === "fold") {
+                name === "colors" || name === "fold" || name === "curve-toolkit") {
                 compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }

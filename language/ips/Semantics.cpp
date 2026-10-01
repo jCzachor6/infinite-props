@@ -98,7 +98,8 @@ private:
         std::set<std::string> inputNames;
         for (const auto& input : program_.asset.inputs) {
             if (input.name == "seed" || input.name == "at" ||
-                input.name == "v" || input.name == "a") {
+                input.name == "v" || input.name == "a" || input.name == "rot" ||
+                input.name == "mirror_x" || input.name == "mirror_y") {
                 error(input.location, "'" + input.name + "' is a reserved name");
             }
             if (!inputNames.insert(input.name).second) {

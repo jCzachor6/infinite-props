@@ -253,6 +253,15 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   The dither/fold/polar add the ordered Bayer threshold, the kaleidoscope
   symmetry and the cartesian-polar conversion. The curve toolkit adds
   `smoothstep(a, b, t)`, `remap(t, a, b, c, d)` and `clamp(t, a, b)`.
+  Parts accept the D4 transforms (`mirror_x`, `mirror_y`, `rot` on the
+  `part.draw` call — the exact pixel permutations, the outputs
+  propagate, including writes from helper functions). Transform arguments
+  are constant integers: mirrors are `0`/`1` (or `false`/`true`), and `rot`
+  is `0`, `90`, `180` or `270`; rotation is applied before the mirrors.
+  Each transform argument may occur once. These three names are reserved
+  for part calls and cannot be declared as input uniforms. The `.ipa`
+  syntax is `part.draw name [kind]`, with the optional D4 kind in `0`–`7`;
+  disassembly preserves it.
   `gain` defines the `k = 1` limit;
   `ramp` takes positional arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).

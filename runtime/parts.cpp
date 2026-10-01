@@ -8,7 +8,7 @@ namespace iprop::detail {
 bool stepParts(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::PartDraw:
-        ex.callPart(ins.operand);
+        ex.callPart(ins.operand, ins.aux);
         return true;
 
     case Opcode::PartGetPoint:

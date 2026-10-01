@@ -54,7 +54,7 @@ public:
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
             const auto ins = decodeInstruction(fn_.code.subspan(i * 4, 4));
-            if (ins.aux != 0) {
+            if (ins.aux != 0 && ins.opcode != Opcode::PartDraw) {
                 fail(i, "aux byte must be zero");
             }
             const auto opcode = static_cast<u8>(ins.opcode);
@@ -613,6 +613,12 @@ private:
         case Opcode::PartDraw: {
             if (op >= file_.code.parts.size()) {
                 fail(at, "part index out of range");
+            }
+            if (ins.aux > 7) {
+                fail(at, "unknown part transform kind");
+            }
+            if (ins.aux != 0 && file_.layout.header.versionMinor < 3) {
+                fail(at, "part transforms require format 0.3");
             }
             const auto& part = file_.code.parts[op];
             expect(at, ValueType::F32, "part offset y");

@@ -1,0 +1,21 @@
+asset curveToolkit {
+  size 8x8
+  output point normalized
+  output point negative_nan
+  output point mixed_nan
+  output point nan_bounds
+  output point zero_signs
+  output point limits
+  output point ordinary
+
+  draw(v: i32, a: i32) {
+    nan = pow(-2, 0.5)
+    normalized = {smoothstep(0, 1, -nan), remap(-nan, 0, 1, 10, 20)}
+    negative_nan = {clamp(-nan, nan, nan), clamp(nan, nan, -nan)}
+    mixed_nan = {clamp(-nan, -nan, nan), clamp(nan, -nan, -nan)}
+    nan_bounds = {clamp(2, nan, nan), clamp(2, nan, 1)}
+    zero_signs = {remap(-0.0, 0, 1, -0.0, -1), clamp(0.0, -0.0, -0.0)}
+    limits = {smoothstep(0, 1, exp(100)), smoothstep(0, 1, -exp(100))}
+    ordinary = {smoothstep(0, 1, 0.25), remap(0.5, 0, 1, 10, 20)}
+  }
+}

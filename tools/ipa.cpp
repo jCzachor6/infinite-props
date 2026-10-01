@@ -41,6 +41,7 @@ namespace {
 //     local.get 2
 //     call helper
 //     part.draw hair
+//     part.draw hair 4                  (optional D4 transform kind, 0–7)
 //     out.point pupil                   (slot names resolve to global indices)
 //     poly 3                            (vertex count operand)
 //     br 1                              (depth operand)
@@ -164,6 +165,7 @@ const OpDef* lookup(const std::string& mnemonic) {
 
 struct AsmInstruction {
     Opcode opcode;
+    u8 aux = 0;
     OperandKind operand = OperandKind::None;
     std::string operandText;
     int line = 0;
@@ -582,6 +584,14 @@ std::vector<u8> assemble(const std::string& source) {
         instruction.opcode = def->opcode;
         instruction.operand = def->operand;
         instruction.line = lineNumber;
+        if (instruction.opcode == Opcode::PartDraw && words.size() == 3) {
+            u32 kind = 0;
+            if (!parseU32Text(words[2], kind) || kind > 7) {
+                throw error("part transform kind must be 0 through 7");
+            }
+            instruction.aux = static_cast<u8>(kind);
+            words.pop_back();
+        }
         if (def->operand != OperandKind::None) {
             if (words.size() != 2) {
                 throw error("instruction '" + words[0] + "' expects one operand");
@@ -881,7 +891,7 @@ std::vector<u8> assemble(const std::string& source) {
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
             streams.writeU8(static_cast<u8>(fn.instructions[j].opcode));
-            streams.writeU8(0); // aux
+            streams.writeU8(fn.instructions[j].aux);
             streams.writeU16(operands[i][j]);
         }
     }

@@ -560,6 +560,14 @@ TEST_CASE("part calls are validated against the part surface") {
         "was not provided");
 }
 
+TEST_CASE("part transform argument names cannot be declared as uniforms") {
+    for (const std::string name : {"rot", "mirror_x", "mirror_y"}) {
+        expectCheckError("asset t { size 8x8 input i32 " + name +
+                             " = 0 draw(v: i32, a: i32) { } }",
+                         "reserved name");
+    }
+}
+
 TEST_CASE("part output reads are validated") {
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));
 

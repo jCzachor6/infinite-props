@@ -372,22 +372,23 @@ Vec2 vec2Polar(const Vec2& v) {
 
 // ---- the curve toolkit (spec §12.14) ----------------------------------------
 
+// Share the pinned math package's NaN and signed-zero ordering.
+f32 clampValue(f32 t, f32 a, f32 b) {
+    const f32 lo = f32MinMax(a, b, false);
+    const f32 hi = f32MinMax(a, b, true);
+    return f32MinMax(f32MinMax(t, lo, true), hi, false);
+}
+
 f32 smoothstepEdge(f32 a, f32 b, f32 t) {
     const f32 d = b - a;
-    const f32 u = d == 0.f ? 0.f : std::clamp((t - a) / d, 0.f, 1.f);
+    const f32 u = d == 0.f ? 0.f : clampValue((t - a) / d, 0.f, 1.f);
     return u * u * (3.f - 2.f * u);
 }
 
 f32 remapValue(f32 t, f32 a, f32 b, f32 c, f32 d) {
     const f32 span = b - a;
-    const f32 u = span == 0.f ? 0.f : std::clamp((t - a) / span, 0.f, 1.f);
+    const f32 u = span == 0.f ? 0.f : clampValue((t - a) / span, 0.f, 1.f);
     return c + u * (d - c);
-}
-
-f32 clampValue(f32 t, f32 a, f32 b) {
-    const f32 lo = std::fmin(a, b);
-    const f32 hi = std::fmax(a, b);
-    return std::fmin(std::fmax(t, lo), hi);
 }
 
 f32 f32Cos(f32 x) {
@@ -595,21 +596,6 @@ f32 f32Pow(f32 x, f32 y) {
     return static_cast<f32>(r);
 }
 
-f32 f32MinMax(f32 a, f32 b, bool maximum) {
-    if (std::isnan(a)) {
-        return std::isnan(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
-    }
-    if (std::isnan(b)) {
-        return a;
-    }
-    if (a == 0.0f && b == 0.0f) {
-        const bool negative = maximum ? std::signbit(a) && std::signbit(b)
-                                      : std::signbit(a) || std::signbit(b);
-        return std::copysign(0.0f, negative ? -1.0f : 1.0f);
-    }
-    return maximum ? std::max(a, b) : std::min(a, b);
-}
-
 // Shared shapes for the regular two-operand cases: pop, compute, push,
 // advance. Special cases (division, shifts, conversions) stay inline.
 void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
@@ -641,6 +627,21 @@ void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
 }
 
 } // namespace
+
+f32 f32MinMax(f32 a, f32 b, bool maximum) {
+    if (std::isnan(a)) {
+        return std::isnan(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
+    }
+    if (std::isnan(b)) {
+        return a;
+    }
+    if (a == 0.0f && b == 0.0f) {
+        const bool negative = maximum ? std::signbit(a) && std::signbit(b)
+                                      : std::signbit(a) || std::signbit(b);
+        return std::copysign(0.0f, negative ? -1.0f : 1.0f);
+    }
+    return maximum ? std::max(a, b) : std::min(a, b);
+}
 
 // Shared with the curve rasterizer so distance queries and strokes use the
 // same bounded, pinned search.

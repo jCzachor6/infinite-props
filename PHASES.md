@@ -83,18 +83,18 @@ format version (minor).
 
 ## 9. Part manipulation — the transforms (the D4 group)
 
-- [ ] `9.1` spec §9.10/§10: the part-call transform as a const-pool entry
-  (the kind + the fields). The v0.3 kinds are the D4 dihedral group — the
+- [x] `9.1` spec §9.10/§10.5: the part-call transform kind in the `aux`
+  byte. The v0.3 kinds are the D4 dihedral group — the
   eight exact pixel permutations (the identity, `mirror_x`, `mirror_y`,
   the 90/180/270-degree rotations and their combinations) — no resampling,
   pinned in an exact permutation table. The kind enum stays open: the
   future general-affine transforms (the arbitrary rotation/scale with the
   pinned nearest-neighbour resampling) get new kinds, which older runtimes
   reject at validation — the format does not break.
-- [ ] `9.2` the structured-output propagation: the same transform applies
+- [x] `9.2` the structured-output propagation: the same transform applies
   to the part's outputs (the exact sign/swap permutations — e.g. a
   mirrored wing propagates a mirrored anchor point).
-- [ ] `9.3` the language (`part.draw(..., mirror_x = true, rot = 90)` — the
+- [x] `9.3` the language (`part.draw(..., mirror_x = true, rot = 90)` — the
   checker folds the named args into one D4 kind), the compiler, the
   runtime blit (the permutation copy) and the bit tests.
 - [ ] `9.4` proof: the butterfly showcase uses it — one `wing.ips` part
@@ -102,10 +102,13 @@ format version (minor).
 
 ## Cross-cutting acceptance
 
-- [ ] The existing golden corpus stays pixel-identical after every task.
-- [ ] Every new op has the pinned algorithm in the spec and the bit-exact
-  tests.
-- [ ] The frozen pins (native/WASM/C/SFML/Godot) stay green throughout.
+- [x] The existing golden corpus stays pixel-identical — the frozen PNG
+  and structured-output pins pass after the review fixes.
+- [x] Every new op has the pinned algorithm in the spec and the bit-exact
+  tests — §12.9–12.14 carry the formulas and the generated vectors.
+- [x] The frozen pins (native/WASM/C/SFML/Godot) stay green throughout —
+  the WASM conformance reached 116 pixel-exact images and structured-output
+  comparisons plus 19 trap matches.
 
 ## Deferred (not in this pass)
 

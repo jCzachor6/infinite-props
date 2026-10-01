@@ -658,6 +658,60 @@ validation).
 - Parts MAY themselves call parts; registers and streams are per-frame, so
   nesting is deterministic.
 
+### 10.5 Part transforms (v0.3)
+
+The `part.draw` instruction's `aux` byte carries the **transform kind** —
+an element of the D4 dihedral group, the eight exact pixel permutations of
+a rectangle (no resampling). The aux is 0 (the identity) in v0.1/v0.2
+files; the kinds 1–7 MUST appear only in files with minor version 3 or
+later. The kind enum stays open: the future general-affine transforms
+(the arbitrary rotation/scale with the pinned nearest-neighbour
+resampling) get the new kinds, which older runtimes reject at
+validation.
+
+The sub-canvas is `w × h` target pixels (the scaled part size). The blit
+maps each sub-pixel `(sx, sy)` to the caller pixel
+`(tx + dx, ty + dy)` where `(tx, ty)` is the §10 origin mapping and
+`(dx, dy)` follows the kind:
+
+| Kind | Transform | `(dx, dy)` | Target bounds |
+| ---- | --------- | ---------- | ------------- |
+| 0 | identity | `(sx, sy)` | `w × h` |
+| 1 | rotate 90° (counterclockwise) | `(sy, w-1-sx)` | `h × w` |
+| 2 | rotate 180° | `(w-1-sx, h-1-sy)` | `w × h` |
+| 3 | rotate 270° | `(h-1-sy, sx)` | `h × w` |
+| 4 | mirror x (the vertical flip) | `(w-1-sx, sy)` | `w × h` |
+| 5 | mirror y (the horizontal flip) | `(sx, h-1-sy)` | `w × h` |
+| 6 | transpose (the main diagonal) | `(sy, sx)` | `h × w` |
+| 7 | anti-transpose | `(h-1-sy, w-1-sx)` | `h × w` |
+
+The blit visits charge the full `w × h` count as before; the off-canvas
+target pixels are skipped. Each sub-pixel composites exactly once.
+
+The part's structured outputs propagate through the same transform in
+the part's asset-unit space. For a point `(x, y)` written in the part's
+local coordinates:
+
+| Kind | Propagated point |
+| ---- | ---------------- |
+| 0 | `(x, y)` |
+| 1 | `(y, sizeX - x)` |
+| 2 | `(sizeX - x, sizeY - y)` |
+| 3 | `(sizeY - y, x)` |
+| 4 | `(sizeX - x, y)` |
+| 5 | `(x, sizeY - y)` |
+| 6 | `(y, x)` |
+| 7 | `(sizeY - y, sizeX - x)` |
+
+A rect `(x, y, w, h)` propagates as the axis-aligned bounds of its two
+transformed corner points (the point rule above applied to `(x, y)` and
+`(x+w, y+h)`, then the pinned §12.8 minNum/maxNum per axis); a circle
+propagates its centre through the point rule with the radius unchanged. The propagation
+applies at the write time: `part.get.*` returns the transformed values.
+Writes to the active part's slots from ordinary helper functions use the
+same transform. Writes to slots owned by another asset do not use that
+part's transform. Identity calls preserve the existing output values.
+
 ## 11. Canvas operations — exact algorithms
 
 All loops below use the target-pixel space (coordinates already scaled). All
@@ -1492,7 +1546,10 @@ return {len(v), atan2(v.y, v.x)}
 ### 12.14 The curve toolkit (v0.3)
 
 Every floating step is one IEEE-754 round-to-nearest binary32 operation
-in the written order.
+in the written order. All `min`/`max` calls use the pinned minNum/maxNum
+semantics of §12.8, including canonical NaNs and the ordering `-0 < +0`.
+`smoothstep` and `remap` use the `clamp` defined here; a NaN normalization
+quotient selects `u = +0` when clamped to `[+0, 1]`.
 
 **smoothstep(a, b, t):**
 
@@ -1519,6 +1576,19 @@ return min(max(t, lo), hi)
 ```
 
 (the bounds may come in any order.)
+
+Pinned vectors (the result bits):
+
+| Input | Result |
+| ----- | ------ |
+| `smoothstep(0, 1, NaN)` | `0x00000000` |
+| `remap(NaN, 0, 1, 10, 20)` | `0x41200000` |
+| `remap(-0, 0, 1, -0, -1)` | `0x80000000` |
+| `clamp(-NaN, NaN, NaN)` | `0x7FC00000` |
+| `clamp(NaN, NaN, -NaN)` | `0x7FC00000` |
+| `clamp(2, NaN, NaN)` | `0x40000000` |
+| `clamp(+0, -0, -0)` | `0x80000000` |
+| `clamp(-0, +0, +0)` | `0x00000000` |
 
 ## 13. Determinism rules
 
@@ -1560,7 +1630,8 @@ Hosts MUST reject a file that violates any of the following:
   range; slot kinds match their `out.*`/`part.get.*` instruction; branch
   depths resolve within the function; structured control flow is balanced
   (no dangling `else`/`end`, stack arity consistent at every point —
-  type-checking per §9); no reserved opcodes; `aux` byte 0.
+  type-checking per §9); no reserved opcodes; `aux` byte 0 except for
+  `part.draw` in format 0.3, whose transform kind MUST be in 0–7 (§10.5).
 - Parts: acyclic call graph; part function signatures match their part meta
   (§6.3).
 - A validator MUST run to completion before execution starts.

@@ -158,7 +158,7 @@ void Execution::callFunction(u16 functionIndex) {
     frames.push_back(std::move(next));
 }
 
-void Execution::callPart(u16 partIndex) {
+void Execution::callPart(u16 partIndex, u8 transform) {
     if (partIndex >= file.code.parts.size()) {
         trap("part index out of range");
     }
@@ -203,6 +203,7 @@ void Execution::callPart(u16 partIndex) {
     state.partIndex = partIndex;
     state.targetX = atX - part.origin.x * scaleX;
     state.targetY = atY - part.origin.y * scaleY;
+    state.transform = transform;
     state.savedCanvas = std::move(canvas); // the caller's canvas, moved aside
     partCalls.push_back(std::move(state));
 
@@ -246,13 +247,29 @@ void Execution::leaveFrame() {
         canvas = std::move(state.savedCanvas);
         const i32 tx = static_cast<i32>(std::round(state.targetX));
         const i32 ty = static_cast<i32>(std::round(state.targetY));
+        const i32 w = static_cast<i32>(sub.width);
+        const i32 h = static_cast<i32>(sub.height);
         for (u32 sy = 0; sy < sub.height; ++sy) {
             for (u32 sx = 0; sx < sub.width; ++sx) {
                 const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
                 if (src.a == 0) {
                     continue; // transparent sub-pixels are not blitted
                 }
-                compositePixel(*this, tx + static_cast<i32>(sx), ty + static_cast<i32>(sy), src);
+                // The D4 permutation (spec §10.5): the sub-pixel maps to
+                // the transformed caller pixel.
+                i32 dx;
+                i32 dy;
+                switch (state.transform) {
+                case 0: dx = static_cast<i32>(sx); dy = static_cast<i32>(sy); break;
+                case 1: dx = static_cast<i32>(sy); dy = w - 1 - static_cast<i32>(sx); break;
+                case 2: dx = w - 1 - static_cast<i32>(sx); dy = h - 1 - static_cast<i32>(sy); break;
+                case 3: dx = h - 1 - static_cast<i32>(sy); dy = static_cast<i32>(sx); break;
+                case 4: dx = w - 1 - static_cast<i32>(sx); dy = static_cast<i32>(sy); break;
+                case 5: dx = static_cast<i32>(sx); dy = h - 1 - static_cast<i32>(sy); break;
+                case 6: dx = static_cast<i32>(sy); dy = static_cast<i32>(sx); break;
+                default: dx = h - 1 - static_cast<i32>(sy); dy = w - 1 - static_cast<i32>(sx); break;
+                }
+                compositePixel(*this, tx + dx, ty + dy, src);
             }
         }
         caller.lastPart = state.partIndex; // the part-output register

@@ -18,13 +18,13 @@ namespace {
 // Appends a full part.draw call to a body: seed, variant, archetype, atX,
 // atY (spec §9.10 stack order), using const-pool indices from the program.
 void pushPartCall(std::vector<u8>& body, u16 partIndex, u16 seedIdx = 0, u16 variantIdx = 0,
-                  u16 archetypeIdx = 0, u16 atXIdx = 0, u16 atYIdx = 0) {
+                  u16 archetypeIdx = 0, u16 atXIdx = 0, u16 atYIdx = 0, u8 transform = 0) {
     for (const auto b : ins(0x10, 0, seedIdx)) body.push_back(b);
     for (const auto b : ins(0x10, 0, variantIdx)) body.push_back(b);
     for (const auto b : ins(0x10, 0, archetypeIdx)) body.push_back(b);
     for (const auto b : ins(0x11, 0, atXIdx)) body.push_back(b);
     for (const auto b : ins(0x11, 0, atYIdx)) body.push_back(b);
-    for (const auto b : ins(0xA0, 0, partIndex)) body.push_back(b);
+    for (const auto b : ins(0xA0, transform, partIndex)) body.push_back(b);
 }
 
 // Builds and runs a file with the given draw body, part functions and part
@@ -185,6 +185,47 @@ TEST_CASE("nested parts compose offsets") {
     // another (2,2), so A's pixel(1,1) lands at main (5,5).
     REQUIRE(result.image.at(2, 2) == c);
     REQUIRE(result.image.at(5, 5) == c);
+}
+
+TEST_CASE("nested transforms restore the parent context and respect output ownership") {
+    const auto append = [](std::vector<u8>& body, u8 opcode, u16 operand = 0) {
+        const auto instruction = ins(opcode, 0, operand);
+        body.insert(body.end(), instruction.begin(), instruction.end());
+    };
+    // A (2x3) rotates its pixel (0,0) and point (1,2) by 90 degrees.
+    std::vector<u8> bodyA;
+    append(bodyA, 0x10); append(bodyA, 0x10); append(bodyA, 0x12); append(bodyA, 0x80);
+    append(bodyA, 0x11, 1); append(bodyA, 0x11, 2); append(bodyA, 0x90, 2);
+    append(bodyA, static_cast<u8>(Opcode::Return));
+    // B (8x8) invokes a helper that draws A. After A returns, writing B's
+    // slot must use B's mirror, even though this is an ordinary call frame.
+    std::vector<u8> helper;
+    pushPartCall(helper, 0, 0, 0, 0, 2, 2, 1);
+    append(helper, 0x96, 2); append(helper, 0x90, 3);
+    append(helper, static_cast<u8>(Opcode::Return));
+    std::vector<u8> bodyB;
+    append(bodyB, static_cast<u8>(Opcode::Call), 3);
+    // A root-owned global slot written inside B keeps the root coordinates.
+    append(bodyB, 0x11, 1); append(bodyB, 0x11, 2); append(bodyB, 0x90, 1);
+    append(bodyB, static_cast<u8>(Opcode::Return));
+    std::vector<u8> drawBody;
+    pushPartCall(drawBody, 1, 0, 0, 0, 0, 0, 4);
+    append(drawBody, 0x96, 3); append(drawBody, 0x90, 0);
+    append(drawBody, static_cast<u8>(Opcode::Return));
+    const auto result = runParts(
+        drawBody,
+        {{kAnonymousName, {0,0}, {}, {}, bodyA}, {kAnonymousName, {0,0}, {}, {}, bodyB},
+         {kAnonymousName, {}, {}, {}, helper}},
+        {{1, 2, 3, 0, 0, {}, {{0,0,3}}}, {2, 8, 8, 0, 0, {}, {{0,0,4}}}},
+        {{0,0,1}, {0,0,2}}, {"draw", "anchor", "foreign", "a", "b"},
+        {0}, {0.f, 1.f, 2.f}, {{255,0,0,255}});
+    CHECK(result.image.at(5,3) == Color{255,0,0,255});
+    CHECK(result.outputs[0].points[0].x == 6.f);
+    CHECK(result.outputs[0].points[0].y == 1.f);
+    CHECK(result.outputs[1].points[0].x == 1.f);
+    CHECK(result.outputs[1].points[0].y == 2.f);
+    CHECK(result.outputs[2].points[0].x == 2.f);
+    CHECK(result.outputs[2].points[0].y == 1.f);
 }
 
 TEST_CASE("call order is paint order") {
