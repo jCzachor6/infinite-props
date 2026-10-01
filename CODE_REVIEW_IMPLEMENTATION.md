@@ -8,7 +8,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [ ] R2: jawne reguły NaN nowych operacji, specyfikacja, porównanie surowych bitów native/WASM, historyczne golden.
 - [ ] R3: jedna oczekiwana wersja produktu dla instalacji/wydania, aktualne CI i dokumentacja, przechodzące shared/static install smoke i release check.
 - [ ] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
-- [ ] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
+- [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
 - [ ] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
 - [ ] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
@@ -35,4 +35,10 @@ sprawdza typy na złączeniach, obie krawędzie `br_if`, osiągalność, struktu
 mul/div bez walidacji. C-only conformance mutuje poprawny plik do obu
 reprodukcji R1 i otrzymuje `IPROP_E_FORMAT` przed wykonaniem.
 
-W toku: R3, R5 i A7; następnie deterministyczność i wydzielenie matematyki.
+R5: `TemporaryLocals` używa zakresowych uchwytów; emiter korzysta z puli
+w mnożeniach, rozpakowaniu wektorów, round, logice i paletach. Test 2048
+kolejnych mnożeń w obu kolejnościach wymaga najwyżej dwóch lokalnych slotów
+(poza parametrami). Testy mnożeń/RNG: 5 przypadków, 242 asercje PASS;
+pełny CTest ponownie 6/6 PASS po tej zmianie.
+
+W toku: R3 i A7; następnie deterministyczność i wydzielenie matematyki.

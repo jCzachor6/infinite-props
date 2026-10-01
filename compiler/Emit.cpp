@@ -43,39 +43,13 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-u32 Emitter::allocateLocal(ValueType type) {
-    const u32 slot = static_cast<u32>(current_->params.size() + current_->locals.size());
-    current_->locals.push_back(type);
-    return slot;
-}
-
-// Allocate a typed local on first use. Its index stays fixed even when a
-// different temporary type is needed later in this function.
-u32 Emitter::allocateScratch(std::optional<u32>& slot, ValueType type) {
-    if (!slot) {
-        slot = allocateLocal(type);
-    }
-    return *slot;
-}
-
-u32 Emitter::scratch() {
-    return allocateScratch(scratchSlot_, ValueType::I32);
-}
-
-u32 Emitter::f32Scratch() {
-    return allocateScratch(f32ScratchSlot_, ValueType::F32);
-}
-
-u32 Emitter::colorScratch() {
-    return allocateScratch(colorScratchSlot_, ValueType::Color);
-}
-
-// The extra local of the given scalar type.
-u32 Emitter::scratchOf(ips::ValueType type) {
+TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
     switch (type) {
-    case ips::ValueType::I32: return scratch();
-    case ips::ValueType::F32: return f32Scratch();
-    default: return colorScratch();
+    case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
+    case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
+    case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
+    case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
+    default: throw std::logic_error("temporary requires a value type");
     }
 }
 
@@ -93,9 +67,7 @@ void Emitter::emitFunction(PlannedFunction& function) {
     code_.clear();
     lines_.clear();
     currentLine_ = 0;
-    scratchSlot_.reset();
-    f32ScratchSlot_.reset();
-    colorScratchSlot_.reset();
+    temporaries_.reset(function.params.size(), function.locals);
     labelKinds_.clear();
     loopLabels_.clear();
     forCount_ = 0;

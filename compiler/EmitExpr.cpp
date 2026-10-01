@@ -107,11 +107,12 @@ void Emitter::emitPointValue(const ips::Expr& expr) {
     }
     // A general vec2 value: unpack to (x, y) with y on top.
     emitExpr(expr);
+    const auto y = temporary(ips::ValueType::F32);
     ins(Opcode::Dup);
     ins(Opcode::Vec2Y);
-    ins(Opcode::LocalSet, 0, static_cast<u16>(f32Scratch()));
+    ins(Opcode::LocalSet, 0, y.index());
     ins(Opcode::Vec2X);
-    ins(Opcode::LocalGet, 0, static_cast<u16>(f32Scratch()));
+    ins(Opcode::LocalGet, 0, y.index());
 }
 
 Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
@@ -201,10 +202,10 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
                 if (leftType == ips::ValueType::I32) {
                     ins(Opcode::I32ToF32);
                 }
-                const u16 scalar = static_cast<u16>(allocateLocal(ValueType::F32));
-                ins(Opcode::LocalSet, 0, scalar);
+                const auto scalar = temporary(ips::ValueType::F32);
+                ins(Opcode::LocalSet, 0, scalar.index());
                 emitExpr(*bin.right);
-                ins(Opcode::LocalGet, 0, scalar);
+                ins(Opcode::LocalGet, 0, scalar.index());
             } else {
                 emitExpr(*bin.left);
                 emitExpr(*bin.right);
@@ -311,9 +312,10 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
     }
     case ips::Binary::Op::And:
     case ips::Binary::Op::Or: {
-        // Short-circuit with 0/1 normalisation; the scratch local is reused
-        // for every && / || in the function.
+        // Short-circuit with 0/1 normalisation; nested expressions retain
+        // distinct result slots until the corresponding join.
         emitExpr(*bin.left);
+        const auto result = temporary(ips::ValueType::I32);
         ins(Opcode::If);
         if (bin.op == ips::Binary::Op::And) {
             emitExpr(*bin.right);
@@ -322,7 +324,7 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
         } else {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(1)));
         }
-        ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalSet, 0, result.index());
         ins(Opcode::Else);
         if (bin.op == ips::Binary::Op::And) {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
@@ -331,9 +333,9 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
             ins(Opcode::I32Ne);
         }
-        ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalSet, 0, result.index());
         ins(Opcode::End);
-        ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalGet, 0, result.index());
         return ips::ValueType::I32;
     }
     }
@@ -428,11 +430,11 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
 
     // Runtime ladder.
     emitExpr(*index.index);
-    const u16 indexSlot = static_cast<u16>(scratch());
+    const auto indexTemp = temporary(ips::ValueType::I32);
+    const u16 indexSlot = indexTemp.index();
     ins(Opcode::LocalSet, 0, indexSlot);
-    const u16 resultSlot = static_cast<u16>(scratchOf(type));
-    // For i32/bool the result reuses the index local. Select exactly once
-    // before overwriting it, and leave the ladder after a match.
+    const auto resultTemp = temporary(type);
+    const u16 resultSlot = resultTemp.index();
     ins(Opcode::Block);
     for (std::size_t k = 0; k + 1 < count; ++k) {
         ins(Opcode::ConstI32, 0,
@@ -509,6 +511,8 @@ ips::ValueType Emitter::emitRamp(const ips::Call& call) {
     // The t: the widening, the clamp, the position, the split into the
     // stop and the fraction (both in the scratch locals).
     emitExpr(*call.args[1].value);
+    const auto stop = temporary(ips::ValueType::I32);
+    const auto fraction = temporary(ips::ValueType::F32);
     if (plan_.typeEngine().typeOf(*call.args[1].value) == ips::ValueType::I32) {
         ins(Opcode::I32ToF32);
     }
@@ -523,13 +527,14 @@ ips::ValueType Emitter::emitRamp(const ips::Call& call) {
     ins(Opcode::F32Mul);
     ins(Opcode::Dup);
     ins(Opcode::F32ToI32);
-    ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
-    ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+    ins(Opcode::LocalSet, 0, stop.index());
+    ins(Opcode::LocalGet, 0, stop.index());
     ins(Opcode::I32ToF32);
     ins(Opcode::F32Sub);
-    ins(Opcode::LocalSet, 0, static_cast<u16>(f32Scratch()));
+    ins(Opcode::LocalSet, 0, fraction.index());
 
-    const u16 resultSlot = static_cast<u16>(scratchOf(type));
+    const auto resultTemp = temporary(type);
+    const u16 resultSlot = resultTemp.index();
     const Opcode mixOp =
         type == ips::ValueType::Color ? Opcode::ColorMix : Opcode::Lerp;
 
@@ -537,12 +542,12 @@ ips::ValueType Emitter::emitRamp(const ips::Call& call) {
     for (std::size_t k = 0; k + 1 < count; ++k) {
         ins(Opcode::ConstI32, 0,
             static_cast<u16>(plan_.pools.addInt(static_cast<u32>(k))));
-        ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalGet, 0, stop.index());
         ins(Opcode::I32Eq);
         ins(Opcode::If);
         emitElement(*palette->elements[k]);
         emitElement(*palette->elements[k + 1]);
-        ins(Opcode::LocalGet, 0, static_cast<u16>(f32Scratch()));
+        ins(Opcode::LocalGet, 0, fraction.index());
         ins(mixOp);
         ins(Opcode::LocalSet, 0, resultSlot);
         ins(Opcode::Br, 0, 1);

@@ -942,6 +942,24 @@ asset t {
     }
 }
 
+TEST_CASE("sequential scalar-vector products reuse locals without limiting source length") {
+    for (const bool scalarLeft : {false, true}) {
+        std::string source = "asset t { size 1x1 output point p "
+                             "draw(v: i32,a: i32) { q={1,2} ";
+        for (unsigned i = 0; i < 2048; ++i) {
+            source += scalarLeft ? "q=1.0*q\n" : "q=q*1.0\n";
+        }
+        source += "p=q } }";
+        const auto bytes = compileChecked(source);
+        const auto loaded = loadFile(bytes);
+        REQUIRE(loaded.code.entry().locals.size() <= 2);
+        const auto result = execute(bytes);
+        REQUIRE(result.outputs[0].points.size() == 1);
+        CHECK(result.outputs[0].points[0].x == 1.f);
+        CHECK(result.outputs[0].points[0].y == 2.f);
+    }
+}
+
 TEST_CASE("scalar-vector products preserve left-to-right RNG evaluation") {
     struct Fixture { std::string expression; std::string sequential; };
     const std::vector<Fixture> fixtures = {
