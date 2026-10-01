@@ -16,6 +16,13 @@ using namespace test_support;
 TEST_CASE("unvalidated type mismatches trap") {
     expectProgTrap(Prog{}.F(1.f).emit(0x20), "stack type mismatch"); // i32.add on f32
     expectProgTrap(Prog{}.I(1).emit(0x42), "stack type mismatch");   // f32.mul on i32
+    for (const Opcode opcode : {Opcode::Vec2Mul, Opcode::Vec2Div}) {
+        const auto op = static_cast<u8>(opcode);
+        expectProgTrap(Prog{}.F(1.f).F(2.f).emit(0x5B).I(3).emit(op),
+                       "stack type mismatch");
+        expectProgTrap(Prog{}.F(1.f).F(2.f).emit(0x5B).C({1,2,3,4}).emit(op),
+                       "stack type mismatch");
+    }
 }
 
 TEST_CASE("the reserved colour opcode traps") {

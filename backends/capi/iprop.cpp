@@ -171,6 +171,12 @@ iprop_status iprop_program_load(const uint8_t* bytes, size_t length,
     } catch (const iprop::FormatError& error) {
         copyError(error.what(), err, err_size);
         return IPROP_E_FORMAT;
+    } catch (const std::exception& error) {
+        copyError(error.what(), err, err_size);
+        return IPROP_E_FORMAT;
+    } catch (...) {
+        copyError("unexpected exception while loading program", err, err_size);
+        return IPROP_E_FORMAT;
     }
 }
 
@@ -230,6 +236,12 @@ iprop_status iprop_generate(const iprop_program* program,
     } catch (const iprop::FormatError& error) {
         copyError(error.what(), err, err_size);
         return IPROP_E_FORMAT;
+    } catch (const std::exception& error) {
+        copyError(error.what(), err, err_size);
+        return IPROP_E_TRAP;
+    } catch (...) {
+        copyError("unexpected exception during generation", err, err_size);
+        return IPROP_E_TRAP;
     }
 }
 

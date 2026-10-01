@@ -29,6 +29,7 @@ add_executable(iprop_tests
     validator_test.cpp
     vm_test.cpp
     control_test.cpp
+    control_validation_test.cpp
     arithmetic_test.cpp
     seeded_test.cpp
     canvas_test.cpp

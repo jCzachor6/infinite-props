@@ -925,9 +925,10 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
             ex.push(Value(Vec2{a.x * b->x, a.y * b->y}));
+        } else if (const f32* s = std::get_if<f32>(&right)) {
+            ex.push(Value(Vec2{a.x * *s, a.y * *s}));
         } else {
-            const f32 s = std::get<f32>(right);
-            ex.push(Value(Vec2{a.x * s, a.y * s}));
+            ex.trap("stack type mismatch: expected f32 or vec2");
         }
         ++ex.frame().ip;
         return true;
@@ -937,9 +938,10 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
             ex.push(Value(Vec2{a.x / b->x, a.y / b->y}));
+        } else if (const f32* s = std::get_if<f32>(&right)) {
+            ex.push(Value(Vec2{a.x / *s, a.y / *s}));
         } else {
-            const f32 s = std::get<f32>(right);
-            ex.push(Value(Vec2{a.x / s, a.y / s}));
+            ex.trap("stack type mismatch: expected f32 or vec2");
         }
         ++ex.frame().ip;
         return true;

@@ -4,7 +4,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 
 ## Wymagania
 
-- [ ] R1 / A6: typowane ramki walidatora, poprawne scalenia i osiągalność; bezpieczne mul/div; granica C ABI; testy gałęzi i odtworzenie awarii.
+- [x] R1 / A6: typowane ramki walidatora, poprawne scalenia i osiągalność; bezpieczne mul/div; granica C ABI; testy gałęzi i odtworzenie awarii.
 - [ ] R2: jawne reguły NaN nowych operacji, specyfikacja, porównanie surowych bitów native/WASM, historyczne golden.
 - [ ] R3: jedna oczekiwana wersja produktu dla instalacji/wydania, aktualne CI i dokumentacja, przechodzące shared/static install smoke i release check.
 - [ ] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
@@ -29,4 +29,10 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 
 ## Weryfikacja i postęp
 
-W toku: R1 / A6 i R3. Punkty zostaną oznaczone jako ukończone dopiero z dowodami wykonanych testów.
+R1 / A6: build native i CTest 6/6 PASS. Nowe `control_validation_test.cpp`
+sprawdza typy na złączeniach, obie krawędzie `br_if`, osiągalność, strukturę
+`else` oraz kolejność wyników helpera. Testy defense wymuszają błędne typy
+mul/div bez walidacji. C-only conformance mutuje poprawny plik do obu
+reprodukcji R1 i otrzymuje `IPROP_E_FORMAT` przed wykonaniem.
+
+W toku: R3, R5 i A7; następnie deterministyczność i wydzielenie matematyki.

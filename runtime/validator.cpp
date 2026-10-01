@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace iprop {
@@ -33,6 +34,17 @@ struct SlotInfo {
     OutputKind kind = OutputKind::Point;
     bool isList = false;
     bool rootOwned = false;
+};
+
+// Every edge preserves the target's complete entry type sequence. Reachability
+// is tracked independently: a loop back-edge never reaches its following code.
+struct ControlFrame {
+    Opcode kind;
+    std::vector<ValueType> entry;
+    bool entryReachable;
+    bool hasElse = false;
+    bool thenReachable = false;
+    bool exitReachable = false;
 };
 
 // Per-function stack/label type checking over structured control flow
@@ -75,11 +87,11 @@ public:
         if (!labels_.empty()) {
             fail(count, "unbalanced structured control flow");
         }
-        if (stack_.size() != fn_.results.size()) {
+        if (reachable_ && stack_.size() != fn_.results.size()) {
             fail(count, "function stack does not match declared results");
         }
-        for (std::size_t r = 0; r < fn_.results.size(); ++r) {
-            if (stack_[r] != fn_.results[fn_.results.size() - 1 - r]) {
+        for (std::size_t r = 0; reachable_ && r < fn_.results.size(); ++r) {
+            if (stack_[r] != fn_.results[r]) {
                 fail(count, "function result type mismatch");
             }
         }
@@ -90,13 +102,15 @@ private:
     const Function& fn_;
     const std::vector<SlotInfo>& slots_;
     std::vector<ValueType> stack_;
-    std::vector<std::size_t> labels_; // operand stack height at label entry
+    std::vector<ControlFrame> labels_;
+    bool reachable_ = true;
 
     [[noreturn]] void fail(std::size_t instruction, std::string message) const {
         throw FormatError(std::move(message), fn_.fileOffset + instruction * 4);
     }
 
     void push(std::size_t at, ValueType type) {
+        if (!reachable_) return;
         if (stack_.size() >= kMaxStackDepth) {
             fail(at, "operand stack depth exceeds limit");
         }
@@ -104,6 +118,7 @@ private:
     }
 
     ValueType pop(std::size_t at, const char* what) {
+        if (!reachable_) return ValueType::I32; // polymorphic dead stack
         if (stack_.empty()) {
             fail(at, std::string("stack underflow (") + what + ")");
         }
@@ -114,7 +129,7 @@ private:
 
     void expect(std::size_t at, ValueType expected, const char* what) {
         const ValueType found = pop(at, what);
-        if (found != expected) {
+        if (reachable_ && found != expected) {
             fail(at, std::string("type mismatch: expected ") + typeName(expected) +
                           ", found " + typeName(found) + " (" + what + ")");
         }
@@ -150,27 +165,39 @@ private:
 
         case Opcode::Block:
         case Opcode::Loop:
-            labels_.push_back(stack_.size());
+            labels_.push_back({ins.opcode, stack_, reachable_});
             return;
         case Opcode::If:
             expect(at, ValueType::I32, "if condition");
-            labels_.push_back(stack_.size());
+            labels_.push_back({ins.opcode, stack_, reachable_});
             return;
-        case Opcode::Else:
-            if (labels_.empty()) fail(at, "else without if");
-            if (stack_.size() != labels_.back()) {
-                fail(at, "then-branch leaves values on the stack");
+        case Opcode::Else: {
+            if (labels_.empty() || labels_.back().kind != Opcode::If) {
+                fail(at, "else without if");
             }
+            auto& label = labels_.back();
+            if (label.hasElse) fail(at, "duplicate else");
+            checkExit(at, label, "then-branch");
+            label.hasElse = true;
+            label.thenReachable = reachable_;
+            stack_ = label.entry;
+            reachable_ = label.entryReachable;
             return;
-        case Opcode::End:
+        }
+        case Opcode::End: {
             if (labels_.empty()) fail(at, "end without block");
-            if (stack_.size() != labels_.back()) {
-                fail(at, "block leaves values on the stack");
-            }
+            const auto label = std::move(labels_.back());
+            checkExit(at, label, "block");
+            reachable_ = reachable_ || label.exitReachable ||
+                (label.kind == Opcode::If &&
+                 (label.hasElse ? label.thenReachable : label.entryReachable));
+            stack_ = label.entry;
             labels_.pop_back();
             return;
+        }
         case Opcode::Br:
             branch(at, op);
+            makeUnreachable();
             return;
         case Opcode::BrIf:
             expect(at, ValueType::I32, "br_if condition");
@@ -191,14 +218,15 @@ private:
             return;
         }
         case Opcode::Return:
-            if (stack_.size() != fn_.results.size()) {
+            if (reachable_ && stack_.size() != fn_.results.size()) {
                 fail(at, "return with wrong stack height");
             }
-            for (std::size_t r = 0; r < fn_.results.size(); ++r) {
-                if (stack_[r] != fn_.results[fn_.results.size() - 1 - r]) {
+            for (std::size_t r = 0; reachable_ && r < fn_.results.size(); ++r) {
+                if (stack_[r] != fn_.results[r]) {
                     fail(at, "return type mismatch");
                 }
             }
+            makeUnreachable();
             return;
 
         case Opcode::ConstI32:
@@ -230,6 +258,7 @@ private:
             (void)pop(at, "drop");
             return;
         case Opcode::Dup: {
+            if (!reachable_) return;
             if (stack_.empty()) fail(at, "stack underflow (dup)");
             push(at, stack_.back());
             return;
@@ -296,7 +325,7 @@ private:
         case Opcode::Vec2Div: {
             const ValueType right = pop(at, "vector operand");
             expect(at, ValueType::Vec2, "vector operand");
-            if (right != ValueType::F32 && right != ValueType::Vec2) {
+            if (reachable_ && right != ValueType::F32 && right != ValueType::Vec2) {
                 fail(at, std::string("type mismatch: expected f32 or vec2, found ") +
                               typeName(right) + " (vector operand)");
             }
@@ -636,11 +665,31 @@ private:
         fail(at, "reserved opcode");
     }
 
+    void checkExit(std::size_t at, const ControlFrame& label, const char* what) {
+        if (reachable_ && stack_ != label.entry) {
+            fail(at, std::string(what) + " stack types differ from entry");
+        }
+    }
+
+    void makeUnreachable() {
+        reachable_ = false;
+        stack_.clear();
+    }
+
     void branch(std::size_t at, u16 depth) {
         if (depth >= labels_.size()) {
             fail(at, "branch depth out of range");
         }
-        stack_.resize(labels_[labels_.size() - 1 - depth]);
+        auto& target = labels_[labels_.size() - 1 - depth];
+        if (reachable_) {
+            if (stack_.size() < target.entry.size() ||
+                !std::equal(target.entry.begin(), target.entry.end(), stack_.begin())) {
+                fail(at, "branch stack types differ from target entry");
+            }
+            if (target.kind != Opcode::Loop) target.exitReachable = true;
+        }
+        // br_if must leave its untaken edge untouched. br makes the current
+        // path unreachable; the target restores its own snapshot at its end.
     }
 };
 

@@ -52,7 +52,8 @@ set(IPROP_CAPI_SOURCES
     ${CMAKE_SOURCE_DIR}/tests/golden/shapes.ipa
     ${CMAKE_SOURCE_DIR}/tests/golden/noise.ipa
     ${CMAKE_SOURCE_DIR}/tests/golden/parts.ipa
-    ${CMAKE_CURRENT_SOURCE_DIR}/test/uniforms.ipa)
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/uniforms.ipa
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/vector-branch.ipa)
 
 set(IPROP_CAPI_IPROPS "")
 foreach(source IN LISTS IPROP_CAPI_SOURCES)

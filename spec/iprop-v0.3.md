@@ -326,6 +326,19 @@ the `u16` operand field.
 - Branches MUST NOT cross function boundaries. Branch depth validation is
   defined in §12.
 - Blocks are statement-level; no block results in v0.1.
+- Every reachable fall-through exit of a block/loop/if MUST preserve the
+  complete entry stack type sequence, not only its height. Each if arm is
+  checked from the same entry state; an omitted else is the identity arm.
+  `else` MUST occur at most once and only in an if.
+- A branch MUST preserve the target's entry type sequence as a prefix of
+  the current stack; excess values are discarded on the taken edge only.
+  `br_if` retains its stack after consuming the condition on the untaken
+  edge. A loop back-edge does not make the code after the loop reachable.
+- `br` and `return` make their following straight-line code unreachable.
+  Stack type/height checks are required only for reachable paths; operand
+  indices, opcode/version checks and balanced control structure are still
+  required in unreachable code. A join is reachable if any incoming edge
+  is reachable. Return values match the declared order, bottom to top.
 
 ### 9.2 Stack and constants
 
