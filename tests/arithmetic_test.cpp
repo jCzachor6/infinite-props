@@ -979,6 +979,30 @@ TEST_CASE("fold canonicalizes every NaN component while retaining infinity and f
     REQUIRE(bitsOf(identity.y) == 0x00000000u);
 }
 
+TEST_CASE("the curve toolkit matches the pinned formulas") {
+    // smoothstep: the two-sided smootherstep.
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(0.5f).emit(0xA1)) == 0.5f);
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(0.25f).emit(0xA1)) == 0.15625f);
+    REQUIRE(evalProgF32(Prog{}.F(2.f).F(4.f).F(3.f).emit(0xA1)) == 0.5f);
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(-1.f).emit(0xA1)) == 0.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.f).F(1.f).F(2.f).emit(0xA1)) == 1.f);
+    // The zero-denominator guard.
+    REQUIRE(evalProgF32(Prog{}.F(1.f).F(1.f).F(0.5f).emit(0xA1)) == 0.f);
+    // remap: the linear rescale with the clamp.
+    REQUIRE(evalProgF32(Prog{}.F(0.5f).F(0.f).F(1.f).F(10.f).F(20.f).emit(0xA2)) == 15.f);
+    REQUIRE(evalProgF32(Prog{}.F(2.f).F(0.f).F(1.f).F(10.f).F(20.f).emit(0xA2)) == 20.f);
+    REQUIRE(evalProgF32(Prog{}.F(-1.f).F(0.f).F(1.f).F(10.f).F(20.f).emit(0xA2)) == 10.f);
+    // clamp: the bounds in either order.
+    REQUIRE(evalProgF32(Prog{}.F(1.5f).F(0.f).F(1.f).emit(0xA3)) == 1.f);
+    REQUIRE(evalProgF32(Prog{}.F(-1.f).F(0.f).F(1.f).emit(0xA3)) == 0.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.5f).F(1.f).F(0.f).emit(0xA3)) == 0.5f);
+    // The self-consistency: smoothstep(a,b,t) == smooth((t-a)/(b-a)) for
+    // the interior points, and clamp == min(max(t,a),b) for the ordered
+    // bounds.
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).F(1.f).F(0.375f).emit(0xA1))) ==
+            bitsOf(evalProgF32(Prog{}.F(0.375f).emit(0x72))));
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

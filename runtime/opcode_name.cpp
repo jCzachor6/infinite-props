@@ -103,6 +103,9 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::Dither: return "dither";
     case Opcode::Vec2Fold: return "vec2.fold";
     case Opcode::Vec2Polar: return "vec2.polar";
+    case Opcode::Smoothstep: return "smoothstep";
+    case Opcode::Remap: return "remap";
+    case Opcode::Clamp: return "clamp";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

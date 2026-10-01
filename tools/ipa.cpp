@@ -122,6 +122,8 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"gain", {Opcode::Gain}}, {"quintic", {Opcode::Quintic}},
         {"dither", {Opcode::Dither}}, {"vec2.fold", {Opcode::Vec2Fold}},
         {"vec2.polar", {Opcode::Vec2Polar}},
+        {"smoothstep", {Opcode::Smoothstep}}, {"remap", {Opcode::Remap}},
+        {"clamp", {Opcode::Clamp}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},

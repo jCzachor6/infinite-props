@@ -251,7 +251,8 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   `color.mul`, `color.scale` and `color.hsv` (the hue in turns;
   nonfinite hue shifts trap, [§12.12](spec/iprop-v0.3.md#1212-the-colours-v03)).
   The dither/fold/polar add the ordered Bayer threshold, the kaleidoscope
-  symmetry and the cartesian-polar conversion.
+  symmetry and the cartesian-polar conversion. The curve toolkit adds
+  `smoothstep(a, b, t)`, `remap(t, a, b, c, d)` and `clamp(t, a, b)`.
   `gain` defines the `k = 1` limit;
   `ramp` takes positional arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).

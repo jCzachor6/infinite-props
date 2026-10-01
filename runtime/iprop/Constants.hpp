@@ -201,6 +201,11 @@ enum class Opcode : u8 {
     Vec2Fold = 0x9E,
     Vec2Polar = 0x9F,
 
+    // The curve toolkit (spec §9.4/§12.14; added in v0.3)
+    Smoothstep = 0xA1,
+    Remap = 0xA2,
+    Clamp = 0xA3,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };

@@ -66,7 +66,8 @@ public:
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
                  (opcode >= 0x74 && opcode <= 0x7F) ||
                  (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99 ||
-                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9F))) {
+                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9F) ||
+                 (opcode >= 0xA1 && opcode <= 0xA3))) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -392,6 +393,26 @@ private:
         case Opcode::Vec2Polar:
             expect(at, ValueType::Vec2, "polar vector");
             push(at, ValueType::Vec2);
+            return;
+        case Opcode::Smoothstep:
+            expect(at, ValueType::F32, "smoothstep t");
+            expect(at, ValueType::F32, "smoothstep b");
+            expect(at, ValueType::F32, "smoothstep a");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Remap:
+            expect(at, ValueType::F32, "remap d");
+            expect(at, ValueType::F32, "remap c");
+            expect(at, ValueType::F32, "remap b");
+            expect(at, ValueType::F32, "remap a");
+            expect(at, ValueType::F32, "remap t");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Clamp:
+            expect(at, ValueType::F32, "clamp b");
+            expect(at, ValueType::F32, "clamp a");
+            expect(at, ValueType::F32, "clamp t");
+            push(at, ValueType::F32);
             return;
         case Opcode::I32ToF32:
             expect(at, ValueType::I32, "conversion operand");

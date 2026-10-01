@@ -370,6 +370,26 @@ Vec2 vec2Polar(const Vec2& v) {
     return Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(v.y, v.x)};
 }
 
+// ---- the curve toolkit (spec §12.14) ----------------------------------------
+
+f32 smoothstepEdge(f32 a, f32 b, f32 t) {
+    const f32 d = b - a;
+    const f32 u = d == 0.f ? 0.f : std::clamp((t - a) / d, 0.f, 1.f);
+    return u * u * (3.f - 2.f * u);
+}
+
+f32 remapValue(f32 t, f32 a, f32 b, f32 c, f32 d) {
+    const f32 span = b - a;
+    const f32 u = span == 0.f ? 0.f : std::clamp((t - a) / span, 0.f, 1.f);
+    return c + u * (d - c);
+}
+
+f32 clampValue(f32 t, f32 a, f32 b) {
+    const f32 lo = std::fmin(a, b);
+    const f32 hi = std::fmax(a, b);
+    return std::fmin(std::fmax(t, lo), hi);
+}
+
 f32 f32Cos(f32 x) {
     const double value = static_cast<double>(x);
     if (std::isnan(value) || std::isinf(value)) {
@@ -1135,6 +1155,32 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     }
     case Opcode::Vec2Polar: {
         ex.push(Value(vec2Polar(ex.popVec2())));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Smoothstep: {
+        const f32 t = ex.popF32();
+        const f32 b = ex.popF32();
+        const f32 a = ex.popF32();
+        ex.push(Value(smoothstepEdge(a, b, t)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Remap: {
+        const f32 d = ex.popF32();
+        const f32 c = ex.popF32();
+        const f32 b = ex.popF32();
+        const f32 a = ex.popF32();
+        const f32 t = ex.popF32();
+        ex.push(Value(remapValue(t, a, b, c, d)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Clamp: {
+        const f32 b = ex.popF32();
+        const f32 a = ex.popF32();
+        const f32 t = ex.popF32();
+        ex.push(Value(clampValue(t, a, b)));
         ++ex.frame().ip;
         return true;
     }

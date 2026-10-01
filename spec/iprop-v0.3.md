@@ -511,6 +511,18 @@ live in §12.13):
 0.0 below); `vec2.fold` mirrors the vector into the n-fold symmetric
 sector; `vec2.polar` converts the cartesian pair into `{length, angle}`.
 
+The curve toolkit (added in v0.3; the exact algorithms live in §12.14):
+
+| Op | Mnemonic | Stack |
+| -- | -------- | ----- |
+| 0xA1 | smoothstep | `[f32 f32 f32] -> [f32]` (a, b, t) |
+| 0xA2 | remap | `[f32 f32 f32 f32 f32] -> [f32]` (t, a, b, c, d) |
+| 0xA3 | clamp | `[f32 f32 f32] -> [f32]` (t, a, b) |
+
+`smoothstep` is the two-sided smootherstep; `remap` rescales a value from
+[a, b] to [c, d] (clamped); `clamp` clamps a value into [a, b] (any
+order of a and b).
+
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
 
@@ -1476,6 +1488,37 @@ Pinned `vec2.fold` vectors (the component bits):
 ```
 return {len(v), atan2(v.y, v.x)}
 ```
+
+### 12.14 The curve toolkit (v0.3)
+
+Every floating step is one IEEE-754 round-to-nearest binary32 operation
+in the written order.
+
+**smoothstep(a, b, t):**
+
+```
+d = b - a
+u = d == 0 ? 0 : clamp((t - a) / d, 0, 1)
+return u*u * (3 - 2*u)
+```
+
+**remap(t, a, b, c, d):**
+
+```
+d1 = b - a
+u = d1 == 0 ? 0 : clamp((t - a) / d1, 0, 1)
+return c + u * (d - c)
+```
+
+**clamp(t, a, b):**
+
+```
+lo = min(a, b)
+hi = max(a, b)
+return min(max(t, lo), hi)
+```
+
+(the bounds may come in any order.)
 
 ## 13. Determinism rules
 

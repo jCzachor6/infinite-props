@@ -77,9 +77,9 @@ format version (minor).
 
 ## 8. The curve toolkit (the micro-ops)
 
-- [ ] `8.1` spec: `smoothstep(a, b, t)` (the two-sided), `remap(t, a, b, c, d)`,
+- [x] `8.1` spec: `smoothstep(a, b, t)` (the two-sided), `remap(t, a, b, c, d)`,
   `clamp(t, a, b)`.
-- [ ] `8.2` the runtime + the builtins + the bit tables.
+- [x] `8.2` the runtime + the builtins + the bit tables.
 
 ## 9. Part manipulation — the transforms (the D4 group)
 
