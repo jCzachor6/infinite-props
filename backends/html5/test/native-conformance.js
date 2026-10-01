@@ -22,6 +22,7 @@ const sources = [
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
+    ["curves", "backends/html5/test/fixtures/curves.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -141,6 +142,32 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent noise v2 pins");
             }
+            if (path.basename(file) === "curves.iprop") {
+                const expected = [
+                    [0x3e800000, 0x3f000000], [0x3d4ccccd, 0x3f0ccccd],
+                    [0, 0x3f800000], [0x3f000000, 0x3f000000],
+                    [0, 0x3f800000], [0x3dd40000, 0x3f000000],
+                    [0x7fc00000, 0x7fc00000], [0x40200000, 0x40800000],
+                ];
+                assert.deepEqual(result.outputs.slice(0, 8).map(slot =>
+                    [slot.values[0].x, slot.values[0].y]),
+                    expected, label + ": independent curve/ramp pins");
+                assert.equal(result.outputs[8].values[0].x, 0x3fa00000,
+                             label + ": singleton f32 result");
+                if (seed === 1) {
+                    // The f32 and i32 t helpers each consume one RNG draw.
+                    assert.equal(result.outputs[8].values[0].y, 0x3f72c606,
+                                 label + ": third RNG draw after singleton ramps");
+                    assert.deepEqual(result.outputs[9].values[0],
+                                     {x: 0x3eae0ff6, y: 0x3f6e493c},
+                                     label + ": following RNG draws");
+                }
+                if (native.width === 8) {
+                    assert.deepEqual(native.data.subarray(0, 32), Buffer.from(
+                        "ff0000ff00ff00ff123456ff000000ffffffffff7f7f7fff404040ffbfbfbfff", "hex"),
+                        label + ": helper side effects and gain/ramp colours");
+                }
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -187,7 +214,7 @@ function run(iprop, toolsDir) {
                     }
                 }
             }
-            if (name === "bezier" || name === "noise-v2") {
+            if (name === "bezier" || name === "noise-v2" || name === "curves") {
                 compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }
@@ -198,6 +225,12 @@ function run(iprop, toolsDir) {
             const message = variant === 7 ? "warp amount out of range" : variant >= 10
                 ? "cell index is not representable as f32" : "noise coordinate out of range";
             compareTrap(errors, variant, message);
+        }
+        const rampErrors = path.join(temporary, "ramp-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/ramp-errors.ips"), "-o", rampErrors]);
+        for (let variant = 0; variant < 2; ++variant) {
+            compareTrap(rampErrors, variant, "divide by zero");
         }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "noise-v2.iprop"), 7);

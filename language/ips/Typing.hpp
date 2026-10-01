@@ -118,6 +118,7 @@ private:
     ValueType typePartCall(const Call& call);
     ValueType typeVector(const VectorLit& vector);
     ValueType typeIndex(const Index& index);
+    ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
 

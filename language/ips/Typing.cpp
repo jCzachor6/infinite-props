@@ -56,6 +56,8 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"dist.bezier", {{V::Vec2, V::Vec2, V::Vec2, V::Vec2}, V::F32,
                          {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::Vec2}}}},
         {"fill", {{V::F32, V::F32}, V::F32}},
+        {"gain", {{V::F32, V::F32}, V::F32}},
+        {"quintic", {{V::F32}, V::F32}},
         {"noise.grad", {{V::F32, V::F32, V::I32}, V::F32}},
         {"noise.fbm", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
         {"noise.cell", {{V::F32, V::F32, V::I32}, V::F32}},
@@ -274,6 +276,9 @@ ValueType Typer::typePartRead(const Expr& expr) {
 
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
+        if (name->name == "ramp") {
+            return typeRamp(*name, call);
+        }
         const auto builtin = builtinSignatures().find(name->name);
         if (builtin != builtinSignatures().end()) {
             return typeBuiltinCall(*name, call, builtin->second);
@@ -529,6 +534,61 @@ ValueType Typer::typeIndex(const Index& index) {
         break;
     }
     error(name->location, "palette '" + name->name + "' has no valid elements");
+}
+
+// `ramp(palette, t)` — the first argument names a palette; the t is the
+// numeric position clamped to [0, 1]. The result is the element type (the
+// colour or f32 — the i32 palettes are rejected: the interpolation would
+// need the widening the caller can do themselves).
+ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
+    if (call.args.size() != 2) {
+        error(call.location, "ramp takes a palette name and a t value");
+    }
+    for (const Arg& arg : call.args) {
+        if (arg.name.has_value()) {
+            error(arg.location,
+                  "function '" + name.name + "' does not take named arguments");
+        }
+    }
+    const auto* paletteName =
+        std::get_if<Identifier>(call.args[0].value.get());
+    if (paletteName == nullptr) {
+        error(locationOf(*call.args[0].value),
+              "ramp's first argument must be a palette name");
+    }
+    const PaletteDecl* palette = nullptr;
+    for (const auto& candidate : owner_->asset.palettes) {
+        if (candidate.name == paletteName->name) {
+            palette = &candidate;
+            break;
+        }
+    }
+    if (palette == nullptr) {
+        error(paletteName->location,
+              "'" + paletteName->name + "' is not a palette");
+    }
+    const ValueType t = typeOf(*call.args[1].value);
+    if (!isNumeric(t)) {
+        error(locationOf(*call.args[1].value),
+              "ramp's t must be numeric, got " + std::string(typeName(t)));
+    }
+    const auto& first = std::get<Literal>(*palette->elements[0]);
+    switch (first.kind) {
+    case Literal::Kind::Float:
+        return ValueType::F32;
+    case Literal::Kind::Color:
+        return ValueType::Color;
+    case Literal::Kind::Int:
+    case Literal::Kind::True:
+    case Literal::Kind::False:
+        error(paletteName->location,
+              "ramp requires a color or f32 palette; '" + paletteName->name +
+                  "' is i32 (use the explicit lerp instead)");
+    case Literal::Kind::String:
+        break;
+    }
+    error(paletteName->location,
+          "palette '" + paletteName->name + "' has no valid elements");
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {

@@ -119,6 +119,7 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"dist.bezier", {Opcode::DistBezier}},
         {"dist.bezier.cubic", {Opcode::DistBezierCubic}},
         {"fill", {Opcode::Fill}},
+        {"gain", {Opcode::Gain}}, {"quintic", {Opcode::Quintic}},
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},

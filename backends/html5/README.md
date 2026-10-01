@@ -102,3 +102,9 @@ the Worley feature two cells away, jitter at rounding boundaries and safe
 lattice limits. A separate 13-variant fixture checks matching native/WASM
 traps for nonfinite inputs, octave/warp overflow and unrepresentable jitter
 cells. Error comparisons are reported separately from image comparisons.
+
+The curves fixture pins gain/quintic values, the finite `k = 1` limit,
+color interpolation at gain endpoints and color/f32 ramps. Singleton
+ramps are checked for helper drawing effects and exactly one RNG draw per
+argument. Two error variants verify that a singleton f32 or color ramp
+still executes an argument that traps.

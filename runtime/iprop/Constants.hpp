@@ -174,6 +174,9 @@ enum class Opcode : u8 {
     CellJitter = 0x8D,
     NoiseRidge = 0x8E,
 
+    // The curves (spec §9.4/§12.11; added in v0.3)
+    Gain = 0x8F,
+
     // Structured outputs (§9.9)
     OutPoint = 0x90,
     OutRect = 0x91,
@@ -184,6 +187,9 @@ enum class Opcode : u8 {
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,
+
+    // The curves, continued (spec §9.4/§12.11; added in v0.3)
+    Quintic = 0x99,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

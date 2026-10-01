@@ -67,7 +67,8 @@ Section layouts, debug flags and all 0.1 opcode semantics are unchanged.
 
 Version 0.3 adds the `vec2` type (the type code `3`), the vector ops
 (0x5B–0x5F, 0x74–0x79), the signed-distance fields (0x7A–0x7F, 0x88), the
-quadratic/cubic strokes (0x86–0x87) and the noise v2 (0x89–0x8E). These
+quadratic/cubic strokes (0x86–0x87), the noise v2 (0x89–0x8E) and the
+curves (0x8F, 0x99). These
 MUST appear only in files with minor version 3 or later; a file claiming
 version 0.2 or earlier while using them MUST be rejected. All 0.1/0.2
 layouts and semantics are otherwise unchanged.
@@ -485,6 +486,17 @@ The language spells the dotted names as `noise.grad(...)`,
 `noise.fbm(...)`, `noise.cell(...)`, `noise.ridge(...)`,
 `cell.jitter(...)` and the bare `warp(...)`; the bases `dist`, `noise`
 and `cell` are the reserved builtin namespaces.
+
+The curves (added in v0.3; the exact algorithms live in §12.11):
+
+| Op | Mnemonic | Stack |
+| -- | -------- | ----- |
+| 0x8F | gain | `[f32 f32] -> [f32]` (t, k) |
+| 0x99 | quintic | `[f32] -> [f32]` (t) |
+
+`gain` is the Schlick contrast curve; `quintic` is the smootherstep.
+The language's `ramp(palette, t)` is a compiler desugar (no VM op): the
+continuous interpolation over a palette's elements (§12.11).
 
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
@@ -1212,6 +1224,83 @@ Error vectors: `noise.grad(+inf, 0, 7)`, `noise.grad(NaN, 0, 7)`,
 `noise.cell(-2147483648, 0, 7)` all trap with
 `noise coordinate out of range`; `cell.jitter(16777217, 0, 7)` traps with
 `cell index is not representable as f32`.
+
+### 12.11 The curves and the ramps (v0.3)
+
+Every floating step is one IEEE-754 round-to-nearest binary32 operation
+in the written order.
+
+**gain(t, k)** — the Schlick contrast curve; both arguments clamped
+(`t` to [0, 1], `k` to [1e-4, 1]):
+
+```
+if either argument is NaN: return canonical NaN (0x7FC00000)
+t = clamp(t, 0, 1); k = clamp(k, 1e-4, 1)
+if t == 0: return +0
+if t == 1: return 1
+if k == 1: return 0.5
+if t < 0.5: return bias(t + t, k) * 0.5
+return bias(t + t - 1, 1 - k) * 0.5 + 0.5
+
+bias(x, k) = x / ((1/k - 2) * (1 - x) + 1)
+```
+
+`k = 0.5` is the identity; `k` closer to 0 pushes the values towards the
+extremes; `t = 0.5` is the fixed point. At `k = 1`, the defined limit is
+0.5 for every interior t, with endpoints 0 and 1. Do not evaluate the
+singular bias formula in this case. Infinities clamp to the appropriate
+finite bound; NaN arguments return the canonical quiet NaN before clamping.
+
+**quintic(t)** — the smootherstep, the same fade the noise v2 uses
+internally (`t` clamped to [0, 1]):
+
+```
+return t*t*t * (t * (t*6 - 15) + 10)
+```
+
+**ramp(palette, t)** — the language-level continuous palette
+interpolation, desugared by the compiler (no VM opcode). For a palette
+of N ≥ 1 elements and a `t` clamped to [0, 1]:
+
+Arguments are positional: the first is a palette name, the second is
+numeric (`i32` widens to `f32`). Named arguments MUST be rejected, like
+the other builtins. The palette must contain homogeneous color or f32
+literals. Evaluate t exactly once, including its RNG draws, helper calls
+and runtime errors, even when N == 1 and the result is constant.
+
+```
+if N == 1: return palette[0]   // after evaluating t
+t = min(max(t, 0), 1)          // §12.8's maxNum/minNum; NaN selects 0
+p = t * (N - 1)                // one f32 multiply by the integer N-1
+i = trunc(p)                   // the f32.to.i32 truncation
+f = p - i                      // the fractional part, in [0, 1)
+if i == N - 1: return palette[N-1]
+return mix(palette[i], palette[i+1], f)
+```
+
+where `mix` is §9.5's `color.mix` (the channel lerp with the pinned
+truncating conversion) for colors, or §9.7's `lerp` for f32 palettes.
+The compiler emits the stop-selection ladder
+exactly like the palette indexing of §10 (the default stop for the
+out-of-range truncations is the last element).
+
+Pinned vectors (f32 bits):
+
+| Input | Result |
+| ----- | ------ |
+| `gain(0.25, 0.5)` (the identity) | `0x3E800000` |
+| `gain(0.5, 0.3)` (the fixed point) | `0x3F000000` |
+| `gain(0.25, 0.1)` | `0x3D4CCCCD` |
+| `gain(0.75, 0.9)` | `0x3F0CCCCD` |
+| `gain(-1, 0.5)` (the t clamp) | `0x00000000` |
+| `gain(0, 1)` | `0x00000000` |
+| `gain(1, 1)` | `0x3F800000` |
+| `gain(0.000000001, 1)` | `0x3F000000` |
+| `gain(0.75, 2)` (the k clamp) | `0x3F000000` |
+| `gain(0, NaN)` | `0x7FC00000` |
+| `quintic(0.25)` | `0x3DD40000` |
+| `quintic(0.5)` | `0x3F000000` |
+| `quintic(-2)` (the clamp) | `0x00000000` |
 
 ## 13. Determinism rules
 

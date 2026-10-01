@@ -78,6 +78,7 @@ private:
     ips::ValueType emitBinary(const ips::Binary& bin);
     ips::ValueType emitUnary(const ips::Unary& un);
     ips::ValueType emitIndex(const ips::Index& index);
+    ips::ValueType emitRamp(const ips::Call& call);
     ips::ValueType emitCall(const ips::Call& call);
     void emitArg(const ips::Arg& arg, ips::ValueType expected);
     ips::ValueType emitBuiltin(const std::string& name, const ips::Call& call);

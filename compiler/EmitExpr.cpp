@@ -452,4 +452,107 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
     return type;
 }
 
+// `ramp(palette, t)` — the continuous palette interpolation (spec §12.11):
+// the t clamped to [0, 1], the position p = t*(N-1), the stop i = trunc(p),
+// the fraction f = p - i, then the element-typed lerp between the stops
+// i and i+1 (the default stop is the last element, like the indexing).
+ips::ValueType Emitter::emitRamp(const ips::Call& call) {
+    const auto* name = std::get_if<ips::Identifier>(call.args[0].value.get());
+    const ips::PaletteDecl* palette = nullptr;
+    for (const auto& candidate : current_->owner->asset.palettes) {
+        if (candidate.name == name->name) {
+            palette = &candidate;
+            break;
+        }
+    }
+    if (palette == nullptr) {
+        error(name->location, "'" + name->name + "' is not a palette");
+    }
+    const auto elementType = [&](const ips::Expr& element) {
+        const auto* literal = std::get_if<ips::Literal>(&element);
+        if (literal == nullptr) {
+            error(locationOf(element), "palette elements must be literals");
+        }
+        switch (literal->kind) {
+        case ips::Literal::Kind::Float:
+            return ips::ValueType::F32;
+        case ips::Literal::Kind::Color:
+            return ips::ValueType::Color;
+        case ips::Literal::Kind::Int:
+        case ips::Literal::Kind::True:
+        case ips::Literal::Kind::False:
+        case ips::Literal::Kind::String:
+            break;
+        }
+        error(locationOf(element),
+              "ramp elements must be colour or f32 literals");
+    };
+    const auto emitElement = [&](const ips::Expr& element) {
+        Value folded;
+        if (!foldExpression(element, folded)) {
+            error(locationOf(element), "palette elements must be literals");
+        }
+        emitConst(folded);
+    };
+
+    const ips::ValueType type = elementType(*palette->elements[0]);
+    const std::size_t count = palette->elements.size();
+    if (count == 1) {
+        // The result is constant, but evaluating t may advance the stream,
+        // draw through a helper, or trap. Preserve those effects exactly once.
+        emitExpr(*call.args[1].value);
+        ins(Opcode::Drop);
+        emitElement(*palette->elements[0]);
+        return type;
+    }
+
+    // The t: the widening, the clamp, the position, the split into the
+    // stop and the fraction (both in the scratch locals).
+    emitExpr(*call.args[1].value);
+    if (plan_.typeEngine().typeOf(*call.args[1].value) == ips::ValueType::I32) {
+        ins(Opcode::I32ToF32);
+    }
+    ins(Opcode::ConstF32, 0, static_cast<u16>(plan_.pools.addFloat(0)));
+    ins(Opcode::F32Max);
+    ins(Opcode::ConstF32, 0,
+        static_cast<u16>(plan_.pools.addFloat(0x3F800000u)));
+    ins(Opcode::F32Min);
+    ins(Opcode::ConstF32, 0,
+        static_cast<u16>(plan_.pools.addFloat(
+            std::bit_cast<u32>(static_cast<f32>(count - 1)))));
+    ins(Opcode::F32Mul);
+    ins(Opcode::Dup);
+    ins(Opcode::F32ToI32);
+    ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
+    ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+    ins(Opcode::I32ToF32);
+    ins(Opcode::F32Sub);
+    ins(Opcode::LocalSet, 0, static_cast<u16>(f32Scratch()));
+
+    const u16 resultSlot = static_cast<u16>(scratchOf(type));
+    const Opcode mixOp =
+        type == ips::ValueType::Color ? Opcode::ColorMix : Opcode::Lerp;
+
+    ins(Opcode::Block);
+    for (std::size_t k = 0; k + 1 < count; ++k) {
+        ins(Opcode::ConstI32, 0,
+            static_cast<u16>(plan_.pools.addInt(static_cast<u32>(k))));
+        ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::I32Eq);
+        ins(Opcode::If);
+        emitElement(*palette->elements[k]);
+        emitElement(*palette->elements[k + 1]);
+        ins(Opcode::LocalGet, 0, static_cast<u16>(f32Scratch()));
+        ins(mixOp);
+        ins(Opcode::LocalSet, 0, resultSlot);
+        ins(Opcode::Br, 0, 1);
+        ins(Opcode::End);
+    }
+    emitElement(*palette->elements.back());
+    ins(Opcode::LocalSet, 0, resultSlot);
+    ins(Opcode::End);
+    ins(Opcode::LocalGet, 0, resultSlot);
+    return type;
+}
+
 } // namespace iprop::compiler

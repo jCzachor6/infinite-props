@@ -54,10 +54,10 @@ format version (minor).
 
 ## 3. The curves and the ramps
 
-- [ ] `3.1` spec: `gain(t, k)` (the Schlick contrast curve), `quintic(t)`,
+- [x] `3.1` spec: `gain(t, k)` (the Schlick contrast curve), `quintic(t)`,
   `ramp(palette, t)` — the continuous interpolation over a palette (the
   pinned stop selection and lerp, extending the task-3 arrays).
-- [ ] `3.2` the runtime + the builtins + the bit tables.
+- [x] `3.2` the runtime + the builtins + the bit tables.
 
 ## 4. The colours
 

@@ -1,0 +1,15 @@
+asset rampErrors {
+  size 8x8
+  variants 2
+  palette height = [1.25]
+  palette color = [#123456]
+  output point result
+  draw(v: i32, a: i32) {
+    if (v == 0) {
+      result = {ramp(height, 1 / a), 0}
+    } else {
+      pixel(0, 0, ramp(color, 1 / a))
+      result = {0, 0}
+    }
+  }
+}

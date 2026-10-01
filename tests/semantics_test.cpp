@@ -230,6 +230,30 @@ TEST_CASE("for loops are checked") {
         {}));
 }
 
+TEST_CASE("ramp is checked") {
+    expectCheckError(
+        "asset t { size 8x8 draw(v: i32, a: i32) { x = ramp(nope, 0.5) } }",
+        "is not a palette");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { x = ramp(p, 0.5) } }",
+        "ramp requires a color or f32 palette");
+    expectCheckError(
+        "asset t { size 8x8 palette p = [1.0] draw(v: i32, a: i32) { x = ramp(p, #ffffff) } }",
+        "ramp's t must be numeric");
+    for (const std::string arguments : {"palette = p, t = 0.5", "t = p, palette = 0.5",
+                                        "p, t = 0.5", "p, typo = 0.5"}) {
+        CAPTURE(arguments);
+        expectCheckError(
+            "asset t { size 8x8 palette p = [1.0] "
+            "draw(v: i32, a: i32) { x = ramp(" + arguments + ") } }",
+            "does not take named arguments");
+    }
+    CHECK_NOTHROW(checkAsset(parse(
+        "asset t { size 8x8 palette p = [1.0, 2.0] "
+        "draw(v: i32, a: i32) { x = ramp(p, 0.5) } }"),
+        {}));
+}
+
 TEST_CASE("valid programs check cleanly") {
     CHECK_NOTHROW(checkAsset(parse(kValidRock), {}));
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));

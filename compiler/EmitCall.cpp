@@ -10,6 +10,9 @@ namespace iprop::compiler {
 
 ips::ValueType Emitter::emitCall(const ips::Call& call) {
     if (const auto* name = std::get_if<ips::Identifier>(call.callee.get())) {
+        if (name->name == "ramp") {
+            return emitRamp(call);
+        }
         if (ips::builtinSignatures().count(name->name) != 0) {
             return emitBuiltin(name->name, call);
         }
@@ -138,6 +141,8 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
                          Opcode::DistBezier);
     }
     if (name == "fill") return emitFixed({VT::F32, VT::F32}, Opcode::Fill);
+    if (name == "gain") return emitFixed({VT::F32, VT::F32}, Opcode::Gain);
+    if (name == "quintic") return emitFixed({VT::F32}, Opcode::Quintic);
     if (name == "noise.grad")
         return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::NoiseGrad);
     if (name == "noise.fbm")

@@ -243,6 +243,42 @@ f32 sdfFill(f32 d, f32 w) {
     return 1.f - tt * s;
 }
 
+// ---- the curves (spec §12.11) ----------------------------------------------
+
+f32 gainCurve(f32 t, f32 k) {
+    if (std::isnan(t) || std::isnan(k)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    t = std::clamp(t, 0.f, 1.f);
+    k = std::clamp(k, 1e-4f, 1.f);
+    // Preserve the endpoints and the k -> 1 limit without evaluating the
+    // singular bias at q = 0 or q = 1. Interior values converge to 0.5.
+    if (t == 0.f) return 0.f;
+    if (t == 1.f) return 1.f;
+    if (k == 1.f) return 0.5f;
+    // The Schlick bias/gain: g = t < 0.5 ? bias(2t, k)/2
+    //                                   : bias(2t-1, 1-k)/2 + 0.5.
+    const auto bias = [](f32 x, f32 q) {
+        const f32 a = 1.f / q;
+        const f32 b = a - 2.f;
+        const f32 c = b * (1.f - x);
+        const f32 d = c + 1.f;
+        return x / d;
+    };
+    if (t < 0.5f) {
+        return bias(t + t, k) * 0.5f;
+    }
+    return bias(t + t - 1.f, 1.f - k) * 0.5f + 0.5f;
+}
+
+f32 quinticCurve(f32 t) {
+    t = std::clamp(t, 0.f, 1.f);
+    const f32 t2 = t * t;
+    const f32 t3 = t2 * t;
+    const f32 inner = t * (t * 6.f - 15.f) + 10.f;
+    return t3 * inner;
+}
+
 f32 f32Cos(f32 x) {
     const double value = static_cast<double>(x);
     if (std::isnan(value) || std::isinf(value)) {
@@ -898,6 +934,18 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const f32 w = ex.popF32();
         const f32 d = ex.popF32();
         ex.push(Value(sdfFill(d, w)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Gain: {
+        const f32 k = ex.popF32();
+        const f32 t = ex.popF32();
+        ex.push(Value(gainCurve(t, k)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Quintic: {
+        ex.push(Value(quinticCurve(ex.popF32())));
         ++ex.frame().ip;
         return true;
     }

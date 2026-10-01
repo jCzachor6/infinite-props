@@ -65,7 +65,7 @@ public:
             if (file_.layout.header.versionMinor < 3 &&
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
                  (opcode >= 0x74 && opcode <= 0x7F) ||
-                 (opcode >= 0x86 && opcode <= 0x8E))) {
+                 (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99)) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -366,6 +366,15 @@ private:
         case Opcode::Fill:
             expect(at, ValueType::F32, "edge width");
             expect(at, ValueType::F32, "field distance");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Gain:
+            expect(at, ValueType::F32, "gain k");
+            expect(at, ValueType::F32, "gain t");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Quintic:
+            expect(at, ValueType::F32, "quintic t");
             push(at, ValueType::F32);
             return;
         case Opcode::I32ToF32:

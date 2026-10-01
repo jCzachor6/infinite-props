@@ -98,6 +98,8 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::DistBezier: return "dist.bezier";
     case Opcode::DistBezierCubic: return "dist.bezier.cubic";
     case Opcode::Fill: return "fill";
+    case Opcode::Gain: return "gain";
+    case Opcode::Quintic: return "quintic";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

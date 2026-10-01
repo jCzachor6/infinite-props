@@ -245,7 +245,12 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   `curve(a, b, c [, d], thickness, colour)` draws either form with round
   caps; thickness is an `f32` diameter in target pixels. The noise v2 adds
   `noise.grad`/`noise.fbm`/`noise.cell`/`noise.ridge`, `warp` and
-  `cell.jitter`. Sampling outside their defined coordinate domains traps;
+  `cell.jitter`. The curves add `gain(t, k)` and `quintic(t)`, and
+  `ramp(palette, t)` interpolates a palette continuously (a compiler
+  desugar over the colour/f32 lerps). `gain` defines the `k = 1` limit;
+  `ramp` takes positional arguments and evaluates `t` once even for a
+  one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
+  Sampling outside the noise primitives' defined coordinate domains traps;
   the bounds, octave checks and half-open jitter placement are specified in
   [§12.10](spec/iprop-v0.3.md#1210-the-noise-v2-v03).
 - Asset-level constant arrays (`palette name = [ e, e, … ]`) with integer

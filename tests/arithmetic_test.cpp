@@ -753,6 +753,72 @@ TEST_CASE("the noise v2 values stay inside their pinned ranges") {
     REQUIRE(negativeGradient);
 }
 
+TEST_CASE("gain and quintic match the pinned spec vectors bit for bit") {
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.25f).F(0.5f).emit(0x8F))) ==
+            0x3E800000u); // the identity at k = 0.5
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.5f).F(0.3f).emit(0x8F))) ==
+            0x3F000000u); // the fixed point
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.25f).F(0.1f).emit(0x8F))) ==
+            0x3D4CCCCDu);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.75f).F(0.9f).emit(0x8F))) ==
+            0x3F0CCCCDu);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-1.f).F(0.5f).emit(0x8F))) ==
+            0x00000000u); // the t clamp
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.5f).F(0.f).emit(0x8F))) ==
+            0x3F000000u); // the k clamp keeps the fixed point
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).emit(0x99))) == 0x00000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(1.f).emit(0x99))) == 0x3F800000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.5f).emit(0x99))) == 0x3F000000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.25f).emit(0x99))) == 0x3DD40000u);
+    REQUIRE(bitsOf(evalProgF32(Prog{}.F(-2.f).emit(0x99))) == 0x00000000u);
+    // The monotonicity: the gain pushes towards the extremes as k drops.
+    REQUIRE(evalProgF32(Prog{}.F(0.25f).F(0.1f).emit(0x8F)) <
+            evalProgF32(Prog{}.F(0.25f).F(0.5f).emit(0x8F)));
+    REQUIRE(evalProgF32(Prog{}.F(0.75f).F(0.1f).emit(0x8F)) >
+            evalProgF32(Prog{}.F(0.75f).F(0.5f).emit(0x8F)));
+}
+
+TEST_CASE("gain defines the singular parameter limit and keeps finite inputs in range") {
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    const std::pair<f32, u32> limits[] = {
+        {-inf, 0x00000000u}, {-1.f, 0x00000000u}, {-0.f, 0x00000000u},
+        {0.f, 0x00000000u}, {std::numeric_limits<f32>::denorm_min(), 0x3F000000u},
+        {1e-9f, 0x3F000000u}, {0.25f, 0x3F000000u}, {0.5f, 0x3F000000u},
+        {0.75f, 0x3F000000u}, {std::nextafter(1.f, 0.f), 0x3F000000u},
+        {1.f, 0x3F800000u}, {2.f, 0x3F800000u}, {inf, 0x3F800000u},
+    };
+    for (const f32 k : {1.f, 2.f, inf}) {
+        for (const auto& [t, expected] : limits) {
+            CAPTURE(t, k);
+            REQUIRE(bitsOf(evalProgF32(Prog{}.F(t).F(k).emit(0x8F))) == expected);
+        }
+    }
+    for (const f32 k : {0.f, 1e-4f, 0.01f, 0.5f, 0.9f,
+                        std::nextafter(1.f, 0.f), 1.f, 2.f}) {
+        for (unsigned i = 0; i <= 128; ++i) {
+            const f32 t = static_cast<f32>(i) / 128.f;
+            const f32 value = evalProgF32(Prog{}.F(t).F(k).emit(0x8F));
+            CAPTURE(t, k);
+            REQUIRE(std::isfinite(value));
+            REQUIRE((value >= 0.f && value <= 1.f));
+        }
+    }
+    for (const f32 nan : {f32FromBits(0x7FC01234u), f32FromBits(0xFFC01234u)}) {
+        for (const f32 other : {0.f, 0.5f, 1.f}) {
+            REQUIRE(bitsOf(evalProgF32(Prog{}.F(nan).F(other).emit(0x8F))) == 0x7FC00000u);
+            REQUIRE(bitsOf(evalProgF32(Prog{}.F(other).F(nan).emit(0x8F))) == 0x7FC00000u);
+        }
+    }
+}
+
+TEST_CASE("gain endpoints can feed colour interpolation without nonfinite channels") {
+    const Color black{0, 0, 0, 255}, white{255, 255, 255, 255};
+    REQUIRE(evalProgColor(Prog{}.C(black).C(white).F(0.f).F(1.f).emit(0x8F).emit(0x50)) == black);
+    REQUIRE(evalProgColor(Prog{}.C(black).C(white).F(1.f).F(1.f).emit(0x8F).emit(0x50)) == white);
+    REQUIRE(evalProgColor(Prog{}.C(black).C(white).F(1e-9f).F(1.f).emit(0x8F).emit(0x50)) ==
+            Color{127, 127, 127, 255});
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

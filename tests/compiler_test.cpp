@@ -1134,6 +1134,152 @@ endfn
             bits(fromIps.outputs[0].points[0].y));
 }
 
+TEST_CASE("ramp interpolates palettes continuously") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+  palette stops = [#000000, #808080, #ffffff]
+  palette heights = [0.0, 1.0, 4.0]
+
+  draw(v: i32, a: i32) {
+    c = ramp(stops, 0.5)
+    c2 = ramp(stops, 1.0)
+    h = ramp(heights, 0.75)
+    p = {h, 0}
+    pixel(0, 0, c)
+    pixel(1, 0, c2)
+  }
+})";
+    const auto fromIps = run(compileChecked(source), 0, 0);
+    // t = 0.5 → p = 1, i = 1, f = 0 → stops[1].
+    REQUIRE(fromIps.canvas.at(0, 0) == Color{0x80, 0x80, 0x80, 0xff});
+    // t = 1 → the default stop (the last element).
+    REQUIRE(fromIps.canvas.at(1, 0) == Color{0xff, 0xff, 0xff, 0xff});
+    // t = 0.75 → p = 1.5, i = 1, f = 0.5 → lerp(1, 4, 0.5) = 2.5.
+    REQUIRE(fromIps.outputs[0].points[0].x == 2.5f);
+
+    // The hand-assembled .ipa reference for the f32 ramp (the same
+    // desugar the compiler emits).
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+output: point p
+fn draw ( i32, i32 ) -> ( ):
+  locals: i32 f32 f32
+  const.f32 0.75
+  const.f32 0.0
+  f32.max
+  const.f32 1.0
+  f32.min
+  const.f32 2.0
+  f32.mul
+  dup
+  f32.to.i32
+  local.set 2
+  local.get 2
+  i32.to.f32
+  f32.sub
+  local.set 3
+  block
+    const.i32 0
+    local.get 2
+    i32.eq
+    if
+      const.f32 0.0
+      const.f32 1.0
+      local.get 3
+      lerp
+      local.set 4
+      br 1
+    end
+    const.i32 1
+    local.get 2
+    i32.eq
+    if
+      const.f32 1.0
+      const.f32 4.0
+      local.get 3
+      lerp
+      local.set 4
+      br 1
+    end
+    const.f32 4.0
+    local.set 4
+  end
+  local.get 4
+  const.f32 0.0
+  out.point p
+endfn
+)";
+    const auto fromIpa = run(assemble(ipa), 0, 0);
+    REQUIRE(fromIpa.outputs[0].points[0].x ==
+            fromIps.outputs[0].points[0].x);
+}
+
+TEST_CASE("singleton ramps evaluate their numeric argument exactly once") {
+    const std::string declarations = R"(asset t {
+  size 8x8
+  palette heights = [1.25]
+  palette colors = [#123456]
+  output point result
+  output point following
+
+  fraction() -> f32 {
+    pixel(0, 0, #ff0000)
+    return unit()
+  }
+  integer() -> i32 {
+    pixel(1, 0, #00ff00)
+    return index(7)
+  }
+)";
+    const auto actualBytes = compileChecked(declarations + R"(
+  draw(v: i32, a: i32) {
+    height = ramp(heights, fraction())
+    pixel(2, 0, ramp(colors, integer()))
+    result = {height, unit()}
+    following = {unit(), unit()}
+  }
+})");
+    const auto referenceBytes = compileChecked(declarations + R"(
+  draw(v: i32, a: i32) {
+    discardedFraction = fraction()
+    height = 1.25
+    discardedInteger = integer()
+    pixel(2, 0, #123456)
+    result = {height, unit()}
+    following = {unit(), unit()}
+  }
+})");
+    for (const u32 seed : {0u, 1u, 7u, 42u, 0xFFFFFFFFu}) {
+        CAPTURE(seed);
+        const auto actual = execute(actualBytes, seed);
+        const auto expected = execute(referenceBytes, seed);
+        REQUIRE(actual.canvas.pixels == expected.canvas.pixels);
+        REQUIRE(actual.canvas.at(0, 0) == Color{255, 0, 0, 255});
+        REQUIRE(actual.canvas.at(1, 0) == Color{0, 255, 0, 255});
+        REQUIRE(actual.canvas.at(2, 0) == Color{0x12, 0x34, 0x56, 255});
+        REQUIRE(actual.outputs[0].points[0].x == 1.25f);
+        for (std::size_t slot = 0; slot < expected.outputs.size(); ++slot) {
+            REQUIRE(std::bit_cast<u32>(actual.outputs[slot].points[0].x) ==
+                    std::bit_cast<u32>(expected.outputs[slot].points[0].x));
+            REQUIRE(std::bit_cast<u32>(actual.outputs[slot].points[0].y) ==
+                    std::bit_cast<u32>(expected.outputs[slot].points[0].y));
+        }
+    }
+}
+
+TEST_CASE("singleton ramp arguments retain runtime errors") {
+    const auto bytes = compileChecked(R"(asset t {
+  size 8x8
+  palette heights = [1.25]
+  draw(v: i32, a: i32) {
+    height = ramp(heights, 1 / v)
+  }
+})");
+    REQUIRE_THROWS_AS(execute(bytes), Trap);
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));
