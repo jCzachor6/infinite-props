@@ -129,6 +129,9 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"stream.state", {Opcode::StreamState}},
 
         {"noise", {Opcode::Noise}}, {"fault", {Opcode::Fault}},
+        {"noise.grad", {Opcode::NoiseGrad}}, {"noise.fbm", {Opcode::NoiseFbm}},
+        {"noise.cell", {Opcode::NoiseCell}}, {"warp", {Opcode::Warp}},
+        {"cell.jitter", {Opcode::CellJitter}}, {"noise.ridge", {Opcode::NoiseRidge}},
         {"smooth", {Opcode::Smooth}}, {"lerp", {Opcode::Lerp}},
 
         {"pixel", {Opcode::Pixel}}, {"rect", {Opcode::Rect}},

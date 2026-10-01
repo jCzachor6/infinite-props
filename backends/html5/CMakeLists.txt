@@ -41,6 +41,11 @@ target_include_directories(iprop_runtime PUBLIC ../../runtime)
 # native reference.
 iprop_warnings(iprop_runtime)
 
+# Runtime traps must reach bindings.cpp's FormatError catch and become JS
+# Errors. Emscripten otherwise disables C++ catching and aborts the module.
+# PUBLIC also enables catching in the binding translation unit.
+target_compile_options(iprop_runtime PUBLIC -fexceptions)
+
 add_executable(iprop_html5
     bindings.cpp)
 
@@ -51,6 +56,7 @@ set_target_properties(iprop_html5 PROPERTIES
     LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createIpropModule -sENVIRONMENT=web,node")
 
 target_link_options(iprop_html5 PRIVATE
+    "-fexceptions"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=createIpropModule"
     "-sENVIRONMENT=web,node"

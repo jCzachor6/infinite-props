@@ -155,8 +155,6 @@ enum class Opcode : u8 {
     DistLine = 0x7D,
     DistBezier = 0x7E,
     Fill = 0x7F,
-    DistBezierCubic = 0x88, // placed in the post-canvas gap
-
     // Canvas (§9.8)
     Pixel = 0x80,
     Rect = 0x81,
@@ -166,6 +164,15 @@ enum class Opcode : u8 {
     Weather = 0x85,
     Curve = 0x86,      // quadratic stroke, added in v0.3
     CurveCubic = 0x87, // cubic stroke, added in v0.3
+    DistBezierCubic = 0x88, // placed in the post-canvas gap
+
+    // The noise v2 (spec §9.4/§12.10; added in v0.3)
+    NoiseGrad = 0x89,
+    NoiseFbm = 0x8A,
+    NoiseCell = 0x8B,
+    Warp = 0x8C,
+    CellJitter = 0x8D,
+    NoiseRidge = 0x8E,
 
     // Structured outputs (§9.9)
     OutPoint = 0x90,

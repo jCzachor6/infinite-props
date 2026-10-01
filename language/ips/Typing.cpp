@@ -56,6 +56,12 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"dist.bezier", {{V::Vec2, V::Vec2, V::Vec2, V::Vec2}, V::F32,
                          {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::Vec2}}}},
         {"fill", {{V::F32, V::F32}, V::F32}},
+        {"noise.grad", {{V::F32, V::F32, V::I32}, V::F32}},
+        {"noise.fbm", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
+        {"noise.cell", {{V::F32, V::F32, V::I32}, V::F32}},
+        {"warp", {{V::F32, V::F32, V::F32, V::I32}, V::F32}},
+        {"cell.jitter", {{V::I32, V::I32, V::I32}, V::Vec2}},
+        {"noise.ridge", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
         {"i32trunc", {{V::F32}, V::I32}},
         {"round", {{V::F32}, V::I32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
@@ -275,11 +281,14 @@ ValueType Typer::typeCall(const Call& call) {
         return typeUserCall(*name, call);
     }
     if (std::holds_alternative<Member>(*call.callee)) {
-        // The dotted builtin names (dist.circle, ...): the base `dist` is
-        // the reserved namespace; anything else is a part call.
+        // The dotted builtin names (dist.circle, noise.fbm, ...): the
+        // bases dist/noise/cell are the reserved namespaces; anything
+        // else is a part call.
         const Path path = flatten(*call.callee);
-        if (path.base == "dist" && path.segments.size() == 1) {
-            const std::string full = "dist." + path.segments[0];
+        if (path.segments.size() == 1 &&
+            (path.base == "dist" || path.base == "noise" ||
+             path.base == "cell")) {
+            const std::string full = path.base + "." + path.segments[0];
             const auto builtin = builtinSignatures().find(full);
             if (builtin != builtinSignatures().end()) {
                 Identifier synthetic{full, path.location};

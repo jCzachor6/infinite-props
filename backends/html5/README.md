@@ -86,6 +86,8 @@ default 0; a zero size means the asset's own size). `data` is a copied
   same build serves the demo page and the Node test runner.
 - The WASM heap is reused between `generate` calls; `js/api.js` copies the
   result so earlier results stay valid.
+- C++ exception handling is enabled at compilation and linking so validation
+  failures and runtime traps become catchable JavaScript `Error` objects.
 - Rebuild the pinned hashes in `test/conformance.js` whenever the semantics
   change intentionally (spec update first).
 
@@ -94,3 +96,9 @@ binary32 bits. `ipgen --float-bits` emits those bits as JSON integers; the
 WASM binding exposes them in each slot's `valueBits` array before JS number
 conversion. The math edge fixture pins NaN signs, infinities, signed zero,
 infinite powers and unequal-magnitude angles.
+
+The noise v2 fixture covers all six primitives, their raw binary32 pins,
+the Worley feature two cells away, jitter at rounding boundaries and safe
+lattice limits. A separate 13-variant fixture checks matching native/WASM
+traps for nonfinite inputs, octave/warp overflow and unrepresentable jitter
+cells. Error comparisons are reported separately from image comparisons.

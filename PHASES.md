@@ -39,7 +39,7 @@ format version (minor).
 
 ## 2 + 7. The noise v2 (gradient, fbm, ridge, cell)
 
-- [ ] `2.1` spec: `noise.grad(x, y)` — the pinned permutation lattice and
+- [x] `2.1` spec: `noise.grad(x, y)` — the pinned permutation lattice and
   the fade curve (the standard quintic, pinned internally — independent of
   the task-3 builtins); `noise.fbm(x, y, octaves)` — the pinned
   lacunarity/gain octave summation; `noise.cell(x, y)` — the Worley
@@ -47,10 +47,10 @@ format version (minor).
   fbm — the most-used noise composition as one op); `cell.jitter(x, y)` —
   the hash-based point per lattice cell (the blue-noise detail placement:
   stars, speckles, scattered stones).
-- [ ] `2.2` the runtime + the builtins + the bit tables.
-- [ ] `7.1` spec: `noise.ridge(x, y, octaves)` — the ridged multifractal
+- [x] `2.2` the runtime + the builtins + the bit tables.
+- [x] `7.1` spec: `noise.ridge(x, y, octaves)` — the ridged multifractal
   over the same gradient noise.
-- [ ] `7.2` the runtime + the builtin + the bit tables.
+- [x] `7.2` the runtime + the builtin + the bit tables.
 
 ## 3. The curves and the ramps
 

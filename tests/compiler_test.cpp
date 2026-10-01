@@ -1076,6 +1076,64 @@ endfn
     }
 }
 
+TEST_CASE("the noise v2 builtins compile and match the hand-assembled reference") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+
+  draw(v: i32, a: i32) {
+    g = noise.grad(1.5, 2.5, 7)
+    j = cell.jitter(3, 4, 7)
+    r = noise.ridge(0.5, 0.5, 4, 7)
+    p = {g + r, j.y}
+  }
+})";
+    const auto fromIps = run(compileChecked(source), 0, 0);
+    // g = 0.25 (0x3E800000), r = 0x3F444444 (~0.7667), j.y = 0x40820079
+    // (~4.0626). The sum pins the same bits as the .ipa below.
+    const auto bits = [](f32 value) { return std::bit_cast<u32>(value); };
+    const auto fromBits = [](u32 value) { return std::bit_cast<f32>(value); };
+    REQUIRE(bits(fromIps.outputs[0].points[0].x) ==
+            bits(0.25f + fromBits(0x3F444444u)));
+    REQUIRE(bits(fromIps.outputs[0].points[0].y) == 0x40820079u);
+
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+output: point p
+fn draw ( i32, i32 ) -> ( ):
+  locals: f32 vec2 f32
+  const.f32 1.5
+  const.f32 2.5
+  const.i32 7
+  noise.grad
+  local.set 2
+  const.i32 3
+  const.i32 4
+  const.i32 7
+  cell.jitter
+  local.set 3
+  const.f32 0.5
+  const.f32 0.5
+  const.i32 4
+  const.i32 7
+  noise.ridge
+  local.set 4
+  local.get 2
+  local.get 4
+  f32.add
+  local.get 3
+  vec2.y
+  out.point p
+endfn
+)";
+    const auto fromIpa = run(assemble(ipa), 0, 0);
+    REQUIRE(bits(fromIpa.outputs[0].points[0].x) ==
+            bits(fromIps.outputs[0].points[0].x));
+    REQUIRE(bits(fromIpa.outputs[0].points[0].y) ==
+            bits(fromIps.outputs[0].points[0].y));
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));

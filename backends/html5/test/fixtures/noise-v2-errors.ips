@@ -1,0 +1,35 @@
+asset noiseV2Errors {
+  size 8x8
+  variants 13
+  output point result
+
+  draw(v: i32, a: i32) {
+    if (v == 0) {
+      result = {noise.grad(exp(100), 0.0, 7), 0}
+    } else if (v == 1) {
+      result = {noise.grad(sqrt(-1), 0.0, 7), 0}
+    } else if (v == 2) {
+      result = {noise.grad(0.0, 2147483648.0, 7), 0}
+    } else if (v == 3) {
+      result = {noise.fbm(20000000.0, 0.5, 8, 7), 0}
+    } else if (v == 4) {
+      result = {noise.ridge(0.5, 20000000.0, 8, 7), 0}
+    } else if (v == 5) {
+      result = {noise.cell(-2147483648.0, 0.0, 7), 0}
+    } else if (v == 6) {
+      result = {noise.cell(0.0, 16777215.0, 7), 0}
+    } else if (v == 7) {
+      result = {warp(0.5, 0.5, exp(100), 7), 0}
+    } else if (v == 8) {
+      result = {warp(0.5, 0.5, 3000000000000000000000000000000.0, 7), 0}
+    } else if (v == 9) {
+      result = {warp(0.5, 268435440.0, 0.0, 7), 0}
+    } else if (v == 10) {
+      result = cell.jitter(16777217, 0, 7)
+    } else if (v == 11) {
+      result = cell.jitter(0, -16777217, 7)
+    } else {
+      result = cell.jitter(2147483647, 0, 7)
+    }
+  }
+}

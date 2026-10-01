@@ -33,6 +33,8 @@ async function main() {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
         console.log("native/WASM: PASS (" + native.comparisons +
                     " pixel-exact images and structured outputs; native pins verified)");
+        console.log("native/WASM runtime errors: PASS (" + native.trapComparisons +
+                    " matching trap reasons)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

@@ -243,7 +243,11 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   `dist.line`/`dist.bezier` plus `fill`). `dist.bezier(p, a, b, c)` is
   quadratic; an additional control point selects the cubic form.
   `curve(a, b, c [, d], thickness, colour)` draws either form with round
-  caps; thickness is an `f32` diameter in target pixels.
+  caps; thickness is an `f32` diameter in target pixels. The noise v2 adds
+  `noise.grad`/`noise.fbm`/`noise.cell`/`noise.ridge`, `warp` and
+  `cell.jitter`. Sampling outside their defined coordinate domains traps;
+  the bounds, octave checks and half-open jitter placement are specified in
+  [§12.10](spec/iprop-v0.3.md#1210-the-noise-v2-v03).
 - Asset-level constant arrays (`palette name = [ e, e, … ]`) with integer
   indexing; a bare palette name must be indexed (the default is the last
   element).

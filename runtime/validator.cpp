@@ -65,7 +65,7 @@ public:
             if (file_.layout.header.versionMinor < 3 &&
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
                  (opcode >= 0x74 && opcode <= 0x7F) ||
-                 (opcode >= 0x86 && opcode <= 0x88))) {
+                 (opcode >= 0x86 && opcode <= 0x8E))) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -422,6 +422,34 @@ private:
             expect(at, ValueType::F32, "noise coordinate");
             expect(at, ValueType::F32, "noise coordinate");
             push(at, ValueType::F32);
+            return;
+        case Opcode::NoiseGrad:
+        case Opcode::NoiseCell:
+            expect(at, ValueType::I32, "noise seed");
+            expect(at, ValueType::F32, "noise coordinate");
+            expect(at, ValueType::F32, "noise coordinate");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::NoiseFbm:
+        case Opcode::NoiseRidge:
+            expect(at, ValueType::I32, "noise seed");
+            expect(at, ValueType::I32, "noise octaves");
+            expect(at, ValueType::F32, "noise coordinate");
+            expect(at, ValueType::F32, "noise coordinate");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Warp:
+            expect(at, ValueType::I32, "warp seed");
+            expect(at, ValueType::F32, "warp amount");
+            expect(at, ValueType::F32, "warp coordinate");
+            expect(at, ValueType::F32, "warp coordinate");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::CellJitter:
+            expect(at, ValueType::I32, "jitter seed");
+            expect(at, ValueType::I32, "jitter cell");
+            expect(at, ValueType::I32, "jitter cell");
+            push(at, ValueType::Vec2);
             return;
         case Opcode::Smooth:
             expect(at, ValueType::F32, "smooth input");

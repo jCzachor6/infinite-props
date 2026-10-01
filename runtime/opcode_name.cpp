@@ -115,6 +115,12 @@ const char* opcodeMnemonic(Opcode opcode) {
     // Noise and helpers (§9.7)
     case Opcode::Noise: return "noise";
     case Opcode::Fault: return "fault";
+    case Opcode::NoiseGrad: return "noise.grad";
+    case Opcode::NoiseFbm: return "noise.fbm";
+    case Opcode::NoiseCell: return "noise.cell";
+    case Opcode::Warp: return "warp";
+    case Opcode::CellJitter: return "cell.jitter";
+    case Opcode::NoiseRidge: return "noise.ridge";
     case Opcode::Smooth: return "smooth";
     case Opcode::Lerp: return "lerp";
 

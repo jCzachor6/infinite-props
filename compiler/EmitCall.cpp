@@ -46,8 +46,10 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
             current = member->object.get();
         }
         if (const auto* base = std::get_if<ips::Identifier>(current)) {
-            if (base->name == "dist" && reversed.size() == 1) {
-                const std::string full = "dist." + reversed[0];
+            if (reversed.size() == 1 &&
+                (base->name == "dist" || base->name == "noise" ||
+                 base->name == "cell")) {
+                const std::string full = base->name + "." + reversed[0];
                 if (ips::builtinSignatures().count(full) != 0) {
                     return emitBuiltin(full, call);
                 }
@@ -136,6 +138,18 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
                          Opcode::DistBezier);
     }
     if (name == "fill") return emitFixed({VT::F32, VT::F32}, Opcode::Fill);
+    if (name == "noise.grad")
+        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::NoiseGrad);
+    if (name == "noise.fbm")
+        return emitFixed({VT::F32, VT::F32, VT::I32, VT::I32}, Opcode::NoiseFbm);
+    if (name == "noise.cell")
+        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::NoiseCell);
+    if (name == "warp")
+        return emitFixed({VT::F32, VT::F32, VT::F32, VT::I32}, Opcode::Warp);
+    if (name == "cell.jitter")
+        return emitFixed({VT::I32, VT::I32, VT::I32}, Opcode::CellJitter);
+    if (name == "noise.ridge")
+        return emitFixed({VT::F32, VT::F32, VT::I32, VT::I32}, Opcode::NoiseRidge);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):

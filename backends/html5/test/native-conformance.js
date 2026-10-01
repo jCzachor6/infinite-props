@@ -3,7 +3,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -21,6 +21,7 @@ const sources = [
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
+    ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -82,6 +83,7 @@ function run(iprop, toolsDir) {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-conformance-"));
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
+    let trapComparisons = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -128,6 +130,17 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent SDF/Bezier pins");
             }
+            if (path.basename(file) === "noise-v2.iprop") {
+                const expected = [
+                    [0x3e800000, 0xbe1e1180], [0x3e088889, 0x3e124925],
+                    [0x3e14d03e, 0x3f19a4ab], [0x3e29272c, 0x3e800000],
+                    [0x407de0b8, 0x40820079], [0x3f444444, 0x3f800000],
+                    [0x3f8f7256, 0x3f8f6f13], [0x44c47fff, 0x49800007],
+                    [0, 0],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent noise v2 pins");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -135,6 +148,25 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(wasm.outputs[2].points, [{x: 0, y: a}, {x: 2, y: a}], label + ": loop control");
             }
             ++comparisons;
+        } catch (error) {
+            failures.push(label + ": " + error.message);
+        }
+    }
+    function compareTrap(file, variant, expectedMessage) {
+        const label = path.basename(file) + " variant " + variant;
+        try {
+            const native = spawnSync(tool("ipgen"),
+                [file, "--variant", String(variant), "-o", path.join(temporary, "error.png")],
+                { encoding: "utf8" });
+            if (native.error) throw native.error;
+            assert.equal(native.status, 1, label + ": native runtime failure");
+            assert.equal(native.signal, null, label + ": native must not crash");
+            const message = new RegExp(expectedMessage);
+            assert.match(native.stderr, message, label + ": native trap reason");
+            const bytes = new Uint8Array(fs.readFileSync(file));
+            assert.throws(() => iprop.generate(bytes, { variant }), message,
+                          label + ": WASM trap reason");
+            ++trapComparisons;
         } catch (error) {
             failures.push(label + ": " + error.message);
         }
@@ -155,14 +187,24 @@ function run(iprop, toolsDir) {
                     }
                 }
             }
-            if (name === "bezier") {
+            if (name === "bezier" || name === "noise-v2") {
                 compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }
+        const errors = path.join(temporary, "noise-v2-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/noise-v2-errors.ips"), "-o", errors]);
+        for (let variant = 0; variant < 13; ++variant) {
+            const message = variant === 7 ? "warp amount out of range" : variant >= 10
+                ? "cell index is not representable as f32" : "noise coordinate out of range";
+            compareTrap(errors, variant, message);
+        }
+        // Catching a runtime trap must leave the module usable for generation.
+        compare(path.join(temporary, "noise-v2.iprop"), 7);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

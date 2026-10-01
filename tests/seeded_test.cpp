@@ -1,7 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
+#include <string>
 #include <vector>
 
 #include "support/test_support.hpp"
@@ -42,7 +46,163 @@ f32 faultAt(f32 x, f32 y, u32 seed) {
     return evalProgF32(Prog{}.F(x).F(y).I(static_cast<i32>(seed)).emit(0x71));
 }
 
+f32 cellAt(f32 x, f32 y, u32 seed) {
+    return evalProgF32(Prog{}.F(x).F(y).I(static_cast<i32>(seed)).emit(0x8B));
+}
+
+Vec2 jitterAt(i32 cx, i32 cy, u32 seed) {
+    const auto stack = evalProg(Prog{}.I(cx).I(cy).I(static_cast<i32>(seed)).emit(0x8D));
+    REQUIRE(stack.size() == 1);
+    return std::get<Vec2>(stack[0]);
+}
+
+Prog noiseV2Program(u8 opcode, f32 x, f32 y) {
+    Prog prog;
+    prog.F(x).F(y);
+    if (opcode == 0x8A || opcode == 0x8E) prog.I(8);
+    if (opcode == 0x8C) prog.F(0.2f);
+    return prog.I(7).emit(opcode);
+}
+
+// These are valid draw functions, so the failure must be a located runtime
+// Trap rather than static rejection or undefined float-to-integer conversion.
+void expectValidatedTrap(Prog prog, const char* message) {
+    prog.emit(0x16); // drop the one result; draw returns no values
+    auto loaded = loadFile(buildProgFile(prog));
+    validate(loaded);
+    bool threw = false;
+    try {
+        VM vm(loaded, {});
+        vm.run();
+    } catch (const Trap& error) {
+        threw = true;
+        REQUIRE(error.offset > 0);
+        REQUIRE(std::string(error.what()).find(message) != std::string::npos);
+    }
+    REQUIRE(threw);
+}
+
 } // namespace
+
+TEST_CASE("noise v2 rejects nonfinite and unindexable coordinates in validated files") {
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    for (const u8 opcode : {0x89, 0x8A, 0x8B, 0x8C, 0x8E}) {
+        for (const f32 coordinate : {inf, -inf, f32FromBits(0x7FC01234u),
+                                     std::numeric_limits<f32>::max(),
+                                     -std::numeric_limits<f32>::max(),
+                                     2147483648.f, -2147483904.f}) {
+            CAPTURE(opcode, coordinate);
+            expectValidatedTrap(noiseV2Program(opcode, coordinate, 0.5f),
+                                "noise coordinate out of range");
+            expectValidatedTrap(noiseV2Program(opcode, 0.5f, coordinate),
+                                "noise coordinate out of range");
+        }
+    }
+}
+
+TEST_CASE("noise v2 checks every octave and every warped sampling coordinate") {
+    for (const u8 opcode : {0x8A, 0x8E}) {
+        CAPTURE(opcode);
+        // The original coordinate fits i32; octave 7's coordinate does not.
+        expectValidatedTrap(Prog{}.F(20000000.f).F(0.5f).I(8).I(7).emit(opcode),
+                            "noise coordinate out of range");
+        REQUIRE(std::isfinite(evalProgF32(
+            Prog{}.F(1000000.f).F(0.5f).I(8).I(7).emit(opcode))));
+    }
+    for (const f32 amount : {std::numeric_limits<f32>::infinity(),
+                             -std::numeric_limits<f32>::infinity(),
+                             f32FromBits(0x7FC01234u)}) {
+        expectValidatedTrap(Prog{}.F(0.5f).F(0.5f).F(amount).I(7).emit(0x8C),
+                            "warp amount out of range");
+    }
+    // A finite amount can move the outer fbm outside the lattice domain.
+    expectValidatedTrap(Prog{}.F(0.5f).F(0.5f).F(3e30f).I(7).emit(0x8C),
+                        "noise coordinate out of range");
+    // q1 is safe at all four octaves, but q2's +9.1 offset rounds upward
+    // and makes its last octave equal to 2^31, even with amount zero.
+    expectValidatedTrap(Prog{}.F(0.5f).F(268435440.f).F(0.f).I(7).emit(0x8C),
+                        "noise coordinate out of range");
+}
+
+TEST_CASE("gradient noise safely accepts the representable i32 lattice boundaries") {
+    const f32 upper = std::nextafter(2147483648.f, 0.f);
+    for (const f32 coordinate : {-2147483648.f, upper}) {
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(coordinate).F(0.f).I(7).emit(0x89))) == 0);
+        REQUIRE(bitsOf(evalProgF32(Prog{}.F(0.f).F(coordinate).I(7).emit(0x89))) == 0);
+    }
+}
+
+TEST_CASE("Worley rejects cells outside its exactly representable neighbour domain") {
+    for (const f32 coordinate : {-16777214.f, 16777214.f}) {
+        REQUIRE(std::isfinite(cellAt(coordinate, 0.5f, 7)));
+        REQUIRE(std::isfinite(cellAt(0.5f, coordinate, 7)));
+    }
+    for (const f32 coordinate : {-16777215.f, 16777215.f, -2147483648.f}) {
+        expectValidatedTrap(Prog{}.F(coordinate).F(0.f).I(7).emit(0x8B),
+                            "noise coordinate out of range");
+        expectValidatedTrap(Prog{}.F(0.f).F(coordinate).I(7).emit(0x8B),
+                            "noise coordinate out of range");
+    }
+}
+
+TEST_CASE("cell jitter remains in its half-open cell after binary32 rounding") {
+    for (const i32 cell : {std::numeric_limits<i32>::min(), -16777216, -1048576, -1572, -1, 0, 1571,
+                           1048576, 16777216, 2147483520}) {
+        for (const u32 seed : {0u, 7u, 2070u, 0xffffffffu}) {
+            CAPTURE(cell, seed);
+            const Vec2 point = jitterAt(cell, cell, seed);
+            for (const f32 coordinate : {point.x, point.y}) {
+                REQUIRE(static_cast<double>(coordinate) >= static_cast<double>(cell));
+                REQUIRE(static_cast<double>(coordinate) < static_cast<double>(cell) + 1.0);
+            }
+        }
+    }
+    // Both used to round exactly to the next cell's lower boundary.
+    REQUIRE(bitsOf(jitterAt(1571, 0, 7).x) == bitsOf(std::nextafter(1572.f, 1571.f)));
+    REQUIRE(bitsOf(jitterAt(1048576, 0, 7).x) ==
+            bitsOf(std::nextafter(1048577.f, 1048576.f)));
+    for (const i32 cell : {16777217, -16777217, std::numeric_limits<i32>::max()}) {
+        expectValidatedTrap(Prog{}.I(cell).I(0).I(7).emit(0x8D),
+                            "cell index is not representable as f32");
+        expectValidatedTrap(Prog{}.I(0).I(cell).I(7).emit(0x8D),
+                            "cell index is not representable as f32");
+    }
+}
+
+TEST_CASE("Worley finds the nearest feature two cells away without a lattice seam") {
+    // At the origin seed 2070's nearest feature lies in (-2, 0), outside
+    // the old 3x3 search. The expected bits come from that feature's distance.
+    REQUIRE(bitsOf(cellAt(0.f, 0.f, 2070)) == 0x3F8F7256u);
+    const Vec2 point = jitterAt(-2, 0, 2070);
+    REQUIRE(bitsOf(cellAt(0.f, 0.f, 2070)) ==
+            bitsOf(std::sqrt(point.x * point.x + point.y * point.y)));
+    const f32 atOrigin = cellAt(0.f, 0.f, 2070);
+    for (const f32 x : {-0.0001f, 0.0001f}) {
+        REQUIRE(std::fabs(cellAt(x, 0.f, 2070) - atOrigin) <= 0.000101f);
+    }
+}
+
+TEST_CASE("Worley F1 agrees with an exhaustive larger window of public jitter points") {
+    const Vec2 queries[] = {{0, 0}, {-0.0001f, 0}, {0.5f, 0.5f},
+                             {-3.25f, 4.75f}, {8.9999f, -7.0001f}, {1571.9f, 0.2f}};
+    for (const Vec2 query : queries) {
+        for (const u32 seed : {0u, 7u, 2070u, 0xffffffffu}) {
+            CAPTURE(query.x, query.y, seed);
+            const i32 ix = static_cast<i32>(std::floor(query.x));
+            const i32 iy = static_cast<i32>(std::floor(query.y));
+            f32 expected = std::numeric_limits<f32>::infinity();
+            // Search 9x9 independently of the runtime's window size.
+            for (i32 cy = iy - 4; cy <= iy + 4; ++cy) {
+                for (i32 cx = ix - 4; cx <= ix + 4; ++cx) {
+                    const Vec2 point = jitterAt(cx, cy, seed);
+                    const f32 rx = point.x - query.x, ry = point.y - query.y;
+                    expected = std::min(expected, std::sqrt(rx * rx + ry * ry));
+                }
+            }
+            REQUIRE(bitsOf(cellAt(query.x, query.y, seed)) == bitsOf(expected));
+        }
+    }
+}
 
 TEST_CASE("hash matches the pinned splitmix32 vectors") {
     const auto hash = [](u32 x) {

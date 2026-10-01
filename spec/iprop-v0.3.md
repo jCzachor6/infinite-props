@@ -66,8 +66,8 @@ The 0.2 runtime also accepts 0.1 files using the frozen 0.1 instruction set.
 Section layouts, debug flags and all 0.1 opcode semantics are unchanged.
 
 Version 0.3 adds the `vec2` type (the type code `3`), the vector ops
-(0x5B–0x5F, 0x74–0x79), signed-distance fields (0x7A–0x7F, 0x88), and
-quadratic/cubic strokes (0x86–0x87). These
+(0x5B–0x5F, 0x74–0x79), the signed-distance fields (0x7A–0x7F, 0x88), the
+quadratic/cubic strokes (0x86–0x87) and the noise v2 (0x89–0x8E). These
 MUST appear only in files with minor version 3 or later; a file claiming
 version 0.2 or earlier while using them MUST be rejected. All 0.1/0.2
 layouts and semantics are otherwise unchanged.
@@ -461,6 +461,30 @@ The exact algorithms live in §12.9. `fill` converts a distance into a
 [0,1] coverage with a smoothstep edge of width `w`.
 The language overloads `dist.bezier(p, a, b, c)` and
 `dist.bezier(p, a, b, c, d)` select the quadratic and cubic opcodes.
+
+The noise v2 (added in v0.3; the exact algorithms live in §12.10):
+
+| Op | Mnemonic | Stack |
+| -- | -------- | ----- |
+| 0x89 | noise.grad | `[f32 f32 u32] -> [f32]` (x, y, seed) |
+| 0x8A | noise.fbm | `[f32 f32 i32 u32] -> [f32]` (x, y, octaves, seed) |
+| 0x8B | noise.cell | `[f32 f32 u32] -> [f32]` (x, y, seed) |
+| 0x8C | warp | `[f32 f32 f32 u32] -> [f32]` (x, y, amount, seed) |
+| 0x8D | cell.jitter | `[i32 i32 u32] -> [vec2]` (cx, cy, seed) |
+| 0x8E | noise.ridge | `[f32 f32 i32 u32] -> [f32]` (x, y, octaves, seed) |
+
+`noise.grad` is the gradient noise in [-1, 1]; `noise.fbm`/`noise.ridge`
+sum the octaves (the lacunarity 2, the gain 0.5, the octaves clamped to
+[1, 8], normalised by the amplitude total); `noise.cell` is the Worley F1
+distance; `warp` is the domain-warped `noise.fbm` (the pinned inner
+octaves and offset); `cell.jitter` returns the blue-noise point of the
+lattice cell `(cx, cy)` as the absolute position in [cx, cx+1) × [cy,
+cy+1).
+
+The language spells the dotted names as `noise.grad(...)`,
+`noise.fbm(...)`, `noise.cell(...)`, `noise.ridge(...)`,
+`cell.jitter(...)` and the bare `warp(...)`; the bases `dist`, `noise`
+and `cell` are the reserved builtin namespaces.
 
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
@@ -1035,6 +1059,159 @@ The following binary32 results are normative conformance pins:
 | `dist.bezier({1.5,3}, {0,0}, {0,2}, {3,2}, {3,0})` | `0x3FC00000` |
 | `dist.bezier({1.625,3.375}, {-1,-1.75}, {-2.875,3.875}, {3.5,3.375}, {4,-2})` | `0x3FA79662` |
 | Either Bézier form with any nonfinite coordinate | `0x7FC00000` |
+
+### 12.10 The noise v2 (v0.3)
+
+All the hashing below is §12.1's `hash` (the splitmix32); `hashUnit(h)`
+is §12.2's `[0,1)` draw from the top 24 bits. The cell hashing reuses
+§12.4's lattice mix: `cellHash(seed, cx, cy) = hash(seed ^ cx*73856093 ^
+cy*19349663)` (the u32 wraparound). Every floating step is one IEEE-754
+round-to-nearest binary32 operation in the written order.
+
+Coordinate checks are part of execution, before any conversion to `i32` or
+neighbour-index addition. `noise.grad` requires finite x and y with each
+`floor` in the inclusive integer range `[-2147483648, 2147483646]`, leaving
+room for the `+1` corner. Compare the floor with the exact integer bounds
+(for example, in binary64); converting the upper bound to binary32 first
+would round it up to the unsafe value `2147483648`.
+
+`noise.cell` requires finite x and y with each floor in
+`[-16777214, 16777214]`. This ensures all origins in its 5x5 window are
+exactly representable in binary32. A failed coordinate check traps with
+`noise coordinate out of range`. `noise.fbm` and `noise.ridge` apply the
+gradient check at **every octave**, after multiplying by frequency.
+`warp` requires a finite amount (otherwise `warp amount out of range`)
+and applies those checks to both offset inner fbms and the warped outer
+fbm. Finite initial inputs can therefore trap if a derived coordinate
+leaves the sampling domain.
+
+**noise.grad(x, y, seed)** — the gradient noise, in [-1, 1]:
+
+```
+ix = floor(x); iy = floor(y)
+fx = x - ix;  fy = y - iy                    // in [0, 1)
+u  = fade(fx); v  = fade(fy)                 // the quintic below
+for each corner (cx, cy) in {(ix,iy), (ix+1,iy), (ix,iy+1), (ix+1,iy+1)}:
+    h = cellHash(seed, cx, cy)
+    g = gradients[h & 7]                     // the 8-entry table below
+    n = g.x * (fx - (cx - ix)) + g.y * (fy - (cy - iy))
+p = n00 * (1-u) + n10 * u
+q = n01 * (1-u) + n11 * u
+return p * (1-v) + q * v
+```
+
+`fade(t) = t*t*t*(t*(t*6 - 15) + 10)`; `gradients = {(1,1), (-1,1),
+(1,-1), (-1,-1), (1,0), (-1,0), (0,1), (0,-1)}` (the unnormalised
+Perlin set). `floor` here is the IEEE floor; the products and the sums
+evaluate in the written order.
+
+**noise.fbm(x, y, octaves, seed)** — the octave sum, in [-1, 1]:
+
+```
+octaves = min(max(octaves, 1), 8)            // i32 clamp
+sum = 0; amplitude = 1; frequency = 1; total = 0
+for i in 0 .. octaves-1:
+    sum += amplitude * noise.grad(x * frequency, y * frequency,
+                                  seed + i * 0x9e3779b9)   // u32 wraparound
+    total += amplitude
+    amplitude *= 0.5
+    frequency *= 2
+return sum / total
+```
+
+**noise.cell(x, y, seed)** — the Worley F1 distance:
+
+```
+ix = floor(x); iy = floor(y)
+best = +inf
+for dy in {-2, -1, 0, 1, 2}, for dx in {-2, -1, 0, 1, 2}:  // dy outer, dx inner
+    cx = ix + dx; cy = iy + dy
+    feature = cell.jitter(cx, cy, seed)
+    rx = feature.x - x; ry = feature.y - y
+    d = sqrt(rx*rx + ry*ry)
+    best = min(best, d)
+return best
+```
+
+The full 5x5 window is necessary: a point two cells away can be nearer
+than every point in the surrounding 3x3 cells. It is sufficient because
+the query's own cell contains a feature less than `sqrt(2)` away, while
+every cell outside this window is at least 2 units away along one axis.
+The half-open placement rule below keeps that argument valid after rounding.
+
+**warp(x, y, amount, seed)** — the domain warping over the pinned inner
+fbm (4 octaves, the fixed offset):
+
+```
+q1 = noise.fbm(x, y, 4, seed)
+q2 = noise.fbm(x + 3.7, y + 9.1, 4, seed)
+return noise.fbm(x + amount * q1, y + amount * q2, 4, seed)
+```
+
+**cell.jitter(cx, cy, seed)** — the blue-noise point of the cell, the
+absolute position in `[cx, cx+1) × [cy, cy+1)`:
+
+```
+h = cellHash(seed, cx, cy)
+u = hashUnit(h)
+v = hashUnit(hash(h ^ 0x9e3779b9))
+return {insideCell(cx, u), insideCell(cy, v)}
+```
+
+Both `i32` origins must be exactly representable in binary32; otherwise
+trap with `cell index is not representable as f32`. Every integer in
+`[-16777216, 16777216]` qualifies, as do the exactly representable larger
+integers. A nonrepresentable integer origin's unit cell contains no
+binary32 value, so the half-open result is impossible for that origin.
+
+`insideCell(c, offset)` rounds `binary32(c) + offset` to binary32. If that
+result is greater than or equal to the **exact** upper bound `c+1`, return
+its immediately preceding binary32 value (equivalent to `nextafter`
+toward negative infinity); otherwise return the rounded sum. The upper
+bound comparison uses binary64 or exact integer arithmetic, without
+overflowing `i32`. This prevents an offset below 1 from rounding onto the
+next cell's boundary. `noise.cell` uses these same feature coordinates.
+
+**noise.ridge(x, y, octaves, seed)** — the ridged multifractal, in
+[0, 1]:
+
+```
+octaves = min(max(octaves, 1), 8)
+sum = 0; amplitude = 0.5; frequency = 1; total = 0
+for i in 0 .. octaves-1:
+    g = noise.grad(x * frequency, y * frequency, seed + i * 0x9e3779b9)
+    r = 1 - abs(g)
+    r = r * r
+    sum += r * amplitude
+    total += amplitude
+    amplitude *= 0.5
+    frequency *= 2
+return sum / total
+```
+
+Pinned vectors (f32 bits; the seed operand is 7 unless specified):
+
+| Input | Result |
+| ----- | ------ |
+| `noise.grad(0, 0)` | `0x00000000` |
+| `noise.grad(1.5, 2.5)` | `0x3E800000` |
+| `noise.grad(-3.25, 4.75)` | `0xBE1E1180` |
+| `noise.fbm(0.5, 0.5, 4)` | `0x3E088889` |
+| `noise.fbm(1.5, 2.5, 3)` | `0x3E124925` |
+| `noise.cell(0.5, 0.5)` | `0x3E14D03E` |
+| `noise.cell(-3.25, 4.75)` | `0x3F19A4AB` |
+| `warp(0.5, 0.5, 0.2)` | `0x3E29272C` |
+| `cell.jitter(3, 4)` | `(0x407DE0B8, 0x40820079)` |
+| `cell.jitter(1571, 0).x` | `0x44C47FFF` — the predecessor of 1572 |
+| `noise.cell(0, 0, seed=2070)` | `0x3F8F7256` — the closest feature is in cell `(-2, 0)` |
+| `noise.ridge(0.5, 0.5, 4)` | `0x3F444444` |
+| `noise.fbm(0.5, 0.5, 0)` (clamped to 1) | `0x3E800000` — the first octave only |
+
+Error vectors: `noise.grad(+inf, 0, 7)`, `noise.grad(NaN, 0, 7)`,
+`noise.fbm(20000000, 0.5, 8, 7)` and
+`noise.cell(-2147483648, 0, 7)` all trap with
+`noise coordinate out of range`; `cell.jitter(16777217, 0, 7)` traps with
+`cell index is not representable as f32`.
 
 ## 13. Determinism rules
 
