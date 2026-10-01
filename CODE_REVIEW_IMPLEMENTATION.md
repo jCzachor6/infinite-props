@@ -13,7 +13,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
 - [ ] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
 - [ ] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
-- [ ] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
+- [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
 - [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
 - [ ] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
 - [ ] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
@@ -41,4 +41,9 @@ kolejnych mnożeń w obu kolejnościach wymaga najwyżej dwóch lokalnych slotó
 (poza parametrami). Testy mnożeń/RNG: 5 przypadków, 242 asercje PASS;
 pełny CTest ponownie 6/6 PASS po tej zmianie.
 
-W toku: R3 i A7; następnie deterministyczność i wydzielenie matematyki.
+A7: `cmake/RuntimeSources.cmake` zasila oba niezależne buildy. Świeże
+konfiguracje Release w `/tmp/iprop-fixes.C5KhDL/native` i `wasm` zbudowane
+poprawnie. Porównanie między nimi: 7 golden, 116 obrazów i outputów,
+19 powodów trapów PASS (`shared-conformance.log`).
+
+W toku: R3; następnie deterministyczność i wydzielenie matematyki.

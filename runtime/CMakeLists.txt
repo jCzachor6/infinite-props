@@ -1,21 +1,5 @@
-add_library(iprop_runtime
-    version.cpp
-    opcode_name.cpp
-    debug.cpp
-    format.cpp
-    consts.cpp
-    meta.cpp
-    code.cpp
-    validator.cpp
-    vm.cpp
-    stack.cpp
-    control.cpp
-    arithmetic.cpp
-    seeded.cpp
-    canvas.cpp
-    outputs.cpp
-    parts.cpp
-    utf8.cpp)
+include(../cmake/RuntimeSources.cmake)
+add_library(iprop_runtime ${IPROP_RUNTIME_SOURCES})
 
 add_library(iprop::runtime ALIAS iprop_runtime)
 set_target_properties(iprop_runtime PROPERTIES

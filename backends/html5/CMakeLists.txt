@@ -15,24 +15,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(../../cmake/CompilerWarnings.cmake)
 
-add_library(iprop_runtime STATIC
-    ../../runtime/version.cpp
-    ../../runtime/opcode_name.cpp
-    ../../runtime/debug.cpp
-    ../../runtime/format.cpp
-    ../../runtime/consts.cpp
-    ../../runtime/meta.cpp
-    ../../runtime/code.cpp
-    ../../runtime/validator.cpp
-    ../../runtime/vm.cpp
-    ../../runtime/stack.cpp
-    ../../runtime/control.cpp
-    ../../runtime/arithmetic.cpp
-    ../../runtime/seeded.cpp
-    ../../runtime/canvas.cpp
-    ../../runtime/outputs.cpp
-    ../../runtime/parts.cpp
-    ../../runtime/utf8.cpp)
+include(../../cmake/RuntimeSources.cmake)
+add_library(iprop_runtime STATIC ${IPROP_RUNTIME_SOURCES})
 
 target_include_directories(iprop_runtime PUBLIC ../../runtime)
 
