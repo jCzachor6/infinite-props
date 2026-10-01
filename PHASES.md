@@ -61,12 +61,12 @@ format version (minor).
 
 ## 4. The colours
 
-- [ ] `4.1` spec: `color.hsv(c, hueShift, satScale, valScale)` — the pinned
+- [x] `4.1` spec: `color.hsv(c, hueShift, satScale, valScale)` — the pinned
   RGB↔HSV round-trip (the hue in turns [0,1)); `color.mul` (the
   channel-wise multiply, truncating like `color.mix`); `color.scale`
   (`f32` × channels, clamped); the decision on the reserved 0x52:
   `color.set.a` `[c i32] -> [c]`, clamped to [0,255].
-- [ ] `4.2` the runtime + the builtins + the bit tables.
+- [x] `4.2` the runtime + the builtins + the bit tables.
 
 ## 5. The dither, the fold and the polar
 

@@ -23,6 +23,7 @@ const sources = [
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],
+    ["colors", "backends/html5/test/fixtures/colors.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -168,6 +169,12 @@ function run(iprop, toolsDir) {
                         label + ": helper side effects and gain/ramp colours");
                 }
             }
+            if (path.basename(file) === "colors.iprop" && native.width === 8) {
+                assert.deepEqual(native.data.subarray(0, 64), Buffer.from(
+                    "ff8000ffff7f00ff7fff00ff00ff7fff007fffff7f00ffffff007fffff007fff" +
+                    "ff7f00ff808080ffffffffff7f0000ff112233ff404040ff405060ff000000ff", "hex"),
+                    label + ": neutral HSV, sector midpoints, hue wrapping and colour ops");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -214,7 +221,7 @@ function run(iprop, toolsDir) {
                     }
                 }
             }
-            if (name === "bezier" || name === "noise-v2" || name === "curves") {
+            if (name === "bezier" || name === "noise-v2" || name === "curves" || name === "colors") {
                 compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }
@@ -232,7 +239,14 @@ function run(iprop, toolsDir) {
         for (let variant = 0; variant < 2; ++variant) {
             compareTrap(rampErrors, variant, "divide by zero");
         }
+        const colorErrors = path.join(temporary, "color-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/color-errors.ips"), "-o", colorErrors]);
+        for (let variant = 0; variant < 4; ++variant) {
+            compareTrap(colorErrors, variant, "color.hsv hue shift must be finite");
+        }
         // Catching a runtime trap must leave the module usable for generation.
+        compare(path.join(temporary, "colors.iprop"), 7);
         compare(path.join(temporary, "noise-v2.iprop"), 7);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });

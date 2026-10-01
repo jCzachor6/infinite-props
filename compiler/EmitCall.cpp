@@ -49,10 +49,13 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
             current = member->object.get();
         }
         if (const auto* base = std::get_if<ips::Identifier>(current)) {
-            if (reversed.size() == 1 &&
+            if (!reversed.empty() &&
                 (base->name == "dist" || base->name == "noise" ||
-                 base->name == "cell")) {
-                const std::string full = base->name + "." + reversed[0];
+                 base->name == "cell" || base->name == "color")) {
+                std::string full = base->name;
+                for (auto it = reversed.rbegin(); it != reversed.rend(); ++it) {
+                    full += "." + *it;
+                }
                 if (ips::builtinSignatures().count(full) != 0) {
                     return emitBuiltin(full, call);
                 }
@@ -155,6 +158,14 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         return emitFixed({VT::I32, VT::I32, VT::I32}, Opcode::CellJitter);
     if (name == "noise.ridge")
         return emitFixed({VT::F32, VT::F32, VT::I32, VT::I32}, Opcode::NoiseRidge);
+    if (name == "color.set.a")
+        return emitFixed({VT::Color, VT::I32}, Opcode::ColorSetA);
+    if (name == "color.mul")
+        return emitFixed({VT::Color, VT::Color}, Opcode::ColorMul);
+    if (name == "color.scale")
+        return emitFixed({VT::Color, VT::F32}, Opcode::ColorScale);
+    if (name == "color.hsv")
+        return emitFixed({VT::Color, VT::F32, VT::F32, VT::F32}, Opcode::ColorHsv);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):

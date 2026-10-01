@@ -64,6 +64,10 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"warp", {{V::F32, V::F32, V::F32, V::I32}, V::F32}},
         {"cell.jitter", {{V::I32, V::I32, V::I32}, V::Vec2}},
         {"noise.ridge", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
+        {"color.set.a", {{V::Color, V::I32}, V::Color}},
+        {"color.mul", {{V::Color, V::Color}, V::Color}},
+        {"color.scale", {{V::Color, V::F32}, V::Color}},
+        {"color.hsv", {{V::Color, V::F32, V::F32, V::F32}, V::Color}},
         {"i32trunc", {{V::F32}, V::I32}},
         {"round", {{V::F32}, V::I32}},
         {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
@@ -290,10 +294,13 @@ ValueType Typer::typeCall(const Call& call) {
         // bases dist/noise/cell are the reserved namespaces; anything
         // else is a part call.
         const Path path = flatten(*call.callee);
-        if (path.segments.size() == 1 &&
+        if (!path.segments.empty() &&
             (path.base == "dist" || path.base == "noise" ||
-             path.base == "cell")) {
-            const std::string full = path.base + "." + path.segments[0];
+             path.base == "cell" || path.base == "color")) {
+            std::string full = path.base;
+            for (const std::string& segment : path.segments) {
+                full += "." + segment;
+            }
             const auto builtin = builtinSignatures().find(full);
             if (builtin != builtinSignatures().end()) {
                 Identifier synthetic{full, path.location};

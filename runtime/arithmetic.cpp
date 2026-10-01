@@ -279,6 +279,61 @@ f32 quinticCurve(f32 t) {
     return t3 * inner;
 }
 
+// ---- the colours (spec §12.12) ----------------------------------------------
+
+Color colorHsv(const Color& c, f32 hueShift, f32 satScale, f32 valScale) {
+    const f32 r = static_cast<f32>(c.r) / 255.f;
+    const f32 g = static_cast<f32>(c.g) / 255.f;
+    const f32 b = static_cast<f32>(c.b) / 255.f;
+    const f32 mx = std::fmax(std::fmax(r, g), b);
+    const f32 mn = std::fmin(std::fmin(r, g), b);
+    const f32 delta = mx - mn;
+    const f32 v = mx;
+    const f32 s = mx == 0.f ? 0.f : delta / mx;
+    f32 h;
+    if (delta == 0.f) {
+        h = 0.f;
+    } else if (mx == r) {
+        // The 6 * delta is the five pinned additions.
+        const f32 d6 = ((((delta + delta) + delta) + delta) + delta) + delta;
+        h = (g - b) / d6;
+        h = h - std::floor(h); // the negative wrap
+    } else if (mx == g) {
+        const f32 d6 = ((((delta + delta) + delta) + delta) + delta) + delta;
+        h = (b - r) / d6 + 1.f / 3.f;
+    } else {
+        const f32 d6 = ((((delta + delta) + delta) + delta) + delta) + delta;
+        h = (r - g) / d6 + 2.f / 3.f;
+    }
+    h = h + hueShift;
+    h = h - std::floor(h);
+    const f32 s2 = std::clamp(s * satScale, 0.f, 1.f);
+    const f32 v2 = std::clamp(v * valScale, 0.f, 1.f);
+    const f32 chroma = v2 * s2;
+    const f32 h6 = h * 6.f;
+    const f32 sector = std::fmod(std::floor(h6), 6.f);
+    // Keep the fractional hue for interpolation; only sector selection floors it.
+    const f32 parity = std::fmod(h6, 2.f);
+    const f32 x = chroma * (1.f - std::fabs(parity - 1.f));
+    const f32 m = v2 - chroma;
+    f32 r1;
+    f32 g1;
+    f32 b1;
+    switch (static_cast<int>(sector)) {
+    case 0: r1 = chroma; g1 = x; b1 = 0.f; break;
+    case 1: r1 = x; g1 = chroma; b1 = 0.f; break;
+    case 2: r1 = 0.f; g1 = chroma; b1 = x; break;
+    case 3: r1 = 0.f; g1 = x; b1 = chroma; break;
+    case 4: r1 = x; g1 = 0.f; b1 = chroma; break;
+    default: r1 = chroma; g1 = 0.f; b1 = x; break;
+    }
+    const auto toByte = [](f32 channel) {
+        const i32 truncated = f32ToI32(channel * 255.f);
+        return static_cast<u8>(std::clamp(truncated, 0, 255));
+    };
+    return Color{toByte(r1 + m), toByte(g1 + m), toByte(b1 + m), c.a};
+}
+
 f32 f32Cos(f32 x) {
     const double value = static_cast<double>(x);
     if (std::isnan(value) || std::isinf(value)) {
@@ -986,8 +1041,47 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
-    case Opcode::ColorSetA: // reserved in v0.1 (spec §9.5)
-        ex.trap("reserved opcode");
+    case Opcode::ColorSetA: {
+        const i32 amount = ex.popI32();
+        const Color c = ex.popColor();
+        ex.push(Value(Color{c.r, c.g, c.b,
+                            static_cast<u8>(std::clamp(amount, 0, 255))}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::ColorMul: {
+        const Color b = ex.popColor();
+        const Color a = ex.popColor();
+        ex.push(Value(Color{static_cast<u8>((static_cast<u32>(a.r) * b.r) / 255u),
+                            static_cast<u8>((static_cast<u32>(a.g) * b.g) / 255u),
+                            static_cast<u8>((static_cast<u32>(a.b) * b.b) / 255u),
+                            a.a}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::ColorScale: {
+        const f32 s = ex.popF32();
+        const Color c = ex.popColor();
+        const auto channel = [s](u8 ch) {
+            const i32 truncated = f32ToI32(static_cast<f32>(ch) * s);
+            return static_cast<u8>(std::clamp(truncated, 0, 255));
+        };
+        ex.push(Value(Color{channel(c.r), channel(c.g), channel(c.b), c.a}));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::ColorHsv: {
+        const f32 valScale = ex.popF32();
+        const f32 satScale = ex.popF32();
+        const f32 hueShift = ex.popF32();
+        const Color c = ex.popColor();
+        if (!std::isfinite(hueShift)) {
+            ex.trap("color.hsv hue shift must be finite");
+        }
+        ex.push(Value(colorHsv(c, hueShift, satScale, valScale)));
+        ++ex.frame().ip;
+        return true;
+    }
 
     default:
         return false;

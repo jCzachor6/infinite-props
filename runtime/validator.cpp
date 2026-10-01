@@ -65,7 +65,8 @@ public:
             if (file_.layout.header.versionMinor < 3 &&
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
                  (opcode >= 0x74 && opcode <= 0x7F) ||
-                 (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99)) {
+                 (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99 ||
+                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9C))) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -398,8 +399,28 @@ private:
             expect(at, ValueType::Color, "shade colour");
             push(at, ValueType::Color);
             return;
-        case Opcode::ColorSetA: // reserved in v0.1
-            fail(at, "reserved opcode");
+        case Opcode::ColorSetA:
+            expect(at, ValueType::I32, "alpha amount");
+            expect(at, ValueType::Color, "shade colour");
+            push(at, ValueType::Color);
+            return;
+        case Opcode::ColorMul:
+            expect(at, ValueType::Color, "multiply colour");
+            expect(at, ValueType::Color, "multiply colour");
+            push(at, ValueType::Color);
+            return;
+        case Opcode::ColorScale:
+            expect(at, ValueType::F32, "scale factor");
+            expect(at, ValueType::Color, "scaled colour");
+            push(at, ValueType::Color);
+            return;
+        case Opcode::ColorHsv:
+            expect(at, ValueType::F32, "value scale");
+            expect(at, ValueType::F32, "saturation scale");
+            expect(at, ValueType::F32, "hue shift");
+            expect(at, ValueType::Color, "hsv colour");
+            push(at, ValueType::Color);
+            return;
 
         // Seeded primitives (§9.6).
         case Opcode::StreamPush:

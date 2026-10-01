@@ -423,7 +423,7 @@ void VM::run() {
         // counts themselves, up front (spec §8.3).
         ex.spend(1);
         if (!detail::dispatch(ex, ins)) {
-            ex.trap("opcode not implemented yet (interpreter phase pending)");
+            ex.trap("reserved opcode");
         }
     }
 }

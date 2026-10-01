@@ -123,6 +123,8 @@ const OpDef* lookup(const std::string& mnemonic) {
         {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
 
         {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},
+        {"color.set.a", {Opcode::ColorSetA}}, {"color.mul", {Opcode::ColorMul}},
+        {"color.scale", {Opcode::ColorScale}}, {"color.hsv", {Opcode::ColorHsv}},
 
         {"stream.push", {Opcode::StreamPush}}, {"stream.pop", {Opcode::StreamPop}},
         {"rng.unit", {Opcode::RngUnit}}, {"rng.range", {Opcode::RngRange}},

@@ -1280,6 +1280,65 @@ TEST_CASE("singleton ramp arguments retain runtime errors") {
     REQUIRE_THROWS_AS(execute(bytes), Trap);
 }
 
+TEST_CASE("the colour builtins compile and match the hand-assembled reference") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  draw(v: i32, a: i32) {
+    c = color.hsv(#ff0000, 0.16666667, 1.0, 1.0)
+    c2 = color.mul(#ff8040, #4080ff)
+    c3 = color.set.a(c2, 255)
+    pixel(0, 0, c)
+    pixel(1, 0, c2)
+    pixel(2, 0, c3)
+  }
+})";
+    const auto fromIps = run(compileChecked(source), 0, 0);
+    REQUIRE(fromIps.canvas.at(0, 0) == Color{0xff, 0xff, 0x00, 0xff});
+    REQUIRE(fromIps.canvas.at(1, 0) == Color{0x40, 0x40, 0x40, 0xff});
+    // The set.a keeps the channels; the opaque alpha leaves the pixel
+    // untouched (the semi-transparent case composites under §11.1).
+    REQUIRE(fromIps.canvas.at(2, 0) == Color{0x40, 0x40, 0x40, 0xff});
+
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+fn draw ( i32, i32 ) -> ( ):
+  locals: color color color
+  const.color #ff0000ff
+  const.f32 0.16666667
+  const.f32 1.0
+  const.f32 1.0
+  color.hsv
+  local.set 2
+  const.color #ff8040ff
+  const.color #4080ffff
+  color.mul
+  local.set 3
+  local.get 3
+  const.i32 255
+  color.set.a
+  local.set 4
+  const.i32 0
+  const.i32 0
+  local.get 2
+  pixel
+  const.i32 1
+  const.i32 0
+  local.get 3
+  pixel
+  const.i32 2
+  const.i32 0
+  local.get 4
+  pixel
+endfn
+)";
+    const auto fromIpa = run(assemble(ipa), 0, 0);
+    for (std::size_t i = 0; i < fromIps.canvas.pixels.size(); ++i) {
+        INFO("pixel " << i);
+        REQUIRE(fromIps.canvas.pixels[i] == fromIpa.canvas.pixels[i]);
+    }
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));

@@ -520,10 +520,14 @@ Conversions:
 | -- | -------- | ----- | --------- |
 | 0x50 | color.mix | `[c c f32] -> [c]` | channel lerp: `u8(a*(1-t) + b*t)`, t clamped to [0,1], conversion truncates |
 | 0x51 | color.shade | `[c i32] -> [c]` | add amount to R,G,B, clamped to [0,255]; A unchanged |
-| 0x52 | color.set.a | `[c u8?] -> [c]` | reserved — see §13 |
+| 0x52 | color.set.a | `[c i32] -> [c]` | set A to the amount clamped to [0,255]; R,G,B unchanged |
+| 0x9A | color.mul | `[c c] -> [c]` | channel-wise product `(a*r)/255` (integer division); A copied from the first colour |
+| 0x9B | color.scale | `[c f32] -> [c]` | `clamp(trunc(ch*s), 0, 255)` per R,G,B; A unchanged |
+| 0x9C | color.hsv | `[c f32 f32 f32] -> [c]` | the hue shift in turns, the saturation/value multipliers (§12.12) |
 
-(0x52 is reserved pending a decision on alpha manipulation; files using it are
-invalid in v0.1.)
+(0x52 was reserved in v0.1 pending the alpha decision; v0.3 resolves it to
+`[c i32] -> [c]` with the clamped amount. The 0x52, 0x9A–0x9C opcodes MUST
+appear only in files with minor version 3 or later.)
 
 ### 9.6 Seeded primitives (RNG)
 
@@ -1301,6 +1305,100 @@ Pinned vectors (f32 bits):
 | `quintic(0.25)` | `0x3DD40000` |
 | `quintic(0.5)` | `0x3F000000` |
 | `quintic(-2)` (the clamp) | `0x00000000` |
+
+### 12.12 The colours (v0.3)
+
+Every floating step is one IEEE-754 round-to-nearest binary32 operation
+in the written order; the final channel conversions truncate toward
+zero, like `color.mix`.
+
+**color.set.a(c, a):**
+
+```
+return {c.r, c.g, c.b, clamp(a, 0, 255)}
+```
+
+**color.mul(a, b):**
+
+```
+return {a.r*b.r/255, a.g*b.g/255, a.b*b.b/255, a.a}
+```
+
+The products are the u32 arithmetic; the divisions are the integer
+divisions (the truncation).
+
+**color.scale(c, s):**
+
+```
+r = clamp(trunc(c.r * s), 0, 255)     // and g, b likewise
+return {r, g, b, c.a}
+```
+
+**color.hsv(c, hueShift, satScale, valScale):**
+
+`hueShift` MUST be finite. NaN or either infinity traps with
+`color.hsv hue shift must be finite`, before the sector conversion.
+
+```
+r = c.r/255; g = c.g/255; b = c.b/255
+max = max(r, g, b); min = min(r, g, b); delta = max - min
+v = max
+s = max == 0 ? 0 : delta / max
+h:
+    if delta == 0: 0
+    elif max == r: frac((g - b) / (6 * delta))
+    elif max == g: (b - r) / (6 * delta) + 1/3
+    else:          (r - g) / (6 * delta) + 2/3
+h = h + hueShift
+h = h - floor(h)                            // the wrap (frac)
+s = clamp(s * satScale, 0, 1)
+v = clamp(v * valScale, 0, 1)
+chroma = v * s
+h6 = h * 6
+x = chroma * (1 - |fmod(h6, 2) - 1|)          // the continuous sector fade
+m = v - chroma
+(r1, g1, b1) per the sector floor(h6) mod 6:
+    0: (chroma, x, 0); 1: (x, chroma, 0); 2: (0, chroma, x)
+    3: (0, x, chroma); 4: (x, 0, chroma); 5: (chroma, 0, x)
+return {trunc((r1 + m) * 255), trunc((g1 + m) * 255),
+        trunc((b1 + m) * 255), c.a}
+```
+
+`6 * delta` is the addition `delta + delta + delta + delta + delta +
+delta`; `fmod(h6, 2)` is the floating remainder, retaining the fractional
+hue. `floor(h6) mod 6` uses the integer remainder of §9.3 and selects
+sectors 0–5 (the modulo also handles `h6` rounding to 6 at the wrap).
+The hue shift is in turns; the saturation/value scales are the
+multipliers (1 = unchanged). With neutral parameters `(0, 1, 1)`, the
+RGB round-trip can lose one channel unit due to binary32 rounding and
+the final truncation; alpha is copied exactly.
+
+Pinned vectors (the channel bytes):
+
+| Input | Result |
+| ----- | ------ |
+| `color.set.a(#11223344, 128)` | `#11223380` |
+| `color.set.a(#11223344, -5)` | `#11223300` |
+| `color.mul(#808080ff, #808080ff)` | `#404040ff` |
+| `color.mul(#ff8040ff, #4080ffff)` | `#404040ff` |
+| `color.scale(#80a0c0ff, 0.5)` | `#405060ff` |
+| `color.scale(#804040ff, 2.5)` | `#ffa0a0ff` |
+| `color.hsv(#ff0000ff, 1/6, 1, 1)` | `#ffff00ff` |
+| `color.hsv(#ff0000ff, 1/3, 1, 1)` | `#00ff00ff` |
+| `color.hsv(#ff8000ff, 0, 1, 1)` | `#ff8000ff` |
+| `color.hsv(#ff0000ff, 1/12, 1, 1)` | `#ff7f00ff` |
+| `color.hsv(#ff0000ff, 1/4, 1, 1)` | `#7fff00ff` |
+| `color.hsv(#ff0000ff, 5/12, 1, 1)` | `#00ff7fff` |
+| `color.hsv(#ff0000ff, 7/12, 1, 1)` | `#007fffff` |
+| `color.hsv(#ff0000ff, 3/4, 1, 1)` | `#7f00ffff` |
+| `color.hsv(#ff0000ff, 11/12, 1, 1)` | `#ff007fff` |
+| `color.hsv(#ff0000ff, -1/12, 1, 1)` | `#ff007fff` |
+| `color.hsv(#ff0000ff, NaN, 1, 1)` | trap: `color.hsv hue shift must be finite` |
+| `color.hsv(#ff0000ff, +∞, 1, 1)` | trap: `color.hsv hue shift must be finite` |
+| `color.hsv(#ff0000ff, -∞, 1, 1)` | trap: `color.hsv hue shift must be finite` |
+| `color.hsv(#ff0000ff, 0, 0, 1)` | `#ffffffff` (the desaturation at v=1) |
+| `color.hsv(#ff0000ff, 0, 1, 0.5)` | `#7f0000ff` |
+| `color.hsv(#336699ff, 0.75, 0.5, 1.5)` | `#99e599ff` |
 
 ## 13. Determinism rules
 

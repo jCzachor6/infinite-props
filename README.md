@@ -247,7 +247,10 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   `noise.grad`/`noise.fbm`/`noise.cell`/`noise.ridge`, `warp` and
   `cell.jitter`. The curves add `gain(t, k)` and `quintic(t)`, and
   `ramp(palette, t)` interpolates a palette continuously (a compiler
-  desugar over the colour/f32 lerps). `gain` defines the `k = 1` limit;
+  desugar over the colour/f32 lerps). The colours add `color.set.a`,
+  `color.mul`, `color.scale` and `color.hsv` (the hue in turns;
+  nonfinite hue shifts trap, [§12.12](spec/iprop-v0.3.md#1212-the-colours-v03)).
+  `gain` defines the `k = 1` limit;
   `ramp` takes positional arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
   Sampling outside the noise primitives' defined coordinate domains traps;

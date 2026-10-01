@@ -104,6 +104,10 @@ const char* opcodeMnemonic(Opcode opcode) {
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";
     case Opcode::ColorShade: return "color.shade";
+    case Opcode::ColorSetA: return "color.set.a";
+    case Opcode::ColorMul: return "color.mul";
+    case Opcode::ColorScale: return "color.scale";
+    case Opcode::ColorHsv: return "color.hsv";
 
     // Seeded primitives (§9.6)
     case Opcode::StreamPush: return "stream.push";

@@ -1,0 +1,21 @@
+asset colors {
+  size 8x8
+  draw(v: i32, a: i32) {
+    pixel(0, 0, color.hsv(#ff8000, 0, 1, 1))
+    pixel(1, 0, color.hsv(#ff0000, 0.08333333, 1, 1))
+    pixel(2, 0, color.hsv(#ff0000, 0.25, 1, 1))
+    pixel(3, 0, color.hsv(#ff0000, 0.41666667, 1, 1))
+    pixel(4, 0, color.hsv(#ff0000, 0.58333333, 1, 1))
+    pixel(5, 0, color.hsv(#ff0000, 0.75, 1, 1))
+    pixel(6, 0, color.hsv(#ff0000, 0.91666667, 1, 1))
+    pixel(7, 0, color.hsv(#ff0000, -0.08333333, 1, 1))
+    pixel(0, 1, color.hsv(#ff0000, 1.0833333, 1, 1))
+    pixel(1, 1, color.hsv(#808080, 0.2, 1, 1))
+    pixel(2, 1, color.hsv(#ff0000, 0.1, 0, 1))
+    pixel(3, 1, color.hsv(#ff0000, 0, 1, 0.5))
+    pixel(4, 1, color.set.a(#11223344, 255))
+    pixel(5, 1, color.mul(#ff8040, #4080ff))
+    pixel(6, 1, color.scale(#80a0c0, 0.5))
+    pixel(7, 1, color.hsv(#000000, 0.5, 1, 1))
+  }
+}

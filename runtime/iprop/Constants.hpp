@@ -106,7 +106,7 @@ enum class Opcode : u8 {
     // Colour (§9.5)
     ColorMix = 0x50,
     ColorShade = 0x51,
-    ColorSetA = 0x52, // reserved in v0.1; validation rejects it
+    ColorSetA = 0x52, // v0.3: the alpha set; reserved (rejected) before 0.3
     F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
     // The math package (§9.4/§12.8)
@@ -190,6 +190,11 @@ enum class Opcode : u8 {
 
     // The curves, continued (spec §9.4/§12.11; added in v0.3)
     Quintic = 0x99,
+
+    // The colours (spec §9.5/§12.12; added in v0.3)
+    ColorMul = 0x9A,
+    ColorScale = 0x9B,
+    ColorHsv = 0x9C,
 
     // Parts (§9.10)
     PartDraw = 0xA0,
