@@ -899,6 +899,86 @@ TEST_CASE("HSV traps on nonfinite hue shifts before converting the sector") {
     }
 }
 
+TEST_CASE("dither matches the pinned Bayer thresholds") {
+    // (0,0) -> 0 -> the threshold 0.03125; the >= comparison.
+    REQUIRE(evalProgF32(Prog{}.F(0.f).I(0).I(0).emit(0x9D)) == 0.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.03125f).I(0).I(0).emit(0x9D)) == 1.f);
+    // (1,0) -> 8 -> the threshold 0.53125.
+    REQUIRE(evalProgF32(Prog{}.F(0.53125f).I(1).I(0).emit(0x9D)) == 1.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.5f).I(1).I(0).emit(0x9D)) == 0.f);
+    // The negative coordinates wrap through the u32 mask.
+    REQUIRE(evalProgF32(Prog{}.F(0.f).I(-4).I(0).emit(0x9D)) == 0.f);
+    REQUIRE(evalProgF32(Prog{}.F(0.03125f).I(-4).I(0).emit(0x9D)) == 1.f);
+}
+
+TEST_CASE("fold and polar follow the pinned identities") {
+    // fold(v, 2) mirrors into the right half-plane.
+    const auto f1 = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).I(2).emit(0x9E))[0]);
+    REQUIRE(f1.x == 1.f);
+    REQUIRE(f1.y == 0.f);
+    const auto f2 = std::get<Vec2>(
+        evalProg(Prog{}.F(-1.f).F(0.f).emit(0x5B).I(2).emit(0x9E))[0]);
+    REQUIRE(f2.x == 1.f);
+    REQUIRE(f2.y == 0.f);
+    const auto f3 = std::get<Vec2>(
+        evalProg(Prog{}.F(0.f).F(-1.f).emit(0x5B).I(2).emit(0x9E))[0]);
+    REQUIRE(std::fabs(f3.x) < 1e-5f); // the pinned cos(pi/2), not exactly 0
+    REQUIRE(f3.y == 1.f);
+    // The 4-fold fold keeps the first quadrant points; the length is
+    // preserved.
+    const auto f4 = std::get<Vec2>(
+        evalProg(Prog{}.F(3.f).F(4.f).emit(0x5B).I(4).emit(0x9E))[0]);
+    REQUIRE(f4.x >= 0.f);
+    REQUIRE(f4.y >= 0.f);
+    REQUIRE(evalProgF32(Prog{}.F(f4.x).F(f4.y).emit(0x5B).emit(0x75)) == 5.f);
+    // The fold count clamps to [1, 64].
+    const auto f5 = std::get<Vec2>(
+        evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).I(0).emit(0x9E))[0]);
+    REQUIRE(f5.x == 1.f);
+    REQUIRE(f5.y == 0.f);
+
+    // polar({3,4}) = {5, atan2(4,3)} — the self-consistency with the ops.
+    const auto p = std::get<Vec2>(
+        evalProg(Prog{}.F(3.f).F(4.f).emit(0x5B).emit(0x9F))[0]);
+    REQUIRE(p.x == 5.f);
+    REQUIRE(bitsOf(p.y) == bitsOf(evalProgF32(Prog{}.F(4.f).F(3.f).emit(0x5A))));
+}
+
+TEST_CASE("fold canonicalizes every NaN component while retaining infinity and finite results") {
+    const auto fold = [](Vec2 v, i32 n) {
+        return std::get<Vec2>(
+            evalProg(Prog{}.F(v.x).F(v.y).emit(0x5B).I(n).emit(0x9E))[0]);
+    };
+    for (const u32 nanBits : {0x7FC00000u, 0xFFC00000u, 0x7FC01234u, 0xFFC01234u}) {
+        const f32 nan = f32FromBits(nanBits);
+        for (const Vec2 v : {Vec2{nan, 0.f}, Vec2{0.f, nan}, Vec2{nan, 1.f},
+                             Vec2{1.f, nan}, Vec2{nan, -nan}}) {
+            for (const i32 n : {0, 1, 2, 4, 64, 65}) {
+                CAPTURE(nanBits, n);
+                const Vec2 result = fold(v, n);
+                REQUIRE(bitsOf(result.x) == 0x7FC00000u);
+                REQUIRE(bitsOf(result.y) == 0x7FC00000u);
+            }
+        }
+    }
+    // A NaN can also arise in the final product inf * 0, including when
+    // a finite vector overflows the binary32 radius computation.
+    const f32 inf = std::numeric_limits<f32>::infinity();
+    for (const Vec2 v : {Vec2{inf, 0.f}, Vec2{-inf, 0.f}, Vec2{0.f, inf},
+                         Vec2{0.f, -inf}, Vec2{1e20f, 0.f}, Vec2{0.f, 1e20f}}) {
+        const Vec2 result = fold(v, 4);
+        REQUIRE(bitsOf(result.x) == 0x7F800000u);
+        REQUIRE(bitsOf(result.y) == 0x7FC00000u);
+    }
+    const Vec2 diagonal = fold(Vec2{inf, inf}, 4);
+    REQUIRE(bitsOf(diagonal.x) == 0x7F800000u);
+    REQUIRE(bitsOf(diagonal.y) == 0x7F800000u);
+    const Vec2 identity = fold(Vec2{1.f, 0.f}, 4);
+    REQUIRE(bitsOf(identity.x) == 0x3F800000u);
+    REQUIRE(bitsOf(identity.y) == 0x00000000u);
+}
+
 TEST_CASE("color.shade clamps channels and keeps alpha") {
     const Color c{100, 150, 200, 255};
     REQUIRE(evalProgColor(Prog{}.C(c).I(50).emit(0x51)) == Color{150, 200, 250, 255});

@@ -66,7 +66,7 @@ public:
                 ((opcode >= 0x5B && opcode <= 0x5F) ||
                  (opcode >= 0x74 && opcode <= 0x7F) ||
                  (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99 ||
-                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9C))) {
+                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9F))) {
                 fail(i, "vec2 ops require format 0.3");
             }
             step(i, ins);
@@ -377,6 +377,21 @@ private:
         case Opcode::Quintic:
             expect(at, ValueType::F32, "quintic t");
             push(at, ValueType::F32);
+            return;
+        case Opcode::Dither:
+            expect(at, ValueType::I32, "dither y");
+            expect(at, ValueType::I32, "dither x");
+            expect(at, ValueType::F32, "dither t");
+            push(at, ValueType::F32);
+            return;
+        case Opcode::Vec2Fold:
+            expect(at, ValueType::I32, "fold count");
+            expect(at, ValueType::Vec2, "fold vector");
+            push(at, ValueType::Vec2);
+            return;
+        case Opcode::Vec2Polar:
+            expect(at, ValueType::Vec2, "polar vector");
+            push(at, ValueType::Vec2);
             return;
         case Opcode::I32ToF32:
             expect(at, ValueType::I32, "conversion operand");

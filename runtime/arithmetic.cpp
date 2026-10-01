@@ -334,6 +334,42 @@ Color colorHsv(const Color& c, f32 hueShift, f32 satScale, f32 valScale) {
     return Color{toByte(r1 + m), toByte(g1 + m), toByte(b1 + m), c.a};
 }
 
+// ---- the dither, the fold and the polar (spec §12.13) -----------------------
+
+// The pinned trig helpers live further down; forward-declared for the fold.
+f32 f32Cos(f32 x);
+f32 f32Atan2(f32 y, f32 x);
+
+f32 ditherThreshold(f32 t, i32 x, i32 y) {
+    static constexpr u8 bayer[4][4] = {
+        {0, 8, 2, 10}, {12, 4, 14, 6}, {3, 11, 1, 9}, {15, 7, 13, 5}};
+    const u32 i = static_cast<u32>(x) & 3u;
+    const u32 j = static_cast<u32>(y) & 3u;
+    const f32 threshold = (static_cast<f32>(bayer[j][i]) + 0.5f) / 16.f;
+    return t >= threshold ? 1.f : 0.f;
+}
+
+Vec2 vec2Fold(const Vec2& v, i32 n) {
+    n = std::clamp(n, 1, 64);
+    const f32 r = std::sqrt(v.x * v.x + v.y * v.y);
+    const f32 a = f32Atan2(v.y, v.x);
+    const f32 sector =
+        6.28318530717958647692f / static_cast<f32>(n); // TWO_PI
+    const f32 quotient = a / sector + 0.5f;
+    const f32 folded = a - std::floor(quotient) * sector;
+    const f32 magnitude = std::fabs(folded);
+    const f32 x = r * f32Cos(magnitude);
+    const f32 y = r * f32Sin(magnitude);
+    // A multiply may choose either operand's NaN sign/payload on different
+    // backends. Canonicalize each component after the final products.
+    const f32 nan = std::numeric_limits<f32>::quiet_NaN();
+    return Vec2{std::isnan(x) ? nan : x, std::isnan(y) ? nan : y};
+}
+
+Vec2 vec2Polar(const Vec2& v) {
+    return Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(v.y, v.x)};
+}
+
 f32 f32Cos(f32 x) {
     const double value = static_cast<double>(x);
     if (std::isnan(value) || std::isinf(value)) {
@@ -1079,6 +1115,26 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
             ex.trap("color.hsv hue shift must be finite");
         }
         ex.push(Value(colorHsv(c, hueShift, satScale, valScale)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Dither: {
+        const i32 y = ex.popI32();
+        const i32 x = ex.popI32();
+        const f32 t = ex.popF32();
+        ex.push(Value(ditherThreshold(t, x, y)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Fold: {
+        const i32 n = ex.popI32();
+        const Vec2 v = ex.popVec2();
+        ex.push(Value(vec2Fold(v, n)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Vec2Polar: {
+        ex.push(Value(vec2Polar(ex.popVec2())));
         ++ex.frame().ip;
         return true;
     }

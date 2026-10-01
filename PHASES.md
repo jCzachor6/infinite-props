@@ -70,10 +70,10 @@ format version (minor).
 
 ## 5. The dither, the fold and the polar
 
-- [ ] `5.1` spec: `dither(t, x, y)` — the pinned Bayer matrix threshold;
+- [x] `5.1` spec: `dither(t, x, y)` — the pinned Bayer matrix threshold;
   `fold(v, n)` and `polar(v)` as the `vec2` ops (the kaleidoscope and the
   cartesian→polar conversion).
-- [ ] `5.2` the runtime + the builtins + the bit tables.
+- [x] `5.2` the runtime + the builtins + the bit tables.
 
 ## 8. The curve toolkit (the micro-ops)
 

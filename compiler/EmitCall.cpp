@@ -166,6 +166,12 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         return emitFixed({VT::Color, VT::F32}, Opcode::ColorScale);
     if (name == "color.hsv")
         return emitFixed({VT::Color, VT::F32, VT::F32, VT::F32}, Opcode::ColorHsv);
+    if (name == "dither")
+        return emitFixed({VT::F32, VT::I32, VT::I32}, Opcode::Dither);
+    if (name == "fold")
+        return emitFixed({VT::Vec2, VT::I32}, Opcode::Vec2Fold);
+    if (name == "polar")
+        return emitFixed({VT::Vec2}, Opcode::Vec2Polar);
     if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
     if (name == "round") {
         // round-half-away-from-zero (std::round semantics, spec 8.1):

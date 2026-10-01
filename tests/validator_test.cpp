@@ -318,7 +318,7 @@ TEST_CASE("per-function instruction violations") {
                         24, "aux byte");
     expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0xA1, 0, 0))}, {})),
                         24, "reserved opcode");
-    expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0x9D, 0, 0))}, {})),
+    expectValidateError(fullFile(minimalMeta(), pool, codeSection({drawSpec(ins(0xA2, 0, 0))}, {})),
                         24, "reserved opcode");
 
     // Stack underflow on the first instruction.

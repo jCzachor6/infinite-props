@@ -1339,6 +1339,65 @@ endfn
     }
 }
 
+TEST_CASE("the dither, fold and polar builtins compile and match the .ipa") {
+    const std::string source = R"(
+asset t {
+  size 8x8
+  output point p
+
+  draw(v: i32, a: i32) {
+    f = fold({-3.0, 4.0}, 2)
+    q = polar({3.0, 4.0})
+    d = dither(0.7, 1, 0)
+    p = {f.x + f.y, q.x + d}
+  }
+})";
+    const auto fromIps = run(compileChecked(source), 0, 0);
+    // fold({-3,4}, 2) -> the first-quadrant reflection at the same radius
+    // (5): the {3, 4} exactly. q.x = 5; dither(0.7, 1, 0) = 1.
+    REQUIRE(fromIps.outputs[0].points[0].x == 7.f);  // f.x + f.y = 3 + 4
+    REQUIRE(fromIps.outputs[0].points[0].y == 6.f);  // q.x + d = 5 + 1
+
+    const std::string ipa = R"(
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+output: point p
+fn draw ( i32, i32 ) -> ( ):
+  locals: vec2 vec2 f32
+  const.f32 -3.0
+  const.f32 4.0
+  vec2.make
+  const.i32 2
+  vec2.fold
+  local.set 2
+  const.f32 3.0
+  const.f32 4.0
+  vec2.make
+  vec2.polar
+  local.set 3
+  const.f32 0.7
+  const.i32 1
+  const.i32 0
+  dither
+  local.set 4
+  local.get 2
+  vec2.x
+  local.get 2
+  vec2.y
+  f32.add
+  local.get 3
+  vec2.x
+  local.get 4
+  f32.add
+  out.point p
+endfn
+)";
+    const auto fromIpa = run(assemble(ipa), 0, 0);
+    REQUIRE(fromIpa.outputs[0].points[0].x ==
+            fromIps.outputs[0].points[0].x);
+    REQUIRE(fromIpa.outputs[0].points[0].y ==
+            fromIps.outputs[0].points[0].y);
+}
+
 TEST_CASE("two compilations are byte-identical") {
     REQUIRE(compileChecked(kRockSource) == compileChecked(kRockSource));
     REQUIRE(compileChecked(kFixture) == compileChecked(kFixture));

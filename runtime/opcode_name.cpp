@@ -100,6 +100,9 @@ const char* opcodeMnemonic(Opcode opcode) {
     case Opcode::Fill: return "fill";
     case Opcode::Gain: return "gain";
     case Opcode::Quintic: return "quintic";
+    case Opcode::Dither: return "dither";
+    case Opcode::Vec2Fold: return "vec2.fold";
+    case Opcode::Vec2Polar: return "vec2.polar";
 
     // Colour (§9.5)
     case Opcode::ColorMix: return "color.mix";

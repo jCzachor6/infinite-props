@@ -24,6 +24,7 @@ const sources = [
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],
     ["colors", "backends/html5/test/fixtures/colors.ips"],
+    ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
@@ -175,6 +176,16 @@ function run(iprop, toolsDir) {
                     "ff7f00ff808080ffffffffff7f0000ff112233ff404040ff405060ff000000ff", "hex"),
                     label + ": neutral HSV, sector midpoints, hue wrapping and colour ops");
             }
+            if (path.basename(file) === "fold.iprop") {
+                const expected = [
+                    [0x7fc00000, 0x7fc00000], [0x7fc00000, 0x7fc00000],
+                    [0x7fc00000, 0x7fc00000], [0x7fc00000, 0x7fc00000],
+                    [0x7f800000, 0x7fc00000], [0x7f800000, 0x7fc00000],
+                    [0x7f800000, 0x7f800000], [0x3f800000, 0], [0, 0],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent fold NaN/infinity/finite pins");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -221,7 +232,8 @@ function run(iprop, toolsDir) {
                     }
                 }
             }
-            if (name === "bezier" || name === "noise-v2" || name === "curves" || name === "colors") {
+            if (name === "bezier" || name === "noise-v2" || name === "curves" ||
+                name === "colors" || name === "fold") {
                 compare(file, 26, null, {sizeX: 16, sizeY: 24});
             }
         }

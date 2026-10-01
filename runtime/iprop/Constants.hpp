@@ -196,6 +196,11 @@ enum class Opcode : u8 {
     ColorScale = 0x9B,
     ColorHsv = 0x9C,
 
+    // The dither, the fold and the polar (spec §9.4/§12.13; added in v0.3)
+    Dither = 0x9D,
+    Vec2Fold = 0x9E,
+    Vec2Polar = 0x9F,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };

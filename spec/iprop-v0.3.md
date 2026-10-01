@@ -498,6 +498,19 @@ The curves (added in v0.3; the exact algorithms live in §12.11):
 The language's `ramp(palette, t)` is a compiler desugar (no VM op): the
 continuous interpolation over a palette's elements (§12.11).
 
+The dither, the fold and the polar (added in v0.3; the exact algorithms
+live in §12.13):
+
+| Op | Mnemonic | Stack |
+| -- | -------- | ----- |
+| 0x9D | dither | `[f32 i32 i32] -> [f32]` (t, x, y) |
+| 0x9E | vec2.fold | `[vec2 i32] -> [vec2]` (v, n) |
+| 0x9F | vec2.polar | `[vec2] -> [vec2]` (v) |
+
+`dither` is the ordered Bayer-4x4 threshold (1.0 above the threshold,
+0.0 below); `vec2.fold` mirrors the vector into the n-fold symmetric
+sector; `vec2.polar` converts the cartesian pair into `{length, angle}`.
+
 Comparisons `[f32 f32] -> [i32]` (IEEE-754 predicates; NaN compares false for
 `eq`, true for `ne`, false for every ordering predicate):
 
@@ -1399,6 +1412,70 @@ Pinned vectors (the channel bytes):
 | `color.hsv(#ff0000ff, 0, 0, 1)` | `#ffffffff` (the desaturation at v=1) |
 | `color.hsv(#ff0000ff, 0, 1, 0.5)` | `#7f0000ff` |
 | `color.hsv(#336699ff, 0.75, 0.5, 1.5)` | `#99e599ff` |
+
+### 12.13 The dither, the fold and the polar (v0.3)
+
+Every floating step is one IEEE-754 round-to-nearest binary32 operation
+in the written order; `sin`/`cos`/`atan2` are the pinned algorithms of
+§12.7/§12.8.
+
+**dither(t, x, y)** — the ordered Bayer 4×4 threshold:
+
+```
+i = u32(x) & 3                     // the two's-complement wraparound
+j = u32(y) & 3
+threshold = (bayer[j][i] + 0.5) / 16
+return t >= threshold ? 1 : 0
+```
+
+`bayer` (the row-major 4×4):
+
+```
+ 0  8  2 10
+12  4 14  6
+ 3 11  1  9
+15  7 13  5
+```
+
+The comparison is `>=`; `t` is NOT clamped.
+
+**vec2.fold(v, n)** — the n-fold kaleidoscope symmetry; `n` clamped to
+[1, 64]:
+
+```
+r = len(v)                         // §9.4's vec2.len
+a = atan2(v.y, v.x)                // §12.8, the radians in [-pi, pi]
+sector = TWO_PI / n                // TWO_PI = 6.28318530717958647692...
+a = a - floor(a / sector + 0.5) * sector
+a = abs(a)
+x = r * cos(a); y = r * sin(a)     // §12.7
+if x is NaN: x = canonical quiet NaN (0x7FC00000)
+if y is NaN: y = canonical quiet NaN (0x7FC00000)
+return {x, y}
+```
+
+Each NaN result component MUST use `0x7FC00000`, regardless of the
+input NaN sign or payload. This also applies to NaNs produced by a
+final `inf * 0` product, including when a finite vector's radius
+overflows. Finite values, infinities and signed zeros retain their
+computed IEEE encodings.
+
+Pinned `vec2.fold` vectors (the component bits):
+
+| Input | x | y |
+| ----- | - | - |
+| `fold({-NaN, 1}, 4)` | `0x7FC00000` | `0x7FC00000` |
+| `fold({NaN, -NaN}, 4)` | `0x7FC00000` | `0x7FC00000` |
+| `fold({+inf, 0}, 4)` | `0x7F800000` | `0x7FC00000` |
+| `fold({1e20, 0}, 4)` | `0x7F800000` | `0x7FC00000` |
+| `fold({+inf, +inf}, 4)` | `0x7F800000` | `0x7F800000` |
+| `fold({1, 0}, 4)` | `0x3F800000` | `0x00000000` |
+
+**vec2.polar(v):**
+
+```
+return {len(v), atan2(v.y, v.x)}
+```
 
 ## 13. Determinism rules
 
