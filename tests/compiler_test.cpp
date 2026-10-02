@@ -1386,6 +1386,19 @@ asset t {
     CHECK(result.outputs[4].points[0].y == 3.f);
 }
 
+TEST_CASE("round widens integer arguments exactly once") {
+    const auto result = run(compileChecked(R"(
+asset t {
+  size 8x8
+  output point result
+  draw(v:i32,a:i32) { result = {round(3), round(count())} }
+  count() -> i32 { pixel(0,0,#ff000080) return -3 }
+})"),0,0);
+    CHECK(result.outputs[0].points[0].x == 3.f);
+    CHECK(result.outputs[0].points[0].y == -3.f);
+    CHECK(result.canvas.at(0,0).r == 128); // a second evaluation would composite again
+}
+
 TEST_CASE("the dither, fold and polar builtins compile and match the .ipa") {
     const std::string source = R"(
 asset t {

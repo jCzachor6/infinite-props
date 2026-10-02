@@ -116,4 +116,9 @@ niezgodnej klasy argumentu, niedomiar stosu, aux i bramki wersji także
 w martwym kodzie. CTest 7/7 oraz pełne native/WASM PASS
 (`opcode-conformance.log`). Pozostaje osobny opis builtinów języka.
 
+Dodatkowy fix wykryty podczas A1: `round(i32)` wykonuje promocję do f32
+zgodnie z sygnaturą, zamiast generować program odrzucany przez walidator.
+Test obejmuje literał i helper; półprzezroczysty piksel wykrywa powtórne
+wywołanie helpera. CTest 7/7 i test celowany PASS.
+
 W toku: BuiltinSpec i typowany plan wywołań.

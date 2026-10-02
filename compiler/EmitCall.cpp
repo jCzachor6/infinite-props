@@ -193,7 +193,7 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         // the f32 scratch (blocks have no results, so the arms store the
         // outcome in the i32 scratch instead of yielding it).
         // The i32 scratch takes the lower index (appended first).
-        emitExpr(*call.args[0].value);
+        emitArg(call.args[0], VT::F32);
         const auto result = temporary(VT::I32);
         const auto value = temporary(VT::F32);
         const u16 i32Slot = result.index();
