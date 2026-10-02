@@ -20,7 +20,6 @@ seven alternating series of 80 generations of the same compiled fixture.
 The medians were 3.55157 ms before and 3.43472 ms after (about 3.3% less time).
 Both produced image hash `31c9b9f5ac360167` and consumed 29365 fuel.
 This is a local measurement of this fixture, not a general performance guarantee.
-Raw measurements: `/tmp/iprop-fixes.C5KhDL/bezier-benchmark.json`.
 
 Separately, 6864 quadratic/cubic distance queries preserve the previous
 kernel's raw f32 hashes, including extreme, nonfinite and degenerate inputs
@@ -57,8 +56,7 @@ and execution; dynamic selection retains O(N) code with O(log N) executed
 comparisons. The source-level expansion may change fuel (§12.11); VM costs
 and the behavior of historical binaries remain pinned.
 
-Evidence from this run: `/tmp/iprop-fixes.C5KhDL/ramp-benchmark/{before,after}.json`
-and `/tmp/iprop-fixes.C5KhDL/ramp-final/results.json`. Tests compare a dynamic
-tree with an explicit linear reference at every stop and its neighboring
-floats, the shared 22-pattern corpus, constant versus dynamic color/f32
+`tests/compiler/palettes_test.cpp` compares a dynamic tree with an explicit
+linear reference at every stop and its neighboring floats, the shared
+22-pattern corpus, constant versus dynamic color/f32
 interpolation, negative/out-of-range indexing, effects, traps and fuel bounds.

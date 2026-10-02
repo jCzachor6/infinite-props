@@ -505,6 +505,23 @@ The merge, release tag and publication have not happened yet. GitHub CI
 requires a remote; editor/website publication, Bevy and Unity glue remain
 separate ecosystem work.
 
+The next example pass has two showcases:
+
+- **Butterfly (512×512):** one wing part placed four times using D4 transforms;
+  seeded SDF silhouettes, Bezier veins and antennae, `fold` symmetry,
+  `hsv`/`ramp` palettes, `cell.jitter` eyespots, `fbm` mottling and dither shading.
+- **Bob Ross landscape:** ramp skies, ridge/fbm mountains with atmospheric
+  perspective, jittered trees, folded water reflections, mist and seed-selected
+  biomes with their own palettes.
+
+Deferred work includes general affine part transforms with pinned resampling,
+masks and multiple rendering passes, full colour arithmetic, `switch`, and
+Bevy/Unity integrations. Whole-canvas generators such as diamond-square and
+cellular automata depend on the future buffer/mask work. Game-specific mods
+can be revisited after the showcases. L-systems and a dedicated noise-graph
+DSL remain outside the language scope; user functions, `warp` and curve
+builtins cover functional noise composition.
+
 Prepare a local release package from a clean, committed checkout:
 
 ```sh

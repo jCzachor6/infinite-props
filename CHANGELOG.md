@@ -28,9 +28,6 @@
   boundaries, control-flow types, resource limits, geometry and evaluation
   order. Frozen specifications and historical golden files are unchanged.
 
-The develop-to-main review and completed implementation audit are recorded
-in `CODE_REVIEW_DEVELOP_MAIN.md` and `CODE_REVIEW_IMPLEMENTATION.md`.
-
 ## v0.2.0 — prepared for release, 2026-09-30
 
 - Added typed function parameters and return values, constant palettes,
