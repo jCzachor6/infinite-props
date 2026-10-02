@@ -13,9 +13,13 @@ add_executable(iprop_tests
     smoke_test.cpp
     stb_image_impl.cpp
     lexer_test.cpp
-    parser_test.cpp
+    language/parser_assets_test.cpp
+    language/parser_statements_test.cpp
+    language/parser_diagnostics_test.cpp
     printer_test.cpp
-    semantics_test.cpp
+    language/semantics_types_test.cpp
+    language/semantics_functions_test.cpp
+    language/semantics_parts_test.cpp
     compiler/basics_test.cpp
     compiler/scalar_test.cpp
     compiler/control_flow_test.cpp
@@ -61,6 +65,7 @@ add_executable(iprop_tests
     defense_test.cpp
     utf8_test.cpp
     support/compiler_support.cpp
+    support/semantic_support.cpp
     support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
