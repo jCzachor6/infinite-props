@@ -562,3 +562,6 @@ C API consumers before writing `dist/iprop-0.3.0.tar.gz` (committed source),
 The native archive records its source commit and included backends in
 `release.json`. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.
+
+Compiler optimization checks and measured reductions are recorded in
+[the v0.4 acceptance report](docs/optimization-acceptance-v0.4.md).

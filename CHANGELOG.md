@@ -60,6 +60,11 @@
   Plan copies retain immutable palette ownership, and full literal pools
   fall back safely instead of wrapping u16 indices during optimization.
 
+- C.5: Registered full corpus optimization acceptance in CTest: both artifact
+  modes never grow, rendered pixels and raw structured outputs stay exact,
+  and runtime trap reasons match. Recorded baseline totals, backend pins,
+  sanitizer results and u16 pool-limit fallback evidence.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,
