@@ -39,3 +39,16 @@ runtime operations. Historical non-finite scalar arithmetic is conservative.
 Adjacent `local.set n` / `local.get n` becomes `local.tee n`; liveness then
 removes unnecessary stores. Each pass is accepted only if neither complete
 artifact mode grows relative to the previous best plan.
+
+## Common subexpressions
+
+Pure contiguous expression trees can reuse an equivalent value already
+stored in a local. Value numbering retains operand order and type; it never
+reassociates floating-point expressions. Every local write changes its
+version, so overwritten storage cannot satisfy an old expression. Control,
+call and part-read boundaries clear availability. RNG, stream state,
+outputs, canvas operations and possibly trapping calculations are excluded.
+
+This pass uses existing storage and adds no speculative evaluations or
+scratch locals. Expressions over 512 key bytes and caches over 4096 entries
+fall back conservatively to normal lowering.

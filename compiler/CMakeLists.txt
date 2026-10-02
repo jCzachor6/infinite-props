@@ -5,6 +5,7 @@ add_library(iprop_compiler STATIC
     DeadCode.cpp
     ConstantEvaluation.cpp
     Peephole.cpp
+    CommonExpressions.cpp
     CompactPools.cpp
     Plan.cpp
     CallResolver.cpp

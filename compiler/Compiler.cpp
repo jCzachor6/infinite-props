@@ -44,6 +44,7 @@ std::vector<u8> compileProgram(
         };
         attempt(compiler::eliminateDeadCode);
         attempt(compiler::foldAndPeephole);
+        attempt(compiler::reuseCommonExpressions);
     }
 
     // Dogfood: the compiled file must pass the runtime validator.

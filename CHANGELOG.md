@@ -49,6 +49,11 @@
   traps and historical scalar non-finite arithmetic retain runtime lowering;
   every pass keeps the best complete artifact in debug and stripped modes.
 
+- C.3: Added conservative common-expression reuse within straight-line
+  regions. Versioned local bindings prevent stale reuse after writes;
+  only contiguous non-trapping pure trees reuse already stored values.
+  Cache/key bounds limit compiler work without changing emitted semantics.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

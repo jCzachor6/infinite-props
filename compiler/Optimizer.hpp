@@ -8,6 +8,7 @@ namespace iprop::compiler {
 void eliminateDeadCode(Plan& plan);
 void compactPools(Plan& plan);
 void foldAndPeephole(Plan& plan);
+void reuseCommonExpressions(Plan& plan);
 
 // A one-result, non-trapping instruction whose unused value may be removed.
 std::optional<std::size_t> discardableInputs(Opcode opcode);

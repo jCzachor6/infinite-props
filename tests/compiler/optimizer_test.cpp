@@ -5,6 +5,7 @@
 
 #include "Compiler.hpp"
 #include "iprop/Debug.hpp"
+#include "iprop/Instruction.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 #include "support/compiler_support.hpp"
@@ -109,4 +110,23 @@ TEST_CASE("folding preserves dividing overflow HSV traps and mutable control reg
     const std::string source = R"(asset t { size 8x8 variants 2 output point p
       draw { x=3 if(v==0) { x=4 } else { x=5 } i=0 while(i<3) { x=x+i i=i+1 } p={x,min(-0.0,0.0)} } })";
     compare(compile(source,true),compile(source,false),2);
+}
+
+TEST_CASE("CSE reuses stored pure values with versioned mutable locals") {
+    const std::string repeated = R"(asset t { size 8x8 variants 2 output point p
+      draw { x=(v+17)*(a+3) y=(v+17)*(a+3) p={x,y} } })";
+    const auto actual = compile(repeated,true), reference = compile(repeated,false);
+    compare(actual,reference,2);
+    CHECK(loadFile(actual).code.entry().code.size() < loadFile(reference).code.entry().code.size());
+    const auto loaded = loadFile(actual);
+    unsigned products = 0;
+    for (std::size_t i = 0; i < loaded.code.entry().code.size(); i += 4)
+        if (decodeInstruction(loaded.code.entry().code.subspan(i, 4)).opcode == Opcode::I32Mul) ++products;
+    CHECK(products == 1);
+    const std::string mutableSource = R"(asset t { size 8x8 variants 2 output point p
+      draw { x=v+1 y=x*3 x=x+1 z=x*3 p={y,z} } })";
+    compare(compile(mutableSource,true),compile(mutableSource,false),2);
+    const std::string effects = R"(asset t { size 8x8 variants 2 output point p
+      draw { x=unit()+1 y=unit()+1 p={x,y} } })";
+    compare(compile(effects,true),compile(effects,false),2);
 }
