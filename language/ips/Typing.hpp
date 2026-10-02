@@ -14,6 +14,7 @@
 #include "ips/Ast.hpp"
 #include "ips/Types.hpp"
 #include "ips/BuiltinSpec.hpp"
+#include "ips/Palette.hpp"
 
 namespace iprop::ips {
 
@@ -91,6 +92,8 @@ public:
     ValueType typeOf(const Expr& expr);
 
 private:
+    std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+    const ResolvedPalette& palette(const Identifier& name);
     const std::map<std::string, PartInfo>& parts_;
 
     const Program* owner_ = nullptr;

@@ -17,6 +17,7 @@
 #include "iprop/Instruction.hpp"
 #include "ips/Ast.hpp"
 #include "ips/Typing.hpp"
+#include "ips/Palette.hpp"
 #include "Pools.hpp"
 
 namespace iprop::compiler {
@@ -71,12 +72,14 @@ struct Plan {
     Pools pools;
 
     std::map<std::string, ips::PartInfo> surfaces;
+    std::map<const ips::PaletteDecl*, ips::ResolvedPalette> palettes;
     std::unique_ptr<ips::Typer> typer;
 
     ips::Typer& typeEngine() const { return *typer; }
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;
+    const ips::ResolvedPalette& palette(const ips::Program& owner, const ips::Expr& name) const;
 };
 
 // Resolves a checked entry program plus its imported parts into a Plan.

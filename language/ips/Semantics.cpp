@@ -1,4 +1,5 @@
 #include "ips/Semantics.hpp"
+#include "ips/Palette.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -172,56 +173,12 @@ private:
         }
     }
 
-    // The ValueType of a literal expression (string literals are not
-    // values). Used for the palette element checks.
-    static ValueType literalType(const Literal& literal) {
-        switch (literal.kind) {
-        case Literal::Kind::Int:
-        case Literal::Kind::True:
-        case Literal::Kind::False:
-            return ValueType::I32;
-        case Literal::Kind::Float:
-            return ValueType::F32;
-        case Literal::Kind::Color:
-            return ValueType::Color;
-        case Literal::Kind::String:
-            return ValueType::Void; // rejected by the caller
-        }
-        return ValueType::Void;
-    }
-
     void checkPaletteDecl(const PaletteDecl& palette) {
         if (palette.name == "seed" || palette.name == "at" ||
             palette.name == "v" || palette.name == "a") {
             error(palette.location, "'" + palette.name + "' is a reserved name");
         }
-        if (palette.elements.empty()) {
-            error(palette.location,
-                  "palette '" + palette.name + "' needs at least one element");
-        }
-        std::optional<ValueType> elementType;
-        for (const auto& element : palette.elements) {
-            const auto* literal = std::get_if<Literal>(element.get());
-            if (literal == nullptr) {
-                error(locationOf(*element),
-                      "palette elements must be literals (compile-time constants)");
-            }
-            const ValueType type = literalType(*literal);
-            if (type == ValueType::Void) {
-                error(locationOf(*element),
-                      "palette '" + palette.name +
-                          "' cannot hold string elements");
-            }
-            if (!elementType.has_value()) {
-                elementType = type;
-            } else if (*elementType != type) {
-                error(locationOf(*element),
-                      "palette '" + palette.name +
-                          "' must have elements of one type (" +
-                          typeName(*elementType) + " and " + typeName(type) +
-                          " found)");
-            }
-        }
+        (void)resolvePalette(palette);
     }
 
     // ---- functions ----------------------------------------------------------

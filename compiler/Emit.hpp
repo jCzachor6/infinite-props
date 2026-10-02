@@ -29,6 +29,7 @@ public:
     void emitFunction(PlannedFunction& function);
 
 private:
+    friend class PaletteLowerer;
     Plan& plan_;
     PlannedFunction* current_ = nullptr;
     std::vector<Instruction> code_; // the IR of the function being emitted

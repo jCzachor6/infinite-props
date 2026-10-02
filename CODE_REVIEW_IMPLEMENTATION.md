@@ -12,7 +12,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
 - [x] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
-- [ ] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
+- [x] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
 - [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
 - [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
 - [x] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
@@ -129,4 +129,11 @@ kompiluje i wykonuje każde przeciążenie, sprawdza promocje oraz zgodność
 z niezależnym kontraktem VM. CTest 7/7; native/WASM/golden PASS
 (`builtin-conformance.log`).
 
-W toku: typowany plan wywołań i wspólna obsługa palet.
+A5: `ResolvedPalette` współdzieli walidację, typ i zdekodowane wartości
+między semantyką i planowaniem. `PaletteLowerer` skupia wybór elementu,
+interpolację i czas życia slotów. Pierwszy refaktor zachowuje dotychczasową
+emisję i fuel; optymalizacja jest osobnym punktem. Test sprawdza jednakowe
+nazwy palet o różnych typach w root i części oraz dwa aliasy tego samego AST.
+CTest 7/7 i pełne native/WASM/golden PASS (`palette-conformance.log`).
+
+W toku: typowany plan wywołań i pozostałe przypadki graniczne.

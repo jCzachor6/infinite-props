@@ -452,6 +452,12 @@ ValueType Typer::typeVector(const VectorLit& vector) {
     }
 }
 
+const ResolvedPalette& Typer::palette(const Identifier& name) {
+    const auto& decl = findPalette(*owner_,name);
+    if (const auto found=palettes_.find(&decl); found!=palettes_.end()) return found->second;
+    return palettes_.emplace(&decl,resolvePalette(decl)).first->second;
+}
+
 // `palette[i]` — the index must be i32; the result is the (uniform) element
 // type. The checker guarantees literal, homogeneous elements.
 ValueType Typer::typeIndex(const Index& index) {
@@ -459,37 +465,13 @@ ValueType Typer::typeIndex(const Index& index) {
     if (name == nullptr) {
         error(locationOf(*index.object), "only palettes can be indexed");
     }
-    const PaletteDecl* palette = nullptr;
-    for (const auto& candidate : owner_->asset.palettes) {
-        if (candidate.name == name->name) {
-            palette = &candidate;
-            break;
-        }
-    }
-    if (palette == nullptr) {
-        error(name->location, "'" + name->name + "' is not a palette");
-    }
+    const auto& resolved = palette(*name);
     const ValueType indexType = typeOf(*index.index);
     if (indexType != ValueType::I32) {
         error(locationOf(*index.index),
               "palette index must be i32, got " + std::string(typeName(indexType)));
     }
-    // All elements share one type (checked by the semantic checker); the
-    // first element determines it.
-    const auto& first = std::get<Literal>(*palette->elements[0]);
-    switch (first.kind) {
-    case Literal::Kind::Int:
-    case Literal::Kind::True:
-    case Literal::Kind::False:
-        return ValueType::I32;
-    case Literal::Kind::Float:
-        return ValueType::F32;
-    case Literal::Kind::Color:
-        return ValueType::Color;
-    case Literal::Kind::String:
-        break;
-    }
-    error(name->location, "palette '" + name->name + "' has no valid elements");
+    return resolved.type;
 }
 
 // `ramp(palette, t)` — the first argument names a palette; the t is the
@@ -512,39 +494,18 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
         error(locationOf(*call.args[0].value),
               "ramp's first argument must be a palette name");
     }
-    const PaletteDecl* palette = nullptr;
-    for (const auto& candidate : owner_->asset.palettes) {
-        if (candidate.name == paletteName->name) {
-            palette = &candidate;
-            break;
-        }
-    }
-    if (palette == nullptr) {
-        error(paletteName->location,
-              "'" + paletteName->name + "' is not a palette");
-    }
+    const auto& resolved = palette(*paletteName);
     const ValueType t = typeOf(*call.args[1].value);
     if (!isNumeric(t)) {
         error(locationOf(*call.args[1].value),
               "ramp's t must be numeric, got " + std::string(typeName(t)));
     }
-    const auto& first = std::get<Literal>(*palette->elements[0]);
-    switch (first.kind) {
-    case Literal::Kind::Float:
-        return ValueType::F32;
-    case Literal::Kind::Color:
-        return ValueType::Color;
-    case Literal::Kind::Int:
-    case Literal::Kind::True:
-    case Literal::Kind::False:
+    if (resolved.type == ValueType::I32) {
         error(paletteName->location,
               "ramp requires a color or f32 palette; '" + paletteName->name +
                   "' is i32 (use the explicit lerp instead)");
-    case Literal::Kind::String:
-        break;
     }
-    error(paletteName->location,
-          "palette '" + paletteName->name + "' has no valid elements");
+    return resolved.type;
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {

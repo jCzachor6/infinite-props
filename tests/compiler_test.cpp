@@ -1924,6 +1924,36 @@ TEST_CASE("helpers resolve within the root or owning part namespace") {
     REQUIRE(result.outputs[2].points[0].x == 3.5f);
 }
 
+TEST_CASE("palette resolution stays within each owner including shared part aliases") {
+    const auto part = ips::parse(R"(asset child { size 8x8
+      palette p = [1.25, 3.75]
+      output point value
+      draw(v: i32, a: i32) { value = {p[v], helper()} }
+      helper() -> f32 { return ramp(p, 0.5) } })");
+    const auto root = ips::parse(R"(import first from "child.ips"
+      import second from "child.ips"
+      asset root { size 8x8
+        palette p = [#123456, #abcdef]
+        draw(v: i32, a: i32) {
+          first.draw(seed, v, a, at = {0, 0})
+          second.draw(seed, v, a, at = {0, 0})
+          pixel(0, 0, p[v])
+          pixel(1, 0, ramp(p, 1.0))
+        } })");
+    ips::checkAsset(part, {});
+    ips::checkAsset(root, {{"first", partInfoOf(part.asset)},
+                           {"second", partInfoOf(part.asset)}});
+    const auto result = execute(compileProgram(root, {{"first", &part}, {"second", &part}}));
+    REQUIRE(result.outputs.size() == 2);
+    for (const auto& output : result.outputs) {
+        REQUIRE(output.points.size() == 1);
+        CHECK(output.points[0].x == 1.25f);
+        CHECK(output.points[0].y == 2.5f);
+    }
+    CHECK(result.canvas.pixels[0] == Color{0x12,0x34,0x56,255});
+    CHECK(result.canvas.pixels[1] == Color{0xab,0xcd,0xef,255});
+}
+
 TEST_CASE("compiler-only error cases carry locations") {
     const auto expectError = [](const std::string& source, const char* part) {
         const ips::Program program = ips::parse(source);
