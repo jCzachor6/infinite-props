@@ -31,7 +31,7 @@ std::optional<u32> Plan::functionId(const std::string& name,
 const ips::ResolvedPalette& Plan::palette(const ips::Program& owner, const ips::Expr& expr) const {
     const auto* name = std::get_if<ips::Identifier>(&expr);
     if (!name) throw ips::SourceError{ips::locationOf(expr),"expected a palette name"};
-    return palettes.at(&ips::findPalette(owner,*name));
+    return *palettes.at(&ips::findPalette(owner,*name));
 }
 
 Planner::Planner(const ips::Program& entry,
@@ -77,7 +77,7 @@ std::unique_ptr<Plan> Planner::plan() {
     const auto preparePalettes = [&](const ips::Program& owner) {
         for (const auto& palette : owner.asset.palettes) {
             if (plan_->palettes.contains(&palette)) continue;
-            try { plan_->palettes.emplace(&palette,ips::resolvePalette(palette)); }
+            try { plan_->palettes.emplace(&palette,std::make_shared<const ips::ResolvedPalette>(ips::resolvePalette(palette))); }
             catch (ips::SourceError& error) { error.path=plan_->sourcePath(&owner); throw; }
         }
     };

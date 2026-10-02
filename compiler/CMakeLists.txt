@@ -6,10 +6,12 @@ add_library(iprop_compiler STATIC
     ConstantEvaluation.cpp
     Peephole.cpp
     CommonExpressions.cpp
+    Strength.cpp
     CompactPools.cpp
     Plan.cpp
     CallResolver.cpp
     Emit.cpp
+    EmitLoop.cpp
     EmitExpr.cpp
     EmitCall.cpp
     EmitRandom.cpp

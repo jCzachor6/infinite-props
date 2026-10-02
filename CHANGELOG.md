@@ -54,6 +54,12 @@
   only contiguous non-trapping pure trees reuse already stored values.
   Cache/key bounds limit compiler work without changing emitted semantics.
 
+- C.4: Added cost-checked unrolling for small constant for-ranges, retaining
+  final counters and side effects. Integer multiplication by two becomes
+  duplicate/add; division uses shifts only with a nonnegative range proof.
+  Plan copies retain immutable palette ownership, and full literal pools
+  fall back safely instead of wrapping u16 indices during optimization.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

@@ -52,3 +52,19 @@ outputs, canvas operations and possibly trapping calculations are excluded.
 This pass uses existing storage and adds no speculative evaluations or
 scratch locals. Expressions over 512 key bytes and caches over 4096 entries
 fall back conservatively to normal lowering.
+
+## Loops and strength reduction
+
+For-ranges with at most eight constant iterations can be emitted directly.
+The counter is assigned for each iteration and retains its final value;
+empty and descending ranges retain the lower bound. Mutable counters,
+nested for-loops and break/continue statements use ordinary control flow.
+Observable calls and RNG operations stay in iteration order. The complete
+candidate, including all repeated bodies, must fit both output modes.
+
+Integer multiplication by two uses duplicate/add with modulo-2^32 wrapping.
+Signed division by two uses a logical shift only when an immediately
+preceding mask or logical shift proves a nonnegative value. General signed
+inputs keep division, preserving truncation toward zero. Floating-point
+algebra is not reassociated. Pool capacity checks reject optimizer candidates
+that need more than the u16 constant index space, preserving the best plan.

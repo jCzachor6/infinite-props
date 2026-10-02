@@ -7,7 +7,7 @@
 
 namespace iprop::compiler {
 
-Emitter::Emitter(Plan& plan) : plan_(plan) {}
+Emitter::Emitter(Plan& plan, bool unrollLoops) : plan_(plan), unrollLoops_(unrollLoops) {}
 
 [[noreturn]] void Emitter::error(const ips::SourceLocation& at,
                                  std::string message) {
@@ -154,6 +154,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
             static_cast<u16>(current_->slots.at(forStmt->variable));
         const std::string boundName = "$for" + std::to_string(forCount_++);
         const u16 bound = static_cast<u16>(current_->slots.at(boundName));
+        if (emitUnrolled(*forStmt, counter)) return;
         emitExpr(*forStmt->from);
         ins(Opcode::LocalSet, 0, counter);
         emitExpr(*forStmt->to);
