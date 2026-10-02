@@ -42,7 +42,14 @@ add_executable(iprop_tests
     vm_test.cpp
     control_test.cpp
     control_validation_test.cpp
-    arithmetic_test.cpp
+    math/integer_test.cpp
+    math/float_test.cpp
+    math/trigonometry_test.cpp
+    math/vectors_test.cpp
+    math/distance_test.cpp
+    math/noise_test.cpp
+    math/curves_test.cpp
+    math/colors_test.cpp
     vector_determinism_test.cpp
     bezier_kernel_test.cpp
     seeded_test.cpp
