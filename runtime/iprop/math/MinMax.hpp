@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Types.hpp"
+#include "iprop/math/Float.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,10 +11,10 @@ namespace iprop::math {
 
 // Pinned minNum/maxNum, including NaNs and signed zero (spec §12.8).
 inline f32 f32MinMax(f32 a, f32 b, bool maximum) {
-    if (std::isnan(a)) {
-        return std::isnan(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
+    if (isNaN(a)) {
+        return isNaN(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
     }
-    if (std::isnan(b)) {
+    if (isNaN(b)) {
         return a;
     }
     if (a == 0.0f && b == 0.0f) {

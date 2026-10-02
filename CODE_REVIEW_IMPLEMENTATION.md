@@ -161,4 +161,13 @@ seed/variant/archetype, placement i singleton ramp. Zachowano i opisano
 historyczną kolejność ewaluacji. CTest 7/7 oraz pełne native/WASM/golden
 PASS (`call-plan-conformance.log`).
 
+Granice koloru: `color.shade` dodaje w i64 przed ograniczeniem do kanału,
+a `color.mix` stosuje jawny clamp NaN→0. Korpus ujawnił, że optymalizacja
+składania min/max zmieniała obsługę sygnalizującego NaN w Release; wspólna
+funkcja klasyfikuje teraz bity zamiast polegać na predykacie FP.
+Native i WASM weryfikują te same 22 wzorce float, a shade skrajne i32;
+29 kolorów ma niezależne oczekiwane RGBA. CTest 7/7, pełna konformancja
+(`color-conformance.log`) i 137 asercji color pod ASan/UBSan/
+float-cast-overflow PASS. Historyczne golden bez zmian.
+
 W toku: optymalizacja ramp i pozostałe przypadki graniczne.

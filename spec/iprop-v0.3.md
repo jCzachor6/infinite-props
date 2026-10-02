@@ -929,7 +929,12 @@ else:         return at(ix+1,iy+1)*(u+v-1) + at(ix,iy+1)*(1-u) + at(ix+1,iy)*(1-
   zero; `t` clamped. R, G and B are lerped; **A is copied from the first
   colour**. The explicit fma reproduces the QuantSpace reference builds
   (whose compilers contract this expression) bit for bit.
-- `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`.
+- For `color.mix`, the clamp is `minNum(maxNum(t, 0), 1)` (§12.8):
+  NaN and negative infinity select the first RGB, positive infinity the
+  second RGB; A still comes from the first colour. No NaN reaches an
+  integer conversion.
+- `color.shade(c, amount)`: channels `clamp(ch + amount, 0, 255)`, with
+  mathematical addition before clamping, including the full i32 range.
 
 ### 12.7 Trigonometry (v0.2)
 

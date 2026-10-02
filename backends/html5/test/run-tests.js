@@ -37,6 +37,8 @@ async function main() {
                     " matching trap reasons)");
         console.log("native/WASM vector boundaries: PASS (" + native.vectorComparisons +
                     " bit-exact results)");
+        console.log("native/WASM color boundaries: PASS (" + native.colorComparisons +
+                    " exact RGBA results)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

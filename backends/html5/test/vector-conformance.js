@@ -88,4 +88,4 @@ function run(iprop, tool, directory) {
     return comparisons;
 }
 
-module.exports = { run };
+module.exports = { run, replaceFloatConstants };

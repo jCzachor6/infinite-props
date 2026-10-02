@@ -6,6 +6,10 @@
 
 namespace iprop::math {
 
+inline bool isNaN(f32 value) {
+    return (std::bit_cast<u32>(value) & 0x7FFFFFFFu) > 0x7F800000u;
+}
+
 // New vector arithmetic has one NaN encoding (spec §9.4), independent of
 // backend operand selection. Transport and historical scalar ops retain bits.
 inline f32 canonical(f32 value) {

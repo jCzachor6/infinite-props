@@ -91,6 +91,7 @@ function run(iprop, toolsDir) {
     let comparisons = 0;
     let trapComparisons = 0;
     let vectorComparisons = 0;
+    let colorComparisons = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -318,10 +319,11 @@ function run(iprop, toolsDir) {
         compare(path.join(temporary, "colors.iprop"), 7);
         compare(path.join(temporary, "noise-v2.iprop"), 7);
         vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
+        colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

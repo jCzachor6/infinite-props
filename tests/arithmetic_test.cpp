@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "support/test_support.hpp"
+#include "support/f32_corpus.hpp"
 
 #include "iprop/VM.hpp"
 
@@ -1048,6 +1049,26 @@ TEST_CASE("color.shade clamps channels and keeps alpha") {
     REQUIRE(evalProgColor(Prog{}.C(c).I(-300).emit(0x51)) == Color{0, 0, 0, 255});
     const Color semi{10, 20, 30, 77};
     REQUIRE(evalProgColor(Prog{}.C(semi).I(5).emit(0x51)) == Color{15, 25, 35, 77});
+    for (const auto amount : {kMax, kMax-255})
+        CHECK(evalProgColor(Prog{}.C(semi).I(amount).emit(0x51)) == Color{255,255,255,77});
+    for (const auto amount : {kMin, kMin+255})
+        CHECK(evalProgColor(Prog{}.C(semi).I(amount).emit(0x51)) == Color{0,0,0,77});
+}
+
+TEST_CASE("color.mix handles the shared float corpus without undefined conversions") {
+    const Color a{0,128,255,73}, b{255,128,0,212};
+    for (const auto t : f32BoundaryCorpus()) {
+        INFO("t bits " << bitsOf(t));
+        const auto result = evalProgColor(Prog{}.C(a).C(b).F(t).emit(0x50));
+        CHECK(result.a == a.a);
+        if (std::isnan(t) || t <= 0.f) CHECK(result == a);
+        else if (t >= 1.f) CHECK(result == Color{b.r,b.g,b.b,a.a});
+        else {
+            CHECK(result.r == static_cast<u8>(255.f * t));
+            CHECK(result.b == static_cast<u8>(255.f * (1.f-t)));
+            CHECK(result.g == 128);
+        }
+    }
 }
 
 TEST_CASE("color.mix lerps RGB, clamps t and copies the first alpha") {

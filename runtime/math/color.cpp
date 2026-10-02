@@ -1,5 +1,6 @@
 #include "iprop/math/Color.hpp"
 #include "iprop/math/Scalar.hpp"
+#include "iprop/math/MinMax.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -8,7 +9,7 @@
 namespace iprop::math {
 
 Color colorMix(Color a, Color b, f32 t) {
-    t = std::clamp(t, 0.f, 1.f);
+    t = f32MinMax(f32MinMax(t, 0.f, true), 1.f, false);
     // Explicit fused multiply-add: the QuantSpace reference builds
     // contract this expression, so the pinned formula reproduces its
     // exact output bit for bit (spec §12.6). std::fma is deterministic.
@@ -21,7 +22,7 @@ Color colorMix(Color a, Color b, f32 t) {
 
 Color colorShade(Color c, i32 amount) {
     const auto channel = [amount](u8 x) {
-        return static_cast<u8>(std::clamp(static_cast<int>(x) + amount, 0, 255));
+        return static_cast<u8>(std::clamp(static_cast<i64>(x) + amount, i64{0}, i64{255}));
     };
     return Color{channel(c.r), channel(c.g), channel(c.b), c.a};
 }

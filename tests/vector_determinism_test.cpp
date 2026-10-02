@@ -1,24 +1,16 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
-#include <filesystem>
-#include <fstream>
 #include <string>
 
 #include "support/test_support.hpp"
+#include "support/f32_corpus.hpp"
 
 using namespace iprop;
 using namespace test_support;
 
 TEST_CASE("vector arithmetic canonicalizes NaNs over the shared float boundary corpus") {
-    const auto path = std::filesystem::path(__FILE__).parent_path() /
-                      "fixtures/f32-boundaries.txt";
-    std::ifstream input(path);
-    REQUIRE(input.good());
-    std::vector<f32> values;
-    for (std::string line; std::getline(input, line);) {
-        values.push_back(f32FromBits(static_cast<u32>(std::stoul(line, nullptr, 16))));
-    }
+    const auto values = f32BoundaryCorpus();
     REQUIRE(values.size() >= 20);
     for (const auto op : {Opcode::Vec2Add, Opcode::Vec2Sub, Opcode::Vec2Mul,
                           Opcode::Vec2Div, Opcode::Vec2Neg, Opcode::Vec2Len,
