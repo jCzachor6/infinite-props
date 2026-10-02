@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/math/Bezier.hpp"
 
 #include <algorithm>
 #include <array>
@@ -75,8 +76,8 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
         for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
             const f32 distance = count == 3
-                ? distBezier(p, points[0], points[1], points[2])
-                : distBezier(p, points[0], points[1], points[2], points[3]);
+                ? math::distBezier(p, points[0], points[1], points[2])
+                : math::distBezier(p, points[0], points[1], points[2], points[3]);
             if (distance <= radius) {
                 compositePixel(ex, x, y, colour);
             }

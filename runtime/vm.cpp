@@ -36,6 +36,9 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepArithmetic(ex, ins)) {
         return true;
     }
+    if (stepVector(ex, ins) || stepSdf(ex, ins) || stepColor(ex, ins) || stepCurves(ex, ins)) {
+        return true;
+    }
     if (stepSeeded(ex, ins)) {
         return true;
     }

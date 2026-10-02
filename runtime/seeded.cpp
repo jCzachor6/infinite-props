@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/math/Curves.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -94,14 +95,6 @@ f32 jitterCoordinate(Execution& ex, i32 cell, f32 offset) {
         : coordinate;
 }
 
-// The quintic fade t*t*t*(t*(t*6 - 15) + 10).
-f32 fade5(f32 t) {
-    const f32 t2 = t * t;
-    const f32 t3 = t2 * t;
-    const f32 inner = t * (t * 6.f - 15.f) + 10.f;
-    return t3 * inner;
-}
-
 // The cell hash from §12.4 (the u32 wraparound lattice mix).
 u32 cellHash(u32 seed, i32 cx, i32 cy) {
     return hash32(seed ^ (static_cast<u32>(cx) * 73856093u) ^
@@ -125,8 +118,8 @@ f32 gradNoise(Execution& ex, f32 x, f32 y, u32 seed) {
                                std::numeric_limits<i32>::max() - 1);
     const f32 fx = x - static_cast<f32>(ix);
     const f32 fy = y - static_cast<f32>(iy);
-    const f32 u = fade5(fx);
-    const f32 v = fade5(fy);
+    const f32 u = math::quinticPolynomial(fx);
+    const f32 v = math::quinticPolynomial(fy);
     const f32 n00 = gradCorner(seed, ix, iy, fx, fy, 0.f, 0.f);
     const f32 n10 = gradCorner(seed, ix + 1, iy, fx, fy, 1.f, 0.f);
     const f32 n01 = gradCorner(seed, ix, iy + 1, fx, fy, 0.f, 1.f);
@@ -348,14 +341,6 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
         ex.push(Value(ridgeNoise(ex, x, y, octaves, seed)));
-        ++ex.frame().ip;
-        return true;
-    }
-    case Opcode::Lerp: {
-        const f32 t = std::clamp(ex.popF32(), 0.f, 1.f);
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a * (1.f - t) + b * t));
         ++ex.frame().ip;
         return true;
     }

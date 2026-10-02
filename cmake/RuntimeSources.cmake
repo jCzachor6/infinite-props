@@ -12,6 +12,16 @@ set(IPROP_RUNTIME_SOURCES
     stack.cpp
     control.cpp
     arithmetic.cpp
+    vector_ops.cpp
+    sdf_ops.cpp
+    color_ops.cpp
+    curves_ops.cpp
+    math/scalar.cpp
+    math/vector.cpp
+    math/sdf.cpp
+    math/bezier.cpp
+    math/curves.cpp
+    math/color.cpp
     seeded.cpp
     canvas.cpp
     outputs.cpp

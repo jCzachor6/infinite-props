@@ -132,24 +132,17 @@ struct Execution {
 // (shared by the canvas ops and the part blit).
 void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
 
-// Pinned quadratic/cubic distance queries (spec §12.9), also used by curve.
-f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c);
-f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d);
-
-// Pinned minNum/maxNum (spec §12.8), shared by arithmetic and output bounds.
-using math::f32MinMax;
-
-// Per-group instruction dispatchers. Each returns true when it handled the
-// opcode; dispatch() falls through to a trap otherwise. Groups arrive with
-// their phases: core frame ops (vm.cpp, Phase 7), stack.cpp (Phase 7),
-// control.cpp (Phase 8), arithmetic.cpp (Phase 8 minimal subset + Phase 9
-// remainder), seeded.cpp (Phase 10), canvas.cpp (Phase 11), outputs.cpp
-// (Phase 12), parts.cpp (Phase 13).
+// Per-domain VM adapters own stack access, traps, results and ip advancement.
+// Mathematical kernels are independent of Execution (iprop/math/*.hpp).
 bool dispatch(Execution& ex, Instruction ins);
 bool stepCore(Execution& ex, Instruction ins);
 bool stepStack(Execution& ex, Instruction ins);
 bool stepControl(Execution& ex, Instruction ins);
 bool stepArithmetic(Execution& ex, Instruction ins);
+bool stepVector(Execution& ex, Instruction ins);
+bool stepSdf(Execution& ex, Instruction ins);
+bool stepColor(Execution& ex, Instruction ins);
+bool stepCurves(Execution& ex, Instruction ins);
 bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);

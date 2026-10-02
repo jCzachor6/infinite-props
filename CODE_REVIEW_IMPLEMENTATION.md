@@ -89,4 +89,13 @@ dokumentację i kolorowanie składni. Historyczny skalarny atan2 i sektor fold
 zachowano. CTest 7/7 PASS; native/WASM: 121 obrazów/outputów, 6292 porównania
 bitowe, 19 trapów i 7 golden PASS (`vec2-api-conformance.log`).
 
-W toku: wydzielenie matematyki i dalsze refaktory.
+A4, etap 1: czyste moduły `Scalar`, `Vector`, `Sdf`, `Bezier`, `Curves`
+i `Color` nie zależą od Execution. Osobne adaptery VM obsługują stos,
+trapy i ip; `arithmetic.cpp` ma 301 linii zamiast 1181. Wspólny
+`quinticPolynomial` zasila noise i clamped quintic bez zmiany zaokrągleń.
+CTest 7/7 PASS; native/WASM: 7 golden, 121 obrazów/outputów, 19 trapów,
+6292 wyniki bitowe PASS (`math-extract-conformance.log`).
+Pozostaje fabryka i pomiar przygotowanego kernela, więc A4 nie jest jeszcze
+odhaczone jako całość.
+
+W toku: przygotowany kernel Béziera, następnie opisy instrukcji i plan wywołań.
