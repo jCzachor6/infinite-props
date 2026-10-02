@@ -29,14 +29,14 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)
                     CHECK(accepts(opcode->stack->inputs[i],runtimeType(overload.params[i])));
-                if (spec.result == T::Void) CHECK_FALSE(opcode->stack->result);
-                else CHECK(opcode->stack->result == runtimeType(spec.result));
+                if (overload.result == T::Void) CHECK_FALSE(opcode->stack->result);
+                else CHECK(opcode->stack->result == runtimeType(overload.result));
             }
             std::string args;
             for (const auto type : overload.params) {
                 if (!args.empty()) args += ",";
-                // Integer literals for every numeric argument exercise widening.
-                args += type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : "1";
+                // Exact argument types exercise each overload, including identity casts.
+                args += type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : type == T::F32 ? "1.0" : "1";
             }
             const auto program = ips::parse("asset t { size 8x8 draw { "
                 "stream_push(1) " + name + "(" + args + ") } }");

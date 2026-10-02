@@ -37,8 +37,31 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     const auto& spec = *call.spec;
     if (spec.lowering == ips::BuiltinLowering::Opcode) {
         for (const auto& arg : call.arguments) emitArg(arg);
-        ins(*call.overload->opcode);
-        return spec.result;
+        if (call.overload->opcode) ins(*call.overload->opcode);
+        return call.overload->result;
+    }
+    if (spec.lowering == ips::BuiltinLowering::ColorConstructor) {
+        // Each mask leaves the other channels at 255. Integer shade/mul
+        // builds RGB exactly, without a VM opcode or float-rounding errors.
+        const Color masks[] = {{0, 255, 255, 255}, {255, 0, 255, 255}, {255, 255, 0, 255}};
+        for (std::size_t i = 0; i < 3; ++i) {
+            emitConst(masks[i]);
+            emitArg(call.arguments[i]);
+            ins(Opcode::Dup);
+            emitConst(i32{0});
+            ins(Opcode::I32LtS);
+            ins(Opcode::If);
+            ins(Opcode::Drop);
+            emitConst(i32{0});
+            ins(Opcode::End);
+            ins(Opcode::ColorShade);
+            if (i != 0) ins(Opcode::ColorMul);
+        }
+        if (call.arguments.size() == 4) {
+            emitArg(call.arguments[3]);
+            ins(Opcode::ColorSetA);
+        }
+        return VT::Color;
     }
     if (spec.lowering == ips::BuiltinLowering::Round) {
         // Compare the fractional distance before adjusting the integral

@@ -122,6 +122,9 @@ writes and part placement.</li>
 <tr><td><code>stream_push(x)</code> / <code>stream_pop()</code></td><td>—</td><td>derive and restore RNG streams</td></tr>
 <tr><td><code>noise(x, y, s)</code> / <code>fault(x, y, s)</code></td><td><code>f32</code></td><td>value / triangular noise</td></tr>
 <tr><td><code>smooth(t)</code> / <code>lerp(a, b, t)</code></td><td><code>f32</code></td><td>clamped helpers</td></tr>
+<tr><td><code>lerp(colorA, colorB, t)</code></td><td><code>color</code></td><td>same interpolation as color.mix; preserves the first alpha</td></tr>
+<tr><td><code>int(x)</code> / <code>float(x)</code></td><td><code>i32</code>/<code>f32</code></td><td>numeric casts; int truncates and saturates (NaN → 0); casting to the existing type preserves the value</td></tr>
+<tr><td><code>rgb(r, g, b)</code> / <code>rgba(r, g, b, a)</code></td><td><code>color</code></td><td>integer channels clamped to 0–255; rgb uses alpha 255; arguments run once, left to right</td></tr>
 <tr><td><code>sqrt(x)</code> / <code>round(x)</code> / <code>i32trunc(x)</code></td><td><code>f32</code>/<code>i32</code></td><td>math and conversions</td></tr>
 <tr><td><code>sin(x)</code> / <code>cos(x)</code></td><td><code>f32</code></td><td>pinned trigonometry, angles in radians</td></tr>
 <tr><td><code>abs(x)</code> / <code>floor(x)</code> / <code>ceil(x)</code></td><td><code>f32</code></td><td>float magnitude and rounding</td></tr>

@@ -32,7 +32,9 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     }
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;
-        BuiltinCall result{&spec, ips::builtinOverload(spec, call.args.size()), {}};
+        std::vector<T> types;
+        for (const auto& arg : call.args) types.push_back(function_.typeOf(*arg.value));
+        BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
         if (spec.lowering == ips::BuiltinLowering::Polygon) {
             for (std::size_t i = 1; i < call.args.size(); ++i)
                 result.arguments.push_back(argument(*call.args[i].value, T::F32));

@@ -8,6 +8,9 @@
 - A.2: Moved color mixing and shading to `color.mix` and `color.shade`;
   removed the bare builtin spellings and migrated sources and documentation
   without changing generated artifacts.
+- A.3: Added numeric `int`/`float` aliases, integer-channel `rgb`/`rgba`
+  constructors and color/f32 `lerp` overloads. Overload results and matching
+  now belong to individual signatures; all lower to existing VM operations.
 
 ## v0.3.0 — 2026-10-02
 

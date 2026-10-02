@@ -64,8 +64,8 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return ValueType::Void;
     }
 
-    const auto* overload = builtinOverload(signature, call.args.size());
-    if (!overload) {
+    const auto* arityMatch = builtinOverload(signature, call.args.size());
+    if (!arityMatch) {
         std::string arities;
         for (const auto& candidate : signature.overloads) {
             if (!arities.empty()) arities += " or ";
@@ -75,13 +75,21 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
               "function '" + name.name + "' expects " + arities +
                   " arguments, got " + std::to_string(call.args.size()));
     }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
+    std::vector<ValueType> types;
+    for (const Arg& arg : call.args) {
         if (arg.name.has_value()) {
             error(arg.location,
                   "function '" + name.name + "' does not take named arguments");
         }
-        const ValueType got = typeOf(*arg.value);
+        types.push_back(typeOf(*arg.value));
+    }
+    const auto* overload = builtinOverload(signature, types);
+    if (overload) return overload->result;
+    for (std::size_t i = 0; i < call.args.size(); ++i) {
+        const Arg& arg = call.args[i];
+        const ValueType got = types[i];
+        // The first arity match provides a concrete expected type in errors.
+        const auto* overload = arityMatch;
         if (!argFits(overload->params[i], got)) {
             error(locationOf(*arg.value),
                   "argument " + std::to_string(i + 1) + " of '" + name.name +
@@ -89,7 +97,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                       ", got " + typeName(got));
         }
     }
-    return signature.result;
+    error(call.location, "no matching overload for '" + name.name + "'");
 }
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {

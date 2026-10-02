@@ -55,8 +55,16 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"remap", {V::F32, L::Opcode, {{{V::F32, V::F32, V::F32, V::F32, V::F32}, Opcode::Remap}}}},
         {"clamp", {V::F32, L::Opcode, {{{V::F32, V::F32, V::F32}, Opcode::Clamp}}}},
         {"i32trunc", {V::I32, L::Opcode, {{{V::F32}, Opcode::F32ToI32}}}},
+        {"int", {V::I32, L::Opcode, {
+            {{V::I32}, std::nullopt}, {{V::F32}, Opcode::F32ToI32}}}},
+        {"float", {V::F32, L::Opcode, {
+            {{V::F32}, std::nullopt}, {{V::I32}, Opcode::I32ToF32}}}},
+        {"rgb", {V::Color, L::ColorConstructor, {{{V::I32, V::I32, V::I32}, std::nullopt}}}},
+        {"rgba", {V::Color, L::ColorConstructor, {{{V::I32, V::I32, V::I32, V::I32}, std::nullopt}}}},
         {"round", {V::I32, L::Round, {{{V::F32}, std::nullopt}}}},
-        {"lerp", {V::F32, L::Opcode, {{{V::F32, V::F32, V::F32}, Opcode::Lerp}}}},
+        {"lerp", {L::Opcode, {
+            {{V::F32, V::F32, V::F32}, Opcode::Lerp, V::F32},
+            {{V::Color, V::Color, V::F32}, Opcode::ColorMix, V::Color}}}},
         {"color.mix", {V::Color, L::Opcode, {{{V::Color, V::Color, V::F32}, Opcode::ColorMix}}}},
         {"color.shade", {V::Color, L::Opcode, {{{V::Color, V::I32}, Opcode::ColorShade}}}},
         {"pixel", {V::Void, L::Opcode, {{{V::I32, V::I32, V::Color}, Opcode::Pixel}}}},
@@ -77,5 +85,25 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arit
         if (overload.params.size() == arity) return &overload;
     }
     return nullptr;
+}
+
+const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
+                                       std::span<const ValueType> arguments) {
+    const BuiltinOverload* best = nullptr;
+    std::size_t bestWidenings = arguments.size() + 1;
+    for (const auto& candidate : spec.overloads) {
+        if (candidate.params.size() != arguments.size()) continue;
+        std::size_t widenings = 0;
+        bool fits = true;
+        for (std::size_t i = 0; i < arguments.size(); ++i) {
+            if (!argFits(candidate.params[i], arguments[i])) { fits = false; break; }
+            if (candidate.params[i] != arguments[i]) ++widenings;
+        }
+        if (fits && widenings < bestWidenings) {
+            best = &candidate;
+            bestWidenings = widenings;
+        }
+    }
+    return best;
 }
 } // namespace iprop::ips

@@ -209,6 +209,12 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `noise` — smoothstep-interpolated value noise over a pinned lattice hash.
 - `fault` — triangular-interpolated noise for sharp geological features.
 - `color.mix`, `color.shade`, `smooth` — colour/value helpers.
+- `lerp(a, b, t)` interpolates either two colors or two numbers; integer
+  numbers widen to f32. Color interpolation preserves the first alpha.
+- `int(x)` truncates f32 toward zero with saturation (NaN becomes zero),
+  and preserves i32 values. `float(x)` widens i32 or preserves f32 values.
+- `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
+  clamped to 0–255; `rgb` uses alpha 255. Arguments run once, left to right.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).
