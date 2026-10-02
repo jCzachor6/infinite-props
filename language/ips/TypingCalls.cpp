@@ -40,6 +40,16 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
+    if (signature.lowering == BuiltinLowering::Pick && call.args.size() >= 2) {
+        std::vector<ValueType> types;
+        for (const auto& arg : call.args) {
+            if (arg.name) error(arg.location, "pick does not take named arguments");
+            types.push_back(typeOf(*arg.value));
+        }
+        const auto result = selectionType(types);
+        if (!result) error(call.location, "pick choices must have matching storable types or be numeric");
+        return *result;
+    }
     // poly(colour, x0, y0, x1, y1, ...) — colour then 2n floats, n >= 3.
     if (signature.lowering == BuiltinLowering::Polygon) {
         if (call.args.size() < 7 || call.args.size() % 2 == 0) {

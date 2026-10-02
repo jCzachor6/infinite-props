@@ -12,7 +12,7 @@
 
 namespace iprop::ips {
 
-enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor };
+enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance };
 struct BuiltinOverload {
     std::vector<ValueType> params;
     std::optional<Opcode> opcode;
@@ -36,5 +36,7 @@ struct BuiltinSpec {
 const std::map<std::string, BuiltinSpec>& builtinSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
+// Choices preserve identical storable types; mixed numeric choices widen to f32.
+std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
 
 } // namespace iprop::ips

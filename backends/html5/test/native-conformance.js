@@ -28,6 +28,7 @@ const sources = [
     ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
     ["colors", "backends/html5/test/fixtures/colors.ips"],
     ["aliases", "backends/html5/test/fixtures/aliases.ips"],
+    ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],

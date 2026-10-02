@@ -11,6 +11,9 @@
 - A.3: Added numeric `int`/`float` aliases, integer-channel `rgb`/`rgba`
   constructors and color/f32 `lerp` overloads. Overload results and matching
   now belong to individual signatures; all lower to existing VM operations.
+- A.4: Added `pick(n)`, eager typed `pick(a, b, ...)` choices and `chance(p)`.
+  Selection uses scoped locals and balanced branches; RNG state and
+  argument evaluation retain the existing stream semantics.
 
 ## v0.3.0 — 2026-10-02
 

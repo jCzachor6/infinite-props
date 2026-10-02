@@ -10,6 +10,8 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"stream_pop", {V::Void, L::Opcode, {{{}, Opcode::StreamPop}}}},
         {"range", {V::F32, L::Opcode, {{{V::F32, V::F32}, Opcode::RngRange}}}},
         {"index", {V::I32, L::Opcode, {{{V::I32}, Opcode::RngIndex}}}},
+        {"pick", {V::I32, L::Pick, {{{V::I32}, Opcode::RngIndex}}}},
+        {"chance", {V::I32, L::Chance, {{{V::F32}, std::nullopt}}}},
         {"hash", {V::I32, L::Opcode, {{{V::I32}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{V::F32, V::F32, V::I32}, Opcode::Noise}}}},
         {"fault", {V::F32, L::Opcode, {{{V::F32, V::F32, V::I32}, Opcode::Fault}}}},
@@ -105,5 +107,15 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
         }
     }
     return best;
+}
+
+std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
+    if (arguments.empty() || !isStorable(arguments[0])) return std::nullopt;
+    auto result = arguments[0];
+    for (const auto type : arguments) {
+        if (isNumeric(result) && isNumeric(type)) result = promote(result, type);
+        else if (type != result) return std::nullopt;
+    }
+    return result;
 }
 } // namespace iprop::ips

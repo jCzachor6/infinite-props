@@ -1,0 +1,14 @@
+asset randomSugar {
+  size 8x8
+  output list point trace
+  draw {
+    for i in 0..32 {
+      trace = {pick(0), chance(0)}
+      trace = {pick(8), chance(1)}
+      trace = {pick(10, 20.5, -0.0), chance(0.5)}
+      p = pick({1, -0.0}, {2, 3}, {4, 5})
+      trace = p
+      pixel(i % 8, i / 8, pick(#ff0000, #00ff00, #0000ff))
+    }
+  }
+}

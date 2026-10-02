@@ -7,6 +7,7 @@ add_library(iprop_compiler STATIC
     Emit.cpp
     EmitExpr.cpp
     EmitCall.cpp
+    EmitRandom.cpp
     PaletteLowerer.cpp
     Assemble.cpp)
 

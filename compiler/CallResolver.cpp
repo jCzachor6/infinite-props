@@ -34,6 +34,13 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         const auto& spec = found->second;
         std::vector<T> types;
         for (const auto& arg : call.args) types.push_back(function_.typeOf(*arg.value));
+        if (spec.lowering == ips::BuiltinLowering::Pick && call.args.size() >= 2) {
+            const auto type = ips::selectionType(types);
+            if (!type) throw ips::SourceError{call.location, "invalid pick choices"};
+            SelectionCall result{*type, {}};
+            for (const auto& arg : call.args) result.choices.push_back(argument(*arg.value, *type));
+            return {call.location, std::move(result)};
+        }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
         if (spec.lowering == ips::BuiltinLowering::Polygon) {
             for (std::size_t i = 1; i < call.args.size(); ++i)

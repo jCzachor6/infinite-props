@@ -206,6 +206,11 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `hash` — splitmix32-style integer hash (as in `PaGenerationMath::hash`).
 - `unit`, `range`, `index` — draws from a Weyl-sequence stream
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
+- `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
+  all choices once, left to right, then consumes one draw to select a value.
+  Choices share a scalar/vec2 type; mixed numeric choices widen to f32.
+- `chance(p)` returns an i32 boolean for `unit() < p`, after evaluating p.
+  It always consumes one draw; p ≤ 0 and NaN give false, p ≥ 1 gives true.
 - `noise` — smoothstep-interpolated value noise over a pinned lattice hash.
 - `fault` — triangular-interpolated noise for sharp geological features.
 - `color.mix`, `color.shade`, `smooth` — colour/value helpers.

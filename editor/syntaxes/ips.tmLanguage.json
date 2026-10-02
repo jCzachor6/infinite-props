@@ -75,7 +75,7 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "\\b(vec2\\.(len|dot|rot)|unit|stream_push|stream_pop|range|index|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+      "match": "\\b(vec2\\.(len|dot|rot)|unit|stream_push|stream_pop|range|index|pick|chance|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
     }
   }
 }

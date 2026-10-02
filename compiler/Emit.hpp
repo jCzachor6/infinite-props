@@ -75,6 +75,7 @@ private:
     ips::ValueType emitCall(const ips::Call& call);
     void emitArg(const PlannedArgument& arg);
     ips::ValueType emitBuiltin(const BuiltinCall& call);
+    ips::ValueType emitSelection(const SelectionCall& call);
     void emitPartCall(const PartCall& call);
 
     struct PartRead {

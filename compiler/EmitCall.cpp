@@ -10,6 +10,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
     return std::visit([&](const auto& target) -> ips::ValueType {
         using T = std::decay_t<decltype(target)>;
         if constexpr (std::is_same_v<T, BuiltinCall>) return emitBuiltin(target);
+        else if constexpr (std::is_same_v<T, SelectionCall>) return emitSelection(target);
         else if constexpr (std::is_same_v<T, UserCall>) {
             for (const auto& arg : target.arguments) emitArg(arg);
             ins(Opcode::Call, 0, static_cast<u16>(target.function));
@@ -35,10 +36,16 @@ void Emitter::emitArg(const PlannedArgument& arg) {
 ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     using VT = ips::ValueType;
     const auto& spec = *call.spec;
-    if (spec.lowering == ips::BuiltinLowering::Opcode) {
+    if (spec.lowering == ips::BuiltinLowering::Opcode || spec.lowering == ips::BuiltinLowering::Pick) {
         for (const auto& arg : call.arguments) emitArg(arg);
         if (call.overload->opcode) ins(*call.overload->opcode);
         return call.overload->result;
+    }
+    if (spec.lowering == ips::BuiltinLowering::Chance) {
+        emitArg(call.arguments[0]);
+        ins(Opcode::RngUnit);
+        ins(Opcode::F32Gt);
+        return VT::I32;
     }
     if (spec.lowering == ips::BuiltinLowering::ColorConstructor) {
         // Each mask leaves the other channels at 255. Integer shade/mul
