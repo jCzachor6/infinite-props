@@ -12,6 +12,7 @@ namespace iprop {
 
 // Compiles a semantically-checked .ips program — the entry asset plus its
 // imported parts, keyed by import alias — into .iprop bytes (spec §2–§6).
+// Optimisation is enabled by default; false retains the reference lowering.
 // The output passes the runtime validator before being returned, so a valid
 // return value is guaranteed executable.
 //
@@ -21,6 +22,7 @@ namespace iprop {
 // a `draw` that returns a value.
 std::vector<u8> compileProgram(
     const ips::Program& entry,
-    const std::map<std::string, const ips::Program*>& parts);
+    const std::map<std::string, const ips::Program*>& parts,
+    bool optimize = true);
 
 } // namespace iprop

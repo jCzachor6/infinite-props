@@ -43,11 +43,12 @@ int main(int argc, char* argv[]) {
     std::string output;
     std::string formattedOutput;
     bool strip = false;
+    bool optimize = true;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--format <out.ips>]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--no-opt] [--format <out.ips>]\n"
                       << "Imports resolve relative to the entry file; the\n"
                       << "output passes the runtime validator. --strip removes\n"
                       << "the debug section (identical execution). --format writes\n"
@@ -61,6 +62,8 @@ int main(int argc, char* argv[]) {
             output = argv[++i];
         } else if (arg == "--strip") {
             strip = true;
+        } else if (arg == "--no-opt") {
+            optimize = false;
         } else if (arg == "--format") {
             if (i + 1 >= argc) return fail("missing value for --format");
             formattedOutput = argv[++i];
@@ -147,7 +150,7 @@ int main(int argc, char* argv[]) {
         }
 
         std::vector<iprop::u8> bytes =
-            iprop::compileProgram(entry, partPrograms);
+            iprop::compileProgram(entry, partPrograms, optimize);
         std::string canonicalSource;
         if (!formattedOutput.empty()) {
             const auto destination = std::filesystem::absolute(formattedOutput).lexically_normal();

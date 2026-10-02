@@ -4,6 +4,8 @@
 #include "Assemble.hpp"
 #include "Emit.hpp"
 #include "Plan.hpp"
+#include "Optimizer.hpp"
+#include "iprop/Debug.hpp"
 
 namespace iprop {
 
@@ -12,7 +14,7 @@ namespace iprop {
 // (IR → .iprop bytes) → validate (dogfooding, spec §14).
 std::vector<u8> compileProgram(
     const ips::Program& entry,
-    const std::map<std::string, const ips::Program*>& parts) {
+    const std::map<std::string, const ips::Program*>& parts, bool optimize) {
     std::unique_ptr<compiler::Plan> plan = compiler::Planner(entry, parts).plan();
 
     compiler::Emitter emitter(*plan);
@@ -25,7 +27,16 @@ std::vector<u8> compileProgram(
         }
     }
 
-    const std::vector<u8> bytes = compiler::Assembler(*plan).assemble();
+    std::vector<u8> bytes = compiler::Assembler(*plan).assemble();
+    if (optimize) {
+        compiler::eliminateDeadCode(*plan);
+        compiler::compactPools(*plan);
+        auto candidate = compiler::Assembler(*plan).assemble();
+        // Cost is the complete artifact, including pools, tables and debug.
+        // Keep the reference lowering if either output mode would grow.
+        if (candidate.size() <= bytes.size() && stripDebug(candidate).size() <= stripDebug(bytes).size())
+            bytes = std::move(candidate);
+    }
 
     // Dogfood: the compiled file must pass the runtime validator.
     try {

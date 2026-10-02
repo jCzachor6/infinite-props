@@ -38,6 +38,12 @@
   joiners and emoji member names are rejected; native/WASM coverage pins
   the normalized executable behavior.
 
+- C.1: Added control-flow liveness for dead local writes, conservative removal
+  of discarded pure expressions, and local/name/constant pool compaction.
+  RNG draws, helper effects and runtime traps remain observable. Full debug
+  and stripped artifacts are cost-checked against the reference lowering;
+  `ipc --no-opt` and the compiler's optimization switch retain that lowering.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

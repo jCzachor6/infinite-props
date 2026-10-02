@@ -2,6 +2,8 @@
 
 add_library(iprop_compiler STATIC
     Compiler.cpp
+    DeadCode.cpp
+    CompactPools.cpp
     Plan.cpp
     CallResolver.cpp
     Emit.cpp

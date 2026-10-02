@@ -104,7 +104,7 @@ asset t {
 })";
     // The constant index needs no scratch locals (no ladder emitted): the
     // function has exactly one extra local (the result 'c').
-    const auto loaded = loadFile(compileChecked(folded));
+    const auto loaded = loadFile(compileProgram(ips::parse(folded), {}, false));
     REQUIRE(loaded.code.entry().locals.size() == 1);
 }
 

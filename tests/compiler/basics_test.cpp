@@ -182,7 +182,7 @@ asset t {
     y = -5 + 2
   }
 })";
-    const auto bytes = compileChecked(source);
+    const auto bytes = compileProgram(ips::parse(source), {}, false);
     const auto loaded = loadFile(bytes);
     // Two folded constants, two local sets: 4 instructions = 16 bytes.
     REQUIRE(loaded.code.entry().code.size() == 16);
