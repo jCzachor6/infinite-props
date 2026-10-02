@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/math/Float.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -362,12 +363,11 @@ Vec2 vec2Fold(const Vec2& v, i32 n) {
     const f32 y = r * f32Sin(magnitude);
     // A multiply may choose either operand's NaN sign/payload on different
     // backends. Canonicalize each component after the final products.
-    const f32 nan = std::numeric_limits<f32>::quiet_NaN();
-    return Vec2{std::isnan(x) ? nan : x, std::isnan(y) ? nan : y};
+    return math::canonical(Vec2{x, y});
 }
 
 Vec2 vec2Polar(const Vec2& v) {
-    return Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(v.y, v.x)};
+    return math::canonical(Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(v.y, v.x)});
 }
 
 // ---- the curve toolkit (spec §12.14) ----------------------------------------
@@ -909,14 +909,14 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::Vec2Add: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
-        ex.push(Value(Vec2{a.x + b.x, a.y + b.y}));
+        ex.push(Value(math::canonical(Vec2{a.x + b.x, a.y + b.y})));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Sub: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
-        ex.push(Value(Vec2{a.x - b.x, a.y - b.y}));
+        ex.push(Value(math::canonical(Vec2{a.x - b.x, a.y - b.y})));
         ++ex.frame().ip;
         return true;
     }
@@ -924,9 +924,9 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Value right = ex.pop();
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
-            ex.push(Value(Vec2{a.x * b->x, a.y * b->y}));
+            ex.push(Value(math::canonical(Vec2{a.x * b->x, a.y * b->y})));
         } else if (const f32* s = std::get_if<f32>(&right)) {
-            ex.push(Value(Vec2{a.x * *s, a.y * *s}));
+            ex.push(Value(math::canonical(Vec2{a.x * *s, a.y * *s})));
         } else {
             ex.trap("stack type mismatch: expected f32 or vec2");
         }
@@ -937,9 +937,9 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Value right = ex.pop();
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
-            ex.push(Value(Vec2{a.x / b->x, a.y / b->y}));
+            ex.push(Value(math::canonical(Vec2{a.x / b->x, a.y / b->y})));
         } else if (const f32* s = std::get_if<f32>(&right)) {
-            ex.push(Value(Vec2{a.x / *s, a.y / *s}));
+            ex.push(Value(math::canonical(Vec2{a.x / *s, a.y / *s})));
         } else {
             ex.trap("stack type mismatch: expected f32 or vec2");
         }
@@ -948,7 +948,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     }
     case Opcode::Vec2Neg: {
         const Vec2 v = ex.popVec2();
-        ex.push(Value(Vec2{-v.x, -v.y}));
+        ex.push(Value(math::canonical(Vec2{-v.x, -v.y})));
         ++ex.frame().ip;
         return true;
     }
@@ -956,7 +956,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Vec2 v = ex.popVec2();
         const f32 xx = v.x * v.x;
         const f32 yy = v.y * v.y;
-        ex.push(Value(std::sqrt(xx + yy)));
+        ex.push(Value(math::canonical(std::sqrt(xx + yy))));
         ++ex.frame().ip;
         return true;
     }
@@ -965,7 +965,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const Vec2 a = ex.popVec2();
         const f32 abx = a.x * b.x;
         const f32 aby = a.y * b.y;
-        ex.push(Value(abx + aby));
+        ex.push(Value(math::canonical(abx + aby)));
         ++ex.frame().ip;
         return true;
     }
@@ -978,7 +978,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const f32 ys = v.y * s;
         const f32 xs = v.x * s;
         const f32 yc = v.y * c;
-        ex.push(Value(Vec2{xc - ys, xs + yc}));
+        ex.push(Value(math::canonical(Vec2{xc - ys, xs + yc})));
         ++ex.frame().ip;
         return true;
     }

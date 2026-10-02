@@ -5,7 +5,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 ## Wymagania
 
 - [x] R1 / A6: typowane ramki walidatora, poprawne scalenia i osiągalność; bezpieczne mul/div; granica C ABI; testy gałęzi i odtworzenie awarii.
-- [ ] R2: jawne reguły NaN nowych operacji, specyfikacja, porównanie surowych bitów native/WASM, historyczne golden.
+- [x] R2: jawne reguły NaN nowych operacji, specyfikacja, porównanie surowych bitów native/WASM, historyczne golden.
 - [x] R3: jedna oczekiwana wersja produktu dla instalacji/wydania, aktualne CI i dokumentacja, przechodzące shared/static install smoke i release check.
 - [ ] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
 - [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
@@ -25,7 +25,8 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 
 - Zlecenie wdrożenia całej listy obejmuje opisane w review korekty kontraktu 0.3. Specyfikacja jest aktualizowana przed zachowaniem. Historyczne specyfikacje 0.1/0.2 pozostają zamrożone.
 - Refaktory używają typów wartościowych, statycznych opisów i fabryk planów; nie wprowadzają osobnej hierarchii klas wirtualnych dla każdej instrukcji.
-- Nie wykonujemy commitów, push ani publikacji w ramach tego zlecenia.
+- Zgodnie z późniejszą dyspozycją użytkownika każda ukończona i sprawdzona
+  poprawka otrzymuje osobny lokalny commit. Push i publikacja nie są zlecone.
 
 ## Weryfikacja i postęp
 
@@ -54,4 +55,12 @@ w workflow. Dokumentacja wskazuje produkt 0.3.0 i nadal API C 0.2.
 shared/static oraz zainstalowany Godot (8 corpus entries + outputs).
 Log: `/tmp/iprop-fixes.C5KhDL/release-check.log`; archiwa nie były tworzone.
 
-W toku: R2, następnie wydzielenie matematyki i geometria D4.
+R2: nowe operacje wektorowe kanonizują NaN do `0x7FC00000` przez klasyfikację
+bitów; konstrukcja, odczyt komponentów i historyczne operacje skalarne
+zachowują bity. Wspólny korpus 22 wzorców obejmuje ±0, subnormale,
+nieskończoności i NaN z różnymi znakami/payloadami, także sygnalizujące.
+CTest 6/6 PASS; test natywny 9118 asercji PASS. WASM: 6292 dokładne
+porównania bitów, 116 obrazów/outputów, 7 golden i 19 trapów PASS.
+Harness Node 9/9 PASS. Log: `/tmp/iprop-fixes.C5KhDL/vector-conformance.log`.
+
+W toku: geometria D4, następnie wydzielenie matematyki i dalsze refaktory.

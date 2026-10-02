@@ -89,6 +89,7 @@ function run(iprop, toolsDir) {
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
     let trapComparisons = 0;
+    let vectorComparisons = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -309,10 +310,11 @@ function run(iprop, toolsDir) {
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);
         compare(path.join(temporary, "noise-v2.iprop"), 7);
+        vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

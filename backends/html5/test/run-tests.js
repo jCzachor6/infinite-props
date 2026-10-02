@@ -35,6 +35,8 @@ async function main() {
                     " pixel-exact images and structured outputs; native pins verified)");
         console.log("native/WASM runtime errors: PASS (" + native.trapComparisons +
                     " matching trap reasons)");
+        console.log("native/WASM vector boundaries: PASS (" + native.vectorComparisons +
+                    " bit-exact results)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

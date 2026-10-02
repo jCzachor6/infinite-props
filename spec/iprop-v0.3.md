@@ -450,8 +450,13 @@ Semantics (all f32 arithmetic IEEE-correctly-rounded, like §9.4):
 - `vec2.rot(v, a)` — `{v.x*cos(a) - v.y*sin(a), v.x*sin(a) + v.y*cos(a)}`
   with `sin`/`cos` from §12.7 (the rotation by `a` radians,
   counterclockwise in asset coordinates where y grows downward).
-- `vec2.x/y` — the components; no NaN special-casing anywhere (IEEE
-  propagation).
+- `vec2.x/y` — the components. Construction, component extraction and
+  storage preserve their input bits. Each result component of vector
+  arithmetic (`add/sub/mul/div/neg/len/dot/rot/fold/polar`) that is NaN
+  MUST instead be the canonical quiet NaN `0x7FC00000`, independent of
+  operand sign/payload and backend instruction selection. Non-NaN results
+  retain their IEEE bits, including signed zeros and infinities. This
+  rule applies to the new vector operations, not historical scalar ops.
 
 A `vec2` value also travels as a point output (§5.4): a point slot holds
 the pair directly.
