@@ -84,7 +84,9 @@ TEST_CASE("all D4 images match output bounds with asymmetric scale origin and pl
         for (u16 c : {u16{1},u16{1},u16{2},u16{1}}) append(helper,Opcode::ConstF32,c);
         append(helper,Opcode::ConstColor); append(helper,Opcode::Rect);
         for (u16 c : {u16{1},u16{1},u16{2},u16{1}}) append(helper,Opcode::ConstF32,c);
-        append(helper,Opcode::OutRect,1);
+        append(helper,Opcode::OutRect,2);
+        append(helper,Opcode::ConstF32,5); append(helper,Opcode::ConstF32,6);
+        append(helper,Opcode::OutPoint,3); // centre of the painted rectangle
         append(helper,Opcode::Return);
         std::vector<u8> part;
         append(part,Opcode::Call,2); append(part,Opcode::Return);
@@ -92,14 +94,15 @@ TEST_CASE("all D4 images match output bounds with asymmetric scale origin and pl
         for (int i=0;i<3;++i) append(draw,Opcode::ConstI32);
         append(draw,Opcode::ConstF32,3); append(draw,Opcode::ConstF32,4);
         append(draw,Opcode::PartDraw,0,kind);
-        append(draw,Opcode::PartGetRect,1); append(draw,Opcode::OutRect,0);
+        append(draw,Opcode::PartGetRect,2); append(draw,Opcode::OutRect,0);
+        append(draw,Opcode::PartGetPoint,3); append(draw,Opcode::OutPoint,1);
         append(draw,Opcode::Return);
         const auto bytes = fullFile(
-            metaSection(16,16,0,0,1,1,1000000,false,{},0,0,0,{},{{1,0,1}}),
-            constSection({"draw","root","part"},{0},{0.f,1.f,3.f,8.f,5.f},{{255,0,0,255}}),
+            metaSection(16,16,0,0,1,1,1000000,false,{},0,0,0,{},{{1,0,1},{0,0,3}}),
+            constSection({"draw","root","part","anchor"},{0},{0.f,1.f,3.f,8.f,5.f,2.5f,1.5f},{{255,0,0,255}}),
             codeSection({drawSpec(draw), {kAnonymousName,{0,0},{},{},part},
                          {kAnonymousName,{},{},{},helper}},
-                        {{1,6,4,1,1,{},{{1,0,2}}}}));
+                        {{1,6,4,1,1,{},{{1,0,2},{0,0,3}}}}));
         auto file = loadFile(bytes);
         validate(file);
         for (const Vec2 scale : {Vec2{2,1}, Vec2{1,3}, Vec2{1,1}}) {
@@ -112,8 +115,15 @@ TEST_CASE("all D4 images match output bounds with asymmetric scale origin and pl
             const auto output = result.outputs[0].rects[0];
             CHECK(output.x == expected.x); CHECK(output.y == expected.y);
             CHECK(output.w == expected.w); CHECK(output.h == expected.h);
+            const auto anchor = result.outputs[1].points[0];
+            CHECK(anchor.x == expected.x + expected.w * 0.5f);
+            CHECK(anchor.y == expected.y + expected.h * 0.5f);
             const f32 x0 = 8-scale.x + output.x*scale.x;
             const f32 y0 = 5-scale.y + output.y*scale.y;
+            const f32 anchorX = 8-scale.x + anchor.x*scale.x;
+            const f32 anchorY = 5-scale.y + anchor.y*scale.y;
+            CHECK(anchorX == x0 + output.w*scale.x*0.5f);
+            CHECK(anchorY == y0 + output.h*scale.y*0.5f);
             for (u32 y=0;y<result.image.height;++y) {
                 for (u32 x=0;x<result.image.width;++x) {
                     const bool painted = static_cast<f32>(x) >= x0 && static_cast<f32>(y) >= y0 &&
