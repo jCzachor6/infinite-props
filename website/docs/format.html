@@ -19,14 +19,16 @@
 <h1>The .iprop format</h1>
 <p>A self-contained binary: one file carries the metadata, the constants and
 the bytecode — no external resources. The canonical specification is
-<a href="../spec/iprop-v0.2.md">spec/iprop-v0.2.md</a> in the repository; this
+<a href="../spec/iprop-v0.3.md">spec/iprop-v0.3.md</a> in the repository; this
 page summarises it.</p>
 
-<p>Format 0.2 gates the new trig/math opcodes. Its reader also accepts frozen
-0.1 files; a 0.1 file containing a 0.2-only opcode is rejected.</p>
+<p>Format 0.3 adds vectors, distance fields, curves, procedural noise, colour
+utilities and exact D4 part transforms. Its reader also accepts frozen
+0.1 and 0.2 files; instructions and value types introduced by a later
+format version are rejected in earlier files.</p>
 
 <h2 id="layout">The file layout</h2>
-<pre><code>header (20 bytes)          magic "IPRP", version 0.2, flags, section count
+<pre><code>header (20 bytes)          magic "IPRP", version 0.3, flags, section count
 section table (12 bytes × N)   id, offset, size
 sections                    meta · const · code · debug (optional)</code></pre>
 <ul>
@@ -46,7 +48,7 @@ rejects a flag/section mismatch.</li>
 <p>Function 0 is the entry point <code>draw</code> with parameters
 <code>(i32 variant, i32 archetype)</code> followed by one parameter per
 uniform. The instruction set (spec §9) covers control flow, the operand
-stack, integer/float/colour arithmetic, the pinned seeded primitives, the
+stack, integer/float/colour/vector arithmetic, the pinned seeded primitives, the
 canvas raster operations, the structured outputs and part calls.</p>
 
 <h2 id="determinism">Determinism</h2>

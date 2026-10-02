@@ -9,7 +9,8 @@ Static documentation under `docs/` (multi-page Vite build): getting started
 (with a verifiable first-asset walkthrough), the `.ips` language reference,
 the format summary, the per-backend installation guides and the FAQ. A
 client-side section search lives in the header; the canonical spec is
-copied into the site (`public/spec/iprop-v0.1.md`) so the docs can link it.
+copied into the site (`public/spec/iprop-v0.3.md`, alongside the frozen
+0.1/0.2 specifications) so the docs can link it.
 
 ## Playground
 
