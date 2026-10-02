@@ -30,6 +30,8 @@
 - Split large compiler, language, math, validator and C API test suites by
   responsibility; removed duplicate assets and completed planning reports.
   The website includes the format 0.3 specification.
+- Godot packages include only the declared demo assets, excluding stale
+  copies from the build directory.
 
 ## v0.2.0 — prepared for release, 2026-09-30
 

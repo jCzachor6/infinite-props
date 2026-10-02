@@ -6,8 +6,11 @@ install(FILES
     ${IPROP_GODOT_PROJECT}/demo.tscn ${IPROP_GODOT_PROJECT}/conformance.gd
     ${IPROP_GODOT_PROJECT}/iprop.gdextension
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot)
-install(DIRECTORY ${IPROP_GODOT_PROJECT}/assets
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot)
+# Package only the configured demo inputs, not stale files in the build tree.
+install(FILES
+    ${IPROP_GODOT_PROJECT}/assets/plant.iprop
+    ${IPROP_GODOT_PROJECT}/assets/portrait.iprop
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot/assets)
 install(FILES ${IPROP_GODOT_PROJECT}/.godot/extension_list.cfg
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/godot/.godot)
 # Do not ship a build-machine path to an export template.
