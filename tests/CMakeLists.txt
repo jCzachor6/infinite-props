@@ -17,6 +17,7 @@ add_executable(iprop_tests
     printer_test.cpp
     semantics_test.cpp
     compiler_test.cpp
+    builtin_spec_test.cpp
     disasm_test.cpp
     debug_test.cpp
     assembler_test.cpp

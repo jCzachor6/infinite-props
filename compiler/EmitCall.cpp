@@ -14,7 +14,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         if (name->name == "ramp") {
             return emitRamp(call);
         }
-        if (ips::builtinSignatures().count(name->name) != 0) {
+        if (ips::builtinSpecs().count(name->name) != 0) {
             return emitBuiltin(name->name, call);
         }
         // Bare names resolve to the entry's functions; inside a part, the
@@ -57,7 +57,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
                 for (auto it = reversed.rbegin(); it != reversed.rend(); ++it) {
                     full += "." + *it;
                 }
-                if (ips::builtinSignatures().count(full) != 0) {
+                if (ips::builtinSpecs().count(full) != 0) {
                     return emitBuiltin(full, call);
                 }
             }
@@ -80,114 +80,17 @@ void Emitter::emitArg(const ips::Arg& arg, ips::ValueType expected) {
 ips::ValueType Emitter::emitBuiltin(const std::string& name,
                                     const ips::Call& call) {
     using VT = ips::ValueType;
-    const auto emitFixed = [&](std::initializer_list<VT> params,
-                               Opcode opcode) -> VT {
+    const auto& spec = ips::builtinSpecs().at(name);
+    const auto* overload = ips::builtinOverload(spec, call.args.size());
+    if (spec.lowering == ips::BuiltinLowering::Opcode) {
+        if (!overload || !overload->opcode) error(call.location, "invalid builtin overload");
         for (std::size_t i = 0; i < call.args.size(); ++i) {
-            emitArg(call.args[i], params.begin()[i]);
+            emitArg(call.args[i], overload->params[i]);
         }
-        ins(opcode);
-        return ips::builtinSignatures().at(name).result;
-    };
-
-    if (name == "unit") {
-        ins(Opcode::RngUnit);
-        return VT::F32;
+        ins(*overload->opcode);
+        return spec.result;
     }
-    if (name == "stream_push") {
-        emitArg(call.args[0], VT::I32);
-        ins(Opcode::StreamPush);
-        return VT::Void;
-    }
-    if (name == "stream_pop") {
-        ins(Opcode::StreamPop);
-        return VT::Void;
-    }
-    if (name == "range") {
-        emitArg(call.args[0], VT::F32);
-        emitArg(call.args[1], VT::F32);
-        ins(Opcode::RngRange);
-        return VT::F32;
-    }
-    if (name == "index") return emitFixed({VT::I32}, Opcode::RngIndex);
-    if (name == "hash") return emitFixed({VT::I32}, Opcode::Hash);
-    if (name == "noise") {
-        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::Noise);
-    }
-    if (name == "fault") {
-        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::Fault);
-    }
-    if (name == "smooth") return emitFixed({VT::F32}, Opcode::Smooth);
-    if (name == "sqrt") return emitFixed({VT::F32}, Opcode::F32Sqrt);
-    if (name == "sin") return emitFixed({VT::F32}, Opcode::F32Sin);
-    if (name == "cos") return emitFixed({VT::F32}, Opcode::F32Cos);
-    if (name == "abs") return emitFixed({VT::F32}, Opcode::F32Abs);
-    if (name == "floor") return emitFixed({VT::F32}, Opcode::F32Floor);
-    if (name == "ceil") return emitFixed({VT::F32}, Opcode::F32Ceil);
-    if (name == "min") return emitFixed({VT::F32, VT::F32}, Opcode::F32Min);
-    if (name == "max") return emitFixed({VT::F32, VT::F32}, Opcode::F32Max);
-    if (name == "pow") return emitFixed({VT::F32, VT::F32}, Opcode::F32Pow);
-    if (name == "exp") return emitFixed({VT::F32}, Opcode::F32Exp);
-    if (name == "atan2") return emitFixed({VT::F32, VT::F32}, Opcode::F32Atan2);
-    if (name == "dist.circle")
-        return emitFixed({VT::Vec2, VT::Vec2, VT::F32}, Opcode::DistCircle);
-    if (name == "dist.rect")
-        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2}, Opcode::DistRect);
-    if (name == "dist.roundrect")
-        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::F32},
-                         Opcode::DistRoundRect);
-    if (name == "dist.line")
-        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2}, Opcode::DistLine);
-    if (name == "dist.bezier") {
-        if (call.args.size() == 5)
-            return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2},
-                             Opcode::DistBezierCubic);
-        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2},
-                         Opcode::DistBezier);
-    }
-    if (name == "fill") return emitFixed({VT::F32, VT::F32}, Opcode::Fill);
-    if (name == "gain") return emitFixed({VT::F32, VT::F32}, Opcode::Gain);
-    if (name == "quintic") return emitFixed({VT::F32}, Opcode::Quintic);
-    if (name == "noise.grad")
-        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::NoiseGrad);
-    if (name == "noise.fbm")
-        return emitFixed({VT::F32, VT::F32, VT::I32, VT::I32}, Opcode::NoiseFbm);
-    if (name == "noise.cell")
-        return emitFixed({VT::F32, VT::F32, VT::I32}, Opcode::NoiseCell);
-    if (name == "warp")
-        return emitFixed({VT::F32, VT::F32, VT::F32, VT::I32}, Opcode::Warp);
-    if (name == "cell.jitter")
-        return emitFixed({VT::I32, VT::I32, VT::I32}, Opcode::CellJitter);
-    if (name == "noise.ridge")
-        return emitFixed({VT::F32, VT::F32, VT::I32, VT::I32}, Opcode::NoiseRidge);
-    if (name == "color.set.a")
-        return emitFixed({VT::Color, VT::I32}, Opcode::ColorSetA);
-    if (name == "color.mul")
-        return emitFixed({VT::Color, VT::Color}, Opcode::ColorMul);
-    if (name == "color.scale")
-        return emitFixed({VT::Color, VT::F32}, Opcode::ColorScale);
-    if (name == "color.hsv")
-        return emitFixed({VT::Color, VT::F32, VT::F32, VT::F32}, Opcode::ColorHsv);
-    if (name == "dither")
-        return emitFixed({VT::F32, VT::I32, VT::I32}, Opcode::Dither);
-    if (name == "fold")
-        return emitFixed({VT::Vec2, VT::I32}, Opcode::Vec2Fold);
-    if (name == "polar")
-        return emitFixed({VT::Vec2}, Opcode::Vec2Polar);
-    if (name == "vec2.len")
-        return emitFixed({VT::Vec2}, Opcode::Vec2Len);
-    if (name == "vec2.dot")
-        return emitFixed({VT::Vec2, VT::Vec2}, Opcode::Vec2Dot);
-    if (name == "vec2.rot")
-        return emitFixed({VT::Vec2, VT::F32}, Opcode::Vec2Rot);
-    if (name == "smoothstep")
-        return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Smoothstep);
-    if (name == "remap")
-        return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::F32},
-                         Opcode::Remap);
-    if (name == "clamp")
-        return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Clamp);
-    if (name == "i32trunc") return emitFixed({VT::F32}, Opcode::F32ToI32);
-    if (name == "round") {
+    if (spec.lowering == ips::BuiltinLowering::Round) {
         // round-half-away-from-zero (std::round semantics, spec 8.1):
         // x >= 0 ? trunc(x + 0.5) : -trunc(-x + 0.5). The value is kept in
         // the f32 scratch (blocks have no results, so the arms store the
@@ -222,40 +125,7 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         ins(Opcode::LocalGet, 0, i32Slot);
         return VT::I32;
     }
-    if (name == "lerp") {
-        return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Lerp);
-    }
-    if (name == "mix") {
-        return emitFixed({VT::Color, VT::Color, VT::F32}, Opcode::ColorMix);
-    }
-    if (name == "shade") {
-        return emitFixed({VT::Color, VT::I32}, Opcode::ColorShade);
-    }
-    if (name == "pixel") {
-        return emitFixed({VT::I32, VT::I32, VT::Color}, Opcode::Pixel);
-    }
-    if (name == "rect") {
-        return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::Color},
-                         Opcode::Rect);
-    }
-    if (name == "line") {
-        return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::I32,
-                          VT::Color}, Opcode::Line);
-    }
-    if (name == "curve") {
-        if (call.args.size() == 6)
-            return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::Vec2, VT::F32, VT::Color},
-                             Opcode::CurveCubic);
-        return emitFixed({VT::Vec2, VT::Vec2, VT::Vec2, VT::F32, VT::Color}, Opcode::Curve);
-    }
-    if (name == "oval") {
-        return emitFixed({VT::F32, VT::F32, VT::F32, VT::F32, VT::Color},
-                         Opcode::Oval);
-    }
-    if (name == "weather") {
-        return emitFixed({VT::I32, VT::I32}, Opcode::Weather);
-    }
-    if (name == "poly") {
+    if (spec.lowering == ips::BuiltinLowering::Polygon) {
         // Stack order (top first, spec §9.8): colour on top, then the
         // vertex pairs — so the pairs are pushed first, the colour last.
         for (std::size_t i = 1; i < call.args.size(); ++i) {

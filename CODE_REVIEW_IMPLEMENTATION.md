@@ -9,7 +9,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] R3: jedna oczekiwana wersja produktu dla instalacji/wydania, aktualne CI i dokumentacja, przechodzące shared/static install smoke i release check.
 - [x] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
 - [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
-- [ ] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
+- [x] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
 - [x] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
 - [ ] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
@@ -121,4 +121,12 @@ zgodnie z sygnaturą, zamiast generować program odrzucany przez walidator.
 Test obejmuje literał i helper; półprzezroczysty piksel wykrywa powtórne
 wywołanie helpera. CTest 7/7 i test celowany PASS.
 
-W toku: BuiltinSpec i typowany plan wywołań.
+A1, etap 2: `BuiltinSpec` opisuje 59 builtinów języka, parametry, wynik,
+przeciążenia z przypisanym opcode oraz specjalne emisje round/poly.
+Semantyka i emiter współdzielą dobór przeciążenia; usunięto łańcuch
+powtórzonych sygnatur i mapowania nazw w emiterze. Test przekrojowy
+kompiluje i wykonuje każde przeciążenie, sprawdza promocje oraz zgodność
+z niezależnym kontraktem VM. CTest 7/7; native/WASM/golden PASS
+(`builtin-conformance.log`).
+
+W toku: typowany plan wywołań i wspólna obsługa palet.

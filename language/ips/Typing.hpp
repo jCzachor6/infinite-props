@@ -13,6 +13,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Types.hpp"
+#include "ips/BuiltinSpec.hpp"
 
 namespace iprop::ips {
 
@@ -33,15 +34,6 @@ struct PartInfo {
     std::vector<PartInput> inputs;
     std::vector<PartOutput> outputs;
 };
-
-// The signature of a builtin (VM primitive, spec §6.4–6.5/§9).
-struct BuiltinSignature {
-    std::vector<ValueType> params;
-    ValueType result = ValueType::Void;
-    std::vector<std::vector<ValueType>> alternateParams = {};
-};
-
-const std::map<std::string, BuiltinSignature>& builtinSignatures();
 
 // The declared parameter types of a function, in declaration order (the
 // uniforms of a draw-like function are not part of its callable surface).
@@ -113,7 +105,7 @@ private:
     ValueType typePartRead(const Expr& expr);
     ValueType typeCall(const Call& call);
     ValueType typeBuiltinCall(const Identifier& name, const Call& call,
-                              const BuiltinSignature& signature);
+                              const BuiltinSpec& signature);
     ValueType typeUserCall(const Identifier& name, const Call& call);
     ValueType typePartCall(const Call& call);
     ValueType typeVector(const VectorLit& vector);

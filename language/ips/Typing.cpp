@@ -28,76 +28,6 @@ ValueType outputValueType(OutputKind kind) {
 
 } // namespace
 
-const std::map<std::string, BuiltinSignature>& builtinSignatures() {
-    using V = ValueType;
-    static const std::map<std::string, BuiltinSignature> table = {
-        {"unit", {{}, V::F32}},
-        {"stream_push", {{V::I32}, V::Void}},
-        {"stream_pop", {{}, V::Void}},
-        {"range", {{V::F32, V::F32}, V::F32}},
-        {"index", {{V::I32}, V::I32}},
-        {"hash", {{V::I32}, V::I32}},
-        {"noise", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"fault", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"smooth", {{V::F32}, V::F32}},
-        {"sqrt", {{V::F32}, V::F32}},
-        {"sin", {{V::F32}, V::F32}},
-        {"cos", {{V::F32}, V::F32}},
-        {"abs", {{V::F32}, V::F32}},
-        {"floor", {{V::F32}, V::F32}},
-        {"ceil", {{V::F32}, V::F32}},
-        {"min", {{V::F32, V::F32}, V::F32}},
-        {"max", {{V::F32, V::F32}, V::F32}},
-        {"pow", {{V::F32, V::F32}, V::F32}},
-        {"exp", {{V::F32}, V::F32}},
-        {"atan2", {{V::F32, V::F32}, V::F32}},
-        {"dist.circle", {{V::Vec2, V::Vec2, V::F32}, V::F32}},
-        {"dist.rect", {{V::Vec2, V::Vec2, V::Vec2}, V::F32}},
-        {"dist.roundrect", {{V::Vec2, V::Vec2, V::Vec2, V::F32}, V::F32}},
-        {"dist.line", {{V::Vec2, V::Vec2, V::Vec2}, V::F32}},
-        {"dist.bezier", {{V::Vec2, V::Vec2, V::Vec2, V::Vec2}, V::F32,
-                         {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::Vec2}}}},
-        {"fill", {{V::F32, V::F32}, V::F32}},
-        {"gain", {{V::F32, V::F32}, V::F32}},
-        {"quintic", {{V::F32}, V::F32}},
-        {"noise.grad", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"noise.fbm", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
-        {"noise.cell", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"warp", {{V::F32, V::F32, V::F32, V::I32}, V::F32}},
-        {"cell.jitter", {{V::I32, V::I32, V::I32}, V::Vec2}},
-        {"noise.ridge", {{V::F32, V::F32, V::I32, V::I32}, V::F32}},
-        {"color.set.a", {{V::Color, V::I32}, V::Color}},
-        {"color.mul", {{V::Color, V::Color}, V::Color}},
-        {"color.scale", {{V::Color, V::F32}, V::Color}},
-        {"color.hsv", {{V::Color, V::F32, V::F32, V::F32}, V::Color}},
-        {"dither", {{V::F32, V::I32, V::I32}, V::F32}},
-        {"fold", {{V::Vec2, V::I32}, V::Vec2}},
-        {"polar", {{V::Vec2}, V::Vec2}},
-        {"vec2.len", {{V::Vec2}, V::F32}},
-        {"vec2.dot", {{V::Vec2, V::Vec2}, V::F32}},
-        {"vec2.rot", {{V::Vec2, V::F32}, V::Vec2}},
-        {"smoothstep", {{V::F32, V::F32, V::F32}, V::F32}},
-        {"remap", {{V::F32, V::F32, V::F32, V::F32, V::F32}, V::F32}},
-        {"clamp", {{V::F32, V::F32, V::F32}, V::F32}},
-        {"i32trunc", {{V::F32}, V::I32}},
-        {"round", {{V::F32}, V::I32}},
-        {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
-        {"mix", {{V::Color, V::Color, V::F32}, V::Color}},
-        {"shade", {{V::Color, V::I32}, V::Color}},
-        {"pixel", {{V::I32, V::I32, V::Color}, V::Void}},
-        {"rect", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
-        {"line", {{V::F32, V::F32, V::F32, V::F32, V::I32, V::Color}, V::Void}},
-        {"curve", {{V::Vec2, V::Vec2, V::Vec2, V::F32, V::Color}, V::Void,
-                   {{V::Vec2, V::Vec2, V::Vec2, V::Vec2, V::F32, V::Color}}}},
-        {"oval", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
-        {"weather", {{V::I32, V::I32}, V::Void}},
-        // poly takes a colour plus 2n vertex floats (n >= 3); the arity is
-        // validated in typeBuiltinCall.
-        {"poly", {{}, V::Void}},
-    };
-    return table;
-}
-
 std::vector<ValueType> declaredParamTypes(const Function& function) {
     std::vector<ValueType> params;
     for (const auto& param : function.params) {
@@ -294,8 +224,8 @@ ValueType Typer::typeCall(const Call& call) {
         if (name->name == "ramp") {
             return typeRamp(*name, call);
         }
-        const auto builtin = builtinSignatures().find(name->name);
-        if (builtin != builtinSignatures().end()) {
+        const auto builtin = builtinSpecs().find(name->name);
+        if (builtin != builtinSpecs().end()) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);
@@ -312,8 +242,8 @@ ValueType Typer::typeCall(const Call& call) {
             for (const std::string& segment : path.segments) {
                 full += "." + segment;
             }
-            const auto builtin = builtinSignatures().find(full);
-            if (builtin != builtinSignatures().end()) {
+            const auto builtin = builtinSpecs().find(full);
+            if (builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
@@ -324,9 +254,9 @@ ValueType Typer::typeCall(const Call& call) {
 }
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
-                                 const BuiltinSignature& signature) {
+                                 const BuiltinSpec& signature) {
     // poly(colour, x0, y0, x1, y1, ...) — colour then 2n floats, n >= 3.
-    if (name.name == "poly") {
+    if (signature.lowering == BuiltinLowering::Polygon) {
         if (call.args.size() < 7 || call.args.size() % 2 == 0) {
             error(call.location,
                   "poly expects a colour and at least three (x, y) vertex pairs");
@@ -349,19 +279,12 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return ValueType::Void;
     }
 
-    const std::vector<ValueType>* params = &signature.params;
-    if (params->size() != call.args.size()) {
-        for (const auto& alternate : signature.alternateParams) {
-            if (alternate.size() == call.args.size()) {
-                params = &alternate;
-                break;
-            }
-        }
-    }
-    if (params->size() != call.args.size()) {
-        std::string arities = std::to_string(signature.params.size());
-        for (const auto& alternate : signature.alternateParams) {
-            arities += " or " + std::to_string(alternate.size());
+    const auto* overload = builtinOverload(signature, call.args.size());
+    if (!overload) {
+        std::string arities;
+        for (const auto& candidate : signature.overloads) {
+            if (!arities.empty()) arities += " or ";
+            arities += std::to_string(candidate.params.size());
         }
         error(call.location,
               "function '" + name.name + "' expects " + arities +
@@ -374,10 +297,10 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                   "function '" + name.name + "' does not take named arguments");
         }
         const ValueType got = typeOf(*arg.value);
-        if (!argFits((*params)[i], got)) {
+        if (!argFits(overload->params[i], got)) {
             error(locationOf(*arg.value),
                   "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName((*params)[i]) +
+                      "' must be " + typeName(overload->params[i]) +
                       ", got " + typeName(got));
         }
     }
