@@ -12,6 +12,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "iprop/Code.hpp"
 #include "iprop/Instruction.hpp"
@@ -21,6 +22,11 @@
 #include "Pools.hpp"
 
 namespace iprop::compiler {
+
+struct PlannedExpression {
+    ips::ValueType type;
+    std::optional<Value> constant;
+};
 
 // One planned function: its signature, local layout and (after emission)
 // its instruction stream. `slots`/`langTypes` map every name in scope —
@@ -40,6 +46,12 @@ struct PlannedFunction {
 
     std::map<std::string, u32> slots;
     std::map<std::string, ips::ValueType> langTypes;
+    std::unordered_map<const ips::Expr*, PlannedExpression> expressions;
+
+    const PlannedExpression& expression(const ips::Expr& expr) const {
+        return expressions.at(&expr);
+    }
+    ips::ValueType typeOf(const ips::Expr& expr) const { return expression(expr).type; }
 
     std::vector<Instruction> code; // the emitted IR
     std::vector<u32> sourceLines;  // one .ips line per instruction (debug)
@@ -54,7 +66,7 @@ struct SlotInfo {
 
 // The resolved plan of one compilation: the entry asset, the imported parts
 // in import order, the function table in emission order, the global slot
-// table, the constant pools and the shared type engine.
+// table, the constant pools and the typed expressions.
 struct Plan {
     const ips::Program* entry = nullptr;
 
@@ -71,11 +83,7 @@ struct Plan {
     // writes the pools. Names were registered during planning.
     Pools pools;
 
-    std::map<std::string, ips::PartInfo> surfaces;
     std::map<const ips::PaletteDecl*, ips::ResolvedPalette> palettes;
-    std::unique_ptr<ips::Typer> typer;
-
-    ips::Typer& typeEngine() const { return *typer; }
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;
@@ -86,9 +94,8 @@ struct Plan {
 // Throws ips::SourceError with a located message for problems the semantic
 // checker does not cover (nested part imports, i32 uniforms).
 //
-// The Plan is heap-allocated: the Typer's function resolver captures its
-// address, so the callback stays valid after the Planner is gone (the
-// emitter keeps typing through the plan's Typer).
+// Type inference belongs to planning; the returned plan owns its complete
+// annotations and does not retain callbacks into the Planner or Typer.
 class Planner {
 public:
     Planner(const ips::Program& entry,
@@ -101,6 +108,8 @@ private:
     const std::map<std::string, const ips::Program*>& parts_;
 
     std::unique_ptr<Plan> plan_;
+    std::map<std::string, ips::PartInfo> surfaces_;
+    std::unique_ptr<ips::Typer> typer_;
     std::map<std::string, const ips::Function*> registry_;
     std::map<std::string, bool> registryDrawLike_;
     std::set<std::string> preparing_;

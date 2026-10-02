@@ -9,6 +9,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ips/Ast.hpp"
@@ -49,6 +50,7 @@ struct FunctionSurface {
 
 class Typer {
 public:
+    using ExpressionTypes = std::unordered_map<const Expr*, ValueType>;
     explicit Typer(const std::map<std::string, PartInfo>& parts);
 
     // ---- scope ------------------------------------------------------------
@@ -66,6 +68,7 @@ public:
         // entry asset): bare call names resolve within it first.
         std::string ns;
         std::map<std::string, ValueType> locals;
+        ExpressionTypes expressions;
     };
 
     void enterFunction(const Program& owner, const Function& function,
@@ -90,8 +93,11 @@ public:
 
     // The type of an expression, validating it along the way.
     ValueType typeOf(const Expr& expr);
+    const ExpressionTypes& expressions() const { return expressions_; }
 
 private:
+    ExpressionTypes expressions_;
+    ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
     const ResolvedPalette& palette(const Identifier& name);
     const std::map<std::string, PartInfo>& parts_;

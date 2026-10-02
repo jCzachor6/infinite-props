@@ -136,4 +136,13 @@ emisję i fuel; optymalizacja jest osobnym punktem. Test sprawdza jednakowe
 nazwy palet o różnych typach w root i części oraz dwa aliasy tego samego AST.
 CTest 7/7 i pełne native/WASM/golden PASS (`palette-conformance.log`).
 
-W toku: typowany plan wywołań i pozostałe przypadki graniczne.
+A2, etap 1: plan przechowuje typy i czyste stałe każdego wyrażenia
+wykonywalnego. `Typer` pamięta wynik w zakresie funkcji; zapisywanie
+i odtwarzanie zakresu obejmuje cache. Emiter nie posiada silnika typowania.
+`ConstantFolder` pamięta również nieudane złożenia, usuwając ponowną
+rekurencję dynamicznych poddrzew. Test 512 wywołań odwiedza ponownie
+wszystkie poddrzewa i nadal wymaga dokładnie 512 rozstrzygnięć; osobny
+alias ma niezależny cache. Plan działa po zniszczeniu plannera.
+CTest 7/7 i native/WASM/golden PASS (`typed-plan-conformance.log`).
+
+W toku: resolver wariantów wywołań i pozostałe przypadki graniczne.

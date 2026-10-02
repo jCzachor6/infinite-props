@@ -6,8 +6,8 @@ namespace iprop::compiler {
 
 ips::ValueType PaletteLowerer::index(const ips::Expr& index) {
     const std::size_t count = palette_.elements.size();
-    if (Value folded; ips::foldExpression(index, folded)) {
-        if (const auto* k = std::get_if<i32>(&folded)) {
+    if (const auto& constant = emitter_.current_->expression(index).constant; constant) {
+        if (const auto* k = std::get_if<i32>(&*constant)) {
             const auto chosen = *k >= 0 && static_cast<std::size_t>(*k) + 1 < count
                 ? static_cast<std::size_t>(*k) : count - 1;
             emitter_.emitConst(palette_.elements[chosen]);
@@ -33,7 +33,7 @@ ips::ValueType PaletteLowerer::ramp(const ips::Expr& t) {
     }
     const auto stop = emitter_.temporary(ips::ValueType::I32);
     const auto fraction = emitter_.temporary(ips::ValueType::F32);
-    if (emitter_.plan_.typeEngine().typeOf(t) == ips::ValueType::I32)
+    if (emitter_.current_->typeOf(t) == ips::ValueType::I32)
         emitter_.ins(Opcode::I32ToF32);
     emitter_.emitConst(0.0f);
     emitter_.ins(Opcode::F32Max);

@@ -11,7 +11,8 @@ namespace iprop::compiler {
 
 ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     currentLine_ = static_cast<u32>(ips::locationOf(expr).line);
-    if (Value folded; ips::foldExpression(expr, folded)) {
+    if (const auto& constant = current_->expression(expr).constant; constant) {
+        const auto& folded = *constant;
         emitConst(folded);
         if (std::holds_alternative<i32>(folded)) {
             return ips::ValueType::I32;
@@ -39,7 +40,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         }
         for (const auto& element : vector->elements) {
             emitExpr(*element);
-            if (plan_.typeEngine().typeOf(*element) == ips::ValueType::I32) {
+            if (current_->typeOf(*element) == ips::ValueType::I32) {
                 ins(Opcode::I32ToF32);
             }
         }
@@ -50,7 +51,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         const auto& member = std::get<ips::Member>(expr);
         // Components yield f32; bare part outputs keep their compound type.
         // This also distinguishes part.outputs.x from part.outputs.top.x.
-        if (plan_.typeEngine().typeOf(expr) == ips::ValueType::F32) {
+        if (current_->typeOf(expr) == ips::ValueType::F32) {
             emitExpr(*member.object);
             ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
             return ips::ValueType::F32;
@@ -58,9 +59,6 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return emitPartRead(expr);
     }
     if (const auto* call = std::get_if<ips::Call>(&expr)) {
-        // Expression statements may not have been typed by the planner.
-        // Validate arity/types before the emitter indexes builtin arguments.
-        plan_.typeEngine().typeOf(expr);
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {
@@ -83,7 +81,7 @@ void Emitter::emitPointValue(const ips::Expr& expr) {
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         for (const auto& element : vector->elements) {
             emitExpr(*element);
-            if (plan_.typeEngine().typeOf(*element) == ips::ValueType::I32) {
+            if (current_->typeOf(*element) == ips::ValueType::I32) {
                 ins(Opcode::I32ToF32);
             }
         }
@@ -180,8 +178,8 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
 }
 
 ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
-    const ips::ValueType leftType = plan_.typeEngine().typeOf(*bin.left);
-    const ips::ValueType rightType = plan_.typeEngine().typeOf(*bin.right);
+    const ips::ValueType leftType = current_->typeOf(*bin.left);
+    const ips::ValueType rightType = current_->typeOf(*bin.right);
     const bool f32op = leftType == ips::ValueType::F32 ||
                        rightType == ips::ValueType::F32;
     const bool vec2op = leftType == ips::ValueType::Vec2 ||
@@ -344,7 +342,7 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
 }
 
 ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
-    const ips::ValueType operand = plan_.typeEngine().typeOf(*un.operand);
+    const ips::ValueType operand = current_->typeOf(*un.operand);
     emitExpr(*un.operand);
     switch (un.op) {
     case ips::Unary::Op::Neg:

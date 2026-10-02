@@ -21,7 +21,9 @@ bool foldMixed(ips::Binary::Op op, f32 a, f32 b, Value& out) {
     }
 }
 
-bool fold(const ips::Expr& expr, Value& out) {
+} // namespace
+
+bool ConstantFolder::evaluate(const ips::Expr& expr, Value& out) {
     using namespace ips;
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         switch (lit->kind) {
@@ -151,8 +153,20 @@ bool fold(const ips::Expr& expr, Value& out) {
     return false;
 }
 
-} // namespace
+bool ConstantFolder::fold(const Expr& expr, Value& out) {
+    auto found = values_.find(&expr);
+    if (found == values_.end()) {
+        Value value;
+        const auto result = evaluate(expr, value) ? std::optional<Value>(value) : std::nullopt;
+        found = values_.emplace(&expr, result).first;
+    }
+    if (!found->second) return false;
+    out = *found->second;
+    return true;
+}
 
-bool foldExpression(const ips::Expr& expr, Value& out) { return fold(expr, out); }
+bool foldExpression(const ips::Expr& expr, Value& out) {
+    return ConstantFolder{}.fold(expr, out);
+}
 
 } // namespace iprop::ips

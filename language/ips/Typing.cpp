@@ -51,6 +51,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     ns_ = std::move(ns);
     locals_.clear();
+    expressions_.clear();
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
     }
@@ -61,7 +62,7 @@ void Typer::declareLocal(const std::string& name, ValueType type) {
 }
 
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, ns_, locals_};
+    return Scope{owner_, isDraw_, ns_, locals_, expressions_};
 }
 
 void Typer::restoreScope(Scope scope) {
@@ -69,6 +70,7 @@ void Typer::restoreScope(Scope scope) {
     isDraw_ = scope.isDraw;
     ns_ = std::move(scope.ns);
     locals_ = std::move(scope.locals);
+    expressions_ = std::move(scope.expressions);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -118,6 +120,14 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
 // ---- expressions -------------------------------------------------------------
 
 ValueType Typer::typeOf(const Expr& expr) {
+    if (const auto found = expressions_.find(&expr); found != expressions_.end())
+        return found->second;
+    const auto type = infer(expr);
+    expressions_.emplace(&expr, type);
+    return type;
+}
+
+ValueType Typer::infer(const Expr& expr) {
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         return typeLiteral(*lit);
     }

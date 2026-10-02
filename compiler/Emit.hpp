@@ -1,8 +1,8 @@
 #pragma once
 
 // The lowering layer: turns checked ASTs into the instruction IR
-// (iprop::Instruction) recorded in the plan. The emitter types expressions
-// through the plan's shared Typer and allocates constant-pool entries as it
+// (iprop::Instruction) recorded in the plan. Expression types and pure
+// constants are already resolved; the emitter allocates pool entries as it
 // goes. It mutates only the current function's code/locals and the plan's
 // constant pools; the planning tables are read-only.
 

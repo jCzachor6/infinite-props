@@ -72,7 +72,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
 void Emitter::emitArg(const ips::Arg& arg, ips::ValueType expected) {
     emitExpr(*arg.value);
     if (expected == ips::ValueType::F32 &&
-        plan_.typeEngine().typeOf(*arg.value) == ips::ValueType::I32) {
+        current_->typeOf(*arg.value) == ips::ValueType::I32) {
         ins(Opcode::I32ToF32);
     }
 }

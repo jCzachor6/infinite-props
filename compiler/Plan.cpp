@@ -1,4 +1,5 @@
 #include "Plan.hpp"
+#include "ips/Fold.hpp"
 
 #include <set>
 #include <utility>
@@ -95,12 +96,7 @@ std::unique_ptr<Plan> Planner::plan() {
     planFunctions();
     registerNames();
 
-    // The shared type engine resolves part calls and output reads against
-    // the part surfaces; user functions resolve through the planner so a
-    // call checks its callee lazily (recursion was already rejected). The
-    // resolver captures `this`, so it lives exactly as long as the Planner;
-    // the plan stays on the heap, keeping the callback valid after plan()
-    // returns (the emitter keeps typing through the plan's Typer).
+    // Calls prepare callees lazily while their result types are inferred.
     for (const auto& [alias, part] : parts_) {
         ips::PartInfo info;
         for (const auto& input : part->asset.inputs) {
@@ -109,10 +105,10 @@ std::unique_ptr<Plan> Planner::plan() {
         for (const auto& output : part->asset.outputs) {
             info.outputs.push_back({output.kind, output.isList, output.name});
         }
-        plan_->surfaces.emplace(alias, std::move(info));
+        surfaces_.emplace(alias, std::move(info));
     }
-    plan_->typer = std::make_unique<ips::Typer>(plan_->surfaces);
-    plan_->typer->resolveFunction = [this](const std::string& name,
+    typer_ = std::make_unique<ips::Typer>(surfaces_);
+    typer_->resolveFunction = [this](const std::string& name,
                                            const ips::SourceLocation& at,
                                            const std::string& ns) {
         return resolveFunction(name, at, ns);
@@ -130,23 +126,6 @@ std::unique_ptr<Plan> Planner::plan() {
             plan_->pools.addString(name);
         }
     }
-
-    // Planning is complete: rebind the resolver to a self-contained lookup
-    // over the heap plan, so the emitter can keep typing through the Typer
-    // after this Planner is gone. Bare names resolve to the entry's
-    // functions, or — inside a part — to that part's own helpers first.
-    Plan* self = plan_.get();
-    plan_->typer->resolveFunction =
-        [self](const std::string& name, const ips::SourceLocation&,
-               const std::string& ns) -> std::optional<ips::FunctionSurface> {
-        const auto id = self->functionId(name, ns);
-        if (!id) {
-            return std::nullopt;
-        }
-        const PlannedFunction& info = self->functions[*id];
-        return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
-                                    info.langResult};
-    };
 
     return std::move(plan_);
 }
@@ -329,30 +308,32 @@ void Planner::prepareFunctionBody(const std::string& name) {
         }
     }
 
-    ips::Typer::Scope savedScope = plan_->typeEngine().saveScope();
+    ips::Typer::Scope savedScope = typer_->saveScope();
     const std::string ns =
         dot != std::string::npos ? name.substr(0, dot + 1) : "";
-    plan_->typeEngine().enterFunction(*owner, *ast, drawLike, ns);
+    typer_->enterFunction(*owner, *ast, drawLike, ns);
     std::optional<ips::ValueType> returnType;
 
     const auto walk = [&](auto&& self, const std::vector<ips::Stmt>& body) -> void {
         for (const auto& stmt : body) {
             if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
+                const ips::ValueType type = typer_->typeOf(*decl->value);
                 if (ownerOutput(owner, decl->name) != nullptr ||
                     ownerInput(owner, decl->name) != nullptr ||
                     info.slots.count(decl->name) != 0) {
                     continue; // output write, input or parameter
                 }
-                const ips::ValueType type = plan_->typeEngine().typeOf(*decl->value);
                 info.slots.emplace(decl->name, slot);
                 info.langTypes.emplace(decl->name, type);
-                plan_->typeEngine().declareLocal(decl->name, type);
+                typer_->declareLocal(decl->name, type);
                 info.locals.push_back(runtimeType(type));
                 ++slot;
+            } else if (const auto* expression = std::get_if<ips::ExprStmt>(&stmt)) {
+                typer_->typeOf(*expression->expr);
             } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
                 if (ret->value) {
                     const ips::ValueType type =
-                        plan_->typeEngine().typeOf(*ret->value);
+                        typer_->typeOf(*ret->value);
                     if (ast->returnType.has_value()) {
                         const ips::ValueType declared =
                             ips::valueTypeOf(*ast->returnType);
@@ -367,13 +348,17 @@ void Planner::prepareFunctionBody(const std::string& name) {
                     returnType = type;
                 }
             } else if (const auto* ifStmt = std::get_if<ips::IfStmt>(&stmt)) {
+                typer_->typeOf(*ifStmt->condition);
                 self(self, ifStmt->thenBranch);
                 self(self, ifStmt->elseBranch);
             } else if (const auto* whileStmt =
                            std::get_if<ips::WhileStmt>(&stmt)) {
+                typer_->typeOf(*whileStmt->condition);
                 self(self, whileStmt->body);
             } else if (const auto* forStmt =
                            std::get_if<ips::ForStmt>(&stmt)) {
+                typer_->typeOf(*forStmt->from);
+                typer_->typeOf(*forStmt->to);
                 // The loop counter is a real local (the body reads it); the
                 // bound is a hidden local holding the once-evaluated upper
                 // bound. Both are planned here so their slots stay stable
@@ -382,7 +367,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
                     info.slots.emplace(forStmt->variable, slot);
                     info.langTypes.emplace(forStmt->variable,
                                            ips::ValueType::I32);
-                    plan_->typeEngine().declareLocal(forStmt->variable,
+                    typer_->declareLocal(forStmt->variable,
                                                      ips::ValueType::I32);
                     info.locals.push_back(ValueType::I32);
                     ++slot;
@@ -398,7 +383,13 @@ void Planner::prepareFunctionBody(const std::string& name) {
     };
     walk(walk, ast->body);
 
-    plan_->typeEngine().restoreScope(std::move(savedScope));
+    ips::ConstantFolder constants;
+    for (const auto& [expr, type] : typer_->expressions()) {
+        Value value;
+        const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
+        info.expressions.emplace(expr, PlannedExpression{type, constant});
+    }
+    typer_->restoreScope(std::move(savedScope));
 
     if (ast->returnType.has_value()) {
         const ips::ValueType declared = ips::valueTypeOf(*ast->returnType);
