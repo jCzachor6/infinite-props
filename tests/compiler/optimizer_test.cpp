@@ -173,3 +173,23 @@ TEST_CASE("strength reduction preserves signed arithmetic and wrapping bits") {
     CHECK(result.outputs[0].points[0].x == 2);
     CHECK(result.outputs[0].points[0].y == -1073741823.0f);
 }
+
+TEST_CASE("inline repeated expressions use one computation and anonymous memo storage") {
+    const std::string source = R"(asset t { size 8x8 variants 2 output point p
+      draw { p={(v+17)*(a+3),(v+17)*(a+3)} } })";
+    const auto actual = compile(source,true), reference = compile(source,false);
+    compare(actual,reference,2);
+    const auto loaded = loadFile(actual);
+    unsigned products = 0;
+    for (std::size_t i = 0; i < loaded.code.entry().code.size(); i += 4)
+        if (decodeInstruction(loaded.code.entry().code.subspan(i,4)).opcode == Opcode::I32Mul) ++products;
+    CHECK(products == 1);
+    for (const auto body : {
+        "p={(v+17)*(a+3),(v+17)*(a+3)} x=unit() p={(v+17)*(a+3)+x,(v+17)*(a+3)}",
+        "x=v+1 p={x*3,x*3} x=x+1 p={x*3,x*3}",
+        "for i in 0..3 { p={(i+17)*(v+3),(i+17)*(v+3)} }",
+        "p={pow(float(v)+1,2.0),pow(float(v)+1,2.0)}"}) {
+        const std::string program = "asset t { size 8x8 variants 2 output point p draw { " + std::string(body) + " } }";
+        compare(compile(program,true),compile(program,false),2);
+    }
+}

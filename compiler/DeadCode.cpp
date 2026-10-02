@@ -20,12 +20,23 @@ std::optional<std::size_t> discardableInputs(Opcode op) {
     case Opcode::F32Add: case Opcode::F32Sub: case Opcode::F32Mul: case Opcode::F32Div:
     case Opcode::F32Eq: case Opcode::F32Ne: case Opcode::F32Lt: case Opcode::F32Le:
     case Opcode::F32Gt: case Opcode::F32Ge: case Opcode::F32Neg: case Opcode::F32Abs:
+    case Opcode::F32Sqrt: case Opcode::F32Sin: case Opcode::F32Cos:
+    case Opcode::F32Floor: case Opcode::F32Ceil: case Opcode::F32Min: case Opcode::F32Max:
+    case Opcode::F32Pow: case Opcode::F32Exp: case Opcode::F32Atan2:
+    case Opcode::Hash: case Opcode::Smooth: case Opcode::Lerp:
+    case Opcode::Gain: case Opcode::Quintic: case Opcode::Smoothstep:
+    case Opcode::Remap: case Opcode::Clamp: case Opcode::Dither:
     case Opcode::I32ToF32: case Opcode::F32ToI32:
     case Opcode::ColorMix: case Opcode::ColorShade: case Opcode::ColorSetA:
     case Opcode::ColorMul: case Opcode::ColorScale:
     case Opcode::Vec2Make: case Opcode::Vec2Add: case Opcode::Vec2Sub:
     case Opcode::Vec2Mul: case Opcode::Vec2Div: case Opcode::Vec2Neg:
     case Opcode::Vec2X: case Opcode::Vec2Y:
+    case Opcode::Vec2Len: case Opcode::Vec2Dot: case Opcode::Vec2Rot:
+    case Opcode::Vec2Fold: case Opcode::Vec2Polar:
+    case Opcode::DistCircle: case Opcode::DistRect: case Opcode::DistRoundRect:
+    case Opcode::DistLine: case Opcode::DistBezier: case Opcode::DistBezierCubic:
+    case Opcode::Fill:
         return findOpcode(op)->stack->inputCount;
     default: return std::nullopt;
     }

@@ -49,10 +49,11 @@
   traps and historical scalar non-finite arithmetic retain runtime lowering;
   every pass keeps the best complete artifact in debug and stripped modes.
 
-- C.3: Added conservative common-expression reuse within straight-line
-  regions. Versioned local bindings prevent stale reuse after writes;
-  only contiguous non-trapping pure trees reuse already stored values.
-  Cache/key bounds limit compiler work without changing emitted semantics.
+- C.3: Added common-expression reuse within straight-line regions, using
+  versioned existing locals or typed memoization for repeated inline trees.
+  Only contiguous non-trapping pure trees are reused; obsolete child caches
+  and mutable storage are invalidated. Full artifact cost and bounded key
+  tables keep the pass deterministic and conservative.
 
 - C.4: Added cost-checked unrolling for small constant for-ranges, retaining
   final counters and side effects. Integer multiplication by two becomes

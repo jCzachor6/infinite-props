@@ -49,9 +49,13 @@ version, so overwritten storage cannot satisfy an old expression. Control,
 call and part-read boundaries clear availability. RNG, stream state,
 outputs, canvas operations and possibly trapping calculations are excluded.
 
-This pass uses existing storage and adds no speculative evaluations or
-scratch locals. Expressions over 512 key bytes and caches over 4096 entries
-fall back conservatively to normal lowering.
+A counting pass also identifies repeated inline trees. The first evaluation
+can memoize its value in an anonymous typed local; subsequent evaluations
+reuse that value. Existing storage is preferred, and liveness removes
+unneeded child memoization. Parent reuse invalidates definitions it erases.
+No evaluation is moved ahead of its original position. The full artifact
+cost gate accounts for added local and debug metadata. Expressions over 512
+key bytes and caches over 4096 entries fall back conservatively.
 
 ## Loops and strength reduction
 

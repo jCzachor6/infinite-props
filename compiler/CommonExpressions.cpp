@@ -1,5 +1,6 @@
 #include "Optimizer.hpp"
 #include "iprop/OpcodeSpec.hpp"
+#include <algorithm>
 
 namespace iprop::compiler {
 namespace {
@@ -7,9 +8,10 @@ struct Expression {
     std::string key;
     std::size_t start = 0, end = 0;
 };
-struct Available { u16 slot; u32 version; };
+struct Available { u16 slot; u32 version; std::size_t definition; };
+using Counts = std::map<std::string, unsigned>;
 
-void reuse(PlannedFunction& fn) {
+void reuse(PlannedFunction& fn, Counts& counts, bool materialize) {
     std::vector<Instruction> code;
     std::vector<u32> lines;
     std::vector<Expression> stack;
@@ -17,9 +19,10 @@ void reuse(PlannedFunction& fn) {
     std::vector<std::string> bindings(count);
     std::vector<u32> versions(count);
     std::map<std::string, Available> available;
+    std::size_t region = 0;
     const auto append = [&](Instruction ins, u32 line) { code.push_back(ins); lines.push_back(line); };
     const auto reset = [&]() {
-        stack.clear(); available.clear();
+        stack.clear(); available.clear(); ++region;
         std::fill(bindings.begin(), bindings.end(), std::string{});
     };
     for (std::size_t n = 0; n < fn.code.size(); ++n) {
@@ -41,10 +44,9 @@ void reuse(PlannedFunction& fn) {
             auto& version = versions.at(ins.operand); ++version;
             bindings.at(ins.operand) = key;
             if (!key.empty()) {
-                // A stored value is already available without adding scratch
-                // locals or speculative evaluation. Bound key/cache memory.
+                // Prefer existing storage; bound key/cache memory.
                 if (available.size() >= 4096) available.clear();
-                available.insert_or_assign(key, Available{ins.operand, version});
+                available.insert_or_assign(key, Available{ins.operand, version, code.size()});
             }
             if (op == Opcode::LocalSet && !stack.empty()) stack.pop_back();
             append(ins, line); continue;
@@ -72,20 +74,49 @@ void reuse(PlannedFunction& fn) {
         if (key.size() > 512) contiguous = false;
         stack.resize(first);
         if (!contiguous) key.clear();
+        const auto frequencyKey = std::to_string(region) + ":" + key;
+        if (!materialize && contiguous && (counts.size() < 4096 || counts.contains(frequencyKey)))
+            counts[frequencyKey] = std::min(2u, counts[frequencyKey] + 1);
         const auto prior = available.find(key);
-        if (contiguous && prior != available.end() && versions.at(prior->second.slot) == prior->second.version) {
+        bool reused = false;
+        if (materialize && contiguous && prior != available.end() &&
+            versions.at(prior->second.slot) == prior->second.version && prior->second.definition < from) {
             // The value still resides in that local. Replacing only a
             // contiguous pure tree cannot erase intervening observable ops.
+            const auto slot = prior->second.slot;
+            // Parent reuse may erase newly memoized child definitions.
+            // Invalidate those entries before later code can read them.
+            for (auto it = available.begin(); it != available.end();) {
+                if (it->second.definition >= from) it = available.erase(it);
+                else ++it;
+            }
             code.resize(from); lines.resize(from);
-            append({Opcode::LocalGet, 0, prior->second.slot}, line);
+            append({Opcode::LocalGet, 0, slot}, line);
+            reused = true;
         } else append(ins,line);
+        const bool storedNext = n + 1 < fn.code.size() &&
+            (fn.code[n + 1].opcode == Opcode::LocalSet || fn.code[n + 1].opcode == Opcode::LocalTee);
+        const auto frequency = counts.find(frequencyKey);
+        if (materialize && contiguous && !reused && !storedNext && start + 1 - from >= 3 &&
+            frequency != counts.end() && frequency->second > 1 && versions.size() < kMaxLocals) {
+            const auto slot = static_cast<u16>(versions.size());
+            fn.locals.push_back(*signature.result);
+            versions.push_back(1); bindings.push_back(key);
+            if (available.size() >= 4096) available.clear();
+            available.insert_or_assign(key, Available{slot, 1, code.size()});
+            append({Opcode::LocalTee, 0, slot}, line);
+        }
         if (signature.result) stack.push_back({key, contiguous ? from : start, code.size()});
     }
-    fn.code = std::move(code); fn.sourceLines = std::move(lines);
+    if (materialize) { fn.code = std::move(code); fn.sourceLines = std::move(lines); }
 }
 } // namespace
 
 void reuseCommonExpressions(Plan& plan) {
-    for (auto& fn : plan.functions) reuse(fn);
+    for (auto& fn : plan.functions) {
+        Counts counts;
+        reuse(fn, counts, false);
+        reuse(fn, counts, true);
+    }
 }
 } // namespace iprop::compiler
