@@ -163,7 +163,9 @@ void Emitter::emitPartCall(const ips::Call& call) {
             }
         }
         if (overrideArg != nullptr) {
-            emitExpr(*overrideArg->value);
+            const auto expected = input.type == ips::InputType::F32 ? ips::ValueType::F32 :
+                input.type == ips::InputType::Color ? ips::ValueType::Color : ips::ValueType::I32;
+            emitArg(*overrideArg, expected);
             continue;
         }
         const auto* value = std::get_if<ips::Literal>(input.defaultValue.get());

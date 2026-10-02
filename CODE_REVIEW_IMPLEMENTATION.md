@@ -145,4 +145,10 @@ wszystkie poddrzewa i nadal wymaga dokładnie 512 rozstrzygnięć; osobny
 alias ma niezależny cache. Plan działa po zniszczeniu plannera.
 CTest 7/7 i native/WASM/golden PASS (`typed-plan-conformance.log`).
 
+Dodatkowy fix argumentów części: odtworzono błąd walidacji programu przy
+przekazaniu i32 do uniformu f32. Emiter wykonuje teraz dozwoloną promocję,
+a semantyka odrzuca powtórzone nazwy wszystkich argumentów. Test helpera
+z półprzezroczystym pikselem potwierdza pojedynczą ewaluację. Specyfikacja
+0.3 opisuje obie reguły. CTest 7/7 PASS.
+
 W toku: resolver wariantów wywołań i pozostałe przypadki graniczne.

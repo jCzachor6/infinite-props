@@ -1954,6 +1954,30 @@ TEST_CASE("palette resolution stays within each owner including shared part alia
     CHECK(result.canvas.pixels[1] == Color{0xab,0xcd,0xef,255});
 }
 
+TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
+    const auto part = ips::parse(R"(asset child { size 8x8
+      input f32 width = 1.0
+      output point p
+      draw(v:i32,a:i32) { p = {width, 0} } })");
+    const auto root = ips::parse(R"(import child from "child.ips"
+      asset root { size 8x8
+        draw(v:i32,a:i32) { child.draw(seed, v, a, at = {0,0}, width = measure()) }
+        measure() -> i32 { pixel(0,0,#ffffff80) return 3 }
+      })");
+    ips::checkAsset(part, {});
+    ips::checkAsset(root, {{"child",partInfoOf(part.asset)}});
+    const auto result = execute(compileProgram(root, {{"child",&part}}));
+    REQUIRE(result.outputs.size() == 1);
+    CHECK(result.outputs[0].points[0].x == 3.0f);
+    CHECK(result.canvas.pixels[0].r == 128);
+    const auto duplicate = ips::parse(R"(import child from "child.ips"
+      asset root { size 8x8 draw(v:i32,a:i32) {
+        child.draw(seed,v,a,at={0,0},width=1,width=2)
+      } })");
+    CHECK_THROWS_AS(ips::checkAsset(duplicate, {{"child",partInfoOf(part.asset)}}), ips::SourceError);
+    CHECK_THROWS_AS(compileProgram(duplicate, {{"child",&part}}), ips::SourceError);
+}
+
 TEST_CASE("compiler-only error cases carry locations") {
     const auto expectError = [](const std::string& source, const char* part) {
         const ips::Program program = ips::parse(source);

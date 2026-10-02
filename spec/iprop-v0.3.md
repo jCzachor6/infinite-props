@@ -654,6 +654,9 @@ rejects reads of root-owned slots.
 
 Stack order (bottom → top): uniform values in part declaration order, then
 `seed` (u32), `variant` (u32), `archetype` (u32), `atX` (f32), `atY` (f32).
+In `.ips`, a named uniform override is evaluated once and widened from
+`i32` to `f32` when its declared input type is `f32`, like a function
+argument. Repeated named arguments, including uniforms, MUST be rejected.
 The part's variant/archetype MUST be within the part's counts (parts are
 compiled with the same validation rules; the part's `variants`/`archetypes`
 are stored in… §6.3 — see §13 TBD: part meta carries counts implicitly via
