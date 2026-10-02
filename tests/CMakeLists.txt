@@ -16,7 +16,15 @@ add_executable(iprop_tests
     parser_test.cpp
     printer_test.cpp
     semantics_test.cpp
-    compiler_test.cpp
+    compiler/basics_test.cpp
+    compiler/scalar_test.cpp
+    compiler/control_flow_test.cpp
+    compiler/vectors_test.cpp
+    compiler/palettes_test.cpp
+    compiler/drawing_test.cpp
+    compiler/part_transforms_test.cpp
+    compiler/parts_test.cpp
+    compiler/calls_test.cpp
     builtin_spec_test.cpp
     typed_plan_test.cpp
     palette_lowering_test.cpp
@@ -45,6 +53,7 @@ add_executable(iprop_tests
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
+    support/compiler_support.cpp
     support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
@@ -56,6 +65,8 @@ target_link_libraries(iprop_tests PRIVATE
     ips_lang
     iprop_compiler
     Catch2::Catch2WithMain)
+
+target_include_directories(iprop_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_include_directories(iprop_tests SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
