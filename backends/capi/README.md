@@ -77,8 +77,10 @@ message.
 
 ## The conformance (task 6.2)
 
-`test/conformance.c` is a C-only consumer: the golden corpus (the portrait
-at five seeds, shapes, noise, parts) is assembled to `.iprop` at build
+`test/conformance.c` runs C-only suites in `test/golden.c`, `test/errors.c`
+and `test/generation.c`; common assertions and fixtures live in
+`test/test_support.{h,c}`. The golden corpus (the portrait at five seeds,
+shapes, noise, parts) is assembled to `.iprop` at build
 time and driven through the C entry point, compared pixel-exactly against
 the committed golden PNGs and the pinned structured outputs, and the
 error paths are exercised (junk bytes → `IPROP_E_FORMAT` with a message;

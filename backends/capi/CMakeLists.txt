@@ -87,7 +87,11 @@ foreach(source test/language.ips ../../examples/plant.ips)
 endforeach()
 
 add_executable(capi_conformance
-    test/conformance.c)
+    test/conformance.c
+    test/golden.c
+    test/errors.c
+    test/generation.c
+    test/test_support.c)
 add_library(capi_png_decoder STATIC test/stb_image.c)
 target_include_directories(capi_png_decoder SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
