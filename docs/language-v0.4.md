@@ -33,6 +33,14 @@ mixed numeric choices widen to f32. `chance(p)` evaluates p then consumes
 one draw and returns an i32 boolean for `unit() < p`, including p ≤ 0,
 p ≥ 1 and NaN (false). These RNG calls retain their draw effects.
 
+`roll(seed, a, b)` draws from a range using an explicit i32 seed.
+`choose(seed, value0, ...)` selects from one or more typed choices, using
+the same type rules as `pick`. All arguments evaluate in signature order
+before seed isolation. The operation draws once from the explicit seed and
+restores the outer stream after argument evaluation. Nested calls retain
+each caller's stream; named arguments bind `seed`, `a`/`b` or `value0`,
+`value1`, etc. A single choice still performs its isolated draw.
+
 ## Parameter names
 
 The following names are the builtin contracts; numeric arguments widen i32
@@ -108,3 +116,5 @@ to f32 where required. Overloads with identical names resolve by value types.
 | `ramp` | `palette, t` |
 | `poly` | `x0, y0, x1, y1, ...`, then `color` (positional color is first) |
 | `pick` (multiple choices) | `value0, value1, ...` |
+| `roll` | `seed, a, b` |
+| `choose` | `seed, value0, value1, ...` |

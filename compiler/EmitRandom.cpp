@@ -3,7 +3,13 @@
 namespace iprop::compiler {
 
 ips::ValueType Emitter::emitSelection(const SelectionCall& call) {
-    // Calls eagerly evaluate all choices once, in source order, before the
+    std::optional<TemporaryLocals::Lease> seed;
+    if (call.seed) {
+        emitArg(*call.seed);
+        seed.emplace(temporary(ips::ValueType::I32));
+        ins(Opcode::LocalSet, 0, seed->index());
+    }
+    // Calls eagerly evaluate all choices once, in signature order, before the
     // selection draw. Leases remain live across nested choice expressions.
     std::vector<TemporaryLocals::Lease> values;
     for (const auto& choice : call.choices) {
@@ -13,7 +19,12 @@ ips::ValueType Emitter::emitSelection(const SelectionCall& call) {
     }
     const auto index = temporary(ips::ValueType::I32);
     emitConst(static_cast<i32>(values.size()));
+    if (seed) {
+        ins(Opcode::LocalGet, 0, seed->index());
+        ins(Opcode::StreamPush);
+    }
     ins(Opcode::RngIndex);
+    if (seed) ins(Opcode::StreamPop);
     ins(Opcode::LocalSet, 0, index.index());
     const auto result = temporary(call.result);
     const auto select = [&](auto&& self, std::size_t begin, std::size_t end) -> void {

@@ -12,6 +12,8 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"index", {V::I32, L::Opcode, {{{{"n", V::I32}}, Opcode::RngIndex}}}},
         {"pick", {V::I32, L::Pick, {{{{"n", V::I32}}, Opcode::RngIndex}}}},
         {"chance", {V::I32, L::Chance, {{{{"p", V::F32}}, std::nullopt}}}},
+        {"roll", {V::F32, L::Roll, {{{{"seed", V::I32}, {"a", V::F32}, {"b", V::F32}}, std::nullopt}}}},
+        {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
         {"fault", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Fault}}}},

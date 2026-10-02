@@ -207,10 +207,14 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `unit`, `range`, `index` — draws from a Weyl-sequence stream
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
 - `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
-  all choices once, left to right, then consumes one draw to select a value.
+  all choices once, in signature order, then consumes one selection draw.
   Choices share a scalar/vec2 type; mixed numeric choices widen to f32.
 - `chance(p)` returns an i32 boolean for `unit() < p`, after evaluating p.
   It always consumes one draw; p ≤ 0 and NaN give false, p ≥ 1 gives true.
+- `roll(seed, a, b)` returns a range draw from the explicit seed;
+  `choose(seed, value0, …)` selects from one or more typed choices.
+  Arguments evaluate in signature order before isolation; the outer stream
+  is restored after the single draw. Both support named arguments.
 - `noise` — smoothstep-interpolated value noise over a pinned lattice hash.
 - `fault` — triangular-interpolated noise for sharp geological features.
 - `color.mix`, `color.shade`, `smooth` — colour/value helpers.
@@ -219,7 +223,7 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `int(x)` truncates f32 toward zero with saturation (NaN becomes zero),
   and preserves i32 values. `float(x)` widens i32 or preserves f32 values.
 - `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
-  clamped to 0–255; `rgb` uses alpha 255. Arguments run once, left to right.
+  clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
 - Every builtin/canvas operation accepts named arguments. See the
   [v0.4 language reference](docs/language-v0.4.md) for parameter names.
 - Stream isolation MUST be expressible: programs may derive independent

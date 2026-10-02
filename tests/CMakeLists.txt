@@ -21,6 +21,7 @@ add_executable(iprop_tests
     language/aliases_test.cpp
     language/random_sugar_test.cpp
     language/named_arguments_test.cpp
+    language/direct_seed_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp

@@ -38,11 +38,14 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         const auto args = ips::builtinArguments(call, spec, name);
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));
-        if (spec.lowering == ips::BuiltinLowering::Pick && args.size() >= 2) {
-            const auto type = ips::selectionType(types);
-            if (!type) throw ips::SourceError{call.location, "invalid pick choices"};
+        if ((spec.lowering == ips::BuiltinLowering::Pick && args.size() >= 2) ||
+            spec.lowering == ips::BuiltinLowering::Choose) {
+            const std::size_t first = spec.lowering == ips::BuiltinLowering::Choose ? 1 : 0;
+            const auto type = ips::selectionType(std::span(types).subspan(first));
+            if (!type) throw ips::SourceError{call.location, "invalid choices"};
             SelectionCall result{*type, {}};
-            for (const auto* arg : args) result.choices.push_back(argument(*arg->value, *type));
+            if (first) result.seed = argument(*args[0]->value, T::I32);
+            for (std::size_t i = first; i < args.size(); ++i) result.choices.push_back(argument(*args[i]->value, *type));
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};

@@ -31,6 +31,7 @@ struct UserCall {
 struct SelectionCall {
     ips::ValueType result;
     std::vector<PlannedArgument> choices;
+    std::optional<PlannedArgument> seed = std::nullopt;
 };
 struct PartCall {
     u32 part;

@@ -47,6 +47,18 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         ins(Opcode::F32Gt);
         return VT::I32;
     }
+    if (spec.lowering == ips::BuiltinLowering::Roll) {
+        emitArg(call.arguments[0]);
+        const auto seed = temporary(VT::I32);
+        ins(Opcode::LocalSet, 0, seed.index());
+        emitArg(call.arguments[1]);
+        emitArg(call.arguments[2]);
+        ins(Opcode::LocalGet, 0, seed.index());
+        ins(Opcode::StreamPush);
+        ins(Opcode::RngRange);
+        ins(Opcode::StreamPop);
+        return VT::F32;
+    }
     if (spec.lowering == ips::BuiltinLowering::ColorConstructor) {
         // Each mask leaves the other channels at 255. Integer shade/mul
         // builds RGB exactly, without a VM opcode or float-rounding errors.

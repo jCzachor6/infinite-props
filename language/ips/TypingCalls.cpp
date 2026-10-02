@@ -42,11 +42,15 @@ ValueType Typer::typeCall(const Call& call) {
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
     const auto args = builtinArguments(call, signature, name.name);
-    if (signature.lowering == BuiltinLowering::Pick && args.size() >= 2) {
+    if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
+        signature.lowering == BuiltinLowering::Choose) {
+        const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
+        if (first && typeOf(*args[0]->value) != ValueType::I32)
+            error(locationOf(*args[0]->value), "choose seed must be i32");
         std::vector<ValueType> types;
-        for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+        for (std::size_t i = first; i < args.size(); ++i) types.push_back(typeOf(*args[i]->value));
         const auto result = selectionType(types);
-        if (!result) error(call.location, "pick choices must have matching storable types or be numeric");
+        if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
         return *result;
     }
     if (signature.lowering == BuiltinLowering::Polygon) {

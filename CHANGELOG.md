@@ -18,6 +18,9 @@
   operation, including variadic choices, polygons and palette ramps. Names
   live with typed signatures and preserve canonical evaluation order.
   Added the parameter reference and short `#RGB`/`#RGBA` color literals.
+- A.6: Added seed-direct `roll` and typed `choose`, including named
+  arguments and nesting. Arguments execute before stream isolation;
+  existing stream instructions draw once and restore the outer state.
 
 ## v0.3.0 — 2026-10-02
 

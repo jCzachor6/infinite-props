@@ -1,0 +1,15 @@
+asset directSeed {
+  size 8x8
+  output list point trace
+  draw {
+    for i in 0..32 {
+      trace = {unit(), roll(123, -2, 8)}
+      trace = {roll(b = 8, seed = 123, a = -2), unit()}
+      trace = {choose(value2 = 30, seed = 7, value0 = 10, value1 = 20.5), unit()}
+      pixel(i % 8, i / 8, choose(seed, #f00, #0f0, #00f))
+      trace = choose(-1, {1, -0.0}, {2, 3})
+      trace = {choose(0, 42), unit()}
+      trace = {roll(choose(7, 10, 20), roll(5, -1, 1), roll(9, 2, 3)), unit()}
+    }
+  }
+}

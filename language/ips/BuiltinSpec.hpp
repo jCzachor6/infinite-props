@@ -12,7 +12,7 @@
 
 namespace iprop::ips {
 
-enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance };
+enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose };
 struct BuiltinParameter {
     std::string name;
     ValueType type;

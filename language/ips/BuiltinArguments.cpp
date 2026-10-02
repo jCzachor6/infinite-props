@@ -37,8 +37,14 @@ std::vector<const Arg*> builtinArguments(const Call& call, const BuiltinSpec& sp
         names.push_back("color");
         for (std::size_t i = 1; i < call.args.size(); ++i)
             names.push_back(std::string(i % 2 ? "x" : "y") + std::to_string((i - 1) / 2));
-    } else if (spec.lowering == BuiltinLowering::Pick && call.args.size() >= 2) {
-        for (std::size_t i = 0; i < call.args.size(); ++i) names.push_back("value" + std::to_string(i));
+    } else if ((spec.lowering == BuiltinLowering::Pick && call.args.size() >= 2) ||
+               spec.lowering == BuiltinLowering::Choose) {
+        const std::size_t first = spec.lowering == BuiltinLowering::Choose ? 1 : 0;
+        if (first) {
+            if (call.args.size() < 2) throw SourceError{call.location, "choose expects a seed and at least one choice"};
+            names.push_back("seed");
+        }
+        for (std::size_t i = first; i < call.args.size(); ++i) names.push_back("value" + std::to_string(i - first));
     } else {
         const auto* overload = builtinOverload(spec, call.args.size());
         if (!overload) {
