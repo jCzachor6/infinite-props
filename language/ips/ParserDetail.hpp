@@ -52,6 +52,7 @@ inline bool isNameKind(TokenKind tokenKind) {
     case TokenKind::TypeF32:
     case TokenKind::TypeU32:
     case TokenKind::TypeI32:
+    case TokenKind::TypeVec2:
     case TokenKind::KindPoint:
     case TokenKind::KindRect:
     case TokenKind::KindCircle:

@@ -73,6 +73,9 @@ const std::map<std::string, BuiltinSignature>& builtinSignatures() {
         {"dither", {{V::F32, V::I32, V::I32}, V::F32}},
         {"fold", {{V::Vec2, V::I32}, V::Vec2}},
         {"polar", {{V::Vec2}, V::Vec2}},
+        {"vec2.len", {{V::Vec2}, V::F32}},
+        {"vec2.dot", {{V::Vec2, V::Vec2}, V::F32}},
+        {"vec2.rot", {{V::Vec2, V::F32}, V::Vec2}},
         {"smoothstep", {{V::F32, V::F32, V::F32}, V::F32}},
         {"remap", {{V::F32, V::F32, V::F32, V::F32, V::F32}, V::F32}},
         {"clamp", {{V::F32, V::F32, V::F32}, V::F32}},
@@ -304,7 +307,7 @@ ValueType Typer::typeCall(const Call& call) {
         const Path path = flatten(*call.callee);
         if (!path.segments.empty() &&
             (path.base == "dist" || path.base == "noise" ||
-             path.base == "cell" || path.base == "color")) {
+             path.base == "cell" || path.base == "color" || path.base == "vec2")) {
             std::string full = path.base;
             for (const std::string& segment : path.segments) {
                 full += "." + segment;

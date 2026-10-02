@@ -52,7 +52,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
         if (const auto* base = std::get_if<ips::Identifier>(current)) {
             if (!reversed.empty() &&
                 (base->name == "dist" || base->name == "noise" ||
-                 base->name == "cell" || base->name == "color")) {
+                 base->name == "cell" || base->name == "color" || base->name == "vec2")) {
                 std::string full = base->name;
                 for (auto it = reversed.rbegin(); it != reversed.rend(); ++it) {
                     full += "." + *it;
@@ -173,6 +173,12 @@ ips::ValueType Emitter::emitBuiltin(const std::string& name,
         return emitFixed({VT::Vec2, VT::I32}, Opcode::Vec2Fold);
     if (name == "polar")
         return emitFixed({VT::Vec2}, Opcode::Vec2Polar);
+    if (name == "vec2.len")
+        return emitFixed({VT::Vec2}, Opcode::Vec2Len);
+    if (name == "vec2.dot")
+        return emitFixed({VT::Vec2, VT::Vec2}, Opcode::Vec2Dot);
+    if (name == "vec2.rot")
+        return emitFixed({VT::Vec2, VT::F32}, Opcode::Vec2Rot);
     if (name == "smoothstep")
         return emitFixed({VT::F32, VT::F32, VT::F32}, Opcode::Smoothstep);
     if (name == "remap")

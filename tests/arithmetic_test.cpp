@@ -553,21 +553,21 @@ TEST_CASE("vec2 neg/len/dot follow the pinned formulas") {
 }
 
 TEST_CASE("vec2 rot uses the pinned sin/cos — self-consistent with the opcodes") {
-    // rot({1, 0}, a) must equal {cos(a), sin(a)} from the same pinned
+    // rot({1, 0}, a) must equal {cos(a), -sin(a)} from the same pinned
     // algorithms the f32.cos/f32.sin opcodes use (spec §12.7).
     const f32 angle = 1.2345f;
     const auto rotated = std::get<Vec2>(
         evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).F(angle).emit(0x77))[0]);
     REQUIRE(rotated.x == evalProgF32(Prog{}.F(angle).emit(0x53))); // f32.cos
-    REQUIRE(rotated.y == evalProgF32(Prog{}.F(angle).emit(0x4F))); // f32.sin
-    // A quarter turn of {1, 0} lands near {0, 1} (the pinned cos(pi/2)
+    REQUIRE(rotated.y == -evalProgF32(Prog{}.F(angle).emit(0x4F))); // -f32.sin
+    // A quarter turn of {1, 0} lands near {0, -1} (the pinned cos(pi/2)
     // is tiny but not exactly zero).
     const f32 piOver2 = 1.57079632679f;
     const auto quarter = std::get<Vec2>(
         evalProg(Prog{}.F(1.f).F(0.f).emit(0x5B).F(piOver2).emit(0x77))[0]);
     REQUIRE(std::fabs(quarter.x) < 1e-5f);
-    REQUIRE(quarter.y == evalProgF32(Prog{}.F(piOver2).emit(0x4F)));
-    // And the rotation of {0, 1} by pi/2 lands on {-1, 0}-ish: the
+    REQUIRE(quarter.y == -evalProgF32(Prog{}.F(piOver2).emit(0x4F)));
+    // And the rotation of {0, 1} by pi/2 lands on {1, 0}-ish: the
     // counterclockwise sense.
     const auto quarter2 = std::get<Vec2>(
         evalProg(Prog{}.F(0.f).F(1.f).emit(0x5B).F(piOver2).emit(0x77))[0]);
@@ -938,11 +938,11 @@ TEST_CASE("fold and polar follow the pinned identities") {
     REQUIRE(f5.x == 1.f);
     REQUIRE(f5.y == 0.f);
 
-    // polar({3,4}) = {5, atan2(4,3)} — the self-consistency with the ops.
+    // polar({3,4}) = {5, atan2(-4,3)} in the downward-y asset plane.
     const auto p = std::get<Vec2>(
         evalProg(Prog{}.F(3.f).F(4.f).emit(0x5B).emit(0x9F))[0]);
     REQUIRE(p.x == 5.f);
-    REQUIRE(bitsOf(p.y) == bitsOf(evalProgF32(Prog{}.F(4.f).F(3.f).emit(0x5A))));
+    REQUIRE(bitsOf(p.y) == bitsOf(evalProgF32(Prog{}.F(-4.f).F(3.f).emit(0x5A))));
 }
 
 TEST_CASE("fold canonicalizes every NaN component while retaining infinity and finite results") {

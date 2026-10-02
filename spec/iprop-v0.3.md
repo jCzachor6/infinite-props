@@ -447,9 +447,12 @@ Semantics (all f32 arithmetic IEEE-correctly-rounded, like §9.4):
 - `vec2.len(v)` — `sqrt(v.x*v.x + v.y*v.y)` (the multiplications and the
   addition in the written order, then the correctly-rounded `sqrt`).
 - `vec2.dot(a, b)` — `a.x*b.x + a.y*b.y` (in the written order).
-- `vec2.rot(v, a)` — `{v.x*cos(a) - v.y*sin(a), v.x*sin(a) + v.y*cos(a)}`
+- `vec2.rot(v, a)` — `{v.x*cos(a) + v.y*sin(a), v.y*cos(a) - v.x*sin(a)}`
   with `sin`/`cos` from §12.7 (the rotation by `a` radians,
   counterclockwise in asset coordinates where y grows downward).
+  Positive quarter turns agree with part D4 rotations after removing
+  the rectangle translation. The `.ips` names `vec2.len(v)`,
+  `vec2.dot(a,b)`, and `vec2.rot(v,a)` expose these instructions directly.
 - `vec2.x/y` — the components. Construction, component extraction and
   storage preserve their input bits. Each result component of vector
   arithmetic (`add/sub/mul/div/neg/len/dot/rot/fold/polar`) that is NaN
@@ -1577,8 +1580,12 @@ Pinned `vec2.fold` vectors (the component bits):
 **vec2.polar(v):**
 
 ```
-return {len(v), atan2(v.y, v.x)}
+return {len(v), atan2(-v.y, v.x)}
 ```
+
+The angle increases counterclockwise in the downward-y asset plane, like
+`vec2.rot` and part rotations. Scalar `atan2(y,x)` retains its mathematical
+definition; `fold` retains the explicitly specified nonnegative-y sector.
 
 ### 12.14 The curve toolkit (v0.3)
 

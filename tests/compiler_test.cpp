@@ -1357,6 +1357,35 @@ endfn
     }
 }
 
+TEST_CASE("vec2 source builtins use counterclockwise asset angles") {
+    const auto result = run(compileChecked(R"(
+asset t {
+  size 8x8
+  output point metrics
+  output point positive
+  output point negative
+  output point angle
+  output point integerAngle
+  draw(v:i32,a:i32) {
+    metrics = {vec2.len({3,4}), vec2.dot({2,3},{4,5})}
+    positive = vec2.rot({2,3}, 1.57079632679)
+    negative = vec2.rot({2,3}, -1.57079632679)
+    angle = polar({0,-1})
+    integerAngle = vec2.rot({2,3}, 0)
+  }
+})"),0,0);
+    CHECK(result.outputs[0].points[0].x == 5.f);
+    CHECK(result.outputs[0].points[0].y == 23.f);
+    CHECK(std::fabs(result.outputs[1].points[0].x - 3.f) < 1e-5f);
+    CHECK(std::fabs(result.outputs[1].points[0].y + 2.f) < 1e-5f);
+    CHECK(std::fabs(result.outputs[2].points[0].x + 3.f) < 1e-5f);
+    CHECK(std::fabs(result.outputs[2].points[0].y - 2.f) < 1e-5f);
+    CHECK(result.outputs[3].points[0].x == 1.f);
+    CHECK(std::fabs(result.outputs[3].points[0].y - 1.57079632679f) < 1e-5f);
+    CHECK(result.outputs[4].points[0].x == 2.f);
+    CHECK(result.outputs[4].points[0].y == 3.f);
+}
+
 TEST_CASE("the dither, fold and polar builtins compile and match the .ipa") {
     const std::string source = R"(
 asset t {

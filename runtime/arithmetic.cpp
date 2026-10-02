@@ -367,7 +367,7 @@ Vec2 vec2Fold(const Vec2& v, i32 n) {
 }
 
 Vec2 vec2Polar(const Vec2& v) {
-    return math::canonical(Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(v.y, v.x)});
+    return math::canonical(Vec2{std::sqrt(v.x * v.x + v.y * v.y), f32Atan2(-v.y, v.x)});
 }
 
 // ---- the curve toolkit (spec §12.14) ----------------------------------------
@@ -963,7 +963,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const f32 ys = v.y * s;
         const f32 xs = v.x * s;
         const f32 yc = v.y * c;
-        ex.push(Value(math::canonical(Vec2{xc - ys, xs + yc})));
+        ex.push(Value(math::canonical(Vec2{xc + ys, yc - xs})));
         ++ex.frame().ip;
         return true;
     }

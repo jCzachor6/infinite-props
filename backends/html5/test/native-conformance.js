@@ -26,6 +26,7 @@ const sources = [
     ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
     ["colors", "backends/html5/test/fixtures/colors.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
+    ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
@@ -229,6 +230,12 @@ function run(iprop, toolsDir) {
                 ];
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent fold NaN/infinity/finite pins");
+            }
+            if (path.basename(file) === "vec2-api.iprop") {
+                assert.deepEqual(wasm.outputs[0].points, [{x:5,y:23}], label);
+                assert.deepEqual(wasm.outputs[1].points, [{x:2,y:3}], label);
+                assert.equal(wasm.outputs[2].points[0].x, 1, label);
+                assert.ok(Math.abs(wasm.outputs[2].points[0].y - Math.PI/2) < 1e-6, label);
             }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");

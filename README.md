@@ -278,6 +278,9 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
   `f32`, `color` or `vec2`; pre-1.0 the type is mandatory) and functions that
   return a value declare an explicit return type (`-> i32`).
+- `vec2.len(v)`, `vec2.dot(a,b)` and `vec2.rot(v,angle)` expose vector math.
+  Positive angles in `vec2.rot`, `polar` and part rotations are counterclockwise
+  in the downward-y asset plane.
 - `vec2` values use `{x, y}` literals and `.x`/`.y` components, including
   points read from parts. Vectors support `+`, `-`, `*` and `/` with another
   vector, `*` and `/` with a scalar on the right, and scalar `*` vector.

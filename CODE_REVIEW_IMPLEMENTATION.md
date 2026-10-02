@@ -17,7 +17,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
 - [ ] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
 - [x] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
-- [ ] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
+- [x] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
 - [ ] Wspólny zestaw przypadków granicznych: NaN/inf/±0, przepływ typów, limity zasobów i relacja obrazu do geometrii.
 - [ ] Końcowy audyt: wszystkie wymagania sprawdzone, native + backendy + sanitizery + WASM + instalacja/wydanie, aktualna dokumentacja i brak niezamierzonych zmian golden.
 
@@ -82,4 +82,11 @@ brakujących plikach i błędach planowania/assembly. Edytor obsługuje faktyczn
 jednoliniowy format CLI oraz historyczny format dwuliniowy. CTest 7/7 PASS,
 w tym nowy test integracyjny edytor + prawdziwy `ipc` dla pięciu etapów błędu.
 
-W toku: API vec2, wydzielenie matematyki i dalsze refaktory.
+API vec2: `.ips` udostępnia `vec2.len`, `vec2.dot` i `vec2.rot`, w tym
+promocję całkowitego argumentu kąta. `vec2.rot` i `polar` stosują teraz
+konwencję CCW w osi Y w dół, zgodną z D4; poprawiono specyfikację 0.3,
+dokumentację i kolorowanie składni. Historyczny skalarny atan2 i sektor fold
+zachowano. CTest 7/7 PASS; native/WASM: 121 obrazów/outputów, 6292 porównania
+bitowe, 19 trapów i 7 golden PASS (`vec2-api-conformance.log`).
+
+W toku: wydzielenie matematyki i dalsze refaktory.
