@@ -244,7 +244,7 @@ asset t {
     REQUIRE(outcome.outputs[0].points[0].x == 1.f); // 2.5 < 3.0
 }
 
-TEST_CASE("division is not folded (the runtime trap is preserved)") {
+TEST_CASE("reference integer division stays in the emitted instruction stream") {
     const std::string source = R"(
 asset t {
   size 8x8
@@ -252,7 +252,7 @@ asset t {
     x = 6 / 2
   }
 })";
-    const auto bytes = compileChecked(source);
+    const auto bytes = compileProgram(ips::parse(source), {}, false);
     const auto loaded = loadFile(bytes);
     // const.i32 6, const.i32 2, i32.div_s, local.set — no folding.
     REQUIRE(loaded.code.entry().code.size() == 16);

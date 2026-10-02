@@ -3,6 +3,8 @@
 add_library(iprop_compiler STATIC
     Compiler.cpp
     DeadCode.cpp
+    ConstantEvaluation.cpp
+    Peephole.cpp
     CompactPools.cpp
     Plan.cpp
     CallResolver.cpp

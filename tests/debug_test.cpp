@@ -46,7 +46,7 @@ asset t {
 std::vector<u8> compileChecked(const std::string& source) {
     const ips::Program program = ips::parse(source);
     ips::checkAsset(program, {});
-    return compileProgram(program, {});
+    return compileProgram(program, {}, false); // pin the reference tool/debug layout
 }
 
 } // namespace

@@ -44,6 +44,11 @@
   and stripped artifacts are cost-checked against the reference lowering;
   `ipc --no-opt` and the compiler's optimization switch retain that lowering.
 
+- C.2: Added straight-line constant propagation, peephole local tees and
+  constant color/vector kernel evaluation with exact typed values. Integer
+  traps and historical scalar non-finite arithmetic retain runtime lowering;
+  every pass keeps the best complete artifact in debug and stripped modes.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

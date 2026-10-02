@@ -17,13 +17,20 @@ auto compile(const std::string& source, bool optimize) {
     ips::checkAsset(program, {});
     return compileProgram(program, {}, optimize);
 }
-void compare(const std::vector<u8>& actual, const std::vector<u8>& expected) {
+void compare(const std::vector<u8>& actual, const std::vector<u8>& expected, u32 variants = 1) {
     CHECK(actual.size() <= expected.size());
     CHECK(stripDebug(actual).size() <= stripDebug(expected).size());
     for (const u32 seed : {0u, 7u, 26u, 0xffffffffu}) {
-        const auto a = compiler_test::execute(actual, seed);
-        const auto b = compiler_test::execute(expected, seed);
-        CHECK(a.canvas.pixels == b.canvas.pixels);
+        for (u32 variant = 0; variant < variants; ++variant) {
+        const auto execute = [&](const std::vector<u8>& bytes) {
+            const auto loaded = loadFile(bytes);
+            validate(loaded);
+            VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+            vm.run();
+            return vm.result();
+        };
+        const auto a = execute(actual), b = execute(expected);
+        CHECK(a.image.pixels == b.image.pixels);
         REQUIRE(a.outputs.size() == b.outputs.size());
         for (std::size_t i = 0; i < a.outputs.size(); ++i) {
             CHECK(a.outputs[i].name == b.outputs[i].name);
@@ -32,6 +39,7 @@ void compare(const std::vector<u8>& actual, const std::vector<u8>& expected) {
                 CHECK(std::bit_cast<u32>(a.outputs[i].points[j].x) == std::bit_cast<u32>(b.outputs[i].points[j].x));
                 CHECK(std::bit_cast<u32>(a.outputs[i].points[j].y) == std::bit_cast<u32>(b.outputs[i].points[j].y));
             }
+        }
         }
     }
 }
@@ -45,7 +53,7 @@ TEST_CASE("DCE removes dead stores locals names and unused palette constants") {
     const auto expected = compile(source, false), actual = compile(source, true);
     compare(actual, expected);
     const auto file = loadFile(actual);
-    CHECK(file.code.entry().locals.size() == 1);
+    CHECK(file.code.entry().locals.size() <= 1);
     CHECK(file.pool.colors == std::vector<Color>{{0xab,0xcd,0xef,0xff}});
     CHECK(std::find(file.pool.strings.begin(), file.pool.strings.end(), "dead") == file.pool.strings.end());
     CHECK(actual.size() < expected.size());
@@ -53,7 +61,7 @@ TEST_CASE("DCE removes dead stores locals names and unused palette constants") {
 }
 
 TEST_CASE("DCE retains RNG calls helper effects loop carries and branch liveness") {
-    const std::string source = R"(asset t { size 8x8 output point result
+    const std::string source = R"(asset t { size 8x8 variants 2 output point result
       draw {
         dead=index(3) unused=effect() i=0 x=17
         while(i<3) { x=x+i i=i+1 }
@@ -63,9 +71,42 @@ TEST_CASE("DCE retains RNG calls helper effects loop carries and branch liveness
       }
       effect()->i32 { pixel(4,0,#f00) return index(7) }
     })";
-    compare(compile(source, true), compile(source, false));
+    compare(compile(source, true), compile(source, false), 2);
     for (bool optimize : {false,true}) {
         const auto program = compile("asset t { size 8x8 draw { dead = 1 / v } }", optimize);
         CHECK_THROWS_AS(compiler_test::execute(program), Trap);
     }
+}
+
+TEST_CASE("constant chains color and vector kernels fold with exact result bits") {
+    const std::string source = R"(asset t { size 8x8 output point result output point nonfinite
+      draw {
+        x=6 y=x/2 z=y*4
+        c=color.hsv(color.mix(color.shade(#aabbccdd,-25),#11334455,0.25),0.125,0.75,1.1)
+        pixel(0,0,color.mul(c,rgba(255,128,z,255)))
+        q=vec2.rot({3,-0.0},0.0)
+        result={vec2.len(q),vec2.dot(q,{1,2})}
+        nonfinite={1.0,0.0}/{0.0,0.0}
+      } })";
+    const auto actual = compile(source, true), reference = compile(source, false);
+    compare(actual, reference);
+    CHECK(loadFile(actual).code.entry().code.size() < loadFile(reference).code.entry().code.size());
+    const auto loaded = loadFile(actual);
+    const auto debug = parseDebug(actual, *loaded.layout.find(SectionId::Debug));
+    CHECK(debug.functions[0].lines.size() == loaded.code.entry().code.size() / 4);
+    CHECK(debug.functions[0].localNames.size() == loaded.code.entry().params.size() + loaded.code.entry().locals.size());
+    for (const auto name : debug.functions[0].localNames)
+        if (name != kAnonymousName) CHECK(name < loaded.pool.strings.size());
+}
+
+TEST_CASE("folding preserves dividing overflow HSV traps and mutable control regions") {
+    for (const auto source : {
+        "asset t { size 8x8 draw { dead=1/0 } }",
+        "asset t { size 8x8 draw { dead=0x80000000/-1 } }",
+        "asset t { size 8x8 draw { dead=color.hsv(#fff,1.0/0.0,1,1) } }"}) {
+        for (bool optimize : {false,true}) CHECK_THROWS_AS(compiler_test::execute(compile(source,optimize)), Trap);
+    }
+    const std::string source = R"(asset t { size 8x8 variants 2 output point p
+      draw { x=3 if(v==0) { x=4 } else { x=5 } i=0 while(i<3) { x=x+i i=i+1 } p={x,min(-0.0,0.0)} } })";
+    compare(compile(source,true),compile(source,false),2);
 }

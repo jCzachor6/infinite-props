@@ -29,13 +29,21 @@ std::vector<u8> compileProgram(
 
     std::vector<u8> bytes = compiler::Assembler(*plan).assemble();
     if (optimize) {
-        compiler::eliminateDeadCode(*plan);
-        compiler::compactPools(*plan);
-        auto candidate = compiler::Assembler(*plan).assemble();
-        // Cost is the complete artifact, including pools, tables and debug.
-        // Keep the reference lowering if either output mode would grow.
-        if (candidate.size() <= bytes.size() && stripDebug(candidate).size() <= stripDebug(bytes).size())
-            bytes = std::move(candidate);
+        const auto attempt = [&](auto pass) {
+            auto candidatePlan = *plan;
+            pass(candidatePlan);
+            compiler::eliminateDeadCode(candidatePlan);
+            compiler::compactPools(candidatePlan);
+            auto candidate = compiler::Assembler(candidatePlan).assemble();
+            // Compare complete artifacts at every pass, including pools,
+            // tables and debug; retain the best plan in both output modes.
+            if (candidate.size() <= bytes.size() && stripDebug(candidate).size() <= stripDebug(bytes).size()) {
+                *plan = std::move(candidatePlan);
+                bytes = std::move(candidate);
+            }
+        };
+        attempt(compiler::eliminateDeadCode);
+        attempt(compiler::foldAndPeephole);
     }
 
     // Dogfood: the compiled file must pass the runtime validator.

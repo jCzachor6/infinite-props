@@ -23,3 +23,19 @@ Source maps retain the source line of every remaining instruction; deleted
 locals disappear from debug metadata. Compiler optimization may reduce fuel
 consumption. It preserves successful pixel/output bits and the effects of
 executed instructions; exact instruction counts are not a source contract.
+
+## Constant chains and peepholes
+
+Straight-line regions propagate known local values; control-flow boundaries
+clear those facts. Contiguous constant operand trees fold without crossing
+calls or side effects. Colors and vectors use the runtime's existing math
+kernels, including alpha, clamping, NaN canonicalization and signed zero.
+Vectors are reconstructed using two f32 constants and `vec2.make`; the VM
+and constant-section layouts need no extension.
+
+Nonzero integer division/remainder fold only when they cannot trap. Division
+by zero, signed division overflow and non-finite HSV hue shifts keep their
+runtime operations. Historical non-finite scalar arithmetic is conservative.
+Adjacent `local.set n` / `local.get n` becomes `local.tee n`; liveness then
+removes unnecessary stores. Each pass is accepted only if neither complete
+artifact mode grows relative to the previous best plan.
