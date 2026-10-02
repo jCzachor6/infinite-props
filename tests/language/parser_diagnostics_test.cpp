@@ -20,8 +20,8 @@ TEST_CASE("untyped parameters are rejected pre-1.0") {
         const char* messagePart;
     };
     const Case cases[] = {
-        {"asset m { draw(v, a) { } }", "':' and a parameter type"},
-        {"asset m { draw(v: i32, a) { } }", "':' and a parameter type"},
+        {"asset m { helper(v, a) { } }", "':' and a parameter type"},
+        {"asset m { helper(v: i32, a) { } }", "':' and a parameter type"},
         {"asset m { f(x, y: f32) { } }", "':' and a parameter type"},
         {"asset m { f(x) -> i32 { return 1 } }", "':' and a parameter type"},
     };
@@ -42,7 +42,7 @@ TEST_CASE("untyped parameters are rejected pre-1.0") {
 TEST_CASE("u32 parameters are rejected") {
     bool threw = false;
     try {
-        (void)parse("asset u { draw(v: u32, a: i32) { } }");
+        (void)parse("asset u { helper(v: u32, a: i32) { } }");
     } catch (const SourceError& error) {
         threw = true;
         REQUIRE(std::string(error.message).find("uniform-only") !=
@@ -57,9 +57,9 @@ TEST_CASE("malformed parameter types produce one located error") {
         const char* messagePart;
     };
     const Case cases[] = {
-        {"asset a { draw(v:) { } }", "parameter type"},
-        {"asset a { draw(v: blob) { } }", "parameter type"},
-        {"asset a { draw(v: i32, a: i32) -> { } }", "parameter type"},
+        {"asset a { helper(v:) { } }", "parameter type"},
+        {"asset a { helper(v: blob) { } }", "parameter type"},
+        {"asset a { helper(v: i32, a: i32) -> { } }", "parameter type"},
         {"asset a { f(x f32) { } }", "':' and a parameter type"},
     };
     for (const Case& testCase : cases) {
@@ -88,8 +88,8 @@ TEST_CASE("palette grammar errors are located") {
         {"asset a { size 8x8 palette p = [#ffffff }", "']'"},
         {"asset a { size 8x8 palette p = [#ffffff,", "unterminated palette"},
         {"asset a { size 8x8 palette p = [#ffffff, }", "an expression"},
-        {"asset a { size 8x8 draw(v: i32, a: i32) { c = p[ } }", "an expression"},
-        {"asset a { size 8x8 draw(v: i32, a: i32) { c = p[0 } }", "']'"},
+        {"asset a { size 8x8 draw { c = p[ } }", "an expression"},
+        {"asset a { size 8x8 draw { c = p[0 } }", "']'"},
     };
     for (const Case& testCase : cases) {
         INFO(testCase.source);
@@ -144,19 +144,19 @@ TEST_CASE("malformed programs produce one located error") {
         {"asset rock { input color c }", "'='"},
         {"asset rock { input bogus c = 1 }", "input type"},
         {"asset rock { output blob c }", "output kind"},
-        {"asset rock { draw v }", "'(' after the function name"},
-        {"asset rock { draw(v: i32, a: i32) { w = } }", "expected an expression"},
-        {"asset rock { draw(v: i32, a: i32) { 5 = 3 } }", "expected a statement"},
-        {"asset rock { draw(v: i32, a: i32) { foo; } }", "must be a call"},
-        {"asset rock { draw(v: i32, a: i32) { if x { } } }", "'(' after 'if'"},
-        {"asset rock { draw(v: i32, a: i32) { if (x) 5 } }", "expected '{'"},
-        {"asset rock { draw(v: i32, a: i32) {", "unterminated"},
+        {"asset rock { draw v }", "expected '{'"},
+        {"asset rock { draw { w = } }", "expected an expression"},
+        {"asset rock { draw { 5 = 3 } }", "expected a statement"},
+        {"asset rock { draw { foo; } }", "must be a call"},
+        {"asset rock { draw { if x { } } }", "'(' after 'if'"},
+        {"asset rock { draw { if (x) 5 } }", "expected '{'"},
+        {"asset rock { draw {", "unterminated"},
         {"import hair from \"hair.ips\"", "expected an 'asset' block"},
         {"import hair from 5", "quoted file path"},
         {"asset a { } asset b { }", "multiple asset blocks"},
-        {"asset rock { draw(v: i32, a: i32) { w = - } }", "expected an expression"},
-        {"asset rock { draw(v: i32, a: i32) { w = {1, 2 } }", "unterminated"},
-        {"asset rock { draw(v: i32, a: i32) { return 1 2 } }", "expected a statement"},
+        {"asset rock { draw { w = - } }", "expected an expression"},
+        {"asset rock { draw { w = {1, 2 } }", "unterminated"},
+        {"asset rock { draw { return 1 2 } }", "expected a statement"},
     };
 
     for (const Case& testCase : cases) {

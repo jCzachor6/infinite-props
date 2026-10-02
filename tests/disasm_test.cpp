@@ -27,7 +27,7 @@ asset t {
   input color base = #3355aa
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     x = 2 + 3 * 4
     w = x - 6
     rect(0, 0, w, w, base)
@@ -52,7 +52,7 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -164,7 +164,7 @@ asset hair {
   origin 32,4
   input color color = #33291f
   output point top
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 64, 32, color)
     top = {32, 4}
   }
@@ -176,7 +176,7 @@ asset portrait {
   size 64x64
   output point anchor
 
-  draw(v: i32, a: i32) {
+  draw {
     hair.draw(seed ^ 7, v, a, at = {32, 4})
     anchor = hair.outputs.top
   }

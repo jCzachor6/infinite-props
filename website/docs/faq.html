@@ -34,7 +34,8 @@ always reproduces the same asset.</li>
 <li><strong>variant</strong> — the finer variation within an archetype
 (<code>variants N</code>).</li>
 </ul>
-<p>Both indices arrive as the validated <code>draw(v, a)</code> parameters,
+<p>Both indices are the read-only <code>v</code>/<code>a</code> builtins in the
+<code>draw { ... }</code> entry block,
 so an asset author decides exactly how they shape the output.</p>
 
 <h2 id="vm">Why a bytecode VM instead of shipping the code?</h2>

@@ -93,6 +93,8 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
 }
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
+    if (name.name == "draw")
+        error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
     const std::optional<FunctionSurface> surface =
         resolveFunction(name.name, call.location, ns_);
     if (!surface.has_value()) {

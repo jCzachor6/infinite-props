@@ -38,7 +38,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 // Integer literals for every numeric argument exercise widening.
                 args += type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : "1";
             }
-            const auto program = ips::parse("asset t { size 8x8 draw(v:i32,a:i32) { "
+            const auto program = ips::parse("asset t { size 8x8 draw { "
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));
             const auto file = loadFile(compileProgram(program,{}));

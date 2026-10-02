@@ -31,13 +31,15 @@ summary.</p>
   input  type name = default
   output [list] kind name
 
-  draw(v: i32, a: i32) { ... }
+  draw { ... }
   helper(u: f32, c: color) -> i32 { ... }
 }</code></pre>
 <ul>
-<li><code>draw(v, a)</code> is the entry point; <code>v</code> and
+<li><code>draw { ... }</code> is the entry block; the read-only <code>v</code> and
 <code>a</code> are the variant and archetype indices (validated against the
-declared counts).</li>
+declared counts). The compiler synthesizes the runtime parameters; the
+old <code>draw(v: i32, a: i32)</code> declaration is rejected. Pass these
+values to helpers through their typed parameters.</li>
 <li>Helpers declare their parameter types (<code>u: f32</code> — <code>i32</code>,
 <code>f32</code> or <code>color</code>; pre-1.0 the type is mandatory) and
 functions that return a value declare an explicit return type
@@ -138,7 +140,7 @@ writes and part placement.</li>
 asset portrait {
   size 64x64
   output point pupilCenter
-  draw(v: i32, a: i32) {
+  draw {
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = #33291f)
     pupilCenter = hair.outputs.top
   }

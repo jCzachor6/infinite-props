@@ -19,7 +19,7 @@ asset pot {
   input u32   drops = 0
   input color crumbColor = #365c38
 
-  draw(v: i32, a: i32) {
+  draw {
     half = floor((15.0 + widthN) / 2.0)
     topHalf = half + 1
 

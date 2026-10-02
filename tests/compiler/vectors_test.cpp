@@ -29,7 +29,7 @@ TEST_CASE("typed temporary locals keep stable slots in every emission order") {
                                  statements[order[2]];
         const std::string source = "asset t { size 8x8 variants 3 "
             "palette colors = [#112233, #445566] "
-            "draw(v: i32, a: i32) { " + body + "pixel(x, flag, c) "
+            "draw { " + body + "pixel(x, flag, c) "
             "pixel(3, 0, helper(v)) } "
             "helper(v: i32) -> color { " + body + "return c } "
             "constant() -> i32 { return 1 } }";
@@ -57,7 +57,7 @@ asset t {
     return a * s + {1.0, 2.0}
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     u = {3.0, 4.0}
     w = u + u
     d = w.x * w.y
@@ -143,7 +143,7 @@ asset t {
     if (flag) { q = {3.0, 4.0} }
     return q
   }
-  draw(v: i32, a: i32) {
+  draw {
     if (v) { q = {1.0, 2.0} }
     rootPoint = q
     helperPoint = helper(v)
@@ -163,14 +163,14 @@ asset t {
     SECTION("part") {
         const auto part = ips::parse(R"(asset child {
           size 8x8 variants 2 output point top
-          draw(v: i32, a: i32) {
+          draw {
             if (v) { q = {5.0, 6.0} }
             top = q
           }
         })");
         const auto root = ips::parse(R"(import child from "child.ips"
           asset t { size 8x8 variants 2 output point p
-            draw(v: i32, a: i32) {
+            draw {
               child.draw(seed, v, a, at = {0, 0})
               p = child.outputs.top
             }
@@ -199,7 +199,7 @@ asset t {
   output point product
   output point dividedScalar
   output point dividedVector
-  draw(v: i32, a: i32) {
+  draw {
     q = {4, 8}
     sum = q + {1, 2}
     difference = q - {1, 2}
@@ -225,7 +225,7 @@ asset t {
 TEST_CASE("sequential scalar-vector products reuse locals without limiting source length") {
     for (const bool scalarLeft : {false, true}) {
         std::string source = "asset t { size 1x1 output point p "
-                             "draw(v: i32,a: i32) { q={1,2} ";
+                             "draw { q={1,2} ";
         for (unsigned i = 0; i < 2048; ++i) {
             source += scalarLeft ? "q=1.0*q\n" : "q=q*1.0\n";
         }
@@ -253,7 +253,7 @@ TEST_CASE("scalar-vector products preserve left-to-right RNG evaluation") {
          "s = unit() q = {round(unit() * 5), unit()} p = q * s"}};
     const auto source = [](const std::string& body) {
         return "asset t { size 8x8 output point p output point following "
-               "draw(v: i32, a: i32) { " + body +
+               "draw { " + body +
                " following = {unit(), unit()} } }";
     };
     for (const auto& fixture : fixtures) {
@@ -278,7 +278,7 @@ TEST_CASE("scalar-vector products preserve left-to-right RNG evaluation") {
 TEST_CASE("part point outputs expose vec2 components without a temporary") {
     const auto part = ips::parse(R"(asset child {
       size 8x8 output point top output point x output point y
-      draw(v: i32, a: i32) { top = {3, 4} x = {5, 6} y = {7, 8} }
+      draw { top = {3, 4} x = {5, 6} y = {7, 8} }
     })");
     const auto root = ips::parse(R"(import child from "child.ips"
       asset t { size 8x8
@@ -286,7 +286,7 @@ TEST_CASE("part point outputs expose vec2 components without a temporary") {
         output point named
         output point translated
         output point bare
-        draw(v: i32, a: i32) {
+        draw {
           child.draw(seed, v, a, at = {0, 0})
           components = {child.outputs.top.x, child.outputs.top.y}
           named = {child.outputs.x.x, child.outputs.y.y}
@@ -317,7 +317,7 @@ asset t {
   output point negative
   output point angle
   output point integerAngle
-  draw(v:i32,a:i32) {
+  draw {
     metrics = {vec2.len({3,4}), vec2.dot({2,3},{4,5})}
     positive = vec2.rot({2,3}, 1.57079632679)
     negative = vec2.rot({2,3}, -1.57079632679)

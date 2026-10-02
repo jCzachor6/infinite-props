@@ -43,6 +43,10 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
     }
+    if (isDraw) {
+        locals_.emplace("v", ValueType::I32);
+        locals_.emplace("a", ValueType::I32);
+    }
 }
 
 void Typer::declareLocal(const std::string& name, ValueType type) {

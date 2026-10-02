@@ -48,7 +48,7 @@ asset portrait {
     return age
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     // ---- identity (PaCharacter::generate); RNG order preserved ----
     stream_push(hash(seed ^ 0xc4a7ac7e))
     female = index(2)

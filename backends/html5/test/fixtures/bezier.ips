@@ -10,7 +10,7 @@ asset bezier {
   output point rounded
   output point edge
 
-  draw(v: i32, a: i32) {
+  draw {
     quadratic = {dist.bezier({3,0}, {0,0}, {1,0}, {2,0}),
                  dist.bezier({3,4}, {0,0}, {0,0}, {0,0})}
     cubic = {dist.bezier({4,0}, {0,0}, {1,0}, {2,0}, {3,0}),

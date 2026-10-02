@@ -24,7 +24,7 @@ TEST_CASE("part transforms mirror the pixels and propagate the outputs") {
 asset wing {
   size 4x4
   output point tip
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, #ff0000)
     pixel(1, 1, #00ff00)
     tip = {1, 0}
@@ -35,7 +35,7 @@ import wing from "wing.ips"
 asset t {
   size 8x8
   output point p
-  draw(v: i32, a: i32) {
+  draw {
     wing.draw(1, v, a, at = {0, 0})
     wing.draw(2, v, a, at = {4, 0}, mirror_x = true)
     p = wing.outputs.tip
@@ -70,7 +70,7 @@ TEST_CASE("the rot and mirror compositions fold to the D4 kinds") {
     const std::string wing = R"(
 asset wing {
   size 4x4
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, #ff0000)
   }
 })";
@@ -79,7 +79,7 @@ asset wing {
 import wing from "wing.ips"
 asset t {
   size 4x4
-  draw(v: i32, a: i32) {
+  draw {
     wing.draw(1, v, a, at = {0, 0}, rot = 180, mirror_x = true, mirror_y = true)
   }
 })";
@@ -100,7 +100,7 @@ asset t {
 import wing from "wing.ips"
 asset t {
   size 4x4
-  draw(v: i32, a: i32) {
+  draw {
     wing.draw(1, v, a, at = {0, 0}, rot = 90)
   }
 })";
@@ -119,7 +119,7 @@ TEST_CASE("part transform values are checked at the compile") {
     const std::string wing = R"(
 asset wing {
   size 4x4
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, #ff0000)
   }
 })";
@@ -140,26 +140,26 @@ asset wing {
     };
     compileComposite(
         "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw(v: i32, a: i32) { wing.draw(1, v, a, at = {0, 0}, rot = 45) } }",
+        "draw { wing.draw(1, v, a, at = {0, 0}, rot = 45) } }",
         "the rot transform must be 0, 90, 180 or 270");
     compileComposite(
         "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw(v: i32, a: i32) { wing.draw(1, v, a, at = {0, 0}, mirror_x = 2) } }",
+        "draw { wing.draw(1, v, a, at = {0, 0}, mirror_x = 2) } }",
         "the mirror_x transform must be 0 or 1");
     compileComposite(
         "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw(v: i32, a: i32) { wing.draw(1, v, a, at = {0, 0}, mirror_x = 1.5) } }",
+        "draw { wing.draw(1, v, a, at = {0, 0}, mirror_x = 1.5) } }",
         "must be an integer");
     for (const std::string name : {"rot", "mirror_x", "mirror_y"}) {
         compileComposite(
             "import wing from \"wing.ips\"\nasset t { size 4x4 "
-            "draw(v: i32, a: i32) { wing.draw(1, v, a, at = {0, 0}, " +
+            "draw { wing.draw(1, v, a, at = {0, 0}, " +
                 name + " = 0, " + name + " = 0) } }",
             "duplicate");
     }
     compileComposite(
         "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw(v: i32, a: i32) { wing.draw(1, v, a, at = {0, 0}, rot = v) } }",
+        "draw { wing.draw(1, v, a, at = {0, 0}, rot = v) } }",
         "constant integers");
 }
 
@@ -174,7 +174,7 @@ asset tile {
   output list point anchors
   output list rect boxes
   output list circle zones
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, #ff0000)
     pixel(3, 1, #0000ff)
     direct = {1, 0.5}
@@ -207,7 +207,7 @@ asset tile {
                 INFO("rot=" << rot * 90 << " mirror_x=" << mx << " mirror_y=" << my);
                 const auto root = ips::parse(
                     "import tile from \"tile.ips\"\nasset t { size 8x8 output point p "
-                    "draw(v: i32, a: i32) { tile.draw(1, v, a, at = {0,0}, rot = " +
+                    "draw { tile.draw(1, v, a, at = {0,0}, rot = " +
                     std::to_string(rot * 90) + ", mirror_x = " + std::to_string(mx) +
                     ", mirror_y = " + std::to_string(my) + ") p = tile.outputs.anchor } }");
                 ips::checkAsset(root, {{"tile", partInfoOf(part.asset)}});
@@ -250,7 +250,7 @@ asset tile {
   size 4x2
   output rect zeros
   output rect nan_box
-  draw(v: i32, a: i32) {
+  draw {
     zeros = {-0.0, -0.0, 0.0, 0.0}
     nan = -pow(-2, 0.5)
     nan_box = {nan, nan, 0, 0}
@@ -260,7 +260,7 @@ asset tile {
 import tile from "tile.ips"
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     tile.draw(1, v, a, at = {0,0}, rot = 90, mirror_y = true)
   }
 })");

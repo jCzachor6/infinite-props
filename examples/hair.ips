@@ -13,7 +13,7 @@ asset hair {
   input color color = #221e22
   input color accent = #90c5b9
 
-  draw(v: i32, a: i32) {
+  draw {
     if (style == 0) {
       // Cropped
       poly(color, 19, 23, 20, 16, 25, 11, 37, 11, 44, 17, 44, 24, 39, 20, 35, 17, 26, 18)

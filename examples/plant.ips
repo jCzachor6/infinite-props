@@ -18,7 +18,7 @@ asset plant {
   palette pots = [#967864, #7e7462, #6a7074, #beb6a2]
   palette blooms = [#e89648, #e2d6be, #c4788c]
 
-  draw(v: i32, a: i32) {
+  draw {
     // ===== identity: the main seed stream =====
     leavesIndex = index(5)
     potIndex = index(8)

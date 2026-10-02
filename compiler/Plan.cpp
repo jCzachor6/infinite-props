@@ -286,9 +286,10 @@ void Planner::prepareFunctionBody(const std::string& name) {
     u32 slot = 0;
     u32 forCount = 0; // names the hidden for-loop bound locals
     if (drawLike) {
+        if (!ast->params.empty())
+            error(ast->location, "'draw' takes no declared parameters; use 'draw { ... }'");
         info.params = {ValueType::I32, ValueType::I32}; // variant, archetype
-        for (int i = 0; i < 2; ++i) {
-            const std::string& pname = ast->params[static_cast<std::size_t>(i)].name;
+        for (const std::string pname : {"v", "a"}) {
             info.slots.emplace(pname, slot);
             info.langTypes.emplace(pname, ips::ValueType::I32);
             ++slot;

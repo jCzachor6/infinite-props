@@ -22,7 +22,7 @@ def main():
             uniform = "input f32 t = 0.99" if mode == "dynamic" else ""
             parameter = "t" if mode == "dynamic" else "0.99"
             source = (f"asset ramps {{ size 64x64 {uniform} palette colors=[{colors}] "
-                      "draw(v:i32,a:i32) { for y in 0..64 { for x in 0..64 { "
+                      "draw { for y in 0..64 { for x in 0..64 { "
                       f"pixel(x,y,ramp(colors,{parameter}))" + " } } } }")
             base = args.output_dir / f"{mode}-{count}"
             base.with_suffix(".ips").write_text(source, encoding="utf-8")

@@ -9,7 +9,7 @@ TEST_CASE("expression typing resolves each call once even when every subtree is 
     std::string expression = "value()";
     constexpr int count = 512;
     for (int i = 1; i < count; ++i) expression += " + value()";
-    const auto program = ips::parse("asset t { size 8x8 draw(v:i32,a:i32) { x = " + expression + " } }");
+    const auto program = ips::parse("asset t { size 8x8 draw { x = " + expression + " } }");
     const auto& function = program.asset.functions[0];
     const auto& root = *std::get<ips::VarDecl>(function.body[0]).value;
     const std::map<std::string, ips::PartInfo> parts;
@@ -43,7 +43,7 @@ TEST_CASE("expression typing resolves each call once even when every subtree is 
 
 TEST_CASE("a completed expression plan survives its type engine and stores pure constants") {
     const auto program = ips::parse(R"(asset t { size 8x8 output point p
-      draw(v:i32,a:i32) {
+      draw {
         x = (1 + 2) * 4
         for i in 0..2 { if (i < x) { p = {helper(i), x} } }
       }

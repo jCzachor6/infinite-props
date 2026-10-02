@@ -3,7 +3,7 @@ asset vectors {
   output point metrics
   output point rotated
   output point angle
-  draw(v:i32,a:i32) {
+  draw {
     metrics = {vec2.len({3,4}),vec2.dot({2,3},{4,5})}
     rotated = vec2.rot({2,3},0)
     angle = polar({0,-1})

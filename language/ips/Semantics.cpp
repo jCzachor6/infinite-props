@@ -38,17 +38,10 @@ public:
         checkAssetDecls();
         const Function* draw = findFunction("draw");
         if (draw == nullptr) {
-            error(program_.asset.location, "missing 'draw(v, a)' function");
+            error(program_.asset.location, "missing 'draw { ... }' entry block");
         }
-        if (draw->params.size() != 2) {
-            error(draw->location,
-                  "'draw' must take exactly two parameters (variant, archetype)");
-        }
-        for (const auto& param : draw->params) {
-            if (param.type != ParamType::I32) {
-                error(param.location, "the parameters of 'draw' must be i32 "
-                                      "(variant, archetype)");
-            }
+        if (!draw->params.empty()) {
+            error(draw->location, "'draw' takes no declared parameters; use 'draw { ... }'");
         }
         if (draw->returnType.has_value()) {
             error(draw->location, "'draw' cannot return a value");
@@ -111,6 +104,8 @@ private:
 
         std::set<std::string> outputNames;
         for (const auto& output : program_.asset.outputs) {
+            if (output.name == "v" || output.name == "a")
+                error(output.location, "'" + output.name + "' is a reserved name");
             if (!outputNames.insert(output.name).second) {
                 error(output.location, "duplicate output '" + output.name + "'");
             }
@@ -279,8 +274,10 @@ private:
                           std::string(typeName(type)));
             }
         }
-        if (forStmt.variable == "seed") {
-            error(forStmt.location, "'seed' is a reserved name");
+        if (forStmt.variable == "seed" ||
+            (current_->name == "draw" &&
+             (forStmt.variable == "v" || forStmt.variable == "a"))) {
+            error(forStmt.location, "'" + forStmt.variable + "' is a reserved name");
         }
         if (findOutput(forStmt.variable) != nullptr) {
             error(forStmt.location,
@@ -371,6 +368,9 @@ private:
         if (findPalette(decl.name) != nullptr) {
             error(decl.location,
                   "cannot assign to palette '" + decl.name + "'");
+        }
+        if (current_->name == "draw" && (decl.name == "v" || decl.name == "a")) {
+            error(decl.location, "cannot assign to builtin '" + decl.name + "'");
         }
         if (isParam(decl.name)) {
             error(decl.location, "cannot assign to parameter '" + decl.name + "'");

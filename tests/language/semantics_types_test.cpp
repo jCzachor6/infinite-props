@@ -24,7 +24,7 @@ TEST_CASE("palette declarations are checked") {
 asset t {
   size 8x8
   palette leafDark = [#365c38, #4c603e, #264a46]
-  draw(v: i32, a: i32) {
+  draw {
     c = leafDark[0]
   }
 })"), {}));
@@ -35,35 +35,35 @@ asset t {
   size 8x8
   palette weights = [3, 1, 2]
   palette levels = [0.5, 1.0]
-  draw(v: i32, a: i32) {
+  draw {
     w = weights[v]
     l = levels[0]
   }
 })"), {}));
 
     expectCheckError(
-        "asset t { size 8x8 palette p = [] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette p = [] draw { } }",
         "needs at least one element");
     expectCheckError(
-        "asset t { size 8x8 palette p = [#111111, 2] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette p = [#111111, 2] draw { } }",
         "elements of one type");
     expectCheckError(
-        "asset t { size 8x8 palette p = [#111111 + #000000] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette p = [#111111 + #000000] draw { } }",
         "must be literals");
     expectCheckError(
-        "asset t { size 8x8 palette p = [\"x\"] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette p = [\"x\"] draw { } }",
         "string elements");
     expectCheckError(
-        "asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw { } }",
         "duplicate palette 'p'");
     expectCheckError(
-        "asset t { size 8x8 palette seed = [#111111] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 palette seed = [#111111] draw { } }",
         "reserved name");
     expectCheckError(
-        "asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }",
         "collides with an input or output");
     expectCheckError(
-        "asset t { size 8x8 palette f = [#111111] draw(v: i32, a: i32) { } f(x: i32) { return x } }",
+        "asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }",
         "collides with a function");
 }
 
@@ -72,51 +72,51 @@ TEST_CASE("palette indexing is type checked") {
 asset t {
   size 8x8
   palette leafDark = [#365c38, #4c603e, #264a46]
-  draw(v: i32, a: i32) {
+  draw {
     c = leafDark[v]
     d = leafDark[1 + 1]
   }
 })"), {}));
 
     expectCheckError(R"(
-asset t { size 8x8 palette p = [#111111] draw(v: i32, a: i32) { c = p[0.5] } })",
+asset t { size 8x8 palette p = [#111111] draw { c = p[0.5] } })",
         "palette index must be i32");
     expectCheckError(wrap("c = missing[0]"), "'missing' is not a palette");
     expectCheckError(R"(
-asset t { size 8x8 palette p = [#111111] draw(v: i32, a: i32) { c = p } })",
+asset t { size 8x8 palette p = [#111111] draw { c = p } })",
         "must be indexed");
     expectCheckError(wrap("c = 5[0]"), "only palettes can be indexed");
     // A local cannot shadow a palette.
     expectCheckError(R"(
-asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { p = 3 } })",
+asset t { size 8x8 palette p = [1, 2] draw { p = 3 } })",
         "cannot assign to palette 'p'");
     // The element type flows into the assigned local.
     expectCheckError(R"(
-asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { c = p[0] c = 0.5 } })",
+asset t { size 8x8 palette p = [1, 2] draw { c = p[0] c = 0.5 } })",
         "local 'c' is i32");
 }
 
 TEST_CASE("ramp is checked") {
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = ramp(nope, 0.5) } }",
+        "asset t { size 8x8 draw { x = ramp(nope, 0.5) } }",
         "is not a palette");
     expectCheckError(
-        "asset t { size 8x8 palette p = [1, 2] draw(v: i32, a: i32) { x = ramp(p, 0.5) } }",
+        "asset t { size 8x8 palette p = [1, 2] draw { x = ramp(p, 0.5) } }",
         "ramp requires a color or f32 palette");
     expectCheckError(
-        "asset t { size 8x8 palette p = [1.0] draw(v: i32, a: i32) { x = ramp(p, #ffffff) } }",
+        "asset t { size 8x8 palette p = [1.0] draw { x = ramp(p, #ffffff) } }",
         "ramp's t must be numeric");
     for (const std::string arguments : {"palette = p, t = 0.5", "t = p, palette = 0.5",
                                         "p, t = 0.5", "p, typo = 0.5"}) {
         CAPTURE(arguments);
         expectCheckError(
             "asset t { size 8x8 palette p = [1.0] "
-            "draw(v: i32, a: i32) { x = ramp(" + arguments + ") } }",
+            "draw { x = ramp(" + arguments + ") } }",
             "does not take named arguments");
     }
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 palette p = [1.0, 2.0] "
-        "draw(v: i32, a: i32) { x = ramp(p, 0.5) } }"),
+        "draw { x = ramp(p, 0.5) } }"),
         {}));
 }
 
@@ -134,14 +134,14 @@ TEST_CASE("undefined names and functions are rejected with locations") {
     REQUIRE(threw);
 
     expectCheckError(wrap("x = missing_fn(1)"), "undefined function");
-    expectCheckError(wrap("v = 5"), "cannot assign to parameter");
+    expectCheckError(wrap("v = 5"), "cannot assign to builtin");
     expectCheckError(wrap("seed = 5"), "reserved");
 }
 
 TEST_CASE("the seed builtin is read-only via inputs") {
     // `seed` alone resolves to the builtin; assigning to it is only possible
     // if the asset declares an input named seed — which is reserved.
-    expectCheckError("asset t { size 8x8 input u32 seed = 1 draw(v: i32, a: i32) { } }",
+    expectCheckError("asset t { size 8x8 input u32 seed = 1 draw { } }",
                      "reserved");
     // Reading seed is fine.
     CHECK_NOTHROW(checkAsset(parse(wrap("x = seed ^ 3")), {}));
@@ -149,17 +149,17 @@ TEST_CASE("the seed builtin is read-only via inputs") {
 
 TEST_CASE("input default values must match the declared type") {
     expectCheckError(
-        "asset t { size 8x8 input color c = 5 draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 input color c = 5 draw { } }",
         "default value");
     expectCheckError(
-        "asset t { size 8x8 input f32 f = #808d74 draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 input f32 f = #808d74 draw { } }",
         "default value");
     expectCheckError(
-        "asset t { size 8x8 input i32 i = 2.5 draw(v: i32, a: i32) { } }",
+        "asset t { size 8x8 input i32 i = 2.5 draw { } }",
         "default value");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 input color c = #808d74 input f32 f = 2.5 "
-        "input u32 u = 7 input i32 i = 3 draw(v: i32, a: i32) { } }"),
+        "input u32 u = 7 input i32 i = 3 draw { } }"),
         {}));
 }
 
@@ -205,16 +205,16 @@ TEST_CASE("vector arity errors") {
 
 TEST_CASE("output slot kinds are checked") {
     expectCheckError(
-        "asset t { size 8x8 output rect r draw(v: i32, a: i32) { r = {1, 2} } }",
+        "asset t { size 8x8 output rect r draw { r = {1, 2} } }",
         "expects rect, got vec2");
     expectCheckError(
-        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2, 3, 4} } }",
+        "asset t { size 8x8 output point p draw { p = {1, 2, 3, 4} } }",
         "expects vec2, got rect");
     expectCheckError(
-        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = 5 } }",
+        "asset t { size 8x8 output point p draw { p = 5 } }",
         "expects vec2, got i32");
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 output point p draw(v: i32, a: i32) { p = {1, 2} } }"),
+        "asset t { size 8x8 output point p draw { p = {1, 2} } }"),
         {}));
 }
 
@@ -228,20 +228,20 @@ TEST_CASE("locals cannot hold compounds and are typed on first assignment") {
 
 TEST_CASE("duplicate declarations and missing requirements") {
     expectCheckError("asset t { size 8x8 input color c = #ffffff input color c = #000000 "
-                     "draw(v: i32, a: i32) { } }", "duplicate input 'c'");
+                     "draw { } }", "duplicate input 'c'");
     expectCheckError("asset t { size 8x8 output point p output point p "
-                     "draw(v: i32, a: i32) { } }", "duplicate output 'p'");
+                     "draw { } }", "duplicate output 'p'");
     expectCheckError("asset t { size 8x8 input color p = #ffffff output point p "
-                     "draw(v: i32, a: i32) { } }", "collides with an input");
-    expectCheckError("asset t { size 8x8 draw(v: i32, a: i32) { } helper(x: i32) { return 1 } "
+                     "draw { } }", "collides with an input");
+    expectCheckError("asset t { size 8x8 draw { } helper(x: i32) { return 1 } "
                      "helper(x: i32) { return 2 } }", "duplicate function");
     expectCheckError("import a from \"a.ips\" import a from \"a.ips\" "
-                     "asset t { size 8x8 draw(v: i32, a: i32) { } }",
+                     "asset t { size 8x8 draw { } }",
                      {{"a", {}}}, "duplicate import alias");
-    expectCheckError("asset t { draw(v: i32, a: i32) { } }", "missing 'size'");
+    expectCheckError("asset t { draw { } }", "missing 'size'");
     expectCheckError("asset t { size 8x8 }", "missing 'draw");
-    expectCheckError("asset t { size 8x8 draw(v: i32) { } }", "exactly two parameters");
-    expectCheckError("asset t { size 8x8 input color at = #ffffff draw(v: i32, a: i32) { } }",
+    expectCheckError("asset t { size 8x8 draw(v: i32) { } }", "takes no declared parameters");
+    expectCheckError("asset t { size 8x8 input color at = #ffffff draw { } }",
                      "reserved");
 }
 

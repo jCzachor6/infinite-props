@@ -193,6 +193,15 @@ Function ParserImpl::parseFunction() {
 }
 
 Function ParserImpl::parseFunctionAfterName(const Token& name) {
+    if (name.text == "draw") {
+        if (kind() == TokenKind::LParen) {
+            failHere("'draw' takes no declared parameters; use 'draw { ... }'");
+        }
+        if (kind() == TokenKind::Arrow) {
+            failHere("'draw' cannot return a value; use 'draw { ... }'");
+        }
+        return Function{name.text, {}, {}, parseBlock(), name.location};
+    }
     expect(TokenKind::LParen, "'(' after the function name");
     std::vector<Param> params;
     while (kind() != TokenKind::RParen) {

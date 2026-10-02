@@ -10,7 +10,7 @@ asset noiseV2 {
   output point jitterRegression
   output point gradientLimits
 
-  draw(v: i32, a: i32) {
+  draw {
     gradient = {noise.grad(1.5, 2.5, 7), noise.grad(-3.25, 4.75, 7)}
     octaves = {noise.fbm(0.5, 0.5, 4, 7), noise.fbm(1.5, 2.5, 3, 7)}
     cellular = {noise.cell(0.5, 0.5, 7), noise.cell(-3.25, 4.75, 7)}

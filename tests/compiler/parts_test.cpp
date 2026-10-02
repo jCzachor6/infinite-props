@@ -26,7 +26,7 @@ asset hair {
   origin 32,4
   input color color = #33291f
   output point top
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 64, 32, color)
     top = {32, 4}
   }
@@ -37,7 +37,7 @@ asset eyes {
   origin 16,8
   input color color = #112233
   output point pupil
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 32, 16, color)
     pupil = {16, 8}
   }
@@ -52,7 +52,7 @@ asset portrait {
   input  color skin = #d9b58c
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 64, 64, skin)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4})
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24}, color = skin)
@@ -97,11 +97,11 @@ asset portrait {
 TEST_CASE("two aliases of the same imported program keep independent output slots") {
     const auto part = ips::parse(R"(asset child { size 8x8 variants 2
         output point p
-        draw(v: i32, a: i32) { p = {v + 1, 0} } })");
+        draw { p = {v + 1, 0} } })");
     const auto root = ips::parse(R"(import first from "child.ips"
         import second from "child.ips"
         asset root { size 8x8
-          draw(v: i32, a: i32) {
+          draw {
             first.draw(seed, 0, a, at = {0, 0})
             second.draw(seed, 1, a, at = {0, 0})
           } })");
@@ -117,15 +117,15 @@ TEST_CASE("two aliases of the same imported program keep independent output slot
 
 TEST_CASE("helpers resolve within the root or owning part namespace") {
     const auto first = ips::parse(R"(asset first { size 8x8 output point p
-      draw(v: i32, a: i32) { p = {helper(), 0} }
+      draw { p = {helper(), 0} }
       helper() -> i32 { return 1 } })");
     const auto second = ips::parse(R"(asset second { size 8x8 output point p
-      draw(v: i32, a: i32) { p = {helper(2.5, 1), 0} }
+      draw { p = {helper(2.5, 1), 0} }
       helper(x: f32, y: i32) -> f32 { return x + y } })");
     const auto root = ips::parse(R"(import first from "first.ips"
       import second from "second.ips"
       asset root { size 8x8 output point p
-        draw(v: i32, a: i32) {
+        draw {
           first.draw(seed, v, a, at = {0, 0})
           second.draw(seed, v, a, at = {0, 0})
           p = {helper(7), 0}
@@ -148,10 +148,10 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
     const auto part = ips::parse(R"(asset child { size 8x8
       input f32 width = 1.0
       output point p
-      draw(v:i32,a:i32) { p = {width, 0} } })");
+      draw { p = {width, 0} } })");
     const auto root = ips::parse(R"(import child from "child.ips"
       asset root { size 8x8
-        draw(v:i32,a:i32) { child.draw(seed, v, a, at = {0,0}, width = measure()) }
+        draw { child.draw(seed, v, a, at = {0,0}, width = measure()) }
         measure() -> i32 { pixel(0,0,#ffffff80) return 3 }
       })");
     ips::checkAsset(part, {});
@@ -161,7 +161,7 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
     CHECK(result.outputs[0].points[0].x == 3.0f);
     CHECK(result.canvas.pixels[0].r == 128);
     const auto duplicate = ips::parse(R"(import child from "child.ips"
-      asset root { size 8x8 draw(v:i32,a:i32) {
+      asset root { size 8x8 draw {
         child.draw(seed,v,a,at={0,0},width=1,width=2)
       } })");
     CHECK_THROWS_AS(ips::checkAsset(duplicate, {{"child",partInfoOf(part.asset)}}), ips::SourceError);
@@ -171,14 +171,14 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
 TEST_CASE("nested part imports are rejected") {
     const std::string inner = R"(
 import leaf from "leaf.ips"
-asset inner { size 8x8 draw(v: i32, a: i32) { } }
+asset inner { size 8x8 draw { } }
 )";
     const std::string leaf = R"(
-asset leaf { size 4x4 draw(v: i32, a: i32) { } }
+asset leaf { size 4x4 draw { } }
 )";
     const std::string outer = R"(
 import inner from "inner.ips"
-asset outer { size 8x8 draw(v: i32, a: i32) { inner.draw(1, v, a, at = {0, 0}) } }
+asset outer { size 8x8 draw { inner.draw(1, v, a, at = {0, 0}) } }
 )";
 
     const ips::Program innerProgram = ips::parse(inner);
@@ -201,7 +201,7 @@ TEST_CASE("part placement can read another part's output") {
 asset anchor {
   size 4x4
   output point spot
-  draw(v: i32, a: i32) {
+  draw {
     spot = {2, 3}
   }
 })";
@@ -212,7 +212,7 @@ asset composite {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     anchor.draw(1, v, a, at = {0, 0})
     anchor.draw(2, v, a, at = anchor.outputs.spot)
     p = anchor.outputs.spot

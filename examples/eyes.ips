@@ -11,7 +11,7 @@ asset eyes {
 
   output point pupil
 
-  draw(v: i32, a: i32) {
+  draw {
     rect(23.0, 27.0, 6.0, 2.0, #dcd8c7)
     rect(35.0, 27.0, 6.0, 2.0, #dcd8c7)
     rect(26.0, 27.0, 2.0, 2.0, iris)

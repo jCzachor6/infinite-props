@@ -5,7 +5,7 @@ asset math {
   output point nan
   output point zeros
   output point angle
-  draw(v: i32, a: i32) {
+  draw {
     infinity = exp(100.0)
     negative_nan = -pow(-2.0, 0.5)
     powers = {pow(-1.0, infinity), pow(-1.0, -infinity)}

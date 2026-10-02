@@ -21,7 +21,7 @@ const std::string kRockSketch = R"(asset rock {
   input  color palette = #808d74
   output rect  collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -44,7 +44,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     face(v, a)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24})
@@ -63,7 +63,7 @@ TEST_CASE("the S-expression printer renders the rock sketch") {
     (archetypes 4)
     (input color palette #808d74)
     (output rect collider)
-    (fn draw ((v i32) (a i32))
+    (fn draw ()
       (let w (call range 21 31))
       (let h (call range 35 49))
       (let collider (vector (- 96 20) (- 170 23) 40 23))
@@ -87,7 +87,7 @@ TEST_CASE("the S-expression printer renders the portrait sketch") {
 TEST_CASE("the printer renders else branches and else-if chains") {
     const std::string source = R"(
 asset c {
-  draw(v: i32, a: i32) {
+  draw {
     if (a) {
       x = 1
     } else {
@@ -104,7 +104,7 @@ asset c {
 })";
     const std::string expected = R"((program
   (asset c
-    (fn draw ((v i32) (a i32))
+    (fn draw ()
       (if a
         (let x 1)
         (else
@@ -123,7 +123,7 @@ asset c {
 TEST_CASE("the printer renders literal atoms and unary operators") {
     const std::string source = R"(
 asset l {
-  draw(v: i32, a: i32) {
+  draw {
     s = "text"
     t = true
     f = false
@@ -145,7 +145,7 @@ TEST_CASE("the printer renders member chains with non-identifier bases") {
     // f().g — a call as the base of a member access.
     const std::string source = R"(
 asset m {
-  draw(v: i32, a: i32) {
+  draw {
     z = f().g
   }
 })";
@@ -156,7 +156,7 @@ asset m {
 TEST_CASE("the printer renders return values and bare returns") {
     const std::string source = R"(
 asset r {
-  draw(v: i32, a: i32) {
+  draw {
     return
   }
   helper(p: i32) {
@@ -171,7 +171,7 @@ asset r {
 TEST_CASE("the printer renders typed parameters and explicit returns") {
     const std::string source = R"(
 asset t {
-  draw(v: i32, a: i32) {
+  draw {
     n = ageFromUnit(0.5)
   }
   ageFromUnit(u: f32) -> i32 {
@@ -182,7 +182,7 @@ asset t {
   }
 })";
     const std::string printed = printProgram(parse(source));
-    REQUIRE(printed.find("(fn draw ((v i32) (a i32))") != std::string::npos);
+    REQUIRE(printed.find("(fn draw ()") != std::string::npos);
     REQUIRE(printed.find("(fn ageFromUnit ((u f32)) -> i32\n") !=
             std::string::npos);
     REQUIRE(printed.find("(fn leaf ((x f32) (c color)) -> color\n") !=
@@ -194,7 +194,7 @@ TEST_CASE("the printer renders palettes and indexes") {
 asset p {
   size 8x8
   palette leafDark = [#365c38, #4c603e, #54625c]
-  draw(v: i32, a: i32) {
+  draw {
     c = leafDark[2]
   }
 })";
@@ -208,7 +208,7 @@ TEST_CASE("the printer renders list outputs and while loops") {
     const std::string source = R"(
 asset loop {
   output list point pts
-  draw(v: i32, a: i32) {
+  draw {
     i = 0
     while (i < 10) {
       i = i + 1

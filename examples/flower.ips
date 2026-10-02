@@ -30,7 +30,7 @@ asset flower {
     line(x - rx * 0.7, y + ry * 0.3, x + rx * 0.7, y - ry * 0.3, 1, shade(c, -32))
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     rim = -12.0
     crown = rim - height
     dState = detailState

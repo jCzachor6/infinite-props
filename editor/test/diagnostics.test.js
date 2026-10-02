@@ -17,7 +17,7 @@ test("parses canonical and legacy diagnostics with paths containing colons", () 
 test("real compiler errors retain source ownership through imports and lowering", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-diagnostics-"));
     const ipc = process.env.IPROP_COMPILER || path.resolve(__dirname, "../../build/tools/ipc");
-    const asset = "asset t { size 8x8 draw(v:i32,a:i32) { } }";
+    const asset = "asset t { size 8x8 draw { } }";
     const run = (files, expectedFile, message) => {
         for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir,name),source);
         const result = spawnSync(ipc,["entry.ips"],{cwd:dir,encoding:"utf8"});
@@ -31,14 +31,14 @@ test("real compiler errors retain source ownership through imports and lowering"
         assert.ok(result.stderr.includes("^"),result.stderr);
     };
     try {
-        run({"entry.ips":'import tile from "tile.ips"\nasset t { size 8x8 draw(v:i32,a:i32) {\n' +
+        run({"entry.ips":'import tile from "tile.ips"\nasset t { size 8x8 draw {\n' +
             'tile.draw(1,2,3,at={0,0},rot=45)\n} }', "tile.ips":asset},"entry.ips",/rot transform/);
         run({"entry.ips":'import tile from "tile.ips"\n'+asset, "tile.ips":"asset bad {\n @ }"},
             "tile.ips",/unexpected/);
         run({"tile.ips":'import missing from "missing.ips"\n'+asset},"tile.ips",/cannot load/);
         run({"tile.ips":'import back from "entry.ips"\n'+asset},"tile.ips",/import cycle/);
         // Nonconstant origin is diagnosed by the assembly stage.
-        run({"tile.ips":"asset t { size 8x8 origin unit(),0 draw(v:i32,a:i32) { } }"},
+        run({"tile.ips":"asset t { size 8x8 origin unit(),0 draw { } }"},
             "tile.ips",/origin must be a constant/);
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });

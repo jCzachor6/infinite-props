@@ -8,7 +8,7 @@ asset curveToolkit {
   output point limits
   output point ordinary
 
-  draw(v: i32, a: i32) {
+  draw {
     nan = pow(-2, 0.5)
     normalized = {smoothstep(0, 1, -nan), remap(-nan, 0, 1, 10, 20)}
     negative_nan = {clamp(-nan, nan, nan), clamp(nan, nan, -nan)}

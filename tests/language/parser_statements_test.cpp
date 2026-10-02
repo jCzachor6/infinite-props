@@ -15,7 +15,7 @@ using namespace iprop::ips;
 TEST_CASE("expression precedence and forms") {
     const std::string source = R"(
 asset expr {
-  draw(v: i32, a: i32) {
+  draw {
     x = a + b * c - -d / !e % ~f
     y = 1 + 2 * 3 == 7 && 1 < 2 || 0 > 1
     z = a.b.c.d(1, named = 2, 3)
@@ -68,7 +68,7 @@ asset expr {
 TEST_CASE("user functions beyond draw parse") {
     const std::string source = R"(
 asset multi {
-  draw(v: i32, a: i32) {
+  draw {
     stone_mass(0, 0)
   }
   helper(p: i32) {
@@ -86,7 +86,7 @@ TEST_CASE("while loops and list outputs parse") {
     const std::string source = R"(
 asset loop {
   output list point pts
-  draw(v: i32, a: i32) {
+  draw {
     i = 0
     while (i < 10) {
       i = i + 1
@@ -109,7 +109,7 @@ asset loop {
 TEST_CASE("for loops parse into their statements") {
     const std::string source = R"(
 asset loop {
-  draw(v: i32, a: i32) {
+  draw {
     for i in 0..10 {
       pixel(i, 0, #ffffff)
     }
@@ -130,7 +130,7 @@ asset loop {
 TEST_CASE("break and continue parse into their statements") {
     const std::string source = R"(
 asset loop {
-  draw(v: i32, a: i32) {
+  draw {
     i = 0
     while (i < 10) {
       i = i + 1
@@ -156,7 +156,7 @@ asset loop {
 TEST_CASE("semicolons are optional statement separators") {
     const std::string source = R"(
 asset semi {
-  draw(v: i32, a: i32) {
+  draw {
     w = 1;
     h = 2
     ;
@@ -184,7 +184,7 @@ asset semi {
 TEST_CASE("else-if chains and nested blocks parse") {
     const std::string source = R"(
 asset nested {
-  draw(v: i32, a: i32) {
+  draw {
     if (a) {
       x = 1
     } else if (b) {
@@ -217,7 +217,7 @@ asset nested {
 TEST_CASE("typed parameters and explicit return types parse") {
     const std::string source = R"(
 asset typed {
-  draw(v: i32, a: i32) {
+  draw {
     u = 1.5
     n = ageFromUnit(u)
   }
@@ -231,10 +231,7 @@ asset typed {
     const Program program = parse(source);
 
     const Function& draw = program.asset.functions[0];
-    REQUIRE(draw.params.size() == 2);
-    REQUIRE(draw.params[0].name == "v");
-    REQUIRE(draw.params[0].type == ParamType::I32);
-    REQUIRE(draw.params[1].type == ParamType::I32);
+    REQUIRE(draw.params.empty());
     REQUIRE(!draw.returnType.has_value()); // void draws have no arrow
 
     const Function& age = program.asset.functions[1];
@@ -255,7 +252,7 @@ asset typed {
 
 TEST_CASE("named arguments may come first") {
     const Program program =
-        parse("asset n { draw(v: i32, a: i32) { f(at = {0, 0}, 5) } }");
+        parse("asset n { draw { f(at = {0, 0}, 5) } }");
     const auto& body = program.asset.functions[0].body;
     const auto* stmt = std::get_if<ExprStmt>(&body[0]);
     const auto* call = std::get_if<Call>(stmt->expr.get());

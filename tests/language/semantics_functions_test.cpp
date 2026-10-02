@@ -35,7 +35,7 @@ TEST_CASE("break and continue are rejected outside loops") {
         {}));
     // In a helper function, the loop depth resets per function body.
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { }\n"
+        "asset t { size 8x8 draw { }\n"
         "  helper() { break } }",
         "'break' outside a loop");
 }
@@ -46,13 +46,13 @@ TEST_CASE("for loops are checked") {
     expectCheckError(wrap("for i in 0..5.5 { }"), "'for' bounds must be i32");
     // The counter name cannot collide with the asset's I/O or a parameter.
     expectCheckError("asset t { size 8x8 input u32 n = 1 "
-                     "draw(v: i32, a: i32) { for n in 0..2 { } } }",
+                     "draw { for n in 0..2 { } } }",
                      "inputs cannot be loop counters");
     expectCheckError("asset t { size 8x8 output point p "
-                     "draw(v: i32, a: i32) { for p in 0..2 { } } }",
+                     "draw { for p in 0..2 { } } }",
                      "outputs cannot be loop counters");
     expectCheckError(wrap("for v in 0..2 { }"),
-                     "cannot use parameter 'v' as a loop counter");
+                     "'v' is a reserved name");
     expectCheckError(wrap("for seed in 0..2 { }"), "reserved");
     // A matching existing local is reused; a type clash is an error.
     expectCheckError(wrap("x = 1.5\nfor x in 0..2 { }"),
@@ -81,7 +81,7 @@ TEST_CASE("user functions: arity, types, returns, recursion") {
     const std::string valid = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     x = double(2)
     rect(0, 0, x, x, #ffffff)
   }
@@ -95,7 +95,7 @@ asset t {
     const std::string forward = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     x = later(1)
   }
   later(n: i32) -> i32 {
@@ -105,59 +105,59 @@ asset t {
     CHECK_NOTHROW(checkAsset(parse(forward), {}));
 
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } f(n: i32) -> i32 { return f(n) } }",
+        "asset t { size 8x8 draw { x = f(1) } f(n: i32) -> i32 { return f(n) } }",
         "recursive call");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1, 2) } f(n: i32) -> i32 { return n } }",
+        "asset t { size 8x8 draw { x = f(1, 2) } f(n: i32) -> i32 { return n } }",
         "expects 1 arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { f(n = 1) } f(n: i32) -> i32 { return n } }",
+        "asset t { size 8x8 draw { f(n = 1) } f(n: i32) -> i32 { return n } }",
         "does not take named arguments");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1.5) } f(n: i32) -> i32 { return n } }",
+        "asset t { size 8x8 draw { x = f(1.5) } f(n: i32) -> i32 { return n } }",
         "must be i32");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f() } f() { } }",
+        "asset t { size 8x8 draw { x = f() } f() { } }",
         "cannot store void");
     // A void function called as a statement is fine.
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 draw(v: i32, a: i32) { f() } f() { } }"), {}));
+        "asset t { size 8x8 draw { f() } f() { } }"), {}));
 }
 
 TEST_CASE("declared return types are checked against the body") {
     // i32 return values widen to a declared f32 result.
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = g(a) } "
+        "asset t { size 8x8 draw { x = g(a) } "
         "g(n: i32) -> f32 { return n } }"), {}));
     // A value that does not fit the declared type is rejected.
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(a) } "
+        "asset t { size 8x8 draw { x = f(a) } "
         "f(n: i32) -> i32 { if (n) { return 1 } return 2.5 } }",
         "return type of 'f' is i32, got f32");
     // A returning function must declare its return type (no inference).
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = f(1) } "
+        "asset t { size 8x8 draw { x = f(1) } "
         "f(n: i32) { return n } }",
         "declares no return type");
     // A declared return type forbids bare returns.
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { f(1) } "
+        "asset t { size 8x8 draw { f(1) } "
         "f(n: i32) -> i32 { return } }",
         "has no value");
     // draw cannot declare a return type.
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) -> i32 { return 1 } }",
+        "asset t { size 8x8 draw -> i32 { return 1 } }",
         "'draw' cannot return a value");
     expectCheckError(
         "asset t { size 8x8 draw(v: f32, a: i32) { } }",
-        "the parameters of 'draw' must be i32");
+        "takes no declared parameters");
 }
 
 TEST_CASE("typed parameters drive call-site validation") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     x = h(1)         // an i32 argument widens to the f32 parameter
     y = h(1.5)
     c = tint(#ff0000)
@@ -172,11 +172,11 @@ asset t {
     CHECK_NOTHROW(checkAsset(parse(source), {}));
 
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = h(#ff0000) } "
+        "asset t { size 8x8 draw { x = h(#ff0000) } "
         "h(u: f32) -> f32 { return u } }",
         "argument 1 of 'h' must be f32, got color");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { c = tint(1) } "
+        "asset t { size 8x8 draw { c = tint(1) } "
         "tint(c: color) -> color { return c } }",
         "argument 1 of 'tint' must be color, got i32");
 }
@@ -187,7 +187,7 @@ TEST_CASE("loop control cannot escape into a lazily checked helper") {
             for (const bool helperFirst : {false, true}) {
                 INFO(control << ", " << loop << ", helper first " << helperFirst);
                 const std::string helper = "helper() { " + control + " }";
-                const std::string draw = "draw(v: i32, a: i32) { " + loop +
+                const std::string draw = "draw { " + loop +
                                          " { helper() break } }";
                 const std::string source = "asset t { size 8x8 " +
                     (helperFirst ? helper + draw : draw + helper) + " }";
@@ -200,7 +200,7 @@ TEST_CASE("loop control cannot escape into a lazily checked helper") {
     CHECK_NOTHROW(checkAsset(parse(R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) { while (1) { helper() break } }
+  draw { while (1) { helper() break } }
   helper() { for i in 0..2 { continue } }
 })"), {}));
 }

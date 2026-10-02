@@ -1,7 +1,7 @@
 asset rounding {
   size 1x1
   output list point checks
-  draw(v:i32,a:i32) {
+  draw {
     checks = {round(-2147483648.0) == -2147483648, 0}
     checks = {round(-2147483904.0) == -2147483648, 0}
     checks = {round(2147483648.0) == 2147483647, 0}

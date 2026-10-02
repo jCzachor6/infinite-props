@@ -205,8 +205,8 @@ struct PaletteDecl {
     SourceLocation location;
 };
 
-// The declared type of a function parameter or return value: the three
-// scalar types the VM can store in locals (spec §3/§9). Unlike `input`,
+// The declared type of a function parameter or return value: the scalar
+// and vec2 types the VM can store in locals (spec §3/§9). Unlike `input`,
 // there is no u32 — parameters are always locals.
 enum class ParamType { I32, F32, Color, Vec2 };
 
@@ -219,7 +219,8 @@ struct Param {
     SourceLocation location;
 };
 
-// A function (the entry point is named `draw` and takes `(v, a)`).
+// A function. The draw entry has no declared parameters; its v/a runtime
+// parameters are synthesized by the compiler. Helpers keep explicit types.
 struct Function {
     std::string name;
     std::vector<Param> params;

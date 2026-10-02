@@ -276,7 +276,8 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   element).
 - Deterministic, simple grammar; unambiguous parse errors; semantic checks
   (type, fuel, canvas) reported with source locations.
-- A `draw(variant, archetype)` entry point; variant/archetype indices arrive as
+- A `draw { ... }` entry block with read-only `v`/`a` builtins; the compiler
+  synthesizes the runtime `(i32, i32)` parameters. Variant/archetype indices arrive as
   validated integers.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
   `f32`, `color` or `vec2`; pre-1.0 the type is mandatory) and functions that
@@ -311,7 +312,7 @@ asset rock {
   input  color palette = #808d74
   output rect  collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
@@ -330,7 +331,7 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v: i32, a: i32) {
+  draw {
     ...
     top = {32, 4}
   }
@@ -347,7 +348,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     face(v, a)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24})
