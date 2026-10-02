@@ -27,6 +27,7 @@ add_executable(iprop_tests
     asset_test.cpp
     code_test.cpp
     validator_test.cpp
+    opcode_spec_test.cpp
     vm_test.cpp
     control_test.cpp
     control_validation_test.cpp

@@ -107,4 +107,13 @@ f32 identyczne z 9bda0c2. Normatywne fuel i obraz benchmarku bez zmian
 Procedura i ograniczenia: `benchmarks/README.md`. CTest 7/7 i pełne
 porównanie native/WASM PASS (`bezier-conformance.log`).
 
-W toku: wspólne opisy instrukcji i plan wywołań.
+A1, etap 1: `OpcodeSpec` jest jednym źródłem 134 mnemoników, operandów,
+minimalnych wersji, polityki aux i 106 stałych sygnatur stosu (w tym
+alternatywa scalar/vec2). Używają go assembler, disassembler i walidator.
+Sterowanie, metadane i odczyt slotów mają nadal jawną walidację.
+Test przekrojowy porównuje sygnatury z wykonaniem VM, odrzucanie każdej
+niezgodnej klasy argumentu, niedomiar stosu, aux i bramki wersji także
+w martwym kodzie. CTest 7/7 oraz pełne native/WASM PASS
+(`opcode-conformance.log`). Pozostaje osobny opis builtinów języka.
+
+W toku: BuiltinSpec i typowany plan wywołań.

@@ -2,6 +2,7 @@
 set(IPROP_RUNTIME_SOURCES
     version.cpp
     opcode_name.cpp
+    opcode_spec.cpp
     debug.cpp
     format.cpp
     consts.cpp

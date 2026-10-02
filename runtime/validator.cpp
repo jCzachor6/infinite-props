@@ -1,6 +1,8 @@
 #include "iprop/Validator.hpp"
 
 #include "iprop/Instruction.hpp"
+#include "iprop/OpcodeSpec.hpp"
+#include "iprop/D4Transform.hpp"
 
 #include <algorithm>
 #include <string>
@@ -66,21 +68,23 @@ public:
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
             const auto ins = decodeInstruction(fn_.code.subspan(i * 4, 4));
-            if (ins.aux != 0 && ins.opcode != Opcode::PartDraw) {
+            const auto* spec = findOpcode(ins.opcode);
+            if (!spec) fail(i, "reserved opcode");
+            if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
-            const auto opcode = static_cast<u8>(ins.opcode);
-            if (file_.layout.header.versionMinor < 2 &&
-                (opcode == 0x4F || (opcode >= 0x53 && opcode <= 0x5A))) {
-                fail(i, "trigonometry and math require format 0.2");
+            if (spec->aux == AuxPolicy::PartTransform) {
+                if (!D4Transform::fromKind(ins.aux)) fail(i, "unknown part transform kind");
+                if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
+                    fail(i, "part transforms require format 0.3");
             }
-            if (file_.layout.header.versionMinor < 3 &&
-                ((opcode >= 0x5B && opcode <= 0x5F) ||
-                 (opcode >= 0x74 && opcode <= 0x7F) ||
-                 (opcode >= 0x86 && opcode <= 0x8F) || opcode == 0x99 ||
-                 opcode == 0x52 || (opcode >= 0x9A && opcode <= 0x9F) ||
-                 (opcode >= 0xA1 && opcode <= 0xA3))) {
-                fail(i, "vec2 ops require format 0.3");
+            if (file_.layout.header.versionMinor < spec->minimumMinor) {
+                fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
+                        std::to_string(spec->minimumMinor));
+            }
+            if (spec->stack) {
+                applyStack(i, *spec);
+                continue;
             }
             step(i, ins);
         }
@@ -158,10 +162,25 @@ private:
         }
     }
 
+    void applyStack(std::size_t at, const OpcodeSpec& spec) {
+        const auto& signature = *spec.stack;
+        for (std::size_t i = signature.inputCount; i > 0; --i) {
+            const auto expected = signature.inputs[i-1];
+            const auto actual = pop(at, spec.mnemonic);
+            if (reachable_ && !accepts(expected,actual)) {
+                const char* name = expected == StackType::ScalarOrVec2 ? "f32 or vec2" :
+                    expected == StackType::I32 ? "i32" : expected == StackType::F32 ? "f32" :
+                    expected == StackType::Color ? "color" : "vec2";
+                fail(at, std::string("type mismatch: expected ") + name + ", found " +
+                         typeName(actual) + " (" + spec.mnemonic + ")");
+            }
+        }
+        if (signature.result) push(at, *signature.result);
+    }
+
     void step(std::size_t at, const Instruction ins) {
         const u16 op = ins.operand;
         switch (ins.opcode) {
-        case Opcode::Nop: return;
 
         case Opcode::Block:
         case Opcode::Loop:
@@ -264,322 +283,6 @@ private:
             return;
         }
 
-        // Integer arithmetic and comparisons (§9.3).
-        case Opcode::I32Add: case Opcode::I32Sub: case Opcode::I32Mul:
-        case Opcode::I32DivS: case Opcode::I32DivU: case Opcode::I32RemS:
-        case Opcode::I32RemU: case Opcode::I32And: case Opcode::I32Or:
-        case Opcode::I32Xor: case Opcode::I32Shl: case Opcode::I32ShrS:
-        case Opcode::I32ShrU:
-        case Opcode::I32Eq: case Opcode::I32Ne: case Opcode::I32LtS:
-        case Opcode::I32LtU: case Opcode::I32GtS: case Opcode::I32GtU:
-        case Opcode::I32LeS: case Opcode::I32LeU: case Opcode::I32GeS:
-        case Opcode::I32GeU:
-            expect(at, ValueType::I32, "integer operand");
-            expect(at, ValueType::I32, "integer operand");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::I32Neg: case Opcode::I32Not:
-            expect(at, ValueType::I32, "integer operand");
-            push(at, ValueType::I32);
-            return;
-
-        // Float arithmetic and comparisons (§9.4).
-        case Opcode::F32Add: case Opcode::F32Sub: case Opcode::F32Mul:
-        case Opcode::F32Div:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32Eq: case Opcode::F32Ne: case Opcode::F32Lt:
-        case Opcode::F32Gt: case Opcode::F32Le: case Opcode::F32Ge:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::F32Neg: case Opcode::F32Abs: case Opcode::F32Sqrt:
-        case Opcode::F32Sin: case Opcode::F32Cos:
-        case Opcode::F32Floor: case Opcode::F32Ceil: case Opcode::F32Exp:
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32Min: case Opcode::F32Max: case Opcode::F32Pow:
-        case Opcode::F32Atan2:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-
-        // Vec2 (§9.4; added in v0.3).
-        case Opcode::Vec2Make:
-            expect(at, ValueType::F32, "vec2 y");
-            expect(at, ValueType::F32, "vec2 x");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Vec2Add:
-        case Opcode::Vec2Sub:
-            expect(at, ValueType::Vec2, "vector operand");
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Vec2Mul:
-        case Opcode::Vec2Div: {
-            const ValueType right = pop(at, "vector operand");
-            expect(at, ValueType::Vec2, "vector operand");
-            if (reachable_ && right != ValueType::F32 && right != ValueType::Vec2) {
-                fail(at, std::string("type mismatch: expected f32 or vec2, found ") +
-                              typeName(right) + " (vector operand)");
-            }
-            push(at, ValueType::Vec2);
-            return;
-        }
-        case Opcode::Vec2Neg:
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Vec2Len:
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Vec2Dot:
-            expect(at, ValueType::Vec2, "vector operand");
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Vec2Rot:
-            expect(at, ValueType::F32, "rotation angle");
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Vec2X:
-        case Opcode::Vec2Y:
-            expect(at, ValueType::Vec2, "vector operand");
-            push(at, ValueType::F32);
-            return;
-
-        // Signed-distance fields (§9.4/§12.9; added in v0.3).
-        case Opcode::DistCircle:
-            expect(at, ValueType::F32, "circle radius");
-            expect(at, ValueType::Vec2, "circle centre");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::DistRect:
-            expect(at, ValueType::Vec2, "rect half extents");
-            expect(at, ValueType::Vec2, "rect centre");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::DistRoundRect:
-            expect(at, ValueType::F32, "corner radius");
-            expect(at, ValueType::Vec2, "rect half extents");
-            expect(at, ValueType::Vec2, "rect centre");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::DistLine:
-            expect(at, ValueType::Vec2, "line end");
-            expect(at, ValueType::Vec2, "line start");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::DistBezier:
-            expect(at, ValueType::Vec2, "bezier control");
-            expect(at, ValueType::Vec2, "bezier control");
-            expect(at, ValueType::Vec2, "bezier start");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::DistBezierCubic:
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::Vec2, "bezier control");
-            expect(at, ValueType::Vec2, "field point");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Fill:
-            expect(at, ValueType::F32, "edge width");
-            expect(at, ValueType::F32, "field distance");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Gain:
-            expect(at, ValueType::F32, "gain k");
-            expect(at, ValueType::F32, "gain t");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Quintic:
-            expect(at, ValueType::F32, "quintic t");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Dither:
-            expect(at, ValueType::I32, "dither y");
-            expect(at, ValueType::I32, "dither x");
-            expect(at, ValueType::F32, "dither t");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Vec2Fold:
-            expect(at, ValueType::I32, "fold count");
-            expect(at, ValueType::Vec2, "fold vector");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Vec2Polar:
-            expect(at, ValueType::Vec2, "polar vector");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Smoothstep:
-            expect(at, ValueType::F32, "smoothstep t");
-            expect(at, ValueType::F32, "smoothstep b");
-            expect(at, ValueType::F32, "smoothstep a");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Remap:
-            expect(at, ValueType::F32, "remap d");
-            expect(at, ValueType::F32, "remap c");
-            expect(at, ValueType::F32, "remap b");
-            expect(at, ValueType::F32, "remap a");
-            expect(at, ValueType::F32, "remap t");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Clamp:
-            expect(at, ValueType::F32, "clamp b");
-            expect(at, ValueType::F32, "clamp a");
-            expect(at, ValueType::F32, "clamp t");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::I32ToF32:
-            expect(at, ValueType::I32, "conversion operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32ToI32:
-            expect(at, ValueType::F32, "conversion operand");
-            push(at, ValueType::I32);
-            return;
-
-        // Colour (§9.5).
-        case Opcode::ColorMix:
-            expect(at, ValueType::F32, "mix amount");
-            expect(at, ValueType::Color, "mix colour");
-            expect(at, ValueType::Color, "mix colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorShade:
-            expect(at, ValueType::I32, "shade amount");
-            expect(at, ValueType::Color, "shade colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorSetA:
-            expect(at, ValueType::I32, "alpha amount");
-            expect(at, ValueType::Color, "shade colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorMul:
-            expect(at, ValueType::Color, "multiply colour");
-            expect(at, ValueType::Color, "multiply colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorScale:
-            expect(at, ValueType::F32, "scale factor");
-            expect(at, ValueType::Color, "scaled colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorHsv:
-            expect(at, ValueType::F32, "value scale");
-            expect(at, ValueType::F32, "saturation scale");
-            expect(at, ValueType::F32, "hue shift");
-            expect(at, ValueType::Color, "hsv colour");
-            push(at, ValueType::Color);
-            return;
-
-        // Seeded primitives (§9.6).
-        case Opcode::StreamPush:
-            expect(at, ValueType::I32, "stream seed");
-            return;
-        case Opcode::StreamPop: return;
-        case Opcode::RngUnit: push(at, ValueType::F32); return;
-        case Opcode::RngRange:
-            expect(at, ValueType::F32, "range bound");
-            expect(at, ValueType::F32, "range bound");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::RngIndex:
-            expect(at, ValueType::I32, "index bound");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::Hash:
-            expect(at, ValueType::I32, "hash input");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::StreamState:
-            push(at, ValueType::I32);
-            return;
-
-        // Noise and helpers (§9.7).
-        case Opcode::Noise:
-        case Opcode::Fault:
-            expect(at, ValueType::I32, "noise seed");
-            expect(at, ValueType::F32, "noise coordinate");
-            expect(at, ValueType::F32, "noise coordinate");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::NoiseGrad:
-        case Opcode::NoiseCell:
-            expect(at, ValueType::I32, "noise seed");
-            expect(at, ValueType::F32, "noise coordinate");
-            expect(at, ValueType::F32, "noise coordinate");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::NoiseFbm:
-        case Opcode::NoiseRidge:
-            expect(at, ValueType::I32, "noise seed");
-            expect(at, ValueType::I32, "noise octaves");
-            expect(at, ValueType::F32, "noise coordinate");
-            expect(at, ValueType::F32, "noise coordinate");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Warp:
-            expect(at, ValueType::I32, "warp seed");
-            expect(at, ValueType::F32, "warp amount");
-            expect(at, ValueType::F32, "warp coordinate");
-            expect(at, ValueType::F32, "warp coordinate");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::CellJitter:
-            expect(at, ValueType::I32, "jitter seed");
-            expect(at, ValueType::I32, "jitter cell");
-            expect(at, ValueType::I32, "jitter cell");
-            push(at, ValueType::Vec2);
-            return;
-        case Opcode::Smooth:
-            expect(at, ValueType::F32, "smooth input");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Lerp:
-            expect(at, ValueType::F32, "lerp amount");
-            expect(at, ValueType::F32, "lerp operand");
-            expect(at, ValueType::F32, "lerp operand");
-            push(at, ValueType::F32);
-            return;
-
-        // Canvas (§9.8).
-        case Opcode::Pixel:
-            expect(at, ValueType::Color, "pixel colour");
-            expect(at, ValueType::I32, "pixel y");
-            expect(at, ValueType::I32, "pixel x");
-            return;
-        case Opcode::Rect:
-            expect(at, ValueType::Color, "rect colour");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "rect extent");
-            return;
-        case Opcode::Line:
-            expect(at, ValueType::Color, "line colour");
-            expect(at, ValueType::I32, "line thickness");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "line endpoint");
-            return;
-        case Opcode::Curve:
-        case Opcode::CurveCubic:
-            expect(at, ValueType::Color, "curve colour");
-            expect(at, ValueType::F32, "curve thickness");
-            for (int i = 0; i < (ins.opcode == Opcode::Curve ? 3 : 4); ++i) {
-                expect(at, ValueType::Vec2, "curve control");
-            }
-            return;
         case Opcode::Poly: {
             if (op > kMaxStackDepth) fail(at, "poly vertex count exceeds limit");
             expect(at, ValueType::Color, "poly colour");
@@ -588,14 +291,6 @@ private:
             }
             return;
         }
-        case Opcode::Oval:
-            expect(at, ValueType::Color, "oval colour");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "oval extent");
-            return;
-        case Opcode::Weather:
-            expect(at, ValueType::I32, "weather amount");
-            expect(at, ValueType::I32, "weather seed");
-            return;
 
         // Structured outputs (§9.9).
         case Opcode::OutPoint:
@@ -643,12 +338,6 @@ private:
             if (op >= file_.code.parts.size()) {
                 fail(at, "part index out of range");
             }
-            if (ins.aux > 7) {
-                fail(at, "unknown part transform kind");
-            }
-            if (ins.aux != 0 && file_.layout.header.versionMinor < 3) {
-                fail(at, "part transforms require format 0.3");
-            }
             const auto& part = file_.code.parts[op];
             expect(at, ValueType::F32, "part offset y");
             expect(at, ValueType::F32, "part offset x");
@@ -660,9 +349,10 @@ private:
             }
             return;
         }
+        default: break;
         }
 
-        fail(at, "reserved opcode");
+        fail(at, "missing dynamic opcode validation");
     }
 
     void checkExit(std::size_t at, const ControlFrame& label, const char* what) {
