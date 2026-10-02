@@ -22,7 +22,7 @@ python3 scripts/check-optimizations.py build/tools --report /tmp/optimizations.j
 The pre-optimization v0.4 corpus was also rendered separately; all 56 sources
 retain its images, raw outputs and trap reasons. The frozen v0.1–v0.3 binary,
 image and specification pins remain unchanged. CTest passes all eight suites,
-including C, SFML, Godot, installation and editor checks. Native/WASM checks
+including C, SFML, Godot and editor checks. Native/WASM checks
 pass seven frozen entries, 276 rendered images/structured outputs, 19 runtime
 traps, 6,292 vector boundary results and 29 RGBA boundary results.
 
