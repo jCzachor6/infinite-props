@@ -25,6 +25,7 @@ add_executable(iprop_tests
     language/diagnostic_hints_test.cpp
     language/source_printer_test.cpp
     language/recipe_gallery_test.cpp
+    language/emoji_aliases_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp

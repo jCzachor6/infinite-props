@@ -98,7 +98,7 @@ enum class TokenKind {
 
 struct Token {
     TokenKind kind = TokenKind::End;
-    std::string text; // the exact lexeme (literals and identifiers)
+    std::string text; // exact literals/identifiers; emoji aliases carry the canonical word
     SourceLocation location;
 };
 

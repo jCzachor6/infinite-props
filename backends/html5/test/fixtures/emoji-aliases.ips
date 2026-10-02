@@ -1,0 +1,19 @@
+// Single scalar aliases; the formatter emits their canonical words.
+📦 EmojiAliases {
+  size 8x8
+  🔀 2
+  🗂 3
+  📥 🎨 tint = #fff
+  📤 🔘 anchor
+  🌈 colors = [#f00, #0f0]
+  ✏ {
+    anchor = {v, a}
+    if (👍 && !👎) { 🟦(0, 0, 8, 8, colors[v]) }
+    q = helper({1, 2})
+    d = 📏.circle(q, {0, 0}, 2)
+    n = 🌀.fbm(0.25, 0.5, 2, seed)
+    j = 🦠.jitter(0, 0, seed)
+    pixel(0, 0, 🎨.shade(tint, int((d + n + j.x) * 10)))
+  }
+  helper(p: 📐) -> 📐 { return p }
+}

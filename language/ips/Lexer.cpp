@@ -49,6 +49,31 @@ bool isIdentStart(char c) {
 }
 bool isIdentPart(char c) { return isIdentStart(c) || isDigit(c); }
 
+const char* emojiAlias(char32_t point) {
+    // v0.4: exact scalar values; U+270F/U+1F5C2 have no variation selector.
+    switch (point) {
+    case 0x1F4E6: return "asset";
+    case 0x270F: return "draw";
+    case 0x1F4E5: return "input";
+    case 0x1F4E4: return "output";
+    case 0x1F308: return "palette";
+    case 0x1F517: return "import";
+    case 0x1F3A8: return "color";
+    case 0x1F4D0: return "vec2";
+    case 0x1F500: return "variants";
+    case 0x1F5C2: return "archetypes";
+    case 0x1F518: return "point";
+    case 0x1F7E6: return "rect";
+    case 0x2B55: return "circle";
+    case 0x1F44D: return "true";
+    case 0x1F44E: return "false";
+    case 0x1F300: return "noise";
+    case 0x1F4CF: return "dist";
+    case 0x1F9A0: return "cell";
+    default: return nullptr;
+    }
+}
+
 } // namespace
 
 std::vector<Token> lex(std::string_view source) {
@@ -229,6 +254,20 @@ std::vector<Token> lex(std::string_view source) {
             const auto found = table.find(text);
             emit(found == table.end() ? TokenKind::Identifier : found->second, std::move(text), at);
             continue;
+        }
+
+        // Lexical aliases carry canonical text into the parser and diagnostics.
+        if (static_cast<unsigned char>(c) >= 0x80) {
+            const auto point = decodeCodepoint(source, pos);
+            if (!point) throw error(at, "invalid UTF-8 in source");
+            if (const auto word = emojiAlias(point->value)) {
+                if (!tokens.empty() && tokens.back().kind == TokenKind::Dot)
+                    throw error(at, "emoji aliases are not allowed for member names; use '" + std::string(word) + "'");
+                for (std::size_t byte = 0; byte < point->bytes; ++byte) advance();
+                const auto found = keywords().find(word);
+                emit(found == keywords().end() ? TokenKind::Identifier : found->second, word, at);
+                continue;
+            }
         }
 
         // Operators and punctuation.

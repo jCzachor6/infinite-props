@@ -131,3 +131,37 @@ to f32 where required. Overloads with identical names resolve by value types.
 | `pick` (multiple choices) | `value0, value1, ...` |
 | `roll` | `seed, a, b` |
 | `choose` | `seed, value0, value1, ...` |
+
+## Emoji aliases
+
+These 18 single Unicode scalars are accepted alongside the canonical words.
+The lexer normalizes them to words, so the AST, diagnostics and `--format`
+output use the canonical names. Namespace members retain their word spelling.
+Comments and strings keep their original text.
+
+| Word | Alias | Scalar |
+| --- | --- | --- |
+| asset | 📦 | U+1F4E6 |
+| draw | ✏ | U+270F |
+| input | 📥 | U+1F4E5 |
+| output | 📤 | U+1F4E4 |
+| palette | 🌈 | U+1F308 |
+| import | 🔗 | U+1F517 |
+| color | 🎨 | U+1F3A8 |
+| vec2 | 📐 | U+1F4D0 |
+| variants | 🔀 | U+1F500 |
+| archetypes | 🗂 | U+1F5C2 |
+| point | 🔘 | U+1F518 |
+| rect | 🟦 | U+1F7E6 |
+| circle | ⭕ | U+2B55 |
+| true | 👍 | U+1F44D |
+| false | 👎 | U+1F44E |
+| noise | 🌀 | U+1F300 |
+| dist | 📏 | U+1F4CF |
+| cell | 🦠 | U+1F9A0 |
+
+Variation selectors (including U+FE0F) and ZWJ sequences are rejected in
+syntax. In particular, `draw` uses U+270F alone and `archetypes` uses U+1F5C2
+alone. For example, `📏.circle(p, c, r)` is valid; `dist.⭕(p, c, r)` is not.
+Numeric types, control flow, size/origin, `at`, `list`, and other builtins keep
+their word spellings. The compiled executable is identical to the word form.

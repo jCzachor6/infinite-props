@@ -33,6 +33,11 @@
   Gallery compilation, rendered variety and canonical roundtrips run in
   CTest; every recipe joins the native/WASM image and output comparisons.
 
+- B.4: Added the exact 18 single-codepoint emoji aliases in the lexer;
+  retained canonical word ASTs, diagnostics and formatting. Selectors,
+  joiners and emoji member names are rejected; native/WASM coverage pins
+  the normalized executable behavior.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,
