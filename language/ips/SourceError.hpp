@@ -11,7 +11,7 @@
 
 namespace iprop::ips {
 
-// 1-based line/column.
+// 1-based line and Unicode codepoint column (tabs count as one).
 struct SourceLocation {
     std::size_t line = 1;
     std::size_t column = 1;

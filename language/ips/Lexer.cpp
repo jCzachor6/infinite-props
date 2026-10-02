@@ -1,4 +1,6 @@
 #include "ips/Lexer.hpp"
+#include "ips/SourceText.hpp"
+#include "ips/Suggestions.hpp"
 
 #include <map>
 #include <string>
@@ -54,17 +56,24 @@ std::vector<Token> lex(std::string_view source) {
     std::size_t pos = 0;
     std::size_t line = 1;
     std::size_t column = 1;
+    std::size_t nextCodepoint = 0;
 
     const auto location = [&]() { return SourceLocation{line, column}; };
     const auto error = [&](SourceLocation at, std::string message) -> SourceError {
         return SourceError{at, std::move(message)};
     };
     const auto advance = [&]() -> char {
+        const bool firstByte = pos == nextCodepoint;
+        if (firstByte) {
+            const auto point = decodeCodepoint(source, pos);
+            if (!point) throw error(location(), "invalid UTF-8 in source");
+            nextCodepoint = pos + point->bytes;
+        }
         const char c = source[pos++];
         if (c == '\n') {
             ++line;
             column = 1;
-        } else {
+        } else if (firstByte) {
             ++column;
         }
         return c;
@@ -275,11 +284,19 @@ std::vector<Token> lex(std::string_view source) {
         default: break;
         }
 
-        throw error(at, std::string("unexpected character '") + c + "'");
+        const auto point = decodeCodepoint(source, pos);
+        if (!point) throw error(at, "invalid UTF-8 in source");
+        throw error(at, "unexpected character '" + std::string(source.substr(pos, point->bytes)) + "'");
     }
 
     tokens.push_back({TokenKind::End, "", location()});
     return tokens;
+}
+
+std::string keywordSuggestion(std::string_view misspelled) {
+    std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette"};
+    for (const auto& [name, kind] : keywords()) { (void)kind; names.push_back(name); }
+    return didYouMean(misspelled, names);
 }
 
 const char* tokenName(TokenKind kind) {

@@ -1,4 +1,5 @@
 #include "ips/Palette.hpp"
+#include "ips/Suggestions.hpp"
 #include "ips/Fold.hpp"
 #include "iprop/math/Color.hpp"
 #include "iprop/math/Curves.hpp"
@@ -32,9 +33,11 @@ ResolvedPalette resolvePalette(const PaletteDecl& palette) {
 }
 
 const PaletteDecl& findPalette(const Program& owner, const Identifier& name) {
+    std::vector<std::string> names;
     for (const auto& palette : owner.asset.palettes)
         if (palette.name == name.name) return palette;
-    throw SourceError{name.location,"'"+name.name+"' is not a palette"};
+        else names.push_back(palette.name);
+    throw SourceError{name.location,"'"+name.name+"' is not a palette" + didYouMean(name.name, names)};
 }
 
 Value sampleRamp(const ResolvedPalette& palette, f32 t) {

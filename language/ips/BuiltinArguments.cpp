@@ -1,4 +1,5 @@
 #include "ips/BuiltinArguments.hpp"
+#include "ips/Suggestions.hpp"
 
 #include <algorithm>
 #include <set>
@@ -15,7 +16,7 @@ std::vector<const Arg*> bindArguments(const Call& call, std::span<const std::str
         if (arg.name) {
             const auto found = std::find(names.begin(), names.end(), *arg.name);
             if (found == names.end())
-                throw SourceError{arg.location, prefix + "has no argument '" + *arg.name + "'"};
+                throw SourceError{arg.location, prefix + "has no argument '" + *arg.name + "'" + didYouMean(*arg.name, names)};
             index = static_cast<std::size_t>(found - names.begin());
         } else ++positional;
         if (index >= result.size()) throw SourceError{arg.location, prefix + "has too many positional arguments"};

@@ -108,5 +108,6 @@ std::vector<Token> lex(std::string_view source);
 
 // Descriptive name of a token kind (diagnostics and tests).
 const char* tokenName(TokenKind kind);
+std::string keywordSuggestion(std::string_view misspelled);
 
 } // namespace iprop::ips

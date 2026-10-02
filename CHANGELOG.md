@@ -21,6 +21,10 @@
 - A.6: Added seed-direct `roll` and typed `choose`, including named
   arguments and nesting. Arguments execute before stream isolation;
   existing stream instructions draw once and restore the outer state.
+- B.1: Added bounded typo/transposition hints for canonical keywords,
+  builtins, parameters and scoped names. UTF-8 source columns now count
+  codepoints; malformed source encodings have located errors. Editor
+  diagnostics convert these columns to VS Code's UTF-16 positions.
 
 ## v0.3.0 — 2026-10-02
 

@@ -1,9 +1,17 @@
 #include "ips/Typing.hpp"
 #include "ips/BuiltinArguments.hpp"
+#include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
 #include <set>
 
 namespace iprop::ips {
+namespace {
+std::vector<std::string> builtinNames() {
+    std::vector<std::string> names{"ramp"};
+    for (const auto& [name, spec] : builtinSpecs()) { (void)spec; names.push_back(name); }
+    return names;
+}
+}
 
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
@@ -21,18 +29,20 @@ ValueType Typer::typeCall(const Call& call) {
         // bases dist/noise/cell are the reserved namespaces; anything
         // else is a part call.
         const Path path = flatten(*call.callee);
-        if (!path.segments.empty() &&
-            (path.base == "dist" || path.base == "noise" ||
-             path.base == "cell" || path.base == "color" || path.base == "vec2")) {
+        if (!path.segments.empty()) {
             std::string full = path.base;
             for (const std::string& segment : path.segments) {
                 full += "." + segment;
             }
+            const bool reserved = path.base == "dist" || path.base == "noise" ||
+                path.base == "cell" || path.base == "color" || path.base == "vec2";
             const auto builtin = builtinSpecs().find(full);
-            if (builtin != builtinSpecs().end()) {
+            if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
+            const auto hint = didYouMean(full, builtinNames());
+            if (reserved || !hint.empty()) error(path.location, "undefined builtin '" + full + "'" + hint);
         }
         return typePartCall(call);
     }
@@ -83,7 +93,12 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     const std::optional<FunctionSurface> surface =
         resolveFunction(name.name, call.location, ns_);
     if (!surface.has_value()) {
-        error(call.location, "undefined function '" + name.name + "'");
+        auto candidates = builtinNames();
+        for (const auto& function : owner_->asset.functions)
+            if (function.name != "draw") candidates.push_back(function.name);
+        const auto hint = name.name == "mix" || name.name == "shade" ?
+            "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
+        error(call.location, "undefined function '" + name.name + "'" + hint);
     }
     if (surface->params.size() != call.args.size()) {
         error(call.location,
@@ -117,7 +132,9 @@ ValueType Typer::typePartCall(const Call& call) {
     }
     const auto part = parts_.find(path.base);
     if (part == parts_.end()) {
-        error(path.location, "'" + path.base + "' is not an imported part");
+        std::vector<std::string> names;
+        for (const auto& [name, info] : parts_) { (void)info; names.push_back(name); }
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
     // Exactly three positional arguments: seed, variant, archetype.
@@ -170,8 +187,10 @@ ValueType Typer::typePartCall(const Call& call) {
                 }
             }
             if (input == nullptr) {
+                std::vector<std::string> names{"at", "mirror_x", "mirror_y", "rot"};
+                for (const auto& declared : part->second.inputs) names.push_back(declared.name);
                 error(arg.location,
-                      "part '" + path.base + "' has no input '" + *arg.name + "'");
+                      "part '" + path.base + "' has no input '" + *arg.name + "'" + didYouMean(*arg.name, names));
             }
             const ValueType got = typeOf(*arg.value);
             if (!argFits(valueTypeOf(input->type), got)) {

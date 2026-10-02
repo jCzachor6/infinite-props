@@ -74,6 +74,9 @@ Asset ParserImpl::parseAsset() {
             } else if (declaration.text == "palette") {
                 asset.palettes.push_back(parsePalette());
             } else {
+                const auto hint = keywordSuggestion(declaration.text);
+                if (kind() != TokenKind::LParen && !hint.empty())
+                    throw SourceError{declaration.location, "unknown asset declaration '" + declaration.text + "'" + hint};
                 asset.functions.push_back(parseFunctionAfterName(declaration));
             }
             break;
@@ -294,7 +297,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
     auto expr = parsePostfixAfter(
         std::make_unique<Expr>(Identifier{name.text, name.location}));
     if (!std::holds_alternative<Call>(*expr)) {
-        throw SourceError{name.location, "expression statement must be a call"};
+        throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};
 }

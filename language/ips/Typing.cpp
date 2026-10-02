@@ -1,5 +1,6 @@
 #include "ips/Typing.hpp"
 #include "ips/BuiltinArguments.hpp"
+#include "ips/Suggestions.hpp"
 
 #include <utility>
 
@@ -92,7 +93,9 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
     }
     const auto part = parts_.find(path.base);
     if (part == parts_.end()) {
-        error(path.location, "'" + path.base + "' is not an imported part");
+        std::vector<std::string> names;
+        for (const auto& [name, info] : parts_) { (void)info; names.push_back(name); }
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
     if (path.segments.size() != 2 || path.segments[0] != "outputs") {
         error(path.location, "expected '" + path.base +
@@ -106,8 +109,10 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
             return info;
         }
     }
+    std::vector<std::string> names;
+    for (const auto& output : part->second.outputs) names.push_back(output.name);
     error(path.location, "part '" + path.base + "' has no output '" +
-                             path.segments[1] + "'");
+                             path.segments[1] + "'" + didYouMean(path.segments[1], names));
 }
 
 // ---- expressions -------------------------------------------------------------
@@ -210,7 +215,11 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
                                    id.name + "[i]')");
         }
     }
-    error(id.location, "undefined name '" + id.name + "'");
+    std::vector<std::string> candidates{"seed"};
+    for (const auto& [name, type] : locals_) { (void)type; candidates.push_back(name); }
+    if (isDraw_) for (const auto& input : owner_->asset.inputs) candidates.push_back(input.name);
+    for (const auto& palette : owner_->asset.palettes) candidates.push_back(palette.name);
+    error(id.location, "undefined name '" + id.name + "'" + didYouMean(id.name, candidates));
 }
 
 ValueType Typer::typePartRead(const Expr& expr) {

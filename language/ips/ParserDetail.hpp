@@ -13,6 +13,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Lexer.hpp"
+#include "ips/Suggestions.hpp"
 
 namespace iprop::ips {
 namespace detail {
@@ -95,7 +96,7 @@ public:
 
     const Token& expect(TokenKind tokenKind, const char* what) {
         if (kind() != tokenKind) {
-            failExpected(what);
+            failExpected(what, tokenKind);
         }
         return advance();
     }
@@ -107,11 +108,17 @@ public:
         return advance();
     }
 
-    [[noreturn]] void failExpected(const char* what) {
+    [[noreturn]] void failExpected(const char* what, std::optional<TokenKind> expected = {}) {
         std::string message = "expected ";
         message += what;
         message += ", got ";
         message += tokenName(kind());
+        if (kind() == TokenKind::Identifier) {
+            if (expected) {
+                const std::vector<std::string> names{tokenName(*expected)};
+                message += didYouMean(peek().text, names);
+            } else message += keywordSuggestion(peek().text);
+        }
         failHere(std::move(message));
     }
 

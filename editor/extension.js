@@ -9,7 +9,7 @@ const { execFile } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const { parseDiagnostics } = require("./diagnostics");
+const { parseDiagnostics, utf16Column } = require("./diagnostics");
 
 let diagnostics;
 let log;
@@ -72,11 +72,16 @@ function compileActive() {
         for (const [name, list] of byFile) {
             const uri = vscode.Uri.file(
                 path.isAbsolute(name) ? name : path.join(cwd, name));
-            diagnostics.set(uri, list.map((d) =>
-                new vscode.Diagnostic(
-                    new vscode.Range(d.line - 1, Math.max(0, d.column - 1),
-                                     d.line - 1, Math.max(0, d.column - 1)),
-                    d.message, vscode.DiagnosticSeverity.Error)));
+            const open = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
+            let source = open ? open.getText() : "";
+            if (!open) { try { source = fs.readFileSync(uri.fsPath, "utf8"); } catch {} }
+            const lines = source.split(/\r?\n/);
+            diagnostics.set(uri, list.map((d) => {
+                const column = utf16Column(lines[d.line - 1] || "", d.column);
+                return new vscode.Diagnostic(
+                    new vscode.Range(d.line - 1, column, d.line - 1, column),
+                    d.message, vscode.DiagnosticSeverity.Error);
+            }));
         }
         if (!error) {
             vscode.window.setStatusBarMessage("iprop: ✓ compiles", 3000);

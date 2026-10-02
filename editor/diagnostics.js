@@ -22,4 +22,15 @@ function parseDiagnostics(stderr, entry) {
     return byFile;
 }
 
-module.exports = { parseDiagnostics };
+// Compiler columns count Unicode codepoints; VS Code positions use UTF-16.
+function utf16Column(line, column) {
+    let remaining = Math.max(0, column - 1);
+    let offset = 0;
+    for (const character of line) {
+        if (remaining-- <= 0) break;
+        offset += character.length;
+    }
+    return offset;
+}
+
+module.exports = { parseDiagnostics, utf16Column };

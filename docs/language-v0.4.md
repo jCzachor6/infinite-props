@@ -5,6 +5,10 @@ semantics. The draw entry is `draw { ... }`, with read-only i32 `v` and `a`.
 Helpers retain explicit parameter and return types. Color helpers use the
 `color.*` namespace; bare builtin `mix` and `shade` have been removed.
 
+Diagnostics suggest close canonical names, including transposed letters.
+Source text must be valid UTF-8. Locations are 1-based Unicode codepoint
+columns, with tabs counting as one; the editor maps them to UTF-16 positions.
+
 All builtin and canvas calls accept named arguments. A name binds the
 corresponding signature slot; positional arguments bind slots from the start.
 Duplicate, missing and unknown names are errors. Arguments evaluate in
