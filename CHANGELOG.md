@@ -14,6 +14,10 @@
 - A.4: Added `pick(n)`, eager typed `pick(a, b, ...)` choices and `chance(p)`.
   Selection uses scoped locals and balanced branches; RNG state and
   argument evaluation retain the existing stream semantics.
+- A.5: Added shared named-argument binding for every builtin and canvas
+  operation, including variadic choices, polygons and palette ramps. Names
+  live with typed signatures and preserve canonical evaluation order.
+  Added the parameter reference and short `#RGB`/`#RGBA` color literals.
 
 ## v0.3.0 — 2026-10-02
 

@@ -220,6 +220,8 @@ calls, because bit-exact parity across platforms is a core requirement:
   and preserves i32 values. `float(x)` widens i32 or preserves f32 values.
 - `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
   clamped to 0–255; `rgb` uses alpha 255. Arguments run once, left to right.
+- Every builtin/canvas operation accepts named arguments. See the
+  [v0.4 language reference](docs/language-v0.4.md) for parameter names.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).
@@ -274,7 +276,7 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   syntax is `part.draw name [kind]`, with the optional D4 kind in `0`–`7`;
   disassembly preserves it.
   `gain` defines the `k = 1` limit;
-  `ramp` takes positional arguments and evaluates `t` once even for a
+  `ramp(palette, t)` accepts named arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
   Pure constant ramps fold during planning; dynamic palettes use O(log N)
   selection with O(N) emitted code. Compiler expansion can reduce fuel,
@@ -306,7 +308,8 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   acyclic, with part-output access and propagation (§7.3).
 
 Calls retain the compiler's established evaluation order: ordinary builtin
-and user-function arguments run left to right; `poly` evaluates vertex
+arguments run in signature order (named arguments can be reordered);
+user-function arguments run left to right; `poly` evaluates vertex
 coordinates before its colour. Part calls evaluate uniform overrides in
 input declaration order, then seed/variant/archetype and placement; named
 transform arguments are compile-time constants. An argument is evaluated

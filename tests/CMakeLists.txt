@@ -20,6 +20,7 @@ add_executable(iprop_tests
     language/color_namespace_test.cpp
     language/aliases_test.cpp
     language/random_sugar_test.cpp
+    language/named_arguments_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp

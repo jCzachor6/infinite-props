@@ -106,14 +106,15 @@ TEST_CASE("ramp is checked") {
     expectCheckError(
         "asset t { size 8x8 palette p = [1.0] draw { x = ramp(p, #ffffff) } }",
         "ramp's t must be numeric");
-    for (const std::string arguments : {"palette = p, t = 0.5", "t = p, palette = 0.5",
-                                        "p, t = 0.5", "p, typo = 0.5"}) {
+    for (const std::string arguments : {"palette = p, t = 0.5", "t = 0.5, palette = p", "p, t = 0.5"}) {
         CAPTURE(arguments);
-        expectCheckError(
-            "asset t { size 8x8 palette p = [1.0] "
-            "draw { x = ramp(" + arguments + ") } }",
-            "does not take named arguments");
+        CHECK_NOTHROW(checkAsset(parse("asset t { size 8x8 palette p = [1.0] "
+            "draw { x = ramp(" + arguments + ") } }"), {}));
     }
+    expectCheckError("asset t { size 8x8 palette p = [1.0] draw { ramp(p, typo = 0.5) } }",
+        "has no argument 'typo'");
+    expectCheckError("asset t { size 8x8 palette p = [1.0] draw { ramp(t = p, palette = 0.5) } }",
+        "first argument must be a palette name");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 palette p = [1.0, 2.0] "
         "draw { x = ramp(p, 0.5) } }"),
@@ -261,7 +262,7 @@ TEST_CASE("poly validates its vertex pairs") {
     expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1)"), "at least three");
     expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1, 2, 2, 3)"), "at least three");
     expectCheckError(wrap("poly(1, 0, 0, 1, 1, 2, 2)"), "must be color");
-    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1, 2, c = 2)"), "named arguments");
+    expectCheckError(wrap("poly(#ffffff, 0, 0, 1, 1, 2, c = 2)"), "has no argument");
     CHECK_NOTHROW(checkAsset(
         parse(wrap("poly(#ffffff, 0, 0, 1, 0, 0, 1)")), {}));
 }

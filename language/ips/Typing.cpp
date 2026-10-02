@@ -1,4 +1,5 @@
 #include "ips/Typing.hpp"
+#include "ips/BuiltinArguments.hpp"
 
 #include <utility>
 
@@ -275,22 +276,18 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
     if (call.args.size() != 2) {
         error(call.location, "ramp takes a palette name and a t value");
     }
-    for (const Arg& arg : call.args) {
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-    }
+    const std::vector<std::string> names{"palette", "t"};
+    const auto args = bindArguments(call, names, name.name);
     const auto* paletteName =
-        std::get_if<Identifier>(call.args[0].value.get());
+        std::get_if<Identifier>(args[0]->value.get());
     if (paletteName == nullptr) {
-        error(locationOf(*call.args[0].value),
+        error(locationOf(*args[0]->value),
               "ramp's first argument must be a palette name");
     }
     const auto& resolved = palette(*paletteName);
-    const ValueType t = typeOf(*call.args[1].value);
+    const ValueType t = typeOf(*args[1]->value);
     if (!isNumeric(t)) {
-        error(locationOf(*call.args[1].value),
+        error(locationOf(*args[1]->value),
               "ramp's t must be numeric, got " + std::string(typeName(t)));
     }
     if (resolved.type == ValueType::I32) {

@@ -198,7 +198,7 @@ TEST_CASE("lexical errors carry locations") {
     expectError("\"unterminated", 1, 1, "unterminated string");
     expectError("/* never closed", 1, 1, "unterminated block comment");
     expectError("0x", 1, 1, "hexadecimal");
-    expectError("#123", 1, 1, "colour");
+    expectError("#12", 1, 1, "colour");
     expectError("#12345", 1, 1, "colour");
     expectError("@", 1, 1, "unexpected character");
     expectError("\"bad\\q\"", 1, 1, "escape");

@@ -1,4 +1,5 @@
 #include "CallResolver.hpp"
+#include "ips/BuiltinArguments.hpp"
 #include "Plan.hpp"
 #include "ips/Fold.hpp"
 #include "ips/PartTransform.hpp"
@@ -22,8 +23,10 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     using T = ips::ValueType;
     const auto name = calleeName(*call.callee);
     if (name == "ramp") {
-        RampCall result{&plan_.palette(*function_.owner, *call.args[0].value),
-            argument(*call.args[1].value, T::F32), {}};
+        const std::vector<std::string> names{"palette", "t"};
+        const auto args = ips::bindArguments(call, names, name);
+        RampCall result{&plan_.palette(*function_.owner, *args[0]->value),
+            argument(*args[1]->value, T::F32), {}};
         if (const auto& value = function_.expression(*result.position.expression).constant; value) {
             const f32 t = result.position.widen ? static_cast<f32>(std::get<i32>(*value)) : std::get<f32>(*value);
             result.constant = ips::sampleRamp(*result.palette, t);
@@ -32,24 +35,25 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     }
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;
+        const auto args = ips::builtinArguments(call, spec, name);
         std::vector<T> types;
-        for (const auto& arg : call.args) types.push_back(function_.typeOf(*arg.value));
-        if (spec.lowering == ips::BuiltinLowering::Pick && call.args.size() >= 2) {
+        for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));
+        if (spec.lowering == ips::BuiltinLowering::Pick && args.size() >= 2) {
             const auto type = ips::selectionType(types);
             if (!type) throw ips::SourceError{call.location, "invalid pick choices"};
             SelectionCall result{*type, {}};
-            for (const auto& arg : call.args) result.choices.push_back(argument(*arg.value, *type));
+            for (const auto* arg : args) result.choices.push_back(argument(*arg->value, *type));
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
         if (spec.lowering == ips::BuiltinLowering::Polygon) {
-            for (std::size_t i = 1; i < call.args.size(); ++i)
-                result.arguments.push_back(argument(*call.args[i].value, T::F32));
-            result.arguments.push_back(argument(*call.args[0].value, T::Color));
+            for (std::size_t i = 1; i < args.size(); ++i)
+                result.arguments.push_back(argument(*args[i]->value, T::F32));
+            result.arguments.push_back(argument(*args[0]->value, T::Color));
         } else {
             if (!result.overload) throw ips::SourceError{call.location,"invalid builtin overload"};
-            for (std::size_t i = 0; i < call.args.size(); ++i)
-                result.arguments.push_back(argument(*call.args[i].value, result.overload->params[i]));
+            for (std::size_t i = 0; i < args.size(); ++i)
+                result.arguments.push_back(argument(*args[i]->value, result.overload->params[i].type));
         }
         return {call.location, std::move(result)};
     }

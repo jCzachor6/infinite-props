@@ -13,8 +13,12 @@
 namespace iprop::ips {
 
 enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance };
+struct BuiltinParameter {
+    std::string name;
+    ValueType type;
+};
 struct BuiltinOverload {
-    std::vector<ValueType> params;
+    std::vector<BuiltinParameter> params;
     std::optional<Opcode> opcode;
     ValueType result = ValueType::Void;
 };

@@ -157,11 +157,11 @@ std::vector<Token> lex(std::string_view source) {
         if (c == '#') {
             advance();
             std::string text;
-            while (isHexDigit(peek(0)) && text.size() < 8) {
+            while (isHexDigit(peek(0))) {
                 text.push_back(advance());
             }
-            if (text.size() != 6 && text.size() != 8) {
-                throw error(at, "invalid colour literal (expected #RRGGBB or #RRGGBBAA)");
+            if (text.size() != 3 && text.size() != 4 && text.size() != 6 && text.size() != 8) {
+                throw error(at, "invalid colour literal (expected #RGB, #RGBA, #RRGGBB or #RRGGBBAA)");
             }
             emit(TokenKind::Color, "#" + text, at);
             continue;

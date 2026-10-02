@@ -49,7 +49,7 @@ functions that return a value declare an explicit return type
 <h2 id="io">Inputs and outputs</h2>
 <table>
 <tr><th>input type</th><th>meaning</th></tr>
-<tr><td><code>color</code></td><td>an RGBA colour; default <code>#RRGGBB</code> or <code>#RRGGBBAA</code></td></tr>
+<tr><td><code>color</code></td><td>an RGBA colour; default <code>#RGB</code>, <code>#RGBA</code>, <code>#RRGGBB</code> or <code>#RRGGBBAA</code>; short forms repeat each digit</td></tr>
 <tr><td><code>f32</code></td><td>a 32-bit float; default a numeric literal</td></tr>
 <tr><td><code>u32</code></td><td>an unsigned 32-bit integer; default a non-negative literal</td></tr>
 </table>
@@ -113,6 +113,14 @@ writes and part placement.</li>
 </ul>
 
 <h2 id="builtins">Builtins</h2>
+<p>Every builtin and canvas operation accepts named arguments. Arguments run
+in signature order, so reordering names preserves values and RNG effects.
+Polygon coordinates run before the color. Duplicate, missing and unknown
+names are errors. Helpers retain positional arguments.</p>
+<pre><code>rect(color = #fff, h = 10, x = 0, w = 10, y = 0)
+pixel(color = rgba(a = 255, b = 32, g = 64, r = 128), x = 0, y = 0)
+pick(value2 = 30, value0 = 10, value1 = 20)
+ramp(t = 0.5, palette = colors)</code></pre>
 <table>
 <tr><th>call</th><th>result</th><th>notes</th></tr>
 <tr><td><code>range(a, b)</code></td><td><code>f32</code></td><td>uniform draw in <code>[a, b)</code></td></tr>

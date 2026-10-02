@@ -45,10 +45,11 @@ inline bool parseFloatBits(const std::string& text, u32& bits) {
 // Colour literal (#RRGGBB or #RRGGBBAA) → RGBA8. Missing alpha defaults to
 // 255.
 inline bool parseColor(const std::string& text, Color& out) {
-    if ((text.size() != 7 && text.size() != 9) || text[0] != '#') {
+    if ((text.size() != 4 && text.size() != 5 && text.size() != 7 && text.size() != 9) || text[0] != '#') {
         return false;
     }
-    const int count = text.size() == 7 ? 3 : 4;
+    const bool shorthand = text.size() < 6;
+    const int count = text.size() == 4 || text.size() == 7 ? 3 : 4;
     u8 channels[4] = {0, 0, 0, 255};
     const auto hex = [](char c) -> int {
         if (c >= '0' && c <= '9') return c - '0';
@@ -57,8 +58,8 @@ inline bool parseColor(const std::string& text, Color& out) {
         return -1;
     };
     for (int i = 0; i < count; ++i) {
-        const int hi = hex(text[1 + i * 2]);
-        const int lo = hex(text[2 + i * 2]);
+        const int hi = hex(text[1 + i * (shorthand ? 1 : 2)]);
+        const int lo = shorthand ? hi : hex(text[2 + i * 2]);
         if (hi < 0 || lo < 0) {
             return false;
         }

@@ -6,6 +6,8 @@
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 
+#include <set>
+
 using namespace iprop;
 
 TEST_CASE("every builtin overload compiles and agrees with its VM opcode contract") {
@@ -28,20 +30,32 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 REQUIRE(opcode->stack);
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)
-                    CHECK(accepts(opcode->stack->inputs[i],runtimeType(overload.params[i])));
+                    CHECK(accepts(opcode->stack->inputs[i],runtimeType(overload.params[i].type)));
                 if (overload.result == T::Void) CHECK_FALSE(opcode->stack->result);
                 else CHECK(opcode->stack->result == runtimeType(overload.result));
             }
             std::string args;
-            for (const auto type : overload.params) {
+            std::string named;
+            std::set<std::string> names;
+            for (const auto& param : overload.params) {
+                CHECK_FALSE(param.name.empty());
+                CHECK(names.insert(param.name).second);
+                const auto type = param.type;
                 if (!args.empty()) args += ",";
                 // Exact argument types exercise each overload, including identity casts.
-                args += type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : type == T::F32 ? "1.0" : "1";
+                const std::string value = type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : type == T::F32 ? "1.0" : "1";
+                args += value;
+                named = param.name + "=" + value + (named.empty() ? "" : "," + named);
             }
             const auto program = ips::parse("asset t { size 8x8 draw { "
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));
-            const auto file = loadFile(compileProgram(program,{}));
+            const auto bytes = compileProgram(program,{});
+            const auto reordered = ips::parse("asset t { size 8x8 draw { "
+                "stream_push(1) " + name + "(" + named + ") } }");
+            REQUIRE_NOTHROW(ips::checkAsset(reordered,{}));
+            CHECK(bytes == compileProgram(reordered,{}));
+            const auto file = loadFile(bytes);
             REQUIRE_NOTHROW(validate(file));
             VM vm(file,{});
             CHECK_NOTHROW(vm.run());

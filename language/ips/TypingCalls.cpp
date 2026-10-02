@@ -1,4 +1,5 @@
 #include "ips/Typing.hpp"
+#include "ips/BuiltinArguments.hpp"
 #include "ips/PartTransform.hpp"
 #include <set>
 
@@ -40,72 +41,34 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    if (signature.lowering == BuiltinLowering::Pick && call.args.size() >= 2) {
+    const auto args = builtinArguments(call, signature, name.name);
+    if (signature.lowering == BuiltinLowering::Pick && args.size() >= 2) {
         std::vector<ValueType> types;
-        for (const auto& arg : call.args) {
-            if (arg.name) error(arg.location, "pick does not take named arguments");
-            types.push_back(typeOf(*arg.value));
-        }
+        for (const auto* arg : args) types.push_back(typeOf(*arg->value));
         const auto result = selectionType(types);
         if (!result) error(call.location, "pick choices must have matching storable types or be numeric");
         return *result;
     }
-    // poly(colour, x0, y0, x1, y1, ...) — colour then 2n floats, n >= 3.
     if (signature.lowering == BuiltinLowering::Polygon) {
-        if (call.args.size() < 7 || call.args.size() % 2 == 0) {
-            error(call.location,
-                  "poly expects a colour and at least three (x, y) vertex pairs");
-        }
-        for (std::size_t i = 0; i < call.args.size(); ++i) {
-            const Arg& arg = call.args[i];
-            if (arg.name.has_value()) {
-                error(arg.location, "poly does not take named arguments");
-            }
-            const ValueType expected =
-                i == 0 ? ValueType::Color : ValueType::F32;
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(expected, got)) {
-                error(locationOf(*arg.value),
-                      "argument " + std::to_string(i + 1) +
-                          " of poly must be " + typeName(expected) +
-                          ", got " + typeName(got));
-            }
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
+            const auto got = typeOf(*args[i]->value);
+            if (!argFits(expected, got))
+                error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) +
+                    " of poly must be " + typeName(expected) + ", got " + typeName(got));
         }
         return ValueType::Void;
     }
-
-    const auto* arityMatch = builtinOverload(signature, call.args.size());
-    if (!arityMatch) {
-        std::string arities;
-        for (const auto& candidate : signature.overloads) {
-            if (!arities.empty()) arities += " or ";
-            arities += std::to_string(candidate.params.size());
-        }
-        error(call.location,
-              "function '" + name.name + "' expects " + arities +
-                  " arguments, got " + std::to_string(call.args.size()));
-    }
     std::vector<ValueType> types;
-    for (const Arg& arg : call.args) {
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-        types.push_back(typeOf(*arg.value));
-    }
+    for (const auto* arg : args) types.push_back(typeOf(*arg->value));
     const auto* overload = builtinOverload(signature, types);
     if (overload) return overload->result;
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        const ValueType got = types[i];
-        // The first arity match provides a concrete expected type in errors.
-        const auto* overload = arityMatch;
-        if (!argFits(overload->params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(overload->params[i]) +
-                      ", got " + typeName(got));
-        }
+    const auto* arityMatch = builtinOverload(signature, args.size());
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const auto expected = arityMatch->params[i].type;
+        if (!argFits(expected, types[i]))
+            error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) + " of '" + name.name +
+                "' must be " + typeName(expected) + ", got " + typeName(types[i]));
     }
     error(call.location, "no matching overload for '" + name.name + "'");
 }
