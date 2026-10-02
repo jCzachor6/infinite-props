@@ -2,6 +2,11 @@
 
 Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując historyczne golden 0.1/0.2. Raport review opisuje stan sprzed napraw; ten plik śledzi wdrożenie i dowody sprawdzenia. Status `[ ]` oznacza, że wymaganie nie jest jeszcze ukończone i zweryfikowane.
 
+**Stan na 2026-10-02: wszystkie wymagania zakończone.** Końcowy audyt
+poniżej dotyczy stanu `ad7469a` na `develop`; późniejszy commit zamyka
+wyłącznie dokumentację i raport. Każdy etap implementacji ma osobny
+lokalny commit.
+
 ## Wymagania
 
 - [x] R1 / A6: typowane ramki walidatora, poprawne scalenia i osiągalność; bezpieczne mul/div; granica C ABI; testy gałęzi i odtworzenie awarii.
@@ -18,8 +23,8 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
 - [x] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
 - [x] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
-- [ ] Wspólny zestaw przypadków granicznych: NaN/inf/±0, przepływ typów, limity zasobów i relacja obrazu do geometrii.
-- [ ] Końcowy audyt: wszystkie wymagania sprawdzone, native + backendy + sanitizery + WASM + instalacja/wydanie, aktualna dokumentacja i brak niezamierzonych zmian golden.
+- [x] Wspólny zestaw przypadków granicznych: NaN/inf/±0, przepływ typów, limity zasobów i relacja obrazu do geometrii.
+- [x] Końcowy audyt: wszystkie wymagania sprawdzone, native + backendy + sanitizery + WASM + instalacja/wydanie, aktualna dokumentacja i brak niezamierzonych zmian golden.
 
 ## Decyzje
 
@@ -194,4 +199,49 @@ PASS (`ramp-conformance.log`). Testy obejmują liniową implementację
 referencyjną, każdy stop i sąsiednie floaty, surowy korpus, RNG/rysowanie,
 pojedynczą ewaluację, trapy i ograniczenie fuel.
 
-W toku: końcowy audyt wymagań i pełna weryfikacja artefaktów.
+## Końcowy audyt wymagań
+
+Każdą pozycję pierwotnego review porównano z bieżącą implementacją i
+zakresem testów; poniższe dowody odnoszą się do kodu po wszystkich naprawach.
+
+| Wymaganie | Bieżący dowód implementacji i sprawdzenia |
+| --- | --- |
+| R1 / A6 | `ControlFrame` w `runtime/validator.cpp`; kontrola typów w `vector_ops.cpp`; wszystkie wyjątki z load/generate przechwycone w C API. `control_validation_test.cpp`, `defense_test.cpp` i mutowany plik `vector-branch` w C-only conformance. |
+| R2 | `math/Float.hpp` i `math/vector.cpp`; 22 surowe wzorce współdzielone przez testy C++ i Node. 6292 porównania bitów native/WASM, oba znaki/payloady NaN, sNaN, inf, ±0 i subnormale. Transport zachowuje wejściowe bity. |
+| R3 | Wersja z głównego CMake, oficjalny install smoke, CI bez starego argumentu 0.2.0. Końcowy `release.py --check`: przeniesiona instalacja, konsumenci C shared/static i zainstalowany Godot PASS. |
+| R4 / A3 | `D4Transform` i `PartRenderPlan::create`; test 64 kompozycji, odwrotności, wszystkich D4 przy asymetrycznej skali/origin/at i zagnieżdżonych wywołań. Obraz porównany z niezależnymi granicami prostokąta i punktem-kotwicą w jego środku. Test kotwicy domknięty w `ad7469a`. |
+| R5 | `TemporaryLocals::Lease`; 2048 kolejnych mnożeń w obu kolejnościach, maksymalnie dwa dodatkowe sloty; porównanie z sekwencyjną referencją RNG, zagnieżdżeń i round. |
+| A1 | 134 deskryptory `OpcodeSpec`, 59 `BuiltinSpec`; wspólne nazwy/assembler/walidator oraz dobór przeciążenia. Test każdej stałej sygnatury VM i każdego przeciążenia języka. |
+| A2 / wielokrotne typowanie | Typy/stałe w `PlannedFunction`, warianty w `CallResolver`; emiter korzysta z gotowych planów. Test 512 wywołań bez ponownego rozstrzygania poddrzew oraz 22 uporządkowanych efektów i bitów RNG. |
+| A4 / Bézier | Czyste moduły Scalar/Vector/Sdf/Bezier/Curves/Color i adaptery VM; wspólny quintic. Kernel przygotowywany raz na krzywą, 6864 zapytania zachowują stare hashe; pomiar i niezmienione fuel/obraz w `benchmarks/README.md`. |
+| A5 | Wspólne `ResolvedPalette`, `PaletteLowerer` i typowana pula slotów; test palet tego samego imienia w root/części i wspólnego AST pod dwoma aliasami. |
+| A7 | `cmake/RuntimeSources.cmake`; końcowe świeże buildy Release native i WASM wykonane od konfiguracji do linkowania, a następnie porównane ze sobą. |
+| Ramp | Planowanie czystych stałych, drzewo dynamiczne, kontrakt fuel w §12.11; benchmark 1/8/32/64/128 stopów, liniowa referencja, sąsiedzi stopów, efekty i trapy. |
+| Diagnostyka | `resolvePartTransform`, ścieżka w `SourceError`, format CLI; test edytora uruchamia prawdziwy ipc dla pięciu etapów błędu, w tym importów. |
+| API vec2 / obrót | Publiczne len/dot/rot, parser i highlighting; zgodna konwencja CCW vec2/polar/D4, testy źródłowe i fixture native/WASM. |
+| Wspólne przypadki graniczne | Korpus f32 dla wektorów, koloru i ramp; typowane gałęzie/C ABI, granice rozmiarów i konwersji części, limity stosu/wywołań/locals oraz ograniczenie fuel dużych ramp. |
+
+### Końcowe uruchomienia
+
+Artefakty lokalne: `/tmp/iprop-fixes.C5KhDL/` (katalog tymczasowy; trwałe
+przypadki, skrypty i oczekiwane wyniki są w repozytorium).
+
+| Sprawdzenie | Wynik / log |
+| --- | --- |
+| Build Release z C API, SFML i Godot | PASS; końcowy kod zbudowany przed weryfikacją wydania. |
+| Pełny CTest | 7/7 PASS, w tym C API, SFML render/errors/conformance, Godot, smoke i diagnostyka edytora; `final-ctest.log`. |
+| Natywny Catch2 | 387 przypadków, 333222 asercje PASS; `final-native-tests.log`. |
+| ASan + UBSan + float-cast-overflow, Debug | Pełny rebuild i CTest 3/3 PASS (C API, cały smoke, diagnostyka); `final-sanitized-build.log`, `final-sanitized-test.log`. |
+| Świeży native Release bez zależności graficznych | PASS w `final-native`; `final-native-configure.log`, `final-native-build.log`. |
+| Świeży Emscripten 6.0.10 Release | PASS w `final-wasm`; `final-wasm-configure.log`, `final-wasm-build.log`. |
+| Konformancja obu świeżych buildów | 7 historycznych golden, 131 obrazów/outputów, 19 trapów, 6292 bitowe wyniki wektorów, 29 kolorów PASS; `final-conformance.log`. |
+| Testy harnessu Node | 9/9 PASS; `final-node-harness.log`. |
+| Oficjalny release/install check | PASS: narzędzia i C shared/static z przeniesionej instalacji, Godot 8 corpus entries + outputy + PNG; `final-release-check.log`. Archiwów nie tworzono. |
+| Zamrożone artefakty | `git diff main...HEAD -- tests/golden spec/iprop-v0.1.md spec/iprop-v0.2.md` pusty; brak zmian binariów przykładów podczas napraw względem 367a158. |
+| Higiena diffu | `git diff --check main...HEAD` PASS; aktualne README, HTML5 README, changelog i spec 0.3. |
+
+Sprawdzenia wykonano lokalnie na macOS arm64. Zdalne CI oraz natywne
+buildy Linux/Windows nie były uruchamiane; nie stanowią deklarowanych
+wyników tego audytu. C API zachowuje wersję 0.2. Zmiany kontraktu 0.3
+(NaN, kierunek kąta, skala D4 i nowa emisja/fuel) są opisane w specyfikacji;
+historyczne specyfikacje i golden pozostają zamrożone.

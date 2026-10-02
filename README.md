@@ -265,6 +265,9 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   `gain` defines the `k = 1` limit;
   `ramp` takes positional arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
+  Pure constant ramps fold during planning; dynamic palettes use O(log N)
+  selection with O(N) emitted code. Compiler expansion can reduce fuel,
+  while each VM instruction keeps its specified cost.
   Sampling outside the noise primitives' defined coordinate domains traps;
   the bounds, octave checks and half-open jitter placement are specified in
   [§12.10](spec/iprop-v0.3.md#1210-the-noise-v2-v03).

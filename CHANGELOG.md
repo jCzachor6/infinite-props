@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.3.0 — unreleased
+
+- Added vec2 values and arithmetic, vector metrics/rotation, distance fields,
+  quadratic/cubic Bezier queries and strokes, procedural noise, color and
+  curve utilities, palette ramps, and D4 part transforms. New opcodes are
+  gated by format 0.3; readers retain format 0.1/0.2 compatibility. Product
+  version is 0.3.0; the C API remains 0.2.
+- Fixed typed control-flow joins and branch reachability in validation,
+  defensive vector type errors and exception containment at the C API.
+- Canonicalized new vector NaNs across native/WASM, defined color mixing
+  for nonfinite inputs, prevented shade overflow and corrected round at
+  half-integer and saturation boundaries. Positive vector/polar angles now
+  agree with counterclockwise part rotations in the downward-y plane.
+- Aligned D4 raster scaling with output geometry, including unequal axis
+  scales. Added shared transforms/render plans and early located diagnostics
+  for imported sources and part transform arguments.
+- Introduced shared opcode/builtin contracts, typed expression and call
+  plans, resolved palettes, scoped temporary locals, pure math modules and
+  a common native/WASM runtime source list. Part uniform arguments widen
+  consistently and reject duplicate names.
+- Prepared Bezier kernels once per stroke without changing numerical or
+  fuel results. Folded pure constant ramps and replaced dynamic palette
+  ladders with balanced selection; the new compiler expansion changes fuel
+  as documented in spec 0.3 §12.11. RNG/drawing/trap effects remain intact.
+- Fixed install/release version checks and added regressions for raw float
+  boundaries, control-flow types, resource limits, geometry and evaluation
+  order. Frozen specifications and historical golden files are unchanged.
+
+The develop-to-main review and completed implementation audit are recorded
+in `CODE_REVIEW_DEVELOP_MAIN.md` and `CODE_REVIEW_IMPLEMENTATION.md`.
+
 ## v0.2.0 — prepared for release, 2026-09-30
 
 - Added typed function parameters and return values, constant palettes,

@@ -58,7 +58,9 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
   RGBA byte and structured output across both backends. It also compiles
   the loop regression, noise, shapes, portrait, plant, language, math edges,
   SDF/Bézier queries and strokes, parts, and demo noise from source and
-  compares seeds 0/1/2/7/26, including scaled renders (64 comparisons in total).
+  compares seeds 0/1/2/7/26, including scaled renders (131 comparisons in total).
+  Additional raw-bit cases check 6292 vector results and 29 color results
+  against the shared boundary corpus; 19 trap reasons are compared as well.
   A second argument can override the native tools directory (`build/tools`
   by default). Missing tools or mismatches fail the run.
 - **Harness tests:** `node --test backends/html5/test/*.test.js` —
