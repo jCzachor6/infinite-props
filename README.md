@@ -208,7 +208,7 @@ calls, because bit-exact parity across platforms is a core requirement:
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
 - `noise` — smoothstep-interpolated value noise over a pinned lattice hash.
 - `fault` — triangular-interpolated noise for sharp geological features.
-- `mix`, `shade`, `smooth` — colour/value helpers.
+- `color.mix`, `color.shade`, `smooth` — colour/value helpers.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).
@@ -319,7 +319,7 @@ asset rock {
     stone_mass(-w * 0.10, 0, w * 0.87, h, palette, seed)
     if (index(3) == 0) {
       stone_mass(-w * 0.67, 2, w * 0.39, h * 0.43,
-                 shade(palette, -4), hash(seed ^ 9467))
+                 color.shade(palette, -4), hash(seed ^ 9467))
     }
   }
 }

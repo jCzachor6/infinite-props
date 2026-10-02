@@ -33,7 +33,7 @@ asset t {
     rect(0, 0, w, w, base)
     p = {x, w}
     if (x == 14) {
-      pixel(0, 0, shade(base, 10))
+      pixel(0, 0, color.shade(base, 10))
     }
     i = 0
     while (i < 2) {
@@ -58,7 +58,7 @@ asset rock {
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43, shade(palette, -4))
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43, color.shade(palette, -4))
     }
   }
 })";

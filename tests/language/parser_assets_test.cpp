@@ -30,7 +30,7 @@ const std::string kRockSketch = R"(asset rock {
     stone_mass(-w * 0.10, 0, w * 0.87, h, palette, seed)
     if (index(3) == 0) {
       stone_mass(-w * 0.67, 2, w * 0.39, h * 0.43,
-                 shade(palette, -4), hash(seed ^ 9467))
+                 color.shade(palette, -4), hash(seed ^ 9467))
     }
   }
 })";
@@ -266,7 +266,7 @@ asset hair {
 
   draw {
     top = {32, 4}
-    tint = shade(color, -4)
+    tint = color.shade(color, -4)
     thing = color
   }
 })";
@@ -274,7 +274,7 @@ asset hair {
     REQUIRE(program.asset.inputs[0].name == "color");
     const auto& body = program.asset.functions[0].body;
     REQUIRE(body.size() == 3);
-    // `tint = shade(color, -4)` — color as a positional argument.
+    // `tint = color.shade(color, -4)` — color as a positional argument.
     const auto* tint = std::get_if<VarDecl>(&body[1]);
     REQUIRE(tint != nullptr);
     const auto* shadeCall = std::get_if<Call>(tint->value.get());

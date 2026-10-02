@@ -28,7 +28,7 @@ const std::string kRockSketch = R"(asset rock {
     stone_mass(-w * 0.10, 0, w * 0.87, h, palette, seed)
     if (index(3) == 0) {
       stone_mass(-w * 0.67, 2, w * 0.39, h * 0.43,
-                 shade(palette, -4), hash(seed ^ 9467))
+                 color.shade(palette, -4), hash(seed ^ 9467))
     }
   }
 })";
@@ -69,7 +69,7 @@ TEST_CASE("the S-expression printer renders the rock sketch") {
       (let collider (vector (- 96 20) (- 170 23) 40 23))
       (expr (call stone_mass (* (neg w) 0.10) 0 (* w 0.87) h palette seed))
       (if (== (call index 3) 0)
-        (expr (call stone_mass (* (neg w) 0.67) 2 (* w 0.39) (* h 0.43) (call shade palette (neg 4)) (call hash (^ seed 9467))))))))
+        (expr (call stone_mass (* (neg w) 0.67) 2 (* w 0.39) (* h 0.43) (call (member color shade) palette (neg 4)) (call hash (^ seed 9467))))))))
 )";
     REQUIRE(printProgram(parse(kRockSketch)) == expected);
 }
@@ -178,7 +178,7 @@ asset t {
     return i32trunc(u)
   }
   leaf(x: f32, c: color) -> color {
-    return shade(c, 1)
+    return color.shade(c, 1)
   }
 })";
     const std::string printed = printProgram(parse(source));

@@ -33,7 +33,7 @@ asset t {
     rect(0, 0, w, w, base)
     p = {x, w}
     if (x == 14) {
-      pixel(0, 0, shade(base, 10))
+      pixel(0, 0, color.shade(base, 10))
     }
     i = 0
     while (i < 2) {

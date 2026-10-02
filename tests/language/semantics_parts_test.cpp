@@ -37,7 +37,7 @@ asset rock {
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43, shade(palette, -4))
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43, color.shade(palette, -4))
     }
   }
 })";

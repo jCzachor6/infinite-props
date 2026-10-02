@@ -248,7 +248,7 @@ TEST_CASE("duplicate declarations and missing requirements") {
 TEST_CASE("builtin arity and argument types are checked") {
     expectCheckError(wrap("rect(0, 0, 4, 4)"), "expects 5 arguments");
     expectCheckError(wrap("range(1)"), "expects 2 arguments");
-    expectCheckError(wrap("shade(5, -2)"), "must be color, got i32");
+    expectCheckError(wrap("color.shade(5, -2)"), "must be color, got i32");
     expectCheckError(wrap("pixel(0.5, 0, #ffffff)"), "must be i32, got f32");
     expectCheckError(wrap("hash(1, 2)"), "expects 1 arguments");
     expectCheckError(wrap("rect(0, 0, 4, 4, #ffffff, 1)"), "expects 5 arguments");

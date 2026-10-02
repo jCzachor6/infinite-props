@@ -26,7 +26,7 @@ asset pot {
     // the base and the opening
     rect(32 - half + 1, 56.0, 15.0 + widthN, 2.0, #282c30)
     rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
-    oval(32.0, 44.0, topHalf, rimDepth, shade(color, 18))
+    oval(32.0, 44.0, topHalf, rimDepth, color.shade(color, 18))
     oval(32.0, 43.7, topHalf - 1.6, rimDepth - 1.2, #3a3028)
     oval(32.0, 43.5, topHalf - 3.2, rimDepth - 2.0, #26201c)
 
@@ -34,49 +34,49 @@ asset pot {
     if (style == 0) {
       // the game's trapezoid front
       poly(color, 32 - topHalf, 44, 32 + topHalf, 44, half + 31, 56, 32 - half, 56)
-      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, color.shade(color, -44))
     } else if (style == 1) {
       // the game's plain front with a band
       rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
-      rect(34 - topHalf, 50.0, topHalf * 2 - 4, 1.0, shade(color, -24))
-      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -46))
+      rect(34 - topHalf, 50.0, topHalf * 2 - 4, 1.0, color.shade(color, -24))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, color.shade(color, -46))
     } else if (style == 2) {
       // the game's footed front with corner accents
       rect(32 - topHalf, 44.0, topHalf * 2, 12.0, color)
-      rect(32 - topHalf, 54.0, topHalf * 2, 2.0, shade(color, -52))
-      poly(shade(color, -34), 32 - topHalf, 51, 35 - topHalf, 48, 32 - topHalf, 46)
-      poly(shade(color, 20), 31 + topHalf, 51, 28 + topHalf, 48, 31 + topHalf, 46)
-      rect(34 - topHalf, 52.0, topHalf * 2 - 4, 1.0, shade(color, -28))
+      rect(32 - topHalf, 54.0, topHalf * 2, 2.0, color.shade(color, -52))
+      poly(color.shade(color, -34), 32 - topHalf, 51, 35 - topHalf, 48, 32 - topHalf, 46)
+      poly(color.shade(color, 20), 31 + topHalf, 51, 28 + topHalf, 48, 31 + topHalf, 46)
+      rect(34 - topHalf, 52.0, topHalf * 2 - 4, 1.0, color.shade(color, -28))
     } else if (style == 3) {
       // a shallow bowl: wide rim, narrow base
       poly(color, 32 - topHalf, 44, 32 + topHalf, 44, 32 + half - 2, 56, 32 - half + 2, 56)
-      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 18))
-      rect(32 - half + 3, 52.0, (half - 3) * 2, 1.0, shade(color, -20))
-      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, color.shade(color, 18))
+      rect(32 - half + 3, 52.0, (half - 3) * 2, 1.0, color.shade(color, -20))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, color.shade(color, -44))
     } else if (style == 4) {
       // a tall urn on a pedestal foot
       poly(color, 32 - topHalf + 2, 44, 32 + topHalf - 2, 44, 32 + topHalf - 3, 50, 32 - topHalf + 3, 50)
-      rect(32 - 2, 50.0, 4.0, 6.0, shade(color, -18))
-      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 24))
-      rect(32 - 3, 56.0, 6.0, 1.0, shade(color, -46))
+      rect(32 - 2, 50.0, 4.0, 6.0, color.shade(color, -18))
+      rect(32 - topHalf, 44.0, topHalf * 2, 2.0, color.shade(color, 24))
+      rect(32 - 3, 56.0, 6.0, 1.0, color.shade(color, -46))
     } else {
       // a tapered pot with a checker band
       poly(color, 32 - topHalf, 44, 32 + topHalf, 44, 32 + half - 1, 56, 32 - half + 1, 56)
       bx = 32 - i32trunc(topHalf) + 2
       while (bx < 32 + topHalf - 1) {
         if (bx % 2 == 0) {
-          pixel(bx, 49, shade(color, -26))
+          pixel(bx, 49, color.shade(color, -26))
         } else {
-          pixel(bx, 49, shade(color, 22))
+          pixel(bx, 49, color.shade(color, 22))
         }
         bx = bx + 1
       }
-      rect(32 - half, 56.0, 15.0 + widthN, 1.0, shade(color, -44))
+      rect(32 - half, 56.0, 15.0 + widthN, 1.0, color.shade(color, -44))
     }
-    rect(32 - topHalf, 44.0, 1.0, 12.0, shade(color, 14))
-    rect(31 + topHalf, 44.0, 1.0, 12.0, shade(color, -24))
-    rect(32 - topHalf, 44.0, topHalf * 2, 2.0, shade(color, 26))
-    rect(32 - topHalf, 46.0, topHalf * 2, 1.0, shade(color, -32))
+    rect(32 - topHalf, 44.0, 1.0, 12.0, color.shade(color, 14))
+    rect(31 + topHalf, 44.0, 1.0, 12.0, color.shade(color, -24))
+    rect(32 - topHalf, 44.0, topHalf * 2, 2.0, color.shade(color, 26))
+    rect(32 - topHalf, 46.0, topHalf * 2, 1.0, color.shade(color, -32))
 
     // the tag
     if (tag) {
@@ -90,7 +90,7 @@ asset pot {
     crumb = 0
     while (crumb < crumbs) {
       cx = range(-half + 3.0, half - 3.0)
-      pixel(32 + i32trunc(cx), 42, shade(crumbColor, index(9) - 4))
+      pixel(32 + i32trunc(cx), 42, color.shade(crumbColor, index(9) - 4))
       crumb = crumb + 1
     }
     if (drops) {

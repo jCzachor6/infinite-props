@@ -41,7 +41,7 @@ asset plant {
     leafDark = darkLeaves[leavesIndex]
     leafMid = midLeaves[leavesIndex]
     leafLight = lightLeaves[leavesIndex]
-    potColor = shade(pots[potIndex], potShade)
+    potColor = color.shade(pots[potIndex], potShade)
     bloomColor = blooms[index(3)]
 
     // ===== paint order: foliage first, then the pot (its front face

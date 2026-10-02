@@ -127,7 +127,7 @@ writes and part placement.</li>
 <tr><td><code>abs(x)</code> / <code>floor(x)</code> / <code>ceil(x)</code></td><td><code>f32</code></td><td>float magnitude and rounding</td></tr>
 <tr><td><code>min(x, y)</code> / <code>max(x, y)</code></td><td><code>f32</code></td><td>ignore one NaN; canonical NaN for two; signed-zero ordering</td></tr>
 <tr><td><code>pow(x, y)</code> / <code>exp(x)</code> / <code>atan2(y, x)</code></td><td><code>f32</code></td><td>pinned math; atan2 returns radians</td></tr>
-<tr><td><code>mix(a, b, t)</code> / <code>shade(c, n)</code></td><td><code>color</code></td><td>colour lerp / brightness shift</td></tr>
+<tr><td><code>color.mix(a, b, t)</code> / <code>color.shade(c, n)</code></td><td><code>color</code></td><td>colour lerp / brightness shift</td></tr>
 <tr><td><code>pixel(x, y, c)</code> / <code>rect(...)</code> / <code>oval(...)</code></td><td>—</td><td>raster primitives (colour last)</td></tr>
 <tr><td><code>line(ax, ay, bx, by, t, c)</code></td><td>—</td><td>thicknessed line</td></tr>
 <tr><td><code>poly(c, x0, y0, …)</code></td><td>—</td><td>filled polygon, ≥ 3 vertices</td></tr>

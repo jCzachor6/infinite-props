@@ -17,6 +17,7 @@ add_executable(iprop_tests
     language/parser_statements_test.cpp
     language/parser_diagnostics_test.cpp
     language/draw_entry_test.cpp
+    language/color_namespace_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp

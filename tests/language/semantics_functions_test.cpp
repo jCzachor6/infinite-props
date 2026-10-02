@@ -166,7 +166,7 @@ asset t {
     return u
   }
   tint(c: color) -> color {
-    return shade(c, 1)
+    return color.shade(c, 1)
   }
 })";
     CHECK_NOTHROW(checkAsset(parse(source), {}));

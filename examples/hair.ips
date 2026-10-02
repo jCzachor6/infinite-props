@@ -33,7 +33,7 @@ asset hair {
           }
           temp = color
           if ((col + row) % 2 == 0) {
-            temp = shade(color, 12)
+            temp = color.shade(color, 12)
           }
           oval(x, y, 4.0, 4.0, temp)
           col = col + 1
@@ -55,44 +55,44 @@ asset hair {
         // Mohawk: a spiked crest, shaved sides
         rect(28.0, 10.0, 8.0, 10.0, color)
         poly(color, 24, 14, 30, 3, 27, 12)
-        poly(shade(color, 10), 28, 14, 34, 2, 31, 12)
+        poly(color.shade(color, 10), 28, 14, 34, 2, 31, 12)
         poly(color, 32, 14, 38, 4, 35, 12)
-        poly(shade(color, -8), 26, 14, 32, 6, 29, 12)
+        poly(color.shade(color, -8), 26, 14, 32, 6, 29, 12)
       } else if (style == 7) {
         // Topknot: swept base, a bun and an accent tie
         poly(color, 20, 16, 22, 9, 42, 9, 44, 17, 40, 15, 24, 15)
         oval(32.0, 5.0, 4.0, 4.0, color)
-        oval(31.0, 4.0, 2.0, 2.0, shade(color, 14))
+        oval(31.0, 4.0, 2.0, 2.0, color.shade(color, 14))
         rect(28.0, 8.0, 8.0, 2.0, accent)
       } else if (style == 8) {
         // Afro: a big textured cloud
         oval(32.0, 13.0, 16.0, 14.0, color)
-        oval(25.0, 9.0, 4.0, 4.0, shade(color, -12))
-        oval(39.0, 11.0, 4.0, 4.0, shade(color, -12))
-        oval(32.0, 5.0, 4.0, 4.0, shade(color, 8))
-        oval(20.0, 16.0, 3.0, 3.0, shade(color, -8))
-        oval(44.0, 16.0, 3.0, 3.0, shade(color, -8))
+        oval(25.0, 9.0, 4.0, 4.0, color.shade(color, -12))
+        oval(39.0, 11.0, 4.0, 4.0, color.shade(color, -12))
+        oval(32.0, 5.0, 4.0, 4.0, color.shade(color, 8))
+        oval(20.0, 16.0, 3.0, 3.0, color.shade(color, -8))
+        oval(44.0, 16.0, 3.0, 3.0, color.shade(color, -8))
       } else if (style == 9) {
         // Pigtails: a cap and two buns with accent ties
         poly(color, 22, 16, 25, 9, 39, 9, 42, 16, 40, 14, 24, 14)
         oval(17.0, 19.0, 4.0, 4.0, color)
-        oval(16.0, 18.0, 2.0, 2.0, shade(color, 12))
+        oval(16.0, 18.0, 2.0, 2.0, color.shade(color, 12))
         rect(14.0, 18.0, 4.0, 2.0, accent)
         oval(47.0, 19.0, 4.0, 4.0, color)
-        oval(46.0, 18.0, 2.0, 2.0, shade(color, 12))
+        oval(46.0, 18.0, 2.0, 2.0, color.shade(color, 12))
         rect(44.0, 18.0, 4.0, 2.0, accent)
       } else {
         // Side-sweep
         poly(color, 16, 20, 20, 8, 44, 7, 46, 22, 40, 26, 24, 28, 18, 26)
-        line(24.0, 12.0, 30.0, 24.0, 1, shade(color, 14))
+        line(24.0, 12.0, 30.0, 24.0, 1, color.shade(color, 14))
       }
     }
 
     // Hair highlights (painted over the style, as in the reference)
-    line(24.0, 15.0, 30.0, 13.0, 2, shade(color, 22))
+    line(24.0, 15.0, 30.0, 13.0, 2, color.shade(color, 22))
     if (style == 3 || style == 5) {
-      line(20.0, 28.0, 19.0, 42.0, 1, shade(color, 17))
-      line(43.0, 30.0, 44.0, 41.0, 1, shade(color, -18))
+      line(20.0, 28.0, 19.0, 42.0, 1, color.shade(color, 17))
+      line(43.0, 30.0, 44.0, 41.0, 1, color.shade(color, -18))
     }
   }
 }

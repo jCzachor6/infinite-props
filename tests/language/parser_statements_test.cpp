@@ -225,7 +225,7 @@ asset typed {
     return i32trunc(u * 10)
   }
   leaf(x: f32, y: f32, rx: f32, ry: f32, lean: f32, c: color) -> color {
-    return shade(c, 1)
+    return color.shade(c, 1)
   }
 })";
     const Program program = parse(source);
