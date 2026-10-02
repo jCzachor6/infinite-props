@@ -37,38 +37,38 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         return spec.result;
     }
     if (spec.lowering == ips::BuiltinLowering::Round) {
-        // round-half-away-from-zero (std::round semantics, spec 8.1):
-        // x >= 0 ? trunc(x + 0.5) : -trunc(-x + 0.5). The value is kept in
-        // the f32 scratch (blocks have no results, so the arms store the
-        // outcome in the i32 scratch instead of yielding it).
-        // The i32 scratch takes the lower index (appended first).
+        // Compare the fractional distance before adjusting the integral
+        // value: x +/- 0.5 can itself round across the halfway boundary.
         emitArg(call.arguments[0]);
-        const auto result = temporary(VT::I32);
         const auto value = temporary(VT::F32);
-        const u16 i32Slot = result.index();
-        const u16 f32Slot = value.index();
-        ins(Opcode::LocalSet, 0, f32Slot);
-        ins(Opcode::LocalGet, 0, f32Slot);
-        ins(Opcode::ConstF32, 0, static_cast<u16>(plan_.pools.addFloat(0)));
+        const auto base = temporary(VT::F32);
+        ins(Opcode::LocalSet, 0, value.index());
+        ins(Opcode::LocalGet, 0, value.index());
+        emitConst(0.0f);
         ins(Opcode::F32Ge);
         ins(Opcode::If);
-        ins(Opcode::LocalGet, 0, f32Slot);
-        ins(Opcode::ConstF32, 0,
-            static_cast<u16>(plan_.pools.addFloat(0x3F000000u))); // 0.5
-        ins(Opcode::F32Add);
-        ins(Opcode::F32ToI32);
-        ins(Opcode::LocalSet, 0, i32Slot);
+        const auto arm = [&](bool positive) {
+            ins(Opcode::LocalGet, 0, value.index());
+            ins(positive ? Opcode::F32Floor : Opcode::F32Ceil);
+            ins(Opcode::LocalSet, 0, base.index());
+            ins(Opcode::LocalGet, 0, positive ? value.index() : base.index());
+            ins(Opcode::LocalGet, 0, positive ? base.index() : value.index());
+            ins(Opcode::F32Sub);
+            emitConst(0.5f);
+            ins(Opcode::F32Ge);
+            ins(Opcode::If);
+            ins(Opcode::LocalGet, 0, base.index());
+            emitConst(1.0f);
+            ins(positive ? Opcode::F32Add : Opcode::F32Sub);
+            ins(Opcode::LocalSet, 0, base.index());
+            ins(Opcode::End);
+        };
+        arm(true);
         ins(Opcode::Else);
-        ins(Opcode::LocalGet, 0, f32Slot);
-        ins(Opcode::F32Neg);
-        ins(Opcode::ConstF32, 0,
-            static_cast<u16>(plan_.pools.addFloat(0x3F000000u)));
-        ins(Opcode::F32Add);
-        ins(Opcode::F32ToI32);
-        ins(Opcode::I32Neg);
-        ins(Opcode::LocalSet, 0, i32Slot);
+        arm(false);
         ins(Opcode::End);
-        ins(Opcode::LocalGet, 0, i32Slot);
+        ins(Opcode::LocalGet, 0, base.index());
+        ins(Opcode::F32ToI32);
         return VT::I32;
     }
     for (const auto& arg : call.arguments) emitArg(arg);

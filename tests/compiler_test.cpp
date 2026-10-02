@@ -2016,6 +2016,25 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
     }
 }
 
+TEST_CASE("round saturates and distinguishes the floats adjacent to half integers") {
+    const std::vector<std::pair<std::string,std::string>> cases{
+        {"-2147483648.0", "-2147483648"}, {"-2147483904.0", "-2147483648"},
+        {"2147483648.0", "2147483647"}, {"-1.0/0.0", "-2147483648"},
+        {"1.0/0.0", "2147483647"}, {"0.0/0.0", "0"},
+        {"0.49999997", "0"}, {"-0.49999997", "0"},
+        {"0.5", "1"}, {"-0.5", "-1"}, {"1.4999999", "1"}, {"-1.4999999", "-1"},
+        {"8388609.0", "8388609"}, {"-8388609.0", "-8388609"},
+        {"0.0", "0"}, {"-0.0", "0"}
+    };
+    for (const auto& [input, expected] : cases) {
+        INFO(input);
+        // Comparing as i32 avoids hiding the INT_MIN+1 bug in f32 outputs.
+        const auto result = execute(compileChecked("asset t { size 8x8 output point p "
+            "draw(v:i32,a:i32) { p = {round(" + input + ") == " + expected + ", 0} } }"));
+        CHECK(result.outputs[0].points[0].x == 1.f);
+    }
+}
+
 TEST_CASE("compiler-only error cases carry locations") {
     const auto expectError = [](const std::string& source, const char* part) {
         const ips::Program program = ips::parse(source);

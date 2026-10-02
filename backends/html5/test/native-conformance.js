@@ -20,6 +20,7 @@ const sources = [
     ["plant", "examples/plant.ips"],
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
+    ["round", "backends/html5/test/fixtures/round.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],
@@ -117,6 +118,10 @@ function run(iprop, toolsDir) {
             if (path.basename(file) === "loop1.iprop") {
                 assert.deepEqual(native.data.subarray(0, 12),
                     Buffer.from("547b89ff557c8bff598190ff", "hex"), label + ": repro pixels");
+            }
+            if (path.basename(file) === "round.iprop") {
+                assert.deepEqual(result.outputs[0].values, Array.from({length:16}, () =>
+                    ({x:0x3f800000, y:0})), label + ": round boundary checks");
             }
             if (path.basename(file) === "math-edges.iprop") {
                 const expected = [

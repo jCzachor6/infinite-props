@@ -384,6 +384,15 @@ Comparisons `[i32 i32] -> [i32]` (1 = true, 0 = false):
 
 ### 9.4 Float
 
+The `.ips` builtin `round(x)` evaluates x once, widens i32 to f32, rounds
+to the nearest integer with ties away from zero, then uses the saturating
+`f32.to.i32` conversion (NaN→0). To avoid rounding x a second time by adding
+0.5, use `base = floor(x)` for nonnegative x and `base = ceil(x)` otherwise;
+adjust base by +1 or −1 only if the distance from x to base is at least
+0.5. This also preserves already integral f32 values and saturates both
+infinities. Its emitted instruction count is a compiler detail; each
+emitted instruction retains its normative VM fuel cost.
+
 Arithmetic `[f32 f32] -> [f32]`:
 
 | Op | Mnemonic | | Op | Mnemonic |

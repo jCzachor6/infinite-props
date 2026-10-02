@@ -170,4 +170,13 @@ Native i WASM weryfikują te same 22 wzorce float, a shade skrajne i32;
 (`color-conformance.log`) i 137 asercji color pod ASan/UBSan/
 float-cast-overflow PASS. Historyczne golden bez zmian.
 
-W toku: optymalizacja ramp i pozostałe przypadki graniczne.
+Granice round: odtworzono 7 błędnych wyników spośród 16 przypadków
+(INT_MIN, −inf, sąsiedzi 0.5 i duże nieparzyste liczby całkowite).
+Emisja porównuje część ułamkową z 0.5 przed korektą floor/ceil, a dopiero
+na końcu wykonuje nasycającą konwersję. Specyfikacja opisuje reguły i fuel.
+CTest 7/7 PASS; fixture `.ips` sprawdza porównania i32 przed zamianą na
+output f32, aby nie maskować błędu o 1. Native/WASM: 126 obrazów/outputów,
+7 golden, 19 trapów, 6292 wyniki wektorów i 29 kolorów PASS
+(`round-conformance.log`).
+
+W toku: optymalizacja ramp i końcowa weryfikacja.
