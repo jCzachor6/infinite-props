@@ -628,21 +628,6 @@ void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
 
 } // namespace
 
-f32 f32MinMax(f32 a, f32 b, bool maximum) {
-    if (std::isnan(a)) {
-        return std::isnan(b) ? std::numeric_limits<f32>::quiet_NaN() : b;
-    }
-    if (std::isnan(b)) {
-        return a;
-    }
-    if (a == 0.0f && b == 0.0f) {
-        const bool negative = maximum ? std::signbit(a) && std::signbit(b)
-                                      : std::signbit(a) || std::signbit(b);
-        return std::copysign(0.0f, negative ? -1.0f : 1.0f);
-    }
-    return maximum ? std::max(a, b) : std::min(a, b);
-}
-
 // Shared with the curve rasterizer so distance queries and strokes use the
 // same bounded, pinned search.
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {

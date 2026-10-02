@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "Fold.hpp"
+#include "iprop/D4Transform.hpp"
 
 namespace iprop::compiler {
 
@@ -315,12 +316,6 @@ void Emitter::emitPartCall(const ips::Call& call) {
     // The D4 transform kind (spec §10.5): the rot (0/90/180/270) composed
     // with the mirror_x/mirror_y (0/1) — the rot first, then the x, then
     // the y mirror.
-    static constexpr u8 kFoldTable[4][2][2] = {
-        {{0, 5}, {4, 2}}, // rot 0
-        {{1, 6}, {7, 3}}, // rot 90
-        {{2, 4}, {5, 0}}, // rot 180
-        {{3, 7}, {6, 1}}, // rot 270
-    };
     i32 rot = 0;
     bool mirrorX = false;
     bool mirrorY = false;
@@ -359,8 +354,7 @@ void Emitter::emitPartCall(const ips::Call& call) {
             mirrorY = value != 0;
         }
     }
-    const u8 kind =
-        kFoldTable[rot / 90][mirrorX ? 1 : 0][mirrorY ? 1 : 0];
+    const u8 kind = D4Transform::fromParameters(rot, mirrorX, mirrorY)->kind();
     ins(Opcode::PartDraw, kind, static_cast<u16>(partIndex));
 }
 

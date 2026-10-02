@@ -184,32 +184,24 @@ void Execution::callPart(u16 partIndex, u8 transform) {
         args[p - 1] = pop();
     }
 
-    // Sub-canvas geometry (spec §10): partSize scaled, rounded to ≥ 1; the
-    // blit origin maps the part's origin onto the caller's raster space.
-    const f32 scaleX = canvas.scaleX;
-    const f32 scaleY = canvas.scaleY;
-    const i32 subW =
-        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeX) * scaleX)));
-    const i32 subH =
-        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeY) * scaleY)));
-    // Runtime defense: a corrupt part meta must not trigger a huge allocation
-    // (the main canvas cap does not cover sub-canvases).
-    if (static_cast<u32>(subW) > kMaxCanvasSide || static_cast<u32>(subH) > kMaxCanvasSide) {
-        trap("part canvas too large");
+    const auto d4 = D4Transform::fromKind(transform);
+    if (!d4) trap("invalid part transform");
+    PartRenderPlan render;
+    try {
+        render = PartRenderPlan::create(part, {canvas.scaleX, canvas.scaleY}, {atX, atY}, *d4);
+    } catch (const std::invalid_argument& error) {
+        trap(error.what());
     }
-    spend(static_cast<u64>(subW) * subH); // blit visits (spec §8.3/§10.5)
-
+    spend(render.blitCost);
     PartCallState state;
     state.partIndex = partIndex;
-    state.targetX = atX - part.origin.x * scaleX;
-    state.targetY = atY - part.origin.y * scaleY;
-    state.transform = transform;
-    state.savedCanvas = std::move(canvas); // the caller's canvas, moved aside
+    state.render = render;
+    state.savedCanvas = std::move(canvas);
     partCalls.push_back(std::move(state));
 
-    canvas.resize(static_cast<u32>(subW), static_cast<u32>(subH));
-    canvas.scaleX = scaleX;
-    canvas.scaleY = scaleY;
+    canvas.resize(static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y));
+    canvas.scaleX = render.sourceScale.x;
+    canvas.scaleY = render.sourceScale.y;
 
     Frame next;
     next.functionIndex = part.functionIndex;
@@ -245,31 +237,19 @@ void Execution::leaveFrame() {
         partCalls.pop_back();
         Canvas sub = std::move(canvas);
         canvas = std::move(state.savedCanvas);
-        const i32 tx = static_cast<i32>(std::round(state.targetX));
-        const i32 ty = static_cast<i32>(std::round(state.targetY));
-        const i32 w = static_cast<i32>(sub.width);
-        const i32 h = static_cast<i32>(sub.height);
         for (u32 sy = 0; sy < sub.height; ++sy) {
             for (u32 sx = 0; sx < sub.width; ++sx) {
                 const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
                 if (src.a == 0) {
                     continue; // transparent sub-pixels are not blitted
                 }
-                // The D4 permutation (spec §10.5): the sub-pixel maps to
-                // the transformed caller pixel.
-                i32 dx;
-                i32 dy;
-                switch (state.transform) {
-                case 0: dx = static_cast<i32>(sx); dy = static_cast<i32>(sy); break;
-                case 1: dx = static_cast<i32>(sy); dy = w - 1 - static_cast<i32>(sx); break;
-                case 2: dx = w - 1 - static_cast<i32>(sx); dy = h - 1 - static_cast<i32>(sy); break;
-                case 3: dx = h - 1 - static_cast<i32>(sy); dy = static_cast<i32>(sx); break;
-                case 4: dx = w - 1 - static_cast<i32>(sx); dy = static_cast<i32>(sy); break;
-                case 5: dx = static_cast<i32>(sx); dy = h - 1 - static_cast<i32>(sy); break;
-                case 6: dx = static_cast<i32>(sy); dy = static_cast<i32>(sx); break;
-                default: dx = h - 1 - static_cast<i32>(sy); dy = w - 1 - static_cast<i32>(sx); break;
+                const auto pixel = state.render.transform.mapPixel(
+                    {static_cast<i32>(sx), static_cast<i32>(sy)}, state.render.sourceExtent);
+                const i64 x = static_cast<i64>(state.render.targetOrigin.x) + pixel.x;
+                const i64 y = static_cast<i64>(state.render.targetOrigin.y) + pixel.y;
+                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
+                    compositePixel(*this, static_cast<i32>(x), static_cast<i32>(y), src);
                 }
-                compositePixel(*this, tx + dx, ty + dy, src);
             }
         }
         caller.lastPart = state.partIndex; // the part-output register

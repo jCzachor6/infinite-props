@@ -661,6 +661,8 @@ validation).
 - A part is a separate asset linked into the file at compile time (§6.3).
 - `part.draw P`:
   1. Creates a sub-canvas of `partSize × (sX, sY)` (rounded to nearest ≥ 1).
+     For D4 kinds that swap axes (1, 3, 6, 7), uses `(sY, sX)` instead,
+     both for its dimensions and for drawing inside it (§10.5).
   2. Creates a part frame: params `(variant, archetype)` + supplied uniforms;
      stream = supplied `seed`.
   3. Executes the part's function under the same fuel budget (the budget is
@@ -687,6 +689,13 @@ later. The kind enum stays open: the future general-affine transforms
 resampling) get the new kinds, which older runtimes reject at
 validation.
 
+Scaling is applied in the caller's axes **after** the asset-space D4
+transform. To achieve this with an exact pixel permutation, kinds 1, 3, 6,
+and 7 render the source with exchanged scale factors `(sY, sX)`; all other
+kinds use `(sX, sY)`. This also applies recursively to nested parts.
+For example, a 4×2 part rotated 90° under caller scale `(2,1)` renders a
+4×4 source and blits a 4×4 image, matching its transformed 2×4 asset bounds.
+
 The sub-canvas is `w × h` target pixels (the scaled part size). The blit
 maps each sub-pixel `(sx, sy)` to the caller pixel
 `(tx + dx, ty + dy)` where `(tx, ty)` is the §10 origin mapping and
@@ -705,6 +714,16 @@ maps each sub-pixel `(sx, sy)` to the caller pixel
 
 The blit visits charge the full `w × h` count as before; the off-canvas
 target pixels are skipped. Each sub-pixel composites exactly once.
+Sub-canvas dimensions MUST be finite and within the canvas-side limit
+before conversion to integers or allocation. Non-finite or out-of-i32-range
+blit origins trap. Target additions use sufficient range to clip without
+integer overflow.
+
+Placement retains the §10 convention: `at` is in caller raster coordinates,
+and the origin offset uses the caller's `(sX,sY)`, without a D4 transform.
+Structured outputs remain local asset coordinates after D4; neither `at`
+nor the origin offset is added to them. To place an output on the image,
+scale it by the caller's factors and add the rounded §10 blit origin.
 
 The part's structured outputs propagate through the same transform in
 the part's asset-unit space. For a point `(x, y)` written in the part's

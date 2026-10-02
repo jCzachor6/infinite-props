@@ -18,49 +18,18 @@ void checkSlot(Execution& ex, u16 index, OutputKind kind, bool list) {
     }
 }
 
-// The D4 propagation of a point in the part's asset-unit space (spec
-// §10.5); applied to a part frame's own writes when the call carries a
-// transform.
-void transformPoint(u8 kind, f32 sizeX, f32 sizeY, f32& x, f32& y) {
-    switch (kind) {
-    case 0: break;
-    case 1: { const f32 nx = y; y = sizeX - x; x = nx; break; }
-    case 2: x = sizeX - x; y = sizeY - y; break;
-    case 3: { const f32 nx = sizeY - y; y = x; x = nx; break; }
-    case 4: x = sizeX - x; break;
-    case 5: y = sizeY - y; break;
-    case 6: { const f32 nx = y; y = x; x = nx; break; }
-    case 7: { const f32 nx = sizeY - y; y = sizeX - x; x = nx; break; }
-    default: break; // unreachable: the validator caps the kind
-    }
-}
-
-bool transformOutput(Execution& ex, u16 index, u8& kind, f32& sizeX, f32& sizeY) {
-    if (ex.partCalls.empty()) {
-        return false;
-    }
+// Helpers share the active part's geometry; writes to foreign slots do not.
+const PartRenderPlan* outputTransform(const Execution& ex, u16 index) {
+    if (ex.partCalls.empty()) return nullptr;
     const PartCallState& state = ex.partCalls.back();
-    // Helpers share the active part's canvas and output coordinates. A
-    // global slot owned by another asset must keep its own coordinates.
-    if (ex.slotOwner[index] != state.partIndex) {
-        return false;
-    }
-    kind = state.transform;
-    if (kind == 0) {
-        return false;
-    }
-    const Part& part = ex.file.code.parts[state.partIndex];
-    sizeX = static_cast<f32>(part.sizeX);
-    sizeY = static_cast<f32>(part.sizeY);
-    return true;
+    return ex.slotOwner[index] == state.partIndex ? &state.render : nullptr;
 }
 
 void writePoint(Execution& ex, u16 index, f32 x, f32 y, bool list) {
-    u8 kind = 0;
-    f32 sizeX = 0.f;
-    f32 sizeY = 0.f;
-    if (transformOutput(ex, index, kind, sizeX, sizeY)) {
-        transformPoint(kind, sizeX, sizeY, x, y);
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto point = render->transform.mapPoint({x, y}, render->assetExtent);
+        x = point.x;
+        y = point.y;
     }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {
@@ -70,21 +39,9 @@ void writePoint(Execution& ex, u16 index, f32 x, f32 y, bool list) {
 }
 
 void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) {
-    u8 kind = 0;
-    f32 sizeX = 0.f;
-    f32 sizeY = 0.f;
-    if (transformOutput(ex, index, kind, sizeX, sizeY)) {
-        // The axis-aligned bounds of the two transformed corners.
-        f32 x2 = x + w;
-        f32 y2 = y + h;
-        transformPoint(kind, sizeX, sizeY, x, y);
-        transformPoint(kind, sizeX, sizeY, x2, y2);
-        const f32 minX = f32MinMax(x, x2, false);
-        const f32 minY = f32MinMax(y, y2, false);
-        w = f32MinMax(x, x2, true) - minX;
-        h = f32MinMax(y, y2, true) - minY;
-        x = minX;
-        y = minY;
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto rect = render->transform.mapRect({x, y, w, h}, render->assetExtent);
+        x = rect.x; y = rect.y; w = rect.w; h = rect.h;
     }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {
@@ -94,11 +51,10 @@ void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) 
 }
 
 void writeCircle(Execution& ex, u16 index, f32 x, f32 y, f32 r, bool list) {
-    u8 kind = 0;
-    f32 sizeX = 0.f;
-    f32 sizeY = 0.f;
-    if (transformOutput(ex, index, kind, sizeX, sizeY)) {
-        transformPoint(kind, sizeX, sizeY, x, y);
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto point = render->transform.mapPoint({x, y}, render->assetExtent);
+        x = point.x;
+        y = point.y;
     }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {

@@ -7,7 +7,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] R1 / A6: typowane ramki walidatora, poprawne scalenia i osiągalność; bezpieczne mul/div; granica C ABI; testy gałęzi i odtworzenie awarii.
 - [x] R2: jawne reguły NaN nowych operacji, specyfikacja, porównanie surowych bitów native/WASM, historyczne golden.
 - [x] R3: jedna oczekiwana wersja produktu dla instalacji/wydania, aktualne CI i dokumentacja, przechodzące shared/static install smoke i release check.
-- [ ] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
+- [x] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
 - [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
 - [ ] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
@@ -63,4 +63,15 @@ CTest 6/6 PASS; test natywny 9118 asercji PASS. WASM: 6292 dokładne
 porównania bitów, 116 obrazów/outputów, 7 golden i 19 trapów PASS.
 Harness Node 9/9 PASS. Log: `/tmp/iprop-fixes.C5KhDL/vector-conformance.log`.
 
-W toku: geometria D4, następnie wydzielenie matematyki i dalsze refaktory.
+R4 / A3: `D4Transform` centralizuje mapy pikseli, punktów i prostokątów,
+kompozycję, odwrotność i składanie parametrów. `PartRenderPlan::create`
+przygotowuje skalę, wymiary, origin i fuel; odrzuca złe zakresy przed
+konwersją/zaalokowaniem. D4 zamieniające osie renderują z zamienionymi
+skalami, zgodnie z poprawionym §10 specyfikacji. Zachowana jest dotychczasowa
+konwencja pozycjonowania i lokalnych outputów. Testy obejmują 64 kompozycje,
+odwrotności, relację pixel-center/point, wszystkie D4 przy trzech skalach,
+niezerowe origin/at, helpery, ownership i zagnieżdżone zamiany osi.
+CTest 6/6 PASS; native/WASM: 7 golden, 116 obrazów/outputów, 19 trapów,
+6292 wartości bitowych PASS (`d4-conformance.log`).
+
+W toku: diagnostyka, wydzielenie matematyki i dalsze refaktory.

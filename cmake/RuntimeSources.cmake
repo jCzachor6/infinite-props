@@ -16,6 +16,7 @@ set(IPROP_RUNTIME_SOURCES
     canvas.cpp
     outputs.cpp
     parts.cpp
+    part_render_plan.cpp
     utf8.cpp)
 list(TRANSFORM IPROP_RUNTIME_SOURCES
     PREPEND "${CMAKE_CURRENT_LIST_DIR}/../runtime/")

@@ -36,6 +36,7 @@ add_executable(iprop_tests
     canvas_test.cpp
     outputs_test.cpp
     parts_test.cpp
+    part_geometry_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp

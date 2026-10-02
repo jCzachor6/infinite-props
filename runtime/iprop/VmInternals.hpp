@@ -7,6 +7,7 @@
 #include "iprop/Canvas.hpp"
 #include "iprop/Instruction.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 
@@ -73,9 +74,7 @@ struct Frame {
 struct PartCallState {
     u16 partIndex = kNoPartIndex;
     Canvas savedCanvas;
-    f32 targetX = 0.f; // blit origin in caller raster space
-    f32 targetY = 0.f;
-    u8 transform = 0;  // the D4 transform kind (spec §10.5; the aux byte)
+    PartRenderPlan render;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -138,7 +137,7 @@ f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c);
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d);
 
 // Pinned minNum/maxNum (spec §12.8), shared by arithmetic and output bounds.
-f32 f32MinMax(f32 a, f32 b, bool maximum);
+using math::f32MinMax;
 
 // Per-group instruction dispatchers. Each returns true when it handled the
 // opcode; dispatch() falls through to a trap otherwise. Groups arrive with
