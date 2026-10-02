@@ -13,7 +13,7 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `CMakeLists.txt` | the Emscripten build |
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
 | `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/plant) with a Regenerate button |
-| `demo/assets/` | the seed-varying `.ips` demo assets |
+| `demo/assets/noise.ips` | the seed-varying noise demo; composed plant sources live in `examples/` |
 | `test/conformance.js` | the shared conformance suite (browser + Node) |
 | `test/run-tests.js` | the Node test runner |
 | `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
@@ -49,9 +49,9 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 - **Demo:** serve `backends/html5/demo/` over HTTP (browsers block raw
   `file://` module loading) — e.g. `python3 -m http.server -d backends/html5/demo 8000`
   and open `http://localhost:8000`. The portrait sheet is pixel-identical to
-  `examples/portrait-sheet.png`; the noise/plant assets are authored in
-  `.ips` and vary with the seed (the golden fixtures are seed-independent
-  by design, which is why the demo uses its own).
+  `examples/portrait-sheet.png`. The plant uses `examples/plant.ips` with
+  its pot and flower parts; the noise uses `demo/assets/noise.ips`. Both
+  vary with the seed (the noise golden fixture is seed-independent).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
   runs the seven browser golden entries, verifies their FNV-1a pins against
   fresh native renders and the committed golden PNGs, and compares every
