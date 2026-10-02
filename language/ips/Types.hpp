@@ -38,5 +38,6 @@ bool argFits(ValueType param, ValueType arg);
 
 // The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
 ValueType valueTypeOf(ParamType type);
+ValueType valueTypeOf(InputType type);
 
 } // namespace iprop::ips

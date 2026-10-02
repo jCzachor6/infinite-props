@@ -62,7 +62,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {
-        return emitIndex(*index);
+        return PaletteLowerer(*this, *current_->expression(expr).palette).index(*index->index);
     }
     if (const auto* bin = std::get_if<ips::Binary>(&expr)) {
         return emitBinary(*bin);
@@ -196,7 +196,7 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
                 leftType != ips::ValueType::Vec2) {
                 // Evaluate left first, but arrange the VM operands as (v, s).
                 // A distinct local keeps s alive across nested products and
-                // builtins that use the shared f32 scratch while evaluating v.
+                // builtins that need their own temporaries while evaluating v.
                 emitExpr(*bin.left);
                 if (leftType == ips::ValueType::I32) {
                     ins(Opcode::I32ToF32);
@@ -362,14 +362,6 @@ ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
         return ips::ValueType::I32;
     }
     error(un.location, "unsupported unary operator");
-}
-
-ips::ValueType Emitter::emitIndex(const ips::Index& index) {
-    return PaletteLowerer(*this,plan_.palette(*current_->owner,*index.object)).index(*index.index);
-}
-
-ips::ValueType Emitter::emitRamp(const ips::Call& call) {
-    return PaletteLowerer(*this,plan_.palette(*current_->owner,*call.args[0].value)).ramp(*call.args[1].value);
 }
 
 } // namespace iprop::compiler

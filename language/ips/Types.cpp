@@ -46,4 +46,14 @@ ValueType valueTypeOf(ParamType type) {
     return ValueType::I32;
 }
 
+ValueType valueTypeOf(InputType type) {
+    switch (type) {
+    case InputType::Color: return ValueType::Color;
+    case InputType::F32: return ValueType::F32;
+    case InputType::U32:
+    case InputType::I32: return ValueType::I32;
+    }
+    return ValueType::I32;
+}
+
 } // namespace iprop::ips

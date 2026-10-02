@@ -23,8 +23,8 @@ ips::ValueType PaletteLowerer::index(const ips::Expr& index) {
     return palette_.type;
 }
 
-ips::ValueType PaletteLowerer::ramp(const ips::Expr& t) {
-    emitter_.emitExpr(t);
+ips::ValueType PaletteLowerer::ramp(const PlannedArgument& t) {
+    emitter_.emitExpr(*t.expression);
     if (palette_.elements.size() == 1) {
         // Even a constant result must preserve helper, RNG and trap effects.
         emitter_.ins(Opcode::Drop);
@@ -33,7 +33,7 @@ ips::ValueType PaletteLowerer::ramp(const ips::Expr& t) {
     }
     const auto stop = emitter_.temporary(ips::ValueType::I32);
     const auto fraction = emitter_.temporary(ips::ValueType::F32);
-    if (emitter_.current_->typeOf(t) == ips::ValueType::I32)
+    if (t.widen)
         emitter_.ins(Opcode::I32ToF32);
     emitter_.emitConst(0.0f);
     emitter_.ins(Opcode::F32Max);

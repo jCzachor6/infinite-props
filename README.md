@@ -290,6 +290,13 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
 - `import` declarations for composition: parts linked at compile time,
   acyclic, with part-output access and propagation (§7.3).
 
+Calls retain the compiler's established evaluation order: ordinary builtin
+and user-function arguments run left to right; `poly` evaluates vertex
+coordinates before its colour. Part calls evaluate uniform overrides in
+input declaration order, then seed/variant/archetype and placement; named
+transform arguments are compile-time constants. An argument is evaluated
+once, including when its result is discarded by a singleton `ramp`.
+
 ### 7.2 Sketch
 
 ```

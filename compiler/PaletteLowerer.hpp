@@ -4,6 +4,7 @@
 
 namespace iprop::compiler {
 class Emitter;
+struct PlannedArgument;
 
 // Palette selection owns its temporary lifetimes and control-flow strategy.
 // Elements have already been validated and decoded in the compilation plan.
@@ -12,7 +13,7 @@ public:
     PaletteLowerer(Emitter& emitter, const ips::ResolvedPalette& palette)
         : emitter_(emitter), palette_(palette) {}
     ips::ValueType index(const ips::Expr& index);
-    ips::ValueType ramp(const ips::Expr& t);
+    ips::ValueType ramp(const PlannedArgument& t);
 private:
     Emitter& emitter_;
     const ips::ResolvedPalette& palette_;

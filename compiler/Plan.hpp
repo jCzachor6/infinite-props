@@ -20,12 +20,14 @@
 #include "ips/Typing.hpp"
 #include "ips/Palette.hpp"
 #include "Pools.hpp"
+#include "CallResolver.hpp"
 
 namespace iprop::compiler {
 
 struct PlannedExpression {
     ips::ValueType type;
     std::optional<Value> constant;
+    const ips::ResolvedPalette* palette = nullptr; // indexed palette, if any
 };
 
 // One planned function: its signature, local layout and (after emission)
@@ -47,6 +49,7 @@ struct PlannedFunction {
     std::map<std::string, u32> slots;
     std::map<std::string, ips::ValueType> langTypes;
     std::unordered_map<const ips::Expr*, PlannedExpression> expressions;
+    std::unordered_map<const ips::Call*, ResolvedCall> calls;
 
     const PlannedExpression& expression(const ips::Expr& expr) const {
         return expressions.at(&expr);
@@ -123,7 +126,7 @@ private:
     void prepareFunction(const std::string& name);
     void prepareFunctionBody(const std::string& name);
 
-    // The plan's Typer resolver, bound to the heap plan (stable address).
+    // The planning-only Typer resolver prepares callees lazily.
     std::optional<ips::FunctionSurface> resolveFunction(
         const std::string& name, const ips::SourceLocation& at,
         const std::string& ns);

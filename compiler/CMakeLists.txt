@@ -3,6 +3,7 @@
 add_library(iprop_compiler STATIC
     Compiler.cpp
     Plan.cpp
+    CallResolver.cpp
     Emit.cpp
     EmitExpr.cpp
     EmitCall.cpp

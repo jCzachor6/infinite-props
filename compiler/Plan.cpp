@@ -7,16 +7,6 @@
 namespace iprop::compiler {
 namespace {
 
-ips::ValueType inputValueType(ips::InputType type) {
-    switch (type) {
-    case ips::InputType::Color: return ips::ValueType::Color;
-    case ips::InputType::F32: return ips::ValueType::F32;
-    case ips::InputType::U32:
-    case ips::InputType::I32: return ips::ValueType::I32;
-    }
-    return ips::ValueType::I32;
-}
-
 ValueType runtimeType(ips::ValueType type) {
     switch (type) {
     case ips::ValueType::I32: return ValueType::I32;
@@ -116,6 +106,21 @@ std::unique_ptr<Plan> Planner::plan() {
 
     for (const auto& function : plan_->functions) {
         prepareFunction(function.name);
+    }
+
+    for (auto& function : plan_->functions) {
+        const CallResolver resolver(*plan_, function);
+        try {
+            for (auto& [expr, annotation] : function.expressions) {
+                if (const auto* call = std::get_if<ips::Call>(expr))
+                    function.calls.emplace(call, resolver.resolve(*call));
+                if (const auto* index = std::get_if<ips::Index>(expr))
+                    annotation.palette = &plan_->palette(*function.owner, *index->object);
+            }
+        } catch (ips::SourceError& error) {
+            if (error.path.empty()) error.path = plan_->sourcePath(function.owner);
+            throw;
+        }
     }
 
     // The local names are known only after preparation: register them now,
@@ -294,8 +299,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
                       "input i32 is not supported by the v0.1 format (use u32)");
             }
             info.slots.emplace(input.name, slot);
-            info.langTypes.emplace(input.name, inputValueType(input.type));
-            info.params.push_back(runtimeType(inputValueType(input.type)));
+            info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));
+            info.params.push_back(runtimeType(ips::valueTypeOf(input.type)));
             ++slot;
         }
     } else {

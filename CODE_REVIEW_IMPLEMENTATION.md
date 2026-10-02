@@ -10,7 +10,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] R4 / A3: wspólna geometria części, `D4Transform`, fabryka `PartRenderPlan`, skala/origin/zagnieżdżenia i własności transformacji.
 - [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
 - [x] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
-- [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
+- [x] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
 - [x] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
 - [x] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
 - [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
@@ -151,4 +151,14 @@ a semantyka odrzuca powtórzone nazwy wszystkich argumentów. Test helpera
 z półprzezroczystym pikselem potwierdza pojedynczą ewaluację. Specyfikacja
 0.3 opisuje obie reguły. CTest 7/7 PASS.
 
-W toku: resolver wariantów wywołań i pozostałe przypadki graniczne.
+A2, etap 2: `CallResolver` buduje wariant `BuiltinCall`/`UserCall`/
+`PartCall`/`RampCall`. Plan zawiera przeciążenie, promocje, kolejność
+argumentów, lokalizację, zdekodowane domyślne uniformy, indeks celu i D4.
+Emiter nie wyszukuje nazw, przeciążeń, palet ani transformacji. Zasady
+typowania wywołań są w osobnym `TypingCalls.cpp`. Test zapisuje kolejność
+22 efektów i bity RNG w builtinach, round, poly, helperach, uniformach,
+seed/variant/archetype, placement i singleton ramp. Zachowano i opisano
+historyczną kolejność ewaluacji. CTest 7/7 oraz pełne native/WASM/golden
+PASS (`call-plan-conformance.log`).
+
+W toku: optymalizacja ramp i pozostałe przypadki graniczne.

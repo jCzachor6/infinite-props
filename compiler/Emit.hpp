@@ -24,8 +24,8 @@ public:
     // modified except for the constant pools and the function being emitted.
     explicit Emitter(Plan& plan);
 
-    // Emits one function's body into `function.code`. Appends the scratch
-    // local when the body uses short-circuit operators.
+    // Emits one function's body into `function.code`, acquiring typed
+    // temporary locals only for values whose lifetimes overlap.
     void emitFunction(PlannedFunction& function);
 
 private:
@@ -72,12 +72,10 @@ private:
     ips::ValueType emitPartRead(const ips::Expr& expr);
     ips::ValueType emitBinary(const ips::Binary& bin);
     ips::ValueType emitUnary(const ips::Unary& un);
-    ips::ValueType emitIndex(const ips::Index& index);
-    ips::ValueType emitRamp(const ips::Call& call);
     ips::ValueType emitCall(const ips::Call& call);
-    void emitArg(const ips::Arg& arg, ips::ValueType expected);
-    ips::ValueType emitBuiltin(const std::string& name, const ips::Call& call);
-    void emitPartCall(const ips::Call& call);
+    void emitArg(const PlannedArgument& arg);
+    ips::ValueType emitBuiltin(const BuiltinCall& call);
+    void emitPartCall(const PartCall& call);
 
     struct PartRead {
         std::string alias;
