@@ -41,7 +41,9 @@ add_executable(iprop_tests
     format_test.cpp
     asset_test.cpp
     code_test.cpp
-    validator_test.cpp
+    validation/opcodes_test.cpp
+    validation/functions_test.cpp
+    validation/parts_test.cpp
     opcode_spec_test.cpp
     vm_test.cpp
     control_test.cpp
@@ -66,6 +68,7 @@ add_executable(iprop_tests
     utf8_test.cpp
     support/compiler_support.cpp
     support/semantic_support.cpp
+    support/validation_support.cpp
     support/test_support.cpp)
 
 target_link_libraries(iprop_tests PRIVATE
