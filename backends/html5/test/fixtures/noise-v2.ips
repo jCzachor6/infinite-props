@@ -1,0 +1,26 @@
+asset noiseV2 {
+  size 8x8
+  output point gradient
+  output point octaves
+  output point cellular
+  output point warped
+  output point jitter
+  output point ridged
+  output point worleyRegression
+  output point jitterRegression
+  output point gradientLimits
+
+  draw(v: i32, a: i32) {
+    gradient = {noise.grad(1.5, 2.5, 7), noise.grad(-3.25, 4.75, 7)}
+    octaves = {noise.fbm(0.5, 0.5, 4, 7), noise.fbm(1.5, 2.5, 3, 7)}
+    cellular = {noise.cell(0.5, 0.5, 7), noise.cell(-3.25, 4.75, 7)}
+    warped = {warp(0.5, 0.5, 0.2, 7), noise.fbm(0.5, 0.5, 0, 7)}
+    jitter = cell.jitter(3, 4, 7)
+    ridged = {noise.ridge(0.5, 0.5, 4, 7), noise.ridge(0.0, 0.0, 8, 7)}
+    worleyRegression = {noise.cell(0.0, 0.0, 2070), noise.cell(-0.0001, 0.0, 2070)}
+    jitterRegression = {cell.jitter(1571, 0, 7).x, cell.jitter(1048576, 0, 7).x}
+    gradientLimits = {noise.grad(-2147483648.0, 0.0, 7), noise.grad(2147483520.0, 0.0, 7)}
+    radius = 2.0 + noise.fbm(0.5, 0.5, 4, 7)
+    oval(4, 4, radius, radius, #00ff00)
+  }
+}

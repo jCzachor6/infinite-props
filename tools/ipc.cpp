@@ -153,8 +153,10 @@ int main(int argc, char* argv[]) {
         out.write(reinterpret_cast<const char*>(bytes.data()),
                   static_cast<std::streamsize>(bytes.size()));
     } catch (const iprop::ips::SourceError& error) {
-        // Import-DAG and compiler errors carry their own locations.
-        std::cerr << "ipc: " << error.message << "\n";
+        const std::string path = error.path.empty() ? entryPath.filename().string() : error.path;
+        std::string source;
+        try { source = loadSource(path); } catch (const std::exception&) { /* file unavailable */ }
+        reportError(path, source, error);
         return 1;
     } catch (const std::exception& error) {
         return fail(error.what());

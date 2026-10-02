@@ -39,6 +39,14 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 
+## Test layout
+
+The larger Catch2 suites are grouped in `tests/compiler/`, `tests/language/`,
+`tests/math/` and `tests/validation/`. Shared builders, fixtures and assertion
+helpers live in `tests/support/`; backend conformance suites live beside their
+backend. Register each new test source explicitly in the matching
+`CMakeLists.txt` so it is compiled and run by CTest.
+
 ## Style
 
 - C++20, 4-space indentation, `snake_case` for functions/variables,

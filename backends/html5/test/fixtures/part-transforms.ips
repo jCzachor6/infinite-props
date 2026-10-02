@@ -1,0 +1,31 @@
+import tile from "transform-tile.ips"
+asset partTransforms {
+  size 12x8
+  variants 8
+  output point p
+  output rect r
+  output circle c
+
+  draw(v: i32, a: i32) {
+    if (v == 0) {
+      tile.draw(seed, 0, a, at = {4, 1})
+    } else if (v == 1) {
+      tile.draw(seed, 0, a, at = {4, 1}, rot = 90)
+    } else if (v == 2) {
+      tile.draw(seed, 0, a, at = {4, 1}, rot = 180)
+    } else if (v == 3) {
+      tile.draw(seed, 0, a, at = {4, 1}, rot = 270)
+    } else if (v == 4) {
+      tile.draw(seed, 0, a, at = {4, 1}, mirror_x = true)
+    } else if (v == 5) {
+      tile.draw(seed, 0, a, at = {4, 1}, mirror_y = true)
+    } else if (v == 6) {
+      tile.draw(seed, 0, a, at = {4, 1}, rot = 90, mirror_y = true)
+    } else {
+      tile.draw(seed, 0, a, at = {4, 1}, rot = 90, mirror_x = true)
+    }
+    p = tile.outputs.anchor
+    r = tile.outputs.box
+    c = tile.outputs.zone
+  }
+}

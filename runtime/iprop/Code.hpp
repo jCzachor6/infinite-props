@@ -9,11 +9,13 @@
 
 namespace iprop {
 
-// Stack value types (spec §6.1 type codes: 0 = i32, 1 = f32, 2 = colour).
+// Stack value types (spec §6.1 type codes: 0 = i32, 1 = f32, 2 = colour,
+// 3 = vec2).
 enum class ValueType : u8 {
     I32 = 0,
     F32 = 1,
     Color = 2,
+    Vec2 = 3,
 };
 
 // One function declaration plus its instruction stream (spec §6.1/§6.2).

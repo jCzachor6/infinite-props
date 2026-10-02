@@ -1,8 +1,9 @@
 #include "Emit.hpp"
+#include "PaletteLowerer.hpp"
 
 #include <utility>
 
-#include "Fold.hpp"
+#include "ips/Fold.hpp"
 
 namespace iprop::compiler {
 
@@ -10,7 +11,8 @@ namespace iprop::compiler {
 
 ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     currentLine_ = static_cast<u32>(ips::locationOf(expr).line);
-    if (Value folded; foldExpression(expr, folded)) {
+    if (const auto& constant = current_->expression(expr).constant; constant) {
+        const auto& folded = *constant;
         emitConst(folded);
         if (std::holds_alternative<i32>(folded)) {
             return ips::ValueType::I32;
@@ -29,14 +31,38 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         ins(Opcode::LocalGet, 0, static_cast<u16>(slot));
         return current_->langTypes.at(id->name);
     }
+    if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
+        // A {x, y} literal in a value context becomes the vec2; the
+        // 3/4-element compounds only flow into output writes.
+        if (vector->elements.size() != 2) {
+            error(ips::locationOf(expr),
+                  "rect/circle literals only flow into output writes");
+        }
+        for (const auto& element : vector->elements) {
+            emitExpr(*element);
+            if (current_->typeOf(*element) == ips::ValueType::I32) {
+                ins(Opcode::I32ToF32);
+            }
+        }
+        ins(Opcode::Vec2Make);
+        return ips::ValueType::Vec2;
+    }
     if (std::holds_alternative<ips::Member>(expr)) {
+        const auto& member = std::get<ips::Member>(expr);
+        // Components yield f32; bare part outputs keep their compound type.
+        // This also distinguishes part.outputs.x from part.outputs.top.x.
+        if (current_->typeOf(expr) == ips::ValueType::F32) {
+            emitExpr(*member.object);
+            ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
+            return ips::ValueType::F32;
+        }
         return emitPartRead(expr);
     }
     if (const auto* call = std::get_if<ips::Call>(&expr)) {
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {
-        return emitIndex(*index);
+        return PaletteLowerer(*this, *current_->expression(expr).palette).index(*index->index);
     }
     if (const auto* bin = std::get_if<ips::Binary>(&expr)) {
         return emitBinary(*bin);
@@ -48,18 +74,44 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
 }
 
 // A point value used by output writes and part placement: a vector literal
-// {x, y} or a part read of a point.
+// {x, y} (the pair, as in v0.2), a bare part read of a point (the pair —
+// the v0.2 byte-identical lowering), or any other vec2 value (unpacked via
+// the swizzles).
 void Emitter::emitPointValue(const ips::Expr& expr) {
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         for (const auto& element : vector->elements) {
             emitExpr(*element);
-            if (plan_.typeEngine().typeOf(*element) == ips::ValueType::I32) {
+            if (current_->typeOf(*element) == ips::ValueType::I32) {
                 ins(Opcode::I32ToF32);
             }
         }
         return;
     }
-    emitExpr(expr); // part.get.point
+    if (std::holds_alternative<ips::Member>(expr)) {
+        // part.outputs.<name> — the bare pair, byte-identical to v0.2.
+        const PartRead read = partReadInfo(expr);
+        const u32 part = plan_.partIndex.at(read.alias);
+        u32 slot = static_cast<u32>(plan_.rootSlots.size());
+        for (u32 i = 0; i < part; ++i) {
+            slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
+        }
+        for (const auto& output : plan_.parts[part]->asset.outputs) {
+            if (output.name == read.output->name) {
+                break;
+            }
+            ++slot;
+        }
+        ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
+        return;
+    }
+    // A general vec2 value: unpack to (x, y) with y on top.
+    emitExpr(expr);
+    const auto y = temporary(ips::ValueType::F32);
+    ins(Opcode::Dup);
+    ins(Opcode::Vec2Y);
+    ins(Opcode::LocalSet, 0, y.index());
+    ins(Opcode::Vec2X);
+    ins(Opcode::LocalGet, 0, y.index());
 }
 
 Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
@@ -113,7 +165,8 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     switch (read.kind) {
     case ips::OutputKind::Point:
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
-        return ips::ValueType::Point;
+        ins(Opcode::Vec2Make);
+        return ips::ValueType::Vec2;
     case ips::OutputKind::Rect:
         ins(Opcode::PartGetRect, 0, static_cast<u16>(slot));
         return ips::ValueType::Rect;
@@ -125,16 +178,49 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
 }
 
 ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
-    const ips::ValueType leftType = plan_.typeEngine().typeOf(*bin.left);
-    const ips::ValueType rightType = plan_.typeEngine().typeOf(*bin.right);
+    const ips::ValueType leftType = current_->typeOf(*bin.left);
+    const ips::ValueType rightType = current_->typeOf(*bin.right);
     const bool f32op = leftType == ips::ValueType::F32 ||
                        rightType == ips::ValueType::F32;
+    const bool vec2op = leftType == ips::ValueType::Vec2 ||
+                        rightType == ips::ValueType::Vec2;
 
     switch (bin.op) {
     case ips::Binary::Op::Add:
     case ips::Binary::Op::Sub:
     case ips::Binary::Op::Mul:
     case ips::Binary::Op::Div: {
+        if (vec2op) {
+            const bool rightIsVector = rightType == ips::ValueType::Vec2;
+            if (bin.op == ips::Binary::Op::Mul && rightIsVector &&
+                leftType != ips::ValueType::Vec2) {
+                // Evaluate left first, but arrange the VM operands as (v, s).
+                // A distinct local keeps s alive across nested products and
+                // builtins that need their own temporaries while evaluating v.
+                emitExpr(*bin.left);
+                if (leftType == ips::ValueType::I32) {
+                    ins(Opcode::I32ToF32);
+                }
+                const auto scalar = temporary(ips::ValueType::F32);
+                ins(Opcode::LocalSet, 0, scalar.index());
+                emitExpr(*bin.right);
+                ins(Opcode::LocalGet, 0, scalar.index());
+            } else {
+                emitExpr(*bin.left);
+                emitExpr(*bin.right);
+                if (rightType == ips::ValueType::I32) {
+                    ins(Opcode::I32ToF32);
+                }
+            }
+            switch (bin.op) {
+            case ips::Binary::Op::Add: ins(Opcode::Vec2Add); break;
+            case ips::Binary::Op::Sub: ins(Opcode::Vec2Sub); break;
+            case ips::Binary::Op::Mul: ins(Opcode::Vec2Mul); break;
+            case ips::Binary::Op::Div: ins(Opcode::Vec2Div); break;
+            default: break;
+            }
+            return ips::ValueType::Vec2;
+        }
         emitExpr(*bin.left);
         if (f32op && leftType == ips::ValueType::I32) {
             ins(Opcode::I32ToF32);
@@ -225,9 +311,10 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
     }
     case ips::Binary::Op::And:
     case ips::Binary::Op::Or: {
-        // Short-circuit with 0/1 normalisation; the scratch local is reused
-        // for every && / || in the function.
+        // Short-circuit with 0/1 normalisation; nested expressions retain
+        // distinct result slots until the corresponding join.
         emitExpr(*bin.left);
+        const auto result = temporary(ips::ValueType::I32);
         ins(Opcode::If);
         if (bin.op == ips::Binary::Op::And) {
             emitExpr(*bin.right);
@@ -236,7 +323,7 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
         } else {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(1)));
         }
-        ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalSet, 0, result.index());
         ins(Opcode::Else);
         if (bin.op == ips::Binary::Op::And) {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
@@ -245,9 +332,9 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
             ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
             ins(Opcode::I32Ne);
         }
-        ins(Opcode::LocalSet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalSet, 0, result.index());
         ins(Opcode::End);
-        ins(Opcode::LocalGet, 0, static_cast<u16>(scratch()));
+        ins(Opcode::LocalGet, 0, result.index());
         return ips::ValueType::I32;
     }
     }
@@ -255,11 +342,16 @@ ips::ValueType Emitter::emitBinary(const ips::Binary& bin) {
 }
 
 ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
-    const ips::ValueType operand = plan_.typeEngine().typeOf(*un.operand);
+    const ips::ValueType operand = current_->typeOf(*un.operand);
     emitExpr(*un.operand);
     switch (un.op) {
     case ips::Unary::Op::Neg:
-        ins(operand == ips::ValueType::F32 ? Opcode::F32Neg : Opcode::I32Neg);
+        if (operand == ips::ValueType::Vec2) {
+            ins(Opcode::Vec2Neg);
+        } else {
+            ins(operand == ips::ValueType::F32 ? Opcode::F32Neg
+                                               : Opcode::I32Neg);
+        }
         return operand;
     case ips::Unary::Op::Not:
         ins(Opcode::ConstI32, 0, static_cast<u16>(plan_.pools.addInt(0)));
@@ -270,95 +362,6 @@ ips::ValueType Emitter::emitUnary(const ips::Unary& un) {
         return ips::ValueType::I32;
     }
     error(un.location, "unsupported unary operator");
-}
-
-// `palette[i]` — the hand-written picker semantics, desugared: evaluate
-// the index once, default to the last element, override for every earlier
-// element. A constant index folds to the element (an out-of-range constant
-// yields the default, matching the runtime ladder). No VM change.
-ips::ValueType Emitter::emitIndex(const ips::Index& index) {
-    const auto* name = std::get_if<ips::Identifier>(index.object.get());
-    if (name == nullptr) {
-        error(locationOf(*index.object), "only palettes can be indexed");
-    }
-    const ips::PaletteDecl* palette = nullptr;
-    for (const auto& candidate : current_->owner->asset.palettes) {
-        if (candidate.name == name->name) {
-            palette = &candidate;
-            break;
-        }
-    }
-    if (palette == nullptr) {
-        error(name->location, "'" + name->name + "' is not a palette");
-    }
-
-    const auto elementType = [&](const ips::Expr& element) {
-        const auto* literal = std::get_if<ips::Literal>(&element);
-        if (literal == nullptr) {
-            error(locationOf(element), "palette elements must be literals");
-        }
-        switch (literal->kind) {
-        case ips::Literal::Kind::Int:
-        case ips::Literal::Kind::True:
-        case ips::Literal::Kind::False:
-            return ips::ValueType::I32;
-        case ips::Literal::Kind::Float:
-            return ips::ValueType::F32;
-        case ips::Literal::Kind::Color:
-            return ips::ValueType::Color;
-        case ips::Literal::Kind::String:
-            break;
-        }
-        error(locationOf(element), "palette elements must be literals");
-    };
-    const auto emitElement = [&](const ips::Expr& element) {
-        Value folded;
-        if (!foldExpression(element, folded)) {
-            error(locationOf(element), "palette elements must be literals");
-        }
-        emitConst(folded);
-    };
-
-    const ips::ValueType type = elementType(*palette->elements[0]);
-    const std::size_t count = palette->elements.size();
-
-    // Constant indices fold; the fold matches the ladder for the
-    // out-of-range and negative cases (the default element).
-    if (Value foldedIndex; foldExpression(*index.index, foldedIndex)) {
-        if (const auto* k = std::get_if<i32>(&foldedIndex)) {
-            const std::size_t chosen =
-                (*k >= 0 && static_cast<std::size_t>(*k) + 1 < count)
-                    ? static_cast<std::size_t>(*k)
-                    : count - 1;
-            emitElement(*palette->elements[chosen]);
-            return type;
-        }
-    }
-
-    // Runtime ladder.
-    emitExpr(*index.index);
-    const u16 indexSlot = static_cast<u16>(scratch());
-    ins(Opcode::LocalSet, 0, indexSlot);
-    const u16 resultSlot = static_cast<u16>(scratchOf(type));
-    // For i32/bool the result reuses the index local. Select exactly once
-    // before overwriting it, and leave the ladder after a match.
-    ins(Opcode::Block);
-    for (std::size_t k = 0; k + 1 < count; ++k) {
-        ins(Opcode::ConstI32, 0,
-            static_cast<u16>(plan_.pools.addInt(static_cast<u32>(k))));
-        ins(Opcode::LocalGet, 0, indexSlot);
-        ins(Opcode::I32Eq);
-        ins(Opcode::If);
-        emitElement(*palette->elements[k]);
-        ins(Opcode::LocalSet, 0, resultSlot);
-        ins(Opcode::Br, 0, 1);
-        ins(Opcode::End);
-    }
-    emitElement(*palette->elements.back());
-    ins(Opcode::LocalSet, 0, resultSlot);
-    ins(Opcode::End);
-    ins(Opcode::LocalGet, 0, resultSlot);
-    return type;
 }
 
 } // namespace iprop::compiler

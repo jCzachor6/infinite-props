@@ -144,6 +144,11 @@ TEST_CASE("helpers and parts assemble with named references") {
 }
 
 TEST_CASE("assembler errors carry the offending line") {
+    for (const std::string kind : {"-1", "8", "256", "1.5", "nope"}) {
+        REQUIRE_THROWS_WITH(assemble("meta: size=8x8\nfn draw ( i32, i32 ) -> ( ):\n"
+                                    "part.draw stamp " + kind + "\nendfn\n"),
+                           Catch::Matchers::ContainsSubstring("part transform kind"));
+    }
     REQUIRE_THROWS_WITH(assemble(R"(
         meta: size=8x8
         fn draw ( i32, i32 ) -> ( ):

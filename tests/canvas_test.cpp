@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -149,6 +150,107 @@ TEST_CASE("pixel writes opaque colours and clips out-of-bounds") {
     RefCanvas ref(8, 8);
     ref.pixel(2, 3, red);
     requireSame(canvas, ref);
+}
+
+TEST_CASE("quadratic and cubic strokes have finite round caps") {
+    const Color red{255, 0, 0, 255};
+    for (const bool cubic : {false, true}) {
+        Prog prog;
+        prog.F(1.f).F(3.f).emit(0x5B).F(3.f).F(3.f).emit(0x5B);
+        if (cubic) prog.F(3.f).F(3.f).emit(0x5B);
+        prog.F(5.f).F(3.f).emit(0x5B).F(2.f).C(red).emit(cubic ? 0x87 : 0x86);
+        const auto canvas = runProgCanvas(prog);
+        for (i32 y = 0; y < 8; ++y) {
+            for (i32 x = 0; x < 8; ++x) {
+                const i32 dx = x < 1 ? 1 - x : x > 5 ? x - 5 : 0;
+                const i32 dy = y - 3;
+                const bool covered = dx * dx + dy * dy <= 1;
+                INFO("cubic=" << cubic << " pixel=" << x << "," << y);
+                REQUIRE(canvas.at(static_cast<u32>(x), static_cast<u32>(y)) ==
+                        (covered ? red : Color{}));
+            }
+        }
+    }
+}
+
+TEST_CASE("Bezier strokes follow curved geometry rather than the endpoint chord") {
+    const Color blue{0, 0, 255, 255};
+    for (const bool cubic : {false, true}) {
+        Prog prog;
+        prog.F(1.f).F(5.f).emit(0x5B);
+        if (cubic) {
+            prog.F(1.f).F(1.f).emit(0x5B).F(5.f).F(1.f).emit(0x5B);
+        } else {
+            prog.F(3.f).F(1.f).emit(0x5B);
+        }
+        prog.F(5.f).F(5.f).emit(0x5B).F(0.25f).C(blue).emit(cubic ? 0x87 : 0x86);
+        const auto canvas = runProgCanvas(prog);
+        REQUIRE(canvas.at(1, 5) == blue);
+        REQUIRE(canvas.at(5, 5) == blue);
+        REQUIRE(canvas.at(3, cubic ? 2 : 3) == blue);
+        REQUIRE(canvas.at(3, 5) == Color{});
+    }
+}
+
+TEST_CASE("curve scaling preserves pixel thickness and a constant curve becomes a disk") {
+    const Color green{0, 255, 0, 255};
+    Prog line;
+    line.F(1.f).F(3.f).emit(0x5B).F(3.f).F(3.f).emit(0x5B)
+        .F(5.f).F(3.f).emit(0x5B).F(2.f).C(green).emit(0x86);
+    const auto scaled = runProgCanvas(line, 16, 24);
+    REQUIRE(scaled.at(2, 9) == green);
+    REQUIRE(scaled.at(10, 9) == green);
+    REQUIRE(scaled.at(6, 8) == green);
+    REQUIRE(scaled.at(6, 7) == Color{});
+    REQUIRE(scaled.at(12, 9) == Color{});
+    Prog point;
+    for (int i = 0; i < 4; ++i) point.F(2.f).F(2.f).emit(0x5B);
+    point.F(2.f).C(green).emit(0x87);
+    const auto disk = runProgCanvas(point);
+    REQUIRE(disk.at(2, 2) == green);
+    REQUIRE(disk.at(3, 2) == green);
+    REQUIRE(disk.at(3, 3) == Color{});
+}
+
+TEST_CASE("curve fuel charges the complete control box before drawing") {
+    Prog prog;
+    // Expanded box [0,6] x [2,4]: 21 visits plus 12 instructions.
+    prog.F(1.f).F(3.f).emit(0x5B).F(3.f).F(3.f).emit(0x5B)
+        .F(5.f).F(3.f).emit(0x5B).F(2.f).C({255, 0, 0, 255}).emit(0x86);
+    const auto bytes = buildProgFile(prog);
+    const auto loaded = loadFile(bytes);
+    VM vm(loaded, {});
+    vm.run();
+    REQUIRE(vm.fuelBudget() - vm.fuel() == 33);
+    Prog huge;
+    huge.F(-1000.f).F(-1000.f).emit(0x5B).F(0.f).F(0.f).emit(0x5B)
+        .F(1000.f).F(1000.f).emit(0x5B).F(1.f).C({255, 0, 0, 255}).emit(0x86);
+    const auto hugeBytes = buildProgFile(huge);
+    const auto hugeLoaded = loadFile(hugeBytes);
+    VM limited(hugeLoaded, {});
+    REQUIRE_THROWS_AS(limited.run(), Trap);
+    REQUIRE(std::all_of(limited.canvas().pixels.begin(), limited.canvas().pixels.end(),
+                        [](Color c) { return c == Color{}; }));
+}
+
+TEST_CASE("curve thickness and coordinates are validated before raster conversion") {
+    for (const f32 thickness : {0.f, -1.f, std::numeric_limits<f32>::infinity()}) {
+        Prog prog;
+        for (int i = 0; i < 3; ++i) prog.F(2.f).F(2.f).emit(0x5B);
+        prog.F(thickness).C({255, 0, 0, 255}).emit(0x86);
+        if (std::isfinite(thickness)) {
+            const auto canvas = runProgCanvas(prog);
+            REQUIRE(std::all_of(canvas.pixels.begin(), canvas.pixels.end(),
+                                [](Color c) { return c == Color{}; }));
+        } else {
+            expectProgTrap(prog, "curve thickness out of range");
+        }
+    }
+    Prog badControl;
+    badControl.F(std::numeric_limits<f32>::infinity()).F(0.f).emit(0x5B)
+        .F(1.f).F(1.f).emit(0x5B).F(2.f).F(2.f).emit(0x5B)
+        .F(1.f).C({255, 0, 0, 255}).emit(0x86);
+    expectProgTrap(badControl, "coordinate out of range");
 }
 
 TEST_CASE("the alpha rule blends channels and keeps the destination alpha") {

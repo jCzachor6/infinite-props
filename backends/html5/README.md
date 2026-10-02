@@ -13,12 +13,13 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `CMakeLists.txt` | the Emscripten build |
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
 | `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/plant) with a Regenerate button |
-| `demo/assets/` | the seed-varying `.ips` demo assets |
+| `demo/assets/noise.ips` | the seed-varying noise demo; composed plant sources live in `examples/` |
 | `test/conformance.js` | the shared conformance suite (browser + Node) |
 | `test/run-tests.js` | the Node test runner |
 | `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
 | `test/png.js` | RGBA8 PNG decoder for native comparisons; regression tests cover all five row filters |
 | `test/fixtures/loop1.ipa` | the three-pixel regression from the resolved divergence report |
+| `test/fixtures/bezier.ips` | SDF bit pins, bounded quadratic/cubic distances and both stroke forms |
 | `test/assets/` | the test binaries (synced by `prepare.sh`) |
 | `prepare.sh` | syncs the demo/conformance assets from the repo |
 
@@ -48,15 +49,18 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
 - **Demo:** serve `backends/html5/demo/` over HTTP (browsers block raw
   `file://` module loading) — e.g. `python3 -m http.server -d backends/html5/demo 8000`
   and open `http://localhost:8000`. The portrait sheet is pixel-identical to
-  `examples/portrait-sheet.png`; the noise/plant assets are authored in
-  `.ips` and vary with the seed (the golden fixtures are seed-independent
-  by design, which is why the demo uses its own).
+  `examples/portrait-sheet.png`. The plant uses `examples/plant.ips` with
+  its pot and flower parts; the noise uses `demo/assets/noise.ips`. Both
+  vary with the seed (the noise golden fixture is seed-independent).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
   runs the seven browser golden entries, verifies their FNV-1a pins against
   fresh native renders and the committed golden PNGs, and compares every
   RGBA byte and structured output across both backends. It also compiles
-  the loop regression, noise, shapes, portrait, plant, parts, and demo noise
-  from source and compares seeds 0/1/2/7/26 (42 comparisons in total).
+  the loop regression, noise, shapes, portrait, plant, language, math edges,
+  SDF/Bézier queries and strokes, parts, and demo noise from source and
+  compares seeds 0/1/2/7/26, including scaled renders (131 comparisons in total).
+  Additional raw-bit cases check 6292 vector results and 29 color results
+  against the shared boundary corpus; 19 trap reasons are compared as well.
   A second argument can override the native tools directory (`build/tools`
   by default). Missing tools or mismatches fail the run.
 - **Harness tests:** `node --test backends/html5/test/*.test.js` —
@@ -84,6 +88,8 @@ default 0; a zero size means the asset's own size). `data` is a copied
   same build serves the demo page and the Node test runner.
 - The WASM heap is reused between `generate` calls; `js/api.js` copies the
   result so earlier results stay valid.
+- C++ exception handling is enabled at compilation and linking so validation
+  failures and runtime traps become catchable JavaScript `Error` objects.
 - Rebuild the pinned hashes in `test/conformance.js` whenever the semantics
   change intentionally (spec update first).
 
@@ -92,3 +98,15 @@ binary32 bits. `ipgen --float-bits` emits those bits as JSON integers; the
 WASM binding exposes them in each slot's `valueBits` array before JS number
 conversion. The math edge fixture pins NaN signs, infinities, signed zero,
 infinite powers and unequal-magnitude angles.
+
+The noise v2 fixture covers all six primitives, their raw binary32 pins,
+the Worley feature two cells away, jitter at rounding boundaries and safe
+lattice limits. A separate 13-variant fixture checks matching native/WASM
+traps for nonfinite inputs, octave/warp overflow and unrepresentable jitter
+cells. Error comparisons are reported separately from image comparisons.
+
+The curves fixture pins gain/quintic values, the finite `k = 1` limit,
+color interpolation at gain endpoints and color/f32 ramps. Singleton
+ramps are checked for helper drawing effects and exactly one RNG draw per
+argument. Two error variants verify that a singleton f32 or color ramp
+still executes an argument that traps.

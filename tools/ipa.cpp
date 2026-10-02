@@ -4,6 +4,7 @@
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
 #include "iprop/Instruction.hpp"
+#include "iprop/OpcodeSpec.hpp"
 #include "iprop/Meta.hpp"
 #include "iprop/Validator.hpp"
 
@@ -41,6 +42,7 @@ namespace {
 //     local.get 2
 //     call helper
 //     part.draw hair
+//     part.draw hair 4                  (optional D4 transform kind, 0–7)
 //     out.point pupil                   (slot names resolve to global indices)
 //     poly 3                            (vertex count operand)
 //     br 1                              (depth operand)
@@ -53,93 +55,9 @@ struct SourceError : std::runtime_error {
         : std::runtime_error("line " + std::to_string(line) + ": " + message) {}
 };
 
-struct OpDef {
-    Opcode opcode;
-    OperandKind operand = OperandKind::None;
-};
-
-const OpDef* lookup(const std::string& mnemonic) {
-    static const std::map<std::string, OpDef> table = {
-        {"nop", {Opcode::Nop}},
-        {"block", {Opcode::Block}},
-        {"loop", {Opcode::Loop}},
-        {"if", {Opcode::If}},
-        {"else", {Opcode::Else}},
-        {"end", {Opcode::End}},
-        {"br", {Opcode::Br, OperandKind::Depth}},
-        {"br_if", {Opcode::BrIf, OperandKind::Depth}},
-        {"call", {Opcode::Call, OperandKind::Name}},
-        {"return", {Opcode::Return}},
-
-        {"const.i32", {Opcode::ConstI32, OperandKind::IntConst}},
-        {"const.f32", {Opcode::ConstF32, OperandKind::FloatConst}},
-        {"const.color", {Opcode::ConstColor, OperandKind::ColorConst}},
-        {"local.get", {Opcode::LocalGet, OperandKind::Index}},
-        {"local.set", {Opcode::LocalSet, OperandKind::Index}},
-        {"local.tee", {Opcode::LocalTee, OperandKind::Index}},
-        {"drop", {Opcode::Drop}},
-        {"dup", {Opcode::Dup}},
-
-        {"i32.add", {Opcode::I32Add}}, {"i32.sub", {Opcode::I32Sub}},
-        {"i32.mul", {Opcode::I32Mul}}, {"i32.div_s", {Opcode::I32DivS}},
-        {"i32.div_u", {Opcode::I32DivU}}, {"i32.rem_s", {Opcode::I32RemS}},
-        {"i32.rem_u", {Opcode::I32RemU}}, {"i32.and", {Opcode::I32And}},
-        {"i32.or", {Opcode::I32Or}}, {"i32.xor", {Opcode::I32Xor}},
-        {"i32.shl", {Opcode::I32Shl}}, {"i32.shr_s", {Opcode::I32ShrS}},
-        {"i32.shr_u", {Opcode::I32ShrU}}, {"i32.neg", {Opcode::I32Neg}},
-        {"i32.not", {Opcode::I32Not}},
-        {"i32.eq", {Opcode::I32Eq}}, {"i32.ne", {Opcode::I32Ne}},
-        {"i32.lt_s", {Opcode::I32LtS}}, {"i32.lt_u", {Opcode::I32LtU}},
-        {"i32.gt_s", {Opcode::I32GtS}}, {"i32.gt_u", {Opcode::I32GtU}},
-        {"i32.le_s", {Opcode::I32LeS}}, {"i32.le_u", {Opcode::I32LeU}},
-        {"i32.ge_s", {Opcode::I32GeS}}, {"i32.ge_u", {Opcode::I32GeU}},
-
-        {"f32.add", {Opcode::F32Add}}, {"f32.sub", {Opcode::F32Sub}},
-        {"f32.mul", {Opcode::F32Mul}}, {"f32.div", {Opcode::F32Div}},
-        {"f32.eq", {Opcode::F32Eq}}, {"f32.ne", {Opcode::F32Ne}},
-        {"f32.lt", {Opcode::F32Lt}}, {"f32.gt", {Opcode::F32Gt}},
-        {"f32.le", {Opcode::F32Le}}, {"f32.ge", {Opcode::F32Ge}},
-        {"f32.neg", {Opcode::F32Neg}}, {"f32.abs", {Opcode::F32Abs}},
-        {"f32.sqrt", {Opcode::F32Sqrt}},
-        {"f32.sin", {Opcode::F32Sin}}, {"f32.cos", {Opcode::F32Cos}},
-        {"f32.floor", {Opcode::F32Floor}}, {"f32.ceil", {Opcode::F32Ceil}},
-        {"f32.min", {Opcode::F32Min}}, {"f32.max", {Opcode::F32Max}},
-        {"f32.pow", {Opcode::F32Pow}}, {"f32.exp", {Opcode::F32Exp}},
-        {"f32.atan2", {Opcode::F32Atan2}},
-        {"i32.to.f32", {Opcode::I32ToF32}}, {"f32.to.i32", {Opcode::F32ToI32}},
-
-        {"color.mix", {Opcode::ColorMix}}, {"color.shade", {Opcode::ColorShade}},
-
-        {"stream.push", {Opcode::StreamPush}}, {"stream.pop", {Opcode::StreamPop}},
-        {"rng.unit", {Opcode::RngUnit}}, {"rng.range", {Opcode::RngRange}},
-        {"rng.index", {Opcode::RngIndex}}, {"hash", {Opcode::Hash}},
-        {"stream.state", {Opcode::StreamState}},
-
-        {"noise", {Opcode::Noise}}, {"fault", {Opcode::Fault}},
-        {"smooth", {Opcode::Smooth}}, {"lerp", {Opcode::Lerp}},
-
-        {"pixel", {Opcode::Pixel}}, {"rect", {Opcode::Rect}},
-        {"line", {Opcode::Line}}, {"poly", {Opcode::Poly, OperandKind::Count}},
-        {"oval", {Opcode::Oval}}, {"weather", {Opcode::Weather}},
-
-        {"out.point", {Opcode::OutPoint, OperandKind::Name}},
-        {"out.rect", {Opcode::OutRect, OperandKind::Name}},
-        {"out.circle", {Opcode::OutCircle, OperandKind::Name}},
-        {"out.list.point", {Opcode::OutListPoint, OperandKind::Name}},
-        {"out.list.rect", {Opcode::OutListRect, OperandKind::Name}},
-        {"out.list.circle", {Opcode::OutListCircle, OperandKind::Name}},
-        {"part.get.point", {Opcode::PartGetPoint, OperandKind::Name}},
-        {"part.get.rect", {Opcode::PartGetRect, OperandKind::Name}},
-        {"part.get.circle", {Opcode::PartGetCircle, OperandKind::Name}},
-
-        {"part.draw", {Opcode::PartDraw, OperandKind::Name}},
-    };
-    const auto found = table.find(mnemonic);
-    return found == table.end() ? nullptr : &found->second;
-}
-
 struct AsmInstruction {
     Opcode opcode;
+    u8 aux = 0;
     OperandKind operand = OperandKind::None;
     std::string operandText;
     int line = 0;
@@ -218,6 +136,10 @@ bool parseValueType(const std::string& text, ValueType& out) {
     }
     if (text == "color") {
         out = ValueType::Color;
+        return true;
+    }
+    if (text == "vec2") {
+        out = ValueType::Vec2;
         return true;
     }
     return false;
@@ -546,7 +468,7 @@ std::vector<u8> assemble(const std::string& source) {
         if (function == nullptr) {
             throw error("instruction outside a function: '" + words[0] + "'");
         }
-        const OpDef* def = lookup(words[0]);
+        const OpcodeSpec* def = findOpcode(words[0]);
         if (def == nullptr) {
             throw error("unknown instruction '" + words[0] + "'");
         }
@@ -554,6 +476,14 @@ std::vector<u8> assemble(const std::string& source) {
         instruction.opcode = def->opcode;
         instruction.operand = def->operand;
         instruction.line = lineNumber;
+        if (instruction.opcode == Opcode::PartDraw && words.size() == 3) {
+            u32 kind = 0;
+            if (!parseU32Text(words[2], kind) || kind > 7) {
+                throw error("part transform kind must be 0 through 7");
+            }
+            instruction.aux = static_cast<u8>(kind);
+            words.pop_back();
+        }
         if (def->operand != OperandKind::None) {
             if (words.size() != 2) {
                 throw error("instruction '" + words[0] + "' expects one operand");
@@ -853,7 +783,7 @@ std::vector<u8> assemble(const std::string& source) {
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
             streams.writeU8(static_cast<u8>(fn.instructions[j].opcode));
-            streams.writeU8(0); // aux
+            streams.writeU8(fn.instructions[j].aux);
             streams.writeU16(operands[i][j]);
         }
     }

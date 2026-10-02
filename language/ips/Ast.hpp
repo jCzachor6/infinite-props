@@ -197,7 +197,7 @@ struct OutputDecl {
 
 // `palette name = [ e, e, ... ]` — asset-level constant array data. The
 // elements are expressions (the checker requires them constant); the
-// compiler desugars `name[i]` into an if-ladder with the last element as
+// compiler desugars `name[i]` into a selection tree with the last element as
 // the default.
 struct PaletteDecl {
     std::string name;
@@ -208,7 +208,7 @@ struct PaletteDecl {
 // The declared type of a function parameter or return value: the three
 // scalar types the VM can store in locals (spec §3/§9). Unlike `input`,
 // there is no u32 — parameters are always locals.
-enum class ParamType { I32, F32, Color };
+enum class ParamType { I32, F32, Color, Vec2 };
 
 // One function parameter: a name plus its declared type. Pre-1.0 the type
 // is mandatory — untyped parameters are rejected (the language is not

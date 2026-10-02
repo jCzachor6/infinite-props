@@ -7,7 +7,7 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 2;
+inline constexpr u16 kVersionMinor = 3;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 
@@ -106,7 +106,7 @@ enum class Opcode : u8 {
     // Colour (§9.5)
     ColorMix = 0x50,
     ColorShade = 0x51,
-    ColorSetA = 0x52, // reserved in v0.1; validation rejects it
+    ColorSetA = 0x52, // v0.3: the alpha set; reserved (rejected) before 0.3
     F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
     // The math package (§9.4/§12.8)
@@ -117,6 +117,13 @@ enum class Opcode : u8 {
     F32Pow = 0x58,
     F32Exp = 0x59,
     F32Atan2 = 0x5A,
+
+    // Vec2 (spec §9.4; added in v0.3)
+    Vec2Make = 0x5B,
+    Vec2Add = 0x5C,
+    Vec2Sub = 0x5D,
+    Vec2Mul = 0x5E,
+    Vec2Div = 0x5F,
 
     // Seeded primitives (§9.6)
     StreamPush = 0x60,
@@ -133,6 +140,21 @@ enum class Opcode : u8 {
     Smooth = 0x72,
     Lerp = 0x73,
 
+    // Vec2 unary ops (spec §9.4; added in v0.3, placed after the helpers)
+    Vec2Neg = 0x74,
+    Vec2Len = 0x75,
+    Vec2Dot = 0x76,
+    Vec2Rot = 0x77,
+    Vec2X = 0x78,
+    Vec2Y = 0x79,
+
+    // Signed-distance fields (spec §9.4/§12.9; added in v0.3)
+    DistCircle = 0x7A,
+    DistRect = 0x7B,
+    DistRoundRect = 0x7C,
+    DistLine = 0x7D,
+    DistBezier = 0x7E,
+    Fill = 0x7F,
     // Canvas (§9.8)
     Pixel = 0x80,
     Rect = 0x81,
@@ -140,6 +162,20 @@ enum class Opcode : u8 {
     Poly = 0x83,
     Oval = 0x84,
     Weather = 0x85,
+    Curve = 0x86,      // quadratic stroke, added in v0.3
+    CurveCubic = 0x87, // cubic stroke, added in v0.3
+    DistBezierCubic = 0x88, // placed in the post-canvas gap
+
+    // The noise v2 (spec §9.4/§12.10; added in v0.3)
+    NoiseGrad = 0x89,
+    NoiseFbm = 0x8A,
+    NoiseCell = 0x8B,
+    Warp = 0x8C,
+    CellJitter = 0x8D,
+    NoiseRidge = 0x8E,
+
+    // The curves (spec §9.4/§12.11; added in v0.3)
+    Gain = 0x8F,
 
     // Structured outputs (§9.9)
     OutPoint = 0x90,
@@ -151,6 +187,24 @@ enum class Opcode : u8 {
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,
+
+    // The curves, continued (spec §9.4/§12.11; added in v0.3)
+    Quintic = 0x99,
+
+    // The colours (spec §9.5/§12.12; added in v0.3)
+    ColorMul = 0x9A,
+    ColorScale = 0x9B,
+    ColorHsv = 0x9C,
+
+    // The dither, the fold and the polar (spec §9.4/§12.13; added in v0.3)
+    Dither = 0x9D,
+    Vec2Fold = 0x9E,
+    Vec2Polar = 0x9F,
+
+    // The curve toolkit (spec §9.4/§12.14; added in v0.3)
+    Smoothstep = 0xA1,
+    Remap = 0xA2,
+    Clamp = 0xA3,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

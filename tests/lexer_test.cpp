@@ -205,6 +205,8 @@ TEST_CASE("lexical errors carry locations") {
 }
 
 TEST_CASE("formatError renders a caret snippet") {
+    CHECK(formatError("", SourceError{{9,2},"unavailable source"}) ==
+          "9:2: error: unavailable source\n");
     const std::string source = "asset rock {\n  bogus @ token\n}";
     try {
         (void)lex(source);

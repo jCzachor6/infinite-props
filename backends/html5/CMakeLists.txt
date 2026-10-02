@@ -15,24 +15,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(../../cmake/CompilerWarnings.cmake)
 
-add_library(iprop_runtime STATIC
-    ../../runtime/version.cpp
-    ../../runtime/opcode_name.cpp
-    ../../runtime/debug.cpp
-    ../../runtime/format.cpp
-    ../../runtime/consts.cpp
-    ../../runtime/meta.cpp
-    ../../runtime/code.cpp
-    ../../runtime/validator.cpp
-    ../../runtime/vm.cpp
-    ../../runtime/stack.cpp
-    ../../runtime/control.cpp
-    ../../runtime/arithmetic.cpp
-    ../../runtime/seeded.cpp
-    ../../runtime/canvas.cpp
-    ../../runtime/outputs.cpp
-    ../../runtime/parts.cpp
-    ../../runtime/utf8.cpp)
+include(../../cmake/RuntimeSources.cmake)
+add_library(iprop_runtime STATIC ${IPROP_RUNTIME_SOURCES})
 
 target_include_directories(iprop_runtime PUBLIC ../../runtime)
 
@@ -40,6 +24,11 @@ target_include_directories(iprop_runtime PUBLIC ../../runtime)
 # contraction like every other backend, or its pixels diverge from the
 # native reference.
 iprop_warnings(iprop_runtime)
+
+# Runtime traps must reach bindings.cpp's FormatError catch and become JS
+# Errors. Emscripten otherwise disables C++ catching and aborts the module.
+# PUBLIC also enables catching in the binding translation unit.
+target_compile_options(iprop_runtime PUBLIC -fexceptions)
 
 add_executable(iprop_html5
     bindings.cpp)
@@ -51,6 +40,7 @@ set_target_properties(iprop_html5 PROPERTIES
     LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createIpropModule -sENVIRONMENT=web,node")
 
 target_link_options(iprop_html5 PRIVATE
+    "-fexceptions"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=createIpropModule"
     "-sENVIRONMENT=web,node"

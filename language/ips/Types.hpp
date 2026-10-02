@@ -14,7 +14,7 @@ enum class ValueType {
     I32,
     F32,
     Color,
-    Point,
+    Vec2,
     Rect,
     Circle,
     Void, // no value (canvas operations, part calls)
@@ -24,7 +24,7 @@ const char* typeName(ValueType type);
 
 bool isNumeric(ValueType type);
 
-// Locals can hold scalars only.
+// Locals can hold scalars and vec2.
 bool isStorable(ValueType type);
 
 // Numeric mixing: identical types stay, mixed types promote to F32.
@@ -38,5 +38,6 @@ bool argFits(ValueType param, ValueType arg);
 
 // The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
 ValueType valueTypeOf(ParamType type);
+ValueType valueTypeOf(InputType type);
 
 } // namespace iprop::ips

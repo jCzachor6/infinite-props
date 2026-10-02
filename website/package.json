@@ -1,6 +1,6 @@
 {
   "name": "iprop-website",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "The iprop website: a static playground running the WASM interpreter in the browser, with shareable links.",
   "scripts": {

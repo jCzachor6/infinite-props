@@ -4,8 +4,8 @@
 
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
-#include "Fold.hpp"
-#include "Literals.hpp"
+#include "ips/Fold.hpp"
+#include "ips/Literals.hpp"
 
 namespace iprop::compiler {
 
@@ -13,12 +13,12 @@ Assembler::Assembler(const Plan& plan) : plan_(plan) {}
 
 [[noreturn]] void Assembler::error(const ips::SourceLocation& at,
                                    std::string message) {
-    throw ips::SourceError{at, std::move(message)};
+    throw ips::SourceError{at, std::move(message), sourcePath_};
 }
 
 f32 Assembler::foldOrigin(const ips::Expr& expr) {
     Value value;
-    if (!foldExpression(expr, value)) {
+    if (!ips::foldExpression(expr, value)) {
         error(ips::locationOf(expr), "origin must be a constant expression");
     }
     if (const auto* i = std::get_if<i32>(&value)) {
@@ -37,7 +37,7 @@ void Assembler::writeInputEntry(Writer& out, const ips::InputDecl& input) {
         out.writeU32(plan_.pools.indexOf(input.name));
         const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
         Color color;
-        parseColor(lit->text, color);
+        ips::parseColor(lit->text, color);
         out.writeColor(color);
         break;
     }
@@ -46,7 +46,7 @@ void Assembler::writeInputEntry(Writer& out, const ips::InputDecl& input) {
         out.writeU32(plan_.pools.indexOf(input.name));
         const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
         u32 bits = 0;
-        parseFloatBits(lit->text, bits);
+        ips::parseFloatBits(lit->text, bits);
         out.writeU32(bits);
         break;
     }
@@ -56,7 +56,7 @@ void Assembler::writeInputEntry(Writer& out, const ips::InputDecl& input) {
         out.writeU32(plan_.pools.indexOf(input.name));
         const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
         u32 bits = 0;
-        parseIntBits(lit->text, bits);
+        ips::parseIntBits(lit->text, bits);
         out.writeU32(bits);
         break;
     }
@@ -148,6 +148,7 @@ std::vector<u8> Assembler::assemble() {
     code.writeU32(static_cast<u32>(plan_.parts.size()));
     for (std::size_t i = 0; i < plan_.parts.size(); ++i) {
         const ips::Program* part = plan_.parts[i];
+        sourcePath_ = plan_.sourcePath(part);
         code.writeU32(plan_.functionIndex.at(plan_.entry->imports[i].alias + ".draw"));
         code.writeU32(*part->asset.sizeX);
         code.writeU32(*part->asset.sizeY);

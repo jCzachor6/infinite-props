@@ -1,7 +1,9 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/math/Curves.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace iprop::detail {
 namespace {
@@ -59,6 +61,149 @@ f32 fault(f32 x, f32 y, u32 seed) {
     return latticeValue(seed, ix + 1, iy + 1) * (u + v - 1.f) +
            latticeValue(seed, ix, iy + 1) * (1.f - u) +
            latticeValue(seed, ix + 1, iy) * (1.f - v);
+}
+
+// ---- the noise v2 (spec §12.10) -------------------------------------------
+
+constexpr i32 kExactCellLimit = 16777216; // 2^24: every integer is exact in f32
+
+// Check in double before converting: f32(INT32_MAX) rounds up to 2^31.
+// Bounds include the neighbours each algorithm needs, not just the base cell.
+i32 latticeIndex(Execution& ex, f32 coordinate, i32 lower, i32 upper) {
+    if (!std::isfinite(coordinate)) {
+        ex.trap("noise coordinate out of range");
+    }
+    const f32 floored = std::floor(coordinate);
+    const double index = static_cast<double>(floored);
+    if (index < static_cast<double>(lower) || index > static_cast<double>(upper)) {
+        ex.trap("noise coordinate out of range");
+    }
+    return static_cast<i32>(floored);
+}
+
+// Absolute feature coordinates must remain inside [cell, cell+1) after
+// rounding. Some large i32 cells contain no f32 at all; reject those cells.
+f32 jitterCoordinate(Execution& ex, i32 cell, f32 offset) {
+    const f32 lower = static_cast<f32>(cell);
+    if (static_cast<double>(lower) != static_cast<double>(cell)) {
+        ex.trap("cell index is not representable as f32");
+    }
+    const f32 coordinate = lower + offset;
+    const double upper = static_cast<double>(cell) + 1.0;
+    return static_cast<double>(coordinate) >= upper
+        ? std::nextafter(coordinate, -std::numeric_limits<f32>::infinity())
+        : coordinate;
+}
+
+// The cell hash from §12.4 (the u32 wraparound lattice mix).
+u32 cellHash(u32 seed, i32 cx, i32 cy) {
+    return hash32(seed ^ (static_cast<u32>(cx) * 73856093u) ^
+                  (static_cast<u32>(cy) * 19349663u));
+}
+
+// The gradient corner: the 8-entry Perlin set selected by h & 7.
+f32 gradCorner(u32 seed, i32 cx, i32 cy, f32 fx, f32 fy, f32 ox, f32 oy) {
+    const u32 gi = cellHash(seed, cx, cy) & 7u;
+    const f32 gx = gi < 4u ? ((gi & 1u) != 0 ? -1.f : 1.f)
+                           : (gi == 4u ? 1.f : gi == 5u ? -1.f : 0.f);
+    const f32 gy = gi < 4u ? ((gi & 2u) != 0 ? -1.f : 1.f)
+                           : (gi == 6u ? 1.f : gi == 7u ? -1.f : 0.f);
+    return gx * (fx - ox) + gy * (fy - oy);
+}
+
+f32 gradNoise(Execution& ex, f32 x, f32 y, u32 seed) {
+    const i32 ix = latticeIndex(ex, x, std::numeric_limits<i32>::min(),
+                               std::numeric_limits<i32>::max() - 1);
+    const i32 iy = latticeIndex(ex, y, std::numeric_limits<i32>::min(),
+                               std::numeric_limits<i32>::max() - 1);
+    const f32 fx = x - static_cast<f32>(ix);
+    const f32 fy = y - static_cast<f32>(iy);
+    const f32 u = math::quinticPolynomial(fx);
+    const f32 v = math::quinticPolynomial(fy);
+    const f32 n00 = gradCorner(seed, ix, iy, fx, fy, 0.f, 0.f);
+    const f32 n10 = gradCorner(seed, ix + 1, iy, fx, fy, 1.f, 0.f);
+    const f32 n01 = gradCorner(seed, ix, iy + 1, fx, fy, 0.f, 1.f);
+    const f32 n11 = gradCorner(seed, ix + 1, iy + 1, fx, fy, 1.f, 1.f);
+    const f32 p = n00 * (1.f - u) + n10 * u;
+    const f32 q = n01 * (1.f - u) + n11 * u;
+    return p * (1.f - v) + q * v;
+}
+
+f32 fbmNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
+    octaves = std::clamp(octaves, 1, 8);
+    f32 sum = 0.f;
+    f32 amplitude = 1.f;
+    f32 frequency = 1.f;
+    f32 total = 0.f;
+    for (i32 i = 0; i < octaves; ++i) {
+        const f32 g = gradNoise(ex,
+            x * frequency, y * frequency,
+            seed + static_cast<u32>(i) * 0x9e3779b9u);
+        sum += amplitude * g;
+        total += amplitude;
+        amplitude *= 0.5f;
+        frequency *= 2.f;
+    }
+    return sum / total;
+}
+
+Vec2 cellJitter(Execution& ex, i32 cx, i32 cy, u32 seed) {
+    const u32 h = cellHash(seed, cx, cy);
+    const f32 u = hashUnit(h);
+    const f32 v = hashUnit(hash32(h ^ 0x9e3779b9u));
+    return {jitterCoordinate(ex, cx, u), jitterCoordinate(ex, cy, v)};
+}
+
+f32 cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
+    // All cells in the 5x5 window must have exactly representable origins.
+    const i32 ix = latticeIndex(ex, x, -kExactCellLimit + 2, kExactCellLimit - 2);
+    const i32 iy = latticeIndex(ex, y, -kExactCellLimit + 2, kExactCellLimit - 2);
+    f32 best = std::numeric_limits<f32>::infinity();
+    for (i32 dy = -2; dy <= 2; ++dy) {
+        for (i32 dx = -2; dx <= 2; ++dx) {
+            const i32 cx = ix + dx;
+            const i32 cy = iy + dy;
+            const Vec2 point = cellJitter(ex, cx, cy, seed);
+            const f32 rx = point.x - x;
+            const f32 ry = point.y - y;
+            const f32 d = std::sqrt(rx * rx + ry * ry);
+            if (d < best) {
+                best = d;
+            }
+        }
+    }
+    return best;
+}
+
+f32 warpNoise(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
+    if (!std::isfinite(amount)) {
+        ex.trap("warp amount out of range");
+    }
+    const f32 q1 = fbmNoise(ex, x, y, 4, seed);
+    const f32 q2 = fbmNoise(ex, x + 3.7f, y + 9.1f, 4, seed);
+    const f32 wx = x + amount * q1;
+    const f32 wy = y + amount * q2;
+    return fbmNoise(ex, wx, wy, 4, seed);
+}
+
+f32 ridgeNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
+    octaves = std::clamp(octaves, 1, 8);
+    f32 sum = 0.f;
+    f32 amplitude = 0.5f;
+    f32 frequency = 1.f;
+    f32 total = 0.f;
+    for (i32 i = 0; i < octaves; ++i) {
+        const f32 g = gradNoise(ex,
+            x * frequency, y * frequency,
+            seed + static_cast<u32>(i) * 0x9e3779b9u);
+        const f32 r0 = 1.f - std::fabs(g);
+        const f32 r = r0 * r0;
+        sum += r * amplitude;
+        total += amplitude;
+        amplitude *= 0.5f;
+        frequency *= 2.f;
+    }
+    return sum / total;
 }
 
 // Advances the current stream by the Weyl constant and pushes unit().
@@ -148,11 +293,54 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         ex.push(Value(smoothStep(ex.popF32())));
         ++ex.frame().ip;
         return true;
-    case Opcode::Lerp: {
-        const f32 t = std::clamp(ex.popF32(), 0.f, 1.f);
-        const f32 b = ex.popF32();
-        const f32 a = ex.popF32();
-        ex.push(Value(a * (1.f - t) + b * t));
+    case Opcode::NoiseGrad: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(gradNoise(ex, x, y, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseFbm: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const i32 octaves = ex.popI32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(fbmNoise(ex, x, y, octaves, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseCell: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(cellNoise(ex, x, y, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::Warp: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 amount = ex.popF32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(warpNoise(ex, x, y, amount, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::CellJitter: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const i32 cy = ex.popI32();
+        const i32 cx = ex.popI32();
+        ex.push(Value(cellJitter(ex, cx, cy, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseRidge: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const i32 octaves = ex.popI32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(ridgeNoise(ex, x, y, octaves, seed)));
         ++ex.frame().ip;
         return true;
     }

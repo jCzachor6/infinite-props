@@ -15,10 +15,8 @@ std::vector<std::string> resolveImports(
     std::set<std::string> done;
     std::vector<std::string> chain;
     std::set<std::string> inChain;
-    SourceLocation chainImportLocation;
-
-    std::function<void(const std::string&)> visit =
-        [&](const std::string& path) {
+    std::function<void(const std::string&, SourceLocation, const std::string&)> visit =
+        [&](const std::string& path, SourceLocation importedAt, const std::string& importer) {
             if (done.count(path) != 0) {
                 return;
             }
@@ -33,7 +31,7 @@ std::vector<std::string> resolveImports(
                     message += chain[i] + " -> ";
                 }
                 message += path;
-                throw SourceError{chainImportLocation, std::move(message)};
+                throw SourceError{importedAt, std::move(message), importer};
             }
             inChain.insert(path);
             chain.push_back(path);
@@ -42,14 +40,19 @@ std::vector<std::string> resolveImports(
             try {
                 source = loadSource(path);
             } catch (const std::exception& e) {
-                throw SourceError{chainImportLocation,
+                throw SourceError{importedAt,
                                   std::string("cannot load '") + path +
-                                      "': " + e.what()};
+                                      "': " + e.what(), importer};
             }
-            const Program program = parse(source);
+            Program program;
+            try {
+                program = parse(source);
+            } catch (SourceError& error) {
+                error.path = path;
+                throw;
+            }
             for (const auto& import : program.imports) {
-                chainImportLocation = import.location;
-                visit(import.path);
+                visit(import.path, import.location, path);
             }
             chain.pop_back();
             inChain.erase(path);
@@ -57,7 +60,7 @@ std::vector<std::string> resolveImports(
             order.push_back(path);
         };
 
-    visit(std::string(entryPath));
+    visit(std::string(entryPath), {1,1}, std::string(entryPath));
     return order;
 }
 

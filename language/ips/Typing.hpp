@@ -9,10 +9,13 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ips/Ast.hpp"
 #include "ips/Types.hpp"
+#include "ips/BuiltinSpec.hpp"
+#include "ips/Palette.hpp"
 
 namespace iprop::ips {
 
@@ -34,14 +37,6 @@ struct PartInfo {
     std::vector<PartOutput> outputs;
 };
 
-// The signature of a builtin (VM primitive, spec §6.4–6.5/§9).
-struct BuiltinSignature {
-    std::vector<ValueType> params;
-    ValueType result = ValueType::Void;
-};
-
-const std::map<std::string, BuiltinSignature>& builtinSignatures();
-
 // The declared parameter types of a function, in declaration order (the
 // uniforms of a draw-like function are not part of its callable surface).
 std::vector<ValueType> declaredParamTypes(const Function& function);
@@ -55,6 +50,7 @@ struct FunctionSurface {
 
 class Typer {
 public:
+    using ExpressionTypes = std::unordered_map<const Expr*, ValueType>;
     explicit Typer(const std::map<std::string, PartInfo>& parts);
 
     // ---- scope ------------------------------------------------------------
@@ -72,6 +68,7 @@ public:
         // entry asset): bare call names resolve within it first.
         std::string ns;
         std::map<std::string, ValueType> locals;
+        ExpressionTypes expressions;
     };
 
     void enterFunction(const Program& owner, const Function& function,
@@ -96,8 +93,13 @@ public:
 
     // The type of an expression, validating it along the way.
     ValueType typeOf(const Expr& expr);
+    const ExpressionTypes& expressions() const { return expressions_; }
 
 private:
+    ExpressionTypes expressions_;
+    ValueType infer(const Expr& expr);
+    std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+    const ResolvedPalette& palette(const Identifier& name);
     const std::map<std::string, PartInfo>& parts_;
 
     const Program* owner_ = nullptr;
@@ -112,11 +114,12 @@ private:
     ValueType typePartRead(const Expr& expr);
     ValueType typeCall(const Call& call);
     ValueType typeBuiltinCall(const Identifier& name, const Call& call,
-                              const BuiltinSignature& signature);
+                              const BuiltinSpec& signature);
     ValueType typeUserCall(const Identifier& name, const Call& call);
     ValueType typePartCall(const Call& call);
     ValueType typeVector(const VectorLit& vector);
     ValueType typeIndex(const Index& index);
+    ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
 

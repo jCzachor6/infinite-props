@@ -1,4 +1,5 @@
 #include "ips/Semantics.hpp"
+#include "ips/Palette.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -12,11 +13,11 @@ namespace {
 
 ValueType outputValueType(OutputKind kind) {
     switch (kind) {
-    case OutputKind::Point: return ValueType::Point;
+    case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
     }
-    return ValueType::Point;
+    return ValueType::Vec2;
 }
 
 // ---- the checker -----------------------------------------------------------
@@ -98,7 +99,8 @@ private:
         std::set<std::string> inputNames;
         for (const auto& input : program_.asset.inputs) {
             if (input.name == "seed" || input.name == "at" ||
-                input.name == "v" || input.name == "a") {
+                input.name == "v" || input.name == "a" || input.name == "rot" ||
+                input.name == "mirror_x" || input.name == "mirror_y") {
                 error(input.location, "'" + input.name + "' is a reserved name");
             }
             if (!inputNames.insert(input.name).second) {
@@ -171,56 +173,12 @@ private:
         }
     }
 
-    // The ValueType of a literal expression (string literals are not
-    // values). Used for the palette element checks.
-    static ValueType literalType(const Literal& literal) {
-        switch (literal.kind) {
-        case Literal::Kind::Int:
-        case Literal::Kind::True:
-        case Literal::Kind::False:
-            return ValueType::I32;
-        case Literal::Kind::Float:
-            return ValueType::F32;
-        case Literal::Kind::Color:
-            return ValueType::Color;
-        case Literal::Kind::String:
-            return ValueType::Void; // rejected by the caller
-        }
-        return ValueType::Void;
-    }
-
     void checkPaletteDecl(const PaletteDecl& palette) {
         if (palette.name == "seed" || palette.name == "at" ||
             palette.name == "v" || palette.name == "a") {
             error(palette.location, "'" + palette.name + "' is a reserved name");
         }
-        if (palette.elements.empty()) {
-            error(palette.location,
-                  "palette '" + palette.name + "' needs at least one element");
-        }
-        std::optional<ValueType> elementType;
-        for (const auto& element : palette.elements) {
-            const auto* literal = std::get_if<Literal>(element.get());
-            if (literal == nullptr) {
-                error(locationOf(*element),
-                      "palette elements must be literals (compile-time constants)");
-            }
-            const ValueType type = literalType(*literal);
-            if (type == ValueType::Void) {
-                error(locationOf(*element),
-                      "palette '" + palette.name +
-                          "' cannot hold string elements");
-            }
-            if (!elementType.has_value()) {
-                elementType = type;
-            } else if (*elementType != type) {
-                error(locationOf(*element),
-                      "palette '" + palette.name +
-                          "' must have elements of one type (" +
-                          typeName(*elementType) + " and " + typeName(type) +
-                          " found)");
-            }
-        }
+        (void)resolvePalette(palette);
     }
 
     // ---- functions ----------------------------------------------------------

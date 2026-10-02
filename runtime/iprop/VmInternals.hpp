@@ -7,6 +7,7 @@
 #include "iprop/Canvas.hpp"
 #include "iprop/Instruction.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 
@@ -73,8 +74,7 @@ struct Frame {
 struct PartCallState {
     u16 partIndex = kNoPartIndex;
     Canvas savedCanvas;
-    f32 targetX = 0.f; // blit origin in caller raster space
-    f32 targetY = 0.f;
+    PartRenderPlan render;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -112,13 +112,14 @@ struct Execution {
     i32 popI32();
     f32 popF32();
     Color popColor();
+    Vec2 popVec2();
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
 
     // Frame lifecycle.
     void callFunction(u16 functionIndex);
-    void callPart(u16 partIndex);
+    void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
 
     // Precomputes the matching else/end indices of a function's control flow.
@@ -131,17 +132,17 @@ struct Execution {
 // (shared by the canvas ops and the part blit).
 void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
 
-// Per-group instruction dispatchers. Each returns true when it handled the
-// opcode; dispatch() falls through to a trap otherwise. Groups arrive with
-// their phases: core frame ops (vm.cpp, Phase 7), stack.cpp (Phase 7),
-// control.cpp (Phase 8), arithmetic.cpp (Phase 8 minimal subset + Phase 9
-// remainder), seeded.cpp (Phase 10), canvas.cpp (Phase 11), outputs.cpp
-// (Phase 12), parts.cpp (Phase 13).
+// Per-domain VM adapters own stack access, traps, results and ip advancement.
+// Mathematical kernels are independent of Execution (iprop/math/*.hpp).
 bool dispatch(Execution& ex, Instruction ins);
 bool stepCore(Execution& ex, Instruction ins);
 bool stepStack(Execution& ex, Instruction ins);
 bool stepControl(Execution& ex, Instruction ins);
 bool stepArithmetic(Execution& ex, Instruction ins);
+bool stepVector(Execution& ex, Instruction ins);
+bool stepSdf(Execution& ex, Instruction ins);
+bool stepColor(Execution& ex, Instruction ins);
+bool stepCurves(Execution& ex, Instruction ins);
 bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);

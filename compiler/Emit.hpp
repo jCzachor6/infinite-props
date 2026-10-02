@@ -1,8 +1,8 @@
 #pragma once
 
 // The lowering layer: turns checked ASTs into the instruction IR
-// (iprop::Instruction) recorded in the plan. The emitter types expressions
-// through the plan's shared Typer and allocates constant-pool entries as it
+// (iprop::Instruction) recorded in the plan. Expression types and pure
+// constants are already resolved; the emitter allocates pool entries as it
 // goes. It mutates only the current function's code/locals and the plan's
 // constant pools; the planning tables are read-only.
 
@@ -14,6 +14,7 @@
 #include "ips/Ast.hpp"
 #include "ips/Types.hpp"
 #include "Plan.hpp"
+#include "TemporaryLocals.hpp"
 
 namespace iprop::compiler {
 
@@ -23,19 +24,18 @@ public:
     // modified except for the constant pools and the function being emitted.
     explicit Emitter(Plan& plan);
 
-    // Emits one function's body into `function.code`. Appends the scratch
-    // local when the body uses short-circuit operators.
+    // Emits one function's body into `function.code`, acquiring typed
+    // temporary locals only for values whose lifetimes overlap.
     void emitFunction(PlannedFunction& function);
 
 private:
+    friend class PaletteLowerer;
     Plan& plan_;
     PlannedFunction* current_ = nullptr;
     std::vector<Instruction> code_; // the IR of the function being emitted
     std::vector<u32> lines_;        // the .ips source line per instruction
     u32 currentLine_ = 0;           // the line attributed to new instructions
-    std::optional<u32> scratchSlot_;
-    std::optional<u32> f32ScratchSlot_;
-    std::optional<u32> colorScratchSlot_;
+    TemporaryLocals temporaries_;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
 
@@ -43,11 +43,7 @@ private:
 
     void ins(Opcode opcode, u8 aux = 0, u16 operand = 0);
     void emitConst(const Value& value);
-    u32 scratch();    // the extra i32 local (short-circuit, round)
-    u32 f32Scratch(); // the extra f32 local (round)
-    u32 colorScratch(); // the extra color local (palette ladders)
-    u32 scratchOf(ips::ValueType type); // the scratch for a scalar type
-    u32 allocateScratch(std::optional<u32>& slot, ValueType type);
+    TemporaryLocals::Lease temporary(ips::ValueType type);
     bool isParam(const std::string& name) const;
     u32 slotForOutput(const ips::Program* owner,
                       const ips::OutputDecl& output) const;
@@ -76,11 +72,10 @@ private:
     ips::ValueType emitPartRead(const ips::Expr& expr);
     ips::ValueType emitBinary(const ips::Binary& bin);
     ips::ValueType emitUnary(const ips::Unary& un);
-    ips::ValueType emitIndex(const ips::Index& index);
     ips::ValueType emitCall(const ips::Call& call);
-    void emitArg(const ips::Arg& arg, ips::ValueType expected);
-    ips::ValueType emitBuiltin(const std::string& name, const ips::Call& call);
-    void emitPartCall(const ips::Call& call);
+    void emitArg(const PlannedArgument& arg);
+    ips::ValueType emitBuiltin(const BuiltinCall& call);
+    void emitPartCall(const PartCall& call);
 
     struct PartRead {
         std::string alias;

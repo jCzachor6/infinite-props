@@ -1,0 +1,45 @@
+asset curves {
+  size 8x8
+  palette heights = [0.0, 1.0, 4.0]
+  palette oneHeight = [1.25]
+  palette oneColor = [#123456]
+  palette colors = [#000000, #808080, #ffffff]
+  output point identity
+  output point bias
+  output point endpoints
+  output point interior
+  output point clamps
+  output point smoother
+  output point nan
+  output point ramped
+  output point rng
+  output point following
+
+  position() -> f32 {
+    pixel(0, 0, #ff0000)
+    return unit()
+  }
+  integer() -> i32 {
+    pixel(1, 0, #00ff00)
+    return index(7)
+  }
+  draw(v: i32, a: i32) {
+    identity = {gain(0.25, 0.5), gain(0.5, 0.3)}
+    bias = {gain(0.25, 0.1), gain(0.75, 0.9)}
+    endpoints = {gain(0, 1), gain(1, 1)}
+    interior = {gain(0.000000001, 1), gain(0.9999999, 1)}
+    clamps = {gain(-1, 2), gain(2, 2)}
+    smoother = {quintic(0.25), quintic(0.5)}
+    nan = {gain(-sqrt(-1), 0.5), gain(0, -sqrt(-1))}
+    ramped = {ramp(heights, 0.75), ramp(heights, 2)}
+    height = ramp(oneHeight, position())
+    pixel(2, 0, ramp(oneColor, integer()))
+    rng = {height, unit()}
+    following = {unit(), unit()}
+    pixel(3, 0, mix(#000000, #ffffff, gain(0, 1)))
+    pixel(4, 0, mix(#000000, #ffffff, gain(1, 1)))
+    pixel(5, 0, mix(#000000, #ffffff, gain(0.000000001, 1)))
+    pixel(6, 0, ramp(colors, 0.25))
+    pixel(7, 0, ramp(colors, 0.75))
+  }
+}

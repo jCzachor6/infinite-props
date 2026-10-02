@@ -1,4 +1,5 @@
 #include "Plan.hpp"
+#include "ips/Fold.hpp"
 
 #include <set>
 #include <utility>
@@ -6,21 +7,12 @@
 namespace iprop::compiler {
 namespace {
 
-ips::ValueType inputValueType(ips::InputType type) {
-    switch (type) {
-    case ips::InputType::Color: return ips::ValueType::Color;
-    case ips::InputType::F32: return ips::ValueType::F32;
-    case ips::InputType::U32:
-    case ips::InputType::I32: return ips::ValueType::I32;
-    }
-    return ips::ValueType::I32;
-}
-
 ValueType runtimeType(ips::ValueType type) {
     switch (type) {
     case ips::ValueType::I32: return ValueType::I32;
     case ips::ValueType::F32: return ValueType::F32;
     case ips::ValueType::Color: return ValueType::Color;
+    case ips::ValueType::Vec2: return ValueType::Vec2;
     default: return ValueType::I32; // compounds never enter the tables
     }
 }
@@ -36,10 +28,23 @@ std::optional<u32> Plan::functionId(const std::string& name,
     return found->second;
 }
 
+const ips::ResolvedPalette& Plan::palette(const ips::Program& owner, const ips::Expr& expr) const {
+    const auto* name = std::get_if<ips::Identifier>(&expr);
+    if (!name) throw ips::SourceError{ips::locationOf(expr),"expected a palette name"};
+    return palettes.at(&ips::findPalette(owner,*name));
+}
+
 Planner::Planner(const ips::Program& entry,
                  const std::map<std::string, const ips::Program*>& parts)
     : entry_(entry), parts_(parts), plan_(std::make_unique<Plan>()) {
     plan_->entry = &entry;
+}
+
+std::string Plan::sourcePath(const ips::Program* owner) const {
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+        if (parts[i] == owner) return entry->imports[i].path;
+    }
+    return {};
 }
 
 [[noreturn]] void Planner::error(const ips::SourceLocation& at,
@@ -69,15 +74,19 @@ const ips::OutputDecl* Planner::ownerOutput(const ips::Program* owner,
 
 std::unique_ptr<Plan> Planner::plan() {
     planParts();
+    const auto preparePalettes = [&](const ips::Program& owner) {
+        for (const auto& palette : owner.asset.palettes) {
+            if (plan_->palettes.contains(&palette)) continue;
+            try { plan_->palettes.emplace(&palette,ips::resolvePalette(palette)); }
+            catch (ips::SourceError& error) { error.path=plan_->sourcePath(&owner); throw; }
+        }
+    };
+    preparePalettes(entry_);
+    for (const auto* part : plan_->parts) preparePalettes(*part);
     planFunctions();
     registerNames();
 
-    // The shared type engine resolves part calls and output reads against
-    // the part surfaces; user functions resolve through the planner so a
-    // call checks its callee lazily (recursion was already rejected). The
-    // resolver captures `this`, so it lives exactly as long as the Planner;
-    // the plan stays on the heap, keeping the callback valid after plan()
-    // returns (the emitter keeps typing through the plan's Typer).
+    // Calls prepare callees lazily while their result types are inferred.
     for (const auto& [alias, part] : parts_) {
         ips::PartInfo info;
         for (const auto& input : part->asset.inputs) {
@@ -86,10 +95,10 @@ std::unique_ptr<Plan> Planner::plan() {
         for (const auto& output : part->asset.outputs) {
             info.outputs.push_back({output.kind, output.isList, output.name});
         }
-        plan_->surfaces.emplace(alias, std::move(info));
+        surfaces_.emplace(alias, std::move(info));
     }
-    plan_->typer = std::make_unique<ips::Typer>(plan_->surfaces);
-    plan_->typer->resolveFunction = [this](const std::string& name,
+    typer_ = std::make_unique<ips::Typer>(surfaces_);
+    typer_->resolveFunction = [this](const std::string& name,
                                            const ips::SourceLocation& at,
                                            const std::string& ns) {
         return resolveFunction(name, at, ns);
@@ -97,6 +106,21 @@ std::unique_ptr<Plan> Planner::plan() {
 
     for (const auto& function : plan_->functions) {
         prepareFunction(function.name);
+    }
+
+    for (auto& function : plan_->functions) {
+        const CallResolver resolver(*plan_, function);
+        try {
+            for (auto& [expr, annotation] : function.expressions) {
+                if (const auto* call = std::get_if<ips::Call>(expr))
+                    function.calls.emplace(call, resolver.resolve(*call));
+                if (const auto* index = std::get_if<ips::Index>(expr))
+                    annotation.palette = &plan_->palette(*function.owner, *index->object);
+            }
+        } catch (ips::SourceError& error) {
+            if (error.path.empty()) error.path = plan_->sourcePath(function.owner);
+            throw;
+        }
     }
 
     // The local names are known only after preparation: register them now,
@@ -107,23 +131,6 @@ std::unique_ptr<Plan> Planner::plan() {
             plan_->pools.addString(name);
         }
     }
-
-    // Planning is complete: rebind the resolver to a self-contained lookup
-    // over the heap plan, so the emitter can keep typing through the Typer
-    // after this Planner is gone. Bare names resolve to the entry's
-    // functions, or — inside a part — to that part's own helpers first.
-    Plan* self = plan_.get();
-    plan_->typer->resolveFunction =
-        [self](const std::string& name, const ips::SourceLocation&,
-               const std::string& ns) -> std::optional<ips::FunctionSurface> {
-        const auto id = self->functionId(name, ns);
-        if (!id) {
-            return std::nullopt;
-        }
-        const PlannedFunction& info = self->functions[*id];
-        return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
-                                    info.langResult};
-    };
 
     return std::move(plan_);
 }
@@ -166,8 +173,8 @@ void Planner::planParts() {
         }
         const ips::Program* part = found->second;
         if (!part->imports.empty()) {
-            error(part->imports[0].location,
-                  "nested part imports are not supported yet");
+            throw ips::SourceError{part->imports[0].location,
+                  "nested part imports are not supported yet", import.path};
         }
         plan_->partIndex.emplace(import.alias,
                                 static_cast<u32>(plan_->parts.size()));
@@ -239,6 +246,18 @@ void Planner::registerNames() {
 // reserved by planFunctions, so functions checked lazily during this walk
 // keep coming later.
 void Planner::prepareFunction(const std::string& name) {
+    try {
+        prepareFunctionBody(name);
+    } catch (ips::SourceError& error) {
+        const auto dot = name.find('.');
+        if (error.path.empty() && dot != std::string::npos) {
+            error.path = plan_->sourcePath(parts_.at(name.substr(0, dot)));
+        }
+        throw;
+    }
+}
+
+void Planner::prepareFunctionBody(const std::string& name) {
     if (prepared_.count(name) != 0) {
         return;
     }
@@ -280,8 +299,8 @@ void Planner::prepareFunction(const std::string& name) {
                       "input i32 is not supported by the v0.1 format (use u32)");
             }
             info.slots.emplace(input.name, slot);
-            info.langTypes.emplace(input.name, inputValueType(input.type));
-            info.params.push_back(runtimeType(inputValueType(input.type)));
+            info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));
+            info.params.push_back(runtimeType(ips::valueTypeOf(input.type)));
             ++slot;
         }
     } else {
@@ -294,30 +313,32 @@ void Planner::prepareFunction(const std::string& name) {
         }
     }
 
-    ips::Typer::Scope savedScope = plan_->typeEngine().saveScope();
+    ips::Typer::Scope savedScope = typer_->saveScope();
     const std::string ns =
         dot != std::string::npos ? name.substr(0, dot + 1) : "";
-    plan_->typeEngine().enterFunction(*owner, *ast, drawLike, ns);
+    typer_->enterFunction(*owner, *ast, drawLike, ns);
     std::optional<ips::ValueType> returnType;
 
     const auto walk = [&](auto&& self, const std::vector<ips::Stmt>& body) -> void {
         for (const auto& stmt : body) {
             if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
+                const ips::ValueType type = typer_->typeOf(*decl->value);
                 if (ownerOutput(owner, decl->name) != nullptr ||
                     ownerInput(owner, decl->name) != nullptr ||
                     info.slots.count(decl->name) != 0) {
                     continue; // output write, input or parameter
                 }
-                const ips::ValueType type = plan_->typeEngine().typeOf(*decl->value);
                 info.slots.emplace(decl->name, slot);
                 info.langTypes.emplace(decl->name, type);
-                plan_->typeEngine().declareLocal(decl->name, type);
+                typer_->declareLocal(decl->name, type);
                 info.locals.push_back(runtimeType(type));
                 ++slot;
+            } else if (const auto* expression = std::get_if<ips::ExprStmt>(&stmt)) {
+                typer_->typeOf(*expression->expr);
             } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
                 if (ret->value) {
                     const ips::ValueType type =
-                        plan_->typeEngine().typeOf(*ret->value);
+                        typer_->typeOf(*ret->value);
                     if (ast->returnType.has_value()) {
                         const ips::ValueType declared =
                             ips::valueTypeOf(*ast->returnType);
@@ -332,13 +353,17 @@ void Planner::prepareFunction(const std::string& name) {
                     returnType = type;
                 }
             } else if (const auto* ifStmt = std::get_if<ips::IfStmt>(&stmt)) {
+                typer_->typeOf(*ifStmt->condition);
                 self(self, ifStmt->thenBranch);
                 self(self, ifStmt->elseBranch);
             } else if (const auto* whileStmt =
                            std::get_if<ips::WhileStmt>(&stmt)) {
+                typer_->typeOf(*whileStmt->condition);
                 self(self, whileStmt->body);
             } else if (const auto* forStmt =
                            std::get_if<ips::ForStmt>(&stmt)) {
+                typer_->typeOf(*forStmt->from);
+                typer_->typeOf(*forStmt->to);
                 // The loop counter is a real local (the body reads it); the
                 // bound is a hidden local holding the once-evaluated upper
                 // bound. Both are planned here so their slots stay stable
@@ -347,7 +372,7 @@ void Planner::prepareFunction(const std::string& name) {
                     info.slots.emplace(forStmt->variable, slot);
                     info.langTypes.emplace(forStmt->variable,
                                            ips::ValueType::I32);
-                    plan_->typeEngine().declareLocal(forStmt->variable,
+                    typer_->declareLocal(forStmt->variable,
                                                      ips::ValueType::I32);
                     info.locals.push_back(ValueType::I32);
                     ++slot;
@@ -363,7 +388,13 @@ void Planner::prepareFunction(const std::string& name) {
     };
     walk(walk, ast->body);
 
-    plan_->typeEngine().restoreScope(std::move(savedScope));
+    ips::ConstantFolder constants;
+    for (const auto& [expr, type] : typer_->expressions()) {
+        Value value;
+        const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
+        info.expressions.emplace(expr, PlannedExpression{type, constant});
+    }
+    typer_->restoreScope(std::move(savedScope));
 
     if (ast->returnType.has_value()) {
         const ips::ValueType declared = ips::valueTypeOf(*ast->returnType);

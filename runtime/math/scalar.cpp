@@ -1,0 +1,288 @@
+#include "iprop/math/Scalar.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <limits>
+
+namespace iprop::math {
+
+// Portable arithmetic right shift with two's-complement semantics
+// (spec §9.3; C++ right shift of negatives is implementation-defined).
+i32 shiftRightSigned(i32 value, u32 shift) {
+    if (value >= 0) {
+        return static_cast<i32>(static_cast<u32>(value) >> shift);
+    }
+    return static_cast<i32>(~((~static_cast<u32>(value)) >> shift));
+}
+
+// f32 -> i32 per spec §9.4: truncate toward zero, NaN -> 0, infinities and
+// out-of-range values saturate.
+i32 f32ToI32(f32 value) {
+    if (std::isnan(value)) {
+        return 0;
+    }
+    if (value <= -2147483648.f) { // exact in binary32
+        return std::numeric_limits<i32>::min();
+    }
+    if (value >= 2147483648.f) { // 2^31; larger values saturate
+        return std::numeric_limits<i32>::max();
+    }
+    return static_cast<i32>(value); // truncates toward zero
+}
+
+// Spec §12.7: the pinned sine. Cody-Waite quadrant reduction and the Taylor
+// polynomials on [-pi/4, pi/4], all in double precision. Every operation is
+// a single IEEE round-to-nearest double op, so every backend reproduces the
+// result bit for bit — this MUST NOT be replaced with the platform libm.
+static double sinCore(double x) {
+    constexpr double PIO2 = 1.57079632679489661923e+00;    // pi/2 (double)
+    constexpr double PIO2_HI = 1.57079632673412561417e+00; // 0x3FF921FB54400000
+    constexpr double PIO2_LO = 6.07710050650619224932e-11; // 0x3DD0B4611A626331
+    const double k = std::floor(x / PIO2 + 0.5); // the quadrant index
+    const double r = (x - k * PIO2_HI) - k * PIO2_LO; // |r| <= pi/4
+
+    // sin(r) and cos(r) in Horner form (the exact coefficients as written
+    // in the spec; the compiler must not contract any mul+add).
+    const double r2 = r * r;
+    const double s =
+        r * (1.0 + r2 * (-1.0 / 6.0 +
+                         r2 * (1.0 / 120.0 +
+                               r2 * (-1.0 / 5040.0 +
+                                     r2 * (1.0 / 362880.0 +
+                                           r2 * (-1.0 / 39916800.0))))));
+    const double c =
+        1.0 + r2 * (-0.5 +
+                    r2 * (1.0 / 24.0 +
+                          r2 * (-1.0 / 720.0 +
+                                r2 * (1.0 / 40320.0 +
+                                      r2 * (-1.0 / 3628800.0 +
+                                            r2 * (1.0 / 479001600.0))))));
+
+    // k mod 4, exact: the 0.25 scaling is a binary exponent shift and the
+    // subtraction is exact for the small result.
+    const double m = k - 4.0 * std::floor(k * 0.25);
+    if (m == 0.0) {
+        return s;
+    }
+    if (m == 1.0) {
+        return c;
+    }
+    if (m == 2.0) {
+        return -s;
+    }
+    return -c;
+}
+
+f32 f32Sin(f32 x) {
+    const double value = static_cast<double>(x);
+    if (std::isnan(value) || std::isinf(value)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    return static_cast<f32>(sinCore(value));
+}
+
+f32 f32Cos(f32 x) {
+    const double value = static_cast<double>(x);
+    if (std::isnan(value) || std::isinf(value)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    constexpr double PIO2 = 1.57079632679489661923e+00;
+    return static_cast<f32>(sinCore(value + PIO2));
+}
+
+// ---- the pinned math package (spec §12.8) --------------------------------
+
+constexpr double kLn2 = 6.93147180559945309417e-01;
+constexpr double kLog2e = 1.44269504088896340736e+00;
+constexpr double kPi = 3.14159265358979323846e+00;
+constexpr double kPiOver2 = 1.57079632679489661923e+00;
+
+// exp2: n = floor(x), 2^x = e^(f*ln2) * 2^n with the Taylor series of
+// degree 12 in Horner form. Guard nonfinite intermediates before converting
+// the exponent to int; callers cast the result to f32.
+static double exp2Core(double x) {
+    if (std::isnan(x)) {
+        return std::numeric_limits<double>::quiet_NaN();
+    }
+    if (std::isinf(x)) {
+        return x > 0.0 ? std::numeric_limits<double>::infinity() : 0.0;
+    }
+    double n = std::floor(x);
+    // Keep the exponent within the ldexp-safe range; the out-of-range
+    // cases overflow/underflow to +/-inf / 0, exactly as the f32 cast
+    // would.
+    if (n > 2047.0) {
+        return std::numeric_limits<double>::infinity();
+    }
+    if (n < -2047.0) {
+        return 0.0;
+    }
+    const double f = x - n;
+    const double t = f * kLn2;
+    double e = 1.0 / 479001600.0; // 1/12!
+    e = e * t + 1.0 / 39916800.0; // 1/11!
+    e = e * t + 1.0 / 3628800.0;  // 1/10!
+    e = e * t + 1.0 / 362880.0;   // 1/9!
+    e = e * t + 1.0 / 40320.0;    // 1/8!
+    e = e * t + 1.0 / 5040.0;     // 1/7!
+    e = e * t + 1.0 / 720.0;      // 1/6!
+    e = e * t + 1.0 / 120.0;      // 1/5!
+    e = e * t + 1.0 / 24.0;       // 1/4!
+    e = e * t + 1.0 / 6.0;        // 1/3!
+    e = e * t + 0.5;              // 1/2!
+    e = e * t + 1.0;
+    e = e * t + 1.0;
+    return std::ldexp(e, static_cast<int>(n));
+}
+
+
+// log2 for a finite positive argument: frexp + the atanh series of
+// v = u/(u+2), u = m-1, m in [1,2). The caller handles the edge cases.
+static double log2Core(double x) {
+    int exponent = 0;
+    const double m = std::frexp(x, &exponent); // x = m * 2^e, m in [0.5, 1)
+    const double mm = m < 1.0 ? m * 2.0 : m;  // mm in [1, 2)
+    const int e = m < 1.0 ? exponent - 1 : exponent;
+    const double u = mm - 1.0;                // u in [0, 1)
+    const double v = u / (u + 2.0);           // v in [0, 1/3)
+    const double v2 = v * v;
+    double g = 1.0 / 15.0;
+    g = g * v2 + 1.0 / 13.0;
+    g = g * v2 + 1.0 / 11.0;
+    g = g * v2 + 1.0 / 9.0;
+    g = g * v2 + 1.0 / 7.0;
+    g = g * v2 + 1.0 / 5.0;
+    g = g * v2 + 1.0 / 3.0;
+    g = g * v2 + 1.0;
+    g = g * v;
+    return static_cast<double>(e) + 2.0 * g / kLn2;
+}
+
+f32 f32Exp(f32 x) {
+    const double value = static_cast<double>(x);
+    if (std::isnan(value)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    if (value == std::numeric_limits<double>::infinity()) {
+        return std::numeric_limits<f32>::infinity();
+    }
+    if (value == -std::numeric_limits<double>::infinity()) {
+        return 0.0f;
+    }
+    return static_cast<f32>(exp2Core(value * kLog2e));
+}
+
+// atan(t) for t in [0, 1]: one half-angle reduction plus the Taylor
+// series of degree 17 in Horner form.
+static double atanCore(double t) {
+    const double z = t / (1.0 + std::sqrt(1.0 + t * t));
+    const double z2 = z * z;
+    // atan(z) = z * (1 - z^2/3 + z^4/5 - ... + z^16/17)
+    double a = 1.0 / 17.0;
+    a = a * z2 - 1.0 / 15.0;
+    a = a * z2 + 1.0 / 13.0;
+    a = a * z2 - 1.0 / 11.0;
+    a = a * z2 + 1.0 / 9.0;
+    a = a * z2 - 1.0 / 7.0;
+    a = a * z2 + 1.0 / 5.0;
+    a = a * z2 - 1.0 / 3.0;
+    a = a * z2 + 1.0;
+    a = a * z;
+    return 2.0 * a;
+}
+
+f32 f32Atan2(f32 y, f32 x) {
+    const double yy = static_cast<double>(y);
+    const double xx = static_cast<double>(x);
+    if (std::isnan(yy) || std::isnan(xx)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    if (yy == 0.0) {
+        const bool xPos = xx > 0.0 || xx == 0.0;
+        return static_cast<f32>(std::copysign(xPos ? 0.0 : kPi, yy));
+    }
+    if (std::isinf(yy)) {
+        if (xx == std::numeric_limits<double>::infinity()) {
+            return static_cast<f32>(std::copysign(kPi / 4.0, yy));
+        }
+        if (xx == -std::numeric_limits<double>::infinity()) {
+            return static_cast<f32>(std::copysign(3.0 * kPi / 4.0, yy));
+        }
+        return static_cast<f32>(std::copysign(kPiOver2, yy));
+    }
+    if (xx == std::numeric_limits<double>::infinity()) {
+        return static_cast<f32>(std::copysign(0.0, yy));
+    }
+    if (xx == -std::numeric_limits<double>::infinity()) {
+        return static_cast<f32>(yy >= 0.0 ? kPi : -kPi);
+    }
+    if (xx == 0.0) {
+        return static_cast<f32>(yy >= 0.0 ? kPiOver2 : -kPiOver2);
+    }
+    const double ax = std::fabs(xx);
+    const double ay = std::fabs(yy);
+    double r = atanCore(std::min(ax, ay) / std::max(ax, ay));
+    if (ay > ax) {
+        r = kPiOver2 - r;
+    }
+    if (yy < 0.0) {
+        r = -r;
+    }
+    if (xx < 0.0) {
+        r = (yy >= 0.0 ? kPi : -kPi) - r;
+    }
+    return static_cast<f32>(r);
+}
+
+f32 f32Pow(f32 x, f32 y) {
+    const double a = static_cast<double>(x);
+    const double b = static_cast<double>(y);
+    if (b == 0.0) {
+        return 1.0f; // even when x is NaN
+    }
+    if (a == 1.0) {
+        return 1.0f;
+    }
+    if (std::isnan(a) || std::isnan(b)) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    if (std::isinf(b)) {
+        const double magnitude = std::fabs(a);
+        if (magnitude == 1.0) {
+            return 1.0f;
+        }
+        return (magnitude > 1.0) == (b > 0.0)
+                   ? std::numeric_limits<f32>::infinity()
+                   : 0.0f;
+    }
+    const bool yInteger = std::isfinite(b) && b == std::floor(b);
+    const bool yOdd = yInteger && std::fmod(std::floor(b), 2.0) != 0.0;
+    if (std::isinf(a)) {
+        const bool neg = std::signbit(a);
+        double magnitude =
+            b > 0.0 ? std::numeric_limits<double>::infinity() : 0.0;
+        if (neg && yOdd) {
+            magnitude = std::copysign(magnitude, -1.0);
+        }
+        return static_cast<f32>(magnitude);
+    }
+    if (a == 0.0) {
+        const bool neg = std::signbit(a);
+        double magnitude =
+            b > 0.0 ? 0.0 : std::numeric_limits<double>::infinity();
+        if (neg && yOdd) {
+            magnitude = std::copysign(magnitude, -1.0);
+        }
+        return static_cast<f32>(magnitude);
+    }
+    if (a < 0.0 && !yInteger) {
+        return std::numeric_limits<f32>::quiet_NaN();
+    }
+    double r = exp2Core(b * log2Core(std::fabs(a)));
+    if (a < 0.0 && yOdd) {
+        r = -r;
+    }
+    return static_cast<f32>(r);
+}
+
+} // namespace iprop::math

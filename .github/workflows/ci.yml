@@ -92,12 +92,13 @@ jobs:
           -DIPROP_SFML=ON -DIPROP_SFML_PREFIX="$PWD/.deps/sfml" -DSFML_STATIC_LIBRARIES=ON
           -DIPROP_GODOT=ON -DIPROP_GODOTCPP_DIR="$PWD/.deps/godot-cpp"
           -DGODOTCPP_BUILD_PROFILE="$PWD/backends/godot/build_profile.json"
+          -DGODOTCPP_TARGET=template_release
           -DIPROP_GODOT_BINARY="$PWD/.deps/Godot_v4.5.2-stable_linux.x86_64"
       - name: Build and test real rendering and lifecycle
         run: |
           cmake --build build --parallel 4
           xvfb-run -a ctest --test-dir build --output-on-failure
-          xvfb-run -a python3 scripts/release.py 0.2.0 build --check
+          xvfb-run -a python3 scripts/release.py --check
 
   sanitizers:
     runs-on: ubuntu-latest

@@ -8,7 +8,7 @@
 namespace iprop {
 
 // The compile pipeline: plan (name resolution, local allocation, function
-// ordering) → emit (AST → instruction IR, with constant folding) → assemble
+// ordering, expression typing and folding) → emit (typed AST → IR) → assemble
 // (IR → .iprop bytes) → validate (dogfooding, spec §14).
 std::vector<u8> compileProgram(
     const ips::Program& entry,
@@ -17,7 +17,12 @@ std::vector<u8> compileProgram(
 
     compiler::Emitter emitter(*plan);
     for (auto& function : plan->functions) {
-        emitter.emitFunction(function);
+        try {
+            emitter.emitFunction(function);
+        } catch (ips::SourceError& error) {
+            if (error.path.empty()) error.path = plan->sourcePath(function.owner);
+            throw;
+        }
     }
 
     const std::vector<u8> bytes = compiler::Assembler(*plan).assemble();

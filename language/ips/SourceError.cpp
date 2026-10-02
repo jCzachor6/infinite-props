@@ -18,6 +18,7 @@ std::string formatError(std::string_view source, const SourceError& error) {
         }
         ++start;
     }
+    if (start == std::string_view::npos) return out.str();
     std::size_t end = source.find('\n', start);
     std::string_view lineText = source.substr(start, end - start);
 

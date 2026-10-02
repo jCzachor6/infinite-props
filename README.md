@@ -237,8 +237,40 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   with `break`/`continue`, and `for i in a..b` sugar — both lowered to the
   VM's `br`).
 - Built-in functions for every VM primitive in §6.4–6.5 (no floating-point
-  conditions), including the pinned `sin`/`cos` and the math package
-  (`abs`, `floor`, `ceil`, `min`, `max`, `pow`, `exp`, `atan2`).
+  conditions), including the pinned `sin`/`cos`, the math package
+  (`abs`, `floor`, `ceil`, `min`, `max`, `pow`, `exp`, `atan2`) and the
+  signed-distance fields (`dist.circle`/`dist.rect`/`dist.roundrect`/
+  `dist.line`/`dist.bezier` plus `fill`). `dist.bezier(p, a, b, c)` is
+  quadratic; an additional control point selects the cubic form.
+  `curve(a, b, c [, d], thickness, colour)` draws either form with round
+  caps; thickness is an `f32` diameter in target pixels. The noise v2 adds
+  `noise.grad`/`noise.fbm`/`noise.cell`/`noise.ridge`, `warp` and
+  `cell.jitter`. The curves add `gain(t, k)` and `quintic(t)`, and
+  `ramp(palette, t)` interpolates a palette continuously (a compiler
+  desugar over the colour/f32 lerps). The colours add `color.set.a`,
+  `color.mul`, `color.scale` and `color.hsv` (the hue in turns;
+  nonfinite hue shifts trap, [§12.12](spec/iprop-v0.3.md#1212-the-colours-v03)).
+  The dither/fold/polar add the ordered Bayer threshold, the kaleidoscope
+  symmetry and the cartesian-polar conversion. The curve toolkit adds
+  `smoothstep(a, b, t)`, `remap(t, a, b, c, d)` and `clamp(t, a, b)`.
+  Parts accept the D4 transforms (`mirror_x`, `mirror_y`, `rot` on the
+  `part.draw` call — the exact pixel permutations, the outputs
+  propagate, including writes from helper functions). Transform arguments
+  are constant integers: mirrors are `0`/`1` (or `false`/`true`), and `rot`
+  is `0`, `90`, `180` or `270`; rotation is applied before the mirrors.
+  Each transform argument may occur once. These three names are reserved
+  for part calls and cannot be declared as input uniforms. The `.ipa`
+  syntax is `part.draw name [kind]`, with the optional D4 kind in `0`–`7`;
+  disassembly preserves it.
+  `gain` defines the `k = 1` limit;
+  `ramp` takes positional arguments and evaluates `t` once even for a
+  one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
+  Pure constant ramps fold during planning; dynamic palettes use O(log N)
+  selection with O(N) emitted code. Compiler expansion can reduce fuel,
+  while each VM instruction keeps its specified cost.
+  Sampling outside the noise primitives' defined coordinate domains traps;
+  the bounds, octave checks and half-open jitter placement are specified in
+  [§12.10](spec/iprop-v0.3.md#1210-the-noise-v2-v03).
 - Asset-level constant arrays (`palette name = [ e, e, … ]`) with integer
   indexing; a bare palette name must be indexed (the default is the last
   element).
@@ -247,12 +279,26 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
 - A `draw(variant, archetype)` entry point; variant/archetype indices arrive as
   validated integers.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
-  `f32` or `color`; pre-1.0 the type is mandatory) and functions that return
-  a value declare an explicit return type (`-> i32`).
+  `f32`, `color` or `vec2`; pre-1.0 the type is mandatory) and functions that
+  return a value declare an explicit return type (`-> i32`).
+- `vec2.len(v)`, `vec2.dot(a,b)` and `vec2.rot(v,angle)` expose vector math.
+  Positive angles in `vec2.rot`, `polar` and part rotations are counterclockwise
+  in the downward-y asset plane.
+- `vec2` values use `{x, y}` literals and `.x`/`.y` components, including
+  points read from parts. Vectors support `+`, `-`, `*` and `/` with another
+  vector, `*` and `/` with a scalar on the right, and scalar `*` vector.
+  Operands are evaluated left to right, including RNG calls.
 - `input`/`output` declarations define the asset's I/O signature: uniforms,
   and the named points, rects and circles written by `draw` (§5.4).
 - `import` declarations for composition: parts linked at compile time,
   acyclic, with part-output access and propagation (§7.3).
+
+Calls retain the compiler's established evaluation order: ordinary builtin
+and user-function arguments run left to right; `poly` evaluates vertex
+coordinates before its colour. Part calls evaluate uniform overrides in
+input declaration order, then seed/variant/archetype and placement; named
+transform arguments are compile-time constants. An argument is evaluated
+once, including when its result is discarded by a singleton `ramp`.
 
 ### 7.2 Sketch
 
@@ -445,32 +491,51 @@ VM; 17–23: the language and the compiler; 24: the HTML5 backend; 28–31: the
 editor; 32–34: the website and the v0.1.0 release).
 
 **Current state.** v0.1.0 is released (the format, the VM, the language and
-the HTML5 backend). v0.2 on `develop` rounds out the language — typed
+the HTML5 backend). v0.2 rounded out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-Product 0.2.0 is prepared on `develop`; the CLI, C API, SFML and Godot
-have regression and conformance checks. The product version, format
-version (0.2, with 0.1 reader compatibility) and C API version (0.2)
+v0.3.0 adds vectors, distance fields, curves, procedural noise, colour
+utilities and exact part transforms. Product 0.3.0 is released on `main`
+with tag `v0.3.0`; the CLI, C API, SFML and Godot have regression and
+conformance checks. The product version, format
+version (0.3, with 0.1/0.2 reader compatibility) and C API version (0.2)
 are separate contracts. API 0.2 consumers must rebuild with the new header.
-The merge, release tag and publication have not happened yet. GitHub CI
-requires a remote; editor/website publication, Bevy and Unity glue remain
-separate ecosystem work.
+Source and native packages are available as local release artifacts.
+Remote publication and GitHub CI require a configured remote; editor/website
+publication, Bevy and Unity glue remain separate ecosystem work.
+
+The next example pass has two showcases:
+
+- **Butterfly (512×512):** one wing part placed four times using D4 transforms;
+  seeded SDF silhouettes, Bezier veins and antennae, `fold` symmetry,
+  `hsv`/`ramp` palettes, `cell.jitter` eyespots, `fbm` mottling and dither shading.
+- **Bob Ross landscape:** ramp skies, ridge/fbm mountains with atmospheric
+  perspective, jittered trees, folded water reflections, mist and seed-selected
+  biomes with their own palettes.
+
+Deferred work includes general affine part transforms with pinned resampling,
+masks and multiple rendering passes, full colour arithmetic, `switch`, and
+Bevy/Unity integrations. Whole-canvas generators such as diamond-square and
+cellular automata depend on the future buffer/mask work. Game-specific mods
+can be revisited after the showcases. L-systems and a dedicated noise-graph
+DSL remain outside the language scope; user functions, `warp` and curve
+builtins cover functional noise composition.
 
 Prepare a local release package from a clean, committed checkout:
 
 ```sh
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release --parallel
-scripts/release.sh 0.2.0 build-release
+scripts/release.sh 0.3.0 build-release
 ```
 
 Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
 including those integrations; required mode fails on missing dependencies.
 Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
-C API consumers before writing `dist/iprop-0.2.0.tar.gz` (committed source),
-`dist/iprop-0.2.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+C API consumers before writing `dist/iprop-0.3.0.tar.gz` (committed source),
+`dist/iprop-0.3.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
 The native archive records its source commit and included backends in
 `release.json`. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.

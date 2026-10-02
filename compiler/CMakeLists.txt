@@ -3,10 +3,11 @@
 add_library(iprop_compiler STATIC
     Compiler.cpp
     Plan.cpp
-    Fold.cpp
+    CallResolver.cpp
     Emit.cpp
     EmitExpr.cpp
     EmitCall.cpp
+    PaletteLowerer.cpp
     Assemble.cpp)
 
 target_link_libraries(iprop_compiler PUBLIC iprop::runtime ips_lang)

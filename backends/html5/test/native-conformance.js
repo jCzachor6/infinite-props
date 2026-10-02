@@ -3,7 +3,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -20,7 +20,17 @@ const sources = [
     ["plant", "examples/plant.ips"],
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
+    ["round", "backends/html5/test/fixtures/round.ips"],
+    ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
+    ["bezier", "backends/html5/test/fixtures/bezier.ips"],
+    ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
+    ["curves", "backends/html5/test/fixtures/curves.ips"],
+    ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
+    ["colors", "backends/html5/test/fixtures/colors.ips"],
+    ["fold", "backends/html5/test/fixtures/fold.ips"],
+    ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],
+    ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
 
@@ -81,6 +91,9 @@ function run(iprop, toolsDir) {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-conformance-"));
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
+    let trapComparisons = 0;
+    let vectorComparisons = 0;
+    let colorComparisons = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -107,6 +120,10 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(native.data.subarray(0, 12),
                     Buffer.from("547b89ff557c8bff598190ff", "hex"), label + ": repro pixels");
             }
+            if (path.basename(file) === "round.iprop") {
+                assert.deepEqual(result.outputs[0].values, Array.from({length:16}, () =>
+                    ({x:0x3f800000, y:0})), label + ": round boundary checks");
+            }
             if (path.basename(file) === "math-edges.iprop") {
                 const expected = [
                     [0x3f800000, 0x3f800000], [0x7f800000, 0],
@@ -116,6 +133,117 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
                                  expected, label + ": independent math edge pins");
             }
+            if (path.basename(file) === "bezier.iprop") {
+                const expected = [
+                    [0x3f800000, 0x40a00000], [0x3f800000, 0x3fc00000],
+                    [0x3f17c01b, 0x3fa79662], [0x40a00000, 0],
+                    [0x3f800000, 0], [0x7fc00000, 0x7fc00000],
+                    [0x40000000, 0x4066c15a], [0xc0000000, 0x4026c15a],
+                    [0x4083f07b, 0x3f580000],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent SDF/Bezier pins");
+            }
+            if (path.basename(file) === "noise-v2.iprop") {
+                const expected = [
+                    [0x3e800000, 0xbe1e1180], [0x3e088889, 0x3e124925],
+                    [0x3e14d03e, 0x3f19a4ab], [0x3e29272c, 0x3e800000],
+                    [0x407de0b8, 0x40820079], [0x3f444444, 0x3f800000],
+                    [0x3f8f7256, 0x3f8f6f13], [0x44c47fff, 0x49800007],
+                    [0, 0],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent noise v2 pins");
+            }
+            if (path.basename(file) === "curves.iprop") {
+                const expected = [
+                    [0x3e800000, 0x3f000000], [0x3d4ccccd, 0x3f0ccccd],
+                    [0, 0x3f800000], [0x3f000000, 0x3f000000],
+                    [0, 0x3f800000], [0x3dd40000, 0x3f000000],
+                    [0x7fc00000, 0x7fc00000], [0x40200000, 0x40800000],
+                ];
+                assert.deepEqual(result.outputs.slice(0, 8).map(slot =>
+                    [slot.values[0].x, slot.values[0].y]),
+                    expected, label + ": independent curve/ramp pins");
+                assert.equal(result.outputs[8].values[0].x, 0x3fa00000,
+                             label + ": singleton f32 result");
+                if (seed === 1) {
+                    // The f32 and i32 t helpers each consume one RNG draw.
+                    assert.equal(result.outputs[8].values[0].y, 0x3f72c606,
+                                 label + ": third RNG draw after singleton ramps");
+                    assert.deepEqual(result.outputs[9].values[0],
+                                     {x: 0x3eae0ff6, y: 0x3f6e493c},
+                                     label + ": following RNG draws");
+                }
+                if (native.width === 8) {
+                    assert.deepEqual(native.data.subarray(0, 32), Buffer.from(
+                        "ff0000ff00ff00ff123456ff000000ffffffffff7f7f7fff404040ffbfbfbfff", "hex"),
+                        label + ": helper side effects and gain/ramp colours");
+                }
+            }
+            if (path.basename(file) === "curve-toolkit.iprop") {
+                const expected = [
+                    [0, 0x41200000], [0x7fc00000, 0x7fc00000],
+                    [0x7fc00000, 0x7fc00000], [0x40000000, 0x3f800000],
+                    [0x80000000, 0x80000000], [0x3f800000, 0],
+                    [0x3e200000, 0x41700000],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": curve toolkit NaN and signed-zero pins");
+            }
+            if (path.basename(file) === "part-transforms.iprop") {
+                const kind = options.variant || 0;
+                const points = [[1,.5], [.5,3], [3,1.5], [1.5,1], [3,.5], [1,1.5], [.5,1], [1.5,3]];
+                const rects = [[.5,.25,2,1], [.25,1.5,1,2], [1.5,.75,2,1], [.75,.5,1,2],
+                               [1.5,.25,2,1], [.5,.75,2,1], [.25,.5,1,2], [.75,1.5,1,2]];
+                const fields = (names, values) => Object.fromEntries(names.map((name, i) => [name, values[i]]));
+                const expectedPoint = fields(["x", "y"], points[kind]);
+                const expectedRect = fields(["x", "y", "w", "h"], rects[kind]);
+                const expectedCircle = {...expectedPoint, r: .25};
+                // Assert independent values as well as native/WASM agreement:
+                // root reads, part writes, helpers, and each list kind.
+                const values = nativeOutputs(wasmOutputs(wasm.outputs)).map(slot => slot.values);
+                for (const slot of [0, 3, 4, 7]) assert.deepEqual(values[slot], [expectedPoint], label);
+                for (const slot of [1, 5, 8]) assert.deepEqual(values[slot], [expectedRect], label);
+                for (const slot of [2, 6, 9]) assert.deepEqual(values[slot], [expectedCircle], label);
+                if (kind === 6) {
+                    assert.deepEqual(result.outputs[10].values[0],
+                                     {x: 0x80000000, y: 0x80000000, w: 0, h: 0}, label + ": zero bounds");
+                    assert.deepEqual(result.outputs[11].values[0],
+                                     {x: 0x7fc00000, y: 0x7fc00000, w: 0x7fc00000, h: 0x7fc00000},
+                                     label + ": canonical NaN bounds");
+                }
+                if (native.width === 12) {
+                    const red = [[0,0], [0,3], [3,1], [1,0], [3,0], [0,1], [0,0], [1,3]][kind];
+                    const blue = [[3,1], [1,0], [0,0], [0,3], [0,1], [3,0], [1,3], [0,0]][kind];
+                    const pixel = ([x, y]) => native.data.subarray(((y + 1) * 12 + x + 3) * 4,
+                                                                 ((y + 1) * 12 + x + 3) * 4 + 4);
+                    assert.deepEqual(pixel(red), Buffer.from([255,0,0,255]), label + ": rotated red pixel");
+                    assert.deepEqual(pixel(blue), Buffer.from([0,0,255,255]), label + ": rotated blue pixel");
+                }
+            }
+            if (path.basename(file) === "colors.iprop" && native.width === 8) {
+                assert.deepEqual(native.data.subarray(0, 64), Buffer.from(
+                    "ff8000ffff7f00ff7fff00ff00ff7fff007fffff7f00ffffff007fffff007fff" +
+                    "ff7f00ff808080ffffffffff7f0000ff112233ff404040ff405060ff000000ff", "hex"),
+                    label + ": neutral HSV, sector midpoints, hue wrapping and colour ops");
+            }
+            if (path.basename(file) === "fold.iprop") {
+                const expected = [
+                    [0x7fc00000, 0x7fc00000], [0x7fc00000, 0x7fc00000],
+                    [0x7fc00000, 0x7fc00000], [0x7fc00000, 0x7fc00000],
+                    [0x7f800000, 0x7fc00000], [0x7f800000, 0x7fc00000],
+                    [0x7f800000, 0x7f800000], [0x3f800000, 0], [0, 0],
+                ];
+                assert.deepEqual(result.outputs.map(slot => [slot.values[0].x, slot.values[0].y]),
+                                 expected, label + ": independent fold NaN/infinity/finite pins");
+            }
+            if (path.basename(file) === "vec2-api.iprop") {
+                assert.deepEqual(wasm.outputs[0].points, [{x:5,y:23}], label);
+                assert.deepEqual(wasm.outputs[1].points, [{x:2,y:3}], label);
+                assert.equal(wasm.outputs[2].points[0].x, 1, label);
+                assert.ok(Math.abs(wasm.outputs[2].points[0].y - Math.PI/2) < 1e-6, label);
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -123,6 +251,25 @@ function run(iprop, toolsDir) {
                 assert.deepEqual(wasm.outputs[2].points, [{x: 0, y: a}, {x: 2, y: a}], label + ": loop control");
             }
             ++comparisons;
+        } catch (error) {
+            failures.push(label + ": " + error.message);
+        }
+    }
+    function compareTrap(file, variant, expectedMessage) {
+        const label = path.basename(file) + " variant " + variant;
+        try {
+            const native = spawnSync(tool("ipgen"),
+                [file, "--variant", String(variant), "-o", path.join(temporary, "error.png")],
+                { encoding: "utf8" });
+            if (native.error) throw native.error;
+            assert.equal(native.status, 1, label + ": native runtime failure");
+            assert.equal(native.signal, null, label + ": native must not crash");
+            const message = new RegExp(expectedMessage);
+            assert.match(native.stderr, message, label + ": native trap reason");
+            const bytes = new Uint8Array(fs.readFileSync(file));
+            assert.throws(() => iprop.generate(bytes, { variant }), message,
+                          label + ": WASM trap reason");
+            ++trapComparisons;
         } catch (error) {
             failures.push(label + ": " + error.message);
         }
@@ -136,6 +283,12 @@ function run(iprop, toolsDir) {
             execFileSync(tool(source.endsWith(".ipa") ? "ipa" : "ipc"),
                          [path.join(repo, source), "-o", file]);
             for (const seed of seeds) compare(file, seed);
+            if (name === "part-transforms") {
+                for (let variant = 0; variant < 8; ++variant) {
+                    if (variant !== 0) compare(file, 26, null, {variant});
+                    compare(file, 26, null, {variant, sizeX: 24, sizeY: 24});
+                }
+            }
             if (name === "language") {
                 for (let variant = 0; variant < 3; ++variant) {
                     for (let archetype = 0; archetype < 2; ++archetype) {
@@ -143,11 +296,40 @@ function run(iprop, toolsDir) {
                     }
                 }
             }
+            if (name === "bezier" || name === "noise-v2" || name === "curves" ||
+                name === "colors" || name === "fold" || name === "curve-toolkit") {
+                compare(file, 26, null, {sizeX: 16, sizeY: 24});
+            }
         }
+        const errors = path.join(temporary, "noise-v2-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/noise-v2-errors.ips"), "-o", errors]);
+        for (let variant = 0; variant < 13; ++variant) {
+            const message = variant === 7 ? "warp amount out of range" : variant >= 10
+                ? "cell index is not representable as f32" : "noise coordinate out of range";
+            compareTrap(errors, variant, message);
+        }
+        const rampErrors = path.join(temporary, "ramp-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/ramp-errors.ips"), "-o", rampErrors]);
+        for (let variant = 0; variant < 2; ++variant) {
+            compareTrap(rampErrors, variant, "divide by zero");
+        }
+        const colorErrors = path.join(temporary, "color-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/color-errors.ips"), "-o", colorErrors]);
+        for (let variant = 0; variant < 4; ++variant) {
+            compareTrap(colorErrors, variant, "color.hsv hue shift must be finite");
+        }
+        // Catching a runtime trap must leave the module usable for generation.
+        compare(path.join(temporary, "colors.iprop"), 7);
+        compare(path.join(temporary, "noise-v2.iprop"), 7);
+        vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
+        colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

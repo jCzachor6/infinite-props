@@ -1,6 +1,8 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/math/Bezier.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -36,6 +38,52 @@ u64 visitCount(i64 dx, i64 dy) {
         return UINT64_MAX;
     }
     return static_cast<u64>(dx) * static_cast<u64>(dy);
+}
+
+// A round-capped stroke sampled at integer raster coordinates, like oval.
+// Charge the full expanded control box even when it lies off canvas.
+void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
+                  f32 thickness, const Color& colour) {
+    if (!std::isfinite(thickness)) {
+        ex.trap("curve thickness out of range");
+    }
+    if (thickness <= 0.f) {
+        return;
+    }
+    for (std::size_t i = 0; i < count; ++i) {
+        points[i].x *= ex.canvas.scaleX;
+        points[i].y *= ex.canvas.scaleY;
+        if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) {
+            ex.trap("coordinate out of range (curve control)");
+        }
+    }
+    f32 left = points[0].x, right = left, top = points[0].y, bottom = top;
+    for (std::size_t i = 1; i < count; ++i) {
+        left = std::min(left, points[i].x);
+        right = std::max(right, points[i].x);
+        top = std::min(top, points[i].y);
+        bottom = std::max(bottom, points[i].y);
+    }
+    const f32 radius = thickness * 0.5f;
+    const i32 x0 = coordToInt(ex, std::floor(left - radius), "curve x");
+    const i32 x1 = coordToInt(ex, std::ceil(right + radius), "curve x");
+    const i32 y0 = coordToInt(ex, std::floor(top - radius), "curve y");
+    const i32 y1 = coordToInt(ex, std::ceil(bottom + radius), "curve y");
+    ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
+    const auto kernel = count == 3
+        ? math::BezierKernel::quadratic(points[0], points[1], points[2])
+        : math::BezierKernel::cubic(points[0], points[1], points[2], points[3]);
+    const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas.width) - 1);
+    const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas.height) - 1);
+    for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
+        for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
+            const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
+            const f32 distance = kernel.distanceTo(p);
+            if (distance <= radius) {
+                compositePixel(ex, x, y, colour);
+            }
+        }
+    }
 }
 
 // §11.2 point-in-polygon fill over scaled (f32) coordinates. Charges the
@@ -149,6 +197,20 @@ bool stepCanvas(Execution& ex, Instruction ins) {
                 }
             }
         }
+        ++ex.frame().ip;
+        return true;
+    }
+
+    case Opcode::Curve:
+    case Opcode::CurveCubic: {
+        const Color colour = ex.popColor();
+        const f32 thickness = ex.popF32();
+        const std::size_t count = ins.opcode == Opcode::Curve ? 3 : 4;
+        std::array<Vec2, 4> points{};
+        for (std::size_t i = count; i > 0; --i) {
+            points[i - 1] = ex.popVec2();
+        }
+        strokeCurve(ex, points, count, thickness, colour);
         ++ex.frame().ip;
         return true;
     }

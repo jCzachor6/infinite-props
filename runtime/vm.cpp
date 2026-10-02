@@ -6,6 +6,21 @@
 #include <utility>
 
 namespace iprop {
+namespace {
+
+// Every frame starts each declared local with the same typed zero value.
+Value zeroValue(ValueType type) {
+    switch (type) {
+    case ValueType::I32: return Value(i32{0});
+    case ValueType::F32: return Value(f32{0.f});
+    case ValueType::Color: return Value(Color{});
+    case ValueType::Vec2: return Value(Vec2{});
+    }
+    return Value(i32{0});
+}
+
+} // namespace
+
 namespace detail {
 
 bool dispatch(Execution& ex, Instruction ins) {
@@ -19,6 +34,9 @@ bool dispatch(Execution& ex, Instruction ins) {
         return true;
     }
     if (stepArithmetic(ex, ins)) {
+        return true;
+    }
+    if (stepVector(ex, ins) || stepSdf(ex, ins) || stepColor(ex, ins) || stepCurves(ex, ins)) {
         return true;
     }
     if (stepSeeded(ex, ins)) {
@@ -96,6 +114,14 @@ Color Execution::popColor() {
     return std::get<Color>(value);
 }
 
+Vec2 Execution::popVec2() {
+    const Value value = pop();
+    if (!std::holds_alternative<Vec2>(value)) {
+        trap("stack type mismatch: expected vec2");
+    }
+    return std::get<Vec2>(value);
+}
+
 void Execution::push(Value value) {
     Frame& frame = frames.back();
     if (frame.stack.size() >= kMaxStackDepth) {
@@ -128,16 +154,14 @@ void Execution::callFunction(u16 functionIndex) {
     next.functionIndex = functionIndex;
     next.locals = std::move(args);
     for (const ValueType type : callee.locals) {
-        next.locals.push_back(type == ValueType::I32    ? Value(i32{0})
-                              : type == ValueType::F32  ? Value(f32{0.f})
-                                                        : Value(Color{}));
+        next.locals.push_back(zeroValue(type));
     }
     next.stream = caller.stream; // spec §8.2: call frames share the stream
     next.shareStream = true;     // ...like a reference: state propagates back
     frames.push_back(std::move(next));
 }
 
-void Execution::callPart(u16 partIndex) {
+void Execution::callPart(u16 partIndex, u8 transform) {
     if (partIndex >= file.code.parts.size()) {
         trap("part index out of range");
     }
@@ -163,39 +187,30 @@ void Execution::callPart(u16 partIndex) {
         args[p - 1] = pop();
     }
 
-    // Sub-canvas geometry (spec §10): partSize scaled, rounded to ≥ 1; the
-    // blit origin maps the part's origin onto the caller's raster space.
-    const f32 scaleX = canvas.scaleX;
-    const f32 scaleY = canvas.scaleY;
-    const i32 subW =
-        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeX) * scaleX)));
-    const i32 subH =
-        std::max(1, static_cast<i32>(std::round(static_cast<f32>(part.sizeY) * scaleY)));
-    // Runtime defense: a corrupt part meta must not trigger a huge allocation
-    // (the main canvas cap does not cover sub-canvases).
-    if (static_cast<u32>(subW) > kMaxCanvasSide || static_cast<u32>(subH) > kMaxCanvasSide) {
-        trap("part canvas too large");
+    const auto d4 = D4Transform::fromKind(transform);
+    if (!d4) trap("invalid part transform");
+    PartRenderPlan render;
+    try {
+        render = PartRenderPlan::create(part, {canvas.scaleX, canvas.scaleY}, {atX, atY}, *d4);
+    } catch (const std::invalid_argument& error) {
+        trap(error.what());
     }
-    spend(static_cast<u64>(subW) * subH); // blit visits (spec §8.3/§10.5)
-
+    spend(render.blitCost);
     PartCallState state;
     state.partIndex = partIndex;
-    state.targetX = atX - part.origin.x * scaleX;
-    state.targetY = atY - part.origin.y * scaleY;
-    state.savedCanvas = std::move(canvas); // the caller's canvas, moved aside
+    state.render = render;
+    state.savedCanvas = std::move(canvas);
     partCalls.push_back(std::move(state));
 
-    canvas.resize(static_cast<u32>(subW), static_cast<u32>(subH));
-    canvas.scaleX = scaleX;
-    canvas.scaleY = scaleY;
+    canvas.resize(static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y));
+    canvas.scaleX = render.sourceScale.x;
+    canvas.scaleY = render.sourceScale.y;
 
     Frame next;
     next.functionIndex = part.functionIndex;
     next.locals = std::move(args);
     for (const ValueType type : fn.locals) {
-        next.locals.push_back(type == ValueType::I32    ? Value(i32{0})
-                              : type == ValueType::F32  ? Value(f32{0.f})
-                                                        : Value(Color{}));
+        next.locals.push_back(zeroValue(type));
     }
     next.stream = seed; // spec §8.2: a part frame starts its own stream
     next.isPart = true;
@@ -225,15 +240,19 @@ void Execution::leaveFrame() {
         partCalls.pop_back();
         Canvas sub = std::move(canvas);
         canvas = std::move(state.savedCanvas);
-        const i32 tx = static_cast<i32>(std::round(state.targetX));
-        const i32 ty = static_cast<i32>(std::round(state.targetY));
         for (u32 sy = 0; sy < sub.height; ++sy) {
             for (u32 sx = 0; sx < sub.width; ++sx) {
                 const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
                 if (src.a == 0) {
                     continue; // transparent sub-pixels are not blitted
                 }
-                compositePixel(*this, tx + static_cast<i32>(sx), ty + static_cast<i32>(sy), src);
+                const auto pixel = state.render.transform.mapPixel(
+                    {static_cast<i32>(sx), static_cast<i32>(sy)}, state.render.sourceExtent);
+                const i64 x = static_cast<i64>(state.render.targetOrigin.x) + pixel.x;
+                const i64 y = static_cast<i64>(state.render.targetOrigin.y) + pixel.y;
+                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
+                    compositePixel(*this, static_cast<i32>(x), static_cast<i32>(y), src);
+                }
             }
         }
         caller.lastPart = state.partIndex; // the part-output register
@@ -297,20 +316,6 @@ void Execution::ensureControl(u16 functionIndex) {
 }
 
 } // namespace detail
-
-namespace {
-
-// Zero value for a declared local type (spec §8.2: locals start zeroed).
-Value zeroValue(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return Value(i32{0});
-    case ValueType::F32: return Value(f32{0.f});
-    case ValueType::Color: return Value(Color{});
-    }
-    return Value(i32{0});
-}
-
-} // namespace
 
 struct VM::Impl {
     detail::Execution ex;
@@ -418,7 +423,7 @@ void VM::run() {
         // counts themselves, up front (spec §8.3).
         ex.spend(1);
         if (!detail::dispatch(ex, ins)) {
-            ex.trap("opcode not implemented yet (interpreter phase pending)");
+            ex.trap("reserved opcode");
         }
     }
 }

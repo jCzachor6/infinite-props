@@ -23,6 +23,7 @@ const char* typeName(ValueType type) {
     case ValueType::I32: return "i32";
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
+    case ValueType::Vec2: return "vec2";
     }
     return "?";
 }
@@ -120,7 +121,8 @@ std::string instructionText(const Function& function,
             return std::string(mnemonic) + " " + names.functions.at(ins.operand);
         }
         if (ins.opcode == Opcode::PartDraw) {
-            return std::string(mnemonic) + " " + names.parts.at(ins.operand);
+            const std::string text = std::string(mnemonic) + " " + names.parts.at(ins.operand);
+            return ins.aux == 0 ? text : text + " " + std::to_string(ins.aux);
         }
         return std::string(mnemonic) + " " + names.slots.at(ins.operand);
     }

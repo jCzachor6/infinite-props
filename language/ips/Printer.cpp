@@ -73,6 +73,7 @@ const char* paramTypeName(ParamType type) {
     case ParamType::I32: return "i32";
     case ParamType::F32: return "f32";
     case ParamType::Color: return "color";
+    case ParamType::Vec2: return "vec2";
     }
     return "?";
 }

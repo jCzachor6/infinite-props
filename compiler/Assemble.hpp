@@ -22,6 +22,7 @@ public:
 
 private:
     const Plan& plan_;
+    std::string sourcePath_;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
 

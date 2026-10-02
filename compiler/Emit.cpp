@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "Fold.hpp"
-#include "Literals.hpp"
+#include "ips/Fold.hpp"
+#include "ips/Literals.hpp"
 
 namespace iprop::compiler {
 
@@ -43,34 +43,13 @@ void Emitter::emitConst(const Value& value) {
     }
 }
 
-// Allocate a typed local on first use. Its index stays fixed even when a
-// different temporary type is needed later in this function.
-u32 Emitter::allocateScratch(std::optional<u32>& slot, ValueType type) {
-    if (!slot) {
-        slot = static_cast<u32>(current_->params.size() + current_->locals.size());
-        current_->locals.push_back(type);
-    }
-    return *slot;
-}
-
-u32 Emitter::scratch() {
-    return allocateScratch(scratchSlot_, ValueType::I32);
-}
-
-u32 Emitter::f32Scratch() {
-    return allocateScratch(f32ScratchSlot_, ValueType::F32);
-}
-
-u32 Emitter::colorScratch() {
-    return allocateScratch(colorScratchSlot_, ValueType::Color);
-}
-
-// The extra local of the given scalar type.
-u32 Emitter::scratchOf(ips::ValueType type) {
+TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
     switch (type) {
-    case ips::ValueType::I32: return scratch();
-    case ips::ValueType::F32: return f32Scratch();
-    default: return colorScratch();
+    case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
+    case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
+    case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
+    case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
+    default: throw std::logic_error("temporary requires a value type");
     }
 }
 
@@ -88,23 +67,13 @@ void Emitter::emitFunction(PlannedFunction& function) {
     code_.clear();
     lines_.clear();
     currentLine_ = 0;
-    scratchSlot_.reset();
-    f32ScratchSlot_.reset();
-    colorScratchSlot_.reset();
+    temporaries_.reset(function.params.size(), function.locals);
     labelKinds_.clear();
     loopLabels_.clear();
     forCount_ = 0;
-    ips::Typer::Scope savedScope = plan_.typeEngine().saveScope();
-    const std::string qualified = function.name;
-    const auto dot = qualified.find('.');
-    plan_.typeEngine().restoreScope(ips::Typer::Scope{
-        function.owner, function.drawLike,
-        dot != std::string::npos ? qualified.substr(0, dot + 1) : "",
-        function.langTypes});
     for (const auto& stmt : function.ast->body) {
         emitStmt(stmt);
     }
-    plan_.typeEngine().restoreScope(std::move(savedScope));
     function.code = std::move(code_);
     function.sourceLines = std::move(lines_);
     current_ = nullptr;
@@ -230,7 +199,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
             // A declared f32 result widens an i32 return value.
             if (!current_->results.empty() &&
                 current_->results[0] == ValueType::F32 &&
-                plan_.typeEngine().typeOf(*ret->value) == ips::ValueType::I32) {
+                current_->typeOf(*ret->value) == ips::ValueType::I32) {
                 ins(Opcode::I32ToF32);
             }
         }
@@ -263,10 +232,18 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
                               const ips::OutputDecl& output,
                               const ips::Expr& value) {
     const u32 slot = slotForOutput(owner, output);
+    if (output.kind == ips::OutputKind::Point) {
+        // Points take the vec2 shape: a literal pair, a bare part read or
+        // an unpacked vec2 value (see emitPointValue).
+        emitPointValue(value);
+        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
+            static_cast<u16>(slot));
+        return;
+    }
     if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
         for (const auto& element : vector->elements) {
             emitExpr(*element);
-            if (plan_.typeEngine().typeOf(*element) == ips::ValueType::I32) {
+            if (current_->typeOf(*element) == ips::ValueType::I32) {
                 ins(Opcode::I32ToF32);
             }
         }
@@ -275,9 +252,7 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
     }
     switch (output.kind) {
     case ips::OutputKind::Point:
-        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
-            static_cast<u16>(slot));
-        break;
+        break; // handled above
     case ips::OutputKind::Rect:
         ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0,
             static_cast<u16>(slot));

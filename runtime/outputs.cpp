@@ -18,7 +18,19 @@ void checkSlot(Execution& ex, u16 index, OutputKind kind, bool list) {
     }
 }
 
+// Helpers share the active part's geometry; writes to foreign slots do not.
+const PartRenderPlan* outputTransform(const Execution& ex, u16 index) {
+    if (ex.partCalls.empty()) return nullptr;
+    const PartCallState& state = ex.partCalls.back();
+    return ex.slotOwner[index] == state.partIndex ? &state.render : nullptr;
+}
+
 void writePoint(Execution& ex, u16 index, f32 x, f32 y, bool list) {
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto point = render->transform.mapPoint({x, y}, render->assetExtent);
+        x = point.x;
+        y = point.y;
+    }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {
         slot.points.clear(); // singular: a later write replaces the value
@@ -27,6 +39,10 @@ void writePoint(Execution& ex, u16 index, f32 x, f32 y, bool list) {
 }
 
 void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) {
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto rect = render->transform.mapRect({x, y, w, h}, render->assetExtent);
+        x = rect.x; y = rect.y; w = rect.w; h = rect.h;
+    }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {
         slot.rects.clear();
@@ -35,6 +51,11 @@ void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) 
 }
 
 void writeCircle(Execution& ex, u16 index, f32 x, f32 y, f32 r, bool list) {
+    if (const auto* render = outputTransform(ex, index)) {
+        const auto point = render->transform.mapPoint({x, y}, render->assetExtent);
+        x = point.x;
+        y = point.y;
+    }
     OutputSlot& slot = ex.outputSlots[index];
     if (!list) {
         slot.circles.clear();

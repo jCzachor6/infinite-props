@@ -5,66 +5,16 @@
 namespace iprop::ips {
 namespace {
 
-ValueType inputValueType(InputType type) {
-    switch (type) {
-    case InputType::Color: return ValueType::Color;
-    case InputType::F32: return ValueType::F32;
-    case InputType::U32:
-    case InputType::I32: return ValueType::I32;
-    }
-    return ValueType::I32;
-}
-
 ValueType outputValueType(OutputKind kind) {
     switch (kind) {
-    case OutputKind::Point: return ValueType::Point;
+    case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
     }
-    return ValueType::Point;
+    return ValueType::Vec2;
 }
 
 } // namespace
-
-const std::map<std::string, BuiltinSignature>& builtinSignatures() {
-    using V = ValueType;
-    static const std::map<std::string, BuiltinSignature> table = {
-        {"unit", {{}, V::F32}},
-        {"stream_push", {{V::I32}, V::Void}},
-        {"stream_pop", {{}, V::Void}},
-        {"range", {{V::F32, V::F32}, V::F32}},
-        {"index", {{V::I32}, V::I32}},
-        {"hash", {{V::I32}, V::I32}},
-        {"noise", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"fault", {{V::F32, V::F32, V::I32}, V::F32}},
-        {"smooth", {{V::F32}, V::F32}},
-        {"sqrt", {{V::F32}, V::F32}},
-        {"sin", {{V::F32}, V::F32}},
-        {"cos", {{V::F32}, V::F32}},
-        {"abs", {{V::F32}, V::F32}},
-        {"floor", {{V::F32}, V::F32}},
-        {"ceil", {{V::F32}, V::F32}},
-        {"min", {{V::F32, V::F32}, V::F32}},
-        {"max", {{V::F32, V::F32}, V::F32}},
-        {"pow", {{V::F32, V::F32}, V::F32}},
-        {"exp", {{V::F32}, V::F32}},
-        {"atan2", {{V::F32, V::F32}, V::F32}},
-        {"i32trunc", {{V::F32}, V::I32}},
-        {"round", {{V::F32}, V::I32}},
-        {"lerp", {{V::F32, V::F32, V::F32}, V::F32}},
-        {"mix", {{V::Color, V::Color, V::F32}, V::Color}},
-        {"shade", {{V::Color, V::I32}, V::Color}},
-        {"pixel", {{V::I32, V::I32, V::Color}, V::Void}},
-        {"rect", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
-        {"line", {{V::F32, V::F32, V::F32, V::F32, V::I32, V::Color}, V::Void}},
-        {"oval", {{V::F32, V::F32, V::F32, V::F32, V::Color}, V::Void}},
-        {"weather", {{V::I32, V::I32}, V::Void}},
-        // poly takes a colour plus 2n vertex floats (n >= 3); the arity is
-        // validated in typeBuiltinCall.
-        {"poly", {{}, V::Void}},
-    };
-    return table;
-}
 
 std::vector<ValueType> declaredParamTypes(const Function& function) {
     std::vector<ValueType> params;
@@ -89,6 +39,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     ns_ = std::move(ns);
     locals_.clear();
+    expressions_.clear();
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
     }
@@ -99,7 +50,7 @@ void Typer::declareLocal(const std::string& name, ValueType type) {
 }
 
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, ns_, locals_};
+    return Scope{owner_, isDraw_, ns_, locals_, expressions_};
 }
 
 void Typer::restoreScope(Scope scope) {
@@ -107,6 +58,7 @@ void Typer::restoreScope(Scope scope) {
     isDraw_ = scope.isDraw;
     ns_ = std::move(scope.ns);
     locals_ = std::move(scope.locals);
+    expressions_ = std::move(scope.expressions);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -156,6 +108,14 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
 // ---- expressions -------------------------------------------------------------
 
 ValueType Typer::typeOf(const Expr& expr) {
+    if (const auto found = expressions_.find(&expr); found != expressions_.end())
+        return found->second;
+    const auto type = infer(expr);
+    expressions_.emplace(&expr, type);
+    return type;
+}
+
+ValueType Typer::infer(const Expr& expr) {
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         return typeLiteral(*lit);
     }
@@ -163,6 +123,22 @@ ValueType Typer::typeOf(const Expr& expr) {
         return typeIdentifier(*id);
     }
     if (std::holds_alternative<Member>(expr)) {
+        const auto& member = std::get<Member>(expr);
+        // Resolve the complete part-output path first, including outputs
+        // named x or y; a component access then types that point recursively.
+        const Path path = flatten(expr);
+        if (path.segments.size() == 2 && path.segments[0] == "outputs") {
+            return typePartRead(expr);
+        }
+        const ValueType object = typeOf(*member.object);
+        if (object == ValueType::Vec2) {
+            if (member.name == "x" || member.name == "y") {
+                return ValueType::F32;
+            }
+            error(member.location,
+                  "vec2 has only .x and .y components, got '" +
+                      member.name + "'");
+        }
         return typePartRead(expr);
     }
     if (const auto* call = std::get_if<Call>(&expr)) {
@@ -209,7 +185,7 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     if (isDraw_) {
         for (const auto& input : owner_->asset.inputs) {
             if (input.name == id.name) {
-                return inputValueType(input.type);
+                return valueTypeOf(input.type);
             }
         }
     }
@@ -241,175 +217,6 @@ ValueType Typer::typePartRead(const Expr& expr) {
     return outputValueType(read.kind);
 }
 
-ValueType Typer::typeCall(const Call& call) {
-    if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
-        const auto builtin = builtinSignatures().find(name->name);
-        if (builtin != builtinSignatures().end()) {
-            return typeBuiltinCall(*name, call, builtin->second);
-        }
-        return typeUserCall(*name, call);
-    }
-    if (std::holds_alternative<Member>(*call.callee)) {
-        return typePartCall(call);
-    }
-    error(call.location, "cannot call this expression");
-}
-
-ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
-                                 const BuiltinSignature& signature) {
-    // poly(colour, x0, y0, x1, y1, ...) — colour then 2n floats, n >= 3.
-    if (name.name == "poly") {
-        if (call.args.size() < 7 || call.args.size() % 2 == 0) {
-            error(call.location,
-                  "poly expects a colour and at least three (x, y) vertex pairs");
-        }
-        for (std::size_t i = 0; i < call.args.size(); ++i) {
-            const Arg& arg = call.args[i];
-            if (arg.name.has_value()) {
-                error(arg.location, "poly does not take named arguments");
-            }
-            const ValueType expected =
-                i == 0 ? ValueType::Color : ValueType::F32;
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(expected, got)) {
-                error(locationOf(*arg.value),
-                      "argument " + std::to_string(i + 1) +
-                          " of poly must be " + typeName(expected) +
-                          ", got " + typeName(got));
-            }
-        }
-        return ValueType::Void;
-    }
-
-    if (signature.params.size() != call.args.size()) {
-        error(call.location,
-              "function '" + name.name + "' expects " +
-                  std::to_string(signature.params.size()) +
-                  " arguments, got " + std::to_string(call.args.size()));
-    }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-        const ValueType got = typeOf(*arg.value);
-        if (!argFits(signature.params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(signature.params[i]) +
-                      ", got " + typeName(got));
-        }
-    }
-    return signature.result;
-}
-
-ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
-    const std::optional<FunctionSurface> surface =
-        resolveFunction(name.name, call.location, ns_);
-    if (!surface.has_value()) {
-        error(call.location, "undefined function '" + name.name + "'");
-    }
-    if (surface->params.size() != call.args.size()) {
-        error(call.location,
-              "function '" + name.name + "' expects " +
-                  std::to_string(surface->params.size()) +
-                  " arguments, got " + std::to_string(call.args.size()));
-    }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-        const ValueType got = typeOf(*arg.value);
-        if (!argFits(surface->params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(surface->params[i]) +
-                      ", got " + typeName(got));
-        }
-    }
-    return surface->result.value_or(ValueType::Void);
-}
-
-// `part.draw(seed, variant, archetype, at = {x, y}, uniforms...)`
-ValueType Typer::typePartCall(const Call& call) {
-    const Path path = flatten(*call.callee);
-    if (path.base.empty() || path.segments.size() != 1 ||
-        path.segments[0] != "draw") {
-        error(path.location, "expected 'part.draw(...)'");
-    }
-    const auto part = parts_.find(path.base);
-    if (part == parts_.end()) {
-        error(path.location, "'" + path.base + "' is not an imported part");
-    }
-
-    // Exactly three positional arguments: seed, variant, archetype.
-    std::size_t positional = 0;
-    bool hasAt = false;
-    for (const auto& arg : call.args) {
-        if (!arg.name.has_value()) {
-            if (positional >= 3) {
-                error(arg.location,
-                      "part call takes exactly three positional "
-                      "arguments (seed, variant, archetype)");
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(ValueType::I32, got)) {
-                error(locationOf(*arg.value),
-                      "part call argument must be an integer, got " +
-                          std::string(typeName(got)));
-            }
-            ++positional;
-        } else {
-            if (*arg.name == "at") {
-                if (hasAt) {
-                    error(arg.location, "duplicate 'at' argument");
-                }
-                hasAt = true;
-                const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::Point) {
-                    error(locationOf(*arg.value),
-                          "'at' must be a point {x, y}, got " +
-                              std::string(typeName(got)));
-                }
-                continue;
-            }
-            // A uniform override: must be a declared input of the part.
-            const PartInput* input = nullptr;
-            for (const auto& candidate : part->second.inputs) {
-                if (candidate.name == *arg.name) {
-                    input = &candidate;
-                    break;
-                }
-            }
-            if (input == nullptr) {
-                error(arg.location,
-                      "part '" + path.base + "' has no input '" + *arg.name + "'");
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(inputValueType(input->type), got)) {
-                error(locationOf(*arg.value),
-                      "input '" + *arg.name + "' of part '" + path.base +
-                          "' must be " + typeName(inputValueType(input->type)) +
-                          ", got " + typeName(got));
-            }
-        }
-    }
-    if (positional != 3) {
-        error(call.location,
-              "part call takes exactly three positional "
-              "arguments (seed, variant, archetype), got " +
-                  std::to_string(positional));
-    }
-    if (!hasAt) {
-        error(call.location,
-              "part call requires an 'at = {x, y}' placement argument");
-    }
-    return ValueType::Void;
-}
-
 ValueType Typer::typeVector(const VectorLit& vector) {
     const auto numericElements = [&](ValueType type) {
         for (const auto& element : vector.elements) {
@@ -423,15 +230,21 @@ ValueType Typer::typeVector(const VectorLit& vector) {
         return type;
     };
     switch (vector.elements.size()) {
-    case 2: return numericElements(ValueType::Point);
+    case 2: return numericElements(ValueType::Vec2);
     case 3: return numericElements(ValueType::Circle);
     case 4: return numericElements(ValueType::Rect);
     default:
         error(vector.location,
-              "vector literal must have 2 (point), 3 (circle) or 4 (rect) "
+              "vector literal must have 2 (vec2), 3 (circle) or 4 (rect) "
               "elements, got " +
                   std::to_string(vector.elements.size()));
     }
+}
+
+const ResolvedPalette& Typer::palette(const Identifier& name) {
+    const auto& decl = findPalette(*owner_,name);
+    if (const auto found=palettes_.find(&decl); found!=palettes_.end()) return found->second;
+    return palettes_.emplace(&decl,resolvePalette(decl)).first->second;
 }
 
 // `palette[i]` — the index must be i32; the result is the (uniform) element
@@ -441,37 +254,47 @@ ValueType Typer::typeIndex(const Index& index) {
     if (name == nullptr) {
         error(locationOf(*index.object), "only palettes can be indexed");
     }
-    const PaletteDecl* palette = nullptr;
-    for (const auto& candidate : owner_->asset.palettes) {
-        if (candidate.name == name->name) {
-            palette = &candidate;
-            break;
-        }
-    }
-    if (palette == nullptr) {
-        error(name->location, "'" + name->name + "' is not a palette");
-    }
+    const auto& resolved = palette(*name);
     const ValueType indexType = typeOf(*index.index);
     if (indexType != ValueType::I32) {
         error(locationOf(*index.index),
               "palette index must be i32, got " + std::string(typeName(indexType)));
     }
-    // All elements share one type (checked by the semantic checker); the
-    // first element determines it.
-    const auto& first = std::get<Literal>(*palette->elements[0]);
-    switch (first.kind) {
-    case Literal::Kind::Int:
-    case Literal::Kind::True:
-    case Literal::Kind::False:
-        return ValueType::I32;
-    case Literal::Kind::Float:
-        return ValueType::F32;
-    case Literal::Kind::Color:
-        return ValueType::Color;
-    case Literal::Kind::String:
-        break;
+    return resolved.type;
+}
+
+// `ramp(palette, t)` — the first argument names a palette; the t is the
+// numeric position clamped to [0, 1]. The result is the element type (the
+// colour or f32 — the i32 palettes are rejected: the interpolation would
+// need the widening the caller can do themselves).
+ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
+    if (call.args.size() != 2) {
+        error(call.location, "ramp takes a palette name and a t value");
     }
-    error(name->location, "palette '" + name->name + "' has no valid elements");
+    for (const Arg& arg : call.args) {
+        if (arg.name.has_value()) {
+            error(arg.location,
+                  "function '" + name.name + "' does not take named arguments");
+        }
+    }
+    const auto* paletteName =
+        std::get_if<Identifier>(call.args[0].value.get());
+    if (paletteName == nullptr) {
+        error(locationOf(*call.args[0].value),
+              "ramp's first argument must be a palette name");
+    }
+    const auto& resolved = palette(*paletteName);
+    const ValueType t = typeOf(*call.args[1].value);
+    if (!isNumeric(t)) {
+        error(locationOf(*call.args[1].value),
+              "ramp's t must be numeric, got " + std::string(typeName(t)));
+    }
+    if (resolved.type == ValueType::I32) {
+        error(paletteName->location,
+              "ramp requires a color or f32 palette; '" + paletteName->name +
+                  "' is i32 (use the explicit lerp instead)");
+    }
+    return resolved.type;
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {
@@ -482,6 +305,23 @@ ValueType Typer::typeBinary(const Binary& bin) {
     case Binary::Op::Sub:
     case Binary::Op::Mul:
     case Binary::Op::Div:
+        if (left == ValueType::Vec2 || right == ValueType::Vec2) {
+            const bool vectors = left == ValueType::Vec2 && right == ValueType::Vec2;
+            const bool vectorScalar = left == ValueType::Vec2 && isNumeric(right) &&
+                                      (bin.op == Binary::Op::Mul || bin.op == Binary::Op::Div);
+            const bool scalarVector = isNumeric(left) && right == ValueType::Vec2 &&
+                                      bin.op == Binary::Op::Mul;
+            if (!vectors && !vectorScalar && !scalarVector) {
+                const char* op = bin.op == Binary::Op::Add ? "+"
+                                 : bin.op == Binary::Op::Sub ? "-"
+                                 : bin.op == Binary::Op::Mul ? "*" : "/";
+                error(bin.location,
+                      std::string("operator '") + op + "' does not support " +
+                          typeName(left) + " and " +
+                          typeName(right));
+            }
+            return ValueType::Vec2;
+        }
         if (!isNumeric(left) || !isNumeric(right)) {
             error(bin.location, "arithmetic requires numeric operands, got " +
                                      std::string(typeName(left)) + " and " +
@@ -529,9 +369,9 @@ ValueType Typer::typeUnary(const Unary& un) {
     const ValueType operand = typeOf(*un.operand);
     switch (un.op) {
     case Unary::Op::Neg:
-        if (!isNumeric(operand)) {
+        if (!isNumeric(operand) && operand != ValueType::Vec2) {
             error(un.location,
-                  "unary minus requires a numeric operand, got " +
+                  "unary minus requires a numeric or vec2 operand, got " +
                       std::string(typeName(operand)));
         }
         return operand;

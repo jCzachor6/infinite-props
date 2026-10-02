@@ -1,8 +1,12 @@
 #include "iprop/Validator.hpp"
 
 #include "iprop/Instruction.hpp"
+#include "iprop/OpcodeSpec.hpp"
+#include "iprop/D4Transform.hpp"
 
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace iprop {
@@ -13,6 +17,7 @@ const char* typeName(ValueType type) {
     case ValueType::I32: return "i32";
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
+    case ValueType::Vec2: return "vec2";
     }
     return "?";
 }
@@ -33,6 +38,17 @@ struct SlotInfo {
     bool rootOwned = false;
 };
 
+// Every edge preserves the target's complete entry type sequence. Reachability
+// is tracked independently: a loop back-edge never reaches its following code.
+struct ControlFrame {
+    Opcode kind;
+    std::vector<ValueType> entry;
+    bool entryReachable;
+    bool hasElse = false;
+    bool thenReachable = false;
+    bool exitReachable = false;
+};
+
 // Per-function stack/label type checking over structured control flow
 // (spec §9/§14). Blocks are statement-level; no block results in v0.1.
 class FunctionValidator {
@@ -42,27 +58,44 @@ public:
         : file_(file), fn_(function), slots_(slots) {}
 
     void run() {
+        const auto hasVec2 = [](const std::vector<ValueType>& types) {
+            return std::find(types.begin(), types.end(), ValueType::Vec2) != types.end();
+        };
+        if (file_.layout.header.versionMinor < 3 &&
+            (hasVec2(fn_.params) || hasVec2(fn_.results) || hasVec2(fn_.locals))) {
+            fail(0, "vec2 types require format 0.3");
+        }
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
             const auto ins = decodeInstruction(fn_.code.subspan(i * 4, 4));
-            if (ins.aux != 0) {
+            const auto* spec = findOpcode(ins.opcode);
+            if (!spec) fail(i, "reserved opcode");
+            if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
-            const auto opcode = static_cast<u8>(ins.opcode);
-            if (file_.layout.header.versionMinor < 2 &&
-                (opcode == 0x4F || (opcode >= 0x53 && opcode <= 0x5A))) {
-                fail(i, "trigonometry and math require format 0.2");
+            if (spec->aux == AuxPolicy::PartTransform) {
+                if (!D4Transform::fromKind(ins.aux)) fail(i, "unknown part transform kind");
+                if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
+                    fail(i, "part transforms require format 0.3");
+            }
+            if (file_.layout.header.versionMinor < spec->minimumMinor) {
+                fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
+                        std::to_string(spec->minimumMinor));
+            }
+            if (spec->stack) {
+                applyStack(i, *spec);
+                continue;
             }
             step(i, ins);
         }
         if (!labels_.empty()) {
             fail(count, "unbalanced structured control flow");
         }
-        if (stack_.size() != fn_.results.size()) {
+        if (reachable_ && stack_.size() != fn_.results.size()) {
             fail(count, "function stack does not match declared results");
         }
-        for (std::size_t r = 0; r < fn_.results.size(); ++r) {
-            if (stack_[r] != fn_.results[fn_.results.size() - 1 - r]) {
+        for (std::size_t r = 0; reachable_ && r < fn_.results.size(); ++r) {
+            if (stack_[r] != fn_.results[r]) {
                 fail(count, "function result type mismatch");
             }
         }
@@ -73,13 +106,15 @@ private:
     const Function& fn_;
     const std::vector<SlotInfo>& slots_;
     std::vector<ValueType> stack_;
-    std::vector<std::size_t> labels_; // operand stack height at label entry
+    std::vector<ControlFrame> labels_;
+    bool reachable_ = true;
 
     [[noreturn]] void fail(std::size_t instruction, std::string message) const {
         throw FormatError(std::move(message), fn_.fileOffset + instruction * 4);
     }
 
     void push(std::size_t at, ValueType type) {
+        if (!reachable_) return;
         if (stack_.size() >= kMaxStackDepth) {
             fail(at, "operand stack depth exceeds limit");
         }
@@ -87,6 +122,7 @@ private:
     }
 
     ValueType pop(std::size_t at, const char* what) {
+        if (!reachable_) return ValueType::I32; // polymorphic dead stack
         if (stack_.empty()) {
             fail(at, std::string("stack underflow (") + what + ")");
         }
@@ -97,7 +133,7 @@ private:
 
     void expect(std::size_t at, ValueType expected, const char* what) {
         const ValueType found = pop(at, what);
-        if (found != expected) {
+        if (reachable_ && found != expected) {
             fail(at, std::string("type mismatch: expected ") + typeName(expected) +
                           ", found " + typeName(found) + " (" + what + ")");
         }
@@ -126,34 +162,61 @@ private:
         }
     }
 
+    void applyStack(std::size_t at, const OpcodeSpec& spec) {
+        const auto& signature = *spec.stack;
+        for (std::size_t i = signature.inputCount; i > 0; --i) {
+            const auto expected = signature.inputs[i-1];
+            const auto actual = pop(at, spec.mnemonic);
+            if (reachable_ && !accepts(expected,actual)) {
+                const char* name = expected == StackType::ScalarOrVec2 ? "f32 or vec2" :
+                    expected == StackType::I32 ? "i32" : expected == StackType::F32 ? "f32" :
+                    expected == StackType::Color ? "color" : "vec2";
+                fail(at, std::string("type mismatch: expected ") + name + ", found " +
+                         typeName(actual) + " (" + spec.mnemonic + ")");
+            }
+        }
+        if (signature.result) push(at, *signature.result);
+    }
+
     void step(std::size_t at, const Instruction ins) {
         const u16 op = ins.operand;
         switch (ins.opcode) {
-        case Opcode::Nop: return;
 
         case Opcode::Block:
         case Opcode::Loop:
-            labels_.push_back(stack_.size());
+            labels_.push_back({ins.opcode, stack_, reachable_});
             return;
         case Opcode::If:
             expect(at, ValueType::I32, "if condition");
-            labels_.push_back(stack_.size());
+            labels_.push_back({ins.opcode, stack_, reachable_});
             return;
-        case Opcode::Else:
-            if (labels_.empty()) fail(at, "else without if");
-            if (stack_.size() != labels_.back()) {
-                fail(at, "then-branch leaves values on the stack");
+        case Opcode::Else: {
+            if (labels_.empty() || labels_.back().kind != Opcode::If) {
+                fail(at, "else without if");
             }
+            auto& label = labels_.back();
+            if (label.hasElse) fail(at, "duplicate else");
+            checkExit(at, label, "then-branch");
+            label.hasElse = true;
+            label.thenReachable = reachable_;
+            stack_ = label.entry;
+            reachable_ = label.entryReachable;
             return;
-        case Opcode::End:
+        }
+        case Opcode::End: {
             if (labels_.empty()) fail(at, "end without block");
-            if (stack_.size() != labels_.back()) {
-                fail(at, "block leaves values on the stack");
-            }
+            const auto label = std::move(labels_.back());
+            checkExit(at, label, "block");
+            reachable_ = reachable_ || label.exitReachable ||
+                (label.kind == Opcode::If &&
+                 (label.hasElse ? label.thenReachable : label.entryReachable));
+            stack_ = label.entry;
             labels_.pop_back();
             return;
+        }
         case Opcode::Br:
             branch(at, op);
+            makeUnreachable();
             return;
         case Opcode::BrIf:
             expect(at, ValueType::I32, "br_if condition");
@@ -174,14 +237,15 @@ private:
             return;
         }
         case Opcode::Return:
-            if (stack_.size() != fn_.results.size()) {
+            if (reachable_ && stack_.size() != fn_.results.size()) {
                 fail(at, "return with wrong stack height");
             }
-            for (std::size_t r = 0; r < fn_.results.size(); ++r) {
-                if (stack_[r] != fn_.results[fn_.results.size() - 1 - r]) {
+            for (std::size_t r = 0; reachable_ && r < fn_.results.size(); ++r) {
+                if (stack_[r] != fn_.results[r]) {
                     fail(at, "return type mismatch");
                 }
             }
+            makeUnreachable();
             return;
 
         case Opcode::ConstI32:
@@ -213,136 +277,12 @@ private:
             (void)pop(at, "drop");
             return;
         case Opcode::Dup: {
+            if (!reachable_) return;
             if (stack_.empty()) fail(at, "stack underflow (dup)");
             push(at, stack_.back());
             return;
         }
 
-        // Integer arithmetic and comparisons (§9.3).
-        case Opcode::I32Add: case Opcode::I32Sub: case Opcode::I32Mul:
-        case Opcode::I32DivS: case Opcode::I32DivU: case Opcode::I32RemS:
-        case Opcode::I32RemU: case Opcode::I32And: case Opcode::I32Or:
-        case Opcode::I32Xor: case Opcode::I32Shl: case Opcode::I32ShrS:
-        case Opcode::I32ShrU:
-        case Opcode::I32Eq: case Opcode::I32Ne: case Opcode::I32LtS:
-        case Opcode::I32LtU: case Opcode::I32GtS: case Opcode::I32GtU:
-        case Opcode::I32LeS: case Opcode::I32LeU: case Opcode::I32GeS:
-        case Opcode::I32GeU:
-            expect(at, ValueType::I32, "integer operand");
-            expect(at, ValueType::I32, "integer operand");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::I32Neg: case Opcode::I32Not:
-            expect(at, ValueType::I32, "integer operand");
-            push(at, ValueType::I32);
-            return;
-
-        // Float arithmetic and comparisons (§9.4).
-        case Opcode::F32Add: case Opcode::F32Sub: case Opcode::F32Mul:
-        case Opcode::F32Div:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32Eq: case Opcode::F32Ne: case Opcode::F32Lt:
-        case Opcode::F32Gt: case Opcode::F32Le: case Opcode::F32Ge:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::F32Neg: case Opcode::F32Abs: case Opcode::F32Sqrt:
-        case Opcode::F32Sin: case Opcode::F32Cos:
-        case Opcode::F32Floor: case Opcode::F32Ceil: case Opcode::F32Exp:
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32Min: case Opcode::F32Max: case Opcode::F32Pow:
-        case Opcode::F32Atan2:
-            expect(at, ValueType::F32, "float operand");
-            expect(at, ValueType::F32, "float operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::I32ToF32:
-            expect(at, ValueType::I32, "conversion operand");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::F32ToI32:
-            expect(at, ValueType::F32, "conversion operand");
-            push(at, ValueType::I32);
-            return;
-
-        // Colour (§9.5).
-        case Opcode::ColorMix:
-            expect(at, ValueType::F32, "mix amount");
-            expect(at, ValueType::Color, "mix colour");
-            expect(at, ValueType::Color, "mix colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorShade:
-            expect(at, ValueType::I32, "shade amount");
-            expect(at, ValueType::Color, "shade colour");
-            push(at, ValueType::Color);
-            return;
-        case Opcode::ColorSetA: // reserved in v0.1
-            fail(at, "reserved opcode");
-
-        // Seeded primitives (§9.6).
-        case Opcode::StreamPush:
-            expect(at, ValueType::I32, "stream seed");
-            return;
-        case Opcode::StreamPop: return;
-        case Opcode::RngUnit: push(at, ValueType::F32); return;
-        case Opcode::RngRange:
-            expect(at, ValueType::F32, "range bound");
-            expect(at, ValueType::F32, "range bound");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::RngIndex:
-            expect(at, ValueType::I32, "index bound");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::Hash:
-            expect(at, ValueType::I32, "hash input");
-            push(at, ValueType::I32);
-            return;
-        case Opcode::StreamState:
-            push(at, ValueType::I32);
-            return;
-
-        // Noise and helpers (§9.7).
-        case Opcode::Noise:
-        case Opcode::Fault:
-            expect(at, ValueType::I32, "noise seed");
-            expect(at, ValueType::F32, "noise coordinate");
-            expect(at, ValueType::F32, "noise coordinate");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Smooth:
-            expect(at, ValueType::F32, "smooth input");
-            push(at, ValueType::F32);
-            return;
-        case Opcode::Lerp:
-            expect(at, ValueType::F32, "lerp amount");
-            expect(at, ValueType::F32, "lerp operand");
-            expect(at, ValueType::F32, "lerp operand");
-            push(at, ValueType::F32);
-            return;
-
-        // Canvas (§9.8).
-        case Opcode::Pixel:
-            expect(at, ValueType::Color, "pixel colour");
-            expect(at, ValueType::I32, "pixel y");
-            expect(at, ValueType::I32, "pixel x");
-            return;
-        case Opcode::Rect:
-            expect(at, ValueType::Color, "rect colour");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "rect extent");
-            return;
-        case Opcode::Line:
-            expect(at, ValueType::Color, "line colour");
-            expect(at, ValueType::I32, "line thickness");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "line endpoint");
-            return;
         case Opcode::Poly: {
             if (op > kMaxStackDepth) fail(at, "poly vertex count exceeds limit");
             expect(at, ValueType::Color, "poly colour");
@@ -351,14 +291,6 @@ private:
             }
             return;
         }
-        case Opcode::Oval:
-            expect(at, ValueType::Color, "oval colour");
-            for (int i = 0; i < 4; ++i) expect(at, ValueType::F32, "oval extent");
-            return;
-        case Opcode::Weather:
-            expect(at, ValueType::I32, "weather amount");
-            expect(at, ValueType::I32, "weather seed");
-            return;
 
         // Structured outputs (§9.9).
         case Opcode::OutPoint:
@@ -417,16 +349,37 @@ private:
             }
             return;
         }
+        default: break;
         }
 
-        fail(at, "reserved opcode");
+        fail(at, "missing dynamic opcode validation");
+    }
+
+    void checkExit(std::size_t at, const ControlFrame& label, const char* what) {
+        if (reachable_ && stack_ != label.entry) {
+            fail(at, std::string(what) + " stack types differ from entry");
+        }
+    }
+
+    void makeUnreachable() {
+        reachable_ = false;
+        stack_.clear();
     }
 
     void branch(std::size_t at, u16 depth) {
         if (depth >= labels_.size()) {
             fail(at, "branch depth out of range");
         }
-        stack_.resize(labels_[labels_.size() - 1 - depth]);
+        auto& target = labels_[labels_.size() - 1 - depth];
+        if (reachable_) {
+            if (stack_.size() < target.entry.size() ||
+                !std::equal(target.entry.begin(), target.entry.end(), stack_.begin())) {
+                fail(at, "branch stack types differ from target entry");
+            }
+            if (target.kind != Opcode::Loop) target.exitReachable = true;
+        }
+        // br_if must leave its untaken edge untouched. br makes the current
+        // path unreachable; the target restores its own snapshot at its end.
     }
 };
 

@@ -1,0 +1,32 @@
+asset transformTile {
+  size 4x2
+  origin 1,0.5
+  output point direct
+  output point anchor
+  output rect box
+  output circle zone
+  output list point anchors
+  output list rect boxes
+  output list circle zones
+  output rect zeros
+  output rect nan_box
+
+  draw(v: i32, a: i32) {
+    pixel(0, 0, #ff0000)
+    pixel(3, 1, #0000ff)
+    direct = {1, 0.5}
+    writeOutputs()
+  }
+
+  writeOutputs() {
+    anchor = {1, 0.5}
+    box = {0.5, 0.25, 2, 1}
+    zone = {1, 0.5, 0.25}
+    anchors = {1, 0.5}
+    boxes = {0.5, 0.25, 2, 1}
+    zones = {1, 0.5, 0.25}
+    zeros = {-0.0, -0.0, 0.0, 0.0}
+    nan = -pow(-2, 0.5)
+    nan_box = {nan, nan, 0, 0}
+  }
+}
