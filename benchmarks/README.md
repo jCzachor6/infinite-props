@@ -27,3 +27,38 @@ kernel's raw f32 hashes, including extreme, nonfinite and degenerate inputs
 (`tests/bezier_kernel_test.cpp`). The Newton iterations, rounding order and
 fuel contract have not changed; control-dependent differences and finite/
 degenerate classification are prepared once per rasterized curve.
+
+## Palette ramps
+
+```sh
+python3 benchmarks/ramp.py --tools build/tools --output-dir /tmp/iprop-ramp-benchmark
+```
+
+The script writes fixtures and `results.json` for a 64×64 image with one
+ramp per pixel. It records compiled size, normative fuel, errors and PNG
+hashes; it does not measure CPU speed. The dynamic version reads a uniform
+whose default is 0.99; the constant version uses literal 0.99.
+
+Compared with `ecaadc5` on the same native build:
+
+| Stops | Previous constant/dynamic fuel | New constant bytes/fuel | New dynamic bytes/fuel |
+| ---: | ---: | ---: | ---: |
+| 1 | 79,501 | 626 / 71,309 | 661 / 79,501 |
+| 8 | 300,685 | 626 / 71,309 | 1,468 / 214,669 |
+| 32 | 792,205 | 626 / 71,309 | 3,772 / 255,629 |
+| 64 | exhausted (1,447,565 with larger budget) | 626 / 71,309 | 6,844 / 276,109 |
+| 128 | exhausted (2,737,805 with larger budget) | 626 / 71,309 | 12,984 / 296,589 |
+
+All resulting PNGs match the previous compiler. To compare the previous
+64/128-stop images, only the meta fuel limit in copies of the old binaries
+was increased to 8,000,000; instructions remained unchanged. The ordinary
+compiler still emits a 1,000,000 budget. Constant ramps require O(1) code
+and execution; dynamic selection retains O(N) code with O(log N) executed
+comparisons. The source-level expansion may change fuel (§12.11); VM costs
+and the behavior of historical binaries remain pinned.
+
+Evidence from this run: `/tmp/iprop-fixes.C5KhDL/ramp-benchmark/{before,after}.json`
+and `/tmp/iprop-fixes.C5KhDL/ramp-final/results.json`. Tests compare a dynamic
+tree with an explicit linear reference at every stop and its neighboring
+floats, the shared 22-pattern corpus, constant versus dynamic color/f32
+interpolation, negative/out-of-range indexing, effects, traps and fuel bounds.

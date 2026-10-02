@@ -14,7 +14,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
 - [x] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
 - [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
-- [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
+- [x] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
 - [x] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
 - [x] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
 - [x] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
@@ -179,4 +179,19 @@ output f32, aby nie maskować błędu o 1. Native/WASM: 126 obrazów/outputów,
 7 golden, 19 trapów, 6292 wyniki wektorów i 29 kolorów PASS
 (`round-conformance.log`).
 
-W toku: optymalizacja ramp i końcowa weryfikacja.
+Ramp: czyste stałe są obliczane w planie tym samym algorytmem f32/koloru;
+dynamiczny indeks wybiera element w drzewie z O(log N) porównań. Wspólna
+emisja indeksowania zachowuje ostatni element dla ujemnych i za dużych
+indeksów. Spec §12.11 jawnie dopuszcza zmianę fuel nowej emisji, bez zmiany
+kosztu instrukcji/historycznych binariów. Benchmark 64×64 dla N=1/8/32/64/128:
+stałe zawsze 626 B i 71309 fuel, dynamiczne N=128 296589 fuel zamiast
+wyczerpania miliona. Wszystkie obrazy zgodne z poprzednią emisją, także
+N=64/128 po podniesieniu wyłącznie budżetu kopii poprzedniego bytecode.
+Procedura i tabela: `benchmarks/ramp.py` i `benchmarks/README.md`.
+5460 asercji w 11 testach ramp/palet, CTest 7/7 oraz native/WASM:
+131 obrazów/outputów, 7 golden, 19 trapów, 6292 wyniki wektorów i 29 kolorów
+PASS (`ramp-conformance.log`). Testy obejmują liniową implementację
+referencyjną, każdy stop i sąsiednie floaty, surowy korpus, RNG/rysowanie,
+pojedynczą ewaluację, trapy i ograniczenie fuel.
+
+W toku: końcowy audyt wymagań i pełna weryfikacja artefaktów.

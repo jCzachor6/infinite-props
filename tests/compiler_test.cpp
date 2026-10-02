@@ -1177,8 +1177,8 @@ asset t {
     // t = 0.75 → p = 1.5, i = 1, f = 0.5 → lerp(1, 4, 0.5) = 2.5.
     REQUIRE(fromIps.outputs[0].points[0].x == 2.5f);
 
-    // The hand-assembled .ipa reference for the f32 ramp (the same
-    // desugar the compiler emits).
+    // The historical hand-assembled linear .ipa reference for the f32 ramp.
+    // New compiler strategies must preserve its result, not its fuel.
     const std::string ipa = R"(
 meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
 output: point p

@@ -18,6 +18,10 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
             emitPartCall(target);
             return ips::ValueType::Void;
         } else {
+            if (target.constant) {
+                emitConst(*target.constant);
+                return target.palette->type;
+            }
             return PaletteLowerer(*this, *target.palette).ramp(target.position);
         }
     }, resolved.target);

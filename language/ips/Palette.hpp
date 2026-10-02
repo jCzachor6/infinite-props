@@ -10,6 +10,8 @@ struct ResolvedPalette {
 };
 
 ResolvedPalette resolvePalette(const PaletteDecl& palette);
+// Pure §12.11 interpolation for an already checked colour/f32 palette.
+iprop::Value sampleRamp(const ResolvedPalette& palette, iprop::f32 t);
 const PaletteDecl& findPalette(const Program& owner, const Identifier& name);
 
 } // namespace iprop::ips

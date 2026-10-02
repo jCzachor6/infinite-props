@@ -197,7 +197,7 @@ struct OutputDecl {
 
 // `palette name = [ e, e, ... ]` — asset-level constant array data. The
 // elements are expressions (the checker requires them constant); the
-// compiler desugars `name[i]` into an if-ladder with the last element as
+// compiler desugars `name[i]` into a selection tree with the last element as
 // the default.
 struct PaletteDecl {
     std::string name;

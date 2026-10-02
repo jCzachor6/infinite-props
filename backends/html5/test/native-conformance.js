@@ -21,6 +21,7 @@ const sources = [
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
+    ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
     ["noise-v2", "backends/html5/test/fixtures/noise-v2.ips"],
     ["curves", "backends/html5/test/fixtures/curves.ips"],

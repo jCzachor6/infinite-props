@@ -39,6 +39,7 @@ struct PartCall {
 struct RampCall {
     const ips::ResolvedPalette* palette;
     PlannedArgument position;
+    std::optional<Value> constant;
 };
 struct ResolvedCall {
     ips::SourceLocation location;

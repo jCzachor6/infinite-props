@@ -55,25 +55,30 @@ ips::ValueType PaletteLowerer::ramp(const PlannedArgument& t) {
 }
 
 void PaletteLowerer::select(u16 index, u16 result, std::optional<u16> fraction) {
-    emitter_.ins(Opcode::Block);
-    for (std::size_t k = 0; k + 1 < palette_.elements.size(); ++k) {
-        emitter_.emitConst(static_cast<i32>(k));
-        emitter_.ins(Opcode::LocalGet, 0, index);
-        emitter_.ins(Opcode::I32Eq);
-        emitter_.ins(Opcode::If);
-        emitter_.emitConst(palette_.elements[k]);
-        if (fraction) {
-            emitter_.emitConst(palette_.elements[k + 1]);
+    const auto tree = [&](auto&& self, std::size_t first, std::size_t end) -> void {
+        if (end - first > 1) {
+            const auto middle = first + (end - first) / 2;
+            emitter_.ins(Opcode::LocalGet, 0, index);
+            emitter_.emitConst(static_cast<i32>(middle));
+            // Unsigned comparison sends negative indices to the default
+            // last leaf, just like indices past the end of the palette.
+            emitter_.ins(Opcode::I32LtU);
+            emitter_.ins(Opcode::If);
+            self(self, first, middle);
+            emitter_.ins(Opcode::Else);
+            self(self, middle, end);
+            emitter_.ins(Opcode::End);
+            return;
+        }
+        emitter_.emitConst(palette_.elements[first]);
+        if (fraction && first + 1 < palette_.elements.size()) {
+            emitter_.emitConst(palette_.elements[first + 1]);
             emitter_.ins(Opcode::LocalGet, 0, *fraction);
             emitter_.ins(palette_.type == ips::ValueType::Color ? Opcode::ColorMix : Opcode::Lerp);
         }
         emitter_.ins(Opcode::LocalSet, 0, result);
-        emitter_.ins(Opcode::Br, 0, 1);
-        emitter_.ins(Opcode::End);
-    }
-    emitter_.emitConst(palette_.elements.back());
-    emitter_.ins(Opcode::LocalSet, 0, result);
-    emitter_.ins(Opcode::End);
+    };
+    tree(tree, 0, palette_.elements.size());
 }
 
 } // namespace iprop::compiler

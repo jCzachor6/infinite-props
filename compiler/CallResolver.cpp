@@ -22,8 +22,13 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     using T = ips::ValueType;
     const auto name = calleeName(*call.callee);
     if (name == "ramp") {
-        return {call.location, RampCall{&plan_.palette(*function_.owner, *call.args[0].value),
-            argument(*call.args[1].value, T::F32)}};
+        RampCall result{&plan_.palette(*function_.owner, *call.args[0].value),
+            argument(*call.args[1].value, T::F32), {}};
+        if (const auto& value = function_.expression(*result.position.expression).constant; value) {
+            const f32 t = result.position.widen ? static_cast<f32>(std::get<i32>(*value)) : std::get<f32>(*value);
+            result.constant = ips::sampleRamp(*result.palette, t);
+        }
+        return {call.location, std::move(result)};
     }
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;

@@ -1420,9 +1420,20 @@ return mix(palette[i], palette[i+1], f)
 
 where `mix` is §9.5's `color.mix` (the channel lerp with the pinned
 truncating conversion) for colors, or §9.7's `lerp` for f32 palettes.
-The compiler emits the stop-selection ladder
-exactly like the palette indexing of §10 (the default stop for the
-out-of-range truncations is the last element).
+The compiler may evaluate a provably pure, constant t and this exact
+algorithm at compile time, preserving the resulting bits. It MUST NOT
+discard RNG, helper, drawing or trap effects. A nonconstant t is evaluated
+once and selects a stop using a balanced decision tree over the i32 index:
+O(log N) executed comparisons, O(N) emitted code. Palette indexing uses
+the same tree; negative or out-of-range indices still select the last
+element. No lookup instruction or binary format change is required.
+
+The exact compiler expansion and its total fuel are not part of the
+source-language result contract. Constant folding and tree selection can
+reduce fuel compared with earlier 0.3 compiler builds. Each actual emitted
+VM instruction retains the normative cost in §8.3; executing any existing
+binary retains its fuel behavior. Resource tests bound the cost of newly
+compiled ramps separately from the historical binary golden corpus.
 
 Pinned vectors (f32 bits):
 
