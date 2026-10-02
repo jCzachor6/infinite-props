@@ -1,0 +1,14 @@
+// Analytic coverage around a segment.
+asset DistanceLine {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for y in 0..32 {
+      for x in 0..32 {
+        d = dist.line({x, y}, {4, 26}, {27, 5}) - 2
+        pixel(x, y, color.set.a(#f8a, int(fill(d, 1) * 255)))
+      }
+    }
+  }
+}

@@ -228,6 +228,8 @@ calls, because bit-exact parity across platforms is a core requirement:
   [v0.4 language reference](docs/language-v0.4.md) for parameter names.
 - `ipc file.ips --format canonical.ips` exports canonical source during
   compilation, with deterministic formatting and executable roundtrips.
+- The [recipe gallery](examples/recipes/README.md) contains 24 small,
+  standalone patterns for authoring and combining procedural assets.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).

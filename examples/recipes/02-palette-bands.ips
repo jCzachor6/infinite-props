@@ -1,0 +1,12 @@
+// Typed palette indexing.
+asset PaletteBands {
+  size 32x32
+  palette colors = [#a34, #db5, #5a8, #49b]
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for i in 0..4 {
+      rect(4, 4 + i * 6, 24, 4, colors[i])
+    }
+  }
+}

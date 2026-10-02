@@ -37,6 +37,8 @@ const sources = [
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
+for (const name of fs.readdirSync(path.join(repo, "examples/recipes")).filter(name => name.endsWith(".ips")).sort())
+    sources.push(["recipe-" + name, "examples/recipes/" + name]);
 
 function checkImage(actual, expected, label) {
     assert.equal(actual.width, expected.width, label + ": width");

@@ -28,6 +28,10 @@
 - B.2: Added a parseable canonical source printer and `ipc --format <out.ips>`
   during compilation. Literal spelling, declaration layout and named calls
   normalize deterministically; roundtrips preserve executable bytecode.
+- B.3: Added 24 standalone 32x32 recipe sources covering language patterns,
+  procedural geometry, colors, RNG, helpers, uniforms and structured outputs.
+  Gallery compilation, rendered variety and canonical roundtrips run in
+  CTest; every recipe joins the native/WASM image and output comparisons.
 
 ## v0.3.0 — 2026-10-02
 

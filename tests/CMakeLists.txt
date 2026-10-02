@@ -24,6 +24,7 @@ add_executable(iprop_tests
     language/direct_seed_test.cpp
     language/diagnostic_hints_test.cpp
     language/source_printer_test.cpp
+    language/recipe_gallery_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp
