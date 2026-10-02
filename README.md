@@ -495,15 +495,15 @@ the HTML5 backend). v0.2 rounded out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-v0.3 on `develop` adds vectors, distance fields, curves, procedural noise,
-colour utilities and exact part transforms. Product 0.3.0 is prepared;
-the CLI, C API, SFML and Godot
-have regression and conformance checks. The product version, format
+v0.3.0 adds vectors, distance fields, curves, procedural noise, colour
+utilities and exact part transforms. Product 0.3.0 is released on `main`
+with tag `v0.3.0`; the CLI, C API, SFML and Godot have regression and
+conformance checks. The product version, format
 version (0.3, with 0.1/0.2 reader compatibility) and C API version (0.2)
 are separate contracts. API 0.2 consumers must rebuild with the new header.
-The merge, release tag and publication have not happened yet. GitHub CI
-requires a remote; editor/website publication, Bevy and Unity glue remain
-separate ecosystem work.
+Source and native packages are available as local release artifacts.
+Remote publication and GitHub CI require a configured remote; editor/website
+publication, Bevy and Unity glue remain separate ecosystem work.
 
 The next example pass has two showcases:
 

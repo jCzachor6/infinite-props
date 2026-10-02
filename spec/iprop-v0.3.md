@@ -1,7 +1,7 @@
 # `.iprop` Format and Virtual Machine — Specification v0.3
 
-**Status:** v0.3 in development — the beauty-toolkit additions on top of
-v0.2. Implemented by the reference runtime task by task.
+**Status:** v0.3 released with product 0.3.0 on 2026-10-02. The specified
+semantics are frozen and implemented by the reference runtime.
 **Scope:** This document specifies the binary file format and the execution
 semantics of the virtual machine. It does not specify the `.ips` language or
 the compiler (Phase 2).

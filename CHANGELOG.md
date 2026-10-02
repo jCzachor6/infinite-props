@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.0 — unreleased
+## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,
   quadratic/cubic Bezier queries and strokes, procedural noise, color and
@@ -27,6 +27,9 @@
 - Fixed install/release version checks and added regressions for raw float
   boundaries, control-flow types, resource limits, geometry and evaluation
   order. Frozen specifications and historical golden files are unchanged.
+- Split large compiler, language, math, validator and C API test suites by
+  responsibility; removed duplicate assets and completed planning reports.
+  The website includes the format 0.3 specification.
 
 ## v0.2.0 — prepared for release, 2026-09-30
 
