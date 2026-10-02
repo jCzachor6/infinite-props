@@ -3,7 +3,6 @@
 add_library(iprop_compiler STATIC
     Compiler.cpp
     Plan.cpp
-    Fold.cpp
     Emit.cpp
     EmitExpr.cpp
     EmitCall.cpp

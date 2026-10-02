@@ -1,8 +1,8 @@
-#include "Fold.hpp"
+#include "ips/Fold.hpp"
 
-#include "Literals.hpp"
+#include "ips/Literals.hpp"
 
-namespace iprop::compiler {
+namespace iprop::ips {
 namespace {
 
 bool foldMixed(ips::Binary::Op op, f32 a, f32 b, Value& out) {
@@ -155,4 +155,4 @@ bool fold(const ips::Expr& expr, Value& out) {
 
 bool foldExpression(const ips::Expr& expr, Value& out) { return fold(expr, out); }
 
-} // namespace iprop::compiler
+} // namespace iprop::ips

@@ -43,6 +43,13 @@ Planner::Planner(const ips::Program& entry,
     plan_->entry = &entry;
 }
 
+std::string Plan::sourcePath(const ips::Program* owner) const {
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+        if (parts[i] == owner) return entry->imports[i].path;
+    }
+    return {};
+}
+
 [[noreturn]] void Planner::error(const ips::SourceLocation& at,
                                  std::string message) {
     throw ips::SourceError{at, std::move(message)};
@@ -167,8 +174,8 @@ void Planner::planParts() {
         }
         const ips::Program* part = found->second;
         if (!part->imports.empty()) {
-            error(part->imports[0].location,
-                  "nested part imports are not supported yet");
+            throw ips::SourceError{part->imports[0].location,
+                  "nested part imports are not supported yet", import.path};
         }
         plan_->partIndex.emplace(import.alias,
                                 static_cast<u32>(plan_->parts.size()));
@@ -240,6 +247,18 @@ void Planner::registerNames() {
 // reserved by planFunctions, so functions checked lazily during this walk
 // keep coming later.
 void Planner::prepareFunction(const std::string& name) {
+    try {
+        prepareFunctionBody(name);
+    } catch (ips::SourceError& error) {
+        const auto dot = name.find('.');
+        if (error.path.empty() && dot != std::string::npos) {
+            error.path = plan_->sourcePath(parts_.at(name.substr(0, dot)));
+        }
+        throw;
+    }
+}
+
+void Planner::prepareFunctionBody(const std::string& name) {
     if (prepared_.count(name) != 0) {
         return;
     }

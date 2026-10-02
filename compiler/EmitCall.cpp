@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "Fold.hpp"
-#include "iprop/D4Transform.hpp"
+#include "ips/Fold.hpp"
+#include "ips/PartTransform.hpp"
 
 namespace iprop::compiler {
 
@@ -292,7 +292,7 @@ void Emitter::emitPartCall(const ips::Call& call) {
         }
         const auto* value = std::get_if<ips::Literal>(input.defaultValue.get());
         Value folded;
-        if (value == nullptr || !foldExpression(*value, folded)) {
+        if (value == nullptr || !ips::foldExpression(*value, folded)) {
             error(input.location,
                   "part input '" + input.name + "' has no constant default");
         }
@@ -313,49 +313,7 @@ void Emitter::emitPartCall(const ips::Call& call) {
             break;
         }
     }
-    // The D4 transform kind (spec §10.5): the rot (0/90/180/270) composed
-    // with the mirror_x/mirror_y (0/1) — the rot first, then the x, then
-    // the y mirror.
-    i32 rot = 0;
-    bool mirrorX = false;
-    bool mirrorY = false;
-    for (const auto& arg : call.args) {
-        if (!arg.name.has_value()) {
-            continue;
-        }
-        if (*arg.name != "rot" && *arg.name != "mirror_x" &&
-            *arg.name != "mirror_y") {
-            continue; // the at and the uniform overrides
-        }
-        Value folded;
-        if (!foldExpression(*arg.value, folded) ||
-            !std::holds_alternative<i32>(folded)) {
-            error(locationOf(*arg.value),
-                  "part transforms must be constant integers");
-        }
-        const i32 value = std::get<i32>(folded);
-        if (*arg.name == "rot") {
-            if (value != 0 && value != 90 && value != 180 && value != 270) {
-                error(locationOf(*arg.value),
-                      "the rot transform must be 0, 90, 180 or 270");
-            }
-            rot = value;
-        } else if (*arg.name == "mirror_x") {
-            if (value != 0 && value != 1) {
-                error(locationOf(*arg.value),
-                      "the mirror_x transform must be 0 or 1");
-            }
-            mirrorX = value != 0;
-        } else if (*arg.name == "mirror_y") {
-            if (value != 0 && value != 1) {
-                error(locationOf(*arg.value),
-                      "the mirror_y transform must be 0 or 1");
-            }
-            mirrorY = value != 0;
-        }
-    }
-    const u8 kind = D4Transform::fromParameters(rot, mirrorX, mirrorY)->kind();
-    ins(Opcode::PartDraw, kind, static_cast<u16>(partIndex));
+    ins(Opcode::PartDraw, ips::resolvePartTransform(call).kind(), static_cast<u16>(partIndex));
 }
 
 } // namespace iprop::compiler

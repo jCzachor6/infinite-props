@@ -17,7 +17,12 @@ std::vector<u8> compileProgram(
 
     compiler::Emitter emitter(*plan);
     for (auto& function : plan->functions) {
-        emitter.emitFunction(function);
+        try {
+            emitter.emitFunction(function);
+        } catch (ips::SourceError& error) {
+            if (error.path.empty()) error.path = plan->sourcePath(function.owner);
+            throw;
+        }
     }
 
     const std::vector<u8> bytes = compiler::Assembler(*plan).assemble();

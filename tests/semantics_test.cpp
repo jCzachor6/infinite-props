@@ -568,6 +568,23 @@ TEST_CASE("part transform argument names cannot be declared as uniforms") {
     }
 }
 
+TEST_CASE("part transforms are fully checked before compilation") {
+    const auto source = [](const std::string& transform) {
+        return "import hair from \"hair.ips\"\nasset t { size 8x8 draw(v:i32,a:i32) { "
+               "hair.draw(1,2,3,at={0,0}," + transform + ") } }";
+    };
+    CHECK_NOTHROW(checkAsset(parse(source("rot=45+45,mirror_x=1,mirror_y=0")),hairParts()));
+    for (const std::string value : {"45", "-90", "360"})
+        expectCheckError(source("rot="+value),hairParts(),"rot transform must be");
+    for (const std::string name : {"rot", "mirror_x", "mirror_y"}) {
+        expectCheckError(source(name+"=v"),hairParts(),"constant integers");
+        expectCheckError(source(name+"=0,"+name+"=0"),hairParts(),"duplicate");
+        expectCheckError(source(name+"=0.0"),hairParts(),"must be an integer");
+    }
+    expectCheckError(source("mirror_x=2"),hairParts(),"mirror_x transform must be");
+    expectCheckError(source("mirror_y=-1"),hairParts(),"mirror_y transform must be");
+}
+
 TEST_CASE("part output reads are validated") {
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));
 

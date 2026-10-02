@@ -22,9 +22,10 @@ struct SourceLocation {
 struct SourceError : std::exception {
     SourceLocation location;
     std::string message;
+    std::string path; // optional owning file, relative to the compilation entry
 
-    SourceError(SourceLocation at, std::string text)
-        : location(at), message(std::move(text)) {}
+    SourceError(SourceLocation at, std::string text, std::string sourcePath = {})
+        : location(at), message(std::move(text)), path(std::move(sourcePath)) {}
 
     const char* what() const noexcept override { return message.c_str(); }
 };

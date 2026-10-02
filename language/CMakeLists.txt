@@ -9,6 +9,8 @@ add_library(ips_lang STATIC
     ips/Printer.cpp
     ips/Types.cpp
     ips/Typing.cpp
+    ips/Fold.cpp
+    ips/PartTransform.cpp
     ips/Imports.cpp
     ips/Semantics.cpp)
 

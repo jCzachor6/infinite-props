@@ -10,7 +10,7 @@
 
 #include "iprop/Types.hpp"
 
-namespace iprop::compiler {
+namespace iprop::ips {
 
 // Integer literal (decimal or 0x hex) → 32-bit pattern.
 inline bool parseIntBits(const std::string& text, u32& bits) {
@@ -68,4 +68,4 @@ inline bool parseColor(const std::string& text, Color& out) {
     return true;
 }
 
-} // namespace iprop::compiler
+} // namespace iprop::ips

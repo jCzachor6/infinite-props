@@ -2,7 +2,7 @@
 
 #include <utility>
 
-#include "Fold.hpp"
+#include "ips/Fold.hpp"
 
 namespace iprop::compiler {
 
@@ -10,7 +10,7 @@ namespace iprop::compiler {
 
 ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     currentLine_ = static_cast<u32>(ips::locationOf(expr).line);
-    if (Value folded; foldExpression(expr, folded)) {
+    if (Value folded; ips::foldExpression(expr, folded)) {
         emitConst(folded);
         if (std::holds_alternative<i32>(folded)) {
             return ips::ValueType::I32;
@@ -406,7 +406,7 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
     };
     const auto emitElement = [&](const ips::Expr& element) {
         Value folded;
-        if (!foldExpression(element, folded)) {
+        if (!ips::foldExpression(element, folded)) {
             error(locationOf(element), "palette elements must be literals");
         }
         emitConst(folded);
@@ -417,7 +417,7 @@ ips::ValueType Emitter::emitIndex(const ips::Index& index) {
 
     // Constant indices fold; the fold matches the ladder for the
     // out-of-range and negative cases (the default element).
-    if (Value foldedIndex; foldExpression(*index.index, foldedIndex)) {
+    if (Value foldedIndex; ips::foldExpression(*index.index, foldedIndex)) {
         if (const auto* k = std::get_if<i32>(&foldedIndex)) {
             const std::size_t chosen =
                 (*k >= 0 && static_cast<std::size_t>(*k) + 1 < count)
@@ -491,7 +491,7 @@ ips::ValueType Emitter::emitRamp(const ips::Call& call) {
     };
     const auto emitElement = [&](const ips::Expr& element) {
         Value folded;
-        if (!foldExpression(element, folded)) {
+        if (!ips::foldExpression(element, folded)) {
             error(locationOf(element), "palette elements must be literals");
         }
         emitConst(folded);

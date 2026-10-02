@@ -76,6 +76,7 @@ struct Plan {
     ips::Typer& typeEngine() const { return *typer; }
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
+    std::string sourcePath(const ips::Program* owner) const;
 };
 
 // Resolves a checked entry program plus its imported parts into a Plan.
@@ -108,6 +109,7 @@ private:
     void planFunctions();
     void registerNames();
     void prepareFunction(const std::string& name);
+    void prepareFunctionBody(const std::string& name);
 
     // The plan's Typer resolver, bound to the heap plan (stable address).
     std::optional<ips::FunctionSurface> resolveFunction(

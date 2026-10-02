@@ -16,7 +16,7 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
 - [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
 - [ ] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
-- [ ] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
+- [x] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
 - [ ] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
 - [ ] Wspólny zestaw przypadków granicznych: NaN/inf/±0, przepływ typów, limity zasobów i relacja obrazu do geometrii.
 - [ ] Końcowy audyt: wszystkie wymagania sprawdzone, native + backendy + sanitizery + WASM + instalacja/wydanie, aktualna dokumentacja i brak niezamierzonych zmian golden.
@@ -74,4 +74,12 @@ niezerowe origin/at, helpery, ownership i zagnieżdżone zamiany osi.
 CTest 6/6 PASS; native/WASM: 7 golden, 116 obrazów/outputów, 19 trapów,
 6292 wartości bitowych PASS (`d4-conformance.log`).
 
-W toku: diagnostyka, wydzielenie matematyki i dalsze refaktory.
+Diagnostyka: semantyka i kompilator używają `resolvePartTransform` oraz
+wspólnego składania stałych w warstwie języka. Błędne domeny, zmienne,
+typy i powtórzone argumenty transformacji są odrzucane przed emisją.
+`SourceError` zachowuje ścieżkę importu także przy parsowaniu, cyklach,
+brakujących plikach i błędach planowania/assembly. Edytor obsługuje faktyczny
+jednoliniowy format CLI oraz historyczny format dwuliniowy. CTest 7/7 PASS,
+w tym nowy test integracyjny edytor + prawdziwy `ipc` dla pięciu etapów błędu.
+
+W toku: API vec2, wydzielenie matematyki i dalsze refaktory.

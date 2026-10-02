@@ -58,3 +58,10 @@ target_include_directories(iprop_tests SYSTEM PRIVATE
 iprop_warnings(iprop_tests)
 
 add_test(NAME smoke COMMAND iprop_tests)
+
+find_program(IPROP_NODE_EXECUTABLE NAMES node)
+if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")
+endif()

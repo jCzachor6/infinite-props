@@ -2,8 +2,8 @@
 
 #include <utility>
 
-#include "Fold.hpp"
-#include "Literals.hpp"
+#include "ips/Fold.hpp"
+#include "ips/Literals.hpp"
 
 namespace iprop::compiler {
 

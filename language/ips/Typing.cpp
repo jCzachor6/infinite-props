@@ -1,4 +1,5 @@
 #include "ips/Typing.hpp"
+#include "ips/PartTransform.hpp"
 
 #include <set>
 #include <utility>
@@ -497,6 +498,7 @@ ValueType Typer::typePartCall(const Call& call) {
         error(call.location,
               "part call requires an 'at = {x, y}' placement argument");
     }
+    (void)resolvePartTransform(call);
     return ValueType::Void;
 }
 

@@ -9,6 +9,7 @@ const { execFile } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const { parseDiagnostics } = require("./diagnostics");
 
 let diagnostics;
 let log;
@@ -53,31 +54,6 @@ function compilerBinary() { return toolBinary("compilerPath", "ipc"); }
 function rendererBinary() { return toolBinary("rendererPath", "ipgen"); }
 
 // ---- diagnostics (Phase 28) ----------------------------------------------------
-
-// The native ipc prints "ipc: <file>:" followed by "N:M: error: <message>"
-// lines (plus a caret snippet). This parses them into per-file diagnostics.
-function parseDiagnostics(stderr, entry) {
-    const byFile = new Map();
-    let currentFile = entry;
-    for (const line of stderr.split("\n")) {
-        const fileMatch = line.match(/^ipc: (.+):$/);
-        if (fileMatch) {
-            currentFile = fileMatch[1];
-            continue;
-        }
-        const errorMatch = line.match(/^(\d+):(\d+): error: (.*)$/);
-        if (errorMatch) {
-            const list = byFile.get(currentFile) ?? [];
-            list.push({
-                line: parseInt(errorMatch[1], 10),
-                column: parseInt(errorMatch[2], 10),
-                message: errorMatch[3],
-            });
-            byFile.set(currentFile, list);
-        }
-    }
-    return byFile;
-}
 
 function compileActive() {
     const editor = vscode.window.activeTextEditor;
