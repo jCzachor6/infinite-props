@@ -1,0 +1,3 @@
+add_executable(iprop_render_benchmark EXCLUDE_FROM_ALL render.cpp)
+target_link_libraries(iprop_render_benchmark PRIVATE iprop::runtime)
+iprop_warnings(iprop_render_benchmark)

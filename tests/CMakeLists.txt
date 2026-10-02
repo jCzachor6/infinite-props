@@ -32,6 +32,7 @@ add_executable(iprop_tests
     control_validation_test.cpp
     arithmetic_test.cpp
     vector_determinism_test.cpp
+    bezier_kernel_test.cpp
     seeded_test.cpp
     canvas_test.cpp
     outputs_test.cpp

@@ -11,11 +11,11 @@ Cel: wdrożyć całą listę z `CODE_REVIEW_DEVELOP_MAIN.md`, zachowując histor
 - [x] R5 / A5: typowana pula zmiennych tymczasowych z czasem życia, test długiej sekwencji i zachowania efektów/RNG.
 - [ ] A1: wspólny `OpcodeSpec` używany przez nazwy/assembler/walidator oraz osobny `BuiltinSpec` dla semantyki i emisji.
 - [ ] A2: resolver planów wywołań i typowany plan wyrażeń, usunięcie powtarzanego typowania przez emiter, testy kolejności argumentów i efektów.
-- [ ] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
+- [x] A4: czyste moduły matematyczne i adaptery VM, wspólny wielomian quintic/fade, fabryka przygotowanego kernela Béziera.
 - [ ] A5: wspólne rozstrzyganie palet i emisja indeksu/ramp.
 - [x] A7: wspólna lista źródeł runtime dla native/WASM, świeże buildy obu konfiguracji.
 - [ ] Ramp: składanie czystych stałych, szybszy wybór dynamicznego przedziału, jawny kontrakt fuel, pomiary i testy efektów ubocznych.
-- [ ] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
+- [x] Bézier: pomiar przygotowanego kernela, zachowanie bitów i normatywnego fuel.
 - [x] Diagnostyka: pełna walidacja transformacji w semantyce, lokalizacje CLI zrozumiałe dla edytora.
 - [x] API vec2: dostępne len/dot/rot w `.ips`, spójna konwencja dodatnich obrotów, specyfikacja i testy.
 - [ ] Wspólny zestaw przypadków granicznych: NaN/inf/±0, przepływ typów, limity zasobów i relacja obrazu do geometrii.
@@ -98,4 +98,13 @@ CTest 7/7 PASS; native/WASM: 7 golden, 121 obrazów/outputów, 19 trapów,
 Pozostaje fabryka i pomiar przygotowanego kernela, więc A4 nie jest jeszcze
 odhaczone jako całość.
 
-W toku: przygotowany kernel Béziera, następnie opisy instrukcji i plan wywołań.
+A4, etap 2 / Bézier: fabryki `BezierKernel::quadratic/cubic` przygotowują
+różnice punktów, drugie pochodne, skończoność i degenerację; rasteryzator
+używa jednego kernela na całą krzywą. 6864 zapytania dają hashe surowych
+f32 identyczne z 9bda0c2. Normatywne fuel i obraz benchmarku bez zmian
+(29365; FNV 31c9b9f5ac360167). Mediana 7 naprzemiennych serii po 80 generacji:
+3,55157 ms → 3,43472 ms, ok. 3,3% mniej czasu na lokalnym fixture.
+Procedura i ograniczenia: `benchmarks/README.md`. CTest 7/7 i pełne
+porównanie native/WASM PASS (`bezier-conformance.log`).
+
+W toku: wspólne opisy instrukcji i plan wywołań.

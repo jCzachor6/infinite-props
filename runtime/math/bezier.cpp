@@ -48,13 +48,45 @@ f32 bezierDistance(const Vec2& p, const Vec2& startPoint, const Vec2& endPoint,
     return best;
 }
 
-f32 quadraticBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {
-    if (!finitePoint(p) || !finitePoint(a) || !finitePoint(b) || !finitePoint(c)) {
-        return std::numeric_limits<f32>::quiet_NaN();
+} // namespace
+
+BezierKernel BezierKernel::create(std::array<Vec2,4> points, bool cubic) {
+    BezierKernel kernel;
+    kernel.points_ = points;
+    kernel.cubic_ = cubic;
+    kernel.finite_ = std::all_of(points.begin(), points.end(), finitePoint);
+    kernel.point_ = std::all_of(points.begin(), points.end(), [&](Vec2 p) { return p == points[0]; });
+    if (!kernel.finite_ || kernel.point_) return kernel;
+    for (std::size_t i = 0; i < 3; ++i) {
+        kernel.differences_[i] = {points[i+1].x-points[i].x, points[i+1].y-points[i].y};
     }
-    if (a.x == b.x && b.x == c.x && a.y == b.y && b.y == c.y) {
-        return distCircle(p, a, 0.f);
+    for (std::size_t i = 0; i < 2; ++i) {
+        kernel.second_[i] = {points[i].x-(points[i+1].x+points[i+1].x)+points[i+2].x,
+                             points[i].y-(points[i+1].y+points[i+1].y)+points[i+2].y};
     }
+    if (!cubic) {
+        const auto dd = kernel.second_[0];
+        kernel.second_[0] = {dd.x+dd.x, dd.y+dd.y};
+    }
+    return kernel;
+}
+
+BezierKernel BezierKernel::quadratic(Vec2 a, Vec2 b, Vec2 c) {
+    return create({a,b,c,c},false);
+}
+
+BezierKernel BezierKernel::cubic(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
+    return create({a,b,c,d},true);
+}
+
+f32 BezierKernel::distanceTo(Vec2 p) const {
+    if (!finite_ || !finitePoint(p)) return std::numeric_limits<f32>::quiet_NaN();
+    if (point_) return distCircle(p,points_[0],0.f);
+    return cubic_ ? distanceCubic(p) : distanceQuadratic(p);
+}
+
+f32 BezierKernel::distanceQuadratic(const Vec2& p) const {
+    const Vec2 a = points_[0], b = points_[1], c = points_[2];
     const auto point = [&](f32 t) -> Vec2 {
         if (t == 0.f) return a;
         if (t == 1.f) return c;
@@ -69,25 +101,15 @@ f32 quadraticBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b, const V
         const f32 s = 1.f - t;
         const f32 w0 = s + s;
         const f32 w1 = t + t;
-        return {w0 * (b.x - a.x) + w1 * (c.x - b.x),
-                w0 * (b.y - a.y) + w1 * (c.y - b.y)};
+        return {w0 * differences_[0].x + w1 * differences_[1].x,
+                w0 * differences_[0].y + w1 * differences_[1].y};
     };
-    const f32 ddx = a.x - (b.x + b.x) + c.x;
-    const f32 ddy = a.y - (b.y + b.y) + c.y;
-    const Vec2 dd{ddx + ddx, ddy + ddy};
+    const Vec2 dd = second_[0];
     return bezierDistance(p, a, c, point, derivative, [&](f32) { return dd; });
 }
 
-f32 cubicBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b,
-                        const Vec2& c, const Vec2& d) {
-    if (!finitePoint(p) || !finitePoint(a) || !finitePoint(b) ||
-        !finitePoint(c) || !finitePoint(d)) {
-        return std::numeric_limits<f32>::quiet_NaN();
-    }
-    if (a.x == b.x && b.x == c.x && c.x == d.x &&
-        a.y == b.y && b.y == c.y && c.y == d.y) {
-        return distCircle(p, a, 0.f);
-    }
+f32 BezierKernel::distanceCubic(const Vec2& p) const {
+    const Vec2 a = points_[0], b = points_[1], c = points_[2], d = points_[3];
     const auto point = [&](f32 t) -> Vec2 {
         if (t == 0.f) return a;
         if (t == 1.f) return d;
@@ -104,11 +126,10 @@ f32 cubicBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b,
         const f32 w0 = 3.f * s * s;
         const f32 w1 = 6.f * s * t;
         const f32 w2 = 3.f * t * t;
-        return {w0 * (b.x - a.x) + w1 * (c.x - b.x) + w2 * (d.x - c.x),
-                w0 * (b.y - a.y) + w1 * (c.y - b.y) + w2 * (d.y - c.y)};
+        return {w0 * differences_[0].x + w1 * differences_[1].x + w2 * differences_[2].x,
+                w0 * differences_[0].y + w1 * differences_[1].y + w2 * differences_[2].y};
     };
-    const Vec2 ab{a.x - (b.x + b.x) + c.x, a.y - (b.y + b.y) + c.y};
-    const Vec2 bc{b.x - (c.x + c.x) + d.x, b.y - (c.y + c.y) + d.y};
+    const Vec2 ab = second_[0], bc = second_[1];
     const auto secondDerivative = [&](f32 t) -> Vec2 {
         const f32 w0 = 6.f * (1.f - t);
         const f32 w1 = 6.f * t;
@@ -117,16 +138,14 @@ f32 cubicBezierDistance(const Vec2& p, const Vec2& a, const Vec2& b,
     return bezierDistance(p, a, d, point, derivative, secondDerivative);
 }
 
-} // namespace
-
 // Shared with the curve rasterizer so distance queries and strokes use the
 // same bounded, pinned search.
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c) {
-    return quadraticBezierDistance(p, a, b, c);
+    return BezierKernel::quadratic(a,b,c).distanceTo(p);
 }
 
 f32 distBezier(const Vec2& p, const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d) {
-    return cubicBezierDistance(p, a, b, c, d);
+    return BezierKernel::cubic(a,b,c,d).distanceTo(p);
 }
 
 } // namespace iprop::math
