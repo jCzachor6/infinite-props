@@ -226,6 +226,8 @@ calls, because bit-exact parity across platforms is a core requirement:
   clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
 - Every builtin/canvas operation accepts named arguments. See the
   [v0.4 language reference](docs/language-v0.4.md) for parameter names.
+- `ipc file.ips --format canonical.ips` exports canonical source during
+  compilation, with deterministic formatting and executable roundtrips.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).

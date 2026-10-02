@@ -12,6 +12,7 @@
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
+#include "ips/Printer.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
 
@@ -40,15 +41,17 @@ int fail(const std::string& message) {
 int main(int argc, char* argv[]) {
     std::string input;
     std::string output;
+    std::string formattedOutput;
     bool strip = false;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--format <out.ips>]\n"
                       << "Imports resolve relative to the entry file; the\n"
                       << "output passes the runtime validator. --strip removes\n"
-                      << "the debug section (identical execution).\n";
+                      << "the debug section (identical execution). --format writes\n"
+                      << "canonical source beside the compiled result.\n";
             return 0;
         }
         if (arg == "-o" || arg == "--output") {
@@ -58,6 +61,9 @@ int main(int argc, char* argv[]) {
             output = argv[++i];
         } else if (arg == "--strip") {
             strip = true;
+        } else if (arg == "--format") {
+            if (i + 1 >= argc) return fail("missing value for --format");
+            formattedOutput = argv[++i];
         } else if (!arg.empty() && arg[0] == '-') {
             return fail("unknown option '" + arg + "'");
         } else if (input.empty()) {
@@ -142,6 +148,14 @@ int main(int argc, char* argv[]) {
 
         std::vector<iprop::u8> bytes =
             iprop::compileProgram(entry, partPrograms);
+        std::string canonicalSource;
+        if (!formattedOutput.empty()) {
+            const auto destination = std::filesystem::absolute(formattedOutput).lexically_normal();
+            if (destination == std::filesystem::absolute(input).lexically_normal() ||
+                destination == std::filesystem::absolute(output).lexically_normal())
+                return fail("--format must target a distinct source output file");
+            canonicalSource = formatProgram(entry);
+        }
         if (strip) {
             bytes = iprop::stripDebug(bytes);
         }
@@ -152,6 +166,14 @@ int main(int argc, char* argv[]) {
         }
         out.write(reinterpret_cast<const char*>(bytes.data()),
                   static_cast<std::streamsize>(bytes.size()));
+        out.close();
+        if (!out) return fail("cannot write '" + output + "'");
+        if (!formattedOutput.empty()) {
+            std::ofstream formatted(formattedOutput, std::ios::binary);
+            formatted << canonicalSource;
+            formatted.close();
+            if (!formatted) return fail("cannot write '" + formattedOutput + "'");
+        }
     } catch (const iprop::ips::SourceError& error) {
         const std::string path = error.path.empty() ? entryPath.filename().string() : error.path;
         std::string source;
@@ -162,5 +184,6 @@ int main(int argc, char* argv[]) {
         return fail(error.what());
     }
     std::cout << "compiled " << input << " -> " << output << "\n";
+    if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << "\n";
     return 0;
 }

@@ -9,6 +9,15 @@ Diagnostics suggest close canonical names, including transposed letters.
 Source text must be valid UTF-8. Locations are 1-based Unicode codepoint
 columns, with tabs counting as one; the editor maps them to UTF-16 positions.
 
+`ipc entry.ips --format canonical.ips` compiles the original source and also
+writes its canonical AST as parseable source. Keep the output beside its
+imports when recompiling it. Formatting uses two-space indentation, explicit
+expression grouping, canonical word keywords, normalized literal spellings
+and named builtin arguments in signature order. Reformatting is idempotent;
+roundtrips preserve the executable file after stripping source-line debug
+information. Comments are absent from the AST and the formatted output.
+The source output must differ from the input and the binary destination.
+
 All builtin and canvas calls accept named arguments. A name binds the
 corresponding signature slot; positional arguments bind slots from the start.
 Duplicate, missing and unknown names are errors. Arguments evaluate in

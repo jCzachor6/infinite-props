@@ -25,6 +25,9 @@
   builtins, parameters and scoped names. UTF-8 source columns now count
   codepoints; malformed source encodings have located errors. Editor
   diagnostics convert these columns to VS Code's UTF-16 positions.
+- B.2: Added a parseable canonical source printer and `ipc --format <out.ips>`
+  during compilation. Literal spelling, declaration layout and named calls
+  normalize deterministically; roundtrips preserve executable bytecode.
 
 ## v0.3.0 — 2026-10-02
 

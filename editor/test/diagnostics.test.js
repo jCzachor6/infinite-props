@@ -56,3 +56,31 @@ test("real compiler errors retain source ownership through imports and lowering"
         assert.equal(utf16Column(unicode,error.column), offset);
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test("compiler exports canonical source with identical executable roundtrips", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-format-"));
+    const ipc = process.env.IPROP_COMPILER || path.resolve(__dirname, "../../build/tools/ipc");
+    const part = 'tile "ż".ips';
+    const source = 'import tile from ' + JSON.stringify(part) + '\n' +
+        'asset example { size 8x8 draw {\n' +
+        '  // author comment\n  rect(color=#fff,h=4,w=4,y=0,x=0)\n' +
+        '  tile.draw(seed,v,a,at={0,0})\n} }';
+    const run = args => spawnSync(ipc,args,{cwd:dir,encoding:"utf8"});
+    try {
+        fs.writeFileSync(path.join(dir,part),"asset tile { size 8x8 draw { pixel(0,0,#f00) } }");
+        fs.writeFileSync(path.join(dir,"entry.ips"),source);
+        let result = run(["entry.ips","-o","original.iprop","--strip","--format","canonical.ips"]);
+        assert.equal(result.status,0,result.stderr);
+        const formatted = fs.readFileSync(path.join(dir,"canonical.ips"),"utf8");
+        assert.match(formatted,/rect\(x = 0, y = 0, w = 4, h = 4, color = #ffffff\)/);
+        assert.equal(fs.readFileSync(path.join(dir,"entry.ips"),"utf8"),source);
+        result = run(["canonical.ips","-o","roundtrip.iprop","--strip","--format","twice.ips"]);
+        assert.equal(result.status,0,result.stderr);
+        assert.deepEqual(fs.readFileSync(path.join(dir,"roundtrip.iprop")),fs.readFileSync(path.join(dir,"original.iprop")));
+        assert.equal(fs.readFileSync(path.join(dir,"twice.ips"),"utf8"),formatted);
+        result = run(["entry.ips","--format","entry.ips"]);
+        assert.equal(result.status,1);
+        assert.match(result.stderr,/distinct source output/);
+        assert.equal(fs.readFileSync(path.join(dir,"entry.ips"),"utf8"),source);
+    } finally { fs.rmSync(dir,{recursive:true,force:true}); }
+});
