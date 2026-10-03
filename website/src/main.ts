@@ -80,12 +80,13 @@ function syncControls() {
     (document.getElementById("seed-slider") as HTMLInputElement).value = String(Math.min(state.seed >>> 0, 4095));
     for (const kind of ["variant", "archetype"] as const) {
         const max = kind === "variant" ? asset.variants - 1 : asset.archetypes - 1;
+        state[kind] = Math.min(Math.max(0, state[kind]), max);
         const slider = document.getElementById(kind + "-slider") as HTMLInputElement;
         const value = document.getElementById(kind + "-value") as HTMLInputElement;
         slider.max = String(max);
         value.max = String(max);
-        slider.value = String(Math.min(state[kind], max));
-        value.value = String(Math.min(state[kind], max));
+        slider.value = String(state[kind]);
+        value.value = String(state[kind]);
     }
 }
 
