@@ -66,6 +66,7 @@ def main():
         if godot_project.exists() and any((godot_project / "bin").glob("*.debug.*")):
             raise RuntimeError("Use GODOTCPP_TARGET=template_release for the release package")
         run("cmake", f"-DPREFIX={prefix}", f"-DWORK={temporary / 'smoke'}",
+            f"-DZLIB_USE_STATIC_LIBS={cache.get('ZLIB_USE_STATIC_LIBS', 'OFF')}",
             "-P", ROOT / "scripts/install_smoke.cmake")
         if godot_project.exists():
             engine = cache.get("IPROP_GODOT_BINARY")

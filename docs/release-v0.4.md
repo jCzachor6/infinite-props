@@ -36,6 +36,8 @@ Native builds and installed CMake consumers need zlib >= 1.2.9. Linux uses
 the `zlib1g-dev` package; macOS can use the platform SDK. Windows CI supplies
 `zlib:x64-windows-static-md` through vcpkg and adds its installation to
 `CMAKE_PREFIX_PATH`, matching static zlib to the shared MSVC runtime.
+Set `ZLIB_USE_STATIC_LIBS=ON` for this Windows triplet; packaging forwards
+that choice to its installed CMake consumer checks.
 The [C API installation guide](../backends/capi/README.md) describes consumers.
 
 ```sh

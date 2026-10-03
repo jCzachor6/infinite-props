@@ -35,6 +35,9 @@ Loading expands and validates the complete file before generation; the
 program owns the expanded bytes. C API version 0.2 and its struct layouts
 are unchanged. CMake consumers also need zlib 1.2.9 or newer; Windows CI
 links static zlib with the shared MSVC runtime (`x64-windows-static-md`).
+When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
+prefix in `CMAKE_PREFIX_PATH` for both the library and external consumers.
+This also recognizes the `zs`/`zsd` names used by zlib 1.3.2 on Windows.
 
 ## The surface
 

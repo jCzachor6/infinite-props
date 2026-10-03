@@ -28,7 +28,9 @@ jobs:
           "CMAKE_PREFIX_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static-md" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Configure
-        run: cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+        run: >-
+          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+          -DZLIB_USE_STATIC_LIBS=${{ runner.os == 'Windows' && 'ON' || 'OFF' }}
 
       - name: Build
         run: cmake --build build --parallel
@@ -43,7 +45,7 @@ jobs:
         run: |
           cmake --install build --prefix stage
           cmake -E rename stage relocated
-          cmake -DPREFIX=${{ github.workspace }}/relocated -DWORK=${{ github.workspace }}/installed-smoke -P scripts/install_smoke.cmake
+          cmake -DPREFIX=${{ github.workspace }}/relocated -DWORK=${{ github.workspace }}/installed-smoke -DZLIB_USE_STATIC_LIBS=${{ runner.os == 'Windows' && 'ON' || 'OFF' }} -P scripts/install_smoke.cmake
 
   # The HTML5/WASM backend: the same interpreter compiled to WebAssembly,
   # checked against fresh desktop renders, structured outputs and the
