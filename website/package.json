@@ -4,7 +4,7 @@
   "private": true,
   "description": "The iprop website: a static playground running the WASM interpreter in the browser, with shareable links.",
   "scripts": {
-    "build": "vite build",
+    "build": "tsc --noEmit && vite build",
     "dev": "vite",
     "preview": "vite preview",
     "prepare-assets": "sh prepare.sh"

@@ -2,6 +2,8 @@
 // seed/variant/archetype controls and a shareable URL hash
 // (#<asset>/<seed>/<variant>/<archetype>).
 
+export {};
+
 declare global {
     interface Window {
         createIpropModule(options: { locateFile(): string }): Promise<{
@@ -17,7 +19,7 @@ const ASSETS = [
     { id: "portrait", file: "portrait.iprop", variants: 8, archetypes: 1, label: "portrait — the QuantSpace character" },
     { id: "plant", file: "plant.iprop", variants: 1, archetypes: 1, label: "plant — the interior potted plant" },
     { id: "noise", file: "noise.iprop", variants: 1, archetypes: 1, label: "noise — a seed-driven field" },
-];
+].map(asset => ({ ...asset, bytes: new Uint8Array() }));
 
 const state = { asset: "portrait", seed: 0, variant: 0, archetype: 0 };
 let iprop: Awaited<ReturnType<typeof window.createIpropModule>> | null = null;
@@ -64,7 +66,7 @@ async function render() {
     const context = canvas.getContext("2d")!;
     context.putImageData(
         new ImageData(
-            new Uint8ClampedArray(result.data.buffer, result.data.byteOffset, result.data.byteLength),
+            new Uint8ClampedArray(result.data),
             result.width, result.height),
         0, 0);
     status("seed " + (state.seed >>> 0) + " · variant " + state.variant +
@@ -107,7 +109,7 @@ function bindSlider(kind: "seed" | "variant" | "archetype") {
 async function main() {
     readHash();
     for (const asset of ASSETS) {
-        (asset as any).bytes = new Uint8Array(await (await fetch(asset.file)).arrayBuffer());
+        asset.bytes = new Uint8Array(await (await fetch(asset.file)).arrayBuffer());
     }
     try {
         iprop = await window.createIpropModule({ locateFile: () => "iprop.wasm" });
@@ -125,7 +127,7 @@ async function main() {
             state.asset = asset.id;
             state.variant = 0;
             state.archetype = 0;
-            for (const node of tabs.children) node.classList.remove("active");
+            for (const node of Array.from(tabs.children)) node.classList.remove("active");
             tab.classList.add("active");
             syncControls();
             render();
