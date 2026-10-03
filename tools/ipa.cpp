@@ -15,6 +15,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <string>
@@ -766,8 +767,13 @@ std::vector<u8> assemble(const std::string& source) {
     const u32 functionCount = static_cast<u32>(ordered.size());
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         const AsmFunction& fn = *ordered[i];
+        constexpr auto maxStreamSize = std::numeric_limits<u32>::max();
+        if (fn.instructions.size() > maxStreamSize / 4 ||
+            streams.size() > maxStreamSize - fn.instructions.size() * 4) {
+            throw SourceError(0, "instruction streams exceed u32 size limit");
+        }
         table.writeU32(stringIndex.at(fn.name));
-        table.writeU32(streams.size());
+        table.writeU32(static_cast<u32>(streams.size()));
         table.writeU32(static_cast<u32>(fn.instructions.size()) * 4);
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <limits>
 #include <zlib.h>
 
 #include "iprop/Compression.hpp"
@@ -18,11 +19,13 @@ void word(std::vector<u8>& bytes, std::size_t offset, u32 value) {
 }
 std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) {
     const auto header = parseHeader(inner);
+    REQUIRE(inner.size() <= std::numeric_limits<uInt>::max());
     z_stream stream{};
     REQUIRE(deflateInit(&stream, Z_BEST_COMPRESSION) == Z_OK);
     const std::string dict = "IPRP meta const code";
-    if (dictionary) REQUIRE(deflateSetDictionary(&stream,reinterpret_cast<const Bytef*>(dict.data()),dict.size()) == Z_OK);
-    std::vector<u8> compressed(compressBound(inner.size()));
+    if (dictionary) REQUIRE(deflateSetDictionary(&stream,reinterpret_cast<const Bytef*>(dict.data()),static_cast<uInt>(dict.size())) == Z_OK);
+    std::vector<u8> compressed(compressBound(static_cast<uLong>(inner.size())));
+    REQUIRE(compressed.size() <= std::numeric_limits<uInt>::max());
     stream.next_in=const_cast<Bytef*>(inner.data()); stream.avail_in=static_cast<uInt>(inner.size());
     stream.next_out=compressed.data(); stream.avail_out=static_cast<uInt>(compressed.size());
     REQUIRE(deflate(&stream,Z_FINISH) == Z_STREAM_END);
@@ -31,13 +34,13 @@ std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) 
     Writer out;
     for (const auto magic : kMagic) out.writeU8(magic);
     out.writeU16(0); out.writeU16(4); out.writeU32(header.flags|kFlagCompressed);
-    out.writeU32(header.sectionCount); out.writeU32(0); out.writeU32(inner.size()); out.writeBytes(compressed);
+    out.writeU32(header.sectionCount); out.writeU32(0); out.writeU32(static_cast<u32>(inner.size())); out.writeBytes(compressed);
     return out.data();
 }
 }
 
 TEST_CASE("compression preserves entire historical files and source maps exactly") {
-    for (u16 minor : {1,2,3,4}) {
+    for (u16 minor : {u16{1},u16{2},u16{3},u16{4}}) {
         auto plain=original(); plain[6]=static_cast<u8>(minor);
         const auto packed=compressFile(plain);
         REQUIRE(parseHeader(packed).hasCompression());

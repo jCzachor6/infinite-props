@@ -56,9 +56,10 @@ TEST_CASE("neutral HSV parameters preserve RGB within one truncation byte and ke
     REQUIRE(evalProgColor(Prog{}.C(orange).F(0.f).F(1.f).F(1.f).emit(0x9C)) == orange);
     // Cover achromatic colours and every RGB-to-HSV branch. A binary32
     // round-trip can lose one channel unit when the final conversion truncates.
-    for (const u8 r : {0, 17, 64, 128, 192, 255}) {
-        for (const u8 g : {0, 17, 64, 128, 192, 255}) {
-            for (const u8 b : {0, 17, 64, 128, 192, 255}) {
+    const u8 channels[] = {0, 17, 64, 128, 192, 255};
+    for (const u8 r : channels) {
+        for (const u8 g : channels) {
+            for (const u8 b : channels) {
                 const Color source{r, g, b, 77};
                 const Color result = evalProgColor(
                     Prog{}.C(source).F(0.f).F(1.f).F(1.f).emit(0x9C));
