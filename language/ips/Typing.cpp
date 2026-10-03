@@ -94,7 +94,7 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
     const auto part = parts_.find(path.base);
     if (part == parts_.end()) {
         std::vector<std::string> names;
-        for (const auto& [name, info] : parts_) { (void)info; names.push_back(name); }
+        for (const auto& partEntry : parts_) names.push_back(partEntry.first);
         error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
     if (path.segments.size() != 2 || path.segments[0] != "outputs") {

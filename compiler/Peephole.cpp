@@ -18,10 +18,13 @@ void foldFunction(Plan& plan, PlannedFunction& fn) {
     std::vector<std::optional<Value>> locals(fn.params.size() + fn.locals.size());
     const auto append = [&](Instruction ins, u32 line) { code.push_back(ins); lines.push_back(line); };
     const auto constant = [&](auto&& self, const Value& value, u32 line) -> void {
-        if (const auto* x = std::get_if<i32>(&value)) append({Opcode::ConstI32, 0, static_cast<u16>(plan.pools.addInt(static_cast<u32>(*x)))}, line);
-        else if (const auto* x = std::get_if<f32>(&value)) append({Opcode::ConstF32, 0, static_cast<u16>(plan.pools.addFloat(std::bit_cast<u32>(*x)))}, line);
-        else if (const auto* x = std::get_if<Color>(&value)) append({Opcode::ConstColor, 0, static_cast<u16>(plan.pools.addColor(*x))}, line);
-        else {
+        if (const auto* integer = std::get_if<i32>(&value)) {
+            append({Opcode::ConstI32, 0, static_cast<u16>(plan.pools.addInt(static_cast<u32>(*integer)))}, line);
+        } else if (const auto* floating = std::get_if<f32>(&value)) {
+            append({Opcode::ConstF32, 0, static_cast<u16>(plan.pools.addFloat(std::bit_cast<u32>(*floating)))}, line);
+        } else if (const auto* color = std::get_if<Color>(&value)) {
+            append({Opcode::ConstColor, 0, static_cast<u16>(plan.pools.addColor(*color))}, line);
+        } else {
             const auto vector = std::get<Vec2>(value);
             self(self, Value(vector.x), line); self(self, Value(vector.y), line);
             append({Opcode::Vec2Make, 0, 0}, line);
