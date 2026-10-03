@@ -76,6 +76,9 @@ async function render() {
 
 function syncControls() {
     const asset = currentAsset();
+    for (const tab of Array.from($("assets").children)) {
+        tab.classList.toggle("active", tab.getAttribute("data-asset") === state.asset);
+    }
     (document.getElementById("seed-value") as HTMLInputElement).value = String(state.seed >>> 0);
     (document.getElementById("seed-slider") as HTMLInputElement).value = String(Math.min(state.seed >>> 0, 4095));
     for (const kind of ["variant", "archetype"] as const) {
@@ -122,14 +125,13 @@ async function main() {
     const tabs = $("assets");
     for (const asset of ASSETS) {
         const tab = document.createElement("button");
+        tab.dataset.asset = asset.id;
         tab.className = "asset-tab" + (asset.id === state.asset ? " active" : "");
         tab.textContent = asset.label;
         tab.addEventListener("click", () => {
             state.asset = asset.id;
             state.variant = 0;
             state.archetype = 0;
-            for (const node of Array.from(tabs.children)) node.classList.remove("active");
-            tab.classList.add("active");
             syncControls();
             render();
         });
@@ -149,6 +151,12 @@ async function main() {
     bindSlider("seed");
     bindSlider("variant");
     bindSlider("archetype");
+
+    window.addEventListener("hashchange", () => {
+        readHash();
+        syncControls();
+        render();
+    });
 
     syncControls();
     await render();
