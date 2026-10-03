@@ -72,6 +72,12 @@
   dictionary and resource-limit violations. Native/WASM/C/SFML/Godot and
   source-map tooling accept packed files; ipc packs automatically when smaller.
 
+- D.2: Made stripped production output the ipc default, with explicit
+  `--debug` source maps and last-flag precedence for `--debug`/`--strip`.
+  The editor inspector requests debug data while binary exports stay stripped;
+  the compiler API retains debug data for tooling. CLI acceptance checks
+  expanded/packed byte equality, source maps and identical rendered outputs.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

@@ -567,8 +567,11 @@ Compiler optimization checks and measured reductions are recorded in
 [the v0.4 acceptance report](docs/optimization-acceptance-v0.4.md).
 
 The v0.4 development runtime supports [lossless DEFLATE containers](spec/iprop-v0.4.md)
-and all frozen 0.1–0.3 files. `ipc` compresses only when the complete output is
-smaller; `--no-compress` produces an expanded file. Low-level layout/section
+and all frozen 0.1–0.3 files. `ipc` strips debug information by default and
+compresses only when the complete output is smaller. Use `--debug` to keep
+source maps and symbols, and `--no-compress` for an expanded file; either
+choice preserves execution. `--debug` and `--strip` use the last flag given.
+Low-level layout/section
 inspection uses `decompressFile` or `LoadedFile::bytes()`. Native builds and
 installed CMake consumers require zlib 1.2.9 or newer; the Emscripten build uses
 its pinned zlib port via `-sUSE_ZLIB=1`.

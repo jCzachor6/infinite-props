@@ -69,8 +69,11 @@ emits the envelope only when its complete size is strictly smaller.
 Different compliant encoders may produce different streams for the same
 original bytes; all MUST decode to that same original file.
 
-Source compilation can use automatic compression with an explicit unpacked
-mode for inspection. Debug stripping happens before compression. Stripping
+The reference `ipc` CLI strips debug data by default; `--debug` retains it,
+and `--strip` restores the default (the last flag wins). Compression is
+automatic when smaller; `--no-compress` selects an expanded inspection file.
+The compiler API keeps debug data and leaves artifact policy to its caller.
+Debug stripping happens before compression. Stripping
 an existing compressed file expands it, removes only its debug data, and
 may recompress the result. A compressed file without debug may be returned
 unchanged. Execution of stripped/packed and original files MUST have the

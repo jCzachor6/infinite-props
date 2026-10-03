@@ -18,6 +18,13 @@ roundtrips preserve the executable file after stripping source-line debug
 information. Comments are absent from the AST and the formatted output.
 The source output must differ from the input and the binary destination.
 
+`ipc` writes production artifacts by default: debug data is stripped before
+optional lossless compression. `--debug` retains source maps and symbols for
+`ipdis --source`; `--strip` restores the default (the last flag wins).
+`--no-compress` writes an expanded file for inspection. The C++ compiler API
+retains debug data so tooling can choose its own artifact policy. The editor
+inspector requests debug data explicitly; its binary exports use the default.
+
 All builtin and canvas calls accept named arguments. A name binds the
 corresponding signature slot; positional arguments bind slots from the start.
 Duplicate, missing and unknown names are errors. Arguments evaluate in

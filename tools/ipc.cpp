@@ -43,17 +43,18 @@ int main(int argc, char* argv[]) {
     std::string input;
     std::string output;
     std::string formattedOutput;
-    bool strip = false;
+    bool strip = true;
     bool optimize = true;
     bool compress = true;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
                       << "Imports resolve relative to the entry file; the\n"
-                      << "output passes the runtime validator. --strip removes\n"
-                      << "the debug section (identical execution). --format writes\n"
+                      << "output passes the runtime validator. Debug information is\n"
+                      << "stripped by default; --debug retains source maps and symbols.\n"
+                      << "--strip removes them again (the last flag wins). --format writes\n"
                       << "canonical source beside the compiled result.\n"
                       << "Compression is automatic when smaller; --no-compress\n"
                       << "writes an expanded file for low-level inspection.\n";
@@ -64,8 +65,8 @@ int main(int argc, char* argv[]) {
                 return fail("missing value for " + arg);
             }
             output = argv[++i];
-        } else if (arg == "--strip") {
-            strip = true;
+        } else if (arg == "--strip" || arg == "--debug") {
+            strip = arg == "--strip";
         } else if (arg == "--compress" || arg == "--no-compress") {
             compress = arg == "--compress";
         } else if (arg == "--no-opt") {

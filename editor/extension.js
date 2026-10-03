@@ -228,7 +228,7 @@ function activeEntry() {
 
 // Compiles `entry` into the temp .iprop; resolves with the path, rejects
 // with the stderr summary.
-function compileEntry(entry) {
+function compileEntry(entry, { debug = false } = {}) {
     return new Promise((resolve, reject) => {
         const compiler = compilerBinary();
         if (!compiler) {
@@ -238,7 +238,7 @@ function compileEntry(entry) {
         const { ipropPath } = previewPaths();
         try { fs.unlinkSync(ipropPath); } catch {}
         log.appendLine("compile: " + compiler + " " + entry);
-        execFile(compiler, [entry, "-o", ipropPath], { cwd: path.dirname(entry), timeout: 15000 },
+        execFile(compiler, [entry, "-o", ipropPath, ...(debug ? ["--debug"] : [])], { cwd: path.dirname(entry), timeout: 15000 },
             (error, _out, stderr) => {
                 if (error || !fs.existsSync(ipropPath)) {
                     reject(stderr.split("\n").filter((l) => l.includes("error:")).join("\n") || "compilation failed");
@@ -583,7 +583,7 @@ async function buildInspector() {
         return;
     }
     try {
-        const ipropPath = await compileEntry(entry);
+        const ipropPath = await compileEntry(entry, { debug: true });
         const disassembler = toolBinary("disassemblerPath", "ipdis");
         if (!disassembler) {
             if (inspectorPanel) inspectorPanel.webview.postMessage({ type: "error", message: "iprop: disassembler not found" });

@@ -5,6 +5,11 @@ frozen mathematical kernels retain their existing semantics. `ipc --no-opt`
 (or `compileProgram(program, parts, false)`) retains the reference lowering
 for comparisons and debugging compiler behavior.
 
+The CLI strips debug data and compresses losslessly by default. For expanded
+source-map inspection use `ipc --debug --no-compress`. `--strip` explicitly
+selects production output; if both debug flags are given, the last wins.
+The compiler API keeps debug data and leaves stripping/compression to callers.
+
 ## Dead code and palettes
 
 Control-flow liveness accounts for both conditional branches, structured

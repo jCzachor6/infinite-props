@@ -107,6 +107,9 @@ if(IPROP_NODE_EXECUTABLE)
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")
+    add_test(NAME compiler_output_defaults COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/production.test.js")
 endif()
 
 find_package(Python3 QUIET COMPONENTS Interpreter)
