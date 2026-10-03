@@ -207,7 +207,8 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     canvas.scaleY = render.sourceScale.y;
 
     Frame next;
-    next.functionIndex = part.functionIndex;
+    // parseCode bounds the index by kMaxFunctions (1024).
+    next.functionIndex = static_cast<u16>(part.functionIndex);
     next.locals = std::move(args);
     for (const ValueType type : fn.locals) {
         next.locals.push_back(zeroValue(type));
