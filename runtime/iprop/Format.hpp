@@ -15,8 +15,10 @@ struct Header {
     u16 versionMajor = 0;
     u16 versionMinor = 0;
     u32 flags = 0;
+    u32 sectionCount = 0;
 
     bool hasDebug() const { return (flags & kFlagDebug) != 0; }
+    bool hasCompression() const { return (flags & kFlagCompressed) != 0; }
 };
 
 // One section table entry (spec §2.2).
@@ -43,7 +45,11 @@ struct FileLayout {
     const Section* find(SectionId id) const;
 };
 
-// Parses and validates the header and section table of a complete file.
+// Parses the fixed header (including version/flags/count/reserved checks).
+Header parseHeader(std::span<const u8> data);
+
+// Parses and validates an expanded file header and section table.
+// Compressed envelopes must first pass through decompressFile().
 // Throws FormatError with a file offset on every violation of spec §2/§14.
 FileLayout parseLayout(std::span<const u8> data);
 

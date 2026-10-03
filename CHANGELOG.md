@@ -66,6 +66,12 @@
   and runtime trap reasons match. Recorded baseline totals, backend pins,
   sanitizer results and u16 pool-limit fallback evidence.
 
+- D.1: Specified and implemented v0.4 zlib/DEFLATE envelopes containing the
+  complete original file. Loading preserves historical bytes and opcode
+  version gates; strict checks reject checksum, length, trailing, nested,
+  dictionary and resource-limit violations. Native/WASM/C/SFML/Godot and
+  source-map tooling accept packed files; ipc packs automatically when smaller.
+
 ## v0.3.0 — 2026-10-02
 
 - Added vec2 values and arithmetic, vector metrics/rotation, distance fields,

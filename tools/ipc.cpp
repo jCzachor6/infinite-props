@@ -9,6 +9,7 @@
 #include "Compiler.hpp"
 
 #include "iprop/Debug.hpp"
+#include "iprop/Compression.hpp"
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
@@ -44,15 +45,18 @@ int main(int argc, char* argv[]) {
     std::string formattedOutput;
     bool strip = false;
     bool optimize = true;
+    bool compress = true;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--no-opt] [--format <out.ips>]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
                       << "Imports resolve relative to the entry file; the\n"
                       << "output passes the runtime validator. --strip removes\n"
                       << "the debug section (identical execution). --format writes\n"
-                      << "canonical source beside the compiled result.\n";
+                      << "canonical source beside the compiled result.\n"
+                      << "Compression is automatic when smaller; --no-compress\n"
+                      << "writes an expanded file for low-level inspection.\n";
             return 0;
         }
         if (arg == "-o" || arg == "--output") {
@@ -62,6 +66,8 @@ int main(int argc, char* argv[]) {
             output = argv[++i];
         } else if (arg == "--strip") {
             strip = true;
+        } else if (arg == "--compress" || arg == "--no-compress") {
+            compress = arg == "--compress";
         } else if (arg == "--no-opt") {
             optimize = false;
         } else if (arg == "--format") {
@@ -163,6 +169,7 @@ int main(int argc, char* argv[]) {
             bytes = iprop::stripDebug(bytes);
         }
 
+        if (compress) bytes = iprop::compressFile(bytes);
         std::ofstream out(output, std::ios::binary);
         if (!out) {
             return fail("cannot write '" + output + "'");

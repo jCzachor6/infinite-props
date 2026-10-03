@@ -50,6 +50,7 @@ add_executable(iprop_tests
     golden_test.cpp
     binary_test.cpp
     format_test.cpp
+    compression_test.cpp
     asset_test.cpp
     code_test.cpp
     validation/opcodes_test.cpp

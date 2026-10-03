@@ -236,7 +236,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     DebugInfo debugStorage;
     if (annotated) {
         if (const Section* debugSection = loaded.layout.find(SectionId::Debug)) {
-            debugStorage = parseDebug(bytes, *debugSection);
+            debugStorage = parseDebug(loaded.bytes(), *debugSection);
             debugInfo = &debugStorage;
         }
     }

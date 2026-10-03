@@ -5,6 +5,7 @@ set(IPROP_RUNTIME_SOURCES
     opcode_spec.cpp
     debug.cpp
     format.cpp
+    compression.cpp
     consts.cpp
     meta.cpp
     code.cpp

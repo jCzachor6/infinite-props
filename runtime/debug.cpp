@@ -1,6 +1,7 @@
 #include "iprop/Debug.hpp"
 
 #include "iprop/Binary.hpp"
+#include "iprop/Compression.hpp"
 
 namespace iprop {
 
@@ -45,6 +46,11 @@ DebugInfo parseDebug(std::span<const u8> data, const Section& section) {
 }
 
 std::vector<u8> stripDebug(std::span<const u8> data) {
+    if (parseHeader(data).hasCompression()) {
+        const auto expanded = decompressFile(data);
+        if (!parseLayout(expanded).header.hasDebug()) return {data.begin(), data.end()};
+        return compressFile(stripDebug(expanded));
+    }
     const FileLayout layout = parseLayout(data);
     if (!layout.header.hasDebug()) {
         return std::vector<u8>(data.begin(), data.end());

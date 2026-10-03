@@ -29,8 +29,10 @@ async function main() {
 
     const result = await conformance.run(iprop, fetchBytes);
     const native = require("./native-conformance.js").run(iprop, toolsDir);
+    const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
+        console.log("native/WASM compression: PASS (" + compression.images + " exact historical images; " + compression.rejections + " matching rejected envelopes)");
         console.log("native/WASM: PASS (" + native.comparisons +
                     " pixel-exact images and structured outputs; native pins verified)");
         console.log("native/WASM runtime errors: PASS (" + native.trapComparisons +

@@ -7,9 +7,11 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 3;
+inline constexpr u16 kVersionMinor = 4;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
+inline constexpr u32 kFlagCompressed = 1u << 1; // v0.4 zlib envelope
+inline constexpr u32 kMaxCompressedFileSize = 1u << 26; // encoded and decoded, 64 MiB
 
 // Section ids (spec §2.2).
 enum class SectionId : u32 {
