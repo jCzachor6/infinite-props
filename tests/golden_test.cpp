@@ -81,7 +81,8 @@ GenerationResult runCase(const GoldenCase& entry) {
 // Decodes a golden PNG into RGBA bytes.
 std::vector<u8> loadGoldenPng(const char* path, int& width, int& height) {
     int channels = 0;
-    unsigned char* pixels = stbi_load((root / path).c_str(), &width, &height, &channels, 4);
+    const std::string file = (root / path).string();
+    unsigned char* pixels = stbi_load(file.c_str(), &width, &height, &channels, 4);
     REQUIRE(pixels != nullptr);
     std::vector<u8> result(pixels, pixels + static_cast<std::size_t>(width) * height * 4);
     stbi_image_free(pixels);
@@ -102,7 +103,8 @@ void checkImage(const Canvas& canvas, const char* goldenPng) {
                 rgba[at + 3] = pixel.a;
             }
         }
-        REQUIRE(stbi_write_png((root / goldenPng).c_str(), static_cast<int>(canvas.width),
+        const std::string file = (root / goldenPng).string();
+        REQUIRE(stbi_write_png(file.c_str(), static_cast<int>(canvas.width),
                                static_cast<int>(canvas.height), 4, rgba.data(),
                                static_cast<int>(canvas.width) * 4) != 0);
         return;
