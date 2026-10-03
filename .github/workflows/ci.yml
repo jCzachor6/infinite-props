@@ -83,7 +83,7 @@ jobs:
       - name: Native graphics dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libxrandr-dev libxcursor-dev libudev-dev libfreetype-dev libharfbuzz-dev libgl1-mesa-dev xvfb
+          sudo apt-get install -y libxi-dev libxrandr-dev libxcursor-dev libudev-dev libfreetype-dev libharfbuzz-dev libgl1-mesa-dev zlib1g-dev xvfb
       - name: Pinned SFML and Godot bindings
         run: |
           git clone --depth 1 --branch 3.1.0 https://github.com/SFML/SFML.git .deps/SFML
