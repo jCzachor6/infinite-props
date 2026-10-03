@@ -1,6 +1,10 @@
 # Changelog
 
-## v0.4.0 — unreleased
+## v0.4.0 — release candidate
+
+Product/editor/website version: 0.4.0. Format: 0.4 with frozen 0.1–0.3
+reader compatibility. C API: 0.2, with unchanged layouts. Migration and
+packaging instructions: [release notes](docs/release-v0.4.md).
 
 - A.1: Replaced explicit draw parameters with `draw { ... }` and implicit
   read-only `v`/`a` builtins. Helpers retain typed parameters. Migrated

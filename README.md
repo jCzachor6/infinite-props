@@ -519,13 +519,15 @@ function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
 v0.3.0 adds vectors, distance fields, curves, procedural noise, colour
-utilities and exact part transforms. Product 0.3.0 is released on `main`
-with tag `v0.3.0`; the CLI, C API, SFML and Godot have regression and
-conformance checks. The product version, format
-version (0.3, with 0.1/0.2 reader compatibility) and C API version (0.2)
-are separate contracts. API 0.2 consumers must rebuild with the new header.
-Source and native packages are available as local release artifacts.
-Remote publication and GitHub CI require a configured remote; editor/website
+utilities and exact part transforms; it is the released `main` baseline.
+The 0.4.0 release candidate is prepared on `develop`: named calls, RNG sugar,
+canonical formatting, Unicode diagnostics/emoji aliases, 24 recipes,
+bit-exact compiler optimizations and lossless compression. Product 0.4.0,
+format 0.4 (with frozen 0.1–0.3 reader compatibility) and C API 0.2 are
+separate contracts. The C ABI layouts retain API 0.2. Migration and release
+commands are in [the 0.4 notes](docs/release-v0.4.md).
+Source and native packages can be built as local release artifacts.
+GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website
 publication, Bevy and Unity glue remain separate ecosystem work.
 
 The next example pass has two showcases:
@@ -550,15 +552,15 @@ Prepare a local release package from a clean, committed checkout:
 ```sh
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release --parallel
-scripts/release.sh 0.3.0 build-release
+scripts/release.sh 0.4.0 build-release
 ```
 
 Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
 including those integrations; required mode fails on missing dependencies.
 Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
-C API consumers before writing `dist/iprop-0.3.0.tar.gz` (committed source),
-`dist/iprop-0.3.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+C API consumers before writing `dist/iprop-0.4.0.tar.gz` (committed source),
+`dist/iprop-0.4.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
 The native archive records its source commit and included backends in
 `release.json`. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.
@@ -566,7 +568,7 @@ creating archives. Packaging does not tag, merge, push or publish.
 Compiler optimization checks and measured reductions are recorded in
 [the v0.4 acceptance report](docs/optimization-acceptance-v0.4.md).
 
-The v0.4 development runtime supports [lossless DEFLATE containers](spec/iprop-v0.4.md)
+The v0.4 runtime supports [lossless DEFLATE containers](spec/iprop-v0.4.md)
 and all frozen 0.1–0.3 files. `ipc` strips debug information by default and
 compresses only when the complete output is smaller. Use `--debug` to keep
 source maps and symbols, and `--no-compress` for an expanded file; either
