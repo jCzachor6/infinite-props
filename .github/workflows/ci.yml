@@ -19,6 +19,14 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
 
+      - name: Static zlib with the shared MSVC runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install zlib:x64-windows-static-md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CMAKE_PREFIX_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static-md" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Configure
         run: cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
 
