@@ -52,4 +52,6 @@ website/public/iprop.js
 website/public/iprop.wasm
 website/public/*.iprop
 website/public/spec/
+website/public/reference/
+website/public/recipes/
 backends/html5/demo/*.iprop

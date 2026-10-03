@@ -9,8 +9,9 @@ Static documentation under `docs/` (multi-page Vite build): getting started
 (with a verifiable first-asset walkthrough), the `.ips` language reference,
 the format summary, the per-backend installation guides and the FAQ. A
 client-side section search lives in the header; the canonical spec is
-copied into the site (`public/spec/iprop-v0.3.md`, alongside the frozen
-0.1/0.2 specifications) so the docs can link it.
+copied into the site (`public/spec/iprop-v0.4.md`, alongside the frozen
+0.1–0.3 specifications). The exact language/optimization references and
+24 recipe sources are copied under `public/reference/` and `public/recipes/`.
 
 ## Playground
 
@@ -24,15 +25,23 @@ copied into the site (`public/spec/iprop-v0.3.md`, alongside the frozen
 ## Build
 
 ```sh
-cd website
-npm install
-sh prepare.sh          # syncs the WASM module (build backends/html5 first)
-                       # and the example .iprop files into public/
-npm run build          # static output in dist/
+emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
+cmake --build build/wasm --parallel
+sh website/prepare.sh build/wasm build/tools
+npm --prefix website ci
+npm --prefix website run build    # type-checks; static output in website/dist/
+node website/test/release-smoke.js website/dist build/tools
 ```
 
 Serve `dist/` with any static server (or `npm run dev` for the Vite dev
 server).
+
+Run these commands from the repository root after building the native tools.
+`prepare.sh` reads the requested WASM build directly and compiles the noise
+asset with the current compiler, preventing stale demo modules from entering
+the website. The release smoke check resolves every local page resource/link
+and compares the site's own WASM/assets to native pixels, including packed 0.4
+noise. CI runs this complete pipeline in its WASM job.
 
 ## Layout
 

@@ -17,7 +17,7 @@
 </header>
 <main>
 <h1>The .ips language</h1>
-<p>A small imperative language that compiles 1:1 to the VM bytecode. The
+<p>A small imperative language that lowers to the frozen VM operations. The
 grammar, the type rules and the compiler live in the repository
 (<code>language/</code>, <code>compiler/</code>); this page is the reference
 summary.</p>
@@ -41,7 +41,7 @@ declared counts). The compiler synthesizes the runtime parameters; the
 old <code>draw(v: i32, a: i32)</code> declaration is rejected. Pass these
 values to helpers through their typed parameters.</li>
 <li>Helpers declare their parameter types (<code>u: f32</code> — <code>i32</code>,
-<code>f32</code> or <code>color</code>; pre-1.0 the type is mandatory) and
+<code>f32</code>, <code>color</code> or <code>vec2</code>; pre-1.0 the type is mandatory) and
 functions that return a value declare an explicit return type
 (<code>-> i32</code>). Recursion is not supported.</li>
 </ul>
@@ -76,7 +76,8 @@ return [value]
 face(v, a)             // a call as a statement (values are dropped)</code></pre>
 <ul>
 <li>Locals are typed on first assignment; reassignment must match the type
-exactly. Scalars only — <code>i32</code>, <code>f32</code>, <code>color</code>.</li>
+exactly. Storable types are <code>i32</code>, <code>f32</code>, <code>color</code>
+and <code>vec2</code>.</li>
 <li>Conditions must be <code>i32</code> (any non-zero is true).</li>
 <li>Semicolons are optional separators. Comments: <code>//</code> and
 <code>/* */</code>.</li>
@@ -98,7 +99,9 @@ be assigned to or used without an index.</p>
 <pre><code>7   -3   2.5   #808d74   true   false   0x9e3779b9
 seed                 // the current stream state (i32)
 v, a                 // the variant and archetype indices
-{e1, e2}             // a point / circle / rect literal (2/3/4 numeric elements)</code></pre>
+{e1, e2}             // a storable vec2; also usable as a point
+{e1, e2, e3}         // a circle output literal
+{e1, e2, e3, e4}     // a rect output literal</code></pre>
 <p>Operators, loosest to tightest: <code>||</code> <code>&amp;&amp;</code>
 <code>|</code> <code>^</code> <code>&amp;</code> <code>== !=</code>
 <code>&lt; &lt;= &gt; &gt;=</code> <code>&lt;&lt; &gt;&gt;</code>
@@ -107,9 +110,9 @@ v, a                 // the variant and archetype indices
 <li>Mixed <code>i32</code>/<code>f32</code> arithmetic promotes to
 <code>f32</code>; <code>%</code> and the bitwise/logical operators are
 <code>i32</code>-only; <code>&gt;&gt;</code> shifts unsigned.</li>
-<li>Compound values (points, rects, circles) cannot be stored in locals —
-they flow from vector literals and part-output reads straight into output
-writes and part placement.</li>
+<li>Vectors can be stored, passed to helpers, returned and queried through
+<code>.x</code>/<code>.y</code>. Circle and rectangle compounds flow straight
+into output writes; they are not storable local types.</li>
 </ul>
 
 <h2 id="builtins">Builtins</h2>
@@ -144,11 +147,39 @@ ramp(t = 0.5, palette = colors)</code></pre>
 <tr><td><code>min(x, y)</code> / <code>max(x, y)</code></td><td><code>f32</code></td><td>ignore one NaN; canonical NaN for two; signed-zero ordering</td></tr>
 <tr><td><code>pow(x, y)</code> / <code>exp(x)</code> / <code>atan2(y, x)</code></td><td><code>f32</code></td><td>pinned math; atan2 returns radians</td></tr>
 <tr><td><code>color.mix(a, b, t)</code> / <code>color.shade(c, n)</code></td><td><code>color</code></td><td>colour lerp / brightness shift</td></tr>
+<tr><td><code>vec2.len(v)</code> / <code>vec2.dot(a, b)</code> / <code>vec2.rot(v, a)</code></td><td><code>f32</code>/<code>vec2</code></td><td>vector metrics and pinned rotation</td></tr>
+<tr><td><code>dist.*</code> / <code>noise.*</code> / <code>ramp(palette, t)</code></td><td><code>f32</code>/<code>vec2</code>/palette type</td><td>distance queries, procedural noise and typed palette interpolation; exact signatures in the full reference</td></tr>
 <tr><td><code>pixel(x, y, c)</code> / <code>rect(...)</code> / <code>oval(...)</code></td><td>—</td><td>raster primitives (colour last)</td></tr>
 <tr><td><code>line(ax, ay, bx, by, t, c)</code></td><td>—</td><td>thicknessed line</td></tr>
 <tr><td><code>poly(c, x0, y0, …)</code></td><td>—</td><td>filled polygon, ≥ 3 vertices</td></tr>
 <tr><td><code>weather(seed, amount)</code></td><td>—</td><td>seeded wear</td></tr>
 </table>
+
+<h2 id="authoring">Formatting, diagnostics and recipes</h2>
+<pre><code>ipc asset.ips --format canonical.ips
+ipc asset.ips --debug --no-compress</code></pre>
+<p>Formatting uses canonical words, two-space indentation and named builtin
+arguments in signature order. Reformatting is idempotent; executable
+roundtrips preserve bytes after stripping debug data. Diagnostics use
+one-based UTF-8 codepoint columns and suggest close canonical names.</p>
+<p>The <a href="../reference/language-v0.4.md">full language reference</a>
+lists exact parameter names. The <a href="../recipes/README.md">24 recipe
+sources</a> cover small patterns for geometry, RNG, palettes and outputs.
+Compiler passes retain pixels/output bits and only accept complete expanded
+artifacts that do not grow; see <a href="../reference/optimizations-v0.4.md">optimization behavior</a>.</p>
+
+<h2 id="emoji">Emoji aliases</h2>
+<p>18 exact single Unicode scalars are accepted alongside word spellings.
+The AST, diagnostics and formatter normalize them to canonical words;
+strings and comments retain their text. Variation selectors and ZWJ sequences
+are rejected in syntax. Namespace members retain word spelling.</p>
+<pre><code>📦 example {
+  size 8x8
+  ✏ { 🟦(0, 0, 8, 8, #345) }
+}</code></pre>
+<p>The <a href="../reference/language-v0.4.md#emoji-aliases">alias table</a>
+pins every codepoint: <code>draw</code> uses U+270F and
+<code>archetypes</code> uses U+1F5C2 without selectors.</p>
 
 <h2 id="parts">Parts and composition</h2>
 <pre><code>import hair from "hair.ips"
@@ -167,6 +198,9 @@ them into one self-contained binary (imports are acyclic).</li>
 <li>The call passes <code>(seed, variant, archetype)</code> plus a required
 <code>at = {x, y}</code> placement and named uniform overrides. Call order
 is paint order.</li>
+<li>Optional <code>rot = 0/90/180/270</code>, <code>mirror_x = 0/1</code> and
+<code>mirror_y = 0/1</code> select exact D4 transforms for raster and part-owned
+outputs, including helper-written outputs and lists.</li>
 <li><code>part.outputs.name</code> reads the last called part's structured
 output; assigning it to your own output propagates it upward.</li>
 </ul>

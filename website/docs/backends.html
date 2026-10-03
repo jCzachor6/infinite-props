@@ -35,7 +35,8 @@ playground and the IDE preview. Requires Emscripten.</p>
 <pre><code>mkdir -p build/wasm && cd build/wasm
 emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
 emmake make -j4
-cd ../.. && backends/html5/prepare.sh</code></pre>
+cd ../.. && sh backends/html5/prepare.sh
+sh website/prepare.sh build/wasm build/tools</code></pre>
 <p>The demo page (<code>backends/html5/demo/</code>) renders example sheets;
 the conformance suite (<code>node backends/html5/test/run-tests.js
 build/wasm</code>) checks the golden seeds. Details in

@@ -76,6 +76,13 @@ jobs:
           node --test backends/html5/test/*.test.js
           node backends/html5/test/run-tests.js build/wasm
 
+      - name: Build and verify the website with the current WASM module
+        run: |
+          sh website/prepare.sh build/wasm build/tools
+          npm --prefix website ci
+          npm --prefix website run build
+          node website/test/release-smoke.js website/dist build/tools
+
   native-backends:
     runs-on: ubuntu-latest
     steps:
