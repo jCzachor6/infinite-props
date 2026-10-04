@@ -97,13 +97,17 @@ int main(int argc, char* argv[]) {
     std::string entrySource((std::istreambuf_iterator<char>(stream)), {});
 
     const std::filesystem::path entryPath(input);
+    const auto utf8Name = entryPath.filename().u8string();
+    const std::string entryName(utf8Name.begin(), utf8Name.end());
     const auto dir = entryPath.parent_path().empty()
                          ? std::filesystem::path(".")
                          : entryPath.parent_path();
 
     const auto loadSource = [&](std::string_view path) -> std::string {
+        // Import strings use UTF-8, independently of the native Windows code page.
+        const std::u8string utf8Path(path.begin(), path.end());
         const std::filesystem::path resolved =
-            dir / std::filesystem::path(std::string(path));
+            dir / std::filesystem::path(utf8Path);
         std::ifstream file(resolved);
         if (!file) {
             throw std::runtime_error("no such file");
@@ -115,7 +119,7 @@ int main(int argc, char* argv[]) {
         using namespace iprop::ips;
 
         const std::vector<std::string> order =
-            resolveImports(entryPath.filename().string(), loadSource);
+            resolveImports(entryName, loadSource);
 
         std::map<std::string, std::string> sources;
         std::map<std::string, Program> programs;
@@ -130,7 +134,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        const Program& entry = programs.at(entryPath.filename().string());
+        const Program& entry = programs.at(entryName);
         std::map<std::string, const Program*> partPrograms;
         std::map<std::string, PartInfo> partInfos;
         for (const auto& import : entry.imports) {
@@ -152,7 +156,7 @@ int main(int argc, char* argv[]) {
         try {
             checkAsset(entry, partInfos);
         } catch (const SourceError& error) {
-            reportError(entryPath.filename().string(), entrySource, error);
+            reportError(entryName, entrySource, error);
             return 1;
         }
 
@@ -186,7 +190,7 @@ int main(int argc, char* argv[]) {
             if (!formatted) return fail("cannot write '" + formattedOutput + "'");
         }
     } catch (const iprop::ips::SourceError& error) {
-        const std::string path = error.path.empty() ? entryPath.filename().string() : error.path;
+        const std::string path = error.path.empty() ? entryName : error.path;
         std::string source;
         try { source = loadSource(path); } catch (const std::exception&) { /* file unavailable */ }
         reportError(path, source, error);
