@@ -31,6 +31,9 @@ def git(root, *args):
 def repository(root):
     root.mkdir()
     git(root, "init", "-q", "-b", "main")
+    # Temporary repositories must not inherit runner-specific checkout filters.
+    git(root, "config", "core.autocrlf", "false")
+    git(root, "config", "core.eol", "lf")
     for file, text in {
         "CMakeLists.txt": "project(iprop VERSION 0.4.0)\n",
         "editor/package.json": '{"version":"0.4.0"}',
@@ -42,7 +45,7 @@ def repository(root):
     }.items():
         target = root / file
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(text, encoding="utf-8")
+        target.write_bytes(text.encode("utf-8"))
     git(root, "add", ".")
     git(root, "-c", "user.name=CI fixture", "-c", "user.email=ci@example.invalid", "commit", "-qm", "fixture")
     return git(root, "rev-parse", "HEAD")
@@ -176,7 +179,8 @@ class ReleaseGatesTest(unittest.TestCase):
             invalid = directory / "incomplete.tar.gz"
             with tarfile.open(invalid, "w:gz", format=tarfile.PAX_FORMAT, pax_headers={"comment": commit}) as tar:
                 member = tarfile.TarInfo("iprop-0.4.0/CMakeLists.txt")
-                data = (root / "CMakeLists.txt").read_bytes(); member.size = len(data)
+                data = subprocess.check_output(["git", "show", commit + ":CMakeLists.txt"], cwd=root)
+                member.size = len(data)
                 tar.addfile(member, io.BytesIO(data))
             with self.assertRaisesRegex(RuntimeError, "omits tracked files"):
                 verify_source(invalid, VERSION, commit, root)
