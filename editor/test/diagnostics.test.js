@@ -60,13 +60,15 @@ test("real compiler errors retain source ownership through imports and lowering"
 test("compiler exports canonical source with identical executable roundtrips", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-format-"));
     const ipc = process.env.IPROP_COMPILER || path.resolve(__dirname, "../../build/tools/ipc");
-    const part = 'tile "ż".ips';
+    // Windows forbids filename quotes; a nested path still tests escaped imports.
+    const part = process.platform === "win32" ? "parts\\tile ż.ips" : 'tile "ż".ips';
     const source = 'import tile from ' + JSON.stringify(part) + '\n' +
         'asset example { size 8x8 draw {\n' +
         '  // author comment\n  rect(color=#fff,h=4,w=4,y=0,x=0)\n' +
         '  tile.draw(seed,v,a,at={0,0})\n} }';
     const run = args => spawnSync(ipc,args,{cwd:dir,encoding:"utf8"});
     try {
+        fs.mkdirSync(path.dirname(path.join(dir,part)),{recursive:true});
         fs.writeFileSync(path.join(dir,part),"asset tile { size 8x8 draw { pixel(0,0,#f00) } }");
         fs.writeFileSync(path.join(dir,"entry.ips"),source);
         let result = run(["entry.ips","-o","original.iprop","--strip","--format","canonical.ips"]);
