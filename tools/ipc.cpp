@@ -22,6 +22,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -35,6 +36,13 @@ void reportError(const std::string& path, const std::string& source,
 int fail(const std::string& message) {
     std::cerr << "ipc: " << message << "\n";
     return 1;
+}
+
+bool sameFile(const std::filesystem::path& first, const std::filesystem::path& second) {
+    std::error_code error;
+    return std::filesystem::absolute(first).lexically_normal() ==
+               std::filesystem::absolute(second).lexically_normal() ||
+           std::filesystem::equivalent(first, second, error);
 }
 
 } // namespace
@@ -164,9 +172,7 @@ int main(int argc, char* argv[]) {
             iprop::compileProgram(entry, partPrograms, optimize);
         std::string canonicalSource;
         if (!formattedOutput.empty()) {
-            const auto destination = std::filesystem::absolute(formattedOutput).lexically_normal();
-            if (destination == std::filesystem::absolute(input).lexically_normal() ||
-                destination == std::filesystem::absolute(output).lexically_normal())
+            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
                 return fail("--format must target a distinct source output file");
             canonicalSource = formatProgram(entry);
         }
@@ -184,6 +190,9 @@ int main(int argc, char* argv[]) {
         out.close();
         if (!out) return fail("cannot write '" + output + "'");
         if (!formattedOutput.empty()) {
+            // A case-insensitive alias of a new binary exists only after writing it.
+            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
+                return fail("--format must target a distinct source output file");
             std::ofstream formatted(formattedOutput, std::ios::binary);
             formatted << canonicalSource;
             formatted.close();

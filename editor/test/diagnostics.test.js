@@ -84,5 +84,22 @@ test("compiler exports canonical source with identical executable roundtrips", (
         assert.equal(result.status,1);
         assert.match(result.stderr,/distinct source output/);
         assert.equal(fs.readFileSync(path.join(dir,"entry.ips"),"utf8"),source);
+        fs.linkSync(path.join(dir,"entry.ips"),path.join(dir,"source-alias.ips"));
+        result = run(["entry.ips","--format","source-alias.ips"]);
+        assert.equal(result.status,1);
+        assert.match(result.stderr,/distinct source output/);
+        assert.equal(fs.readFileSync(path.join(dir,"entry.ips"),"utf8"),source);
+        const binary = fs.readFileSync(path.join(dir,"original.iprop"));
+        fs.linkSync(path.join(dir,"original.iprop"),path.join(dir,"binary-alias.ips"));
+        result = run(["entry.ips","-o","original.iprop","--format","binary-alias.ips"]);
+        assert.equal(result.status,1);
+        assert.match(result.stderr,/distinct source output/);
+        assert.deepEqual(fs.readFileSync(path.join(dir,"original.iprop")),binary);
+        if (fs.existsSync(path.join(dir,"ENTRY.IPS"))) {
+            result = run(["entry.ips","-o","case.iprop","--format","CASE.IPROP"]);
+            assert.equal(result.status,1);
+            assert.match(result.stderr,/distinct source output/);
+            assert.equal(fs.readFileSync(path.join(dir,"case.iprop")).subarray(0,4).toString(),"IPRP");
+        }
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
