@@ -4,6 +4,10 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { checkImage, nativeOutputs, wasmOutputs } = require("./native-conformance.js");
 const { wasmOutputBits } = require("./native-conformance.js");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+const { decodePng } = require("./png.js");
 
 test("raw output comparison detects infinity, NaN signs/payloads and signed zero", () => {
     const output = bits => [{ name: "edge", kind: 0, isList: false,
@@ -21,10 +25,30 @@ test("the backend comparator detects a single changed byte, including transparen
     const actual = { ...expected, data: Buffer.from(expected.data) };
     checkImage(actual, expected, "repro");
     actual.data[8] ^= 1;
-    assert.throws(() => checkImage(actual, expected, "repro"), /pixel \(2,0\), channel 0/);
-    assert.throws(() => checkImage({ ...expected, width: 4 }, expected, "repro"), /width/);
-    assert.throws(() => checkImage({ ...expected, data: expected.data.subarray(4) }, expected, "repro"),
+    assert.throws(() => checkImage(actual, expected, "repro", null), /pixel \(2,0\), channel 0/);
+    assert.throws(() => checkImage({ ...expected, width: 4 }, expected, "repro", null), /width/);
+    assert.throws(() => checkImage({ ...expected, data: expected.data.subarray(4) }, expected, "repro", null),
                   /RGBA length/);
+});
+
+test("a failed comparison retains lossless images and marks transparent RGB differences", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-diagnostics-test-"));
+    try {
+        const expected = { width: 3, height: 1, data: Buffer.from("547b89ff557c8bff59819000", "hex") };
+        const actual = { ...expected, data: Buffer.from(expected.data) };
+        actual.data[8] ^= 1;
+        assert.throws(() => checkImage(actual, expected, "repro / transparent RGB", directory), /pixel \(2,0\)/);
+        const destination = path.join(directory, fs.readdirSync(directory)[0]);
+        assert.deepEqual(decodePng(fs.readFileSync(path.join(destination, "actual.png"))).data, actual.data);
+        assert.deepEqual(decodePng(fs.readFileSync(path.join(destination, "expected.png"))).data, expected.data);
+        const difference = decodePng(fs.readFileSync(path.join(destination, "diff.png")));
+        assert.deepEqual(difference.data, Buffer.from("0000000000000000ff00ffff", "hex"));
+        const report = JSON.parse(fs.readFileSync(path.join(destination, "comparison.json"), "utf8"));
+        assert.equal(report.changedPixels, 1);
+        assert.match(report.error, /pixel \(2,0\)/);
+    } finally {
+        fs.rmSync(directory, { recursive: true, force: true });
+    }
 });
 
 test("structured comparisons retain slot order, types, lists and f32 precision", () => {

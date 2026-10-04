@@ -2,6 +2,8 @@
 build/
 build-*/
 cmake-build-*/
+.deps/
+__pycache__/
 
 # CMake artifacts
 CMakeCache.txt

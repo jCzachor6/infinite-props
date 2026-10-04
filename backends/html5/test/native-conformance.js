@@ -41,7 +41,7 @@ const sources = [
 for (const name of fs.readdirSync(path.join(repo, "examples/recipes")).filter(name => name.endsWith(".ips")).sort())
     sources.push(["recipe-" + name, "examples/recipes/" + name]);
 
-function checkImage(actual, expected, label) {
+function compareImage(actual, expected, label) {
     assert.equal(actual.width, expected.width, label + ": width");
     assert.equal(actual.height, expected.height, label + ": height");
     assert.equal(actual.data.length, expected.data.length, label + ": RGBA length");
@@ -52,6 +52,21 @@ function checkImage(actual, expected, label) {
                 Math.floor(pixel / expected.width) + "), channel " + (i % 4) +
                 ": " + actual.data[i] + " != " + expected.data[i]);
         }
+    }
+}
+
+function checkImage(actual, expected, label, reportDirectory = process.env.IPROP_CONFORMANCE_REPORT_DIR) {
+    try {
+        compareImage(actual, expected, label);
+    } catch (error) {
+        if (reportDirectory) {
+            try {
+                require("./image-diagnostics.js").writeComparison(reportDirectory, label, actual, expected, error);
+            } catch (diagnosticError) {
+                console.error("Could not save image diagnostics: " + diagnosticError.message);
+            }
+        }
+        throw error;
     }
 }
 
