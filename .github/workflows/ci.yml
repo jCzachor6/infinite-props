@@ -72,6 +72,7 @@ jobs:
           path: dist/iprop-*
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
       - name: Summarize the checks
         if: ${{ !cancelled() }}
@@ -87,6 +88,7 @@ jobs:
             build/Testing/Temporary/
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
   wasm:
     runs-on: ubuntu-latest
@@ -137,6 +139,7 @@ jobs:
           path: dist/iprop-*
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
       - name: Summarize the checks
         if: ${{ !cancelled() }}
@@ -150,6 +153,7 @@ jobs:
           path: build/ci-reports/
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
   native-backends:
     runs-on: ubuntu-latest
@@ -192,6 +196,7 @@ jobs:
           path: dist/iprop-*
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
       - name: Summarize the checks
         if: ${{ !cancelled() }}
@@ -207,6 +212,7 @@ jobs:
             build/Testing/Temporary/
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
 
   sanitizers:
     runs-on: ubuntu-latest
@@ -242,3 +248,37 @@ jobs:
             build/Testing/Temporary/
           if-no-files-found: error
           retention-days: 14
+          overwrite: true
+
+  release-assets:
+    needs: [build-test, wasm, native-backends, sanitizers]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Download this run's tested builds and reports
+        uses: actions/download-artifact@v4
+        with:
+          path: build/downloads
+      - name: Verify and collect the complete release asset set
+        run: python scripts/ci_report.py run release-assets python scripts/release_assets.py collect
+      - name: Retain the release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: build/release/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+      - name: Summarize the release candidate verification
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+      - name: Retain collection diagnostics even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-release-assets
+          path: build/ci-reports/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true

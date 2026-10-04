@@ -23,6 +23,12 @@ def product_version():
                      (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")).group(1)
 
 
+def api_version(root=ROOT):
+    header = (root / "backends/capi/iprop.h").read_text(encoding="utf-8")
+    return ".".join(re.search(rf"#define IPROP_API_VERSION_{part}\s+(\d+)", header).group(1)
+                    for part in ("MAJOR", "MINOR"))
+
+
 def committed_source():
     if run("git", "status", "--porcelain", capture=True):
         raise RuntimeError("Commit the source changes before packaging the HEAD source archive")

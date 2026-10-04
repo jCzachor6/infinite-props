@@ -79,4 +79,6 @@ Inspect GitHub CI for the exact candidate commit: Linux, macOS, Windows, WASM,
 SFML/Godot and sanitizer jobs must pass. Confirm frozen golden hashes and
 artifact size/output acceptance. Then merge the reviewed candidate to `main`,
 date the changelog, mark the v0.4 spec frozen, tag `v0.4.0` on that merge and
-rebuild packages from the tagged clean commit before publication.
+push the tag. The [automatic release workflow](ci.md#automatic-releases)
+rebuilds from that exact clean tagged commit, runs all CI and extraction checks,
+and uploads/verifies a complete draft before publishing the GitHub Release.
