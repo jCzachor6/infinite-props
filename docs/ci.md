@@ -20,12 +20,20 @@ Each job retains a `reports-*` artifact for 14 days, including on failure:
 
 Successful jobs also retain downloadable builds for 14 days:
 
-- `sdk-macOS-*` and `sdk-Windows-*`: source archive, native toolchain/C API
-  SDK archive, manifest and SHA256 checksums.
+- `sdk-macOS-*` and `sdk-Windows-*`: native toolchain/C API SDK archive,
+  manifest and SHA256 checksums.
 - `sdk-Linux-*`: the native SDK also includes the tested SFML and Godot
   integrations. macOS/Windows CI packages contain the toolchain and C API;
-  included backends are explicit in each SDK's `release.json`.
-- `web-build`: the tested WASM module, its JavaScript API and built website.
+  included backends are explicit in each SDK's `release.json`. Linux also
+  produces the single source archive used for the release.
+- `web-build`: separate WASM and website archives, containing their manifests
+  and licenses, plus extraction-validation results and SHA256 checksums.
+
+Packaging scripts unpack their completed archives into a separate directory
+and rerun installed SDK consumers, included native integrations and web/WASM
+smoke tests there. `*-validation.json` binds those results to the source commit
+and the actual archive digests. Archive timestamps/ownership are normalized;
+executable permissions and relative library symlinks are preserved.
 
 These are build artifacts for the recorded commit; uploading them does not
 create a GitHub Release or release tag. Caches are not used as release inputs.
@@ -36,4 +44,11 @@ Local diagnostic commands:
 python3 scripts/ci_report.py run test ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
 python3 scripts/ci_report.py summary
 IPROP_CONFORMANCE_REPORT_DIR="$PWD/build/ci-reports/conformance" node backends/html5/test/run-tests.js build/wasm
+```
+
+Packaging requires Python 3.12 or newer. To use a separate output directory:
+
+```sh
+python3 scripts/release.py --output-dir build/release
+python3 scripts/package_web.py --output-dir build/release
 ```

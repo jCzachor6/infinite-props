@@ -62,9 +62,9 @@ jobs:
 
       - name: Package the macOS and Windows SDKs
         if: runner.os != 'Linux'
-        run: python scripts/ci_report.py run package python scripts/release.py
+        run: python scripts/ci_report.py run package python scripts/release.py --no-source
 
-      - name: Retain the SDK and source archives
+      - name: Retain the SDK archive
         if: runner.os != 'Linux'
         uses: actions/upload-artifact@v4
         with:
@@ -127,15 +127,14 @@ jobs:
           python scripts/ci_report.py run website-build npm --prefix website run build
           python scripts/ci_report.py run website-smoke node website/test/release-smoke.js website/dist build/tools
 
+      - name: Package and verify the extracted WASM and website
+        run: python scripts/ci_report.py run package python scripts/package_web.py
+
       - name: Retain the tested WASM and website
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: |
-            build/wasm/iprop.js
-            build/wasm/iprop.wasm
-            backends/html5/js/api.js
-            website/dist/
+          path: dist/iprop-*
           if-no-files-found: error
           retention-days: 14
 

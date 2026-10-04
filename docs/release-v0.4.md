@@ -63,8 +63,15 @@ The script checks matching source/build versions, CTest, a relocated SDK, all
 six tools, shared/static C consumers and included integrations. Artifacts are
 `dist/iprop-0.4.0.tar.gz`, `dist/iprop-0.4.0-<os>-<arch>.tar.gz` and
 `dist/iprop-0.4.0-SHA256SUMS.txt`. The native manifest records the source commit,
-product/API versions and included backends. Extract the native archive outside
-the build tree and rerun installed-tool/consumer checks before shipping it.
+product/API versions and included backends. The script also extracts the
+completed archive outside the build tree and reruns installed-tool/consumer
+and included Godot checks. A per-SDK validation JSON records the tested commit
+and archive digests. Packaging requires Python 3.12 or newer.
+
+After preparing and testing the current WASM and built website, run
+`python3 scripts/package_web.py`. It creates separate WASM/website archives
+and reruns conformance and website smoke tests on their extracted contents.
+See [CI artifacts and reports](ci.md) for downloadable builds and diagnostics.
 
 ## Final release gate
 

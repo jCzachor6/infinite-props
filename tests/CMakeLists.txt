@@ -114,8 +114,8 @@ endif()
 
 find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
-    add_test(NAME ci_reports COMMAND ${Python3_EXECUTABLE} -m unittest discover
-        -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p test_ci_report.py)
+    add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover
+        -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p "test_*.py")
     add_test(NAME compiler_optimization_acceptance COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check-optimizations.py" "$<TARGET_FILE_DIR:ipc>")
 endif()
