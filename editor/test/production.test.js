@@ -87,22 +87,26 @@ test("editor inspector keeps source maps and binary export uses production outpu
     const inspection = new Promise(resolve => { post = resolve; });
     const notification = new Promise(resolve => { notify = resolve; });
     const vscode = {
+        CodeActionKind: { QuickFix: "quickfix" },
         ViewColumn: { Beside: 2 },
         Uri: { file: fsPath => ({ fsPath, toString: () => fsPath }) },
         commands: { registerCommand(name, callback) { commands.set(name, callback); return disposable(); } },
         languages: {
-            createDiagnosticCollection: () => ({ set() {}, delete() {}, dispose() {} }),
+            createDiagnosticCollection: () => ({ set() {}, clear() {}, delete() {}, dispose() {} }),
             registerCodeLensProvider: disposable,
+            registerCodeActionsProvider: disposable,
         },
         workspace: {
             textDocuments: [],
             getConfiguration: () => ({ get: key => ({ compilerPath: compiler,
                 disassemblerPath: tool("ipdis"), validatorPath: tool("ipval") })[key] }),
             onDidChangeTextDocument: disposable,
-            createFileSystemWatcher: () => ({ ...disposable(), onDidChange() {}, onDidCreate() {} }),
+            onDidSaveTextDocument: disposable,
+            onDidCloseTextDocument: disposable,
+            createFileSystemWatcher: () => ({ ...disposable(), onDidChange() {}, onDidCreate() {}, onDidDelete() {} }),
         },
         window: {
-            activeTextEditor: { document: { fileName: entry, languageId: "ips" } },
+            activeTextEditor: { document: { fileName: entry, languageId: "ips", getText: () => fs.readFileSync(entry, "utf8") } },
             createOutputChannel: () => ({ appendLine() {}, dispose() {} }),
             setStatusBarMessage: disposable,
             onDidChangeTextEditorSelection: disposable,
@@ -115,7 +119,7 @@ test("editor inspector keeps source maps and binary export uses production outpu
     };
     const extension = path.join(root, "editor/extension.js");
     const requireExtension = createRequire(extension);
-    const context = vm.createContext({ module: { exports: {} }, setTimeout, clearTimeout,
+    const context = vm.createContext({ module: { exports: {} }, setTimeout, clearTimeout, AbortController, Buffer,
         require: name => name === "vscode" ? vscode : name === "os"
             ? { ...os, tmpdir: () => dir } : requireExtension(name) });
     try {

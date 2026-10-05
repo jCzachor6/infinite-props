@@ -11,10 +11,10 @@ external edits).
 - `.ips` syntax highlighting (a TextMate grammar mirroring the lexer's
   tokens: keywords, type names, colour/number literals, comments, strings,
   operators).
-- Diagnostics: a debounced recompile through the native `ipc` binary on
-  every edit and on external file changes; errors appear as squiggles and
-  in the Problems panel with `file:line:column` locations — including
-  errors in imported parts.
+- Diagnostics: a debounced full check through the native `ipc` binary on
+  edits, saves and external file changes. JSON diagnostics retain exclusive
+  source ranges, stable error codes, severity and related locations, including
+  imported parts. Checks with compiler 0.5 write no artifacts.
 - The active `.ips` file is treated as the entry asset; imports resolve
   relative to its folder.
 - **Live preview** (Cmd+Shift+P → *iprop: Open Preview*): a side panel with
@@ -35,6 +35,53 @@ external edits).
 - **Imports** (*iprop: Open Import…*): lists the imports of the active file
   and opens the picked part; missing parts surface as compiler errors with
   the file and line.
+
+## Compiler diagnostics and quick fixes
+
+The editor requests `ipc <entry> --check --diagnostics=json` and reads schema 1
+from stdout. Compiler positions remain UTF-8 byte offsets and one-based Unicode
+codepoint columns until they are mapped to VS Code's UTF-16 positions. Tabs count
+as one column; CRLF and astral characters retain their exact source bytes.
+The boundary also handles VS Code's BOM removal and mixed-line-ending
+normalization while keeping the compiler's hash tied to the original disk bytes.
+Invalid UTF-8 remains a native lexer error shown at its point location, since its
+raw byte range cannot be represented by the decoded editor text.
+Errors, warnings and notes have their own Problems severity, and related
+locations link to their owning source file. Unlocated CLI or I/O errors appear
+at the entry's beginning.
+
+The compiler reads saved files. Save an edited buffer to check its new contents;
+the extension clears old diagnostics rather than attaching disk errors to a
+different buffer. Source identities are SHA-256 of the exact UTF-8 bytes,
+including line endings. A completed run cannot replace a newer run, and edit,
+save, close, create and delete events invalidate pending results immediately.
+Successful checks clear earlier errors in imported files too.
+
+Quick fixes use the compiler's explicit `fix_its`, grouped into one transaction.
+The extension checks the source hash when showing the action and again when
+executing it. Overlapping edits, inconsistent ranges or changed source are
+rejected. Fixes touching a BOM are unsupported because it is encoding metadata
+outside the text model. `TextEditor.edit` binds the edit to the document version, so a concurrent
+edit rejects the transaction. A fix changes the buffer and does not save it.
+Suggestions without an exact fix are informational actions; the editor does not
+infer replacements from diagnostic messages.
+
+Compiler 0.4 remains supported. Only its explicit `unknown option '--check'`
+(or `--diagnostics=json`) response enables a text fallback. The legacy compiler
+writes its checked binary into a unique temporary directory, which is removed
+on success, error or cancellation. Text fallback provides point locations and
+errors; it has no JSON codes, severities, byte ranges or source-bound fixes.
+A program error, timeout, invalid JSON or mismatched JSON status does not trigger
+fallback; transport failures are reported in the **iprop** output channel.
+
+Run the editor tests with the current native tools:
+
+```sh
+IPROP_COMPILER="$PWD/build/tools/ipc" node --test editor/test/*.test.js
+```
+
+Set `IPROP_LEGACY_COMPILER` to a frozen 0.4 `ipc` executable to include the real
+legacy compatibility test; otherwise that optional test is skipped.
 
 ## Keyboard shortcuts
 
@@ -68,7 +115,8 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 
 | Path | What |
 | ---- | ---- |
-| `extension.js` | activation: the diagnostic collection, the compile command, the watchers |
+| `extension.js` | activation, diagnostic mapping, guarded code actions and watchers |
+| `diagnostics.js` | JSON validation, compiler transport, text fallback and source-bound edit checks |
 | `syntaxes/ips.tmLanguage.json` | the TextMate grammar |
 | `language-configuration.json` | comments and brackets |
 | `install.sh` | local installation via symlink |
