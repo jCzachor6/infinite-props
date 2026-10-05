@@ -35,9 +35,12 @@
 extern "C" {
 #endif
 
-/* API version. Bump the major on any ABI change; pre-1.0 releases may
- * break the ABI freely (the library and the host are always built from
- * the same header). */
+/* Header API feature version, independent of the product/file versions.
+ * API 0.2 is frozen on ABI line 0.4: its declarations, enum values,
+ * layouts and ownership cannot change in an additive API release.
+ * Later APIs add symbols and separate sized descriptors; they do not
+ * append fields to these structs. See docs/c-api-abi.md for the policy.
+ * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
 #define IPROP_API_VERSION_MINOR 2
 

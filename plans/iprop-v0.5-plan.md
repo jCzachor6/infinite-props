@@ -146,7 +146,9 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 
 ## V. Rozszerzalne ABI i wersje biblioteki — P0
 
-- [ ] **05-V.1** Zamrozić API 0.2: sześć symboli, layouty i stride struktur, wartości enumów, konwencję wywołania oraz ownership. Zdefiniować addytywne API 0.3 i reguły dalszego rozwoju API 0.4. Rozmiary typów i wspierane ABI/platformy mają być jawne; nie zmieniać starych enumów na inne typy.
+- [x] **05-V.1** Zamrozić API 0.2: sześć symboli, layouty i stride struktur, wartości enumów, konwencję wywołania oraz ownership. Zdefiniować addytywne API 0.3 i reguły dalszego rozwoju API 0.4. Rozmiary typów i wspierane ABI/platformy mają być jawne; nie zmieniać starych enumów na inne typy.
+  Dowód: `docs/c-api-abi.md` zamraża sześć symboli, pełne offsety/stride, enumy i ownership oraz określa zasady addytywnego API. Nagłówek po usunięciu komentarzy identyczny z v0.4.0; C99 layout probe na macOS arm64 i zachowany klient 0.2 przeszły.
+
 - [ ] **05-V.2** Dodać odczyt wersji załadowanej biblioteki, wersji API, linii ABI, obsługiwanych formatów i capabilities. Makra nagłówka opisują kompilację klienta; query opisuje bibliotekę, z którą faktycznie pracuje. Możliwość nieobecna w 0.5, np. anulowanie, nie jest reklamowana.
 - [ ] **05-V.3** Wprowadzić nowe deskryptory `_ex` z `struct_size`, określonymi defaultami, inicjalizatorem i obsługą flag. Czytać/zapisywać tylko dostępny prefiks; nieznana żądana funkcja nie może zostać cicho zignorowana. Kolekcje mają accessory albo jawny rozmiar/stride elementu. Stare struktury pozostają bez zmian.
 - [ ] **05-V.4** Wydzielić konfigurację ABI/SONAME z `PROJECT_VERSION`, zachowując linię 0.4 i stare nazwy potrzebne loaderowi. Uaktualnić CMake, dokumentację kompatybilności, eksporty DLL i install-name; sprawdzić shared/static oraz przeniesiony SDK.

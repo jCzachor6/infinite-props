@@ -21,7 +21,11 @@ or `iprop::capi_static`. The shared target can be consumed by a C-only
 project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
 and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
 The installed DLL/import library and static archive have distinct names.
-The shared library SONAME includes the pre-1.0 minor ABI version.
+The released 0.4.0 shared library uses ABI line / SONAME `0.4`.
+That historical loader identity is independent of the C API feature version;
+additive API releases must retain it. The current build derives it from the
+product version; separating that configuration is a subsequent implementation
+step. See the [frozen ABI contract](../../docs/c-api-abi.md).
 
 The prefix includes all six CLI tools, examples, specifications, language/
 optimization/release documentation and the
@@ -64,26 +68,34 @@ allocates on the library's behalf. Failures return a status code
 `IPROP_E_ARGUMENT`) and, when the caller passes a buffer, a located
 message.
 
-## The ABI policy (task 6.3)
+## The ABI policy
 
 1. **One stable surface.** The C API is the only ABI the project
    guarantees; the C++ runtime, compiler and tools are implementation
    details and may change freely.
-2. **Versioned.** `IPROP_API_VERSION_MAJOR`/`_MINOR` track the API. The
-   major bumps on any ABI change. Pre-1.0 releases may break the ABI
-   freely — the library and the host are always built from the same
-   header (no runtime dispatch, no symbol versioning yet).
+2. **Independent versions.** `IPROP_API_VERSION_MAJOR`/`_MINOR` describe
+   the header's API feature set, currently `0.2`. Product, source language,
+   binary format and ABI loader identity are separate contracts. API `0.3`
+   is planned as an additive extension on ABI line `0.4`; an ABI break needs
+   an explicit new ABI line and migration, including before version 1.0.
 3. **Opaque handles.** `iprop_program`/`iprop_result` are incomplete
    types to consumers; their layout is private.
 4. **Borrowed, not owned.** Pointers delivered to the host are valid
    until the owning handle's `_free`; handles are not shared between
    threads (no global state, so independent handles may run concurrently).
-5. **Struct layout is ABI.** Adding even a trailing field changes the ABI
-   (including array strides). API 0.2 adds the output owner; consumers must
-   rebuild against this header. A future stable ABI will need sized structs
-   or versioned entry points before extending layouts.
+5. **Frozen legacy layouts.** The six API `0.2` symbols, public structs,
+   enum values, calling convention and ownership are frozen. Adding even a
+   trailing field changes the ABI, including array strides. API `0.2` added
+   the output owner before this freeze; the `0.1` layout is not part of the
+   current ABI guarantee. API `0.3` will use new sized descriptors and new
+   entry points, leaving every existing declaration intact.
 6. **Ownership is explicit.** Success hands exactly one handle to the
    caller to free; failure hands none.
+
+The [ABI contract](../../docs/c-api-abi.md) records the released baseline,
+supported layouts, legacy behavior and rules for sized descriptors, UTF-8
+views, collection strides and safe initialization. It specifies planned
+API `0.3` conventions; it does not imply those functions already exist.
 
 ## The conformance (task 6.2)
 
