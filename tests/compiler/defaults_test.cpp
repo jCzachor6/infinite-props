@@ -199,5 +199,5 @@ TEST_CASE("signed palettes preserve integer wrapping negative zero and dynamic s
         }
     }
     const auto mixed = ips::parse("asset t { size 8x8 palette p=[-1,0.5] draw {} }");
-    CHECK_THROWS_AS(ips::checkAsset(mixed, {}), ips::SourceError); // A.3 is separate
+    CHECK_NOTHROW(ips::checkAsset(mixed, {}));
 }

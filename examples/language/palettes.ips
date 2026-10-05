@@ -1,7 +1,7 @@
 asset PaletteHelpers {
   size 8x8
   palette colors = [#123, #9dc, #fc9]
-  palette levels = [0.0, 0.5, 1.0]
+  palette levels = [0, 0.5, 1]
   palette integers = [1, 2, 3]
   draw {
     c = colors[index(3)]

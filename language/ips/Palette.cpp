@@ -13,13 +13,23 @@ ResolvedPalette resolvePalette(const PaletteDecl& palette) {
         throw SourceError{palette.location,"palette '"+palette.name+"' needs at least one element"};
     ResolvedPalette result;
     for (const auto& element : palette.elements) {
-        const Value value = resolveDeclarationConstant(*element).value;
+        Value value = resolveDeclarationConstant(*element).value;
         const auto type = std::holds_alternative<Color>(value) ? ValueType::Color :
                           std::holds_alternative<f32>(value) ? ValueType::F32 : ValueType::I32;
-        if (result.type != ValueType::Void && type != result.type)
-            throw SourceError{locationOf(*element),"palette '"+palette.name+"' must have elements of one type ("+
-                typeName(result.type)+" and "+typeName(type)+" found)"};
-        result.type = type;
+        if (result.type != ValueType::Void && type != result.type) {
+            if (!isNumeric(type) || !isNumeric(result.type))
+                throw SourceError{locationOf(*element),"palette '"+palette.name+"' must have elements of one type ("+
+                    typeName(result.type)+" and "+typeName(type)+" found)"};
+            if (result.type == ValueType::I32) {
+                for (auto& previous : result.elements)
+                    previous = static_cast<f32>(std::get<i32>(previous));
+                result.type = ValueType::F32;
+            }
+            if (type == ValueType::I32)
+                value = static_cast<f32>(std::get<i32>(value));
+        } else {
+            result.type = type;
+        }
         result.elements.push_back(value);
     }
     return result;

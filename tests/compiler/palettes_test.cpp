@@ -11,6 +11,9 @@
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
+#include "ips/Palette.hpp"
+#include "ips/Printer.hpp"
+#include "iprop/Debug.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
 
@@ -18,6 +21,72 @@
 
 using namespace iprop;
 using namespace compiler_test;
+
+TEST_CASE("mixed numeric palettes resolve one f32 type independent of element order") {
+    for (const std::string values : {"0, 0.5, 1", "0.5, 0, 1", "0, 1, 0.5",
+                                   "-1, -0.0, true, false"}) {
+        INFO(values);
+        const auto program = ips::parse("asset t { size 8x8 palette p = [" +
+                                       values + "] draw {} }");
+        ips::checkAsset(program, {});
+        const auto palette = ips::resolvePalette(program.asset.palettes[0]);
+        CHECK(palette.type == ips::ValueType::F32);
+        for (const auto& element : palette.elements)
+            CHECK(std::holds_alternative<f32>(element));
+    }
+    const auto integers = ips::parse("asset t { size 8x8 palette p=[-1,0,true,false] draw{} }");
+    const auto integerPalette = ips::resolvePalette(integers.asset.palettes[0]);
+    CHECK(integerPalette.type == ips::ValueType::I32);
+    for (const auto& element : integerPalette.elements)
+        CHECK(std::holds_alternative<i32>(element));
+    for (const std::string values : {"#fff, 0", "0.5, #fff", "#fff, true"}) {
+        const auto program = ips::parse("asset t { size 8x8 palette p=[" + values + "] draw{} }");
+        CHECK_THROWS_AS(ips::checkAsset(program, {}), ips::SourceError);
+    }
+    const auto ramp = ips::parse("asset t { size 8x8 palette p=[0,1,2] draw{x=ramp(p,0.5)} }");
+    CHECK_THROWS_AS(ips::checkAsset(ramp, {}), ips::SourceError);
+}
+
+TEST_CASE("mixed palettes match explicitly widened values through indexing helpers and ramp") {
+    const std::string common = R"(asset mixed { size 8x8 variants 6
+        output point selected output point continuous output point following
+    )";
+    const auto make = [&](const char* values) {
+        return ips::parse(common + "palette p=[" + values + R"(]
+          draw {
+            selected={p[v-1],helper(v-1)}
+            continuous={ramp(p,0.75),ramp(p,unit())}
+            following={unit(),p[99]}
+            pixel(v,0,color.scale(#ffffff,(p[v-1]+1.0)/2.0))
+          }
+          helper(i:i32)->f32 { return p[i] }
+        })");
+    };
+    const auto mixed = make("-1, -0.0, 1");
+    const auto explicitFloats = make("-1.0, -0.0, 1.0");
+    ips::checkAsset(mixed, {});
+    ips::checkAsset(explicitFloats, {});
+    const auto formatted = ips::parse(ips::formatProgram(mixed));
+    for (const bool optimize : {false,true}) {
+        const auto actualBytes = compileProgram(mixed, {}, optimize);
+        const auto expectedBytes = compileProgram(explicitFloats, {}, optimize);
+        CHECK(stripDebug(actualBytes) == stripDebug(expectedBytes));
+        CHECK(stripDebug(actualBytes) == stripDebug(compileProgram(formatted, {}, optimize)));
+        for (u32 variant=0;variant<6;++variant) {
+            const auto actual = run(actualBytes,variant,0);
+            const auto expected = run(expectedBytes,variant,0);
+            CHECK(actual.canvas.pixels == expected.canvas.pixels);
+            for (std::size_t slot=0;slot<actual.outputs.size();++slot) {
+                CHECK(std::bit_cast<u32>(actual.outputs[slot].points[0].x) ==
+                      std::bit_cast<u32>(expected.outputs[slot].points[0].x));
+                CHECK(std::bit_cast<u32>(actual.outputs[slot].points[0].y) ==
+                      std::bit_cast<u32>(expected.outputs[slot].points[0].y));
+            }
+            if (variant==2)
+                CHECK(std::bit_cast<u32>(actual.outputs[0].points[0].x) == 0x80000000u);
+        }
+    }
+}
 
 TEST_CASE("palette indexing desugars to the picker ladder with pixel parity") {
     // The palette + indexing form ...
@@ -333,4 +402,3 @@ TEST_CASE("palette resolution stays within each owner including shared part alia
     CHECK(result.canvas.pixels[0] == Color{0x12,0x34,0x56,255});
     CHECK(result.canvas.pixels[1] == Color{0xab,0xcd,0xef,255});
 }
-
