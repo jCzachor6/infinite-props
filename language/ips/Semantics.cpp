@@ -233,7 +233,7 @@ private:
         const std::string& name, const SourceLocation& at) {
         if (returnTypes_.count(name) != 0) {
             return FunctionSurface{declaredParamTypes(*findFunction(name)),
-                                   returnTypes_[name]};
+                                   returnTypes_[name], declaredParamNames(*findFunction(name))};
         }
         const Function* function = findFunction(name);
         if (function == nullptr) {
@@ -246,7 +246,7 @@ private:
         try { checkFunction(*function); }
         catch (...) { inProgress_.erase(name); throw; }
         inProgress_.erase(name);
-        return FunctionSurface{declaredParamTypes(*function), returnTypes_[name]};
+        return FunctionSurface{declaredParamTypes(*function), returnTypes_[name], declaredParamNames(*function)};
     }
 
     void checkFunction(const Function& function) {

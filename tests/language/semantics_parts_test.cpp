@@ -101,7 +101,7 @@ TEST_CASE("part calls are validated against the part surface") {
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3) } }",
-        hairParts(), "requires an 'at");
+        hairParts(), "missing argument 'at");
 
     // Wrong `at` type.
     expectCheckError(
@@ -113,7 +113,7 @@ TEST_CASE("part calls are validated against the part surface") {
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
-        hairParts(), "has no input 'bogus'");
+        hairParts(), "has no argument 'bogus'");
 
     // Uniform of the wrong type.
     expectCheckError(

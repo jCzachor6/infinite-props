@@ -41,12 +41,14 @@ struct PartInfo {
 // The declared parameter types of a function, in declaration order (the
 // uniforms of a draw-like function are not part of its callable surface).
 std::vector<ValueType> declaredParamTypes(const Function& function);
+std::vector<std::string> declaredParamNames(const Function& function);
 
 // What the owner of a Typer knows about a user function: its declared
 // parameter types and its (possibly not-yet-known) return type.
 struct FunctionSurface {
     std::vector<ValueType> params;
     std::optional<ValueType> result;
+    std::vector<std::string> names{};
 };
 
 // Recovery-only control flow: a failed local declaration has no usable type.

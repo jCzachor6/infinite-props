@@ -26,6 +26,12 @@ std::vector<ValueType> declaredParamTypes(const Function& function) {
     return params;
 }
 
+std::vector<std::string> declaredParamNames(const Function& function) {
+    std::vector<std::string> names;
+    for (const auto& param : function.params) names.push_back(param.name);
+    return names;
+}
+
 // ---- Typer -------------------------------------------------------------------
 
 Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}

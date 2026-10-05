@@ -165,7 +165,7 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
     }
     const PlannedFunction& info = plan_->functions[*id];
     return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
-                                info.langResult};
+                                info.langResult, ips::declaredParamNames(*info.ast)};
 }
 
 void Planner::planParts() {

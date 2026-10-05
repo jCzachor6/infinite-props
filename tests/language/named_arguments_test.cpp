@@ -2,9 +2,69 @@
 
 #include "support/compiler_support.hpp"
 #include "support/semantic_support.hpp"
+#include "ips/BuiltinArguments.hpp"
+#include "ips/Parser.hpp"
 
 using namespace iprop;
 using namespace compiler_test;
+
+TEST_CASE("shared binder represents required optional and named-only parameters") {
+    using namespace ips;
+    const auto parseCall=[](const std::string& text) {
+        return parse("asset t {size 8x8 draw{"+text+"}} ");
+    };
+    const auto callOf=[](const Program& program)->const Call& {
+        return std::get<Call>(*std::get<ExprStmt>(program.asset.functions[0].body[0]).expr);
+    };
+    const std::vector<ArgumentParameter> parameters{
+        {"first"}, {"second"}, {"placement",true,false}, {"override",false,false}
+    };
+    auto program=parseCall("helper(second=2, 1, placement={0,0})");
+    auto bound=bindArguments(callOf(program),parameters,"helper");
+    REQUIRE(bound.size()==4);
+    CHECK(bound[0]==&callOf(program).args[1]);
+    CHECK(bound[1]==&callOf(program).args[0]);
+    CHECK(bound[2]==&callOf(program).args[2]);
+    CHECK(bound[3]==nullptr);
+    for (const auto& source : {
+        "helper(1,2)", "helper(1,2,{0,0})", "helper(1,second=2,first=3,placement={0,0})",
+        "helper(1,2,unknown=3,placement={0,0})", "helper(1,2,placement={0,0},placement={1,1})"
+    }) {
+        program=parseCall(source);
+        try {
+            (void)bindArguments(callOf(program),parameters,"helper");
+            FAIL("invalid binding was accepted");
+        } catch (const SourceError& error) {
+            CHECK(error.code==DiagnosticCode::TypeError);
+            CHECK(error.stage==DiagnosticStage::Typing);
+        }
+    }
+}
+
+TEST_CASE("part signature shares the binder without reserving variant or archetype uniforms") {
+    using namespace ips;
+    const std::vector<std::string> uniforms{"variant","archetype","tint"};
+    const auto signature=partParameters(uniforms);
+    REQUIRE(signature.size()==10);
+    CHECK(signature[1].name=="v");
+    CHECK(signature[2].name=="a");
+    CHECK(signature[7].name=="variant");
+    CHECK(signature[8].name=="archetype");
+    const auto program=parse("asset t {size 8x8 draw{child.draw(a=3,seed=1,v=2,at={0,0},variant=4)}}");
+    const auto& call=std::get<Call>(*std::get<ExprStmt>(program.asset.functions[0].body[0]).expr);
+    const auto args=partArguments(call,uniforms,"child.draw");
+    REQUIRE(args.size()==10);
+    CHECK(args[0]==&call.args[1]);
+    CHECK(args[1]==&call.args[2]);
+    CHECK(args[2]==&call.args[0]);
+    CHECK(args[3]==&call.args[3]);
+    CHECK(args[4]==nullptr);
+    CHECK(args[5]==nullptr);
+    CHECK(args[6]==nullptr);
+    CHECK(args[7]==&call.args[4]);
+    CHECK(args[8]==nullptr);
+    CHECK(args[9]==nullptr);
+}
 
 TEST_CASE("named canvas calls and color shorthand compile the plan example") {
     const auto named = compileChecked("asset t { size 16x16 draw { "

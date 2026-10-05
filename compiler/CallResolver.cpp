@@ -68,8 +68,9 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     if (!id) throw ips::SourceError{call.location, "unknown function '" + name + "'"};
     const auto& callee = plan_.functions[*id];
     UserCall result{*id, callee.langResult.value_or(T::Void), {}};
-    for (std::size_t i = 0; i < call.args.size(); ++i)
-        result.arguments.push_back(argument(*call.args[i].value, ips::valueTypeOf(callee.ast->params[i].type)));
+    const auto args = ips::bindArguments(call, ips::declaredParamNames(*callee.ast), name);
+    for (std::size_t i = 0; i < args.size(); ++i)
+        result.arguments.push_back(argument(*args[i]->value, ips::valueTypeOf(callee.ast->params[i].type)));
     return {call.location, std::move(result)};
 }
 
@@ -77,19 +78,19 @@ PartCall CallResolver::part(const ips::Call& call, const std::string& alias) con
     PartCall result{};
     result.part = plan_.partIndex.at(alias);
     result.transform = ips::resolvePartTransform(call);
-    std::map<std::string, const ips::Expr*> named;
-    std::size_t positional = 0;
-    for (const auto& arg : call.args) {
-        if (arg.name) named.emplace(*arg.name, arg.value.get());
-        else result.positional.at(positional++) = argument(*arg.value, ips::ValueType::I32);
-    }
-    result.at = named.at("at");
-    for (const auto& input : plan_.parts[result.part]->asset.inputs) {
-        if (const auto found = named.find(input.name); found != named.end()) {
-            const auto expected = ips::valueTypeOf(input.type);
-            result.uniforms.emplace_back(argument(*found->second, expected));
+    std::vector<std::string> uniforms;
+    const auto& inputs = plan_.parts[result.part]->asset.inputs;
+    for (const auto& input : inputs) uniforms.push_back(input.name);
+    const auto args = ips::partArguments(call, uniforms, alias + ".draw");
+    for (std::size_t i=0;i<3;++i)
+        result.positional[i] = argument(*args[i]->value, ips::ValueType::I32);
+    result.at = args[3]->value.get();
+    for (std::size_t i=0;i<inputs.size();++i) {
+        if (const auto* override = args[7+i]) {
+            const auto expected = ips::valueTypeOf(inputs[i].type);
+            result.uniforms.emplace_back(argument(*override->value, expected));
         } else {
-            result.uniforms.emplace_back(plan_.inputDefaults.at(&input).value);
+            result.uniforms.emplace_back(plan_.inputDefaults.at(&inputs[i]).value);
         }
     }
     return result;

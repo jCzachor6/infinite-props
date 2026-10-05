@@ -19,6 +19,10 @@ Builtin and canvas calls accept positional and named arguments, including
 a mixture. Positional arguments fill signature slots from the start;
 named arguments bind the indicated slot. Names do not advance the positional
 counter. Duplicate, missing and unknown arguments are rejected.
+Part placement (`at`) is required and named-only. Transform and uniform
+overrides are optional and named-only; omitted uniforms keep their declared
+typed defaults. Variadic builtin names are derived from the selected arity
+(`x0`/`y0` for polygon vertices and `value0`, ... for choices).
 
 Ordinary builtin arguments evaluate once, in signature order, independent
 of written name order. `rect(color = #fff, h = 2, x = 1, w = 2, y = 1)` has

@@ -2,7 +2,7 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
-#include <set>
+#include <algorithm>
 
 namespace iprop::ips {
 namespace {
@@ -112,6 +112,10 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
             error(arg.location,
                   "function '" + name.name + "' does not take named arguments");
         }
+    }
+    const auto args = bindArguments(call, surface->names, name.name);
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const Arg& arg = *args[i];
         const ValueType got = typeOf(*arg.value);
         if (!argFits(surface->params[i], got)) {
             error(locationOf(*arg.value),
@@ -137,79 +141,42 @@ ValueType Typer::typePartCall(const Call& call) {
         error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
-    // Exactly three positional arguments: seed, variant, archetype.
-    std::size_t positional = 0;
-    bool hasAt = false;
-    std::set<std::string> named;
-    for (const auto& arg : call.args) {
-        if (!arg.name.has_value()) {
-            if (positional >= 3) {
-                error(arg.location,
-                      "part call takes exactly three positional "
-                      "arguments (seed, variant, archetype)");
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(ValueType::I32, got)) {
-                error(locationOf(*arg.value),
-                      "part call argument must be an integer, got " +
-                          std::string(typeName(got)));
-            }
-            ++positional;
-        } else {
-            if (!named.insert(*arg.name).second)
-                error(arg.location, "duplicate '" + *arg.name + "' argument");
-            if (*arg.name == "at") {
-                hasAt = true;
-                const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::Vec2) {
-                    error(locationOf(*arg.value),
-                          "'at' must be a vec2 {x, y}, got " +
-                              std::string(typeName(got)));
-                }
-                continue;
-            }
-            if (*arg.name == "mirror_x" || *arg.name == "mirror_y" ||
-                *arg.name == "rot") {
-                const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::I32) {
-                    error(locationOf(*arg.value),
-                          "'" + *arg.name + "' must be an integer, got " +
-                              std::string(typeName(got)));
-                }
-                continue;
-            }
-            // A uniform override: must be a declared input of the part.
-            const PartInput* input = nullptr;
-            for (const auto& candidate : part->second.inputs) {
-                if (candidate.name == *arg.name) {
-                    input = &candidate;
-                    break;
-                }
-            }
-            if (input == nullptr) {
-                std::vector<std::string> names{"at", "mirror_x", "mirror_y", "rot"};
-                for (const auto& declared : part->second.inputs) names.push_back(declared.name);
-                error(arg.location,
-                      "part '" + path.base + "' has no input '" + *arg.name + "'" + didYouMean(*arg.name, names));
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(valueTypeOf(input->type), got)) {
-                error(locationOf(*arg.value),
-                      "input '" + *arg.name + "' of part '" + path.base +
-                          "' must be " + typeName(valueTypeOf(input->type)) +
-                          ", got " + typeName(got));
-            }
-        }
-    }
+    // Named controls are enabled separately in C.3; the shared signature
+    // already describes them while preserving the legacy three-position form.
+    const auto positional = std::count_if(call.args.begin(), call.args.end(),
+        [](const Arg& arg) { return !arg.name; });
     if (positional != 3) {
-        error(call.location,
-              "part call takes exactly three positional "
-              "arguments (seed, variant, archetype), got " +
-                  std::to_string(positional));
+        error(call.location, "part call takes exactly three positional "
+              "arguments (seed, variant, archetype), got " + std::to_string(positional));
     }
-    if (!hasAt) {
-        error(call.location,
-              "part call requires an 'at = {x, y}' placement argument");
+    std::vector<std::string> uniforms;
+    for (const auto& input : part->second.inputs) uniforms.push_back(input.name);
+    const auto args = partArguments(call, uniforms, path.base + ".draw");
+    for (std::size_t i=0;i<3;++i) {
+        const auto got = typeOf(*args[i]->value);
+        if (got != ValueType::I32)
+            error(locationOf(*args[i]->value), "part call argument must be an integer, got " +
+                  std::string(typeName(got)));
+    }
+    const auto placement = typeOf(*args[3]->value);
+    if (placement != ValueType::Vec2)
+        error(locationOf(*args[3]->value), "'at' must be a vec2 {x, y}, got " +
+              std::string(typeName(placement)));
+    for (std::size_t i=4;i<7;++i) {
+        if (!args[i]) continue;
+        const auto got = typeOf(*args[i]->value);
+        if (got != ValueType::I32)
+            error(locationOf(*args[i]->value), "'" + *args[i]->name +
+                  "' must be an integer, got " + std::string(typeName(got)));
+    }
+    for (std::size_t i=0;i<part->second.inputs.size();++i) {
+        const auto* arg = args[7+i];
+        if (!arg) continue;
+        const auto& input = part->second.inputs[i];
+        const auto got = typeOf(*arg->value);
+        if (!argFits(valueTypeOf(input.type), got))
+            error(locationOf(*arg->value), "input '" + input.name + "' of part '" + path.base +
+                  "' must be " + typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
     }
     (void)resolvePartTransform(call);
     return ValueType::Void;
