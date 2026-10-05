@@ -1,0 +1,10 @@
+asset SignedDefault {
+  size 8x8
+  input f32 amount = -1.0
+  input f32 zero = -(0.0)
+  output point value
+  draw {
+    value = {amount, zero}
+    pixel(1, 1, #39f)
+  }
+}

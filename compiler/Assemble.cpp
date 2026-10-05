@@ -5,7 +5,6 @@
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
 #include "ips/Fold.hpp"
-#include "ips/Literals.hpp"
 
 namespace iprop::compiler {
 
@@ -31,33 +30,25 @@ f32 Assembler::foldOrigin(const ips::Expr& expr) {
 }
 
 void Assembler::writeInputEntry(Writer& out, const ips::InputDecl& input) {
+    const Value& value = plan_.inputDefaults.at(&input).value;
     switch (input.type) {
     case ips::InputType::Color: {
         out.writeU8(static_cast<u8>(iprop::InputType::Color));
         out.writeU32(plan_.pools.indexOf(input.name));
-        const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
-        Color color;
-        ips::parseColor(lit->text, color);
-        out.writeColor(color);
+        out.writeColor(std::get<Color>(value));
         break;
     }
     case ips::InputType::F32: {
         out.writeU8(static_cast<u8>(iprop::InputType::F32));
         out.writeU32(plan_.pools.indexOf(input.name));
-        const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
-        u32 bits = 0;
-        ips::parseFloatBits(lit->text, bits);
-        out.writeU32(bits);
+        out.writeF32(std::get<f32>(value));
         break;
     }
     case ips::InputType::U32:
     case ips::InputType::I32: {
         out.writeU8(static_cast<u8>(iprop::InputType::U32));
         out.writeU32(plan_.pools.indexOf(input.name));
-        const auto* lit = std::get_if<ips::Literal>(input.defaultValue.get());
-        u32 bits = 0;
-        ips::parseIntBits(lit->text, bits);
-        out.writeU32(bits);
+        out.writeU32(static_cast<u32>(std::get<i32>(value)));
         break;
     }
     }

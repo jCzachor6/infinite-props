@@ -33,6 +33,7 @@ add_executable(iprop_tests
     compiler/basics_test.cpp
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
+    compiler/defaults_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
     compiler/palettes_test.cpp

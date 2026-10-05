@@ -225,7 +225,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
 
 // A literal expression if the current token starts one, else null. Shared
 // by parsePrimary (full expressions) and parseLiteralValue (input defaults,
-// which only allow literals).
+// which accept a literal optionally wrapped by parentheses/one unary minus).
 std::unique_ptr<Expr> ParserImpl::parseLiteral() {
     switch (kind()) {
     case TokenKind::Int: {

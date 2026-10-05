@@ -89,12 +89,7 @@ PartCall CallResolver::part(const ips::Call& call, const std::string& alias) con
             const auto expected = ips::valueTypeOf(input.type);
             result.uniforms.emplace_back(argument(*found->second, expected));
         } else {
-            Value value;
-            if (!std::holds_alternative<ips::Literal>(*input.defaultValue) ||
-                !ips::foldExpression(*input.defaultValue, value))
-                throw ips::SourceError{input.location, "part input '" + input.name + "' has no constant default",
-                    plan_.sourcePath(plan_.parts[result.part])};
-            result.uniforms.emplace_back(value);
+            result.uniforms.emplace_back(plan_.inputDefaults.at(&input).value);
         }
     }
     return result;

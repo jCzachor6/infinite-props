@@ -15,23 +15,29 @@ the declared counts traps. `draw` declares no parameters or return type.
 
 ## Input uniforms
 
-`input type name = literal` declares a host-settable, read-only uniform.
+`input type name = constant` declares a host-settable, read-only uniform.
 
-| Input type | Literal default | Value inside `draw` |
+| Input type | Constant default | Value inside `draw` |
 | --- | --- | --- |
 | `color` | `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA` | `color` |
-| `f32` | integer or floating literal | `f32` |
-| `u32` | integer literal | `i32`, retaining its 32-bit pattern |
+| `f32` | integer or floating literal, optionally negative | `f32` |
+| `u32` | nonnegative integer literal | `i32`, retaining its 32-bit pattern |
 
 The parser also recognizes `input i32`, but the current compiler rejects
 it because the binary format provides `u32` uniforms. Use `input u32` for
 integer inputs; expressions interpret the resulting pattern as `i32`.
 
-Defaults are literal tokens, not expressions. A leading minus is a unary
-operator, so `input f32 amount = -1.0` is rejected. For an integer bit pattern
-such as signed -1, use `0xffffffff`. Inside expressions, negative values are
-written normally. Boolean tokens are not accepted as integer input defaults.
+Defaults permit a literal, parentheses and one numeric unary minus, such as
+`input f32 amount = -(0.5)`. Arithmetic, names, calls and repeated negation
+are rejected. Floating defaults preserve negative zero (`-0.0`); an integer
+spelling used for an `f32` default is converted directly to binary32, without
+first wrapping to an integer bit pattern. Root and part defaults use the
+same conversion. For a `u32` bit pattern representing signed -1, use
+`0xffffffff`; a negative `u32` default suggests `input i32`, whose compiler
+support is added separately. Boolean tokens are not integer input defaults.
 Uniforms are visible in `draw`; pass their values explicitly to helpers.
+
+<!-- example: ../../examples/language/negative-default.ips -->
 
 <!-- example: ../../examples/language/errors/signed-input.ips -->
 

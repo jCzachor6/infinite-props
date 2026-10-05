@@ -34,8 +34,6 @@ can exceed a resource limit or encounter invalid data.
 
 <!-- example: ../../examples/language/errors/immutable-input.ips -->
 
-<!-- example: ../../examples/language/errors/negative-default.ips -->
-
 <!-- example: ../../examples/language/errors/compound-local.ips -->
 
 ## Execution limits

@@ -28,7 +28,10 @@ Program parseTokens(const std::vector<Token>& tokens);
 //                  | function)* "}"
 //   sizeDecl   := "size" int ("x" digits | int)
 //   originDecl := "origin" expr "," expr
-//   inputDecl  := "input" inputType ident "=" literal
+//   inputDecl  := "input" inputType ident "=" declarationConstant
+//   declarationConstant := literal | "(" declarationConstant ")"
+//                        | "-" constantAtom
+//   constantAtom := literal | "(" constantAtom ")" // no second minus
 //   outputDecl := "output" "list"? outputKind ident
 //   paletteDecl := "palette" ident "=" "[" (expr ("," expr)*)? "]"
 //   function   := "draw" block | name "(" params ")" returnType? block

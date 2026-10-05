@@ -1,5 +1,6 @@
 #include "ips/Semantics.hpp"
 #include "ips/Palette.hpp"
+#include "ips/DeclarationConstants.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -143,29 +144,7 @@ private:
     }
 
     void checkInputDefault(const InputDecl& input) {
-        const auto* value = std::get_if<Literal>(input.defaultValue.get());
-        if (value == nullptr) {
-            error(input.location,
-                  "input '" + input.name + "' needs a literal default value");
-        }
-        const bool ok = [&]() {
-            switch (input.type) {
-            case InputType::Color:
-                return value->kind == Literal::Kind::Color;
-            case InputType::F32:
-                return value->kind == Literal::Kind::Int ||
-                       value->kind == Literal::Kind::Float;
-            case InputType::U32:
-            case InputType::I32:
-                return value->kind == Literal::Kind::Int;
-            }
-            return false;
-        }();
-        if (!ok) {
-            error(value->location,
-                  "default value of input '" + input.name +
-                      "' does not match its declared type");
-        }
+        (void)resolveInputDefault(input);
     }
 
     void checkPaletteDecl(const PaletteDecl& palette) {

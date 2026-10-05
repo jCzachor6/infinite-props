@@ -133,7 +133,7 @@ public:
     void parseSize(Asset& asset);
     void parseOrigin(Asset& asset);
     InputDecl parseInput();
-    std::unique_ptr<Expr> parseLiteralValue();
+    std::unique_ptr<Expr> parseLiteralValue(bool allowMinus = true);
     OutputDecl parseOutput();
     PaletteDecl parsePalette();
     Function parseFunction();

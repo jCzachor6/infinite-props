@@ -26,7 +26,7 @@
     {"file": "errors/integer-ramp.ips", "expect": "compile-error", "message": "ramp requires a color or f32 palette"},
     {"file": "errors/list-read.ips", "expect": "compile-error", "message": "cannot read list output"},
     {"file": "errors/immutable-input.ips", "expect": "compile-error", "message": "cannot assign to input"},
-    {"file": "errors/negative-default.ips", "expect": "compile-error", "message": "literal default value"},
+    {"file": "negative-default.ips", "expect": "pass"},
     {"file": "errors/compound-local.ips", "expect": "compile-error", "message": "cannot store rect"},
     {"file": "traps/fuel.ips", "expect": "trap", "message": "fuel exhausted"},
     {"file": "traps/noise-domain.ips", "expect": "trap", "message": "noise coordinate out of range"},

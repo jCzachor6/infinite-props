@@ -34,9 +34,11 @@ precedence over user helpers with the same name.
   `\\`. Strings are not runtime values.
 
 There are no source literals for infinity or NaN; floating operations can
-produce them. Numeric minus is an operator, including in palette expressions:
-palettes require literal tokens and therefore do not accept negative unary
-expressions. Use suitable integer bit-pattern literals when needed.
+produce them. Numeric minus is an operator. Input defaults and palette
+elements admit a small constant grammar: a literal, parentheses and one
+numeric unary minus. They do not admit arithmetic, calls or RNG. Ordinary
+runtime expressions retain their usual operator grammar and wrapping
+integer semantics.
 
 <!-- example: ../../examples/language/syntax.ips -->
 

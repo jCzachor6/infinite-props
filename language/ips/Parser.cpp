@@ -140,13 +140,22 @@ InputDecl ParserImpl::parseInput() {
     return InputDecl{type, name.text, parseLiteralValue(), name.location};
 }
 
-// The default value of an input is a literal; type checking happens in the
-// semantic phase.
-std::unique_ptr<Expr> ParserImpl::parseLiteralValue() {
+// Input defaults allow parentheses and one unary minus, but no expression
+// operators/calls. Numeric/type validation belongs to the constant resolver.
+std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
+    if (match(TokenKind::LParen)) {
+        auto value = parseLiteralValue(allowMinus);
+        expect(TokenKind::RParen, "')' after the default value");
+        return value;
+    }
+    if (allowMinus && match(TokenKind::Minus)) {
+        const auto at = tokens_[pos_ - 1].location;
+        return std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+    }
     if (auto value = parseLiteral()) {
         return value;
     }
-    failExpected("a literal default value");
+    failExpected("a literal default value (parentheses and one numeric unary minus are allowed)");
 }
 
 OutputDecl ParserImpl::parseOutput() {

@@ -74,6 +74,15 @@ const ips::OutputDecl* Planner::ownerOutput(const ips::Program* owner,
 
 std::unique_ptr<Plan> Planner::plan() {
     planParts();
+    const auto prepareDefaults = [&](const ips::Program& owner) {
+        for (const auto& input : owner.asset.inputs) {
+            if (plan_->inputDefaults.contains(&input)) continue;
+            try { plan_->inputDefaults.emplace(&input, ips::resolveInputDefault(input)); }
+            catch (ips::SourceError& error) { error.path = plan_->sourcePath(&owner); throw; }
+        }
+    };
+    prepareDefaults(entry_);
+    for (const auto* part : plan_->parts) prepareDefaults(*part);
     const auto preparePalettes = [&](const ips::Program& owner) {
         for (const auto& palette : owner.asset.palettes) {
             if (plan_->palettes.contains(&palette)) continue;

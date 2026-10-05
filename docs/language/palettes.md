@@ -1,9 +1,12 @@
 # Palettes
 
-`palette name = [literal, ...]` declares a non-empty, immutable asset-level
-array. All elements must be literal tokens of one type: `i32`, `f32` or
-`color`; boolean literals count as `i32`. Mixed integer/float palettes and
-computed elements are rejected. Palettes are available in draw and helpers,
+`palette name = [constant, ...]` declares a non-empty, immutable asset-level
+array. Elements permit literals, parentheses and one numeric unary minus,
+such as `[-2, -(1), 0]` or `[-0.5, (-0.0), 1.0]`. All elements have one type:
+`i32`, `f32` or `color`; boolean literals count as `i32`. Integer negation
+uses the ordinary wrapping 32-bit semantics and floating negation preserves
+negative zero. Mixed integer/float palettes, arithmetic, calls and repeated
+negation are rejected. Palettes are available in draw and helpers,
 and cannot share a name with an input, output, helper or another palette.
 
 `name[index]` requires an `i32` index and returns the element type. A negative

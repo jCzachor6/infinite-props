@@ -16,6 +16,7 @@ add_library(ips_lang STATIC
     ips/BuiltinSpec.cpp
     ips/BuiltinArguments.cpp
     ips/Fold.cpp
+    ips/DeclarationConstants.cpp
     ips/PartTransform.cpp
     ips/Palette.cpp
     ips/Imports.cpp

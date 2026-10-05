@@ -1,5 +1,0 @@
-asset InvalidDefault {
-  size 8x8
-  input f32 amount = -1.0
-  draw { }
-}
