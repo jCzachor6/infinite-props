@@ -1,0 +1,672 @@
+{
+  "product_version": "0.4.0",
+  "source_commit": "66d34c2831585afb231022da9296528a912e962e",
+  "working_tree_dirty": false,
+  "status": "released",
+  "tag": "v0.4.0",
+  "schema_version": 1,
+  "builtin_count": 68,
+  "example_count": 31,
+  "headings": [
+    {
+      "title": "The .ips language",
+      "anchor": "the-ips-language",
+      "level": 1
+    },
+    {
+      "title": "Your first asset",
+      "anchor": "your-first-asset",
+      "level": 2
+    },
+    {
+      "title": "Assets, inputs and outputs",
+      "anchor": "assets-inputs-and-outputs",
+      "level": 2
+    },
+    {
+      "title": "Input uniforms",
+      "anchor": "input-uniforms",
+      "level": 3
+    },
+    {
+      "title": "Structured outputs",
+      "anchor": "structured-outputs",
+      "level": 3
+    },
+    {
+      "title": "Source syntax and names",
+      "anchor": "source-syntax-and-names",
+      "level": 2
+    },
+    {
+      "title": "Literals",
+      "anchor": "literals",
+      "level": 3
+    },
+    {
+      "title": "Types, expressions and variables",
+      "anchor": "types-expressions-and-variables",
+      "level": 2
+    },
+    {
+      "title": "Value types and conversions",
+      "anchor": "value-types-and-conversions",
+      "level": 3
+    },
+    {
+      "title": "Variables and scope",
+      "anchor": "variables-and-scope",
+      "level": 3
+    },
+    {
+      "title": "Operators",
+      "anchor": "operators",
+      "level": 3
+    },
+    {
+      "title": "Control flow",
+      "anchor": "control-flow",
+      "level": 2
+    },
+    {
+      "title": "User functions and argument evaluation",
+      "anchor": "user-functions-and-argument-evaluation",
+      "level": 2
+    },
+    {
+      "title": "Argument binding and evaluation",
+      "anchor": "argument-binding-and-evaluation",
+      "level": 3
+    },
+    {
+      "title": "Randomness and seeds",
+      "anchor": "randomness-and-seeds",
+      "level": 2
+    },
+    {
+      "title": "unit",
+      "anchor": "unit",
+      "level": 3
+    },
+    {
+      "title": "range",
+      "anchor": "range",
+      "level": 3
+    },
+    {
+      "title": "index",
+      "anchor": "index",
+      "level": 3
+    },
+    {
+      "title": "pick",
+      "anchor": "pick",
+      "level": 3
+    },
+    {
+      "title": "chance",
+      "anchor": "chance",
+      "level": 3
+    },
+    {
+      "title": "roll",
+      "anchor": "roll",
+      "level": 3
+    },
+    {
+      "title": "choose",
+      "anchor": "choose",
+      "level": 3
+    },
+    {
+      "title": "hash",
+      "anchor": "hash",
+      "level": 3
+    },
+    {
+      "title": "stream_push",
+      "anchor": "stream_push",
+      "level": 3
+    },
+    {
+      "title": "stream_pop",
+      "anchor": "stream_pop",
+      "level": 3
+    },
+    {
+      "title": "Numbers and interpolation",
+      "anchor": "numbers-and-interpolation",
+      "level": 2
+    },
+    {
+      "title": "int",
+      "anchor": "int",
+      "level": 3
+    },
+    {
+      "title": "float",
+      "anchor": "float",
+      "level": 3
+    },
+    {
+      "title": "i32trunc",
+      "anchor": "i32trunc",
+      "level": 3
+    },
+    {
+      "title": "round",
+      "anchor": "round",
+      "level": 3
+    },
+    {
+      "title": "sqrt",
+      "anchor": "sqrt",
+      "level": 3
+    },
+    {
+      "title": "sin",
+      "anchor": "sin",
+      "level": 3
+    },
+    {
+      "title": "cos",
+      "anchor": "cos",
+      "level": 3
+    },
+    {
+      "title": "abs",
+      "anchor": "abs",
+      "level": 3
+    },
+    {
+      "title": "floor",
+      "anchor": "floor",
+      "level": 3
+    },
+    {
+      "title": "ceil",
+      "anchor": "ceil",
+      "level": 3
+    },
+    {
+      "title": "min",
+      "anchor": "min",
+      "level": 3
+    },
+    {
+      "title": "max",
+      "anchor": "max",
+      "level": 3
+    },
+    {
+      "title": "pow",
+      "anchor": "pow",
+      "level": 3
+    },
+    {
+      "title": "exp",
+      "anchor": "exp",
+      "level": 3
+    },
+    {
+      "title": "atan2",
+      "anchor": "atan2",
+      "level": 3
+    },
+    {
+      "title": "smooth",
+      "anchor": "smooth",
+      "level": 3
+    },
+    {
+      "title": "lerp",
+      "anchor": "lerp",
+      "level": 3
+    },
+    {
+      "title": "gain",
+      "anchor": "gain",
+      "level": 3
+    },
+    {
+      "title": "quintic",
+      "anchor": "quintic",
+      "level": 3
+    },
+    {
+      "title": "smoothstep",
+      "anchor": "smoothstep",
+      "level": 3
+    },
+    {
+      "title": "remap",
+      "anchor": "remap",
+      "level": 3
+    },
+    {
+      "title": "clamp",
+      "anchor": "clamp",
+      "level": 3
+    },
+    {
+      "title": "Drawing and colors",
+      "anchor": "drawing-and-colors",
+      "level": 2
+    },
+    {
+      "title": "pixel",
+      "anchor": "pixel",
+      "level": 3
+    },
+    {
+      "title": "rect",
+      "anchor": "rect",
+      "level": 3
+    },
+    {
+      "title": "line",
+      "anchor": "line",
+      "level": 3
+    },
+    {
+      "title": "curve",
+      "anchor": "curve",
+      "level": 3
+    },
+    {
+      "title": "oval",
+      "anchor": "oval",
+      "level": 3
+    },
+    {
+      "title": "poly",
+      "anchor": "poly",
+      "level": 3
+    },
+    {
+      "title": "weather",
+      "anchor": "weather",
+      "level": 3
+    },
+    {
+      "title": "Color helpers",
+      "anchor": "color-helpers",
+      "level": 3
+    },
+    {
+      "title": "rgb",
+      "anchor": "rgb",
+      "level": 4
+    },
+    {
+      "title": "rgba",
+      "anchor": "rgba",
+      "level": 4
+    },
+    {
+      "title": "color.mix",
+      "anchor": "colormix",
+      "level": 4
+    },
+    {
+      "title": "color.shade",
+      "anchor": "colorshade",
+      "level": 4
+    },
+    {
+      "title": "color.set.a",
+      "anchor": "colorseta",
+      "level": 4
+    },
+    {
+      "title": "color.mul",
+      "anchor": "colormul",
+      "level": 4
+    },
+    {
+      "title": "color.scale",
+      "anchor": "colorscale",
+      "level": 4
+    },
+    {
+      "title": "color.hsv",
+      "anchor": "colorhsv",
+      "level": 4
+    },
+    {
+      "title": "Vectors and distance fields",
+      "anchor": "vectors-and-distance-fields",
+      "level": 2
+    },
+    {
+      "title": "vec2.len",
+      "anchor": "vec2len",
+      "level": 3
+    },
+    {
+      "title": "vec2.dot",
+      "anchor": "vec2dot",
+      "level": 3
+    },
+    {
+      "title": "vec2.rot",
+      "anchor": "vec2rot",
+      "level": 3
+    },
+    {
+      "title": "dist.circle",
+      "anchor": "distcircle",
+      "level": 3
+    },
+    {
+      "title": "dist.rect",
+      "anchor": "distrect",
+      "level": 3
+    },
+    {
+      "title": "dist.roundrect",
+      "anchor": "distroundrect",
+      "level": 3
+    },
+    {
+      "title": "dist.line",
+      "anchor": "distline",
+      "level": 3
+    },
+    {
+      "title": "dist.bezier",
+      "anchor": "distbezier",
+      "level": 3
+    },
+    {
+      "title": "fill",
+      "anchor": "fill",
+      "level": 3
+    },
+    {
+      "title": "fold",
+      "anchor": "fold",
+      "level": 3
+    },
+    {
+      "title": "polar",
+      "anchor": "polar",
+      "level": 3
+    },
+    {
+      "title": "Noise and procedural utilities",
+      "anchor": "noise-and-procedural-utilities",
+      "level": 2
+    },
+    {
+      "title": "noise",
+      "anchor": "noise",
+      "level": 3
+    },
+    {
+      "title": "fault",
+      "anchor": "fault",
+      "level": 3
+    },
+    {
+      "title": "noise.grad",
+      "anchor": "noisegrad",
+      "level": 3
+    },
+    {
+      "title": "noise.fbm",
+      "anchor": "noisefbm",
+      "level": 3
+    },
+    {
+      "title": "noise.cell",
+      "anchor": "noisecell",
+      "level": 3
+    },
+    {
+      "title": "noise.ridge",
+      "anchor": "noiseridge",
+      "level": 3
+    },
+    {
+      "title": "warp",
+      "anchor": "warp",
+      "level": 3
+    },
+    {
+      "title": "cell.jitter",
+      "anchor": "celljitter",
+      "level": 3
+    },
+    {
+      "title": "dither",
+      "anchor": "dither",
+      "level": 3
+    },
+    {
+      "title": "Palettes",
+      "anchor": "palettes",
+      "level": 2
+    },
+    {
+      "title": "ramp",
+      "anchor": "ramp",
+      "level": 3
+    },
+    {
+      "title": "Imports and part composition",
+      "anchor": "imports-and-part-composition",
+      "level": 2
+    },
+    {
+      "title": "Part call order",
+      "anchor": "part-call-order",
+      "level": 3
+    },
+    {
+      "title": "Compiler tools, diagnostics and emoji",
+      "anchor": "compiler-tools-diagnostics-and-emoji",
+      "level": 2
+    },
+    {
+      "title": "Compiler output",
+      "anchor": "compiler-output",
+      "level": 3
+    },
+    {
+      "title": "Diagnostics",
+      "anchor": "diagnostics",
+      "level": 3
+    },
+    {
+      "title": "Execution limits",
+      "anchor": "execution-limits",
+      "level": 3
+    },
+    {
+      "title": "Emoji aliases",
+      "anchor": "emoji-aliases",
+      "level": 3
+    },
+    {
+      "title": "Grammar",
+      "anchor": "grammar",
+      "level": 2
+    },
+    {
+      "title": "Maintaining this documentation",
+      "anchor": "maintaining-this-documentation",
+      "level": 2
+    }
+  ],
+  "source_files": {
+    "docs/language/assets.md": "a6d463609ca98cecc61870647ed378a84f77e85d95bb748b33f07ddd38f9a8b8",
+    "docs/language/book.json": "fad9ff3362bb4b2c94491213a5ef1e5828fc8822130fc0019602c29d3e04c64d",
+    "docs/language/composition.md": "65f85c31ed4cdc221ee0a48cb18fad464a89c158578ffde745a6f2d4e4afd396",
+    "docs/language/control-flow.md": "d5d0b062ca15331415ddcacae439ab6c88cc54e9dbaadfd90da47dd11334822d",
+    "docs/language/development.md": "cf21005a9bfe8820f246a8b067e7c776e07ed5cd25203a1dbc473ff20fed319c",
+    "docs/language/drawing.md": "d41c3b23c2f6f83635ff22b4c119ba6423e448c4649e84b25479f812d1fe3d4d",
+    "docs/language/functions.md": "30346b941910e81852dcf77606cb2213af816d8a94f7da6dd12ea63e53fc5cb4",
+    "docs/language/geometry.md": "494f7dd94e9f7f35155b42bb124f38f1806d1c7771c608050deff9555332fcb1",
+    "docs/language/getting-started.md": "43d98cab4b55c4407a04e230e8a7d0228b5941b9504266d8c6fcd3292ce518d0",
+    "docs/language/grammar.md": "fb4cbf1a3699f7830eedd5119e976a86e0d3963408c6641f72e41d8a34dd93fd",
+    "docs/language/index.md": "bd80687119ac082e0e93cf2356823d0dc1651efd68132b63e9dbfed63f18c056",
+    "docs/language/math.md": "348bb1842eebe9e63db3e51a9bec55f569ee8eb50108723a63cf098437e9aa9b",
+    "docs/language/noise.md": "54a568d98b8712f7be3f7a03557a4c0b3144c889b55185607d416e2db6ecbfd0",
+    "docs/language/palettes.md": "4fec0f5e4f447cc59f3c9800dbabe2549ac4d211528d0bf76021bedbb3a93230",
+    "docs/language/random.md": "4da1fb37e2de239bce6208ab489a7a47231ce5d49ba5ec729e124b4f8c21c31c",
+    "docs/language/syntax.md": "d0ce2394e4ae5c0ef6e54a8e3f441378c57edafd45a0a19a4adb4538f50e723a",
+    "docs/language/tooling.md": "b310641f7c8a40d5c66eb5c5a95c818037c7baa7766a63778becd6f0679b37ad",
+    "docs/language/types.md": "283c4468cc67660394714dd816fae25ef7cfeb91f39a026bb1db97cdea100297",
+    "docs/optimization-acceptance-v0.4.md": "45d91b3b71c79facc3d32dcd58a2f9ec4ec44e01f6acaaf12cb226d29e60e5c5",
+    "docs/optimizations-v0.4.md": "089f238dfd9b17d5c993a47b65063f26eebad9b382f5823bdda3ef16c53db3bb",
+    "examples/language/assets.ips": "8d4cea5ebb2a38e620e580bd8f15f5ba70a6c01ab04228204a71a71013a861cb",
+    "examples/language/cases.json": "bcb5411f26d9771770ec9d458c3a907ea8ad73f964f3b0841f38f096906a3b02",
+    "examples/language/colors.ips": "4ab7a918e6dc0cfe18da8b86fdd67b8aa7f59038c20a9e1c4c60ee3fd288822f",
+    "examples/language/composition.ips": "2289e32b098b80c4c64eec9d601349d2634fcc2a2d6d33a0c2fd756fb1673a6a",
+    "examples/language/control-flow.ips": "501466dbaab7814413fe008154f4f850fe853c3950bee0b7bd80cd36618b6a65",
+    "examples/language/drawing.ips": "8afd96621add12b63c198e78cc59726c0c864439c2b22ffeeb03e677cd028405",
+    "examples/language/emoji.ips": "23f9e843c313a38c0d1d9d657d4bea9c65a43ed2b04f09bbfbb6253685e932a4",
+    "examples/language/errors/compound-local.ips": "fd96dae6b72d4bb6216f1ea9f5910f0cbc4e1d4b0586ee063587fd08fb1817e2",
+    "examples/language/errors/float-condition.ips": "d2d35bf0c79f21ee8ebb8fb22272c36e3f49e89f175021bc17925ec622e1e0b8",
+    "examples/language/errors/helper-uniform.ips": "fb19d66a9b33de0d3a39caf9a46abb2a270b619369b8a42446f06958c73043fe",
+    "examples/language/errors/immutable-input.ips": "77a5d947d5092107301676d7ad13a6f8bd60eaf4ab50eadeade5e39be1eccec9",
+    "examples/language/errors/integer-ramp.ips": "a4c8346485cf0bc9d978eaca1569444ada86dc78b1a21f8ba1e26a82a66bf92d",
+    "examples/language/errors/list-read.ips": "d7b620c0e47841f22af7153cccf686ab9a69b57725a209bbf204c2af09c18757",
+    "examples/language/errors/local-type.ips": "86e9afefb5612dd3af0cb4c9174a13f662f86b815841bf75070d0d32418c1370",
+    "examples/language/errors/negative-default.ips": "e4ab492165d916f23036a784715200e4992c70416146a7e24ecb469c6ff56581",
+    "examples/language/errors/recursion.ips": "ddcb2d305f787d3700cdde705671069e11e3f7de1184e37c9e14654f614a06fc",
+    "examples/language/errors/signed-input.ips": "c808d70ace2cde3fc7150bd4428560d7726c93ce7636145f77c82fb99015dda3",
+    "examples/language/errors/unknown-argument.ips": "63311b1848c7fd8dfcf3be72720ff11cc8ee88b5c53a5ad39f881837866a175c",
+    "examples/language/first-asset.ips": "2dea5f5e7c8d1cefe88d8789a4f4d9cc643ac07d25237e6feca259d4283b3ee6",
+    "examples/language/functions.ips": "e4668420e0a457c0e10c64f5fc2f9804f0c548dce6c71df2d014164f1794e934",
+    "examples/language/geometry.ips": "c451c9b77c084e8d75a826c7f989435d1d9e80b787b1e59cef91de23a2c00bdc",
+    "examples/language/math.ips": "09b4860678a9253c68cf915e84a9848982ffd06d3fe9d57ce85b1f8f236212da",
+    "examples/language/nested-import.ips": "1a0de260ff74b2155702b0f4f4380f9d9acc2651b21c507fe5c7fb49d036baf5",
+    "examples/language/noise.ips": "9f8703a9d72c859cd85be32f79098756a49dafb7aed8b431345a9fdb40ea53fe",
+    "examples/language/palettes.ips": "560d39c693b2006c9f9ef4e78459b2edf6c8628a24a5d96b9fbeee203ee21097",
+    "examples/language/part.ips": "a822885a3430bcecd3997c781d1074757f590168c6b7fbd7d5427b35492e3ff6",
+    "examples/language/random.ips": "0a32d1b22f742fefc4cfafc526efb1cb6452fd3680450138d963210a20de1d27",
+    "examples/language/syntax.ips": "93a97a2faa2cd9da5b5100f5c0bbdd76110770913639aaec91a59571c6f72619",
+    "examples/language/traps/divide-by-zero.ips": "d670e07c0b1919a8ecd6905fb5c8aa9f8ca05a06ea9b71fb09a4b0d1e854cc82",
+    "examples/language/traps/fuel.ips": "5aaf997ac6b3a6696bc1e9ea72b89a6eb7d75173bdf4182927d42e94f7db3e2e",
+    "examples/language/traps/noise-domain.ips": "8f8102acc95017ae19c41cd7ac776c3346abe4893777aa51c6eeb06e402424dc",
+    "examples/language/types.ips": "5ec00c8f43c1ef20448515d36bf8adf41820c8384ae97e8ea5511dfc3351df87",
+    "examples/recipes/01-basic-rect.ips": "8ff217aaeec4afbade797a433db283be191a16b62d19c3c5b4dcb9c1a74cfd51",
+    "examples/recipes/02-palette-bands.ips": "35e5cdf6e29c7af26b3c7d39cea759f36621039a2816c5a9803ad7fa6d2a593a",
+    "examples/recipes/03-variant-badge.ips": "89721b8e18e7b6c6d05e6ceade7de64549f7f057d1a2ca3693dce7a89ed7b5b7",
+    "examples/recipes/04-seeded-speckles.ips": "971879f28a145b6a30b1c40830f25944c8f8b3e1bd687d067b0bbfb8910feaa1",
+    "examples/recipes/05-chance-stars.ips": "99532237515bb20033a53d66318b740c71c2a9884eb403bd392474d4bfe40612",
+    "examples/recipes/06-direct-seed-cells.ips": "b07266dcceb6323212c343eec89c0ddc320e7aa39f53ff77b3ee78b1b855e716",
+    "examples/recipes/07-color-gradient.ips": "3226ef5cfbf6e10af837ee41b99bd24a571bfd854ae533f1059b2c29d100c05f",
+    "examples/recipes/08-alpha-glaze.ips": "5addb16bcc1b5bfbba20ae6930784ff2f1ec59dbd00be079109f61be1f413e82",
+    "examples/recipes/09-rounded-mask.ips": "fc574f91fd076952a4717ba487201cb294f544c04e040db8c973ac60a87c4309",
+    "examples/recipes/10-sdf-ring.ips": "246b51acf3b0b086850b5fe91e48d31a1ffa0f0709cdf26863de2bedd1771137",
+    "examples/recipes/11-bezier-stroke.ips": "957b15b54995b83d3bf08e395492774a60e664d16f5999c4d99e52e0e3158531",
+    "examples/recipes/12-distance-line.ips": "d6c8782346f74e0995b956268bdba15bb4d852263a88f2c4824efe12ecb35b7c",
+    "examples/recipes/13-noise-marble.ips": "503ed092080ceb20eb31237b64fff4c52cfdd5c465e0de45f88c7aa147c846a7",
+    "examples/recipes/14-cellular-stones.ips": "5a1b9d5438fb862e972309f68ce5c872cf147b0cac2474f405de2e1372019202",
+    "examples/recipes/15-rotated-spokes.ips": "5b36fd5238762f37dc54ae29a0d95c256d0ba60e33b4498e1d3e738f5492718c",
+    "examples/recipes/16-radial-fold.ips": "491ed8db5365d509f61c349c859f0c204ca9606f0efd1005ed75e4989452d2d5",
+    "examples/recipes/17-sine-height.ips": "e5f832012f99cf1692c96814517b9ab58d9e9441d31d0f83d7d2fcf174dcbe35",
+    "examples/recipes/18-smoothstep-border.ips": "3190beb767f02dbb71aff56404faf29afe2da1e17dd07dc6b1b0f817f70e4dd3",
+    "examples/recipes/19-looped-checkers.ips": "ba9f088a944c6016da841095ef00a8410406aa01a53897efe4c0b633ad01627c",
+    "examples/recipes/20-output-anchors.ips": "e40dae749a3f6a3ae1601c65f3816e5d027a7890e5cb74e0058aeb75932ff354",
+    "examples/recipes/21-while-growth.ips": "fdf52c7cc6bf8ccc689d7809324f7dc0dea1185f59747b6916fcff7fac6bb1a6",
+    "examples/recipes/22-helper-leaves.ips": "f9f7b5a8f9a3a73b82dc9aec858a0b358a4dbdd6f43967c87fa4bd268c3f693f",
+    "examples/recipes/23-nested-choices.ips": "8988a6dbfd6032a17b9d83ae0c37714ad93f35e18d314cfc67a2274457e7f88c",
+    "examples/recipes/24-uniform-emblem.ips": "d4da1c0cffff6527dd86b12dc9403605f5e9d3cf2e13a4253d0da4eeea1c93d5",
+    "examples/recipes/README.md": "643642b09c8dd97e1de8e559fef290e9cb144c36481202e656543efac70e9264",
+    "spec/README.md": "7f29ba9f9c9d11a974cd06b50b5f5fc181ad859ea0cc39ce711be554560c2050",
+    "spec/iprop-v0.1.md": "7c6a7719884e3944c85392ad8a4d18ece7a9f0252c03190e277db1f1e93e4373",
+    "spec/iprop-v0.2.md": "baaefee651cc1b38345d37912a03f953d173fece9a0864d09eb1e8458d2e04ab",
+    "spec/iprop-v0.3.md": "9cbd0b221b607b725a7bb74ebb74c0ea233b59084a631ef094fe3445c077398b",
+    "spec/iprop-v0.4.md": "c05369dd5d2a2336df267f77c3d38a6fb05fe39e87fe3c672a2825565db5751f"
+  },
+  "files": {
+    "docs/language-v0.4.md": "4d77b7682bc08a5986218afb7ca25ece03153937d1c61c963852ea9f9c64d9f3",
+    "docs/language.json": "35e60446d78d1076d2aed03e295a714d7edac42d66bd3187463ae0aaff726643",
+    "docs/language/assets.md": "3e2a4789d4ccc6811f34023fbe1d7c5d5cba34a60870ddce32bb3c77ae2305e9",
+    "docs/language/book.json": "fad9ff3362bb4b2c94491213a5ef1e5828fc8822130fc0019602c29d3e04c64d",
+    "docs/language/composition.md": "a21fec03a196a1bebc0603aff1cba9949af2755461731889aea49e525c81de88",
+    "docs/language/control-flow.md": "25ce4d770011c18823ac0b342775b9b25a0ff45af374a1f11b92e722f21bccf4",
+    "docs/language/development.md": "cf21005a9bfe8820f246a8b067e7c776e07ed5cd25203a1dbc473ff20fed319c",
+    "docs/language/drawing.md": "97a2102ee25bd6f55108cc8dac2152eae800e34db53b5c1f452b36938e9fa6b3",
+    "docs/language/functions.md": "4a56fe0926bec44fce09118c5ceb1a4086f731c6a2885a5c91686bdb43f57337",
+    "docs/language/geometry.md": "bd7562c25a18fa100130328ffd283472b88c29737226b123bbff1f5f31bb94d0",
+    "docs/language/getting-started.md": "22a96fd74400faa9ecc9e16b0c58b83cacadb1a2b9297e0a1045c546f1a114ca",
+    "docs/language/grammar.md": "fb4cbf1a3699f7830eedd5119e976a86e0d3963408c6641f72e41d8a34dd93fd",
+    "docs/language/index.md": "bd80687119ac082e0e93cf2356823d0dc1651efd68132b63e9dbfed63f18c056",
+    "docs/language/math.md": "a06e4bfdaf941b7bf9fced7c370491ad703cda6c0c80c2d68d28f0fa2182039b",
+    "docs/language/noise.md": "e7e7652d4a4d938509e21bb725240877374a58e80abdf9c2d432c3ce7b7aec25",
+    "docs/language/palettes.md": "31178af5d69c58028fd60a384cbafb480a44d9f5d78708e8f6812f3317827f0d",
+    "docs/language/random.md": "2413f47933b63e498cc0d9728a94cdd32037f58214eecf699f55c4fc8c1a5081",
+    "docs/language/syntax.md": "92419edf0fb888c3ad39d5f29cfbe2771acd0b3959e127dbfa96244084a4b885",
+    "docs/language/tooling.md": "a8575d9e80207c9bf5901ea8bdc76fd21c2eff44fee5c9800c7a7e1c13922187",
+    "docs/language/types.md": "82f6593d407b4af9debf5eaf050841e86d8370184d00bb115145c6227c951cd9",
+    "docs/optimization-acceptance-v0.4.md": "45d91b3b71c79facc3d32dcd58a2f9ec4ec44e01f6acaaf12cb226d29e60e5c5",
+    "docs/optimizations-v0.4.md": "089f238dfd9b17d5c993a47b65063f26eebad9b382f5823bdda3ef16c53db3bb",
+    "examples/language/assets.ips": "8d4cea5ebb2a38e620e580bd8f15f5ba70a6c01ab04228204a71a71013a861cb",
+    "examples/language/cases.json": "bcb5411f26d9771770ec9d458c3a907ea8ad73f964f3b0841f38f096906a3b02",
+    "examples/language/colors.ips": "4ab7a918e6dc0cfe18da8b86fdd67b8aa7f59038c20a9e1c4c60ee3fd288822f",
+    "examples/language/composition.ips": "2289e32b098b80c4c64eec9d601349d2634fcc2a2d6d33a0c2fd756fb1673a6a",
+    "examples/language/control-flow.ips": "501466dbaab7814413fe008154f4f850fe853c3950bee0b7bd80cd36618b6a65",
+    "examples/language/drawing.ips": "8afd96621add12b63c198e78cc59726c0c864439c2b22ffeeb03e677cd028405",
+    "examples/language/emoji.ips": "23f9e843c313a38c0d1d9d657d4bea9c65a43ed2b04f09bbfbb6253685e932a4",
+    "examples/language/errors/compound-local.ips": "fd96dae6b72d4bb6216f1ea9f5910f0cbc4e1d4b0586ee063587fd08fb1817e2",
+    "examples/language/errors/float-condition.ips": "d2d35bf0c79f21ee8ebb8fb22272c36e3f49e89f175021bc17925ec622e1e0b8",
+    "examples/language/errors/helper-uniform.ips": "fb19d66a9b33de0d3a39caf9a46abb2a270b619369b8a42446f06958c73043fe",
+    "examples/language/errors/immutable-input.ips": "77a5d947d5092107301676d7ad13a6f8bd60eaf4ab50eadeade5e39be1eccec9",
+    "examples/language/errors/integer-ramp.ips": "a4c8346485cf0bc9d978eaca1569444ada86dc78b1a21f8ba1e26a82a66bf92d",
+    "examples/language/errors/list-read.ips": "d7b620c0e47841f22af7153cccf686ab9a69b57725a209bbf204c2af09c18757",
+    "examples/language/errors/local-type.ips": "86e9afefb5612dd3af0cb4c9174a13f662f86b815841bf75070d0d32418c1370",
+    "examples/language/errors/negative-default.ips": "e4ab492165d916f23036a784715200e4992c70416146a7e24ecb469c6ff56581",
+    "examples/language/errors/recursion.ips": "ddcb2d305f787d3700cdde705671069e11e3f7de1184e37c9e14654f614a06fc",
+    "examples/language/errors/signed-input.ips": "c808d70ace2cde3fc7150bd4428560d7726c93ce7636145f77c82fb99015dda3",
+    "examples/language/errors/unknown-argument.ips": "63311b1848c7fd8dfcf3be72720ff11cc8ee88b5c53a5ad39f881837866a175c",
+    "examples/language/first-asset.ips": "2dea5f5e7c8d1cefe88d8789a4f4d9cc643ac07d25237e6feca259d4283b3ee6",
+    "examples/language/functions.ips": "e4668420e0a457c0e10c64f5fc2f9804f0c548dce6c71df2d014164f1794e934",
+    "examples/language/geometry.ips": "c451c9b77c084e8d75a826c7f989435d1d9e80b787b1e59cef91de23a2c00bdc",
+    "examples/language/math.ips": "09b4860678a9253c68cf915e84a9848982ffd06d3fe9d57ce85b1f8f236212da",
+    "examples/language/nested-import.ips": "1a0de260ff74b2155702b0f4f4380f9d9acc2651b21c507fe5c7fb49d036baf5",
+    "examples/language/noise.ips": "9f8703a9d72c859cd85be32f79098756a49dafb7aed8b431345a9fdb40ea53fe",
+    "examples/language/palettes.ips": "560d39c693b2006c9f9ef4e78459b2edf6c8628a24a5d96b9fbeee203ee21097",
+    "examples/language/part.ips": "a822885a3430bcecd3997c781d1074757f590168c6b7fbd7d5427b35492e3ff6",
+    "examples/language/random.ips": "0a32d1b22f742fefc4cfafc526efb1cb6452fd3680450138d963210a20de1d27",
+    "examples/language/syntax.ips": "93a97a2faa2cd9da5b5100f5c0bbdd76110770913639aaec91a59571c6f72619",
+    "examples/language/traps/divide-by-zero.ips": "d670e07c0b1919a8ecd6905fb5c8aa9f8ca05a06ea9b71fb09a4b0d1e854cc82",
+    "examples/language/traps/fuel.ips": "5aaf997ac6b3a6696bc1e9ea72b89a6eb7d75173bdf4182927d42e94f7db3e2e",
+    "examples/language/traps/noise-domain.ips": "8f8102acc95017ae19c41cd7ac776c3346abe4893777aa51c6eeb06e402424dc",
+    "examples/language/types.ips": "5ec00c8f43c1ef20448515d36bf8adf41820c8384ae97e8ea5511dfc3351df87",
+    "examples/recipes/01-basic-rect.ips": "8ff217aaeec4afbade797a433db283be191a16b62d19c3c5b4dcb9c1a74cfd51",
+    "examples/recipes/02-palette-bands.ips": "35e5cdf6e29c7af26b3c7d39cea759f36621039a2816c5a9803ad7fa6d2a593a",
+    "examples/recipes/03-variant-badge.ips": "89721b8e18e7b6c6d05e6ceade7de64549f7f057d1a2ca3693dce7a89ed7b5b7",
+    "examples/recipes/04-seeded-speckles.ips": "971879f28a145b6a30b1c40830f25944c8f8b3e1bd687d067b0bbfb8910feaa1",
+    "examples/recipes/05-chance-stars.ips": "99532237515bb20033a53d66318b740c71c2a9884eb403bd392474d4bfe40612",
+    "examples/recipes/06-direct-seed-cells.ips": "b07266dcceb6323212c343eec89c0ddc320e7aa39f53ff77b3ee78b1b855e716",
+    "examples/recipes/07-color-gradient.ips": "3226ef5cfbf6e10af837ee41b99bd24a571bfd854ae533f1059b2c29d100c05f",
+    "examples/recipes/08-alpha-glaze.ips": "5addb16bcc1b5bfbba20ae6930784ff2f1ec59dbd00be079109f61be1f413e82",
+    "examples/recipes/09-rounded-mask.ips": "fc574f91fd076952a4717ba487201cb294f544c04e040db8c973ac60a87c4309",
+    "examples/recipes/10-sdf-ring.ips": "246b51acf3b0b086850b5fe91e48d31a1ffa0f0709cdf26863de2bedd1771137",
+    "examples/recipes/11-bezier-stroke.ips": "957b15b54995b83d3bf08e395492774a60e664d16f5999c4d99e52e0e3158531",
+    "examples/recipes/12-distance-line.ips": "d6c8782346f74e0995b956268bdba15bb4d852263a88f2c4824efe12ecb35b7c",
+    "examples/recipes/13-noise-marble.ips": "503ed092080ceb20eb31237b64fff4c52cfdd5c465e0de45f88c7aa147c846a7",
+    "examples/recipes/14-cellular-stones.ips": "5a1b9d5438fb862e972309f68ce5c872cf147b0cac2474f405de2e1372019202",
+    "examples/recipes/15-rotated-spokes.ips": "5b36fd5238762f37dc54ae29a0d95c256d0ba60e33b4498e1d3e738f5492718c",
+    "examples/recipes/16-radial-fold.ips": "491ed8db5365d509f61c349c859f0c204ca9606f0efd1005ed75e4989452d2d5",
+    "examples/recipes/17-sine-height.ips": "e5f832012f99cf1692c96814517b9ab58d9e9441d31d0f83d7d2fcf174dcbe35",
+    "examples/recipes/18-smoothstep-border.ips": "3190beb767f02dbb71aff56404faf29afe2da1e17dd07dc6b1b0f817f70e4dd3",
+    "examples/recipes/19-looped-checkers.ips": "ba9f088a944c6016da841095ef00a8410406aa01a53897efe4c0b633ad01627c",
+    "examples/recipes/20-output-anchors.ips": "e40dae749a3f6a3ae1601c65f3816e5d027a7890e5cb74e0058aeb75932ff354",
+    "examples/recipes/21-while-growth.ips": "fdf52c7cc6bf8ccc689d7809324f7dc0dea1185f59747b6916fcff7fac6bb1a6",
+    "examples/recipes/22-helper-leaves.ips": "f9f7b5a8f9a3a73b82dc9aec858a0b358a4dbdd6f43967c87fa4bd268c3f693f",
+    "examples/recipes/23-nested-choices.ips": "8988a6dbfd6032a17b9d83ae0c37714ad93f35e18d314cfc67a2274457e7f88c",
+    "examples/recipes/24-uniform-emblem.ips": "d4da1c0cffff6527dd86b12dc9403605f5e9d3cf2e13a4253d0da4eeea1c93d5",
+    "examples/recipes/README.md": "643642b09c8dd97e1de8e559fef290e9cb144c36481202e656543efac70e9264",
+    "spec/README.md": "7f29ba9f9c9d11a974cd06b50b5f5fc181ad859ea0cc39ce711be554560c2050",
+    "spec/iprop-v0.1.md": "7c6a7719884e3944c85392ad8a4d18ece7a9f0252c03190e277db1f1e93e4373",
+    "spec/iprop-v0.2.md": "baaefee651cc1b38345d37912a03f953d173fece9a0864d09eb1e8458d2e04ab",
+    "spec/iprop-v0.3.md": "9cbd0b221b607b725a7bb74ebb74c0ea233b59084a631ef094fe3445c077398b",
+    "spec/iprop-v0.4.md": "c05369dd5d2a2336df267f77c3d38a6fb05fe39e87fe3c672a2825565db5751f"
+  }
+}

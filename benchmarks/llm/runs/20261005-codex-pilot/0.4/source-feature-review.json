@@ -1,0 +1,484 @@
+{
+  "schema_version": 1,
+  "reviewer": "Codex root agent",
+  "method": "Direct inspection of every actual model source against all required feature clauses; independent public image/output predicates recorded separately. This is assistant review, not a human visual verdict.",
+  "raw_response_sha256": "14525b3db1b3548279b36cd946de40c04b9e34c44a0d5fa95437c1be850490ff",
+  "tasks": [
+    {
+      "task_id": "asset-01",
+      "task_definition_sha256": "2fdcfa2af3602ce7f0899318d3a164573630d8665e949415f475e64cf4fc6f4e",
+      "generated_file_sha256": {
+        "entry.ips": "908d8c9841e26bbcd34e38ca711039b9d071a752bb65fac17d88b99905a8596d"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "rect",
+          "verdict": "pass"
+        },
+        {
+          "feature": "point_output",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Two rectangle fills and an explicit singular center output."
+    },
+    {
+      "task_id": "asset-02",
+      "task_definition_sha256": "4d28617da105082dad1f2ea23c0d555bdea12b7e3f6822749e1f1fde60f7500e",
+      "generated_file_sha256": {
+        "entry.ips": "d662e3501a8c938a816a02689c507266073ab064b807b045814afb4ea619b744"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "for",
+          "verdict": "pass"
+        },
+        {
+          "feature": "if",
+          "verdict": "pass"
+        },
+        {
+          "feature": "integer_math",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Nested finite loops compute parity and select tile color in an integer if."
+    },
+    {
+      "task_id": "asset-03",
+      "task_definition_sha256": "c8ae6f0ee6c39346706594b03dcc5d358cec3481098a248b0e61ad7e38cb496a",
+      "generated_file_sha256": {
+        "entry.ips": "f7ae671231c3911e038cd63233169a576615353a491e085dfa873ce9faaf00f6"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "color_palette",
+          "verdict": "pass"
+        },
+        {
+          "feature": "palette_index",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Four color stops are indexed by the loop for the four bands."
+    },
+    {
+      "task_id": "asset-04",
+      "task_definition_sha256": "c9b79ea2d6a125cd8249980648d5d03cb5b4f143650d7af75b0d9299d5100296",
+      "generated_file_sha256": {
+        "entry.ips": "f042d3ac3e2698003604fb323f9a83ae7dd37880ee70947e214f7f952af1d13f"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "variants",
+          "verdict": "pass"
+        },
+        {
+          "feature": "archetypes",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Declared variant/archetype counts drive actual panel dimensions and selection outputs."
+    },
+    {
+      "task_id": "asset-05",
+      "task_definition_sha256": "356c8ef6070f9598af69981c547d2503200e8aca554ad2fc55d1fd0e2f485d48",
+      "generated_file_sha256": {
+        "entry.ips": "bc0d37845afcd536fb6fc1b451f4f4f6ec37984eae96463a88a9d0f3e5ee3be0"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "color_input",
+          "verdict": "pass"
+        },
+        {
+          "feature": "f32_input",
+          "verdict": "pass"
+        },
+        {
+          "feature": "u32_input",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Three correctly typed defaults feed panel color, floating offset and integer width."
+    },
+    {
+      "task_id": "asset-06",
+      "task_definition_sha256": "af1c4579fe9571f4e3f932558238cf9b1897215f665af0d05ad1c8993e12c7f0",
+      "generated_file_sha256": {
+        "entry.ips": "3e893caee110d9bba70f114b7d1e2c977a645ab8a6db4cf619596a137406f16a"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "index",
+          "verdict": "pass"
+        },
+        {
+          "feature": "list_output",
+          "verdict": "pass"
+        },
+        {
+          "feature": "stream_rng",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Each of twelve iterations uses exactly two index(24) calls on the current stream and appends that point."
+    },
+    {
+      "task_id": "asset-07",
+      "task_definition_sha256": "0085480e3a523dbcfaa51d66037a51baa46a30a37b2fc1c9cef94ab39b463cac",
+      "generated_file_sha256": {
+        "entry.ips": "aba5f3829278cf0fd4559318d9696a2e3b70b090c48b70205d0cca1f28f09ac9"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "chance",
+          "verdict": "pass"
+        },
+        {
+          "feature": "conditional_output",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Sixteen chance(probability) calls gate pixels and list appends, with no other RNG."
+    },
+    {
+      "task_id": "asset-08",
+      "task_definition_sha256": "a3b9f156eddda8d71612468e1843e9b6bdef5aac6a14455aa3be3582089013cb",
+      "generated_file_sha256": {
+        "entry.ips": "ba36af0957e7e53ed7e45b413ea2ab37606480d1adab2df8bf0bcc137a1d6a8f"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "roll",
+          "verdict": "pass"
+        },
+        {
+          "feature": "hash",
+          "verdict": "pass"
+        },
+        {
+          "feature": "seed_isolation",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Initial seed saved; roll(hash(saved),...) isolated; both saved/current states explicitly output."
+    },
+    {
+      "task_id": "asset-09",
+      "task_definition_sha256": "7ff96ea717286aee9a0dd926a1cd6517676463cf72f45332ad239ec2dceb452d",
+      "generated_file_sha256": {
+        "entry.ips": "19ad7a104664a1f86c1b74be4a9d3488df1ebf24d5bc89c5d1b08f4b7b3c736b"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "typed_helper",
+          "verdict": "pass"
+        },
+        {
+          "feature": "vec2_parameter",
+          "verdict": "pass"
+        },
+        {
+          "feature": "helper_output",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "A typed vec2/color helper is called four times and both draws panels and appends sockets."
+    },
+    {
+      "task_id": "asset-10",
+      "task_definition_sha256": "3de29b2802f5826d459ca4b451a945fc2ded7a14afe4c1d616ad9b31faae3206",
+      "generated_file_sha256": {
+        "entry.ips": "d3b641380260f20d5f949e75628aa6c50050568afae2f6683da2538624093639"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "rgba",
+          "verdict": "pass"
+        },
+        {
+          "feature": "alpha_compositing",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Opaque background is overlaid by an explicit rgba(...,128) rectangle."
+    },
+    {
+      "task_id": "asset-11",
+      "task_definition_sha256": "8f49cb7704b99703a50de1ec7c196ebc87a3c30b592eb4b84f652bf566ec6044",
+      "generated_file_sha256": {
+        "entry.ips": "72dd40754875ecfa5d037ab6afc862df44f921c695af47e81f3948698d5bbb2a",
+        "part.ips": "af9462e78dc767fbf92aa32c89c3d23fbad821644f2eedb63d39585761530918"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "direct_import",
+          "verdict": "pass"
+        },
+        {
+          "feature": "part_override",
+          "verdict": "pass"
+        },
+        {
+          "feature": "part_output_translation",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "One direct part import overrides tint; root explicitly adds placement to the local scalar part output."
+    },
+    {
+      "task_id": "asset-12",
+      "task_definition_sha256": "d8a2b968ac7f670006c2f44c211f06f3ac5fe7a9b6bb305864ff9fb1c368c3f8",
+      "generated_file_sha256": {
+        "entry.ips": "b36894e878b9f0bcf38679950939b03b8e3d61190f91e68d1f1041035ae29937",
+        "part.ips": "60e3e4fa8737ca0a41ee3cdd2f23ccb6d1f0440960b6074959fce91bf4cee427"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "part_d4",
+          "verdict": "pass"
+        },
+        {
+          "feature": "part_geometry",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Static D4 rot=90 and placement are preserved; local part output is translated explicitly in root."
+    },
+    {
+      "task_id": "asset-13",
+      "task_definition_sha256": "b07fee1605c2e8eaad1bb013321b6f9f660dd02470d8e9b4342d2db47285a95c",
+      "generated_file_sha256": {
+        "entry.ips": "7d2945db2ef056b47ff5d9f7b7c47d4e9dee6a6068571df3f76f09e4918319b6"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "point_output",
+          "verdict": "pass"
+        },
+        {
+          "feature": "rect_output",
+          "verdict": "pass"
+        },
+        {
+          "feature": "circle_output",
+          "verdict": "pass"
+        },
+        {
+          "feature": "unset_output",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "All three singular geometry kinds written using braces; declared spare remains unwritten."
+    },
+    {
+      "task_id": "asset-14",
+      "task_definition_sha256": "f158b195fb9d1754797f4ff6050487c01f36d5528ac7e085b493248c6165b144",
+      "generated_file_sha256": {
+        "entry.ips": "20ffb7d10c2389172dde4b177a79f3b43c2984f157c4fae1a3dd818ebade57ff"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "color_ramp",
+          "verdict": "pass"
+        },
+        {
+          "feature": "float_widening",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Dynamic color ramp driven by explicitly converted floating x/31.0 fills the columns."
+    },
+    {
+      "task_id": "asset-15",
+      "task_definition_sha256": "a54e47ff8cfb3a7912f91abcfe48f25f28b062bae6902cb31aff01d07fbc8095",
+      "generated_file_sha256": {
+        "entry.ips": "a57689a50f7846edbc50d95a0501c692f1d62722e4c0787812944191b2556341"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "while",
+          "verdict": "pass"
+        },
+        {
+          "feature": "continue",
+          "verdict": "pass"
+        },
+        {
+          "feature": "break",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Finite while contains meaningful continue at3 and break at6 while emitting correct rung order."
+    },
+    {
+      "task_id": "asset-16",
+      "task_definition_sha256": "3f817c6a5a8abd5f92b50873669f9b7c26de92bb11ea2c074146228de1f92145",
+      "generated_file_sha256": {
+        "entry.ips": "a354c60f228ceb618dba65707665a7a35712990a4ba89fb1e92d91e12496be98"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "noise_fbm",
+          "verdict": "pass"
+        },
+        {
+          "feature": "color_ramp",
+          "verdict": "pass"
+        },
+        {
+          "feature": "explicit_seed",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Saved explicit seed feeds bounded three-octave fbm; sin/pow shade drives a blue ramp over all pixels."
+    },
+    {
+      "task_id": "repair-01",
+      "task_definition_sha256": "498f30c10a012c26f50bd9a330a01b675d367b4abf3c5024d5311098d3aa33c1",
+      "generated_file_sha256": {
+        "entry.ips": "46e76e67d062869bd1154e268464eadec1c191b8aa2543b81d6b48ba78b001d6"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "integer_condition",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Original f32 input retained; its comparison yields a valid integer condition."
+    },
+    {
+      "task_id": "repair-02",
+      "task_definition_sha256": "58cb4a2a78371c8c8315251f52fcc9bd2af2d510db2cc9a167c92a4876f28282",
+      "generated_file_sha256": {
+        "entry.ips": "49f05afc2f220e82a4a39c1eb5ffbcf23ca702ba83a5ba3ea1226fcfd6885a3d"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "named_builtin",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Named rect call retained with correct color label and all original argument values."
+    },
+    {
+      "task_id": "repair-03",
+      "task_definition_sha256": "340b93364c8447c5dd8be88d25ebd4114bd2f30fb72d79961e4716942145a3ad",
+      "generated_file_sha256": {
+        "entry.ips": "7f76a9e21e80a4b59a2964e7811cda87bec7c89dcc91b3b56df017806117403c"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "typed_helper",
+          "verdict": "pass"
+        },
+        {
+          "feature": "uniform_visibility",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Uniform passed explicitly into a typed helper parameter without capture or hard-coding."
+    },
+    {
+      "task_id": "repair-04",
+      "task_definition_sha256": "2f2fa49385390dacb1a9c2e0726c4ca758f510ab060f5f01840b41a6af251740",
+      "generated_file_sha256": {
+        "entry.ips": "fb0f44593765d9f90dab72ea8ffc1093afc4cdb60c92df339479d0265d84385f"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "iterative_helper",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Helper remains callable and computes n by bounded loop rather than recursion/literal replacement."
+    },
+    {
+      "task_id": "repair-05",
+      "task_definition_sha256": "e8765b1dd2b1203db591f74639d232121113ad697df8eda3431669c5b039841f",
+      "generated_file_sha256": {
+        "entry.ips": "473b1aef66a9e15111f86f4a35cc672a4232b50cbbc4acf957ce52a21b7fa499"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "f32_palette",
+          "verdict": "pass"
+        },
+        {
+          "feature": "numeric_ramp",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Two floating palette stops preserve numeric ramp sampling and midpoint output."
+    },
+    {
+      "task_id": "repair-06",
+      "task_definition_sha256": "0679ea5c3f6ac2757a46c7ef62c543aa25b7f4e9c0a25290db7809756d15b945",
+      "generated_file_sha256": {
+        "entry.ips": "7157477e7ac5b9d4a8a8e3bee58506315740b3f96e363cfa9bb4c5c060a079cd",
+        "part.ips": "4ee109d4650f93ba202d4ba56c47af5a3ca34f046f5902be4127708bd3660374"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "part_scalar_output",
+          "verdict": "pass"
+        },
+        {
+          "feature": "list_output",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Part list remains appended; new scalar tip feeds the root read and explicit placement."
+    },
+    {
+      "task_id": "repair-07",
+      "task_definition_sha256": "3cee97430b9f2ccae0be4e632d1e9e52486c14c6b89617285f4931c02757e6d7",
+      "generated_file_sha256": {
+        "entry.ips": "2d66dafb638a92cdac173374d1b8120777d6a93eb49d275b9695aa0e129f86e3",
+        "part.ips": "af9462e78dc767fbf92aa32c89c3d23fbad821644f2eedb63d39585761530918"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "static_d4_transform",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Only invalid rotation corrected to90; placement and part geometry preserved."
+    },
+    {
+      "task_id": "repair-08",
+      "task_definition_sha256": "399b199e1fcd045db4c509418b09cf3235264a0d7d1b4e82d20308dc72c3cdc8",
+      "generated_file_sha256": {
+        "entry.ips": "16d5611fc4ae57391169bdee870f1b8cd7d2afa04d2d0f7b65dbfb78e3ccd7ee"
+      },
+      "source_feature_verdicts": [
+        {
+          "feature": "legacy_local_typing",
+          "verdict": "pass"
+        }
+      ],
+      "evidence": "Both local assignments retained in order; initial1.0 establishes f32 before0.5 reassignment."
+    }
+  ],
+  "assistant_visual_assessment": {
+    "task_id": "asset-16",
+    "verdict": "pass",
+    "observations": "Opaque blue veined tile with coherent marble pattern; seed0/7/26 inspected. Human visual verdict remains pending.",
+    "images": [
+      {
+        "case_id": "s0-v0-a0",
+        "sha256": "f3ce5f4d7d4b37c386960ecf85140aa765c6572c5434ef2b08fe53480fbf38b9"
+      },
+      {
+        "case_id": "s7-v0-a0",
+        "sha256": "fb45ff5053925e629945be64821b748e12bad0c785edaa6b14f5c00bc433a793"
+      },
+      {
+        "case_id": "s26-v0-a0",
+        "sha256": "8250c6bac84c94ffcbbe16b4d91ad59fa80ca44f814f0caae4f1d34d3d1b44f4"
+      }
+    ]
+  },
+  "human_visual_verdict": "pending"
+}

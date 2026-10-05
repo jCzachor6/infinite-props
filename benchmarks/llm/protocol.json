@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "suite_id": "iprop-common-0.4-0.5-v1",
+  "protocol_status": "defined_live_pilot_authorized_results_not_measured",
+  "authorization": {
+    "scope": "Current Codex session model for a 24-task pilot, including one repair opportunity; no separate paid API, credentials or external model subscription required.",
+    "measurement_claim": "This is an exploratory pilot with provider-managed model and unexposed sampling, not a controlled statistical evaluation."
+  },
+  "task_manifest": "tasks.json",
+  "baseline": {
+    "product_version": "0.4.0",
+    "source_commit": "66d34c2831585afb231022da9296528a912e962e",
+    "git_tag": "v0.4.0",
+    "language_version": "0.4",
+    "format_version": "0.4",
+    "c_api_version": "0.2",
+    "capture_gate": "Preserve the released compiler/renderer/validator binary hashes, exact frozen reference/export/examples, task definitions, exact prompts and actual first-pass/repair sources before changing compiler implementation. Run and retain the 0.4 compile/render baseline using those frozen binaries. A mere definition file is not a captured baseline.",
+    "reference": {
+      "canonical_source_paths": [
+        "docs/language/book.json",
+        "docs/language/index.md"
+      ],
+      "canonical_generated_book": "docs/language-v0.4.md in the v0.4.0 SDK, or the exact v0.4.0 generated book made from the released source and compiler",
+      "compiler_export_command": [
+        "ipc",
+        "--describe-language"
+      ],
+      "freeze_strategy": "Extract source/tag and compiler artifacts into an immutable baseline directory outside the mutable worktree; generate or extract the complete book and save --describe-language stdout verbatim. Hash all input files and the final exact reference text. Never build the historical reference from modified current documentation.",
+      "current_toolchain_policy": "Use candidate 0.5 compiler and reference frozen at its audited commit; retain the same task definitions, prompt template, samples, seeds and budgets. No unreleased 0.6 syntax in the candidate reference."
+    }
+  },
+  "model": {
+    "backend": "codex_session",
+    "label": "provider-managed inherited session model",
+    "selection_status": "user_authorized_current_session",
+    "configured_model_label": "gpt-6.1-sol",
+    "configured_model_reasoning_effort": "max",
+    "configuration_observation_source": "Parent agent observed ~/.codex/config.toml; hints only, not proof of the resolved backend model. Do not copy credentials or unrelated configuration.",
+    "actual_resolved_model": null,
+    "exact_revision": null,
+    "sampling_parameters": null,
+    "seed": null,
+    "provider_fingerprint": null,
+    "per_task_token_limit": null,
+    "observability": "Record unexposed provider/model/sampling/token fields as null with an explanation. Never infer actual model identity, billing tokens or inference seed from config, source size or elapsed wall time.",
+    "future_controlled_runs": "A separately selected observable API backend may provide exact model revision, temperature, top_p, output-token limit and usage; it needs its own recorded configuration and must not be mixed into this pilot."
+  },
+  "design": {
+    "task_count": 24,
+    "asset_tasks": 16,
+    "repair_tasks": 8,
+    "samples_per_task": 1,
+    "first_pass_attempts": 1,
+    "maximum_repairs_after_first_pass": 1,
+    "task_order": "tasks.json array order",
+    "compare_versions": [
+      "0.4",
+      "0.5"
+    ],
+    "generation_isolation": "Use a fresh fork_turns=none generator agent for each version. Supply only the exact archived prompt/reference/task material and allowed output location; no repository history, other version outputs, solved fixtures, toolchain internals or parent chat. Save actual generated source outputs, not manually authored substitutes.",
+    "batching": "A version may generate all 24 tasks in one request with separate task records. Record batch_id and actual call count; do not label one batch as 24 observable API calls. Repair requests may batch failed tasks once, without a second attempt for any task.",
+    "allowed_adaptation": "Only compiler invocation/diagnostic representation and version-specific reference change. Criteria, source-format instructions, sample count, task order, seeds, case overrides and resource budgets stay identical.",
+    "pass_policy": "Compilation alone is not task success. Measure compile/check, execution, automated image/output predicates, required source features and human visual verdict separately. Missing or unavailable evidence is null/pending, never pass."
+  },
+  "prompt": {
+    "encoding": "UTF-8",
+    "persist": "Save exact model-visible system/instruction, task/reference blocks and final combined prompt bytes, message roles, hashes and order before each request. A reconstruction or URL alone is insufficient.",
+    "reference_selection": "For this pilot use the complete frozen generated handbook plus exact compiler language export for each version. Explicitly require the common 0.4 executable subset in both versions. Save the selected sections and exact concatenation if a smaller reference is needed; make the same selection policy on both sides and record any truncation.",
+    "generation_template": "Implement the following Infinite Props benchmark tasks independently. Use only the executable common 0.4 subset listed in the manifest, even if the supplied version reference describes later syntax. Do not read the repository, run the compiler, inspect hidden oracles, or use another generator output. For each task return exactly the requested files as UTF-8 source. Preserve the required source-level features and satisfy every image/output criterion for every supplied seed and override. Return one JSON object with a tasks array; each item is {\"task_id\":\"...\",\"files\":{\"entry.ips\":\"...\",...}}. No Markdown fences or commentary.\n\nREFERENCE\n{{exact_frozen_reference}}\n\nLANGUAGE EXPORT\n{{exact_compiler_export}}\n\nMANIFEST\n{{exact_task_manifest}}\n",
+    "repair_template": "Repair the actual first-pass source for the failed tasks below using this same frozen reference and common 0.4 subset. Preserve each task functional/source-feature requirements. You have exactly one repair opportunity per task. Return the complete file map for each failed task in the same JSON structure. Do not use hidden oracles or other model outputs.\n\nREFERENCE\n{{exact_frozen_reference}}\n\nLANGUAGE EXPORT\n{{exact_compiler_export}}\n\nFAILED TASKS, EXACT SOURCE AND ACTUAL DIAGNOSTICS\n{{exact_failed_records}}\n",
+    "repair_feedback": "Include actual compiler diagnostics/exit code and concrete failed public criteria or trap, not a solved reference implementation. Save source content hashes tied to feedback. Preserve native JSON for 0.5; preserve exact stdout/stderr for 0.4 and normalized fields with unavailable diagnostic codes/ranges as null."
+  },
+  "compile_and_render": {
+    "historical_adapter": {
+      "check": "Run frozen ipc entry.ips -o temporary/asset.iprop in an isolated temporary directory with the exact generated source files; historical 0.4 has no --check/JSON.",
+      "diagnostics": "Retain original stderr/stdout/exit code; text parsing is an adapter only. Stable codes, full ranges and fix-its unavailable in 0.4 remain null.",
+      "default_flags": []
+    },
+    "candidate_adapter": {
+      "check": "Run candidate ipc entry.ips --check --diagnostics=json; save exact stdout document and stderr. For an accepted source compile a temporary binary with the same default optimization/debug/compression policy used for 0.4.",
+      "diagnostics": "Retain schema version, native codes/ranges/suggestions/fix-its and exact original stdout; do not manufacture historic counterparts."
+    },
+    "render": "Use the corresponding frozen ipgen with explicit seed, variant, archetype and uniform overrides; use --float-bits for output coordinates and an explicit temporary PNG path. Execute every case twice.",
+    "pre_execution_check": "Parse/validate the compiled artifact before execution and verify its declared root/part dimensions, global output declarations and fuel budget. Reject over-budget artifacts before invoking the VM. If the runner cannot reliably inspect a required bound, mark the render preflight unsupported/blocked instead of skipping it.",
+    "output_comparison": "Compare raw binary32 component bits and slot/list order, plus exact kind/count/listness. Capture owner via the native C API if available. Historical ipgen JSON may omit owner: keep owner null in that raw adapter and use an explicitly documented, approved slot/schema mapping or C harness for owner predicates; never silently claim ownership was observed.",
+    "image_comparison": "Decode PNG using a verified decoder and compare RGBA8 bytes/dimensions. Save PNG hash and decoded RGBA hash separately; a PNG-container hash is not pixel evidence.",
+    "oracle_policy": "Exact whole-image normative predicates/oracles require an independent reviewed implementation and identified hash. Until implemented, explicit pixel/list checks are partial evidence only; mark the full criterion pending. Do not construct the expected image from the same generated code being evaluated.",
+    "source_feature_policy": "Retain each required feature check independently. Manual inspection is acceptable if recorded with reviewer/artifact hashes; regex presence alone does not establish meaningful use."
+  },
+  "budgets": {
+    "applies_equally_to_versions": true,
+    "model_wall_timeout_per_version_batch_seconds": 3600,
+    "per_task_compile_wall_timeout_seconds": 15,
+    "per_case_render_wall_timeout_seconds": 15,
+    "max_generated_files_per_task": 8,
+    "max_source_bytes_per_file": 65536,
+    "max_total_source_bytes_per_task": 262144,
+    "max_model_response_bytes_per_version_batch": 1048576,
+    "max_compiled_binary_bytes": 2097152,
+    "max_root_width": 64,
+    "max_root_height": 64,
+    "max_root_pixels": 4096,
+    "required_task_dimensions": [
+      32,
+      32
+    ],
+    "max_part_width": 64,
+    "max_part_height": 64,
+    "max_part_count": 4,
+    "max_declared_fuel": 1000000,
+    "max_output_elements_per_render": 256,
+    "max_stdout_bytes_per_process": 1048576,
+    "max_stderr_bytes_per_process": 1048576,
+    "path_policy": "Relative ASCII .ips file paths only; reject absolute paths, .., NUL, symlinks and files outside the task workspace. No nested imports.",
+    "fuel_policy": "0.4 compiler currently emits 1,000,000 and runtime C API has no host override. Do not rewrite fuel headers or pretend a shorter host fuel cap exists. Enforce the declared-budget ceiling in preflight and external wall timeout equally on both versions.",
+    "memory_policy": "Source/binary/pixel/output limits and external process controls constrain the pilot; they are not a VM total-memory accounting guarantee. Record actual OS/process memory bounds if enforced.",
+    "model_timeout_observability": "Observe/interruption can bound aggregate batch wall time when orchestration supports it. Per-task inference time and per-task billing usage in a batch remain null unless exposed. Do not pretend requested limits were sampler-enforced."
+  },
+  "raw_record": {
+    "layout": "runs/<run_id>/<version>/<task_id>/<sample>/attempt-0/ and attempt-1/ when repaired; store per-version batch request/response alongside task extracts.",
+    "required_run_fields": [
+      "schema_version",
+      "run_id",
+      "suite_id",
+      "version",
+      "compiler_source_commit",
+      "renderer_source_commit",
+      "compiler_binary_sha256",
+      "renderer_binary_sha256",
+      "validator_binary_sha256",
+      "runtime_platform",
+      "build_type",
+      "toolchain_versions",
+      "task_manifest_sha256",
+      "protocol_sha256",
+      "reference_sha256",
+      "language_export_sha256",
+      "prompt_template_sha256",
+      "exact_combined_prompt_sha256",
+      "model_configuration",
+      "started_at_utc",
+      "finished_at_utc",
+      "actual_observable_batch_count",
+      "complete_task_count"
+    ],
+    "required_attempt_fields": [
+      "task_id",
+      "task_definition_sha256",
+      "sample_index",
+      "attempt_index",
+      "batch_id",
+      "generator_agent_id",
+      "actual_generated_files",
+      "generated_file_sha256",
+      "exact_raw_model_response_path",
+      "raw_response_sha256",
+      "prompt_messages_path",
+      "combined_prompt_path",
+      "combined_prompt_sha256",
+      "feedback_source_sha256",
+      "generation_status",
+      "compile_command",
+      "compile_exit_code",
+      "compile_stdout_path",
+      "compile_stderr_path",
+      "diagnostic_json_path",
+      "normalized_diagnostics",
+      "compile_wall_time_ms",
+      "source_feature_verdicts",
+      "render_records",
+      "repair_requested",
+      "overall_automated_verdict",
+      "human_visual_verdict",
+      "failure_stage",
+      "limitations"
+    ],
+    "required_render_fields": [
+      "case_id",
+      "seed",
+      "variant",
+      "archetype",
+      "uniforms",
+      "repetition",
+      "exact_command",
+      "exit_code",
+      "stdout_path",
+      "stderr_path",
+      "trap",
+      "wall_time_ms",
+      "fuel_budget",
+      "fuel_used",
+      "width",
+      "height",
+      "png_path",
+      "png_sha256",
+      "decoded_rgba_sha256",
+      "outputs_raw_path",
+      "output_component_bits",
+      "output_owner_observation",
+      "criterion_verdicts",
+      "preflight_verdict"
+    ],
+    "nullable_unobservable_fields": [
+      "actual_resolved_model",
+      "exact_model_revision",
+      "sampling_parameters",
+      "model_inference_seed",
+      "per_task_inference_wall_time_ms",
+      "input_tokens",
+      "output_tokens",
+      "reasoning_tokens",
+      "total_tokens",
+      "monetary_cost",
+      "provider_fingerprint",
+      "historical_diagnostic_codes",
+      "historical_full_source_ranges"
+    ],
+    "hash_policy": "SHA256 over exact file bytes; source strings are encoded as UTF-8 without newline conversion. Hash file maps per path; never normalize formatting before hashing actual outputs. Save decoded raw model payload separately from extracted source and record extraction errors.",
+    "status_policy": "not_run/pending/null are distinct from fail/pass. Record timeout, malformed response, missing task/file, unsafe path, compiler error, trap, criteria failure and human-review pending without dropping rows. Do not invent an attempt, measurement or completed review."
+  },
+  "metrics": {
+    "compilation": [
+      "first_pass_check_success_count/24",
+      "post_one_repair_check_success_count/24",
+      "diagnostic_codes_with_missing_0_4_codes_explicit"
+    ],
+    "execution": [
+      "executed_case_count/required_case_count",
+      "trap_count",
+      "timeout_count",
+      "fuel_used_per_case"
+    ],
+    "task_success": [
+      "first_pass_all_automated_criteria_success_count/24",
+      "post_one_repair_all_automated_criteria_success_count/24",
+      "fully_reviewed_success_count/24",
+      "human_visual_pending_count",
+      "source_feature_pending_count",
+      "whole_image_oracle_pending_count"
+    ],
+    "cost": [
+      "observable_compile_and_render_wall_times",
+      "observable_batch_elapsed_wall_time",
+      "tokens/cost only when provider exposes them, otherwise null"
+    ],
+    "report_policy": "Use identical denominators and report unfinished tasks explicitly. This one-sample/session pilot cannot establish statistically reliable model improvement; unknown model revision/sampling, context effects and human/oracle gaps limit comparisons. Do not compare compiler versions using different tasks, budgets, references policy or hand-corrected model sources."
+  },
+  "offline_replay": {
+    "requires_live_model": false,
+    "replay_inputs": "Exact saved generated files and optional saved actual repair files, task/protocol/reference/prompt hashes, frozen toolchain identities and case overrides. Validate stored hashes before replay.",
+    "must_do": [
+      "Compile/check all saved first-pass and repair sources with the designated toolchain.",
+      "Run preflight, render each fixed case twice, and retain bits/pixels/fuel/diagnostics/traps.",
+      "Re-evaluate all implemented public predicates and source features; keep human review and unavailable oracle evidence pending.",
+      "Check compiler/reference/task/config identity and report mismatches rather than replacing failed snapshots.",
+      "Preserve 0.4 baseline for later 0.5/0.6 comparisons and CI."
+    ],
+    "ci_policy": "Deterministic replay only in regular CI. Live session/model pilot is separately invoked and bounded; CI must not call a paid or live model."
+  },
+  "artifacts": {
+    "required": [
+      "tasks.json",
+      "protocol.json",
+      "exact_reference_and_language_export",
+      "exact_prompts_and_hashes",
+      "raw_actual_model_responses",
+      "actual_first_pass_and_repair_sources",
+      "compile_and_render_records",
+      "gallery",
+      "comparison_report"
+    ],
+    "current_results": "No measured model results are present in these definitions. Do not replace missing baseline records with synthetic responses, authored solutions or fabricated success metrics."
+  }
+}

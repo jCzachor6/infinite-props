@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "compiler_source_commit": "66d34c2831585afb231022da9296528a912e962e",
+  "generation_agent_id": "/root/llm_baseline_generator",
+  "observable_generation_batch_count": 1,
+  "repair_batch_count": 0,
+  "repair_policy": "One opportunity only after a failed public criterion; none were observed.",
+  "prompt_written_timestamp_observed": 1791202393.1583166,
+  "response_written_timestamp_observed": 1791202609.3477595,
+  "model_generation_start": null,
+  "model_token_usage": null,
+  "model_sampling": null,
+  "resolved_model_revision": null,
+  "limitation": "One provider-managed agent batch; per-task usage/start time and complete provider system/developer context are not observable. Exact requested instructions and read reference/task payload are archived."
+}

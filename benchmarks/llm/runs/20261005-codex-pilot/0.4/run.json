@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "run_id": "measured-baseline",
+  "suite_id": "iprop-common-0.4-0.5-v1",
+  "version": "0.4",
+  "record_kind": "actual_model_output",
+  "compiler_source_commit": "66d34c2831585afb231022da9296528a912e962e",
+  "source_commit_observation": "caller assertion/frozen baseline identity; binary SHA observed separately",
+  "tool_binary_sha256": {
+    "ipc": "eddbf29e824792a126d138b0fbd909dcdf7ff0edcd6827b61f90a3c82e06b017",
+    "ipgen": "0034d31a483fe1e619e01e62b179131789c62f40d3b1220b5142738651634d20",
+    "ipa": "275eb1f52cde961a867193c068f71b77d4fea8b14b6b779c46f198719331d0c6"
+  },
+  "validator_binary_sha256": null,
+  "validator_evidence": "ipc includes loadFile/validate; no separate frozen ipval executable provided",
+  "runtime_platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "python_version": "3.14.7",
+  "task_manifest_sha256": "4862ffb223b403ffc65a418ed4bc5c1064f9423138c9b25e214ac9540c6f3ee0",
+  "protocol_sha256": "c35289e5e472e7bbb1a3c66c5a925c1e60e626bbed9465e3f3828b36766e871f",
+  "raw_response_sha256": "14525b3db1b3548279b36cd946de40c04b9e34c44a0d5fa95437c1be850490ff",
+  "reference_artifacts": [
+    {
+      "source": "/Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/baseline-reference/handbook.md",
+      "saved": "/private/tmp/iprop-v05-llm-runner/measured-baseline/reference-0.bin",
+      "sha256": "4d77b7682bc08a5986218afb7ca25ece03153937d1c61c963852ea9f9c64d9f3"
+    }
+  ],
+  "prompt": {
+    "source": "/Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/runs/20261005-codex-pilot/0.4/prompt.txt",
+    "saved": "/private/tmp/iprop-v05-llm-runner/measured-baseline/prompt.bin",
+    "sha256": "162fa02ac33b5fc4967880736d5d79763d4cd380343dbc74a48e0c7af7b905dd"
+  },
+  "language_export": {
+    "source": "/Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/baseline-reference/language.json",
+    "saved": "/private/tmp/iprop-v05-llm-runner/measured-baseline/language_export.bin",
+    "sha256": "35e60446d78d1076d2aed03e295a714d7edac42d66bd3187463ae0aaff726643"
+  },
+  "model_configuration": {
+    "backend": "codex_session",
+    "label": "provider-managed inherited session model",
+    "selection_status": "user_authorized_current_session",
+    "configured_model_label": "gpt-6.1-sol",
+    "configured_model_reasoning_effort": "max",
+    "configuration_observation_source": "Parent agent observed ~/.codex/config.toml; hints only, not proof of the resolved backend model. Do not copy credentials or unrelated configuration.",
+    "actual_resolved_model": null,
+    "exact_revision": null,
+    "sampling_parameters": null,
+    "seed": null,
+    "provider_fingerprint": null,
+    "per_task_token_limit": null,
+    "observability": "Record unexposed provider/model/sampling/token fields as null with an explanation. Never infer actual model identity, billing tokens or inference seed from config, source size or elapsed wall time.",
+    "future_controlled_runs": "A separately selected observable API backend may provide exact model revision, temperature, top_p, output-token limit and usage; it needs its own recorded configuration and must not be mixed into this pilot."
+  },
+  "started_at_utc": "2026-10-05T12:20:42.819967+00:00",
+  "actual_observable_batch_count": 1,
+  "token_usage": null,
+  "inference_timing": null,
+  "actual_generated_task_count": 24,
+  "required_suite_task_count": 24,
+  "definitions_only": false,
+  "manual_review_pending": true,
+  "runner_source_sha256": {
+    "criteria.py": "5e9cb41ef171bfc6aebdf52845a84bc55251a699bb15846e9f1a18e648557883",
+    "binary.py": "f90178de9e639e3db95ad8e1df7f821363ccfc51d0704fd95e4811e577247362",
+    "run.py": "00e5bd50e9d131f7e92e4d4ca1dd7c958012fda7e32f7f2f6b32c5459574490d",
+    "png.py": "ba515f6834202cf7a3bdbc2e714981b572e445161bb0e4176d350cfee32af0a9"
+  },
+  "finished_at_utc": "2026-10-05T12:20:43.512284+00:00",
+  "complete_task_count": 24,
+  "request": {
+    "source": "/Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/runs/20261005-codex-pilot/0.4/request.json",
+    "saved": "/private/tmp/iprop-v05-llm-runner/measured-baseline/request.bin",
+    "sha256": "e322ab34f95ad9c2c8d823772092be6647019b1b04242b2dd4c7d3ec1703a0a2"
+  },
+  "batch_id": "baseline-v04-attempt0",
+  "prompt_roles": [
+    {
+      "role": "user",
+      "content": "Read only the benchmark prompt at /Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/runs/20261005-codex-pilot/0.4/prompt.txt. Follow its instructions to generate all 24 tasks once. Do not inspect repository files, run a compiler, run tests, validate or repair your sources. The only permitted additional operation is writing the exact complete JSON response to /Users/jakubczachor/Desktop/quants-space/infinite-props/benchmarks/llm/runs/20261005-codex-pilot/0.4/response.json using a filesystem tool, without Markdown or commentary in the payload. Use the inherited current session model. End with only a short completion report identifying the response path. This is one exploratory batch with shared context across its 24 tasks."
+    }
+  ],
+  "prompt_limitations": [
+    "Inherited agent environment/tool instructions are provider-managed; exact resolved model revision and sampling are unavailable.",
+    "Single batch shares context across tasks; per-task inference time and token usage unavailable."
+  ]
+}

@@ -1,0 +1,7 @@
+# Immutable observations and model inputs retain their exact UTF-8 bytes,
+# including on hosts configured with automatic CRLF conversion.
+benchmarks/llm/baseline-reference/** -text
+benchmarks/llm/runs/** -text
+benchmarks/baselines/** -text
+# The archived prompt includes the template's final empty line. Preserve it.
+benchmarks/llm/runs/**/prompt.txt whitespace=-blank-at-eof

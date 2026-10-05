@@ -80,7 +80,9 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 - [x] **05-0.2** Zapisać powyższe decyzje w rozdziałach źródłowego podręcznika i krótkim dokumencie migracji 0.4 → 0.5. Rozdzielić kontrakt składni, reguły typowania i semantykę wykonania.
   Dowód: rozdział `docs/language/migration-v0.5.md` oddziela składnię, typowanie i wykonanie, opisuje wersje, ABI, ownership oraz granicę 0.6. Podręcznik i plany są pakowane offline; walidacja generowanej książki i 9 testów dokumentacji przeszły.
 
-- [ ] **05-0.3** Zdefiniować stały zestaw zadań LLM i procedurę pomiaru przed modyfikacją kompilatora. Zachować wyniki bazowe oraz konfigurację umożliwiającą porównania w 05-I i 06-I.
+- [x] **05-0.3** Zdefiniować stały zestaw zadań LLM i procedurę pomiaru przed modyfikacją kompilatora. Zachować wyniki bazowe oraz konfigurację umożliwiającą porównania w 05-I i 06-I.
+  Dowód: `benchmarks/llm/` — stałe 24 zadania i protokół, zamrożony handbook/export, dokładny prompt i rzeczywiste odpowiedzi modelu. Baza 0.4: 24/24 kompilacji i publicznych kryteriów, 194 rendery; pełne surowe dowody z hashami, 7 testów runnera. Jedna próba na zadanie, zero napraw; nieznane metryki oraz ludzka ocena marble jawnie niezmierzone/pending.
+
 - [x] **05-0.4** Przygotować małe reproduktory każdej niekonsekwencji z A i kolizji named args oraz błędów C API z V/R/P/X; kolizje let/fn/geometrii realizuje 06-0.2. Odnotować rzeczywisty wynik obecnego kompilatora, a nie samo powodzenie parsera.
 
 Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minimalnych źródeł, 178 rzeczywistych kompilacji, 40 obserwacji C API i 45 kontrolowanych prób OOM. Wykryto dwie ucieczki wyjątków z catch oraz akceptowanie niepoprawnego enumu; przyszłe API jawnie oznaczone jako niedostępne w 0.4.

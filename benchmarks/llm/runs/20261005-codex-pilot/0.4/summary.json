@@ -1,0 +1,185 @@
+{
+  "schema_version": 1,
+  "version": "0.4",
+  "record_kind": "actual_model_output",
+  "evaluated_task_count": 24,
+  "required_suite_task_count": 24,
+  "compile_success_count": 24,
+  "automated_success_count": 24,
+  "fully_reviewed_success_count": null,
+  "manual_source_review_pending_count": 24,
+  "human_visual_pending_count": 1,
+  "token_usage": null,
+  "model_quality_improvement": null,
+  "finished_at_utc": "2026-10-05T12:20:43.512146+00:00",
+  "tasks": [
+    {
+      "task_id": "asset-01",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-02",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-03",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-04",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-05",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-06",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-07",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-08",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-09",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-10",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-11",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-12",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-13",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-14",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-15",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "asset-16",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "pending",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-01",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-02",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-03",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-04",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-05",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-06",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-07",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    },
+    {
+      "task_id": "repair-08",
+      "compile_success": true,
+      "automated_verdict": "pass",
+      "human_visual_verdict": "not_required",
+      "failure_stage": null
+    }
+  ]
+}

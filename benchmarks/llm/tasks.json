@@ -1,0 +1,2850 @@
+{
+  "schema_version": 1,
+  "suite_id": "iprop-common-0.4-0.5-v1",
+  "status": "definitions_ready_baseline_not_measured",
+  "defined_against": {
+    "product_version": "0.4.0",
+    "source_commit": "66d34c2831585afb231022da9296528a912e962e",
+    "language_version": "0.4",
+    "format_version": "0.4",
+    "c_api_version": "0.2"
+  },
+  "task_count": 24,
+  "asset_task_count": 16,
+  "repair_task_count": 8,
+  "definition_digest": {
+    "algorithm": "sha256",
+    "canonicalization": "UTF-8 JSON, sorted object keys, ensure_ascii=false, compact separators comma/colon; exclude definition_sha256 from the task being hashed; preserve array order"
+  },
+  "global_requirements": [
+    "Use only features actually executable by frozen 0.4; no let/fn declarations, source input i32, signed input defaults, helper named args, named seed/v/a part args, mixed numeric palettes or geometry constructors.",
+    "Return a JSON object {\"files\":{\"entry.ips\":\"exact source\",...}} with UTF-8 source strings; no Markdown fence, explanation, binary files or absolute/traversal paths.",
+    "Use only direct bundled imports relative to entry.ips; no filesystem/network/environment access or nested imports.",
+    "All accepted programs must compile and execute with unmodified budgets and deterministic repeated outputs.",
+    "Image rules describing a base fill and overlay compose sequentially; base fill is not also asserted under later overlays.",
+    "For every task retain source-level required features; satisfying only sample pixels by hard-coded unrelated code is not success."
+  ],
+  "default_render_policy": {
+    "runtime_size_override": null,
+    "repeat_each_case": 2,
+    "seeds": [
+      0,
+      7,
+      26,
+      4294967295
+    ],
+    "source_output_comparison": "binary32_bits",
+    "image_comparison": "decoded_rgba8_bytes_not_png_container",
+    "expected_runtime_traps": false
+  },
+  "tasks": [
+    {
+      "id": "asset-01",
+      "kind": "asset",
+      "title": "Centered panel and attachment",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Create a standalone 32x32 asset with opaque background #101820 and an axis-aligned opaque #55bbff panel covering x=8..23, y=6..25.",
+        "Declare and write the singular point center={16,16}; use rect for both fills; do not draw anything else."
+      ],
+      "required_features": [
+        "rect",
+        "point_output"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 0,
+            "width": 32,
+            "height": 32,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "overlay_rect",
+            "x": 8,
+            "y": 6,
+            "width": 16,
+            "height": 20,
+            "rgba_hex": "55bbffff",
+            "comparison": "entire_image_after_overlays"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "2fdcfa2af3602ce7f0899318d3a164573630d8665e949415f475e64cf4fc6f4e"
+    },
+    {
+      "id": "asset-02",
+      "kind": "asset",
+      "title": "Four-by-four checkerboard",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill the whole canvas with a 4x4 checkerboard of 8x8 opaque cells. Even (column+row) uses #55bbff; odd uses #ffdd88.",
+        "Use two nested integer for loops and an integer parity condition. Write point center={16,16}; no RNG."
+      ],
+      "required_features": [
+        "for",
+        "if",
+        "integer_math"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "checkerboard",
+            "cell_width": 8,
+            "cell_height": 8,
+            "columns": 4,
+            "rows": 4,
+            "even_rgba_hex": "55bbffff",
+            "odd_rgba_hex": "ffdd88ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "4d28617da105082dad1f2ea23c0d555bdea12b7e3f6822749e1f1fde60f7500e"
+    },
+    {
+      "id": "asset-03",
+      "kind": "asset",
+      "title": "Indexed palette bands",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Declare color palette bands=[#112233,#445566,#778899,#aabbcc]. Fill four full-width eight-pixel-high bands in palette order from top to bottom.",
+        "Use palette indexing inside an integer loop. Write point center={16,16}; no extra drawing or RNG."
+      ],
+      "required_features": [
+        "color_palette",
+        "palette_index"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 0,
+            "width": 32,
+            "height": 8,
+            "rgba_hex": "112233ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 8,
+            "width": 32,
+            "height": 8,
+            "rgba_hex": "445566ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 16,
+            "width": 32,
+            "height": 8,
+            "rgba_hex": "778899ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 24,
+            "width": 32,
+            "height": 8,
+            "rgba_hex": "aabbccff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "c8ae6f0ee6c39346706594b03dcc5d358cec3481098a248b0e61ad7e38cb496a"
+    },
+    {
+      "id": "asset-04",
+      "kind": "asset",
+      "title": "Variant and archetype badge",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Declare variants=3 and archetypes=2. Use implicit v and a in draw. Fill background #101820.",
+        "Paint the rectangle at (8,8), width=8+4*v, height=8+4*a, using color palette [#ff4444,#44ff44,#4444ff] indexed by v.",
+        "Write point selected={v,a}; write rect bounds={8,8,8+4*v,8+4*a}. All variant/archetype cases must be valid."
+      ],
+      "required_features": [
+        "variants",
+        "archetypes"
+      ],
+      "render_cases": [
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a1",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 1,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v1-a0",
+          "seed": 7,
+          "variant": 1,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v1-a1",
+          "seed": 7,
+          "variant": 1,
+          "archetype": 1,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v2-a0",
+          "seed": 7,
+          "variant": 2,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v2-a1",
+          "seed": 7,
+          "variant": 2,
+          "archetype": 1,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "case_rectangle",
+            "x": 8,
+            "y": 8,
+            "width_formula": "8+4*variant",
+            "height_formula": "8+4*archetype",
+            "palette_by_variant": [
+              "ff4444ff",
+              "44ff44ff",
+              "4444ffff"
+            ],
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "selected",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values_formula": [
+            "variant",
+            "archetype"
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 0,
+          "name": "bounds",
+          "kind": "rect",
+          "is_list": false,
+          "count": 1,
+          "values_formula": [
+            8,
+            8,
+            "8+4*variant",
+            "8+4*archetype"
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "c9b79ea2d6a125cd8249980648d5d03cb5b4f143650d7af75b0d9299d5100296"
+    },
+    {
+      "id": "asset-05",
+      "kind": "asset",
+      "title": "Host uniforms control a panel",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Declare input color tint=#55bbff, input f32 offset=0.0, input u32 count=4. Fill background #101820.",
+        "Draw opaque panel (8+offset,8,count,8,tint). Write point anchor={8+offset,8} and rect bounds={8+offset,8,count,8}.",
+        "Keep the declared input names/types/defaults and support every supplied override; no RNG or source-level i32 input."
+      ],
+      "required_features": [
+        "color_input",
+        "f32_input",
+        "u32_input"
+      ],
+      "render_cases": [
+        {
+          "id": "defaults",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "override",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {
+            "offset": 2.0,
+            "count": 8,
+            "tint": "#ffdd88"
+          },
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "single-column",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {
+            "offset": 1.0,
+            "count": 1,
+            "tint": "#334455"
+          },
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "uniform_rectangle",
+            "x_formula": "8+offset",
+            "y": 8,
+            "width_uniform": "count",
+            "height": 8,
+            "color_uniform": "tint",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values_formula": [
+            "8+offset",
+            8
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 0,
+          "name": "bounds",
+          "kind": "rect",
+          "is_list": false,
+          "count": 1,
+          "values_formula": [
+            "8+offset",
+            8,
+            "count",
+            8
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "356c8ef6070f9598af69981c547d2503200e8aca554ad2fc55d1fd0e2f485d48"
+    },
+    {
+      "id": "asset-06",
+      "kind": "asset",
+      "title": "Seeded dot placement and list outputs",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill background #101820. Consume the current stream to place exactly 12 opaque #ffdd88 pixels at integer coordinates x,y in [4,27]. Use index(24)+4 separately for x and y.",
+        "Append each coordinate to output list point dots in draw order. Duplicate coordinates are allowed; no extra stream draws, no direct-seed calls, and no other drawing."
+      ],
+      "required_features": [
+        "index",
+        "list_output",
+        "stream_rng"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "points_paint_image",
+            "output_name": "dots",
+            "owner": 0,
+            "foreground_rgba_hex": "ffdd88ff",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "dots",
+          "kind": "point",
+          "is_list": true,
+          "count": 12,
+          "component_bounds": [
+            4,
+            27
+          ],
+          "components_are_integers": true,
+          "comparison": "binary32_bits",
+          "exact_reference": "normative_index_sequence_24_draws"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "af1c4579fe9571f4e3f932558238cf9b1897215f665af0d05ad1c8993e12c7f0"
+    },
+    {
+      "id": "asset-07",
+      "kind": "asset",
+      "title": "Probability-gated row",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Declare input f32 probability=0.5. Fill background #101820. For i=0..15, call chance(probability) exactly once; if true, paint #55bbff at (2+i,16) and append that point to list stars.",
+        "Override probability=0 yields no stars; probability=1 yields all 16 stars in increasing x order. Preserve the default and do not add other random operations."
+      ],
+      "required_features": [
+        "chance",
+        "conditional_output"
+      ],
+      "render_cases": [
+        {
+          "id": "default-s7",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "default-s26",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "never",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {
+            "probability": 0.0
+          },
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "always",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {
+            "probability": 1.0
+          },
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "points_paint_image",
+            "output_name": "stars",
+            "owner": 0,
+            "foreground_rgba_hex": "55bbffff",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "stars",
+          "kind": "point",
+          "is_list": true,
+          "count_by_case": {
+            "never": 0,
+            "always": 16
+          },
+          "count_bounds": [
+            0,
+            16
+          ],
+          "point_rule": "x in [2,17], y=16, unique increasing x",
+          "comparison": "binary32_bits",
+          "exact_reference": "normative_chance_sequence_16_draws"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "0085480e3a523dbcfaa51d66037a51baa46a30a37b2fc1c9cef94ab39b463cac"
+    },
+    {
+      "id": "asset-08",
+      "kind": "asset",
+      "title": "Direct-seed values preserve parent state",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Save the initial seed in a local before any RNG operation; fill background #101820. Compute x=int(roll(hash(saved),4.0,28.0)) and paint one #ffdd88 pixel at (x,16).",
+        "Write point dot={x,16} and point states={float(saved),float(seed)} after the isolated roll. states.x and states.y must be bit-identical; no other RNG operation."
+      ],
+      "required_features": [
+        "roll",
+        "hash",
+        "seed_isolation"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "points_paint_image",
+            "output_name": "dot",
+            "owner": 0,
+            "foreground_rgba_hex": "ffdd88ff",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "dot",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "component_rules": [
+            "integer in [4,27]",
+            16
+          ],
+          "comparison": "binary32_bits",
+          "exact_reference": "normative_hash_roll_then_int"
+        },
+        {
+          "owner": 0,
+          "name": "states",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "component_rule": "x_bits == y_bits == signed_i32_seed_to_f32_bits",
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "a3b9f156eddda8d71612468e1843e9b6bdef5aac6a14455aa3be3582089013cb"
+    },
+    {
+      "id": "asset-09",
+      "kind": "asset",
+      "title": "Typed drawing helper with four attachments",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill background #101820. Declare helper leaf(center:vec2,tint:color) using existing helper syntax, with positional calls from draw.",
+        "Each call paints rect(center.x-2,center.y-3,4,6,tint) and appends center to output list point sockets.",
+        "Call the helper at {8,8}, {24,8}, {8,24}, {24,24}, in that order, all with #55bbff. No inputs, RNG, or direct drawing of the four panels outside the helper."
+      ],
+      "required_features": [
+        "typed_helper",
+        "vec2_parameter",
+        "helper_output"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 6,
+            "y": 5,
+            "width": 4,
+            "height": 6,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 22,
+            "y": 5,
+            "width": 4,
+            "height": 6,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 6,
+            "y": 21,
+            "width": 4,
+            "height": 6,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 22,
+            "y": 21,
+            "width": 4,
+            "height": 6,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                6,
+                5,
+                4,
+                6
+              ],
+              [
+                22,
+                5,
+                4,
+                6
+              ],
+              [
+                6,
+                21,
+                4,
+                6
+              ],
+              [
+                22,
+                21,
+                4,
+                6
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "sockets",
+          "kind": "point",
+          "is_list": true,
+          "count": 4,
+          "comparison": "binary32_bits",
+          "values": [
+            [
+              8,
+              8
+            ],
+            [
+              24,
+              8
+            ],
+            [
+              8,
+              24
+            ],
+            [
+              24,
+              24
+            ]
+          ]
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "7ff96ea717286aee9a0dd926a1cd6517676463cf72f45332ad239ec2dceb452d"
+    },
+    {
+      "id": "asset-10",
+      "kind": "asset",
+      "title": "Translucent glaze on an opaque background",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill the entire canvas with opaque #204060, then paint rectangle (8,8,16,16) using rgba(255,0,0,128). Do not clear the background or use translucent background.",
+        "Write rect glaze={8,8,16,16}. Inside and outside alpha stays 255; RGB inside follows the frozen source-over compositor."
+      ],
+      "required_features": [
+        "rgba",
+        "alpha_compositing"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 0,
+            "width": 8,
+            "height": 32,
+            "rgba_hex": "204060ff"
+          },
+          {
+            "kind": "frozen_compositor_rect",
+            "x": 8,
+            "y": 8,
+            "width": 16,
+            "height": 16,
+            "destination_rgba_hex": "204060ff",
+            "source_rgba_hex": "ff000080",
+            "comparison": "entire_image",
+            "reference": "spec/iprop-v0.3.md#111-pixelx-y-colour"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "glaze",
+          "kind": "rect",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            8,
+            8,
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "3de29b2802f5826d459ca4b451a945fc2ded7a14afe4c1d616ad9b31faae3206"
+    },
+    {
+      "id": "asset-11",
+      "kind": "asset",
+      "title": "One imported part and translated anchor",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Return entry.ips and part.ips. part.ips must define an 8x8 asset with origin 0,0, color input tint=#55bbff, point output anchor={2,3}, and rect(1,2,3,2,tint). It has no imports.",
+        "Entry is 32x32, fills #101820, imports tile from \"part.ips\", and calls tile.draw(7,0,0,at={10,12},tint=#ffdd88).",
+        "After the call, write root point anchor=tile.outputs.anchor+{10,12}. Root anchor is {12,15}; part-owned anchor stays local {2,3}. Part outputs do not automatically include at/origin. Preserve geometry and paint order."
+      ],
+      "required_features": [
+        "direct_import",
+        "part_override",
+        "part_output_translation"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 11,
+            "y": 14,
+            "width": 3,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                11,
+                14,
+                3,
+                2
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            12,
+            15
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 1,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            2,
+            3
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "8f49cb7704b99703a50de1ec7c196ebc87a3c30b592eb4b84f652bf566ec6044"
+    },
+    {
+      "id": "asset-12",
+      "kind": "asset",
+      "title": "D4 rotation preserves geometry",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Return entry.ips and part.ips. Part is 8x8 with origin 0,0, point anchor={2,3}, and an opaque #55bbff rect(1,2,3,2). It has no imports.",
+        "Root fills #101820 then calls tile.draw(7,0,0,at={16,16},rot=90). Write root point anchor=tile.outputs.anchor+{16,16}.",
+        "Use the exact positive 90-degree D4 transform from the reference, not vec2.rot or image filtering. The local continuous anchor maps to {3,6}; part-owned anchor remains local, and root explicitly adds placement to obtain {19,22}. Discrete pixels follow the frozen pixel-center mapping; at/origin is not transformed."
+      ],
+      "required_features": [
+        "part_d4",
+        "part_geometry"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "frozen_part_transform",
+            "part_size": [
+              8,
+              8
+            ],
+            "origin": [
+              0,
+              0
+            ],
+            "source_rectangle": [
+              1,
+              2,
+              3,
+              2
+            ],
+            "at": [
+              16,
+              16
+            ],
+            "rot": 90,
+            "mirror_x": 0,
+            "mirror_y": 0,
+            "foreground_rgba_hex": "55bbffff",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image",
+            "reference": "spec/iprop-v0.3.md#105-part-transforms-v03"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            19,
+            22
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 1,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            3,
+            6
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "d8a2b968ac7f670006c2f44c211f06f3ac5fe7a9b6bb305864ff9fb1c368c3f8"
+    },
+    {
+      "id": "asset-13",
+      "kind": "asset",
+      "title": "Singular geometry and an unset slot",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill background #101820 and opaque rectangle (6,8,20,16,#55bbff).",
+        "Declare point center, rect bounds, circle hit, and point spare. Write center={16,16}, bounds={6,8,20,16}, hit={16,16,8}; leave spare unwritten.",
+        "Use the existing brace output syntax. spare must remain declared but unset; do not write dummy zero coordinates."
+      ],
+      "required_features": [
+        "point_output",
+        "rect_output",
+        "circle_output",
+        "unset_output"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 6,
+            "y": 8,
+            "width": 20,
+            "height": 16,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                6,
+                8,
+                20,
+                16
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 0,
+          "name": "bounds",
+          "kind": "rect",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            6,
+            8,
+            20,
+            16
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 0,
+          "name": "hit",
+          "kind": "circle",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16,
+            8
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 0,
+          "name": "spare",
+          "kind": "point",
+          "is_list": false,
+          "count": 0,
+          "values": [],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "b07fee1605c2e8eaad1bb013321b6f9f660dd02470d8e9b4342d2db47285a95c"
+    },
+    {
+      "id": "asset-14",
+      "kind": "asset",
+      "title": "Dynamic color palette ramp",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Declare color palette gradient=[#ff0000,#0000ff]. For every x=0..31, compute t=float(x)/31.0 and use ramp(gradient,t) to fill the full-height column x.",
+        "Write point ends={0,31}; no RNG, no extra colors, and do not replace ramp with hand-written color interpolation."
+      ],
+      "required_features": [
+        "color_ramp",
+        "float_widening"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 0,
+            "y": 0,
+            "width": 1,
+            "height": 32,
+            "rgba_hex": "ff0000ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 31,
+            "y": 0,
+            "width": 1,
+            "height": 32,
+            "rgba_hex": "0000ffff"
+          },
+          {
+            "kind": "dynamic_ramp_columns",
+            "palette_rgba_hex": [
+              "ff0000ff",
+              "0000ffff"
+            ],
+            "t_formula": "binary32(float(x)/31.0)",
+            "comparison": "entire_image",
+            "reference": "spec/iprop-v0.4.md"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "ends",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            0,
+            31
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "f158b195fb9d1754797f4ff6050487c01f36d5528ac7e085b493248c6165b144"
+    },
+    {
+      "id": "asset-15",
+      "kind": "asset",
+      "title": "While loop with continue and break",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Fill #101820. Use a while loop over increasing integer i starting at 0; skip i=3 with continue and stop at i=6 with break.",
+        "For each retained i paint rect(4,2+4*i,24,2,#ffdd88) and append point {4,2+4*i} to list rungs. Exactly indices 0,1,2,4,5 are emitted, in this order.",
+        "The loop must terminate in every render case without a fuel trap; do not replace the required while/continue/break with five literal calls."
+      ],
+      "required_features": [
+        "while",
+        "continue",
+        "break"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 4,
+            "y": 2,
+            "width": 24,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 4,
+            "y": 6,
+            "width": 24,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 4,
+            "y": 10,
+            "width": 24,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 4,
+            "y": 18,
+            "width": 24,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "rect_pixels_equal",
+            "x": 4,
+            "y": 22,
+            "width": 24,
+            "height": 2,
+            "rgba_hex": "ffdd88ff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                4,
+                2,
+                24,
+                2
+              ],
+              [
+                4,
+                6,
+                24,
+                2
+              ],
+              [
+                4,
+                10,
+                24,
+                2
+              ],
+              [
+                4,
+                18,
+                24,
+                2
+              ],
+              [
+                4,
+                22,
+                24,
+                2
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "rungs",
+          "kind": "point",
+          "is_list": true,
+          "count": 5,
+          "comparison": "binary32_bits",
+          "values": [
+            [
+              4,
+              2
+            ],
+            [
+              4,
+              6
+            ],
+            [
+              4,
+              10
+            ],
+            [
+              4,
+              18
+            ],
+            [
+              4,
+              22
+            ]
+          ]
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "a54e47ff8cfb3a7912f91abcfe48f25f28b062bae6902cb31aff01d07fbc8095"
+    },
+    {
+      "id": "asset-16",
+      "kind": "asset",
+      "title": "Bounded seeded marble",
+      "entry_file": "entry.ips",
+      "starting_files": {},
+      "requirements": [
+        "Produce a full opaque 32x32 blue marble tile with a coherent noise.fbm domain, using a saved explicit seed and the reference noise signature.",
+        "Use a color ramp between #102840 and #75c9ef; sample only a small finite coordinate domain and keep octaves/loop bounds small enough for the unmodified 1,000,000 fuel budget.",
+        "Write point center={16,16}. The image must have at least eight distinct opaque RGB colors, be bit-identical for repeated identical inputs, and vary across supplied seeds."
+      ],
+      "required_features": [
+        "noise_fbm",
+        "color_ramp",
+        "explicit_seed"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "all_alpha_equals",
+            "alpha": 255
+          },
+          {
+            "kind": "distinct_rgb_count_min",
+            "minimum": 8
+          },
+          {
+            "kind": "different_seed_images",
+            "minimum_distinct": 2
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": true
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [
+        "Blue marble appearance with coherent veins or bands, not unrelated pixel noise.",
+        "Record a human review as pass/fail/pending with reviewer and artifact hashes. Automated opacity/color-count checks do not prove this visual requirement."
+      ],
+      "expected_initial_state": "no_source",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "definition_sha256": "3f817c6a5a8abd5f92b50873669f9b7c26de92bb11ea2c074146228de1f92145"
+    },
+    {
+      "id": "repair-01",
+      "kind": "repair",
+      "title": "Replace a floating condition with an integer predicate",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset Conditional {\n  size 32x32\n  input f32 probability=0.5\n  output point center\n  draw { rect(0,0,32,32,#101820) if (probability) { rect(8,8,16,16,#44ff44) } center={16,16} }\n}\n"
+      },
+      "requirements": [
+        "Keep input f32 probability=0.5. Draw opaque background #101820 and green rect(8,8,16,16,#44ff44) when probability>0.0; do not change the input type or drop the conditional.",
+        "Repair the unsupported floating condition in the supplied source. Write point center={16,16}."
+      ],
+      "required_features": [
+        "integer_condition"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 8,
+            "y": 8,
+            "width": 16,
+            "height": 16,
+            "rgba_hex": "44ff44ff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                8,
+                8,
+                16,
+                16
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "ab07bc2eb56ceb38b7b86afc0e8c2e70f592ea0fc0394df1088888255edacf4b"
+      },
+      "initial_diagnostic_hint": "condition must be an integer",
+      "definition_sha256": "498f30c10a012c26f50bd9a330a01b675d367b4abf3c5024d5311098d3aa33c1"
+    },
+    {
+      "id": "repair-02",
+      "kind": "repair",
+      "title": "Repair a named builtin argument typo",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset Typo {\n  size 32x32\n  output point center\n  draw { rect(0,0,32,32,#101820) rect(x=8,y=8,w=16,h=16,colour=#55bbff) center={16,16} }\n}\n"
+      },
+      "requirements": [
+        "Keep a named rect call drawing (8,8,16,16,#55bbff) over opaque #101820. Correct the misspelled parameter name; do not switch to an unrelated builtin.",
+        "Write point center={16,16} and preserve the five rect argument values."
+      ],
+      "required_features": [
+        "named_builtin"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 8,
+            "y": 8,
+            "width": 16,
+            "height": 16,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                8,
+                8,
+                16,
+                16
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "fd08abe1e2b60b7b73ca12d9a03338c14dabf6d47449748b0ca95f734525433b"
+      },
+      "initial_diagnostic_hint": "has no argument 'colour'",
+      "definition_sha256": "58cb4a2a78371c8c8315251f52fcc9bd2af2d510db2cc9a167c92a4876f28282"
+    },
+    {
+      "id": "repair-03",
+      "kind": "repair",
+      "title": "Pass a draw uniform into a helper explicitly",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset Scope {\n  size 32x32\n  input color tint=#55bbff\n  output point center\n  draw { rect(0,0,32,32,#101820) paint() center={16,16} }\n  paint() { rect(8,8,16,16,tint) }\n}\n"
+      },
+      "requirements": [
+        "Keep input color tint=#55bbff and helper paint. Repair uniform visibility by adding a typed color parameter and passing tint from draw using a positional helper call.",
+        "Paint rect(8,8,16,16,tint) over opaque #101820; write point center={16,16}; do not hard-code tint inside the helper."
+      ],
+      "required_features": [
+        "typed_helper",
+        "uniform_visibility"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 8,
+            "y": 8,
+            "width": 16,
+            "height": 16,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                8,
+                8,
+                16,
+                16
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "center",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            16,
+            16
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "30047a7484dff88cb776b3de0fa898e89dc8cd1123ff84947d7076dc96bfad08"
+      },
+      "initial_diagnostic_hint": "only visible inside 'draw'",
+      "definition_sha256": "340b93364c8447c5dd8be88d25ebd4114bd2f30fb72d79961e4716942145a3ad"
+    },
+    {
+      "id": "repair-04",
+      "kind": "repair",
+      "title": "Replace recursion with a bounded iterative helper",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset Recursive {\n  size 32x32\n  output point measured\n  draw { rect(0,0,32,32,#101820) rect(2,2,height(4),4,#ff4444) measured={height(4),4} }\n  height(n:i32)->i32 { if (n<=0) { return 0 } return 1+height(n-1) }\n}\n"
+      },
+      "requirements": [
+        "Keep helper height(n:i32)->i32 callable positionally. Replace recursive implementation with a terminating integer loop producing n for n in [0,8].",
+        "Root draws opaque #101820 then rect(2,2,height(4),4,#ff4444), and writes point measured={height(4),4}. Do not replace helper calls with literals."
+      ],
+      "required_features": [
+        "iterative_helper"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "rect_pixels_equal",
+            "x": 2,
+            "y": 2,
+            "width": 4,
+            "height": 4,
+            "rgba_hex": "ff4444ff"
+          },
+          {
+            "kind": "outside_rectangles_equals",
+            "rectangles": [
+              [
+                2,
+                2,
+                4,
+                4
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "measured",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            4,
+            4
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "a2285ed898b1625dab0e1c71456a129fa7c82a8b648f949c77c0cf6a059b8589"
+      },
+      "initial_diagnostic_hint": "recursive call",
+      "definition_sha256": "2f2fa49385390dacb1a9c2e0726c4ca758f510ab060f5f01840b41a6af251740"
+    },
+    {
+      "id": "repair-05",
+      "kind": "repair",
+      "title": "Give a numeric ramp a floating palette",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset RampType {\n  size 32x32\n  palette levels=[0,1]\n  output point midpoint\n  draw { rect(0,0,32,32,#101820) t=ramp(levels,0.5) midpoint={t,t} pixel(8,8,rgb(int(t*255.0),int(t*255.0),int(t*255.0))) }\n}\n"
+      },
+      "requirements": [
+        "Keep the numeric palette levels with stops 0 and 1, and sample ramp(levels,0.5). Change literals so the palette is floating; do not remove ramp.",
+        "Write point midpoint={t,t}, where t is the sampled value. Draw background #101820 and pixel(8,8,rgb(int(t*255.0),int(t*255.0),int(t*255.0)))."
+      ],
+      "required_features": [
+        "f32_palette",
+        "numeric_ramp"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 8,
+            "y": 8,
+            "rgba_hex": "7f7f7fff"
+          },
+          {
+            "kind": "outside_pixels_equals",
+            "pixels": [
+              [
+                8,
+                8
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "midpoint",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            0.5,
+            0.5
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "5fb28cbd4a9f90faebbf871c26fc087794f09b6cf5f2bd64cd17c2875d332b6d"
+      },
+      "initial_diagnostic_hint": "ramp requires a color or f32 palette",
+      "definition_sha256": "e8765b1dd2b1203db591f74639d232121113ad697df8eda3431669c5b039841f"
+    },
+    {
+      "id": "repair-06",
+      "kind": "repair",
+      "title": "Preserve a list and add a scalar attachment for part reads",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "import tile from \"part.ips\"\nasset ListRead {\n  size 32x32\n  output point anchor\n  draw { rect(0,0,32,32,#101820) tile.draw(7,0,0,at={8,8}) anchor=tile.outputs.marks+{8,8} }\n}\n",
+        "part.ips": "asset Marks {\n  size 8x8\n  output list point marks\n  draw { pixel(1,2,#55bbff) marks={1,2} }\n}\n"
+      },
+      "requirements": [
+        "Keep part-owned list point marks with its one appended {1,2}; retain the part pixel(1,2,#55bbff). Add a scalar point tip with the same position and read that scalar from root.",
+        "Root fills #101820 and calls tile.draw(7,0,0,at={8,8}). Write root point anchor=tile.outputs.tip+{8,8}; it must be {9,10}. Part-owned marks and tip remain local {1,2}. Do not read a list as an expression or delete the list."
+      ],
+      "required_features": [
+        "part_scalar_output",
+        "list_output"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 9,
+            "y": 10,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_pixels_equals",
+            "pixels": [
+              [
+                9,
+                10
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            9,
+            10
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 1,
+          "name": "marks",
+          "kind": "point",
+          "is_list": true,
+          "count": 1,
+          "comparison": "binary32_bits",
+          "values": [
+            [
+              1,
+              2
+            ]
+          ]
+        },
+        {
+          "owner": 1,
+          "name": "tip",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            1,
+            2
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "154caa24579cffc70eb1b8f8256f5f52e08b64da5c90875e016e849505d32f00",
+        "part.ips": "61e77672004d016b75f2558f8f9e39b5350c863e5c3cf3c728104b98a24d5498"
+      },
+      "initial_diagnostic_hint": "cannot read list output",
+      "definition_sha256": "0679ea5c3f6ac2757a46c7ef62c543aa25b7f4e9c0a25290db7809756d15b945"
+    },
+    {
+      "id": "repair-07",
+      "kind": "repair",
+      "title": "Use a valid discrete part rotation",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "import tile from \"part.ips\"\nasset Rotation {\n  size 32x32\n  output point anchor\n  draw { rect(0,0,32,32,#101820) tile.draw(7,0,0,at={16,16},rot=45) anchor=tile.outputs.anchor+{16,16} }\n}\n",
+        "part.ips": "asset Tile {\n  size 8x8\n  origin 0,0\n  input color tint=#55bbff\n  output point anchor\n  draw { rect(1,2,3,2,tint) anchor={2,3} }\n}\n"
+      },
+      "requirements": [
+        "Correct rot=45 to rot=90 while preserving part geometry, origin, placement {16,16}, and three positional part arguments.",
+        "Root fills #101820 and writes anchor=tile.outputs.anchor+{16,16}. Root anchor becomes {19,22}; part-owned anchor stays local {3,6}. Do not approximate rotation with trigonometry or change geometry to mask the invalid transform."
+      ],
+      "required_features": [
+        "static_d4_transform"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 0,
+            "y": 0,
+            "rgba_hex": "101820ff"
+          },
+          {
+            "kind": "frozen_part_transform",
+            "part_size": [
+              8,
+              8
+            ],
+            "origin": [
+              0,
+              0
+            ],
+            "source_rectangle": [
+              1,
+              2,
+              3,
+              2
+            ],
+            "at": [
+              16,
+              16
+            ],
+            "rot": 90,
+            "mirror_x": 0,
+            "mirror_y": 0,
+            "foreground_rgba_hex": "55bbffff",
+            "background_rgba_hex": "101820ff",
+            "comparison": "entire_image",
+            "reference": "spec/iprop-v0.3.md#105-part-transforms-v03"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            19,
+            22
+          ],
+          "comparison": "binary32_bits"
+        },
+        {
+          "owner": 1,
+          "name": "anchor",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            3,
+            6
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "8251b7fcbf52810f33e4645455726d4d2693dcc3c51c6b3d415a1b6de7d44fa7",
+        "part.ips": "4abc1e47972198fb522d37a63938aea726736e0f4877965c0941ba84740c9af9"
+      },
+      "initial_diagnostic_hint": "rot transform",
+      "definition_sha256": "3cee97430b9f2ccae0be4e632d1e9e52486c14c6b89617285f4931c02757e6d7"
+    },
+    {
+      "id": "repair-08",
+      "kind": "repair",
+      "title": "Initialize a reassigned local with the right type",
+      "entry_file": "entry.ips",
+      "starting_files": {
+        "entry.ips": "asset LocalType {\n  size 32x32\n  output point position\n  draw { rect(0,0,32,32,#101820) x=1 x=0.5 pixel(int(x*16.0),8,#55bbff) position={x,8} }\n}\n"
+      },
+      "requirements": [
+        "Keep local x starting numerically at 1, then reassign x=0.5; make x floating from its first assignment. Do not delete either assignment or alter their order.",
+        "Fill #101820, paint pixel(int(x*16.0),8,#55bbff), and write point position={x,8}. The pixel is (8,8) and position is {0.5,8}."
+      ],
+      "required_features": [
+        "legacy_local_typing"
+      ],
+      "render_cases": [
+        {
+          "id": "s0-v0-a0",
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s7-v0-a0",
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s26-v0-a0",
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        },
+        {
+          "id": "s4294967295-v0-a0",
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "uniforms": {},
+          "size_override": null,
+          "repetitions": 2
+        }
+      ],
+      "image_criteria": {
+        "dimensions": [
+          32,
+          32
+        ],
+        "pixel_rules": [
+          {
+            "kind": "pixel_equals",
+            "x": 8,
+            "y": 8,
+            "rgba_hex": "55bbffff"
+          },
+          {
+            "kind": "outside_pixels_equals",
+            "pixels": [
+              [
+                8,
+                8
+              ]
+            ],
+            "rgba_hex": "101820ff"
+          }
+        ],
+        "whole_image_oracle": null,
+        "human_visual_review_required": false
+      },
+      "output_criteria": [
+        {
+          "owner": 0,
+          "name": "position",
+          "kind": "point",
+          "is_list": false,
+          "count": 1,
+          "values": [
+            0.5,
+            8
+          ],
+          "comparison": "binary32_bits"
+        }
+      ],
+      "human_visual_criteria": [],
+      "expected_initial_state": "compile_error",
+      "common_0_4_subset": true,
+      "initial_baseline_validation": "not_run",
+      "starting_source_sha256": {
+        "entry.ips": "39f6af48f98cc90a074133fd8d998df249ec245cbd72b936f68973dc75b53bdc"
+      },
+      "initial_diagnostic_hint": "cannot assign f32",
+      "definition_sha256": "399b199e1fcd045db4c509418b09cf3235264a0d7d1b4e82d20308dc72c3cdc8"
+    }
+  ]
+}
