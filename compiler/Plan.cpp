@@ -49,7 +49,8 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
 
 [[noreturn]] void Planner::error(const ips::SourceLocation& at,
                                  std::string message) {
-    throw ips::SourceError{at, std::move(message)};
+    throw ips::SourceError{at, std::move(message), {}, ips::DiagnosticCode::PlanError,
+                          ips::DiagnosticStage::Planning};
 }
 
 const ips::InputDecl* Planner::ownerInput(const ips::Program* owner,

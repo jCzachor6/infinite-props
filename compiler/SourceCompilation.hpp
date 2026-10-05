@@ -9,6 +9,7 @@
 
 #include "iprop/Types.hpp"
 #include "ips/Ast.hpp"
+#include "ips/Diagnostic.hpp"
 
 namespace iprop {
 
@@ -20,13 +21,7 @@ struct SourceCompilationOptions {
 
 enum class SourceCompilationStatus { Success, InvalidSource, InternalError };
 
-// First-error scaffold: legacy locations are one-based Unicode codepoints.
-// Byte ranges, stable diagnostic codes and recovery are deliberately absent.
-struct CompilationDiagnostic {
-    std::string message;
-    std::string path;
-    std::optional<ips::SourceLocation> location;
-};
+using CompilationDiagnostic = ips::Diagnostic;
 
 struct SourceCompilationResult {
     SourceCompilationStatus status = SourceCompilationStatus::InternalError;

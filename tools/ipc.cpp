@@ -39,7 +39,10 @@ int main(int argc, char* argv[]) {
     for (int i=1; i<argc; ++i)
         if (std::string_view(argv[i]) == "--diagnostics=json") json = true;
     const auto fail = [&](std::string message, const char* status = "cli_error") {
-        const iprop::CompilationDiagnostic diagnostic{std::move(message), {}, std::nullopt};
+        const bool internal = std::string_view(status) == "internal_error";
+        const iprop::CompilationDiagnostic diagnostic{std::move(message), {}, std::nullopt,
+            internal ? iprop::ips::DiagnosticCode::InternalError : iprop::ips::DiagnosticCode::CLIArgument,
+            internal ? iprop::ips::DiagnosticStage::Internal : iprop::ips::DiagnosticStage::CLI};
         if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, {diagnostic});
         else iprop::tools::writeSourceDiagnosticText(std::cerr, diagnostic, {});
         return 1; // Distinct protocol exit classes are defined by task B.4.

@@ -8,8 +8,8 @@
 
 namespace iprop::tools {
 
-// Preliminary schema 0. Stable codes and byte ranges are introduced by B.2/B.3;
-// null fields must not be interpreted as measured source ranges.
+// Preliminary schema 0 with typed stable codes. Byte ranges/versioning are
+// introduced by B.3; null fields are not measured source ranges.
 void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersion,
     std::string_view status, const std::vector<CompilationDiagnostic>& diagnostics);
 void writeSourceDiagnosticText(std::ostream& out, const CompilationDiagnostic& diagnostic,

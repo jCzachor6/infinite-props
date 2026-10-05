@@ -16,7 +16,10 @@ void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersi
     for (const auto& diagnostic : diagnostics) {
         if (!first) out << ',';
         first = false;
-        out << "{\"code\":null,\"severity\":\"error\",\"message\":\""
+        out << "{\"code\":\"" << ips::diagnosticCodeName(diagnostic.code)
+            << "\",\"stage\":\"" << ips::diagnosticStageName(diagnostic.stage)
+            << "\",\"severity\":\"" << ips::diagnosticSeverityName(diagnostic.severity)
+            << "\",\"message\":\""
             << jsonEscape(diagnostic.message) << "\",\"file\":";
         if (diagnostic.path.empty()) out << "null";
         else out << '"' << jsonEscape(diagnostic.path) << '"';
@@ -33,10 +36,8 @@ void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersi
 void writeSourceDiagnosticText(std::ostream& out, const CompilationDiagnostic& diagnostic,
     std::string_view source) {
     out << "ipc: ";
-    if (diagnostic.location) {
-        out << diagnostic.path << ':'
-            << ips::formatError(source, {*diagnostic.location, diagnostic.message, diagnostic.path});
-    } else out << diagnostic.message << '\n';
+    if (diagnostic.location) out << diagnostic.path << ':';
+    out << ips::formatDiagnostic(source, diagnostic);
 }
 
 } // namespace iprop::tools

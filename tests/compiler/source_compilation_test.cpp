@@ -6,11 +6,44 @@
 #include "iprop/Debug.hpp"
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
+#include "ips/SourceError.hpp"
 
 #include <map>
 #include <stdexcept>
 
 using namespace iprop;
+
+TEST_CASE("structured diagnostic codes come from causes and survive message changes") {
+    using ips::DiagnosticCode;
+    using ips::DiagnosticStage;
+    struct Case { const char* source; DiagnosticCode code; DiagnosticStage stage; };
+    const Case cases[] = {
+        {"asset t { size 8x8 draw { n= } }", DiagnosticCode::ExpectedToken, DiagnosticStage::Parser},
+        {"asset t { size 8x8 draw { @ } }", DiagnosticCode::LexicalError, DiagnosticStage::Lexer},
+        {"asset t { size 8x8 input i32 n=2147483648 draw{} }", DiagnosticCode::SignedDefaultRange, DiagnosticStage::Typing},
+        {"asset t { size 8x8 input u32 n=-1 draw{} }", DiagnosticCode::UnsignedDefaultNegative, DiagnosticStage::Typing},
+        {"asset t { size 8x8 draw { n=1 n=0.5 } }", DiagnosticCode::TypeError, DiagnosticStage::Typing},
+        {"asset t { size 8x8 draw { n=1 n=#fff } }", DiagnosticCode::TypeError, DiagnosticStage::Typing},
+        {"asset t { size 8x8 origin v,0 draw{} }", DiagnosticCode::PlanError, DiagnosticStage::Planning},
+    };
+    for (const auto& test : cases) {
+        const auto result=compileSource("t.ips",[&](std::string_view) { return std::string(test.source); });
+        REQUIRE(result.diagnostics.size()==1);
+        CHECK(result.diagnostics[0].code==test.code);
+        CHECK(result.diagnostics[0].stage==test.stage);
+        CHECK(ips::diagnosticCodeName(result.diagnostics[0].code).starts_with("IPS-"));
+    }
+    const auto internal=compileSource("t.ips",[](std::string_view)->std::string {
+        throw std::logic_error("injected unexpected loader failure");
+    });
+    CHECK(internal.status==SourceCompilationStatus::InternalError);
+    REQUIRE(internal.diagnostics.size()==1);
+    CHECK(internal.diagnostics[0].code==DiagnosticCode::InternalError);
+    CHECK(!internal.diagnostics[0].location);
+    const ips::Diagnostic warning{"readable warning",{},ips::SourceLocation{1,2},
+        DiagnosticCode::TypeError,DiagnosticStage::Typing,ips::DiagnosticSeverity::Warning};
+    CHECK(ips::formatDiagnostic("abc",warning)=="1:2: warning: readable warning\nabc\n ^\n");
+}
 
 TEST_CASE("full source pipeline owns snapshots and loads each shared import once") {
     const std::map<std::string,std::string> sources{

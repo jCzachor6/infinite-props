@@ -4,6 +4,7 @@
 add_library(ips_lang STATIC
     ips/Lexer.cpp
     ips/SourceError.cpp
+    ips/Diagnostic.cpp
     ips/SourceText.cpp
     ips/Suggestions.cpp
     ips/Parser.cpp

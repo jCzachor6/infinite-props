@@ -16,13 +16,20 @@ SourceCompilationResult compileSource(
     SourceCompilationOptions options) {
     SourceCompilationResult result;
     result.entryPath = entryPath;
+    auto stage = ips::DiagnosticStage::Import;
     try {
         const auto loadProgram = [&](std::string_view path) -> const ips::Program& {
             const std::string key(path);
             if (const auto found = result.programs.find(key); found != result.programs.end())
                 return found->second;
             const auto source = result.sources.emplace(key, loadSource(path)).first;
-            return result.programs.emplace(key, ips::parse(source->second)).first->second;
+            try {
+                return result.programs.emplace(key, ips::parse(source->second)).first->second;
+            } catch (ips::SourceError& error) {
+                if (error.stage == ips::DiagnosticStage::Unspecified) error.stage = ips::DiagnosticStage::Parser;
+                if (error.code == ips::DiagnosticCode::Unspecified) error.code = ips::defaultDiagnosticCode(error.stage);
+                throw;
+            }
         };
         (void)ips::resolveImportOrder(entryPath, loadProgram);
 
@@ -34,6 +41,7 @@ SourceCompilationResult compileSource(
             parts.emplace(import.alias, &part);
             surfaces.emplace(import.alias, ips::partInfoOf(part.asset));
         }
+        stage = ips::DiagnosticStage::Typing;
         for (const auto& import : entry.imports) {
             try {
                 ips::checkAsset(result.programs.at(import.path), {});
@@ -43,7 +51,9 @@ SourceCompilationResult compileSource(
             }
         }
         ips::checkAsset(entry, surfaces);
+        stage = ips::DiagnosticStage::Planning;
         auto bytes = compileProgram(entry, parts, options.optimize);
+        stage = ips::DiagnosticStage::Validation;
         if (options.stripDebug) bytes = stripDebug(bytes);
         if (options.compress) bytes = compressFile(bytes);
         // Validate the exact artifact returned to ordinary compile and check,
@@ -53,10 +63,12 @@ SourceCompilationResult compileSource(
         result.status = SourceCompilationStatus::Success;
     } catch (const ips::SourceError& error) {
         result.status = SourceCompilationStatus::InvalidSource;
+        const auto phase = error.stage == ips::DiagnosticStage::Unspecified ? stage : error.stage;
+        const auto code = error.code == ips::DiagnosticCode::Unspecified ? ips::defaultDiagnosticCode(phase) : error.code;
         result.diagnostics.push_back({error.message,
             error.path.empty() ? result.entryPath : error.path,
             result.sources.contains(error.path.empty() ? result.entryPath : error.path)
-                ? std::optional{error.location} : std::nullopt});
+                ? std::optional{error.location} : std::nullopt, code, phase});
     } catch (const std::exception& error) {
         result.status = SourceCompilationStatus::InternalError;
         result.diagnostics.push_back({error.what(), {}, std::nullopt});

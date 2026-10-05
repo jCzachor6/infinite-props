@@ -19,8 +19,8 @@ as ordinary compilation, while still writing no files. Each imported source
 is loaded once, and error snippets use that exact owning snapshot.
 
 The current JSON first-error scaffold is explicitly `schema_version: 0`:
-it provides status, message, file and legacy line/column, with null code/range
-and language version. Stable typed codes, byte ranges and recovery are
+it provides status, typed stable code/stage/severity, message, file and legacy
+line/column, with null range and language version. Byte ranges and recovery are
 introduced by the subsequent diagnostics tasks; schema 0 is not that final
 protocol. `--diagnostics=text` selects the readable renderer.
 

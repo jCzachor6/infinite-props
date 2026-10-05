@@ -10,7 +10,7 @@ namespace {
 [[noreturn]] void invalidConstant(const Expr& expression) {
     throw SourceError{locationOf(expression),
         "declaration constants must be literals, optionally parenthesized "
-        "or with one numeric unary minus"};
+        "or with one numeric unary minus", {}, DiagnosticCode::DeclarationConstant};
 }
 
 ResolvedConstant resolve(const Expr& expression, bool integerAsFloat) {
@@ -103,13 +103,14 @@ ResolvedConstant resolveInputDefault(const InputDecl& input) {
             "default value of input '" + input.name + "' does not match its declared type"};
     if (input.type == InputType::U32 && *result.mathematicalInteger < 0)
         throw SourceError{locationOf(*input.defaultValue),
-            "negative default of input u32 '" + input.name + "'; use input i32 for signed defaults"};
+            "negative default of input u32 '" + input.name + "'; use input i32 for signed defaults",
+            {}, DiagnosticCode::UnsignedDefaultNegative};
     if (input.type == InputType::I32 &&
         (*result.mathematicalInteger < std::numeric_limits<i32>::min() ||
          *result.mathematicalInteger > std::numeric_limits<i32>::max()))
         throw SourceError{locationOf(*input.defaultValue),
             "default of input i32 '" + input.name +
-            "' must be in [-2147483648, 2147483647] before wrapping"};
+            "' must be in [-2147483648, 2147483647] before wrapping", {}, DiagnosticCode::SignedDefaultRange};
     return result;
 }
 

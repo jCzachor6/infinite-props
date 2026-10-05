@@ -79,14 +79,15 @@ std::vector<Token> lex(std::string_view source) {
     std::size_t nextCodepoint = 0;
 
     const auto location = [&]() { return SourceLocation{line, column}; };
-    const auto error = [&](SourceLocation at, std::string message) -> SourceError {
-        return SourceError{at, std::move(message)};
+    const auto error = [&](SourceLocation at, std::string message,
+                           DiagnosticCode code = DiagnosticCode::LexicalError) -> SourceError {
+        return SourceError{at, std::move(message), {}, code, DiagnosticStage::Lexer};
     };
     const auto advance = [&]() -> char {
         const bool firstByte = pos == nextCodepoint;
         if (firstByte) {
             const auto point = decodeCodepoint(source, pos);
-            if (!point) throw error(location(), "invalid UTF-8 in source");
+            if (!point) throw error(location(), "invalid UTF-8 in source", DiagnosticCode::InvalidUtf8);
             nextCodepoint = pos + point->bytes;
         }
         const char c = source[pos++];
@@ -254,7 +255,7 @@ std::vector<Token> lex(std::string_view source) {
         // Lexical aliases carry canonical text into the parser and diagnostics.
         if (static_cast<unsigned char>(c) >= 0x80) {
             const auto point = decodeCodepoint(source, pos);
-            if (!point) throw error(at, "invalid UTF-8 in source");
+            if (!point) throw error(at, "invalid UTF-8 in source", DiagnosticCode::InvalidUtf8);
             if (const auto word = emojiAlias(point->value)) {
                 if (!tokens.empty() && tokens.back().kind == TokenKind::Dot)
                     throw error(at, "emoji aliases are not allowed for member names; use '" + std::string(word) + "'");
@@ -319,7 +320,7 @@ std::vector<Token> lex(std::string_view source) {
         }
 
         const auto point = decodeCodepoint(source, pos);
-        if (!point) throw error(at, "invalid UTF-8 in source");
+        if (!point) throw error(at, "invalid UTF-8 in source", DiagnosticCode::InvalidUtf8);
         throw error(at, "unexpected character '" + std::string(source.substr(pos, point->bytes)) + "'");
     }
 

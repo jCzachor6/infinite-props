@@ -27,6 +27,10 @@ def main():
             report = json.loads(process.stdout)
             assert report['status'] == expected_status, report
             assert isinstance(report['diagnostics'], list), report
+            for diagnostic in report['diagnostics']:
+                assert diagnostic['code'].startswith('IPS-'), diagnostic
+                assert diagnostic['severity'] == 'error', diagnostic
+                assert diagnostic['stage'] in {'lex','parse','import','typing','planning','validation','io','cli','internal'}, diagnostic
             return report
 
         for args in [[], ['--debug'], ['--no-opt', '--no-compress'], ['--debug', '--strip']]:

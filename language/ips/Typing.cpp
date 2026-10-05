@@ -32,7 +32,7 @@ Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}
 
 [[noreturn]] void Typer::error(const SourceLocation& at,
                                std::string message) const {
-    throw SourceError{at, std::move(message)};
+    throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
 }
 
 void Typer::enterFunction(const Program& owner, const Function& function,

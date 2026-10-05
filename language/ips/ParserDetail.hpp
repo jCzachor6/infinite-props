@@ -119,11 +119,13 @@ public:
                 message += didYouMean(peek().text, names);
             } else message += keywordSuggestion(peek().text);
         }
-        failHere(std::move(message));
+        throw SourceError{peek().location, std::move(message), {},
+                          DiagnosticCode::ExpectedToken, DiagnosticStage::Parser};
     }
 
     [[noreturn]] void failHere(std::string message) {
-        throw SourceError{peek().location, std::move(message)};
+        throw SourceError{peek().location, std::move(message), {},
+                          DiagnosticCode::InvalidSyntax, DiagnosticStage::Parser};
     }
 
     // ---- program, declarations, statements (Parser.cpp) --------------------

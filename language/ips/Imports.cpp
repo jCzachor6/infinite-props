@@ -2,6 +2,7 @@
 
 #include <set>
 #include <map>
+#include <stdexcept>
 #include <utility>
 
 #include "ips/Parser.hpp"
@@ -32,7 +33,8 @@ std::vector<std::string> resolveImportOrder(
                     message += chain[i] + " -> ";
                 }
                 message += path;
-                throw SourceError{importedAt, std::move(message), importer};
+                throw SourceError{importedAt, std::move(message), importer,
+                    DiagnosticCode::ImportCycle, DiagnosticStage::Import};
             }
             inChain.insert(path);
             chain.push_back(path);
@@ -43,10 +45,11 @@ std::vector<std::string> resolveImportOrder(
             } catch (SourceError& error) {
                 if (error.path.empty()) error.path = path;
                 throw;
-            } catch (const std::exception& e) {
+            } catch (const std::runtime_error& e) {
                 throw SourceError{importedAt,
                                   std::string("cannot load '") + path +
-                                      "': " + e.what(), importer};
+                                      "': " + e.what(), importer,
+                                      DiagnosticCode::SourceIO, DiagnosticStage::IO};
             }
             for (const auto& import : program->imports) {
                 visit(import.path, import.location, path);
