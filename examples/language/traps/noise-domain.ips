@@ -1,0 +1,5 @@
+asset NoiseTrap {
+  size 1x1
+  input f32 coordinate = 1.0
+  draw { value = noise.grad(coordinate / 0.0, 0, seed) }
+}

@@ -1,0 +1,4 @@
+asset InvalidCompound {
+  size 8x8
+  draw { bounds = {0, 0, 4, 4} }
+}

@@ -14,9 +14,10 @@ that every compiler and interpreter MUST implement.
 | [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 — frozen** | Vectors, SDF queries and Bézier strokes, procedural noise, colour and curve utilities, palette ramps and D4 part transforms; all frozen 0.1/0.2 layouts and algorithms remain supported |
 | [iprop-v0.4.md](iprop-v0.4.md) | **v0.4 — release candidate** | Lossless bounded zlib/DEFLATE containers; frozen 0.1–0.3 files, VM behavior and output bits remain supported |
 
-The `.ips` language compiles 1:1 to this contract; its reference lives in the
-toolchain (the grammar and the type rules in `language/`, the lowering in
-`compiler/`) and is summarised in the website documentation. The VM's value
+The `.ips` language compiles to this contract. Its complete authoring reference
+is the [language handbook](../docs/language/index.md), checked against the
+grammar/type rules in `language/` and lowering in `compiler/`. The website
+and release documentation are generated from that handbook. The VM's value
 types, the instruction encoding and every algorithm in §11–§12 of each released version are frozen by
 the golden corpus — a change that alters a golden image is a breaking change
 and needs a spec update first.

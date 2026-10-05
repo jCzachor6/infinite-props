@@ -1,0 +1,4 @@
+asset InvalidArgument {
+  size 8x8
+  draw { pixel(x = 1, y = 1, colour = #fff) }
+}

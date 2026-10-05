@@ -1,0 +1,22 @@
+asset UniformAsset {
+  size 16x16
+  origin 8, 8
+  variants 3
+  archetypes 2
+  input color tint = #9dc
+  input f32 scale = 1.0
+  input u32 density = 2
+  input u32 offset = 0
+  output point anchor
+  output rect bounds
+  output circle area
+  output list point dots
+  draw {
+    rect(0, 0, 16, 16, #123)
+    rect(2 + offset, 2, 4 * scale + v, 4 + a, tint)
+    anchor = {8, 8}
+    bounds = {2, 2, 4 * scale + v, 4 + a}
+    area = {8, 8, 3}
+    for i in 0..density { dots = {i, 8} }
+  }
+}

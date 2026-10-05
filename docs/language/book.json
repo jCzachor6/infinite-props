@@ -1,0 +1,9 @@
+{
+  "title": "The .ips language",
+  "chapters": [
+    "index.md", "getting-started.md", "assets.md", "syntax.md", "types.md",
+    "control-flow.md", "functions.md", "random.md", "math.md", "drawing.md",
+    "geometry.md", "noise.md", "palettes.md", "composition.md", "tooling.md",
+    "grammar.md", "development.md"
+  ]
+}

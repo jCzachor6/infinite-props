@@ -1,0 +1,20 @@
+asset Loops {
+  size 8x8
+  draw {
+    rect(0, 0, 8, 8, #123)
+    for i in 0..8 {
+      if (i == 1) { continue }
+      if (i >= 6) { break }
+      pixel(i, 2, #9dc)
+    }
+    j = 0
+    while (j < 3) {
+      pixel(j, 4, #fc9)
+      j = j + 1
+    }
+    if (j == 0) { pixel(0, 0, #f00) }
+    else if (j == 3) { pixel(3, 3, #0f0) }
+    else { pixel(0, 0, #00f) }
+    return;
+  }
+}

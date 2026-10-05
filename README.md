@@ -247,6 +247,11 @@ calls, because bit-exact parity across platforms is a core requirement:
 
 ## 7. The language (`.ips`)
 
+The complete [language handbook](docs/language/index.md) covers syntax,
+typing, control flow, every builtin, composition and executable examples.
+It is the authoring reference; the following section records project
+requirements and an illustrative sketch.
+
 A small imperative, human-writable language that mirrors the structure of
 QuantSpace's draw code, and compiles 1:1 to VM semantics.
 
@@ -379,7 +384,8 @@ asset portrait {
 }
 ```
 
-This sketch is illustrative; the final grammar lives in `spec/`.
+This sketch is illustrative; the implemented grammar is documented in
+[the language handbook](docs/language/grammar.md).
 
 ### 7.3 Imports and composition
 

@@ -1,0 +1,13 @@
+// Comments can contain arbitrary valid UTF-8: współrzędne.
+asset SourceSyntax {
+  size 8x8
+  palette colors = [#abc, #1234, #abcdef, #abcdef80,]
+  draw {
+    /* Newlines and semicolons are optional block separators. */
+    x = 0x1; y = 1e0
+    point = {x, y,}
+    pixel(int(point.x), int(point.y), colors[0],)
+    value = -3 + int(2.5)
+    if (true && !false) { pixel(value + 2, 2, #fff) }
+  }
+}

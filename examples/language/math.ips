@@ -1,0 +1,22 @@
+asset NumberHelpers {
+  size 8x8
+  output point result
+  draw {
+    x = int(2.8)
+    f = float(x)
+    truncated = i32trunc(-2.8)
+    rounded = round(2.5)
+    root = sqrt(f)
+    angle = atan2(1, 1)
+    wave = sin(angle) + cos(angle)
+    bounds = min(floor(abs(-f)), ceil(root))
+    bounds = max(bounds, 1)
+    growth = pow(bounds, 2) + exp(0)
+    blend = lerp(0, growth, smooth(0.5))
+    contrast = gain(quintic(0.25), 0.5)
+    edge = smoothstep(0, 1, contrast)
+    mapped = remap(edge, 0, 1, 1, 4)
+    result = {clamp(mapped, 0, 7), blend}
+    pixel(x, rounded, #9dc)
+  }
+}

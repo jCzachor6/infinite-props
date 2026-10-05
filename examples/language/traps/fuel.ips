@@ -1,0 +1,4 @@
+asset FuelTrap {
+  size 1x1
+  draw { while (1) { } }
+}

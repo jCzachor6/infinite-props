@@ -1,0 +1,21 @@
+asset GeometryHelpers {
+  size 8x8
+  output point result
+  draw {
+    p = {2, 3}
+    length = vec2.len(p)
+    product = vec2.dot(p, {1, 0})
+    rotated = vec2.rot(p, 0.25)
+    polarValue = polar(rotated)
+    folded = fold(p, 4)
+    circleDistance = dist.circle(p, {4, 4}, 2)
+    rectDistance = dist.rect(p, {4, 4}, {2, 2})
+    rounded = dist.roundrect(p, {4, 4}, {2, 2}, 0.5)
+    segment = dist.line(p, {0, 0}, {7, 7})
+    quadratic = dist.bezier(p, {0, 0}, {3, 7}, {7, 0})
+    cubic = dist.bezier(p, {0, 0}, {2, 7}, {5, 7}, {7, 0})
+    coverage = fill(circleDistance, 1)
+    result = folded
+    pixel(2, 3, color.scale(#9dc, coverage))
+  }
+}

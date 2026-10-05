@@ -1,0 +1,17 @@
+asset ColorHelpers {
+  size 8x8
+  draw {
+    base = rgb(r = 32, g = 64, b = 96)
+    glaze = rgba(128, 192, 160, 128)
+    mixed = color.mix(base, #9dc, 0.5)
+    alias = lerp(base, #9dc, 0.5)
+    shaded = color.shade(mixed, 10)
+    opaque = color.set.a(glaze, 255)
+    multiplied = color.mul(opaque, #ccc)
+    scaled = color.scale(multiplied, 0.8)
+    adjusted = color.hsv(scaled, 0.25, 1.0, 1.0)
+    rect(0, 0, 8, 8, base)
+    rect(2, 2, 4, 4, glaze)
+    pixel(1, 1, adjusted)
+  }
+}

@@ -1,0 +1,5 @@
+import leaf from "../part.ips"
+asset InvalidListRead {
+  size 8x8
+  draw { p = leaf.outputs.dots }
+}

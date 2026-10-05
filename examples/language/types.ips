@@ -1,0 +1,21 @@
+asset ValueTypes {
+  size 8x8
+  draw {
+    count = 2
+    amount = float(count)
+    count = int(amount + 0.5)
+    selected = 0
+    if (count > 1) { selected = 1 }
+    p = {1, 2}
+    q = -p + {4, 4}
+    q = q * {1, 2} / {1, 2}
+    q = 2 * q / 2
+    mask = ((1 << count) | 1) ^ 2
+    mask = (mask & 7) >> 1
+    if (mask < (1 << 4) && selected) {
+      pixel(int(q.x), int(q.y), #9dc)
+    }
+    notMask = ~mask
+    remainder = count % 2
+  }
+}

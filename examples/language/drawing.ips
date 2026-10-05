@@ -1,0 +1,13 @@
+asset CanvasCalls {
+  size 16x16
+  draw {
+    rect(0, 0, 16, 16, #123)
+    pixel(1, 1, #fff)
+    line(1, 2, 14, 2, 1, #9dc)
+    oval(4, 8, 2, 3, #fc9)
+    poly(color = #99f, x0 = 8, y0 = 5, x1 = 14, y1 = 8, x2 = 8, y2 = 11)
+    curve({1, 12}, {4, 7}, {7, 12}, 1.0, #fff)
+    curve({8, 12}, {10, 7}, {12, 7}, {14, 12}, 1.0, #9dc)
+    weather(seed, 1)
+  }
+}

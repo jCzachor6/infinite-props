@@ -1,0 +1,5 @@
+asset InvalidRamp {
+  size 8x8
+  palette values = [1, 2, 3]
+  draw { result = ramp(values, 0.5) }
+}
