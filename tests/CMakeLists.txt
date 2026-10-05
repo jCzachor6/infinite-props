@@ -104,6 +104,12 @@ iprop_warnings(iprop_tests)
 
 add_test(NAME smoke COMMAND iprop_tests)
 
+add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
+    ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
+target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
+target_compile_definitions(compiler_diagnostic_failure_probe PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}")
+iprop_warnings(compiler_diagnostic_failure_probe)
+
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
@@ -115,6 +121,8 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME compiler_diagnostic_failures COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_diagnostic_failures.py" "$<TARGET_FILE:compiler_diagnostic_failure_probe>")
     add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover

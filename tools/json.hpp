@@ -35,6 +35,7 @@ inline std::string jsonNumber(f32 value, bool bits = false) {
 
 inline std::string jsonEscape(std::string_view text) {
     std::ostringstream stream;
+    stream.exceptions(std::ios::badbit | std::ios::failbit);
     for (const char c : text) {
         switch (c) {
         case '"': stream << "\\\""; break;

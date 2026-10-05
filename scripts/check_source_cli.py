@@ -61,7 +61,7 @@ def main():
                      ['entry.ips', '--check', '--format', ''],
                      ['entry.ips', '--check', '-o'],
                      ['entry.ips', '--check', '--unknown'], []]:
-            invoke(args, 'cli_error', 1)
+            invoke(args, 'cli_error', 2)
             assert {p.name: p.read_bytes() for p in root.iterdir()} == before
 
         # This passes type checking; the full planner rejects nonconstant origin.
@@ -88,7 +88,18 @@ def main():
         assert entry.read_bytes()[start:end] == b'value', diagnostic
         entry.write_bytes(original['entry.ips'])
 
+        entry.write_text('asset t { size 8x8 input u32 n=-7 draw{} }', encoding='utf-8')
+        result = invoke(['entry.ips', '--check'], 'invalid_source', 1)
+        edit = result['diagnostics'][0]['fix_its'][0]
+        raw = entry.read_bytes()
+        assert edit['source_id'] == 'sha256:' + hashlib.sha256(raw).hexdigest(), edit
+        repaired = raw[:edit['range']['start']['byte_offset']] + edit['replacement'].encode() + raw[edit['range']['end']['byte_offset']:]
+        entry.write_bytes(repaired)
+        invoke(['entry.ips', '--check'], 'ok', 0)
+        entry.write_bytes(original['entry.ips'])
         part.write_bytes(original['część.ips'])
+        io_error = invoke(['entry.ips', '-o', '.'], 'invalid_source', 1)
+        assert io_error['diagnostics'][0]['code'] == 'IPS-IO-001', io_error
         invoke(['entry.ips'], 'ok', 0)
         assert binary.read_bytes().startswith(b'IPRP'), binary.read_bytes()[:8]
     print('Full compiler --check, imported diagnostics, JSON and no-write contract: PASS')

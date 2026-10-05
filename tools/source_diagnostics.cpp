@@ -1,6 +1,7 @@
 #include "source_diagnostics.hpp"
 
 #include <ostream>
+#include <sstream>
 
 #include "json.hpp"
 #include "ips/SourceError.hpp"
@@ -22,11 +23,17 @@ void writeString(std::ostream& out, const std::optional<std::string>& value) {
 }
 } // namespace
 
-void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersion,
-    std::string_view status, const std::vector<CompilationDiagnostic>& diagnostics) {
+void writeSourceDiagnosticsJson(std::ostream& destination, std::string_view productVersion,
+    ips::DiagnosticStatus status, const std::vector<CompilationDiagnostic>& diagnostics) {
+    // Build one complete document before publishing any bytes. An exception
+    // while escaping/allocating can then use the main fallback without
+    // appending a second document to a partially written JSON prefix.
+    std::ostringstream buffer;
+    buffer.exceptions(std::ios::badbit | std::ios::failbit);
+    auto& out=buffer;
     out << "{\"schema_version\":1,\"product_version\":\"" << jsonEscape(productVersion)
         << "\",\"language_version\":{\"major\":" << ips::kLanguageVersionMajor
-        << ",\"minor\":" << ips::kLanguageVersionMinor << "},\"status\":\"" << jsonEscape(status)
+        << ",\"minor\":" << ips::kLanguageVersionMinor << "},\"status\":\"" << ips::diagnosticStatusName(status)
         << "\",\"diagnostics\":[";
     bool first = true;
     for (const auto& diagnostic : diagnostics) {
@@ -73,6 +80,7 @@ void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersi
         out << "]}";
     }
     out << "]}\n";
+    destination << buffer.str();
 }
 
 void writeSourceDiagnosticText(std::ostream& out, const CompilationDiagnostic& diagnostic,

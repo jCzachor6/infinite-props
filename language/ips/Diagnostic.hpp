@@ -21,8 +21,10 @@ struct SourcePosition { std::size_t byteOffset=0, line=1, column=1; };
 struct SourceRange { SourcePosition start, end; }; // end-exclusive
 struct RelatedLocation { std::string path, message; SourceRange range; };
 struct FixIt { SourceRange range; std::string replacement, sourceId; };
+struct SourceEdit { SourceLocation location; std::string replacement; };
 
 enum class DiagnosticSeverity { Error, Warning, Note };
+enum class DiagnosticStatus { Success, InvalidSource, CLIError, InternalError };
 enum class DiagnosticStage { Unspecified, Lexer, Parser, Import, Typing, Planning, Validation, IO, CLI, Internal };
 enum class DiagnosticCode {
     Unspecified, InvalidUtf8, LexicalError, ExpectedToken, InvalidSyntax,
@@ -38,6 +40,8 @@ std::string_view diagnosticCodeName(DiagnosticCode code) noexcept;
 std::string_view diagnosticStageName(DiagnosticStage stage) noexcept;
 std::string_view diagnosticSeverityName(DiagnosticSeverity severity) noexcept;
 DiagnosticCode defaultDiagnosticCode(DiagnosticStage stage) noexcept;
+std::string_view diagnosticStatusName(DiagnosticStatus status) noexcept;
+int diagnosticExitCode(DiagnosticStatus status) noexcept;
 
 struct Diagnostic {
     std::string message;
@@ -53,5 +57,7 @@ struct Diagnostic {
     std::vector<FixIt> fixIts{};
     std::optional<std::string> sourceId{};
 };
+
+DiagnosticStatus diagnosticStatusFor(const std::vector<Diagnostic>& diagnostics) noexcept;
 
 } // namespace iprop::ips

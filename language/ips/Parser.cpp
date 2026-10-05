@@ -130,6 +130,7 @@ void ParserImpl::parseOrigin(Asset& asset) {
 
 InputDecl ParserImpl::parseInput() {
     advance(); // 'input'
+    const auto typeLocation=peek().location;
     InputType type;
     switch (kind()) {
     case TokenKind::TypeColor: type = InputType::Color; break;
@@ -144,7 +145,7 @@ InputDecl ParserImpl::parseInput() {
     expect(TokenKind::Assign, "'=' and a default value");
     auto value = parseLiteralValue();
     match(TokenKind::Semi);
-    return InputDecl{type, name.text, std::move(value), name.location};
+    return InputDecl{type, name.text, std::move(value), name.location,typeLocation};
 }
 
 // Input defaults allow parentheses and one unary minus, but no expression

@@ -19,7 +19,7 @@ struct SourceCompilationOptions {
     bool compress = true;
 };
 
-enum class SourceCompilationStatus { Success, InvalidSource, InternalError };
+using SourceCompilationStatus = ips::DiagnosticStatus;
 
 using CompilationDiagnostic = ips::Diagnostic;
 

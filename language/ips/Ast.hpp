@@ -185,6 +185,7 @@ struct InputDecl {
     std::string name;
     std::unique_ptr<Expr> defaultValue;
     SourceLocation location;
+    SourceLocation typeLocation{};
 };
 
 // `output rect collider` or `output list point pts`

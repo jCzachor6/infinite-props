@@ -76,6 +76,10 @@ SourceCompilationResult compileSource(
         if (const auto found=result.sources.find(diagnostic.path); found!=result.sources.end()) {
             diagnostic.range=ips::sourceRangeAt(found->second,error.location);
             diagnostic.sourceId=ips::sourceContentId(found->second);
+            for (const auto& edit : error.edits) {
+                if (const auto range=ips::sourceRangeAt(found->second,edit.location))
+                    diagnostic.fixIts.push_back({*range,edit.replacement,*diagnostic.sourceId});
+            }
         }
         result.diagnostics.push_back(std::move(diagnostic));
     } catch (const std::exception& error) {

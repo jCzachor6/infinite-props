@@ -101,10 +101,16 @@ ResolvedConstant resolveInputDefault(const InputDecl& input) {
     if (!matches)
         throw SourceError{locationOf(*input.defaultValue),
             "default value of input '" + input.name + "' does not match its declared type"};
-    if (input.type == InputType::U32 && *result.mathematicalInteger < 0)
-        throw SourceError{locationOf(*input.defaultValue),
+    if (input.type == InputType::U32 && *result.mathematicalInteger < 0) {
+        SourceError diagnostic{locationOf(*input.defaultValue),
             "negative default of input u32 '" + input.name + "'; use input i32 for signed defaults",
             {}, DiagnosticCode::UnsignedDefaultNegative};
+        diagnostic.suggestions.push_back("Use input i32 for a signed default within [-2147483648, 2147483647].");
+        if (*result.mathematicalInteger >= std::numeric_limits<i32>::min() &&
+            input.typeLocation.byteOffset != std::string_view::npos)
+            diagnostic.edits.push_back({input.typeLocation,"i32"});
+        throw diagnostic;
+    }
     if (input.type == InputType::I32 &&
         (*result.mathematicalInteger < std::numeric_limits<i32>::min() ||
          *result.mathematicalInteger > std::numeric_limits<i32>::max()))

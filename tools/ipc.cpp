@@ -4,6 +4,8 @@
 #include "source_diagnostics.hpp"
 #include "language_description.hpp"
 #include "ips/Printer.hpp"
+#include "iprop/Utf8.hpp"
+#include "ips/Version.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -19,16 +21,17 @@ bool sameFile(const std::filesystem::path& first, const std::filesystem::path& s
                std::filesystem::absolute(second).lexically_normal() ||
            std::filesystem::equivalent(first, second, error);
 }
+class OutputIOError : public std::runtime_error { public: using std::runtime_error::runtime_error; };
 void writeFile(const std::string& path, const char* data, std::size_t size) {
     std::ofstream out(path, std::ios::binary);
-    if (!out) throw std::runtime_error("cannot write '" + path + "'");
+    if (!out) throw OutputIOError("cannot write '" + path + "'");
     out.write(data, static_cast<std::streamsize>(size));
     out.close();
-    if (!out) throw std::runtime_error("cannot write '" + path + "'");
+    if (!out) throw OutputIOError("cannot write '" + path + "'");
 }
 } // namespace
 
-int main(int argc, char* argv[]) {
+int runCompiler(int argc, char* argv[]) {
     if (argc == 2 && std::string_view(argv[1]) == "--describe-language") {
         iprop::tools::writeLanguageDescription(std::cout, IPROP_PRODUCT_VERSION);
         return std::cout ? 0 : 1;
@@ -38,15 +41,19 @@ int main(int argc, char* argv[]) {
     bool json = false;
     for (int i=1; i<argc; ++i)
         if (std::string_view(argv[i]) == "--diagnostics=json") json = true;
-    const auto fail = [&](std::string message, const char* status = "cli_error") {
-        const bool internal = std::string_view(status) == "internal_error";
+    const auto fail = [&](std::string message, iprop::ips::DiagnosticStage stage=iprop::ips::DiagnosticStage::CLI) {
         const iprop::CompilationDiagnostic diagnostic{std::move(message), {}, std::nullopt,
-            internal ? iprop::ips::DiagnosticCode::InternalError : iprop::ips::DiagnosticCode::CLIArgument,
-            internal ? iprop::ips::DiagnosticStage::Internal : iprop::ips::DiagnosticStage::CLI};
+            iprop::ips::defaultDiagnosticCode(stage),stage};
+        const auto status=iprop::ips::diagnosticStatusFor({diagnostic});
         if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, {diagnostic});
         else iprop::tools::writeSourceDiagnosticText(std::cerr, diagnostic, {});
-        return 1; // Distinct protocol exit classes are defined by task B.4.
+        return iprop::ips::diagnosticExitCode(status);
     };
+    for (int i=1;i<argc;++i) {
+        const std::string_view argument(argv[i]);
+        if (!iprop::isValidUtf8({reinterpret_cast<const iprop::u8*>(argument.data()),argument.size()}))
+            return fail("CLI arguments must be valid UTF-8");
+    }
     std::string input, output, formattedOutput;
     bool outputRequested = false, check = false;
     iprop::SourceCompilationOptions options;
@@ -103,15 +110,14 @@ int main(int argc, char* argv[]) {
         };
         const auto result = iprop::compileSource(entryName, loadSource, options);
         if (!result.succeeded()) {
-            const char* status = result.status == iprop::SourceCompilationStatus::InvalidSource
-                ? "invalid_source" : "internal_error";
+            const auto status = result.status;
             if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, result.diagnostics);
             else for (const auto& diagnostic : result.diagnostics) {
                 const auto found = result.sources.find(diagnostic.path);
                 iprop::tools::writeSourceDiagnosticText(std::cerr, diagnostic,
                     found == result.sources.end() ? std::string_view{} : found->second);
             }
-            return 1;
+            return iprop::ips::diagnosticExitCode(status);
         }
         if (!check) {
             std::string canonical;
@@ -128,14 +134,35 @@ int main(int argc, char* argv[]) {
                 writeFile(formattedOutput,canonical.data(),canonical.size());
             }
         }
-        if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, "ok", {});
+        if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, iprop::ips::DiagnosticStatus::Success, {});
         else if (check) std::cout << "checked " << input << '\n';
         else {
             std::cout << "compiled " << input << " -> " << output << '\n';
             if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << '\n';
         }
         return std::cout ? 0 : 1;
+    } catch (const OutputIOError& error) {
+        return fail(error.what(), iprop::ips::DiagnosticStage::IO);
     } catch (const std::exception& error) {
-        return fail(error.what(), "internal_error");
+        return fail(error.what(), iprop::ips::DiagnosticStage::Internal);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    try { return runCompiler(argc,argv); }
+    catch (...) {
+        // Last-resort error reporting uses literals and no source/JSON objects.
+        // This also covers failures during argument parsing or renderer setup.
+        bool json=false;
+        for (int i=1;i<argc;++i) if (std::string_view(argv[i])=="--diagnostics=json") json=true;
+        if (json) std::cout << "{\"schema_version\":1,\"product_version\":\"" IPROP_PRODUCT_VERSION
+            "\",\"language_version\":{\"major\":" << iprop::ips::kLanguageVersionMajor
+            << ",\"minor\":" << iprop::ips::kLanguageVersionMinor << "},\"status\":\"internal_error\","
+            "\"diagnostics\":[{\"code\":\"IPS-INTERNAL-001\",\"stage\":\"internal\",\"severity\":\"error\","
+            "\"message\":\"unexpected compiler failure\",\"file\":null,\"location\":null,\"range\":null,"
+            "\"source_id\":null,\"expected_type\":null,\"actual_type\":null,\"suggestions\":[],"
+            "\"related_locations\":[],\"fix_its\":[]}]}\n";
+        else std::cerr << "ipc: unexpected compiler failure\n";
+        return 3;
     }
 }

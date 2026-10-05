@@ -22,6 +22,7 @@ struct SourceError : std::exception {
     DiagnosticStage stage;
     std::optional<std::string> expectedType{}, actualType{};
     std::vector<std::string> suggestions{};
+    std::vector<SourceEdit> edits{};
 
     SourceError(SourceLocation at, std::string text, std::string sourcePath = {},
                 DiagnosticCode reason = DiagnosticCode::Unspecified,

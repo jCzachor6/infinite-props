@@ -1,6 +1,35 @@
 #include "ips/Diagnostic.hpp"
 
 namespace iprop::ips {
+std::string_view diagnosticStatusName(DiagnosticStatus status) noexcept {
+    switch (status) {
+    case DiagnosticStatus::Success: return "ok";
+    case DiagnosticStatus::InvalidSource: return "invalid_source";
+    case DiagnosticStatus::CLIError: return "cli_error";
+    case DiagnosticStatus::InternalError: return "internal_error";
+    }
+    return "internal_error";
+}
+int diagnosticExitCode(DiagnosticStatus status) noexcept {
+    switch (status) {
+    case DiagnosticStatus::Success: return 0;
+    case DiagnosticStatus::InvalidSource: return 1;
+    case DiagnosticStatus::CLIError: return 2;
+    case DiagnosticStatus::InternalError: return 3;
+    }
+    return 3;
+}
+DiagnosticStatus diagnosticStatusFor(const std::vector<Diagnostic>& diagnostics) noexcept {
+    auto status=DiagnosticStatus::Success;
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.severity!=DiagnosticSeverity::Error) continue;
+        if (diagnostic.stage==DiagnosticStage::Internal || diagnostic.code==DiagnosticCode::InternalError)
+            return DiagnosticStatus::InternalError;
+        if (diagnostic.stage==DiagnosticStage::CLI) status=DiagnosticStatus::CLIError;
+        else if (status==DiagnosticStatus::Success) status=DiagnosticStatus::InvalidSource;
+    }
+    return status;
+}
 std::string_view diagnosticCodeName(DiagnosticCode code) noexcept {
     switch (code) {
     case DiagnosticCode::Unspecified: return "IPS-INTERNAL-001";

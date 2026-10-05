@@ -64,5 +64,29 @@ file. Apply a fix only to the matching source identity; never apply it by
 line number to a changed file. Empty arrays mean no machine-readable
 suggestion or edit was supplied; clients must not parse one from the message.
 The later recovery/editor tasks add more causes and consumers without changing
-the position contract. Distinct CLI/source/internal exit classes are finalized
-in B.4.
+the position contract.
+
+## Output and exit classes
+
+`--diagnostics=json` publishes one complete document on stdout, including
+invalid invocations. No colors, progress lines or compiler logs share that
+stream; ordinary human diagnostics go to stderr in text mode. The JSON
+renderer builds the document before publishing it, so an allocation failure
+while escaping cannot leave a partial JSON prefix. A literal fallback reports
+an unexpected failure without allocating diagnostic/source objects. Failure
+of the operating system's output stream itself cannot guarantee delivery.
+
+| Exit | Status | Meaning |
+| --- | --- | --- |
+| 0 | `ok` | No errors; warnings/notes alone do not fail a call |
+| 1 | `invalid_source` | Invalid source/import or an expected I/O failure |
+| 2 | `cli_error` | Invalid invocation, conflicting options or invalid UTF-8 arguments |
+| 3 | `internal_error` | Unexpected compiler failure, including allocation failure |
+
+CLI failures have null source locations. Basic error handling does not recover
+by interpreting message strings. UTF-8 CLI arguments are validated before
+including them in JSON. Fix-its always carry their owning snapshot identity.
+For a negative U32 default in signed range, the compiler suggests `input i32`
+and supplies an exact edit of the type token; out-of-range defaults do not
+receive that edit, because changing the type cannot repair them. The editor
+must verify `source_id` before applying the replacement.

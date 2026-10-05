@@ -14,6 +14,42 @@
 
 using namespace iprop;
 
+TEST_CASE("diagnostic exit classes ignore warnings and keep error identities") {
+    using namespace ips;
+    Diagnostic warning{"hint",{},std::nullopt,DiagnosticCode::TypeError,DiagnosticStage::Typing,
+                       DiagnosticSeverity::Warning};
+    CHECK(diagnosticExitCode(diagnosticStatusFor({warning}))==0);
+    auto error=warning;
+    error.severity=DiagnosticSeverity::Error;
+    CHECK(diagnosticExitCode(diagnosticStatusFor({warning,error}))==1);
+    error.stage=DiagnosticStage::CLI;
+    error.code=DiagnosticCode::CLIArgument;
+    CHECK(diagnosticExitCode(diagnosticStatusFor({error}))==2);
+    error.stage=DiagnosticStage::Internal;
+    error.code=DiagnosticCode::InternalError;
+    CHECK(diagnosticExitCode(diagnosticStatusFor({error}))==3);
+}
+
+TEST_CASE("signed-default fix-it is bounded and bound to its owning snapshot") {
+    const std::string source="asset t { size 8x8 input u32 n=-7 draw{} }";
+    const auto result=compileSource("t.ips",[&](std::string_view) { return source; });
+    REQUIRE(result.diagnostics.size()==1);
+    const auto& diagnostic=result.diagnostics[0];
+    REQUIRE(diagnostic.fixIts.size()==1);
+    const auto& fix=diagnostic.fixIts[0];
+    CHECK(fix.sourceId==ips::sourceContentId(source));
+    CHECK(fix.replacement=="i32");
+    CHECK(source.substr(fix.range.start.byteOffset,fix.range.end.byteOffset-fix.range.start.byteOffset)=="u32");
+    auto repaired=source;
+    repaired.replace(fix.range.start.byteOffset,fix.range.end.byteOffset-fix.range.start.byteOffset,fix.replacement);
+    CHECK(compileSource("t.ips",[&](std::string_view) { return repaired; }).succeeded());
+    const auto invalid=compileSource("t.ips",[](std::string_view) {
+        return std::string("asset t {size 8x8 input u32 n=-2147483649 draw{}}");
+    });
+    REQUIRE(invalid.diagnostics.size()==1);
+    CHECK(invalid.diagnostics[0].fixIts.empty()); // changing type cannot repair an out-of-range default
+}
+
 TEST_CASE("source identities and ranges preserve exact UTF-8 bytes including CRLF") {
     CHECK(ips::sourceContentId("")=="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     CHECK(ips::sourceContentId("abc")=="sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
