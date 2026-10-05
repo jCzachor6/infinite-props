@@ -10,6 +10,7 @@ from pathlib import Path
 
 from release_common import (ROOT, api_version, committed_source, extract_archive, product_version,
                             run, sha256, write_archive, write_checksums, write_json)
+from language_docs import verify as verify_documentation
 
 
 def read_cache(build):
@@ -21,7 +22,9 @@ def read_cache(build):
     return cache
 
 
-def validate_install(prefix, work, cache, build):
+def validate_install(prefix, work, cache, build, clean=False):
+    verify_documentation(prefix / "share/iprop", product_version(), root=ROOT,
+                         compiler=prefix / "bin" / ("ipc.exe" if sys.platform == "win32" else "ipc"), clean=clean)
     godot_project = prefix / "share/iprop/godot"
     if godot_project.exists() and any((godot_project / "bin").glob("*.debug.*")):
         raise RuntimeError("Use GODOTCPP_TARGET=template_release for the release package")
@@ -69,7 +72,7 @@ def main():
         # Exported CMake targets and native loaders must resolve from here.
         prefix = temporary / name
         staging.rename(prefix)
-        validate_install(prefix, temporary / "smoke", cache, build)
+        validate_install(prefix, temporary / "smoke", cache, build, clean=not args.check)
         if args.check:
             print("Release package validation: PASS (no archives created)")
             return
@@ -94,10 +97,11 @@ def main():
         archived_manifest = json.loads((extracted / name / "release.json").read_text(encoding="utf-8"))
         if archived_manifest != manifest:
             raise RuntimeError("The archived SDK manifest differs from the tested install")
-        validate_install(extracted / name, temporary / "archive-smoke", cache, build)
+        validate_install(extracted / name, temporary / "archive-smoke", cache, build, clean=True)
         validation = dist / f"{name}-validation.json"
         write_json(validation, {**manifest, "passed": True,
-                               "checks": {"ctest": True, "relocated_sdk": True, "extracted_sdk": True},
+                               "checks": {"ctest": True, "relocated_sdk": True, "extracted_sdk": True,
+                                          "documentation": True},
                                "artifacts": {path.name: sha256(path) for path in artifacts}})
         # Never pick up stale archives from previous invocations in this directory.
         write_checksums(dist / f"iprop-{version}-SHA256SUMS.txt", [*artifacts, validation])

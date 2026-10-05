@@ -112,10 +112,12 @@ if(IPROP_NODE_EXECUTABLE)
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/production.test.js")
 endif()
 
-find_package(Python3 QUIET COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover
         -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p "test_*.py")
     add_test(NAME compiler_optimization_acceptance COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check-optimizations.py" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME language_documentation COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/language_docs.py" check --compiler "$<TARGET_FILE:ipc>"
+        --report-dir "${CMAKE_BINARY_DIR}/ci-reports/language")
 endif()

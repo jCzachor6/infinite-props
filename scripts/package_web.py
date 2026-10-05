@@ -8,6 +8,7 @@ from pathlib import Path
 
 from release_common import (ROOT, committed_source, extract_archive, product_version,
                             run, sha256, write_archive, write_checksums, write_json)
+from language_docs import build as build_documentation, verify as verify_documentation
 
 
 def main():
@@ -29,6 +30,9 @@ def main():
     artifacts = []
     with tempfile.TemporaryDirectory(prefix="iprop-web-release-") as temporary:
         temporary = Path(temporary)
+        documentation = temporary / "language-docs"
+        compiler = tools / ("ipc.exe" if sys.platform == "win32" else "ipc")
+        build_documentation(compiler, documentation)
         for kind in ("wasm", "website"):
             prefix = temporary / f"iprop-{version}-{kind}"
             if kind == "website":
@@ -39,6 +43,8 @@ def main():
                     shutil.copy2(wasm / name, prefix / name)
                 shutil.copy2(ROOT / "backends/html5/js/api.js", prefix / "api.js")
                 shutil.copy2(ROOT / "backends/html5/README.md", prefix / "README.md")
+                shutil.copytree(documentation, prefix, dirs_exist_ok=True)
+            verify_documentation(prefix, version, commit, root=ROOT, compiler=compiler, clean=True)
             shutil.copy2(ROOT / "LICENSE", prefix / "LICENSE")
             (prefix / "licenses").mkdir(exist_ok=True)
             shutil.copy2(ROOT / "third_party/zlib-LICENSE.txt", prefix / "licenses/zlib-LICENSE.txt")
@@ -47,6 +53,7 @@ def main():
             write_archive(prefix, archive)
             extracted = temporary / (kind + "-extracted")
             extract_archive(archive, extracted)
+            verify_documentation(extracted / prefix.name, version, commit, root=ROOT, compiler=compiler, clean=True)
             if kind == "website":
                 run("node", ROOT / "website/test/release-smoke.js", extracted / prefix.name, tools)
             else:
@@ -54,7 +61,8 @@ def main():
             artifacts.append(archive)
     validation = destination / f"iprop-{version}-web-validation.json"
     write_json(validation, {**manifest, "passed": True,
-                           "checks": {"extracted_wasm": True, "extracted_website": True},
+                           "checks": {"extracted_wasm": True, "extracted_website": True,
+                                      "documentation": True},
                            "artifacts": {path.name: sha256(path) for path in artifacts}})
     write_checksums(destination / f"iprop-{version}-web-SHA256SUMS.txt", [*artifacts, validation])
     print("Created and verified " + ", ".join(path.name for path in artifacts))

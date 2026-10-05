@@ -126,6 +126,8 @@ jobs:
         run: |
           python scripts/ci_report.py run website-prepare sh website/prepare.sh build/wasm build/tools
           python scripts/ci_report.py run website-install npm --prefix website ci
+          python scripts/ci_report.py run language-docs python scripts/language_docs.py check --compiler build/tools/ipc --report-dir build/ci-reports/language
+          python scripts/ci_report.py run docs-render-tests node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=build/ci-reports/docs-render.xml website/test/docs.test.mjs
           python scripts/ci_report.py run website-build npm --prefix website run build
           python scripts/ci_report.py run website-smoke node website/test/release-smoke.js website/dist build/tools
 

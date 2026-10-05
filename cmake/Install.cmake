@@ -44,6 +44,10 @@ if(TARGET iprop_sfml)
 endif()
 
 install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+if(Python3_Interpreter_FOUND)
+    # Expanded chapters replace their authored directives in installed SDKs.
+    install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     third_party/stb/stb_image.h third_party/stb/stb_image_write.h

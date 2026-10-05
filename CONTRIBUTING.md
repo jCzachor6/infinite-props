@@ -47,6 +47,22 @@ helpers live in `tests/support/`; backend conformance suites live beside their
 backend. Register each new test source explicitly in the matching
 `CMakeLists.txt` so it is compiled and run by CTest.
 
+## Language documentation
+
+The [language handbook](docs/language/index.md) is the shared Markdown source
+for native SDKs, WASM packages and the website. Edit its chapters rather than
+generated HTML or downloads. Add every chapter to `book.json` and the overview;
+describe each builtin exactly once and register real examples in
+`examples/language/cases.json`. The compiler supplies signatures and lexer
+aliases through `ipc --describe-language`.
+
+With Python 3.10 or newer, a full native build regenerates the versioned book
+and CTest checks links, builtin coverage, successful generations and expected
+compile errors/traps. `npm --prefix website run build` generates the language
+page and search index from the same book; `npm --prefix website run test:docs`
+checks rendering and link failures. Packaging needs Python 3.12 or newer and
+validates the documentation inside the relocated and extracted archives.
+
 ## Style
 
 - C++20, 4-space indentation, `snake_case` for functions/variables,

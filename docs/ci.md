@@ -10,13 +10,15 @@ Each job retains a `reports-*` artifact for 14 days, including on failure:
   Python/Node/CMake versions and GitHub run identifiers.
 - `*.log` and `*.step.json`: combined stdout/stderr, command, duration and
   original exit status for each build or validation step.
-- `ctest.xml` or `node.xml`: JUnit test results.
+- `ctest.xml`, `node.xml` or `docs-render.xml`: JUnit test results.
 - `summary.json` and `summary.md`: check results, also shown in the Actions
   job summary. A failed command or test report remains a failed job.
 - WASM `conformance/conformance.json`: golden, pixel/output, trap, vector,
   color and compression comparison results. Failed image comparisons save
   `actual.png`, `expected.png`, `diff.png` and `comparison.json`; opaque
   magenta marks unequal pixels, including RGB under transparent pixels.
+- `language/language-docs.json`: compiler-derived builtin coverage and results
+  for the handbook's successful examples, compile rejections and runtime traps.
 
 Successful jobs also retain downloadable builds for 14 days:
 
@@ -34,6 +36,22 @@ and rerun installed SDK consumers, included native integrations and web/WASM
 smoke tests there. `*-validation.json` binds those results to the source commit
 and the actual archive digests. Archive timestamps/ownership are normalized;
 executable permissions and relative library symlinks are preserved.
+
+Native builds with Python generate the complete handbook from `docs/language/`
+and `ipc --describe-language`. CTest compiles and executes all registered
+language examples, including expected failures, and requires successful
+examples for every builtin. The WASM job runs the same documentation check,
+tests the Markdown renderer and builds the website from the generated book.
+Broken chapter/example links, missing or duplicate builtin explanations,
+incorrect signatures, failed examples and invalid search anchors fail CI.
+
+Every SDK ships the book under `share/iprop/docs/`; WASM and website archives
+use `docs/` at their root. `language-manifest.json` records the product version,
+source commit, development/release status, compiler catalog and file digests.
+Installed SDK checks compare it with the installed compiler. Archive collection
+also requires the complete documentation payload, unchanged authored inputs,
+the same commit/version and a clean source checkout for generated documentation.
+Historical release documentation stays tied to its original Git tag and archives.
 
 These are build artifacts for the recorded commit; uploading them does not
 create a GitHub Release or release tag. Caches are not used as release inputs.

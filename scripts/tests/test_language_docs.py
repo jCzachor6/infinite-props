@@ -1,6 +1,8 @@
 """Reject incomplete, stale or corrupted documentation before packaging."""
 import json
+import io
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,25 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import language_docs as docs
-
-
-LANGUAGE = {"schema_version": 1, "product_version": "0.4.0", "builtins": [
-    {"name": "unit", "overloads": [{"parameters": [], "result": "f32"}]}],
-    "emoji_aliases": [{"word": "asset", "codepoint": 128230}]}
-
-
-def fixture(root):
-    for name, content in {
-        "CMakeLists.txt": "project(iprop VERSION 0.4.0)\n",
-        "docs/language/book.json": '{"title":"Book","chapters":["index.md"]}',
-        "docs/language/index.md": "# Book\n\n## unit\n<!-- builtin: unit -->\n\nOne deterministic stream draw.\n\n<!-- example: ../../examples/language/one.ips -->\n\n<!-- aliases -->\n",
-        "examples/language/cases.json": '{"cases":[{"file":"one.ips","expect":"pass"}]}',
-        "examples/language/one.ips": "asset A { size 1x1 draw { x = unit() } }\n",
-        "examples/recipes/README.md": "# Recipes\n",
-    }.items():
-        file = root / name
-        file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_text(content, encoding="utf-8")
+from language_fixture import LANGUAGE, fixture
 
 
 class DocumentationTest(unittest.TestCase):
@@ -86,6 +70,46 @@ class DocumentationTest(unittest.TestCase):
         result = type("Result", (), {"returncode": 0, "stdout": json.dumps(value), "stderr": ""})()
         with patch.object(docs, "run", return_value=result), self.assertRaisesRegex(RuntimeError, "another product version"):
             docs.contracts(Path("unused"), self.root)
+
+    def test_archived_documentation_rejects_tampering_missing_files_and_dirty_sources(self):
+        with patch.object(docs, "contracts", return_value=LANGUAGE):
+            docs.build(Path("unused"), self.output, self.root)
+        original = {p.relative_to(self.output).as_posix(): p.read_bytes() for p in self.output.rglob("*") if p.is_file()}
+        file = self.output.parent / "book.tar.gz"
+        for change in ("none", "tamper", "missing", "dirty", "foreign"):
+            payload = dict(original)
+            expected_commit = None
+            if change == "tamper":
+                payload["docs/language-v0.4.md"] += b"changed"
+            if change == "missing":
+                del payload["docs/language/index.md"]
+            if change in ("dirty", "foreign"):
+                manifest = json.loads(payload["docs/language-manifest.json"])
+                if change == "dirty":
+                    manifest["working_tree_dirty"] = True
+                else:
+                    manifest["source_commit"] = "b" * 40
+                    expected_commit = "a" * 40
+                payload["docs/language-manifest.json"] = json.dumps(manifest).encode()
+            with tarfile.open(file, "w:gz") as archive:
+                for name, data in payload.items():
+                    member = tarfile.TarInfo("book/" + name)
+                    member.size = len(data)
+                    archive.addfile(member, io.BytesIO(data))
+            with self.subTest(change=change):
+                if change == "none":
+                    docs.verify_archive(file, "book", "0.4.0", None, self.root)
+                else:
+                    with self.assertRaises(RuntimeError):
+                        docs.verify_archive(file, "book", "0.4.0", expected_commit, self.root)
+
+    def test_changed_inputs_cannot_be_verified_as_current_documentation(self):
+        with patch.object(docs, "contracts", return_value=LANGUAGE):
+            docs.build(Path("unused"), self.output, self.root)
+        chapter = self.root / "docs/language/index.md"
+        chapter.write_text(chapter.read_text() + "\nNew behavior.\n")
+        with self.assertRaisesRegex(RuntimeError, "inputs differ"):
+            docs.verify(self.output, "0.4.0", root=self.root)
 
 
 if __name__ == "__main__":

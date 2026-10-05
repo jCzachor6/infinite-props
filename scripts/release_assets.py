@@ -12,6 +12,7 @@ from pathlib import Path
 
 from release_common import ROOT, api_version, committed_source, sha256, write_checksums, write_json
 from release_preflight import metadata
+from language_docs import verify_archive as verify_documentation
 
 
 def require(condition, message):
@@ -110,13 +111,14 @@ def verify_packages(directory, version, commit, root=ROOT):
             header = archive.extractfile(file.name[:-7] + "/include/iprop.h").read()
             require(header.replace(b"\r\n", b"\n") == (root / "backends/capi/iprop.h").read_bytes().replace(b"\r\n", b"\n"),
                     "Archived C API header differs from the source")
+        verify_documentation(file, file.name[:-7] + "/share/iprop", version, commit, root)
         if system == "linux":
             require(manifest["backends"].get("sfml") is True and manifest["backends"].get("godot") is True,
                     "Linux SDK must include the tested SFML/Godot integrations")
         validation = json.loads((directory / (file.name[:-7] + "-validation.json")).read_text(encoding="utf-8"))
         identity(validation, version, commit)
         require(validation.get("passed") is True and
-                all(validation.get("checks", {}).get(key) is True for key in ("ctest", "relocated_sdk", "extracted_sdk")),
+                all(validation.get("checks", {}).get(key) is True for key in ("ctest", "relocated_sdk", "extracted_sdk", "documentation")),
                 "SDK archive did not pass extraction validation")
         require(validation.get("backends") == manifest["backends"] and
                 validation.get("c_api_version") == manifest["c_api_version"], "SDK validation describes a different API or backends")
@@ -128,7 +130,7 @@ def verify_packages(directory, version, commit, root=ROOT):
     web = json.loads((directory / (prefix + "-web-validation.json")).read_text(encoding="utf-8"))
     identity(web, version, commit)
     require(web.get("passed") is True and all(web.get("checks", {}).get(key) is True
-                                            for key in ("extracted_wasm", "extracted_website")),
+                                            for key in ("extracted_wasm", "extracted_website", "documentation")),
             "WASM/website did not pass extraction validation")
     for kind in ("wasm", "website"):
         file = directory / (prefix + "-" + kind + ".tar.gz")
@@ -140,6 +142,7 @@ def verify_packages(directory, version, commit, root=ROOT):
         with tarfile.open(file, "r:gz") as archive:
             wasm = archive.extractfile(file.name[:-7] + "/iprop.wasm").read()
             require(hashlib.sha256(wasm).hexdigest() == web["wasm_sha256"], "Archived WASM module differs")
+        verify_documentation(file, file.name[:-7], version, commit, root)
 
 
 def collect(inputs, destination, version, commit, root=ROOT):

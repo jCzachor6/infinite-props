@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from collections import Counter
 from pathlib import Path, PurePosixPath
@@ -82,9 +83,13 @@ def contracts(compiler, root=ROOT):
 
 def identity(root, version):
     def git(*args):
-        result = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8")
+        try:
+            result = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8")
+        except FileNotFoundError:
+            return None  # The installed source archive does not require Git.
         return result.stdout.strip() if result.returncode == 0 else None
-    commit = git("rev-parse", "HEAD") if git("rev-parse", "--show-toplevel") == str(root.resolve()) else None
+    toplevel = git("rev-parse", "--show-toplevel")
+    commit = git("rev-parse", "HEAD") if toplevel and Path(toplevel).resolve() == root.resolve() else None
     dirty = bool(git("status", "--porcelain=v1")) if commit else False
     tag = "v" + version
     tagged = commit is not None and git("rev-parse", "refs/tags/" + tag + "^{commit}") == commit
@@ -166,6 +171,15 @@ def sources(root, language):
     return book, chapters, text, registered
 
 
+def resources(root):
+    files = [root / "docs/language/book.json", root / "examples/language/cases.json"]
+    files += list((root / "examples/language").rglob("*.ips"))
+    files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
+    files += list((root / "spec").glob("*.md"))
+    files += list((root / "docs").glob("*optim*.md"))
+    return files
+
+
 def build(compiler, destination, root=ROOT):
     root = root.resolve()
     language = contracts(compiler, root)
@@ -232,12 +246,7 @@ def build(compiler, destination, root=ROOT):
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"
     # Ship the linked standalone sources and frozen numerical contracts offline.
-    resources = [root / "docs/language/book.json", root / "examples/language/cases.json"]
-    resources += list((root / "examples/language").rglob("*.ips"))
-    resources += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
-    resources += list((root / "spec").glob("*.md"))
-    resources += list((root / "docs").glob("*optim*.md"))
-    for file in resources:
+    for file in resources(root):
         output[record(file)] = read(file)
     info.update({"schema_version": 1, "builtin_count": len(builtins), "example_count": len(cases),
                  "headings": headings(combined),
@@ -261,29 +270,74 @@ def build(compiler, destination, root=ROOT):
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(content, encoding="utf-8", newline="\n")
     write_json(destination / "docs/language-manifest.json", info)
-    verify(destination, version, info["source_commit"])
+    verify(destination, version, info["source_commit"], root=root)
     return info
 
 
-def verify(directory, version=None, commit=None):
-    def path(name):
-        parts = PurePosixPath(name).parts
-        require(parts and not name.startswith("/") and all(p not in (".", "..") for p in parts), "Invalid documentation member")
-        result = directory.joinpath(*parts)
-        require(result.resolve().is_relative_to(directory.resolve()), "Documentation member escapes bundle")
-        return result
-    manifest = json.loads(read(path("docs/language-manifest.json")))
+def member_name(name):
+    require(isinstance(name, str) and "\\" not in name and "\0" not in name,
+            "Invalid documentation member")
+    path = PurePosixPath(name)
+    require(path.parts and not path.is_absolute() and path.as_posix() == name and
+            all(p not in (".", "..") for p in path.parts), "Invalid documentation member")
+    return name
+
+
+def verify_contents(load, version=None, commit=None, root=None, clean=False):
+    manifest = json.loads(load("docs/language-manifest.json"))
     require(manifest.get("schema_version") == 1 and manifest.get("files") and manifest.get("source_files"), "Incomplete documentation manifest")
     if version is not None:
         require(manifest.get("product_version") == version, "Documentation version differs")
     if commit is not None:
         require(manifest.get("source_commit") == commit, "Documentation source commit differs")
+    if clean:
+        require(manifest.get("working_tree_dirty") is False, "Documentation was generated from an uncommitted checkout")
     for name, expected in manifest["files"].items():
-        file = path(name)
-        require(file.is_file() and digest(file.read_bytes()) == expected, "Documentation file changed: " + name)
-    language = json.loads(read(path("docs/language.json")))
-    require(language["product_version"] == manifest["product_version"] and len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
+        require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
+    language = json.loads(load("docs/language.json"))
+    require(language.get("schema_version") == 1 and language["product_version"] == manifest["product_version"] and
+            len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
+    cases = json.loads(load("examples/language/cases.json"))["cases"]
+    require(len(cases) == manifest["example_count"], "Documentation example count differs")
+    minor = ".".join(manifest["product_version"].split(".")[:2])
+    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md"}
+    require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
+    if root is not None:
+        root = root.resolve()
+        _, chapters, _, _ = sources(root, language)
+        expected = {p.relative_to(root).as_posix(): digest(read(p).encode("utf-8")) for p in [*chapters, *resources(root)]}
+        require(manifest["source_files"] == expected, "Documentation inputs differ from the source checkout")
+        info = identity(root, manifest["product_version"])
+        require(manifest.get("source_commit") == info["source_commit"], "Documentation source commit differs from the source checkout")
+        require(manifest.get("status") == info["status"] and manifest.get("tag") == info["tag"],
+                "Documentation release status differs from the source checkout")
     return manifest
+
+
+def verify(directory, version=None, commit=None, root=None, compiler=None, clean=False):
+    directory = directory.resolve()
+    def load(name):
+        file = directory.joinpath(*PurePosixPath(member_name(name)).parts)
+        require(file.resolve().is_relative_to(directory) and file.is_file(), "Missing or escaping documentation member: " + name)
+        return file.read_bytes()
+    manifest = verify_contents(load, version, commit, root, clean)
+    if compiler is not None:
+        require(json.loads(load("docs/language.json")) == contracts(compiler, root or ROOT),
+                "Documentation signatures differ from the installed compiler")
+    return manifest
+
+
+def verify_archive(file, prefix, version, commit, root=ROOT):
+    with tarfile.open(file, "r:gz") as archive:
+        names = [m.name for m in archive]
+        require(len(names) == len(set(names)), "Duplicate archive member")
+        def load(name):
+            name = prefix.rstrip("/") + "/" + member_name(name)
+            require(name in names, "Missing archived documentation: " + name)
+            member = archive.getmember(name)
+            require(member.isfile(), "Archived documentation is not a file: " + name)
+            return archive.extractfile(member).read()
+        return verify_contents(load, version, commit, root, clean=True)
 
 
 def check_examples(compiler, language, cases, root=ROOT):
@@ -319,9 +373,15 @@ def main():
     parser.add_argument("--compiler", type=Path, default=ROOT / ("build/tools/ipc.exe" if os.name == "nt" else "build/tools/ipc"))
     parser.add_argument("--output-dir", type=Path, default=ROOT / "build/language-docs")
     parser.add_argument("--report-dir", type=Path)
+    parser.add_argument("--version", help="required product version when verifying")
+    parser.add_argument("--commit", help="required source commit when verifying")
+    parser.add_argument("--against-source", action="store_true", help="verify inputs and signatures against this checkout/compiler")
+    parser.add_argument("--clean", action="store_true", help="reject documentation generated from uncommitted changes")
     args = parser.parse_args()
     if args.action == "verify":
-        info = verify(args.output_dir.resolve())
+        info = verify(args.output_dir.resolve(), args.version, args.commit,
+                      root=ROOT if args.against_source else None,
+                      compiler=args.compiler.resolve() if args.against_source else None, clean=args.clean)
     elif args.action == "build":
         info = build(args.compiler.resolve(), args.output_dir.resolve())
     else:
@@ -339,6 +399,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError, tarfile.TarError) as error:
         print("language documentation: " + str(error), file=sys.stderr)
         sys.exit(1)

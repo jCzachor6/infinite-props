@@ -24,6 +24,12 @@ if(CMAKE_HOST_WIN32)
     set(suffix .exe)
     set(ENV{PATH} "${PREFIX}/bin;$ENV{PATH}")
 endif()
+find_package(Python3 3.10 QUIET COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    run("${Python3_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/language_docs.py" verify
+        --output-dir "${PREFIX}/share/iprop" --compiler "${PREFIX}/bin/ipc${suffix}"
+        --version "${product_version}" --against-source)
+endif()
 foreach(asset portrait plant)
     run("${PREFIX}/bin/ipc${suffix}" "${PREFIX}/share/iprop/examples/${asset}.ips" -o "${WORK}/${asset}.iprop")
     run("${PREFIX}/bin/ipval${suffix}" "${WORK}/${asset}.iprop")

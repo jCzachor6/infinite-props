@@ -10,12 +10,15 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from publish_release import publish
 from release_assets import collect, verify_bundle, verify_jobs, verify_source
 from release_common import sha256, write_json
 from release_preflight import metadata, validate_tag
+import language_docs
+from language_fixture import LANGUAGE, fixture as language_fixture
 
 
 VERSION = "0.4.0"
@@ -46,17 +49,23 @@ def repository(root):
         target = root / file
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(text.encode("utf-8"))
+    language_fixture(root)
     git(root, "add", ".")
     git(root, "-c", "user.name=CI fixture", "-c", "user.email=ci@example.invalid", "commit", "-qm", "fixture")
     return git(root, "rev-parse", "HEAD")
 
 
-def archive(path, manifest, wasm=None):
+def archive(path, manifest, wasm=None, documentation=None):
+    content = {"release.json": json.dumps(manifest).encode(),
+               **({"include/iprop.h": HEADER.replace(b"\n", b"\r\n")
+                   if manifest["system"] == "windows" else HEADER} if "system" in manifest else {}),
+               **({"iprop.wasm": wasm} if wasm else {})}
+    if documentation is not None:
+        prefix = "share/iprop/" if "system" in manifest else ""
+        content.update({prefix + p.relative_to(documentation).as_posix(): p.read_bytes()
+                        for p in documentation.rglob("*") if p.is_file()})
     with tarfile.open(path, "w:gz") as tar:
-        for name, data in {"release.json": json.dumps(manifest).encode(),
-                           **({"include/iprop.h": HEADER.replace(b"\n", b"\r\n")
-                               if manifest["system"] == "windows" else HEADER} if "system" in manifest else {}),
-                           **({"iprop.wasm": wasm} if wasm else {})}.items():
+        for name, data in content.items():
             member = tarfile.TarInfo(path.name[:-7] + "/" + name)
             member.size = len(data)
             tar.addfile(member, io.BytesIO(data))
@@ -64,20 +73,23 @@ def archive(path, manifest, wasm=None):
 
 def inputs(directory, root, commit):
     directory.mkdir()
+    documentation = directory / "documentation"
+    with patch.object(language_docs, "contracts", return_value=LANGUAGE):
+        language_docs.build(Path("unused"), documentation, root)
     for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
         manifest = {"product_version": VERSION, "source_commit": commit, "system": system, "architecture": arch,
                     "c_api_version": "0.2", "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
         file = sdk / f"iprop-{VERSION}-{system}-{arch}.tar.gz"
-        archive(file, manifest)
+        archive(file, manifest, documentation=documentation)
         artifacts = {file.name: sha256(file)}
         if system == "linux":
             source = sdk / f"iprop-{VERSION}.tar.gz"
             git(root, "archive", "--format=tar.gz", f"--prefix=iprop-{VERSION}/", "-o", str(source.resolve()), "HEAD")
             artifacts[source.name] = sha256(source)
         write_json(sdk / (file.name[:-7] + "-validation.json"), {**manifest, "passed": True,
-                   "checks": {"ctest": True, "relocated_sdk": True, "extracted_sdk": True}, "artifacts": artifacts})
+                   "checks": {"ctest": True, "relocated_sdk": True, "extracted_sdk": True, "documentation": True}, "artifacts": artifacts})
     web = directory / "web-build"
     web.mkdir()
     wasm = b"fixture module bytes"
@@ -85,10 +97,10 @@ def inputs(directory, root, commit):
     artifacts = {}
     for kind in ("wasm", "website"):
         file = web / f"iprop-{VERSION}-{kind}.tar.gz"
-        archive(file, {**manifest, "kind": kind}, wasm)
+        archive(file, {**manifest, "kind": kind}, wasm, documentation)
         artifacts[file.name] = sha256(file)
     write_json(web / f"iprop-{VERSION}-web-validation.json", {**manifest, "passed": True,
-               "checks": {"extracted_wasm": True, "extracted_website": True}, "artifacts": artifacts})
+               "checks": {"extracted_wasm": True, "extracted_website": True, "documentation": True}, "artifacts": artifacts})
     for name in REPORTS:
         report = directory / name
         report.mkdir()
@@ -184,6 +196,24 @@ class ReleaseGatesTest(unittest.TestCase):
                 tar.addfile(member, io.BytesIO(data))
             with self.assertRaisesRegex(RuntimeError, "omits tracked files"):
                 verify_source(invalid, VERSION, commit, root)
+
+    def test_valid_sdk_checksum_cannot_hide_missing_language_documentation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            root = directory / "repo"
+            commit = repository(root)
+            source = directory / "inputs"
+            inputs(source, root, commit)
+            sdk = next(source.glob("sdk-macOS-*"))
+            file = next(sdk.glob("*.tar.gz"))
+            validation_file = next(sdk.glob("*-validation.json"))
+            validation = json.loads(validation_file.read_text())
+            manifest = {key: value for key, value in validation.items() if key not in ("checks", "artifacts", "passed")}
+            archive(file, manifest)
+            validation["artifacts"][file.name] = sha256(file)
+            write_json(validation_file, validation)
+            with self.assertRaisesRegex(RuntimeError, "Missing archived documentation"):
+                collect(source, directory / "release", VERSION, commit, root)
 
 
 class FakeGitHub:
