@@ -21,6 +21,7 @@ pixels and structured outputs across conforming native and WASM hosts.
 Change a seed to vary random draws; change a variant/archetype to select
 an authored variation. A program with no random operations ignores the seed.
 
-For a repository build, replace tool names with `build/tools/ipc`,
-`build/tools/ipval` and `build/tools/ipgen` (Windows adds `.exe`). See the
-[installation walkthrough](../../website/docs/getting-started.html).
+For a repository build, configure with `cmake -B build -DCMAKE_BUILD_TYPE=Release`
+and run `cmake --build build --parallel`. Replace tool names with
+`build/tools/ipc`, `build/tools/ipval` and `build/tools/ipgen` (Windows adds
+`.exe`). A native SDK already contains those tools under `bin/`.

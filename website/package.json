@@ -4,12 +4,15 @@
   "private": true,
   "description": "The iprop website: a static playground running the WASM interpreter in the browser, with shareable links.",
   "scripts": {
-    "build": "tsc --noEmit && vite build",
-    "dev": "vite",
+    "docs": "node scripts/build-docs.mjs",
+    "test:docs": "node --test test/docs.test.mjs",
+    "build": "npm run docs && tsc --noEmit && vite build",
+    "dev": "npm run docs && vite",
     "preview": "vite preview",
     "prepare-assets": "sh prepare.sh"
   },
   "devDependencies": {
+    "markdown-it": "15.0.2",
     "typescript": "^5.4.5",
     "vite": "^5.3.1"
   }

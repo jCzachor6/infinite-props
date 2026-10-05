@@ -10,6 +10,7 @@
 
 #include "iprop/Debug.hpp"
 #include "iprop/Compression.hpp"
+#include "language_description.hpp"
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
@@ -48,6 +49,10 @@ bool sameFile(const std::filesystem::path& first, const std::filesystem::path& s
 } // namespace
 
 int main(int argc, char* argv[]) {
+    if (argc == 2 && std::string_view(argv[1]) == "--describe-language") {
+        iprop::tools::writeLanguageDescription(std::cout, IPROP_PRODUCT_VERSION);
+        return std::cout ? 0 : 1;
+    }
     std::string input;
     std::string output;
     std::string formattedOutput;
@@ -59,6 +64,7 @@ int main(int argc, char* argv[]) {
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
                       << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
+                      << "       ipc --describe-language  (JSON language contracts)\n"
                       << "Imports resolve relative to the entry file; the\n"
                       << "output passes the runtime validator. Debug information is\n"
                       << "stripped by default; --debug retains source maps and symbols.\n"

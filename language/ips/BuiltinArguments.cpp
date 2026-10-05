@@ -31,23 +31,28 @@ std::vector<const Arg*> bindArguments(const Call& call, std::span<const std::str
 
 std::vector<const Arg*> builtinArguments(const Call& call, const BuiltinSpec& spec,
                                          std::string_view function) {
+    return bindArguments(call, builtinParameterNames(spec, call.args.size(), call.location, function), function);
+}
+
+std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::size_t arity,
+                                              const SourceLocation& at, std::string_view function) {
     std::vector<std::string> names;
     if (spec.lowering == BuiltinLowering::Polygon) {
-        if (call.args.size() < 7 || call.args.size() % 2 == 0)
-            throw SourceError{call.location, "poly expects a colour and at least three (x, y) vertex pairs"};
+        if (arity < 7 || arity % 2 == 0)
+            throw SourceError{at, "poly expects a colour and at least three (x, y) vertex pairs"};
         names.push_back("color");
-        for (std::size_t i = 1; i < call.args.size(); ++i)
+        for (std::size_t i = 1; i < arity; ++i)
             names.push_back(std::string(i % 2 ? "x" : "y") + std::to_string((i - 1) / 2));
-    } else if ((spec.lowering == BuiltinLowering::Pick && call.args.size() >= 2) ||
+    } else if ((spec.lowering == BuiltinLowering::Pick && arity >= 2) ||
                spec.lowering == BuiltinLowering::Choose) {
         const std::size_t first = spec.lowering == BuiltinLowering::Choose ? 1 : 0;
         if (first) {
-            if (call.args.size() < 2) throw SourceError{call.location, "choose expects a seed and at least one choice"};
+            if (arity < 2) throw SourceError{at, "choose expects a seed and at least one choice"};
             names.push_back("seed");
         }
-        for (std::size_t i = first; i < call.args.size(); ++i) names.push_back("value" + std::to_string(i - first));
+        for (std::size_t i = first; i < arity; ++i) names.push_back("value" + std::to_string(i - first));
     } else {
-        const auto* overload = builtinOverload(spec, call.args.size());
+        const auto* overload = builtinOverload(spec, arity);
         if (!overload) {
             std::set<std::size_t> arities;
             for (const auto& candidate : spec.overloads) arities.insert(candidate.params.size());
@@ -56,12 +61,17 @@ std::vector<const Arg*> builtinArguments(const Call& call, const BuiltinSpec& sp
                 if (!expected.empty()) expected += " or ";
                 expected += std::to_string(count);
             }
-            throw SourceError{call.location, "function '" + std::string(function) + "' expects " + expected +
-                " arguments, got " + std::to_string(call.args.size())};
+            throw SourceError{at, "function '" + std::string(function) + "' expects " + expected +
+                " arguments, got " + std::to_string(arity)};
         }
         for (const auto& param : overload->params) names.push_back(param.name);
     }
-    return bindArguments(call, names, function);
+    return names;
+}
+
+std::span<const std::string> rampParameterNames() {
+    static const std::vector<std::string> names{"palette", "t"};
+    return names;
 }
 
 } // namespace iprop::ips

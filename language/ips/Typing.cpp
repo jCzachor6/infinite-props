@@ -285,8 +285,7 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
     if (call.args.size() != 2) {
         error(call.location, "ramp takes a palette name and a t value");
     }
-    const std::vector<std::string> names{"palette", "t"};
-    const auto args = bindArguments(call, names, name.name);
+    const auto args = bindArguments(call, rampParameterNames(), name.name);
     const auto* paletteName =
         std::get_if<Identifier>(args[0]->value.get());
     if (paletteName == nullptr) {

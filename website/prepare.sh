@@ -25,7 +25,7 @@ cp examples/plant.iprop website/public/plant.iprop
 mkdir -p website/public/spec
 cp spec/iprop-v0.1.md spec/iprop-v0.2.md spec/iprop-v0.3.md spec/iprop-v0.4.md website/public/spec/
 mkdir -p website/public/reference website/public/recipes
-cp docs/language-v0.4.md docs/optimizations-v0.4.md docs/optimization-acceptance-v0.4.md website/public/reference/
+cp docs/optimizations-v0.4.md docs/optimization-acceptance-v0.4.md website/public/reference/
 cp examples/recipes/*.ips examples/recipes/README.md website/public/recipes/
 
 echo "playground assets synced"
