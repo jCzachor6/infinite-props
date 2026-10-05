@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp library.cpp)
+set(iprop_capi_sources iprop.cpp library.cpp descriptors.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -48,6 +48,10 @@ endforeach()
 # build time by the ipa tool, then driven through the C entry point by a
 # C-only executable and compared against the committed golden PNGs.
 if(IPROP_BUILD_TESTS)
+add_executable(capi_descriptors test/descriptors.cpp)
+target_link_libraries(capi_descriptors PRIVATE iprop_capi_static)
+iprop_warnings(capi_descriptors)
+add_test(NAME capi_descriptors COMMAND capi_descriptors)
 foreach(linkage shared static)
     add_executable(capi_library_${linkage} test/library.c)
     if(linkage STREQUAL "shared")

@@ -152,7 +152,9 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 - [x] **05-V.2** Dodać odczyt wersji załadowanej biblioteki, wersji API, linii ABI, obsługiwanych formatów i capabilities. Makra nagłówka opisują kompilację klienta; query opisuje bibliotekę, z którą faktycznie pracuje. Możliwość nieobecna w 0.5, np. anulowanie, nie jest reklamowana.
   Dowód: `iprop_library_query` zwraca oddzielne wersje produktu/API/ABI/formatu oraz wyłącznie dostępne capabilities. C99 shared/static, wszystkie długości prefiksu i canary tail, stare layouty i conformance przeszły; oryginalny klient 0.2 uruchomiony z nową biblioteką (potwierdzony loader).
 
-- [ ] **05-V.3** Wprowadzić nowe deskryptory `_ex` z `struct_size`, określonymi defaultami, inicjalizatorem i obsługą flag. Czytać/zapisywać tylko dostępny prefiks; nieznana żądana funkcja nie może zostać cicho zignorowana. Kolekcje mają accessory albo jawny rozmiar/stride elementu. Stare struktury pozostają bez zmian.
+- [x] **05-V.3** Wprowadzić nowe deskryptory `_ex` z `struct_size`, określonymi defaultami, inicjalizatorem i obsługą flag. Czytać/zapisywać tylko dostępny prefiks; nieznana żądana funkcja nie może zostać cicho zignorowana. Kolekcje mają accessory albo jawny rozmiar/stride elementu. Stare struktury pozostają bez zmian.
+  Dowód: oddzielne sized deskryptory, size-taking initializers oraz wspólny reader/writeField z defaultami i walidacją flag. C99 shared/static i wszystkie prefiksy/tail canaries przeszły; dokładnie alokowane krótkie prefiksy sprawdzone ASan+UBSan. Kolekcje nowych widoków mają kontrakt pojedynczych accessorów.
+
 - [ ] **05-V.4** Wydzielić konfigurację ABI/SONAME z `PROJECT_VERSION`, zachowując linię 0.4 i stare nazwy potrzebne loaderowi. Uaktualnić CMake, dokumentację kompatybilności, eksporty DLL i install-name; sprawdzić shared/static oraz przeniesiony SDK.
 - [ ] **05-V.5** Ustalić kontrakt nowych uchwytów i deskryptorów: UTF-8 z długościami w bajtach, typy o ustalonych szerokościach, nullability, kto zwalnia pamięć, kiedy wskaźnik traci ważność oraz zachowanie po błędzie. Walidować rozmiar deskryptora przed dostępem do pól.
 

@@ -188,6 +188,29 @@ typedef struct {
 
 IPROP_API iprop_status_ex iprop_library_query(iprop_library_info_ex* out);
 
+/* Initializers also take the caller capacity, rather than the library's
+ * sizeof. They set struct_size and defaults for complete known fields;
+ * unknown tail/padding and incomplete trailing fields remain untouched.
+ * NULL or capacity < 4 fails without a write. */
+IPROP_API iprop_status_ex iprop_library_info_ex_init(iprop_library_info_ex* out,
+                                                   uint32_t capacity);
+
+/* New generation options, separate from the frozen API 0.2 structure.
+ * All absent optional fields default to zero: current seed/index defaults,
+ * source dimensions (size_x/size_y == 0), no requested flags. No flags are
+ * supported yet; any nonzero complete flags field is rejected by consumers.
+ * Future requests must negotiate a capability and set a recognized flag;
+ * appending a nonzero unknown tail alone never requests behavior. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t seed, variant, archetype;
+    uint32_t size_x, size_y;
+} iprop_generate_options_ex;
+
+IPROP_API iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_ex* out,
+                                                       uint32_t capacity);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

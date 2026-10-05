@@ -115,8 +115,24 @@ The descriptor may be a shorter prefix or a larger future allocation. The
 query requires four bytes for `struct_size`, preserves that value and writes
 only complete known fields inside the declared capacity. Unknown tail bytes
 are untouched; failure leaves the descriptor unchanged. There is no borrowed
-storage or global error state. Default initialization is caller-side zeroing
-plus the actual capacity; a size-taking initializer is added separately.
+storage or global error state. Initialize it with caller-side zeroing plus
+the actual capacity, or with `iprop_library_info_ex_init(&info, sizeof(info))`.
+The initializer also writes only complete known fields in that allocation.
+
+`iprop_generate_options_ex` is separate from the old generation options.
+Use `iprop_generate_options_ex_init(&options, sizeof(options))` to initialize
+seed, variant, archetype and dimensions to zero (source dimensions), with
+no requested flags. The common options reader supplies these defaults for
+absent fields and rejects all nonzero flags currently. It snapshots values
+before passing them to execution; failed validation publishes no partial
+options. Its public generation consumer is added in the parameters stage.
+Future input fields requesting behavior must use a recognized flag and
+negotiated capability. A nonzero unknown tail alone does not request behavior.
+
+New collections use count/get/find accessors returning one caller-sized
+descriptor at a time. They do not return arrays whose stride depends on a
+newer `sizeof`. Both initializers reject null or capacities below four without
+a write, preserve unknown tail/padding bytes, and require no allocation.
 
 The development API currently reports `IPROP_CAP_LIBRARY_QUERY` and
 `IPROP_CAP_SIZED_DESCRIPTORS`. Later tasks add capability bits only when the

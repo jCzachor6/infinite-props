@@ -16,6 +16,17 @@ inline bool descriptorSize(const void* descriptor, std::uint32_t& size) noexcept
 }
 
 template<class T>
+T readField(const void* descriptor, std::uint32_t size, std::size_t offset,
+            T fallback = {}) noexcept {
+    static_assert(std::is_trivially_copyable_v<T>);
+    if (offset <= size && sizeof(T) <= size - offset) {
+        std::memcpy(&fallback, static_cast<const unsigned char*>(descriptor) + offset,
+                    sizeof(T));
+    }
+    return fallback;
+}
+
+template<class T>
 void writeField(void* descriptor, std::uint32_t size, std::size_t offset,
                 const T& value) noexcept {
     static_assert(std::is_trivially_copyable_v<T>);

@@ -50,6 +50,14 @@ int main(void) {
     CHECK(IPROP_UNIFORM_COLOR == 0 && IPROP_UNIFORM_F32 == 1 && IPROP_UNIFORM_U32 == 2);
     CHECK(IPROP_OUTPUT_POINT == 0 && IPROP_OUTPUT_RECT == 1 && IPROP_OUTPUT_CIRCLE == 2);
     CHECK(iprop_library_query(NULL) == IPROP_EX_E_ARGUMENT);
+    {
+        iprop_library_info_ex defaults;
+        iprop_generate_options_ex options;
+        CHECK(iprop_library_info_ex_init(&defaults, sizeof(defaults)) == IPROP_EX_OK);
+        CHECK(defaults.struct_size == sizeof(defaults) && defaults.capabilities == 0 && defaults.api_minor == 0);
+        CHECK(iprop_generate_options_ex_init(&options, sizeof(options)) == IPROP_EX_OK);
+        CHECK(options.struct_size == sizeof(options) && options.flags == 0 && options.seed == 0 && options.size_x == 0);
+    }
     for (capacity = 0; capacity <= sizeof(storage.bytes); ++capacity) {
         size_t i;
         memset(storage.bytes, 0xa5, sizeof(storage.bytes));
@@ -66,6 +74,22 @@ int main(void) {
             if (i >= sizeof(info) || end > capacity)
                 CHECK(storage.bytes[i] == 0xa5);
             else CHECK(storage.bytes[i] == ((const unsigned char*)&info)[i]);
+        }
+        memset(storage.bytes, 0xa5, sizeof(storage.bytes));
+        CHECK(iprop_library_info_ex_init((iprop_library_info_ex*)storage.bytes, capacity) ==
+              (capacity < sizeof(uint32_t) ? IPROP_EX_E_ARGUMENT : IPROP_EX_OK));
+        if (capacity < sizeof(uint32_t)) {
+            for (i = 0; i < sizeof(storage.bytes); ++i) CHECK(storage.bytes[i] == 0xa5);
+        } else {
+            CHECK(memcmp(storage.bytes, &capacity, sizeof(capacity)) == 0);
+            for (i = sizeof(uint32_t); i < sizeof(storage.bytes); ++i) {
+                size_t end = sizeof(storage.bytes) + 1;
+                if (i < offsetof(iprop_library_info_ex, format_minor_max) + sizeof(uint32_t))
+                    end = (i / sizeof(uint32_t) + 1) * sizeof(uint32_t);
+                else if (i >= offsetof(iprop_library_info_ex, capabilities) && i < sizeof(info))
+                    end = offsetof(iprop_library_info_ex, capabilities) + sizeof(uint64_t);
+                CHECK(storage.bytes[i] == (end <= capacity ? 0 : 0xa5));
+            }
         }
     }
     puts("C99 loaded-library versions, capabilities and prefix/tail canaries: PASS");
