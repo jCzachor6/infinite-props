@@ -177,6 +177,7 @@ def resources(root):
     files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
     files += list((root / "spec").glob("*.md"))
     files += list((root / "docs").glob("*optim*.md"))
+    files += list((root / "plans").glob("*.md"))
     return files
 
 

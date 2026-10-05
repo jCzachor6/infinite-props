@@ -77,7 +77,9 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 - [x] **05-0.1** Utrwalić wydane v0.4.0 i SHA z nagłówka, źródła, diagnostyki, obrazy, outputy, trapy, stan RNG, koszty/rozmiary optimized/reference oraz stary nagłówek i binarnego klienta C API 0.2.
   Dowód: `benchmarks/baselines/v0.4.0/manifest.json`, zamrożony klient `backends/capi/test/legacy/v0.2`, 87 źródeł, 690 par renderów, 60 par trapów i 5 pełnych stanów RNG; weryfikacja zachowanych artefaktów oraz 11/11 testów bazowych zakończona powodzeniem. Platforma klienta: macOS arm64.
 
-- [ ] **05-0.2** Zapisać powyższe decyzje w rozdziałach źródłowego podręcznika i krótkim dokumencie migracji 0.4 → 0.5. Rozdzielić kontrakt składni, reguły typowania i semantykę wykonania.
+- [x] **05-0.2** Zapisać powyższe decyzje w rozdziałach źródłowego podręcznika i krótkim dokumencie migracji 0.4 → 0.5. Rozdzielić kontrakt składni, reguły typowania i semantykę wykonania.
+  Dowód: rozdział `docs/language/migration-v0.5.md` oddziela składnię, typowanie i wykonanie, opisuje wersje, ABI, ownership oraz granicę 0.6. Podręcznik i plany są pakowane offline; walidacja generowanej książki i 9 testów dokumentacji przeszły.
+
 - [ ] **05-0.3** Zdefiniować stały zestaw zadań LLM i procedurę pomiaru przed modyfikacją kompilatora. Zachować wyniki bazowe oraz konfigurację umożliwiającą porównania w 05-I i 06-I.
 - [ ] **05-0.4** Przygotować małe reproduktory każdej niekonsekwencji z A i kolizji named args oraz błędów C API z V/R/P/X; kolizje let/fn/geometrii realizuje 06-0.2. Odnotować rzeczywisty wynik obecnego kompilatora, a nie samo powodzenie parsera.
 

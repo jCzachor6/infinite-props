@@ -30,6 +30,7 @@ files; their contents are included in the generated book and tested by CI.
 14. [Compiler tools, diagnostics and emoji](tooling.md)
 15. [Grammar](grammar.md)
 16. [Maintaining this documentation](development.md)
+17. [Migration and implementation contracts for 0.5](migration-v0.5.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

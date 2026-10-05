@@ -43,7 +43,7 @@ if(TARGET iprop_sfml)
     endif()
 endif()
 
-install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+install(DIRECTORY examples spec docs plans DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 if(Python3_Interpreter_FOUND)
     # Expanded chapters replace their authored directives in installed SDKs.
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
