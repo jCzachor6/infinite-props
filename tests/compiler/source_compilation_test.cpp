@@ -7,11 +7,43 @@
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
 #include "ips/SourceError.hpp"
+#include "ips/SourceText.hpp"
 
 #include <map>
 #include <stdexcept>
 
 using namespace iprop;
+
+TEST_CASE("source identities and ranges preserve exact UTF-8 bytes including CRLF") {
+    CHECK(ips::sourceContentId("")=="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    CHECK(ips::sourceContentId("abc")=="sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    CHECK(ips::sourceContentId("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")==
+          "sha256:248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+    CHECK(ips::sourceContentId(std::string(1000000,'a'))==
+          "sha256:cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+    const std::string source="// żółć\r\n📦 t { size 8x8; ✏ {\tvalue= } }";
+    const auto tokens=ips::lex(source);
+    const auto assetRange=ips::sourceRangeAt(source,tokens[0].location);
+    REQUIRE(assetRange);
+    CHECK(assetRange->start.line==2);
+    CHECK(assetRange->start.column==1);
+    CHECK(assetRange->end.column==2);
+    CHECK(source.substr(assetRange->start.byteOffset,
+          assetRange->end.byteOffset-assetRange->start.byteOffset)=="📦");
+    CHECK(!ips::sourcePositionAt(source,assetRange->start.byteOffset+1));
+    const auto result=compileSource("unicode.ips",[&](std::string_view) { return source; });
+    REQUIRE(result.diagnostics.size()==1);
+    const auto& diagnostic=result.diagnostics[0];
+    REQUIRE(diagnostic.range);
+    CHECK(source.substr(diagnostic.range->start.byteOffset,
+          diagnostic.range->end.byteOffset-diagnostic.range->start.byteOffset)=="}");
+    CHECK(diagnostic.sourceId==ips::sourceContentId(source));
+    const auto eof=compileSource("eof.ips",[](std::string_view) { return std::string("asset t {"); });
+    REQUIRE(eof.diagnostics.size()==1);
+    REQUIRE(eof.diagnostics[0].range);
+    CHECK(eof.diagnostics[0].range->start.byteOffset==9);
+    CHECK(eof.diagnostics[0].range->end.byteOffset==9);
+}
 
 TEST_CASE("structured diagnostic codes come from causes and survive message changes") {
     using ips::DiagnosticCode;

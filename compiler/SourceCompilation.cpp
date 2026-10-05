@@ -7,6 +7,7 @@
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
+#include "ips/SourceText.hpp"
 
 namespace iprop {
 
@@ -65,10 +66,18 @@ SourceCompilationResult compileSource(
         result.status = SourceCompilationStatus::InvalidSource;
         const auto phase = error.stage == ips::DiagnosticStage::Unspecified ? stage : error.stage;
         const auto code = error.code == ips::DiagnosticCode::Unspecified ? ips::defaultDiagnosticCode(phase) : error.code;
-        result.diagnostics.push_back({error.message,
+        CompilationDiagnostic diagnostic{error.message,
             error.path.empty() ? result.entryPath : error.path,
             result.sources.contains(error.path.empty() ? result.entryPath : error.path)
-                ? std::optional{error.location} : std::nullopt, code, phase});
+                ? std::optional{error.location} : std::nullopt, code, phase};
+        diagnostic.expectedType=error.expectedType;
+        diagnostic.actualType=error.actualType;
+        diagnostic.suggestions=error.suggestions;
+        if (const auto found=result.sources.find(diagnostic.path); found!=result.sources.end()) {
+            diagnostic.range=ips::sourceRangeAt(found->second,error.location);
+            diagnostic.sourceId=ips::sourceContentId(found->second);
+        }
+        result.diagnostics.push_back(std::move(diagnostic));
     } catch (const std::exception& error) {
         result.status = SourceCompilationStatus::InternalError;
         result.diagnostics.push_back({error.what(), {}, std::nullopt});

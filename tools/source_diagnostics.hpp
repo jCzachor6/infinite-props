@@ -8,8 +8,8 @@
 
 namespace iprop::tools {
 
-// Preliminary schema 0 with typed stable codes. Byte ranges/versioning are
-// introduced by B.3; null fields are not measured source ranges.
+// Schema 1: positions use UTF-8 byte offsets and one-based codepoint columns;
+// ranges are end-exclusive and source identity covers exact snapshot bytes.
 void writeSourceDiagnosticsJson(std::ostream& out, std::string_view productVersion,
     std::string_view status, const std::vector<CompilationDiagnostic>& diagnostics);
 void writeSourceDiagnosticText(std::ostream& out, const CompilationDiagnostic& diagnostic,

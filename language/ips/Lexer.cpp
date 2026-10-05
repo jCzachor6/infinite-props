@@ -78,9 +78,12 @@ std::vector<Token> lex(std::string_view source) {
     std::size_t column = 1;
     std::size_t nextCodepoint = 0;
 
-    const auto location = [&]() { return SourceLocation{line, column}; };
+    const auto location = [&]() { return SourceLocation{line, column, pos, pos}; };
     const auto error = [&](SourceLocation at, std::string message,
                            DiagnosticCode code = DiagnosticCode::LexicalError) -> SourceError {
+        const auto point=decodeCodepoint(source,at.byteOffset);
+        at.endByteOffset = pos > at.byteOffset ? pos :
+            at.byteOffset + (at.byteOffset==source.size() ? 0 : point ? point->bytes : 1);
         return SourceError{at, std::move(message), {}, code, DiagnosticStage::Lexer};
     };
     const auto advance = [&]() -> char {
@@ -105,6 +108,7 @@ std::vector<Token> lex(std::string_view source) {
         return pos + ahead < source.size() ? source[pos + ahead] : '\0';
     };
     const auto emit = [&](TokenKind kind, std::string text, SourceLocation at) {
+        at.endByteOffset=pos;
         tokens.push_back({kind, std::move(text), at});
     };
 

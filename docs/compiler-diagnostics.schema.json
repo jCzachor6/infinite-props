@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "infinite-props compiler diagnostics schema 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "product_version",
+    "language_version",
+    "status",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "product_version": {
+      "type": "string"
+    },
+    "language_version": {
+      "type": "object",
+      "required": [
+        "major",
+        "minor"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "invalid_source",
+        "cli_error",
+        "internal_error"
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": [
+        "byte_offset",
+        "line",
+        "column"
+      ],
+      "properties": {
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/position"
+        },
+        "end": {
+          "$ref": "#/$defs/position"
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": [
+        "code",
+        "stage",
+        "severity",
+        "message",
+        "file",
+        "location",
+        "range",
+        "source_id",
+        "expected_type",
+        "actual_type",
+        "suggestions",
+        "related_locations",
+        "fix_its"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^IPS-[A-Z]+-[0-9]{3}$"
+        },
+        "stage": {
+          "enum": [
+            "lex",
+            "parse",
+            "import",
+            "typing",
+            "planning",
+            "validation",
+            "io",
+            "cli",
+            "internal"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "note"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "location": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "line",
+                "column"
+              ],
+              "properties": {
+                "line": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "column": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          ]
+        },
+        "range": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/range"
+            }
+          ]
+        },
+        "source_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "expected_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actual_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "related_locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "file",
+              "message",
+              "range"
+            ],
+            "properties": {
+              "file": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "range": {
+                "$ref": "#/$defs/range"
+              }
+            }
+          }
+        },
+        "fix_its": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "range",
+              "replacement",
+              "source_id"
+            ],
+            "properties": {
+              "range": {
+                "$ref": "#/$defs/range"
+              },
+              "replacement": {
+                "type": "string"
+              },
+              "source_id": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -20,6 +20,8 @@ struct SourceError : std::exception {
     std::string path; // optional owning file, relative to the compilation entry
     DiagnosticCode code;
     DiagnosticStage stage;
+    std::optional<std::string> expectedType{}, actualType{};
+    std::vector<std::string> suggestions{};
 
     SourceError(SourceLocation at, std::string text, std::string sourcePath = {},
                 DiagnosticCode reason = DiagnosticCode::Unspecified,

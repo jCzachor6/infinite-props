@@ -18,11 +18,15 @@ combining `--check` with `--output` or `--format` is an invocation error.
 as ordinary compilation, while still writing no files. Each imported source
 is loaded once, and error snippets use that exact owning snapshot.
 
-The current JSON first-error scaffold is explicitly `schema_version: 0`:
-it provides status, typed stable code/stage/severity, message, file and legacy
-line/column, with null range and language version. Byte ranges and recovery are
-introduced by the subsequent diagnostics tasks; schema 0 is not that final
-protocol. `--diagnostics=text` selects the readable renderer.
+JSON diagnostics use `schema_version: 1` with independently recorded product
+and source-language versions, status and diagnostics. Each diagnostic provides
+typed stable code/stage/severity, message, file, an end-exclusive range and
+SHA-256 identity of its exact source snapshot. Offsets are zero-based UTF-8
+bytes; line/column positions are one-based Unicode codepoints. CLI/I/O locations
+may be null. Optional expected/actual types, suggestions, related locations and
+fix-its have explicit fields. See the [protocol](../compiler-diagnostics.md)
+and [schema](../compiler-diagnostics.schema.json). `--diagnostics=text` selects
+the readable renderer. Multi-error recovery follows in the B.5 task.
 
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word

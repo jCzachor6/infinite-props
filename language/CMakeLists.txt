@@ -6,6 +6,7 @@ add_library(ips_lang STATIC
     ips/SourceError.cpp
     ips/Diagnostic.cpp
     ips/SourceText.cpp
+    ips/SourceIdentity.cpp
     ips/Suggestions.cpp
     ips/Parser.cpp
     ips/ParserExpr.cpp

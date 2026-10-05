@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the real compiler check mode, imports and no-write contract."""
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -26,11 +27,23 @@ def main():
             # json.loads rejects mixed logs and extra documents.
             report = json.loads(process.stdout)
             assert report['status'] == expected_status, report
+            assert report['schema_version'] == 1, report
+            assert report['language_version'] == {'major': 0, 'minor': 5}, report
+            assert isinstance(report['product_version'], str), report
             assert isinstance(report['diagnostics'], list), report
             for diagnostic in report['diagnostics']:
                 assert diagnostic['code'].startswith('IPS-'), diagnostic
                 assert diagnostic['severity'] == 'error', diagnostic
                 assert diagnostic['stage'] in {'lex','parse','import','typing','planning','validation','io','cli','internal'}, diagnostic
+                if diagnostic['source_id']:
+                    data = (root / diagnostic['file']).read_bytes()
+                    assert diagnostic['source_id'] == 'sha256:' + hashlib.sha256(data).hexdigest(), diagnostic
+                    if diagnostic['range']:
+                        for position in diagnostic['range'].values():
+                            offset = position['byte_offset']
+                            prefix = data[:offset].decode('utf-8')
+                            assert position['line'] == prefix.count('\n') + 1, diagnostic
+                            assert position['column'] == len(prefix.rsplit('\n', 1)[-1]) + 1, diagnostic
             return report
 
         for args in [[], ['--debug'], ['--no-opt', '--no-compress'], ['--debug', '--strip']]:
@@ -64,6 +77,16 @@ def main():
         assert not (root / 'out.ips').exists()
         result = invoke(['missing.ips', '--check'], 'invalid_source', 1)
         assert result['diagnostics'][0]['location'] is None, result
+        assert result['diagnostics'][0]['range'] is None, result
+
+        unicode_source = '// żółć\r\n📦 t { size 8x8; ✏ {\tvalue=1; /*🌈*/ value=#fff } }'
+        entry.write_bytes(unicode_source.encode('utf-8'))
+        result = invoke(['entry.ips', '--check'], 'invalid_source', 1)
+        diagnostic = result['diagnostics'][0]
+        assert diagnostic['expected_type'] == 'i32' and diagnostic['actual_type'] == 'color', diagnostic
+        start, end = diagnostic['range']['start']['byte_offset'], diagnostic['range']['end']['byte_offset']
+        assert entry.read_bytes()[start:end] == b'value', diagnostic
+        entry.write_bytes(original['entry.ips'])
 
         part.write_bytes(original['część.ips'])
         invoke(['entry.ips'], 'ok', 0)

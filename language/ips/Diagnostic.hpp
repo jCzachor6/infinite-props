@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace iprop::ips {
 
@@ -12,7 +13,14 @@ namespace iprop::ips {
 struct SourceLocation {
     std::size_t line = 1;
     std::size_t column = 1;
+    std::size_t byteOffset = std::string_view::npos;
+    std::size_t endByteOffset = std::string_view::npos;
 };
+
+struct SourcePosition { std::size_t byteOffset=0, line=1, column=1; };
+struct SourceRange { SourcePosition start, end; }; // end-exclusive
+struct RelatedLocation { std::string path, message; SourceRange range; };
+struct FixIt { SourceRange range; std::string replacement, sourceId; };
 
 enum class DiagnosticSeverity { Error, Warning, Note };
 enum class DiagnosticStage { Unspecified, Lexer, Parser, Import, Typing, Planning, Validation, IO, CLI, Internal };
@@ -38,6 +46,12 @@ struct Diagnostic {
     DiagnosticCode code = DiagnosticCode::InternalError;
     DiagnosticStage stage = DiagnosticStage::Internal;
     DiagnosticSeverity severity = DiagnosticSeverity::Error;
+    std::optional<SourceRange> range{};
+    std::optional<std::string> expectedType{}, actualType{};
+    std::vector<std::string> suggestions{};
+    std::vector<RelatedLocation> relatedLocations{};
+    std::vector<FixIt> fixIts{};
+    std::optional<std::string> sourceId{};
 };
 
 } // namespace iprop::ips

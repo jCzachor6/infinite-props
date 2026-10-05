@@ -368,9 +368,13 @@ private:
         if (existing == locals.end()) {
             typer_.declareLocal(decl.name, type);
         } else if (existing->second != type) {
-            error(decl.location, "local '" + decl.name + "' is " +
+            SourceError diagnostic{decl.location, "local '" + decl.name + "' is " +
                                      typeName(existing->second) +
-                                     ", cannot assign " + typeName(type));
+                                     ", cannot assign " + typeName(type), {},
+                                     DiagnosticCode::TypeError, DiagnosticStage::Typing};
+            diagnostic.expectedType=typeName(existing->second);
+            diagnostic.actualType=typeName(type);
+            throw diagnostic;
         }
     }
 
@@ -424,8 +428,12 @@ private:
             at = locationOf(value);
         }
         if (got != expected) {
-            error(at, "output '" + output.name + "' expects " +
-                          typeName(expected) + ", got " + typeName(got));
+            SourceError diagnostic{at, "output '" + output.name + "' expects " +
+                          typeName(expected) + ", got " + typeName(got), {},
+                          DiagnosticCode::TypeError, DiagnosticStage::Typing};
+            diagnostic.expectedType=typeName(expected);
+            diagnostic.actualType=typeName(got);
+            throw diagnostic;
         }
     }
 };
