@@ -74,9 +74,9 @@ message.
    guarantees; the C++ runtime, compiler and tools are implementation
    details and may change freely.
 2. **Independent versions.** `IPROP_API_VERSION_MAJOR`/`_MINOR` describe
-   the header's API feature set, currently `0.2`. Product, source language,
+   the header's API feature set, currently `0.3`. Product, source language,
    binary format and ABI loader identity are separate contracts. API `0.3`
-   is planned as an additive extension on ABI line `0.4`; an ABI break needs
+   extends API `0.2` on ABI line `0.4`; an ABI break needs
    an explicit new ABI line and migration, including before version 1.0.
 3. **Opaque handles.** `iprop_program`/`iprop_result` are incomplete
    types to consumers; their layout is private.
@@ -87,7 +87,7 @@ message.
    enum values, calling convention and ownership are frozen. Adding even a
    trailing field changes the ABI, including array strides. API `0.2` added
    the output owner before this freeze; the `0.1` layout is not part of the
-   current ABI guarantee. API `0.3` will use new sized descriptors and new
+   current ABI guarantee. API `0.3` uses new sized descriptors and new
    entry points, leaving every existing declaration intact.
 6. **Ownership is explicit.** Success hands exactly one handle to the
    caller to free; failure hands none.
@@ -95,7 +95,35 @@ message.
 The [ABI contract](../../docs/c-api-abi.md) records the released baseline,
 supported layouts, legacy behavior and rules for sized descriptors, UTF-8
 views, collection strides and safe initialization. It specifies planned
-API `0.3` conventions; it does not imply those functions already exist.
+API `0.3` conventions; the capability query identifies implemented functions.
+
+## The loaded library
+
+Header macros identify the API used to compile a client. Query the actual
+loaded library before choosing optional behavior:
+
+```c
+iprop_library_info_ex info = {0};
+info.struct_size = sizeof(info);
+if (iprop_library_query(&info) == IPROP_EX_OK) {
+    /* product_major/minor/patch, api_major/minor, abi_major/minor,
+       format_major + inclusive format_minor_min/max, capabilities */
+}
+```
+
+The descriptor may be a shorter prefix or a larger future allocation. The
+query requires four bytes for `struct_size`, preserves that value and writes
+only complete known fields inside the declared capacity. Unknown tail bytes
+are untouched; failure leaves the descriptor unchanged. There is no borrowed
+storage or global error state. Default initialization is caller-side zeroing
+plus the actual capacity; a size-taking initializer is added separately.
+
+The development API currently reports `IPROP_CAP_LIBRARY_QUERY` and
+`IPROP_CAP_SIZED_DESCRIPTORS`. Later tasks add capability bits only when the
+corresponding reflection, parameters, errors and output accessors work.
+Cancellation, host memory limits and shared-handle concurrency are not
+advertised by this release. A larger API minor number alone does not imply
+those capabilities.
 
 ## The conformance (task 6.2)
 

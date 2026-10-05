@@ -4,8 +4,9 @@ The baseline is product `v0.4.0`, commit
 `66d34c2831585afb231022da9296528a912e962e`, with header API `0.2`.
 The existing shared-library loader identity is ABI line `0.4`.
 This document freezes that contract and defines the rules for additive API
-`0.3` and later API `0.4`. New entry points and runtime version queries are
-planned work; documenting them here does not make them available.
+`0.3` and later API `0.4`. The runtime version query is implemented; other
+extension entry points are identified by capability bits as they are added.
+Documenting a planned entry point here does not make it available.
 
 ## Independent versions and compatibility direction
 

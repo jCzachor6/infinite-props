@@ -1,0 +1,11 @@
+#pragma once
+
+namespace iprop::capi {
+inline constexpr unsigned productMajor = @PROJECT_VERSION_MAJOR@;
+inline constexpr unsigned productMinor = @PROJECT_VERSION_MINOR@;
+inline constexpr unsigned productPatch = @PROJECT_VERSION_PATCH@;
+// Until the independent ABI configuration lands, this matches the actual
+// SOVERSION used by the shared target. It is not the C API feature version.
+inline constexpr unsigned abiMajor = @PROJECT_VERSION_MAJOR@;
+inline constexpr unsigned abiMinor = @PROJECT_VERSION_MINOR@;
+} // namespace iprop::capi

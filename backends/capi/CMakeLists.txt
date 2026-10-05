@@ -3,8 +3,9 @@
 # (SFML, Godot) links this one library; the C++ runtime headers are not
 # part of the ABI (see README.md in this directory).
 
-add_library(iprop_capi SHARED
-    iprop.cpp)
+configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
+set(iprop_capi_sources iprop.cpp library.cpp)
+add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
 target_link_libraries(iprop_capi PRIVATE iprop::runtime)
@@ -20,8 +21,7 @@ set_target_properties(iprop_capi PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     EXPORT_NAME capi)
 
-add_library(iprop_capi_static STATIC
-    iprop.cpp)
+add_library(iprop_capi_static STATIC ${iprop_capi_sources})
 
 target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
 add_library(iprop::capi_static ALIAS iprop_capi_static)
@@ -40,10 +40,28 @@ if(WIN32)
     set_target_properties(iprop_capi_static PROPERTIES OUTPUT_NAME ipropc_static)
 endif()
 
+foreach(target iprop_capi iprop_capi_static)
+    target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+endforeach()
+
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a
 # C-only executable and compared against the committed golden PNGs.
 if(IPROP_BUILD_TESTS)
+foreach(linkage shared static)
+    add_executable(capi_library_${linkage} test/library.c)
+    if(linkage STREQUAL "shared")
+        target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
+    else()
+        target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
+    endif()
+    target_compile_definitions(capi_library_${linkage} PRIVATE
+        IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}
+        IPROP_TEST_PRODUCT_MINOR=${PROJECT_VERSION_MINOR}
+        IPROP_TEST_PRODUCT_PATCH=${PROJECT_VERSION_PATCH})
+    iprop_warnings(capi_library_${linkage})
+    add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
+endforeach()
 set(IPROP_CAPI_GOLDEN_DIR ${CMAKE_BINARY_DIR}/capi-golden)
 file(MAKE_DIRECTORY ${IPROP_CAPI_GOLDEN_DIR})
 

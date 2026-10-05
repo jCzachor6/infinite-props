@@ -42,7 +42,7 @@ extern "C" {
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 2
+#define IPROP_API_VERSION_MINOR 3
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
@@ -158,6 +158,35 @@ IPROP_API void iprop_result_free(iprop_result* result);
 
 /* Copies the result's image view (width/height/pixels/outputs). */
 IPROP_API void iprop_result_image(const iprop_result* result, iprop_image* out);
+
+/* Additive API 0.3. Fixed-width statuses leave the legacy enum unchanged. */
+typedef uint32_t iprop_status_ex;
+#define IPROP_EX_OK UINT32_C(0)
+#define IPROP_EX_E_OOM UINT32_C(1)
+#define IPROP_EX_E_FORMAT UINT32_C(2)
+#define IPROP_EX_E_TRAP UINT32_C(3)
+#define IPROP_EX_E_ARGUMENT UINT32_C(4)
+#define IPROP_EX_E_INTERNAL UINT32_C(5)
+
+#define IPROP_CAP_LIBRARY_QUERY (UINT64_C(1) << 0)
+#define IPROP_CAP_SIZED_DESCRIPTORS (UINT64_C(1) << 1)
+
+/* All fields except struct_size are output-only. Set struct_size to the
+ * actual caller capacity, at least sizeof(uint32_t). Only complete fields
+ * within that capacity are written; unknown tail bytes are untouched.
+ * Numbers describe the loaded library, independently of this header.
+ * Formats are the inclusive [format_minor_min, format_minor_max] range
+ * under format_major. Capability bits advertise implemented behavior only. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t product_major, product_minor, product_patch;
+    uint32_t api_major, api_minor;
+    uint32_t abi_major, abi_minor;
+    uint32_t format_major, format_minor_min, format_minor_max;
+    uint64_t capabilities;
+} iprop_library_info_ex;
+
+IPROP_API iprop_status_ex iprop_library_query(iprop_library_info_ex* out);
 
 #ifdef __cplusplus
 } /* extern "C" */
