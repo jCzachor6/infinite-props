@@ -1,5 +1,7 @@
 #include "ips/DeclarationConstants.hpp"
 
+#include <limits>
+
 #include "ips/Literals.hpp"
 
 namespace iprop::ips {
@@ -102,6 +104,12 @@ ResolvedConstant resolveInputDefault(const InputDecl& input) {
     if (input.type == InputType::U32 && *result.mathematicalInteger < 0)
         throw SourceError{locationOf(*input.defaultValue),
             "negative default of input u32 '" + input.name + "'; use input i32 for signed defaults"};
+    if (input.type == InputType::I32 &&
+        (*result.mathematicalInteger < std::numeric_limits<i32>::min() ||
+         *result.mathematicalInteger > std::numeric_limits<i32>::max()))
+        throw SourceError{locationOf(*input.defaultValue),
+            "default of input i32 '" + input.name +
+            "' must be in [-2147483648, 2147483647] before wrapping"};
     return result;
 }
 

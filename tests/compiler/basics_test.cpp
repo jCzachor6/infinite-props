@@ -209,8 +209,4 @@ TEST_CASE("compiler-only error cases carry locations") {
     expectError("asset t { size 8x8 origin v,0 draw { } }",
                 "origin must be a constant");
 
-    // The v0.1 format has no i32 uniform type.
-    expectError("asset t { size 8x8 input i32 x = 1 draw { } }",
-                "input i32 is not supported");
 }
-

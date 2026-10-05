@@ -1,5 +1,0 @@
-asset InvalidSignedInput {
-  size 8x8
-  input i32 amount = 0
-  draw { }
-}

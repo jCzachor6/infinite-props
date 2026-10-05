@@ -304,10 +304,6 @@ void Planner::prepareFunctionBody(const std::string& name) {
             ++slot;
         }
         for (const auto& input : owner->asset.inputs) {
-            if (input.type == ips::InputType::I32) {
-                error(input.location,
-                      "input i32 is not supported by the v0.1 format (use u32)");
-            }
             info.slots.emplace(input.name, slot);
             info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));
             info.params.push_back(runtimeType(ips::valueTypeOf(input.type)));

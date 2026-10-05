@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <bit>
 #include <map>
@@ -16,6 +17,112 @@
 
 using namespace iprop;
 using namespace compiler_test;
+
+TEST_CASE("signed input defaults check mathematical range in checker and planner") {
+    for (const std::string text : {"-2147483648", "2147483647", "-0x80000000",
+                                  "0x7fffffff", "-0", "((-(7)))"}) {
+        INFO(text);
+        const auto source = "asset t { size 8x8 input i32 n=" + text + " draw{} }";
+        const auto program = ips::parse(source);
+        CHECK_NOTHROW(ips::checkAsset(program, {}));
+        CHECK_NOTHROW(compileProgram(program, {}));
+    }
+    for (const std::string text : {"2147483648", "-2147483649", "0xffffffff",
+                                  "4294967296", "-0xffffffff"}) {
+        INFO(text);
+        const auto source = "asset t { size 8x8 input i32 n=" + text + " draw{} }";
+        const auto program = ips::parse(source);
+        CHECK_THROWS_WITH(ips::checkAsset(program, {}),
+            "default of input i32 'n' must be in [-2147483648, 2147483647] before wrapping");
+        CHECK_THROWS_AS(compileProgram(program, {}), ips::SourceError);
+        const auto parent = ips::parse(R"(import child from "child.ips"
+            asset parent { size 8x8 draw { child.draw(seed,v,a,at={0,0}) } })");
+        CHECK_THROWS_AS(compileProgram(parent, {{"child", &program}}), ips::SourceError);
+    }
+    for (const std::string text : {"1.0", "true", "#fff"}) {
+        const auto program = ips::parse("asset t { size 8x8 input i32 n=" + text + " draw{} }");
+        CHECK_THROWS_AS(ips::checkAsset(program, {}), ips::SourceError);
+    }
+}
+
+TEST_CASE("signed inputs use frozen U32 metadata and host bit pattern overrides") {
+    const auto signedProgram = ips::parse(R"(asset integers { size 8x8
+        input i32 minimum=-2147483648 input i32 maximum=2147483647 input i32 n=-7
+        output point bounds output point value
+        draw { bounds={minimum,maximum} value={n,unit()} pixel(0,0,#abc) }
+    })");
+    const auto unsignedProgram = ips::parse(R"(asset integers { size 8x8
+        input u32 minimum=2147483648 input u32 maximum=2147483647 input u32 n=4294967289
+        output point bounds output point value
+        draw { bounds={minimum,maximum} value={n,unit()} pixel(0,0,#abc) }
+    })");
+    ips::checkAsset(signedProgram, {});
+    ips::checkAsset(unsignedProgram, {});
+    const auto formatted = ips::parse(ips::formatProgram(signedProgram));
+    for (const bool optimize : {false, true}) {
+        const auto bytes = compileProgram(signedProgram, {}, optimize);
+        CHECK(stripDebug(bytes) == stripDebug(compileProgram(unsignedProgram, {}, optimize)));
+        CHECK(stripDebug(bytes) == stripDebug(compileProgram(formatted, {}, optimize)));
+        const auto loaded = loadFile(bytes);
+        REQUIRE(loaded.meta.inputs.size() == 3);
+        CHECK(loaded.meta.inputs[0].type == iprop::InputType::U32);
+        CHECK(loaded.meta.inputs[0].u32Default == 0x80000000u);
+        CHECK(loaded.meta.inputs[1].u32Default == 0x7fffffffu);
+        CHECK(loaded.meta.inputs[2].u32Default == 0xfffffff9u);
+        const auto defaults = execute(bytes);
+        CHECK(defaults.outputs[0].points[0].x == -2147483648.f);
+        CHECK(defaults.outputs[0].points[0].y == 2147483648.f); // i32 max rounds to f32
+        CHECK(defaults.outputs[1].points[0].x == -7.f);
+        for (const u32 bits : {0u, 0xffffffffu, 0x80000000u, 0x7fffffffu}) {
+            GenerationInputs inputs{42,0,0,0,0,{}};
+            inputs.uniforms["n"] = UniformValue{iprop::InputType::U32,{},0.f,bits};
+            VM vm(loaded, inputs);
+            vm.run();
+            const auto result = vm.result();
+            CHECK(result.outputs[1].points[0].x == static_cast<f32>(std::bit_cast<i32>(bits)));
+            CHECK(std::bit_cast<u32>(result.outputs[1].points[0].y) ==
+                  std::bit_cast<u32>(defaults.outputs[1].points[0].y));
+        }
+        GenerationInputs wrong{42,0,0,0,0,{}};
+        wrong.uniforms["n"] = UniformValue{iprop::InputType::F32,{},-1.f,0};
+        CHECK_THROWS_AS(VM(loaded, wrong), Trap);
+    }
+}
+
+TEST_CASE("signed part defaults and overrides retain i32 function parameters") {
+    const auto part = ips::parse(R"(asset child { size 8x8 input i32 n=-7
+        output point value draw { value={n,unit()} }
+    })");
+    const auto parent = ips::parse(R"(import first from "child.ips"
+        import second from "child.ips" asset parent { size 8x8 input i32 host=-9
+        draw { first.draw(seed,v,a,at={0,0}) second.draw(seed,v,a,n=host,at={0,0}) }
+    })");
+    ips::checkAsset(part, {});
+    ips::checkAsset(parent, {{"first",ips::partInfoOf(part.asset)},
+                             {"second",ips::partInfoOf(part.asset)}});
+    for (const bool optimize : {false,true}) {
+        const auto bytes = compileProgram(parent, {{"first",&part},{"second",&part}}, optimize);
+        const auto loaded = loadFile(bytes);
+        REQUIRE(loaded.code.parts.size() == 2);
+        for (const auto& entry : loaded.code.parts) {
+            CHECK(entry.inputs[0].type == iprop::InputType::U32);
+            CHECK(entry.inputs[0].u32Default == 0xfffffff9u);
+        }
+        const auto defaults = execute(bytes);
+        REQUIRE(defaults.outputs.size() == 2);
+        CHECK(defaults.outputs[0].points[0].x == -7.f);
+        CHECK(defaults.outputs[1].points[0].x == -9.f);
+        GenerationInputs inputs{42,0,0,0,0,{}};
+        inputs.uniforms["host"] = UniformValue{iprop::InputType::U32,{},0.f,0xffffffffu};
+        VM vm(loaded, inputs);
+        vm.run();
+        CHECK(vm.result().outputs[0].points[0].x == -7.f);
+        CHECK(vm.result().outputs[1].points[0].x == -1.f);
+        const auto invalid = ips::parse(R"(import child from "child.ips"
+            asset t { size 8x8 draw { child.draw(seed,v,a,n=0.5,at={0,0}) } })");
+        CHECK_THROWS_AS(ips::checkAsset(invalid, {{"child",ips::partInfoOf(part.asset)}}), ips::SourceError);
+    }
+}
 
 TEST_CASE("declaration constants reject operators calls and repeated negation") {
     for (const std::string value : {"1 + 2", "(1 + 2)", "unit()", "seed",
