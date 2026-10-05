@@ -1,51 +1,31 @@
-// ipc: the .ips compiler CLI — source → .iprop binary.
-//
-//   ipc rock.ips -o rock.iprop
-//
-// The pipeline: lex/parse the entry and its imported parts (import paths
-// resolve relative to the entry file), resolve the import DAG, run semantic
-// checks, lower to bytecode and emit a validated .iprop file.
-
-#include "Compiler.hpp"
-
-#include "iprop/Debug.hpp"
-#include "iprop/Compression.hpp"
+// ipc: the source compiler CLI. Ordinary compilation and --check share
+// the full in-memory source/import/assembly/validation pipeline.
+#include "SourceCompilation.hpp"
+#include "source_diagnostics.hpp"
 #include "language_description.hpp"
-
-#include "ips/Imports.hpp"
-#include "ips/Parser.hpp"
 #include "ips/Printer.hpp"
-#include "ips/Semantics.hpp"
-#include "ips/SourceError.hpp"
 
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <map>
+#include <stdexcept>
 #include <string>
 #include <system_error>
-#include <vector>
 
 namespace {
-
-void reportError(const std::string& path, const std::string& source,
-                 const iprop::ips::SourceError& error) {
-    std::cerr << "ipc: " << path << ":"
-              << iprop::ips::formatError(source, error);
-}
-
-int fail(const std::string& message) {
-    std::cerr << "ipc: " << message << "\n";
-    return 1;
-}
-
 bool sameFile(const std::filesystem::path& first, const std::filesystem::path& second) {
     std::error_code error;
     return std::filesystem::absolute(first).lexically_normal() ==
                std::filesystem::absolute(second).lexically_normal() ||
            std::filesystem::equivalent(first, second, error);
 }
-
+void writeFile(const std::string& path, const char* data, std::size_t size) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out) throw std::runtime_error("cannot write '" + path + "'");
+    out.write(data, static_cast<std::streamsize>(size));
+    out.close();
+    if (!out) throw std::runtime_error("cannot write '" + path + "'");
+}
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -53,167 +33,106 @@ int main(int argc, char* argv[]) {
         iprop::tools::writeLanguageDescription(std::cout, IPROP_PRODUCT_VERSION);
         return std::cout ? 0 : 1;
     }
-    std::string input;
-    std::string output;
-    std::string formattedOutput;
-    bool strip = true;
-    bool optimize = true;
-    bool compress = true;
-    for (int i = 1; i < argc; ++i) {
+    // Select the renderer before parsing options, including malformed calls
+    // in which the JSON flag occurs after the invalid argument.
+    bool json = false;
+    for (int i=1; i<argc; ++i)
+        if (std::string_view(argv[i]) == "--diagnostics=json") json = true;
+    const auto fail = [&](std::string message, const char* status = "cli_error") {
+        const iprop::CompilationDiagnostic diagnostic{std::move(message), {}, std::nullopt};
+        if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, {diagnostic});
+        else iprop::tools::writeSourceDiagnosticText(std::cerr, diagnostic, {});
+        return 1; // Distinct protocol exit classes are defined by task B.4.
+    };
+    std::string input, output, formattedOutput;
+    bool outputRequested = false, check = false;
+    iprop::SourceCompilationOptions options;
+    for (int i=1; i<argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
+            if (json) return fail("--help cannot be combined with --diagnostics=json");
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
-                      << "       ipc --describe-language  (JSON language contracts)\n"
-                      << "Imports resolve relative to the entry file; the\n"
-                      << "output passes the runtime validator. Debug information is\n"
-                      << "stripped by default; --debug retains source maps and symbols.\n"
-                      << "--strip removes them again (the last flag wins). --format writes\n"
-                      << "canonical source beside the compiled result.\n"
-                      << "Compression is automatic when smaller; --no-compress\n"
-                      << "writes an expanded file for low-level inspection.\n";
+                << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
+                << "       ipc <file.ips> --check [--diagnostics=json|text]\n"
+                << "       ipc --describe-language  (JSON language contracts)\n"
+                << "Imports resolve relative to the entry file. Both modes run the full\n"
+                << "compiler and validate the final executable in memory. --check writes\n"
+                << "no files and rejects --output/--format. Debug is stripped by default;\n"
+                << "--debug retains source maps; the last --strip/--debug flag wins.\n"
+                << "Compression is automatic when smaller; --no-compress disables it.\n"
+                << "--format writes canonical source beside the compiled result.\n";
             return 0;
         }
-        if (arg == "-o" || arg == "--output") {
-            if (i + 1 >= argc) {
-                return fail("missing value for " + arg);
-            }
-            output = argv[++i];
-        } else if (arg == "--strip" || arg == "--debug") {
-            strip = arg == "--strip";
-        } else if (arg == "--compress" || arg == "--no-compress") {
-            compress = arg == "--compress";
-        } else if (arg == "--no-opt") {
-            optimize = false;
-        } else if (arg == "--format") {
-            if (i + 1 >= argc) return fail("missing value for --format");
-            formattedOutput = argv[++i];
-        } else if (!arg.empty() && arg[0] == '-') {
-            return fail("unknown option '" + arg + "'");
-        } else if (input.empty()) {
-            input = arg;
-        } else {
-            return fail("multiple input files");
-        }
+        if (arg == "-o" || arg == "--output" || arg == "--format") {
+            if (i+1 >= argc) return fail("missing value for " + arg);
+            if (std::string_view(argv[i+1]).empty()) return fail("empty value for " + arg);
+            if (arg == "--format") formattedOutput = argv[++i];
+            else { outputRequested = true; output = argv[++i]; }
+        } else if (arg == "--check") check = true;
+        else if (arg == "--diagnostics=json") json = true;
+        else if (arg == "--diagnostics=text") json = false;
+        else if (arg == "--strip" || arg == "--debug") options.stripDebug = arg == "--strip";
+        else if (arg == "--compress" || arg == "--no-compress") options.compress = arg == "--compress";
+        else if (arg == "--no-opt") options.optimize = false;
+        else if (!arg.empty() && arg[0] == '-') return fail("unknown option '" + arg + "'");
+        else if (input.empty()) input = arg;
+        else return fail("multiple input files");
     }
-    if (input.empty()) {
-        return fail("no input file");
-    }
-    if (output.empty()) {
+    if (input.empty()) return fail("no input file");
+    if (check && (outputRequested || !formattedOutput.empty()))
+        return fail("--check cannot be combined with --output or --format");
+    if (output.empty() && !check) {
         const auto dot = input.rfind('.');
-        output = (dot == std::string::npos ? input : input.substr(0, dot)) + ".iprop";
+        output = (dot == std::string::npos ? input : input.substr(0,dot)) + ".iprop";
     }
-
-    std::ifstream stream(input);
-    if (!stream) {
-        return fail("cannot open '" + input + "'");
-    }
-    std::string entrySource((std::istreambuf_iterator<char>(stream)), {});
-
-    const std::filesystem::path entryPath(input);
-    const auto utf8Name = entryPath.filename().u8string();
-    const std::string entryName(utf8Name.begin(), utf8Name.end());
-    const auto dir = entryPath.parent_path().empty()
-                         ? std::filesystem::path(".")
-                         : entryPath.parent_path();
-
-    const auto loadSource = [&](std::string_view path) -> std::string {
-        // Import strings use UTF-8, independently of the native Windows code page.
-        const std::u8string utf8Path(path.begin(), path.end());
-        const std::filesystem::path resolved =
-            dir / std::filesystem::path(utf8Path);
-        std::ifstream file(resolved);
-        if (!file) {
-            throw std::runtime_error("no such file");
-        }
-        return std::string((std::istreambuf_iterator<char>(file)), {});
-    };
-
     try {
-        using namespace iprop::ips;
-
-        const std::vector<std::string> order =
-            resolveImports(entryName, loadSource);
-
-        std::map<std::string, std::string> sources;
-        std::map<std::string, Program> programs;
-        for (const auto& path : order) {
-            std::string source = loadSource(path);
-            sources.emplace(path, source);
-            try {
-                programs.emplace(path, parse(source));
-            } catch (const SourceError& error) {
-                reportError(path, source, error);
-                return 1;
+        const std::filesystem::path entryPath(input);
+        const auto utf8Name = entryPath.filename().u8string();
+        const std::string entryName(utf8Name.begin(), utf8Name.end());
+        const auto dir = entryPath.parent_path().empty() ? std::filesystem::path(".") : entryPath.parent_path();
+        const auto loadSource = [&](std::string_view path) -> std::string {
+            const std::u8string utf8Path(path.begin(),path.end());
+            std::ifstream stream(dir / std::filesystem::path(utf8Path), std::ios::binary);
+            if (!stream) throw std::runtime_error("no such file");
+            std::string source((std::istreambuf_iterator<char>(stream)), {});
+            if (stream.bad()) throw std::runtime_error("source read failed");
+            return source;
+        };
+        const auto result = iprop::compileSource(entryName, loadSource, options);
+        if (!result.succeeded()) {
+            const char* status = result.status == iprop::SourceCompilationStatus::InvalidSource
+                ? "invalid_source" : "internal_error";
+            if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, result.diagnostics);
+            else for (const auto& diagnostic : result.diagnostics) {
+                const auto found = result.sources.find(diagnostic.path);
+                iprop::tools::writeSourceDiagnosticText(std::cerr, diagnostic,
+                    found == result.sources.end() ? std::string_view{} : found->second);
             }
-        }
-
-        const Program& entry = programs.at(entryName);
-        std::map<std::string, const Program*> partPrograms;
-        std::map<std::string, PartInfo> partInfos;
-        for (const auto& import : entry.imports) {
-            const Program& part = programs.at(import.path);
-            partPrograms.emplace(import.alias, &part);
-            partInfos.emplace(import.alias, partInfoOf(part.asset));
-        }
-
-        // Check each part standalone, then the entry with the part surfaces.
-        for (const auto& import : entry.imports) {
-            const std::string& path = import.path;
-            try {
-                checkAsset(programs.at(path), {});
-            } catch (const SourceError& error) {
-                reportError(path, sources.at(path), error);
-                return 1;
-            }
-        }
-        try {
-            checkAsset(entry, partInfos);
-        } catch (const SourceError& error) {
-            reportError(entryName, entrySource, error);
             return 1;
         }
-
-        std::vector<iprop::u8> bytes =
-            iprop::compileProgram(entry, partPrograms, optimize);
-        std::string canonicalSource;
-        if (!formattedOutput.empty()) {
-            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
-                return fail("--format must target a distinct source output file");
-            canonicalSource = formatProgram(entry);
+        if (!check) {
+            std::string canonical;
+            if (!formattedOutput.empty()) {
+                if (sameFile(formattedOutput,input) || sameFile(formattedOutput,output))
+                    return fail("--format must target a distinct source output file");
+                canonical = iprop::ips::formatProgram(result.programs.at(entryName));
+            }
+            writeFile(output,reinterpret_cast<const char*>(result.bytes.data()),result.bytes.size());
+            if (!formattedOutput.empty()) {
+                // A case-insensitive alias of a new binary exists only after writing it.
+                if (sameFile(formattedOutput,input) || sameFile(formattedOutput,output))
+                    return fail("--format must target a distinct source output file");
+                writeFile(formattedOutput,canonical.data(),canonical.size());
+            }
         }
-        if (strip) {
-            bytes = iprop::stripDebug(bytes);
+        if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, "ok", {});
+        else if (check) std::cout << "checked " << input << '\n';
+        else {
+            std::cout << "compiled " << input << " -> " << output << '\n';
+            if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << '\n';
         }
-
-        if (compress) bytes = iprop::compressFile(bytes);
-        std::ofstream out(output, std::ios::binary);
-        if (!out) {
-            return fail("cannot write '" + output + "'");
-        }
-        out.write(reinterpret_cast<const char*>(bytes.data()),
-                  static_cast<std::streamsize>(bytes.size()));
-        out.close();
-        if (!out) return fail("cannot write '" + output + "'");
-        if (!formattedOutput.empty()) {
-            // A case-insensitive alias of a new binary exists only after writing it.
-            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
-                return fail("--format must target a distinct source output file");
-            std::ofstream formatted(formattedOutput, std::ios::binary);
-            formatted << canonicalSource;
-            formatted.close();
-            if (!formatted) return fail("cannot write '" + formattedOutput + "'");
-        }
-    } catch (const iprop::ips::SourceError& error) {
-        const std::string path = error.path.empty() ? entryName : error.path;
-        std::string source;
-        try { source = loadSource(path); } catch (const std::exception&) { /* file unavailable */ }
-        reportError(path, source, error);
-        return 1;
+        return std::cout ? 0 : 1;
     } catch (const std::exception& error) {
-        return fail(error.what());
+        return fail(error.what(), "internal_error");
     }
-    std::cout << "compiled " << input << " -> " << output << "\n";
-    if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << "\n";
-    return 0;
 }

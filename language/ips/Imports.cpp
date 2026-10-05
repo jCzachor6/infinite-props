@@ -1,6 +1,7 @@
 #include "ips/Imports.hpp"
 
 #include <set>
+#include <map>
 #include <utility>
 
 #include "ips/Parser.hpp"
@@ -8,9 +9,9 @@
 
 namespace iprop::ips {
 
-std::vector<std::string> resolveImports(
+std::vector<std::string> resolveImportOrder(
     std::string_view entryPath,
-    const std::function<std::string(std::string_view path)>& loadSource) {
+    const std::function<const Program&(std::string_view path)>& loadProgram) {
     std::vector<std::string> order;
     std::set<std::string> done;
     std::vector<std::string> chain;
@@ -36,22 +37,18 @@ std::vector<std::string> resolveImports(
             inChain.insert(path);
             chain.push_back(path);
 
-            std::string source;
+            const Program* program = nullptr;
             try {
-                source = loadSource(path);
+                program = &loadProgram(path);
+            } catch (SourceError& error) {
+                if (error.path.empty()) error.path = path;
+                throw;
             } catch (const std::exception& e) {
                 throw SourceError{importedAt,
                                   std::string("cannot load '") + path +
                                       "': " + e.what(), importer};
             }
-            Program program;
-            try {
-                program = parse(source);
-            } catch (SourceError& error) {
-                error.path = path;
-                throw;
-            }
-            for (const auto& import : program.imports) {
+            for (const auto& import : program->imports) {
                 visit(import.path, import.location, path);
             }
             chain.pop_back();
@@ -62,6 +59,15 @@ std::vector<std::string> resolveImports(
 
     visit(std::string(entryPath), {1,1}, std::string(entryPath));
     return order;
+}
+
+std::vector<std::string> resolveImports(
+    std::string_view entryPath,
+    const std::function<std::string(std::string_view path)>& loadSource) {
+    std::map<std::string, Program> programs;
+    return resolveImportOrder(entryPath, [&](std::string_view path) -> const Program& {
+        return programs.emplace(std::string(path), parse(loadSource(path))).first->second;
+    });
 }
 
 } // namespace iprop::ips

@@ -10,6 +10,20 @@ an expanded file; `--no-opt` disables compiler optimization for inspection.
 `ipval` validates a binary, `ipdis` disassembles it and `ipgen` generates
 pixels/outputs. The `.ipa` assembly language is the VM-level tool format.
 
+`ipc entry.ips --check --diagnostics=json` runs the same import, parsing,
+typing, planning, lowering, assembly, optimization and final-file validation
+pipeline entirely in memory. It writes no executable or formatted source;
+combining `--check` with `--output` or `--format` is an invocation error.
+`--no-opt`, `--debug` and compression options select the same artifact policy
+as ordinary compilation, while still writing no files. Each imported source
+is loaded once, and error snippets use that exact owning snapshot.
+
+The current JSON first-error scaffold is explicitly `schema_version: 0`:
+it provides status, message, file and legacy line/column, with null code/range
+and language version. Stable typed codes, byte ranges and recovery are
+introduced by the subsequent diagnostics tasks; schema 0 is not that final
+protocol. `--diagnostics=text` selects the readable renderer.
+
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word
 keywords, normalized literals and named builtin arguments in signature order.

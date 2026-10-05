@@ -2,6 +2,7 @@
 
 add_executable(ipc
     ipc.cpp
+    source_diagnostics.cpp
     language_description.cpp)
 
 target_link_libraries(ipc PRIVATE iprop_compiler)

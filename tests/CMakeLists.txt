@@ -34,6 +34,7 @@ add_executable(iprop_tests
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
     compiler/defaults_test.cpp
+    compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
     compiler/palettes_test.cpp
@@ -114,6 +115,8 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover
         -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p "test_*.py")
     add_test(NAME compiler_optimization_acceptance COMMAND ${Python3_EXECUTABLE}

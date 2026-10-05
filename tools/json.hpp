@@ -12,6 +12,7 @@
 #include <ostream>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 namespace iprop {
 namespace tools {
@@ -32,7 +33,7 @@ inline std::string jsonNumber(f32 value, bool bits = false) {
     return stream.str();
 }
 
-inline std::string jsonEscape(const std::string& text) {
+inline std::string jsonEscape(std::string_view text) {
     std::ostringstream stream;
     for (const char c : text) {
         switch (c) {

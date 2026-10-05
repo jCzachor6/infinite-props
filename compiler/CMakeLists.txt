@@ -2,6 +2,7 @@
 
 add_library(iprop_compiler STATIC
     Compiler.cpp
+    SourceCompilation.cpp
     DeadCode.cpp
     ConstantEvaluation.cpp
     Peephole.cpp
