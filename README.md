@@ -524,15 +524,15 @@ the HTML5 backend). v0.2 rounded out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-v0.3.0 adds vectors, distance fields, curves, procedural noise, colour
-utilities and exact part transforms; it is the released `main` baseline.
-The 0.4.0 release candidate is prepared on `develop`: named calls, RNG sugar,
+v0.3.0 added vectors, distance fields, curves, procedural noise, colour
+utilities and exact part transforms. v0.4.0 adds named calls, RNG sugar,
 canonical formatting, Unicode diagnostics/emoji aliases, 24 recipes,
-bit-exact compiler optimizations and lossless compression. Product 0.4.0,
-format 0.4 (with frozen 0.1–0.3 reader compatibility) and C API 0.2 are
-separate contracts. The C ABI layouts retain API 0.2. Migration and release
-commands are in [the 0.4 notes](docs/release-v0.4.md).
-Source and native packages can be built as local release artifacts.
+the complete language handbook, bit-exact compiler optimizations and lossless
+compression. Product 0.4.0, format 0.4 (with frozen 0.1–0.3 reader compatibility)
+and C API 0.2 are separate contracts. The C ABI layouts retain API 0.2.
+Migration and release commands are in [the 0.4 notes](docs/release-v0.4.md).
+Source, native SDK, WASM and website packages are published by the tagged
+release workflow after validation and can also be built locally.
 GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website
 publication, Bevy and Unity glue remain separate ecosystem work.
 

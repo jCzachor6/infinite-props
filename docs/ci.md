@@ -96,9 +96,9 @@ git tag -a v0.4.0 -m "Release 0.4.0"
 git push origin v0.4.0
 ```
 
-The current 0.4 candidate metadata still needs its final changelog date and
-frozen specification status before that tag. Ordinary `develop` pushes retain
-and validate candidate packages without publishing a GitHub Release.
+Before creating a release tag, finalize the changelog date and freeze the
+matching specification. Ordinary `develop` pushes retain and validate candidate
+packages without publishing a GitHub Release.
 
 Local diagnostic commands:
 

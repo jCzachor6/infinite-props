@@ -1,6 +1,6 @@
 # `.iprop` Format and Virtual Machine — Specification v0.4
 
-**Status:** v0.4 release candidate contract (2026-10-03).
+**Status:** Frozen v0.4 contract (2026-10-05).
 **Scope:** Lossless container compression. The v0.3 section, type, opcode,
 mathematical, canvas, output, fuel and validation semantics remain frozen.
 This document inherits [v0.3](iprop-v0.3.md), with the changes below taking

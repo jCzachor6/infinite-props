@@ -1,9 +1,9 @@
-# Preparing release 0.4.0
+# Release 0.4.0
 
-The candidate is maintained on `develop`. Product, editor and website versions
-are 0.4.0; the format minor is 4 and the C API stays 0.2. The released 0.3
-baseline remains on `main` until the release merge. Preparing packages does
-not create a release tag or publish artifacts.
+Release date: 2026-10-05. Product, editor and website versions are 0.4.0;
+the frozen format minor is 4 and the C API stays 0.2. The release tag is
+`v0.4.0` on `main`. Local packaging and the tagged publication workflow
+are described below.
 
 ## Changes and migration
 
@@ -23,6 +23,10 @@ not create a release tag or publish artifacts.
 - `ipc` strips debug data and compresses when smaller by default. Use `--debug`
   for source maps and `--no-compress` for expanded files. The editor inspector
   requests debug data; binary exports use production defaults.
+- The complete [language handbook](language/index.md) supplies the website,
+  downloadable book and SDK/WASM documentation. Compiler signatures, lexer
+  aliases and executable examples are checked against the current source;
+  packaged documentation records the product version, source commit and hashes.
 
 The v0.4 loader accepts frozen uncompressed 0.1–0.3 files and bounded lossless
 DEFLATE envelopes. Older readers reject minor 4, even without compression;
@@ -75,10 +79,11 @@ See [CI artifacts and reports](ci.md) for downloadable builds and diagnostics.
 
 ## Final release gate
 
-Inspect GitHub CI for the exact candidate commit: Linux, macOS, Windows, WASM,
-SFML/Godot and sanitizer jobs must pass. Confirm frozen golden hashes and
-artifact size/output acceptance. Then merge the reviewed candidate to `main`,
-date the changelog, mark the v0.4 spec frozen, tag `v0.4.0` on that merge and
-push the tag. The [automatic release workflow](ci.md#automatic-releases)
+Finalize the changelog date and frozen specification status on `develop`.
+Inspect GitHub CI for that exact candidate commit: Linux, macOS, Windows,
+WASM, SFML/Godot and sanitizer jobs must pass. Confirm frozen golden hashes
+and artifact size/output acceptance. Then merge the reviewed candidate to
+`main`, tag `v0.4.0` on that merge and push `main` before pushing the tag.
+The [automatic release workflow](ci.md#automatic-releases)
 rebuilds from that exact clean tagged commit, runs all CI and extraction checks,
 and uploads/verifies a complete draft before publishing the GitHub Release.

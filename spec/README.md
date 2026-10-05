@@ -12,7 +12,7 @@ that every compiler and interpreter MUST implement.
 | [iprop-v0.1.md](iprop-v0.1.md) | **v0.1 — frozen** | File structure, meta/const/code/debug sections, VM semantics, full instruction set, seeded primitives, canvas operations, parts and composition, determinism rules, validation, conformance |
 | [iprop-v0.2.md](iprop-v0.2.md) | **v0.2 — frozen** | Version-gated trigonometry and math; all frozen 0.1 layouts and algorithms remain supported |
 | [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 — frozen** | Vectors, SDF queries and Bézier strokes, procedural noise, colour and curve utilities, palette ramps and D4 part transforms; all frozen 0.1/0.2 layouts and algorithms remain supported |
-| [iprop-v0.4.md](iprop-v0.4.md) | **v0.4 — release candidate** | Lossless bounded zlib/DEFLATE containers; frozen 0.1–0.3 files, VM behavior and output bits remain supported |
+| [iprop-v0.4.md](iprop-v0.4.md) | **v0.4 — frozen** | Lossless bounded zlib/DEFLATE containers; frozen 0.1–0.3 files, VM behavior and output bits remain supported |
 
 The `.ips` language compiles to this contract. Its complete authoring reference
 is the [language handbook](../docs/language/index.md), checked against the
@@ -42,4 +42,4 @@ and needs a spec update first.
 | v0.1.0 | 2026-09-29 | **Released.** Semantics frozen by the golden corpus (Phases 1–16); the debug section and the source maps (§7); the language and the compiler (Phases 17–23); the HTML5 backend; the editor and the website. Deferred and documented: the native hosts (SFML/OpenGL/Vulkan, Part D) and the public gallery (a separate project). |
 | v0.2.0 | 2026-09-30 | Format minor 2 gates new trig and math opcodes; the reader preserves format 0.1 support. |
 | v0.3.0 | 2026-10-02 | **Released.** Format minor 3 adds vectors, distance fields, curves, procedural noise, colour utilities and D4 part transforms; 0.1/0.2 reader compatibility is preserved. |
-| v0.4.0 | pending | **Release candidate.** Format minor 4 adds lossless compression; compiler/source additions retain existing VM semantics. |
+| v0.4.0 | 2026-10-05 | **Released.** Format minor 4 adds lossless compression; compiler/source additions retain existing VM semantics. |

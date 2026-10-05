@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.4.0 — release candidate
+## v0.4.0 — 2026-10-05
 
 Product/editor/website version: 0.4.0. Format: 0.4 with frozen 0.1–0.3
 reader compatibility. C API: 0.2, with unchanged layouts. Migration and
@@ -81,6 +81,15 @@ packaging instructions: [release notes](docs/release-v0.4.md).
   The editor inspector requests debug data while binary exports stay stripped;
   the compiler API retains debug data for tooling. CLI acceptance checks
   expanded/packed byte equality, source maps and identical rendered outputs.
+
+- Added the complete language handbook, with compiler-exported signatures,
+  lexer aliases and executable examples covering successful programs,
+  expected compile errors and runtime traps. The website, downloadable book
+  and SDK/WASM documentation share versioned sources and file digests.
+- Expanded CI reports and release packaging for Linux, macOS, Windows,
+  WASM and the website. Tagged releases rebuild the exact source commit,
+  verify relocated/extracted packages and documentation, and publish all
+  13 assets only after draft upload and SHA256 readback succeed.
 
 ## v0.3.0 — 2026-10-02
 
