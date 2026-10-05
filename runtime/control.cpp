@@ -7,7 +7,7 @@ namespace {
 // it); inner labels unwind and the stack restores the target's entry height.
 void branch(Execution& ex, Frame& frame, u16 depth) {
     if (depth >= frame.labels.size()) {
-        ex.trap("branch depth out of range");
+        ex.trap("branch depth out of range", ErrorReason::InvalidControl);
     }
     const Label target = frame.labels[frame.labels.size() - 1 - depth];
     frame.labels.resize(frame.labels.size() - depth);
@@ -57,7 +57,7 @@ bool stepControl(Execution& ex, Instruction ins) {
 
     case Opcode::Else: {
         if (frame.labels.empty()) {
-            ex.trap("else without if");
+            ex.trap("else without if", ErrorReason::InvalidControl);
         }
         // Reached by falling through the then-branch: restore the entry
         // height and skip the else body; the `end` pops the label.
@@ -69,7 +69,7 @@ bool stepControl(Execution& ex, Instruction ins) {
 
     case Opcode::End: {
         if (frame.labels.empty()) {
-            ex.trap("end without block");
+            ex.trap("end without block", ErrorReason::InvalidControl);
         }
         const Label label = frame.labels.back();
         frame.labels.pop_back();

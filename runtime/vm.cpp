@@ -75,7 +75,7 @@ bool stepCore(Execution& ex, Instruction ins) {
 Value Execution::pop() {
     Frame& frame = frames.back();
     if (frame.stack.empty()) {
-        trap("stack underflow");
+        trap("stack underflow", ErrorReason::StackUnderflow);
     }
     Value value = std::move(frame.stack.back());
     frame.stack.pop_back();
@@ -85,7 +85,7 @@ Value Execution::pop() {
 Value Execution::peek() {
     Frame& frame = frames.back();
     if (frame.stack.empty()) {
-        trap("stack underflow");
+        trap("stack underflow", ErrorReason::StackUnderflow);
     }
     return frame.stack.back();
 }
@@ -93,7 +93,7 @@ Value Execution::peek() {
 i32 Execution::popI32() {
     const Value value = pop();
     if (!std::holds_alternative<i32>(value)) {
-        trap("stack type mismatch: expected i32");
+        trap("stack type mismatch: expected i32", ErrorReason::StackType);
     }
     return std::get<i32>(value);
 }
@@ -101,7 +101,7 @@ i32 Execution::popI32() {
 f32 Execution::popF32() {
     const Value value = pop();
     if (!std::holds_alternative<f32>(value)) {
-        trap("stack type mismatch: expected f32");
+        trap("stack type mismatch: expected f32", ErrorReason::StackType);
     }
     return std::get<f32>(value);
 }
@@ -109,7 +109,7 @@ f32 Execution::popF32() {
 Color Execution::popColor() {
     const Value value = pop();
     if (!std::holds_alternative<Color>(value)) {
-        trap("stack type mismatch: expected color");
+        trap("stack type mismatch: expected color", ErrorReason::StackType);
     }
     return std::get<Color>(value);
 }
@@ -117,7 +117,7 @@ Color Execution::popColor() {
 Vec2 Execution::popVec2() {
     const Value value = pop();
     if (!std::holds_alternative<Vec2>(value)) {
-        trap("stack type mismatch: expected vec2");
+        trap("stack type mismatch: expected vec2", ErrorReason::StackType);
     }
     return std::get<Vec2>(value);
 }
@@ -125,21 +125,21 @@ Vec2 Execution::popVec2() {
 void Execution::push(Value value) {
     Frame& frame = frames.back();
     if (frame.stack.size() >= kMaxStackDepth) {
-        trap("operand stack depth exceeds limit");
+        trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
     }
     frame.stack.push_back(std::move(value));
 }
 
 void Execution::spend(u64 cost) {
     if (cost > fuel) {
-        trap("fuel exhausted");
+        trap("fuel exhausted", ErrorReason::FuelExhausted);
     }
     fuel -= cost;
 }
 
 void Execution::callFunction(u16 functionIndex) {
     if (frames.size() >= kMaxCallDepth) {
-        trap("call depth exceeds limit");
+        trap("call depth exceeds limit", ErrorReason::CallDepth);
     }
     const auto& callee = file.code.functions[functionIndex];
     Frame& caller = frames.back();
@@ -163,10 +163,10 @@ void Execution::callFunction(u16 functionIndex) {
 
 void Execution::callPart(u16 partIndex, u8 transform) {
     if (partIndex >= file.code.parts.size()) {
-        trap("part index out of range");
+        trap("part index out of range", ErrorReason::IndexRange);
     }
     if (frames.size() >= kMaxCallDepth) {
-        trap("call depth exceeds limit");
+        trap("call depth exceeds limit", ErrorReason::CallDepth);
     }
     const auto& part = file.code.parts[partIndex];
 
@@ -188,12 +188,12 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     }
 
     const auto d4 = D4Transform::fromKind(transform);
-    if (!d4) trap("invalid part transform");
+    if (!d4) trap("invalid part transform", ErrorReason::InvalidPart);
     PartRenderPlan render;
     try {
         render = PartRenderPlan::create(part, {canvas.scaleX, canvas.scaleY}, {atX, atY}, *d4);
     } catch (const std::invalid_argument& error) {
-        trap(error.what());
+        trap(error.what(), ErrorReason::InvalidPart);
     }
     spend(render.blitCost);
     PartCallState state;
@@ -232,7 +232,7 @@ void Execution::leaveFrame() {
     // The validated function leaves exactly its results on the stack, in
     // declared order (deepest first). Defend against unvalidated input.
     if (finished.stack.size() != fn.results.size()) {
-        trap("stack does not match declared results");
+        trap("stack does not match declared results", ErrorReason::StackType);
     }
     Frame& caller = frames.back();
     if (finished.isPart) {
@@ -307,13 +307,15 @@ void Execution::ensureControl(u16 functionIndex) {
     }
 }
 
-[[noreturn]] void Execution::trap(std::string message) const {
+[[noreturn]] void Execution::trap(std::string message, ErrorReason reason) const {
     std::size_t offset = 0;
     if (!frames.empty()) {
         const auto& fn = file.code.functions[frames.back().functionIndex];
         offset = fn.fileOffset + frames.back().ip * 4;
     }
-    throw Trap(std::move(message), offset);
+    Trap error(std::move(message), reason, ErrorStage::Execute, activeInstruction);
+    error.offset = offset; // preserve existing located-message policy
+    throw error;
 }
 
 } // namespace detail
@@ -330,10 +332,10 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     impl_->ex.fuel = file.meta.fuel;
 
     if (inputs.variant >= file.meta.variants) {
-        throw Trap("variant index out of range", 0);
+        throw Trap("variant index out of range", ErrorReason::VariantRange, ErrorStage::Arguments);
     }
     if (inputs.archetype >= file.meta.archetypes) {
-        throw Trap("archetype index out of range", 0);
+        throw Trap("archetype index out of range", ErrorReason::ArchetypeRange, ErrorStage::Arguments);
     }
 
     // Target canvas and scale (spec §8.1). The size cap is a runtime defense:
@@ -341,7 +343,7 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     const u32 targetW = inputs.sizeX != 0 ? inputs.sizeX : file.meta.sizeX;
     const u32 targetH = inputs.sizeY != 0 ? inputs.sizeY : file.meta.sizeY;
     if (targetW > kMaxCanvasSide || targetH > kMaxCanvasSide) {
-        throw Trap("canvas too large", 0);
+        throw Trap("canvas too large", ErrorReason::CanvasSize, ErrorStage::Arguments);
     }
     impl_->ex.canvas.resize(targetW, targetH);
     impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
@@ -367,7 +369,7 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
             }
         } else {
             if (found->second.type != decl.type) {
-                throw Trap("uniform override type mismatch for '" + name + "'", 0);
+                throw Trap("uniform override type mismatch for '" + name + "'", ErrorReason::UniformType, ErrorStage::Arguments);
             }
             switch (decl.type) {
             case InputType::Color: root.locals.push_back(Value(found->second.color)); break;
@@ -413,6 +415,8 @@ void VM::run() {
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
         const auto& fn = ex.file.code.functions[frame.functionIndex];
+        ex.activeInstruction = ErrorLocation::instruction(fn.fileOffset + frame.ip * 4,
+            frame.functionIndex, static_cast<u32>(frame.ip));
         if (frame.ip >= fn.code.size() / 4) {
             // Implicit return: the validated function ends with its declared
             // results on the stack.
@@ -424,7 +428,7 @@ void VM::run() {
         // counts themselves, up front (spec §8.3).
         ex.spend(1);
         if (!detail::dispatch(ex, ins)) {
-            ex.trap("reserved opcode");
+            ex.trap("reserved opcode", ErrorReason::RuntimeViolation);
         }
     }
 }

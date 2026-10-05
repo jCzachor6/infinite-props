@@ -55,8 +55,8 @@ struct ControlFrame {
 class FunctionValidator {
 public:
     FunctionValidator(const LoadedFile& file, const Function& function,
-                      const std::vector<SlotInfo>& slots)
-        : file_(file), fn_(function), slots_(slots) {}
+                      const std::vector<SlotInfo>& slots, u32 functionIndex)
+        : file_(file), fn_(function), slots_(slots), functionIndex_(functionIndex) {}
 
     void run() {
         const auto hasVec2 = [](const std::vector<ValueType>& types) {
@@ -106,12 +106,15 @@ private:
     const LoadedFile& file_;
     const Function& fn_;
     const std::vector<SlotInfo>& slots_;
+    u32 functionIndex_;
     std::vector<ValueType> stack_;
     std::vector<ControlFrame> labels_;
     bool reachable_ = true;
 
     [[noreturn]] void fail(std::size_t instruction, std::string message) const {
-        throw FormatError(std::move(message), fn_.fileOffset + instruction * 4);
+        throw FormatError(std::move(message), ErrorReason::InvalidInstruction, ErrorStage::Validate,
+            ErrorLocation::instruction(fn_.fileOffset + instruction * 4, functionIndex_,
+                                       static_cast<u32>(instruction)));
     }
 
     void push(std::size_t at, ValueType type) {
@@ -398,23 +401,34 @@ std::vector<SlotInfo> buildSlots(const LoadedFile& file) {
     return slots;
 }
 
+ErrorLocation functionLocation(const LoadedFile& file, const Function& function) {
+    auto location = ErrorLocation::at(function.fileOffset);
+    location.flags |= ErrorLocation::Function;
+    location.functionIndex = static_cast<u32>(&function - file.code.functions.data());
+    return location;
+}
+
 void checkEntry(const LoadedFile& file) {
     const auto& entry = file.code.entry();
     if (entry.isAnonymous() || file.pool.strings[entry.nameIndex] != "draw") {
-        throw FormatError("entry function must be named 'draw'", entry.fileOffset);
+        throw FormatError("entry function must be named 'draw'", ErrorReason::InvalidSignature, ErrorStage::Validate,
+            functionLocation(file, entry));
     }
     const std::size_t expected = 2 + file.meta.inputs.size();
     if (entry.params.size() != expected) {
-        throw FormatError("draw signature mismatch: parameter count", entry.fileOffset);
+        throw FormatError("draw signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
+            functionLocation(file, entry));
     }
     for (std::size_t i = 0; i < expected; ++i) {
         const ValueType want = i < 2 ? ValueType::I32 : typeOf(file.meta.inputs[i - 2]);
         if (entry.params[i] != want) {
-            throw FormatError("draw signature mismatch: parameter type", entry.fileOffset);
+            throw FormatError("draw signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
+                functionLocation(file, entry));
         }
     }
     if (!entry.results.empty()) {
-        throw FormatError("draw must have no results", entry.fileOffset);
+        throw FormatError("draw must have no results", ErrorReason::InvalidSignature, ErrorStage::Validate,
+            functionLocation(file, entry));
     }
 }
 
@@ -423,16 +437,19 @@ void checkPartSignatures(const LoadedFile& file) {
         const auto& fn = file.code.functions[part.functionIndex];
         const std::size_t expected = 2 + part.inputs.size();
         if (fn.params.size() != expected) {
-            throw FormatError("part function signature mismatch: parameter count", fn.fileOffset);
+            throw FormatError("part function signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
+                functionLocation(file, fn));
         }
         for (std::size_t i = 0; i < expected; ++i) {
             const ValueType want = i < 2 ? ValueType::I32 : typeOf(part.inputs[i - 2]);
             if (fn.params[i] != want) {
-                throw FormatError("part function signature mismatch: parameter type", fn.fileOffset);
+                throw FormatError("part function signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
+                    functionLocation(file, fn));
             }
         }
         if (!fn.results.empty()) {
-            throw FormatError("part function must have no results", fn.fileOffset);
+            throw FormatError("part function must have no results", ErrorReason::InvalidSignature, ErrorStage::Validate,
+                functionLocation(file, fn));
         }
     }
 }
@@ -494,9 +511,8 @@ void checkPartAcyclicity(const LoadedFile& file) {
                 state[p] = 1;
                 for (const u16 next : partEdges[p]) {
                     if (state[next] == 1) {
-                        throw FormatError("part import cycle",
-                                          file.code.functions[file.code.parts[p].functionIndex]
-                                              .fileOffset);
+                        throw FormatError("part import cycle", ErrorReason::PartCycle, ErrorStage::Validate,
+                            functionLocation(file, file.code.functions[file.code.parts[p].functionIndex]));
                     }
                     if (state[next] == 0) {
                         stack.push_back(next);
@@ -530,8 +546,8 @@ void validate(const LoadedFile& file) {
     checkEntry(file);
     checkPartSignatures(file);
     const auto slots = buildSlots(file);
-    for (const auto& function : file.code.functions) {
-        FunctionValidator(file, function, slots).run();
+    for (std::size_t index = 0; index < file.code.functions.size(); ++index) {
+        FunctionValidator(file, file.code.functions[index], slots, static_cast<u32>(index)).run();
     }
     checkPartAcyclicity(file);
 }

@@ -142,9 +142,17 @@ options. Its public generation consumer is added in the parameters stage.
 Future input fields requesting behavior must use a recognized flag and
 negotiated capability. A nonzero unknown tail alone does not request behavior.
 
+`iprop_error_ex` establishes typed status/reason/stage and optional location
+fields. `iprop_error_ex_init(&error, sizeof(error))` initializes success with
+absent locations. Container and expanded offsets have explicit coordinate
+spaces; function/PC and a usable debug line have presence bits. No filename
+or column is invented. See the [error contract](../../docs/runtime-errors.md).
+Structured load/generation entry points and message buffers are introduced
+in subsequent tasks; this initializer does not advertise an error capability.
+
 New collections use count/get/find accessors returning one caller-sized
 descriptor at a time. They do not return arrays whose stride depends on a
-newer `sizeof`. Both initializers reject null or capacities below four without
+newer `sizeof`. All initializers reject null or capacities below four without
 a write, preserve unknown tail/padding bytes, and require no allocation.
 
 The development API currently reports `IPROP_CAP_LIBRARY_QUERY` and

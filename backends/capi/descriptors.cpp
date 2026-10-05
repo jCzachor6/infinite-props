@@ -1,9 +1,17 @@
 #include "iprop.h"
 #include "Sized.hpp"
+#include "Error.hpp"
 
 #include <cstddef>
 
 extern "C" {
+
+iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capacity) {
+    if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
+    iprop::capi::writeField(out, capacity, 0, capacity);
+    iprop::capi::writeError(out, iprop_error_ex{});
+    return IPROP_EX_OK;
+}
 
 iprop_status_ex iprop_library_info_ex_init(iprop_library_info_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;

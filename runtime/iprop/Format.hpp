@@ -46,7 +46,7 @@ struct FileLayout {
 };
 
 // Parses the fixed header (including version/flags/count/reserved checks).
-Header parseHeader(std::span<const u8> data);
+Header parseHeader(std::span<const u8> data, OffsetSpace space = OffsetSpace::Container);
 
 // Parses and validates an expanded file header and section table.
 // Compressed envelopes must first pass through decompressFile().

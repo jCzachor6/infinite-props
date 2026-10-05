@@ -7,14 +7,14 @@ namespace {
 // trap instead of corrupting memory.
 void checkSlot(Execution& ex, u16 index, OutputKind kind, bool list) {
     if (index >= ex.outputSlots.size()) {
-        ex.trap("output slot index out of range");
+        ex.trap("output slot index out of range", ErrorReason::IndexRange);
     }
     const auto& slot = ex.outputSlots[index];
     if (slot.kind != kind) {
-        ex.trap("output slot kind mismatch");
+        ex.trap("output slot kind mismatch", ErrorReason::InvalidOutput);
     }
     if (slot.isList != list) {
-        ex.trap(list ? "expected a list slot" : "expected a singular slot");
+        ex.trap(list ? "expected a list slot" : "expected a singular slot", ErrorReason::InvalidOutput);
     }
 }
 

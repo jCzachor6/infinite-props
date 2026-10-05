@@ -230,6 +230,90 @@ typedef struct {
 IPROP_API iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_ex* out,
                                                        uint32_t capacity);
 
+/* Structured error foundations. Codes identify stable cause categories; they
+ * never depend on message wording. New operations consume this descriptor as
+ * they are implemented; this declaration does not advertise load/generate_ex.
+ * Each field is output-only except caller capacity in struct_size. */
+typedef uint32_t iprop_error_reason;
+#define IPROP_REASON_NONE UINT32_C(0)
+#define IPROP_REASON_INVALID_FORMAT UINT32_C(1000)
+#define IPROP_REASON_TRUNCATED_INPUT UINT32_C(1001)
+#define IPROP_REASON_BAD_MAGIC UINT32_C(1002)
+#define IPROP_REASON_UNSUPPORTED_VERSION UINT32_C(1003)
+#define IPROP_REASON_INVALID_HEADER UINT32_C(1004)
+#define IPROP_REASON_COMPRESSION UINT32_C(1005)
+#define IPROP_REASON_INVALID_LAYOUT UINT32_C(1006)
+#define IPROP_REASON_INVALID_CONSTANTS UINT32_C(1007)
+#define IPROP_REASON_INVALID_METADATA UINT32_C(1008)
+#define IPROP_REASON_INVALID_CODE UINT32_C(1009)
+#define IPROP_REASON_INVALID_DEBUG UINT32_C(1010)
+#define IPROP_REASON_INVALID_INSTRUCTION UINT32_C(2000)
+#define IPROP_REASON_INVALID_SIGNATURE UINT32_C(2001)
+#define IPROP_REASON_PART_CYCLE UINT32_C(2002)
+#define IPROP_REASON_RUNTIME_VIOLATION UINT32_C(3000)
+#define IPROP_REASON_FUEL_EXHAUSTED UINT32_C(3001)
+#define IPROP_REASON_STACK_UNDERFLOW UINT32_C(3002)
+#define IPROP_REASON_STACK_TYPE UINT32_C(3003)
+#define IPROP_REASON_STACK_LIMIT UINT32_C(3004)
+#define IPROP_REASON_CALL_DEPTH UINT32_C(3005)
+#define IPROP_REASON_INDEX_RANGE UINT32_C(3006)
+#define IPROP_REASON_INVALID_CONTROL UINT32_C(3007)
+#define IPROP_REASON_DIVIDE_BY_ZERO UINT32_C(3008)
+#define IPROP_REASON_INTEGER_OVERFLOW UINT32_C(3009)
+#define IPROP_REASON_NUMERIC_RANGE UINT32_C(3010)
+#define IPROP_REASON_INVALID_OUTPUT UINT32_C(3011)
+#define IPROP_REASON_PART_OUTPUT_MISSING UINT32_C(3012)
+#define IPROP_REASON_INVALID_PART UINT32_C(3013)
+#define IPROP_REASON_STREAM_UNDERFLOW UINT32_C(3014)
+#define IPROP_REASON_INVALID_ARGUMENT UINT32_C(4000)
+#define IPROP_REASON_VARIANT_RANGE UINT32_C(4001)
+#define IPROP_REASON_ARCHETYPE_RANGE UINT32_C(4002)
+#define IPROP_REASON_CANVAS_SIZE UINT32_C(4003)
+#define IPROP_REASON_UNIFORM_TYPE UINT32_C(4004)
+#define IPROP_REASON_OUT_OF_MEMORY UINT32_C(5000)
+#define IPROP_REASON_INTERNAL UINT32_C(5001)
+
+typedef uint32_t iprop_error_stage;
+#define IPROP_STAGE_NONE UINT32_C(0)
+#define IPROP_STAGE_LOAD UINT32_C(1)
+#define IPROP_STAGE_VALIDATE UINT32_C(2)
+#define IPROP_STAGE_ARGUMENTS UINT32_C(3)
+#define IPROP_STAGE_EXECUTE UINT32_C(4)
+
+#define IPROP_LOCATION_BYTE_OFFSET (UINT32_C(1) << 0)
+#define IPROP_LOCATION_FUNCTION (UINT32_C(1) << 1)
+#define IPROP_LOCATION_PC (UINT32_C(1) << 2)
+#define IPROP_LOCATION_DEBUG_LINE (UINT32_C(1) << 3)
+#define IPROP_OFFSET_NONE UINT32_C(0)
+#define IPROP_OFFSET_EXPANDED_FILE UINT32_C(1)
+#define IPROP_OFFSET_CONTAINER UINT32_C(2)
+
+/* location_flags is authoritative: a zero numeric value may be a real file
+ * offset, function or PC. Absent fields are zero with their flag cleared.
+ * byte_offset is absolute in offset_space: parsed payload/VM errors use the
+ * expanded file, container/header/decompression errors identify the physical
+ * input. PC is a zero-based instruction index within function_index (a code
+ * table index). debug_line is one-based and present only with a usable map.
+ * No filename or column is claimed by this binary's debug data.
+ * Prefix writers clear presence bits whose complete values do not fit. */
+typedef struct {
+    uint32_t struct_size;
+    iprop_status_ex status;
+    iprop_error_reason reason;
+    iprop_error_stage stage;
+    uint64_t byte_offset;
+    uint32_t location_flags;
+    uint32_t offset_space;
+    uint32_t function_index;
+    uint32_t pc;
+    uint32_t debug_line;
+} iprop_error_ex;
+
+/* Initializes success/none and absent locations using bounded field writes.
+ * A NULL descriptor or capacity < 4 fails without a write. Unknown tail,
+ * padding and incomplete fields are untouched, like the other initializers. */
+IPROP_API iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capacity);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

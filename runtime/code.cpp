@@ -12,7 +12,7 @@ namespace {
 ValueType readValueType(Reader& reader, const char* what) {
     const u8 raw = reader.readU8();
     if (raw > 3) {
-        throw FormatError(std::string("unknown ") + what + " type", reader.position() - 1);
+        throw FormatError(std::string("unknown ") + what + " type", reader.position() - 1, ErrorReason::InvalidCode);
     }
     return static_cast<ValueType>(raw);
 }
@@ -21,14 +21,14 @@ ValueType readValueType(Reader& reader, const char* what) {
 
 CodeSection parseCode(std::span<const u8> data, const Section& section, const ConstPool& pool) {
     if (section.id != SectionId::Code) {
-        throw FormatError("not a code section", section.offset);
+        throw FormatError("not a code section", section.offset, ErrorReason::InvalidCode);
     }
     Reader reader = sectionReader(data, section);
     CodeSection code;
 
     const u32 functionCount = reader.readU32();
     if (functionCount < 1 || functionCount > kMaxFunctions) {
-        throw FormatError("function count out of range", reader.position() - 4);
+        throw FormatError("function count out of range", reader.position() - 4, ErrorReason::InvalidCode);
     }
 
     // Function table (spec §6.1). Offsets and lengths are validated after the
@@ -42,7 +42,7 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
 
         const u32 nameIndex = reader.readU32();
         if (nameIndex != kAnonymousName && nameIndex >= pool.strings.size()) {
-            throw FormatError("function name outside const string pool", reader.position() - 4);
+            throw FormatError("function name outside const string pool", reader.position() - 4, ErrorReason::InvalidCode);
         }
         streamOffsets.push_back(reader.readU32());
         streamLengths.push_back(reader.readU32());
@@ -66,7 +66,7 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
             function.locals.push_back(readValueType(reader, "local"));
         }
         if (function.params.size() + function.locals.size() > kMaxLocals) {
-            throw FormatError("too many locals", entryStarts.back());
+            throw FormatError("too many locals", entryStarts.back(), ErrorReason::InvalidCode);
         }
         code.functions.push_back(std::move(function));
     }
@@ -76,18 +76,18 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
     const std::size_t streamBase = reader.position();
     for (std::size_t i = 0; i < code.functions.size(); ++i) {
         if (streamLengths[i] % 4 != 0) {
-            throw FormatError("instruction stream not 4-byte aligned", entryStarts[i]);
+            throw FormatError("instruction stream not 4-byte aligned", entryStarts[i], ErrorReason::InvalidCode);
         }
         const u64 expected = i == 0 ? 0 : streamOffsets[i - 1] + streamLengths[i - 1];
         if (streamOffsets[i] != expected) {
-            throw FormatError("instruction streams must be contiguous", entryStarts[i]);
+            throw FormatError("instruction streams must be contiguous", entryStarts[i], ErrorReason::InvalidCode);
         }
     }
     const u64 regionEnd =
         code.functions.empty() ? 0 : streamOffsets.back() + streamLengths.back();
     if (streamBase + regionEnd > section.offset + static_cast<std::size_t>(section.size)) {
         throw FormatError("instruction streams exceed section",
-                          section.offset + section.size);
+                          section.offset + section.size, ErrorReason::InvalidCode);
     }
     for (std::size_t i = 0; i < code.functions.size(); ++i) {
         code.functions[i].code =
@@ -101,19 +101,19 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
     // Part table (spec §6.3).
     const u32 partCount = reader.readU32();
     if (partCount > kMaxParts) {
-        throw FormatError("part count out of range", reader.position() - 4);
+        throw FormatError("part count out of range", reader.position() - 4, ErrorReason::InvalidCode);
     }
     code.parts.reserve(partCount);
     for (u32 p = 0; p < partCount; ++p) {
         Part part;
         part.functionIndex = reader.readU32();
         if (part.functionIndex >= functionCount) {
-            throw FormatError("part function index out of range", reader.position() - 4);
+            throw FormatError("part function index out of range", reader.position() - 4, ErrorReason::InvalidCode);
         }
         part.sizeX = reader.readU32();
         part.sizeY = reader.readU32();
         if (part.sizeX == 0 || part.sizeY == 0) {
-            throw FormatError("part canvas size must be positive", reader.position() - 4);
+            throw FormatError("part canvas size must be positive", reader.position() - 4, ErrorReason::InvalidCode);
         }
         part.origin = {reader.readF32(), reader.readF32()};
 
@@ -124,7 +124,7 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
             const std::size_t entryStart = reader.position();
             InputDecl decl = readInputEntry(reader, pool);
             if (!inputNames.insert(pool.strings[decl.nameIndex]).second) {
-                throw FormatError("duplicate part input name", entryStart);
+                throw FormatError("duplicate part input name", entryStart, ErrorReason::InvalidCode);
             }
             part.inputs.push_back(decl);
         }
@@ -136,7 +136,7 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
             const std::size_t entryStart = reader.position();
             OutputDecl decl = readOutputEntry(reader, pool);
             if (!outputNames.insert(pool.strings[decl.nameIndex]).second) {
-                throw FormatError("duplicate part output name", entryStart);
+                throw FormatError("duplicate part output name", entryStart, ErrorReason::InvalidCode);
             }
             part.outputs.push_back(decl);
         }
@@ -144,7 +144,7 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
     }
 
     if (!reader.empty()) {
-        throw FormatError("trailing bytes in code section", reader.position());
+        throw FormatError("trailing bytes in code section", reader.position(), ErrorReason::InvalidCode);
     }
 
     return code;

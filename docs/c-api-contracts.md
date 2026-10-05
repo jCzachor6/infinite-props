@@ -84,3 +84,9 @@ implementation tasks.
 Current library/options initializers and query already use these bounded
 descriptor rules. `Utf8View.hpp` provides the common no-allocation validator;
 reflection and parameter entry points use it when implemented.
+
+The sized `iprop_error_ex` foundation and initializer follow the same rules.
+Its typed categories, stages and optional coordinate spaces are specified in
+[runtime-errors.md](runtime-errors.md). Presence bits distinguish unavailable
+locations from valid zero offsets/indices. This foundation adds no structured
+load/query/generate consumer or error capability yet.

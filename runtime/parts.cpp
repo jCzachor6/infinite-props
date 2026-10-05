@@ -16,10 +16,10 @@ bool stepParts(Execution& ex, Instruction ins) {
     case Opcode::PartGetCircle: {
         const u16 slot = ins.operand;
         if (slot >= ex.outputSlots.size()) {
-            ex.trap("output slot index out of range");
+            ex.trap("output slot index out of range", ErrorReason::IndexRange);
         }
         if (ex.slotOwner[slot] == kNoPartIndex) {
-            ex.trap("part.get reads a root-owned slot");
+            ex.trap("part.get reads a root-owned slot", ErrorReason::InvalidOutput);
         }
         const auto& output = ex.outputSlots[slot];
         const OutputKind want = ins.opcode == Opcode::PartGetPoint
@@ -27,25 +27,25 @@ bool stepParts(Execution& ex, Instruction ins) {
                                     : ins.opcode == Opcode::PartGetRect ? OutputKind::Rect
                                                                         : OutputKind::Circle;
         if (output.kind != want) {
-            ex.trap("output slot kind mismatch");
+            ex.trap("output slot kind mismatch", ErrorReason::InvalidOutput);
         }
         if (output.isList) {
-            ex.trap("expected a singular slot");
+            ex.trap("expected a singular slot", ErrorReason::InvalidOutput);
         }
         if (ex.slotOwner[slot] != ex.frame().lastPart) {
-            ex.trap("slot does not belong to the last called part");
+            ex.trap("slot does not belong to the last called part", ErrorReason::InvalidOutput);
         }
         switch (want) {
         case OutputKind::Point:
             if (output.points.empty()) {
-                ex.trap("part output not written");
+                ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
             ex.push(Value(output.points.back().x));
             ex.push(Value(output.points.back().y));
             break;
         case OutputKind::Rect:
             if (output.rects.empty()) {
-                ex.trap("part output not written");
+                ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
             ex.push(Value(output.rects.back().x));
             ex.push(Value(output.rects.back().y));
@@ -54,7 +54,7 @@ bool stepParts(Execution& ex, Instruction ins) {
             break;
         case OutputKind::Circle:
             if (output.circles.empty()) {
-                ex.trap("part output not written");
+                ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
             ex.push(Value(output.circles.back().x));
             ex.push(Value(output.circles.back().y));

@@ -48,6 +48,7 @@ add_executable(iprop_tests
     palette_lowering_test.cpp
     disasm_test.cpp
     debug_test.cpp
+    error_test.cpp
     assembler_test.cpp
     portrait_test.cpp
     golden_test.cpp

@@ -14,15 +14,16 @@ namespace iprop {
 
 class Reader {
 public:
-    explicit Reader(std::span<const u8> data)
-        : data_(data), end_(data.size()) {}
+    explicit Reader(std::span<const u8> data, OffsetSpace space = OffsetSpace::ExpandedFile)
+        : data_(data), end_(data.size()), space_(space) {}
 
     // A bounded view over data: reads start at `pos` and end one byte before
     // `end`. Offsets reported by errors are file offsets (pos_ is absolute).
-    Reader(std::span<const u8> data, std::size_t pos, std::size_t end)
-        : data_(data), pos_(pos), end_(end) {
+    Reader(std::span<const u8> data, std::size_t pos, std::size_t end,
+           OffsetSpace space = OffsetSpace::ExpandedFile)
+        : data_(data), pos_(pos), end_(end), space_(space) {
         if (pos > end || end > data_.size()) {
-            throw FormatError("invalid reader bounds", pos);
+            throw FormatError("invalid reader bounds", pos, ErrorReason::InvalidFormat, ErrorStage::Load, space_);
         }
     }
 
@@ -90,13 +91,14 @@ public:
 private:
     void require(std::size_t n) const {
         if (pos_ > end_ || n > end_ - pos_) {
-            throw FormatError("unexpected end of input", pos_);
+            throw FormatError("unexpected end of input", pos_, ErrorReason::TruncatedInput, ErrorStage::Load, space_);
         }
     }
 
     std::span<const u8> data_;
     std::size_t pos_ = 0;
     std::size_t end_ = 0; // one past the last readable byte (absolute offset)
+    OffsetSpace space_;
 };
 
 class Writer {

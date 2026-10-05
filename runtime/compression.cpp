@@ -10,25 +10,25 @@ std::vector<u8> decompressFile(std::span<const u8> data) {
     const auto header = parseHeader(data);
     if (!header.hasCompression()) return {data.begin(), data.end()};
     if (data.size() > kMaxCompressedFileSize)
-        throw FormatError("compressed file exceeds size limit", 0);
-    Reader reader(data, kHeaderSize, data.size());
+        throw FormatError("compressed file exceeds size limit", 0, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
+    Reader reader(data, kHeaderSize, data.size(), OffsetSpace::Container);
     const auto size = reader.readU32();
     if (size > kMaxCompressedFileSize || size < kHeaderSize + header.sectionCount * 12u)
-        throw FormatError("uncompressed file size out of range", kHeaderSize);
-    if (reader.empty()) throw FormatError("compressed stream is missing", reader.position());
+        throw FormatError("uncompressed file size out of range", kHeaderSize, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
+    if (reader.empty()) throw FormatError("compressed stream is missing", reader.position(), ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     const auto stream = reader.readBytes(reader.remaining());
     std::vector<u8> expanded(size);
     uLongf outputSize = size;
     uLong inputSize = static_cast<uLong>(stream.size());
     const int result = uncompress2(expanded.data(), &outputSize, stream.data(), &inputSize);
     if (result != Z_OK || outputSize != size)
-        throw FormatError("invalid compressed stream or decoded size", kHeaderSize + 4);
+        throw FormatError("invalid compressed stream or decoded size", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     if (inputSize != stream.size())
-        throw FormatError("trailing bytes after compressed stream", kHeaderSize + 4 + inputSize);
-    const auto inner = parseHeader(expanded);
-    if (inner.hasCompression()) throw FormatError("nested compressed files are forbidden", kHeaderSize + 4);
+        throw FormatError("trailing bytes after compressed stream", kHeaderSize + 4 + inputSize, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
+    const auto inner = parseHeader(expanded, OffsetSpace::ExpandedFile);
+    if (inner.hasCompression()) throw FormatError("nested compressed files are forbidden", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     if (inner.sectionCount != header.sectionCount || inner.hasDebug() != header.hasDebug())
-        throw FormatError("compressed header does not match inner file", kHeaderSize + 4);
+        throw FormatError("compressed header does not match inner file", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     (void)parseLayout(expanded);
     return expanded;
 }
@@ -44,7 +44,7 @@ std::vector<u8> compressFile(std::span<const u8> data) {
     uLongf size = compressBound(static_cast<uLong>(data.size()));
     std::vector<u8> stream(size);
     const int result = compress2(stream.data(), &size, data.data(), static_cast<uLong>(data.size()), Z_BEST_COMPRESSION);
-    if (result != Z_OK) throw FormatError("cannot compress file", 0);
+    if (result != Z_OK) throw FormatError("cannot compress file", ErrorReason::Compression, ErrorStage::Load);
     if (kHeaderSize + 4 + size >= data.size()) return {data.begin(), data.end()};
     stream.resize(size);
     Writer encoded;
