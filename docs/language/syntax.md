@@ -3,7 +3,10 @@
 Source must be valid UTF-8. Whitespace separates tokens; newlines do not end
 statements. `//` comments extend to the next newline and `/* ... */` comments
 end at the first closing delimiter (they do not nest). Semicolons are optional
-separators inside function blocks; metadata declarations do not use them.
+separators inside function blocks. One optional semicolon may follow each
+import, `size`, `origin`, `variants`, `archetypes`, `input`, `output` or
+`palette` declaration. Forms without semicolons remain valid; newline is
+whitespace and never implicitly terminates a declaration or expression.
 
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,

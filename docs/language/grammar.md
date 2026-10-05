@@ -9,19 +9,19 @@ apply after parsing. Strings are only valid as import paths after typing.
 
 ```ebnf
 program       = { import }, asset, EOF ;
-import        = "import", name, "from", string ;
+import        = "import", name, "from", string, [ ";" ] ;
 asset         = "asset", identifier, "{", { declaration }, "}" ;
 declaration   = size | origin | variants | archetypes | input | output
               | palette | draw | helper ;
-size          = "size", integer, (integer | xdigits) ;
-origin        = "origin", expression, ",", expression ;
-variants      = "variants", integer ;
-archetypes    = "archetypes", integer ;
-input         = "input", input_type, name, "=", declaration_constant ;
+size          = "size", integer, (integer | xdigits), [ ";" ] ;
+origin        = "origin", expression, ",", expression, [ ";" ] ;
+variants      = "variants", integer, [ ";" ] ;
+archetypes    = "archetypes", integer, [ ";" ] ;
+input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
-output        = "output", [ "list" ], output_kind, name ;
+output        = "output", [ "list" ], output_kind, name, [ ";" ] ;
 output_kind   = "point" | "circle" | "rect" ;
-palette       = "palette", name, "=", "[", [ expressions ], "]" ;
+palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
 draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;

@@ -18,6 +18,37 @@
 using namespace iprop;
 using namespace compiler_test;
 
+TEST_CASE("optional metadata semicolons retain imported-program bytes and execution") {
+    const auto legacyPart = ips::parse(R"(asset child { size 8x8 origin 1,1
+        input i32 n=-7 output point p palette colors=[#abc,#fff]
+        draw { p={n,unit()} pixel(1,1,colors[index(2)]) } })");
+    const auto semiPart = ips::parse(R"(asset child { size 8x8; origin 1,1;
+        input i32 n=-7; output point p; palette colors=[#abc,#fff];
+        draw { p={n,unit()}; pixel(1,1,colors[index(2)]); } })");
+    const auto legacyRoot = ips::parse(R"(import child from "child.ips"
+        asset t { size 8x8 variants 2 archetypes 2 input f32 f=0.5 output point p
+        draw { child.draw(seed,v,a,at={1,1}) p={f,unit()} } })");
+    const auto semiRoot = ips::parse(R"(import child from "child.ips";
+        asset t { size 8x8; variants 2; archetypes 2; input f32 f=0.5; output point p;
+        draw { child.draw(seed,v,a,at={1,1}); p={f,unit()}; } })");
+    for (const bool optimize : {false,true}) {
+        const auto expected = compileProgram(legacyRoot, {{"child",&legacyPart}}, optimize);
+        const auto actual = compileProgram(semiRoot, {{"child",&semiPart}}, optimize);
+        CHECK(stripDebug(actual) == stripDebug(expected));
+        for (const u32 seed : {0u,7u,26u,0xffffffffu}) {
+            const auto a = execute(actual, seed), b = execute(expected, seed);
+            CHECK(a.canvas.pixels == b.canvas.pixels);
+            REQUIRE(a.outputs.size() == b.outputs.size());
+            for (std::size_t i=0;i<a.outputs.size();++i) {
+                CHECK(std::bit_cast<u32>(a.outputs[i].points[0].x) ==
+                      std::bit_cast<u32>(b.outputs[i].points[0].x));
+                CHECK(std::bit_cast<u32>(a.outputs[i].points[0].y) ==
+                      std::bit_cast<u32>(b.outputs[i].points[0].y));
+            }
+        }
+    }
+}
+
 TEST_CASE("signed input defaults check mathematical range in checker and planner") {
     for (const std::string text : {"-2147483648", "2147483647", "-0x80000000",
                                   "0x7fffffff", "-0", "((-(7)))"}) {

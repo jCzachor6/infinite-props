@@ -33,6 +33,7 @@ Import ParserImpl::parseImport() {
     const Token alias = expectName("an import alias");
     expect(TokenKind::KeywordFrom, "'from'");
     const Token path = expect(TokenKind::String, "a quoted file path");
+    match(TokenKind::Semi);
     return Import{alias.text, path.text, at};
 }
 
@@ -67,10 +68,12 @@ Asset ParserImpl::parseAsset() {
             } else if (declaration.text == "variants") {
                 asset.variants = toU32(expect(TokenKind::Int, "a variant count"),
                                        "variant count");
+                match(TokenKind::Semi);
             } else if (declaration.text == "archetypes") {
                 asset.archetypes =
                     toU32(expect(TokenKind::Int, "an archetype count"),
                           "archetype count");
+                match(TokenKind::Semi);
             } else if (declaration.text == "palette") {
                 asset.palettes.push_back(parsePalette());
             } else {
@@ -115,12 +118,14 @@ void ParserImpl::parseSize(Asset& asset) {
     } else {
         failExpected("a height");
     }
+    match(TokenKind::Semi);
 }
 
 void ParserImpl::parseOrigin(Asset& asset) {
     asset.originX = parseExpr();
     expect(TokenKind::Comma, "',' between origin coordinates");
     asset.originY = parseExpr();
+    match(TokenKind::Semi);
 }
 
 InputDecl ParserImpl::parseInput() {
@@ -137,7 +142,9 @@ InputDecl ParserImpl::parseInput() {
     advance();
     const Token name = expectName("an input name");
     expect(TokenKind::Assign, "'=' and a default value");
-    return InputDecl{type, name.text, parseLiteralValue(), name.location};
+    auto value = parseLiteralValue();
+    match(TokenKind::Semi);
+    return InputDecl{type, name.text, std::move(value), name.location};
 }
 
 // Input defaults allow parentheses and one unary minus, but no expression
@@ -171,6 +178,7 @@ OutputDecl ParserImpl::parseOutput() {
     }
     advance();
     const Token name = expectName("an output name");
+    match(TokenKind::Semi);
     return OutputDecl{outputKind, isList, name.text, name.location};
 }
 
@@ -196,6 +204,7 @@ PaletteDecl ParserImpl::parsePalette() {
         }
     }
     expect(TokenKind::RBracket, "']'");
+    match(TokenKind::Semi);
     return PaletteDecl{name.text, std::move(elements), name.location};
 }
 
