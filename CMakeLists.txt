@@ -16,6 +16,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/CompilerWarnings.cmake)
 include(GNUInstallDirs)
+include(cmake/CAbi.cmake)
 
 option(IPROP_BUILD_TESTS "Build the test suite" ON)
 option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)

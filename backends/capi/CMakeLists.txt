@@ -18,7 +18,7 @@ iprop_warnings(iprop_capi)
 set_target_properties(iprop_capi PROPERTIES
     OUTPUT_NAME ipropc
     VERSION ${PROJECT_VERSION}
-    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
+    SOVERSION ${IPROP_C_ABI_SOVERSION}
     EXPORT_NAME capi)
 
 add_library(iprop_capi_static STATIC ${iprop_capi_sources})
@@ -48,6 +48,10 @@ endforeach()
 # build time by the ipa tool, then driven through the C entry point by a
 # C-only executable and compared against the committed golden PNGs.
 if(IPROP_BUILD_TESTS)
+add_test(NAME capi_package_compatibility COMMAND ${CMAKE_COMMAND}
+    "-DIPROP_SOURCE=${CMAKE_SOURCE_DIR}"
+    "-DWORK=${CMAKE_BINARY_DIR}/capi-package-compatibility"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/test/package_compatibility.cmake")
 add_executable(capi_descriptors test/descriptors.cpp)
 target_link_libraries(capi_descriptors PRIVATE iprop_capi_static)
 iprop_warnings(capi_descriptors)

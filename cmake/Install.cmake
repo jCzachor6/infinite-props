@@ -57,9 +57,9 @@ set(iprop_config_dir ${CMAKE_INSTALL_LIBDIR}/cmake/iprop)
 configure_package_config_file(cmake/ipropConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/ipropConfig.cmake
     INSTALL_DESTINATION ${iprop_config_dir})
-# Pre-1.0 minor releases may change the ABI; patch updates must match minor.
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/ipropConfigVersion.cmake
-    VERSION ${PROJECT_VERSION} COMPATIBILITY SameMinorVersion)
+# C API package compatibility follows its independently configured ABI line.
+iprop_write_package_version("${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_VERSION}")
 install(EXPORT ipropTargets NAMESPACE iprop:: DESTINATION ${iprop_config_dir})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/ipropConfigVersion.cmake DESTINATION ${iprop_config_dir})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropProductVersion.cmake DESTINATION ${iprop_config_dir})

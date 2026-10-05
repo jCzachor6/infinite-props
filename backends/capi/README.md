@@ -23,9 +23,21 @@ and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
 The installed DLL/import library and static archive have distinct names.
 The released 0.4.0 shared library uses ABI line / SONAME `0.4`.
 That historical loader identity is independent of the C API feature version;
-additive API releases must retain it. The current build derives it from the
-product version; separating that configuration is a subsequent implementation
-step. See the [frozen ABI contract](../../docs/c-api-abi.md).
+additive API releases must retain it. `cmake/CAbi.cmake` independently defines
+that line and the earliest compatible product (`0.4.0`). The build and runtime
+library query consume the same configuration. Physical filenames and macOS
+current-version metadata may follow the product, while ELF SONAME / macOS
+install-name remain `0.4`; Windows keeps `ipropc.dll` and its C exports.
+See the [frozen ABI contract](../../docs/c-api-abi.md).
+
+Installed CMake packages expose `iprop_C_ABI_SOVERSION` and its major/minor
+components. `find_package(iprop 0.4 CONFIG REQUIRED)` remains compatible with
+later additive products on that ABI line, including 0.5/0.6. A requested
+minimum older than product 0.4 is rejected; a version newer than the installed
+product and a nonmatching `EXACT` request are rejected by the normal CMake
+version checks. Version ranges keep their usual inclusive/exclusive bounds.
+The compatibility promise applies to the C API; exported C++ runtime headers
+and targets remain implementation details.
 
 The prefix includes all six CLI tools, examples, specifications, language/
 optimization/release documentation and the
@@ -36,8 +48,9 @@ set them locally before exporting, following its README.
 
 Version 0.4 accepts frozen 0.1–0.3 files and v0.4 compressed containers.
 Loading expands and validates the complete file before generation; the
-program owns the expanded bytes. C API version 0.2 and its struct layouts
-are unchanged. CMake consumers also need zlib 1.2.9 or newer; Windows CI
+program owns the expanded bytes. The six legacy C API 0.2 entry points and
+their struct layouts are unchanged by additive API 0.3. CMake consumers
+also need zlib 1.2.9 or newer; Windows CI
 links static zlib with the shared MSVC runtime (`x64-windows-static-md`).
 When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
 prefix in `CMAKE_PREFIX_PATH` for both the library and external consumers.

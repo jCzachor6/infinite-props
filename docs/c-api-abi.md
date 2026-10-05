@@ -28,10 +28,19 @@ the header macros describe only the client's compile-time feature set.
 The SONAME on ELF and corresponding macOS install-name / compatibility
 identity must remain `0.4`. DLL exports and the C calling convention must
 remain compatible on Windows. Product-versioned physical filenames may
-change while the loader identity stays fixed. Build configuration must
-eventually represent this ABI line independently of `PROJECT_VERSION`.
-That build change, queries and packaging metadata are separate implementation
-steps, not implemented by this contract freeze.
+change while the loader identity stays fixed. `cmake/CAbi.cmake` configures
+the ABI line independently of `PROJECT_VERSION`. The shared target's
+`SOVERSION`, generated runtime query and installed CMake package metadata
+use this one configuration. `VERSION` continues to describe the physical
+product release. DLL filenames and C export annotations remain unchanged.
+
+CMake package version selection retains normal product-version, `EXACT`,
+range and architecture checks, with an additional minimum-product boundary
+for the ABI line. Its current floor is `0.4.0`: old `find_package(iprop 0.4)`
+clients accept additive 0.5/0.6 packages on ABI line 0.4, while requests
+predating that guaranteed baseline are rejected. An intentional ABI break
+must update both the ABI line and the earliest compatible product. This
+does not promise a C++ runtime ABI or run a new client on an older library.
 
 Breaking this contract requires an explicit new ABI line, a migration and
 old-client tests appropriate to the chosen boundary. Pre-1.0 version numbers
