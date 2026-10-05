@@ -178,6 +178,11 @@ private:
                     error(function.location,
                           "duplicate function '" + function.name + "'");
                 }
+                std::set<std::string> parameters;
+                for (const auto& param : function.params) {
+                    if (!parameters.insert(param.name).second)
+                        error(param.location, "duplicate parameter '" + param.name + "'");
+                }
             });
             namespaceValid = valid && namespaceValid;
         }

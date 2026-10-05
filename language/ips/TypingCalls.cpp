@@ -100,19 +100,6 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
             "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
         error(call.location, "undefined function '" + name.name + "'" + hint);
     }
-    if (surface->params.size() != call.args.size()) {
-        error(call.location,
-              "function '" + name.name + "' expects " +
-                  std::to_string(surface->params.size()) +
-                  " arguments, got " + std::to_string(call.args.size()));
-    }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-    }
     const auto args = bindArguments(call, surface->names, name.name);
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];

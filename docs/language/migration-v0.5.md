@@ -35,6 +35,8 @@ Metadata and import declarations accept an optional trailing semicolon.
 Existing forms without semicolons remain; newlines are whitespace, not
 implicit statement terminators. Builtin/helper/part calls accept argument
 names through a common binder; existing positional forms and aliases remain.
+Helper parameter names must be unique, including in unused declarations, so
+named binding is unambiguous. A duplicate parameter is now a declaration error.
 
 ## Type checking and constant defaults
 

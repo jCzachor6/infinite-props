@@ -50,7 +50,8 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     invalidLocals_.clear();
     expressions_.clear();
     for (const auto& param : function.params) {
-        locals_.emplace(param.name, valueTypeOf(param.type));
+        if (!locals_.emplace(param.name, valueTypeOf(param.type)).second)
+            error(param.location, "duplicate parameter '" + param.name + "'");
     }
     if (isDraw) {
         locals_.emplace("v", ValueType::I32);

@@ -99,10 +99,20 @@ def main():
         entry.write_bytes(original['entry.ips'])
         part.write_bytes(original['część.ips'])
 
+        entry.write_text('asset t {size 8x8 draw{paint(tint=#9dc,x=2);} '
+                         'paint(x:f32,tint:color){rect(x,0,1,1,tint);} }', encoding='utf-8')
+        before = {p.name: p.read_bytes() for p in root.iterdir()}
+        invoke(['entry.ips', '--check'], 'ok', 0)
+        assert {p.name: p.read_bytes() for p in root.iterdir()} == before
+        invoke(['entry.ips', '-o', 'helper.iprop'], 'ok', 0)
+        assert (root / 'helper.iprop').read_bytes().startswith(b'IPRP')
+        (root / 'helper.iprop').unlink()
+
         for source, count, stage in [
             ('asset t {size 8x8 draw{x=; y=;}}', 2, 'parse'),
             ('asset t {size 8x8 draw{x=missing; y=x+1; z=another;}}', 2, 'typing'),
             ('asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}', 1, 'validation'),
+            ('asset t {size 8x8 draw{paint(tint=#fff);} paint(x:i32,tint:color){pixel(x,0,tint);}}', 1, 'typing'),
             ('asset t {size 8x8 draw{' + ''.join(f'x{i}=missing{i};' for i in range(100)) + '}}', 20, 'typing'),
         ]:
             entry.write_text(source, encoding='utf-8')
