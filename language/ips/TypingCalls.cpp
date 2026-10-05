@@ -1,8 +1,17 @@
 #include "ips/Typing.hpp"
+#include "ips/BuiltinArguments.hpp"
+#include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
 #include <set>
 
 namespace iprop::ips {
+namespace {
+std::vector<std::string> builtinNames() {
+    std::vector<std::string> names{"ramp"};
+    for (const auto& [name, spec] : builtinSpecs()) { (void)spec; names.push_back(name); }
+    return names;
+}
+}
 
 ValueType Typer::typeCall(const Call& call) {
     if (const auto* name = std::get_if<Identifier>(call.callee.get())) {
@@ -20,18 +29,20 @@ ValueType Typer::typeCall(const Call& call) {
         // bases dist/noise/cell are the reserved namespaces; anything
         // else is a part call.
         const Path path = flatten(*call.callee);
-        if (!path.segments.empty() &&
-            (path.base == "dist" || path.base == "noise" ||
-             path.base == "cell" || path.base == "color" || path.base == "vec2")) {
+        if (!path.segments.empty()) {
             std::string full = path.base;
             for (const std::string& segment : path.segments) {
                 full += "." + segment;
             }
+            const bool reserved = path.base == "dist" || path.base == "noise" ||
+                path.base == "cell" || path.base == "color" || path.base == "vec2";
             const auto builtin = builtinSpecs().find(full);
-            if (builtin != builtinSpecs().end()) {
+            if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
                 return typeBuiltinCall(synthetic, call, builtin->second);
             }
+            const auto hint = didYouMean(full, builtinNames());
+            if (reserved || !hint.empty()) error(path.location, "undefined builtin '" + full + "'" + hint);
         }
         return typePartCall(call);
     }
@@ -40,63 +51,54 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    // poly(colour, x0, y0, x1, y1, ...) — colour then 2n floats, n >= 3.
+    const auto args = builtinArguments(call, signature, name.name);
+    if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
+        signature.lowering == BuiltinLowering::Choose) {
+        const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
+        if (first && typeOf(*args[0]->value) != ValueType::I32)
+            error(locationOf(*args[0]->value), "choose seed must be i32");
+        std::vector<ValueType> types;
+        for (std::size_t i = first; i < args.size(); ++i) types.push_back(typeOf(*args[i]->value));
+        const auto result = selectionType(types);
+        if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
+        return *result;
+    }
     if (signature.lowering == BuiltinLowering::Polygon) {
-        if (call.args.size() < 7 || call.args.size() % 2 == 0) {
-            error(call.location,
-                  "poly expects a colour and at least three (x, y) vertex pairs");
-        }
-        for (std::size_t i = 0; i < call.args.size(); ++i) {
-            const Arg& arg = call.args[i];
-            if (arg.name.has_value()) {
-                error(arg.location, "poly does not take named arguments");
-            }
-            const ValueType expected =
-                i == 0 ? ValueType::Color : ValueType::F32;
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(expected, got)) {
-                error(locationOf(*arg.value),
-                      "argument " + std::to_string(i + 1) +
-                          " of poly must be " + typeName(expected) +
-                          ", got " + typeName(got));
-            }
+        for (std::size_t i = 0; i < args.size(); ++i) {
+            const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
+            const auto got = typeOf(*args[i]->value);
+            if (!argFits(expected, got))
+                error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) +
+                    " of poly must be " + typeName(expected) + ", got " + typeName(got));
         }
         return ValueType::Void;
     }
-
-    const auto* overload = builtinOverload(signature, call.args.size());
-    if (!overload) {
-        std::string arities;
-        for (const auto& candidate : signature.overloads) {
-            if (!arities.empty()) arities += " or ";
-            arities += std::to_string(candidate.params.size());
-        }
-        error(call.location,
-              "function '" + name.name + "' expects " + arities +
-                  " arguments, got " + std::to_string(call.args.size()));
+    std::vector<ValueType> types;
+    for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+    const auto* overload = builtinOverload(signature, types);
+    if (overload) return overload->result;
+    const auto* arityMatch = builtinOverload(signature, args.size());
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const auto expected = arityMatch->params[i].type;
+        if (!argFits(expected, types[i]))
+            error(locationOf(*args[i]->value), "argument " + std::to_string(i + 1) + " of '" + name.name +
+                "' must be " + typeName(expected) + ", got " + typeName(types[i]));
     }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-        const ValueType got = typeOf(*arg.value);
-        if (!argFits(overload->params[i], got)) {
-            error(locationOf(*arg.value),
-                  "argument " + std::to_string(i + 1) + " of '" + name.name +
-                      "' must be " + typeName(overload->params[i]) +
-                      ", got " + typeName(got));
-        }
-    }
-    return signature.result;
+    error(call.location, "no matching overload for '" + name.name + "'");
 }
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
+    if (name.name == "draw")
+        error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
     const std::optional<FunctionSurface> surface =
         resolveFunction(name.name, call.location, ns_);
     if (!surface.has_value()) {
-        error(call.location, "undefined function '" + name.name + "'");
+        auto candidates = builtinNames();
+        for (const auto& function : owner_->asset.functions)
+            if (function.name != "draw") candidates.push_back(function.name);
+        const auto hint = name.name == "mix" || name.name == "shade" ?
+            "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
+        error(call.location, "undefined function '" + name.name + "'" + hint);
     }
     if (surface->params.size() != call.args.size()) {
         error(call.location,
@@ -130,7 +132,9 @@ ValueType Typer::typePartCall(const Call& call) {
     }
     const auto part = parts_.find(path.base);
     if (part == parts_.end()) {
-        error(path.location, "'" + path.base + "' is not an imported part");
+        std::vector<std::string> names;
+        for (const auto& [name, info] : parts_) { (void)info; names.push_back(name); }
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
     // Exactly three positional arguments: seed, variant, archetype.
@@ -183,8 +187,10 @@ ValueType Typer::typePartCall(const Call& call) {
                 }
             }
             if (input == nullptr) {
+                std::vector<std::string> names{"at", "mirror_x", "mirror_y", "rot"};
+                for (const auto& declared : part->second.inputs) names.push_back(declared.name);
                 error(arg.location,
-                      "part '" + path.base + "' has no input '" + *arg.name + "'");
+                      "part '" + path.base + "' has no input '" + *arg.name + "'" + didYouMean(*arg.name, names));
             }
             const ValueType got = typeOf(*arg.value);
             if (!argFits(valueTypeOf(input->type), got)) {

@@ -16,10 +16,13 @@ namespace iprop {
 // invalidate the spans); hosts keep the LoadedFile alive for the whole
 // generation.
 struct LoadedFile {
+    Header containerHeader; // physical encoding; layout describes the expanded file
     FileLayout layout;
     ConstPool pool;
     AssetMeta meta;
     CodeSection code;
+
+    std::span<const u8> bytes() const { return storage; }
 
     LoadedFile() = default;
     LoadedFile(LoadedFile&&) noexcept = default;

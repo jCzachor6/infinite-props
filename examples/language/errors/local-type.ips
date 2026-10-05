@@ -1,0 +1,4 @@
+asset InvalidLocal {
+  size 8x8
+  draw { x = 1; x = 1.5 }
+}

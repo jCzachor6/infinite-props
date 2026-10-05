@@ -1,4 +1,5 @@
 #include "iprop/Validator.hpp"
+#include "iprop/Compression.hpp"
 
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
@@ -515,7 +516,8 @@ LoadedFile loadFile(std::span<const u8> data) {
     LoadedFile file;
     // The file owns its buffer: spans stay valid for the LoadedFile's whole
     // lifetime (and after moves), independent of the caller's buffer.
-    file.storage.assign(data.begin(), data.end());
+    file.containerHeader = parseHeader(data);
+    file.storage = decompressFile(data);
     const auto bytes = std::span<const u8>(file.storage);
     file.layout = parseLayout(bytes);
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));

@@ -22,7 +22,7 @@ using namespace compiler_test;
 TEST_CASE("the emitter safely rejects loop control without a loop") {
     for (const std::string control : {"break", "continue"}) {
         const auto program = ips::parse("asset t { size 8x8 "
-            "draw(v: i32, a: i32) {} helper() { " + control + " } }");
+            "draw {} helper() { " + control + " } }");
         CHECK_THROWS_AS(compileProgram(program, {}), ips::SourceError);
     }
 }
@@ -35,7 +35,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     s = 0
     i = 0
     while (i < 10) {
@@ -120,7 +120,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     total = 0
     i = 0
     while (i < 4) {
@@ -154,7 +154,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     s = 0
     for i in 0..5 {
       if (i == 2) { continue }
@@ -229,7 +229,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     count = 0
     for i in 0..index(3) {
       count = count + 1
@@ -243,7 +243,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     count = 0
     bound = index(3)
     i = 0
@@ -265,7 +265,7 @@ TEST_CASE("&& and || short-circuit: side effects are skipped") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     c = 0 && mark()
     d = 1 && mark2()
   }

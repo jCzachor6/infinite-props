@@ -1,0 +1,15 @@
+// Kaleidoscope folding in a distance field.
+asset RadialFold {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for y in 0..32 {
+      for x in 0..32 {
+        p = fold({x - 16, y - 16}, 6)
+        d = dist.line(p, {3, 0}, {13, 0}) - 1.5
+        pixel(x, y, color.set.a(#5bf, int(fill(d, 1) * 255)))
+      }
+    }
+  }
+}

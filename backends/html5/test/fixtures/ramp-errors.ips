@@ -4,7 +4,7 @@ asset rampErrors {
   palette height = [1.25]
   palette color = [#123456]
   output point result
-  draw(v: i32, a: i32) {
+  draw {
     if (v == 0) {
       result = {ramp(height, 1 / a), 0}
     } else {

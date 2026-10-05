@@ -1,0 +1,18 @@
+asset namedArguments {
+  size 8x8
+  palette colors = [#f00, #0f0]
+  output list point trace
+  draw {
+    rect(color = tint(), h = note(4), y = note(2), w = note(3), x = note(1))
+    poly(y2 = 4, x1 = 4, color = #fff, y0 = 0, x0 = 0, y1 = 0, x2 = 0)
+    pixel(color = ramp(t = 0.5, palette = colors), y = 4, x = 4)
+    c = lerp(t = 0.5, b = #00f, a = #f00)
+    c = color.shade(amount = 4, color = c)
+    pixel(color = c, y = 6, x = 6)
+    trace = {pick(value2 = 30, value0 = 10, value1 = 20), chance(p = 0.5)}
+    trace = {noise.fbm(seed = seed, octaves = 4, y = 0.5, x = 0.5), float(x = int(x = -2.9))}
+    trace = vec2.rot(a = 0.25, v = {1, 2})
+  }
+  note(tag: i32) -> i32 { trace = {tag, unit()} return 1 }
+  tint() -> color { trace = {5, unit()} return rgba(a = 255, b = 255, g = 128, r = 0) }
+}

@@ -23,7 +23,8 @@ language, compile it to a self-contained <code>.iprop</code> binary, and any
 backend renders it — deterministically — from a seed.</p>
 
 <h2 id="install">Install the toolchain</h2>
-<p>The toolchain is C++20 with CMake. Clone the repository and build:</p>
+<p>The toolchain is C++20 with CMake and zlib ≥ 1.2.9 (Linux:
+<code>zlib1g-dev</code>; macOS: platform SDK; Windows: vcpkg). Clone and build:</p>
 <pre><code>git clone &lt;repository-url&gt; iprop
 cd iprop
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -49,20 +50,23 @@ cmake --build build --parallel</code></pre>
   input  color palette = #808d74
   output rect  collider
 
-  draw(v, a) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
       rect(-w * 0.67, 2, w * 0.39, h * 0.43,
-           shade(palette, -4))
+           color.shade(palette, -4))
     }
   }
 }</code></pre>
 <p>Compile it, then render a seed:</p>
 <pre><code>./build/tools/ipc rock.ips -o rock.iprop
 ./build/tools/ipgen rock.iprop --seed 7 -o rock.png</code></pre>
+<p>The compiler writes stripped production files and compresses only when
+smaller. Add <code>--debug</code> for source maps and symbols, or
+<code>--no-compress</code> for expanded inspection.</p>
 <p><code>ipgen</code> prints the result JSON (the structured outputs and the
 fuel readout). The same seed always renders the same pixels — on every
 platform and backend.</p>
@@ -83,6 +87,7 @@ every tool accepts a <code>-h</code>/<code>--help</code> flag with the exact
 options.</div>
 </main>
 <footer>iprop — format spec and toolchain</footer>
+<script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>

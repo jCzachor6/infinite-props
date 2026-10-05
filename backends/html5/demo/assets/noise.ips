@@ -4,13 +4,13 @@
 asset noise {
   size 64x64
 
-  draw(v: i32, a: i32) {
+  draw {
     y = 0
     while (y < 64) {
       x = 0
       while (x < 64) {
         t = noise(x / 8.0, y / 8.0, seed)
-        pixel(x, y, mix(#1a2733, #7fb8c8, t))
+        pixel(x, y, color.mix(#1a2733, #7fb8c8, t))
         x = x + 1
       }
       y = y + 1

@@ -16,11 +16,22 @@ add_executable(iprop_tests
     language/parser_assets_test.cpp
     language/parser_statements_test.cpp
     language/parser_diagnostics_test.cpp
+    language/draw_entry_test.cpp
+    language/color_namespace_test.cpp
+    language/aliases_test.cpp
+    language/random_sugar_test.cpp
+    language/named_arguments_test.cpp
+    language/direct_seed_test.cpp
+    language/diagnostic_hints_test.cpp
+    language/source_printer_test.cpp
+    language/recipe_gallery_test.cpp
+    language/emoji_aliases_test.cpp
     printer_test.cpp
     language/semantics_types_test.cpp
     language/semantics_functions_test.cpp
     language/semantics_parts_test.cpp
     compiler/basics_test.cpp
+    compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
@@ -39,6 +50,7 @@ add_executable(iprop_tests
     golden_test.cpp
     binary_test.cpp
     format_test.cpp
+    compression_test.cpp
     asset_test.cpp
     code_test.cpp
     validation/opcodes_test.cpp
@@ -95,4 +107,17 @@ if(IPROP_NODE_EXECUTABLE)
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")
+    add_test(NAME compiler_output_defaults COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/production.test.js")
+endif()
+
+if(Python3_Interpreter_FOUND)
+    add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover
+        -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p "test_*.py")
+    add_test(NAME compiler_optimization_acceptance COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check-optimizations.py" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME language_documentation COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/language_docs.py" check --compiler "$<TARGET_FILE:ipc>"
+        --report-dir "${CMAKE_BINARY_DIR}/ci-reports/language")
 endif()

@@ -25,7 +25,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     s = sin(0.5)
     c = cos(1.25)
     p = {s, c}
@@ -84,7 +84,7 @@ TEST_CASE("the math builtins compile and match the hand-assembled reference") {
 asset t {
   size 8x8
   output point p
-  draw(v: i32, a: i32) {
+  draw {
     f = floor(1.5) + ceil(-1.5)
     g = max(2.5, 3.0) + min(2.5, 3.0)
     h = exp(0.0)
@@ -107,7 +107,7 @@ TEST_CASE("the math builtins emit the pinned opcodes") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     pixel(i32trunc(floor(2.7)), 0, #ff0000)
     pixel(i32trunc(ceil(2.1)), 0, #00ff00)
     pixel(i32trunc(min(1.5, 2.0)), 0, #0000ff)
@@ -183,7 +183,7 @@ TEST_CASE("round widens integer arguments exactly once") {
 asset t {
   size 8x8
   output point result
-  draw(v:i32,a:i32) { result = {round(3), round(count())} }
+  draw { result = {round(3), round(count())} }
   count() -> i32 { pixel(0,0,#ff000080) return -3 }
 })"),0,0);
     CHECK(result.outputs[0].points[0].x == 3.f);
@@ -205,7 +205,7 @@ TEST_CASE("round saturates and distinguishes the floats adjacent to half integer
         INFO(input);
         // Comparing as i32 avoids hiding the INT_MIN+1 bug in f32 outputs.
         const auto result = execute(compileChecked("asset t { size 8x8 output point p "
-            "draw(v:i32,a:i32) { p = {round(" + input + ") == " + expected + ", 0} } }"));
+            "draw { p = {round(" + input + ") == " + expected + ", 0} } }"));
         CHECK(result.outputs[0].points[0].x == 1.f);
     }
 }
@@ -216,7 +216,7 @@ TEST_CASE("logical and bitwise not fold and lower correctly") {
 asset t {
   size 8x8
   output point p
-  draw(v: i32, a: i32) {
+  draw {
     x = !5
     y = ~0
     z = !v
@@ -234,7 +234,7 @@ TEST_CASE("f32 comparisons lower to the f32 opcodes") {
 asset t {
   size 8x8
   output point p
-  draw(v: i32, a: i32) {
+  draw {
     x = 2.5
     y = x < 3.0
     p = {y, 0}
@@ -244,15 +244,15 @@ asset t {
     REQUIRE(outcome.outputs[0].points[0].x == 1.f); // 2.5 < 3.0
 }
 
-TEST_CASE("division is not folded (the runtime trap is preserved)") {
+TEST_CASE("reference integer division stays in the emitted instruction stream") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     x = 6 / 2
   }
 })";
-    const auto bytes = compileChecked(source);
+    const auto bytes = compileProgram(ips::parse(source), {}, false);
     const auto loaded = loadFile(bytes);
     // const.i32 6, const.i32 2, i32.div_s, local.set — no folding.
     REQUIRE(loaded.code.entry().code.size() == 16);
@@ -264,7 +264,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     // u32 semantics: 0x80000000 >> 1 = 0x40000000
     a1 = 1 << 3
     b1 = 64 >> 2
@@ -290,7 +290,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     p = {round(0.5), round(-0.5)}
   }
 })";

@@ -16,10 +16,15 @@ namespace iprop::sfml_host {
 using Program = std::unique_ptr<iprop_program, decltype(&iprop_program_free)>;
 using Result = std::unique_ptr<iprop_result, decltype(&iprop_result_free)>;
 
+// A callable avoids carrying glibc's function attributes into a template
+// argument, which GCC rejects under -Werror=ignored-attributes.
+struct FileCloser {
+    void operator()(std::FILE* file) const noexcept { std::fclose(file); }
+};
+
 // Reads a whole file; throws std::runtime_error on failure.
 inline std::vector<std::uint8_t> readFile(const std::string& path) {
-    const std::unique_ptr<std::FILE, decltype(&std::fclose)> file(
-        std::fopen(path.c_str(), "rb"), &std::fclose);
+    const std::unique_ptr<std::FILE, FileCloser> file(std::fopen(path.c_str(), "rb"));
     if (file == nullptr) {
         throw std::runtime_error("cannot open " + path);
     }

@@ -11,3 +11,6 @@ target_include_directories(iprop_runtime PUBLIC
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 iprop_warnings(iprop_runtime)
+
+find_package(ZLIB 1.2.9 REQUIRED)
+target_link_libraries(iprop_runtime PUBLIC ZLIB::ZLIB)

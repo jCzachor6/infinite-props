@@ -29,7 +29,7 @@ asset t {
     return fill(dist.circle(q, {8.0, 8.0}, 3.0), 1.0)
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     p = {cover({8.0, 8.0}), cover({12.0, 8.0})}
     pixel(8, 8, #ff0000)
   }
@@ -91,7 +91,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     g = noise.grad(1.5, 2.5, 7)
     j = cell.jitter(3, 4, 7)
     r = noise.ridge(0.5, 0.5, 4, 7)
@@ -147,7 +147,7 @@ TEST_CASE("the colour builtins compile and match the hand-assembled reference") 
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     c = color.hsv(#ff0000, 0.16666667, 1.0, 1.0)
     c2 = color.mul(#ff8040, #4080ff)
     c3 = color.set.a(c2, 255)
@@ -208,7 +208,7 @@ asset t {
   size 8x8
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     f = fold({-3.0, 4.0}, 2)
     q = polar({3.0, 4.0})
     d = dither(0.7, 1, 0)
@@ -268,7 +268,7 @@ asset t {
   output point quadratic
   output point cubic
   output point bits
-  draw(v: i32, a: i32) {
+  draw {
     quadratic = {dist.bezier({3,0}, {0,0}, {1,0}, {2,0}),
                  dist.bezier({3,4}, {0,0}, {0,0}, {0,0})}
     cubic = {dist.bezier({4,0}, {0,0}, {1,0}, {2,0}, {3,0}),
@@ -313,7 +313,7 @@ TEST_CASE("Bezier overloads reject wrong counts and types in checker and compile
              "curve({0,0}, {1,1}, {2,0}, #ffffff, #ffffff)",
              "curve({0,0}, {1,1}, {2,0}, {3,0}, 1, 2)",
              "curve({0,0}, {1,1}, {2,0}, width=1, colour=#ffffff)"}) {
-        const auto program = ips::parse("asset t { size 8x8 draw(v: i32, a: i32) { " + call + " } }");
+        const auto program = ips::parse("asset t { size 8x8 draw { " + call + " } }");
         INFO(call);
         REQUIRE_THROWS_AS(ips::checkAsset(program, {}), ips::SourceError);
         REQUIRE_THROWS_AS(compileProgram(program, {}), ips::SourceError);
@@ -327,7 +327,7 @@ asset t {
   output list point pts
   output circle c
 
-  draw(v: i32, a: i32) {
+  draw {
     pts = {1, 2}
     pts = {3, 4}
     c = {1, 2, 3}

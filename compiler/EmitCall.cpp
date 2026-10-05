@@ -10,6 +10,7 @@ ips::ValueType Emitter::emitCall(const ips::Call& call) {
     return std::visit([&](const auto& target) -> ips::ValueType {
         using T = std::decay_t<decltype(target)>;
         if constexpr (std::is_same_v<T, BuiltinCall>) return emitBuiltin(target);
+        else if constexpr (std::is_same_v<T, SelectionCall>) return emitSelection(target);
         else if constexpr (std::is_same_v<T, UserCall>) {
             for (const auto& arg : target.arguments) emitArg(arg);
             ins(Opcode::Call, 0, static_cast<u16>(target.function));
@@ -35,10 +36,51 @@ void Emitter::emitArg(const PlannedArgument& arg) {
 ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     using VT = ips::ValueType;
     const auto& spec = *call.spec;
-    if (spec.lowering == ips::BuiltinLowering::Opcode) {
+    if (spec.lowering == ips::BuiltinLowering::Opcode || spec.lowering == ips::BuiltinLowering::Pick) {
         for (const auto& arg : call.arguments) emitArg(arg);
-        ins(*call.overload->opcode);
-        return spec.result;
+        if (call.overload->opcode) ins(*call.overload->opcode);
+        return call.overload->result;
+    }
+    if (spec.lowering == ips::BuiltinLowering::Chance) {
+        emitArg(call.arguments[0]);
+        ins(Opcode::RngUnit);
+        ins(Opcode::F32Gt);
+        return VT::I32;
+    }
+    if (spec.lowering == ips::BuiltinLowering::Roll) {
+        emitArg(call.arguments[0]);
+        const auto seed = temporary(VT::I32);
+        ins(Opcode::LocalSet, 0, seed.index());
+        emitArg(call.arguments[1]);
+        emitArg(call.arguments[2]);
+        ins(Opcode::LocalGet, 0, seed.index());
+        ins(Opcode::StreamPush);
+        ins(Opcode::RngRange);
+        ins(Opcode::StreamPop);
+        return VT::F32;
+    }
+    if (spec.lowering == ips::BuiltinLowering::ColorConstructor) {
+        // Each mask leaves the other channels at 255. Integer shade/mul
+        // builds RGB exactly, without a VM opcode or float-rounding errors.
+        const Color masks[] = {{0, 255, 255, 255}, {255, 0, 255, 255}, {255, 255, 0, 255}};
+        for (std::size_t i = 0; i < 3; ++i) {
+            emitConst(masks[i]);
+            emitArg(call.arguments[i]);
+            ins(Opcode::Dup);
+            emitConst(i32{0});
+            ins(Opcode::I32LtS);
+            ins(Opcode::If);
+            ins(Opcode::Drop);
+            emitConst(i32{0});
+            ins(Opcode::End);
+            ins(Opcode::ColorShade);
+            if (i != 0) ins(Opcode::ColorMul);
+        }
+        if (call.arguments.size() == 4) {
+            emitArg(call.arguments[3]);
+            ins(Opcode::ColorSetA);
+        }
+        return VT::Color;
     }
     if (spec.lowering == ips::BuiltinLowering::Round) {
         // Compare the fractional distance before adjusting the integral

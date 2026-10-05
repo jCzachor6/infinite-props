@@ -29,13 +29,13 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43, shade(palette, -4))
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43, color.shade(palette, -4))
     }
   }
 })";
@@ -48,13 +48,13 @@ asset t {
   input color base = #3355aa
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     x = 2 + 3 * 4
     w = x - 6
     rect(0, 0, w, w, base)
     p = {x, w}
     if (x == 14) {
-      pixel(0, 0, shade(base, 10))
+      pixel(0, 0, color.shade(base, 10))
     }
     i = 0
     while (i < 2) {
@@ -177,12 +177,12 @@ TEST_CASE("constant folding collapses literal arithmetic") {
     const std::string source = R"(
 asset t {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     x = 2 + 3 * 4
     y = -5 + 2
   }
 })";
-    const auto bytes = compileChecked(source);
+    const auto bytes = compileProgram(ips::parse(source), {}, false);
     const auto loaded = loadFile(bytes);
     // Two folded constants, two local sets: 4 instructions = 16 bytes.
     REQUIRE(loaded.code.entry().code.size() == 16);
@@ -206,11 +206,11 @@ TEST_CASE("compiler-only error cases carry locations") {
     };
 
     // Origin must be a constant.
-    expectError("asset t { size 8x8 origin v,0 draw(v: i32, a: i32) { } }",
+    expectError("asset t { size 8x8 origin v,0 draw { } }",
                 "origin must be a constant");
 
     // The v0.1 format has no i32 uniform type.
-    expectError("asset t { size 8x8 input i32 x = 1 draw(v: i32, a: i32) { } }",
+    expectError("asset t { size 8x8 input i32 x = 1 draw { } }",
                 "input i32 is not supported");
 }
 

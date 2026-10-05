@@ -23,14 +23,14 @@ const std::string kRockSketch = R"(asset rock {
   input  color palette = #808d74
   output rect  collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     stone_mass(-w * 0.10, 0, w * 0.87, h, palette, seed)
     if (index(3) == 0) {
       stone_mass(-w * 0.67, 2, w * 0.39, h * 0.43,
-                 shade(palette, -4), hash(seed ^ 9467))
+                 color.shade(palette, -4), hash(seed ^ 9467))
     }
   }
 })";
@@ -46,7 +46,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     face(v, a)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24})
@@ -62,7 +62,7 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v: i32, a: i32) {
+  draw {
     top = {32, 4}
   }
 })";
@@ -94,11 +94,7 @@ TEST_CASE("the rock sketch parses into the expected AST") {
     REQUIRE(asset.functions.size() == 1);
     const Function& draw = asset.functions[0];
     REQUIRE(draw.name == "draw");
-    REQUIRE(draw.params.size() == 2);
-    REQUIRE(draw.params[0].name == "v");
-    REQUIRE(draw.params[1].name == "a");
-    REQUIRE(draw.params[0].type == ParamType::I32);
-    REQUIRE(draw.params[1].type == ParamType::I32);
+    REQUIRE(draw.params.empty());
     REQUIRE(!draw.returnType.has_value());
     REQUIRE(draw.body.size() == 5);
 
@@ -201,7 +197,7 @@ asset p {
   palette weights = [3, 1, 2]
   palette trailing = [#ffffff,]
 
-  draw(v: i32, a: i32) {
+  draw {
     c = leafDark[leavesIndex]
     w = weights[0]
   }
@@ -246,7 +242,7 @@ asset p {
 
 TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
     const Program program =
-        parse("asset z { size 192X192 draw() { stone_mass() } }");
+        parse("asset z { size 192X192 draw { stone_mass() } }");
     REQUIRE(program.asset.sizeX == 192u);
     REQUIRE(program.asset.sizeY == 192u);
     REQUIRE(program.asset.functions[0].params.empty());
@@ -254,7 +250,7 @@ TEST_CASE("zero-parameter functions and uppercase X sizes parse") {
 
 TEST_CASE("string escapes survive in import paths") {
     const Program program = parse(R"(import hair from "dir\\sub.ips"
-asset p { draw(v: i32, a: i32) { } })");
+asset p { draw { } })");
     REQUIRE(program.imports[0].path == "dir\\sub.ips");
 }
 
@@ -268,9 +264,9 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v: i32, a: i32) {
+  draw {
     top = {32, 4}
-    tint = shade(color, -4)
+    tint = color.shade(color, -4)
     thing = color
   }
 })";
@@ -278,7 +274,7 @@ asset hair {
     REQUIRE(program.asset.inputs[0].name == "color");
     const auto& body = program.asset.functions[0].body;
     REQUIRE(body.size() == 3);
-    // `tint = shade(color, -4)` — color as a positional argument.
+    // `tint = color.shade(color, -4)` — color as a positional argument.
     const auto* tint = std::get_if<VarDecl>(&body[1]);
     REQUIRE(tint != nullptr);
     const auto* shadeCall = std::get_if<Call>(tint->value.get());

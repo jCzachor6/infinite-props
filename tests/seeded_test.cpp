@@ -86,7 +86,7 @@ void expectValidatedTrap(Prog prog, const char* message) {
 
 TEST_CASE("noise v2 rejects nonfinite and unindexable coordinates in validated files") {
     const f32 inf = std::numeric_limits<f32>::infinity();
-    for (const u8 opcode : {0x89, 0x8A, 0x8B, 0x8C, 0x8E}) {
+    for (const u8 opcode : {u8{0x89}, u8{0x8A}, u8{0x8B}, u8{0x8C}, u8{0x8E}}) {
         for (const f32 coordinate : {inf, -inf, f32FromBits(0x7FC01234u),
                                      std::numeric_limits<f32>::max(),
                                      -std::numeric_limits<f32>::max(),
@@ -101,7 +101,7 @@ TEST_CASE("noise v2 rejects nonfinite and unindexable coordinates in validated f
 }
 
 TEST_CASE("noise v2 checks every octave and every warped sampling coordinate") {
-    for (const u8 opcode : {0x8A, 0x8E}) {
+    for (const u8 opcode : {u8{0x8A}, u8{0x8E}}) {
         CAPTURE(opcode);
         // The original coordinate fits i32; octave 7's coordinate does not.
         expectValidatedTrap(Prog{}.F(20000000.f).F(0.5f).I(8).I(7).emit(opcode),

@@ -1,0 +1,7 @@
+asset FirstAsset {
+  size 16x16
+  draw {
+    rect(0, 0, 16, 16, #123)
+    rect(x = 4, y = 4, w = 8, h = 8, color = #9dc)
+  }
+}

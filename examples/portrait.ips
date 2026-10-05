@@ -48,7 +48,7 @@ asset portrait {
     return age
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     // ---- identity (PaCharacter::generate); RNG order preserved ----
     stream_push(hash(seed ^ 0xc4a7ac7e))
     female = index(2)
@@ -91,7 +91,7 @@ asset portrait {
     if (female == 1) {
       shoulder = 17.0
     }
-    brow = shade(hairC, -13)
+    brow = color.shade(hairC, -13)
 
     // ---- background halo ----
     y = 0
@@ -104,9 +104,9 @@ asset portrait {
         if (t < 0.0) {
           t = 0.0
         }
-        c = mix(#141d27, #314952, t)
+        c = color.mix(#141d27, #314952, t)
         if ((x + y) % 4 == 0) {
-          c = shade(c, 2)
+          c = color.shade(c, 2)
         }
         pixel(x, y, c)
         x = x + 1
@@ -122,24 +122,24 @@ asset portrait {
 
     // ---- long-hair backdrop and ponytail (behind the jacket) ----
     if (hairstyle == 3 || hairstyle == 5) {
-      poly(shade(hairC, -16), 29 - w, 20, 35 + w, 20, 36 + w, 46, 28 - w, 46)
+      poly(color.shade(hairC, -16), 29 - w, 20, 35 + w, 20, 36 + w, 46, 28 - w, 46)
     }
     if (hairstyle == 4) {
-      oval(46.0, 30.0, 6.0, 15.0, shade(hairC, -12))
+      oval(46.0, 30.0, 6.0, 15.0, color.shade(hairC, -12))
     }
 
     // ---- jacket, shoulders, collar ----
     poly(#1b1e25, 11, 64, 32 - shoulder, 53, 25, 48, 39, 48, 32 + shoulder, 53, 56, 64)
     poly(clothingC, 13, 64, 33 - shoulder, 54, 26, 49, 38, 49, 31 + shoulder, 54, 54, 64)
-    poly(shade(clothingC, -19), 37, 50, 31 + shoulder, 54, 54, 64, 35, 64)
+    poly(color.shade(clothingC, -19), 37, 50, 31 + shoulder, 54, 54, 64, 35, 64)
 
     // ---- neck ----
-    rect(27.0, 40.0, 10.0, 13.0, shade(skinC, -32))
+    rect(27.0, 40.0, 10.0, 13.0, color.shade(skinC, -32))
     rect(28.0, 41.0, 6.0, 10.0, skinC)
 
     // ---- collar ----
-    poly(shade(clothingC, 23), 25, 48, 31, 54, 26, 57, 22, 50)
-    poly(shade(clothingC, 10), 39, 48, 32, 54, 37, 57, 42, 51)
+    poly(color.shade(clothingC, 23), 25, 48, 31, 54, 26, 57, 22, 50)
+    poly(color.shade(clothingC, 10), 39, 48, 32, 54, 37, 57, 42, 51)
 
     // ---- zipper and badges ----
     line(31.0, 55.0, 31.0, 63.0, 1, #1b1e25)
@@ -152,12 +152,12 @@ asset portrait {
     outfit = index(4)
     if (outfit == 1) {
       // a lighter chest stripe
-      rect(26.0, 55.0, 12.0, 2.0, mix(clothingC, shade(clothingC, 20), 0.35))
+      rect(26.0, 55.0, 12.0, 2.0, color.mix(clothingC, color.shade(clothingC, 20), 0.35))
     }
     if (outfit == 2) {
       // two dark chest pockets
-      rect(20.0, 58.0, 6.0, 4.0, shade(clothingC, -25))
-      rect(38.0, 58.0, 6.0, 4.0, shade(clothingC, -25))
+      rect(20.0, 58.0, 6.0, 4.0, color.shade(clothingC, -25))
+      rect(38.0, 58.0, 6.0, 4.0, color.shade(clothingC, -25))
     }
     if (outfit == 3) {
       // accent lapels on the collar
@@ -166,16 +166,16 @@ asset portrait {
     }
 
     // ---- ears ----
-    oval(32.0 - w, 29.0, 3.0, 5.0, shade(skinC, -32))
-    oval(32.0 + w, 29.0, 3.0, 5.0, shade(skinC, -32))
+    oval(32.0 - w, 29.0, 3.0, 5.0, color.shade(skinC, -32))
+    oval(32.0 + w, 29.0, 3.0, 5.0, color.shade(skinC, -32))
 
     // ---- face planes ----
     poly(#1b1e25, 32 - w, 17, 26, 12, 38, 12, 32 + w, 19, 31 + w, 35, 38 + jaw, 43, 30, 46, 23 - jaw, 40, 32 - w, 31)
     poly(skinC, 33 - w, 18, 27, 14, 37, 14, 31 + w, 20, 31 + w, 34, 37 + jaw, 41, 30, 44, 24 - jaw, 39, 33 - w, 30)
-    poly(shade(skinC, -32), 37, 16, 31 + w, 20, 31 + w, 34, 37 + jaw, 41, 31, 44, 35, 36)
-    poly(shade(skinC, 17), 24, 21, 29, 17, 32, 18, 29, 26, 24, 28)
-    rect(24.0, 31.0, 5.0, 3.0, shade(skinC, 17))
-    rect(35.0, 31.0, 5.0, 3.0, mix(skinC, shade(skinC, -32), 0.4))
+    poly(color.shade(skinC, -32), 37, 16, 31 + w, 20, 31 + w, 34, 37 + jaw, 41, 31, 44, 35, 36)
+    poly(color.shade(skinC, 17), 24, 21, 29, 17, 32, 18, 29, 26, 24, 28)
+    rect(24.0, 31.0, 5.0, 3.0, color.shade(skinC, 17))
+    rect(35.0, 31.0, 5.0, 3.0, color.mix(skinC, color.shade(skinC, -32), 0.4))
 
     // ---- brows ----
     line(23.0, 25.0, 28.0, 24.0, 1, brow)
@@ -189,26 +189,26 @@ asset portrait {
     pupilCenter = eyes.outputs.pupil
 
     // ---- nose ----
-    line(32.0, 27.0, 31.0, 33.0, 1, shade(skinC, -32))
-    line(31.0, 33.0, 34.0, 34.0, 1, shade(skinC, -46))
-    pixel(31, 31, shade(skinC, 17))
+    line(32.0, 27.0, 31.0, 33.0, 1, color.shade(skinC, -32))
+    line(31.0, 33.0, 34.0, 34.0, 1, color.shade(skinC, -46))
+    pixel(31, 31, color.shade(skinC, 17))
 
     // ---- mouth ----
-    line(28.0, 37.0, 35.0, 37.0, 1, mix(skinC, #723434, 0.52))
-    line(29.0, 39.0, 34.0, 39.0, 1, shade(skinC, 17))
+    line(28.0, 37.0, 35.0, 37.0, 1, color.mix(skinC, #723434, 0.52))
+    line(29.0, 39.0, 34.0, 39.0, 1, color.shade(skinC, 17))
 
     // ---- beard (male only) ----
     if (beard) {
-      poly(mix(hairC, skinC, 0.22), 24, 34, 27, 38, 32, 40, 38, 35, 38, 40, 32, 44, 26, 40)
-      line(28.0, 37.0, 34.0, 37.0, 1, shade(hairC, -18))
+      poly(color.mix(hairC, skinC, 0.22), 24, 34, 27, 38, 32, 40, 38, 35, 38, 40, 32, 44, 26, 40)
+      line(28.0, 37.0, 34.0, 37.0, 1, color.shade(hairC, -18))
     }
 
     // ---- freckles ----
     if (freckles) {
-      pixel(24, 32, shade(skinC, -47))
-      pixel(27, 33, shade(skinC, -47))
-      pixel(37, 33, shade(skinC, -47))
-      pixel(40, 32, shade(skinC, -47))
+      pixel(24, 32, color.shade(skinC, -47))
+      pixel(27, 33, color.shade(skinC, -47))
+      pixel(37, 33, color.shade(skinC, -47))
+      pixel(40, 32, color.shade(skinC, -47))
     }
 
     // ---- hairstyle (part: paints over the face; call order is paint order)

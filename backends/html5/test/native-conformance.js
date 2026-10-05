@@ -27,14 +27,21 @@ const sources = [
     ["curves", "backends/html5/test/fixtures/curves.ips"],
     ["curve-toolkit", "backends/html5/test/fixtures/curve-toolkit.ips"],
     ["colors", "backends/html5/test/fixtures/colors.ips"],
+    ["aliases", "backends/html5/test/fixtures/aliases.ips"],
+    ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
+    ["named-arguments", "backends/html5/test/fixtures/named-arguments.ips"],
+    ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
+    ["emoji-aliases", "backends/html5/test/fixtures/emoji-aliases.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
+for (const name of fs.readdirSync(path.join(repo, "examples/recipes")).filter(name => name.endsWith(".ips")).sort())
+    sources.push(["recipe-" + name, "examples/recipes/" + name]);
 
-function checkImage(actual, expected, label) {
+function compareImage(actual, expected, label) {
     assert.equal(actual.width, expected.width, label + ": width");
     assert.equal(actual.height, expected.height, label + ": height");
     assert.equal(actual.data.length, expected.data.length, label + ": RGBA length");
@@ -45,6 +52,21 @@ function checkImage(actual, expected, label) {
                 Math.floor(pixel / expected.width) + "), channel " + (i % 4) +
                 ": " + actual.data[i] + " != " + expected.data[i]);
         }
+    }
+}
+
+function checkImage(actual, expected, label, reportDirectory = process.env.IPROP_CONFORMANCE_REPORT_DIR) {
+    try {
+        compareImage(actual, expected, label);
+    } catch (error) {
+        if (reportDirectory) {
+            try {
+                require("./image-diagnostics.js").writeComparison(reportDirectory, label, actual, expected, error);
+            } catch (diagnosticError) {
+                console.error("Could not save image diagnostics: " + diagnosticError.message);
+            }
+        }
+        throw error;
     }
 }
 

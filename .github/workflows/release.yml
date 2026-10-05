@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
+  RELEASE_TAG: ${{ github.ref_name }}
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+      commit: ${{ steps.validate.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Require matching versions, a frozen specification and a tag on main
+        id: validate
+        run: python scripts/release_preflight.py
+      - name: Retain the validated release metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-preflight
+          path: build/release-preflight/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  ci:
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: [preflight, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_COMMIT: ${{ needs.preflight.outputs.commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Download the verified artifacts from this release run
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: build/release
+      - name: Verify the exact assets and publication plan
+        run: python scripts/ci_report.py run publication-plan python scripts/publish_release.py --dry-run
+      - name: Upload to a draft, verify every digest and publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/ci_report.py run publish python scripts/publish_release.py
+      - name: Summarize publication
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+      - name: Retain publication diagnostics even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-publication
+          path: build/ci-reports/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true

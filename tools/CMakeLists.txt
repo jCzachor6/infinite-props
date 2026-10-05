@@ -1,9 +1,11 @@
 # ipc: compile .ips source into an .iprop binary
 
 add_executable(ipc
-    ipc.cpp)
+    ipc.cpp
+    language_description.cpp)
 
 target_link_libraries(ipc PRIVATE iprop_compiler)
+target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}")
 iprop_warnings(ipc)
 
 # ipdis: disassemble an .iprop binary into .ipa text

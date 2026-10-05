@@ -1,0 +1,9 @@
+// Named canvas parameters.
+asset BasicRect {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    rect(color = #5bf, h = 16, w = 20, y = 8, x = 6)
+  }
+}

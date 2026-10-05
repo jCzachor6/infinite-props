@@ -15,6 +15,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <sstream>
 #include <string>
@@ -262,7 +263,7 @@ bool parseColor(const std::string& text, Color& out) {
 
 std::vector<u8> assemble(const std::string& source) {
     Program program;
-    AsmPart* part = nullptr;
+    AsmPart* currentPart = nullptr;
     AsmFunction* function = nullptr;
     int lineNumber = 0;
 
@@ -294,7 +295,7 @@ std::vector<u8> assemble(const std::string& source) {
                 }
                 const std::string key = words[i].substr(0, eq);
                 const std::string value = words[i].substr(eq + 1);
-                if (part == nullptr) {
+                if (currentPart == nullptr) {
                     if (key == "size" && !parseSize(value, program.sizeX, program.sizeY)) {
                         throw error("bad size");
                     } else if (key == "origin") {
@@ -324,7 +325,7 @@ std::vector<u8> assemble(const std::string& source) {
                     }
                 } else {
                     if (key == "size") {
-                        if (!parseSize(value, part->sizeX, part->sizeY)) {
+                        if (!parseSize(value, currentPart->sizeX, currentPart->sizeY)) {
                             throw error("bad size");
                         }
                     } else if (key == "origin") {
@@ -333,8 +334,8 @@ std::vector<u8> assemble(const std::string& source) {
                             throw error("bad origin");
                         }
                         try {
-                            part->originX = std::stof(value.substr(0, comma));
-                            part->originY = std::stof(value.substr(comma + 1));
+                            currentPart->originX = std::stof(value.substr(0, comma));
+                            currentPart->originY = std::stof(value.substr(comma + 1));
                         } catch (...) {
                             throw error("bad origin");
                         }
@@ -356,7 +357,7 @@ std::vector<u8> assemble(const std::string& source) {
             }
             input.name = words[2];
             input.defaultValue = words[4];
-            (part != nullptr ? part->inputs : program.inputs).push_back(input);
+            (currentPart != nullptr ? currentPart->inputs : program.inputs).push_back(input);
             continue;
         }
 
@@ -374,17 +375,17 @@ std::vector<u8> assemble(const std::string& source) {
                 throw error("bad output declaration");
             }
             output.name = words[at + 1];
-            (part != nullptr ? part->outputs : program.outputs).push_back(output);
+            (currentPart != nullptr ? currentPart->outputs : program.outputs).push_back(output);
             continue;
         }
 
         if (words[0] == "part") {
-            if (words.size() != 2 || function != nullptr || part != nullptr) {
+            if (words.size() != 2 || function != nullptr || currentPart != nullptr) {
                 throw error("bad part declaration");
             }
             program.parts.push_back({});
-            part = &program.parts.back();
-            part->name = clean(words[1]);
+            currentPart = &program.parts.back();
+            currentPart->name = clean(words[1]);
             continue;
         }
 
@@ -399,10 +400,10 @@ std::vector<u8> assemble(const std::string& source) {
             if (function != nullptr) {
                 throw error("endpart inside a function");
             }
-            if (part == nullptr) {
+            if (currentPart == nullptr) {
                 throw error("endpart without an open part");
             }
-            part = nullptr;
+            currentPart = nullptr;
             continue;
         }
 
@@ -440,9 +441,9 @@ std::vector<u8> assemble(const std::string& source) {
                 }
                 parsed.results.push_back(type);
             }
-            if (part != nullptr) {
-                part->function = std::move(parsed);
-                function = &part->function;
+            if (currentPart != nullptr) {
+                currentPart->function = std::move(parsed);
+                function = &currentPart->function;
             } else {
                 program.functions.push_back(std::move(parsed));
                 function = &program.functions.back();
@@ -495,7 +496,7 @@ std::vector<u8> assemble(const std::string& source) {
         function->instructions.push_back(std::move(instruction));
     }
 
-    if (function != nullptr || part != nullptr) {
+    if (function != nullptr || currentPart != nullptr) {
         throw SourceError(lineNumber, "unclosed function or part");
     }
     if (program.functions.empty()) {
@@ -766,8 +767,13 @@ std::vector<u8> assemble(const std::string& source) {
     const u32 functionCount = static_cast<u32>(ordered.size());
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         const AsmFunction& fn = *ordered[i];
+        constexpr auto maxStreamSize = std::numeric_limits<u32>::max();
+        if (fn.instructions.size() > maxStreamSize / 4 ||
+            streams.size() > maxStreamSize - fn.instructions.size() * 4) {
+            throw SourceError(0, "instruction streams exceed u32 size limit");
+        }
         table.writeU32(stringIndex.at(fn.name));
-        table.writeU32(streams.size());
+        table.writeU32(static_cast<u32>(streams.size()));
         table.writeU32(static_cast<u32>(fn.instructions.size()) * 4);
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {

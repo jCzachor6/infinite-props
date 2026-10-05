@@ -28,6 +28,11 @@ struct UserCall {
     ips::ValueType result;
     std::vector<PlannedArgument> arguments;
 };
+struct SelectionCall {
+    ips::ValueType result;
+    std::vector<PlannedArgument> choices;
+    std::optional<PlannedArgument> seed = std::nullopt;
+};
 struct PartCall {
     u32 part;
     D4Transform transform;
@@ -43,7 +48,7 @@ struct RampCall {
 };
 struct ResolvedCall {
     ips::SourceLocation location;
-    std::variant<BuiltinCall, UserCall, PartCall, RampCall> target;
+    std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall> target;
 };
 
 // Binds checked calls to signatures, coercions, defaults and table indices.

@@ -1,0 +1,15 @@
+// Stateful iteration with typed locals.
+asset WhileGrowth {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    width = 4
+    row = 0
+    while (width <= 24) {
+      rect(16 - float(width) / 2, 4 + row * 5, width, 3, #5bf)
+      width = width + 4
+      row = row + 1
+    }
+  }
+}

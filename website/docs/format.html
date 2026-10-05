@@ -19,23 +19,35 @@
 <h1>The .iprop format</h1>
 <p>A self-contained binary: one file carries the metadata, the constants and
 the bytecode — no external resources. The canonical specification is
-<a href="../spec/iprop-v0.3.md">spec/iprop-v0.3.md</a> in the repository; this
+<a href="../spec/iprop-v0.4.md">spec/iprop-v0.4.md</a> in the repository; this
 page summarises it.</p>
 
-<p>Format 0.3 adds vectors, distance fields, curves, procedural noise, colour
-utilities and exact D4 part transforms. Its reader also accepts frozen
-0.1 and 0.2 files; instructions and value types introduced by a later
+<p>Format 0.4 adds lossless zlib/DEFLATE containers and accepts frozen
+0.1–0.3 files. The vector, distance, noise, colour and D4 contracts inherited
+from <a href="../spec/iprop-v0.3.md">0.3</a> remain unchanged;
+instructions and value types introduced by a later
 format version are rejected in earlier files.</p>
 
 <h2 id="layout">The file layout</h2>
-<pre><code>header (20 bytes)          magic "IPRP", version 0.3, flags, section count
+<p>An expanded 0.4 file retains the existing layout:</p>
+<pre><code>header (20 bytes)          magic "IPRP", version 0.4, flags, section count
 section table (12 bytes × N)   id, offset, size
 sections                    meta · const · code · debug (optional)</code></pre>
 <ul>
 <li>All multi-byte values are little-endian; sections are 4-byte aligned.</li>
 <li>The header flag bit 0 marks the debug section (spec §7); the validator
 rejects a flag/section mismatch.</li>
+<li>Header flag bit 1 selects compression only in minor 4. After its 20-byte
+header are the expanded size (u32) and one zlib stream containing the complete
+original file, including its header/table. Both encoded and expanded files
+are bounded to 64 MiB; checksum, exact length, trailing data, dictionaries
+and nesting are checked before execution.</li>
 </ul>
+<p><code>ipc</code> strips debug data and packs only when smaller by default.
+Use <code>--debug</code> to retain source maps, <code>--no-compress</code> for
+expanded inspection, or <code>--no-opt</code> for reference compiler lowering.
+These switches preserve successful image/output bits. The runtime owns the
+expanded bytes for the lifetime of code/debug views.</p>
 
 <h2 id="sections">The sections</h2>
 <table>
@@ -67,6 +79,7 @@ interpreter change that alters a golden image is a breaking change.</li>
 </ul>
 </main>
 <footer>iprop — format spec and toolchain</footer>
+<script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>

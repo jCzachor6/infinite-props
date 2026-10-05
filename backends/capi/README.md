@@ -15,7 +15,7 @@ cmake --build build --parallel
 cmake --install build --prefix /path/to/iprop
 ```
 
-An external CMake project uses `find_package(iprop 0.3 CONFIG REQUIRED)`
+An external CMake project uses `find_package(iprop 0.4 CONFIG REQUIRED)`
 with that prefix in `CMAKE_PREFIX_PATH`, then links `iprop::capi` (shared)
 or `iprop::capi_static`. The shared target can be consumed by a C-only
 project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
@@ -23,11 +23,21 @@ and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
 The installed DLL/import library and static archive have distinct names.
 The shared library SONAME includes the pre-1.0 minor ABI version.
 
-The prefix includes all six CLI tools, examples, specifications and the
+The prefix includes all six CLI tools, examples, specifications, language/
+optimization/release documentation and the
 enabled SFML/Godot integrations. Shared SFML libraries are included;
 Linux graphics/font libraries and the Godot engine/export templates are
 system dependencies. Godot's installed preset has empty template paths;
 set them locally before exporting, following its README.
+
+Version 0.4 accepts frozen 0.1–0.3 files and v0.4 compressed containers.
+Loading expands and validates the complete file before generation; the
+program owns the expanded bytes. C API version 0.2 and its struct layouts
+are unchanged. CMake consumers also need zlib 1.2.9 or newer; Windows CI
+links static zlib with the shared MSVC runtime (`x64-windows-static-md`).
+When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
+prefix in `CMAKE_PREFIX_PATH` for both the library and external consumers.
+This also recognizes the `zs`/`zsd` names used by zlib 1.3.2 on Windows.
 
 ## The surface
 

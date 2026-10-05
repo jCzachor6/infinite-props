@@ -45,7 +45,7 @@ TEST_CASE("balanced ramp selection matches an explicit linear reference at every
         }
         reference += "return levels[" + std::to_string(count-1) + "] }";
         const auto bytes = compile("asset t { size 1x1 input f32 t=0.0 output point p " + palette(count) +
-            "draw(v:i32,a:i32) { p = {ramp(levels,t), reference(t)} } " + reference + " }");
+            "draw { p = {ramp(levels,t), reference(t)} } " + reference + " }");
         const auto file = loadFile(bytes);
         auto values = test_support::f32BoundaryCorpus();
         if (count > 1) for (std::size_t k = 0; k < count; ++k) {
@@ -81,7 +81,7 @@ TEST_CASE("folded ramp constants preserve dynamic color and float interpolation 
         colors += "] ";
         const auto source = [&](const std::string& t) {
             return "asset t { size 1x1 input f32 t=0.0 output point p " + palette(count) + colors +
-                "draw(v:i32,a:i32) { p={ramp(levels," + t + "),0} pixel(0,0,ramp(colors," + t + ")) } }";
+                "draw { p={ramp(levels," + t + "),0} pixel(0,0,ramp(colors," + t + ")) } }";
         };
         const auto dynamicBytes = compile(source("t"));
         const auto dynamic = loadFile(dynamicBytes);
@@ -104,7 +104,7 @@ TEST_CASE("large per-pixel ramps stay within a logarithmic fuel bound") {
     for (const std::size_t count : {1,8,32,64,128}) {
         for (const bool dynamic : {false,true}) {
             const auto bytes = compile("asset t { size 64x64 input f32 t=0.99 " + palette(count) +
-                "draw(v:i32,a:i32) { for y in 0..64 { for x in 0..64 { "
+                "draw { for y in 0..64 { for x in 0..64 { "
                 "value = ramp(levels," + (dynamic ? std::string("t") : "0.99") + ") } } } }");
             const auto file = loadFile(bytes);
             VM vm(file,{});
@@ -122,7 +122,7 @@ TEST_CASE("large per-pixel ramps stay within a logarithmic fuel bound") {
 TEST_CASE("balanced palette indexing preserves negative and out-of-range defaults") {
     for (const std::size_t count : {1,8,32,64,128}) {
         const auto bytes = compile("asset t { size 1x1 output point p " + palette(count) +
-            "draw(v:i32,a:i32) { p = {levels[seed],0} } }");
+            "draw { p = {levels[seed],0} } }");
         const auto file = loadFile(bytes);
         std::vector<u32> indices{0x80000000u,0xffffffffu,0x7fffffffu};
         for (u32 i = 0; i <= count; ++i) indices.push_back(i);
@@ -140,9 +140,9 @@ TEST_CASE("large dynamic ramps retain helper drawing RNG and traps exactly once"
         const auto declarations = "asset t { size 1x1 output point result output list point trace " +
             palette(count) + "sample() -> f32 { trace={1,unit()} pixel(0,0,#ffffff80) return 0.75 } ";
         const auto bytes = compile(declarations +
-            "draw(v:i32,a:i32) { result={ramp(levels,sample()),unit()} } }");
+            "draw { result={ramp(levels,sample()),unit()} } }");
         const auto referenceBytes = compile(declarations +
-            "draw(v:i32,a:i32) { sample() result={0,unit()} } }");
+            "draw { sample() result={0,unit()} } }");
         const auto file = loadFile(bytes), reference = loadFile(referenceBytes);
         VM vm(file,{}), expected(reference,{});
         vm.run(); expected.run();
@@ -151,7 +151,7 @@ TEST_CASE("large dynamic ramps retain helper drawing RNG and traps exactly once"
         CHECK(std::bit_cast<u32>(vm.result().outputs[0].points[0].y) ==
               std::bit_cast<u32>(expected.result().outputs[0].points[0].y));
         const auto trapBytes = compile("asset t { size 1x1 " + palette(count) +
-            "draw(v:i32,a:i32) { ramp(levels,1/v) } }");
+            "draw { ramp(levels,1/v) } }");
         const auto trapFile = loadFile(trapBytes);
         VM trapped(trapFile,{});
         CHECK_THROWS_AS(trapped.run(), Trap);

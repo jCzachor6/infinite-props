@@ -86,7 +86,8 @@ struct Plan {
     // writes the pools. Names were registered during planning.
     Pools pools;
 
-    std::map<const ips::PaletteDecl*, ips::ResolvedPalette> palettes;
+    // Palette annotations are immutable and retain stable addresses in plan copies.
+    std::map<const ips::PaletteDecl*, std::shared_ptr<const ips::ResolvedPalette>> palettes;
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;

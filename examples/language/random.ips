@@ -1,0 +1,17 @@
+asset RandomChoices {
+  size 8x8
+  draw {
+    saved = seed
+    u = unit()
+    x = int(range(0, 8))
+    y = index(8)
+    indexAlias = pick(8)
+    c = pick(value1 = #fc9, value0 = #9dc)
+    if (chance(0.75)) { pixel(x, y, c) }
+    isolated = roll(hash(saved), 0, 8)
+    nested = choose(saved, choose(saved ^ 1, 1, 2), 3)
+    stream_push(saved ^ 2)
+    pixel(int(isolated), nested, #fff)
+    stream_pop()
+  }
+}

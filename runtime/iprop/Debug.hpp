@@ -34,7 +34,8 @@ DebugInfo parseDebug(std::span<const u8> data, const Section& section);
 
 // Removes the debug section from a file: clears the header flag, drops the
 // section table entry and shifts the following sections. The remaining
-// bytes are untouched, so execution is identical. Returns the input
+// bytes are untouched, so execution is identical. Compressed envelopes are
+// expanded first and may be recompressed after stripping. Returns the input
 // unchanged when there is no debug section. Throws FormatError for files
 // that do not parse.
 std::vector<u8> stripDebug(std::span<const u8> data);

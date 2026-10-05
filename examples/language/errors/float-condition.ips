@@ -1,0 +1,4 @@
+asset InvalidCondition {
+  size 8x8
+  draw { if (0.5) { pixel(1, 1, #fff) } }
+}

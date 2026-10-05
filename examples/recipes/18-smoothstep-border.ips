@@ -1,0 +1,15 @@
+// Two-sided coverage and color scaling.
+asset SmoothstepBorder {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for y in 0..32 {
+      for x in 0..32 {
+        radius = vec2.len({x - 16, y - 16})
+        coverage = 1 - smoothstep(7, 13, radius)
+        pixel(x, y, color.scale(#5bf, coverage))
+      }
+    }
+  }
+}

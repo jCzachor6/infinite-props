@@ -1,0 +1,5 @@
+asset InvalidInputWrite {
+  size 8x8
+  input color tint = #9dc
+  draw { tint = #fff }
+}

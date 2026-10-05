@@ -1,0 +1,14 @@
+asset aliases {
+  size 256x2
+  output point casts
+  draw {
+    casts = {int(16777217) - 16777216, float(int(-2.9))}
+    for i in 0..256 {
+      pixel(i, 0, rgb(i, 255 - i, (i * 17) % 256))
+      pixel(i, 1, #ffffff)
+      pixel(i, 1, rgba(i, 255 - i, (i * 17) % 256, i))
+    }
+    pixel(0, 0, lerp(#0080ff, #ff8000, lerp(0, 1, 0.5)))
+    pixel(1, 0, rgb(-2147483647 - 1, 2147483647, -1))
+  }
+}

@@ -29,7 +29,7 @@ void expectCheckError(const std::string& source, const char* messagePart) {
 }
 
 std::string wrap(const std::string& body) {
-    return "asset t { size 8x8 draw(v: i32, a: i32) { " + body + " } }";
+    return "asset t { size 8x8 draw { " + body + " } }";
 }
 
 } // namespace semantic_test

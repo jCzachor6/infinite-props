@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(iprop
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "A portable binary format and toolchain for seed-based procedural 2D assets"
     LANGUAGES C CXX)
 
@@ -37,6 +37,7 @@ add_subdirectory(runtime)
 add_subdirectory(language)
 add_subdirectory(compiler)
 add_subdirectory(tools)
+include(cmake/LanguageDocs.cmake)
 add_subdirectory(benchmarks)
 add_subdirectory(backends/capi)
 add_subdirectory(backends/sfml)

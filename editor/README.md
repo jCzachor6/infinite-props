@@ -26,7 +26,8 @@ external edits).
 - **Bytecode inspector** (*iprop: Open Bytecode Inspector*): the `ipdis
   --source` disassembly with the debug section's source map — the editor
   cursor highlights the matching instructions, and clicking an instruction
-  jumps the editor to its source line.
+  jumps the editor to its source line. The inspector explicitly compiles
+  with `--debug`; binary exports use the stripped production default.
 - **Export** (*iprop: Export .iprop / PNG / Variant Sheet*): one-click
   exports — the `.iprop` is validated with `ipval` after saving, the PNG
   uses the current seed/variant/archetype, the sheet grids the variants ×

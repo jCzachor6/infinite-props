@@ -7,7 +7,7 @@
 
 namespace iprop::compiler {
 
-Emitter::Emitter(Plan& plan) : plan_(plan) {}
+Emitter::Emitter(Plan& plan, bool unrollLoops) : plan_(plan), unrollLoops_(unrollLoops) {}
 
 [[noreturn]] void Emitter::error(const ips::SourceLocation& at,
                                  std::string message) {
@@ -44,16 +44,21 @@ void Emitter::emitConst(const Value& value) {
 }
 
 TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
-    switch (type) {
-    case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
-    case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
-    case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
-    case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
-    default: throw std::logic_error("temporary requires a value type");
+    try {
+        switch (type) {
+        case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
+        case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
+        case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
+        case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
+        default: throw std::logic_error("temporary requires a value type");
+        }
+    } catch (const std::length_error& exception) {
+        error({currentLine_, 1}, exception.what());
     }
 }
 
 bool Emitter::isParam(const std::string& name) const {
+    if (current_->drawLike && (name == "v" || name == "a")) return true;
     for (const auto& param : current_->ast->params) {
         if (param.name == name) {
             return true;
@@ -149,6 +154,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
             static_cast<u16>(current_->slots.at(forStmt->variable));
         const std::string boundName = "$for" + std::to_string(forCount_++);
         const u16 bound = static_cast<u16>(current_->slots.at(boundName));
+        if (emitUnrolled(*forStmt, counter)) return;
         emitExpr(*forStmt->from);
         ins(Opcode::LocalSet, 0, counter);
         emitExpr(*forStmt->to);

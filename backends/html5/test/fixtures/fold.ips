@@ -10,7 +10,7 @@ asset foldProbe {
   output point identity
   output point zero
 
-  draw(v: i32, a: i32) {
+  draw {
     nan = pow(-2, 0.5)
     inf = exp(100)
     positive_nan = fold({nan, 1.0}, 4)

@@ -1,0 +1,6 @@
+asset InvalidUniform {
+  size 8x8
+  input color tint = #9dc
+  draw { paint() }
+  paint() { pixel(1, 1, tint) }
+}

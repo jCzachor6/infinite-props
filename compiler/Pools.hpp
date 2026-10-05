@@ -7,11 +7,18 @@
 #include <cstdint>
 #include <map>
 #include <string>
+#include <stdexcept>
+#include "iprop/Constants.hpp"
 #include <vector>
 
 #include "iprop/Types.hpp"
 
 namespace iprop::compiler {
+
+class PoolLimit : public std::length_error {
+public:
+    explicit PoolLimit(const char* message) : std::length_error(message) {}
+};
 
 class Pools {
 public:
@@ -22,6 +29,7 @@ public:
         if (found != stringIndex.end()) {
             return found->second;
         }
+        if (strings.size() >= kMaxConstPoolEntries) throw PoolLimit("too many string constants");
         const u32 index = static_cast<u32>(strings.size());
         strings.push_back(text);
         stringIndex.emplace(text, index);
@@ -33,6 +41,7 @@ public:
         if (found != intIndex.end()) {
             return found->second;
         }
+        if (ints.size() >= kMaxConstPoolEntries) throw PoolLimit("too many integer constants");
         const u32 index = static_cast<u32>(ints.size());
         ints.push_back(bits);
         intIndex.emplace(bits, index);
@@ -44,6 +53,7 @@ public:
         if (found != floatIndex.end()) {
             return found->second;
         }
+        if (floats.size() >= kMaxConstPoolEntries) throw PoolLimit("too many float constants");
         const u32 index = static_cast<u32>(floats.size());
         floats.push_back(bits);
         floatIndex.emplace(bits, index);
@@ -59,6 +69,7 @@ public:
         if (found != colorIndex.end()) {
             return found->second;
         }
+        if (colors.size() >= kMaxConstPoolEntries) throw PoolLimit("too many color constants");
         const u32 index = static_cast<u32>(colors.size());
         colors.push_back(color);
         colorIndex.emplace(key, index);

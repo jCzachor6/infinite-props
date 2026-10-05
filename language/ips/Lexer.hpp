@@ -5,6 +5,7 @@
 // lexical level.
 
 #include <string>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -98,9 +99,15 @@ enum class TokenKind {
 
 struct Token {
     TokenKind kind = TokenKind::End;
-    std::string text; // the exact lexeme (literals and identifiers)
+    std::string text; // exact literals/identifiers; emoji aliases carry the canonical word
     SourceLocation location;
 };
+
+struct EmojiAlias {
+    char32_t codepoint;
+    const char* word;
+};
+std::span<const EmojiAlias> emojiAliases();
 
 // Lexes the whole source into a token vector ending with TokenKind::End.
 // Throws SourceError on malformed input.
@@ -108,5 +115,6 @@ std::vector<Token> lex(std::string_view source);
 
 // Descriptive name of a token kind (diagnostics and tests).
 const char* tokenName(TokenKind kind);
+std::string keywordSuggestion(std::string_view misspelled);
 
 } // namespace iprop::ips

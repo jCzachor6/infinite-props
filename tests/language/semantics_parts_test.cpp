@@ -31,13 +31,13 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43, shade(palette, -4))
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43, color.shade(palette, -4))
     }
   }
 })";
@@ -50,7 +50,7 @@ asset hair {
   input f32   volume = 1.0
   output point top
 
-  draw(v: i32, a: i32) {
+  draw {
     top = {32, 4}
   }
 })";
@@ -65,7 +65,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 64, 64, skin)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     pupilCenter = hair.outputs.top
@@ -90,55 +90,55 @@ TEST_CASE("part calls are validated against the part surface") {
     // Wrong positional arity.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, at = {0, 0}) } }",
+        "draw { hair.draw(1, 2, at = {0, 0}) } }",
         hairParts(), "exactly three positional");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
+        "draw { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
         hairParts(), "exactly three positional");
 
     // Missing `at`.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3) } }",
+        "draw { hair.draw(1, 2, 3) } }",
         hairParts(), "requires an 'at");
 
     // Wrong `at` type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = 5) } }",
+        "draw { hair.draw(1, 2, 3, at = 5) } }",
         hairParts(), "'at' must be a vec2");
 
     // Unknown uniform.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
+        "draw { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
         hairParts(), "has no input 'bogus'");
 
     // Uniform of the wrong type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}, volume = #ffffff) } }",
+        "draw { hair.draw(1, 2, 3, at = {0, 0}, volume = #ffffff) } }",
         hairParts(), "must be f32, got color");
 
     // Unknown part.
     expectCheckError(
         "import nope from \"nope.ips\"\nasset t { size 8x8 "
-        "draw(v: i32, a: i32) { nope.draw(1, 2, 3, at = {0, 0}) } }",
+        "draw { nope.draw(1, 2, 3, at = {0, 0}) } }",
         "was not provided");
 }
 
 TEST_CASE("part transform argument names cannot be declared as uniforms") {
     for (const std::string name : {"rot", "mirror_x", "mirror_y"}) {
         expectCheckError("asset t { size 8x8 input i32 " + name +
-                             " = 0 draw(v: i32, a: i32) { } }",
+                             " = 0 draw { } }",
                          "reserved name");
     }
 }
 
 TEST_CASE("part transforms are fully checked before compilation") {
     const auto source = [](const std::string& transform) {
-        return "import hair from \"hair.ips\"\nasset t { size 8x8 draw(v:i32,a:i32) { "
+        return "import hair from \"hair.ips\"\nasset t { size 8x8 draw { "
                "hair.draw(1,2,3,at={0,0}," + transform + ") } }";
     };
     CHECK_NOTHROW(checkAsset(parse(source("rot=45+45,mirror_x=1,mirror_y=0")),hairParts()));
@@ -158,14 +158,14 @@ TEST_CASE("part output reads are validated") {
 
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output point p "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}) p = hair.outputs.nope } }",
+        "draw { hair.draw(1, 2, 3, at = {0, 0}) p = hair.outputs.nope } }",
         hairParts(), "has no output 'nope'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output rect r "
-        "draw(v: i32, a: i32) { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
+        "draw { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
         hairParts(), "expects rect, got vec2");
     expectCheckError(
-        "asset t { size 8x8 draw(v: i32, a: i32) { x = bogus.outputs.p } }",
+        "asset t { size 8x8 draw { x = bogus.outputs.p } }",
         "not an imported part");
 
     // List outputs cannot be read.
@@ -173,7 +173,7 @@ TEST_CASE("part output reads are validated") {
 asset lp {
   size 8x8
   output list point pts
-  draw(v: i32, a: i32) {
+  draw {
     pts = {1, 2}
   }
 })";
@@ -182,7 +182,7 @@ asset lp {
         {"lp", partInfoOf(listProgram.asset)}};
     expectCheckError(
         "import lp from \"lp.ips\"\nasset t { size 8x8 output point p "
-        "draw(v: i32, a: i32) { lp.draw(1, 2, 3, at = {0, 0}) p = lp.outputs.pts } }",
+        "draw { lp.draw(1, 2, 3, at = {0, 0}) p = lp.outputs.pts } }",
         listParts, "cannot read list output");
 }
 
@@ -202,8 +202,8 @@ TEST_CASE("partInfoOf builds a part surface") {
 
 TEST_CASE("import cycles are rejected with the cycle path") {
     const std::map<std::string, std::string> files = {
-        {"a.ips", "import b from \"b.ips\"\nasset a { size 8x8 draw(v: i32, a: i32) { } }"},
-        {"b.ips", "import a from \"a.ips\"\nasset b { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"a.ips", "import b from \"b.ips\"\nasset a { size 8x8 draw { } }"},
+        {"b.ips", "import a from \"a.ips\"\nasset b { size 8x8 draw { } }"},
     };
     const auto loader = [&](std::string_view path) {
         const auto found = files.find(std::string(path));
@@ -227,9 +227,9 @@ TEST_CASE("import cycles are rejected with the cycle path") {
 
     // A three-file cycle not passing through the entry.
     const std::map<std::string, std::string> three = {
-        {"x.ips", "import y from \"y.ips\"\nasset x { size 8x8 draw(v: i32, a: i32) { } }"},
-        {"y.ips", "import z from \"z.ips\"\nasset y { size 8x8 draw(v: i32, a: i32) { } }"},
-        {"z.ips", "import y from \"y.ips\"\nasset z { size 8x8 draw(v: i32, a: i32) { } }"},
+        {"x.ips", "import y from \"y.ips\"\nasset x { size 8x8 draw { } }"},
+        {"y.ips", "import z from \"z.ips\"\nasset y { size 8x8 draw { } }"},
+        {"z.ips", "import y from \"y.ips\"\nasset z { size 8x8 draw { } }"},
     };
     const auto loader3 = [&](std::string_view path) {
         const auto found = three.find(std::string(path));
@@ -252,9 +252,9 @@ TEST_CASE("import cycles are rejected with the cycle path") {
 TEST_CASE("import resolution returns dependencies first and reports bad files") {
     const std::map<std::string, std::string> files = {
         {"a.ips", "import b from \"b.ips\"\nimport c from \"c.ips\"\n"
-                  "asset a { size 8x8 draw(v: i32, a: i32) { } }"},
-        {"b.ips", "import c from \"c.ips\"\nasset b { size 8x8 draw(v: i32, a: i32) { } }"},
-        {"c.ips", "asset c { size 8x8 draw(v: i32, a: i32) { } }"},
+                  "asset a { size 8x8 draw { } }"},
+        {"b.ips", "import c from \"c.ips\"\nasset b { size 8x8 draw { } }"},
+        {"c.ips", "asset c { size 8x8 draw { } }"},
     };
     const auto loader = [&](std::string_view path) {
         const auto found = files.find(std::string(path));

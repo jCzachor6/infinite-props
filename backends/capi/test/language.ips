@@ -15,7 +15,7 @@ asset language {
     return x + 0.25
   }
 
-  draw(v: i32, a: i32) {
+  draw {
     c = colors[v]
     n = round(helper(a))
     pixel(0, 0, base)

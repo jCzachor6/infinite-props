@@ -1,0 +1,17 @@
+asset NoiseHelpers {
+  size 8x8
+  output point feature
+  draw {
+    saved = seed
+    value = noise(0.5, 0.5, saved)
+    triangle = fault(0.5, 0.5, saved)
+    gradient = noise.grad(0.5, 0.5, saved)
+    fractal = noise.fbm(0.5, 0.5, 3, saved)
+    cells = noise.cell(0.5, 0.5, saved)
+    ridge = noise.ridge(0.5, 0.5, 3, saved)
+    warped = warp(0.5, 0.5, 0.2, saved)
+    feature = cell.jitter(3, 4, saved)
+    coverage = dither(0.5, 2, 3)
+    pixel(2, 3, color.scale(#9dc, coverage))
+  }
+}

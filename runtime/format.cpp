@@ -17,7 +17,7 @@ const Section* FileLayout::find(SectionId id) const {
     return nullptr;
 }
 
-FileLayout parseLayout(std::span<const u8> data) {
+Header parseHeader(std::span<const u8> data) {
     if (data.size() < kHeaderSize) {
         throw FormatError("file too small: header truncated", data.size());
     }
@@ -31,26 +31,27 @@ FileLayout parseLayout(std::span<const u8> data) {
         }
     }
 
-    FileLayout layout;
-    layout.totalSize = data.size();
+    Header header;
 
     // Version: interpreters reject files they cannot fully honour. This
-    // implementation knows 0.x with x <= 2.
-    layout.header.versionMajor = reader.readU16();
-    if (layout.header.versionMajor > kVersionMajor) {
+    // implementation knows 0.x with 1 <= x <= 4.
+    header.versionMajor = reader.readU16();
+    if (header.versionMajor > kVersionMajor) {
         throw FormatError("unsupported format major version", 4);
     }
-    layout.header.versionMinor = reader.readU16();
-    if (layout.header.versionMinor > kVersionMinor) {
+    header.versionMinor = reader.readU16();
+    if (header.versionMinor < 1 || header.versionMinor > kVersionMinor) {
         throw FormatError("unsupported format minor version", 6);
     }
 
-    layout.header.flags = reader.readU32();
-    if ((layout.header.flags & ~kFlagDebug) != 0) {
+    header.flags = reader.readU32();
+    const u32 allowed = header.versionMinor >= 4 ? kFlagDebug | kFlagCompressed : kFlagDebug;
+    if ((header.flags & ~allowed) != 0) {
         throw FormatError("unknown header flag bits", 8);
     }
 
     const u32 count = reader.readU32();
+    header.sectionCount = count;
     if (count < 1 || count > 255) {
         throw FormatError("section count out of range (1-255)", 12);
     }
@@ -58,6 +59,18 @@ FileLayout parseLayout(std::span<const u8> data) {
     if (reader.readU32() != 0) {
         throw FormatError("reserved header field must be zero", 16);
     }
+
+    return header;
+}
+
+FileLayout parseLayout(std::span<const u8> data) {
+    FileLayout layout;
+    layout.header = parseHeader(data);
+    layout.totalSize = data.size();
+    if (layout.header.hasCompression())
+        throw FormatError("compressed container must be expanded before parsing layout", 8);
+    const auto count = layout.header.sectionCount;
+    Reader reader(data, kHeaderSize, data.size());
 
     // Section table (spec §2.2).
     const std::size_t tableBytes = static_cast<std::size_t>(count) * 12;

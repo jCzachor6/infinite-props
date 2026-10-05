@@ -1,0 +1,11 @@
+// A quadratic vector stroke.
+asset BezierStroke {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    curve(a = {3, 25}, b = {15, 0}, c = {29, 25}, thickness = 3, color = #5bf)
+    oval(3, 25, 2, 2, #fd8)
+    oval(29, 25, 2, 2, #fd8)
+  }
+}

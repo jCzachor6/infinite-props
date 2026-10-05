@@ -9,9 +9,12 @@
 #include "Compiler.hpp"
 
 #include "iprop/Debug.hpp"
+#include "iprop/Compression.hpp"
+#include "language_description.hpp"
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
+#include "ips/Printer.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
 
@@ -20,6 +23,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -35,20 +39,39 @@ int fail(const std::string& message) {
     return 1;
 }
 
+bool sameFile(const std::filesystem::path& first, const std::filesystem::path& second) {
+    std::error_code error;
+    return std::filesystem::absolute(first).lexically_normal() ==
+               std::filesystem::absolute(second).lexically_normal() ||
+           std::filesystem::equivalent(first, second, error);
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
+    if (argc == 2 && std::string_view(argv[1]) == "--describe-language") {
+        iprop::tools::writeLanguageDescription(std::cout, IPROP_PRODUCT_VERSION);
+        return std::cout ? 0 : 1;
+    }
     std::string input;
     std::string output;
-    bool strip = false;
+    std::string formattedOutput;
+    bool strip = true;
+    bool optimize = true;
+    bool compress = true;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "-h" || arg == "--help") {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
-                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--strip]\n"
+                      << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
+                      << "       ipc --describe-language  (JSON language contracts)\n"
                       << "Imports resolve relative to the entry file; the\n"
-                      << "output passes the runtime validator. --strip removes\n"
-                      << "the debug section (identical execution).\n";
+                      << "output passes the runtime validator. Debug information is\n"
+                      << "stripped by default; --debug retains source maps and symbols.\n"
+                      << "--strip removes them again (the last flag wins). --format writes\n"
+                      << "canonical source beside the compiled result.\n"
+                      << "Compression is automatic when smaller; --no-compress\n"
+                      << "writes an expanded file for low-level inspection.\n";
             return 0;
         }
         if (arg == "-o" || arg == "--output") {
@@ -56,8 +79,15 @@ int main(int argc, char* argv[]) {
                 return fail("missing value for " + arg);
             }
             output = argv[++i];
-        } else if (arg == "--strip") {
-            strip = true;
+        } else if (arg == "--strip" || arg == "--debug") {
+            strip = arg == "--strip";
+        } else if (arg == "--compress" || arg == "--no-compress") {
+            compress = arg == "--compress";
+        } else if (arg == "--no-opt") {
+            optimize = false;
+        } else if (arg == "--format") {
+            if (i + 1 >= argc) return fail("missing value for --format");
+            formattedOutput = argv[++i];
         } else if (!arg.empty() && arg[0] == '-') {
             return fail("unknown option '" + arg + "'");
         } else if (input.empty()) {
@@ -81,13 +111,17 @@ int main(int argc, char* argv[]) {
     std::string entrySource((std::istreambuf_iterator<char>(stream)), {});
 
     const std::filesystem::path entryPath(input);
+    const auto utf8Name = entryPath.filename().u8string();
+    const std::string entryName(utf8Name.begin(), utf8Name.end());
     const auto dir = entryPath.parent_path().empty()
                          ? std::filesystem::path(".")
                          : entryPath.parent_path();
 
     const auto loadSource = [&](std::string_view path) -> std::string {
+        // Import strings use UTF-8, independently of the native Windows code page.
+        const std::u8string utf8Path(path.begin(), path.end());
         const std::filesystem::path resolved =
-            dir / std::filesystem::path(std::string(path));
+            dir / std::filesystem::path(utf8Path);
         std::ifstream file(resolved);
         if (!file) {
             throw std::runtime_error("no such file");
@@ -99,7 +133,7 @@ int main(int argc, char* argv[]) {
         using namespace iprop::ips;
 
         const std::vector<std::string> order =
-            resolveImports(entryPath.filename().string(), loadSource);
+            resolveImports(entryName, loadSource);
 
         std::map<std::string, std::string> sources;
         std::map<std::string, Program> programs;
@@ -114,7 +148,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        const Program& entry = programs.at(entryPath.filename().string());
+        const Program& entry = programs.at(entryName);
         std::map<std::string, const Program*> partPrograms;
         std::map<std::string, PartInfo> partInfos;
         for (const auto& import : entry.imports) {
@@ -136,24 +170,42 @@ int main(int argc, char* argv[]) {
         try {
             checkAsset(entry, partInfos);
         } catch (const SourceError& error) {
-            reportError(entryPath.filename().string(), entrySource, error);
+            reportError(entryName, entrySource, error);
             return 1;
         }
 
         std::vector<iprop::u8> bytes =
-            iprop::compileProgram(entry, partPrograms);
+            iprop::compileProgram(entry, partPrograms, optimize);
+        std::string canonicalSource;
+        if (!formattedOutput.empty()) {
+            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
+                return fail("--format must target a distinct source output file");
+            canonicalSource = formatProgram(entry);
+        }
         if (strip) {
             bytes = iprop::stripDebug(bytes);
         }
 
+        if (compress) bytes = iprop::compressFile(bytes);
         std::ofstream out(output, std::ios::binary);
         if (!out) {
             return fail("cannot write '" + output + "'");
         }
         out.write(reinterpret_cast<const char*>(bytes.data()),
                   static_cast<std::streamsize>(bytes.size()));
+        out.close();
+        if (!out) return fail("cannot write '" + output + "'");
+        if (!formattedOutput.empty()) {
+            // A case-insensitive alias of a new binary exists only after writing it.
+            if (sameFile(formattedOutput, input) || sameFile(formattedOutput, output))
+                return fail("--format must target a distinct source output file");
+            std::ofstream formatted(formattedOutput, std::ios::binary);
+            formatted << canonicalSource;
+            formatted.close();
+            if (!formatted) return fail("cannot write '" + formattedOutput + "'");
+        }
     } catch (const iprop::ips::SourceError& error) {
-        const std::string path = error.path.empty() ? entryPath.filename().string() : error.path;
+        const std::string path = error.path.empty() ? entryName : error.path;
         std::string source;
         try { source = loadSource(path); } catch (const std::exception&) { /* file unavailable */ }
         reportError(path, source, error);
@@ -162,5 +214,6 @@ int main(int argc, char* argv[]) {
         return fail(error.what());
     }
     std::cout << "compiled " << input << " -> " << output << "\n";
+    if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << "\n";
     return 0;
 }

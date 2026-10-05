@@ -206,9 +206,30 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `hash` — splitmix32-style integer hash (as in `PaGenerationMath::hash`).
 - `unit`, `range`, `index` — draws from a Weyl-sequence stream
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
+- `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
+  all choices once, in signature order, then consumes one selection draw.
+  Choices share a scalar/vec2 type; mixed numeric choices widen to f32.
+- `chance(p)` returns an i32 boolean for `unit() < p`, after evaluating p.
+  It always consumes one draw; p ≤ 0 and NaN give false, p ≥ 1 gives true.
+- `roll(seed, a, b)` returns a range draw from the explicit seed;
+  `choose(seed, value0, …)` selects from one or more typed choices.
+  Arguments evaluate in signature order before isolation; the outer stream
+  is restored after the single draw. Both support named arguments.
 - `noise` — smoothstep-interpolated value noise over a pinned lattice hash.
 - `fault` — triangular-interpolated noise for sharp geological features.
-- `mix`, `shade`, `smooth` — colour/value helpers.
+- `color.mix`, `color.shade`, `smooth` — colour/value helpers.
+- `lerp(a, b, t)` interpolates either two colors or two numbers; integer
+  numbers widen to f32. Color interpolation preserves the first alpha.
+- `int(x)` truncates f32 toward zero with saturation (NaN becomes zero),
+  and preserves i32 values. `float(x)` widens i32 or preserves f32 values.
+- `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
+  clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
+- Every builtin/canvas operation accepts named arguments. See the
+  [v0.4 language reference](docs/language-v0.4.md) for parameter names.
+- `ipc file.ips --format canonical.ips` exports canonical source during
+  compilation, with deterministic formatting and executable roundtrips.
+- The [recipe gallery](examples/recipes/README.md) contains 24 small,
+  standalone patterns for authoring and combining procedural assets.
 - Stream isolation MUST be expressible: programs may derive independent
   streams from `seed ^ constant ^ (kind · golden-ratio)` without moving a
   shared stream (the QuantSpace invariant).
@@ -225,6 +246,11 @@ calls, because bit-exact parity across platforms is a core requirement:
   compares outputs across backends.
 
 ## 7. The language (`.ips`)
+
+The complete [language handbook](docs/language/index.md) covers syntax,
+typing, control flow, every builtin, composition and executable examples.
+It is the authoring reference; the following section records project
+requirements and an illustrative sketch.
 
 A small imperative, human-writable language that mirrors the structure of
 QuantSpace's draw code, and compiles 1:1 to VM semantics.
@@ -263,7 +289,7 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   syntax is `part.draw name [kind]`, with the optional D4 kind in `0`–`7`;
   disassembly preserves it.
   `gain` defines the `k = 1` limit;
-  `ramp` takes positional arguments and evaluates `t` once even for a
+  `ramp(palette, t)` accepts named arguments and evaluates `t` once even for a
   one-element palette ([§12.11](spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03)).
   Pure constant ramps fold during planning; dynamic palettes use O(log N)
   selection with O(N) emitted code. Compiler expansion can reduce fuel,
@@ -276,7 +302,8 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   element).
 - Deterministic, simple grammar; unambiguous parse errors; semantic checks
   (type, fuel, canvas) reported with source locations.
-- A `draw(variant, archetype)` entry point; variant/archetype indices arrive as
+- A `draw { ... }` entry block with read-only `v`/`a` builtins; the compiler
+  synthesizes the runtime `(i32, i32)` parameters. Variant/archetype indices arrive as
   validated integers.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
   `f32`, `color` or `vec2`; pre-1.0 the type is mandatory) and functions that
@@ -294,7 +321,8 @@ QuantSpace's draw code, and compiles 1:1 to VM semantics.
   acyclic, with part-output access and propagation (§7.3).
 
 Calls retain the compiler's established evaluation order: ordinary builtin
-and user-function arguments run left to right; `poly` evaluates vertex
+arguments run in signature order (named arguments can be reordered);
+user-function arguments run left to right; `poly` evaluates vertex
 coordinates before its colour. Part calls evaluate uniform overrides in
 input declaration order, then seed/variant/archetype and placement; named
 transform arguments are compile-time constants. An argument is evaluated
@@ -311,14 +339,14 @@ asset rock {
   input  color palette = #808d74
   output rect  collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     stone_mass(-w * 0.10, 0, w * 0.87, h, palette, seed)
     if (index(3) == 0) {
       stone_mass(-w * 0.67, 2, w * 0.39, h * 0.43,
-                 shade(palette, -4), hash(seed ^ 9467))
+                 color.shade(palette, -4), hash(seed ^ 9467))
     }
   }
 }
@@ -330,7 +358,7 @@ asset hair {
   input color color = #33291f
   output point top
 
-  draw(v: i32, a: i32) {
+  draw {
     ...
     top = {32, 4}
   }
@@ -347,7 +375,7 @@ asset portrait {
   input  color hairColor = #33291f
   output point pupilCenter
 
-  draw(v: i32, a: i32) {
+  draw {
     face(v, a)
     hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
     eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24})
@@ -356,7 +384,8 @@ asset portrait {
 }
 ```
 
-This sketch is illustrative; the final grammar lives in `spec/`.
+This sketch is illustrative; the implemented grammar is documented in
+[the language handbook](docs/language/grammar.md).
 
 ### 7.3 Imports and composition
 
@@ -495,14 +524,16 @@ the HTML5 backend). v0.2 rounded out the language — typed
 function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
-v0.3.0 adds vectors, distance fields, curves, procedural noise, colour
-utilities and exact part transforms. Product 0.3.0 is released on `main`
-with tag `v0.3.0`; the CLI, C API, SFML and Godot have regression and
-conformance checks. The product version, format
-version (0.3, with 0.1/0.2 reader compatibility) and C API version (0.2)
-are separate contracts. API 0.2 consumers must rebuild with the new header.
-Source and native packages are available as local release artifacts.
-Remote publication and GitHub CI require a configured remote; editor/website
+v0.3.0 added vectors, distance fields, curves, procedural noise, colour
+utilities and exact part transforms. v0.4.0 adds named calls, RNG sugar,
+canonical formatting, Unicode diagnostics/emoji aliases, 24 recipes,
+the complete language handbook, bit-exact compiler optimizations and lossless
+compression. Product 0.4.0, format 0.4 (with frozen 0.1–0.3 reader compatibility)
+and C API 0.2 are separate contracts. The C ABI layouts retain API 0.2.
+Migration and release commands are in [the 0.4 notes](docs/release-v0.4.md).
+Source, native SDK, WASM and website packages are published by the tagged
+release workflow after validation and can also be built locally.
+GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website
 publication, Bevy and Unity glue remain separate ecosystem work.
 
 The next example pass has two showcases:
@@ -527,15 +558,28 @@ Prepare a local release package from a clean, committed checkout:
 ```sh
 cmake -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release --parallel
-scripts/release.sh 0.3.0 build-release
+scripts/release.sh 0.4.0 build-release
 ```
 
 Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
 including those integrations; required mode fails on missing dependencies.
 Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
-C API consumers before writing `dist/iprop-0.3.0.tar.gz` (committed source),
-`dist/iprop-0.3.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+C API consumers before writing `dist/iprop-0.4.0.tar.gz` (committed source),
+`dist/iprop-0.4.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
 The native archive records its source commit and included backends in
 `release.json`. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.
+
+Compiler optimization checks and measured reductions are recorded in
+[the v0.4 acceptance report](docs/optimization-acceptance-v0.4.md).
+
+The v0.4 runtime supports [lossless DEFLATE containers](spec/iprop-v0.4.md)
+and all frozen 0.1–0.3 files. `ipc` strips debug information by default and
+compresses only when the complete output is smaller. Use `--debug` to keep
+source maps and symbols, and `--no-compress` for an expanded file; either
+choice preserves execution. `--debug` and `--strip` use the last flag given.
+Low-level layout/section
+inspection uses `decompressFile` or `LoadedFile::bytes()`. Native builds and
+installed CMake consumers require zlib 1.2.9 or newer; the Emscripten build uses
+its pinned zlib port via `-sUSE_ZLIB=1`.

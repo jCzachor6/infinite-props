@@ -2,12 +2,18 @@ name: CI
 
 on:
   push:
+    branches: ['**']
   pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+  PYTHONIOENCODING: utf-8
 
 jobs:
-  # The reference interpreter: the desktop toolchain and the full test suite
-  # (including the golden corpus, which freezes the semantics), plus a smoke
-  # of the CLI pipeline over the examples.
   build-test:
     strategy:
       fail-fast: false
@@ -16,40 +22,89 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
 
+      - name: Static zlib with the shared MSVC runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python scripts/ci_report.py run zlib "$env:VCPKG_INSTALLATION_ROOT/vcpkg.exe" install zlib:x64-windows-static-md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CMAKE_PREFIX_PATH=$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows-static-md" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Configure
-        run: cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+        run: >-
+          python scripts/ci_report.py run configure
+          cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+          -DZLIB_USE_STATIC_LIBS=${{ runner.os == 'Windows' && 'ON' || 'OFF' }}
 
       - name: Build
-        run: cmake --build build --parallel
+        # Report all independent compiler errors in one run (Ninja).
+        run: python scripts/ci_report.py run build cmake --build build --parallel -- -k 0
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: >-
+          python scripts/ci_report.py run test
+          ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
 
       - name: Smoke the CLI pipeline
-        run: cmake -DTOOLS=${{ github.workspace }}/build/tools -P scripts/cli_smoke.cmake
+        run: >-
+          python scripts/ci_report.py run cli-smoke
+          cmake -DTOOLS=${{ github.workspace }}/build/tools -P scripts/cli_smoke.cmake
 
       - name: Install and consume the relocated package
         run: |
-          cmake --install build --prefix stage
-          cmake -E rename stage relocated
-          cmake -DPREFIX=${{ github.workspace }}/relocated -DWORK=${{ github.workspace }}/installed-smoke -P scripts/install_smoke.cmake
+          python scripts/ci_report.py run install cmake --install build --prefix build/stage
+          python scripts/ci_report.py run relocate cmake -E rename build/stage build/relocated
+          python scripts/ci_report.py run install-smoke cmake -DPREFIX=${{ github.workspace }}/build/relocated -DWORK=${{ github.workspace }}/build/installed-smoke -DZLIB_USE_STATIC_LIBS=${{ runner.os == 'Windows' && 'ON' || 'OFF' }} -P scripts/install_smoke.cmake
 
-  # The HTML5/WASM backend: the same interpreter compiled to WebAssembly,
-  # checked against fresh desktop renders, structured outputs and the
-  # frozen golden images as well as the shared in-browser hash suite.
+      - name: Package the macOS and Windows SDKs
+        if: runner.os != 'Linux'
+        run: python scripts/ci_report.py run package python scripts/release.py --no-source
+
+      - name: Retain the SDK archive
+        if: runner.os != 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-${{ runner.os }}-${{ runner.arch }}
+          path: dist/iprop-*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+      - name: Summarize the checks
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+
+      - name: Retain reports even when a check fails
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-native-${{ runner.os }}-${{ runner.arch }}
+          path: |
+            build/ci-reports/
+            build/Testing/Temporary/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
   wasm:
     runs-on: ubuntu-latest
+    env:
+      IPROP_CONFORMANCE_REPORT_DIR: ${{ github.workspace }}/build/ci-reports/conformance
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+        run: >-
+          python scripts/ci_report.py run configure
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
 
-      - name: Build (native tools for asset preparation and comparison)
-        run: cmake --build build --parallel --target ipa ipc ipgen
+      - name: Build native tools for asset preparation and comparison
+        run: python scripts/ci_report.py run build cmake --build build --parallel --target ipa ipc ipgen
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -58,47 +113,108 @@ jobs:
 
       - name: Build the WASM module
         run: |
-          mkdir -p build/wasm && cd build/wasm
-          emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
-          emmake make -j4
+          python scripts/ci_report.py run wasm-configure emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
+          python scripts/ci_report.py run wasm-build emmake cmake --build build/wasm --parallel 4
 
-      - name: Conformance (WASM vs native pixels, outputs and golden hashes)
+      - name: Compare WASM with native pixels, outputs and frozen hashes
         run: |
-          sh backends/html5/prepare.sh
-          node --test backends/html5/test/*.test.js
-          node backends/html5/test/run-tests.js build/wasm
+          python scripts/ci_report.py run prepare-conformance sh backends/html5/prepare.sh
+          python scripts/ci_report.py run node-tests node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=build/ci-reports/node.xml backends/html5/test/*.test.js
+          python scripts/ci_report.py run conformance node backends/html5/test/run-tests.js build/wasm
+
+      - name: Build and verify the website with the current WASM module
+        run: |
+          python scripts/ci_report.py run website-prepare sh website/prepare.sh build/wasm build/tools
+          python scripts/ci_report.py run website-install npm --prefix website ci
+          python scripts/ci_report.py run language-docs python scripts/language_docs.py check --compiler build/tools/ipc --report-dir build/ci-reports/language
+          python scripts/ci_report.py run docs-render-tests node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=build/ci-reports/docs-render.xml website/test/docs.test.mjs
+          python scripts/ci_report.py run website-build npm --prefix website run build
+          python scripts/ci_report.py run website-smoke node website/test/release-smoke.js website/dist build/tools
+
+      - name: Package and verify the extracted WASM and website
+        run: python scripts/ci_report.py run package python scripts/package_web.py
+
+      - name: Retain the tested WASM and website
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/iprop-*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+      - name: Summarize the checks
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+
+      - name: Retain reports and image differences even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-wasm
+          path: build/ci-reports/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
 
   native-backends:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - name: Native graphics dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libxrandr-dev libxcursor-dev libudev-dev libfreetype-dev libharfbuzz-dev libgl1-mesa-dev xvfb
+          python scripts/ci_report.py run apt-update sudo apt-get update
+          python scripts/ci_report.py run apt-install sudo apt-get install -y libxi-dev libxrandr-dev libxcursor-dev libudev-dev libfreetype-dev libharfbuzz-dev libgl1-mesa-dev zlib1g-dev xvfb
       - name: Pinned SFML and Godot bindings
         run: |
-          git clone --depth 1 --branch 3.1.0 https://github.com/SFML/SFML.git .deps/SFML
-          cmake -S .deps/SFML -B .deps/sfml-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/.deps/sfml" -DBUILD_SHARED_LIBS=OFF -DSFML_BUILD_AUDIO=OFF -DSFML_BUILD_NETWORK=OFF
-          cmake --build .deps/sfml-build --parallel 4
-          cmake --install .deps/sfml-build
-          git clone --depth 1 --branch godot-4.5-stable https://github.com/godotengine/godot-cpp.git .deps/godot-cpp
-          curl -fL https://github.com/godotengine/godot-builds/releases/download/4.5.2-stable/Godot_v4.5.2-stable_linux.x86_64.zip -o .deps/godot.zip
-          unzip .deps/godot.zip -d .deps
+          python scripts/ci_report.py run sfml-source git clone --depth 1 --branch 3.1.0 https://github.com/SFML/SFML.git .deps/SFML
+          python scripts/ci_report.py run sfml-configure cmake -S .deps/SFML -B .deps/sfml-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/.deps/sfml" -DBUILD_SHARED_LIBS=OFF -DSFML_BUILD_AUDIO=OFF -DSFML_BUILD_NETWORK=OFF
+          python scripts/ci_report.py run sfml-build cmake --build .deps/sfml-build --parallel 4
+          python scripts/ci_report.py run sfml-install cmake --install .deps/sfml-build
+          python scripts/ci_report.py run godot-bindings git clone --depth 1 --branch godot-4.5-stable https://github.com/godotengine/godot-cpp.git .deps/godot-cpp
+          python scripts/ci_report.py run godot-download curl -fL https://github.com/godotengine/godot-builds/releases/download/4.5.2-stable/Godot_v4.5.2-stable_linux.x86_64.zip -o .deps/godot.zip
+          python scripts/ci_report.py run godot-unpack unzip .deps/godot.zip -d .deps
           chmod +x .deps/Godot_v4.5.2-stable_linux.x86_64
       - name: Require both integrations
         run: >-
+          python scripts/ci_report.py run configure
           cmake -B build -DCMAKE_BUILD_TYPE=Release
           -DIPROP_SFML=ON -DIPROP_SFML_PREFIX="$PWD/.deps/sfml" -DSFML_STATIC_LIBRARIES=ON
           -DIPROP_GODOT=ON -DIPROP_GODOTCPP_DIR="$PWD/.deps/godot-cpp"
           -DGODOTCPP_BUILD_PROFILE="$PWD/backends/godot/build_profile.json"
           -DGODOTCPP_TARGET=template_release
           -DIPROP_GODOT_BINARY="$PWD/.deps/Godot_v4.5.2-stable_linux.x86_64"
-      - name: Build and test real rendering and lifecycle
+      - name: Build, test and package real rendering and lifecycle
         run: |
-          cmake --build build --parallel 4
-          xvfb-run -a ctest --test-dir build --output-on-failure
-          xvfb-run -a python3 scripts/release.py --check
+          python scripts/ci_report.py run build cmake --build build --parallel 4
+          python scripts/ci_report.py run test xvfb-run -a ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
+          python scripts/ci_report.py run package xvfb-run -a python scripts/release.py
+
+      - name: Retain the Linux SDK with SFML and Godot and the source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdk-Linux-${{ runner.arch }}
+          path: dist/iprop-*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+      - name: Summarize the checks
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+
+      - name: Retain integration diagnostics even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-native-backends
+          path: |
+            build/ci-reports/
+            build/Testing/Temporary/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
 
   sanitizers:
     runs-on: ubuntu-latest
@@ -107,13 +223,64 @@ jobs:
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - name: Configure ASan and UBSan
         run: >-
+          python scripts/ci_report.py run configure
           cmake -B build -DCMAKE_BUILD_TYPE=Debug
           -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
           '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -fno-sanitize-recover=all'
           '-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all'
       - name: Build and test all compiler and VM regressions
         run: |
-          cmake --build build --parallel 4
-          ctest --test-dir build --output-on-failure
+          python scripts/ci_report.py run build cmake --build build --parallel 4
+          python scripts/ci_report.py run test ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
+
+      - name: Summarize the checks
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+
+      - name: Retain sanitizer diagnostics even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-sanitizers
+          path: |
+            build/ci-reports/
+            build/Testing/Temporary/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  release-assets:
+    needs: [build-test, wasm, native-backends, sanitizers]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Download this run's tested builds and reports
+        uses: actions/download-artifact@v4
+        with:
+          path: build/downloads
+      - name: Verify and collect the complete release asset set
+        run: python scripts/ci_report.py run release-assets python scripts/release_assets.py collect
+      - name: Retain the release candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: build/release/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+      - name: Summarize the release candidate verification
+        if: ${{ !cancelled() }}
+        run: python scripts/ci_report.py summary
+      - name: Retain collection diagnostics even on failure
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-release-assets
+          path: build/ci-reports/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true

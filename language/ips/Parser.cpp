@@ -74,6 +74,9 @@ Asset ParserImpl::parseAsset() {
             } else if (declaration.text == "palette") {
                 asset.palettes.push_back(parsePalette());
             } else {
+                const auto hint = keywordSuggestion(declaration.text);
+                if (kind() != TokenKind::LParen && !hint.empty())
+                    throw SourceError{declaration.location, "unknown asset declaration '" + declaration.text + "'" + hint};
                 asset.functions.push_back(parseFunctionAfterName(declaration));
             }
             break;
@@ -193,6 +196,15 @@ Function ParserImpl::parseFunction() {
 }
 
 Function ParserImpl::parseFunctionAfterName(const Token& name) {
+    if (name.text == "draw") {
+        if (kind() == TokenKind::LParen) {
+            failHere("'draw' takes no declared parameters; use 'draw { ... }'");
+        }
+        if (kind() == TokenKind::Arrow) {
+            failHere("'draw' cannot return a value; use 'draw { ... }'");
+        }
+        return Function{name.text, {}, {}, parseBlock(), name.location};
+    }
     expect(TokenKind::LParen, "'(' after the function name");
     std::vector<Param> params;
     while (kind() != TokenKind::RParen) {
@@ -285,7 +297,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
     auto expr = parsePostfixAfter(
         std::make_unique<Expr>(Identifier{name.text, name.location}));
     if (!std::holds_alternative<Call>(*expr)) {
-        throw SourceError{name.location, "expression statement must be a call"};
+        throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};
 }

@@ -1,4 +1,5 @@
 #include "ips/SourceError.hpp"
+#include "ips/SourceText.hpp"
 
 #include <sstream>
 
@@ -30,7 +31,13 @@ std::string formatError(std::string_view source, const SourceError& error) {
 
     out << lineText << "\n";
     if (error.location.column >= 1) {
-        out << std::string(error.location.column - 1, ' ') << "^\n";
+        std::size_t offset = 0;
+        for (std::size_t column = 1; column < error.location.column && offset < lineText.size(); ++column) {
+            out << (lineText[offset] == '\t' ? '\t' : ' ');
+            const auto point = decodeCodepoint(lineText, offset);
+            offset += point ? point->bytes : 1;
+        }
+        out << "^\n";
     }
     return out.str();
 }

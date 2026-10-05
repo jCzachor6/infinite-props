@@ -1,0 +1,17 @@
+asset Helpers {
+  size 8x8
+  input color tint = #9dc
+  output point anchor
+  draw {
+    p = shifted({1, 1}, 2)
+    paint(p, tint)
+    amount = twice(2)
+  }
+  shifted(p: vec2, amount: f32) -> vec2 { return p + {amount, amount} }
+  paint(p: vec2, tint: color) {
+    pixel(int(p.x), int(p.y), tint)
+    anchor = p
+    return;
+  }
+  twice(n: i32) -> f32 { return n * 2 }
+}

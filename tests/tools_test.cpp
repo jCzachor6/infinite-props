@@ -142,15 +142,16 @@ TEST_CASE("--uniform overrides the palette") {
 TEST_CASE("a bad uniform value or name fails with exit 1") {
     TempPath temp("fixture");
     writeFixture(temp);
+    const std::string file = temp.path.string();
 
     {
         CapturedStdout captured;
-        const char* args[] = {"ipgen", temp.path.c_str(), "--uniform", "palette=nope", nullptr};
+        const char* args[] = {"ipgen", file.c_str(), "--uniform", "palette=nope", nullptr};
         REQUIRE(ipgenMain(4, const_cast<char**>(args)) == 1);
     }
     {
         CapturedStdout captured;
-        const char* args[] = {"ipgen", temp.path.c_str(), "--uniform", "unknown=5", nullptr};
+        const char* args[] = {"ipgen", file.c_str(), "--uniform", "unknown=5", nullptr};
         REQUIRE(ipgenMain(4, const_cast<char**>(args)) == 1);
     }
 }
@@ -164,7 +165,8 @@ TEST_CASE("a corrupt file fails with a located error") {
                   static_cast<std::streamsize>(garbage.size()));
     }
     CapturedStdout captured;
-    const char* args[] = {"ipgen", temp.path.c_str(), nullptr};
+    const std::string file = temp.path.string();
+    const char* args[] = {"ipgen", file.c_str(), nullptr};
     REQUIRE(ipgenMain(2, const_cast<char**>(args)) == 1);
     REQUIRE(captured.errText().find("ipgen:") != std::string::npos);
 }
@@ -203,8 +205,9 @@ TEST_CASE("unknown options and missing files fail") {
     TempPath temp("fixture");
     writeFixture(temp);
     CapturedStdout captured;
+    const std::string file = temp.path.string();
     {
-        const char* args[] = {"ipgen", temp.path.c_str(), "--bogus", nullptr};
+        const char* args[] = {"ipgen", file.c_str(), "--bogus", nullptr};
         REQUIRE(ipgenMain(3, const_cast<char**>(args)) == 1);
     }
     {

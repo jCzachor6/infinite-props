@@ -4,13 +4,17 @@
 add_library(ips_lang STATIC
     ips/Lexer.cpp
     ips/SourceError.cpp
+    ips/SourceText.cpp
+    ips/Suggestions.cpp
     ips/Parser.cpp
     ips/ParserExpr.cpp
     ips/Printer.cpp
+    ips/SourcePrinter.cpp
     ips/Types.cpp
     ips/Typing.cpp
     ips/TypingCalls.cpp
     ips/BuiltinSpec.cpp
+    ips/BuiltinArguments.cpp
     ips/Fold.cpp
     ips/PartTransform.cpp
     ips/Palette.cpp

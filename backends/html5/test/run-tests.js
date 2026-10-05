@@ -14,6 +14,14 @@ const root = path.join(__dirname, "..");
 const buildDir = path.resolve(process.cwd(), process.argv[2] || path.join(root, "../../build/wasm"));
 const toolsDir = path.resolve(process.cwd(), process.argv[3] || path.join(root, "../../build/tools"));
 
+function report(value) {
+    if (process.env.IPROP_CONFORMANCE_REPORT_DIR) {
+        const directory = process.env.IPROP_CONFORMANCE_REPORT_DIR;
+        fs.mkdirSync(directory, { recursive: true });
+        fs.writeFileSync(path.join(directory, "conformance.json"), JSON.stringify(value, null, 2) + "\n");
+    }
+}
+
 async function main() {
     const createModule = require(path.join(buildDir, "iprop.js"));
     const Module = await createModule({ locateFile: function () { return path.join(buildDir, "iprop.wasm"); } });
@@ -29,8 +37,11 @@ async function main() {
 
     const result = await conformance.run(iprop, fetchBytes);
     const native = require("./native-conformance.js").run(iprop, toolsDir);
+    const compression = require("./compression-conformance.js").run(iprop, toolsDir);
+    report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
+        console.log("native/WASM compression: PASS (" + compression.images + " exact historical images; " + compression.rejections + " matching rejected envelopes)");
         console.log("native/WASM: PASS (" + native.comparisons +
                     " pixel-exact images and structured outputs; native pins verified)");
         console.log("native/WASM runtime errors: PASS (" + native.trapComparisons +
@@ -48,6 +59,7 @@ async function main() {
 }
 
 main().catch(function (error) {
+    report({ passed: false, error: error.message, stack: error.stack });
     console.error("conformance: ERROR - " + error);
     process.exit(1);
 });

@@ -11,7 +11,7 @@ asset transformTile {
   output rect zeros
   output rect nan_box
 
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, #ff0000)
     pixel(3, 1, #0000ff)
     direct = {1, 0.5}

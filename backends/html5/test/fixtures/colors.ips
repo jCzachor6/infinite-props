@@ -1,6 +1,6 @@
 asset colors {
   size 8x8
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, color.hsv(#ff8000, 0, 1, 1))
     pixel(1, 0, color.hsv(#ff0000, 0.08333333, 1, 1))
     pixel(2, 0, color.hsv(#ff0000, 0.25, 1, 1))

@@ -27,13 +27,13 @@ asset t {
   input color base = #3355aa
   output point p
 
-  draw(v: i32, a: i32) {
+  draw {
     x = 2 + 3 * 4
     w = x - 6
     rect(0, 0, w, w, base)
     p = {x, w}
     if (x == 14) {
-      pixel(0, 0, shade(base, 10))
+      pixel(0, 0, color.shade(base, 10))
     }
     i = 0
     while (i < 2) {
@@ -52,13 +52,13 @@ asset rock {
   input  color palette = #808d74
   output rect collider
 
-  draw(v: i32, a: i32) {
+  draw {
     w = range(21, 31)
     h = range(35, 49)
     collider = {96 - 20, 170 - 23, 40, 23}
     rect(-w * 0.10, 0, w * 0.87, h, palette)
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43, shade(palette, -4))
+      rect(-w * 0.67, 2, w * 0.39, h * 0.43, color.shade(palette, -4))
     }
   }
 })";
@@ -66,7 +66,7 @@ asset rock {
 std::vector<u8> compileChecked(const std::string& source) {
     const ips::Program program = ips::parse(source);
     ips::checkAsset(program, {});
-    return compileProgram(program, {});
+    return compileProgram(program, {}, false); // pin the reference tool/debug layout
 }
 
 Canvas executeBytes(const std::vector<u8>& bytes) {
@@ -164,7 +164,7 @@ asset hair {
   origin 32,4
   input color color = #33291f
   output point top
-  draw(v: i32, a: i32) {
+  draw {
     rect(0, 0, 64, 32, color)
     top = {32, 4}
   }
@@ -176,7 +176,7 @@ asset portrait {
   size 64x64
   output point anchor
 
-  draw(v: i32, a: i32) {
+  draw {
     hair.draw(seed ^ 7, v, a, at = {32, 4})
     anchor = hair.outputs.top
   }

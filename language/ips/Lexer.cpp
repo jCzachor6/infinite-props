@@ -1,6 +1,9 @@
 #include "ips/Lexer.hpp"
+#include "ips/SourceText.hpp"
+#include "ips/Suggestions.hpp"
 
 #include <map>
+#include <array>
 #include <string>
 
 namespace iprop::ips {
@@ -47,24 +50,50 @@ bool isIdentStart(char c) {
 }
 bool isIdentPart(char c) { return isIdentStart(c) || isDigit(c); }
 
+const char* emojiAlias(char32_t point) {
+    for (const auto& alias : emojiAliases())
+        if (alias.codepoint == point) return alias.word;
+    return nullptr;
+}
+
 } // namespace
+
+std::span<const EmojiAlias> emojiAliases() {
+    // Exact scalar values; U+270F/U+1F5C2 have no variation selector.
+    static constexpr std::array<EmojiAlias, 18> aliases{{
+        {0x1F4E6, "asset"}, {0x270F, "draw"}, {0x1F4E5, "input"},
+        {0x1F4E4, "output"}, {0x1F308, "palette"}, {0x1F517, "import"},
+        {0x1F3A8, "color"}, {0x1F4D0, "vec2"}, {0x1F500, "variants"},
+        {0x1F5C2, "archetypes"}, {0x1F518, "point"}, {0x1F7E6, "rect"},
+        {0x2B55, "circle"}, {0x1F44D, "true"}, {0x1F44E, "false"},
+        {0x1F300, "noise"}, {0x1F4CF, "dist"}, {0x1F9A0, "cell"}
+    }};
+    return aliases;
+}
 
 std::vector<Token> lex(std::string_view source) {
     std::vector<Token> tokens;
     std::size_t pos = 0;
     std::size_t line = 1;
     std::size_t column = 1;
+    std::size_t nextCodepoint = 0;
 
     const auto location = [&]() { return SourceLocation{line, column}; };
     const auto error = [&](SourceLocation at, std::string message) -> SourceError {
         return SourceError{at, std::move(message)};
     };
     const auto advance = [&]() -> char {
+        const bool firstByte = pos == nextCodepoint;
+        if (firstByte) {
+            const auto point = decodeCodepoint(source, pos);
+            if (!point) throw error(location(), "invalid UTF-8 in source");
+            nextCodepoint = pos + point->bytes;
+        }
         const char c = source[pos++];
         if (c == '\n') {
             ++line;
             column = 1;
-        } else {
+        } else if (firstByte) {
             ++column;
         }
         return c;
@@ -157,11 +186,11 @@ std::vector<Token> lex(std::string_view source) {
         if (c == '#') {
             advance();
             std::string text;
-            while (isHexDigit(peek(0)) && text.size() < 8) {
+            while (isHexDigit(peek(0))) {
                 text.push_back(advance());
             }
-            if (text.size() != 6 && text.size() != 8) {
-                throw error(at, "invalid colour literal (expected #RRGGBB or #RRGGBBAA)");
+            if (text.size() != 3 && text.size() != 4 && text.size() != 6 && text.size() != 8) {
+                throw error(at, "invalid colour literal (expected #RGB, #RGBA, #RRGGBB or #RRGGBBAA)");
             }
             emit(TokenKind::Color, "#" + text, at);
             continue;
@@ -222,6 +251,20 @@ std::vector<Token> lex(std::string_view source) {
             continue;
         }
 
+        // Lexical aliases carry canonical text into the parser and diagnostics.
+        if (static_cast<unsigned char>(c) >= 0x80) {
+            const auto point = decodeCodepoint(source, pos);
+            if (!point) throw error(at, "invalid UTF-8 in source");
+            if (const auto word = emojiAlias(point->value)) {
+                if (!tokens.empty() && tokens.back().kind == TokenKind::Dot)
+                    throw error(at, "emoji aliases are not allowed for member names; use '" + std::string(word) + "'");
+                for (std::size_t byte = 0; byte < point->bytes; ++byte) advance();
+                const auto found = keywords().find(word);
+                emit(found == keywords().end() ? TokenKind::Identifier : found->second, word, at);
+                continue;
+            }
+        }
+
         // Operators and punctuation.
         const auto two = [&](char a, char b, TokenKind kind) {
             if (c == a && peek() == b) {
@@ -275,11 +318,19 @@ std::vector<Token> lex(std::string_view source) {
         default: break;
         }
 
-        throw error(at, std::string("unexpected character '") + c + "'");
+        const auto point = decodeCodepoint(source, pos);
+        if (!point) throw error(at, "invalid UTF-8 in source");
+        throw error(at, "unexpected character '" + std::string(source.substr(pos, point->bytes)) + "'");
     }
 
     tokens.push_back({TokenKind::End, "", location()});
     return tokens;
+}
+
+std::string keywordSuggestion(std::string_view misspelled) {
+    std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette"};
+    for (const auto& [name, kind] : keywords()) { (void)kind; names.push_back(name); }
+    return didYouMean(misspelled, names);
 }
 
 const char* tokenName(TokenKind kind) {

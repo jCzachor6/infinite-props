@@ -22,7 +22,7 @@ class Emitter {
 public:
     // `plan` must be fully planned (every function prepared); it is not
     // modified except for the constant pools and the function being emitted.
-    explicit Emitter(Plan& plan);
+    explicit Emitter(Plan& plan, bool unrollLoops = false);
 
     // Emits one function's body into `function.code`, acquiring typed
     // temporary locals only for values whose lifetimes overlap.
@@ -31,6 +31,7 @@ public:
 private:
     friend class PaletteLowerer;
     Plan& plan_;
+    bool unrollLoops_ = false;
     PlannedFunction* current_ = nullptr;
     std::vector<Instruction> code_; // the IR of the function being emitted
     std::vector<u32> lines_;        // the .ips source line per instruction
@@ -64,6 +65,7 @@ private:
     // ---- statements (Emit.cpp) ----------------------------------------------
 
     void emitStmt(const ips::Stmt& stmt);
+    bool emitUnrolled(const ips::ForStmt& loop, u16 counter);
 
     // ---- expressions (EmitExpr.cpp / EmitCall.cpp) ---------------------------
 
@@ -75,6 +77,7 @@ private:
     ips::ValueType emitCall(const ips::Call& call);
     void emitArg(const PlannedArgument& arg);
     ips::ValueType emitBuiltin(const BuiltinCall& call);
+    ips::ValueType emitSelection(const SelectionCall& call);
     void emitPartCall(const PartCall& call);
 
     struct PartRead {

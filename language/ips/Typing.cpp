@@ -1,4 +1,6 @@
 #include "ips/Typing.hpp"
+#include "ips/BuiltinArguments.hpp"
+#include "ips/Suggestions.hpp"
 
 #include <utility>
 
@@ -42,6 +44,10 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     expressions_.clear();
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
+    }
+    if (isDraw) {
+        locals_.emplace("v", ValueType::I32);
+        locals_.emplace("a", ValueType::I32);
     }
 }
 
@@ -87,7 +93,9 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
     }
     const auto part = parts_.find(path.base);
     if (part == parts_.end()) {
-        error(path.location, "'" + path.base + "' is not an imported part");
+        std::vector<std::string> names;
+        for (const auto& partEntry : parts_) names.push_back(partEntry.first);
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
     if (path.segments.size() != 2 || path.segments[0] != "outputs") {
         error(path.location, "expected '" + path.base +
@@ -101,8 +109,10 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
             return info;
         }
     }
+    std::vector<std::string> names;
+    for (const auto& output : part->second.outputs) names.push_back(output.name);
     error(path.location, "part '" + path.base + "' has no output '" +
-                             path.segments[1] + "'");
+                             path.segments[1] + "'" + didYouMean(path.segments[1], names));
 }
 
 // ---- expressions -------------------------------------------------------------
@@ -205,7 +215,11 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
                                    id.name + "[i]')");
         }
     }
-    error(id.location, "undefined name '" + id.name + "'");
+    std::vector<std::string> candidates{"seed"};
+    for (const auto& [name, type] : locals_) { (void)type; candidates.push_back(name); }
+    if (isDraw_) for (const auto& input : owner_->asset.inputs) candidates.push_back(input.name);
+    for (const auto& palette : owner_->asset.palettes) candidates.push_back(palette.name);
+    error(id.location, "undefined name '" + id.name + "'" + didYouMean(id.name, candidates));
 }
 
 ValueType Typer::typePartRead(const Expr& expr) {
@@ -271,22 +285,17 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
     if (call.args.size() != 2) {
         error(call.location, "ramp takes a palette name and a t value");
     }
-    for (const Arg& arg : call.args) {
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
-    }
+    const auto args = bindArguments(call, rampParameterNames(), name.name);
     const auto* paletteName =
-        std::get_if<Identifier>(call.args[0].value.get());
+        std::get_if<Identifier>(args[0]->value.get());
     if (paletteName == nullptr) {
-        error(locationOf(*call.args[0].value),
+        error(locationOf(*args[0]->value),
               "ramp's first argument must be a palette name");
     }
     const auto& resolved = palette(*paletteName);
-    const ValueType t = typeOf(*call.args[1].value);
+    const ValueType t = typeOf(*args[1]->value);
     if (!isNumeric(t)) {
-        error(locationOf(*call.args[1].value),
+        error(locationOf(*args[1]->value),
               "ramp's t must be numeric, got " + std::string(typeName(t)));
     }
     if (resolved.type == ValueType::I32) {

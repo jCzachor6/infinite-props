@@ -3,7 +3,8 @@
 # must not hide behind sloppy code.
 function(iprop_warnings target)
     if(MSVC)
-        target_compile_options(${target} PRIVATE /W4 /WX /permissive- /fp:strict)
+        # Unicode literals and diagnostics must not depend on the host code page.
+        target_compile_options(${target} PRIVATE /W4 /WX /permissive- /fp:strict /utf-8)
         # Use the standard C file APIs on every platform. MSVC otherwise
         # diagnoses fopen/strncpy as deprecated extensions under /WX.
         target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)

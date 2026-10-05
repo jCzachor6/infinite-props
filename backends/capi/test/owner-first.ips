@@ -3,7 +3,7 @@ asset first {
   output point anchor
   output rect collider
   output circle zone
-  draw(v: i32, a: i32) {
+  draw {
     anchor = {1, 0}
     collider = {1, 0, 1, 1}
     zone = {1, 0, 1}

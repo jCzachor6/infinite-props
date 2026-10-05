@@ -28,7 +28,8 @@ iprop_warnings(iprop_runtime)
 # Runtime traps must reach bindings.cpp's FormatError catch and become JS
 # Errors. Emscripten otherwise disables C++ catching and aborts the module.
 # PUBLIC also enables catching in the binding translation unit.
-target_compile_options(iprop_runtime PUBLIC -fexceptions)
+target_compile_options(iprop_runtime PUBLIC -fexceptions "-sUSE_ZLIB=1")
+target_link_options(iprop_runtime PUBLIC "-sUSE_ZLIB=1")
 
 add_executable(iprop_html5
     bindings.cpp)

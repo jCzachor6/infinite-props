@@ -1,0 +1,12 @@
+asset Part {
+  size 4x4
+  origin 2, 2
+  input color tint = #9dc
+  output point anchor
+  output list point dots
+  draw {
+    rect(0, 0, 4, 4, tint)
+    anchor = {2, 1}
+    dots = {1, 1}
+  }
+}

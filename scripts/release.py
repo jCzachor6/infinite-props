@@ -1,23 +1,16 @@
 """Package the committed source and a tested, relocatable native install."""
 import argparse
-import hashlib
 import json
 import platform
 import re
 import subprocess
 import sys
-import tarfile
 import tempfile
 from pathlib import Path
 
-
-ROOT = Path(__file__).resolve().parent.parent
-
-
-def run(*args, capture=False):
-    result = subprocess.run([str(arg) for arg in args], cwd=ROOT, check=True,
-                            text=True, stdout=subprocess.PIPE if capture else None)
-    return result.stdout.strip() if capture else None
+from release_common import (ROOT, api_version, committed_source, extract_archive, product_version,
+                            run, sha256, write_archive, write_checksums, write_json)
+from language_docs import verify as verify_documentation
 
 
 def read_cache(build):
@@ -29,13 +22,31 @@ def read_cache(build):
     return cache
 
 
+def validate_install(prefix, work, cache, build, clean=False):
+    verify_documentation(prefix / "share/iprop", product_version(), root=ROOT,
+                         compiler=prefix / "bin" / ("ipc.exe" if sys.platform == "win32" else "ipc"), clean=clean)
+    godot_project = prefix / "share/iprop/godot"
+    if godot_project.exists() and any((godot_project / "bin").glob("*.debug.*")):
+        raise RuntimeError("Use GODOTCPP_TARGET=template_release for the release package")
+    run("cmake", f"-DPREFIX={prefix}", f"-DWORK={work}",
+        f"-DZLIB_USE_STATIC_LIBS={cache.get('ZLIB_USE_STATIC_LIBS', 'OFF')}",
+        "-P", ROOT / "scripts/install_smoke.cmake")
+    if godot_project.exists():
+        engine = cache.get("IPROP_GODOT_BINARY")
+        if not engine or not Path(engine).is_file():
+            raise RuntimeError("A Godot package requires its conformance engine")
+        run(engine, "--headless", "--path", godot_project,
+            "--script", "res://conformance.gd", "--", build / "capi-golden", ROOT / "tests/golden")
+
+
 def main():
-    version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)",
-                        (ROOT / "CMakeLists.txt").read_text()).group(1)
+    version = product_version()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("version", nargs="?", default=version)
     parser.add_argument("build_directory", nargs="?", type=Path, default=ROOT / "build")
     parser.add_argument("--check", action="store_true", help="validate only; write no archives")
+    parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
+    parser.add_argument("--no-source", action="store_true", help="package only this platform's SDK")
     args = parser.parse_args()
     build = args.build_directory.resolve()
     cache = read_cache(build)
@@ -47,8 +58,7 @@ def main():
         raise RuntimeError("Configure the release build with IPROP_BUILD_TESTS=ON")
     if cache.get("CMAKE_BUILD_TYPE", "Release") not in ("", "Release"):
         raise RuntimeError("Use a Release build for the native package")
-    if not args.check and run("git", "status", "--porcelain", capture=True):
-        raise RuntimeError("Commit the source changes before packaging the HEAD source archive")
+    commit = committed_source() if not args.check else None
 
     run("ctest", "--test-dir", build, "-C", "Release", "--output-on-failure")
     system = {"Darwin": "macos", "Windows": "windows"}.get(platform.system(), platform.system().lower())
@@ -62,43 +72,40 @@ def main():
         # Exported CMake targets and native loaders must resolve from here.
         prefix = temporary / name
         staging.rename(prefix)
-        godot_project = prefix / "share/iprop/godot"
-        if godot_project.exists() and any((godot_project / "bin").glob("*.debug.*")):
-            raise RuntimeError("Use GODOTCPP_TARGET=template_release for the release package")
-        run("cmake", f"-DPREFIX={prefix}", f"-DWORK={temporary / 'smoke'}",
-            "-P", ROOT / "scripts/install_smoke.cmake")
-        if godot_project.exists():
-            engine = cache.get("IPROP_GODOT_BINARY")
-            if not engine or not Path(engine).is_file():
-                raise RuntimeError("A Godot package requires its conformance engine")
-            run(engine, "--headless", "--path", godot_project,
-                "--script", "res://conformance.gd", "--", build / "capi-golden", ROOT / "tests/golden")
+        validate_install(prefix, temporary / "smoke", cache, build, clean=not args.check)
         if args.check:
             print("Release package validation: PASS (no archives created)")
             return
 
-        commit = run("git", "rev-parse", "HEAD", capture=True)
-        api = (ROOT / "backends/capi/iprop.h").read_text()
-        api_version = ".".join(re.search(rf"#define IPROP_API_VERSION_{part}\s+(\d+)", api).group(1)
-                               for part in ("MAJOR", "MINOR"))
-        manifest = {"product_version": version, "c_api_version": api_version,
+        manifest = {"product_version": version, "c_api_version": api_version(),
                     "source_commit": commit, "system": system, "architecture": arch,
                     "backends": {"capi": True,
                                  "sfml": (prefix / "bin" / ("iprop_sfml.exe" if system == "windows" else "iprop_sfml")).exists(),
-                                 "godot": godot_project.exists()}}
-        (prefix / "release.json").write_text(json.dumps(manifest, indent=2) + "\n")
-        dist = ROOT / "dist"
-        dist.mkdir(exist_ok=True)
-        source = dist / f"iprop-{version}.tar.gz"
+                                 "godot": (prefix / "share/iprop/godot").exists()}}
+        write_json(prefix / "release.json", manifest)
+        dist = args.output_dir.resolve()
+        dist.mkdir(parents=True, exist_ok=True)
         native = dist / f"{name}.tar.gz"
-        run("git", "archive", "--format=tar.gz", f"--prefix=iprop-{version}/", "-o", source, "HEAD")
-        with tarfile.open(native, "w:gz") as archive:
-            archive.add(prefix, arcname=name)
-        checksums = []
-        for artifact in sorted(dist.glob(f"iprop-{version}*.tar.gz")):
-            checksums.append(f"{hashlib.sha256(artifact.read_bytes()).hexdigest()}  {artifact.name}\n")
-        (dist / f"iprop-{version}-SHA256SUMS.txt").write_text("".join(checksums))
-        print(f"Created {source.relative_to(ROOT)} and {native.relative_to(ROOT)}")
+        artifacts = [native]
+        if not args.no_source:
+            source = dist / f"iprop-{version}.tar.gz"
+            run("git", "archive", "--format=tar.gz", f"--prefix=iprop-{version}/", "-o", source, "HEAD")
+            artifacts.append(source)
+        write_archive(prefix, native)
+        extracted = temporary / "extracted"
+        extract_archive(native, extracted)
+        archived_manifest = json.loads((extracted / name / "release.json").read_text(encoding="utf-8"))
+        if archived_manifest != manifest:
+            raise RuntimeError("The archived SDK manifest differs from the tested install")
+        validate_install(extracted / name, temporary / "archive-smoke", cache, build, clean=True)
+        validation = dist / f"{name}-validation.json"
+        write_json(validation, {**manifest, "passed": True,
+                               "checks": {"ctest": True, "relocated_sdk": True, "extracted_sdk": True,
+                                          "documentation": True},
+                               "artifacts": {path.name: sha256(path) for path in artifacts}})
+        # Never pick up stale archives from previous invocations in this directory.
+        write_checksums(dist / f"iprop-{version}-SHA256SUMS.txt", [*artifacts, validation])
+        print("Created and verified " + ", ".join(str(path) for path in artifacts))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ asset partTransforms {
   output rect r
   output circle c
 
-  draw(v: i32, a: i32) {
+  draw {
     if (v == 0) {
       tile.draw(seed, 0, a, at = {4, 1})
     } else if (v == 1) {

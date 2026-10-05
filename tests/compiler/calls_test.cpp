@@ -23,11 +23,11 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
     const auto part = ips::parse(R"(asset child { size 8x8
       input f32 first = 1.0
       input f32 second = 2.0
-      draw(v:i32,a:i32) { }
+      draw { }
     })");
     const auto root = ips::parse(R"(import child from "child.ips"
       asset root { size 8x8 output list point trace palette p = [1.0]
-        draw(v:i32,a:i32) {
+        draw {
           sink(note(1), note(2))
           lerp(note(3), note(4), note(5))
           round(note(6))
@@ -47,7 +47,7 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
     std::string body;
     for (const auto tag : order) body += "trace = {" + std::to_string(tag) + ", unit()}\n";
     const auto reference = execute(compileChecked("asset t { size 8x8 output list point trace "
-        "draw(v:i32,a:i32) {" + body + "} }"));
+        "draw {" + body + "} }"));
     REQUIRE(actual.outputs[0].points.size() == order.size());
     for (std::size_t i = 0; i < order.size(); ++i) {
         INFO("effect " << i);

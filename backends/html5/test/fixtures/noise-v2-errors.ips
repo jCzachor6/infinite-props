@@ -3,7 +3,7 @@ asset noiseV2Errors {
   variants 13
   output point result
 
-  draw(v: i32, a: i32) {
+  draw {
     if (v == 0) {
       result = {noise.grad(exp(100), 0.0, 7), 0}
     } else if (v == 1) {

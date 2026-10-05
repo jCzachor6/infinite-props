@@ -23,7 +23,7 @@ asset curves {
     pixel(1, 0, #00ff00)
     return index(7)
   }
-  draw(v: i32, a: i32) {
+  draw {
     identity = {gain(0.25, 0.5), gain(0.5, 0.3)}
     bias = {gain(0.25, 0.1), gain(0.75, 0.9)}
     endpoints = {gain(0, 1), gain(1, 1)}
@@ -36,9 +36,9 @@ asset curves {
     pixel(2, 0, ramp(oneColor, integer()))
     rng = {height, unit()}
     following = {unit(), unit()}
-    pixel(3, 0, mix(#000000, #ffffff, gain(0, 1)))
-    pixel(4, 0, mix(#000000, #ffffff, gain(1, 1)))
-    pixel(5, 0, mix(#000000, #ffffff, gain(0.000000001, 1)))
+    pixel(3, 0, color.mix(#000000, #ffffff, gain(0, 1)))
+    pixel(4, 0, color.mix(#000000, #ffffff, gain(1, 1)))
+    pixel(5, 0, color.mix(#000000, #ffffff, gain(0.000000001, 1)))
     pixel(6, 0, ramp(colors, 0.25))
     pixel(7, 0, ramp(colors, 0.75))
   }

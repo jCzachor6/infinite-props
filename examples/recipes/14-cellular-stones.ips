@@ -1,0 +1,14 @@
+// Cellular distances mapped to colors.
+asset CellularStones {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for y in 0..32 {
+      for x in 0..32 {
+        d = noise.cell(float(x) / 7, float(y) / 7, seed)
+        pixel(x, y, lerp(#d5bd91, #344a58, smoothstep(0.1, 0.8, d)))
+      }
+    }
+  }
+}

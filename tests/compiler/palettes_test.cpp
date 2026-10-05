@@ -27,7 +27,7 @@ asset t {
   variants 8
   archetypes 8
   palette leafDark = [#365c38, #4c603e, #264a46, #704430, #54625c]
-  draw(v: i32, a: i32) {
+  draw {
     c = leafDark[v]
     pixel(0, 0, c)
     d = leafDark[a]
@@ -40,7 +40,7 @@ asset t {
   size 8x8
   variants 8
   archetypes 8
-  draw(v: i32, a: i32) {
+  draw {
     c = pickLeafDark(v)
     pixel(0, 0, c)
     d = pickLeafDark(a)
@@ -77,7 +77,7 @@ TEST_CASE("palette index semantics: the last element is the default") {
 asset t {
   size 8x8
   palette p = [#111111, #222222, #333333]
-  draw(v: i32, a: i32) {
+  draw {
     pixel(0, 0, p[0])
     pixel(1, 0, p[1])
     pixel(2, 0, p[2])
@@ -98,13 +98,13 @@ TEST_CASE("constant palette indices fold away the ladder") {
 asset t {
   size 8x8
   palette p = [#111111, #222222, #333333]
-  draw(v: i32, a: i32) {
+  draw {
     c = p[0]
   }
 })";
     // The constant index needs no scratch locals (no ladder emitted): the
     // function has exactly one extra local (the result 'c').
-    const auto loaded = loadFile(compileChecked(folded));
+    const auto loaded = loadFile(compileProgram(ips::parse(folded), {}, false));
     REQUIRE(loaded.code.entry().locals.size() == 1);
 }
 
@@ -119,7 +119,7 @@ asset t {
   palette colors = [#112233, #445566, #778899]
   output point numbers
   output point flag
-  draw(v: i32, a: i32) {
+  draw {
     numbers = {ints[v - 1], floats[v - 1]}
     flag = {flags[v - 1], 0}
     pixel(0, 0, colors[v - 1])
@@ -150,7 +150,7 @@ asset t {
   size 8x8
   palette w = [2, 4]
   output point p
-  draw(v: i32, a: i32) {
+  draw {
     p = {w[v] + 0.5, 1}
   }
 })";
@@ -166,7 +166,7 @@ asset t {
   palette stops = [#000000, #808080, #ffffff]
   palette heights = [0.0, 1.0, 4.0]
 
-  draw(v: i32, a: i32) {
+  draw {
     c = ramp(stops, 0.5)
     c2 = ramp(stops, 1.0)
     h = ramp(heights, 0.75)
@@ -258,7 +258,7 @@ TEST_CASE("singleton ramps evaluate their numeric argument exactly once") {
   }
 )";
     const auto actualBytes = compileChecked(declarations + R"(
-  draw(v: i32, a: i32) {
+  draw {
     height = ramp(heights, fraction())
     pixel(2, 0, ramp(colors, integer()))
     result = {height, unit()}
@@ -266,7 +266,7 @@ TEST_CASE("singleton ramps evaluate their numeric argument exactly once") {
   }
 })");
     const auto referenceBytes = compileChecked(declarations + R"(
-  draw(v: i32, a: i32) {
+  draw {
     discardedFraction = fraction()
     height = 1.25
     discardedInteger = integer()
@@ -297,7 +297,7 @@ TEST_CASE("singleton ramp arguments retain runtime errors") {
     const auto bytes = compileChecked(R"(asset t {
   size 8x8
   palette heights = [1.25]
-  draw(v: i32, a: i32) {
+  draw {
     height = ramp(heights, 1 / v)
   }
 })");
@@ -308,13 +308,13 @@ TEST_CASE("palette resolution stays within each owner including shared part alia
     const auto part = ips::parse(R"(asset child { size 8x8
       palette p = [1.25, 3.75]
       output point value
-      draw(v: i32, a: i32) { value = {p[v], helper()} }
+      draw { value = {p[v], helper()} }
       helper() -> f32 { return ramp(p, 0.5) } })");
     const auto root = ips::parse(R"(import first from "child.ips"
       import second from "child.ips"
       asset root { size 8x8
         palette p = [#123456, #abcdef]
-        draw(v: i32, a: i32) {
+        draw {
           first.draw(seed, v, a, at = {0, 0})
           second.draw(seed, v, a, at = {0, 0})
           pixel(0, 0, p[v])

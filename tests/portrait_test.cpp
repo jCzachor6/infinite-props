@@ -52,7 +52,7 @@ TEST_CASE("portrait inverse CDF selects every age and respects threshold boundar
     auto portrait = ips::parse(std::string((std::istreambuf_iterator<char>(stream)), {}));
     auto probe = ips::parse(R"(asset t { size 8x8 input f32 u = 0
         output point sampled
-        draw(v: i32, a: i32) { sampled = {ageFromUnit(u), 0} } })");
+        draw { sampled = {ageFromUnit(u), 0} } })");
     const auto helper = std::find_if(portrait.asset.functions.begin(), portrait.asset.functions.end(),
         [](const auto& fn) { return fn.name == "ageFromUnit"; });
     REQUIRE(helper != portrait.asset.functions.end());

@@ -1,0 +1,11 @@
+// One stream for repeated placement.
+asset SeededSpeckles {
+  size 32x32
+
+  draw {
+    rect(0, 0, 32, 32, #101820)
+    for i in 0..96 {
+      pixel(2 + pick(28), 2 + pick(28), pick(#5bf, #fc8, #fff))
+    }
+  }
+}

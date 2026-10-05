@@ -2,6 +2,8 @@
 // seed/variant/archetype controls and a shareable URL hash
 // (#<asset>/<seed>/<variant>/<archetype>).
 
+export {};
+
 declare global {
     interface Window {
         createIpropModule(options: { locateFile(): string }): Promise<{
@@ -17,7 +19,7 @@ const ASSETS = [
     { id: "portrait", file: "portrait.iprop", variants: 8, archetypes: 1, label: "portrait — the QuantSpace character" },
     { id: "plant", file: "plant.iprop", variants: 1, archetypes: 1, label: "plant — the interior potted plant" },
     { id: "noise", file: "noise.iprop", variants: 1, archetypes: 1, label: "noise — a seed-driven field" },
-];
+].map(asset => ({ ...asset, bytes: new Uint8Array() }));
 
 const state = { asset: "portrait", seed: 0, variant: 0, archetype: 0 };
 let iprop: Awaited<ReturnType<typeof window.createIpropModule>> | null = null;
@@ -64,7 +66,7 @@ async function render() {
     const context = canvas.getContext("2d")!;
     context.putImageData(
         new ImageData(
-            new Uint8ClampedArray(result.data.buffer, result.data.byteOffset, result.data.byteLength),
+            new Uint8ClampedArray(result.data),
             result.width, result.height),
         0, 0);
     status("seed " + (state.seed >>> 0) + " · variant " + state.variant +
@@ -74,16 +76,20 @@ async function render() {
 
 function syncControls() {
     const asset = currentAsset();
+    for (const tab of Array.from($("assets").children)) {
+        tab.classList.toggle("active", tab.getAttribute("data-asset") === state.asset);
+    }
     (document.getElementById("seed-value") as HTMLInputElement).value = String(state.seed >>> 0);
     (document.getElementById("seed-slider") as HTMLInputElement).value = String(Math.min(state.seed >>> 0, 4095));
     for (const kind of ["variant", "archetype"] as const) {
         const max = kind === "variant" ? asset.variants - 1 : asset.archetypes - 1;
+        state[kind] = Math.min(Math.max(0, state[kind]), max);
         const slider = document.getElementById(kind + "-slider") as HTMLInputElement;
         const value = document.getElementById(kind + "-value") as HTMLInputElement;
         slider.max = String(max);
         value.max = String(max);
-        slider.value = String(Math.min(state[kind], max));
-        value.value = String(Math.min(state[kind], max));
+        slider.value = String(state[kind]);
+        value.value = String(state[kind]);
     }
 }
 
@@ -107,7 +113,7 @@ function bindSlider(kind: "seed" | "variant" | "archetype") {
 async function main() {
     readHash();
     for (const asset of ASSETS) {
-        (asset as any).bytes = new Uint8Array(await (await fetch(asset.file)).arrayBuffer());
+        asset.bytes = new Uint8Array(await (await fetch(asset.file)).arrayBuffer());
     }
     try {
         iprop = await window.createIpropModule({ locateFile: () => "iprop.wasm" });
@@ -119,14 +125,13 @@ async function main() {
     const tabs = $("assets");
     for (const asset of ASSETS) {
         const tab = document.createElement("button");
+        tab.dataset.asset = asset.id;
         tab.className = "asset-tab" + (asset.id === state.asset ? " active" : "");
         tab.textContent = asset.label;
         tab.addEventListener("click", () => {
             state.asset = asset.id;
             state.variant = 0;
             state.archetype = 0;
-            for (const node of tabs.children) node.classList.remove("active");
-            tab.classList.add("active");
             syncControls();
             render();
         });
@@ -146,6 +151,12 @@ async function main() {
     bindSlider("seed");
     bindSlider("variant");
     bindSlider("archetype");
+
+    window.addEventListener("hashchange", () => {
+        readHash();
+        syncControls();
+        render();
+    });
 
     syncControls();
     await render();
