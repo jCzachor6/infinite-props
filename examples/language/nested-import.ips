@@ -1,0 +1,5 @@
+import branch from "composition.ips"
+asset InvalidNestedPart {
+  size 16x16
+  draw { branch.draw(7, 0, 0, at = {0, 0}) }
+}

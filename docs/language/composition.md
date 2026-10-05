@@ -1,11 +1,12 @@
 # Imports and part composition
 
-`import alias from "path.ips"` precedes the asset. Imports form an acyclic
-graph; duplicate aliases, missing files and cycles are errors. The CLI resolves
-import paths against the entry source's directory, including paths in nested
-imported files. Keep imported files together using paths relative to that
-entry directory. The compiler links parts into one executable; generation
-does not load source files.
+`import alias from "path.ips"` precedes the asset. The current compiler
+supports direct parts only: an imported asset cannot declare imports of its
+own. Duplicate aliases, missing files, cycles and nested part imports are
+errors. The CLI resolves import paths against the entry source's directory.
+Keep imported files together using paths relative to that entry directory.
+The compiler links parts into one executable; generation does not load
+source files.
 
 <!-- example: ../../examples/language/part.ips -->
 
@@ -39,3 +40,8 @@ See [parts and D4 transforms](../../spec/iprop-v0.3.md#105-part-transforms-v03)
 for the exact geometry mapping and rectangle bounds.
 
 <!-- example: ../../examples/language/errors/list-read.ips -->
+
+The following imports the composition example, which itself imports a part,
+and is therefore deliberately rejected:
+
+<!-- example: ../../examples/language/nested-import.ips -->
