@@ -91,7 +91,9 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
 
 ## A. Usunięcie niekonsekwencji języka — P0
 
-- [ ] **05-A.1** Ujednolicić parser porównań: obie strony `<`, `<=`, `>` i `>=` korzystają z poziomu `shift`. Sprawdzić priorytety, łańcuchy porównań i istniejące nawiasy. `value < 1 << bits` ma być równoważne `value < (1 << bits)`.
+- [x] **05-A.1** Ujednolicić parser porównań: obie strony `<`, `<=`, `>` i `>=` korzystają z poziomu `shift`. Sprawdzić priorytety, łańcuchy porównań i istniejące nawiasy. `value < 1 << bits` ma być równoważne `value < (1 << bits)`.
+  Dowód: cztery operatory porównania używają shift po obu stronach. Testy AST, priorytetów, łańcuchów, optimized/reference i RNG: 503 asercje / 9 przypadków; kontrola negatywna starego parsera odrzuca nowe przypadki. Podręcznik/grammar i walidacja przykładów przeszły.
+
 - [ ] **05-A.2** Przyjmować signed defaulty, np. `input f32 offset = -0.5;`, i signed elementy palet. Walidować stałą przed zapisem; assembler i defaulty części korzystają z już rozwiązanej wartości, zamiast zakładać w AST bezpośredni `Literal`.
 - [ ] **05-A.3** Wprowadzić wspólny typ palety liczbowej: `[0, 0.5, 1]` staje się `f32`, `[0, 1, 2]` pozostaje `i32`. Mieszanie koloru z liczbą nadal jest błędem; legacy booleany zachowują integerowe znaczenie. `ramp` nadal odrzuca czysto integerową paletę.
 - [ ] **05-A.4** Usunąć rozjazd parsera, typowania, Planera i assemblera dla `input i32`. Obsłużyć signed defaulty części, nadpisania uniformów oraz kodowanie i odczyt wzorców bitów zgodnie z decyzją 6.

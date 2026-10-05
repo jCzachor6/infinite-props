@@ -1,12 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <array>
 #include <bit>
 #include <map>
 #include <string>
 #include <vector>
 
 #include "Compiler.hpp"
+#include "iprop/Debug.hpp"
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
@@ -18,6 +20,71 @@
 
 using namespace iprop;
 using namespace compiler_test;
+
+TEST_CASE("shifted comparisons match grouped legacy expressions in both compiler modes") {
+    struct Case {
+        const char* expression;
+        const char* grouped;
+        std::array<float, 8> expected;
+    };
+    const Case cases[] = {
+        {"v < 1 << 2", "v < (1 << 2)", {1,1,1,1,0,0,0,0}},
+        {"v <= 1 << 2", "v <= (1 << 2)", {1,1,1,1,1,0,0,0}},
+        {"v > 1 << 2", "v > (1 << 2)", {0,0,0,0,0,1,1,1}},
+        {"v >= 1 << 2", "v >= (1 << 2)", {0,0,0,0,1,1,1,1}},
+        {"v + 1 << 1 < 8 >> 1", "((v + 1) << 1) < (8 >> 1)", {1,0,0,0,0,0,0,0}},
+        {"v < 3 < 1 << 1", "(v < 3) < (1 << 1)", {1,1,1,1,1,1,1,1}},
+        {"0 < v < 1", "(0 < v) < 1", {1,0,0,0,0,0,0,0}},
+        {"v & 3 < 1 << 1", "v & (3 < (1 << 1))", {0,0,0,0,0,0,0,0}},
+    };
+    const auto source = [](const char* expression) {
+        return std::string("asset comparison { size 8x8 variants 8 output point p ") +
+            "draw { p = {" + expression + ", 0} } }";
+    };
+    for (const auto& test : cases) {
+        INFO(test.expression);
+        const auto program = ips::parse(source(test.expression));
+        const auto grouped = ips::parse(source(test.grouped));
+        ips::checkAsset(program, {});
+        ips::checkAsset(grouped, {});
+        for (const bool optimize : {false, true}) {
+            INFO("optimize " << optimize);
+            const auto bytes = compileProgram(program, {}, optimize);
+            const auto groupedBytes = compileProgram(grouped, {}, optimize);
+            CHECK(stripDebug(bytes) == stripDebug(groupedBytes));
+            for (u32 variant = 0; variant < test.expected.size(); ++variant) {
+                INFO("variant " << variant);
+                const auto result = run(bytes, variant, 0);
+                REQUIRE(result.outputs[0].points.size() == 1);
+                CHECK(result.outputs[0].points[0].x == test.expected[variant]);
+            }
+        }
+    }
+}
+
+TEST_CASE("shifted comparison grouping preserves RNG evaluation") {
+    const auto source = [](const char* expression) {
+        return std::string("asset comparison { size 8x8 output point p ") +
+            "draw { p = {" + expression + ", unit()} } }";
+    };
+    const auto program = ips::parse(source("int(unit() * 8) < 1 << int(unit() * 3)"));
+    const auto grouped = ips::parse(source("int(unit() * 8) < (1 << int(unit() * 3))"));
+    ips::checkAsset(program, {});
+    ips::checkAsset(grouped, {});
+    for (const bool optimize : {false, true}) {
+        const auto bytes = compileProgram(program, {}, optimize);
+        const auto groupedBytes = compileProgram(grouped, {}, optimize);
+        CHECK(stripDebug(bytes) == stripDebug(groupedBytes));
+        for (const u32 seed : {0u, 1u, 42u, 0xffffffffu}) {
+            const auto result = execute(bytes, seed);
+            const auto legacy = execute(groupedBytes, seed);
+            REQUIRE(result.outputs[0].points.size() == 1);
+            CHECK(result.outputs[0].points[0].x == legacy.outputs[0].points[0].x);
+            CHECK(std::bit_cast<u32>(result.outputs[0].points[0].y) ==
+                  std::bit_cast<u32>(legacy.outputs[0].points[0].y));
+        }
+    }
+}
 
 TEST_CASE("the sin and cos builtins compile and match the hand-assembled reference") {
     const std::string source = R"(

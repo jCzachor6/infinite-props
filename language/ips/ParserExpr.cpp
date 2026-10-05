@@ -27,7 +27,8 @@ std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
 // ---- expressions -----------------------------------------------------------
 //
 // Precedence, loosest to tightest:
-//   ||  <  &&  <  |  <  ^  <  &  <  ==/!=  <  </<=/>/>=  <  +,-  <  *,/,%
+//   ||  <  &&  <  |  <  ^  <  &  <  ==/!=  <  </<=/>/>=  <  <</>>
+//   <  +,-  <  *,/,%
 //   <  unary  <  postfix (member access and calls)
 
 std::unique_ptr<Expr> ParserImpl::parseExpr() { return parseOr(); }
@@ -94,13 +95,13 @@ std::unique_ptr<Expr> ParserImpl::parseComparison() {
     auto left = parseShift();
     for (;;) {
         if (match(TokenKind::Less)) {
-            left = binary(Binary::Op::Lt, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
+            left = binary(Binary::Op::Lt, std::move(left), parseShift(), tokens_[pos_ - 1].location);
         } else if (match(TokenKind::LessEqual)) {
-            left = binary(Binary::Op::Le, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
+            left = binary(Binary::Op::Le, std::move(left), parseShift(), tokens_[pos_ - 1].location);
         } else if (match(TokenKind::Greater)) {
-            left = binary(Binary::Op::Gt, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
+            left = binary(Binary::Op::Gt, std::move(left), parseShift(), tokens_[pos_ - 1].location);
         } else if (match(TokenKind::GreaterEqual)) {
-            left = binary(Binary::Op::Ge, std::move(left), parseAdditive(), tokens_[pos_ - 1].location);
+            left = binary(Binary::Op::Ge, std::move(left), parseShift(), tokens_[pos_ - 1].location);
         } else {
             return left;
         }

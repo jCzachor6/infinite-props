@@ -44,7 +44,7 @@ bit_or        = bit_xor, { "|", bit_xor } ;
 bit_xor       = bit_and, { "^", bit_and } ;
 bit_and       = equality, { "&", equality } ;
 equality      = comparison, { ("==" | "!="), comparison } ;
-comparison    = shift, { ("<" | "<=" | ">" | ">="), additive } ;
+comparison    = shift, { ("<" | "<=" | ">" | ">="), shift } ;
 shift         = additive, { ("<<" | ">>"), additive } ;
 additive      = multiplicative, { ("+" | "-"), multiplicative } ;
 multiplicative = unary, { ("*" | "/" | "%"), unary } ;
@@ -73,5 +73,6 @@ allows empty palette/compound syntax, but semantic checks reject empty
 palettes and compounds whose arity is not 2, 3 or 4. Metadata keywords are
 recognized contextually; their names cannot introduce helpers in that position.
 
-The comparison production intentionally reflects the current asymmetric
-shift restriction. Parentheses make shifted right operands unambiguous.
+Shifts bind more tightly than comparisons on both sides: `value < 1 << bits`
+means `value < (1 << bits)`. Comparison chains associate leftward, so
+`a < b < c` means `(a < b) < c`, not two comparisons joined by `&&`.

@@ -54,10 +54,12 @@ to highest; parentheses explicitly select grouping.
 | 11 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
 | 12 | call, member access, palette index | postfix expressions |
 
-The current parser accepts a shift expression as the first comparison operand,
-but subsequent comparison operands use additive expressions. Parenthesize a
-shift on the right: `value < (1 << bits)`. The [grammar](grammar.md) records
-this restriction explicitly.
+Shifts bind more tightly than comparisons on either side:
+`value < 1 << bits` means `value < (1 << bits)`, while
+`value << bits < limit` means `(value << bits) < limit`. Comparison chains
+are left-associative: `a < b < c` compares the normalized 0/1 result of
+`a < b` with `c`. Write `a < b && b < c` when both comparisons must hold.
+The [grammar](grammar.md) records these rules.
 
 Comparisons and logical operations return normalized `i32` 0/1. `&&` and
 `||` skip the right operand when its value cannot affect the result, including

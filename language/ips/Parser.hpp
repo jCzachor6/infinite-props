@@ -49,6 +49,7 @@ Program parseTokens(const std::vector<Token>& tokens);
 //
 // Expressions use C-like precedence; postfix adds the palette index
 // `expr "[" expr "]"`:
-//   || < && < | < ^ < & < ==/!= < </<=/>/>= < +,- < *,/,% < unary < postfix
+//   || < && < | < ^ < & < ==/!= < </<=/>/>= < <</>> < +,- < *,/,%
+//   < unary < postfix
 
 } // namespace iprop::ips
