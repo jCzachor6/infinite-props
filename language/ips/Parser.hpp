@@ -1,10 +1,12 @@
 #pragma once
 
 // Recursive-descent parser for .ips: a token stream (from the lexer) into
-// the AST. Throws SourceError on the first syntax error, with the location
-// of the offending token.
+// the AST. Strict entries throw SourceError on the first syntax error;
+// diagnostic entries collect bounded errors without exposing partial ASTs.
 
 #include <string_view>
+#include <cstddef>
+#include <optional>
 #include <vector>
 
 #include "ips/Ast.hpp"
@@ -19,21 +21,50 @@ Program parse(std::string_view source);
 // want to pre-process the tokens).
 Program parseTokens(const std::vector<Token>& tokens);
 
+// Diagnostic parsing never exposes an incomplete AST to generation. Only a
+// completely parsed, error-free file has program; imports contains only fully
+// parsed import declarations and remains available on failure for discovery.
+// Recovery uses token/brace/semicolon boundaries, never source newlines.
+struct ParseResult {
+    std::optional<Program> program;
+    std::vector<Import> imports;
+    std::vector<SourceError> diagnostics;
+    bool limitReached = false;
+
+    bool valid() const noexcept { return program.has_value(); }
+};
+
+inline constexpr std::size_t kMaxParseDiagnostics = 20;
+
+// limit is clamped to [1, 20]. limitReached means parsing stopped at the cap,
+// not that another error is known to exist. EOF produces at most one error;
+// a lexical failure produces one lexer diagnostic and no AST/imports.
+// Synchronization is conservative: the body of a malformed declaration or
+// conditional header is discarded rather than diagnosed as sibling code.
+ParseResult parseRecovering(std::string_view source,
+                            std::size_t limit = kMaxParseDiagnostics);
+ParseResult parseTokensRecovering(const std::vector<Token>& tokens,
+                                  std::size_t limit = kMaxParseDiagnostics);
+std::vector<SourceError> parseDiagnostics(std::string_view source,
+                                        std::size_t limit = kMaxParseDiagnostics);
+
 // The parser grammar (reference):
 //
 //   program    := import* asset
-//   import     := "import" ident "from" string
+//   import     := "import" ident "from" string ";"?
 //   asset      := "asset" ident "{" (sizeDecl | originDecl | variantsDecl
 //                  | archetypesDecl | inputDecl | outputDecl | paletteDecl
 //                  | function)* "}"
-//   sizeDecl   := "size" int ("x" digits | int)
-//   originDecl := "origin" expr "," expr
-//   inputDecl  := "input" inputType ident "=" declarationConstant
+//   sizeDecl   := "size" int ("x" digits | int) ";"?
+//   originDecl := "origin" expr "," expr ";"?
+//   variantsDecl := "variants" int ";"?
+//   archetypesDecl := "archetypes" int ";"?
+//   inputDecl  := "input" inputType ident "=" declarationConstant ";"?
 //   declarationConstant := literal | "(" declarationConstant ")"
 //                        | "-" constantAtom
 //   constantAtom := literal | "(" constantAtom ")" // no second minus
-//   outputDecl := "output" "list"? outputKind ident
-//   paletteDecl := "palette" ident "=" "[" (expr ("," expr)*)? "]"
+//   outputDecl := "output" "list"? outputKind ident ";"?
+//   paletteDecl := "palette" ident "=" "[" (expr ("," expr)*)? "]" ";"?
 //   function   := "draw" block | name "(" params ")" returnType? block
 //   params     := (param ("," param)*)?      // a trailing comma is allowed
 //   param      := ident ":" paramType        // the type is mandatory pre-1.0

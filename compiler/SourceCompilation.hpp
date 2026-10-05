@@ -17,6 +17,7 @@ struct SourceCompilationOptions {
     bool optimize = true;
     bool stripDebug = true;
     bool compress = true;
+    std::size_t diagnosticLimit = 20; // bounded to [1,20] across all sources/stages
 };
 
 using SourceCompilationStatus = ips::DiagnosticStatus;

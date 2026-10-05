@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -48,6 +49,12 @@ struct FunctionSurface {
     std::optional<ValueType> result;
 };
 
+// Recovery-only control flow: a failed local declaration has no usable type.
+// Propagate that uncertainty without manufacturing a runtime value type or
+// another diagnostic at every dependent expression. Strict typing never
+// installs invalid locals and therefore never throws this marker.
+struct UnresolvedType {};
+
 class Typer {
 public:
     using ExpressionTypes = std::unordered_map<const Expr*, ValueType>;
@@ -69,11 +76,13 @@ public:
         std::string ns;
         std::map<std::string, ValueType> locals;
         ExpressionTypes expressions;
+        std::set<std::string> invalidLocals{};
     };
 
     void enterFunction(const Program& owner, const Function& function,
                        bool isDraw, std::string ns = "");
     void declareLocal(const std::string& name, ValueType type);
+    void declareInvalidLocal(const std::string& name);
 
     Scope saveScope() const;
     void restoreScope(Scope scope);
@@ -106,6 +115,7 @@ private:
     bool isDraw_ = false;
     std::string ns_;
     std::map<std::string, ValueType> locals_;
+    std::set<std::string> invalidLocals_;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) const;
 

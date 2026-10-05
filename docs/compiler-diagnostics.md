@@ -63,8 +63,31 @@ string array. `related_locations` contains file/message/range records.
 file. Apply a fix only to the matching source identity; never apply it by
 line number to a changed file. Empty arrays mean no machine-readable
 suggestion or edit was supplied; clients must not parse one from the message.
-The later recovery/editor tasks add more causes and consumers without changing
-the position contract.
+
+## Bounded recovery
+
+Compile and `--check` collect up to 20 diagnostics across the import graph.
+The in-memory API can request a smaller budget (clamped to 1–20). Lexing
+stops at its first invalid token. The parser synchronizes at semicolons,
+declaration/statement tokens and matching braces; a newline is never an
+implicit statement boundary. EOF ends recovery without repeated missing-token
+reports. Complete imports can still be discovered from a file with a syntax
+error, but that file exposes no executable AST and no typing or generation
+runs on any recovered syntax.
+
+On a complete parsed AST, independent defaults and statements are checked.
+A local with a failed declaration has no usable type; dependent expressions
+and locals are suppressed until a later valid assignment establishes it.
+A failed reassignment does not erase a previously known type. Invalid binding
+names stop body checking for that asset, and an invalid control condition
+skips its subtree conservatively. Lazy helper checking restores the caller's
+locals and loop state, including on failure. Shared imported files are checked
+once even if they have multiple aliases; each diagnostic owns its file's
+snapshot and range. The cap is a hard budget, not an exhaustive error count.
+
+Planning/lowering restrictions and runtime validation of the assembled file
+remain part of `--check`; these later phases currently stop at their first
+failure. Any error leaves binary bytes empty and prevents artifact writes.
 
 ## Output and exit classes
 

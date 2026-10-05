@@ -41,6 +41,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     ns_ = std::move(ns);
     locals_.clear();
+    invalidLocals_.clear();
     expressions_.clear();
     for (const auto& param : function.params) {
         locals_.emplace(param.name, valueTypeOf(param.type));
@@ -52,11 +53,16 @@ void Typer::enterFunction(const Program& owner, const Function& function,
 }
 
 void Typer::declareLocal(const std::string& name, ValueType type) {
+    invalidLocals_.erase(name);
     locals_.emplace(name, type);
 }
 
+void Typer::declareInvalidLocal(const std::string& name) {
+    if (!locals_.contains(name)) invalidLocals_.insert(name);
+}
+
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, ns_, locals_, expressions_};
+    return Scope{owner_, isDraw_, ns_, locals_, expressions_, invalidLocals_};
 }
 
 void Typer::restoreScope(Scope scope) {
@@ -65,6 +71,7 @@ void Typer::restoreScope(Scope scope) {
     ns_ = std::move(scope.ns);
     locals_ = std::move(scope.locals);
     expressions_ = std::move(scope.expressions);
+    invalidLocals_ = std::move(scope.invalidLocals);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -187,6 +194,7 @@ ValueType Typer::typeLiteral(const Literal& lit) {
 }
 
 ValueType Typer::typeIdentifier(const Identifier& id) {
+    if (invalidLocals_.contains(id.name)) throw UnresolvedType{};
     const auto local = locals_.find(id.name);
     if (local != locals_.end()) {
         return local->second;

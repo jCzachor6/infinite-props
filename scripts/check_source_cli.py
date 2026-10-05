@@ -98,6 +98,21 @@ def main():
         invoke(['entry.ips', '--check'], 'ok', 0)
         entry.write_bytes(original['entry.ips'])
         part.write_bytes(original['część.ips'])
+
+        for source, count, stage in [
+            ('asset t {size 8x8 draw{x=; y=;}}', 2, 'parse'),
+            ('asset t {size 8x8 draw{x=missing; y=x+1; z=another;}}', 2, 'typing'),
+            ('asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}', 1, 'validation'),
+            ('asset t {size 8x8 draw{' + ''.join(f'x{i}=missing{i};' for i in range(100)) + '}}', 20, 'typing'),
+        ]:
+            entry.write_text(source, encoding='utf-8')
+            before = {p.name: p.read_bytes() for p in root.iterdir()}
+            for args in [['entry.ips', '--check'], ['entry.ips', '-o', 'entry.iprop']]:
+                report = invoke(args, 'invalid_source', 1)
+                assert len(report['diagnostics']) == count, report
+                assert all(d['stage'] == stage for d in report['diagnostics']), report
+                assert {p.name: p.read_bytes() for p in root.iterdir()} == before
+        entry.write_bytes(original['entry.ips'])
         io_error = invoke(['entry.ips', '-o', '.'], 'invalid_source', 1)
         assert io_error['diagnostics'][0]['code'] == 'IPS-IO-001', io_error
         invoke(['entry.ips'], 'ok', 0)

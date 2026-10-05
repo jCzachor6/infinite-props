@@ -8,11 +8,126 @@
 #include "ips/Parser.hpp"
 #include "ips/SourceError.hpp"
 #include "ips/SourceText.hpp"
+#include "ips/Semantics.hpp"
 
 #include <map>
+#include <algorithm>
 #include <stdexcept>
 
 using namespace iprop;
+
+TEST_CASE("semantic recovery reports independent errors and suppresses unknown-type cascades") {
+    const std::string source=R"(asset t { size 8x8 draw {
+        first=missing; dependent=first+1; dependent2=dependent+1;
+        if(first){skipped=4;} skippedDependent=skipped+1;
+        independent=another; stable=1; stable=#fff; pixel(stable,0,#fff);
+        first=2; recovered=first+1;
+    } })";
+    const auto result=compileSource("t.ips",[&](std::string_view) { return source; });
+    CHECK(result.status==SourceCompilationStatus::InvalidSource);
+    CHECK(result.bytes.empty());
+    REQUIRE(result.diagnostics.size()==3);
+    CHECK(result.diagnostics[0].message.find("missing")!=std::string::npos);
+    CHECK(result.diagnostics[1].message.find("another")!=std::string::npos);
+    CHECK(result.diagnostics[2].expectedType=="i32");
+    CHECK(result.diagnostics[2].actualType=="color");
+    for (const auto& diagnostic : result.diagnostics) {
+        CHECK(diagnostic.stage==ips::DiagnosticStage::Typing);
+        CHECK(diagnostic.sourceId==ips::sourceContentId(source));
+    }
+    CHECK_THROWS_AS(ips::checkAsset(ips::parse(source),{}),ips::SourceError);
+}
+
+TEST_CASE("recovering lazy helper checks restore caller locals and loop depth") {
+    const std::string source=R"(asset t { size 8x8
+        draw { value=1; while(v){ value=broken(value); break; inner=unknown; }
+               pixel(value,0,#fff); break; last=unrelated; }
+        broken(x:i32)->i32 { failed=notDefined; return failed; }
+    })";
+    const auto result=compileSource("t.ips",[&](std::string_view) { return source; });
+    REQUIRE(result.diagnostics.size()==4);
+    CHECK(result.diagnostics[0].message.find("notDefined")!=std::string::npos);
+    CHECK(result.diagnostics[1].message.find("unknown")!=std::string::npos);
+    CHECK(result.diagnostics[2].message.find("outside a loop")!=std::string::npos);
+    CHECK(result.diagnostics[3].message.find("unrelated")!=std::string::npos);
+    CHECK(result.bytes.empty());
+}
+
+TEST_CASE("default and statement diagnostics share a bounded global budget") {
+    const std::string source=R"(asset t { size 8x8 input u32 one=-1;
+        input i32 two=2147483648; draw { x=unknown; y=another; } })";
+    auto loader=[&](std::string_view) { return source; };
+    const auto result=compileSource("t.ips",loader);
+    REQUIRE(result.diagnostics.size()==4);
+    CHECK(result.diagnostics[0].code==ips::DiagnosticCode::UnsignedDefaultNegative);
+    CHECK(result.diagnostics[1].code==ips::DiagnosticCode::SignedDefaultRange);
+    for (std::size_t limit : {0u,1u,2u,3u}) {
+        SourceCompilationOptions options;
+        options.diagnosticLimit=limit;
+        const auto bounded=compileSource("t.ips",loader,options);
+        CHECK(bounded.diagnostics.size()==std::max<std::size_t>(1,limit));
+        CHECK(bounded.bytes.empty());
+    }
+    std::string many="asset t { size 8x8 draw {";
+    for (int i=0;i<100;++i) many+="local"+std::to_string(i)+"=missing"+std::to_string(i)+";";
+    many+="} }";
+    SourceCompilationOptions options;
+    options.diagnosticLimit=100;
+    CHECK(compileSource("t.ips",[&](std::string_view) { return many; },options).diagnostics.size()==20);
+}
+
+TEST_CASE("independent import diagnostics have their own snapshots without duplicate alias reports") {
+    const std::map<std::string,std::string> sources{
+        {"entry.ips",R"(import one from "one.ips"; import again from "one.ips";
+            import two from "two.ips"; asset t { size 8x8 draw{root=missing;} })"},
+        {"one.ips","asset t {size 8x8 draw{one=bad; dependent=one+1;}}"},
+        {"two.ips","asset t {size 8x8 draw{two=bad;}}"}
+    };
+    std::map<std::string,int> reads;
+    const auto result=compileSource("entry.ips",[&](std::string_view path) {
+        ++reads[std::string(path)];
+        return sources.at(std::string(path));
+    });
+    REQUIRE(result.diagnostics.size()==3);
+    CHECK(result.diagnostics[0].path=="one.ips");
+    CHECK(result.diagnostics[1].path=="two.ips");
+    CHECK(result.diagnostics[2].path=="entry.ips");
+    for (const auto& diagnostic : result.diagnostics)
+        CHECK(diagnostic.sourceId==ips::sourceContentId(sources.at(diagnostic.path)));
+    for (const auto& [path,count] : reads) { (void)path; CHECK(count==1); }
+    CHECK(result.bytes.empty());
+}
+
+TEST_CASE("import discovery collects parse failures without exposing damaged programs") {
+    const std::map<std::string,std::string> sources{
+        {"entry.ips",R"(import one from "one.ips"; import two from "two.ips";
+            asset t { size 8x8 draw{root=;} })"},
+        {"one.ips","asset t {size 8x8 draw{one=; two=;}}"},
+        {"two.ips","asset t {size 8x8 draw{three=; four=;}}"}
+    };
+    const auto result=compileSource("entry.ips",[&](std::string_view path) {
+        return sources.at(std::string(path));
+    });
+    REQUIRE(result.diagnostics.size()==5);
+    CHECK(result.sources==sources);
+    CHECK(result.programs.empty());
+    CHECK(result.bytes.empty());
+    for (const auto& diagnostic : result.diagnostics) {
+        CHECK(diagnostic.stage==ips::DiagnosticStage::Parser);
+        CHECK(diagnostic.sourceId==ips::sourceContentId(sources.at(diagnostic.path)));
+    }
+}
+
+TEST_CASE("late validation errors remain structured check diagnostics") {
+    const auto result=compileSource("late.ips",[](std::string_view) {
+        return std::string("asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}");
+    });
+    CHECK(result.status==SourceCompilationStatus::InvalidSource);
+    REQUIRE(result.diagnostics.size()==1);
+    CHECK(result.diagnostics[0].code==ips::DiagnosticCode::CompiledValidation);
+    CHECK(result.diagnostics[0].stage==ips::DiagnosticStage::Validation);
+    CHECK(result.bytes.empty());
+}
 
 TEST_CASE("diagnostic exit classes ignore warnings and keep error identities") {
     using namespace ips;

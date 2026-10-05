@@ -25,8 +25,10 @@ ValueType outputValueType(OutputKind kind) {
 
 class Checker {
 public:
-    Checker(const Program& program, const std::map<std::string, PartInfo>& parts)
-        : program_(program), parts_(parts), typer_(parts) {
+    Checker(const Program& program, const std::map<std::string, PartInfo>& parts,
+            std::vector<SourceError>* diagnostics = nullptr, std::size_t limit = 20)
+        : program_(program), parts_(parts), typer_(parts), diagnostics_(diagnostics),
+          limit_(std::clamp<std::size_t>(limit, 1, 20)) {
         typer_.resolveFunction = [this](const std::string& name,
                                         const SourceLocation& at,
                                         const std::string&) {
@@ -35,20 +37,19 @@ public:
     }
 
     void run() {
-        checkImports();
-        checkAssetDecls();
+        if (!recover([&] { checkImports(); }) || !checkAssetDecls()) return;
         const Function* draw = findFunction("draw");
-        if (draw == nullptr) {
-            error(program_.asset.location, "missing 'draw { ... }' entry block");
-        }
-        if (!draw->params.empty()) {
-            error(draw->location, "'draw' takes no declared parameters; use 'draw { ... }'");
-        }
-        if (draw->returnType.has_value()) {
-            error(draw->location, "'draw' cannot return a value");
-        }
+        recover([&] {
+            if (draw == nullptr)
+                error(program_.asset.location, "missing 'draw { ... }' entry block");
+            if (!draw->params.empty())
+                error(draw->location, "'draw' takes no declared parameters; use 'draw { ... }'");
+            if (draw->returnType.has_value())
+                error(draw->location, "'draw' cannot return a value");
+        });
         for (const auto& function : program_.asset.functions) {
-            checkedFunctionSurface(function.name, function.location);
+            if (atLimit()) break;
+            recover([&] { checkedFunctionSurface(function.name, function.location); });
         }
     }
 
@@ -56,6 +57,8 @@ private:
     const Program& program_;
     const std::map<std::string, PartInfo>& parts_;
     Typer typer_;
+    std::vector<SourceError>* diagnostics_;
+    std::size_t limit_;
 
     std::map<std::string, const Function*> functions_;
     std::map<std::string, std::optional<ValueType>> returnTypes_;
@@ -66,7 +69,49 @@ private:
     std::uint32_t loopDepth_ = 0;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
-        throw SourceError{at, std::move(message)};
+        throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError,
+                          DiagnosticStage::Typing};
+    }
+
+    bool atLimit() const { return diagnostics_ && diagnostics_->size() >= limit_; }
+
+    template<class Check> bool recover(Check check) {
+        if (!diagnostics_) { check(); return true; }
+        if (atLimit()) return false;
+        try { check(); return true; }
+        catch (const SourceError& diagnostic) { diagnostics_->push_back(diagnostic); }
+        catch (const UnresolvedType&) { /* dependent on an already reported failure */ }
+        return false;
+    }
+
+    void checkRecoveringStmt(const Stmt& stmt) {
+        const auto savedDepth = loopDepth_;
+        if (recover([&] { checkStmt(stmt); })) return;
+        loopDepth_ = savedDepth;
+        markInvalidBindings(stmt);
+    }
+
+    void markInvalidLocal(const std::string& name) {
+        // Failed writes and skipped declarations never poison a known input,
+        // output, parameter or local. A later valid assignment can establish
+        // the type of a recovery-only invalid local.
+        if (!findInput(name) && !findOutput(name) && !findPalette(name) &&
+            !isParam(name) && name != "seed" &&
+            !(current_->name == "draw" && (name == "v" || name == "a")))
+            typer_.declareInvalidLocal(name);
+    }
+
+    void markInvalidBindings(const Stmt& stmt) {
+        if (const auto* decl = std::get_if<VarDecl>(&stmt)) markInvalidLocal(decl->name);
+        else if (const auto* branch = std::get_if<IfStmt>(&stmt)) {
+            for (const auto& child : branch->thenBranch) markInvalidBindings(child);
+            for (const auto& child : branch->elseBranch) markInvalidBindings(child);
+        } else if (const auto* loop = std::get_if<WhileStmt>(&stmt)) {
+            for (const auto& child : loop->body) markInvalidBindings(child);
+        } else if (const auto* loop = std::get_if<ForStmt>(&stmt)) {
+            markInvalidLocal(loop->variable);
+            for (const auto& child : loop->body) markInvalidBindings(child);
+        }
     }
 
     // ---- declarations -------------------------------------------------------
@@ -85,62 +130,81 @@ private:
         }
     }
 
-    void checkAssetDecls() {
-        if (!program_.asset.sizeX.has_value()) {
-            error(program_.asset.location, "missing 'size' declaration");
-        }
+    bool checkAssetDecls() {
+        recover([&] {
+            if (!program_.asset.sizeX.has_value())
+                error(program_.asset.location, "missing 'size' declaration");
+        });
+        bool namespaceValid = true;
 
         std::set<std::string> inputNames;
         for (const auto& input : program_.asset.inputs) {
-            if (input.name == "seed" || input.name == "at" ||
-                input.name == "v" || input.name == "a" || input.name == "rot" ||
-                input.name == "mirror_x" || input.name == "mirror_y") {
-                error(input.location, "'" + input.name + "' is a reserved name");
-            }
-            if (!inputNames.insert(input.name).second) {
-                error(input.location, "duplicate input '" + input.name + "'");
-            }
-            checkInputDefault(input);
+            if (atLimit()) return false;
+            const bool valid = recover([&] {
+                if (input.name == "seed" || input.name == "at" ||
+                    input.name == "v" || input.name == "a" || input.name == "rot" ||
+                    input.name == "mirror_x" || input.name == "mirror_y") {
+                    error(input.location, "'" + input.name + "' is a reserved name");
+                }
+                if (!inputNames.insert(input.name).second) {
+                    error(input.location, "duplicate input '" + input.name + "'");
+                }
+            });
+            namespaceValid = valid && namespaceValid;
+            recover([&] { checkInputDefault(input); });
         }
 
         std::set<std::string> outputNames;
         for (const auto& output : program_.asset.outputs) {
-            if (output.name == "v" || output.name == "a")
-                error(output.location, "'" + output.name + "' is a reserved name");
-            if (!outputNames.insert(output.name).second) {
-                error(output.location, "duplicate output '" + output.name + "'");
-            }
-            if (inputNames.count(output.name) != 0) {
-                error(output.location, "output '" + output.name +
-                                           "' collides with an input of the same name");
-            }
+            if (atLimit()) return false;
+            const bool valid = recover([&] {
+                if (output.name == "v" || output.name == "a")
+                    error(output.location, "'" + output.name + "' is a reserved name");
+                if (!outputNames.insert(output.name).second) {
+                    error(output.location, "duplicate output '" + output.name + "'");
+                }
+                if (inputNames.count(output.name) != 0) {
+                    error(output.location, "output '" + output.name +
+                                               "' collides with an input of the same name");
+                }
+            });
+            namespaceValid = valid && namespaceValid;
         }
 
         for (const auto& function : program_.asset.functions) {
-            if (!functions_.emplace(function.name, &function).second) {
-                error(function.location,
-                      "duplicate function '" + function.name + "'");
-            }
+            if (atLimit()) return false;
+            const bool valid = recover([&] {
+                if (!functions_.emplace(function.name, &function).second) {
+                    error(function.location,
+                          "duplicate function '" + function.name + "'");
+                }
+            });
+            namespaceValid = valid && namespaceValid;
         }
 
         std::set<std::string> paletteNames;
         for (const auto& palette : program_.asset.palettes) {
-            if (!paletteNames.insert(palette.name).second) {
-                error(palette.location, "duplicate palette '" + palette.name + "'");
-            }
-            if (inputNames.count(palette.name) != 0 ||
-                outputNames.count(palette.name) != 0) {
-                error(palette.location,
-                      "palette '" + palette.name +
-                          "' collides with an input or output of the same name");
-            }
-            if (functions_.count(palette.name) != 0) {
-                error(palette.location,
-                      "palette '" + palette.name +
-                          "' collides with a function of the same name");
-            }
-            checkPaletteDecl(palette);
+            if (atLimit()) return false;
+            const bool valid = recover([&] {
+                if (!paletteNames.insert(palette.name).second) {
+                    error(palette.location, "duplicate palette '" + palette.name + "'");
+                }
+                if (inputNames.count(palette.name) != 0 ||
+                    outputNames.count(palette.name) != 0) {
+                    error(palette.location,
+                          "palette '" + palette.name +
+                              "' collides with an input or output of the same name");
+                }
+                if (functions_.count(palette.name) != 0) {
+                    error(palette.location,
+                          "palette '" + palette.name +
+                              "' collides with a function of the same name");
+                }
+            });
+            namespaceValid = valid && namespaceValid;
+            if (valid) recover([&] { checkPaletteDecl(palette); });
         }
+        return namespaceValid;
     }
 
     void checkInputDefault(const InputDecl& input) {
@@ -179,7 +243,8 @@ private:
             error(at, "recursive call to '" + name + "' is not supported");
         }
         inProgress_.insert(name);
-        checkFunction(*function);
+        try { checkFunction(*function); }
+        catch (...) { inProgress_.erase(name); throw; }
         inProgress_.erase(name);
         return FunctionSurface{declaredParamTypes(*function), returnTypes_[name]};
     }
@@ -193,14 +258,22 @@ private:
         const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
 
         current_ = &function;
-        typer_.enterFunction(program_, function, function.name == "draw");
-        for (const auto& stmt : function.body) {
-            checkStmt(stmt);
+        try {
+            typer_.enterFunction(program_, function, function.name == "draw");
+            for (const auto& stmt : function.body) {
+                if (atLimit()) break;
+                checkRecoveringStmt(stmt);
+            }
+            returnTypes_[function.name] = function.returnType.has_value()
+                                              ? std::optional<ValueType>(valueTypeOf(
+                                                    *function.returnType))
+                                              : std::nullopt;
+        } catch (...) {
+            current_ = savedCurrent;
+            loopDepth_ = savedLoopDepth;
+            typer_.restoreScope(std::move(savedScope));
+            throw;
         }
-        returnTypes_[function.name] = function.returnType.has_value()
-                                          ? std::optional<ValueType>(valueTypeOf(
-                                                *function.returnType))
-                                          : std::nullopt;
 
         current_ = savedCurrent;
         loopDepth_ = savedLoopDepth;
@@ -217,16 +290,19 @@ private:
         } else if (const auto* ifStmt = std::get_if<IfStmt>(&stmt)) {
             checkCondition(*ifStmt->condition, ifStmt->location, "if");
             for (const auto& s : ifStmt->thenBranch) {
-                checkStmt(s);
+                if (atLimit()) break;
+                checkRecoveringStmt(s);
             }
             for (const auto& s : ifStmt->elseBranch) {
-                checkStmt(s);
+                if (atLimit()) break;
+                checkRecoveringStmt(s);
             }
         } else if (const auto* whileStmt = std::get_if<WhileStmt>(&stmt)) {
             checkCondition(*whileStmt->condition, whileStmt->location, "while");
             ++loopDepth_;
             for (const auto& s : whileStmt->body) {
-                checkStmt(s);
+                if (atLimit()) break;
+                checkRecoveringStmt(s);
             }
             --loopDepth_;
         } else if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
@@ -289,7 +365,8 @@ private:
         }
         ++loopDepth_;
         for (const auto& s : forStmt.body) {
-            checkStmt(s);
+            if (atLimit()) break;
+            checkRecoveringStmt(s);
         }
         --loopDepth_;
     }
@@ -456,6 +533,14 @@ PartInfo partInfoOf(const Asset& asset) {
 void checkAsset(const Program& program,
                 const std::map<std::string, PartInfo>& parts) {
     Checker(program, parts).run();
+}
+
+std::vector<SourceError> checkAssetDiagnostics(
+    const Program& program, const std::map<std::string, PartInfo>& parts,
+    std::size_t limit) {
+    std::vector<SourceError> diagnostics;
+    Checker(program, parts, &diagnostics, limit).run();
+    return diagnostics;
 }
 
 } // namespace iprop::ips

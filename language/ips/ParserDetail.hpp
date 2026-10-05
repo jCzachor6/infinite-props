@@ -13,6 +13,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Lexer.hpp"
+#include "ips/Parser.hpp"
 #include "ips/Suggestions.hpp"
 
 namespace iprop::ips {
@@ -68,6 +69,7 @@ public:
     explicit ParserImpl(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
     Program parseProgram();
+    ParseResult parseRecoveringProgram(std::size_t limit);
 
     // ---- token helpers (shared) ------------------------------------------
 
@@ -132,6 +134,7 @@ public:
 
     Import parseImport();
     Asset parseAsset();
+    void parseDeclaration(Asset& asset);
     void parseSize(Asset& asset);
     void parseOrigin(Asset& asset);
     InputDecl parseInput();
@@ -171,8 +174,16 @@ public:
     std::vector<Arg> parseArgs();
 
 private:
+    enum class RecoveryScope { Program, Declaration, Statement };
+    struct RecoveryHalt {};
+    void recordError(SourceError error);
+    void synchronize(std::size_t start, RecoveryScope scope);
+    bool recoveryStart(RecoveryScope scope) const;
+
     std::vector<Token> tokens_;
     std::size_t pos_ = 0;
+    ParseResult* recovery_ = nullptr;
+    std::size_t diagnosticLimit_ = kMaxParseDiagnostics;
 };
 
 } // namespace detail

@@ -16,6 +16,7 @@ add_executable(iprop_tests
     language/parser_assets_test.cpp
     language/parser_statements_test.cpp
     language/parser_diagnostics_test.cpp
+    language/parser_recovery_test.cpp
     language/draw_entry_test.cpp
     language/color_namespace_test.cpp
     language/aliases_test.cpp
