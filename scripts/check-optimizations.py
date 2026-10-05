@@ -36,15 +36,27 @@ def main():
     sources = sorted(inventory.stdout.splitlines())
     if not sources:
         raise RuntimeError("no tracked .ips sources")
+    cases_file = root / "examples/language/cases.json"
+    cases = json.loads(cases_file.read_text(encoding="utf-8"))["cases"] if cases_file.exists() else []
+    expectations = {"examples/language/" + case["file"]: case for case in cases}
     report, renders, traps = [], 0, 0
     with tempfile.TemporaryDirectory(prefix="iprop-optimization-") as directory:
         temporary = pathlib.Path(directory)
         for source in sources:
             row = {"source": source}
+            expected = expectations.get(source, {})
             for mode, flags in (("debug", debug), ("stripped", ["--strip"])):
                 files = [temporary / "reference.iprop", temporary / "optimized.iprop"]
+                for file in files:
+                    file.unlink(missing_ok=True)
                 results = [run([compiler, root / source, "-o", files[0], "--no-opt", *unpacked, *flags]),
                            run([compiler, root / source, "-o", files[1], *unpacked, *flags])]
+                if expected.get("expect") == "compile-error":
+                    for result, file in zip(results, files):
+                        if result.returncode == 0 or expected["message"] not in result.stderr or file.exists():
+                            raise AssertionError(f"{source} {mode}: expected compile rejection {expected['message']!r}: {result.stderr}")
+                    row[mode] = {"compile_error": expected["message"]}
+                    continue
                 for result in results:
                     require(result, source + " " + mode)
                 sizes = [file.stat().st_size for file in files]
@@ -71,13 +83,14 @@ def main():
                     else:
                         renders += 1
             report.append(row)
-    result = {"sources": len(report), "render_pairs": renders, "trap_pairs": traps,
-              "debug": {key: sum(row["debug"][key] for row in report) for key in ("reference", "optimized")},
-              "stripped": {key: sum(row["stripped"][key] for row in report) for key in ("reference", "optimized")},
+    rejections = sum("compile_error" in row["debug"] for row in report)
+    result = {"sources": len(report), "compile_rejections": rejections, "render_pairs": renders, "trap_pairs": traps,
+              "debug": {key: sum(row["debug"].get(key, 0) for row in report) for key in ("reference", "optimized")},
+              "stripped": {key: sum(row["stripped"].get(key, 0) for row in report) for key in ("reference", "optimized")},
               "artifacts": report}
     if args.report:
         args.report.write_text(json.dumps(result, indent=2) + "\n")
-    print(f"PASS: {len(report)} sources; {renders} exact image/output pairs; {traps} matching traps; no artifact growth")
+    print(f"PASS: {len(report)} sources; {rejections} expected compile rejections; {renders} exact image/output pairs; {traps} matching traps; no artifact growth")
     for mode in ("debug", "stripped"):
         a, b = result[mode]["reference"], result[mode]["optimized"]
         print(f"{mode}: {a} -> {b} bytes ({100 * (a-b) / a:.2f}% smaller)")
