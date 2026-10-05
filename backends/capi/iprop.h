@@ -168,6 +168,25 @@ typedef uint32_t iprop_status_ex;
 #define IPROP_EX_E_ARGUMENT UINT32_C(4)
 #define IPROP_EX_E_INTERNAL UINT32_C(5)
 
+/* Fixed leaf record for byte-counted UTF-8, never an extensible descriptor.
+ * No NUL terminator is required; embedded U+0000 remains part of the view.
+ * NULL is valid exactly when byte_count is zero. The caller promises that
+ * byte_count bytes are readable. Input views are borrowed for the call only;
+ * output views belong to the handle documented by their containing query.
+ * Do not free data or append fields to this record. */
+typedef struct {
+    const char* data;
+    uint32_t byte_count;
+} iprop_utf8_view;
+
+/* New-handle/view ownership, nullability and transaction rules are specified
+ * in docs/c-api-contracts.md. Handles are opaque and free(NULL) is valid.
+ * Input buffers/descriptors must remain readable for the call; returned
+ * borrowed views expire with their documented owner. Failed calls do not
+ * replace output handles or publish partial views (error output excepted).
+ * struct_size is actual allocated capacity, including at least four readable
+ * bytes. A library cannot verify a caller's allocation or dangling pointer. */
+
 #define IPROP_CAP_LIBRARY_QUERY (UINT64_C(1) << 0)
 #define IPROP_CAP_SIZED_DESCRIPTORS (UINT64_C(1) << 1)
 

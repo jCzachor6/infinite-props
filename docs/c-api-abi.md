@@ -174,6 +174,8 @@ checks. Checking only total size does not prove field compatibility.
 
 These rules also govern API 0.4 extensions. A semantic change to legacy
 calls is a compatibility decision even when the struct layout is unchanged.
+The [handle and descriptor contracts](c-api-contracts.md) define byte-counted
+strings, nullability, invalidation and transactional output rules in detail.
 
 ## Evidence required before shipping an extension
 

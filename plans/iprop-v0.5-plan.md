@@ -168,7 +168,8 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
 
 - [x] **05-V.4** Wydzielić konfigurację ABI/SONAME z `PROJECT_VERSION`, zachowując linię 0.4 i stare nazwy potrzebne loaderowi. Uaktualnić CMake, dokumentację kompatybilności, eksporty DLL i install-name; sprawdzić shared/static oraz przeniesiony SDK.
   Dowód: niezależna konfiguracja ABI 0.4 steruje SOVERSION, install-name, runtime query i metadanymi paczki. 15/15 CTest; 15 przypadków rzeczywistego find_package; przeniesiony SDK i konsumenci C99 shared/static przeszli. Oryginalne binarium klienta 0.2 załadowało bibliotekę z przeniesionego SDK (dyld); osobny build produktu 0.5 zachował install-name 0.4 i przeszedł shared/static oraz stary klient.
-- [ ] **05-V.5** Ustalić kontrakt nowych uchwytów i deskryptorów: UTF-8 z długościami w bajtach, typy o ustalonych szerokościach, nullability, kto zwalnia pamięć, kiedy wskaźnik traci ważność oraz zachowanie po błędzie. Walidować rozmiar deskryptora przed dostępem do pól.
+- [x] **05-V.5** Ustalić kontrakt nowych uchwytów i deskryptorów: UTF-8 z długościami w bajtach, typy o ustalonych szerokościach, nullability, kto zwalnia pamięć, kiedy wskaźnik traci ważność oraz zachowanie po błędzie. Walidować rozmiar deskryptora przed dostępem do pól.
+  Dowód: docs/c-api-contracts.md definiuje nullability, fixed-width typy, właścicieli widoków, invalidation, retained program data i transaction rules. Nagłówek dodaje frozen leaf UTF-8 view z byte count; wspólny no-allocation reader odrzuca invalid/truncated UTF-8 i NULL+length, zachowuje embedded NUL. Prefix/tail i UTF-8 testy przeszły shared/static C99 oraz ASan+UBSan.
 
 **Miejsca zmian:** [nagłówek](../backends/capi/iprop.h), [adapter](../backends/capi/iprop.cpp), [CMake C API](../backends/capi/CMakeLists.txt), [polityka ABI](../backends/capi/README.md), manifesty SDK/release.
 

@@ -1,4 +1,5 @@
 #include "../Options.hpp"
+#include "../Utf8View.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -8,6 +9,18 @@
 #define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "descriptor: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 int main() {
+    std::string_view name = "preserved";
+    CHECK(!iprop::capi::readUtf8View({nullptr,1}, name));
+    CHECK(name == "preserved");
+    const char malformed[] = {'a', static_cast<char>(0xc0), static_cast<char>(0x80)};
+    CHECK(!iprop::capi::readUtf8View({malformed,3}, name));
+    CHECK(name == "preserved");
+    const char exact[] = {'x', static_cast<char>(0xc5), static_cast<char>(0x82), '\0', 'y'};
+    CHECK(iprop::capi::readUtf8View({exact,5}, name));
+    CHECK(name.size() == 5 && name[3] == '\0' && name[4] == 'y');
+    CHECK(!iprop::capi::readUtf8View({exact,2}, name)); // truncated UTF-8
+    CHECK(name.size() == 5);
+    CHECK(iprop::capi::readUtf8View({nullptr,0}, name) && name.empty());
     using iprop::capi::GenerateOptions;
     using iprop::capi::OptionIssue;
     using iprop::capi::readGenerateOptions;
