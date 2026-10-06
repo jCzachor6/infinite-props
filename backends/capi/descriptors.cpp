@@ -6,6 +6,22 @@
 
 extern "C" {
 
+iprop_status_ex iprop_input_info_ex_init(iprop_input_info_ex* out, uint32_t capacity) {
+    if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
+    iprop::capi::writeField(out, capacity, 0, capacity);
+    const iprop_input_info_ex defaults{};
+#define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_input_info_ex, field), defaults.field)
+    ZERO(flags); ZERO(input_index); ZERO(type);
+    ZERO(color_default); ZERO(f32_default); ZERO(u32_default);
+#undef ZERO
+    // Write the fixed leaf's fields separately, preserving its native padding.
+    iprop::capi::writeField(out, capacity, offsetof(iprop_input_info_ex, name) +
+        offsetof(iprop_utf8_view, data), defaults.name.data);
+    iprop::capi::writeField(out, capacity, offsetof(iprop_input_info_ex, name) +
+        offsetof(iprop_utf8_view, byte_count), defaults.name.byte_count);
+    return IPROP_EX_OK;
+}
+
 iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     iprop::capi::writeField(out, capacity, 0, capacity);

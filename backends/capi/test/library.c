@@ -46,7 +46,8 @@ int main(void) {
     CHECK(info.format_major == 0 && info.format_minor_min == 1 && info.format_minor_max == 4);
     CHECK(info.capabilities == (IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS |
           IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
-          IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX));
+          IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX |
+          IPROP_CAP_ROOT_INPUT_REFLECTION));
     CHECK(IPROP_OK == 0 && IPROP_E_OOM == 1 && IPROP_E_FORMAT == 2 &&
           IPROP_E_TRAP == 3 && IPROP_E_ARGUMENT == 4);
     CHECK(IPROP_UNIFORM_COLOR == 0 && IPROP_UNIFORM_F32 == 1 && IPROP_UNIFORM_U32 == 2);

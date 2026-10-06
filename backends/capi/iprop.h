@@ -193,6 +193,7 @@ typedef struct {
 #define IPROP_CAP_PROGRAM_QUERY (UINT64_C(1) << 3)
 #define IPROP_CAP_STRUCTURED_ERRORS (UINT64_C(1) << 4)
 #define IPROP_CAP_LIBRARY_QUERY_EX (UINT64_C(1) << 5)
+#define IPROP_CAP_ROOT_INPUT_REFLECTION (UINT64_C(1) << 6)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -365,6 +366,53 @@ IPROP_API iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out,
 IPROP_API iprop_status_ex iprop_program_query(const iprop_program* program,
                                             iprop_program_info_ex* out, iprop_error_ex* error);
 IPROP_API iprop_status_ex iprop_library_query_ex(iprop_library_info_ex* out, iprop_error_ex* error);
+
+/* Binary root-input types, independent of the legacy ABI-sized enum and any
+ * source-language aliases. Source i32 declarations are stored/reported U32;
+ * their default is the unchanged uint32_t bit pattern. No signed binary tag
+ * is introduced. These fixed-width values match the binary metadata tags. */
+typedef uint32_t iprop_input_type;
+#define IPROP_INPUT_COLOR UINT32_C(0)
+#define IPROP_INPUT_F32 UINT32_C(1)
+#define IPROP_INPUT_U32 UINT32_C(2)
+
+/* Frozen leaf RGBA8 record. All four channels are exact default bytes. */
+typedef struct {
+    uint8_t r, g, b, a;
+} iprop_color_rgba8;
+
+/* Root-input declaration, in stored order. struct_size and flags are input;
+ * minimum capacity is four bytes and absent flags mean zero. No flags are
+ * supported; a nonzero complete flags field is E_ARGUMENT. Other complete
+ * fields are outputs. Queries preserve size/flags, padding, partial fields
+ * and unknown tail. name.data and name.byte_count are bounded independently;
+ * inspect both only when both fields fit. The UTF-8 view includes embedded
+ * NUL bytes and belongs to the program until program_free. input_index is
+ * local to this load, with no persistence across recompilation. The matching
+ * default field is exact (including f32 bits); inactive defaults are zero. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t input_index;
+    iprop_input_type type;
+    iprop_utf8_view name;
+    iprop_color_rgba8 color_default;
+    float f32_default;
+    uint32_t u32_default;
+} iprop_input_info_ex;
+
+IPROP_API iprop_status_ex iprop_input_info_ex_init(iprop_input_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_program_input_count(const iprop_program* program,
+                                                   uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_input_get(const iprop_program* program, uint32_t input_index,
+                                                 iprop_input_info_ex* out, iprop_error_ex* error);
+/* Exact byte-counted UTF-8 match, without normalization or sentinel reads.
+ * NULL/zero names are valid empty strings; NULL/nonzero or malformed UTF-8,
+ * an unknown name, out-of-range index or null required output is E_ARGUMENT.
+ * Count/find/get leave their output unchanged on failure and accept NULL error.
+ * Error/output storage follows the same checked overlap policy above. */
+IPROP_API iprop_status_ex iprop_program_input_find(const iprop_program* program, iprop_utf8_view name,
+                                                  uint32_t* out_index, iprop_error_ex* error);
 
 /* generate_ex is planned for the validated-parameters stage; it has no symbol
  * or capability yet. Its options use iprop_generate_options_ex, with absent

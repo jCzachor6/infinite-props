@@ -192,7 +192,8 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
 
 ## R. Introspekcja programu — P0
 
-- [ ] **05-R.1** Udostępnić count/get/find wejść root: nazwa, binarny typ i dokładny default `color`/`f32`/`u32`. Indeksy obowiązują dla konkretnego załadowanego programu; nie są trwałymi identyfikatorami między kompilacjami.
+- [x] **05-R.1** Udostępnić count/get/find wejść root: nazwa, binarny typ i dokładny default `color`/`f32`/`u32`. Indeksy obowiązują dla konkretnego załadowanego programu; nie są trwałymi identyfikatorami między kompilacjami.
+  Dowód: iprop_program_input_count/get/find i sized iprop_input_info_ex pokazują root names/IDs, fixed-width binary type i dokładne stored color/f32/U32 defaults; source i32 pozostaje U32. C99 shared/static sprawdzają wszystkie prefix lengths/padding/tail, UTF-8/embedded NUL, flags, error aliasing i transaction outputs; query paths nie alokują. Root C API build i 30/30 CTest oraz 3/3 root ASan+UBSan reflection/checked tests przeszły. Niezależny review final patch bez findingów; frozen klient 0.2 z niezmienionym SHA załadował rzeczywistą root dylib przez dyld i przeszedł wszystkie 6 exports/layouts.
 - [ ] **05-R.2** Udostępnić deklaracje wyjść przed generacją: owner, nazwa, kind, singular/list i kolejność globalnych slotów. Powtarzające się nazwy różnych ownerów są poprawne; brak wartości w nieustawionym slocie nie oznacza braku deklaracji.
 - [ ] **05-R.3** Udostępnić tabelę partów: owner/indeks, rozmiar, origin, sygnatury wejść i wyjść. Nazwa jest opcjonalna, jeśli rzeczywiście zachowana w pliku; nie odtwarzać nieobecnych aliasów importu ani ścieżek źródłowych.
 - [ ] **05-R.4** Rozszerzyć odczyt metadanych przez nowy accessor o istniejącą emisję (`has_emission`, kolor, offset, radius) i informacje o formacie. Nie dopisywać pól do `iprop_meta`. Nie wymyślać zakresów min/max lub źródłowego typu i32, których format nie przechowuje.

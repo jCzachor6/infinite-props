@@ -1,0 +1,4 @@
+asset empty {
+  size 1x1
+  draw { }
+}

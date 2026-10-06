@@ -13,7 +13,9 @@ These API 0.3 operations are implemented on the frozen ABI line 0.4:
 `IPROP_CAP_PROGRAM_QUERY`, `IPROP_CAP_STRUCTURED_ERRORS` and
 `IPROP_CAP_LIBRARY_QUERY_EX`, alongside its existing library-query/sized bits.
 The structured-error bit describes these implemented operations. It does not
-promise generation, reflection, parameters, result views or statistics.
+promise generation, parameters, result views or statistics. The independently
+negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
+[root-input count/get/find calls](c-api-reflection.md).
 
 ## Load and publication
 

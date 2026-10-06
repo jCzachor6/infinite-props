@@ -84,7 +84,8 @@ already defines caller capacity, NUL, required length and success clearing.
 
 Current library/options initializers and query already use these bounded
 descriptor rules. `Utf8View.hpp` provides the common no-allocation validator;
-reflection and parameter entry points use it when implemented.
+[root-input reflection](c-api-reflection.md) uses it for exact byte-counted
+lookup; future parameter entry points follow the same rules.
 
 The sized `iprop_error_ex` foundation and initializer follow the same rules.
 Its typed categories, stages and optional coordinate spaces are specified in
@@ -103,7 +104,7 @@ and malformed output storage stops the operation before publication. Legacy
 entry points keep their existing classification. See
 [the policy and stage/type distinction](runtime-errors.md#new-status-policy-and-exception-boundary).
 
-Checked load and metadata queries reject error descriptor/message spans that
+Checked load, metadata and root-input reflection queries reject error descriptor/message spans that
 overlap their output pointer/query storage, or a writable message span that
 overlaps its own error descriptor. They return `E_ARGUMENT` without invoking
 or reporting the operation and preserve both outputs. This exception to error

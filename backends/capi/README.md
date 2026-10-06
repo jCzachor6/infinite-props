@@ -169,8 +169,11 @@ a write, preserve unknown tail/padding bytes, and require no allocation.
 The development API reports library-query/sized-descriptor capabilities and
 `IPROP_CAP_PROGRAM_LOAD_EX`, `IPROP_CAP_PROGRAM_QUERY`,
 `IPROP_CAP_STRUCTURED_ERRORS`, `IPROP_CAP_LIBRARY_QUERY_EX` for implemented
-checked load/metadata queries. Reflection, parameters, structured generation
-and output accessors receive capability bits only when implemented.
+checked load/metadata queries. `IPROP_CAP_ROOT_INPUT_REFLECTION` advertises
+implemented root-input count/get/find and its sized declaration initializer;
+see [exact name/default reflection](../../docs/c-api-reflection.md).
+Part/output reflection, parameters, structured generation and output accessors
+receive capability bits only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.

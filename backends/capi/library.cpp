@@ -24,7 +24,8 @@ iprop::capi::CallOutcome queryLibrary(iprop_library_info_ex* out) noexcept {
     info.format_minor_max = iprop::kVersionMinor;
     info.capabilities = IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS |
         IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
-        IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX;
+        IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX |
+        IPROP_CAP_ROOT_INPUT_REFLECTION;
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_library_info_ex, field), info.field)
     WRITE(product_major); WRITE(product_minor); WRITE(product_patch);
     WRITE(api_major); WRITE(api_minor); WRITE(abi_major); WRITE(abi_minor);

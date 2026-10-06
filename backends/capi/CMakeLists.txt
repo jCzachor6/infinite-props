@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -60,16 +60,19 @@ foreach(linkage shared static)
     add_executable(capi_error_descriptor_${linkage} test/error_descriptor.c)
     add_executable(capi_error_buffers_${linkage} test/error_buffers.c)
     add_executable(capi_checked_${linkage} test/checked.c)
+    add_executable(capi_reflection_${linkage} test/reflection.c)
     add_executable(capi_library_${linkage} test/library.c)
     if(linkage STREQUAL "shared")
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
     else()
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
     endif()
     target_compile_definitions(capi_library_${linkage} PRIVATE
@@ -80,6 +83,7 @@ foreach(linkage shared static)
     iprop_warnings(capi_error_descriptor_${linkage})
     iprop_warnings(capi_error_buffers_${linkage})
     iprop_warnings(capi_checked_${linkage})
+    iprop_warnings(capi_reflection_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
@@ -132,6 +136,21 @@ foreach(source test/language.ips ../../examples/plant.ips)
         DEPENDS ipc ${source} ${source_parts})
     add_custom_target(capi_${name} DEPENDS ${out})
     add_dependencies(capi_golden capi_${name})
+endforeach()
+
+foreach(name reflection-defaults reflection-empty)
+    set(out ${IPROP_CAPI_GOLDEN_DIR}/${name}.iprop)
+    add_custom_command(OUTPUT ${out}
+        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/${name}.ips --no-compress -o ${out}
+        DEPENDS ipc test/${name}.ips)
+    add_custom_target(capi_${name} DEPENDS ${out})
+    add_dependencies(capi_golden capi_${name})
+endforeach()
+foreach(linkage shared static)
+    add_dependencies(capi_reflection_${linkage} capi_golden)
+    add_test(NAME capi_reflection_${linkage} COMMAND capi_reflection_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
 endforeach()
 
 add_executable(capi_conformance
