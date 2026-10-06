@@ -12,11 +12,20 @@ source files.
 
 <!-- example: ../../examples/language/composition.ips -->
 
-`alias.draw(seed, variant, archetype, at = {x, y}, uniforms...)` supplies
-exactly three positional integers, a required named placement and optional
-named input overrides. Unspecified uniforms use the part's defaults. `at`
-positions the part's declared origin. Call order determines paint order;
-the parent's RNG stream is restored after the part executes.
+`alias.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)` requires
+three integer controls named `seed`, `v` and `a`. These controls may instead
+be positional in that order, or mix positional and named arguments.
+For example, `alias.draw(a = a, seed, v, at = {8, 4})` binds its two
+positional arguments to `seed` and `v`. Named arguments do not advance the
+positional cursor; binding the same control twice is an error.
+
+Placement `at`, transform arguments and optional input overrides are named
+only. Extra positional arguments, unknown names and missing controls or
+placement are errors. Input names `variant` and `archetype` remain ordinary
+uniform names; they do not alias the `v` and `a` controls. Unspecified
+uniforms use the part's defaults. `at` positions the part's declared origin.
+Call order determines paint order; the parent's RNG stream is restored
+after the part executes.
 
 Optional transform arguments are compile-time integers: `rot` is 0, 90, 180
 or 270; `mirror_x`/`mirror_y` are 0 or 1, including boolean constants.
@@ -34,7 +43,8 @@ outputs retain parent coordinates.
 ## Part call order
 
 Uniform overrides evaluate in the part's input declaration order. Then the
-seed, variant, archetype and placement expressions evaluate. Transform
+`seed`, `v`, `a` and placement expressions evaluate, regardless of the order
+of named arguments in the source. Transform
 arguments are compile-time constants. Each dynamic argument evaluates once.
 See [parts and D4 transforms](../../spec/iprop-v0.3.md#105-part-transforms-v03)
 for the exact geometry mapping and rectangle bounds.

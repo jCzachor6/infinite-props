@@ -114,7 +114,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     return surface->result.value_or(ValueType::Void);
 }
 
-// `part.draw(seed, variant, archetype, at = {x, y}, uniforms...)`
+// `part.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)`
 ValueType Typer::typePartCall(const Call& call) {
     const Path path = flatten(*call.callee);
     if (path.base.empty() || path.segments.size() != 1 ||
@@ -128,14 +128,6 @@ ValueType Typer::typePartCall(const Call& call) {
         error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
-    // Named controls are enabled separately in C.3; the shared signature
-    // already describes them while preserving the legacy three-position form.
-    const auto positional = std::count_if(call.args.begin(), call.args.end(),
-        [](const Arg& arg) { return !arg.name; });
-    if (positional != 3) {
-        error(call.location, "part call takes exactly three positional "
-              "arguments (seed, variant, archetype), got " + std::to_string(positional));
-    }
     std::vector<std::string> uniforms;
     for (const auto& input : part->second.inputs) uniforms.push_back(input.name);
     const auto args = partArguments(call, uniforms, path.base + ".draw");

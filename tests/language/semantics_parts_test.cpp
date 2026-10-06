@@ -87,15 +87,15 @@ TEST_CASE("valid programs check cleanly") {
 TEST_CASE("part calls are validated against the part surface") {
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));
 
-    // Wrong positional arity.
+    // Missing control and excessive positional arity.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, at = {0, 0}) } }",
-        hairParts(), "exactly three positional");
+        hairParts(), "missing argument 'a'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
-        hairParts(), "exactly three positional");
+        hairParts(), "too many positional arguments");
 
     // Missing `at`.
     expectCheckError(

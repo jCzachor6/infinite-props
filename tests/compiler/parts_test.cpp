@@ -238,3 +238,198 @@ asset composite {
     REQUIRE(p->points[0].y == 3.f);
 }
 
+namespace {
+void comparePartCallResults(const GenerationResult& actual, const GenerationResult& expected) {
+    CHECK(actual.image.pixels == expected.image.pixels);
+    REQUIRE(actual.outputs.size() == expected.outputs.size());
+    const auto bits = [](f32 value) { return std::bit_cast<u32>(value); };
+    for (std::size_t i = 0; i < actual.outputs.size(); ++i) {
+        const auto& a = actual.outputs[i];
+        const auto& b = expected.outputs[i];
+        CHECK(a.name == b.name);
+        CHECK(a.kind == b.kind);
+        CHECK(a.isList == b.isList);
+        REQUIRE(a.points.size() == b.points.size());
+        REQUIRE(a.rects.size() == b.rects.size());
+        REQUIRE(a.circles.size() == b.circles.size());
+        for (std::size_t j = 0; j < a.points.size(); ++j) {
+            CHECK(bits(a.points[j].x) == bits(b.points[j].x));
+            CHECK(bits(a.points[j].y) == bits(b.points[j].y));
+        }
+        for (std::size_t j = 0; j < a.rects.size(); ++j) {
+            CHECK(bits(a.rects[j].x) == bits(b.rects[j].x));
+            CHECK(bits(a.rects[j].y) == bits(b.rects[j].y));
+            CHECK(bits(a.rects[j].w) == bits(b.rects[j].w));
+            CHECK(bits(a.rects[j].h) == bits(b.rects[j].h));
+        }
+        for (std::size_t j = 0; j < a.circles.size(); ++j) {
+            CHECK(bits(a.circles[j].x) == bits(b.circles[j].x));
+            CHECK(bits(a.circles[j].y) == bits(b.circles[j].y));
+            CHECK(bits(a.circles[j].r) == bits(b.circles[j].r));
+        }
+    }
+}
+
+GenerationResult generatePartCall(const std::vector<u8>& bytes, u32 seed, u32 v = 0, u32 a = 0) {
+    const auto loaded = loadFile(bytes);
+    validate(loaded);
+    VM vm(loaded, GenerationInputs{seed, v, a, 0, 0, {}});
+    vm.run();
+    return vm.result();
+}
+}
+
+TEST_CASE("named and mixed part controls preserve legacy bytes outputs and defaults", "[part-named-controls]") {
+    const auto part = ips::parse(R"(asset child { size 4x4 variants 3 archetypes 4
+      input i32 variant = 7
+      input i32 archetype = 9
+      input f32 amount = -0.0
+      input color tint = #f00
+      output point controls
+      output point uniforms
+      output point random
+      output rect box
+      output circle zone
+      draw {
+        controls = {v, a}
+        uniforms = {variant, archetype}
+        random = {amount, unit()}
+        box = {0, 0, 2, 3}
+        zone = {1, 2, 1}
+        rect(0, 0, 3, 2, tint)
+      }
+    })");
+    ips::checkAsset(part, {});
+    const auto root = [](const std::string& arguments) {
+        return ips::parse("import child from \"child.ips\"\n"
+            "asset root { size 16x16 variants 3 archetypes 4 output point after\n"
+            "draw { child.draw(" + arguments + ") after = {unit(), unit()} } }");
+    };
+    const std::vector<std::vector<std::string>> forms{
+        {
+            "seed ^ 17, v, a, at={8,4},variant=12,archetype=-3,amount=2,tint=#abc,rot=90,mirror_x=1",
+            "a=a,tint=#abc,v=v,archetype=-3,seed=seed ^ 17,at={8,4},variant=12,amount=2,mirror_x=1,rot=90",
+            "a=a,seed ^ 17,variant=12,v,at={8,4},amount=2,archetype=-3,tint=#abc,rot=90,mirror_x=1",
+            "seed ^ 17,v=v,a=a,at={8,4},variant=12,archetype=-3,amount=2,tint=#abc,rot=90,mirror_x=1"
+        },
+        {"seed,v,a,at={8,4}", "at={8,4},a=a,v=v,seed=seed", "a=a,seed,v,at={8,4}"}
+    };
+    for (const auto& group : forms) {
+        const auto positional = root(group.front());
+        const auto reference = compileProgram(positional, {{"child", &part}}, false);
+        for (const auto& arguments : group) {
+            INFO(arguments);
+            const auto program = root(arguments);
+            CHECK_NOTHROW(ips::checkAsset(program, {{"child", partInfoOf(part.asset)}}));
+            for (const bool optimize : {false, true}) {
+                const auto bytes = compileProgram(program, {{"child", &part}}, optimize);
+                CHECK(bytes == compileProgram(positional, {{"child", &part}}, optimize));
+                for (const u32 seed : {0u, 7u, 0x80000000u, 0xffffffffu}) {
+                    for (const u32 v : {0u, 2u}) {
+                        for (const u32 a : {0u, 3u}) {
+                            comparePartCallResults(generatePartCall(bytes, seed, v, a),
+                                                   generatePartCall(reference, seed, v, a));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const auto defaults = generatePartCall(compileProgram(root(forms[1][1]), {{"child", &part}}), 42, 2, 3);
+    REQUIRE(defaults.find("controls") != nullptr);
+    CHECK(defaults.find("controls")->points[0].x == 2.f);
+    CHECK(defaults.find("controls")->points[0].y == 3.f);
+    REQUIRE(defaults.find("uniforms") != nullptr);
+    CHECK(defaults.find("uniforms")->points[0].x == 7.f);
+    CHECK(defaults.find("uniforms")->points[0].y == 9.f);
+    CHECK(std::bit_cast<u32>(defaults.find("random")->points[0].x) == 0x80000000u);
+}
+
+TEST_CASE("named part controls evaluate uniforms controls and placement once before isolated RNG", "[part-named-controls]") {
+    const auto part = ips::parse(R"(asset child { size 2x2
+      input f32 variant = 1.0
+      input i32 archetype = 2
+      output list point childTrace
+      draw { for i in 0..12 { childTrace = {i, unit()} } }
+    })");
+    const auto root = [](const std::string& body) {
+        return ips::parse("import child from \"child.ips\"\n"
+            "asset root { size 16x16 output list point trace draw { " + body + " note(8) }\n"
+            "note(tag:i32) -> i32 { trace={tag,unit()} pixel(tag,0,#ffffff80) return 0 } }");
+    };
+    const auto reference = root(
+        "child.draw(note(3),note(4),note(5),at={note(6),note(7)},archetype=note(2),variant=note(1))");
+    const auto baseline = ips::parse(R"(asset root { size 16x16 output list point trace
+      draw { for i in 1..9 { trace={i,unit()} pixel(i,0,#ffffff80) } }
+    })");
+    for (const auto* arguments : {
+        "at={note(6),note(7)},a=note(5),archetype=note(2),seed=note(3),v=note(4),variant=note(1)",
+        "a=note(5),note(3),archetype=note(2),note(4),variant=note(1),at={note(6),note(7)}"
+    }) {
+        const auto program = root("child.draw(" + std::string(arguments) + ")");
+        for (const bool optimize : {false, true}) {
+            const auto bytes = compileProgram(program, {{"child", &part}}, optimize);
+            CHECK(bytes == compileProgram(reference, {{"child", &part}}, optimize));
+            for (const u32 seed : {0u, 7u, 0xffffffffu}) {
+                const auto actual = generatePartCall(bytes, seed);
+                comparePartCallResults(actual, generatePartCall(
+                    compileProgram(reference, {{"child", &part}}, false), seed));
+                const auto outer = generatePartCall(compileProgram(baseline, {}, false), seed);
+                CHECK(actual.image.pixels == outer.image.pixels);
+                REQUIRE(actual.find("trace") != nullptr);
+                REQUIRE(actual.find("childTrace") != nullptr);
+                const auto& trace = actual.find("trace")->points;
+                REQUIRE(trace.size() == 8);
+                CHECK(actual.find("childTrace")->points.size() == 12);
+                for (std::size_t i = 0; i < trace.size(); ++i) {
+                    CHECK(trace[i].x == static_cast<f32>(i + 1));
+                    CHECK(std::bit_cast<u32>(trace[i].y) == std::bit_cast<u32>(outer.outputs[0].points[i].y));
+                    CHECK(actual.image.at(static_cast<u32>(i + 1), 0).r == 128);
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("named part control binding rejects missing duplicate unknown excessive and mistyped arguments", "[part-named-controls]") {
+    const auto part = ips::parse(R"(asset child { size 2x2
+      input i32 variant = 1
+      input i32 archetype = 2
+      draw { }
+    })");
+    struct Case { const char* arguments; const char* message; };
+    for (const auto test : {
+        Case{"v=0,a=0,at={0,0}", "missing argument 'seed'"},
+        Case{"seed=0,a=0,at={0,0}", "missing argument 'v'"},
+        Case{"seed=0,v=0,at={0,0}", "missing argument 'a'"},
+        Case{"seed=0,v=0,a=0", "missing argument 'at'"},
+        Case{"0,0,0,1,at={0,0}", "too many positional arguments"},
+        Case{"0,0,0,{0,0}", "too many positional arguments"},
+        Case{"seed=0,0,v=0,a=0,at={0,0}", "duplicate 'seed'"},
+        Case{"seed=0,v=0,v=1,a=0,at={0,0}", "duplicate 'v'"},
+        Case{"seed=0,v=0,a=0,a=1,at={0,0}", "duplicate 'a'"},
+        Case{"seed=0,v=0,a=0,at={0,0},at={1,1}", "duplicate 'at'"},
+        Case{"seed=0,v=0,a=0,at={0,0},varaint=2", "has no argument 'varaint'"},
+        Case{"seed=0.5,v=0,a=0,at={0,0}", "must be an integer"},
+        Case{"seed=0,v=#fff,a=0,at={0,0}", "must be an integer"},
+        Case{"seed=0,v=0,a={0,0},at={0,0}", "must be an integer"},
+        Case{"seed=0,v=0,a=0,at=0", "'at' must be a vec2"},
+        Case{"seed=0,v=0,a=0,at={0,0},variant=1.5", "must be i32, got f32"},
+        Case{"seed=0,v=0,a=0,at={0,0},archetype=#fff", "must be i32, got color"},
+        Case{"seed=0,v=0,a=0,at={0,0},variant=1,variant=2", "duplicate 'variant'"}
+    }) {
+        INFO(test.arguments);
+        const auto program = ips::parse("import child from \"child.ips\"\nasset root { size 8x8 draw { child.draw(" +
+                                        std::string(test.arguments) + ") } }");
+        for (const bool semanticOnly : {true, false}) {
+            try {
+                if (semanticOnly) ips::checkAsset(program, {{"child", partInfoOf(part.asset)}});
+                else (void)compileProgram(program, {{"child", &part}});
+                FAIL("invalid part argument was accepted");
+            } catch (const ips::SourceError& error) {
+                CHECK(error.message.find(test.message) != std::string::npos);
+                CHECK(error.stage == ips::DiagnosticStage::Typing);
+            }
+        }
+    }
+}
