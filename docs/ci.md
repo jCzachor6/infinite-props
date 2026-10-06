@@ -57,6 +57,14 @@ guarantee that a later remote change will not restore it. Preserve and compare
 its contents, remove only confirmed duplicates, and keep the packaging guard
 enabled; changing cloud settings is a separate checkout-management decision.
 
+The generated handbook directory is configurable independently of the native
+build directory. In a synchronized checkout, set
+`-DIPROP_LANGUAGE_DOCS_DIR=/absolute/path/outside/cloud/language-docs` when
+configuring CMake. Builds and SDK installation use that exact directory,
+keeping generated manifest ownership checks active. This avoids synchronization
+conflicts in generated documentation; source copies still require the checks
+above.
+
 Native builds with Python generate the complete handbook from `docs/language/`
 and `ipc --describe-language`. CTest compiles and executes all registered
 language examples, including expected failures, and requires successful
