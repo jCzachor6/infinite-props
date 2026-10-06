@@ -100,7 +100,8 @@ Its typed categories, stages and optional coordinate spaces are specified in
 [runtime-errors.md](runtime-errors.md). Presence bits distinguish unavailable
 locations from valid zero offsets/indices. The
 [checked load/query operations](c-api-checked.md) consume this foundation;
-structured generation is specified for P.5. Its call-local ErrorSink
+[checked generation](c-api-checked.md#checked-generation-generate_ex) uses the
+same boundary. Its call-local ErrorSink
 snapshots caller-owned message storage, performs no allocation while reporting,
 and preserves the descriptor's buffer/capacity inputs.
 

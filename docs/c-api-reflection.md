@@ -7,7 +7,8 @@ have their own capability. [Part tables and input signatures](c-api-parts.md)
 are separately advertised by `IPROP_CAP_PART_REFLECTION`. [Emission/format
 metadata](c-api-metadata.md) has its own capability. Implemented
 [root parameter handles](c-api-parameters.md) use `IPROP_CAP_PARAMETERS`;
-structured generation remains a separate task.
+[checked generation](c-api-checked.md#checked-generation-generate_ex) uses
+`IPROP_CAP_GENERATE_EX`.
 
 | Symbol | Output |
 | --- | --- |

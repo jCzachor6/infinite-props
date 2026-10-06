@@ -4,6 +4,7 @@
 #include "LegacyBoundary.hpp"
 #include "Operations.hpp"
 
+#include <array>
 #include <limits>
 #include <memory>
 
@@ -84,6 +85,38 @@ iprop_status iprop_generate(const iprop_program* program,
         *out_result = result.release();
         return iprop::capi::CallOutcome{};
     });
+}
+
+iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
+                                 const iprop_parameters* parameters, iprop_result** out_result,
+                                 iprop_error_ex* error) {
+    using namespace iprop::capi;
+    // These owners survive the guarded callable and every diagnostic catch.
+    std::unique_ptr<iprop_result> result;
+    ErrorContext context{iprop::ErrorStage::Arguments, program != nullptr ? program->data.get() : nullptr};
+    const std::array spans{ProtectedSpan{program, program != nullptr ? sizeof(*program) : 0},
+        ProtectedSpan{options, queryCapacity(options)},
+        ProtectedSpan{parameters, parameters != nullptr ? sizeof(*parameters) : 0},
+        ProtectedSpan{parameters != nullptr ? parameters->values.data() : nullptr,
+                      parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0}};
+    return checkedBoundary(error, out_result, sizeof(iprop_result*), context, [&] {
+        if (program == nullptr) return CallOutcome::argument("program is null");
+        if (out_result == nullptr) return CallOutcome::argument("out_result is null");
+        GenerateOptions request;
+        const auto checked = checkGenerationRequest(*program, options, parameters, request);
+        if (!checked.succeeded) return checked;
+        iprop::GenerationInputs inputs;
+        inputs.seed = request.seed;
+        inputs.variant = request.variant;
+        inputs.archetype = request.archetype;
+        inputs.sizeX = request.sizeX;
+        inputs.sizeY = request.sizeY;
+        result = std::make_unique<iprop_result>();
+        // Parameters are read only, by root-input ID; NULL selects defaults.
+        generateProgram(*program, inputs, *result, context, parameters);
+        *out_result = result.release();
+        return CallOutcome{};
+    }, spans);
 }
 
 void iprop_result_free(iprop_result* result) { delete result; }

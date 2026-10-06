@@ -184,10 +184,11 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 }
 
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
-                     iprop_result& result, ErrorContext& context) {
+                     iprop_result& result, ErrorContext& context,
+                     const iprop_parameters* parameters) {
     context.file = program.data.get();
     context.stage = ErrorStage::Arguments;
-    VM vm(*program.data, inputs);
+    VM vm = parameters != nullptr ? VM(*program.data, inputs, parameters->values) : VM(*program.data, inputs);
     context.stage = ErrorStage::Execute;
     vm.run();
     result.fuelBudget = vm.fuelBudget();

@@ -3,8 +3,9 @@
 API 0.3 provides the loaded executable's stored part table through checked
 queries. `IPROP_CAP_PART_REFLECTION` advertises these implemented operations.
 They do not execute the VM, reconstruct source import paths or grant host
-overrides of part inputs. Parameters and structured generation remain separate
-tasks.
+overrides of part inputs. Root parameters and
+[checked generation](c-api-checked.md#checked-generation-generate_ex) are
+documented separately.
 
 | Symbol | Output |
 | --- | --- |

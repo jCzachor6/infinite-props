@@ -13,7 +13,8 @@ namespace iprop::capi {
 void loadProgram(iprop_program& program, std::span<const uint8_t> bytes,
                  ErrorContext& context);
 CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs& inputs);
-// The one strict request check for new generation entries, before VM setup:
+// The one strict request check for new generation entries (generate_ex now,
+// a future generation context later), before VM setup:
 // options descriptor, then parameter-set identity (NULL means defaults), then
 // variant, archetype and target canvas through the VM's shared range check.
 // Every failure is an argument outcome with a stable reason; nothing is
@@ -26,8 +27,12 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 // and pixels move; typed payloads are packed field by field, then released.
 // The adapter owns the handle until every allocation succeeds.
 void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file);
+// Runs the shared VM. With a parameter set, its values are passed by root-input
+// ID and `inputs.uniforms` must be empty: names were resolved once, when the
+// values were set. Without one, the VM resolves `inputs.uniforms` by name.
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
-                     iprop_result& result, ErrorContext& context);
+                     iprop_result& result, ErrorContext& context,
+                     const iprop_parameters* parameters = nullptr);
 iprop_program_info_ex programInfo(const iprop_program& program) noexcept;
 iprop_meta legacyMeta(const iprop_program& program) noexcept;
 iprop_image resultImage(const iprop_result& result) noexcept;

@@ -344,6 +344,16 @@ ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 arc
 
 VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     : impl_(std::make_unique<Impl>(file)) {
+    setup(file, inputs, nullptr);
+}
+
+VM::VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues)
+    : impl_(std::make_unique<Impl>(file)) {
+    setup(file, inputs, &rootValues);
+}
+
+void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
+               const std::span<const UniformValue>* rootValues) {
     impl_->ex.budget = file.meta.fuel;
     impl_->ex.fuel = file.meta.fuel;
 
@@ -361,6 +371,9 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     // Target canvas and scale (spec §8.1), within the checked size cap.
     const u32 targetW = inputs.sizeX != 0 ? inputs.sizeX : file.meta.sizeX;
     const u32 targetH = inputs.sizeY != 0 ? inputs.sizeY : file.meta.sizeY;
+    if (rootValues != nullptr && (!inputs.uniforms.empty() || rootValues->size() != file.meta.inputs.size())) {
+        throw std::logic_error("resolved root values do not match the root declarations");
+    }
     impl_->ex.canvas.resize(targetW, targetH);
     impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
     impl_->ex.canvas.scaleY = static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY);
@@ -372,10 +385,26 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     root.locals.reserve(entry.params.size() + entry.locals.size());
     root.locals.push_back(Value(static_cast<i32>(inputs.variant)));
     root.locals.push_back(Value(static_cast<i32>(inputs.archetype)));
-    for (const auto& decl : file.meta.inputs) {
-        const auto& name = file.pool.strings[decl.nameIndex];
-        const auto found = inputs.uniforms.find(name);
-        if (found == inputs.uniforms.end()) {
+    for (std::size_t index = 0; index < file.meta.inputs.size(); ++index) {
+        const auto& decl = file.meta.inputs[index];
+        const UniformValue* value = nullptr;
+        if (rootValues != nullptr) {
+            // Resolved by ID upstream; the binary type is an invariant here.
+            value = &(*rootValues)[index];
+            if (value->type != decl.type) {
+                throw std::logic_error("resolved root value type differs from its declaration");
+            }
+        } else {
+            const auto& name = file.pool.strings[decl.nameIndex];
+            const auto found = inputs.uniforms.find(name);
+            if (found != inputs.uniforms.end()) {
+                if (found->second.type != decl.type) {
+                    throw Trap("uniform override type mismatch for '" + name + "'", ErrorReason::UniformType, ErrorStage::Arguments);
+                }
+                value = &found->second;
+            }
+        }
+        if (value == nullptr) {
             switch (decl.type) {
             case InputType::Color: root.locals.push_back(Value(decl.colorDefault)); break;
             case InputType::F32: root.locals.push_back(Value(decl.f32Default)); break;
@@ -384,14 +413,11 @@ VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
                 break;
             }
         } else {
-            if (found->second.type != decl.type) {
-                throw Trap("uniform override type mismatch for '" + name + "'", ErrorReason::UniformType, ErrorStage::Arguments);
-            }
             switch (decl.type) {
-            case InputType::Color: root.locals.push_back(Value(found->second.color)); break;
-            case InputType::F32: root.locals.push_back(Value(found->second.f)); break;
+            case InputType::Color: root.locals.push_back(Value(value->color)); break;
+            case InputType::F32: root.locals.push_back(Value(value->f)); break;
             case InputType::U32:
-                root.locals.push_back(Value(static_cast<i32>(found->second.u)));
+                root.locals.push_back(Value(static_cast<i32>(value->u)));
                 break;
             }
         }

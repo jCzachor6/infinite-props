@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -67,7 +68,14 @@ ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 arc
 // FormatError) with located messages on runtime violations.
 class VM {
 public:
+    // Root uniforms come from `inputs.uniforms`, looked up by declared name.
     VM(const LoadedFile& file, const GenerationInputs& inputs);
+    // Root uniforms already resolved by root-input ID: exactly one value per
+    // root declaration, in declaration order, each with its declared binary
+    // type (for example a validated C parameter set). No name is looked up;
+    // `inputs.uniforms` must be empty. A mismatch is a caller bug and throws
+    // std::logic_error after the host-argument checks.
+    VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues);
     ~VM();
 
     VM(VM&&) noexcept;
@@ -104,6 +112,9 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
+
+    void setup(const LoadedFile& file, const GenerationInputs& inputs,
+               const std::span<const UniformValue>* rootValues);
 };
 
 } // namespace iprop

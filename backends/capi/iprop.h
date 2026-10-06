@@ -200,6 +200,7 @@ typedef struct {
 #define IPROP_CAP_PARAMETERS (UINT64_C(1) << 10)
 #define IPROP_CAP_RESULT_STATISTICS (UINT64_C(1) << 11)
 #define IPROP_CAP_PARAMETER_OVERRIDES (UINT64_C(1) << 14)
+#define IPROP_CAP_GENERATE_EX (UINT64_C(1) << 15)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -438,7 +439,7 @@ IPROP_API iprop_status_ex iprop_program_input_find(const iprop_program* program,
  * program_free. IDs are root-input indices; part signature IDs do not grant
  * host overrides. Clones own independent values but share program identity.
  * A separate load, even of identical bytes, has a different identity, checked
- * by future generate_ex. This capability does not promise generation.
+ * by iprop_generate_ex. This capability alone does not promise generation.
  * A set is a single-user mutable builder. Every update is all-or-nothing: a
  * failed call changes no value. Clone takes an independent value snapshot;
  * generation only reads a const set. No set may be used by two threads at
@@ -642,11 +643,27 @@ IPROP_API iprop_status_ex iprop_result_stats_ex_init(iprop_result_stats_ex* out,
 IPROP_API iprop_status_ex iprop_result_query_stats(const iprop_result* result,
                                                  iprop_result_stats_ex* out, iprop_error_ex* error);
 
-/* generate_ex is planned for the validated-parameters stage; it has no symbol
- * or capability yet. Its options use iprop_generate_options_ex, with absent
- * scalar fields defaulting to zero and unknown flags rejected. It will accept
- * a compatible parameter handle (NULL means defaults), preserve old output
- * handles on failure, and use this same checked error/operation boundary. */
+/* Checked generation from validated parameters. program, options and
+ * out_result are required. parameters is optional: NULL selects the stored
+ * defaults, and a set must come from this program load (FOREIGN_PARAMETERS
+ * otherwise, even for identical bytes). options follow
+ * iprop_generate_options_ex: a four-byte prefix suffices, absent fields are
+ * zero and nonzero complete flags are rejected. Before any VM setup, invalid
+ * options, foreign parameters and VARIANT_RANGE/ARCHETYPE_RANGE/CANVAS_SIZE
+ * fail as E_ARGUMENT at ARGUMENTS stage. Parameter IDs, names, types and
+ * duplicates were enforced when the values were set; generation only reads
+ * the set, passing values by root-input ID without another name lookup. A VM
+ * trap is E_TRAP at EXECUTE stage with its location; allocation failure is
+ * E_OOM. Success publishes exactly one new, independent result and does not
+ * free a previous pointer in out_result; failure leaves out_result untouched.
+ * The result survives program_free, later parameter changes or free, and
+ * later generations. Error storage cannot overlap out_result, options, the
+ * program or parameter storage. Legacy iprop_generate keeps its own unknown,
+ * duplicate and type policy for named uniforms. */
+IPROP_API iprop_status_ex iprop_generate_ex(const iprop_program* program,
+                                          const iprop_generate_options_ex* options,
+                                          const iprop_parameters* parameters,
+                                          iprop_result** out_result, iprop_error_ex* error);
 
 #ifdef __cplusplus
 } /* extern "C" */

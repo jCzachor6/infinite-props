@@ -311,6 +311,25 @@ add_dependencies(capi_generation_request capi_golden)
 add_test(NAME capi_generation_request COMMAND capi_generation_request
     ${IPROP_CAPI_GOLDEN_DIR}/portrait.iprop)
 
+foreach(linkage shared static)
+    add_executable(capi_generate_ex_${linkage} test/generate_ex.c)
+    if(linkage STREQUAL "shared")
+        target_link_libraries(capi_generate_ex_${linkage} PRIVATE iprop_capi)
+    else()
+        target_link_libraries(capi_generate_ex_${linkage} PRIVATE iprop_capi_static)
+    endif()
+    iprop_warnings(capi_generate_ex_${linkage})
+    add_dependencies(capi_generate_ex_${linkage} capi_golden)
+    add_test(NAME capi_generate_ex_${linkage} COMMAND capi_generate_ex_${linkage} ${IPROP_CAPI_GOLDEN_DIR})
+endforeach()
+
+add_executable(capi_generate_ex_errors test/generate_ex_errors.cpp)
+target_link_libraries(capi_generate_ex_errors PRIVATE iprop_capi_static)
+iprop_warnings(capi_generate_ex_errors)
+add_dependencies(capi_generate_ex_errors capi_golden)
+add_test(NAME capi_generate_ex_errors COMMAND capi_generate_ex_errors
+    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${IPROP_CAPI_GOLDEN_DIR}/portrait.iprop)
+
 add_executable(capi_parameter_transactions test/parameter_transactions.cpp)
 target_link_libraries(capi_parameter_transactions PRIVATE iprop_capi_static)
 iprop_warnings(capi_parameter_transactions)

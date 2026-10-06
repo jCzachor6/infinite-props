@@ -151,7 +151,7 @@ The descriptor now accepts a caller-owned `message_buffer`/`message_capacity`
 and reports full `message_required_bytes` (excluding NUL) and truncation.
 The common error sink clears success and renders argument/OOM/runtime messages
 without allocating. Checked load/program/library queries now consume this
-policy; structured generation remains a parameters-stage task. See the
+policy, as does `iprop_generate_ex`. See the
 [implemented checked operations](../../docs/c-api-checked.md).
 
 The shared new-operation boundary distinguishes typed argument/setup errors,
@@ -188,8 +188,9 @@ get/set, clone and reset; see [parameter values](../../docs/c-api-parameters.md)
 `IPROP_CAP_PARAMETER_OVERRIDES` advertises strict override lists with an
 explicit element stride: unknown, duplicate, mistyped or malformed elements are
 rejected with stable reasons before any value changes.
-Typed convenience setters, structured generation and typed output value
-accessors receive capabilities only when implemented.
+`IPROP_CAP_GENERATE_EX` advertises checked generation from those validated
+parameters. Typed convenience setters and typed output value accessors receive
+capabilities only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.

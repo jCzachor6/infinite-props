@@ -10,8 +10,8 @@ It owns no memory and requires no free function.
 The [checked load and metadata queries](c-api-checked.md) consume this descriptor
 through the call-local error sink and advertise only those implemented
 capabilities. The existing six legacy C entry points keep their enums, layouts,
-status policies and located text. Structured generation is specified for the
-parameters stage, with no exported symbol or capability yet.
+status policies and located text. Checked generation, `iprop_generate_ex`,
+uses the same descriptor and policy.
 
 ## Causes and stages
 
@@ -42,7 +42,7 @@ invalid variant, retains `IPROP_E_TRAP` even though its typed stage is
 
 `backends/capi/ErrorBoundary.hpp` defines the shared policy for structured
 operations. Checked load/program/library queries use it through the storage
-adapter; structured generation remains a future task. Classification uses the
+adapter, as does `iprop_generate_ex`. Classification uses the
 exception type and its
 typed originating stage; it never infers a status from message text or a
 numeric cause range. A recognized typed failure retains its cause and location.

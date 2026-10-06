@@ -29,7 +29,8 @@ program descriptor, without another query function.
 [completed result statistics](c-api-statistics.md).
 `IPROP_CAP_PARAMETERS` separately advertises the implemented
 [root parameter handles and generic value operations](c-api-parameters.md).
-Structured generation remains planned; parameters do not enable it.
+`IPROP_CAP_GENERATE_EX` advertises
+[checked generation](#checked-generation-generate_ex) from those parameters.
 
 ## Load and publication
 
@@ -116,12 +117,11 @@ VM. The six legacy declarations/layouts remain unchanged; their nullability,
 unknown/duplicate uniform policy, setup traps, and untouched success/argument/
 OOM text retain their previous behavior.
 
-## Planned `generate_ex` contract
+## Checked generation (`generate_ex`)
 
-P.5 will implement the following entry point after validated parameters exist:
+`IPROP_CAP_GENERATE_EX` advertises:
 
 ```c
-/* Planned signature; no symbol, prototype or capability is exported yet. */
 iprop_status_ex iprop_generate_ex(const iprop_program *program,
                                  const iprop_generate_options_ex *options,
                                  const iprop_parameters *parameters,
@@ -131,28 +131,39 @@ iprop_status_ex iprop_generate_ex(const iprop_program *program,
 
 Program, options and result output are required. Options require a four-byte
 sized prefix; absent seed/variant/archetype/dimensions default to zero, with
-zero dimensions selecting source size. Unsupported complete flags are argument
-errors. Parameters are optional: NULL uses defaults; a supplied set must belong
-to compatible retained program data. Parameter IDs/names/types are validated
-before the VM, with strict unknown/duplicate/type rules rather than legacy
-uniform-array behavior. A parameter set is read only during generation.
+zero dimensions selecting source size. Parameters are optional: NULL uses the
+stored defaults, and a supplied set must come from the same program load.
 
-The strict request check already exists as one private validator,
-`checkGenerationRequest`, which P.5 will call; it has no public symbol yet.
-It rejects, in this order and before any VM setup or allocation: a NULL,
+One private validator, `checkGenerationRequest`, checks every new generation
+request and is meant for the future generation context as well. In this order
+and before any VM setup or allocation it rejects a NULL,
 shorter-than-four-byte or nonzero-flags options descriptor
 (`INVALID_ARGUMENT`); parameters from another program load
 (`FOREIGN_PARAMETERS`, even for identical bytes); then `VARIANT_RANGE`,
 `ARCHETYPE_RANGE` and `CANVAS_SIZE`. The ranges come from the same
 `checkGenerationArguments` the VM constructor uses, so each verdict equals the
-VM's own setup check. The new entry reports them as `E_ARGUMENT` at
-`ARGUMENTS` stage. Parameter IDs, names, types and duplicates were already
-enforced when the values were set, by single setters or
-[strict override lists](c-api-parameters.md#strict-override-lists). Legacy
-`iprop_generate` keeps its VM-setup `E_TRAP` for the same ranges.
+VM's own setup check. All are `E_ARGUMENT` at `ARGUMENTS` stage. Parameter
+IDs, names, types and duplicates were already enforced when the values were
+set, by single setters or
+[strict override lists](c-api-parameters.md#strict-override-lists).
 
-The entry point will use the same input model, VM and checked error boundary,
-publish one independent result on success, preserve the old output pointer on
-failure, and retain no caller options/error storage after return. Existing
-results remain valid after another generation or program/parameter destruction.
-This contract defines future behavior without enabling generation capability.
+Names are resolved to root-input IDs once, when values are set. Generation
+reads the const parameter set and passes its values to the VM by ID, in
+declaration order, through the VM's resolved-value constructor; no layer maps
+names again. Without parameters the VM uses the stored defaults. Legacy
+`iprop_generate` keeps its own named-uniform policy in the VM's name-based
+constructor: unknown names are ignored, the first duplicate wins, and a
+mistyped declared uniform, like an out-of-range variant, archetype or canvas,
+returns `E_TRAP`.
+
+An execution failure is `E_TRAP` at `EXECUTE` stage with its function/PC
+location, plus a debug line when available. Allocation failure is `E_OOM`; an
+unexpected exception is `E_INTERNAL`. Success publishes exactly one new result
+and does not free a previous pointer stored in `out_result`; any failure leaves
+`out_result` untouched and transfers no partial result. Error storage must not
+overlap `out_result`, the options, the program or parameter storage, and
+`out_result` must not overlap the options; such aliases fail without writes.
+The call retains no options, parameter or error storage. A result owns its data
+and remains valid after `program_free`, later parameter changes or release, and
+later generations. With equal seed, variant, archetype, size and values, the
+result is bit-identical to `iprop_generate`, including outputs and fuel.

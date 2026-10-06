@@ -2,7 +2,8 @@
 
 API 0.3 advertises `IPROP_CAP_PARAMETERS` for the operations below and
 `IPROP_CAP_PARAMETER_OVERRIDES` for strict override lists. Neither bit enables
-typed convenience setters or `generate_ex`.
+typed convenience setters; `IPROP_CAP_GENERATE_EX` advertises checked generation
+from a parameter set.
 Legacy `iprop_generate` still accepts its frozen named-uniform array and keeps
 its existing type, duplicate and unknown-name policies.
 
@@ -139,9 +140,9 @@ configurations, clone a base set and apply a list or setters to each clone.
 
 Generation only reads parameters. The request check of new generation entries
 takes `const iprop_parameters *` and leaves the handle and its values unchanged,
-whether it accepts or rejects the request; the planned `generate_ex` takes the
-same const handle. A result owns its data, so later parameter changes never
-alter it.
+whether it accepts or rejects the request. `iprop_generate_ex` takes the same
+const handle and passes its values to the VM by root-input ID. A result owns
+its data, so later parameter changes never alter it.
 
 A parameter set is a single-user builder, not a synchronized object. Never call
 functions on one set from two threads at the same time, and never mutate it
