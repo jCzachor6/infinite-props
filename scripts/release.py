@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 from release_common import (ROOT, api_version, committed_source, extract_archive, product_version,
-                            run, sha256, write_archive, write_checksums, write_json)
+                            require_no_source_copies, run, sha256, write_archive, write_checksums, write_json)
 from language_docs import verify as verify_documentation
 
 
@@ -48,6 +48,7 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=ROOT / "dist")
     parser.add_argument("--no-source", action="store_true", help="package only this platform's SDK")
     args = parser.parse_args()
+    require_no_source_copies()
     build = args.build_directory.resolve()
     cache = read_cache(build)
     if args.version != version or cache.get("CMAKE_PROJECT_VERSION") != version:

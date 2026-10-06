@@ -37,6 +37,15 @@ smoke tests there. `*-validation.json` binds those results to the source commit
 and the actual archive digests. Archive timestamps/ownership are normalized;
 executable permissions and relative library symlinks are preserved.
 
+Local packaging, including `release.py --check`, rejects untracked numbered
+siblings of tracked sources (for example `composition 2.md`) before running
+validation. It reports their paths and never deletes or ignores them. Preserve
+any separate edits outside the checkout before removing a copy; Git history
+can establish whether its contents are an older version. These names can also
+be created by tools outside the packaging scripts. Archive extraction requires
+a new or empty directory and refuses to merge a package into an existing
+source checkout or previously extracted SDK.
+
 Native builds with Python generate the complete handbook from `docs/language/`
 and `ipc --describe-language`. CTest compiles and executes all registered
 language examples, including expected failures, and requires successful

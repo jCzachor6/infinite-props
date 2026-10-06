@@ -29,7 +29,34 @@ def api_version(root=ROOT):
                     for part in ("MAJOR", "MINOR"))
 
 
+def source_conflict_copies(root=ROOT):
+    """Identify untracked numbered siblings of tracked files, without deleting them."""
+    def names(*options):
+        output = subprocess.check_output(["git", "ls-files", "-z", *options], cwd=root)
+        return {name for name in output.decode("utf-8", errors="surrogateescape").split("\0") if name}
+
+    tracked = names()
+    copies = []
+    for name in names("--others", "--exclude-standard"):
+        path = Path(name)
+        match = re.fullmatch(r"(.+) ([2-9]|[1-9][0-9]+)(\.[^.]*)?", path.name)
+        if match:
+            canonical = path.with_name(match[1] + (match[3] or "")).as_posix()
+            if canonical in tracked:
+                copies.append(name)
+    return sorted(copies)
+
+
+def require_no_source_copies(root=ROOT):
+    copies = source_conflict_copies(root)
+    if copies:
+        raise RuntimeError("Numbered source copies detected: " + ", ".join(copies) +
+                           ". Preserve or remove these untracked copies outside the checkout "
+                           "before release validation; packaging never deletes source files.")
+
+
 def committed_source():
+    require_no_source_copies()
     if run("git", "status", "--porcelain", capture=True):
         raise RuntimeError("Commit the source changes before packaging the HEAD source archive")
     return run("git", "rev-parse", "HEAD", capture=True)
@@ -66,6 +93,10 @@ def write_archive(directory, destination):
 
 
 def extract_archive(archive_path, destination):
+    destination = Path(destination)
+    if destination.is_symlink() or (destination.exists() and
+            (not destination.is_dir() or any(destination.iterdir()))):
+        raise RuntimeError("Archive extraction requires a new or empty directory: " + str(destination))
     with tarfile.open(archive_path, "r:gz") as archive:
         archive.extractall(destination, filter="data")
 
