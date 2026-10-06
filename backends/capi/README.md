@@ -180,6 +180,9 @@ signatures; see [part geometry and signatures](../../docs/c-api-parts.md).
 `IPROP_CAP_METADATA_EXTENDED` advertises appended emission and physical
 container fields in the existing program descriptor; see
 [extended metadata](../../docs/c-api-metadata.md).
+`IPROP_CAP_RESULT_STATISTICS` advertises the sized completed-result query for
+VM fuel, owned pixel bytes and output element count; see
+[result statistics](../../docs/c-api-statistics.md).
 Parameters, structured generation and typed output
 value accessors receive capability bits only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not

@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -66,6 +66,7 @@ foreach(linkage shared static)
     add_executable(capi_metadata_${linkage} test/metadata.c)
     add_executable(capi_program_info_old_${linkage} test/program_info_old_client.c)
     add_executable(capi_library_${linkage} test/library.c)
+    add_executable(capi_stats_${linkage} test/stats.c)
     if(linkage STREQUAL "shared")
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi)
@@ -76,6 +77,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_program_info_old_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi)
     else()
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi_static)
@@ -86,6 +88,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_program_info_old_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi_static)
     endif()
     target_compile_definitions(capi_library_${linkage} PRIVATE
         IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -100,6 +103,7 @@ foreach(linkage shared static)
     iprop_warnings(capi_parts_${linkage})
     iprop_warnings(capi_metadata_${linkage})
     iprop_warnings(capi_program_info_old_${linkage})
+    iprop_warnings(capi_stats_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
@@ -227,6 +231,10 @@ foreach(linkage shared static)
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-compressed.iprop)
     add_test(NAME capi_program_info_old_${linkage} COMMAND capi_program_info_old_${linkage}
         ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
+    add_dependencies(capi_stats_${linkage} capi_golden)
+    add_test(NAME capi_stats_${linkage} COMMAND capi_stats_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
 endforeach()
 
 add_executable(capi_conformance
@@ -271,6 +279,16 @@ add_executable(capi_result_storage test/result_storage.cpp)
 target_link_libraries(capi_result_storage PRIVATE iprop_capi_static)
 iprop_warnings(capi_result_storage)
 add_test(NAME capi_result_storage COMMAND capi_result_storage)
+
+add_executable(capi_stats_oracle test/stats_oracle.cpp)
+target_link_libraries(capi_stats_oracle PRIVATE iprop_capi_static)
+iprop_warnings(capi_stats_oracle)
+add_dependencies(capi_stats_oracle capi_golden)
+add_test(NAME capi_stats_oracle COMMAND capi_stats_oracle
+    ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
+    ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop
+    ${owner_fixture} ${IPROP_CAPI_GOLDEN_DIR}/language.iprop
+    ${IPROP_CAPI_GOLDEN_DIR}/parts.iprop)
 
     add_test(NAME capi_conformance
         COMMAND capi_conformance

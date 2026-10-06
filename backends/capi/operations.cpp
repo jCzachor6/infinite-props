@@ -158,6 +158,8 @@ void generateProgram(const iprop_program& program, const GenerationInputs& input
     VM vm(program.file, inputs);
     context.stage = ErrorStage::Execute;
     vm.run();
+    result.fuelBudget = vm.fuelBudget();
+    result.fuelRemaining = vm.fuel();
     packResult(result, vm.takeResult(), program.file);
 }
 

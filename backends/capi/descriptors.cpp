@@ -6,6 +6,17 @@
 
 extern "C" {
 
+iprop_status_ex iprop_result_stats_ex_init(iprop_result_stats_ex* out, uint32_t capacity) {
+    if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
+    iprop::capi::writeField(out, capacity, 0, capacity);
+    const iprop_result_stats_ex defaults{};
+#define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_result_stats_ex, field), defaults.field)
+    ZERO(flags); ZERO(fuel_budget); ZERO(fuel_remaining); ZERO(fuel_used);
+    ZERO(image_byte_count); ZERO(output_element_count);
+#undef ZERO
+    return IPROP_EX_OK;
+}
+
 iprop_status_ex iprop_part_info_ex_init(iprop_part_info_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     iprop::capi::writeField(out, capacity, 0, capacity);

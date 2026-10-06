@@ -197,6 +197,8 @@ typedef struct {
 #define IPROP_CAP_OUTPUT_DECLARATIONS (UINT64_C(1) << 7)
 #define IPROP_CAP_PART_REFLECTION (UINT64_C(1) << 8)
 #define IPROP_CAP_METADATA_EXTENDED (UINT64_C(1) << 9)
+/* Bit 10 is reserved for the separately introduced parameters capability. */
+#define IPROP_CAP_RESULT_STATISTICS (UINT64_C(1) << 11)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -511,6 +513,32 @@ IPROP_API iprop_status_ex iprop_program_part_input_get(const iprop_program* prog
 IPROP_API iprop_status_ex iprop_program_part_input_find(const iprop_program* program, uint32_t part_index,
                                                       iprop_utf8_view name, uint32_t* out_index,
                                                       iprop_error_ex* error);
+
+/* Copies statistics from a completed result, without executing or allocating.
+ * struct_size/flags are input: minimum four bytes, absent flags zero; any
+ * nonzero complete flags field is E_ARGUMENT. Complete scalar outputs only;
+ * size/flags, padding, partial fields and unknown tail remain untouched.
+ * fuel_budget/remaining come from the existing VM counters at completion;
+ * used = budget - remaining. These are fuel units, not instructions or time.
+ * image_byte_count is owned RGBA8 pixel storage, excluding metadata/outputs.
+ * output_element_count sums all generated values across root/part slots;
+ * empty/unset slots add zero, singular values one, lists their element count.
+ * Copies remain valid independently of the result. Required result/out must
+ * be non-null. Failure preserves out; optional errors use the checked policy.
+ * A result and all its views survive program_free and later generations. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint64_t fuel_budget;
+    uint64_t fuel_remaining;
+    uint64_t fuel_used;
+    uint64_t image_byte_count;
+    uint64_t output_element_count;
+} iprop_result_stats_ex;
+
+IPROP_API iprop_status_ex iprop_result_stats_ex_init(iprop_result_stats_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_result_query_stats(const iprop_result* result,
+                                                 iprop_result_stats_ex* out, iprop_error_ex* error);
 
 /* generate_ex is planned for the validated-parameters stage; it has no symbol
  * or capability yet. Its options use iprop_generate_options_ex, with absent

@@ -146,8 +146,12 @@ An absent name is distinct from a present empty name. See
 version/flags to the sized program query. The frozen legacy metadata record
 is unchanged. See [extended metadata](../c-api-metadata.md).
 
-Root parameter handles, new checked generated-value accessors and generation
-statistics remain planned. Optimization
+`IPROP_CAP_RESULT_STATISTICS` exposes existing VM fuel counters, image bytes
+and generated output element count through a sized result query. See
+[result statistics](../c-api-statistics.md).
+
+Root parameter handles and new checked generated-value accessors remain
+planned. Optimization
 level selection also remains planned; the existing production optimizer and
 `--no-opt` are available. Do not infer those planned capabilities from the API
 feature version. Query the actual loaded library's capability bits.

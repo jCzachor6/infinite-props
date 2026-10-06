@@ -8,6 +8,8 @@ These API 0.3 operations are implemented on the frozen ABI line 0.4:
 | `iprop_program_query` | Copies size, origin, variant/archetype counts, fuel and advertised extended metadata |
 | `iprop_program_info_ex_init` | Initializes the sized program metadata output with the caller's capacity |
 | `iprop_library_query_ex` | Existing library-version/capability query with optional structured error output |
+| `iprop_result_query_stats` | Copies completed VM fuel, pixel bytes and output element counts |
+| `iprop_result_stats_ex_init` | Initializes a sized result statistics descriptor |
 
 `iprop_library_query` advertises `IPROP_CAP_PROGRAM_LOAD_EX`,
 `IPROP_CAP_PROGRAM_QUERY`, `IPROP_CAP_STRUCTURED_ERRORS` and
@@ -23,6 +25,8 @@ negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
 `IPROP_CAP_METADATA_EXTENDED` advertises appended
 [emission and physical container fields](c-api-metadata.md) in the existing
 program descriptor, without another query function.
+`IPROP_CAP_RESULT_STATISTICS` separately advertises
+[completed result statistics](c-api-statistics.md).
 
 ## Load and publication
 

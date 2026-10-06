@@ -17,4 +17,6 @@ struct iprop_result {
     std::vector<std::string> names;
     std::vector<float> packed;
     std::vector<iprop_output> outputs;
+    uint64_t fuelBudget = 0;
+    uint64_t fuelRemaining = 0;
 };
