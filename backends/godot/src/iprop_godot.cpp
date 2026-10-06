@@ -72,8 +72,22 @@ Error IpropAsset::load_file(const String& path) {
             String::utf8(error[0] != '\0' ? error : "unknown error"));
         return ERR_INVALID_DATA;
     }
-    iprop_meta meta;
-    iprop_program_meta(candidate, &meta);
+    iprop_program_info_ex meta;
+    iprop_error_ex query_error;
+    const bool initialized =
+        iprop_program_info_ex_init(&meta, sizeof(meta)) == IPROP_EX_OK &&
+        iprop_error_ex_init(&query_error, sizeof(query_error)) == IPROP_EX_OK;
+    if (initialized) {
+        query_error.message_buffer = error;
+        query_error.message_capacity = sizeof(error);
+    }
+    if (!initialized || iprop_program_query(candidate, &meta, &query_error) != IPROP_EX_OK) {
+        iprop_program_free(candidate);
+        UtilityFunctions::printerr(
+            "iprop: metadata query failed: ",
+            String::utf8(initialized && error[0] != '\0' ? error : "unknown error"));
+        return ERR_INVALID_DATA;
+    }
     iprop_program_free(program_);
     program_ = candidate;
     outputs_.clear();

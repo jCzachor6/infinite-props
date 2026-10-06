@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -44,6 +44,17 @@ foreach(target iprop_capi iprop_capi_static)
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
 
+# A real C99 host example, built against both forms of the installed C ABI.
+foreach(linkage shared static)
+    add_executable(parameter_panel_${linkage} ${CMAKE_SOURCE_DIR}/examples/c/parameter_panel.c)
+    if(linkage STREQUAL "shared")
+        target_link_libraries(parameter_panel_${linkage} PRIVATE iprop_capi)
+    else()
+        target_link_libraries(parameter_panel_${linkage} PRIVATE iprop_capi_static)
+    endif()
+    iprop_warnings(parameter_panel_${linkage})
+endforeach()
+
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a
 # C-only executable and compared against the committed golden PNGs.
@@ -66,6 +77,7 @@ foreach(linkage shared static)
     add_executable(capi_metadata_${linkage} test/metadata.c)
     add_executable(capi_program_info_old_${linkage} test/program_info_old_client.c)
     add_executable(capi_parameters_${linkage} test/parameters.c)
+    add_executable(capi_parameter_setters_${linkage} test/parameter_setters.c)
     add_executable(capi_parameter_overrides_${linkage} test/parameter_overrides.c)
     add_executable(capi_library_${linkage} test/library.c)
     add_executable(capi_stats_${linkage} test/stats.c)
@@ -79,6 +91,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_program_info_old_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_parameters_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_parameter_setters_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_parameter_overrides_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi)
@@ -92,6 +105,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_program_info_old_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_parameters_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_parameter_setters_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_parameter_overrides_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi_static)
@@ -111,12 +125,30 @@ foreach(linkage shared static)
     iprop_warnings(capi_program_info_old_${linkage})
     iprop_warnings(capi_stats_${linkage})
     iprop_warnings(capi_parameters_${linkage})
+    iprop_warnings(capi_parameter_setters_${linkage})
     iprop_warnings(capi_parameter_overrides_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
 set(IPROP_CAPI_GOLDEN_DIR ${CMAKE_BINARY_DIR}/capi-golden)
 file(MAKE_DIRECTORY ${IPROP_CAPI_GOLDEN_DIR})
+
+set(image_fixture ${IPROP_CAPI_GOLDEN_DIR}/image-view.iprop)
+add_custom_command(OUTPUT ${image_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/image-view.ips -o ${image_fixture}
+    DEPENDS ipc test/image-view.ips)
+add_custom_target(capi_image_fixture DEPENDS ${image_fixture})
+foreach(linkage shared static)
+    add_executable(capi_image_view_${linkage} test/image_view.c)
+    if(linkage STREQUAL "shared")
+        target_link_libraries(capi_image_view_${linkage} PRIVATE iprop_capi)
+    else()
+        target_link_libraries(capi_image_view_${linkage} PRIVATE iprop_capi_static)
+    endif()
+    iprop_warnings(capi_image_view_${linkage})
+    add_dependencies(capi_image_view_${linkage} capi_image_fixture)
+    add_test(NAME capi_image_view_${linkage} COMMAND capi_image_view_${linkage} ${image_fixture})
+endforeach()
 
 set(IPROP_CAPI_SOURCES
     ${CMAKE_SOURCE_DIR}/examples/portrait.ipa
@@ -179,6 +211,15 @@ foreach(linkage shared static)
     add_test(NAME capi_reflection_${linkage} COMMAND capi_reflection_${linkage}
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
+    add_dependencies(parameter_panel_${linkage} capi_golden)
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME capi_parameter_panel_${linkage}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_parameter_panel.py
+                $<TARGET_FILE:parameter_panel_${linkage}>
+                ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
+                ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop
+                ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
+    endif()
 endforeach()
 
 foreach(encoding plain debug compressed)
@@ -247,6 +288,9 @@ foreach(linkage shared static)
     add_test(NAME capi_parameters_${linkage} COMMAND capi_parameters_${linkage}
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
+    add_dependencies(capi_parameter_setters_${linkage} capi_golden)
+    add_test(NAME capi_parameter_setters_${linkage} COMMAND capi_parameter_setters_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)
     add_dependencies(capi_parameter_overrides_${linkage} capi_golden)
     add_test(NAME capi_parameter_overrides_${linkage} COMMAND capi_parameter_overrides_${linkage}
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)

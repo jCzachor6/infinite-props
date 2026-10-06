@@ -1,9 +1,9 @@
 # Retained root parameters
 
-API 0.3 advertises `IPROP_CAP_PARAMETERS` for the operations below and
-`IPROP_CAP_PARAMETER_OVERRIDES` for strict override lists. Neither bit enables
-typed convenience setters; `IPROP_CAP_GENERATE_EX` advertises checked generation
-from a parameter set.
+API 0.3 advertises `IPROP_CAP_PARAMETERS` for the generic operations below.
+Typed setters have the separate `IPROP_CAP_PARAMETERS_TYPED` capability and
+strict override lists `IPROP_CAP_PARAMETER_OVERRIDES`. `IPROP_CAP_GENERATE_EX`
+advertises checked generation from a parameter set.
 Legacy `iprop_generate` still accepts its frozen named-uniform array and keeps
 its existing type, duplicate and unknown-name policies.
 
@@ -18,7 +18,6 @@ its existing type, duplicate and unknown-name policies.
 | `iprop_parameter_value_ex_init` | Initializes complete descriptor fields using the caller's capacity |
 | `iprop_parameters_set_overrides` | Validates a whole override list, then replaces exactly its values |
 | `iprop_parameter_override_ex_init` | Initializes one list element using the caller's capacity |
-
 
 IDs are indices in the stored root-input declaration order, as returned by
 [root-input reflection](c-api-reflection.md). Part signature indices are local
@@ -68,6 +67,30 @@ Inactive fields are not read and may be absent or contain arbitrary bytes.
 The type must exactly match the root declaration. All operations copy F32
 representations, preserving negative zero, NaN payloads and other binary32
 bits; stored defaults and U32 values are likewise copied exactly.
+
+## Typed setters
+
+`IPROP_CAP_PARAMETERS_TYPED` advertises eight convenience entry points:
+`iprop_parameters_set_f32`, `iprop_parameters_set_u32`,
+`iprop_parameters_set_i32`, `iprop_parameters_set_color`, and the corresponding
+`iprop_parameters_set_f32_named`, `iprop_parameters_set_u32_named`,
+`iprop_parameters_set_i32_named`, `iprop_parameters_set_color_named` functions.
+Each takes the scalar or RGBA8 value directly; callers do not build a descriptor
+or initialize inactive fields. ID setters use resolved root-input IDs. Named
+setters resolve one exact byte-counted UTF-8 view per call, including embedded
+NUL; they share the generic lookup and validation.
+
+F32 values preserve their passed binary32 representation. The I32 convenience
+copies the signed argument's 32 bits into a U32 active field with no arithmetic
+conversion or new binary tag. It works on stored U32 declarations, whether the
+original source spelling was `i32` or `u32`; it does not infer signedness or add
+a range check. Color copies all four RGBA8 channels, including alpha.
+
+Each wrapper constructs the minimal 16/20/24-byte active prefix and calls the
+existing generic setter once. Unsupported declaration types, null handles,
+unknown IDs/names and malformed names retain the same argument reasons and
+transaction/error policy below. These wrappers allocate nothing and add no
+generation, bulk override or concurrency capability.
 
 ## Strict override lists
 

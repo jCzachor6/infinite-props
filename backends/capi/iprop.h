@@ -199,6 +199,8 @@ typedef struct {
 #define IPROP_CAP_METADATA_EXTENDED (UINT64_C(1) << 9)
 #define IPROP_CAP_PARAMETERS (UINT64_C(1) << 10)
 #define IPROP_CAP_RESULT_STATISTICS (UINT64_C(1) << 11)
+#define IPROP_CAP_IMAGE_VIEW (UINT64_C(1) << 12)
+#define IPROP_CAP_PARAMETERS_TYPED (UINT64_C(1) << 13)
 #define IPROP_CAP_PARAMETER_OVERRIDES (UINT64_C(1) << 14)
 #define IPROP_CAP_GENERATE_EX (UINT64_C(1) << 15)
 
@@ -406,8 +408,9 @@ typedef uint32_t iprop_input_type;
  * fields are outputs. Queries preserve size/flags, padding, partial fields
  * and unknown tail. name.data and name.byte_count are bounded independently;
  * inspect both only when both fields fit. The UTF-8 view includes embedded
- * NUL bytes and belongs to the program until program_free. input_index is
- * local to the selected collection of this load. Part-input indices identify
+ * NUL bytes and belongs to the program until program_free. Retaining parameter
+ * handles does not extend this public view lifetime; copy names when needed.
+ * input_index is local to the selected collection of this load. Part-input indices identify
  * part signature entries; root parameters use root-input indices. Resolve
  * indices again for each load/compilation. The matching
  * default field is exact (including f32 bits); inactive defaults are zero. */
@@ -478,6 +481,28 @@ IPROP_API iprop_status_ex iprop_parameters_set(iprop_parameters* parameters, uin
                                               const iprop_parameter_value_ex* value, iprop_error_ex* error);
 IPROP_API iprop_status_ex iprop_parameters_set_named(iprop_parameters* parameters, iprop_utf8_view name,
                                                     const iprop_parameter_value_ex* value, iprop_error_ex* error);
+/* Typed conveniences reuse the generic setter's exact declaration check and
+ * transaction/error policy. Named variants resolve the exact UTF-8 view once.
+ * F32 bits are copied without arithmetic. I32 is a representation helper for
+ * stored U32 declarations, including source i32: it copies all 32 bits and adds
+ * no binary type tag, signedness inference, coercion or range restriction.
+ * Values are passed by value; callers need no descriptor/inactive fields. */
+IPROP_API iprop_status_ex iprop_parameters_set_f32(iprop_parameters* parameters, uint32_t input_id,
+                                                 float value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_u32(iprop_parameters* parameters, uint32_t input_id,
+                                                 uint32_t value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_i32(iprop_parameters* parameters, uint32_t input_id,
+                                                 int32_t value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_color(iprop_parameters* parameters, uint32_t input_id,
+                                                   iprop_color_rgba8 value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_f32_named(iprop_parameters* parameters, iprop_utf8_view name,
+                                                       float value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_u32_named(iprop_parameters* parameters, iprop_utf8_view name,
+                                                       uint32_t value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_i32_named(iprop_parameters* parameters, iprop_utf8_view name,
+                                                       int32_t value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_color_named(iprop_parameters* parameters, iprop_utf8_view name,
+                                                         iprop_color_rgba8 value, iprop_error_ex* error);
 /* Optional errors follow the checked policy. Failed create/clone preserve an
  * existing out handle; success publishes one without freeing the old pointer.
  * Failed get preserves output; failed set/reset preserve all values. Error
@@ -642,6 +667,51 @@ typedef struct {
 IPROP_API iprop_status_ex iprop_result_stats_ex_init(iprop_result_stats_ex* out, uint32_t capacity);
 IPROP_API iprop_status_ex iprop_result_query_stats(const iprop_result* result,
                                                  iprop_result_stats_ex* out, iprop_error_ex* error);
+
+/* Fixed-width image tags, separate from any ABI-sized enum. */
+typedef uint32_t iprop_pixel_format;
+#define IPROP_PIXEL_FORMAT_RGBA8 UINT32_C(1)
+typedef uint32_t iprop_image_alpha_mode;
+#define IPROP_IMAGE_ALPHA_LEGACY_DESTINATION UINT32_C(1)
+typedef uint32_t iprop_image_origin;
+#define IPROP_IMAGE_ORIGIN_TOP_LEFT UINT32_C(1)
+
+/* Borrowed generated pixel storage; no allocation, copy or conversion.
+ * struct_size/flags are input: minimum four bytes, absent flags zero; any
+ * nonzero complete flags field is E_ARGUMENT. Other complete fields are
+ * outputs; size/flags, padding, partial fields and unknown tail are preserved.
+ * width/height are the actual generated canvas dimensions (including size
+ * overrides), not source metadata. byte_count counts owned pixel bytes;
+ * row_stride is tight width*4 bytes, without row padding. Pixel format RGBA8
+ * means exact channel byte order R,G,B,A, one byte per channel.
+ * TOP_LEFT means row zero at the top with x rightward and y downward; this
+ * storage origin is independent of the asset's declared geometric origin.
+ * LEGACY_DESTINATION names the frozen compositor: an alpha-255 source
+ * replaces all RGBA bytes; otherwise each RGB channel becomes
+ * (src.channel*src.a + dst.channel*(255-src.a))/255 with integer truncation,
+ * while destination alpha stays unchanged. The canvas starts at RGBA 0.
+ * This is neither standard straight-alpha nor premultiplied-alpha blending;
+ * RGB can be nonzero when stored alpha is zero. No alpha conversion occurs.
+ * pixels equals the legacy iprop_result_image pointer, owned by result until
+ * result_free; do not write/free it. It survives program_free and later
+ * generations. Inspect a returned field only when its whole field fits.
+ * Required result/out must be non-null. Failure preserves out; optional error
+ * descriptors/messages follow the same checked bounds and overlap policy. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t width, height;
+    uint64_t byte_count;
+    uint64_t row_stride;
+    iprop_pixel_format pixel_format;
+    iprop_image_alpha_mode alpha_mode;
+    iprop_image_origin origin;
+    const uint8_t* pixels;
+} iprop_image_view_ex;
+
+IPROP_API iprop_status_ex iprop_image_view_ex_init(iprop_image_view_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_result_query_image(const iprop_result* result,
+                                                 iprop_image_view_ex* out, iprop_error_ex* error);
 
 /* Checked generation from validated parameters. program, options and
  * out_result are required. parameters is optional: NULL selects the stored

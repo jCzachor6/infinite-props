@@ -154,6 +154,11 @@ is unchanged. See [extended metadata](../c-api-metadata.md).
 and generated output element count through a sized result query. See
 [result statistics](../c-api-statistics.md).
 
+`IPROP_CAP_IMAGE_VIEW` exposes sized borrowed pixel views with actual dimensions,
+byte count, tight stride, format and explicit storage origin/legacy alpha mode.
+Its pointer and bytes are identical to `iprop_result_image` and remain owned by
+the result. See [image views](../c-api-images.md).
+
 Root parameter handles and new checked generated-value accessors remain
 planned. Optimization
 level selection also remains planned; the existing production optimizer and

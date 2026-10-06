@@ -155,10 +155,31 @@ func _init() -> void:
 	if lifecycle.load_file(args[0] + "/shapes.iprop") != OK or sprite.texture == null:
 		failures += 1
 	var old_size: Vector2i = lifecycle.size
+	var old_metadata := [lifecycle.size, lifecycle.origin, lifecycle.variants,
+		lifecycle.archetypes, lifecycle.fuel]
+	var old_texture := sprite.texture
+	var old_outputs: Dictionary = lifecycle.outputs.duplicate(true)
 	if lifecycle.load_file(args[0] + "/missing.iprop") != ERR_FILE_NOT_FOUND \
 			or not lifecycle.is_loaded() or lifecycle.size != old_size or sprite.texture == null:
 		failures += 1
 		printerr("FAIL transactional asset reload")
+	# A failed decode also preserves the loaded handle, queried metadata and
+	# previously published generation, without notifying sprite users.
+	var invalid_path := "user://iprop-conformance-invalid.iprop"
+	var invalid_file := FileAccess.open(invalid_path, FileAccess.WRITE)
+	if invalid_file == null:
+		failures += 1
+	else:
+		invalid_file.store_buffer(PackedByteArray([1, 2, 3, 4]))
+		invalid_file.close()
+		if lifecycle.load_file(invalid_path) != ERR_INVALID_DATA \
+				or not lifecycle.is_loaded() or sprite.texture != old_texture \
+				or lifecycle.outputs != old_outputs \
+				or [lifecycle.size, lifecycle.origin, lifecycle.variants,
+					lifecycle.archetypes, lifecycle.fuel] != old_metadata:
+			failures += 1
+			printerr("FAIL invalid binary reload replaced loaded asset")
+		DirAccess.remove_absolute(invalid_path)
 	sprite.variant = 99
 	if sprite.texture != null or not lifecycle.outputs.is_empty():
 		failures += 1

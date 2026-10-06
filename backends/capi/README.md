@@ -56,6 +56,39 @@ When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
 prefix in `CMAKE_PREFIX_PATH` for both the library and external consumers.
 This also recognizes the `zs`/`zsd` names used by zlib 1.3.2 on Windows.
 
+## C99 parameter panel example
+
+[`examples/c/parameter_panel.c`](../../examples/c/parameter_panel.c) builds a
+host-owned model from root-input reflection. Rows keep the resolved root ID,
+stored type, exact default bits and a copy of every name byte. The example
+frees the program before printing those rows. Empty names and embedded NUL
+are preserved; names are displayed as hex with a byte count. Source `i32`
+aliases appear as U32 bit patterns. The schema supplies no UI ranges or
+recoverable signed source type. Borrowed program views expire at
+`iprop_program_free`, even if a parameter handle retains internal program data.
+
+The source and its standalone CMake project ship in `share/iprop/examples/c`
+in the installed SDK. Build it from a relocated SDK, compile a real source
+fixture and inspect both panel models (`SDK` is the relocated prefix):
+
+```sh
+cmake -S "$SDK/share/iprop/examples/c" -B panel-build -DCMAKE_PREFIX_PATH="$SDK"
+cmake --build panel-build --config Release
+"$SDK/bin/ipc" "$SDK/share/iprop/examples/recipes/24-uniform-emblem.ips" -o panel.iprop
+./panel-build/parameter_panel_shared panel.iprop
+./panel-build/parameter_panel_static panel.iprop
+```
+
+With a multi-configuration generator the executables are under
+`panel-build/Release`; Windows shared execution also needs the SDK's `bin`
+directory in `PATH`. The static target propagates `IPROP_CAPI_STATIC` and its
+runtime dependencies. These examples reflect declarations without generating
+an image or constructing parameter handles.
+
+The standalone project uses `find_package(iprop 0.4 CONFIG REQUIRED)` and
+links `iprop::capi` / `iprop::capi_static`; the static executable selects the
+C++ linker, while its source is still compiled as C99.
+
 ## The surface
 
 `iprop.h` is the whole contract — C99, no C++ in the ABI:
@@ -73,6 +106,11 @@ This also recognizes the `zs`/`zsd` names used by zlib 1.3.2 on Windows.
   packed float values and owner, in the global slot order of spec §4.3).
   `owner == 0` identifies the root; `owner == N+1` identifies part N.
 - `iprop_program_free` / `iprop_result_free`.
+- `iprop_image_view_ex_init` / `iprop_result_query_image` — sized borrowed
+  image storage under `IPROP_CAP_IMAGE_VIEW`, with actual dimensions, byte
+  count, tight row stride, RGBA8 format and explicit top-left/legacy alpha
+  semantics. The pointer and bytes match the unchanged legacy image view.
+  See [image views](../../docs/c-api-images.md).
 
 Every pointer the host receives (pixels, output names, values) is borrowed
 from the result handle and valid until `iprop_result_free`; the host never
@@ -185,12 +223,14 @@ VM fuel, owned pixel bytes and output element count; see
 [result statistics](../../docs/c-api-statistics.md).
 `IPROP_CAP_PARAMETERS` advertises retained root parameter handles with generic
 get/set, clone and reset; see [parameter values](../../docs/c-api-parameters.md).
+`IPROP_CAP_PARAMETERS_TYPED` separately advertises scalar/RGBA8 setters by
+resolved ID or exact UTF-8 name, including the U32 bit helper for signed i32.
 `IPROP_CAP_PARAMETER_OVERRIDES` advertises strict override lists with an
 explicit element stride: unknown, duplicate, mistyped or malformed elements are
 rejected with stable reasons before any value changes.
 `IPROP_CAP_GENERATE_EX` advertises checked generation from those validated
-parameters. Typed convenience setters and typed output value accessors receive
-capabilities only when implemented.
+parameters. Typed output value accessors receive capabilities only when
+implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.

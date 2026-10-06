@@ -72,6 +72,12 @@ templates are not included in the native package.
   the previous program and metadata together. Generation arguments must be
   integers in `0..4294967295`.
 
+Loading still uses the legacy C entry point. Before publishing its candidate,
+the resource copies metadata through `iprop_program_info_ex_init` and
+`iprop_program_query`. A failed metadata query frees that candidate and keeps
+the previous program, metadata and generated outputs. No borrowed program
+view is retained by the resource.
+
 ## The demo (8.3)
 
 `build/godot-project/` opens in the editor or runs directly:

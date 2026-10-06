@@ -27,6 +27,8 @@ Without SFML the backend is skipped gracefully. This produces:
 
 - Loads the `.iprop` through the C API and draws the generated RGBA
   (nearest-neighbour, fitted and centered in the 640×640 window).
+- Copies metadata through `iprop_program_info_ex_init` and
+  `iprop_program_query`; load and generation retain their legacy entry points.
 - **Left/Right** cycle the seed; **Up/Down** cycle the variant (wrapped at
   the meta's `variants`).
 - **A** toggles the atlas view: a 4×4 grid of variants (rows) × seeds

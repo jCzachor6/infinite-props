@@ -47,6 +47,9 @@ Returned name storage is immutable and belongs to the program. It remains
 valid through subsequent reflection/generation calls until `iprop_program_free`.
 It must not be written to or freed. Loading copies caller bytes; destroying
 the caller's input buffer does not invalidate reflected names/defaults.
+Retained parameter handles do not extend this public view lifetime. A panel
+that outlives the program copies names with their byte count and keeps its
+own default values; see [the C99 example](../examples/c/parameter_panel.c).
 
 `iprop_input_type` is `uint32_t`, with binary tags `IPROP_INPUT_COLOR` (0),
 `IPROP_INPUT_F32` (1), and `IPROP_INPUT_U32` (2). Source `i32` inputs have the

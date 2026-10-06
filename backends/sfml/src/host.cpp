@@ -50,7 +50,7 @@ RenderedImage generateSingle(iprop_program* program, std::uint32_t seed,
 
 // The variant × seed grid: rows are variants (wrapped at the meta count),
 // columns are consecutive seeds.
-RenderedImage generateAtlas(iprop_program* program, const iprop_meta& meta,
+RenderedImage generateAtlas(iprop_program* program, const iprop_program_info_ex& meta,
                             std::uint32_t seed, std::uint32_t variant) {
     const RenderedImage first = generateSingle(program, seed, variant);
     const std::uint32_t tileWidth = first.width;
@@ -137,8 +137,7 @@ int run(int argc, char** argv) {
     const auto bytes = iprop::sfml_host::readFile(path);
     const iprop::sfml_host::Program program(
         iprop::sfml_host::loadProgram(bytes), iprop_program_free);
-    iprop_meta meta;
-    iprop_program_meta(program.get(), &meta);
+    const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program.get());
 
     // The one-shot modes — the same code paths the interactive keys use,
     // exercised without a window.

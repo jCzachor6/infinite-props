@@ -41,6 +41,12 @@ array stride.
 | Error descriptor and message buffer | Caller owns both; no borrowed global error string, and no release call is required |
 | Input descriptors, byte buffers and strings | Caller owns readable storage for the duration of the call; load copies the bytes it needs |
 
+Keeping a parameter set alive does not extend the public lifetime of a
+program's metadata/reflection views: those views still expire when that
+program handle is freed. Copy name bytes and their explicit byte count into
+host-owned storage before freeing the program if a UI needs them afterward.
+Scalar query fields and default values are copies and need no program lifetime.
+
 Another generation does not invalidate an existing result. Freeing a parameter
 set or program does not invalidate a result. Root input IDs and global output
 slots are scoped to a particular loaded program; they are not stable across
@@ -52,6 +58,11 @@ The implemented [part table](c-api-parts.md) uses owner `part_index + 1`; owner
 zero identifies the root. Current binary formats store no part/import name,
 so part name presence is zero and its view is NULL/zero even when the associated
 function has a stored name.
+
+The [sized image query](c-api-images.md) returns the exact legacy result-owned
+RGBA8 pointer, actual generated dimensions, tight row stride and explicit
+top-left storage origin. Its `LEGACY_DESTINATION` alpha mode names the frozen
+compositor; queries preserve all stored bytes without alpha conversion.
 
 Free functions accept `NULL`. Other handles are required unless their function
 explicitly documents a null default; required output pointers are non-null.

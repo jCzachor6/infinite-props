@@ -63,6 +63,27 @@ foreach(mode shared static)
     endif()
     run("${consumer}" "${WORK}/portrait.iprop")
 endforeach()
+run("${CMAKE_COMMAND}" -S "${PREFIX}/share/iprop/examples/c" -B "${WORK}/parameter-panel"
+    -DCMAKE_BUILD_TYPE=Release "-DCMAKE_PREFIX_PATH=${PREFIX}" ${dependency_options})
+run("${CMAKE_COMMAND}" --build "${WORK}/parameter-panel" --config Release --parallel 2)
+run("${PREFIX}/bin/ipc${suffix}" "${PREFIX}/share/iprop/examples/recipes/24-uniform-emblem.ips"
+    -o "${WORK}/parameter-panel.iprop")
+set(panel_expected "program_freed=1\ninputs=3\n"
+    "input=0 type=color name_bytes=6 name_hex=616363656e74 default_rgba=55bbffff\n"
+    "input=1 type=f32 name_bytes=5 name_hex=7363616c65 default_bits=3f800000\n"
+    "input=2 type=u32 name_bytes=7 name_hex=64656e73697479 default_bits=00000008 default_u32=8\n")
+string(JOIN "" panel_expected ${panel_expected})
+foreach(mode shared static)
+    set(panel "${WORK}/parameter-panel/parameter_panel_${mode}${suffix}")
+    if(EXISTS "${WORK}/parameter-panel/Release/parameter_panel_${mode}${suffix}")
+        set(panel "${WORK}/parameter-panel/Release/parameter_panel_${mode}${suffix}")
+    endif()
+    run("${panel}" "${WORK}/parameter-panel.iprop")
+    string(REPLACE "\r\n" "\n" panel_stdout "${LAST_STDOUT}")
+    if(NOT panel_stdout STREQUAL panel_expected)
+        message(FATAL_ERROR "Installed C99 panel ${mode}: wrong owned schema/defaults:\n${LAST_STDOUT}")
+    endif()
+endforeach()
 if(EXISTS "${PREFIX}/bin/iprop_sfml${suffix}")
     run("${PREFIX}/bin/iprop_sfml${suffix}" "${WORK}/portrait.iprop" --seed 26 --export "${WORK}/sfml.png")
     file(READ "${WORK}/sfml.png" signature LIMIT 8 HEX)

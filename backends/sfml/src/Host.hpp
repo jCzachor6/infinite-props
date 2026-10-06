@@ -58,6 +58,24 @@ inline iprop_program* loadProgram(const std::vector<std::uint8_t>& bytes) {
     return program;
 }
 
+// Copies metadata through the sized contract; no borrowed views escape.
+inline iprop_program_info_ex queryProgram(const iprop_program* program) {
+    iprop_program_info_ex info;
+    char message[512] = {};
+    iprop_error_ex error;
+    if (iprop_program_info_ex_init(&info, sizeof(info)) != IPROP_EX_OK ||
+        iprop_error_ex_init(&error, sizeof(error)) != IPROP_EX_OK) {
+        throw std::runtime_error("iprop metadata initialization failed");
+    }
+    error.message_buffer = message;
+    error.message_capacity = sizeof(message);
+    if (iprop_program_query(program, &info, &error) != IPROP_EX_OK) {
+        throw std::runtime_error(message[0] != '\0' ? message
+                                                   : "iprop_program_query failed");
+    }
+    return info;
+}
+
 // Generates one (seed, variant, archetype) tuple; throws on failure. The
 // returned handle must be freed by the caller.
 inline iprop_result* generate(iprop_program* program, std::uint32_t seed,

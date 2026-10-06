@@ -92,10 +92,13 @@ int main(int argc, char** argv) {
             programDir + "/" + entry.program;
         const auto bytes = iprop::sfml_host::readFile(programPath);
         iprop_program* program = iprop::sfml_host::loadProgram(bytes);
+        const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program);
         iprop_result* result =
             iprop::sfml_host::generate(program, entry.seed, 0, 0);
         iprop_image image;
         iprop_result_image(result, &image);
+        CHECK(image.width == meta.size_x && image.height == meta.size_y,
+              "%s: queried metadata size differs from default generation", entry.program);
 
         // The host carries the pixels through sf::Image on the way to
         // the texture; the conformance does the same copy here.
