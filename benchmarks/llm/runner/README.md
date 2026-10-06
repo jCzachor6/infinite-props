@@ -1,5 +1,90 @@
 # Archived-source benchmark runner
 
+`session.py` prepares an exact request context, imports a caller's recorded
+session response, evaluates it with the real CLI, and permits at most one saved
+repair response for the tasks that failed. This is the `codex_session` import
+adapter: it makes no online model call and cannot observe model identity,
+sampler enforcement, inference time, tokens, or billing. Those fields stay null.
+The caller must retain the actual session response; authored fixtures use
+`--record-kind authored_witness` and are not measurements of a model.
+
+```sh
+python3 benchmarks/llm/runner/session.py prepare \
+  --output /path/to/new-session --tools /path/to/frozen-tools --version 0.5 \
+  --reference /path/to/generated/docs/language-v0.4.md \
+  --reference-manifest /path/to/generated/docs/language-manifest.json \
+  --language-export /path/to/generated/docs/language.json
+python3 benchmarks/llm/runner/session.py import-response \
+  --run /path/to/new-session --response /path/to/actual-response.json
+python3 benchmarks/llm/runner/session.py import-repair \
+  --run /path/to/new-session --response /path/to/actual-repair-response.json
+python3 benchmarks/llm/runner/session.py status --run /path/to/new-session
+python3 benchmarks/llm/runner/session.py replay \
+  --run /path/to/new-session --output /path/to/new-replay
+```
+
+The full generated handbook, SDK export, task manifest, protocol and exact
+protocol prompt are archived and sealed with SHA256 before response import.
+The compact `LLM_REFERENCE.md` is not the comparative pilot reference. Adapter
+`--version 0.5` requires the current 0.5 language contract; product version and
+binary format are recorded independently (both may still be 0.4). The handbook
+filename follows the generated manifest's product version. Compiler source
+commit comes from that supplied manifest and is identified as an assertion;
+executable paths and actual binary hashes are observed independently. Frozen
+`--version 0.4` requires the original released handbook/export bytes and source
+commit, using the explicit historical reader profile. It invokes ordinary
+compile, with unavailable historical diagnostic codes/ranges remaining null.
+Actual model records require a generated manifest with a committed source
+identity and clean working-tree flag. Source-archive references without those
+claims are accepted only for explicitly labeled authored harness witnesses.
+
+Supplied SDK export bytes enter the prompt verbatim. Raw `ipc
+--describe-language` stdout is archived separately. Their entire parsed JSON
+objects must agree under canonical serialization with duplicate keys and
+nonfinite numbers rejected; different whitespace is allowed, while boolean,
+integer and floating representations are distinguished. This preserves the
+original frozen SDK serialization and its historical SHA. The task/protocol
+bytes and their frozen hashes cannot be overridden with changed definitions.
+
+A prepared directory without a response remains `awaiting_initial_response`,
+with no evaluated attempts and null success counts. Import saves the raw bytes
+before extraction. Malformed JSON preserves that payload and records a missing
+source failure for every selected task, with the full denominator of 24 and
+unselected tasks listed explicitly. Responses above the existing 1 MiB ceiling
+are refused before acceptance; the caller's original file remains unchanged.
+Unsafe/oversized source maps are rejected before compiler execution. Candidate
+check JSON must pass the current G.5 reader and agree with the actual exit code;
+there is no silent downgrade to legacy diagnostics.
+
+After evaluation, `completion-N.json` seals all extracted sources, exact
+process logs, native diagnostics, artifacts and render records. Each task links
+to its raw response, exact request/prompt and feedback hashes. First-pass counts
+are retained separately from latest results. Actual failed sources and public
+failure evidence produce `prompt-1.txt` and `request-1.json` once. A repair may
+include only failed task IDs, and produces no second repair request. Success
+without repair and exhaustion after one repair have distinct states. Interrupted
+evaluation/feedback preparation is explicit and cannot be reused as a sealed
+attempt. Existing inputs, responses and completed records are never replaced.
+
+Replay verifies sealed inputs, response/artifact hashes, adapter source and tool
+binary identities, then reevaluates the exact raw responses in a fresh output
+directory. `--tools` may relocate binaries only when their hashes match. For a
+saved repair, the replayed failed IDs and exact feedback/request context must
+match before accepting the old repair response; divergent diagnostics cannot
+silently rebind that response. Originals remain untouched. Process paths/times
+are fresh observations, while pixel/output/fuel results and public predicates
+can be compared independently. This adapter is available for later CI replay;
+I.4 CI integration and a fresh live 24-task generation remain separate work.
+
+Run integration tests with a current compiler and optionally the actual frozen
+tools; the two fixture responses are clearly labeled authored witnesses:
+
+```sh
+IPROP_COMPILER=/path/to/current-tools/ipc \
+IPROP_FROZEN_TOOLS=/path/to/frozen-0.4-tools \
+  python3 benchmarks/llm/runner/test_session.py
+```
+
 This first runner executes actual saved model responses against the supplied
 frozen tools. It does not contact a model, make a repair request, implement a
 human visual verdict, or replace a failed model program with a reference solution.
@@ -119,6 +204,8 @@ part of this distributed runner or the generator/repair context.
 - `run.py`: safe source extraction, process adapter, archival records and feedback.
 - `capture_context.py`: missing identity fields from actual archived context.
 - `test_runner.py`: decoder, unsafe input, budget and incorrect-result regressions.
+- `session.py`: sealed prepare/import/one-repair/replay orchestration.
+- `test_session.py`: pending/malformed/integrity boundaries and real CLI repair.
 
 ```sh
 python3 benchmarks/llm/runner/test_runner.py

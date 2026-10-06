@@ -154,6 +154,9 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME llm_runner COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/benchmarks/llm/runner/test_runner.py")
+    add_test(NAME llm_session COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/benchmarks/llm/runner/test_session.py")
     add_test(NAME compiler_export_contracts COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_export_contracts.py" "$<TARGET_FILE:ipc>"
         --probe "$<TARGET_FILE:compiler_diagnostic_failure_probe>")

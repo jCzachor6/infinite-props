@@ -37,7 +37,14 @@ def now():
 
 def save_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n', encoding='utf-8')
+    text = json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n'
+    try:
+        text.encode('utf-8', 'strict')
+    except UnicodeEncodeError:
+        # Rejected model paths can contain escaped lone surrogates. Preserve
+        # those codepoints in derived failure metadata, never in source files.
+        text = json.dumps(value, ensure_ascii=True, indent=2, allow_nan=False) + '\n'
+    path.write_text(text, encoding='utf-8')
 
 
 def unique_object(pairs):
@@ -226,6 +233,16 @@ def evaluate(task, files, args, root, protocol):
             checked, stdout, stderr = process(command, workspace, directory / 'check', limits['per_task_compile_wall_timeout_seconds'], limits)
             record['check_process'] = checked
             record['normalized_diagnostics'] = normalize_diagnostics(stderr, stdout, args.version)
+            if getattr(args, 'diagnostic_reader', None) and not checked['failure'] and checked['exit_code'] in (0, 1, 2, 3):
+                try:
+                    document = args.diagnostic_parser(stdout)
+                    record['normalized_diagnostics'] = args.diagnostic_reader(document, exit_code=checked['exit_code'])
+                except (ValueError, TypeError, KeyError, RuntimeError, UnicodeError) as error:
+                    record['failure_stage'] = 'check_protocol'
+                    feedback.append({'stage': 'check_protocol', 'message': str(error),
+                                     'exit_code': checked['exit_code'], 'stdout': stdout.decode('utf-8', 'replace'),
+                                     'stderr': stderr.decode('utf-8', 'replace')})
+                    return finish(record, directory, feedback)
             if checked['exit_code'] or checked['failure']:
                 record['failure_stage'] = 'check'; feedback.append({'stage': 'check', 'exit_code': checked['exit_code'], 'stdout': stdout.decode('utf-8', 'replace'), 'stderr': stderr.decode('utf-8', 'replace')}); return finish(record, directory, feedback)
         command = [str(args.tools / 'ipc'), task['entry_file'], '-o', str(output)]

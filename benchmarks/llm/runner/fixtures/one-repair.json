@@ -1,0 +1,10 @@
+{
+  "tasks": [
+    {
+      "task_id": "asset-01",
+      "files": {
+        "entry.ips": "// Authored harness witness; not a measured model response.\r\nasset RepairWitness {\r\n size 32x32\r\n output point center\r\n draw { rect(0,0,32,32,#101820) rect(8,6,16,20,#55bbff) center={16,16} }\r\n}\r\n"
+      }
+    }
+  ]
+}
