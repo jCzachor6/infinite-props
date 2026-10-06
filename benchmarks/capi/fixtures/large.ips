@@ -1,0 +1,9 @@
+asset large {
+  size 256x256
+  output point very_long_output_name_to_observe_string_allocations
+  draw {
+    rect(0, 0, 256, 256, #369)
+    rect(0, 0, 256, 256, #f008)
+    very_long_output_name_to_observe_string_allocations = {unit(), unit()}
+  }
+}

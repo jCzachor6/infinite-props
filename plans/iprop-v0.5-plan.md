@@ -226,7 +226,8 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
 
 ## M. Kopie wyniku i podstawowe statystyki — P1
 
-- [ ] **05-M.1** Zmierzyć bazowo load oraz serię generate dla małych/większych canvases, partów i list outputów. Rejestrować warunki, czas oraz możliwe do wiarygodnego pomiaru alokacje/kopie; benchmark nie jest niestabilnym progiem czasu na każdym PR.
+- [x] **05-M.1** Zmierzyć bazowo load oraz serię generate dla małych/większych canvases, partów i list outputów. Rejestrować warunki, czas oraz możliwe do wiarygodnego pomiaru alokacje/kopie; benchmark nie jest niestabilnym progiem czasu na każdym PR.
+  Dowód: benchmarks/capi/ zawiera cztery fixture’y, statyczny real C API benchmark i surową bazę pre-move z SHA/warunkami. 80 load + 80 generate, 4 seedy, C++ new calls/gross requested bytes; niezależny shared C API potwierdził wszystkie 80 wyników. Kontrola scalar/array/aligned/nothrow: 7 alokacji/558 bajtów; malloc/empty: 0. Zachowano executable i binaria poza repo dla M.5; kopie/peak/malloc niemierzone, brak progu czasowego CI.
 - [ ] **05-M.2** Dodać wewnętrzne przekazanie wyniku VM przez przeniesienie buforów, używane jednokrotnie przez C adapter. Obecne kopiujące `VM::result() const` pozostawić dla istniejących konsumentów. Bez zmiany obliczeń, kolejności RNG i kosztów instrukcji.
 - [ ] **05-M.3** Ograniczyć potwierdzoną duplikację nazw/danych przy budowie tabeli C. Zachować potrzebne pakowanie i stabilność wskaźników; nie reinterpretować pamięci niezgodnie z layoutem lub aliasingiem. Raportować faktyczny zysk zamiast zakładać zero-copy dla całego wyniku.
 - [ ] **05-M.4** Dodać sized query statystyk wyniku: budżet, fuel remaining/used, bytes obrazu i liczba elementów wyjściowych. Używać istniejących liczników VM; wall-clock mierzy narzędzie hosta. Więcej liczników rozszerza 06-N.

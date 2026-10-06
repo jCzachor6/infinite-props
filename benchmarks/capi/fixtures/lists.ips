@@ -1,0 +1,13 @@
+asset lists {
+  size 128x128
+  output list point very_long_point_list_output_name
+  output list rect very_long_rect_list_output_name
+  output list circle very_long_circle_list_output_name
+  draw {
+    for i in 0..1024 {
+      very_long_point_list_output_name = {i, unit()}
+      very_long_rect_list_output_name = {i, 1, 2, 3}
+      very_long_circle_list_output_name = {i, 2, 3}
+    }
+  }
+}
