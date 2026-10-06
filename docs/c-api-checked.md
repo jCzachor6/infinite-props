@@ -27,6 +27,9 @@ negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
 program descriptor, without another query function.
 `IPROP_CAP_RESULT_STATISTICS` separately advertises
 [completed result statistics](c-api-statistics.md).
+`IPROP_CAP_PARAMETERS` separately advertises the implemented
+[root parameter handles and generic value operations](c-api-parameters.md).
+Structured generation remains planned; parameters do not enable it.
 
 ## Load and publication
 

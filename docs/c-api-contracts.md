@@ -36,7 +36,7 @@ array stride.
 | --- | --- |
 | Loaded program and its metadata/reflection views | The caller frees the program; program query views expire at `program_free` |
 | Parameter set | Owns mutable values and retains the necessary loaded program data; remains usable after the originating program handle is freed |
-| Parameter value view | Borrowed until a mutating set/reset operation or freeing its parameter set; cloning creates independent values |
+| Parameter value descriptor | Caller-owned copied value; remains valid after parameter mutations or destruction; cloning creates independent stored values |
 | Generation result, pixels, output names and values | Result owns all required storage independently of program/parameter handles; views expire at `result_free` |
 | Error descriptor and message buffer | Caller owns both; no borrowed global error string, and no release call is required |
 | Input descriptors, byte buffers and strings | Caller owns readable storage for the duration of the call; load copies the bytes it needs |
@@ -90,7 +90,8 @@ already defines caller capacity, NUL, required length and success clearing.
 Current library/options initializers and query already use these bounded
 descriptor rules. `Utf8View.hpp` provides the common no-allocation validator;
 [root-input reflection](c-api-reflection.md) uses it for exact byte-counted
-lookup; future parameter entry points follow the same rules.
+lookup; the implemented [parameter get/set calls](c-api-parameters.md) share
+that exact lookup against retained program data.
 
 The sized `iprop_error_ex` foundation and initializer follow the same rules.
 Its typed categories, stages and optional coordinate spaces are specified in

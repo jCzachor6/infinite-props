@@ -4,8 +4,14 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <span>
 
 namespace iprop::capi {
+
+struct ProtectedSpan {
+    const void* data;
+    std::size_t size;
+};
 
 inline bool storageOverlaps(const void* a, std::size_t aSize,
                             const void* b, std::size_t bSize) noexcept {
@@ -35,8 +41,24 @@ inline bool errorStorageAliases(const iprop_error_ex* error, const void* output,
 template<class Operation>
 iprop_status_ex checkedBoundary(iprop_error_ex* error, const void* output,
                                 std::size_t outputSize, ErrorContext& context,
-                                Operation&& operation) noexcept {
+                                Operation&& operation,
+                                std::span<const ProtectedSpan> protectedSpans = {}) noexcept {
+    // Reject an error descriptor inside protected input storage before reading
+    // any of its optional fields. A handle/value may only be four bytes long.
+    uint32_t errorSize = 0;
+    if (error != nullptr) (void)descriptorSize(error, errorSize);
+    const auto errorReadable = error == nullptr ? 0 :
+        std::max<std::size_t>(errorSize, sizeof(uint32_t));
+    for (const auto& input : protectedSpans) {
+        if (storageOverlaps(error, errorReadable, input.data, input.size) ||
+            storageOverlaps(output, outputSize, input.data, input.size))
+            return IPROP_EX_E_ARGUMENT;
+    }
     if (errorStorageAliases(error, output, outputSize)) return IPROP_EX_E_ARGUMENT;
+    for (const auto& input : protectedSpans) {
+        if (errorStorageAliases(error, input.data, input.size))
+            return IPROP_EX_E_ARGUMENT;
+    }
     return errorBoundary(error, context, std::forward<Operation>(operation));
 }
 

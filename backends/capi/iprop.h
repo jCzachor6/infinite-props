@@ -197,7 +197,7 @@ typedef struct {
 #define IPROP_CAP_OUTPUT_DECLARATIONS (UINT64_C(1) << 7)
 #define IPROP_CAP_PART_REFLECTION (UINT64_C(1) << 8)
 #define IPROP_CAP_METADATA_EXTENDED (UINT64_C(1) << 9)
-/* Bit 10 is reserved for the separately introduced parameters capability. */
+#define IPROP_CAP_PARAMETERS (UINT64_C(1) << 10)
 #define IPROP_CAP_RESULT_STATISTICS (UINT64_C(1) << 11)
 
 /* All fields except struct_size are output-only. Set struct_size to the
@@ -429,6 +429,53 @@ IPROP_API iprop_status_ex iprop_program_input_get(const iprop_program* program, 
  * Error/output storage follows the same checked overlap policy above. */
 IPROP_API iprop_status_ex iprop_program_input_find(const iprop_program* program, iprop_utf8_view name,
                                                   uint32_t* out_index, iprop_error_ex* error);
+
+/* Root parameter copies retain immutable program data and remain usable after
+ * program_free. IDs are root-input indices; part signature IDs do not grant
+ * host overrides. Clones own independent values but share program identity.
+ * A separate load, even of identical bytes, has a different identity, checked
+ * by future generate_ex. This capability does not promise generation. */
+typedef struct iprop_parameters iprop_parameters;
+
+/* Getter: minimum four-byte prefix; absent flags mean zero; nonzero
+ * complete flags are E_ARGUMENT. Preserve size/flags/padding/partial/tail and
+ * zero inactive values. Output values are caller-owned copies, not views.
+ * Init writes capacity and zeroes complete known fields, preserving partial
+ * fields, padding and unknown tail; null or capacity below four writes nothing.
+ * Setter: complete type and selected complete active field required; exact
+ * binary type membership and declaration match; inactive fields never read.
+ * F32 representations are preserved, including negative zero and NaN bits. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    iprop_input_type type;
+    iprop_color_rgba8 color;
+    float f32;
+    uint32_t u32;
+} iprop_parameter_value_ex;
+
+IPROP_API iprop_status_ex iprop_parameter_value_ex_init(iprop_parameter_value_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_parameters_create(const iprop_program* program,
+                                                 iprop_parameters** out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_reset(iprop_parameters* parameters, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_clone(const iprop_parameters* parameters,
+                                                iprop_parameters** out, iprop_error_ex* error);
+IPROP_API void iprop_parameters_free(iprop_parameters* parameters);
+IPROP_API iprop_status_ex iprop_parameters_get(const iprop_parameters* parameters, uint32_t input_id,
+                                              iprop_parameter_value_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_get_named(const iprop_parameters* parameters, iprop_utf8_view name,
+                                                    iprop_parameter_value_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set(iprop_parameters* parameters, uint32_t input_id,
+                                              const iprop_parameter_value_ex* value, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_parameters_set_named(iprop_parameters* parameters, iprop_utf8_view name,
+                                                    const iprop_parameter_value_ex* value, iprop_error_ex* error);
+/* Optional errors follow the checked policy. Failed create/clone preserve an
+ * existing out handle; success publishes one without freeing the old pointer.
+ * Failed get preserves output; failed set/reset preserve all values. Error
+ * output cannot overlap caller inputs/outputs or parameter storage. Get_named
+ * output cannot overlap name bytes. Aliases fail without error/input/output
+ * writes. Set_named may share readable name/value bytes. Required handles and
+ * outputs are non-null; free accepts NULL. No shared-builder thread guarantee. */
 
 /* Fixed-width declaration tags, separate from the frozen legacy enum. */
 typedef uint32_t iprop_output_kind_ex;

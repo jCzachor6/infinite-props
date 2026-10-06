@@ -183,8 +183,10 @@ container fields in the existing program descriptor; see
 `IPROP_CAP_RESULT_STATISTICS` advertises the sized completed-result query for
 VM fuel, owned pixel bytes and output element count; see
 [result statistics](../../docs/c-api-statistics.md).
-Parameters, structured generation and typed output
-value accessors receive capability bits only when implemented.
+`IPROP_CAP_PARAMETERS` advertises retained root parameter handles with generic
+get/set, clone and reset; see [parameter values](../../docs/c-api-parameters.md).
+Typed convenience setters, bulk overrides, structured generation and typed
+output value accessors receive capabilities only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.

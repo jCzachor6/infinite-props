@@ -17,6 +17,16 @@ iprop_status_ex iprop_result_stats_ex_init(iprop_result_stats_ex* out, uint32_t 
     return IPROP_EX_OK;
 }
 
+iprop_status_ex iprop_parameter_value_ex_init(iprop_parameter_value_ex* out, uint32_t capacity) {
+    if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
+    iprop::capi::writeField(out, capacity, 0, capacity);
+    const iprop_parameter_value_ex defaults{};
+#define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_parameter_value_ex, field), defaults.field)
+    ZERO(flags); ZERO(type); ZERO(color); ZERO(f32); ZERO(u32);
+#undef ZERO
+    return IPROP_EX_OK;
+}
+
 iprop_status_ex iprop_part_info_ex_init(iprop_part_info_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     iprop::capi::writeField(out, capacity, 0, capacity);

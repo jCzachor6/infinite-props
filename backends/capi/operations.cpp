@@ -1,6 +1,7 @@
 #include "Operations.hpp"
 
 #include <cstring>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -117,10 +118,14 @@ void loadProgram(iprop_program& program, std::span<const uint8_t> bytes,
                  ErrorContext& context) {
     context.stage = ErrorStage::Load;
     context.file = nullptr;
-    program.file = loadFile(bytes);
-    context.file = &program.file;
+    // Retain this unpublished mutable builder in the outer program owner;
+    // its const shared data and diagnostic file survive callable unwinding.
+    auto data = std::make_shared<LoadedFile>();
+    program.data = data;
+    *data = loadFile(bytes);
+    context.file = data.get();
     context.stage = ErrorStage::Validate;
-    validate(program.file);
+    validate(*data);
 }
 
 CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs& inputs) {
@@ -153,18 +158,18 @@ CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs
 
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
                      iprop_result& result, ErrorContext& context) {
-    context.file = &program.file;
+    context.file = program.data.get();
     context.stage = ErrorStage::Arguments;
-    VM vm(program.file, inputs);
+    VM vm(*program.data, inputs);
     context.stage = ErrorStage::Execute;
     vm.run();
     result.fuelBudget = vm.fuelBudget();
     result.fuelRemaining = vm.fuel();
-    packResult(result, vm.takeResult(), program.file);
+    packResult(result, vm.takeResult(), *program.data);
 }
 
 iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
-    const auto& meta = program.file.meta;
+    const auto& meta = program.data->meta;
     iprop_program_info_ex out{};
     out.size_x = meta.sizeX;
     out.size_y = meta.sizeY;
@@ -182,7 +187,7 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
         std::memcpy(&out.emission_offset_y, &meta.emission.offset.y, sizeof(float));
         std::memcpy(&out.emission_radius, &meta.emission.radius, sizeof(float));
     }
-    const auto& header = program.file.containerHeader;
+    const auto& header = program.data->containerHeader;
     out.format_major = header.versionMajor;
     out.format_minor = header.versionMinor;
     out.container_flags = header.flags;

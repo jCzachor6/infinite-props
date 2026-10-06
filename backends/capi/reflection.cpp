@@ -1,10 +1,13 @@
 #include "iprop.h"
 #include "CheckedBoundary.hpp"
 #include "Handles.hpp"
+#include "InputAccess.hpp"
 #include "Utf8View.hpp"
 
 #include <cstring>
 #include <span>
+
+using iprop::capi::findInput;
 
 namespace {
 uint32_t partOutputBegin(const iprop::LoadedFile& file, uint32_t partIndex) noexcept {
@@ -23,8 +26,8 @@ iprop::capi::CallOutcome partInfo(const iprop_program* program, uint32_t index,
         return CallOutcome::argument("part query output is null or smaller than four bytes");
     if (readField<uint32_t>(out, capacity, offsetof(iprop_part_info_ex, flags)) != 0)
         return CallOutcome::argument("part query flags are unsupported");
-    if (index >= program->file.code.parts.size()) return CallOutcome::argument("part index is out of range");
-    const auto& part = program->file.code.parts[index];
+    if (index >= program->data->code.parts.size()) return CallOutcome::argument("part index is out of range");
+    const auto& part = program->data->code.parts[index];
     iprop_part_info_ex info{};
     info.part_index = index;
     info.owner = index + 1;
@@ -32,7 +35,7 @@ iprop::capi::CallOutcome partInfo(const iprop_program* program, uint32_t index,
     std::memcpy(&info.origin_x, &part.origin.x, sizeof(info.origin_x));
     std::memcpy(&info.origin_y, &part.origin.y, sizeof(info.origin_y));
     info.input_count = static_cast<uint32_t>(part.inputs.size());
-    info.output_begin = partOutputBegin(program->file, index);
+    info.output_begin = partOutputBegin(*program->data, index);
     info.output_count = static_cast<uint32_t>(part.outputs.size());
     // Part contains no name field. Function names are a different declaration,
     // and debug/import aliases are never inferred as a stored part name.
@@ -49,10 +52,10 @@ iprop::capi::CallOutcome partInfo(const iprop_program* program, uint32_t index,
 
 uint32_t outputCount(const iprop_program& program) noexcept {
     static_assert((uint64_t{iprop::kMaxParts} + 1) * UINT16_MAX <= UINT32_MAX);
-    uint32_t count = static_cast<uint32_t>(program.file.meta.outputs.size());
+    uint32_t count = static_cast<uint32_t>(program.data->meta.outputs.size());
     // Parsed counts are u16 per owner, with at most kMaxParts (256) parts.
     // Their sum fits u32 without allocation or an inferred descriptor stride.
-    for (const auto& part : program.file.code.parts)
+    for (const auto& part : program.data->code.parts)
         count += static_cast<uint32_t>(part.outputs.size());
     return count;
 }
@@ -68,12 +71,12 @@ iprop::capi::CallOutcome outputInfo(const iprop_program* program, uint32_t index
         return CallOutcome::argument("output query flags are unsupported");
 
     const iprop::OutputDecl* declaration = nullptr;
-    const auto& root = program->file.meta.outputs;
+    const auto& root = program->data->meta.outputs;
     uint32_t local = index, owner = 0;
     if (local < root.size()) declaration = &root[local];
     else {
         local -= static_cast<uint32_t>(root.size());
-        for (const auto& part : program->file.code.parts) {
+        for (const auto& part : program->data->code.parts) {
             ++owner;
             if (local < part.outputs.size()) {
                 declaration = &part.outputs[local];
@@ -84,7 +87,7 @@ iprop::capi::CallOutcome outputInfo(const iprop_program* program, uint32_t index
     }
     if (declaration == nullptr) return CallOutcome::argument("output index is out of range");
 
-    const auto& name = program->file.pool.strings[declaration->nameIndex];
+    const auto& name = program->data->pool.strings[declaration->nameIndex];
     iprop_output_info_ex info{};
     info.output_index = index;
     info.owner = owner;
@@ -146,22 +149,6 @@ iprop::capi::CallOutcome inputInfo(const iprop::LoadedFile& file,
     return {};
 }
 
-iprop::capi::CallOutcome findInput(const iprop::LoadedFile& file,
-                                 std::span<const iprop::InputDecl> inputs, iprop_utf8_view name,
-                                 uint32_t* outIndex) noexcept {
-    using iprop::capi::CallOutcome;
-    if (outIndex == nullptr) return CallOutcome::argument("out_index is null");
-    std::string_view sought;
-    if (!iprop::capi::readUtf8View(name, sought))
-        return CallOutcome::argument("input name is not a valid UTF-8 view");
-    for (std::size_t index = 0; index < inputs.size(); ++index) {
-        if (file.pool.strings[inputs[index].nameIndex] == sought) {
-            *outIndex = static_cast<uint32_t>(index);
-            return {};
-        }
-    }
-    return CallOutcome::argument("input name was not found");
-}
 } // namespace
 
 extern "C" {
@@ -172,7 +159,7 @@ iprop_status_ex iprop_program_part_count(const iprop_program* program, uint32_t*
     return iprop::capi::checkedBoundary(error, out_count, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
         if (out_count == nullptr) return iprop::capi::CallOutcome::argument("out_count is null");
-        *out_count = static_cast<uint32_t>(program->file.code.parts.size());
+        *out_count = static_cast<uint32_t>(program->data->code.parts.size());
         return iprop::capi::CallOutcome{};
     });
 }
@@ -190,9 +177,9 @@ iprop_status_ex iprop_program_part_input_count(const iprop_program* program, uin
     return iprop::capi::checkedBoundary(error, out_count, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
         if (out_count == nullptr) return iprop::capi::CallOutcome::argument("out_count is null");
-        if (part_index >= program->file.code.parts.size())
+        if (part_index >= program->data->code.parts.size())
             return iprop::capi::CallOutcome::argument("part index is out of range");
-        *out_count = static_cast<uint32_t>(program->file.code.parts[part_index].inputs.size());
+        *out_count = static_cast<uint32_t>(program->data->code.parts[part_index].inputs.size());
         return iprop::capi::CallOutcome{};
     });
 }
@@ -203,9 +190,9 @@ iprop_status_ex iprop_program_part_input_get(const iprop_program* program, uint3
     iprop::capi::ErrorContext context{iprop::ErrorStage::Arguments};
     return iprop::capi::checkedBoundary(error, out, iprop::capi::queryCapacity(out), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
-        if (part_index >= program->file.code.parts.size())
+        if (part_index >= program->data->code.parts.size())
             return iprop::capi::CallOutcome::argument("part index is out of range");
-        return inputInfo(program->file, program->file.code.parts[part_index].inputs, input_index, out);
+        return inputInfo(*program->data, program->data->code.parts[part_index].inputs, input_index, out);
     });
 }
 
@@ -215,9 +202,9 @@ iprop_status_ex iprop_program_part_input_find(const iprop_program* program, uint
     iprop::capi::ErrorContext context{iprop::ErrorStage::Arguments};
     return iprop::capi::checkedBoundary(error, out_index, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
-        if (part_index >= program->file.code.parts.size())
+        if (part_index >= program->data->code.parts.size())
             return iprop::capi::CallOutcome::argument("part index is out of range");
-        return findInput(program->file, program->file.code.parts[part_index].inputs, name, out_index);
+        return findInput(*program->data, program->data->code.parts[part_index].inputs, name, out_index);
     });
 }
 
@@ -247,16 +234,16 @@ iprop_status_ex iprop_program_output_find(const iprop_program* program, uint32_t
         using iprop::capi::CallOutcome;
         if (program == nullptr) return CallOutcome::argument("program is null");
         if (out_index == nullptr) return CallOutcome::argument("out_index is null");
-        if (owner > program->file.code.parts.size())
+        if (owner > program->data->code.parts.size())
             return CallOutcome::argument("output owner is out of range");
         std::string_view sought;
         if (!iprop::capi::readUtf8View(name, sought))
             return CallOutcome::argument("output name is not a valid UTF-8 view");
-        const auto& root = program->file.meta.outputs;
-        const auto& declarations = owner == 0 ? root : program->file.code.parts[owner - 1].outputs;
-        const uint32_t base = owner == 0 ? 0 : partOutputBegin(program->file, owner - 1);
+        const auto& root = program->data->meta.outputs;
+        const auto& declarations = owner == 0 ? root : program->data->code.parts[owner - 1].outputs;
+        const uint32_t base = owner == 0 ? 0 : partOutputBegin(*program->data, owner - 1);
         for (std::size_t index = 0; index < declarations.size(); ++index) {
-            if (program->file.pool.strings[declarations[index].nameIndex] == sought) {
+            if (program->data->pool.strings[declarations[index].nameIndex] == sought) {
                 *out_index = base + static_cast<uint32_t>(index);
                 return CallOutcome{};
             }
@@ -271,7 +258,7 @@ iprop_status_ex iprop_program_input_count(const iprop_program* program, uint32_t
     return iprop::capi::checkedBoundary(error, out_count, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
         if (out_count == nullptr) return iprop::capi::CallOutcome::argument("out_count is null");
-        *out_count = static_cast<uint32_t>(program->file.meta.inputs.size());
+        *out_count = static_cast<uint32_t>(program->data->meta.inputs.size());
         return iprop::capi::CallOutcome{};
     });
 }
@@ -282,7 +269,7 @@ iprop_status_ex iprop_program_input_get(const iprop_program* program, uint32_t i
     return iprop::capi::checkedBoundary(error, out, iprop::capi::queryCapacity(out), context,
         [&] {
             if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
-            return inputInfo(program->file, program->file.meta.inputs, input_index, out);
+            return inputInfo(*program->data, program->data->meta.inputs, input_index, out);
         });
 }
 
@@ -291,7 +278,7 @@ iprop_status_ex iprop_program_input_find(const iprop_program* program, iprop_utf
     iprop::capi::ErrorContext context{iprop::ErrorStage::Arguments};
     return iprop::capi::checkedBoundary(error, out_index, sizeof(uint32_t), context, [&] {
         if (program == nullptr) return iprop::capi::CallOutcome::argument("program is null");
-        return findInput(program->file, program->file.meta.inputs, name, out_index);
+        return findInput(*program->data, program->data->meta.inputs, name, out_index);
     });
 }
 
