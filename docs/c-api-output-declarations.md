@@ -3,7 +3,9 @@
 API 0.3 exposes the loaded program's output schema through checked count/get/find
 calls. `IPROP_CAP_OUTPUT_DECLARATIONS` advertises these implemented operations.
 They need no generation result and do not execute the VM. This capability does
-not provide a part metadata table, parameters or new generated-value accessors.
+not provide parameters or new generated-value accessors. The separately
+advertised [part table](c-api-parts.md) identifies each part's contiguous output
+range and owner for use with these same declaration accessors.
 
 | Symbol | Output |
 | --- | --- |

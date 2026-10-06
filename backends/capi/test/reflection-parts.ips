@@ -1,0 +1,13 @@
+import first from "reflection-part-first.ips"
+import empty from "reflection-part-empty.ips"
+import second from "reflection-part-second.ips"
+asset parts {
+  size 16x16
+  input u32 base = 123
+  output point anchor
+  draw {
+    first.draw(seed, v, a, at = {0, 0})
+    empty.draw(seed, v, a, at = {0, 0})
+    second.draw(seed, v, a, at = {0, 0})
+  }
+}

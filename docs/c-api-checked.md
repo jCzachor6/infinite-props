@@ -18,6 +18,8 @@ negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
 [root-input count/get/find calls](c-api-reflection.md).
 `IPROP_CAP_OUTPUT_DECLARATIONS` separately advertises the implemented
 [output schema queries](c-api-output-declarations.md).
+`IPROP_CAP_PART_REFLECTION` advertises the implemented
+[part table and input signatures](c-api-parts.md).
 
 ## Load and publication
 

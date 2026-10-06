@@ -62,6 +62,7 @@ foreach(linkage shared static)
     add_executable(capi_checked_${linkage} test/checked.c)
     add_executable(capi_reflection_${linkage} test/reflection.c)
     add_executable(capi_output_declarations_${linkage} test/output_declarations.c)
+    add_executable(capi_parts_${linkage} test/parts.c)
     add_executable(capi_library_${linkage} test/library.c)
     if(linkage STREQUAL "shared")
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
@@ -69,6 +70,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_output_declarations_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_parts_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
     else()
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
@@ -76,6 +78,7 @@ foreach(linkage shared static)
         target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_output_declarations_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_parts_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
     endif()
     target_compile_definitions(capi_library_${linkage} PRIVATE
@@ -88,6 +91,7 @@ foreach(linkage shared static)
     iprop_warnings(capi_checked_${linkage})
     iprop_warnings(capi_reflection_${linkage})
     iprop_warnings(capi_output_declarations_${linkage})
+    iprop_warnings(capi_parts_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
@@ -183,6 +187,32 @@ foreach(linkage shared static)
         ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
 endforeach()
 
+foreach(encoding plain debug compressed)
+    set(out ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-${encoding}.iprop)
+    if(encoding STREQUAL "plain")
+        set(part_schema_flags --strip --no-compress)
+    elseif(encoding STREQUAL "debug")
+        set(part_schema_flags --debug --no-compress)
+    else()
+        set(part_schema_flags --debug --compress)
+    endif()
+    add_custom_command(OUTPUT ${out}
+        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/reflection-parts.ips
+            ${part_schema_flags} -o ${out}
+        DEPENDS ipc test/reflection-parts.ips test/reflection-part-first.ips
+            test/reflection-part-empty.ips test/reflection-part-second.ips)
+    add_custom_target(capi_part_schema_${encoding} DEPENDS ${out})
+    add_dependencies(capi_golden capi_part_schema_${encoding})
+endforeach()
+foreach(linkage shared static)
+    add_dependencies(capi_parts_${linkage} capi_golden)
+    add_test(NAME capi_parts_${linkage} COMMAND capi_parts_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-debug.iprop
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-compressed.iprop
+        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
+endforeach()
+
 add_executable(capi_conformance
     test/conformance.c
     test/golden.c
@@ -218,7 +248,8 @@ target_link_libraries(capi_checked_errors PRIVATE iprop_capi_static)
 iprop_warnings(capi_checked_errors)
 add_dependencies(capi_checked_errors capi_golden)
 add_test(NAME capi_checked_errors COMMAND capi_checked_errors ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop)
+    ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
+    ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
 
     add_test(NAME capi_conformance
         COMMAND capi_conformance

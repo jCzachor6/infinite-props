@@ -197,6 +197,17 @@ int main(int argc, char** argv) {
         iprop_program* original = NULL;
         CHECK(iprop_program_load_ex(old.bytes, old.size, &original, &error) == IPROP_EX_OK);
         CHECK(iprop_program_output_count(original, &count, &error) == IPROP_EX_OK && count == 2);
+        {
+            iprop_part_info_ex part;
+            CHECK(iprop_part_info_ex_init(&part, sizeof(part)) == IPROP_EX_OK);
+            CHECK(iprop_program_part_count(original, &count, &error) == IPROP_EX_OK && count == 1);
+            CHECK(iprop_program_part_get(original, 0, &part, &error) == IPROP_EX_OK);
+            CHECK(part.part_index == 0 && part.owner == 1 && part.size_x == 1 && part.size_y == 1);
+            CHECK(part.origin_x == 0.f && part.origin_y == 0.f && part.input_count == 0);
+            CHECK(part.output_begin == 1 && part.output_count == 1);
+            CHECK(part.name_present == 0 && part.name.data == NULL && part.name.byte_count == 0);
+            CHECK(iprop_program_part_input_count(original, 0, &count, &error) == IPROP_EX_OK && count == 0);
+        }
         for (i = 0; i < 2; ++i) {
             CHECK(iprop_program_output_get(original, i, &info, &error) == IPROP_EX_OK);
             CHECK(info.owner == i && info.kind == i && info.is_list == i);

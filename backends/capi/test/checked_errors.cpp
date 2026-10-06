@@ -37,7 +37,7 @@ void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); 
 #define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "checked errors: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 int main(int argc, char** argv) {
-    CHECK(argc == 3);
+    CHECK(argc == 4);
     std::ifstream fixture(argv[1], std::ios::binary);
     CHECK(fixture.good());
     const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(fixture)), {});
@@ -48,6 +48,13 @@ int main(int argc, char** argv) {
     const std::vector<uint8_t> schemaBytes((std::istreambuf_iterator<char>(schemaFixture)), {});
     iprop_program* schema = nullptr;
     CHECK(iprop_program_load_ex(schemaBytes.data(), schemaBytes.size(), &schema, nullptr) == IPROP_EX_OK);
+    std::ifstream partFixture(argv[3], std::ios::binary);
+    CHECK(partFixture.good());
+    const std::vector<uint8_t> partBytes((std::istreambuf_iterator<char>(partFixture)), {});
+    iprop_program* parts = nullptr;
+    CHECK(iprop_program_load_ex(partBytes.data(), partBytes.size(), &parts, nullptr) == IPROP_EX_OK);
+    const auto partFunctionName = parts->file.code.functions[parts->file.code.parts[0].functionIndex].nameIndex;
+    CHECK(partFunctionName != iprop::kAnonymousName && !parts->file.pool.strings[partFunctionName].empty());
     const auto instructionAt = original->file.code.entry().fileOffset;
     auto invalid = bytes;
     invalid[instructionAt] = 0xff;
@@ -158,6 +165,29 @@ int main(int argc, char** argv) {
     output.flags = 1;
     CHECK(iprop_program_output_get(schema, 0, &output, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_output_count(original, &outputCount, &error) == IPROP_EX_OK);
+    iprop_part_info_ex part{};
+    uint32_t partCount = 0, partInputCount = 0, partInputIndex = UINT32_MAX;
+    CHECK(iprop_part_info_ex_init(&part, sizeof(part)) == IPROP_EX_OK);
+    CHECK(iprop_program_part_count(parts, &partCount, &error) == IPROP_EX_OK);
+    CHECK(partCount == 3);
+    CHECK(iprop_program_part_get(parts, 0, &part, &error) == IPROP_EX_OK);
+    CHECK(part.owner == 1 && part.name_present == 0 && part.name.data == nullptr && part.name.byte_count == 0);
+    CHECK(iprop_program_part_get(parts, 1, &part, &error) == IPROP_EX_OK);
+    CHECK(part.owner == 2 && part.input_count == 0 && part.output_count == 0);
+    CHECK(iprop_program_part_input_count(parts, 0, &partInputCount, &error) == IPROP_EX_OK && partInputCount == 4);
+    CHECK(iprop_program_part_input_get(parts, 0, 0, &input, &error) == IPROP_EX_OK);
+    CHECK(iprop_program_part_input_find(parts, 0, input.name, &partInputIndex, &error) == IPROP_EX_OK && partInputIndex == 0);
+    CHECK(iprop_program_part_input_get(parts, 2, 0, &input, &error) == IPROP_EX_OK && input.u32_default == 7);
+    CHECK(iprop_program_part_input_find(parts, 2, input.name, &partInputIndex, &error) == IPROP_EX_OK && partInputIndex == 0);
+    CHECK(iprop_program_part_get(parts, UINT32_MAX, &part, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_part_input_count(parts, UINT32_MAX, &partInputCount, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_part_input_get(parts, 0, UINT32_MAX, &input, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_part_input_find(parts, 0, {nullptr, 1}, &partInputIndex, &error) == IPROP_EX_E_ARGUMENT);
+    input.flags = 1;
+    CHECK(iprop_program_part_input_get(parts, 0, 0, &input, &error) == IPROP_EX_E_ARGUMENT);
+    part.flags = 1;
+    CHECK(iprop_program_part_get(parts, 0, &part, &error) == IPROP_EX_E_ARGUMENT);
+    input.flags = 0;
     CHECK(inputCount == 3);
     CHECK(iprop_program_input_get(original, 0, &input, &error) == IPROP_EX_OK);
     CHECK(iprop_program_input_find(original, input.name, &inputIndex, &error) == IPROP_EX_OK);
@@ -173,6 +203,7 @@ int main(int argc, char** argv) {
     CHECK(error.status == IPROP_EX_OK && error.reason == IPROP_REASON_NONE);
     iprop_program_free(original);
     iprop_program_free(schema);
+    iprop_program_free(parts);
     std::printf("%zu checked OOM points, real format/validate locations, internal ABI containment and frozen legacy policy: PASS\n", faultCases);
     return 0;
 }

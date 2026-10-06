@@ -195,6 +195,7 @@ typedef struct {
 #define IPROP_CAP_LIBRARY_QUERY_EX (UINT64_C(1) << 5)
 #define IPROP_CAP_ROOT_INPUT_REFLECTION (UINT64_C(1) << 6)
 #define IPROP_CAP_OUTPUT_DECLARATIONS (UINT64_C(1) << 7)
+#define IPROP_CAP_PART_REFLECTION (UINT64_C(1) << 8)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -368,7 +369,7 @@ IPROP_API iprop_status_ex iprop_program_query(const iprop_program* program,
                                             iprop_program_info_ex* out, iprop_error_ex* error);
 IPROP_API iprop_status_ex iprop_library_query_ex(iprop_library_info_ex* out, iprop_error_ex* error);
 
-/* Binary root-input types, independent of the legacy ABI-sized enum and any
+/* Binary input types, independent of the legacy ABI-sized enum and any
  * source-language aliases. Source i32 declarations are stored/reported U32;
  * their default is the unchanged uint32_t bit pattern. No signed binary tag
  * is introduced. These fixed-width values match the binary metadata tags. */
@@ -382,14 +383,17 @@ typedef struct {
     uint8_t r, g, b, a;
 } iprop_color_rgba8;
 
-/* Root-input declaration, in stored order. struct_size and flags are input;
+/* Input declaration, in the selected root/part collection's stored order.
+ * struct_size and flags are input;
  * minimum capacity is four bytes and absent flags mean zero. No flags are
  * supported; a nonzero complete flags field is E_ARGUMENT. Other complete
  * fields are outputs. Queries preserve size/flags, padding, partial fields
  * and unknown tail. name.data and name.byte_count are bounded independently;
  * inspect both only when both fields fit. The UTF-8 view includes embedded
  * NUL bytes and belongs to the program until program_free. input_index is
- * local to this load, with no persistence across recompilation. The matching
+ * local to the selected collection of this load. Part-input indices identify
+ * part signature entries; root parameters use root-input indices. Resolve
+ * indices again for each load/compilation. The matching
  * default field is exact (including f32 bits); inactive defaults are zero. */
 typedef struct {
     uint32_t struct_size;
@@ -454,6 +458,50 @@ IPROP_API iprop_status_ex iprop_program_output_get(const iprop_program* program,
 IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program, uint32_t owner,
                                                    iprop_utf8_view name, uint32_t* out_index,
                                                    iprop_error_ex* error);
+
+/* Stored part table. part_index N maps to owner N+1, including empty parts.
+ * input_count describes the part's own input signature; output_begin/count
+ * select its contiguous global output range for program_output_get, and
+ * program_output_find uses this owner. An empty part may have the same
+ * output_begin as the following part while keeping its own owner.
+ * Current binary formats do not store a part name: name_present=0, name=NULL/0.
+ * A stored function name is not a part/import name. Future stored empty names
+ * may be present with byte_count=0; name_present distinguishes availability.
+ * Fields except size/flags are outputs, with the existing sized/flag/padding
+ * policy. Name pointer/count are bounded separately. Names, if available,
+ * would be immutable program-owned UTF-8 views until program_free. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t part_index;
+    uint32_t owner;
+    uint32_t size_x, size_y;
+    float origin_x, origin_y;
+    uint32_t input_count;
+    uint32_t output_begin;
+    uint32_t output_count;
+    uint32_t name_present;
+    iprop_utf8_view name;
+} iprop_part_info_ex;
+
+IPROP_API iprop_status_ex iprop_part_info_ex_init(iprop_part_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_program_part_count(const iprop_program* program,
+                                                 uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_part_get(const iprop_program* program, uint32_t part_index,
+                                               iprop_part_info_ex* out, iprop_error_ex* error);
+/* Signature reflection only: no host part-input override is introduced.
+ * Input indices and find results are local to the selected part signature,
+ * and cannot identify a root parameter. All types/defaults/name lengths use
+ * the same input declaration record/writer as root inputs. Invalid arguments,
+ * optional bounded errors and output preservation follow the checked policy. */
+IPROP_API iprop_status_ex iprop_program_part_input_count(const iprop_program* program, uint32_t part_index,
+                                                       uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_part_input_get(const iprop_program* program, uint32_t part_index,
+                                                     uint32_t input_index, iprop_input_info_ex* out,
+                                                     iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_part_input_find(const iprop_program* program, uint32_t part_index,
+                                                      iprop_utf8_view name, uint32_t* out_index,
+                                                      iprop_error_ex* error);
 
 /* generate_ex is planned for the validated-parameters stage; it has no symbol
  * or capability yet. Its options use iprop_generate_options_ex, with absent

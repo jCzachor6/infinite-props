@@ -3,8 +3,9 @@
 API 0.3 provides root-input declarations through checked count/get/find calls.
 The loaded library advertises `IPROP_CAP_ROOT_INPUT_REFLECTION` only for these
 implemented operations. [Output declarations](c-api-output-declarations.md)
-have their own capability. Part tables, emission/format metadata, parameters
-and structured generation remain separate tasks.
+have their own capability. [Part tables and input signatures](c-api-parts.md)
+are separately advertised by `IPROP_CAP_PART_REFLECTION`. Emission/format
+metadata, parameters and structured generation remain separate tasks.
 
 | Symbol | Output |
 | --- | --- |

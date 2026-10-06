@@ -46,7 +46,12 @@ set or program does not invalidate a result. Root input IDs and global output
 slots are scoped to a particular loaded program; they are not stable across
 recompilation. Parameter sets from independently loaded programs must not be
 silently accepted as belonging to each other, even for identical bytes.
-Part-input reflection does not imply host overrides of those inputs.
+Part-input reflection does not imply host overrides of those inputs. Its
+indices identify only the selected part signature, not root parameter IDs.
+The implemented [part table](c-api-parts.md) uses owner `part_index + 1`; owner
+zero identifies the root. Current binary formats store no part/import name,
+so part name presence is zero and its view is NULL/zero even when the associated
+function has a stored name.
 
 Free functions accept `NULL`. Other handles are required unless their function
 explicitly documents a null default; required output pointers are non-null.
