@@ -1,12 +1,15 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
+#include <algorithm>
 #include <bit>
 #include <map>
+#include <numeric>
 #include <string>
 #include <vector>
 
 #include "Compiler.hpp"
+#include "iprop/Debug.hpp"
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
@@ -18,6 +21,109 @@
 
 using namespace iprop;
 using namespace compiler_test;
+
+TEST_CASE("named selection ramp range and polygon permutations preserve absolute RNG effects",
+          "[call-effects]") {
+    struct EffectCase {
+        std::string function;
+        std::vector<std::string> names;
+        std::vector<std::string> expressions;
+        std::vector<int> order;
+        std::string reference;
+        bool returnsValue = true;
+    };
+    const std::vector<EffectCase> cases{
+        {"range", {"a", "b"}, {"mark(1)", "mark(3)"}, {1, 3}, "value=range(1,3);"},
+        {"pick", {"value0", "value1", "value2"},
+            {"mark(1)", "mark(2)", "mark(3)"}, {1, 2, 3}, "value=values[index(3)];"},
+        {"choose", {"seed", "value0", "value1", "value2"},
+            {"mark(0)", "mark(1)", "mark(2)", "mark(3)"}, {0, 1, 2, 3},
+            "stream_push(0); value=values[index(3)]; stream_pop();"},
+        {"ramp", {"palette", "t"}, {"values", "mark(1)"}, {1}, "value=ramp(values,1);"},
+        {"poly", {"color", "x0", "y0", "x1", "y1", "x2", "y2"},
+            {"tint()", "mark(1)", "mark(2)", "mark(3)", "mark(4)", "mark(5)", "mark(6)"},
+            {1, 2, 3, 4, 5, 6, 70}, "poly(#abc,1,2,3,4,5,6);", false}
+    };
+    const auto source = [](const std::string& body) {
+        return "asset t {size 8x8 output list point trace palette values=[1.0,2.0,3.0] "
+            "draw {" + body + "} "
+            "mark(tag:i32)->i32 {trace={tag,unit()}; return tag;} "
+            "tint()->color {trace={70,unit()}; return #abc;} }";
+    };
+    const auto compile = [](const std::string& text, bool optimize) {
+        const auto program = ips::parse(text);
+        ips::checkAsset(program, {});
+        return compileProgram(program, {}, optimize);
+    };
+    for (const auto& test : cases) {
+        INFO(test.function);
+        const std::string after = (test.returnsValue ? "trace={value,unit()};" : "") +
+            std::string("trace={99,unit()};");
+        const auto callBody = [&](const std::string& arguments) {
+            return (test.returnsValue ? "value=" : "") + test.function + "(" + arguments + ");" + after;
+        };
+        std::string positional;
+        for (const auto& expression : test.expressions) {
+            if (!positional.empty()) positional += ",";
+            positional += expression;
+        }
+        std::string referenceBody;
+        for (const auto tag : test.order)
+            referenceBody += "trace={" + std::to_string(tag) + ",unit()};";
+        referenceBody += test.reference + after;
+        std::vector<std::size_t> permutation(test.names.size());
+        std::iota(permutation.begin(), permutation.end(), 0);
+        std::vector<std::vector<std::size_t>> permutations;
+        if (permutation.size() <= 4) {
+            do { permutations.push_back(permutation); }
+            while (std::next_permutation(permutation.begin(), permutation.end()));
+        } else {
+            // Both directions and every cyclic position cover polygon's
+            // exceptional coordinates-before-colour order without 7! builds.
+            for (std::size_t rotation = 0; rotation < permutation.size(); ++rotation) {
+                permutations.push_back(permutation);
+                auto reverse = permutation;
+                std::reverse(reverse.begin(), reverse.end());
+                permutations.push_back(std::move(reverse));
+                std::rotate(permutation.begin(), permutation.begin() + 1, permutation.end());
+            }
+        }
+        for (const bool optimize : {false, true}) {
+            const auto baseline = compile(source(callBody(positional)), optimize);
+            const auto reference = compile(source(referenceBody), optimize);
+            for (const auto& slots : permutations) {
+                for (const bool mixed : {false, true}) {
+                    std::string arguments;
+                    for (const auto slot : slots) {
+                        if (!arguments.empty()) arguments += ",";
+                        if (!mixed || slot != 0) arguments += test.names[slot] + "=";
+                        arguments += test.expressions[slot];
+                    }
+                    INFO("optimize=" << optimize << " arguments=" << arguments);
+                    const auto bytes = compile(source(callBody(arguments)), optimize);
+                    CHECK(stripDebug(bytes) == stripDebug(baseline));
+                    for (const u32 seed : {0u, 7u, 26u, 0xffffffffu}) {
+                        INFO("seed=" << seed);
+                        const auto actual = execute(bytes, seed);
+                        const auto expected = execute(reference, seed);
+                        CHECK(actual.canvas.pixels == expected.canvas.pixels);
+                        REQUIRE(actual.outputs.size() == 1);
+                        REQUIRE(expected.outputs.size() == 1);
+                        const auto& points = actual.outputs[0].points;
+                        const auto& expectedPoints = expected.outputs[0].points;
+                        REQUIRE(points.size() == test.order.size() + (test.returnsValue ? 2 : 1));
+                        REQUIRE(points.size() == expectedPoints.size());
+                        for (std::size_t i = 0; i < points.size(); ++i) {
+                            CHECK(std::bit_cast<u32>(points[i].x) == std::bit_cast<u32>(expectedPoints[i].x));
+                            CHECK(std::bit_cast<u32>(points[i].y) == std::bit_cast<u32>(expectedPoints[i].y));
+                        }
+                        CHECK(points.back().x == 99.f);
+                    }
+                }
+            }
+        }
+    }
+}
 
 TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream") {
     const auto part = ips::parse(R"(asset child { size 8x8
