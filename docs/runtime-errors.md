@@ -3,14 +3,16 @@
 `iprop_error_ex` is an additive API 0.3 descriptor. It records a fixed-width
 status, stable cause category, stage and optional location. Initialize it with
 `iprop_error_ex_init(&error, sizeof(error))`: success, reason/stage `NONE`, and
-no location. Like other sized initializers, it writes only complete known
+no location, message buffer or message length. Like other sized initializers, it writes only complete known
 fields; partial fields, padding and unknown tail bytes remain untouched.
 It owns no memory and requires no free function.
 
 This foundation does not add a structured load/generation/query entry point
 or an error capability. The existing six C entry points keep their enums,
 layouts, status policies and located text. Later entry points consume this
-descriptor and define message-buffer and exception-boundary behavior.
+descriptor through the call-local error sink. The message-buffer foundation
+below is implemented without advertising a structured load/query/generation
+consumer.
 
 ## Causes and stages
 
@@ -73,3 +75,54 @@ The runtime `FormatError`/`Trap` carry typed reason/stage/location fields.
 enrich a location with an available debug line. It accepts status from its
 calling boundary so legacy and future strict policies share the same VM and
 validator. It does not allocate or inspect message wording.
+
+## Caller-owned messages
+
+After initializing `iprop_error_ex`, the caller may configure `message_buffer`
+and `message_capacity`. Capacity counts writable bytes, including space for
+NUL. The buffer is borrowed for the synchronous call only; its storage must
+not overlap the descriptor. Reporting preserves both input fields and
+`struct_size`. Absent fields default to NULL/zero. NULL with nonzero capacity
+is an argument error, without dereferencing that pointer; a valid metadata
+prefix can still report this error. NULL/zero and non-null/zero are valid
+length-only configurations, with no buffer access. A NULL error descriptor
+means no optional error output.
+
+`message_required_bytes` reports the entire message length **excluding NUL**,
+independently of the actual capacity. Allocate that length plus one for the
+complete message. `message_truncated` is a fixed-width boolean: one exactly
+when some message bytes were omitted, including nonempty length-only output.
+The field is zero for empty text, including success with no buffer.
+
+Positive capacity always writes NUL. Short buffers contain a prefix with
+complete UTF-8 characters when the original message is valid UTF-8. Required
+length still counts the full original bytes. Capacity one yields an empty
+NUL-terminated string and truncation for a nonempty message. No bytes beyond
+the declared capacity are written. Descriptor prefixes can omit the newer
+buffer or length fields; writers neither read nor write incomplete fields,
+padding or an unknown tail.
+Copying also supports overlap between borrowed message text and the message
+buffer; overlap between the buffer and the descriptor remains invalid.
+
+Every completed new call initializes error output, including success: status
+OK, reason/stage NONE, locations absent, required length/truncation zero, and
+empty text when a writable buffer exists. New argument and OOM adapters use
+static meaningful fallback messages (`invalid argument`, `out of memory`);
+call sites can supply a more specific borrowed argument message. Runtime
+exceptions supply their existing borrowed `what()` text with the typed
+metadata. This foundation does not decide future entry points' status policy.
+
+`backends/capi/ErrorSink.hpp` validates/snapshots the optional output once, then
+renders through bounded helpers. Its bind/report/success/argument/OOM paths
+do not allocate or throw. Error state belongs to this call and caller storage;
+there is no global last_error or borrowed global error message.
+
+Legacy calls retain their historical behavior: byte-prefix truncation, old
+statuses, and buffers left untouched for success, argument errors and OOM.
+Their catch handlers now copy a borrowed string view instead of allocating a
+temporary `std::string`. This fixes allocation failures escaping while
+reporting a format error or uniform-type trap, without changing the original
+message-buffer policy. Controlled tests inject a single `bad_alloc` at every
+C++ allocation observed in fixture-backed load/generate calls, including
+uniform overrides and part-output marshalling. Malformed-load and type-trap
+cases also cover reporting; no exception crosses the C ABI in those paths.

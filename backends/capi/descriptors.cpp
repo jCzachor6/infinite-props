@@ -9,6 +9,10 @@ extern "C" {
 iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     iprop::capi::writeField(out, capacity, 0, capacity);
+    char* noBuffer = nullptr;
+    const uint32_t noCapacity = 0;
+    iprop::capi::writeField(out, capacity, offsetof(iprop_error_ex, message_buffer), noBuffer);
+    iprop::capi::writeField(out, capacity, offsetof(iprop_error_ex, message_capacity), noCapacity);
     iprop::capi::writeError(out, iprop_error_ex{});
     return IPROP_EX_OK;
 }

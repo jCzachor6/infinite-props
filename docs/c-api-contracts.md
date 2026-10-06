@@ -79,7 +79,8 @@ the intentional exception: its validated prefix reports the failure, with an
 explicitly bounded caller-owned message buffer. No exception crosses C, even
 when allocating or reporting an error fails; basic error reporting allocates
 no memory. Specific status, reason and message-buffer rules accompany the X
-implementation tasks.
+implementation tasks; the [message-buffer foundation](runtime-errors.md)
+already defines caller capacity, NUL, required length and success clearing.
 
 Current library/options initializers and query already use these bounded
 descriptor rules. `Utf8View.hpp` provides the common no-allocation validator;
@@ -89,4 +90,6 @@ The sized `iprop_error_ex` foundation and initializer follow the same rules.
 Its typed categories, stages and optional coordinate spaces are specified in
 [runtime-errors.md](runtime-errors.md). Presence bits distinguish unavailable
 locations from valid zero offsets/indices. This foundation adds no structured
-load/query/generate consumer or error capability yet.
+load/query/generate consumer or error capability yet. Its call-local ErrorSink
+snapshots caller-owned message storage, performs no allocation while reporting,
+and preserves the descriptor's buffer/capacity inputs.

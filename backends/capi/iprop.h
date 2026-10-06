@@ -233,7 +233,7 @@ IPROP_API iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_
 /* Structured error foundations. Codes identify stable cause categories; they
  * never depend on message wording. New operations consume this descriptor as
  * they are implemented; this declaration does not advertise load/generate_ex.
- * Each field is output-only except caller capacity in struct_size. */
+ * Fields are output-only except struct_size and the message buffer/capacity. */
 typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_NONE UINT32_C(0)
 #define IPROP_REASON_INVALID_FORMAT UINT32_C(1000)
@@ -307,6 +307,20 @@ typedef struct {
     uint32_t function_index;
     uint32_t pc;
     uint32_t debug_line;
+    /* Optional caller-owned writable buffer, borrowed for this call only.
+     * NULL is valid exactly when message_capacity is zero. A non-null buffer
+     * with zero capacity is also valid; neither case reads/writes the buffer.
+     * Buffer storage must not overlap this descriptor. Absent fields default
+     * to NULL/zero. Reporting preserves these input fields and struct_size. */
+    char* message_buffer;
+    uint32_t message_capacity;
+    /* Required text bytes, excluding the terminating NUL; allocate +1 for
+     * the full message. Capacity > 0 always produces NUL. Truncated is 1 iff
+     * some message bytes were omitted, including length-only queries.
+     * Success clears text (when writable), required length and truncation.
+     * New text truncation keeps complete UTF-8 characters when text is UTF-8. */
+    uint64_t message_required_bytes;
+    uint32_t message_truncated;
 } iprop_error_ex;
 
 /* Initializes success/none and absent locations using bounded field writes.

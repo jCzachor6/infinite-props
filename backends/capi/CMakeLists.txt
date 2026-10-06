@@ -58,12 +58,15 @@ iprop_warnings(capi_descriptors)
 add_test(NAME capi_descriptors COMMAND capi_descriptors)
 foreach(linkage shared static)
     add_executable(capi_error_descriptor_${linkage} test/error_descriptor.c)
+    add_executable(capi_error_buffers_${linkage} test/error_buffers.c)
     add_executable(capi_library_${linkage} test/library.c)
     if(linkage STREQUAL "shared")
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
     else()
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
     endif()
     target_compile_definitions(capi_library_${linkage} PRIVATE
@@ -72,6 +75,7 @@ foreach(linkage shared static)
         IPROP_TEST_PRODUCT_PATCH=${PROJECT_VERSION_PATCH})
     iprop_warnings(capi_library_${linkage})
     iprop_warnings(capi_error_descriptor_${linkage})
+    iprop_warnings(capi_error_buffers_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
@@ -99,6 +103,11 @@ foreach(source IN LISTS IPROP_CAPI_SOURCES)
 endforeach()
 
 add_custom_target(capi_golden DEPENDS ${IPROP_CAPI_IPROPS})
+foreach(linkage shared static)
+    add_dependencies(capi_error_buffers_${linkage} capi_golden)
+    add_test(NAME capi_error_buffers_${linkage} COMMAND capi_error_buffers_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
+endforeach()
 set(owner_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-owners.iprop)
 add_custom_command(OUTPUT ${owner_fixture}
     COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-owners.ips -o ${owner_fixture}
@@ -132,6 +141,13 @@ target_include_directories(capi_conformance SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(capi_conformance)
 add_dependencies(capi_conformance capi_golden)
+
+add_executable(capi_error_sink test/error_sink.cpp)
+target_link_libraries(capi_error_sink PRIVATE iprop_capi_static)
+iprop_warnings(capi_error_sink)
+add_dependencies(capi_error_sink capi_golden)
+add_test(NAME capi_error_sink COMMAND capi_error_sink
+    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${owner_fixture})
 
     add_test(NAME capi_conformance
         COMMAND capi_conformance

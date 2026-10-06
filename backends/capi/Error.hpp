@@ -93,6 +93,7 @@ inline bool writeError(iprop_error_ex* out, const iprop_error_ex& error) noexcep
 #define WRITE(field) writeField(out, size, offsetof(iprop_error_ex, field), error.field)
     WRITE(status); WRITE(reason); WRITE(stage); WRITE(byte_offset); WRITE(offset_space);
     WRITE(function_index); WRITE(pc); WRITE(debug_line);
+    WRITE(message_required_bytes); WRITE(message_truncated);
 #undef WRITE
     writeField(out, size, offsetof(iprop_error_ex, location_flags), flags);
     return true;

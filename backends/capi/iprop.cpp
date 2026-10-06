@@ -3,15 +3,16 @@
 // status codes. The C++ runtime headers are not part of the C ABI.
 
 #include "iprop.h"
+#include "ErrorSink.hpp"
 
 #include "iprop/VM.hpp"
 #include "iprop/Validator.hpp"
 
-#include <cstring>
 #include <memory>
 #include <new>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 // The definitions behind the opaque handles of iprop.h. The struct tags
@@ -34,14 +35,11 @@ namespace {
 
 // Copies the message into the caller's buffer, truncated and
 // NUL-terminated.
-void copyError(const std::string& message, char* err, size_t errSize) {
-    if (err == nullptr || errSize == 0) {
-        return;
-    }
-    const size_t n = message.size() < errSize - 1 ? message.size()
-                                                  : errSize - 1;
-    std::memcpy(err, message.data(), n);
-    err[n] = '\0';
+void copyError(std::string_view message, char* err, size_t errSize) noexcept {
+    // what() converts to a borrowed view, never an allocating std::string.
+    // Preserve the old byte truncation, untouched argument/OOM/success buffers
+    // and status policies while making catch handlers safe under allocation failure.
+    iprop::capi::copyMessage(message, {err, errSize});
 }
 
 // Rebuilds the C output table from the C++ generation result. The packed

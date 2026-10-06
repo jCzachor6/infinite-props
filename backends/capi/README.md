@@ -147,8 +147,11 @@ fields. `iprop_error_ex_init(&error, sizeof(error))` initializes success with
 absent locations. Container and expanded offsets have explicit coordinate
 spaces; function/PC and a usable debug line have presence bits. No filename
 or column is invented. See the [error contract](../../docs/runtime-errors.md).
-Structured load/generation entry points and message buffers are introduced
-in subsequent tasks; this initializer does not advertise an error capability.
+The descriptor now accepts a caller-owned `message_buffer`/`message_capacity`
+and reports full `message_required_bytes` (excluding NUL) and truncation.
+The common error sink clears success and renders argument/OOM/runtime messages
+without allocating. Structured load/generation consumers are introduced in
+subsequent tasks; this initializer does not advertise an error capability.
 
 New collections use count/get/find accessors returning one caller-sized
 descriptor at a time. They do not return arrays whose stride depends on a

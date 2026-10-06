@@ -231,7 +231,8 @@ TEST_CASE("error descriptor writers never touch absent fields or unknown tails",
             {offsetof(iprop_error_ex, stage),4}, {offsetof(iprop_error_ex, byte_offset),8},
             {offsetof(iprop_error_ex, location_flags),4}, {offsetof(iprop_error_ex, offset_space),4},
             {offsetof(iprop_error_ex, function_index),4}, {offsetof(iprop_error_ex, pc),4},
-            {offsetof(iprop_error_ex, debug_line),4}};
+            {offsetof(iprop_error_ex, debug_line),4},
+            {offsetof(iprop_error_ex, message_required_bytes),8}, {offsetof(iprop_error_ex, message_truncated),4}};
         for (std::size_t byte = 4; byte < capacity; ++byte) {
             bool complete = false;
             for (auto [at, width] : fields)

@@ -16,6 +16,8 @@ int main(void) {
     CHECK(error.reason == IPROP_REASON_NONE && error.stage == IPROP_STAGE_NONE);
     CHECK(error.location_flags == 0 && error.offset_space == IPROP_OFFSET_NONE);
     CHECK(error.byte_offset == 0 && error.function_index == 0 && error.pc == 0 && error.debug_line == 0);
+    CHECK(error.message_buffer == NULL && error.message_capacity == 0 &&
+          error.message_required_bytes == 0 && error.message_truncated == 0);
     for (capacity = 0; capacity <= sizeof(error) + 16; ++capacity) {
         unsigned char* bytes = (unsigned char*)malloc(capacity + 1);
         size_t i;
@@ -24,8 +26,10 @@ int main(void) {
             offsetof(iprop_error_ex, reason), offsetof(iprop_error_ex, stage),
             offsetof(iprop_error_ex, byte_offset), offsetof(iprop_error_ex, location_flags),
             offsetof(iprop_error_ex, offset_space), offsetof(iprop_error_ex, function_index),
-            offsetof(iprop_error_ex, pc), offsetof(iprop_error_ex, debug_line)};
-        const size_t widths[] = {4, 4, 4, 4, 8, 4, 4, 4, 4, 4};
+            offsetof(iprop_error_ex, pc), offsetof(iprop_error_ex, debug_line),
+            offsetof(iprop_error_ex, message_buffer), offsetof(iprop_error_ex, message_capacity),
+            offsetof(iprop_error_ex, message_required_bytes), offsetof(iprop_error_ex, message_truncated)};
+        const size_t widths[] = {4, 4, 4, 4, 8, 4, 4, 4, 4, 4, sizeof(char*), 4, 8, 4};
         CHECK(bytes != NULL);
         memset(bytes, 0xa5, capacity + 1);
         CHECK(iprop_error_ex_init((iprop_error_ex*)bytes, capacity) ==
