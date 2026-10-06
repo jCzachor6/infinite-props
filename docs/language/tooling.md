@@ -30,12 +30,23 @@ the readable renderer. Multi-error recovery follows in the B.5 task.
 
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word
-keywords, normalized literals and named builtin arguments in signature order.
+keywords and normalized literals. Calls use the compiler's shared binding and
+evaluation plan: ordinary builtins and helpers follow parameter order, `poly`
+puts vertex coordinates before its colour, and a known part puts uniforms in
+declaration order before seed/v/a/at and transforms. Unknown imports retain
+written order until their declarations are available. Helpers keep their
+existing `helper(parameters) -> type` syntax.
 It must differ from the input and binary output. Comments keep their exact
 contents, including delimiters and internal whitespace. A call containing
 comments keeps its written argument order. Keep the formatted file beside
 its imports when recompiling it. Formatting is idempotent and preserves
 executable bytes after stripping source-line debug data.
+
+Optional semicolons and redundant grouping normalize away when they carry no
+comments. A bare `return;` retains its required delimiter, and punctuation
+carrying comments remains to preserve attachment. Float text roundtrips to the
+same binary32 value, including signed zero; integer inputs preserve their
+signed declaration or unsigned bit-pattern spelling.
 
 Comments are owning trivia on the source tokens, and AST nodes refer to
 half-open token ranges. A comment beginning on the same line as the previous

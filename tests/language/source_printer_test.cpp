@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <bit>
 #include <filesystem>
 #include <fstream>
 #include <tuple>
@@ -50,6 +51,49 @@ TEST_CASE("canonical source formatting normalizes literals names and typed funct
     ips::checkAsset(program, {});
     ips::checkAsset(reparsed, {});
     CHECK(stripDebug(compileProgram(program, {})) == stripDebug(compileProgram(reparsed, {})));
+}
+
+TEST_CASE("canonical words grouping and signed literals preserve exact executable values", "[format-style]") {
+    const auto original = ips::parse(R"(📦 canonical { size 8X8; origin (0),(0);
+      variants 0X2; archetypes 0x1;
+      📥 i32 low=(-2147483648); 📥 u32 high=0xFFFFFFFF;
+      📥 f32 zero=(-0.0); 📥 f32 tiny=1.17549435e-38;
+      📤 list point trace;
+      🌈 p=[(-0.0),0x1,1.17549435e-38];
+      ✏ {
+        // 📦 in a comment stays literal
+        trace={zero,tiny}; trace={p[0],p[2]};
+        helper(y=1e-20,x=(-0.0));
+        x=((1<1<<2)); noop();
+      }
+      helper(x:f32,y:f32) { trace={x,y}; }
+      noop() { return; }
+    })");
+    const auto text = ips::formatProgram(original);
+    CHECK(text.starts_with("asset canonical {\n  size 8x8\n"));
+    CHECK(text.find("input i32 low = (-2147483648)") != std::string::npos);
+    CHECK(text.find("input u32 high = 4294967295") != std::string::npos);
+    CHECK(text.find("input f32 zero = (-0.0)") != std::string::npos);
+    CHECK(text.find("helper(x = (-0.0), y = 1e-20)") != std::string::npos);
+    CHECK(text.find("// 📦 in a comment stays literal") != std::string::npos);
+    CHECK(text.find("helper(x: f32, y: f32)") != std::string::npos);
+    CHECK(text.find("return;") != std::string::npos);
+    const auto formatted = ips::parse(text);
+    CHECK(ips::formatProgram(formatted) == text);
+    ips::checkAsset(original, {});
+    ips::checkAsset(formatted, {});
+    for (const bool optimize : {false, true}) {
+        const auto before = compileProgram(original, {}, optimize);
+        const auto after = compileProgram(formatted, {}, optimize);
+        CHECK(stripDebug(before) == stripDebug(after));
+        const auto actual = compiler_test::execute(after);
+        REQUIRE(actual.outputs[0].points.size() == 3);
+        CHECK(std::bit_cast<u32>(actual.outputs[0].points[0].x) == 0x80000000u);
+        CHECK(std::bit_cast<u32>(actual.outputs[0].points[0].y) == 0x00800000u);
+        CHECK(std::bit_cast<u32>(actual.outputs[0].points[1].x) == 0x80000000u);
+        CHECK(std::bit_cast<u32>(actual.outputs[0].points[1].y) == 0x00800000u);
+        CHECK(std::bit_cast<u32>(actual.outputs[0].points[2].x) == 0x80000000u);
+    }
 }
 
 TEST_CASE("source formatting preserves every control and expression branch") {

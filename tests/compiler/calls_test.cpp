@@ -12,6 +12,7 @@
 #include "iprop/Debug.hpp"
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
+#include "ips/Printer.hpp"
 #include "ips/Semantics.hpp"
 #include "ips/SourceError.hpp"
 #include "ipa.hpp"
@@ -102,6 +103,9 @@ TEST_CASE("named selection ramp range and polygon permutations preserve absolute
                     INFO("optimize=" << optimize << " arguments=" << arguments);
                     const auto bytes = compile(source(callBody(arguments)), optimize);
                     CHECK(stripDebug(bytes) == stripDebug(baseline));
+                    const auto formatted = ips::formatProgram(ips::parse(source(callBody(arguments))));
+                    CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
+                    CHECK(stripDebug(compile(formatted, optimize)) == stripDebug(bytes));
                     for (const u32 seed : {0u, 7u, 26u, 0xffffffffu}) {
                         INFO("seed=" << seed);
                         const auto actual = execute(bytes, seed);
