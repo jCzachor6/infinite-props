@@ -19,6 +19,53 @@
 using namespace iprop;
 using namespace compiler_test;
 
+TEST_CASE("legacy locals in unexecuted branches and loops retain typed zero values") {
+    const auto program = ips::parse(R"(asset t {size 8x8 output list point trace
+        draw {
+            if (false) { i=7; f=9.5; tint=#fff; position={2,3}; }
+            while (false) { loopLocal=11; }
+            trace={i,f}; trace=position; trace={loopLocal,0}; pixel(0,0,tint);
+        }
+    })");
+    ips::checkAsset(program, {});
+    for (const bool optimize : {false,true}) {
+        const auto actual = execute(compileProgram(program, {}, optimize));
+        REQUIRE(actual.outputs.size() == 1);
+        REQUIRE(actual.outputs[0].points.size() == 3);
+        for (const auto& point : actual.outputs[0].points) {
+            CHECK(point.x == 0.f);
+            CHECK(point.y == 0.f);
+        }
+        CHECK(actual.canvas.at(0,0) == Color{0,0,0,0});
+    }
+}
+
+TEST_CASE("binary operand effects run left to right and logical operands short circuit") {
+    const auto program = ips::parse(R"(asset t {size 8x8 output list point trace
+        draw {
+            x=note(1)+note(2);
+            x=0&&note(90); x=1||note(91);
+            x=note(3)&&note(4); x=note(5)||note(92);
+            trace={6,unit()};
+        }
+        note(tag:i32)->i32 {trace={tag,unit()}; return tag;}
+    })");
+    const auto reference = compileChecked(R"(asset t {size 8x8 output list point trace
+        draw{trace={1,unit()};trace={2,unit()};trace={3,unit()};
+             trace={4,unit()};trace={5,unit()};trace={6,unit()};}
+    })");
+    for (const bool optimize : {false,true}) for (const u32 seed : {0u,42u,0xffffffffu}) {
+        const auto actual = execute(compileProgram(program, {}, optimize), seed);
+        const auto expected = execute(reference, seed);
+        REQUIRE(actual.outputs[0].points.size() == expected.outputs[0].points.size());
+        for (std::size_t i=0; i<expected.outputs[0].points.size(); ++i) {
+            CHECK(actual.outputs[0].points[i].x == expected.outputs[0].points[i].x);
+            CHECK(std::bit_cast<u32>(actual.outputs[0].points[i].y) ==
+                  std::bit_cast<u32>(expected.outputs[0].points[i].y));
+        }
+    }
+}
+
 TEST_CASE("the emitter safely rejects loop control without a loop") {
     for (const std::string control : {"break", "continue"}) {
         const auto program = ips::parse("asset t { size 8x8 "
@@ -283,4 +330,3 @@ asset t {
     REQUIRE(outcome.canvas.at(0, 0).a == 0);
     REQUIRE(outcome.canvas.at(1, 1) == Color{0, 255, 0, 255});
 }
-

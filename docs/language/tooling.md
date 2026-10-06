@@ -10,6 +10,11 @@ an expanded file; `--no-opt` disables compiler optimization for inspection.
 `ipval` validates a binary, `ipdis` disassembles it and `ipgen` generates
 pixels/outputs. The `.ipa` assembly language is the VM-level tool format.
 
+`ipc --describe-language` exports the implemented source rules, restrictions,
+shared call signatures and independent product/language/format/C API/ABI
+versions. See the [language-description contract](../language-description.md)
+for field meanings and executable acceptance cases.
+
 `ipc entry.ips --check --diagnostics=json` runs the same import, parsing,
 typing, planning, lowering, assembly, optimization and final-file validation
 pipeline entirely in memory. It writes no executable or formatted source;

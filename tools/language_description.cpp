@@ -4,12 +4,84 @@
 #include "ips/CallPlan.hpp"
 #include "ips/Typing.hpp"
 #include "ips/Lexer.hpp"
+#include "ips/Version.hpp"
 #include "iprop/OpcodeSpec.hpp"
+#include "../backends/capi/iprop.h"
 
 #include <stdexcept>
 
 namespace iprop::tools {
 namespace {
+constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
+    ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Circle, ips::ValueType::Rect};
+
+template<class Predicate>
+void types(std::ostream& out, Predicate include) {
+    out << '[';
+    bool first = true;
+    for (const auto type : valueTypes) {
+        if (!include(type)) continue;
+        if (!first) out << ',';
+        first = false;
+        out << '"' << ips::typeName(type) << '"';
+    }
+    out << ']';
+}
+
+void sourceRules(std::ostream& out) {
+    out << ",\"source_rules\":{\"inputs\":[";
+    bool first = true;
+    for (const auto type : {ips::InputType::Color, ips::InputType::F32,
+                            ips::InputType::U32, ips::InputType::I32}) {
+        if (!first) out << ',';
+        first = false;
+        const auto valueType = ips::valueTypeOf(type);
+        const auto* sourceType = type == ips::InputType::U32 ? "u32" : ips::typeName(valueType);
+        const auto* binaryType = type == ips::InputType::I32 ? "u32" : sourceType;
+        out << "{\"source_type\":\"" << sourceType << "\",\"binary_type\":\"" << binaryType
+            << "\",\"value_type\":\"" << ips::typeName(valueType) << "\"}";
+    }
+    out << "],\"types\":{\"storable\":";
+    types(out, ips::isStorable);
+    out << ",\"helper_parameters\":";
+    types(out, [](ips::ValueType value) {
+        for (const auto type : {ips::ParamType::I32, ips::ParamType::F32,
+                               ips::ParamType::Color, ips::ParamType::Vec2})
+            if (ips::valueTypeOf(type) == value) return true;
+        return false;
+    });
+    out << ",\"helper_value_returns\":";
+    types(out, ips::isStorable);
+    out << ",\"output_only_geometry\":";
+    types(out, [](ips::ValueType value) { return !ips::isStorable(value); });
+    out << ",\"point_value_type\":\"" << ips::typeName(ips::ValueType::Vec2)
+        << "\",\"implicit_widening\":[";
+    first = true;
+    for (const auto from : valueTypes) for (const auto to : valueTypes) {
+        if (from == to || !ips::argFits(to, from)) continue;
+        if (!first) out << ',';
+        first = false;
+        out << "{\"from\":\"" << ips::typeName(from) << "\",\"to\":\"" << ips::typeName(to)
+            << "\",\"contexts\":[\"numeric_operands\",\"call_arguments\",\"helper_returns\"]}";
+    }
+    out << R"(],"local_reassignment":"exact_type"},
+"locals":{"declaration":"first_assignment","scope":"function",
+"type_inference_order":"source_traversal","definite_assignment_analysis":false,
+"unexecuted_initializer":"typed_zero","read_requires_prior_assignment":true},
+"visibility":{"uniforms":"draw_only","uniforms_read_only":true,
+"helper_parameters_read_only":true,
+"draw_controls":{"names":["v","a"],"type":"i32","read_only":true},
+"seed":"current_rng_state_in_all_functions","palettes":"all_asset_functions"},
+"named_calls":{"targets":["builtin","helper","part"],"mixed_positional_and_named":true,
+"positional_binding":"positional_parameter_ordinal",
+"named_arguments_advance_positional_ordinal":false,"duplicate_arguments":false,"unknown_arguments":false},
+"restrictions":{"recursive_helpers":false,"nested_part_imports":false,
+"let_declarations":false,"fn_declarations":false,"named_geometry_constructors":false},
+"effect_order":{"binary_operands":"left_to_right","logical_operators":"short_circuit_left_to_right",
+"call_arguments":"signature_evaluation_order","named_arguments_change_evaluation_order":false,
+"part_parent_rng":"restored_after_child"}})";
+}
+
 void parameter(std::ostream& out, const std::string& name, const std::string& type) {
     out << "{\"name\":\"" << jsonEscape(name) << "\",\"type\":\"" << jsonEscape(type) << "\"}";
 }
@@ -53,8 +125,14 @@ void variadic(std::ostream& out, const std::string& name, const ips::BuiltinSpec
 } // namespace
 
 void writeLanguageDescription(std::ostream& out, std::string_view productVersion) {
-    out << "{\"schema_version\":1,\"product_version\":\"" << productVersion
-        << "\",\"format_version\":{\"major\":" << kVersionMajor << ",\"minor\":" << kVersionMinor
+    out << "{\"schema_version\":1,\"product_version\":\"" << jsonEscape(productVersion)
+        << "\",\"language_version\":{\"major\":" << ips::kLanguageVersionMajor
+        << ",\"minor\":" << ips::kLanguageVersionMinor
+        << "},\"c_api_version\":{\"major\":" << IPROP_API_VERSION_MAJOR
+        << ",\"minor\":" << IPROP_API_VERSION_MINOR
+        << "},\"abi_version\":{\"major\":" << IPROP_C_ABI_VERSION_MAJOR
+        << ",\"minor\":" << IPROP_C_ABI_VERSION_MINOR
+        << "},\"format_version\":{\"major\":" << kVersionMajor << ",\"minor\":" << kVersionMinor
         << "},\"builtins\":[";
     bool first = true;
     for (const auto& [name, spec] : ips::builtinSpecs()) {
@@ -125,6 +203,8 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
         first = false;
         out << "{\"word\":\"" << alias.word << "\",\"codepoint\":" << static_cast<std::uint32_t>(alias.codepoint) << '}';
     }
-    out << "]}\n";
+    out << ']';
+    sourceRules(out);
+    out << "}\n";
 }
 } // namespace iprop::tools

@@ -6,7 +6,9 @@ add_executable(ipc
     language_description.cpp)
 
 target_link_libraries(ipc PRIVATE iprop_compiler)
-target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
+    IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
+    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR})
 iprop_warnings(ipc)
 
 # ipdis: disassemble an .iprop binary into .ipa text
