@@ -43,9 +43,25 @@ written order until their declarations are available. Helpers keep their
 existing `helper(parameters) -> type` syntax.
 It must differ from the input and binary output. Comments keep their exact
 contents, including delimiters and internal whitespace. A call containing
-comments keeps its written argument order. Keep the formatted file beside
-its imports when recompiling it. Formatting is idempotent and preserves
+comments keeps its written argument order. When the output is in another
+directory, import paths are adjusted to refer to the same files, with aliases
+and comments preserved. Formatting is idempotent and preserves
 executable bytes after stripping source-line debug data.
+
+`ipc entry.ips --format canonical.ips --format-only` runs the same full
+in-memory compile/validation pipeline and writes only canonical source. It
+creates no `.iprop`; `--format` without `--format-only` still compiles normally.
+Source output must differ from the entry, all imports and any requested binary,
+including filesystem aliases. `--format-only` requires `--format` and rejects
+`--output` and `--check`. A compile or output error preserves the previous
+source destination: the completed source is published by an atomic rename
+on its destination filesystem. Temporary files belong to an exclusive
+directory and are removed on failure. This is atomic replacement, without a
+power-loss durability guarantee. A final destination symlink is replaced by
+the formatted file; its earlier referent is left intact. Symlinks in the
+destination directory are resolved before deriving relative imports.
+JSON diagnostics keep the same schema and
+exit statuses in this mode.
 
 Optional semicolons and redundant grouping normalize away when they carry no
 comments. A bare `return;` retains its required delimiter, and punctuation

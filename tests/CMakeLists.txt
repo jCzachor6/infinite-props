@@ -137,6 +137,8 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_diagnostic_failures.py" "$<TARGET_FILE:compiler_diagnostic_failure_probe>")
     add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME compiler_format_cli COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_format_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_language_contract COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_language_contract.py" "$<TARGET_FILE:ipc>")
     add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover

@@ -8,26 +8,84 @@
 #include "ips/Version.hpp"
 
 #include <filesystem>
+#include <chrono>
+#include <cstdio>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
+#include <vector>
+
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 namespace {
-bool sameFile(const std::filesystem::path& first, const std::filesystem::path& second) {
-    std::error_code error;
-    return std::filesystem::absolute(first).lexically_normal() ==
-               std::filesystem::absolute(second).lexically_normal() ||
-           std::filesystem::equivalent(first, second, error);
+std::filesystem::path utf8Path(std::string_view text) {
+    return std::filesystem::path(std::u8string(text.begin(), text.end()));
+}
+std::string pathText(const std::filesystem::path& path) {
+    const auto text = path.generic_u8string();
+    return {text.begin(), text.end()};
 }
 class OutputIOError : public std::runtime_error { public: using std::runtime_error::runtime_error; };
-void writeFile(const std::string& path, const char* data, std::size_t size) {
+void writeFile(const std::filesystem::path& path, const char* data, std::size_t size) {
     std::ofstream out(path, std::ios::binary);
-    if (!out) throw OutputIOError("cannot write '" + path + "'");
+    if (!out) throw OutputIOError("cannot write '" + pathText(path) + "'");
     out.write(data, static_cast<std::streamsize>(size));
     out.close();
-    if (!out) throw OutputIOError("cannot write '" + path + "'");
+    if (!out) throw OutputIOError("cannot write '" + pathText(path) + "'");
+}
+std::filesystem::path physicalPath(const std::filesystem::path& path) {
+    std::error_code error;
+    auto resolved = std::filesystem::weakly_canonical(path, error);
+    if (error) throw OutputIOError("cannot resolve '" + pathText(path) + "'");
+    return resolved;
+}
+bool sameFile(const std::filesystem::path& first, const std::filesystem::path& second) {
+    std::error_code error;
+    return std::filesystem::equivalent(first, second, error) ||
+           physicalPath(first) == physicalPath(second);
+}
+void writeSourceAtomically(const std::filesystem::path& destination, std::string_view source) {
+    // The exclusive directory owns the temporary file, on the destination's
+    // filesystem. A failed write/rename leaves the previous source intact.
+    struct Temporary {
+        std::filesystem::path directory;
+        ~Temporary() noexcept {
+            try {
+                std::error_code ignored;
+                std::filesystem::remove_all(directory, ignored);
+            } catch (...) { /* Cleanup must not replace an active exception. */ }
+        }
+    };
+    const auto nonce = static_cast<std::uint64_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+    for (unsigned attempt=0; attempt<100; ++attempt) {
+        auto directory = destination.parent_path() /
+            utf8Path(".ipc-format-" + std::to_string(nonce) + "-" + std::to_string(attempt));
+        std::error_code error;
+        if (!std::filesystem::create_directory(directory, error)) {
+            if (error) throw OutputIOError("cannot prepare source output '" + pathText(destination) + "'");
+            continue;
+        }
+        Temporary temporary{std::move(directory)};
+        const auto file = temporary.directory / "source.ips";
+        writeFile(file, source.data(), source.size());
+#ifdef _WIN32
+        if (!MoveFileExW(file.c_str(), destination.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            throw OutputIOError("cannot replace source output '" + pathText(destination) + "'");
+#else
+        std::filesystem::rename(file, destination, error);
+        if (error) throw OutputIOError("cannot replace source output '" + pathText(destination) + "'");
+#endif
+        return;
+    }
+    throw OutputIOError("cannot prepare unique source output '" + pathText(destination) + "'");
 }
 } // namespace
 
@@ -55,7 +113,7 @@ int runCompiler(int argc, char* argv[]) {
             return fail("CLI arguments must be valid UTF-8");
     }
     std::string input, output, formattedOutput;
-    bool outputRequested = false, check = false;
+    bool outputRequested = false, check = false, formatOnly = false;
     iprop::SourceCompilationOptions options;
     for (int i=1; i<argc; ++i) {
         const std::string arg = argv[i];
@@ -64,13 +122,15 @@ int runCompiler(int argc, char* argv[]) {
             std::cout << "ipc - compile .ips source into an .iprop binary\n\n"
                 << "Usage: ipc <file.ips> [-o <out.iprop>] [--debug|--strip] [--no-opt] [--no-compress] [--format <out.ips>]\n"
                 << "       ipc <file.ips> --check [--diagnostics=json|text]\n"
+                << "       ipc <file.ips> --format <out.ips> --format-only\n"
                 << "       ipc --describe-language  (JSON language contracts)\n"
                 << "Imports resolve relative to the entry file. Both modes run the full\n"
                 << "compiler and validate the final executable in memory. --check writes\n"
                 << "no files and rejects --output/--format. Debug is stripped by default;\n"
                 << "--debug retains source maps; the last --strip/--debug flag wins.\n"
                 << "Compression is automatic when smaller; --no-compress disables it.\n"
-                << "--format writes canonical source beside the compiled result.\n";
+                << "--format writes canonical source beside the compiled result;\n"
+                << "--format-only validates and writes only that source atomically.\n";
             return 0;
         }
         if (arg == "-o" || arg == "--output" || arg == "--format") {
@@ -79,6 +139,7 @@ int runCompiler(int argc, char* argv[]) {
             if (arg == "--format") formattedOutput = argv[++i];
             else { outputRequested = true; output = argv[++i]; }
         } else if (arg == "--check") check = true;
+        else if (arg == "--format-only") formatOnly = true;
         else if (arg == "--diagnostics=json") json = true;
         else if (arg == "--diagnostics=text") json = false;
         else if (arg == "--strip" || arg == "--debug") options.stripDebug = arg == "--strip";
@@ -89,14 +150,16 @@ int runCompiler(int argc, char* argv[]) {
         else return fail("multiple input files");
     }
     if (input.empty()) return fail("no input file");
-    if (check && (outputRequested || !formattedOutput.empty()))
-        return fail("--check cannot be combined with --output or --format");
-    if (output.empty() && !check) {
+    if (check && (outputRequested || !formattedOutput.empty() || formatOnly))
+        return fail("--check cannot be combined with --output, --format or --format-only");
+    if (formatOnly && (formattedOutput.empty() || outputRequested))
+        return fail("--format-only requires --format and cannot be combined with --output");
+    if (output.empty() && !check && !formatOnly) {
         const auto dot = input.rfind('.');
         output = (dot == std::string::npos ? input : input.substr(0,dot)) + ".iprop";
     }
     try {
-        const std::filesystem::path entryPath(input);
+        const auto entryPath = utf8Path(input);
         const auto utf8Name = entryPath.filename().u8string();
         const std::string entryName(utf8Name.begin(), utf8Name.end());
         const auto dir = entryPath.parent_path().empty() ? std::filesystem::path(".") : entryPath.parent_path();
@@ -108,7 +171,7 @@ int runCompiler(int argc, char* argv[]) {
             if (stream.bad()) throw std::runtime_error("source read failed");
             return source;
         };
-        const auto result = iprop::compileSource(entryName, loadSource, options);
+        auto result = iprop::compileSource(entryName, loadSource, options);
         if (!result.succeeded()) {
             const auto status = result.status;
             if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, result.diagnostics);
@@ -121,27 +184,50 @@ int runCompiler(int argc, char* argv[]) {
         }
         if (!check) {
             std::string canonical;
+            std::filesystem::path sourceDestination;
             if (!formattedOutput.empty()) {
-                if (sameFile(formattedOutput,input) || sameFile(formattedOutput,output))
+                const auto requestedDestination = utf8Path(formattedOutput);
+                if (sameFile(requestedDestination,entryPath) ||
+                    (!formatOnly && sameFile(requestedDestination,utf8Path(output))))
                     return fail("--format must target a distinct source output file");
-                const auto& program = result.programs.at(entryName);
+                auto& program = result.programs.at(entryName);
                 std::map<std::string, const iprop::ips::Program*> parts;
-                for (const auto& import : program.imports)
+                for (const auto& import : program.imports) {
+                    if (sameFile(requestedDestination,dir / utf8Path(import.path)))
+                        return fail("--format must target a distinct source output file, including imports");
                     parts.emplace(import.alias, &result.programs.at(import.path));
+                }
+                const auto requestedParent = requestedDestination.parent_path().empty()
+                    ? std::filesystem::path(".") : requestedDestination.parent_path();
+                // Replace the requested directory entry, not a final symlink's
+                // referent. The compiler resolves entry imports from this parent.
+                sourceDestination = physicalPath(requestedParent) / requestedDestination.filename();
+                // Keep aliases and trivia; only the quoted import path changes
+                // when the formatted entry is relocated. Resolve symlinks before
+                // deriving a relative path, including symlink/.. components.
+                if (sourceDestination.parent_path() != physicalPath(dir)) {
+                    for (auto& import : program.imports) {
+                        const auto target = physicalPath(dir / utf8Path(import.path));
+                        const auto relative = target.lexically_relative(sourceDestination.parent_path());
+                        import.path = pathText(relative.empty() ? target : relative);
+                    }
+                }
                 canonical = iprop::ips::formatProgram(program, parts);
             }
-            writeFile(output,reinterpret_cast<const char*>(result.bytes.data()),result.bytes.size());
+            if (!formatOnly)
+                writeFile(utf8Path(output),reinterpret_cast<const char*>(result.bytes.data()),result.bytes.size());
             if (!formattedOutput.empty()) {
                 // A case-insensitive alias of a new binary exists only after writing it.
-                if (sameFile(formattedOutput,input) || sameFile(formattedOutput,output))
+                if (sameFile(utf8Path(formattedOutput),entryPath) ||
+                    (!formatOnly && sameFile(utf8Path(formattedOutput),utf8Path(output))))
                     return fail("--format must target a distinct source output file");
-                writeFile(formattedOutput,canonical.data(),canonical.size());
+                writeSourceAtomically(sourceDestination,canonical);
             }
         }
         if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, iprop::ips::DiagnosticStatus::Success, {});
         else if (check) std::cout << "checked " << input << '\n';
         else {
-            std::cout << "compiled " << input << " -> " << output << '\n';
+            if (!formatOnly) std::cout << "compiled " << input << " -> " << output << '\n';
             if (!formattedOutput.empty()) std::cout << "formatted " << input << " -> " << formattedOutput << '\n';
         }
         return std::cout ? 0 : 1;
@@ -152,21 +238,68 @@ int runCompiler(int argc, char* argv[]) {
     }
 }
 
+namespace {
+int reportEntryFailure(bool json, bool invalidUtf16 = false) noexcept {
+    // Literal C stdio reporting needs no C++ allocations or throwing renderer,
+    // including when Windows argument conversion itself runs out of memory.
+    const char* status = invalidUtf16 ? "cli_error" : "internal_error";
+    const char* code = invalidUtf16 ? "IPS-CLI-001" : "IPS-INTERNAL-001";
+    const char* stage = invalidUtf16 ? "cli" : "internal";
+    const char* message = invalidUtf16 ? "CLI arguments must be valid UTF-16" : "unexpected compiler failure";
+    if (json) std::fprintf(stdout, "{\"schema_version\":1,\"product_version\":\"" IPROP_PRODUCT_VERSION
+        "\",\"language_version\":{\"major\":%u,\"minor\":%u},\"status\":\"%s\","
+        "\"diagnostics\":[{\"code\":\"%s\",\"stage\":\"%s\",\"severity\":\"error\","
+        "\"message\":\"%s\",\"file\":null,\"location\":null,\"range\":null,"
+        "\"source_id\":null,\"expected_type\":null,\"actual_type\":null,\"suggestions\":[],"
+        "\"related_locations\":[],\"fix_its\":[]}]}\n",
+        static_cast<unsigned>(iprop::ips::kLanguageVersionMajor),
+        static_cast<unsigned>(iprop::ips::kLanguageVersionMinor), status, code, stage, message);
+    else std::fprintf(stderr, "ipc: %s\n", message);
+    return invalidUtf16 ? 2 : 3;
+}
+} // namespace
+
+#if defined(_WIN32) && defined(IPROP_WINDOWS_UTF8_ENTRY)
+int wmain(int argc, wchar_t* wideArgv[]) {
+    bool json = false;
+    // Detect the fallback renderer before converting or allocating argv.
+    for (int i = 1; i < argc; ++i)
+        if (std::wstring_view(wideArgv[i]) == L"--diagnostics=json") json = true;
+    try {
+        std::vector<std::string> arguments;
+        arguments.reserve(static_cast<std::size_t>(argc));
+        for (int i = 0; i < argc; ++i) {
+            // -1 includes the terminator in both the size query and conversion.
+            // Explicit CP_UTF8 avoids the Windows ANSI/process code page.
+            const int size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                wideArgv[i], -1, nullptr, 0, nullptr, nullptr);
+            if (size == 0)
+                return reportEntryFailure(json, GetLastError() == ERROR_NO_UNICODE_TRANSLATION);
+            std::string argument(static_cast<std::size_t>(size), '\0');
+            if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, wideArgv[i], -1,
+                    argument.data(), size, nullptr, nullptr) != size)
+                return reportEntryFailure(json, GetLastError() == ERROR_NO_UNICODE_TRANSLATION);
+            argument.pop_back(); // The converted terminator remains at data()[size()].
+            arguments.push_back(std::move(argument));
+        }
+        // Publish pointers only after their owning strings stop moving. Both
+        // vectors stay alive until runCompiler completes, with argv[argc] null.
+        std::vector<char*> argv;
+        argv.reserve(arguments.size() + 1);
+        for (auto& argument : arguments) argv.push_back(argument.data());
+        argv.push_back(nullptr);
+        return runCompiler(argc, argv.data());
+    } catch (...) {
+        return reportEntryFailure(json);
+    }
+}
+#else
 int main(int argc, char* argv[]) {
     try { return runCompiler(argc,argv); }
     catch (...) {
-        // Last-resort error reporting uses literals and no source/JSON objects.
-        // This also covers failures during argument parsing or renderer setup.
         bool json=false;
         for (int i=1;i<argc;++i) if (std::string_view(argv[i])=="--diagnostics=json") json=true;
-        if (json) std::cout << "{\"schema_version\":1,\"product_version\":\"" IPROP_PRODUCT_VERSION
-            "\",\"language_version\":{\"major\":" << iprop::ips::kLanguageVersionMajor
-            << ",\"minor\":" << iprop::ips::kLanguageVersionMinor << "},\"status\":\"internal_error\","
-            "\"diagnostics\":[{\"code\":\"IPS-INTERNAL-001\",\"stage\":\"internal\",\"severity\":\"error\","
-            "\"message\":\"unexpected compiler failure\",\"file\":null,\"location\":null,\"range\":null,"
-            "\"source_id\":null,\"expected_type\":null,\"actual_type\":null,\"suggestions\":[],"
-            "\"related_locations\":[],\"fix_its\":[]}]}\n";
-        else std::cerr << "ipc: unexpected compiler failure\n";
-        return 3;
+        return reportEntryFailure(json);
     }
 }
+#endif
