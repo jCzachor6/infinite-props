@@ -1,0 +1,2663 @@
+{
+  "schema_version": 1,
+  "task": "05-M.3",
+  "before_report_sha256": "01ebd556c2f7390ab2fe3b6a91d65a2632726b35f599e1d258199e7062cce765",
+  "after_report_sha256": "4cdb8e04797707aee11ac7899c2bfd26ebaf3b0f1f5759c398a491a31004aeb9",
+  "validation": {
+    "compiled_fixture_sha256_equal": true,
+    "exact_ordered_result_hashes_equal": true,
+    "samples_per_fixture": 20,
+    "seeds": [
+      0,
+      7,
+      26,
+      4294967295
+    ],
+    "not_measured": [
+      "peak/live memory",
+      "memcpy counts",
+      "malloc/realloc in dependencies"
+    ],
+    "timing_limitations": "Sequential local captures without CPU isolation; timings are observations and do not establish a speedup"
+  },
+  "before": {
+    "schema_version": 1,
+    "captured_utc": "2026-10-06T08:54:09Z",
+    "source_commit": "2605172cee2ce7cdc92de874aae571785eaa1f8a",
+    "runtime_adapter_dirty": false,
+    "host": {
+      "system": "Darwin",
+      "release": "25.6.0",
+      "machine": "arm64",
+      "python": "3.14.7"
+    },
+    "build": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+      "CMAKE_CXX_FLAGS": "",
+      "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
+      "CMAKE_PROJECT_VERSION": "0.4.0"
+    },
+    "compiler_versions": {
+      "schema_version": 1,
+      "product_version": "0.4.0",
+      "language_version": {
+        "major": 0,
+        "minor": 5
+      },
+      "c_api_version": {
+        "major": 0,
+        "minor": 3
+      },
+      "abi_version": {
+        "major": 0,
+        "minor": 4
+      },
+      "format_version": {
+        "major": 0,
+        "minor": 4
+      }
+    },
+    "compiler_sha256": "9dea685a34c269db8d8acbe9a20e2f18ee31b31efddfbc1260bf58999a45a588",
+    "benchmark_sha256": "023fb20ba7e827cb76173bdc1215778fc2f61595b1d7dc53d239be63b23ca813",
+    "benchmark_sources": {
+      "benchmarks/capi.cpp": "6defe373d4a776b45c0b56f34f34cb8f9ba4283ba04bb66b0871d9955343e982",
+      "benchmarks/capi/capture.py": "7c48f169fc52cf464bddbe4ff96d8951aee2e5b3f118f20d19e1551c16ea160a",
+      "benchmarks/capi/fixtures/large.ips": "6f0e1327dea27be2e8086f307da965014475b368e164094b11469725ef108a65",
+      "benchmarks/capi/fixtures/lists.ips": "2b85298ea0f1364b1282143a835a3e11eee986f4d9298ce98be33d97b48fc4b8",
+      "benchmarks/capi/fixtures/part.ips": "7ac3cc99298cbd9f126c803c37d6d00819b9e5d3602645d6ba2a339b6bd726bf",
+      "benchmarks/capi/fixtures/parts.ips": "863a0c04ff0c016bcc10a489867888bc0abce10b533500f96fbe99bea33a3103",
+      "benchmarks/capi/fixtures/small.ips": "3912669036602876dd79977cd267301033b98c45436d2bffbab049118cae4773"
+    },
+    "measurement": {
+      "linkage": "static C API and runtime; single-threaded C++ operator new replacement",
+      "iterations": 20,
+      "warmup": 2,
+      "seeds": [
+        0,
+        7,
+        26,
+        4294967295
+      ],
+      "timing": "steady clock around successful load or generate only; free, hashing and compilation excluded",
+      "allocations": "C++ allocation calls and sum of requested bytes during each call; includes aligned new",
+      "not_measured": [
+        "malloc/realloc in dependencies such as zlib",
+        "peak/live memory",
+        "memcpy counts",
+        "CPU counters"
+      ],
+      "clock_threshold": null,
+      "conditions": "Local machine without CPU isolation, frequency pinning or exclusive host access; timings are observations"
+    },
+    "fixtures": {
+      "small": {
+        "source_sha256": "3912669036602876dd79977cd267301033b98c45436d2bffbab049118cae4773",
+        "binary_sha256": "a6f37866f00c411a899e132a07593ba0cf8ecbdb6445f7eb14660efd85a7d684",
+        "binary_bytes": 210,
+        "median": {
+          "load": {
+            "ns": 10063.0,
+            "cpp_new_calls": 26.0,
+            "cpp_requested_bytes": 1344.0
+          },
+          "generate": {
+            "ns": 8916.5,
+            "cpp_new_calls": 20.0,
+            "cpp_requested_bytes": 2210.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 16,
+          "height": 16,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 11541,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10708,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10125,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 14291,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10125,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10042,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10041,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9875,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 13625,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 10084,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9583,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9375,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9375,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 12875,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9625,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9375,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 12750,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9792,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 13167,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 9750,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            }
+          ],
+          "generate": [
+            {
+              "ns": 9333,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 9125,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8958,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8959,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8875,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 11958,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 9000,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8833,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 12708,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 12000,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 9000,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8792,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8708,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8875,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 8750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            },
+            {
+              "ns": 12209,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 2210
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            }
+          ]
+        }
+      },
+      "large": {
+        "source_sha256": "6f0e1327dea27be2e8086f307da965014475b368e164094b11469725ef108a65",
+        "binary_sha256": "6124564da6d2a5c152e64788bf439a15610e327454ea61f6dfdea8e6251a260a",
+        "binary_bytes": 187,
+        "median": {
+          "load": {
+            "ns": 2000.0,
+            "cpp_new_calls": 24.0,
+            "cpp_requested_bytes": 1217.0
+          },
+          "generate": {
+            "ns": 803791.5,
+            "cpp_new_calls": 21.0,
+            "cpp_requested_bytes": 263350.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 256,
+          "height": 256,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 2292,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2083,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 3167,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 4042,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2125,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2625,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1958,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1917,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1875,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1875,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1875,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 3541,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2750,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2500,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            }
+          ],
+          "generate": [
+            {
+              "ns": 1111500,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 925583,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 924875,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 924625,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 924000,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 924000,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 923916,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 803458,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 803416,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 807875,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 804125,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 804208,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 803417,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 801750,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 711125,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 711167,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 712041,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 708333,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 633792,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            },
+            {
+              "ns": 634250,
+              "cpp_new_calls": 21,
+              "cpp_requested_bytes": 263350
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            }
+          ]
+        }
+      },
+      "lists": {
+        "source_sha256": "2b85298ea0f1364b1282143a835a3e11eee986f4d9298ce98be33d97b48fc4b8",
+        "binary_sha256": "d7cacb4f26e6ca4043d84f90a911cd9a29c302c4750248e08c08f81997fb3563",
+        "binary_bytes": 258,
+        "median": {
+          "load": {
+            "ns": 4541.5,
+            "cpp_new_calls": 35.0,
+            "cpp_requested_bytes": 2030.0
+          },
+          "generate": {
+            "ns": 238500.0,
+            "cpp_new_calls": 68.0,
+            "cpp_requested_bytes": 179110.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 128,
+          "height": 128,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 5459,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4667,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4542,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5916,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5250,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5917,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4541,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 6833,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 7375,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5750,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4375,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4375,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4167,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4084,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4125,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4166,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5542,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4250,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4208,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4166,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            }
+          ],
+          "generate": [
+            {
+              "ns": 244334,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 243834,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 241291,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 238583,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237250,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237625,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 239291,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237500,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 240042,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 238458,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 238958,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 239041,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 236958,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 238042,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237791,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237750,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 239125,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237250,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 237583,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            },
+            {
+              "ns": 238542,
+              "cpp_new_calls": 68,
+              "cpp_requested_bytes": 179110
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            }
+          ]
+        }
+      },
+      "parts": {
+        "source_sha256": "863a0c04ff0c016bcc10a489867888bc0abce10b533500f96fbe99bea33a3103",
+        "binary_sha256": "9f3d65262b3707988734dcba0ea88c66ef7ef604df0fdbe5dc3582d9e607bbbd",
+        "binary_bytes": 317,
+        "median": {
+          "load": {
+            "ns": 4563.0,
+            "cpp_new_calls": 49.0,
+            "cpp_requested_bytes": 2385.0
+          },
+          "generate": {
+            "ns": 70646.0,
+            "cpp_new_calls": 74.0,
+            "cpp_requested_bytes": 93274.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 128,
+          "height": 128,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 5167,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4792,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 5709,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 6000,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4875,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4459,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4375,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 5917,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 6834,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 5333,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 6000,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4667,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4250,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4250,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4375,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4333,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4208,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4334,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4166,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4291,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            }
+          ],
+          "generate": [
+            {
+              "ns": 73125,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 75708,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 73791,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 72500,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 72209,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 71750,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70791,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70083,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 69959,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70000,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 71208,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70500,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70084,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70584,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70584,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 69875,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 71417,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 70708,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 64958,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            },
+            {
+              "ns": 65042,
+              "cpp_new_calls": 74,
+              "cpp_requested_bytes": 93274
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "after": {
+    "schema_version": 1,
+    "captured_utc": "2026-10-06T11:40:38Z",
+    "source_commit": "ee6b593a1de532dc851934466b13cf4567d180e3",
+    "runtime_adapter_dirty": true,
+    "host": {
+      "system": "Darwin",
+      "release": "25.6.0",
+      "machine": "arm64",
+      "python": "3.14.7"
+    },
+    "build": {
+      "CMAKE_BUILD_TYPE": "Release",
+      "CMAKE_CXX_COMPILER": "/usr/bin/c++",
+      "CMAKE_CXX_FLAGS": "",
+      "CMAKE_CXX_FLAGS_RELEASE": "-O3 -DNDEBUG",
+      "CMAKE_PROJECT_VERSION": "0.4.0"
+    },
+    "compiler_versions": {
+      "schema_version": 1,
+      "product_version": "0.4.0",
+      "language_version": {
+        "major": 0,
+        "minor": 5
+      },
+      "c_api_version": {
+        "major": 0,
+        "minor": 3
+      },
+      "abi_version": {
+        "major": 0,
+        "minor": 4
+      },
+      "format_version": {
+        "major": 0,
+        "minor": 4
+      }
+    },
+    "compiler_sha256": "9dea685a34c269db8d8acbe9a20e2f18ee31b31efddfbc1260bf58999a45a588",
+    "benchmark_sha256": "6605ed6d9837c1cf082a686eece426b65e96a6098310a48fc165f7322d111706",
+    "benchmark_sources": {
+      "benchmarks/capi.cpp": "6defe373d4a776b45c0b56f34f34cb8f9ba4283ba04bb66b0871d9955343e982",
+      "benchmarks/capi/capture.py": "7c48f169fc52cf464bddbe4ff96d8951aee2e5b3f118f20d19e1551c16ea160a",
+      "benchmarks/capi/fixtures/large.ips": "6f0e1327dea27be2e8086f307da965014475b368e164094b11469725ef108a65",
+      "benchmarks/capi/fixtures/lists.ips": "2b85298ea0f1364b1282143a835a3e11eee986f4d9298ce98be33d97b48fc4b8",
+      "benchmarks/capi/fixtures/part.ips": "7ac3cc99298cbd9f126c803c37d6d00819b9e5d3602645d6ba2a339b6bd726bf",
+      "benchmarks/capi/fixtures/parts.ips": "863a0c04ff0c016bcc10a489867888bc0abce10b533500f96fbe99bea33a3103",
+      "benchmarks/capi/fixtures/small.ips": "3912669036602876dd79977cd267301033b98c45436d2bffbab049118cae4773"
+    },
+    "measurement": {
+      "linkage": "static C API and runtime; single-threaded C++ operator new replacement",
+      "iterations": 20,
+      "warmup": 2,
+      "seeds": [
+        0,
+        7,
+        26,
+        4294967295
+      ],
+      "timing": "steady clock around successful load or generate only; free, hashing and compilation excluded",
+      "allocations": "C++ allocation calls and sum of requested bytes during each call; includes aligned new",
+      "not_measured": [
+        "malloc/realloc in dependencies such as zlib",
+        "peak/live memory",
+        "memcpy counts",
+        "CPU counters"
+      ],
+      "clock_threshold": null,
+      "conditions": "Local machine without CPU isolation, frequency pinning or exclusive host access; timings are observations"
+    },
+    "fixtures": {
+      "small": {
+        "source_sha256": "3912669036602876dd79977cd267301033b98c45436d2bffbab049118cae4773",
+        "binary_sha256": "a6f37866f00c411a899e132a07593ba0cf8ecbdb6445f7eb14660efd85a7d684",
+        "binary_bytes": 210,
+        "median": {
+          "load": {
+            "ns": 2916.5,
+            "cpp_new_calls": 26.0,
+            "cpp_requested_bytes": 1344.0
+          },
+          "generate": {
+            "ns": 1604.5,
+            "cpp_new_calls": 19.0,
+            "cpp_requested_bytes": 2130.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 16,
+          "height": 16,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 3208,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2959,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2875,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 6375,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2875,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2791,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3792,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2833,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3583,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2958,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2750,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3458,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2792,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2667,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3500,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2833,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3500,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2667,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 3500,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            },
+            {
+              "ns": 2667,
+              "cpp_new_calls": 26,
+              "cpp_requested_bytes": 1344
+            }
+          ],
+          "generate": [
+            {
+              "ns": 1750,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1542,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1584,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1541,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 2333,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1541,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 2416,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1541,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1583,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1584,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1583,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1625,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1541,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 1500,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            },
+            {
+              "ns": 2416,
+              "cpp_new_calls": 19,
+              "cpp_requested_bytes": 2130
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "9d082361c8dc9bb0"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "daf485382f245550"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ef501912197e6dff"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "92f127fe8c98fe13"
+            }
+          ]
+        }
+      },
+      "large": {
+        "source_sha256": "6f0e1327dea27be2e8086f307da965014475b368e164094b11469725ef108a65",
+        "binary_sha256": "6124564da6d2a5c152e64788bf439a15610e327454ea61f6dfdea8e6251a260a",
+        "binary_bytes": 187,
+        "median": {
+          "load": {
+            "ns": 1854.5,
+            "cpp_new_calls": 24.0,
+            "cpp_requested_bytes": 1217.0
+          },
+          "generate": {
+            "ns": 421375.0,
+            "cpp_new_calls": 20.0,
+            "cpp_requested_bytes": 263270.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 256,
+          "height": 256,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 2084,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2000,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1917,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1875,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1833,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1834,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1791,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1834,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 4250,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2167,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2625,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1792,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1750,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1750,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1708,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1709,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 4875,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 1834,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 3250,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            },
+            {
+              "ns": 2584,
+              "cpp_new_calls": 24,
+              "cpp_requested_bytes": 1217
+            }
+          ],
+          "generate": [
+            {
+              "ns": 418958,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 419000,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 417917,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 422709,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 421208,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 421542,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 426333,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 426583,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 421542,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 420791,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 482834,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 420834,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 419750,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 420250,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 656000,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 421917,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 427334,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 428166,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 420625,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            },
+            {
+              "ns": 420209,
+              "cpp_new_calls": 20,
+              "cpp_requested_bytes": 263270
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "d7ebcfd39b309770"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "f8df04ddde588010"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "3cc207f16252d53f"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "ce298818abc3cd3"
+            }
+          ]
+        }
+      },
+      "lists": {
+        "source_sha256": "2b85298ea0f1364b1282143a835a3e11eee986f4d9298ce98be33d97b48fc4b8",
+        "binary_sha256": "d7cacb4f26e6ca4043d84f90a911cd9a29c302c4750248e08c08f81997fb3563",
+        "binary_bytes": 258,
+        "median": {
+          "load": {
+            "ns": 3437.5,
+            "cpp_new_calls": 35.0,
+            "cpp_requested_bytes": 2030.0
+          },
+          "generate": {
+            "ns": 194333.0,
+            "cpp_new_calls": 65.0,
+            "cpp_requested_bytes": 178974.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 128,
+          "height": 128,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 4042,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3625,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3417,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4334,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3917,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3417,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 6917,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4750,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 5917,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3458,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 4125,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3333,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3083,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3167,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3041,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3209,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3917,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3167,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3125,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            },
+            {
+              "ns": 3167,
+              "cpp_new_calls": 35,
+              "cpp_requested_bytes": 2030
+            }
+          ],
+          "generate": [
+            {
+              "ns": 211292,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 200125,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 200417,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 196917,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 194333,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 194125,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 195667,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 191500,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 195375,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 194333,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 193291,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 193333,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 192334,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 193083,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 193208,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 193375,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 192750,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 206375,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 201792,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            },
+            {
+              "ns": 200959,
+              "cpp_new_calls": 65,
+              "cpp_requested_bytes": 178974
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "6cc4891ea661b7ae"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "3bb06340b213e631"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "fa0caee7694952d6"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "d0bbdfddf4525b21"
+            }
+          ]
+        }
+      },
+      "parts": {
+        "source_sha256": "863a0c04ff0c016bcc10a489867888bc0abce10b533500f96fbe99bea33a3103",
+        "binary_sha256": "9f3d65262b3707988734dcba0ea88c66ef7ef604df0fdbe5dc3582d9e607bbbd",
+        "binary_bytes": 317,
+        "median": {
+          "load": {
+            "ns": 3812.5,
+            "cpp_new_calls": 49.0,
+            "cpp_requested_bytes": 2385.0
+          },
+          "generate": {
+            "ns": 65395.5,
+            "cpp_new_calls": 72.0,
+            "cpp_requested_bytes": 93170.0
+          }
+        },
+        "raw": {
+          "schema_version": 1,
+          "warmup": 2,
+          "iterations": 20,
+          "width": 128,
+          "height": 128,
+          "fuel_budget": 1000000,
+          "load": [
+            {
+              "ns": 4458,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4083,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 7250,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 5209,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4084,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3709,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3625,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 4708,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 5666,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3833,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 6292,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3834,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3792,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3584,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3542,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3542,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3625,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3583,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3625,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            },
+            {
+              "ns": 3541,
+              "cpp_new_calls": 49,
+              "cpp_requested_bytes": 2385
+            }
+          ],
+          "generate": [
+            {
+              "ns": 64875,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 66333,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 66584,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65875,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 116500,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 69375,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 69083,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 66625,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65167,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 64917,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 66875,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65292,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65500,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65167,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65375,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65416,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65375,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 65333,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 64750,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            },
+            {
+              "ns": 64625,
+              "cpp_new_calls": 72,
+              "cpp_requested_bytes": 93170
+            }
+          ],
+          "results": [
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            },
+            {
+              "seed": 0,
+              "fnv1a64": "cd257e4494d1a294"
+            },
+            {
+              "seed": 7,
+              "fnv1a64": "a083a1313c24250b"
+            },
+            {
+              "seed": 26,
+              "fnv1a64": "ed177df6e2ad21c7"
+            },
+            {
+              "seed": 4294967295,
+              "fnv1a64": "3a4154511b634385"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "implementation_patch_sha256": "2db86a9ff4cd1dbe8148d7e70775c9a4fcb873e05d8b28d8f71759067d27417d",
+  "adapter_sources_after": {
+    "backends/capi/Handles.hpp": "a8c6c0d2c63783d3c47fc5bd6f92f9e58ee6ca973c90754fcc71396d732dc48d",
+    "backends/capi/Operations.hpp": "f53d6cd0b55fccf13fbdb3e8c8732e273e268f276e83057fe1bdf49dddd2bedc",
+    "backends/capi/operations.cpp": "c3c88341cb5f551d0a4d8f06edd8703059e2a97077ea22ea55fe289fb6d8d133"
+  }
+}

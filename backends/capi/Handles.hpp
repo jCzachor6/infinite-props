@@ -13,7 +13,7 @@ struct iprop_program {
 };
 
 struct iprop_result {
-    iprop::GenerationResult generation;
+    iprop::Canvas image;
     std::vector<std::string> names;
     std::vector<float> packed;
     std::vector<iprop_output> outputs;

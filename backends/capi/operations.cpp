@@ -2,21 +2,19 @@
 
 #include <cstring>
 #include <type_traits>
+#include <utility>
 
 namespace iprop::capi {
-namespace {
 
-// Rebuilds the C output table from the C++ generation result. The packed
-// floats are reserved up front so the per-slot pointers never dangle.
-void fillResult(iprop_result* result, const iprop::LoadedFile& file) {
-    result->names.clear();
-    result->packed.clear();
-    result->outputs.clear();
+// Packed float storage remains necessary for the frozen C layout. Reserve
+// its full capacity and finalize both tables before publishing any view.
+void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file) {
+    result.image = std::move(generation.image);
 
-    const auto& outputs = result->generation.outputs;
-    result->names.reserve(outputs.size());
-    for (const auto& output : outputs) {
-        result->names.push_back(output.name);
+    auto& outputs = generation.outputs;
+    result.names.reserve(outputs.size());
+    for (auto& output : outputs) {
+        result.names.push_back(std::move(output.name));
     }
 
     size_t floats = 0;
@@ -33,9 +31,9 @@ void fillResult(iprop_result* result, const iprop::LoadedFile& file) {
             break;
         }
     }
-    result->packed.reserve(floats);
+    result.packed.reserve(floats);
 
-    result->outputs.reserve(outputs.size());
+    result.outputs.reserve(outputs.size());
     size_t ownerEnd = file.meta.outputs.size();
     uint32_t owner = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
@@ -47,50 +45,52 @@ void fillResult(iprop_result* result, const iprop::LoadedFile& file) {
         iprop_output entry{};
         entry.owner = owner;
         entry.is_list = output.isList ? 1 : 0;
-        entry.name = result->names[i].c_str();
+        entry.name = result.names[i].c_str();
         switch (output.kind) {
         case iprop::OutputKind::Point:
             entry.kind = IPROP_OUTPUT_POINT;
             entry.count = static_cast<uint32_t>(output.points.size());
             for (const auto& point : output.points) {
-                result->packed.push_back(point.x);
-                result->packed.push_back(point.y);
+                result.packed.push_back(point.x);
+                result.packed.push_back(point.y);
             }
             break;
         case iprop::OutputKind::Rect:
             entry.kind = IPROP_OUTPUT_RECT;
             entry.count = static_cast<uint32_t>(output.rects.size());
             for (const auto& rect : output.rects) {
-                result->packed.push_back(rect.x);
-                result->packed.push_back(rect.y);
-                result->packed.push_back(rect.w);
-                result->packed.push_back(rect.h);
+                result.packed.push_back(rect.x);
+                result.packed.push_back(rect.y);
+                result.packed.push_back(rect.w);
+                result.packed.push_back(rect.h);
             }
             break;
         case iprop::OutputKind::Circle:
             entry.kind = IPROP_OUTPUT_CIRCLE;
             entry.count = static_cast<uint32_t>(output.circles.size());
             for (const auto& circle : output.circles) {
-                result->packed.push_back(circle.x);
-                result->packed.push_back(circle.y);
-                result->packed.push_back(circle.r);
+                result.packed.push_back(circle.x);
+                result.packed.push_back(circle.y);
+                result.packed.push_back(circle.r);
             }
             break;
         }
-        result->outputs.push_back(entry);
+        result.outputs.push_back(entry);
     }
 
     // The values pointers into the (fully reserved) packed array.
     size_t begin = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
-        result->outputs[i].values =
-            result->packed.empty() ? nullptr : result->packed.data() + begin;
-        begin += result->outputs[i].count *
-                 (result->outputs[i].kind == IPROP_OUTPUT_POINT   ? 2
-                  : result->outputs[i].kind == IPROP_OUTPUT_RECT ? 4
+        result.outputs[i].values =
+            result.packed.empty() ? nullptr : result.packed.data() + begin;
+        begin += result.outputs[i].count *
+                 (result.outputs[i].kind == IPROP_OUTPUT_POINT   ? 2
+                  : result.outputs[i].kind == IPROP_OUTPUT_RECT ? 4
                                                                  : 3);
     }
 }
+
+namespace {
 
 iprop::UniformValue toUniform(const iprop_uniform& uniform, int type) {
     iprop::UniformValue value;
@@ -158,8 +158,7 @@ void generateProgram(const iprop_program& program, const GenerationInputs& input
     VM vm(program.file, inputs);
     context.stage = ErrorStage::Execute;
     vm.run();
-    result.generation = vm.takeResult();
-    fillResult(&result, program.file);
+    packResult(result, vm.takeResult(), program.file);
 }
 
 iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
@@ -195,7 +194,7 @@ iprop_meta legacyMeta(const iprop_program& program) noexcept {
 }
 
 iprop_image resultImage(const iprop_result& result) noexcept {
-    const auto& canvas = result.generation.image;
+    const auto& canvas = result.image;
     iprop_image out{};
     out.width = canvas.width;
     out.height = canvas.height;

@@ -1,6 +1,6 @@
 # Native C API load/generate baseline
 
-This benchmark measures the current `develop` adapter before 05-M.2/M.3.
+The original capture measures the `develop` adapter before 05-M.2/M.3.
 It is separate from the released 0.4 compatibility baseline. Compile four
 benchmark sources, then call the real static C API:
 
@@ -54,3 +54,31 @@ copies the canvas and output vectors, then `fillResult` copies output names
 and packs floats for the legacy ABI. This is an inventory of code paths,
 not a measured memcpy count. Float packing remains necessary; the benchmark
 does not claim the entire result is zero-copy.
+
+## Packing comparison (05-M.3)
+
+The [raw comparison](packing-comparison-macos-arm64.json) freezes two actual
+macOS arm64 Release captures: the already implemented consuming VM path before
+the C packing change, and the adapter after that change. Each has 20 measured
+generations per fixture, two warm-ups and the same four seeds. All compiled
+fixture SHA-256 values and all 80 ordered result hashes match. Executable,
+compiler and source hashes, build settings and individual samples are retained.
+The later capture explicitly records its uncommitted runtime/adapter changes.
+
+| Fixture | C++ allocations before → after | Requested bytes before → after |
+| --- | ---: | ---: |
+| small | 20 → 19 | 2,210 → 2,130 |
+| large | 21 → 20 | 263,350 → 263,270 |
+| lists | 68 → 65 | 179,110 → 178,974 |
+| parts | 74 → 72 | 93,274 → 93,170 |
+
+These counters measure gross requested bytes during generation. Moving names
+removes their extra allocations, and the smaller private handle reduces its
+allocation size. Releasing typed payload vectors before returning reduces
+retained duplicate storage, which the independent packing probe verifies by
+observing deallocation. The captures do not measure retained or peak bytes.
+Typed values still coexist briefly with packed storage during conversion.
+
+The captures were sequential on a shared local machine several hours apart;
+their timing medians do not establish a speedup. The final 05-M.5 comparison
+with the original frozen 05-M.1 executable remains a separate task.

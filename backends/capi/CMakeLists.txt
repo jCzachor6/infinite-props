@@ -267,6 +267,11 @@ add_test(NAME capi_checked_errors COMMAND capi_checked_errors ${IPROP_CAPI_GOLDE
     ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
     ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
 
+add_executable(capi_result_storage test/result_storage.cpp)
+target_link_libraries(capi_result_storage PRIVATE iprop_capi_static)
+iprop_warnings(capi_result_storage)
+add_test(NAME capi_result_storage COMMAND capi_result_storage)
+
     add_test(NAME capi_conformance
         COMMAND capi_conformance
                 ${IPROP_CAPI_GOLDEN_DIR}

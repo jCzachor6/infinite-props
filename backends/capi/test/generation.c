@@ -113,7 +113,8 @@ void check_generation(const char* program_dir) {
     }
 
     /* Duplicate names in the root and two parts retain distinct owners.
-       The result must remain usable after freeing the program. */
+       A second generation and freeing both it and the program must leave
+       the first result's pixels, names, values and borrowed pointers valid. */
     {
         char path[1024];
         snprintf(path, sizeof(path), "%s/output-owners.iprop", program_dir);
@@ -121,6 +122,9 @@ void check_generation(const char* program_dir) {
         uint8_t* bytes = read_file(path, &length);
         iprop_program* program = NULL;
         iprop_result* result = NULL;
+        iprop_image first = {0};
+        uint8_t first_pixels[8 * 8 * 4] = {0};
+        int have_pixels = 0;
         iprop_generate_options options = {0};
         CHECK(bytes != NULL, "cannot read owner fixture");
         if (bytes != NULL) {
@@ -131,11 +135,27 @@ void check_generation(const char* program_dir) {
         if (program != NULL) {
             CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
                   "owner fixture generation: %s", err);
+            if (result != NULL) {
+                iprop_result_image(result, &first);
+                have_pixels = first.width == 8 && first.height == 8 && first.pixels != NULL;
+                CHECK(have_pixels, "owner fixture first image");
+                if (have_pixels) memcpy(first_pixels, first.pixels, sizeof(first_pixels));
+            }
+            iprop_result* second = NULL;
+            options.seed = 17;
+            CHECK(iprop_generate(program, &options, &second, err, sizeof(err)) == IPROP_OK,
+                  "second owner fixture generation: %s", err);
+            CHECK(second != NULL && second != result, "independent result handles");
+            iprop_result_free(second);
             iprop_program_free(program);
         }
         if (result != NULL) {
             iprop_image image;
             iprop_result_image(result, &image);
+            CHECK(image.pixels == first.pixels && image.outputs == first.outputs,
+                  "first borrowed views remain stable");
+            if (have_pixels) CHECK(memcmp(image.pixels, first_pixels, sizeof(first_pixels)) == 0,
+                                   "first image remains unchanged");
             CHECK(image.output_count == 9, "owner fixture slot count");
             const char* names[] = {"anchor", "collider", "zone"};
             for (uint32_t i = 0; i < image.output_count; ++i) {
