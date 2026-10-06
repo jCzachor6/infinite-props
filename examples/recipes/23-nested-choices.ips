@@ -5,9 +5,9 @@ asset NestedChoices {
   draw {
     rect(0, 0, 32, 32, #101820)
     for i in 0..12 {
-      spot = choose(hash(seed ^ i), {8, 8}, {24, 8}, {8, 24}, {24, 24})
+      spot = choose(hash((seed ^ i)), {8, 8}, {24, 8}, {8, 24}, {24, 24})
       radius = roll(hash(i), 2, 5)
-      oval(spot.x, spot.y, radius, radius, choose(i, #5bf, #fd8, #f8a))
+      oval(spot.x, spot.y, radius, radius, choose(i, #55bbff, #ffdd88, #ff88aa))
     }
   }
 }

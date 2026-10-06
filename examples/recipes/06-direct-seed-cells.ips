@@ -5,10 +5,10 @@ asset DirectSeedCells {
   draw {
     rect(0, 0, 32, 32, #101820)
     for i in 0..24 {
-      cellSeed = hash(seed ^ i)
+      cellSeed = hash((seed ^ i))
       x = int(roll(cellSeed, 2, 28))
-      y = int(roll(cellSeed ^ 123, 2, 28))
-      rect(x, y, 3, 3, choose(cellSeed, #5bf, #fc8, #f8a))
+      y = int(roll((cellSeed ^ 123), 2, 28))
+      rect(x, y, 3, 3, choose(cellSeed, #55bbff, #ffcc88, #ff88aa))
     }
   }
 }

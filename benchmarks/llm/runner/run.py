@@ -18,7 +18,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-from binary import preflight
+from binary import header, preflight
 from criteria import image_checks, normalize_outputs, output_checks, verdict
 from png import decode
 
@@ -143,6 +143,68 @@ def normalize_diagnostics(stderr, stdout, version):
     return {'schema_version': None, 'status': 'historical_text_adapter', 'diagnostics': result}
 
 
+def format_candidate(task, workspace, directory, tools, binary, limits):
+    """Archive a canonical entry after raw acceptance, outside model metrics."""
+    stage = {'verdict': 'fail', 'failure_stage': 'format', 'processes': [],
+             'import_strategy': 'canonical entry imports the original bundled parts via CLI relocation',
+             'metric_policy': 'auxiliary; raw compile/check, sources and render criteria remain authoritative'}
+    began = time.monotonic()
+    try:
+        canonical_dir = directory / 'canonical'
+        canonical_dir.mkdir()
+        source = canonical_dir / 'entry.ips'
+        repeated = canonical_dir / 'entry-again.ips'
+        output = canonical_dir / 'asset.iprop'
+        raw_hashes = {str(path.relative_to(workspace)): sha(path.read_bytes())
+                      for path in workspace.rglob('*.ips')}
+
+        def invoke(arguments, name):
+            remaining = max(0, limits['per_task_compile_wall_timeout_seconds'] - (time.monotonic() - began))
+            result, stdout, stderr = process([str(tools / 'ipc'), *map(str, arguments)], workspace,
+                                            directory / name, remaining, limits)
+            stage['processes'].append(result)
+            if result['failure'] or result['exit_code']:
+                raise ValueError(result['failure'] or stderr.decode('utf-8', 'replace') or
+                                 stdout.decode('utf-8', 'replace') or 'compiler formatting failed')
+
+        invoke([task['entry_file'], '--format-only', '--format', source, '--diagnostics=json'], 'format')
+        if source.stat().st_size > limits['max_source_bytes_per_file']:
+            raise ValueError('canonical source exceeds byte ceiling')
+        canonical = source.read_bytes()
+        canonical.decode('utf-8', 'strict')
+        stage.update(canonical_source_path=str(source), canonical_source_sha256=sha(canonical))
+        stage['failure_stage'] = 'canonical_compile'
+        invoke([source, '-o', output], 'canonical-compile')
+        if output.stat().st_size > limits['max_compiled_binary_bytes']:
+            raise ValueError('canonical compiled bytes exceed budget')
+        canonical_binary = output.read_bytes()
+        preflight(canonical_binary, limits)
+        stage.update(canonical_binary_path=str(output), canonical_binary_sha256=sha(canonical_binary))
+        stage['failure_stage'] = 'binary_equivalence'
+        # Candidate production defaults strip debug. Full artifact equality is
+        # stronger than stripped equality and also checks compression policy.
+        if header(binary)[2] & 1 or header(canonical_binary)[2] & 1:
+            raise ValueError('candidate production output unexpectedly contains debug')
+        if binary != canonical_binary:
+            raise ValueError('canonical source changed stripped production bytes')
+        stage['stripped_binary_equal'] = True
+        stage['failure_stage'] = 'idempotence'
+        invoke([source, '--format-only', '--format', repeated, '--diagnostics=json'], 'format-again')
+        if repeated.stat().st_size > limits['max_source_bytes_per_file'] or repeated.read_bytes() != canonical:
+            raise ValueError('canonical formatting is not idempotent')
+        stage['idempotent'] = True
+        stage['failure_stage'] = 'raw_source_identity'
+        if raw_hashes != {str(path.relative_to(workspace)): sha(path.read_bytes())
+                          for path in workspace.rglob('*.ips')}:
+            raise ValueError('raw generated sources changed during formatting')
+        stage.update(verdict='pass', failure_stage=None)
+    except (ValueError, TypeError, KeyError, OSError, UnicodeError) as error:
+        stage['message'] = str(error)
+    stage['wall_time_ms'] = (time.monotonic() - began) * 1000
+    save_json(directory / 'formatting.json', stage)
+    return stage
+
+
 def evaluate(task, files, args, root, protocol):
     limits, directory = protocol['budgets'], root / task['id'] / f'attempt-{args.attempt}'
     directory.mkdir(parents=True)
@@ -179,6 +241,8 @@ def evaluate(task, files, args, root, protocol):
         schema = preflight(binary, limits)
         save_json(directory / 'preflight.json', schema)
         record['preflight_verdict'] = 'pass'
+        if args.version == '0.5':
+            record['formatting'] = format_candidate(task, workspace, directory, args.tools, binary, limits)
         if [schema['width'], schema['height']] != task['image_criteria']['dimensions']:
             feedback.append({'stage': 'preflight', 'criterion': 'dimensions', 'message': 'asset dimensions differ from task 32x32'})
             record['failure_stage'] = 'preflight'; return finish(record, directory, feedback)
@@ -308,6 +372,10 @@ def main():
     feedback = [{'task_id': record['task_id'], 'files': record.get('actual_generated_files'), 'generated_file_sha256': record.get('generated_file_sha256'), 'feedback': record['public_failure_feedback']} for record in records if record['overall_automated_verdict'] == 'fail']
     save_json(args.output / 'repair-feedback.json', {'version': args.version, 'attempt_index': args.attempt, 'feedback_source': 'actual recorded processes and public predicates, no solved witness sources', 'tasks': feedback})
     summary = {'schema_version': 1, 'version': args.version, 'record_kind': args.record_kind, 'evaluated_task_count': len(records), 'required_suite_task_count': len(manifest['tasks']), 'compile_success_count': sum(record['compile_success'] for record in records), 'automated_success_count': sum(record['overall_automated_verdict'] == 'pass' for record in records), 'fully_reviewed_success_count': None, 'manual_source_review_pending_count': len(records), 'human_visual_pending_count': sum(record['human_visual_verdict'] == 'pending' for record in records), 'token_usage': None, 'model_quality_improvement': None, 'finished_at_utc': now(), 'tasks': [{'task_id': record['task_id'], 'compile_success': record['compile_success'], 'automated_verdict': record['overall_automated_verdict'], 'human_visual_verdict': record['human_visual_verdict'], 'failure_stage': record['failure_stage']} for record in records]}
+    if args.version == '0.5':
+        summary['formatting_success_count'] = sum(record.get('formatting', {}).get('verdict') == 'pass' for record in records)
+        summary['formatting_failed_count'] = sum(record.get('formatting', {}).get('verdict') == 'fail' for record in records)
+        summary['formatting_not_run_count'] = sum('formatting' not in record for record in records)
     save_json(args.output / 'summary.json', summary)
     metadata['finished_at_utc'] = now(); metadata['complete_task_count'] = len(records)
     save_json(args.output / 'run.json', metadata)

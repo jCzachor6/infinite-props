@@ -17,6 +17,9 @@ external edits).
   imported parts. Checks with compiler 0.5 write no artifacts.
 - The active `.ips` file is treated as the entry asset; imports resolve
   relative to its folder.
+- **Format Document** uses the real 0.5 `ipc --format-only` pipeline and returns
+  one canonical text edit. Save IPS buffers first; formatting leaves the entry
+  on disk unchanged and writes no binary.
 - **Live preview** (Cmd+Shift+P → *iprop: Open Preview*): a side panel with
   the pixel-exact render, seed/variant/archetype sliders, uniform editors
   for the declared inputs, the fuel readout and the structured outputs. A
@@ -83,6 +86,28 @@ IPROP_COMPILER="$PWD/build/tools/ipc" node --test editor/test/*.test.js
 Set `IPROP_LEGACY_COMPILER` to a frozen 0.4 `ipc` executable to include the real
 legacy compatibility test; otherwise that optional test is skipped.
 
+## Canonical formatting
+
+Use VS Code's **Format Document** action with compiler 0.5. The formatter reads
+saved files, so the entry and other open IPS buffers must be saved. It returns
+an edit for the buffer; it does not save the edit. Compiler 0.4 still supports
+diagnostics and preview, but unsupported formatting is reported without a
+fallback that compiles beside the source.
+
+The temporary source output is exclusively reserved in the entry's physical
+parent directory, preserving the meaning of relative imports when the edit is
+applied back to the entry. Its suffix is `.tmp`; the watcher also ignores the
+compiler's reserved `.ipc-format-<number>-<number>` staging directories. It
+continues to react to ordinary IPS changes, including imported files.
+
+Cancellation and source changes invalidate pending results. The provider checks
+document versions/text, exact saved-file hashes, the compiler setting and the
+executable's path/hash before returning an edit. It waits for process close
+before removing its own temporary output, including on failure or cancellation;
+it never removes other processes' staging directories. A compiler killed during
+its atomic write may leave its own staging directory. Each request uses a
+15-second compiler timeout and a 4 MiB formatted-source/log ceiling.
+
 ## Keyboard shortcuts
 
 | Keys | Action |
@@ -117,6 +142,7 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 | ---- | ---- |
 | `extension.js` | activation, diagnostic mapping, guarded code actions and watchers |
 | `diagnostics.js` | JSON validation, compiler transport, text fallback and source-bound edit checks |
+| `formatting.js` | compiler identity and owned temporary source output for formatting |
 | `syntaxes/ips.tmLanguage.json` | the TextMate grammar |
 | `language-configuration.json` | comments and brackets |
 | `install.sh` | local installation via symlink |

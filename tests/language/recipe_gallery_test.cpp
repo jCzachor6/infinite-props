@@ -25,10 +25,12 @@ TEST_CASE("recipe gallery compiles renders and retains canonical executable roun
         INFO(source.filename().string());
         std::ifstream file(source);
         REQUIRE(file);
-        const auto program = ips::parse(std::string(std::istreambuf_iterator<char>(file), {}));
+        const auto sourceText = std::string(std::istreambuf_iterator<char>(file), {});
+        const auto program = ips::parse(sourceText);
         ips::checkAsset(program, {});
         const auto bytes = compileProgram(program, {});
         const auto formatted = ips::formatProgram(program);
+        CHECK(sourceText == formatted);
         const auto roundtrip = ips::parse(formatted);
         CHECK(ips::formatProgram(roundtrip) == formatted);
         CHECK(stripDebug(bytes) == stripDebug(compileProgram(roundtrip, {})));

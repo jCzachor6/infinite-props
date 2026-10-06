@@ -5,7 +5,7 @@ asset SeededSpeckles {
   draw {
     rect(0, 0, 32, 32, #101820)
     for i in 0..96 {
-      pixel(2 + pick(28), 2 + pick(28), pick(#5bf, #fc8, #fff))
+      pixel((2 + pick(28)), (2 + pick(28)), pick(#55bbff, #ffcc88, #ffffff))
     }
   }
 }

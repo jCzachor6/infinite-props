@@ -5,9 +5,9 @@ asset RotatedSpokes {
   draw {
     rect(0, 0, 32, 32, #101820)
     for i in 0..8 {
-      arm = vec2.rot({12, 0}, float(i) * 0.7853982)
-      line(16, 16, 16 + arm.x, 16 + arm.y, 2, #5bf)
+      arm = vec2.rot({12, 0}, (float(i) * 0.7853982))
+      line(16, 16, (16 + arm.x), (16 + arm.y), 2, #55bbff)
     }
-    oval(16, 16, 3, 3, #fd8)
+    oval(16, 16, 3, 3, #ffdd88)
   }
 }

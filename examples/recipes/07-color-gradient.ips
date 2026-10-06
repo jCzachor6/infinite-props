@@ -5,8 +5,8 @@ asset ColorGradient {
   draw {
     rect(0, 0, 32, 32, #101820)
     for x in 2..30 {
-      t = float(x - 2) / 27.0
-      rect(x, 4, 1, 24, lerp(#e76, #59c, t))
+      t = (float((x - 2)) / 27.0)
+      rect(x, 4, 1, 24, lerp(#ee7766, #5599cc, t))
     }
   }
 }

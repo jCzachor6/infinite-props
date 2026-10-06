@@ -7,12 +7,12 @@ asset OutputAnchors {
   draw {
     rect(0, 0, 32, 32, #101820)
     center = {16, 16}
-    oval(16, 16, 10, 10, #5bf)
+    oval(16, 16, 10, 10, #55bbff)
     for i in 0..4 {
-      arm = vec2.rot({10, 0}, float(i) * 1.5707964)
-      socket = {16 + arm.x, 16 + arm.y}
+      arm = vec2.rot({10, 0}, (float(i) * 1.5707964))
+      socket = {(16 + arm.x), (16 + arm.y)}
       sockets = socket
-      oval(socket.x, socket.y, 2, 2, #fd8)
+      oval(socket.x, socket.y, 2, 2, #ffdd88)
     }
   }
 }

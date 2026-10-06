@@ -7,7 +7,7 @@ asset RoundedMask {
     for y in 0..32 {
       for x in 0..32 {
         d = dist.roundrect({x, y}, {16, 16}, {10, 8}, 3)
-        pixel(x, y, color.set.a(#5bf, int(fill(d, 1) * 255)))
+        pixel(x, y, color.set.a(#55bbff, int((fill(d, 1) * 255))))
       }
     }
   }

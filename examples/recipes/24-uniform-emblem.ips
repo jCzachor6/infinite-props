@@ -1,16 +1,16 @@
 // Uniform colors scales and integer density.
 asset UniformEmblem {
   size 32x32
-  input color accent = #5bf
+  input color accent = #55bbff
   input f32 scale = 1.0
   input u32 density = 8
 
   draw {
     rect(0, 0, 32, 32, #101820)
-    oval(16, 16, 10 * scale, 10 * scale, accent)
+    oval(16, 16, (10 * scale), (10 * scale), accent)
     for i in 0..density {
-      arm = vec2.rot({8 * scale, 0}, float(i) * 6.2831853 / float(density))
-      oval(16 + arm.x, 16 + arm.y, 1.5, 1.5, color.shade(accent, 64))
+      arm = vec2.rot({(8 * scale), 0}, ((float(i) * 6.2831855) / float(density)))
+      oval((16 + arm.x), (16 + arm.y), 1.5, 1.5, color.shade(accent, 64))
     }
   }
 }

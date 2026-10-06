@@ -5,12 +5,12 @@ asset HelperLeaves {
   draw {
     rect(0, 0, 32, 32, #101820)
     for i in 0..4 {
-      leaf({8 + i * 5, 8 + i * 5}, choose(hash(seed ^ i), #5a8, #9c8))
+      leaf({(8 + (i * 5)), (8 + (i * 5))}, choose(hash((seed ^ i)), #55aa88, #99cc88))
     }
   }
 
   leaf(center: vec2, color: color) {
     oval(center.x, center.y, 3, 5, color)
-    line(center.x, center.y - 4, center.x, center.y + 4, 1, color.shade(color, -48))
+    line(center.x, (center.y - 4), center.x, (center.y + 4), 1, color.shade(color, (-48)))
   }
 }

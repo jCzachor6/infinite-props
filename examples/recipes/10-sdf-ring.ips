@@ -6,8 +6,8 @@ asset SdfRing {
     rect(0, 0, 32, 32, #101820)
     for y in 0..32 {
       for x in 0..32 {
-        d = abs(dist.circle({x, y}, {16, 16}, 9)) - 1.5
-        pixel(x, y, color.set.a(#fd8, int(fill(d, 1) * 255)))
+        d = (abs(dist.circle({x, y}, {16, 16}, 9)) - 1.5)
+        pixel(x, y, color.set.a(#ffdd88, int((fill(d, 1) * 255))))
       }
     }
   }

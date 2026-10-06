@@ -7,10 +7,15 @@ const { createRequire } = require("node:module");
 function editorHarness(dir, execute) {
     const commands = new Map(), documents = new Map(), collection = new Map(), events = {};
     const warnings = [], statuses = [], logs = [], subscriptions = [];
-    const uri = file => ({ fsPath: file, toString: () => "file:" + file });
+    const uri = file => ({ scheme: "file", fsPath: file, toString: () => "file:" + file });
+    const settings = { compilerPath: "test-ipc" };
     function document(file, text = fs.readFileSync(file, "utf8")) {
         const doc = { fileName: file, uri: uri(file), languageId: "ips", version: 1, isDirty: false,
-            getText: () => doc.text, text };
+            getText: () => doc.text, text,
+            positionAt: offset => {
+                const lines = doc.text.slice(0, offset).split(/\r\n|\r|\n/);
+                return { line: lines.length - 1, character: lines[lines.length - 1].length };
+            } };
         documents.set(file, doc);
         return doc;
     }
@@ -27,6 +32,7 @@ function editorHarness(dir, execute) {
     class CodeAction { constructor(title, kind) { Object.assign(this, { title, kind }); } }
     const vscode = {
         Uri: { file: uri }, Range, Diagnostic, Location, DiagnosticRelatedInformation, CodeAction,
+        TextEdit: { replace: (range, newText) => ({ range, newText }) },
         CodeActionKind: { QuickFix: "quickfix" }, DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2 },
         commands: { registerCommand(name, callback) { commands.set(name, callback); return disposable(); } },
         languages: {
@@ -34,11 +40,13 @@ function editorHarness(dir, execute) {
                 clear: () => collection.clear() }),
             registerCodeLensProvider: disposable,
             registerCodeActionsProvider(_selector, provider) { vscode.provider = provider; return disposable(); },
+            registerDocumentFormattingEditProvider(_selector, provider) { vscode.formatter = provider; return disposable(); },
         },
         workspace: {
             get textDocuments() { return [...documents.values()]; },
-            getConfiguration: () => ({ get: key => key === "compilerPath" ? "test-ipc" : null }),
+            getConfiguration: () => ({ get: key => settings[key] ?? null }),
             onDidChangeTextDocument: event("textChange"), onDidSaveTextDocument: event("save"), onDidCloseTextDocument: event("close"),
+            onDidChangeConfiguration: event("configuration"),
             createFileSystemWatcher: () => watcher,
             openTextDocument: async uri => documents.get(uri.fsPath) ?? document(uri.fsPath),
         },
@@ -77,7 +85,7 @@ function editorHarness(dir, execute) {
     vm.runInContext(fs.readFileSync(extension, "utf8"), context, { filename: extension });
     context.module.exports.activate({ subscriptions });
     entry.languageId = "ips";
-    return { vscode, commands, documents, collection, events, entry, document, warnings, statuses, logs,
+    return { vscode, commands, documents, collection, events, entry, document, warnings, statuses, logs, settings,
         compile: () => commands.get("iprop.compile")(),
         actions: doc => vscode.provider.provideCodeActions(doc, null, { diagnostics: collection.get(doc.fileName) ?? [] }),
         dispose() { context.module.exports.deactivate(); for (const item of subscriptions) item.dispose(); } };

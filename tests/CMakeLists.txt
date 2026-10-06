@@ -137,6 +137,9 @@ if(IPROP_NODE_EXECUTABLE)
     add_test(NAME compiler_output_defaults COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/production.test.js")
+    add_test(NAME editor_formatting COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/formatting.test.js")
 endif()
 
 if(Python3_Interpreter_FOUND)
@@ -146,6 +149,11 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_format_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_format_cli.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME recipe_format_cli COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_recipe_format.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME llm_runner COMMAND ${CMAKE_COMMAND} -E env
+        "IPROP_COMPILER=$<TARGET_FILE:ipc>"
+        ${Python3_EXECUTABLE} "${CMAKE_SOURCE_DIR}/benchmarks/llm/runner/test_runner.py")
     add_test(NAME compiler_language_contract COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_language_contract.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_language_effects COMMAND ${Python3_EXECUTABLE}

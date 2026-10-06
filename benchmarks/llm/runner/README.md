@@ -28,6 +28,23 @@ Successful compilation is the evidence for runtime static validation because
 `ipc` runs `loadFile`/`validate` before returning its artifact. No separate
 `ipval` binary is asserted to exist when the supplied tool directory lacks one.
 
+After successful raw compilation and binary preflight, candidate 0.5 also
+archives a canonical entry under `<task>/attempt-N/canonical/`. It runs the real
+`--format-only` pipeline, recompiles that entry, requires exact equality of the
+stripped production binary, and checks formatter idempotence. The CLI relocates
+imports to the existing raw bundled parts; this artifact is a canonical entry,
+not a standalone package of canonicalized imports.
+
+`formatting.json` and the task's `formatting` field record this auxiliary verdict,
+artifact hashes, exact process logs and separate timing. The three subprocesses
+share the existing 15-second compile ceiling; canonical source/binary sizes use
+the existing byte ceilings. Formatting failure does not alter raw compile/check
+success, render predicates, repair feedback or first-pass counts. Rendering and
+source-feature review still use the exact archived model sources and their
+original binary. Candidate summaries report formatting counts separately.
+Frozen 0.4 invokes no formatter and receives no formatting fields. Task,
+protocol, prompt and actual-response bytes/hashes are preserved.
+
 The independent binary preflight checks compressed/plain headers, bounded
 decompression, section layout, metadata, root/part dimensions, declared fuel,
 function table, input defaults, and the global output declaration/owner table

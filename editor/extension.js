@@ -10,6 +10,7 @@ const path = require("path");
 const fs = require("fs");
 const os = require("os");
 const { runCompilerDiagnostics, editorRange, sourceContentId, fixEdits } = require("./diagnostics");
+const { compilerIdentity, isFormatStagingPath, runCompilerFormatting } = require("./formatting");
 
 let diagnostics;
 let log;
@@ -59,6 +60,14 @@ let diagnosticGeneration = 0;
 let diagnosticRequest = null;
 let fixOpeningDocument = null;
 const diagnosticMetadata = new WeakMap();
+let formatGeneration = 0;
+let formatRequest = null;
+
+function invalidateFormatting() {
+    ++formatGeneration;
+    formatRequest?.abort();
+    formatRequest = null;
+}
 
 function invalidateDiagnostics() {
     ++diagnosticGeneration;
@@ -97,6 +106,55 @@ function ownedUri(file, cwd, entry) {
 
 function vscodeRange(range) {
     return new vscode.Range(range.start.line, range.start.character, range.end.line, range.end.character);
+}
+
+class IpsFormattingProvider {
+    async provideDocumentFormattingEdits(document, _options, token) {
+        invalidateFormatting();
+        const generation = formatGeneration;
+        if (document.uri.scheme !== "file" || token.isCancellationRequested) return [];
+        const source = sourceSnapshot(document.uri);
+        const documents = new Set([...vscode.workspace.textDocuments, document]);
+        const snapshots = [...documents].filter(doc => doc.languageId === "ips")
+            .map(doc => ({ doc, version: doc.version, text: doc.getText(), source: sourceSnapshot(doc.uri) }));
+        if (!source?.sourceId || !source.savedMatches || !source.validUtf8 ||
+            snapshots.some(snapshot => snapshot.doc.isDirty || !snapshot.source?.savedMatches || !snapshot.source.validUtf8)) {
+            vscode.window.setStatusBarMessage("iprop: save IPS changes before formatting", 3000);
+            return [];
+        }
+        const request = new AbortController();
+        formatRequest = request;
+        const cancellation = token.onCancellationRequested(() => request.abort());
+        const configured = vscode.workspace.getConfiguration("iprop").get("compilerPath");
+        const binary = compilerBinary();
+        try {
+            if (!binary) throw new Error("compiler not found — set iprop.compilerPath");
+            const identity = compilerIdentity(binary, path.dirname(document.fileName));
+            const current = () => {
+                if (generation !== formatGeneration || request.signal.aborted || token.isCancellationRequested ||
+                    configured !== vscode.workspace.getConfiguration("iprop").get("compilerPath") ||
+                    !snapshots.every(snapshot => !snapshot.doc.isDirty && snapshot.doc.version === snapshot.version &&
+                        snapshot.doc.getText() === snapshot.text && sourceSnapshot(snapshot.doc.uri)?.sourceId === snapshot.source.sourceId)) return false;
+                const actual = compilerIdentity(binary, path.dirname(document.fileName));
+                return actual.executable === identity.executable && actual.sourceId === identity.sourceId;
+            };
+            const canonical = await runCompilerFormatting(identity.executable, document.fileName,
+                { execute: execFile, signal: request.signal });
+            if (!current() || canonical === document.getText()) return [];
+            const end = document.positionAt(document.getText().length);
+            return [vscode.TextEdit.replace(new vscode.Range(0, 0, end.line, end.character), canonical)];
+        } catch (error) {
+            if (generation === formatGeneration && !request.signal.aborted && !token.isCancellationRequested) {
+                const message = "iprop: formatting failed: " + error.message;
+                log.appendLine(message);
+                vscode.window.showWarningMessage(message);
+            }
+            return [];
+        } finally {
+            cancellation.dispose();
+            if (formatRequest === request) formatRequest = null;
+        }
+    }
 }
 
 async function compileActive() {
@@ -918,6 +976,8 @@ function activate(context) {
     context.subscriptions.push(
         vscode.languages.registerCodeActionsProvider({ language: "ips" }, new IpsCodeActionProvider(),
             { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }));
+    context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(
+        { language: "ips", scheme: "file" }, new IpsFormattingProvider()));
     context.subscriptions.push(
         vscode.commands.registerCommand("iprop.preview", openPreview));
     context.subscriptions.push(
@@ -953,6 +1013,7 @@ function activate(context) {
 
     let timer = null;
     const schedule = () => {
+        invalidateFormatting();
         invalidateDiagnostics();
         clearTimeout(timer);
         timer = setTimeout(() => {
@@ -977,14 +1038,18 @@ function activate(context) {
     context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
         if (document.languageId === "ips") schedule();
     }));
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration("iprop.compilerPath")) invalidateFormatting();
+    }));
     context.subscriptions.push({ dispose() { clearTimeout(timer); deactivate(); } });
 
     // External edits (CLI agents writing files on disk) also recompile.
     const watcher = vscode.workspace.createFileSystemWatcher("**/*.ips");
     context.subscriptions.push(watcher);
-    watcher.onDidChange(schedule);
-    watcher.onDidCreate(schedule);
-    watcher.onDidDelete(schedule);
+    const externalChange = uri => { if (!isFormatStagingPath(uri)) schedule(); };
+    watcher.onDidChange(externalChange);
+    watcher.onDidCreate(externalChange);
+    watcher.onDidDelete(externalChange);
 
     if (vscode.window.activeTextEditor?.document.languageId === "ips") {
         compileActive();
@@ -992,6 +1057,7 @@ function activate(context) {
 }
 
 function deactivate() {
+    invalidateFormatting();
     ++diagnosticGeneration;
     diagnosticRequest?.abort();
     diagnosticRequest = null;

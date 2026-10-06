@@ -95,6 +95,7 @@ test("editor inspector keeps source maps and binary export uses production outpu
             createDiagnosticCollection: () => ({ set() {}, clear() {}, delete() {}, dispose() {} }),
             registerCodeLensProvider: disposable,
             registerCodeActionsProvider: disposable,
+            registerDocumentFormattingEditProvider: disposable,
         },
         workspace: {
             textDocuments: [],
@@ -103,6 +104,7 @@ test("editor inspector keeps source maps and binary export uses production outpu
             onDidChangeTextDocument: disposable,
             onDidSaveTextDocument: disposable,
             onDidCloseTextDocument: disposable,
+            onDidChangeConfiguration: disposable,
             createFileSystemWatcher: () => ({ ...disposable(), onDidChange() {}, onDidCreate() {}, onDidDelete() {} }),
         },
         window: {
