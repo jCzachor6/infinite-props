@@ -192,10 +192,12 @@ def resources(root):
     files += list((root / "spec").glob("*.md"))
     files += list((root / "docs").glob("*optim*.md"))
     files += list((root / "plans").glob("*.md"))
+    if (root / "docs/llm-reference.json").is_file():
+        files += [root / "docs/llm-reference.json", root / "docs/llm-reference.md"]
     return files
 
 
-def build(compiler, destination, root=ROOT):
+def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None):
     root = root.resolve()
     language = contracts(compiler, root)
     _, chapters, authored, cases = sources(root, language)
@@ -260,6 +262,16 @@ def build(compiler, destination, root=ROOT):
     combined = first + "\n\n" + f"Version: **{version}** · Status: **{info['status']}** · Source: `{info['source_commit'] or 'source archive'}`\n" + rest
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"
+    llm_checks = []
+    has_llm_config = (root / "docs/llm-reference.json").is_file()
+    require(has_llm_config or "source_rules" not in language,
+            "Current compiler rules require docs/llm-reference.json")
+    require(has_llm_config or all(value is None for value in (llm_sections, llm_symbols, llm_max_bytes)),
+            "LLM selections require docs/llm-reference.json")
+    if has_llm_config:
+        from llm_reference import render
+        output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
+                                                     llm_sections, llm_symbols, llm_max_bytes)
     # Ship the linked standalone sources and frozen numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
@@ -286,6 +298,9 @@ def build(compiler, destination, root=ROOT):
         file.write_text(content, encoding="utf-8", newline="\n")
     write_json(destination / "docs/language-manifest.json", info)
     verify(destination, version, info["source_commit"], root=root)
+    # Execution evidence belongs to the check report, not a new manifest schema.
+    if llm_checks:
+        info["llm_reference_checks"] = llm_checks
     return info
 
 
@@ -316,6 +331,8 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
     require(len(cases) == manifest["example_count"], "Documentation example count differs")
     minor = ".".join(manifest["product_version"].split(".")[:2])
     required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md"}
+    if "docs/llm-reference.json" in manifest["source_files"]:
+        required.add("LLM_REFERENCE.md")
     require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
     if root is not None:
         root = root.resolve()
@@ -392,22 +409,30 @@ def main():
     parser.add_argument("--commit", help="required source commit when verifying")
     parser.add_argument("--against-source", action="store_true", help="verify inputs and signatures against this checkout/compiler")
     parser.add_argument("--clean", action="store_true", help="reject documentation generated from uncommitted changes")
+    parser.add_argument("--llm-sections", help="comma-separated LLM section ids; empty selects none")
+    parser.add_argument("--llm-symbols", help="comma-separated compiler builtin names; empty selects none")
+    parser.add_argument("--llm-max-bytes", type=int, help="UTF-8 byte budget for LLM_REFERENCE.md (maximum 16384)")
     args = parser.parse_args()
+    if args.action == "verify" and any(value is not None for value in (args.llm_sections, args.llm_symbols, args.llm_max_bytes)):
+        parser.error("LLM selections apply to build/check, not verify")
     if args.action == "verify":
         info = verify(args.output_dir.resolve(), args.version, args.commit,
                       root=ROOT if args.against_source else None,
                       compiler=args.compiler.resolve() if args.against_source else None, clean=args.clean)
     elif args.action == "build":
-        info = build(args.compiler.resolve(), args.output_dir.resolve())
+        info = build(args.compiler.resolve(), args.output_dir.resolve(), llm_sections=args.llm_sections,
+                     llm_symbols=args.llm_symbols, llm_max_bytes=args.llm_max_bytes)
     else:
         language = contracts(args.compiler.resolve())
         _, _, _, cases = sources(ROOT, language)
         results = check_examples(args.compiler.resolve(), language, cases)
         with tempfile.TemporaryDirectory(prefix="iprop-doc-check-") as temporary:
-            info = build(args.compiler.resolve(), Path(temporary) / "book")
+            info = build(args.compiler.resolve(), Path(temporary) / "book", llm_sections=args.llm_sections,
+                         llm_symbols=args.llm_symbols, llm_max_bytes=args.llm_max_bytes)
         if args.report_dir:
             write_json(args.report_dir / "language-docs.json", {**identity(ROOT, language["product_version"]),
-                       "passed": True, "builtin_count": len(language["builtins"]), "examples": results})
+                       "passed": True, "builtin_count": len(language["builtins"]), "examples": results,
+                       "llm_reference_checks": info.get("llm_reference_checks", [])})
     print(f"Language documentation: PASS {info['product_version']} ({info['builtin_count']} builtins, {info['example_count']} examples)")
 
 

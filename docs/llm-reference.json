@@ -1,0 +1,21 @@
+{
+  "maximum_bytes": 16384,
+  "defaults": {
+    "max_bytes": 12288,
+    "sections": ["asset", "types", "helper", "part", "palette", "output", "symbols", "diagnostics"],
+    "symbols": ["rect", "pixel", "int", "unit", "ramp"]
+  },
+  "sections": [
+    {"id": "asset", "title": "Minimal asset", "chapter": "getting-started.md", "heading": "Your first asset", "skip_paragraphs": 1, "paragraphs": 1, "examples": ["first-asset.ips"]},
+    {"id": "types", "title": "Types", "chapter": "types.md", "heading": "Value types and conversions", "paragraphs": 2},
+    {"id": "helper", "title": "Helper", "chapter": "functions.md", "heading": "User functions and argument evaluation", "paragraphs": 1, "examples": ["functions.ips"]},
+    {"id": "part", "title": "Part", "chapter": "composition.md", "heading": "Imports and part composition", "paragraphs": 1, "examples": ["part.ips", "composition.ips"]},
+    {"id": "palette", "title": "Palette", "chapter": "palettes.md", "heading": "Palettes", "paragraphs": 1, "examples": ["palettes.ips"]},
+    {"id": "output", "title": "Structured output", "chapter": "assets.md", "heading": "Structured outputs", "paragraphs": 1, "examples": ["assets.ips"]}
+  ],
+  "diagnostic_pairs": [
+    {"id": "local-type", "title": "Keep a local's fixed type", "file": "errors/local-type.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Infer f32 from the first assignment when later values are floating.", "replacements": [{"before": "x = 1;", "after": "x = 1.0;"}]},
+    {"id": "helper-uniform", "title": "Pass a uniform to a helper", "file": "errors/helper-uniform.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Pass the uniform explicitly through a typed helper parameter.", "replacements": [{"before": "draw { paint() }", "after": "draw { paint(tint) }"}, {"before": "paint() {", "after": "paint(tint: color) {"}]},
+    {"id": "unknown-argument", "title": "Use the declared parameter name", "file": "errors/unknown-argument.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Use the parameter name exported by the compiler signature.", "replacements": [{"before": "colour =", "after": "color ="}]}
+  ]
+}

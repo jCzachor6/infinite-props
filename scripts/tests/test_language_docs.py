@@ -54,6 +54,23 @@ class DocumentationTest(unittest.TestCase):
             docs.build(Path("unused"), self.output, self.root)
         self.assertEqual(sentinel.read_text(), "keep me")
 
+    def test_explicit_llm_selection_requires_registered_configuration(self):
+        with patch.object(docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "LLM selections require"):
+            docs.build(Path("unused"), self.output, self.root, llm_sections="asset")
+        self.assertFalse(self.output.exists())
+
+    def test_current_compiler_cannot_silently_omit_default_reference(self):
+        with patch.object(docs, "contracts", return_value=LANGUAGE):
+            docs.build(Path("unused"), self.output, self.root)
+        before = {p.relative_to(self.output): p.read_bytes()
+                  for p in self.output.rglob("*") if p.is_file()}
+        modern = {**LANGUAGE, "source_rules": {}}
+        with patch.object(docs, "contracts", return_value=modern), self.assertRaisesRegex(RuntimeError, "Current compiler rules require"):
+            docs.build(Path("unused"), self.output, self.root)
+        after = {p.relative_to(self.output): p.read_bytes()
+                 for p in self.output.rglob("*") if p.is_file()}
+        self.assertEqual(before, after)
+
     def test_verified_book_rejects_tampering_or_a_different_version(self):
         with patch.object(docs, "contracts", return_value=LANGUAGE):
             docs.build(Path("unused"), self.output, self.root)

@@ -151,4 +151,6 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME language_documentation COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/language_docs.py" check --compiler "$<TARGET_FILE:ipc>"
         --report-dir "${CMAKE_BINARY_DIR}/ci-reports/language")
+    add_test(NAME language_llm_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_llm_reference.py" "$<TARGET_FILE:ipc>")
 endif()

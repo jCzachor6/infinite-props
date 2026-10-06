@@ -6,7 +6,7 @@ if(Python3_Interpreter_FOUND)
     add_custom_target(iprop_language_docs ALL
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/language_docs.py" build
             --compiler "$<TARGET_FILE:ipc>" --output-dir "${IPROP_LANGUAGE_DOCS_DIR}"
-        DEPENDS ipc
+        DEPENDS ipc ipgen
         COMMENT "Generate the versioned language handbook"
         VERBATIM)
 endif()

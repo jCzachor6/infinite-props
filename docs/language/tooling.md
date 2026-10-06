@@ -15,6 +15,11 @@ shared call signatures and independent product/language/format/C API/ABI
 versions. See the [language-description contract](../language-description.md)
 for field meanings and executable acceptance cases.
 
+The documentation build also generates a bounded `LLM_REFERENCE.md` from
+selected handbook sections, compiler symbols and checked registered examples.
+See [reference generation](../llm-reference.md) for budgets, selection and
+validated rejection/repair pairs.
+
 `ipc entry.ips --check --diagnostics=json` runs the same import, parsing,
 typing, planning, lowering, assembly, optimization and final-file validation
 pipeline entirely in memory. It writes no executable or formatted source;
