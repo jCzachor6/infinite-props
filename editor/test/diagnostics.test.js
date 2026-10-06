@@ -74,7 +74,7 @@ test("compiler exports canonical source with identical executable roundtrips", (
         let result = run(["entry.ips","-o","original.iprop","--strip","--format","canonical.ips"]);
         assert.equal(result.status,0,result.stderr);
         const formatted = fs.readFileSync(path.join(dir,"canonical.ips"),"utf8");
-        assert.match(formatted,/rect\(x = 0, y = 0, w = 4, h = 4, color = #ffffff\)/);
+        assert.match(formatted,/    \/\/ author comment\n    rect\(x = 0, y = 0, w = 4, h = 4, color = #ffffff\)/);
         assert.equal(fs.readFileSync(path.join(dir,"entry.ips"),"utf8"),source);
         result = run(["canonical.ips","-o","roundtrip.iprop","--strip","--format","twice.ips"]);
         assert.equal(result.status,0,result.stderr);

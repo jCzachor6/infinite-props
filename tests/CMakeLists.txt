@@ -107,6 +107,13 @@ iprop_warnings(iprop_tests)
 
 add_test(NAME smoke COMMAND iprop_tests)
 
+# Keep allocator replacement outside the Catch2 process. Sweep the actual
+# formatter allocations, including persistent failure during scope unwinding.
+add_executable(source_printer_failure_probe language/source_printer_failure_probe.cpp)
+target_link_libraries(source_printer_failure_probe PRIVATE ips_lang)
+iprop_warnings(source_printer_failure_probe)
+add_test(NAME source_printer_allocation_failures COMMAND source_printer_failure_probe)
+
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)

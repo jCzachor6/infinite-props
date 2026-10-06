@@ -77,6 +77,8 @@ std::vector<Token> lex(std::string_view source) {
     std::size_t line = 1;
     std::size_t column = 1;
     std::size_t nextCodepoint = 0;
+    std::size_t lastTokenEndLine = 0;
+    std::vector<SourceTrivia> pendingTrivia;
 
     const auto location = [&]() { return SourceLocation{line, column, pos, pos}; };
     const auto error = [&](SourceLocation at, std::string message,
@@ -109,7 +111,17 @@ std::vector<Token> lex(std::string_view source) {
     };
     const auto emit = [&](TokenKind kind, std::string text, SourceLocation at) {
         at.endByteOffset=pos;
-        tokens.push_back({kind, std::move(text), at});
+        tokens.push_back({kind, std::move(text), at, std::move(pendingTrivia), {}});
+        pendingTrivia.clear();
+        lastTokenEndLine = line;
+    };
+
+    const auto comment = [&](SourceTrivia::Kind kind, SourceLocation at) {
+        at.endByteOffset = pos;
+        SourceTrivia trivia{kind, std::string(source.substr(at.byteOffset, pos - at.byteOffset)), at};
+        if (!tokens.empty() && at.line == lastTokenEndLine && pendingTrivia.empty())
+            tokens.back().trailingTrivia.push_back(std::move(trivia));
+        else pendingTrivia.push_back(std::move(trivia));
     };
 
     while (pos < source.size()) {
@@ -127,6 +139,7 @@ std::vector<Token> lex(std::string_view source) {
             while (pos < source.size() && source[pos] != '\n') {
                 advance();
             }
+            comment(SourceTrivia::Kind::LineComment, at);
             continue;
         }
         // Block comment.
@@ -146,6 +159,7 @@ std::vector<Token> lex(std::string_view source) {
             if (!closed) {
                 throw error(at, "unterminated block comment");
             }
+            comment(SourceTrivia::Kind::BlockComment, at);
             continue;
         }
 
@@ -328,7 +342,7 @@ std::vector<Token> lex(std::string_view source) {
         throw error(at, "unexpected character '" + std::string(source.substr(pos, point->bytes)) + "'");
     }
 
-    tokens.push_back({TokenKind::End, "", location()});
+    tokens.push_back({TokenKind::End, "", location(), std::move(pendingTrivia), {}});
     return tokens;
 }
 

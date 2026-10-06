@@ -18,8 +18,11 @@ std::unique_ptr<Expr> literal(Literal::Kind literalKind, const Token& token,
 std::unique_ptr<Expr> binary(Binary::Op op, std::unique_ptr<Expr> left,
                              std::unique_ptr<Expr> right,
                              const SourceLocation& at) {
-    return std::make_unique<Expr>(
+    const TokenRange range{left->sourceRange.begin, right->sourceRange.end};
+    auto expr = std::make_unique<Expr>(
         Binary{op, std::move(left), std::move(right), at});
+    expr->sourceRange = expr->sourceCoreRange = range;
+    return expr;
 }
 
 } // namespace
@@ -152,17 +155,24 @@ std::unique_ptr<Expr> ParserImpl::parseMultiplicative() {
 }
 
 std::unique_ptr<Expr> ParserImpl::parseUnary() {
+    const auto start = pos_;
     if (match(TokenKind::Minus)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        return std::make_unique<Expr>(Unary{Unary::Op::Neg, parseUnary(), at});
+        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseUnary(), at});
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
     }
     if (match(TokenKind::Bang)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        return std::make_unique<Expr>(Unary{Unary::Op::Not, parseUnary(), at});
+        auto expr = std::make_unique<Expr>(Unary{Unary::Op::Not, parseUnary(), at});
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
     }
     if (match(TokenKind::Tilde)) {
         const SourceLocation at = tokens_[pos_ - 1].location;
-        return std::make_unique<Expr>(Unary{Unary::Op::BitNot, parseUnary(), at});
+        auto expr = std::make_unique<Expr>(Unary{Unary::Op::BitNot, parseUnary(), at});
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
     }
     return parsePostfix();
 }
@@ -174,6 +184,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfix() {
 // Continues a postfix chain on an already-parsed primary: member access
 // ('.' name), calls ('(' args ')') and palette indexing ('[' expr ']').
 std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) {
+    const auto start = expr->sourceRange.begin;
     for (;;) {
         if (match(TokenKind::Dot)) {
             const Token name = expectName("a member name after '.'");
@@ -192,17 +203,21 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
         } else {
             return expr;
         }
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     }
 }
 
 std::unique_ptr<Expr> ParserImpl::parsePrimary() {
+    const auto start = pos_;
     if (auto value = parseLiteral()) {
         return value;
     }
     switch (kind()) {
     case TokenKind::Identifier: {
         const Token name = advance();
-        return std::make_unique<Expr>(Identifier{name.text, name.location});
+        auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
     }
     case TokenKind::LBrace:
         return parseVector();
@@ -210,6 +225,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         advance();
         auto expr = parseExpr();
         expect(TokenKind::RParen, "')'");
+        expr->sourceRange = {start, pos_};
         return expr;
     }
     default:
@@ -217,7 +233,9 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         // also appear as expression identifiers.
         if (isNameKind(kind())) {
             const Token name = advance();
-            return std::make_unique<Expr>(Identifier{name.text, name.location});
+            auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
+            expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+            return expr;
         }
         failExpected("an expression");
     }
@@ -227,30 +245,36 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
 // by parsePrimary (full expressions) and parseLiteralValue (input defaults,
 // which accept a literal optionally wrapped by parentheses/one unary minus).
 std::unique_ptr<Expr> ParserImpl::parseLiteral() {
+    const auto start = pos_;
+    const auto rangedLiteral = [&](Literal::Kind kind, const Token& token, const std::string& text) {
+        auto expr = literal(kind, token, text);
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
+    };
     switch (kind()) {
     case TokenKind::Int: {
         const Token token = advance();
-        return literal(Literal::Kind::Int, token, token.text);
+        return rangedLiteral(Literal::Kind::Int, token, token.text);
     }
     case TokenKind::Float: {
         const Token token = advance();
-        return literal(Literal::Kind::Float, token, token.text);
+        return rangedLiteral(Literal::Kind::Float, token, token.text);
     }
     case TokenKind::Color: {
         const Token token = advance();
-        return literal(Literal::Kind::Color, token, token.text);
+        return rangedLiteral(Literal::Kind::Color, token, token.text);
     }
     case TokenKind::String: {
         const Token token = advance();
-        return literal(Literal::Kind::String, token, token.text);
+        return rangedLiteral(Literal::Kind::String, token, token.text);
     }
     case TokenKind::KeywordTrue: {
         const Token token = advance();
-        return literal(Literal::Kind::True, token, "true");
+        return rangedLiteral(Literal::Kind::True, token, "true");
     }
     case TokenKind::KeywordFalse: {
         const Token token = advance();
-        return literal(Literal::Kind::False, token, "false");
+        return rangedLiteral(Literal::Kind::False, token, "false");
     }
     default:
         return nullptr;
@@ -258,6 +282,7 @@ std::unique_ptr<Expr> ParserImpl::parseLiteral() {
 }
 
 std::unique_ptr<Expr> ParserImpl::parseVector() {
+    const auto start = pos_;
     const SourceLocation at = expect(TokenKind::LBrace, "'{'").location;
     std::vector<std::unique_ptr<Expr>> elements;
     while (kind() != TokenKind::RBrace) {
@@ -274,7 +299,9 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
         }
     }
     expect(TokenKind::RBrace, "'}'");
-    return std::make_unique<Expr>(VectorLit{std::move(elements), at});
+    auto expr = std::make_unique<Expr>(VectorLit{std::move(elements), at});
+    expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+    return expr;
 }
 
 std::vector<Arg> ParserImpl::parseArgs() {

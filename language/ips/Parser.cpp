@@ -24,6 +24,7 @@ Program ParserImpl::parseProgram() {
         }
         failExpected("end of file");
     }
+    program.sourceTokens = std::move(tokens_);
     return program;
 }
 
@@ -61,7 +62,10 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
         if (!hasAsset && result.diagnostics.empty()) {
             failExpected("an 'asset' block");
         }
-        if (result.diagnostics.empty()) result.program = std::move(program);
+        if (result.diagnostics.empty()) {
+            program.sourceTokens = std::move(tokens_);
+            result.program = std::move(program);
+        }
     } catch (const SourceError& error) {
         try {
             recordError(error);
@@ -164,15 +168,17 @@ void ParserImpl::synchronize(std::size_t start, RecoveryScope scope) {
 // ---- declarations -----------------------------------------------------------
 
 Import ParserImpl::parseImport() {
+    const auto start = pos_;
     const SourceLocation at = advance().location; // 'import'
     const Token alias = expectName("an import alias");
     expect(TokenKind::KeywordFrom, "'from'");
     const Token path = expect(TokenKind::String, "a quoted file path");
     match(TokenKind::Semi);
-    return Import{alias.text, path.text, at};
+    return Import{alias.text, path.text, at, {start, pos_}};
 }
 
 Asset ParserImpl::parseAsset() {
+    const auto assetStart = pos_;
     const SourceLocation at = advance().location; // 'asset'
     const Token name = expect(TokenKind::Identifier, "an asset name");
     expect(TokenKind::LBrace, "'{'");
@@ -194,42 +200,53 @@ Asset ParserImpl::parseAsset() {
         }
     }
     advance(); // '}'
+    asset.sourceRange = {assetStart, pos_};
     return asset;
 }
 
 void ParserImpl::parseDeclaration(Asset& asset) {
+    const auto start = pos_;
     switch (kind()) {
     case TokenKind::KeywordInput:
         asset.inputs.push_back(parseInput());
+        asset.inputs.back().sourceRange = {start, pos_};
         break;
     case TokenKind::KeywordOutput:
         asset.outputs.push_back(parseOutput());
+        asset.outputs.back().sourceRange = {start, pos_};
         break;
     case TokenKind::KeywordDraw:
         asset.functions.push_back(parseFunction());
+        asset.functions.back().sourceRange = {start, pos_};
         break;
     case TokenKind::Identifier: {
         const Token declaration = advance();
         if (declaration.text == "size") {
             parseSize(asset);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Size, {start, pos_}});
         } else if (declaration.text == "origin") {
             parseOrigin(asset);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Origin, {start, pos_}});
         } else if (declaration.text == "variants") {
             asset.variants = toU32(expect(TokenKind::Int, "a variant count"),
                                    "variant count");
             match(TokenKind::Semi);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Variants, {start, pos_}});
         } else if (declaration.text == "archetypes") {
             asset.archetypes =
                 toU32(expect(TokenKind::Int, "an archetype count"),
                       "archetype count");
             match(TokenKind::Semi);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Archetypes, {start, pos_}});
         } else if (declaration.text == "palette") {
             asset.palettes.push_back(parsePalette());
+            asset.palettes.back().sourceRange = {start, pos_};
         } else {
             const auto hint = keywordSuggestion(declaration.text);
             if (kind() != TokenKind::LParen && !hint.empty())
                 throw SourceError{declaration.location, "unknown asset declaration '" + declaration.text + "'" + hint};
             asset.functions.push_back(parseFunctionAfterName(declaration));
+            asset.functions.back().sourceRange = {start, pos_};
         }
         break;
     }
@@ -237,6 +254,7 @@ void ParserImpl::parseDeclaration(Asset& asset) {
         // Soft keywords may also name a function.
         if (isNameKind(kind())) {
             asset.functions.push_back(parseFunctionAfterName(advance()));
+            asset.functions.back().sourceRange = {start, pos_};
         } else {
             failExpected("a declaration inside the asset block");
         }
@@ -297,14 +315,18 @@ InputDecl ParserImpl::parseInput() {
 // Input defaults allow parentheses and one unary minus, but no expression
 // operators/calls. Numeric/type validation belongs to the constant resolver.
 std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
+    const auto start = pos_;
     if (match(TokenKind::LParen)) {
         auto value = parseLiteralValue(allowMinus);
         expect(TokenKind::RParen, "')' after the default value");
+        value->sourceRange = {start, pos_};
         return value;
     }
     if (allowMinus && match(TokenKind::Minus)) {
         const auto at = tokens_[pos_ - 1].location;
-        return std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+        auto value = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+        value->sourceRange = value->sourceCoreRange = {start, pos_};
+        return value;
     }
     if (auto value = parseLiteral()) {
         return value;
@@ -426,7 +448,10 @@ std::vector<Stmt> ParserImpl::parseBlock() {
         }
         const auto start = pos_;
         try {
-            body.push_back(parseStatement());
+            auto statement = parseStatement();
+            match(TokenKind::Semi);
+            statement.sourceRange = {start, pos_};
+            body.push_back(std::move(statement));
         } catch (const SourceError& error) {
             if (!recovery_) throw;
             recordError(error);
@@ -461,13 +486,15 @@ Stmt ParserImpl::parseStatement() {
 }
 
 Stmt ParserImpl::parseIdentifierStatement() {
+    const auto start = pos_;
     const Token name = advance();
     if (match(TokenKind::Assign)) {
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
-    auto expr = parsePostfixAfter(
-        std::make_unique<Expr>(Identifier{name.text, name.location}));
+    auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
+    primary->sourceRange = primary->sourceCoreRange = {start, pos_};
+    auto expr = parsePostfixAfter(std::move(primary));
     if (!std::holds_alternative<Call>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
@@ -481,15 +508,21 @@ Stmt ParserImpl::parseIf() {
     expect(TokenKind::RParen, "')' after the condition");
     auto thenBranch = parseBlock();
     std::vector<Stmt> elseBranch;
+    TokenRange elseRange;
     if (match(TokenKind::KeywordElse)) {
+        elseRange.begin = pos_ - 1;
         if (kind() == TokenKind::KeywordIf) {
-            elseBranch.push_back(parseIf());
+            const auto start = pos_;
+            auto branch = parseIf();
+            branch.sourceRange = {start, pos_};
+            elseBranch.push_back(std::move(branch));
         } else {
             elseBranch = parseBlock();
         }
+        elseRange.end = pos_;
     }
     return Stmt{IfStmt{std::move(condition), std::move(thenBranch),
-                       std::move(elseBranch), at}};
+                       std::move(elseBranch), at, elseRange}};
 }
 
 Stmt ParserImpl::parseWhile() {

@@ -31,10 +31,26 @@ the readable renderer. Multi-error recovery follows in the B.5 task.
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word
 keywords, normalized literals and named builtin arguments in signature order.
-It must differ from the input and binary output. Comments are absent from
-the AST and therefore from formatted output. Keep the formatted file beside
+It must differ from the input and binary output. Comments keep their exact
+contents, including delimiters and internal whitespace. A call containing
+comments keeps its written argument order. Keep the formatted file beside
 its imports when recompiling it. Formatting is idempotent and preserves
 executable bytes after stripping source-line debug data.
+
+Comments are owning trivia on the source tokens, and AST nodes refer to
+half-open token ranges. A comment beginning on the same line as the previous
+token belongs after that token; other comments belong before the next token.
+Thus comments before declarations follow their declaration when its position
+is normalized, and comments after statements remain after the statement.
+Within expressions and between named arguments, comments stay on the same
+side of the adjacent token. Optional parentheses and separators carrying trivia stay in the output, so
+multiline comments keep their token owner when the result is parsed again.
+Comments in an empty block belong before its closing brace, and a commented
+empty else block stays present. Repeated scalar metadata retains each earlier
+declaration's source context inside the asset; the last declaration still
+sets the effective value. Comments after the file belong to the end token.
+None of this trivia affects execution or the byte/codepoint locations of
+syntax tokens.
 
 The C++ compilation API retains debug information so callers can select an
 artifact policy. The editor requests it for inspection; binary exports use

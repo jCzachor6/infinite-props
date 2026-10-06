@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-#include "ips/SourceError.hpp"
+#include "ips/SourceSyntax.hpp"
 
 namespace iprop::ips {
 
@@ -101,6 +101,8 @@ struct Token {
     TokenKind kind = TokenKind::End;
     std::string text; // exact literals/identifiers; emoji aliases carry the canonical word
     SourceLocation location;
+    std::vector<SourceTrivia> leadingTrivia{};
+    std::vector<SourceTrivia> trailingTrivia{};
 };
 
 struct EmojiAlias {

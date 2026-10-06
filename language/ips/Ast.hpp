@@ -19,7 +19,7 @@
 #include <variant>
 #include <vector>
 
-#include "ips/SourceError.hpp"
+#include "ips/Lexer.hpp"
 
 namespace iprop::ips {
 
@@ -106,6 +106,8 @@ struct Expr
                    Unary> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
                        Binary, Unary>::variant;
+    TokenRange sourceRange{};
+    TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };
 
 // ---- Statements ----------------------------------------------------------
@@ -131,6 +133,7 @@ struct IfStmt {
     std::vector<Stmt> thenBranch;
     std::vector<Stmt> elseBranch;
     SourceLocation location;
+    TokenRange elseRange{};
 };
 
 struct WhileStmt {
@@ -171,6 +174,7 @@ struct Stmt
                    BreakStmt, ContinueStmt, ForStmt> {
     using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
                        BreakStmt, ContinueStmt, ForStmt>::variant;
+    TokenRange sourceRange{};
 };
 
 // ---- Declarations --------------------------------------------------------
@@ -186,6 +190,7 @@ struct InputDecl {
     std::unique_ptr<Expr> defaultValue;
     SourceLocation location;
     SourceLocation typeLocation{};
+    TokenRange sourceRange{};
 };
 
 // `output rect collider` or `output list point pts`
@@ -194,6 +199,7 @@ struct OutputDecl {
     bool isList = false;
     std::string name;
     SourceLocation location;
+    TokenRange sourceRange{};
 };
 
 // `palette name = [ e, e, ... ]` — asset-level constant array data. The
@@ -204,6 +210,7 @@ struct PaletteDecl {
     std::string name;
     std::vector<std::unique_ptr<Expr>> elements;
     SourceLocation location;
+    TokenRange sourceRange{};
 };
 
 // The declared type of a function parameter or return value: the scalar
@@ -228,6 +235,7 @@ struct Function {
     std::optional<ParamType> returnType; // declared with `-> type`
     std::vector<Stmt> body;
     SourceLocation location;
+    TokenRange sourceRange{};
 };
 
 // `import hair from "hair.ips"`
@@ -235,6 +243,7 @@ struct Import {
     std::string alias;
     std::string path;
     SourceLocation location;
+    TokenRange sourceRange{};
 };
 
 // One asset block.
@@ -253,11 +262,16 @@ struct Asset {
     std::vector<OutputDecl> outputs;
     std::vector<PaletteDecl> palettes;
     std::vector<Function> functions;
+
+    TokenRange sourceRange{};
+    std::vector<MetadataSyntax> metadataSyntax{};
 };
 
 struct Program {
     std::vector<Import> imports;
     Asset asset;
+    // Owning token/trivia snapshot; compiler and debug printers ignore it.
+    std::vector<Token> sourceTokens{};
 };
 
 // The source location of any expression node (for semantic diagnostics).
