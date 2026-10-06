@@ -96,6 +96,71 @@ TEST_CASE("canonical words grouping and signed literals preserve exact executabl
     }
 }
 
+TEST_CASE("formatting keeps legacy assignment placement and contextual name bindings", "[format-legacy]") {
+    const auto original = ips::parse(R"(asset legacy {size 8x8 variants 2 output list point trace
+      draw {
+        if (v==1) {let=index(7); f=unit(); tint=#f00; position={2,3};}
+        else {other=fn(x=4);}
+        while (false) {loop=index(7);}
+        for i in 0..0 {forLocal=unit();}
+        trace={let,f}; trace=position; trace={other,loop};
+        trace={forLocal,vec2(y=3.0,x=2.0)}; trace={unit(),unit()};
+        pixel(0,0,tint);
+      }
+      fn(x:i32)->i32 {return let(x);}
+      let(x:i32)->i32 {return x+1;}
+      vec2(x:f32,y:f32)->f32 {return x+y;}
+    })");
+    const auto text = ips::formatProgram(original);
+    INFO(text);
+    CHECK(text.find("if ((v == 1)) {\n      let = index(7)") != std::string::npos);
+    CHECK(text.find("else {\n      other = fn(x = 4)") != std::string::npos);
+    CHECK(text.find("while (false) {\n      loop = index(7)") != std::string::npos);
+    CHECK(text.find("let let") == std::string::npos);
+    CHECK(text.find("fn fn") == std::string::npos);
+    CHECK(text.find("fn(x: i32) -> i32") != std::string::npos);
+    CHECK(text.find("let(x: i32) -> i32") != std::string::npos);
+    CHECK(text.find("vec2(x: f32, y: f32) -> f32") != std::string::npos);
+    const auto formatted = ips::parse(text);
+    CHECK(ips::formatProgram(formatted) == text);
+    ips::checkAsset(original, {});
+    ips::checkAsset(formatted, {});
+    const auto reference = compiler_test::compileChecked(R"(asset expected {size 8x8 variants 2
+      output list point trace
+      draw {
+        if(v==1) {trace={index(7),unit()}; trace={2,3}; trace={0,0}; pixel(0,0,#f00);}
+        else {trace={0,0}; trace={0,0}; trace={5,0};}
+        trace={0,5}; trace={unit(),unit()};
+      }
+    })");
+    const auto run = [](const std::vector<u8>& bytes, u32 seed, u32 variant) {
+        const auto file = loadFile(bytes);
+        validate(file);
+        VM vm(file, GenerationInputs{seed, variant, 0, 0, 0, {}});
+        vm.run();
+        return vm.result();
+    };
+    for (const bool optimize : {false, true}) {
+        const auto before = compileProgram(original, {}, optimize);
+        const auto after = compileProgram(formatted, {}, optimize);
+        CHECK(stripDebug(before) == stripDebug(after));
+        for (const u32 seed : {0u, 42u, 0xffffffffu}) for (const u32 variant : {0u, 1u}) {
+            const auto expected = run(reference, seed, variant);
+            for (const auto* bytes : {&before, &after}) {
+                const auto actual = run(*bytes, seed, variant);
+                CHECK(actual.image.pixels == expected.image.pixels);
+                REQUIRE(actual.outputs[0].points.size() == expected.outputs[0].points.size());
+                for (std::size_t i=0; i<expected.outputs[0].points.size(); ++i) {
+                    CHECK(std::bit_cast<u32>(actual.outputs[0].points[i].x) ==
+                          std::bit_cast<u32>(expected.outputs[0].points[i].x));
+                    CHECK(std::bit_cast<u32>(actual.outputs[0].points[i].y) ==
+                          std::bit_cast<u32>(expected.outputs[0].points[i].y));
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("source formatting preserves every control and expression branch") {
     const auto source = R"(import tile from "dir\\tile\"ż.ips"
       asset all { size 16x16 origin 1,2 variants 3 archetypes 4

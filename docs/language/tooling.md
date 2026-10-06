@@ -53,6 +53,15 @@ carrying comments remains to preserve attachment. Float text roundtrips to the
 same binary32 value, including signed zero; integer inputs preserve their
 signed declaration or unsigned bit-pattern spelling.
 
+Legacy assignments remain in their original branch or loop. Formatting does
+not insert `let`, move an initializer to the function entry or rewrite helper
+declarations with `fn`. In particular, a local first assigned in a skipped
+branch keeps its existing typed zero at runtime; moving an RNG expression
+outside that branch would change the stream. Existing identifiers and helper
+names `let`, `fn` and `vec2` keep their bindings. Migration advice belongs in
+a separate lint or diagnostic action rather than a formatting edit; the 0.5
+formatter does not implement the planned 0.6 declaration syntax.
+
 Comments are owning trivia on the source tokens, and AST nodes refer to
 half-open token ranges. A comment beginning on the same line as the previous
 token belongs after that token; other comments belong before the next token.
