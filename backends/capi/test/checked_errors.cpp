@@ -37,12 +37,17 @@ void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); 
 #define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "checked errors: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 int main(int argc, char** argv) {
-    CHECK(argc == 2);
+    CHECK(argc == 3);
     std::ifstream fixture(argv[1], std::ios::binary);
     CHECK(fixture.good());
     const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(fixture)), {});
     iprop_program* original = nullptr;
     CHECK(iprop_program_load_ex(bytes.data(), bytes.size(), &original, nullptr) == IPROP_EX_OK);
+    std::ifstream schemaFixture(argv[2], std::ios::binary);
+    CHECK(schemaFixture.good());
+    const std::vector<uint8_t> schemaBytes((std::istreambuf_iterator<char>(schemaFixture)), {});
+    iprop_program* schema = nullptr;
+    CHECK(iprop_program_load_ex(schemaBytes.data(), schemaBytes.size(), &schema, nullptr) == IPROP_EX_OK);
     const auto instructionAt = original->file.code.entry().fileOffset;
     auto invalid = bytes;
     invalid[instructionAt] = 0xff;
@@ -134,6 +139,25 @@ int main(int argc, char** argv) {
     uint32_t inputCount = 0, inputIndex = UINT32_MAX;
     CHECK(iprop_input_info_ex_init(&input, sizeof(input)) == IPROP_EX_OK);
     CHECK(iprop_program_input_count(original, &inputCount, &error) == IPROP_EX_OK);
+    iprop_output_info_ex output{};
+    uint32_t outputCount = UINT32_MAX, outputIndex = UINT32_MAX;
+    CHECK(iprop_output_info_ex_init(&output, sizeof(output)) == IPROP_EX_OK);
+    CHECK(iprop_program_output_count(schema, &outputCount, &error) == IPROP_EX_OK);
+    CHECK(outputCount == 18);
+    CHECK(iprop_program_output_get(schema, 0, &output, &error) == IPROP_EX_OK);
+    CHECK(iprop_program_output_find(schema, 0, output.name, &outputIndex, &error) == IPROP_EX_OK);
+    CHECK(outputIndex == 0);
+    CHECK(iprop_program_output_get(schema, 12, &output, &error) == IPROP_EX_OK);
+    CHECK(output.owner == 3);
+    CHECK(iprop_program_output_find(schema, 3, output.name, &outputIndex, &error) == IPROP_EX_OK);
+    CHECK(outputIndex == 12);
+    CHECK(iprop_program_output_get(schema, outputCount, &output, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_output_find(schema, 0, {"missing", 7}, &outputIndex, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_output_find(schema, 4, {"missing", 7}, &outputIndex, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_output_find(original, 0, {nullptr, 1}, &outputIndex, &error) == IPROP_EX_E_ARGUMENT);
+    output.flags = 1;
+    CHECK(iprop_program_output_get(schema, 0, &output, &error) == IPROP_EX_E_ARGUMENT);
+    CHECK(iprop_program_output_count(original, &outputCount, &error) == IPROP_EX_OK);
     CHECK(inputCount == 3);
     CHECK(iprop_program_input_get(original, 0, &input, &error) == IPROP_EX_OK);
     CHECK(iprop_program_input_find(original, input.name, &inputIndex, &error) == IPROP_EX_OK);
@@ -148,6 +172,7 @@ int main(int argc, char** argv) {
     CHECK(count == 0 && injected == 0 && message[0] == '\0');
     CHECK(error.status == IPROP_EX_OK && error.reason == IPROP_REASON_NONE);
     iprop_program_free(original);
+    iprop_program_free(schema);
     std::printf("%zu checked OOM points, real format/validate locations, internal ABI containment and frozen legacy policy: PASS\n", faultCases);
     return 0;
 }

@@ -194,6 +194,7 @@ typedef struct {
 #define IPROP_CAP_STRUCTURED_ERRORS (UINT64_C(1) << 4)
 #define IPROP_CAP_LIBRARY_QUERY_EX (UINT64_C(1) << 5)
 #define IPROP_CAP_ROOT_INPUT_REFLECTION (UINT64_C(1) << 6)
+#define IPROP_CAP_OUTPUT_DECLARATIONS (UINT64_C(1) << 7)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -413,6 +414,46 @@ IPROP_API iprop_status_ex iprop_program_input_get(const iprop_program* program, 
  * Error/output storage follows the same checked overlap policy above. */
 IPROP_API iprop_status_ex iprop_program_input_find(const iprop_program* program, iprop_utf8_view name,
                                                   uint32_t* out_index, iprop_error_ex* error);
+
+/* Fixed-width declaration tags, separate from the frozen legacy enum. */
+typedef uint32_t iprop_output_kind_ex;
+#define IPROP_OUTPUT_KIND_POINT UINT32_C(0)
+#define IPROP_OUTPUT_KIND_RECT UINT32_C(1)
+#define IPROP_OUTPUT_KIND_CIRCLE UINT32_C(2)
+
+/* Output schema available before generation, including unassigned singular
+ * slots and empty lists. Global output_index follows stored root declarations,
+ * then each stored part's declarations; it is local to this loaded program.
+ * owner 0 is root; owner N+1 is part N, including parts with no outputs.
+ * is_list is exactly 0 (singular) or 1 (list). Names may repeat under different
+ * owners. name is an exact UTF-8 view borrowed until program_free.
+ * struct_size/flags have the same bounded input/output policy as input info:
+ * minimum four bytes, absent flags zero, any nonzero complete flags rejected;
+ * size/flags, padding, partial fields and unknown tails are preserved. The
+ * name pointer/byte_count are bounded separately; inspect both only when both
+ * fit. This is a declaration, not a generated-value/result view. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t output_index;
+    uint32_t owner;
+    iprop_output_kind_ex kind;
+    uint32_t is_list;
+    iprop_utf8_view name;
+} iprop_output_info_ex;
+
+IPROP_API iprop_status_ex iprop_output_info_ex_init(iprop_output_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_program_output_count(const iprop_program* program,
+                                                    uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_program_output_get(const iprop_program* program, uint32_t output_index,
+                                                  iprop_output_info_ex* out, iprop_error_ex* error);
+/* Lookup is exact by (owner, UTF-8 name); it never chooses a different owner
+ * with the same name. Invalid owner/index/name/flags/null arguments return
+ * E_ARGUMENT. Outputs are preserved on failure; optional errors and aliases
+ * follow the same checked policy as input reflection. */
+IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program, uint32_t owner,
+                                                   iprop_utf8_view name, uint32_t* out_index,
+                                                   iprop_error_ex* error);
 
 /* generate_ex is planned for the validated-parameters stage; it has no symbol
  * or capability yet. Its options use iprop_generate_options_ex, with absent

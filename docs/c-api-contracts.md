@@ -104,7 +104,8 @@ and malformed output storage stops the operation before publication. Legacy
 entry points keep their existing classification. See
 [the policy and stage/type distinction](runtime-errors.md#new-status-policy-and-exception-boundary).
 
-Checked load, metadata and root-input reflection queries reject error descriptor/message spans that
+Checked load, metadata, root-input and output-declaration queries reject
+error descriptor/message spans that
 overlap their output pointer/query storage, or a writable message span that
 overlaps its own error descriptor. They return `E_ARGUMENT` without invoking
 or reporting the operation and preserve both outputs. This exception to error

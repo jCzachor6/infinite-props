@@ -6,6 +6,20 @@
 
 extern "C" {
 
+iprop_status_ex iprop_output_info_ex_init(iprop_output_info_ex* out, uint32_t capacity) {
+    if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
+    iprop::capi::writeField(out, capacity, 0, capacity);
+    const iprop_output_info_ex defaults{};
+#define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_output_info_ex, field), defaults.field)
+    ZERO(flags); ZERO(output_index); ZERO(owner); ZERO(kind); ZERO(is_list);
+#undef ZERO
+    iprop::capi::writeField(out, capacity, offsetof(iprop_output_info_ex, name) +
+        offsetof(iprop_utf8_view, data), defaults.name.data);
+    iprop::capi::writeField(out, capacity, offsetof(iprop_output_info_ex, name) +
+        offsetof(iprop_utf8_view, byte_count), defaults.name.byte_count);
+    return IPROP_EX_OK;
+}
+
 iprop_status_ex iprop_input_info_ex_init(iprop_input_info_ex* out, uint32_t capacity) {
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     iprop::capi::writeField(out, capacity, 0, capacity);

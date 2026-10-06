@@ -16,6 +16,8 @@ The structured-error bit describes these implemented operations. It does not
 promise generation, parameters, result views or statistics. The independently
 negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
 [root-input count/get/find calls](c-api-reflection.md).
+`IPROP_CAP_OUTPUT_DECLARATIONS` separately advertises the implemented
+[output schema queries](c-api-output-declarations.md).
 
 ## Load and publication
 

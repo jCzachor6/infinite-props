@@ -172,8 +172,11 @@ The development API reports library-query/sized-descriptor capabilities and
 checked load/metadata queries. `IPROP_CAP_ROOT_INPUT_REFLECTION` advertises
 implemented root-input count/get/find and its sized declaration initializer;
 see [exact name/default reflection](../../docs/c-api-reflection.md).
-Part/output reflection, parameters, structured generation and output accessors
-receive capability bits only when implemented.
+`IPROP_CAP_OUTPUT_DECLARATIONS` advertises the stored root/part output schema,
+including empty slots, through count/get/find by owner and exact name; see
+[output declarations](../../docs/c-api-output-declarations.md).
+Part-table reflection, parameters, structured generation and typed output
+value accessors receive capability bits only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.
