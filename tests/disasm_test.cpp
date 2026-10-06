@@ -1,7 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -277,6 +281,48 @@ TEST_CASE("the CLI exit codes distinguish valid, invalid and usage errors") {
     REQUIRE(Argv{"ipdis", validPath.string().c_str()}.ipdis() == 0);
     REQUIRE(Argv{"ipdis", badPath.string().c_str()}.ipdis() == 1);
     REQUIRE(Argv{"ipdis"}.ipdis() == 2);
+
+    std::filesystem::remove(validPath);
+    std::filesystem::remove(badPath);
+}
+
+TEST_CASE("ipval --json writes one valid JSON report for any path bytes") {
+    struct CaptureStdout {
+        std::ostringstream text;
+        std::streambuf* previous = std::cout.rdbuf(text.rdbuf());
+        ~CaptureStdout() { std::cout.rdbuf(previous); }
+    };
+    const auto report = [](std::initializer_list<const char*> args, int expectedExit) {
+        CaptureStdout capture;
+        REQUIRE(Argv(args).ipval() == expectedExit);
+        return nlohmann::json::parse(capture.text.str());
+    };
+    const std::vector<u8> validBytes = compileChecked(kFixture);
+    const auto validPath = std::filesystem::temp_directory_path() / "ipval-json-valid.iprop";
+    {
+        std::ofstream out(validPath, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(validBytes.data()),
+                  static_cast<std::streamsize>(validBytes.size()));
+    }
+    const auto badPath = writeTemp("ipval-json-bad.iprop", "junk");
+
+    const auto valid = report({"ipval", "--json", validPath.string().c_str()}, 0);
+    REQUIRE(valid["file"] == validPath.string());
+    REQUIRE(valid["valid"] == true);
+    REQUIRE(valid["violations"] == nlohmann::json::array());
+
+    const auto invalid = report({"ipval", "--json", badPath.string().c_str()}, 1);
+    REQUIRE(invalid["valid"] == false);
+    REQUIRE(invalid["violations"].size() == 1);
+    REQUIRE(invalid["violations"][0]["offset"] == 4);
+    REQUIRE(invalid["violations"][0]["message"].get<std::string>().find("too small") != std::string::npos);
+
+    // A control byte is escaped and invalid UTF-8 becomes U+FFFD; neither the
+    // file nor its name needs to exist for the I/O report.
+    const auto unreadable = report({"ipval", "--json", "missing-\x01-\xff.iprop"}, 2);
+    REQUIRE(unreadable["file"] == "missing-\x01-\xEF\xBF\xBD.iprop");
+    REQUIRE(unreadable["valid"] == false);
+    REQUIRE(unreadable["violations"][0]["message"] == "cannot open file");
 
     std::filesystem::remove(validPath);
     std::filesystem::remove(badPath);

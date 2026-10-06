@@ -6,5 +6,6 @@ modified; update policy: bump the revision, re-run the full test suite.
 | Dependency | File(s) | Revision | License | Used by |
 | ---------- | ------- | -------- | ------- | ------- |
 | stb | `stb/stb_image.h`, `stb/stb_image_write.h` | `master` @ 2026-09 (see header comments) | MIT / public domain | PNG I/O for `ipgen` and golden tests |
+| nlohmann/json | `nlohmann/json.hpp`, `nlohmann/LICENSE.MIT` | v3.12.0 release asset `json.hpp`, SHA-256 `aaf127c04cb31c406e5b04a63f1ae89369fccde6d8fa7cdda1ed4f32dfc5de63` (equal to the tag's `single_include`) | MIT | JSON documents of `ipc --describe-language` and `ipval --json`; diagnostics keep their allocation-free writer |
 | Catch2 | fetched via FetchContent (not vendored) | v3.7.1 | BSL-1.0 | test framework |
 | zlib | native system dependency or vcpkg; Emscripten port (not vendored) | native >= 1.2.9; WASM SDK port | zlib license (`zlib-LICENSE.txt`, upstream v1.3.2 notice) | lossless v0.4 DEFLATE containers |

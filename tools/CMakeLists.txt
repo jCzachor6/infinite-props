@@ -1,3 +1,8 @@
+# nlohmann/json, a vendored single header (third_party/README.md), builds the
+# structured tool exports. SYSTEM keeps the strict warnings on project code.
+add_library(iprop_json INTERFACE)
+target_include_directories(iprop_json SYSTEM INTERFACE ${CMAKE_SOURCE_DIR}/third_party)
+
 # ipc: compile .ips source into an .iprop binary
 
 add_executable(ipc
@@ -5,7 +10,7 @@ add_executable(ipc
     source_diagnostics.cpp
     language_description.cpp)
 
-target_link_libraries(ipc PRIVATE iprop_compiler)
+target_link_libraries(ipc PRIVATE iprop_compiler iprop_json)
 target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
     IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
     IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR}
@@ -39,7 +44,7 @@ iprop_warnings(ipdis)
 add_library(ipval_lib STATIC
     ipval.cpp)
 
-target_link_libraries(ipval_lib PUBLIC iprop::runtime)
+target_link_libraries(ipval_lib PUBLIC iprop::runtime PRIVATE iprop_json)
 target_include_directories(ipval_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 iprop_warnings(ipval_lib)
 

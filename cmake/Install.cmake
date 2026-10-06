@@ -52,6 +52,9 @@ install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     third_party/stb/stb_image.h third_party/stb/stb_image_write.h
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
+# nlohmann/json is compiled into ipc and ipval; ship its MIT notice.
+install(FILES third_party/nlohmann/LICENSE.MIT DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses
+    RENAME nlohmann-json-LICENSE.MIT)
 
 set(iprop_config_dir ${CMAKE_INSTALL_LIBDIR}/cmake/iprop)
 configure_package_config_file(cmake/ipropConfig.cmake.in

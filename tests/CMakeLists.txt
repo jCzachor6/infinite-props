@@ -98,6 +98,7 @@ target_link_libraries(iprop_tests PRIVATE
     ipval_lib
     ips_lang
     iprop_compiler
+    iprop_json
     Catch2::Catch2WithMain)
 
 target_include_directories(iprop_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -123,7 +124,7 @@ add_test(NAME vm_result_allocations COMMAND vm_result_allocation_probe)
 
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
-target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
+target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler iprop_json)
 target_compile_definitions(compiler_diagnostic_failure_probe PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
     IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
     IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR}
