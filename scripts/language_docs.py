@@ -77,6 +77,20 @@ def contracts(compiler, root=ROOT):
             "Compiler language description belongs to another product version")
     names = [b["name"] for b in value["builtins"]]
     require(len(names) == len(set(names)), "Duplicate compiler builtin")
+    for builtin in value["builtins"]:
+        signatures = list(builtin["overloads"])
+        if "variadic" in builtin:
+            signatures.append(builtin["variadic"])
+        for signature in signatures:
+            parameters = [p["name"] for p in signature["parameters"]]
+            order = signature.get("evaluation_order", [])
+            require(len(order) == len(parameters) and set(order) == set(parameters),
+                    "Missing or inconsistent call evaluation order: " + builtin["name"])
+    part = value.get("call_rules", {}).get("part", {})
+    parameters = [p["name"] for p in part.get("parameters", [])]
+    order = part.get("evaluation_order", [])
+    require(parameters and len(order) == len(parameters) and set(order) == set(parameters),
+            "Missing or inconsistent part call signature")
     require(value.get("emoji_aliases"), "Missing lexer aliases")
     return value
 

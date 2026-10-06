@@ -1,7 +1,17 @@
 """Small authored handbook for documentation and release gate tests."""
 
 LANGUAGE = {"schema_version": 1, "product_version": "0.4.0", "builtins": [
-    {"name": "unit", "overloads": [{"parameters": [], "result": "f32"}]}],
+    {"name": "unit", "overloads": [{"parameters": [], "result": "f32", "evaluation_order": []}]}],
+    "call_rules": {"helper_evaluation_order": "declaration", "part": {
+        "parameters": [{"name": "seed", "required": True, "positional": True},
+                       {"name": "v", "required": True, "positional": True},
+                       {"name": "a", "required": True, "positional": True},
+                       {"name": "at", "required": True, "positional": False},
+                       {"name": "rot", "required": False, "positional": False, "default": 0},
+                       {"name": "mirror_x", "required": False, "positional": False, "default": 0},
+                       {"name": "mirror_y", "required": False, "positional": False, "default": 0},
+                       {"name": "$uniform", "required": False, "positional": False, "default": "input_declaration"}],
+        "evaluation_order": ["$uniform", "seed", "v", "a", "at", "rot", "mirror_x", "mirror_y"]}},
     "emoji_aliases": [{"word": "asset", "codepoint": 128230}]}
 
 

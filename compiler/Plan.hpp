@@ -51,6 +51,7 @@ struct PlannedFunction {
     std::map<std::string, ips::ValueType> langTypes;
     std::unordered_map<const ips::Expr*, PlannedExpression> expressions;
     std::unordered_map<const ips::Call*, ResolvedCall> calls;
+    ips::CallPlans boundCalls;
 
     const PlannedExpression& expression(const ips::Expr& expr) const {
         return expressions.at(&expr);

@@ -19,6 +19,17 @@ table comes from the same export and the lexer registry. Adding a builtin
 requires an explanation and executable example; missing/duplicate descriptions
 fail documentation checks.
 
+The schema 1 language export also supplies `evaluation_order` on every
+overload and variadic signature. Its entries name signature slots, including
+compile-time palette and transform slots; `poly` lists coordinates before
+color. `call_rules.helper_evaluation_order` is `declaration`. The part rule
+uses `$uniform` as a template expanded once per imported input, in declaration
+order. Each part parameter records `required`, `positional`, and an optional
+`default`: integer zero for transforms or `input_declaration` for uniforms.
+Uniform defaults are validated with their declarations and retain their exact
+stored values. These additive fields come from the same call signatures used
+by binding, typing, lowering and source formatting.
+
 ```sh
 python3 scripts/language_docs.py check --compiler build/tools/ipc
 python3 scripts/language_docs.py build --compiler build/tools/ipc

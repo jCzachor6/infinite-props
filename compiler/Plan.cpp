@@ -100,7 +100,7 @@ std::unique_ptr<Plan> Planner::plan() {
     for (const auto& [alias, part] : parts_) {
         ips::PartInfo info;
         for (const auto& input : part->asset.inputs) {
-            info.inputs.push_back({input.type, input.name});
+            info.inputs.push_back({input.type, input.name, &input});
         }
         for (const auto& output : part->asset.outputs) {
             info.outputs.push_back({output.kind, output.isList, output.name});
@@ -401,6 +401,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
         const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
         info.expressions.emplace(expr, PlannedExpression{type, constant});
     }
+    info.boundCalls = typer_->calls();
     typer_->restoreScope(std::move(savedScope));
 
     if (ast->returnType.has_value()) {

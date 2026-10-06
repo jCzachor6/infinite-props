@@ -17,6 +17,7 @@
 #include "ips/Types.hpp"
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Palette.hpp"
+#include "ips/CallPlan.hpp"
 
 namespace iprop::ips {
 
@@ -25,6 +26,7 @@ namespace iprop::ips {
 struct PartInput {
     InputType type = InputType::Color;
     std::string name;
+    const InputDecl* declaration = nullptr;
 };
 
 struct PartOutput {
@@ -79,6 +81,7 @@ public:
         std::map<std::string, ValueType> locals;
         ExpressionTypes expressions;
         std::set<std::string> invalidLocals{};
+        CallPlans calls{};
     };
 
     void enterFunction(const Program& owner, const Function& function,
@@ -105,9 +108,13 @@ public:
     // The type of an expression, validating it along the way.
     ValueType typeOf(const Expr& expr);
     const ExpressionTypes& expressions() const { return expressions_; }
+    const CallPlans& calls() const { return calls_; }
 
 private:
     ExpressionTypes expressions_;
+    CallPlans calls_;
+    // Return a stable value: typing a nested helper may save/replace Scope.
+    BoundCallPlan bind(const Call& call, CallSignature signature, std::string_view name);
     ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
     const ResolvedPalette& palette(const Identifier& name);

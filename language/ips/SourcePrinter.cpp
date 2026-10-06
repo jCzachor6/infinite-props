@@ -1,5 +1,6 @@
 #include "ips/Printer.hpp"
 #include "ips/BuiltinArguments.hpp"
+#include "ips/CallPlan.hpp"
 #include "ips/Literals.hpp"
 #include "ips/Types.hpp"
 
@@ -72,17 +73,10 @@ const char* binarySymbol(Binary::Op op) {
     throw std::logic_error("unknown binary operator");
 }
 
-std::string calleeName(const Expr& expr) {
-    if (const auto* id = std::get_if<Identifier>(&expr)) return id->name;
-    if (const auto* member = std::get_if<Member>(&expr)) {
-        const auto base = calleeName(*member->object);
-        if (!base.empty()) return base + "." + member->name;
-    }
-    return {};
-}
-
 class SourcePrinter {
     std::ostringstream out_;
+    const Program* program_ = nullptr;
+    const std::map<std::string, const Program*>& parts_;
 
     void indent(std::size_t level) { out_ << std::string(level * 2, ' '); }
     void expression(const Expr& expr) {
@@ -107,24 +101,12 @@ class SourcePrinter {
                 out_ << '}';
             } else if constexpr (std::is_same_v<T, Call>) {
                 expression(*node.callee); out_ << '(';
-                std::vector<const Arg*> args;
-                const auto name = calleeName(*node.callee);
-                if (const auto found = builtinSpecs().find(name); found != builtinSpecs().end())
-                    args = builtinArguments(node, found->second, name);
-                else if (name == "ramp") {
-                    const std::vector<std::string> names{"palette", "t"};
-                    args = bindArguments(node, names, name);
-                } else {
-                    for (const auto& arg : node.args) args.push_back(&arg);
-                    if (name.ends_with(".draw")) std::stable_sort(args.begin(), args.end(), [](const Arg* a, const Arg* b) {
-                        if (a->name && b->name) return *a->name < *b->name;
-                        return !a->name && b->name;
-                    });
-                }
+                const auto plan = sourceCallPlan(*program_, node, parts_);
+                const auto args = printedCallArguments(node, plan ? &*plan : nullptr);
                 for (std::size_t i = 0; i < args.size(); ++i) {
                     if (i) out_ << ", ";
-                    if (args[i]->name) out_ << *args[i]->name << " = ";
-                    expression(*args[i]->value);
+                    if (args[i].name) out_ << *args[i].name << " = ";
+                    expression(*args[i].argument->value);
                 }
                 out_ << ')';
             }
@@ -164,7 +146,9 @@ class SourcePrinter {
     }
 
 public:
+    explicit SourcePrinter(const std::map<std::string, const Program*>& parts) : parts_(parts) {}
     std::string print(const Program& program) {
+        program_ = &program;
         for (const auto& import : program.imports)
             out_ << "import " << import.alias << " from " << quoteSource(import.path) << '\n';
         if (!program.imports.empty()) out_ << '\n';
@@ -220,6 +204,7 @@ public:
 };
 }
 
-std::string formatProgram(const Program& program) { return SourcePrinter{}.print(program); }
+std::string formatProgram(const Program& program,
+    const std::map<std::string, const Program*>& parts) { return SourcePrinter{parts}.print(program); }
 
 } // namespace iprop::ips

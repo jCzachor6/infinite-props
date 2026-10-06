@@ -72,7 +72,7 @@ TEST_CASE("source formatting preserves every control and expression branch") {
     const auto formatted = ips::formatProgram(ips::parse(source));
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     CHECK(ips::parse(formatted).imports[0].path == "dir\\tile\"ż.ips");
-    CHECK(formatted.find("at = q, color = #ffffff, rot = 1") != std::string::npos);
+    CHECK(formatted.find("color = #ffffff, at = q, rot = 1") != std::string::npos);
     CHECK(formatted.find("helper(p: vec2, c: color) -> vec2") != std::string::npos);
 }
 

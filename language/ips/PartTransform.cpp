@@ -3,26 +3,30 @@
 
 namespace iprop::ips {
 
-D4Transform resolvePartTransform(const Call& call) {
+D4Transform resolvePartTransform(const BoundCallPlan& call) {
     i32 rot = 0, mx = 0, my = 0;
-    for (const auto& arg : call.args) {
-        if (!arg.name || (*arg.name != "rot" && *arg.name != "mirror_x" &&
-                         *arg.name != "mirror_y")) continue;
-        Value folded;
-        if (!foldExpression(*arg.value, folded) || !std::holds_alternative<i32>(folded)) {
-            throw SourceError{locationOf(*arg.value), "part transforms must be constant integers"};
+    for (std::size_t slot = 4; slot < 7; ++slot) {
+        const auto* supplied = call.arguments[slot];
+        const auto& name = call.signature.parameters[slot].name;
+        i32 value = std::get<i32>(call.signature.defaults[slot]);
+        if (supplied) {
+            Value folded;
+            if (!foldExpression(*supplied->value, folded) || !std::holds_alternative<i32>(folded)) {
+                throw SourceError{locationOf(*supplied->value), "part transforms must be constant integers"};
+            }
+            value = std::get<i32>(folded);
         }
-        const i32 value = std::get<i32>(folded);
-        if (*arg.name == "rot") {
+        const auto at = supplied ? locationOf(*supplied->value) : SourceLocation{};
+        if (slot == 4) {
             if (value < 0 || value > 270 || value % 90 != 0) {
-                throw SourceError{locationOf(*arg.value), "the rot transform must be 0, 90, 180 or 270"};
+                throw SourceError{at, "the rot transform must be 0, 90, 180 or 270"};
             }
             rot = value;
         } else {
             if (value != 0 && value != 1) {
-                throw SourceError{locationOf(*arg.value), "the " + *arg.name + " transform must be 0 or 1"};
+                throw SourceError{at, "the " + name + " transform must be 0 or 1"};
             }
-            (*arg.name == "mirror_x" ? mx : my) = value;
+            (slot == 5 ? mx : my) = value;
         }
     }
     return *D4Transform::fromParameters(rot, mx, my);

@@ -51,7 +51,9 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    const auto args = builtinArguments(call, signature, name.name);
+    const auto bound = bind(call,
+        builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
+    const auto& args = bound.arguments;
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
@@ -100,7 +102,8 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
             "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
         error(call.location, "undefined function '" + name.name + "'" + hint);
     }
-    const auto args = bindArguments(call, surface->names, name.name);
+    const auto bound = bind(call, helperCallSignature(surface->names), name.name);
+    const auto& args = bound.arguments;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];
         const ValueType got = typeOf(*arg.value);
@@ -128,9 +131,8 @@ ValueType Typer::typePartCall(const Call& call) {
         error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
-    std::vector<std::string> uniforms;
-    for (const auto& input : part->second.inputs) uniforms.push_back(input.name);
-    const auto args = partArguments(call, uniforms, path.base + ".draw");
+    const auto bound = bind(call, partCallSignature(part->second.inputs), path.base + ".draw");
+    const auto& args = bound.arguments;
     for (std::size_t i=0;i<3;++i) {
         const auto got = typeOf(*args[i]->value);
         if (got != ValueType::I32)
@@ -157,7 +159,7 @@ ValueType Typer::typePartCall(const Call& call) {
             error(locationOf(*arg->value), "input '" + input.name + "' of part '" + path.base +
                   "' must be " + typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
     }
-    (void)resolvePartTransform(call);
+    (void)resolvePartTransform(bound);
     return ValueType::Void;
 }
 

@@ -124,7 +124,11 @@ int runCompiler(int argc, char* argv[]) {
             if (!formattedOutput.empty()) {
                 if (sameFile(formattedOutput,input) || sameFile(formattedOutput,output))
                     return fail("--format must target a distinct source output file");
-                canonical = iprop::ips::formatProgram(result.programs.at(entryName));
+                const auto& program = result.programs.at(entryName);
+                std::map<std::string, const iprop::ips::Program*> parts;
+                for (const auto& import : program.imports)
+                    parts.emplace(import.alias, &result.programs.at(import.path));
+                canonical = iprop::ips::formatProgram(program, parts);
             }
             writeFile(output,reinterpret_cast<const char*>(result.bytes.data()),result.bytes.size());
             if (!formattedOutput.empty()) {

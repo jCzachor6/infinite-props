@@ -45,6 +45,7 @@ add_executable(iprop_tests
     compiler/calls_test.cpp
     builtin_spec_test.cpp
     typed_plan_test.cpp
+    call_plan_test.cpp
     palette_lowering_test.cpp
     disasm_test.cpp
     debug_test.cpp

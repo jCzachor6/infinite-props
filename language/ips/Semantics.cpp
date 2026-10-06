@@ -527,7 +527,7 @@ private:
 PartInfo partInfoOf(const Asset& asset) {
     PartInfo info;
     for (const auto& input : asset.inputs) {
-        info.inputs.push_back(PartInput{input.type, input.name});
+        info.inputs.push_back(PartInput{input.type, input.name, &input});
     }
     for (const auto& output : asset.outputs) {
         info.outputs.push_back(PartOutput{output.kind, output.isList, output.name});
