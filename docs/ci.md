@@ -64,6 +64,9 @@ configuring CMake. Builds and SDK installation use that exact directory,
 keeping generated manifest ownership checks active. This avoids synchronization
 conflicts in generated documentation; source copies still require the checks
 above.
+The website generator accepts the same absolute directory through the
+`IPROP_LANGUAGE_DOCS_DIR` environment variable. Set it when running website
+builds from a synchronized checkout; its default remains `build/language-docs`.
 
 Native builds with Python generate the complete handbook from `docs/language/`
 and `ipc --describe-language`. CTest compiles and executes all registered

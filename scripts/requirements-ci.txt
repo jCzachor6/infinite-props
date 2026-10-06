@@ -1,0 +1,2 @@
+# Full JSON Schema checks are CI-only; normal documentation builds use stdlib readers.
+jsonschema==4.26.0

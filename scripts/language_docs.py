@@ -14,6 +14,8 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from release_common import ROOT
+from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, parse_json,
+                              read_language, read_manifest)
 
 
 DIRECTIVE = re.compile(r"^<!-- (example|builtin): (\S+) -->$", re.M)
@@ -68,31 +70,14 @@ def source_path(root, base, name):
     return path
 
 
-def contracts(compiler, root=ROOT):
+def contracts(compiler, root=ROOT, profile=CURRENT):
     result = run(compiler, "--describe-language")
     require(result.returncode == 0, "Cannot describe the language: " + result.stderr)
-    value = json.loads(result.stdout)
+    value = parse_json(result.stdout)
     version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)", read(root / "CMakeLists.txt"))[1]
-    require(value.get("schema_version") == 1 and value.get("product_version") == version,
+    require(type(value) is dict and value.get("schema_version") == 1 and value.get("product_version") == version,
             "Compiler language description belongs to another product version")
-    names = [b["name"] for b in value["builtins"]]
-    require(len(names) == len(set(names)), "Duplicate compiler builtin")
-    for builtin in value["builtins"]:
-        signatures = list(builtin["overloads"])
-        if "variadic" in builtin:
-            signatures.append(builtin["variadic"])
-        for signature in signatures:
-            parameters = [p["name"] for p in signature["parameters"]]
-            order = signature.get("evaluation_order", [])
-            require(len(order) == len(parameters) and set(order) == set(parameters),
-                    "Missing or inconsistent call evaluation order: " + builtin["name"])
-    part = value.get("call_rules", {}).get("part", {})
-    parameters = [p["name"] for p in part.get("parameters", [])]
-    order = part.get("evaluation_order", [])
-    require(parameters and len(order) == len(parameters) and set(order) == set(parameters),
-            "Missing or inconsistent part call signature")
-    require(value.get("emoji_aliases"), "Missing lexer aliases")
-    return value
+    return read_language(value, profile)
 
 
 def identity(root, version):
@@ -125,11 +110,11 @@ def signatures(builtin):
         params = ", ".join(p["name"] + ": " + p["type"] for p in overload["parameters"])
         signature = builtin["name"] + "(" + params + ") -> " + overload["result"]
         minor = overload.get("minimum_format_minor")
-        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(minor) if minor is not None else '—'} |")
+        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(int(minor)) if minor is not None else '—'} |")
     if variadic := builtin.get("variadic"):
         params = ", ".join(p["name"] + ": " + p["type"] for p in variadic["parameters"])
         lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering | — |")
-        lines += ["", f"The variadic form requires at least {variadic['minimum_arguments']} arguments."]
+        lines += ["", f"The variadic form requires at least {int(variadic['minimum_arguments'])} arguments."]
         if variadic["repeat"] == "choices":
             lines.append("`T` is a shared storable type; mixed numeric choices widen to `f32`.")
         else:
@@ -190,16 +175,17 @@ def resources(root):
     files += list((root / "examples/language").rglob("*.ips"))
     files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
     files += list((root / "spec").glob("*.md"))
-    files += list((root / "docs").glob("*optim*.md"))
+    files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
+    files += list((root / "docs").glob("*.schema.json"))
     files += list((root / "plans").glob("*.md"))
     if (root / "docs/llm-reference.json").is_file():
-        files += [root / "docs/llm-reference.json", root / "docs/llm-reference.md"]
+        files += [root / "docs/llm-reference.json"]
     return files
 
 
-def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None):
+def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None, profile=CURRENT):
     root = root.resolve()
-    language = contracts(compiler, root)
+    language = contracts(compiler, root, profile)
     _, chapters, authored, cases = sources(root, language)
     version = language["product_version"]
     minor = ".".join(version.split(".")[:2])
@@ -228,7 +214,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
             return label + ".\n\n```ips\n" + read(file).rstrip() + "\n```"
         content = DIRECTIVE.sub(replace, authored[chapter])
         aliases = ["| Word | Alias | Unicode scalar |", "| --- | --- | --- |"]
-        aliases += [f"| `{a['word']}` | {chr(a['codepoint'])} | U+{a['codepoint']:04X} |" for a in language["emoji_aliases"]]
+        aliases += [f"| `{a['word']}` | {chr(int(a['codepoint']))} | U+{int(a['codepoint']):04X} |" for a in language["emoji_aliases"]]
         content = content.replace("<!-- aliases -->", "\n".join(aliases))
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
@@ -275,7 +261,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     # Ship the linked standalone sources and frozen numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
-    info.update({"schema_version": 1, "builtin_count": len(builtins), "example_count": len(cases),
+    info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION, "builtin_count": len(builtins), "example_count": len(cases),
                  "headings": headings(combined),
                  "source_files": dict(sorted(inputs.items())),
                  "files": {name: digest(text.encode("utf-8")) for name, text in sorted(output.items())}})
@@ -297,7 +283,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(content, encoding="utf-8", newline="\n")
     write_json(destination / "docs/language-manifest.json", info)
-    verify(destination, version, info["source_commit"], root=root)
+    verify(destination, version, info["source_commit"], root=root, profile=profile)
     # Execution evidence belongs to the check report, not a new manifest schema.
     if llm_checks:
         info["llm_reference_checks"] = llm_checks
@@ -313,9 +299,8 @@ def member_name(name):
     return name
 
 
-def verify_contents(load, version=None, commit=None, root=None, clean=False):
-    manifest = json.loads(load("docs/language-manifest.json"))
-    require(manifest.get("schema_version") == 1 and manifest.get("files") and manifest.get("source_files"), "Incomplete documentation manifest")
+def verify_contents(load, version=None, commit=None, root=None, clean=False, profile=CURRENT):
+    manifest = read_manifest(parse_json(load("docs/language-manifest.json")))
     if version is not None:
         require(manifest.get("product_version") == version, "Documentation version differs")
     if commit is not None:
@@ -324,9 +309,23 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
         require(manifest.get("working_tree_dirty") is False, "Documentation was generated from an uncommitted checkout")
     for name, expected in manifest["files"].items():
         require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
-    language = json.loads(load("docs/language.json"))
+    language = read_language(parse_json(load("docs/language.json")), profile)
     require(language.get("schema_version") == 1 and language["product_version"] == manifest["product_version"] and
             len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
+    if profile == CURRENT:
+        required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
+        for name in ("language-description", "compiler-diagnostics", "documentation-manifest"):
+            path = "docs/" + name + ".schema.json"
+            required_contracts.add(path)
+            schema = parse_json(load(path))
+            require(type(schema) is dict and schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema" and
+                    type(schema.get("properties")) is dict and
+                    type(schema["properties"].get("schema_version")) is dict and
+                    schema["properties"]["schema_version"].get("type") == "integer" and
+                    type(schema["properties"]["schema_version"].get("const")) in {int, float} and
+                    schema["properties"]["schema_version"].get("const") == 1,
+                    "Documentation schema contract differs: " + path)
+        require(required_contracts <= manifest["files"].keys(), "Current documentation omits export contracts")
     cases = json.loads(load("examples/language/cases.json"))["cases"]
     require(len(cases) == manifest["example_count"], "Documentation example count differs")
     minor = ".".join(manifest["product_version"].split(".")[:2])
@@ -346,20 +345,20 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
     return manifest
 
 
-def verify(directory, version=None, commit=None, root=None, compiler=None, clean=False):
+def verify(directory, version=None, commit=None, root=None, compiler=None, clean=False, profile=CURRENT):
     directory = directory.resolve()
     def load(name):
         file = directory.joinpath(*PurePosixPath(member_name(name)).parts)
         require(file.resolve().is_relative_to(directory) and file.is_file(), "Missing or escaping documentation member: " + name)
         return file.read_bytes()
-    manifest = verify_contents(load, version, commit, root, clean)
+    manifest = verify_contents(load, version, commit, root, clean, profile)
     if compiler is not None:
-        require(json.loads(load("docs/language.json")) == contracts(compiler, root or ROOT),
+        require(json.loads(load("docs/language.json")) == contracts(compiler, root or ROOT, profile),
                 "Documentation signatures differ from the installed compiler")
     return manifest
 
 
-def verify_archive(file, prefix, version, commit, root=ROOT):
+def verify_archive(file, prefix, version, commit, root=ROOT, profile=CURRENT):
     with tarfile.open(file, "r:gz") as archive:
         names = [m.name for m in archive]
         require(len(names) == len(set(names)), "Duplicate archive member")
@@ -369,7 +368,7 @@ def verify_archive(file, prefix, version, commit, root=ROOT):
             member = archive.getmember(name)
             require(member.isfile(), "Archived documentation is not a file: " + name)
             return archive.extractfile(member).read()
-        return verify_contents(load, version, commit, root, clean=True)
+        return verify_contents(load, version, commit, root, clean=True, profile=profile)
 
 
 def check_examples(compiler, language, cases, root=ROOT):

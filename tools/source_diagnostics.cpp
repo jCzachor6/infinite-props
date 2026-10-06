@@ -6,6 +6,7 @@
 #include "json.hpp"
 #include "ips/SourceError.hpp"
 #include "ips/Version.hpp"
+#include "ips/ExportSchema.hpp"
 
 namespace iprop::tools {
 namespace {
@@ -31,7 +32,7 @@ void writeSourceDiagnosticsJson(std::ostream& destination, std::string_view prod
     std::ostringstream buffer;
     buffer.exceptions(std::ios::badbit | std::ios::failbit);
     auto& out=buffer;
-    out << "{\"schema_version\":1,\"product_version\":\"" << jsonEscape(productVersion)
+    out << "{\"schema_version\":" << ips::kSourceDiagnosticsSchemaVersion << ",\"product_version\":\"" << jsonEscape(productVersion)
         << "\",\"language_version\":{\"major\":" << ips::kLanguageVersionMajor
         << ",\"minor\":" << ips::kLanguageVersionMinor << "},\"status\":\"" << ips::diagnosticStatusName(status)
         << "\",\"diagnostics\":[";

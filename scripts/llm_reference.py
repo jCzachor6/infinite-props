@@ -1,5 +1,6 @@
 """Render a bounded reference from handbook sections and compiler contracts."""
 import json
+from contract_readers import parse_json, read_diagnostics
 import re
 import subprocess
 import tempfile
@@ -70,7 +71,7 @@ def check_program(compiler, source, accepted):
     process = subprocess.run([str(compiler), str(source), '--check', '--diagnostics=json'],
                              capture_output=True, text=True, encoding='utf-8', timeout=60)
     require(not process.stderr, 'check wrote non-JSON errors: ' + str(source))
-    report = json.loads(process.stdout)
+    report = read_diagnostics(parse_json(process.stdout), process.returncode)
     require(process.returncode == (0 if accepted else 1) and
             report['status'] == ('ok' if accepted else 'invalid_source'),
             'unexpected compiler acceptance: ' + str(source) + '\n' + process.stdout)
@@ -103,7 +104,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
 
     def version(key):
         value = language[key]
-        return str(value['major']) + '.' + str(value['minor'])
+        return str(int(value['major'])) + '.' + str(int(value['minor']))
 
     lines = ['# .ips LLM reference', '',
         'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '',
@@ -145,7 +146,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
                         'Order: ' + (', '.join(signature['evaluation_order']) or 'no arguments') +
                         f"; RNG: {effects['rng']}; canvas/output writes: {str(effects['writes_canvas']).lower()}/{str(effects['writes_outputs']).lower()}; intrinsic traps: {', '.join(effects['may_trap']) or 'none'}."]
                     if 'minimum_arguments' in signature:
-                        lines += [f"Minimum arguments: {signature['minimum_arguments']}; repeat: {signature['repeat']}." +
+                        lines += [f"Minimum arguments: {int(signature['minimum_arguments'])}; repeat: {signature['repeat']}." +
                                   (' Choices: ' + signature['choice_evaluation'] + '.' if 'choice_evaluation' in signature else '')]
                 lines.append('')
             lines += ['Argument effects and execution-wide resource failures remain separate from intrinsic summaries.', '']

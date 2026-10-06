@@ -9,7 +9,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import language_docs as docs
+import language_docs
+from contract_readers import HISTORICAL
+from functools import partial
+from types import SimpleNamespace
+# These authored unit fixtures represent the frozen 0.4 profile explicitly.
+docs = SimpleNamespace(**vars(language_docs))
+for name in ("build", "verify", "verify_archive"):
+    setattr(docs, name, partial(getattr(language_docs, name), profile=HISTORICAL))
 from language_fixture import LANGUAGE, fixture
 
 
@@ -20,6 +27,14 @@ class DocumentationTest(unittest.TestCase):
         self.root = Path(self.temporary.name) / "source"
         fixture(self.root)
         self.output = Path(self.temporary.name) / "book"
+
+    def test_integral_json_scalar_renders_as_a_unicode_codepoint(self):
+        from copy import deepcopy
+        numeric = deepcopy(LANGUAGE)
+        numeric["emoji_aliases"][0]["codepoint"] = 128230.0
+        with patch.object(language_docs, "contracts", return_value=numeric):
+            docs.build(Path("unused"), self.output, self.root)
+        self.assertIn("U+1F4E6", (self.output / "docs/language-v0.4.md").read_text())
 
     def test_missing_or_duplicate_builtin_explanations_are_rejected(self):
         file = self.root / "docs/language/index.md"
@@ -50,29 +65,29 @@ class DocumentationTest(unittest.TestCase):
         self.output.mkdir()
         sentinel = self.output / "user-file.txt"
         sentinel.write_text("keep me")
-        with patch.object(docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "empty or previously generated"):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "empty or previously generated"):
             docs.build(Path("unused"), self.output, self.root)
         self.assertEqual(sentinel.read_text(), "keep me")
 
     def test_explicit_llm_selection_requires_registered_configuration(self):
-        with patch.object(docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "LLM selections require"):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "LLM selections require"):
             docs.build(Path("unused"), self.output, self.root, llm_sections="asset")
         self.assertFalse(self.output.exists())
 
     def test_current_compiler_cannot_silently_omit_default_reference(self):
-        with patch.object(docs, "contracts", return_value=LANGUAGE):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE):
             docs.build(Path("unused"), self.output, self.root)
         before = {p.relative_to(self.output): p.read_bytes()
                   for p in self.output.rglob("*") if p.is_file()}
         modern = {**LANGUAGE, "source_rules": {}}
-        with patch.object(docs, "contracts", return_value=modern), self.assertRaisesRegex(RuntimeError, "Current compiler rules require"):
+        with patch.object(language_docs, "contracts", return_value=modern), self.assertRaisesRegex(RuntimeError, "Current compiler rules require"):
             docs.build(Path("unused"), self.output, self.root)
         after = {p.relative_to(self.output): p.read_bytes()
                  for p in self.output.rglob("*") if p.is_file()}
         self.assertEqual(before, after)
 
     def test_verified_book_rejects_tampering_or_a_different_version(self):
-        with patch.object(docs, "contracts", return_value=LANGUAGE):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE):
             docs.build(Path("unused"), self.output, self.root)
         docs.verify(self.output, "0.4.0")
         with self.assertRaisesRegex(RuntimeError, "version differs"):
@@ -85,11 +100,11 @@ class DocumentationTest(unittest.TestCase):
     def test_compiler_description_cannot_use_another_product_version(self):
         value = {**LANGUAGE, "product_version": "0.3.0"}
         result = type("Result", (), {"returncode": 0, "stdout": json.dumps(value), "stderr": ""})()
-        with patch.object(docs, "run", return_value=result), self.assertRaisesRegex(RuntimeError, "another product version"):
+        with patch.object(language_docs, "run", return_value=result), self.assertRaisesRegex(RuntimeError, "another product version"):
             docs.contracts(Path("unused"), self.root)
 
     def test_archived_documentation_rejects_tampering_missing_files_and_dirty_sources(self):
-        with patch.object(docs, "contracts", return_value=LANGUAGE):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE):
             docs.build(Path("unused"), self.output, self.root)
         original = {p.relative_to(self.output).as_posix(): p.read_bytes() for p in self.output.rglob("*") if p.is_file()}
         file = self.output.parent / "book.tar.gz"
@@ -121,7 +136,7 @@ class DocumentationTest(unittest.TestCase):
                         docs.verify_archive(file, "book", "0.4.0", expected_commit, self.root)
 
     def test_changed_inputs_cannot_be_verified_as_current_documentation(self):
-        with patch.object(docs, "contracts", return_value=LANGUAGE):
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE):
             docs.build(Path("unused"), self.output, self.root)
         chapter = self.root / "docs/language/index.md"
         chapter.write_text(chapter.read_text() + "\nNew behavior.\n")

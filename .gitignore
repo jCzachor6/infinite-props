@@ -54,13 +54,11 @@ website/public/iprop.js
 website/public/iprop.wasm
 website/public/*.iprop
 website/public/spec/
+website/public/plans/
 website/public/reference/
 website/public/recipes/
 website/public/examples/
-website/public/docs/language/
-website/public/docs/language*.md
-website/public/docs/language*.json
-website/public/docs/language-index.js
-website/public/docs/*optim*.md
+website/public/docs/
+website/public/LLM_REFERENCE.md
 website/docs/language.html
 backends/html5/demo/*.iprop

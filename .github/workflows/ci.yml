@@ -49,6 +49,13 @@ jobs:
           python scripts/ci_report.py run test
           ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
 
+      - name: Validate export schemas against actual compiler and consumers
+        run: >-
+          python scripts/ci_report.py run export-contracts
+          python scripts/check_export_contracts.py build/tools/ipc
+          --probe build/tests/compiler_diagnostic_failure_probe --schema
+          --report build/ci-reports/export-contracts.json
+
       - name: Smoke the CLI pipeline
         run: >-
           python scripts/ci_report.py run cli-smoke

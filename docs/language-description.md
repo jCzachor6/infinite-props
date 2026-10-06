@@ -147,3 +147,8 @@ and restoration of the parent RNG. The
 [input tests](../tests/compiler/defaults_test.cpp) check signed input defaults,
 frozen binary metadata and host override bit patterns. These cases are the
 acceptance boundary for changes to the descriptive rules.
+
+The [versioned export contracts](export-contracts.md) define schema migration,
+required current fields, additive compatibility and explicit frozen profiles.
+The [formal language schema](language-description.schema.json) describes every
+exported field without duplicating registered signatures.

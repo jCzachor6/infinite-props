@@ -1,0 +1,1394 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Language export protocol version, independent of language and product versions."
+    },
+    "product_version": {
+      "type": "string",
+      "description": "Product build version.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "language_version": {
+      "$ref": "#/$defs/version",
+      "description": "Source-language acceptance version."
+    },
+    "format_version": {
+      "$ref": "#/$defs/version",
+      "description": "Emitted binary format version."
+    },
+    "c_api_version": {
+      "$ref": "#/$defs/version",
+      "description": "Public C API version."
+    },
+    "abi_version": {
+      "$ref": "#/$defs/version",
+      "description": "Runtime library ABI version."
+    },
+    "source_rules": {
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "source_type": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "i32",
+                  "u32"
+                ],
+                "description": "Accepted input declaration spelling."
+              },
+              "binary_type": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "u32"
+                ],
+                "description": "Stored binary input type; signed i32 retains U32 storage."
+              },
+              "value_type": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "i32"
+                ],
+                "description": "Expression value type after loading the input."
+              }
+            },
+            "required": [
+              "source_type",
+              "binary_type",
+              "value_type"
+            ],
+            "additionalProperties": true,
+            "description": "Source, binary storage and expression type mappings."
+          },
+          "description": "Source, binary storage and expression type mappings.",
+          "minItems": 1
+        },
+        "types": {
+          "type": "object",
+          "properties": {
+            "storable": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "i32",
+                  "vec2"
+                ],
+                "description": "Types accepted by local values and uniform expression values."
+              },
+              "description": "Types accepted by local values and uniform expression values.",
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "helper_parameters": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "i32",
+                  "vec2"
+                ],
+                "description": "Types accepted in typed helper parameters."
+              },
+              "description": "Types accepted in typed helper parameters.",
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "helper_value_returns": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "f32",
+                  "i32",
+                  "vec2"
+                ],
+                "description": "Types accepted by value-returning helpers."
+              },
+              "description": "Types accepted by value-returning helpers.",
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "output_only_geometry": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "circle",
+                  "rect"
+                ],
+                "description": "Geometry constructors accepted only for declared output writes."
+              },
+              "description": "Geometry constructors accepted only for declared output writes.",
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "point_value_type": {
+              "type": "string",
+              "enum": [
+                "vec2"
+              ],
+              "description": "Value type returned by the point constructor."
+            },
+            "implicit_widening": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "string",
+                    "enum": [
+                      "i32"
+                    ],
+                    "description": "Source conversion type."
+                  },
+                  "to": {
+                    "type": "string",
+                    "enum": [
+                      "f32"
+                    ],
+                    "description": "Destination conversion type."
+                  },
+                  "contexts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "call_arguments",
+                        "helper_returns",
+                        "numeric_operands"
+                      ],
+                      "description": "Language contexts that permit this conversion."
+                    },
+                    "description": "Language contexts that permit this conversion.",
+                    "uniqueItems": true,
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "from",
+                  "to",
+                  "contexts"
+                ],
+                "additionalProperties": true,
+                "description": "Permitted implicit conversion edges."
+              },
+              "description": "Permitted implicit conversion edges.",
+              "minItems": 1
+            },
+            "local_reassignment": {
+              "type": "string",
+              "enum": [
+                "exact_type"
+              ],
+              "description": "Reassignment requires the previously inferred exact local type."
+            }
+          },
+          "required": [
+            "storable",
+            "helper_parameters",
+            "helper_value_returns",
+            "output_only_geometry",
+            "point_value_type",
+            "implicit_widening",
+            "local_reassignment"
+          ],
+          "additionalProperties": true,
+          "description": "Accepted source value categories and conversions."
+        },
+        "locals": {
+          "type": "object",
+          "properties": {
+            "declaration": {
+              "type": "string",
+              "enum": [
+                "first_assignment"
+              ],
+              "description": "Construct that introduces a local variable."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "function"
+              ],
+              "description": "Local scope boundary."
+            },
+            "type_inference_order": {
+              "type": "string",
+              "enum": [
+                "source_traversal"
+              ],
+              "description": "Traversal order used to establish a local type."
+            },
+            "definite_assignment_analysis": {
+              "type": "boolean",
+              "description": "Whether paths undergo definite-assignment analysis."
+            },
+            "unexecuted_initializer": {
+              "type": "string",
+              "enum": [
+                "typed_zero"
+              ],
+              "description": "Value observed when the declaring assignment did not execute."
+            },
+            "read_requires_prior_assignment": {
+              "type": "boolean",
+              "description": "A read must follow its first assignment in source traversal."
+            }
+          },
+          "required": [
+            "declaration",
+            "scope",
+            "type_inference_order",
+            "definite_assignment_analysis",
+            "unexecuted_initializer",
+            "read_requires_prior_assignment"
+          ],
+          "additionalProperties": true,
+          "description": "Legacy first-assignment local semantics."
+        },
+        "visibility": {
+          "type": "object",
+          "properties": {
+            "uniforms": {
+              "type": "string",
+              "enum": [
+                "draw_only"
+              ],
+              "description": "Context where imported or root inputs are readable."
+            },
+            "uniforms_read_only": {
+              "type": "boolean",
+              "description": "Inputs cannot be assigned by the program."
+            },
+            "helper_parameters_read_only": {
+              "type": "boolean",
+              "description": "Helper parameters cannot be reassigned."
+            },
+            "draw_controls": {
+              "type": "object",
+              "properties": {
+                "names": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "a",
+                      "v"
+                    ],
+                    "description": "Visible control names."
+                  },
+                  "description": "Visible control names.",
+                  "uniqueItems": true,
+                  "minItems": 1
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "i32"
+                  ],
+                  "description": "Control value type."
+                },
+                "read_only": {
+                  "type": "boolean",
+                  "description": "Controls cannot be reassigned."
+                }
+              },
+              "required": [
+                "names",
+                "type",
+                "read_only"
+              ],
+              "additionalProperties": true,
+              "description": "Draw-only implicit control values."
+            },
+            "seed": {
+              "type": "string",
+              "enum": [
+                "current_rng_state_in_all_functions"
+              ],
+              "description": "seed reads the current RNG state in every function."
+            },
+            "palettes": {
+              "type": "string",
+              "enum": [
+                "all_asset_functions"
+              ],
+              "description": "Asset function contexts where palettes are visible."
+            }
+          },
+          "required": [
+            "uniforms",
+            "uniforms_read_only",
+            "helper_parameters_read_only",
+            "draw_controls",
+            "seed",
+            "palettes"
+          ],
+          "additionalProperties": true,
+          "description": "Function contexts that expose uniforms and read-only values."
+        },
+        "named_calls": {
+          "type": "object",
+          "properties": {
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "builtin",
+                  "helper",
+                  "part"
+                ],
+                "description": "Call target categories accepting named arguments."
+              },
+              "description": "Call target categories accepting named arguments.",
+              "uniqueItems": true,
+              "minItems": 1
+            },
+            "mixed_positional_and_named": {
+              "type": "boolean",
+              "description": "Whether one call can mix both argument forms."
+            },
+            "positional_binding": {
+              "type": "string",
+              "enum": [
+                "positional_parameter_ordinal"
+              ],
+              "description": "How positional arguments map to declaration slots."
+            },
+            "named_arguments_advance_positional_ordinal": {
+              "type": "boolean",
+              "description": "Whether named arguments consume the next positional index."
+            },
+            "duplicate_arguments": {
+              "type": "boolean",
+              "description": "Whether a slot can be bound more than once."
+            },
+            "unknown_arguments": {
+              "type": "boolean",
+              "description": "Whether a call can include an unknown named slot."
+            }
+          },
+          "required": [
+            "targets",
+            "mixed_positional_and_named",
+            "positional_binding",
+            "named_arguments_advance_positional_ordinal",
+            "duplicate_arguments",
+            "unknown_arguments"
+          ],
+          "additionalProperties": true,
+          "description": "Named and mixed call-binding capabilities."
+        },
+        "restrictions": {
+          "type": "object",
+          "properties": {
+            "recursive_helpers": {
+              "type": "boolean",
+              "description": "Whether direct or mutual recursion is accepted."
+            },
+            "nested_part_imports": {
+              "type": "boolean",
+              "description": "Whether imported parts may import further parts."
+            },
+            "let_declarations": {
+              "type": "boolean",
+              "description": "Whether explicit let declarations are accepted."
+            },
+            "fn_declarations": {
+              "type": "boolean",
+              "description": "Whether fn-prefixed helpers are accepted."
+            },
+            "named_geometry_constructors": {
+              "type": "boolean",
+              "description": "Whether geometry constructors accept named fields."
+            }
+          },
+          "required": [
+            "recursive_helpers",
+            "nested_part_imports",
+            "let_declarations",
+            "fn_declarations",
+            "named_geometry_constructors"
+          ],
+          "additionalProperties": true,
+          "description": "Implemented source syntax and static restrictions."
+        },
+        "effect_order": {
+          "type": "object",
+          "properties": {
+            "binary_operands": {
+              "type": "string",
+              "enum": [
+                "left_to_right"
+              ],
+              "description": "Operand evaluation sequence."
+            },
+            "logical_operators": {
+              "type": "string",
+              "enum": [
+                "short_circuit_left_to_right"
+              ],
+              "description": "Short-circuit operand sequence."
+            },
+            "call_arguments": {
+              "type": "string",
+              "enum": [
+                "signature_evaluation_order"
+              ],
+              "description": "Argument effects follow shared binder signature order."
+            },
+            "named_arguments_change_evaluation_order": {
+              "type": "boolean",
+              "description": "Whether written named-argument order changes effect execution."
+            },
+            "part_parent_rng": {
+              "type": "string",
+              "enum": [
+                "restored_after_child"
+              ],
+              "description": "Parent RNG restoration after child rendering."
+            }
+          },
+          "required": [
+            "binary_operands",
+            "logical_operators",
+            "call_arguments",
+            "named_arguments_change_evaluation_order",
+            "part_parent_rng"
+          ],
+          "additionalProperties": true,
+          "description": "Order of argument, operand and child RNG effects."
+        }
+      },
+      "required": [
+        "inputs",
+        "types",
+        "locals",
+        "visibility",
+        "named_calls",
+        "restrictions",
+        "effect_order"
+      ],
+      "additionalProperties": true,
+      "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
+    },
+    "effect_rules": {
+      "type": "object",
+      "properties": {
+        "intrinsic_scope": {
+          "type": "string",
+          "enum": [
+            "operation_excluding_arguments_and_resources"
+          ],
+          "description": "Reported effects exclude argument evaluation and resource failure."
+        },
+        "argument_effects": {
+          "type": "string",
+          "enum": [
+            "evaluated_before_operation_in_caller_stream"
+          ],
+          "description": "Argument effects execute in the caller stream before the operation."
+        },
+        "resource_traps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "call_depth_limit",
+              "fuel_exhausted"
+            ],
+            "description": "Program-wide execution resource limits."
+          },
+          "description": "Program-wide execution resource limits.",
+          "uniqueItems": true
+        },
+        "validation_limits": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "operand_stack_limit"
+            ],
+            "description": "Limits rejected by the bytecode validator before execution."
+          },
+          "description": "Limits rejected by the bytecode validator before execution.",
+          "uniqueItems": true
+        },
+        "allocation_failure": {
+          "type": "boolean",
+          "description": "Execution or output allocation may fail independently of opcode checks."
+        },
+        "helper": {
+          "$ref": "#/$defs/effects",
+          "description": "Conservative helper-body effects."
+        },
+        "part": {
+          "$ref": "#/$defs/effects",
+          "description": "Conservative isolated child-body effects."
+        },
+        "seed_read": {
+          "$ref": "#/$defs/effects",
+          "description": "Reading the seed expression."
+        },
+        "output_write": {
+          "$ref": "#/$defs/effects",
+          "description": "Writing a declared output."
+        },
+        "part_output_read": {
+          "$ref": "#/$defs/effects",
+          "description": "Reading a singular exported child output."
+        },
+        "integer_division": {
+          "$ref": "#/$defs/effects",
+          "description": "Checked signed division."
+        },
+        "integer_remainder": {
+          "$ref": "#/$defs/effects",
+          "description": "Checked signed remainder."
+        },
+        "output_write_policy": {
+          "type": "object",
+          "properties": {
+            "singular": {
+              "type": "string",
+              "enum": [
+                "replace"
+              ],
+              "description": "Each scalar write replaces the previous value."
+            },
+            "list": {
+              "type": "string",
+              "enum": [
+                "append"
+              ],
+              "description": "Each list write appends an element."
+            }
+          },
+          "required": [
+            "singular",
+            "list"
+          ],
+          "additionalProperties": true,
+          "description": "Output write accumulation policies."
+        }
+      },
+      "required": [
+        "intrinsic_scope",
+        "argument_effects",
+        "resource_traps",
+        "validation_limits",
+        "allocation_failure",
+        "helper",
+        "part",
+        "seed_read",
+        "output_write",
+        "part_output_read",
+        "integer_division",
+        "integer_remainder",
+        "output_write_policy"
+      ],
+      "additionalProperties": true,
+      "description": "Resource limits and operation summaries beyond builtin signatures."
+    },
+    "call_rules": {
+      "type": "object",
+      "properties": {
+        "helper_evaluation_order": {
+          "type": "string",
+          "enum": [
+            "declaration"
+          ],
+          "description": "Helper arguments evaluate in parameter declaration order."
+        },
+        "part": {
+          "type": "object",
+          "properties": {
+            "parameters": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/partParameter",
+                "description": "Part control or input slot."
+              },
+              "description": "Part binder parameters."
+            },
+            "evaluation_order": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Binder slot name.",
+                "minLength": 1
+              },
+              "description": "Exact parameter permutation; overrides evaluate in caller context.",
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "parameters",
+            "evaluation_order"
+          ],
+          "additionalProperties": true,
+          "description": "Shared part-call binder contract."
+        }
+      },
+      "required": [
+        "helper_evaluation_order",
+        "part"
+      ],
+      "additionalProperties": true,
+      "description": "Call metadata shared with the compiler binder."
+    },
+    "builtins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/builtin",
+        "description": "Registered callable."
+      },
+      "description": "Shared registry exports; order is stable but not an identity key.",
+      "minItems": 1
+    },
+    "emoji_aliases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "ASCII keyword spelling.",
+            "minLength": 1
+          },
+          "codepoint": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1114111,
+            "description": "Unicode scalar for this lexer alias.",
+            "not": {
+              "minimum": 55296,
+              "maximum": 57343
+            }
+          }
+        },
+        "required": [
+          "word",
+          "codepoint"
+        ],
+        "additionalProperties": true,
+        "description": "One lexer keyword alias."
+      },
+      "description": "Shared lexer aliases.",
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "product_version",
+    "language_version",
+    "format_version",
+    "c_api_version",
+    "abi_version",
+    "source_rules",
+    "effect_rules",
+    "call_rules",
+    "builtins",
+    "emoji_aliases"
+  ],
+  "additionalProperties": true,
+  "description": "Current compiler language description. Missing current fields never select a historical profile.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "infinite-props language-description schema 1",
+  "$defs": {
+    "version": {
+      "type": "object",
+      "properties": {
+        "major": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Major version component."
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Minor version component."
+        }
+      },
+      "required": [
+        "major",
+        "minor"
+      ],
+      "additionalProperties": true,
+      "description": "An independently versioned major/minor contract."
+    },
+    "effects": {
+      "type": "object",
+      "properties": {
+        "rng": {
+          "type": "string",
+          "enum": [
+            "advance_current",
+            "isolated_callee_stream",
+            "isolated_seeded_stream",
+            "none",
+            "push_seeded_stream",
+            "read_current",
+            "restore_stream",
+            "seeded_computation",
+            "shared_callee_stream"
+          ],
+          "description": "Intrinsic stream interaction; arguments run first in the caller stream."
+        },
+        "writes_canvas": {
+          "type": "boolean",
+          "description": "May write pixels to the active canvas."
+        },
+        "writes_outputs": {
+          "type": "boolean",
+          "description": "May replace a scalar output or append a list element."
+        },
+        "summary": {
+          "type": "string",
+          "enum": [
+            "conservative",
+            "intrinsic"
+          ],
+          "description": "Intrinsic operation or conservative callee summary."
+        },
+        "may_trap": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "callee",
+              "divide_by_zero",
+              "integer_overflow",
+              "numeric_range",
+              "part_output_context",
+              "part_output_missing",
+              "part_render_arguments",
+              "stream_stack_underflow"
+            ],
+            "description": "Call-specific checks; resource-wide traps are separate."
+          },
+          "description": "Call-specific checks; resource-wide traps are separate.",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "rng",
+        "writes_canvas",
+        "writes_outputs",
+        "summary",
+        "may_trap"
+      ],
+      "additionalProperties": true,
+      "description": "Intrinsic effects excluding evaluated arguments and resource limits."
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Canonical binder slot name.",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void"
+          ],
+          "description": "Source value type; T is a variadic choice template."
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": true,
+      "description": "A parameter supplied by the shared signature registry."
+    },
+    "signature": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter",
+            "description": "Ordered binder parameters."
+          },
+          "description": "Parameters in binder declaration order."
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void"
+          ],
+          "description": "Return value type; void produces no value."
+        },
+        "evaluation_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Parameter name.",
+            "minLength": 1
+          },
+          "description": "Permutation of parameter names defining effect evaluation order.",
+          "uniqueItems": true
+        },
+        "effects": {
+          "$ref": "#/$defs/effects",
+          "description": "Intrinsic operation effects."
+        },
+        "opcode": {
+          "type": "string",
+          "description": "Lowered opcode registry identifier.",
+          "minLength": 1
+        },
+        "minimum_format_minor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Earliest binary-format minor supporting the opcode."
+        }
+      },
+      "required": [
+        "parameters",
+        "result",
+        "evaluation_order",
+        "effects"
+      ],
+      "additionalProperties": true,
+      "description": "An overload from the shared signature registry."
+    },
+    "variadic": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter",
+            "description": "Ordered binder parameters."
+          },
+          "description": "Parameters in binder declaration order."
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void"
+          ],
+          "description": "Return value type; void produces no value."
+        },
+        "evaluation_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Parameter name.",
+            "minLength": 1
+          },
+          "description": "Permutation of parameter names defining effect evaluation order.",
+          "uniqueItems": true
+        },
+        "effects": {
+          "$ref": "#/$defs/effects",
+          "description": "Intrinsic operation effects."
+        },
+        "minimum_arguments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "Minimum accepted argument count."
+        },
+        "repeat": {
+          "type": "string",
+          "enum": [
+            "choices",
+            "coordinate_pairs"
+          ],
+          "description": "How the template repeats for further arguments."
+        },
+        "choice_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "T",
+              "circle",
+              "color",
+              "f32",
+              "i32",
+              "palette<color>",
+              "palette<f32>",
+              "rect",
+              "vec2",
+              "void"
+            ],
+            "description": "Allowed value types for every eager choice."
+          },
+          "description": "Allowed value types for every eager choice.",
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "choice_evaluation": {
+          "type": "string",
+          "enum": [
+            "eager_once_before_selection_rng"
+          ],
+          "description": "All choices evaluate once before selection consumes RNG."
+        }
+      },
+      "required": [
+        "parameters",
+        "result",
+        "evaluation_order",
+        "effects",
+        "minimum_arguments",
+        "repeat"
+      ],
+      "additionalProperties": true,
+      "description": "Variadic template from the shared binder registry.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "repeat": {
+                "const": "choices"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "choice_types",
+              "choice_evaluation"
+            ]
+          }
+        }
+      ]
+    },
+    "partParameter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Part-call binder slot; $uniform stands for each declared input.",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Slot has no implicit default."
+        },
+        "positional": {
+          "type": "boolean",
+          "description": "Slot accepts positional binding."
+        },
+        "default": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "description": "Integer default."
+            },
+            {
+              "const": "input_declaration"
+            }
+          ],
+          "description": "Optional slot default, including the imported input declaration."
+        }
+      },
+      "required": [
+        "name",
+        "required",
+        "positional"
+      ],
+      "additionalProperties": true,
+      "description": "A part-call control or imported uniform slot.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "required": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "default"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "default"
+            ]
+          }
+        }
+      ]
+    },
+    "builtin": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Registered builtin identifier.",
+          "minLength": 1
+        },
+        "overloads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/signature",
+            "description": "One registered overload."
+          },
+          "description": "All fixed arities."
+        },
+        "variadic": {
+          "$ref": "#/$defs/variadic",
+          "description": "Optional variadic binder template."
+        }
+      },
+      "required": [
+        "name",
+        "overloads"
+      ],
+      "additionalProperties": true,
+      "description": "A registered builtin.",
+      "anyOf": [
+        {
+          "properties": {
+            "overloads": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "variadic"
+          ]
+        }
+      ]
+    },
+    "historical04": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1,
+          "description": "Frozen export protocol version."
+        },
+        "product_version": {
+          "type": "string",
+          "description": "Only explicitly selected frozen product 0.4.",
+          "pattern": "^0\\.4\\.\\d+$"
+        },
+        "builtins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/historicalBuiltin",
+            "description": "Frozen registered builtin."
+          },
+          "description": "Frozen builtin list.",
+          "minItems": 1
+        },
+        "emoji_aliases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "word": {
+                "type": "string",
+                "description": "ASCII keyword spelling.",
+                "minLength": 1
+              },
+              "codepoint": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1114111,
+                "description": "Unicode scalar for this lexer alias.",
+                "not": {
+                  "minimum": 55296,
+                  "maximum": 57343
+                }
+              }
+            },
+            "required": [
+              "word",
+              "codepoint"
+            ],
+            "additionalProperties": true,
+            "description": "One lexer keyword alias."
+          },
+          "description": "Shared lexer aliases.",
+          "minItems": 1
+        },
+        "format_version": {
+          "$ref": "#/$defs/version",
+          "description": "Frozen format version."
+        }
+      },
+      "required": [
+        "schema_version",
+        "product_version",
+        "builtins",
+        "emoji_aliases"
+      ],
+      "additionalProperties": true,
+      "description": "Explicit historical-0.4 profile for frozen benchmarks and test fixtures only.",
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "source_rules"
+            ]
+          },
+          {
+            "required": [
+              "effect_rules"
+            ]
+          }
+        ]
+      }
+    },
+    "historicalSignature": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter",
+            "description": "Ordered binder parameters."
+          },
+          "description": "Parameters in binder declaration order."
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void"
+          ],
+          "description": "Return value type; void produces no value."
+        },
+        "evaluation_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Parameter name.",
+            "minLength": 1
+          },
+          "description": "Permutation of parameter names defining effect evaluation order.",
+          "uniqueItems": true
+        },
+        "effects": {
+          "$ref": "#/$defs/effects",
+          "description": "Intrinsic operation effects."
+        },
+        "opcode": {
+          "type": "string",
+          "description": "Lowered opcode registry identifier.",
+          "minLength": 1
+        },
+        "minimum_format_minor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Earliest binary-format minor supporting the opcode."
+        }
+      },
+      "required": [
+        "parameters",
+        "result"
+      ],
+      "additionalProperties": true,
+      "description": "An overload from the shared signature registry."
+    },
+    "historicalVariadic": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter",
+            "description": "Ordered binder parameters."
+          },
+          "description": "Parameters in binder declaration order."
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "T",
+            "circle",
+            "color",
+            "f32",
+            "i32",
+            "palette<color>",
+            "palette<f32>",
+            "rect",
+            "vec2",
+            "void"
+          ],
+          "description": "Return value type; void produces no value."
+        },
+        "evaluation_order": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "Parameter name.",
+            "minLength": 1
+          },
+          "description": "Permutation of parameter names defining effect evaluation order.",
+          "uniqueItems": true
+        },
+        "effects": {
+          "$ref": "#/$defs/effects",
+          "description": "Intrinsic operation effects."
+        },
+        "minimum_arguments": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "Minimum accepted argument count."
+        },
+        "repeat": {
+          "type": "string",
+          "enum": [
+            "choices",
+            "coordinate_pairs"
+          ],
+          "description": "How the template repeats for further arguments."
+        },
+        "choice_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "T",
+              "circle",
+              "color",
+              "f32",
+              "i32",
+              "palette<color>",
+              "palette<f32>",
+              "rect",
+              "vec2",
+              "void"
+            ],
+            "description": "Allowed value types for every eager choice."
+          },
+          "description": "Allowed value types for every eager choice.",
+          "uniqueItems": true,
+          "minItems": 1
+        },
+        "choice_evaluation": {
+          "type": "string",
+          "enum": [
+            "eager_once_before_selection_rng"
+          ],
+          "description": "All choices evaluate once before selection consumes RNG."
+        }
+      },
+      "required": [
+        "parameters",
+        "result",
+        "minimum_arguments",
+        "repeat"
+      ],
+      "additionalProperties": true,
+      "description": "Variadic template from the shared binder registry."
+    },
+    "historicalBuiltin": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Registered builtin identifier.",
+          "minLength": 1
+        },
+        "overloads": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/historicalSignature",
+            "description": "One registered overload."
+          },
+          "description": "All fixed arities."
+        },
+        "variadic": {
+          "$ref": "#/$defs/historicalVariadic",
+          "description": "Optional variadic binder template."
+        }
+      },
+      "required": [
+        "name",
+        "overloads"
+      ],
+      "additionalProperties": true,
+      "description": "A registered builtin.",
+      "anyOf": [
+        {
+          "properties": {
+            "overloads": {
+              "minItems": 1
+            }
+          }
+        },
+        {
+          "required": [
+            "variadic"
+          ]
+        }
+      ]
+    }
+  }
+}

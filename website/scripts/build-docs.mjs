@@ -42,20 +42,30 @@ export function renderBook(markdown, headings, bundle) {
     return { html: md.renderer.render(tokens, md.options, {}), search };
 }
 
+// The same dependency-free reader protects SDKs, archives and website inputs.
+export function verifyBundle(bundle, compiler = null) {
+    const args = [path.join(root, "scripts/language_docs.py"), "verify", "--output-dir", bundle];
+    if (compiler) args.push("--against-source", "--compiler", compiler);
+    const verified = spawnSync(process.env.IPROP_PYTHON || "python3", args, { encoding: "utf8" });
+    if (verified.status !== 0) throw new Error(verified.stderr || String(verified.error));
+}
+
 export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(root, "build/tools", process.platform === "win32" ? "ipc.exe" : "ipc")) {
-    const bundle = path.join(root, "build/language-docs");
+    const bundle = path.resolve(process.env.IPROP_LANGUAGE_DOCS_DIR || path.join(root, "build/language-docs"));
     const result = spawnSync(process.env.IPROP_PYTHON || "python3", [
         path.join(root, "scripts/language_docs.py"), "build", "--compiler", path.resolve(root, compiler), "--output-dir", bundle
     ], { encoding: "utf8" });
     if (result.status !== 0) throw new Error(result.stderr || String(result.error));
     process.stdout.write(result.stdout);
+    verifyBundle(bundle, path.resolve(root, compiler));
     const info = JSON.parse(fs.readFileSync(path.join(bundle, "docs/language-manifest.json"), "utf8"));
     const minor = info.product_version.split(".").slice(0, 2).join(".");
     const book = fs.readFileSync(path.join(bundle, "docs", `language-v${minor}.md`), "utf8");
     const rendered = renderBook(book, info.headings, bundle);
     const publicDir = path.join(root, "website/public");
-    for (const directory of ["docs", "examples", "spec"])
+    for (const directory of ["docs", "examples", "spec", "plans"])
         fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
+    fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
     // Preserve the old download URL as a generated copy of the same book.
     fs.mkdirSync(path.join(publicDir, "reference"), { recursive: true });
     fs.copyFileSync(path.join(bundle, "docs", `language-v${minor}.md`), path.join(publicDir, "reference", `language-v${minor}.md`));

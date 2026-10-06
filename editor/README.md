@@ -146,3 +146,10 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 | `syntaxes/ips.tmLanguage.json` | the TextMate grammar |
 | `language-configuration.json` | comments and brackets |
 | `install.sh` | local installation via symlink |
+
+JSON diagnostics use schema 1 and the shared `contracts.js` reader. Unknown
+additive fields are allowed; missing fields, unknown schema versions and
+status/exit mismatches are rejected. Malformed current JSON never selects the
+legacy text protocol. UTF-8/source-id checks still guard every applied fix.
+The same real diagnostic mutation corpus is checked by Python, the editor and
+the formal schema in `compiler_export_contracts`.

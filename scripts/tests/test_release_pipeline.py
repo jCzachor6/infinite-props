@@ -18,6 +18,9 @@ from release_assets import collect, verify_bundle, verify_jobs, verify_source
 from release_common import sha256, write_json
 from release_preflight import metadata, validate_tag
 import language_docs
+import release_assets
+from contract_readers import HISTORICAL
+from functools import partial
 from language_fixture import LANGUAGE, fixture as language_fixture
 
 
@@ -75,7 +78,7 @@ def inputs(directory, root, commit):
     directory.mkdir()
     documentation = directory / "documentation"
     with patch.object(language_docs, "contracts", return_value=LANGUAGE):
-        language_docs.build(Path("unused"), documentation, root)
+        language_docs.build(Path("unused"), documentation, root, profile=HISTORICAL)
     for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
@@ -111,6 +114,13 @@ def inputs(directory, root, commit):
 
 
 class ReleaseGatesTest(unittest.TestCase):
+    def setUp(self):
+        # Only these explicitly frozen fixture archives use the legacy profile.
+        reader = patch.object(release_assets, "verify_documentation",
+                              partial(language_docs.verify_archive, profile=HISTORICAL))
+        reader.start()
+        self.addCleanup(reader.stop)
+
     def test_matching_versions_and_frozen_dated_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repo"
@@ -256,6 +266,13 @@ class FakeGitHub:
 
 
 class PublicationTest(unittest.TestCase):
+    def setUp(self):
+        # Only these explicitly frozen fixture archives use the legacy profile.
+        reader = patch.object(release_assets, "verify_documentation",
+                              partial(language_docs.verify_archive, profile=HISTORICAL))
+        reader.start()
+        self.addCleanup(reader.stop)
+
     def test_upload_readback_precedes_publication_and_same_release_is_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             file = Path(temporary) / "sdk.tar.gz"; file.write_bytes(b"tested SDK")

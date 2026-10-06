@@ -5,6 +5,7 @@
 #include "ips/Typing.hpp"
 #include "ips/Lexer.hpp"
 #include "ips/Version.hpp"
+#include "ips/ExportSchema.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
 
@@ -167,7 +168,7 @@ void variadic(std::ostream& out, const std::string& name, const ips::BuiltinSpec
 } // namespace
 
 void writeLanguageDescription(std::ostream& out, std::string_view productVersion) {
-    out << "{\"schema_version\":1,\"product_version\":\"" << jsonEscape(productVersion)
+    out << "{\"schema_version\":" << ips::kLanguageDescriptionSchemaVersion << ",\"product_version\":\"" << jsonEscape(productVersion)
         << "\",\"language_version\":{\"major\":" << ips::kLanguageVersionMajor
         << ",\"minor\":" << ips::kLanguageVersionMinor
         << "},\"c_api_version\":{\"major\":" << IPROP_API_VERSION_MAJOR

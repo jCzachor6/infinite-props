@@ -1,0 +1,478 @@
+{
+  "language": [
+    {
+      "id": "equivalent JSON integer",
+      "path": [
+        "schema_version"
+      ],
+      "value": 1.0,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "additive root",
+      "path": [
+        "future_hint"
+      ],
+      "value": {
+        "name": "ignored"
+      },
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "additive effect",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "effects",
+        "future_hint"
+      ],
+      "value": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "unknown schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": 2,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "boolean schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing current rules",
+      "path": [
+        "source_rules"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing effects",
+      "path": [
+        "effect_rules"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing source version",
+      "path": [
+        "language_version"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong version type",
+      "path": [
+        "abi_version",
+        "minor"
+      ],
+      "value": "4",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong effect type",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "effects",
+        "writes_canvas"
+      ],
+      "value": "false",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown RNG effect",
+      "path": [
+        "effect_rules",
+        "helper",
+        "rng"
+      ],
+      "value": "sometimes",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown trap",
+      "path": [
+        "effect_rules",
+        "integer_division",
+        "may_trap"
+      ],
+      "value": [
+        "fuel_exhausted"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong evaluation permutation",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "evaluation_order"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "wrong input storage",
+      "path": [
+        "source_rules",
+        "inputs",
+        3,
+        "binary_type"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "wrong part default",
+      "path": [
+        "call_rules",
+        "part",
+        "parameters",
+        0,
+        "default"
+      ],
+      "value": 0,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unsafe Unicode scalar",
+      "path": [
+        "emoji_aliases",
+        0,
+        "codepoint"
+      ],
+      "value": 55296,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong point type",
+      "path": [
+        "source_rules",
+        "types",
+        "point_value_type"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong control type",
+      "path": [
+        "source_rules",
+        "visibility",
+        "draw_controls",
+        "type"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong control names",
+      "path": [
+        "source_rules",
+        "visibility",
+        "draw_controls",
+        "names"
+      ],
+      "value": [
+        "x"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong widening direction",
+      "path": [
+        "source_rules",
+        "types",
+        "implicit_widening",
+        0,
+        "from"
+      ],
+      "value": "color",
+      "accept": false,
+      "schema": false
+    }
+  ],
+  "diagnostics": [
+    {
+      "id": "equivalent JSON integer",
+      "path": [
+        "schema_version"
+      ],
+      "value": 1.0,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "additive diagnostic",
+      "path": [
+        "diagnostics",
+        0,
+        "future_hint"
+      ],
+      "value": {
+        "help": true
+      },
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "unknown schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": 2,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing diagnostic field",
+      "path": [
+        "diagnostics",
+        0,
+        "fix_its"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong code",
+      "path": [
+        "diagnostics",
+        0,
+        "code"
+      ],
+      "value": "oops",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown stage",
+      "path": [
+        "diagnostics",
+        0,
+        "stage"
+      ],
+      "value": "emission",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong source id",
+      "path": [
+        "diagnostics",
+        0,
+        "source_id"
+      ],
+      "value": "sha256:bad",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unsafe offset",
+      "path": [
+        "diagnostics",
+        0,
+        "range",
+        "end",
+        "byte_offset"
+      ],
+      "value": 9007199254740992,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "negative offset",
+      "path": [
+        "diagnostics",
+        0,
+        "range",
+        "start",
+        "byte_offset"
+      ],
+      "value": -1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "exit status mismatch",
+      "path": [
+        "status"
+      ],
+      "value": "cli_error",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "ok with errors",
+      "path": [
+        "status"
+      ],
+      "value": "ok",
+      "exit": 0,
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "reversed range",
+      "path": [
+        "diagnostics",
+        0,
+        "range",
+        "start",
+        "byte_offset"
+      ],
+      "value": 9007199254740991,
+      "accept": false,
+      "schema": true
+    }
+  ],
+  "manifest": [
+    {
+      "id": "equivalent JSON integer",
+      "path": [
+        "schema_version"
+      ],
+      "value": 1.0,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "additive manifest",
+      "path": [
+        "future_hint"
+      ],
+      "value": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "unknown manifest schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": 2,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong dirty flag",
+      "path": [
+        "working_tree_dirty"
+      ],
+      "value": "false",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing headings",
+      "path": [
+        "headings"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unsafe payload path",
+      "path": [
+        "files",
+        "../escape"
+      ],
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong digest",
+      "path": [
+        "source_files",
+        "CMakeLists.txt"
+      ],
+      "value": "bad",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong source commit",
+      "path": [
+        "source_commit"
+      ],
+      "value": "bad",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong counts",
+      "path": [
+        "builtin_count"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "contradictory release identity",
+      "path": [
+        "status"
+      ],
+      "value": "released",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "candidate tag",
+      "path": [
+        "tag"
+      ],
+      "value": "v0.4.0",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "Windows drive escape",
+      "path": [
+        "files",
+        "C:/escape"
+      ],
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "accept": false,
+      "schema": false
+    }
+  ]
+}

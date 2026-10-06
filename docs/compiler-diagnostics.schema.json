@@ -11,10 +11,13 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 1,
+      "description": "Diagnostics protocol version independent of source-language version.",
+      "type": "integer"
     },
     "product_version": {
-      "type": "string"
+      "type": "string",
+      "description": "Compiler product build version."
     },
     "language_version": {
       "type": "object",
@@ -25,13 +28,18 @@
       "properties": {
         "major": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Protocol field major.",
+          "maximum": 9007199254740991
         },
         "minor": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Protocol field minor.",
+          "maximum": 9007199254740991
         }
-      }
+      },
+      "description": "Source-language acceptance version."
     },
     "status": {
       "enum": [
@@ -39,13 +47,15 @@
         "invalid_source",
         "cli_error",
         "internal_error"
-      ]
+      ],
+      "description": "ok=exit0; invalid_source=exit1; cli_error=exit2; internal_error=exit3."
     },
     "diagnostics": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/diagnostic"
-      }
+      },
+      "description": "Ordered diagnostics for this invocation."
     }
   },
   "$defs": {
@@ -59,15 +69,21 @@
       "properties": {
         "byte_offset": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "Zero-based UTF-8 byte offset in the reported source snapshot.",
+          "maximum": 9007199254740991
         },
         "line": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "One-based physical source line.",
+          "maximum": 9007199254740991
         },
         "column": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "description": "One-based Unicode codepoint column.",
+          "maximum": 9007199254740991
         }
       }
     },
@@ -79,10 +95,12 @@
       ],
       "properties": {
         "start": {
-          "$ref": "#/$defs/position"
+          "$ref": "#/$defs/position",
+          "description": "Inclusive beginning of the half-open range."
         },
         "end": {
-          "$ref": "#/$defs/position"
+          "$ref": "#/$defs/position",
+          "description": "Exclusive end of the range."
         }
       }
     },
@@ -106,7 +124,8 @@
       "properties": {
         "code": {
           "type": "string",
-          "pattern": "^IPS-[A-Z]+-[0-9]{3}$"
+          "pattern": "^IPS-[A-Z]+-[0-9]{3}$",
+          "description": "Stable diagnostic identity; message prose is not an identifier."
         },
         "stage": {
           "enum": [
@@ -119,23 +138,27 @@
             "io",
             "cli",
             "internal"
-          ]
+          ],
+          "description": "Compiler stage that produced this diagnostic."
         },
         "severity": {
           "enum": [
             "error",
             "warning",
             "note"
-          ]
+          ],
+          "description": "Error, warning or informational note."
         },
         "message": {
-          "type": "string"
+          "type": "string",
+          "description": "Human-readable explanation."
         },
         "file": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "Source path, or null for a global diagnostic."
         },
         "location": {
           "oneOf": [
@@ -151,15 +174,20 @@
               "properties": {
                 "line": {
                   "type": "integer",
-                  "minimum": 1
+                  "minimum": 1,
+                  "description": "One-based physical source line.",
+                  "maximum": 9007199254740991
                 },
                 "column": {
                   "type": "integer",
-                  "minimum": 1
+                  "minimum": 1,
+                  "description": "One-based Unicode codepoint column.",
+                  "maximum": 9007199254740991
                 }
               }
             }
-          ]
+          ],
+          "description": "Primary source line and codepoint column, or null."
         },
         "range": {
           "oneOf": [
@@ -169,7 +197,8 @@
             {
               "$ref": "#/$defs/range"
             }
-          ]
+          ],
+          "description": "Half-open primary UTF-8 source range, or null."
         },
         "source_id": {
           "oneOf": [
@@ -180,25 +209,29 @@
               "type": "string",
               "pattern": "^sha256:[0-9a-f]{64}$"
             }
-          ]
+          ],
+          "description": "SHA-256 of the exact source bytes, or null when unavailable."
         },
         "expected_type": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "Expected source type, or null when unavailable."
         },
         "actual_type": {
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "Observed source type, or null when unavailable."
         },
         "suggestions": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "description": "Human-readable correction hints."
         },
         "related_locations": {
           "type": "array",
@@ -211,16 +244,20 @@
             ],
             "properties": {
               "file": {
-                "type": "string"
+                "type": "string",
+                "description": "Source path, or null for a global diagnostic."
               },
               "message": {
-                "type": "string"
+                "type": "string",
+                "description": "Human-readable explanation."
               },
               "range": {
-                "$ref": "#/$defs/range"
+                "$ref": "#/$defs/range",
+                "description": "Half-open primary UTF-8 source range, or null."
               }
             }
-          }
+          },
+          "description": "Related source locations for context."
         },
         "fix_its": {
           "type": "array",
@@ -233,19 +270,24 @@
             ],
             "properties": {
               "range": {
-                "$ref": "#/$defs/range"
+                "$ref": "#/$defs/range",
+                "description": "Half-open primary UTF-8 source range, or null."
               },
               "replacement": {
-                "type": "string"
+                "type": "string",
+                "description": "Replacement source text, including intentional whitespace."
               },
               "source_id": {
                 "type": "string",
-                "pattern": "^sha256:[0-9a-f]{64}$"
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "description": "SHA-256 of the exact source bytes, or null when unavailable."
               }
             }
-          }
+          },
+          "description": "Source-bound transactional replacements; consumers verify snapshots and UTF-8 boundaries."
         }
       }
     }
-  }
+  },
+  "description": "Structured source diagnostics; source positions are one-based Unicode codepoints and UTF-8 byte offsets. Exit/status and ordered-range invariants are validated by consumers."
 }

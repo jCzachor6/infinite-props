@@ -6,6 +6,7 @@
 #include "ips/Printer.hpp"
 #include "iprop/Utf8.hpp"
 #include "ips/Version.hpp"
+#include "ips/ExportSchema.hpp"
 
 #include <filesystem>
 #include <chrono>
@@ -246,12 +247,13 @@ int reportEntryFailure(bool json, bool invalidUtf16 = false) noexcept {
     const char* code = invalidUtf16 ? "IPS-CLI-001" : "IPS-INTERNAL-001";
     const char* stage = invalidUtf16 ? "cli" : "internal";
     const char* message = invalidUtf16 ? "CLI arguments must be valid UTF-16" : "unexpected compiler failure";
-    if (json) std::fprintf(stdout, "{\"schema_version\":1,\"product_version\":\"" IPROP_PRODUCT_VERSION
+    if (json) std::fprintf(stdout, "{\"schema_version\":%u,\"product_version\":\"" IPROP_PRODUCT_VERSION
         "\",\"language_version\":{\"major\":%u,\"minor\":%u},\"status\":\"%s\","
         "\"diagnostics\":[{\"code\":\"%s\",\"stage\":\"%s\",\"severity\":\"error\","
         "\"message\":\"%s\",\"file\":null,\"location\":null,\"range\":null,"
         "\"source_id\":null,\"expected_type\":null,\"actual_type\":null,\"suggestions\":[],"
         "\"related_locations\":[],\"fix_its\":[]}]}\n",
+        iprop::ips::kSourceDiagnosticsSchemaVersion,
         static_cast<unsigned>(iprop::ips::kLanguageVersionMajor),
         static_cast<unsigned>(iprop::ips::kLanguageVersionMinor), status, code, stage, message);
     else std::fprintf(stderr, "ipc: %s\n", message);
