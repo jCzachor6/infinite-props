@@ -135,11 +135,28 @@ int main(int argc, char** argv) {
     iprop_library_info_ex library{};
     CHECK(iprop_program_info_ex_init(&info, sizeof(info)) == IPROP_EX_OK);
     CHECK(iprop_library_info_ex_init(&library, sizeof(library)) == IPROP_EX_OK);
+    original->file.meta.hasEmission = true;
+    original->file.meta.emission.color = {1, 2, 3, 4};
+    const uint32_t emissionBits[] = {UINT32_C(0x80000000), 1, UINT32_C(0x7fc12345)};
+    std::memcpy(&original->file.meta.emission.offset.x, &emissionBits[0], 4);
+    std::memcpy(&original->file.meta.emission.offset.y, &emissionBits[1], 4);
+    std::memcpy(&original->file.meta.emission.radius, &emissionBits[2], 4);
     count = 0; injected = 0; failAt = 1; failure = Failure::Oom;
     armed = true;
     CHECK(iprop_program_load_ex(nullptr, 0, &original, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_query(nullptr, &info, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_query(original, &info, &error) == IPROP_EX_OK);
+    CHECK(info.has_emission == 1 && info.emission_color.a == 4);
+    CHECK(std::memcmp(&info.emission_offset_x, &emissionBits[0], 4) == 0);
+    CHECK(std::memcmp(&info.emission_offset_y, &emissionBits[1], 4) == 0);
+    CHECK(std::memcmp(&info.emission_radius, &emissionBits[2], 4) == 0);
+    original->file.meta.hasEmission = false;
+    CHECK(iprop_program_query(original, &info, &error) == IPROP_EX_OK);
+    CHECK(info.has_emission == 0 && info.emission_color.r == 0 && info.emission_color.g == 0 &&
+          info.emission_color.b == 0 && info.emission_color.a == 0);
+    const uint32_t zero = 0;
+    CHECK(std::memcmp(&info.emission_offset_x, &zero, 4) == 0 &&
+          std::memcmp(&info.emission_offset_y, &zero, 4) == 0 && std::memcmp(&info.emission_radius, &zero, 4) == 0);
     CHECK(iprop_library_query_ex(nullptr, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_library_query_ex(&library, &error) == IPROP_EX_OK);
     iprop_input_info_ex input{};

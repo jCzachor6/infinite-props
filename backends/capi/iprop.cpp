@@ -58,6 +58,9 @@ iprop_status_ex iprop_program_query(const iprop_program* program, iprop_program_
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_program_info_ex, field), info.field)
         WRITE(size_x); WRITE(size_y); WRITE(origin_x); WRITE(origin_y);
         WRITE(variants); WRITE(archetypes); WRITE(fuel);
+        WRITE(has_emission); WRITE(emission_color);
+        WRITE(emission_offset_x); WRITE(emission_offset_y); WRITE(emission_radius);
+        WRITE(format_major); WRITE(format_minor); WRITE(container_flags);
 #undef WRITE
         return iprop::capi::CallOutcome{};
     });

@@ -177,7 +177,10 @@ including empty slots, through count/get/find by owner and exact name; see
 [output declarations](../../docs/c-api-output-declarations.md).
 `IPROP_CAP_PART_REFLECTION` advertises the stored part table and its input
 signatures; see [part geometry and signatures](../../docs/c-api-parts.md).
-Emission/format metadata, parameters, structured generation and typed output
+`IPROP_CAP_METADATA_EXTENDED` advertises appended emission and physical
+container fields in the existing program descriptor; see
+[extended metadata](../../docs/c-api-metadata.md).
+Parameters, structured generation and typed output
 value accessors receive capability bits only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply

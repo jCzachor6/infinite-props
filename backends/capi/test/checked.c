@@ -60,8 +60,12 @@ int main(int argc, char** argv) {
         const size_t starts[] = {offsetof(iprop_program_info_ex, size_x), offsetof(iprop_program_info_ex, size_y),
             offsetof(iprop_program_info_ex, origin_x), offsetof(iprop_program_info_ex, origin_y),
             offsetof(iprop_program_info_ex, variants), offsetof(iprop_program_info_ex, archetypes),
-            offsetof(iprop_program_info_ex, fuel)};
-        const size_t widths[] = {4, 4, 4, 4, 4, 4, 8};
+            offsetof(iprop_program_info_ex, fuel), offsetof(iprop_program_info_ex, has_emission),
+            offsetof(iprop_program_info_ex, emission_color), offsetof(iprop_program_info_ex, emission_offset_x),
+            offsetof(iprop_program_info_ex, emission_offset_y), offsetof(iprop_program_info_ex, emission_radius),
+            offsetof(iprop_program_info_ex, format_major), offsetof(iprop_program_info_ex, format_minor),
+            offsetof(iprop_program_info_ex, container_flags)};
+        const size_t widths[] = {4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 4};
         CHECK(storage != NULL);
         memset(storage, 0xa5, allocation);
         memcpy(storage, &capacity, 4);

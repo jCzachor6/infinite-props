@@ -142,8 +142,12 @@ the name view is NULL/zero, rather than a fabricated alias or function name.
 An absent name is distinct from a present empty name. See
 [stored parts and signatures](../c-api-parts.md).
 
-Root parameter handles, expanded format/emission reflection, new checked
-generated-value accessors and generation statistics remain planned. Optimization
+`IPROP_CAP_METADATA_EXTENDED` adds stored emission and physical container
+version/flags to the sized program query. The frozen legacy metadata record
+is unchanged. See [extended metadata](../c-api-metadata.md).
+
+Root parameter handles, new checked generated-value accessors and generation
+statistics remain planned. Optimization
 level selection also remains planned; the existing production optimizer and
 `--no-opt` are available. Do not infer those planned capabilities from the API
 feature version. Query the actual loaded library's capability bits.

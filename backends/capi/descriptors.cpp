@@ -58,6 +58,9 @@ iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out, uint32_t 
 #define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_program_info_ex, field), defaults.field)
     ZERO(size_x); ZERO(size_y); ZERO(origin_x); ZERO(origin_y);
     ZERO(variants); ZERO(archetypes); ZERO(fuel);
+    ZERO(has_emission); ZERO(emission_color);
+    ZERO(emission_offset_x); ZERO(emission_offset_y); ZERO(emission_radius);
+    ZERO(format_major); ZERO(format_minor); ZERO(container_flags);
 #undef ZERO
     return IPROP_EX_OK;
 }

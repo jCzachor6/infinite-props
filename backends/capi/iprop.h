@@ -196,6 +196,7 @@ typedef struct {
 #define IPROP_CAP_ROOT_INPUT_REFLECTION (UINT64_C(1) << 6)
 #define IPROP_CAP_OUTPUT_DECLARATIONS (UINT64_C(1) << 7)
 #define IPROP_CAP_PART_REFLECTION (UINT64_C(1) << 8)
+#define IPROP_CAP_METADATA_EXTENDED (UINT64_C(1) << 9)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -351,17 +352,30 @@ IPROP_API iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capa
 IPROP_API iprop_status_ex iprop_program_load_ex(const uint8_t* bytes, uint64_t byte_count,
                                               iprop_program** out_program, iprop_error_ex* error);
 
+/* Frozen leaf RGBA8 record. All four channels are exact stored bytes. */
+typedef struct {
+    uint8_t r, g, b, a;
+} iprop_color_rgba8;
+
 /* Program metadata query, separate from frozen iprop_meta. Only struct_size
  * is input; minimum capacity is four bytes. Success writes complete known
  * fields, preserving size, partial fields, padding and unknown tail. Failure
- * leaves the output untouched. This same descriptor will gain additive fields
- * for emission/format information when that capability is implemented. */
+ * leaves the output untouched. Fields through fuel retain their old offsets.
+ * METADATA_EXTENDED advertises the appended emission/physical format fields.
+ * has_emission is 0 or 1; when zero all emission fields are zero, otherwise
+ * channels and binary32 bits are exact. Format major/minor/flags describe the
+ * actual loaded physical container, including compression/debug bits; they
+ * are not the library's accepted format range. No flags are query inputs. */
 typedef struct {
     uint32_t struct_size;
     uint32_t size_x, size_y;
     float origin_x, origin_y;
     uint32_t variants, archetypes;
     uint64_t fuel;
+    uint32_t has_emission;
+    iprop_color_rgba8 emission_color;
+    float emission_offset_x, emission_offset_y, emission_radius;
+    uint32_t format_major, format_minor, container_flags;
 } iprop_program_info_ex;
 
 IPROP_API iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out, uint32_t capacity);
@@ -377,11 +391,6 @@ typedef uint32_t iprop_input_type;
 #define IPROP_INPUT_COLOR UINT32_C(0)
 #define IPROP_INPUT_F32 UINT32_C(1)
 #define IPROP_INPUT_U32 UINT32_C(2)
-
-/* Frozen leaf RGBA8 record. All four channels are exact default bytes. */
-typedef struct {
-    uint8_t r, g, b, a;
-} iprop_color_rgba8;
 
 /* Input declaration, in the selected root/part collection's stored order.
  * struct_size and flags are input;

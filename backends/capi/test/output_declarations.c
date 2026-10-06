@@ -198,6 +198,15 @@ int main(int argc, char** argv) {
         CHECK(iprop_program_load_ex(old.bytes, old.size, &original, &error) == IPROP_EX_OK);
         CHECK(iprop_program_output_count(original, &count, &error) == IPROP_EX_OK && count == 2);
         {
+            iprop_program_info_ex metadata;
+            CHECK(iprop_program_info_ex_init(&metadata, sizeof(metadata)) == IPROP_EX_OK);
+            CHECK(iprop_program_query(original, &metadata, &error) == IPROP_EX_OK);
+            CHECK(metadata.format_major == 0 && metadata.format_minor == 1 && metadata.container_flags == 0);
+            CHECK(metadata.has_emission == 0 && metadata.emission_color.r == 0 && metadata.emission_color.g == 0 &&
+                  metadata.emission_color.b == 0 && metadata.emission_color.a == 0 &&
+                  metadata.emission_offset_x == 0.f && metadata.emission_offset_y == 0.f && metadata.emission_radius == 0.f);
+        }
+        {
             iprop_part_info_ex part;
             CHECK(iprop_part_info_ex_init(&part, sizeof(part)) == IPROP_EX_OK);
             CHECK(iprop_program_part_count(original, &count, &error) == IPROP_EX_OK && count == 1);

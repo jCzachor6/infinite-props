@@ -5,7 +5,7 @@ These API 0.3 operations are implemented on the frozen ABI line 0.4:
 | Symbol | Behavior |
 | --- | --- |
 | `iprop_program_load_ex` | Loads and validates once; returns structured status/error |
-| `iprop_program_query` | Copies the existing size, origin, variant/archetype counts and fuel metadata |
+| `iprop_program_query` | Copies size, origin, variant/archetype counts, fuel and advertised extended metadata |
 | `iprop_program_info_ex_init` | Initializes the sized program metadata output with the caller's capacity |
 | `iprop_library_query_ex` | Existing library-version/capability query with optional structured error output |
 
@@ -20,6 +20,9 @@ negotiated `IPROP_CAP_ROOT_INPUT_REFLECTION` now advertises the implemented
 [output schema queries](c-api-output-declarations.md).
 `IPROP_CAP_PART_REFLECTION` advertises the implemented
 [part table and input signatures](c-api-parts.md).
+`IPROP_CAP_METADATA_EXTENDED` advertises appended
+[emission and physical container fields](c-api-metadata.md) in the existing
+program descriptor, without another query function.
 
 ## Load and publication
 
@@ -70,10 +73,11 @@ The initializer follows the same bounds and sets complete fields to zero.
 The four-byte prefix succeeds without returning absent metadata values. NULL
 or a declared size below four is an argument error with no query-output write.
 
-The descriptor currently copies the legacy metadata subset. The emission and
-format metadata work in R.4 will extend this same descriptor/accessor, with
-appropriate availability negotiation. This task adds no reflection collections
-or result views. `iprop_library_query_ex` uses the existing library descriptor
+Fields through `fuel` copy the legacy metadata subset and retain their original
+offsets and prefix size. Emission and physical format fields are appended to
+this same descriptor/accessor under `IPROP_CAP_METADATA_EXTENDED`; older caller
+allocations still receive their complete known prefix. There are no result
+views in this query. `iprop_library_query_ex` uses the existing library descriptor
 and the same bounded writer as `iprop_library_query`.
 
 An error descriptor is optional. Valid prefixes receive available error fields;

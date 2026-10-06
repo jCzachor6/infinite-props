@@ -172,6 +172,19 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
     out.variants = meta.variants;
     out.archetypes = meta.archetypes;
     out.fuel = meta.fuel;
+    out.has_emission = meta.hasEmission ? 1 : 0;
+    if (meta.hasEmission) {
+        out.emission_color = {meta.emission.color.r, meta.emission.color.g,
+                              meta.emission.color.b, meta.emission.color.a};
+        // Reporting metadata performs no arithmetic or canonicalization.
+        std::memcpy(&out.emission_offset_x, &meta.emission.offset.x, sizeof(float));
+        std::memcpy(&out.emission_offset_y, &meta.emission.offset.y, sizeof(float));
+        std::memcpy(&out.emission_radius, &meta.emission.radius, sizeof(float));
+    }
+    const auto& header = program.file.containerHeader;
+    out.format_major = header.versionMajor;
+    out.format_minor = header.versionMinor;
+    out.container_flags = header.flags;
     return out;
 }
 
