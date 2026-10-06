@@ -1,6 +1,7 @@
 """Render a bounded reference from handbook sections and compiler contracts."""
 import json
 from contract_readers import parse_json, read_diagnostics
+from markdown_tokens import code_lines, headings, rewrite_links
 import re
 import subprocess
 import tempfile
@@ -24,37 +25,31 @@ def select(value, default, known, label):
 
 
 def excerpt(root, chapter, text, heading, paragraphs, skip=0):
-    positions, fenced = [], False
-    lines = text.splitlines()
-    for number, line in enumerate(lines):
-        if line.startswith('```'):
-            fenced = not fenced
-        if not fenced and (match := re.match(r'^#{1,6} (.+)$', line)):
-            positions.append((number, match[1]))
-    matches = [i for i, (_, title) in enumerate(positions) if title == heading]
+    found = headings(text)
+    matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
-    index = matches[0]
-    begin = positions[index][0] + 1
-    end = positions[index + 1][0] if index + 1 < len(positions) else len(lines)
-    body = '\n'.join(lines[begin:end])
+    index = found.index(matches[0])
+    lines = text.split('\n')
+    begin = matches[0]['line'] + 1
+    end = found[index + 1]['line'] if index + 1 < len(found) else len(lines)
+    # Code blocks become blank lines, which still separate the prose around them.
+    code = code_lines(text)
+    body = '\n'.join('' if number in code else line for number, line in enumerate(lines[begin:end], begin))
     body = re.sub(r'^<!--.*?-->\s*$', '', body, flags=re.M)
-    body = re.sub(r'^```[^\n]*\n.*?^```\s*$', '', body, flags=re.M | re.S)
     blocks = [block.strip() for block in re.split(r'\n\s*\n', body) if block.strip()]
     require(type(paragraphs) is int and type(skip) is int and skip >= 0 and
             0 < paragraphs and skip + paragraphs <= len(blocks), 'invalid paragraph selection for ' + heading)
 
-    def link(match):
-        url = urlsplit(match[2])
+    def link(destination):
+        url = urlsplit(destination)
         if url.scheme or url.netloc:
-            return match[0]
+            return None
         target = (chapter.parent / unquote(url.path)).resolve() if url.path else chapter
-        require(target.is_relative_to(root) and target.is_file(), 'missing handbook link: ' + match[2])
-        href = target.relative_to(root).as_posix() + ('#' + url.fragment if url.fragment else '')
-        return '[' + match[1] + '](' + href + ')'
+        require(target.is_relative_to(root) and target.is_file(), 'missing handbook link: ' + destination)
+        return target.relative_to(root).as_posix() + ('#' + url.fragment if url.fragment else '')
 
-    body = re.sub(r'\[([^\]\n]+)\]\(([^\s)]+)\)', link, '\n\n'.join(blocks[skip:skip + paragraphs]))
-    anchor = re.sub(r'[^\w\s-]', '', heading.lower()).strip().replace(' ', '-')
-    return body, chapter.relative_to(root).as_posix() + '#' + anchor
+    body = rewrite_links('\n\n'.join(blocks[skip:skip + paragraphs]), link)
+    return body, chapter.relative_to(root).as_posix() + '#' + matches[0]['anchor']
 
 
 def correction(pair, original):

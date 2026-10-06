@@ -9,17 +9,16 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from collections import Counter
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from release_common import ROOT, described_versions, product_version, versions
 from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, parse_json,
                               read_language, read_manifest)
+from markdown_tokens import headings, links, manifest_headings, rewrite_links
 
 
 DIRECTIVE = re.compile(r"^<!-- (example|builtin): (\S+) -->$", re.M)
-LINK = re.compile(r"\[[^\]\n]+\]\(([^\s)]+)\)")
 
 
 def require(condition, message):
@@ -43,25 +42,6 @@ def write_json(path, value):
 def run(*args):
     return subprocess.run([str(a) for a in args], capture_output=True, text=True,
                           encoding="utf-8", timeout=60)
-
-
-def slug(text):
-    # GitHub-style heading anchors, also used by the HTML renderer.
-    return re.sub(r"[^\w\s-]", "", text.lower()).strip().replace(" ", "-")
-
-
-def headings(text):
-    result, counts, fence = [], Counter(), False
-    for line in text.splitlines():
-        if line.startswith("```"):
-            fence = not fence
-        if not fence and (match := re.match(r"^(#{1,6}) (.+)$", line)):
-            title = match[2]
-            base = slug(title)
-            anchor = base + ("-" + str(counts[base]) if counts[base] else "")
-            counts[base] += 1
-            result.append({"title": title, "anchor": anchor, "level": len(match[1])})
-    return result
 
 
 def source_path(root, base, name):
@@ -136,6 +116,9 @@ def sources(root, language):
             "Book must list every chapter exactly once")
     text = {p: read(p) for p in chapters}
     require(all(headings(t) and headings(t)[0]["level"] == 1 for t in text.values()), "Each chapter needs a title")
+    # Book assembly nests chapters one level by prefixing `#`, as in `## Title`.
+    require(all(h["atx"] and h["level"] < 6 for t in text.values() for h in headings(t)),
+            "Handbook chapters need ATX headings of level 1-5")
     require(headings(text[chapters[0]])[0]["title"] == book["title"], "Book title differs from its first chapter")
     examples = root / "examples/language"
     cases = json.loads(read(examples / "cases.json"))["cases"]
@@ -155,8 +138,8 @@ def sources(root, language):
             else:
                 referenced.add(source_path(root, chapter.parent, name))
         # Validate authored links, including fragments in other Markdown files.
-        for match in LINK.finditer(content):
-            url = urlsplit(match[1])
+        for destination, _ in links(content):
+            url = urlsplit(destination)
             if url.scheme or url.netloc:
                 continue
             target = source_path(root, chapter.parent, url.path) if url.path else chapter
@@ -164,7 +147,7 @@ def sources(root, language):
                 navigation.append(target)
             if url.fragment and target.suffix == ".md":
                 anchors = {h["anchor"] for h in headings(read(target))}
-                require(unquote(url.fragment) in anchors, "Missing Markdown anchor: " + match[1])
+                require(unquote(url.fragment) in anchors, "Missing Markdown anchor: " + destination)
     require(navigation == chapters[1:], "Handbook contents must link every chapter in book order")
     require(set(referenced) == set(registered), "Every registered example must be included in the handbook")
     expected = {b["name"] for b in language["builtins"]}
@@ -225,28 +208,22 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         output[chapter.relative_to(root).as_posix()] = content
 
     def flatten(chapter, content):
-        def link(match):
-            url = urlsplit(match[1])
+        def link(destination):
+            url = urlsplit(destination)
             if url.scheme or url.netloc or not url.path:
-                return match[0]
+                return None
             target = source_path(root, chapter.parent, url.path)
             if target in expanded:
-                href = "#" + (url.fragment or headings(expanded[target])[0]["anchor"])
-            else:
-                href = Path(os.path.relpath(target, root / "docs")).as_posix()
-                if url.fragment:
-                    href += "#" + url.fragment
-            return match[0].replace(match[1], href)
-        content = LINK.sub(link, content)
-        # Shift chapter headings without touching literal example code.
-        lines, fence = [], False
-        for line in content.splitlines():
-            if line.startswith("```"):
-                fence = not fence
-            if not fence and chapter != chapters[0] and line.startswith("#"):
-                line = "#" + line
-            lines.append(line)
-        return "\n".join(lines)
+                return "#" + (url.fragment or headings(expanded[target])[0]["anchor"])
+            href = Path(os.path.relpath(target, root / "docs")).as_posix()
+            return href + "#" + url.fragment if url.fragment else href
+        content = rewrite_links(content, link)
+        # Nest chapter headings by one level; code and other text stay literal.
+        lines = content.split("\n")
+        if chapter != chapters[0]:
+            for heading in headings(content):
+                lines[heading["line"]] = "#" + lines[heading["line"]]
+        return "\n".join(lines).removesuffix("\n")
 
     combined = "\n\n".join(flatten(p, expanded[p]) for p in chapters) + "\n"
     first, rest = combined.split("\n", 1)
@@ -267,7 +244,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     for file in resources(root):
         output[record(file)] = read(file)
     info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION, "builtin_count": len(builtins), "example_count": len(cases),
-                 "headings": headings(combined),
+                 "headings": manifest_headings(combined),
                  "source_files": dict(sorted(inputs.items())),
                  "files": {name: digest(text.encode("utf-8")) for name, text in sorted(output.items())}})
     require(destination.resolve() != root.resolve() and not root.resolve().is_relative_to(destination.resolve()),
