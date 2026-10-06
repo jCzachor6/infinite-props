@@ -43,6 +43,7 @@ add_executable(iprop_tests
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
     compiler/calls_test.cpp
+    compiler/effects_test.cpp
     builtin_spec_test.cpp
     typed_plan_test.cpp
     call_plan_test.cpp
@@ -141,6 +142,8 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_format_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_language_contract COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_language_contract.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME compiler_language_effects COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_language_effects.py" "$<TARGET_FILE:ipc>")
     add_test(NAME ci_release_tools COMMAND ${Python3_EXECUTABLE} -m unittest discover
         -s "${CMAKE_SOURCE_DIR}/scripts/tests" -p "test_*.py")
     add_test(NAME compiler_optimization_acceptance COMMAND ${Python3_EXECUTABLE}

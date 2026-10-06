@@ -1,4 +1,5 @@
 #include "ips/BuiltinSpec.hpp"
+#include <stdexcept>
 
 namespace iprop::ips {
 const std::map<std::string, BuiltinSpec>& builtinSpecs() {
@@ -119,5 +120,26 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
         else if (type != result) return std::nullopt;
     }
     return result;
+}
+
+OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {
+    if (overload && overload->opcode) {
+        const auto* opcode = findOpcode(*overload->opcode);
+        if (!opcode) throw std::logic_error("builtin effects refer to an unknown opcode");
+        return opcode->effects;
+    }
+    switch (spec.lowering) {
+    case BuiltinLowering::Pick: case BuiltinLowering::Chance:
+        return {RngEffect::AdvanceCurrent};
+    case BuiltinLowering::Roll: case BuiltinLowering::Choose:
+        return {RngEffect::IsolatedSeededStream};
+    case BuiltinLowering::Polygon: return findOpcode(Opcode::Poly)->effects;
+    case BuiltinLowering::Opcode:
+        if (!overload) throw std::logic_error("fixed builtin effects require an overload");
+        return {};
+    case BuiltinLowering::Round:
+    case BuiltinLowering::ColorConstructor: return {};
+    }
+    throw std::logic_error("unknown builtin lowering effects");
 }
 } // namespace iprop::ips

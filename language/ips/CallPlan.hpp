@@ -18,6 +18,7 @@ struct CallSignature {
     // Slot indices in evaluation order, including compile-time-only slots.
     // Polygon coordinates precede color; part uniforms precede seed/v/a/at.
     std::vector<std::size_t> evaluationOrder;
+    OperationEffects effects;
 };
 struct BoundCallPlan {
     CallSignature signature;

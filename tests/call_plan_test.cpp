@@ -37,6 +37,11 @@ TEST_CASE("bound call plans survive nested scope preparation and are never rebou
     CHECK(bound.arguments[0] == &helper.args[1]);
     CHECK(bound.arguments[1] == &helper.args[0]);
     CHECK(bound.signature.evaluationOrder == std::vector<std::size_t>{0,1});
+    CHECK(bound.signature.effects == findOpcode(Opcode::Call)->effects);
+    const auto& rectangle = callOf(program.asset.functions[0].body[1]);
+    CHECK(function.boundCalls.at(&rectangle).signature.effects == findOpcode(Opcode::Rect)->effects);
+    const auto& ramp = callOf(program.asset.functions[0].body[2]);
+    CHECK(function.boundCalls.at(&ramp).signature.effects == OperationEffects{});
     // If lowering independently maps the spelling again these become unknown
     // parameters. The stored binding, expression identities and widening stay.
     for (auto& stmt : program.asset.functions[0].body)
@@ -57,6 +62,7 @@ TEST_CASE("part binding records declaration defaults without resolving them whil
     const auto info = ips::partInfoOf(part.asset);
     const auto signature = ips::partCallSignature(info.inputs);
     CHECK(signature.evaluationOrder == std::vector<std::size_t>{7,8,0,1,2,3,4,5,6});
+    CHECK(signature.effects == findOpcode(Opcode::PartDraw)->effects);
     CHECK(std::get<const ips::InputDecl*>(signature.defaults[7]) == &part.asset.inputs[0]);
     CHECK(std::get<const ips::InputDecl*>(signature.defaults[8]) == &part.asset.inputs[1]);
     CHECK(std::get<i32>(signature.defaults[4]) == 0);

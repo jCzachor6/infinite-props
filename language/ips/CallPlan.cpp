@@ -6,7 +6,7 @@
 namespace iprop::ips {
 namespace {
 CallSignature ordered(std::vector<ArgumentParameter> parameters) {
-    CallSignature result{std::move(parameters), {}, {}};
+    CallSignature result{std::move(parameters), {}, {}, {}};
     result.defaults.resize(result.parameters.size());
     result.evaluationOrder.resize(result.parameters.size());
     std::iota(result.evaluationOrder.begin(), result.evaluationOrder.end(), 0);
@@ -25,22 +25,30 @@ std::string calleeName(const Expr& expr) {
 CallSignature helperCallSignature(std::span<const std::string> names) {
     std::vector<ArgumentParameter> parameters;
     for (const auto& name : names) parameters.push_back({name});
-    return ordered(std::move(parameters));
+    auto result = ordered(std::move(parameters));
+    result.effects = findOpcode(Opcode::Call)->effects;
+    return result;
 }
 CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
+    result.effects = builtinEffects(spec, builtinOverload(spec, arity));
     if (spec.lowering == BuiltinLowering::Polygon) {
         result.evaluationOrder.erase(result.evaluationOrder.begin());
         result.evaluationOrder.push_back(0);
     }
     return result;
 }
-CallSignature rampCallSignature() { return helperCallSignature(rampParameterNames()); }
+CallSignature rampCallSignature() {
+    auto result = helperCallSignature(rampParameterNames());
+    result.effects = {};
+    return result;
+}
 CallSignature partCallSignature(std::span<const PartInput> inputs) {
     std::vector<std::string> names;
     for (const auto& input : inputs) names.push_back(input.name);
     auto result = ordered(partParameters(names));
+    result.effects = findOpcode(Opcode::PartDraw)->effects;
     result.evaluationOrder.clear();
     for (std::size_t i = 0; i < inputs.size(); ++i) {
         result.evaluationOrder.push_back(7 + i);

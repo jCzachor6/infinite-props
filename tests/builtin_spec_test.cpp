@@ -3,6 +3,7 @@
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/VM.hpp"
 #include "ips/BuiltinSpec.hpp"
+#include "ips/CallPlan.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
 
@@ -24,9 +25,16 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
     for (const auto& [name,spec] : ips::builtinSpecs()) {
         for (const auto& overload : spec.overloads) {
             INFO(name << " arity " << overload.params.size());
+            const auto effects = ips::builtinEffects(spec, &overload);
+            const auto signature = ips::builtinCallSignature(spec, overload.params.size(), {1,1}, name);
+            CHECK(signature.effects == effects);
+            CHECK_FALSE(effects.conservative);
+            if (overload.result == T::Void)
+                CHECK((effects.rng != RngEffect::None || effects.writesCanvas || effects.writesOutputs));
             if (overload.opcode) {
                 const auto* opcode = findOpcode(*overload.opcode);
                 REQUIRE(opcode);
+                CHECK(effects == opcode->effects);
                 REQUIRE(opcode->stack);
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)

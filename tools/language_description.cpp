@@ -12,6 +12,45 @@
 
 namespace iprop::tools {
 namespace {
+void operationEffects(std::ostream& out, const OperationEffects& effects) {
+    out << "{\"rng\":\"" << rngEffectName(effects.rng)
+        << "\",\"writes_canvas\":" << (effects.writesCanvas ? "true" : "false")
+        << ",\"writes_outputs\":" << (effects.writesOutputs ? "true" : "false")
+        << ",\"summary\":\"" << (effects.conservative ? "conservative" : "intrinsic")
+        << "\",\"may_trap\":[";
+    bool first = true;
+    for (const auto check : {EffectCheck::NumericRange, EffectCheck::StreamStackUnderflow,
+        EffectCheck::PartRenderArguments, EffectCheck::Callee, EffectCheck::PartOutputMissing,
+        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext}) {
+        if ((effects.checks & static_cast<u8>(check)) == 0) continue;
+        if (!first) out << ',';
+        first = false;
+        out << '"' << effectCheckName(check) << '"';
+    }
+    out << "]}";
+}
+
+void effectRules(std::ostream& out) {
+    out << R"(,"effect_rules":{"intrinsic_scope":"operation_excluding_arguments_and_resources",
+"argument_effects":"evaluated_before_operation_in_caller_stream",
+"resource_traps":["fuel_exhausted","call_depth_limit"],"validation_limits":["operand_stack_limit"],
+"allocation_failure":true,"helper":)";
+    operationEffects(out, findOpcode(Opcode::Call)->effects);
+    out << ",\"part\":";
+    operationEffects(out, findOpcode(Opcode::PartDraw)->effects);
+    out << ",\"seed_read\":";
+    operationEffects(out, findOpcode(Opcode::StreamState)->effects);
+    out << ",\"output_write\":";
+    operationEffects(out, findOpcode(Opcode::OutPoint)->effects);
+    out << ",\"output_write_policy\":{\"singular\":\"replace\",\"list\":\"append\"},\"part_output_read\":";
+    operationEffects(out, findOpcode(Opcode::PartGetPoint)->effects);
+    out << ",\"integer_division\":";
+    operationEffects(out, findOpcode(Opcode::I32DivS)->effects);
+    out << ",\"integer_remainder\":";
+    operationEffects(out, findOpcode(Opcode::I32RemS)->effects);
+    out << '}';
+}
+
 constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Circle, ips::ValueType::Rect};
 
@@ -119,7 +158,10 @@ void variadic(std::ostream& out, const std::string& name, const ips::BuiltinSpec
     }
     out << ']';
     evaluationOrder(out, signature);
-    if (!polygon) out << ",\"choice_types\":[\"i32\",\"f32\",\"color\",\"vec2\"]";
+    out << ",\"effects\":";
+    operationEffects(out, signature.effects);
+    if (!polygon) out << ",\"choice_types\":[\"i32\",\"f32\",\"color\",\"vec2\"]"
+        << ",\"choice_evaluation\":\"eager_once_before_selection_rng\"";
     out << '}';
 }
 } // namespace
@@ -151,6 +193,8 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
             }
             out << "],\"result\":\"" << ips::typeName(overload.result) << "\"";
             evaluationOrder(out, signature);
+            out << ",\"effects\":";
+            operationEffects(out, ips::builtinEffects(spec, &overload));
             if (overload.opcode) {
                 const auto* opcode = findOpcode(*overload.opcode);
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
@@ -176,6 +220,8 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
         parameter(out, ramp.parameters[1].name, "f32");
         out << "],\"result\":\"" << ips::typeName(type) << "\"";
         evaluationOrder(out, ramp);
+        out << ",\"effects\":";
+        operationEffects(out, ramp.effects);
         out << '}';
     }
     out << "]}],\"call_rules\":{\"helper_evaluation_order\":\"declaration\",\"part\":{";
@@ -205,6 +251,7 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     }
     out << ']';
     sourceRules(out);
+    effectRules(out);
     out << "}\n";
 }
 } // namespace iprop::tools

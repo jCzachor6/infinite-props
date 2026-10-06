@@ -5,12 +5,47 @@ namespace iprop {
 namespace {
 using S = StackType;
 using V = ValueType;
+constexpr OperationEffects effects(Opcode op) {
+    using R = RngEffect;
+    using C = EffectCheck;
+    const auto check = [](C value) { return static_cast<u8>(value); };
+    switch (op) {
+    case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
+        return {R::AdvanceCurrent};
+    case Opcode::StreamState: return {R::ReadCurrent};
+    case Opcode::StreamPush: return {R::PushSeededStream};
+    case Opcode::StreamPop: return {R::RestoreStream,false,false,check(C::StreamStackUnderflow)};
+    case Opcode::Noise: case Opcode::Fault: return {R::SeededComputation};
+    case Opcode::NoiseGrad: case Opcode::NoiseFbm: case Opcode::NoiseCell:
+    case Opcode::Warp: case Opcode::CellJitter: case Opcode::NoiseRidge:
+        return {R::SeededComputation,false,false,check(C::NumericRange)};
+    case Opcode::Weather: return {R::SeededComputation,true};
+    case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
+    case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
+        return {R::None,true,false,check(C::NumericRange)};
+    case Opcode::ColorHsv: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
+    case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
+        return {R::None,false,true};
+    case Opcode::PartGetPoint: case Opcode::PartGetRect: case Opcode::PartGetCircle:
+        return {R::None,false,false,static_cast<u8>(check(C::PartOutputMissing)|check(C::PartOutputContext))};
+    case Opcode::I32DivS:
+        return {R::None,false,false,static_cast<u8>(check(C::DivideByZero)|check(C::IntegerOverflow))};
+    case Opcode::I32DivU: case Opcode::I32RemS: case Opcode::I32RemU:
+        return {R::None,false,false,check(C::DivideByZero)};
+    case Opcode::Call: return {R::SharedCallee,true,true,check(C::Callee),true};
+    case Opcode::PartDraw:
+        return {R::IsolatedCallee,true,true,
+            static_cast<u8>(check(C::PartRenderArguments)|check(C::Callee)),true};
+    default: return {};
+    }
+}
 constexpr OpcodeSpec fixed(Opcode op, const char* name, u16 minor, StackSignature stack) {
-    return {op,name,minor,OperandKind::None,AuxPolicy::Zero,stack};
+    return {op,name,minor,OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
 }
 constexpr OpcodeSpec dynamic(Opcode op, const char* name, u16 minor, OperandKind operand,
                              AuxPolicy aux = AuxPolicy::Zero) {
-    return {op,name,minor,operand,aux,std::nullopt};
+    return {op,name,minor,operand,aux,std::nullopt,effects(op)};
 }
 
 constexpr OpcodeSpec kSpecs[] = {
@@ -157,6 +192,33 @@ constexpr auto kByOpcode = [] {
 } // namespace
 
 std::span<const OpcodeSpec> opcodeSpecs() { return kSpecs; }
+const char* rngEffectName(RngEffect effect) {
+    switch (effect) {
+    case RngEffect::None: return "none";
+    case RngEffect::ReadCurrent: return "read_current";
+    case RngEffect::AdvanceCurrent: return "advance_current";
+    case RngEffect::PushSeededStream: return "push_seeded_stream";
+    case RngEffect::RestoreStream: return "restore_stream";
+    case RngEffect::SeededComputation: return "seeded_computation";
+    case RngEffect::IsolatedSeededStream: return "isolated_seeded_stream";
+    case RngEffect::SharedCallee: return "shared_callee_stream";
+    case RngEffect::IsolatedCallee: return "isolated_callee_stream";
+    }
+    return "unknown";
+}
+const char* effectCheckName(EffectCheck check) {
+    switch (check) {
+    case EffectCheck::NumericRange: return "numeric_range";
+    case EffectCheck::StreamStackUnderflow: return "stream_stack_underflow";
+    case EffectCheck::PartRenderArguments: return "part_render_arguments";
+    case EffectCheck::Callee: return "callee";
+    case EffectCheck::PartOutputMissing: return "part_output_missing";
+    case EffectCheck::DivideByZero: return "divide_by_zero";
+    case EffectCheck::IntegerOverflow: return "integer_overflow";
+    case EffectCheck::PartOutputContext: return "part_output_context";
+    }
+    return "unknown";
+}
 const OpcodeSpec* findOpcode(Opcode opcode) { return kByOpcode[static_cast<u8>(opcode)]; }
 const OpcodeSpec* findOpcode(std::string_view mnemonic) {
     static const auto names = [] {

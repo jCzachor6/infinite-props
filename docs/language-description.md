@@ -79,6 +79,58 @@ template denotes all uniform slots, not a literal source parameter name.
 
 ## Executable evidence
 
+Every builtin overload and variadic signature also exports `effects` from
+the shared opcode/lowering contracts. `CallSignature.effects` carries this
+metadata through binding, typing and planning; no parallel public signature
+catalogue is used. A generic helper signature conservatively includes callee
+effects. This export does not inspect a particular helper body to prove purity.
+
+| Effect field | Meaning |
+| --- | --- |
+| `effects.rng` | `none` means no intrinsic RNG access; `read_current` observes it; `advance_current` advances it once. `push_seeded_stream` saves the current stream and selects a seed; `restore_stream` restores the saved stream. `seeded_computation` depends deterministically on explicit seed arguments without reading/advancing the current stream. `isolated_seeded_stream` selects on a temporary seeded stream and restores its parent. `shared_callee_stream` conservatively includes a helper's effects on the caller's stream; `isolated_callee_stream` includes a part's independent stream, restored on return. |
+| `effects.writes_canvas`, `.writes_outputs` | The operation may change pixels or structured output slots. A `true` value does not promise a visible change for every input. |
+| `effects.summary` | `intrinsic` describes the operation itself; `conservative` includes effects that an arbitrary helper/part body may perform. |
+| `effects.may_trap` | Potential intrinsic runtime checks on valid compiled source, excluding argument effects and execution-wide resources. `numeric_range` covers checked coordinates/lattice indices, curve thickness and nonfinite HSV hue. `stream_stack_underflow` checks for an absent saved stream. `part_render_arguments` checks placement/scaled part extent. `callee` includes the body's traps. `part_output_missing` checks for an unwritten last-called part output; `part_output_context` requires the slot to belong to this frame's last-called part. `divide_by_zero` and `integer_overflow` describe signed integer division; remainder has only the zero-divisor check. |
+| `variadic.choice_evaluation` | `eager_once_before_selection_rng`: every choice is evaluated once in signature order before selection, including unselected choices and their effects/traps. |
+
+`effects` excludes effects of its argument expressions. A nominally pure
+`abs(1/v)` can still trap in its integer argument expression. All arguments to
+`roll`, `choose` and part calls execute in the caller's stream before entering
+the isolated stream. Thus a `unit()` argument advances the parent even when
+the seeded selection or child body itself does not. `pick` advances the current
+stream after all choices; `choose` advances its temporary seeded stream after
+the seed and all choices, then restores the parent. `index(0)` still advances
+the stream. Seeded noise and weather do not advance it. Integer conversion and
+`round` map NaN to zero and saturate infinities/out-of-range values without an
+intrinsic numeric-range trap.
+
+| `effect_rules` field | Meaning |
+| --- | --- |
+| `intrinsic_scope` | `operation_excluding_arguments_and_resources`: the scope of each intrinsic summary. |
+| `argument_effects` | `evaluated_before_operation_in_caller_stream`: compose runtime argument effects with the intrinsic operation in exported signature order. |
+| `resource_traps` | Execution-wide fuel and call-depth limits can fail even around operations with an empty intrinsic `may_trap` array. |
+| `validation_limits` | The validator bounds operand-stack depth before executing compiled source; the VM also defends this limit when given unvalidated bytecode. |
+| `allocation_failure` | Execution also allocates storage; allocation can fail independently of intrinsic domain checks. This failure need not be a VM `Trap`. |
+| `helper`, `part` | Conservative operation summaries from the shared call/part opcode metadata. |
+| `seed_read` | Effects of reading the current RNG state through `seed`. |
+| `output_write` | An output assignment writes its slot without drawing or consuming RNG; effects in its value expression remain separate. |
+| `output_write_policy.singular`, `.list` | Singular slots replace their previous value; list slots append in execution order. |
+| `part_output_read` | Reading a part output requires this frame's last-called part and a written output. |
+| `integer_division`, `integer_remainder` | Intrinsic operator checks, separate from calls or their arguments. |
+
+Defensive checks for malformed/unvalidated bytecode are outside these source
+summaries. Host invocation checks are also separate from intrinsic calls.
+
+The [effect export check](../scripts/check_language_effects.py), registered as
+CTest `compiler_language_effects`, checks every exported signature and alias
+for complete, consistent effects. The shared-registry
+[builtin tests](../tests/builtin_spec_test.cpp) check metadata against every
+opcode overload. The [effect acceptance tests](../tests/compiler/effects_test.cpp)
+execute all registered current-stream/seeded overloads, all builtin numeric
+checks, eager selection traces, stream underflow, helper drawing/output writes,
+part placement/output-context/missing-output traps and global fuel/call-depth failures. These tests
+check accepted source with optimization on/off and exact following RNG bits.
+
 The [CLI acceptance corpus](../scripts/check_language_contract.py), registered
 as CTest `compiler_language_contract`, checks every new version/profile field
 and compiles valid and invalid input/type/local/visibility/named-call/recursion/
