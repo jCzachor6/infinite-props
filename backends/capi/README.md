@@ -150,23 +150,27 @@ or column is invented. See the [error contract](../../docs/runtime-errors.md).
 The descriptor now accepts a caller-owned `message_buffer`/`message_capacity`
 and reports full `message_required_bytes` (excluding NUL) and truncation.
 The common error sink clears success and renders argument/OOM/runtime messages
-without allocating. Structured load/generation consumers are introduced in
-subsequent tasks; this initializer does not advertise an error capability.
+without allocating. Checked load/program/library queries now consume this
+policy; structured generation remains a parameters-stage task. See the
+[implemented checked operations](../../docs/c-api-checked.md).
 
 The shared new-operation boundary distinguishes typed argument/setup errors,
 load/validation errors, actual execution traps, OOM and unexpected internal
 exceptions. Legacy calls retain their old classification. See the
 [status policy](../../docs/runtime-errors.md#new-status-policy-and-exception-boundary);
-the boundary adds no public operation or capability yet.
+the shared runtime core is consumed by checked load/query adapters and the
+legacy adapters, each with its documented policy.
 
 New collections use count/get/find accessors returning one caller-sized
 descriptor at a time. They do not return arrays whose stride depends on a
 newer `sizeof`. All initializers reject null or capacities below four without
 a write, preserve unknown tail/padding bytes, and require no allocation.
 
-The development API currently reports `IPROP_CAP_LIBRARY_QUERY` and
-`IPROP_CAP_SIZED_DESCRIPTORS`. Later tasks add capability bits only when the
-corresponding reflection, parameters, errors and output accessors work.
+The development API reports library-query/sized-descriptor capabilities and
+`IPROP_CAP_PROGRAM_LOAD_EX`, `IPROP_CAP_PROGRAM_QUERY`,
+`IPROP_CAP_STRUCTURED_ERRORS`, `IPROP_CAP_LIBRARY_QUERY_EX` for implemented
+checked load/metadata queries. Reflection, parameters, structured generation
+and output accessors receive capability bits only when implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
 advertised by this release. A larger API minor number alone does not imply
 those capabilities.

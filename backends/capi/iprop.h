@@ -189,6 +189,10 @@ typedef struct {
 
 #define IPROP_CAP_LIBRARY_QUERY (UINT64_C(1) << 0)
 #define IPROP_CAP_SIZED_DESCRIPTORS (UINT64_C(1) << 1)
+#define IPROP_CAP_PROGRAM_LOAD_EX (UINT64_C(1) << 2)
+#define IPROP_CAP_PROGRAM_QUERY (UINT64_C(1) << 3)
+#define IPROP_CAP_STRUCTURED_ERRORS (UINT64_C(1) << 4)
+#define IPROP_CAP_LIBRARY_QUERY_EX (UINT64_C(1) << 5)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -327,6 +331,46 @@ typedef struct {
  * A NULL descriptor or capacity < 4 fails without a write. Unknown tail,
  * padding and incomplete fields are untouched, like the other initializers. */
 IPROP_API iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capacity);
+
+/* Checked API 0.3 operations share the structured status/message policy.
+ * Optional error output is initialized on every completed call, including
+ * success. Its descriptor/message storage must not overlap out_program or a
+ * query output, or its own message buffer overlap its descriptor. Overlap is
+ * rejected as E_ARGUMENT without modifying either output. NULL error is valid.
+ * Malformed error storage stops the operation before any handle/view write. */
+
+/* Loads once and validates once. byte_count is fixed-width and must fit the
+ * platform's size_t. bytes must be non-null, even when byte_count is zero;
+ * non-null empty input is a format error. The caller provides readable bytes
+ * for the call; the program owns its loaded copy. out_program is required.
+ * Success publishes exactly one new handle and does not free an old value;
+ * failure leaves the caller's existing pointer untouched. */
+IPROP_API iprop_status_ex iprop_program_load_ex(const uint8_t* bytes, uint64_t byte_count,
+                                              iprop_program** out_program, iprop_error_ex* error);
+
+/* Program metadata query, separate from frozen iprop_meta. Only struct_size
+ * is input; minimum capacity is four bytes. Success writes complete known
+ * fields, preserving size, partial fields, padding and unknown tail. Failure
+ * leaves the output untouched. This same descriptor will gain additive fields
+ * for emission/format information when that capability is implemented. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t size_x, size_y;
+    float origin_x, origin_y;
+    uint32_t variants, archetypes;
+    uint64_t fuel;
+} iprop_program_info_ex;
+
+IPROP_API iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_program_query(const iprop_program* program,
+                                            iprop_program_info_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_library_query_ex(iprop_library_info_ex* out, iprop_error_ex* error);
+
+/* generate_ex is planned for the validated-parameters stage; it has no symbol
+ * or capability yet. Its options use iprop_generate_options_ex, with absent
+ * scalar fields defaulting to zero and unknown flags rejected. It will accept
+ * a compatible parameter handle (NULL means defaults), preserve old output
+ * handles on failure, and use this same checked error/operation boundary. */
 
 #ifdef __cplusplus
 } /* extern "C" */

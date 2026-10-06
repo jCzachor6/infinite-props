@@ -1,14 +1,16 @@
 #include "iprop.h"
 
 #include "BuildVersion.hpp"
-#include "Sized.hpp"
+#include "CheckedBoundary.hpp"
 #include "iprop/Constants.hpp"
 
 #include <cstddef>
 
-extern "C" iprop_status_ex iprop_library_query(iprop_library_info_ex* out) {
+namespace {
+iprop::capi::CallOutcome queryLibrary(iprop_library_info_ex* out) noexcept {
     uint32_t size = 0;
-    if (!iprop::capi::descriptorSize(out, size)) return IPROP_EX_E_ARGUMENT;
+    if (!iprop::capi::descriptorSize(out, size))
+        return iprop::capi::CallOutcome::argument("library query output is null or smaller than four bytes");
     iprop_library_info_ex info{};
     info.product_major = iprop::capi::productMajor;
     info.product_minor = iprop::capi::productMinor;
@@ -20,12 +22,25 @@ extern "C" iprop_status_ex iprop_library_query(iprop_library_info_ex* out) {
     info.format_major = iprop::kVersionMajor;
     info.format_minor_min = 1;
     info.format_minor_max = iprop::kVersionMinor;
-    info.capabilities = IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS;
+    info.capabilities = IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS |
+        IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
+        IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX;
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_library_info_ex, field), info.field)
     WRITE(product_major); WRITE(product_minor); WRITE(product_patch);
     WRITE(api_major); WRITE(api_minor); WRITE(abi_major); WRITE(abi_minor);
     WRITE(format_major); WRITE(format_minor_min); WRITE(format_minor_max);
     WRITE(capabilities);
 #undef WRITE
-    return IPROP_EX_OK;
+    return {};
+}
+} // namespace
+
+extern "C" iprop_status_ex iprop_library_query(iprop_library_info_ex* out) {
+    return queryLibrary(out).succeeded ? IPROP_EX_OK : IPROP_EX_E_ARGUMENT;
+}
+
+extern "C" iprop_status_ex iprop_library_query_ex(iprop_library_info_ex* out, iprop_error_ex* error) {
+    iprop::capi::ErrorContext context{iprop::ErrorStage::Arguments};
+    return iprop::capi::checkedBoundary(error, out, iprop::capi::queryCapacity(out), context,
+        [&] { return queryLibrary(out); });
 }

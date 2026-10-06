@@ -89,8 +89,9 @@ reflection and parameter entry points use it when implemented.
 The sized `iprop_error_ex` foundation and initializer follow the same rules.
 Its typed categories, stages and optional coordinate spaces are specified in
 [runtime-errors.md](runtime-errors.md). Presence bits distinguish unavailable
-locations from valid zero offsets/indices. This foundation adds no structured
-load/query/generate consumer or error capability yet. Its call-local ErrorSink
+locations from valid zero offsets/indices. The
+[checked load/query operations](c-api-checked.md) consume this foundation;
+structured generation is specified for P.5. Its call-local ErrorSink
 snapshots caller-owned message storage, performs no allocation while reporting,
 and preserves the descriptor's buffer/capacity inputs.
 
@@ -101,3 +102,10 @@ unexpected exceptions are `E_INTERNAL`. Its bounded error output is optional,
 and malformed output storage stops the operation before publication. Legacy
 entry points keep their existing classification. See
 [the policy and stage/type distinction](runtime-errors.md#new-status-policy-and-exception-boundary).
+
+Checked load and metadata queries reject error descriptor/message spans that
+overlap their output pointer/query storage, or a writable message span that
+overlaps its own error descriptor. They return `E_ARGUMENT` without invoking
+or reporting the operation and preserve both outputs. This exception to error
+publication prevents the error writer itself from corrupting protected output.
+All other valid error prefixes follow the bounded message/status contract.

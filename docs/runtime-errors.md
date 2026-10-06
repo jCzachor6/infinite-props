@@ -7,12 +7,11 @@ no location, message buffer or message length. Like other sized initializers, it
 fields; partial fields, padding and unknown tail bytes remain untouched.
 It owns no memory and requires no free function.
 
-This foundation does not add a structured load/generation/query entry point
-or an error capability. The existing six C entry points keep their enums,
-layouts, status policies and located text. Later entry points consume this
-descriptor through the call-local error sink. The message-buffer foundation
-below is implemented without advertising a structured load/query/generation
-consumer.
+The [checked load and metadata queries](c-api-checked.md) consume this descriptor
+through the call-local error sink and advertise only those implemented
+capabilities. The existing six legacy C entry points keep their enums, layouts,
+status policies and located text. Structured generation is specified for the
+parameters stage, with no exported symbol or capability yet.
 
 ## Causes and stages
 
@@ -42,8 +41,9 @@ invalid variant, retains `IPROP_E_TRAP` even though its typed stage is
 ## New status policy and exception boundary
 
 `backends/capi/ErrorBoundary.hpp` defines the shared policy for structured
-operations as they are implemented. It adds no public load/query/generation
-entry point or capability. Classification uses the exception type and its
+operations. Checked load/program/library queries use it through the storage
+adapter; structured generation remains a future task. Classification uses the
+exception type and its
 typed originating stage; it never infers a status from message text or a
 numeric cause range. A recognized typed failure retains its cause and location.
 
@@ -83,8 +83,9 @@ loading, validation or execution, and owns no handle or operation result.
 The optional diagnostic file in `ErrorContext` must stay alive until the
 boundary returns, including stack unwinding. Its owner belongs outside the
 callable; a local destroyed while throwing cannot supply a diagnostic view to
-the catch handler. Handle publication and its transaction rules belong to the
-future entry points. Future limits/cancellation causes remain a 0.6 task.
+the catch handler. [Checked load/query publication](c-api-checked.md) follows the
+same lifetime rule; future generation will reuse it. Future limits/cancellation
+causes remain a 0.6 task.
 
 The six legacy entry points continue using their own frozen classification:
 load maps typed/other failures to `E_FORMAT`, generation maps `Trap` to

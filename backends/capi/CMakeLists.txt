@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp library.cpp descriptors.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -59,14 +59,17 @@ add_test(NAME capi_descriptors COMMAND capi_descriptors)
 foreach(linkage shared static)
     add_executable(capi_error_descriptor_${linkage} test/error_descriptor.c)
     add_executable(capi_error_buffers_${linkage} test/error_buffers.c)
+    add_executable(capi_checked_${linkage} test/checked.c)
     add_executable(capi_library_${linkage} test/library.c)
     if(linkage STREQUAL "shared")
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi)
+        target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
     else()
         target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi_static)
+        target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi_static)
         target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
     endif()
     target_compile_definitions(capi_library_${linkage} PRIVATE
@@ -76,6 +79,7 @@ foreach(linkage shared static)
     iprop_warnings(capi_library_${linkage})
     iprop_warnings(capi_error_descriptor_${linkage})
     iprop_warnings(capi_error_buffers_${linkage})
+    iprop_warnings(capi_checked_${linkage})
     add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
     add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
 endforeach()
@@ -106,7 +110,10 @@ endforeach()
 add_custom_target(capi_golden DEPENDS ${IPROP_CAPI_IPROPS})
 foreach(linkage shared static)
     add_dependencies(capi_error_buffers_${linkage} capi_golden)
+    add_dependencies(capi_checked_${linkage} capi_golden)
     add_test(NAME capi_error_buffers_${linkage} COMMAND capi_error_buffers_${linkage}
+        ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
+    add_test(NAME capi_checked_${linkage} COMMAND capi_checked_${linkage}
         ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
 endforeach()
 set(owner_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-owners.iprop)
@@ -156,6 +163,12 @@ iprop_warnings(capi_error_boundary)
 add_dependencies(capi_error_boundary capi_golden)
 add_test(NAME capi_error_boundary COMMAND capi_error_boundary
     ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${IPROP_CAPI_GOLDEN_DIR}/error-trap.iprop)
+
+add_executable(capi_checked_errors test/checked_errors.cpp)
+target_link_libraries(capi_checked_errors PRIVATE iprop_capi_static)
+iprop_warnings(capi_checked_errors)
+add_dependencies(capi_checked_errors capi_golden)
+add_test(NAME capi_checked_errors COMMAND capi_checked_errors ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
 
     add_test(NAME capi_conformance
         COMMAND capi_conformance
