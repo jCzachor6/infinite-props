@@ -311,6 +311,13 @@ add_dependencies(capi_generation_request capi_golden)
 add_test(NAME capi_generation_request COMMAND capi_generation_request
     ${IPROP_CAPI_GOLDEN_DIR}/portrait.iprop)
 
+add_executable(capi_parameter_transactions test/parameter_transactions.cpp)
+target_link_libraries(capi_parameter_transactions PRIVATE iprop_capi_static)
+iprop_warnings(capi_parameter_transactions)
+add_dependencies(capi_parameter_transactions capi_golden)
+add_test(NAME capi_parameter_transactions COMMAND capi_parameter_transactions
+    ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)
+
 add_executable(capi_parameters_errors test/parameters_errors.cpp)
 target_link_libraries(capi_parameters_errors PRIVATE iprop_capi_static)
 iprop_warnings(capi_parameters_errors)

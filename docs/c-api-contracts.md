@@ -57,7 +57,9 @@ Free functions accept `NULL`. Other handles are required unless their function
 explicitly documents a null default; required output pointers are non-null.
 Functions do not accept stale handles or invalid pointers. No shared-handle
 concurrency guarantee is introduced in 0.5; use separate handle groups on
-different threads. Calls are synchronous and retain no caller callbacks.
+different threads. A group is one loaded program with the parameter sets and
+clones created from it, because they share its loaded data; results own their
+data. Calls are synchronous and retain no caller callbacks.
 
 ## Sized descriptors and failures
 

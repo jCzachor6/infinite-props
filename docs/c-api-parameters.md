@@ -119,6 +119,38 @@ root input on the stack: the call allocates nothing. Unlike legacy
 `iprop_generate`, which ignores unknown uniforms, lets the first duplicate win
 and traps on a mismatched type, this list is strict.
 
+## Transactions, snapshots and threads
+
+Every value mutation is one transaction: `iprop_parameters_set`,
+`iprop_parameters_set_named`, `iprop_parameters_set_overrides`,
+`iprop_parameters_reset` and any convenience setter built on them. The library
+validates the complete request and the optional error storage first; the
+replacement that follows cannot fail, throw or allocate. A failed call
+therefore leaves every value bit unchanged, including list entries validated
+before the failing one. There is no partial override and no rollback step.
+Malformed error descriptors and rejected aliases stop the call before the
+operation runs. Create and clone publish a new handle only on success.
+
+`iprop_parameters_clone` is the snapshot of a mutable set. It copies all current
+values at the call and shares only the immutable program data and identity.
+Mutating, resetting or freeing either handle never changes the other, and the
+snapshot outlives `program_free` and its source. To prepare several
+configurations, clone a base set and apply a list or setters to each clone.
+
+Generation only reads parameters. The request check of new generation entries
+takes `const iprop_parameters *` and leaves the handle and its values unchanged,
+whether it accepts or rejects the request; the planned `generate_ex` takes the
+same const handle. A result owns its data, so later parameter changes never
+alter it.
+
+A parameter set is a single-user builder, not a synchronized object. Never call
+functions on one set from two threads at the same time, and never mutate it
+while another thread reads, clones or generates with it. In 0.5, a program and
+the sets and clones created from it share loaded data and form one handle
+group: hosts serialize calls within a group and use separately loaded programs
+for concurrent workers. Sharing one immutable program across workers is left
+to the 0.6 concurrency audit.
+
 ## Failures, publication and aliases
 
 Required handles and main outputs are non-null; error output is optional and

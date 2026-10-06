@@ -438,7 +438,11 @@ IPROP_API iprop_status_ex iprop_program_input_find(const iprop_program* program,
  * program_free. IDs are root-input indices; part signature IDs do not grant
  * host overrides. Clones own independent values but share program identity.
  * A separate load, even of identical bytes, has a different identity, checked
- * by future generate_ex. This capability does not promise generation. */
+ * by future generate_ex. This capability does not promise generation.
+ * A set is a single-user mutable builder. Every update is all-or-nothing: a
+ * failed call changes no value. Clone takes an independent value snapshot;
+ * generation only reads a const set. No set may be used by two threads at
+ * once, and 0.5 asks hosts to serialize calls on handles of one program. */
 typedef struct iprop_parameters iprop_parameters;
 
 /* Getter: minimum four-byte prefix; absent flags mean zero; nonzero
