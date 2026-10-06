@@ -30,8 +30,9 @@ identity must remain `0.4`. DLL exports and the C calling convention must
 remain compatible on Windows. Product-versioned physical filenames may
 change while the loader identity stays fixed. `cmake/CAbi.cmake` configures
 the ABI line independently of `PROJECT_VERSION`. The shared target's
-`SOVERSION`, generated runtime query and installed CMake package metadata
-use this one configuration. `VERSION` continues to describe the physical
+`SOVERSION`, generated runtime query, installed CMake package metadata and
+the `c_abi_soversion` field of the compiler export and release manifests use
+this one configuration. `VERSION` continues to describe the physical
 product release. DLL filenames and C export annotations remain unchanged.
 
 CMake package version selection retains normal product-version, `EXACT`,

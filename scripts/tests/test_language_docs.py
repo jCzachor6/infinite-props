@@ -17,7 +17,7 @@ from types import SimpleNamespace
 docs = SimpleNamespace(**vars(language_docs))
 for name in ("build", "verify", "verify_archive"):
     setattr(docs, name, partial(getattr(language_docs, name), profile=HISTORICAL))
-from language_fixture import LANGUAGE, fixture
+from language_fixture import LANGUAGE, VERSION_FILES, fixture
 
 
 class DocumentationTest(unittest.TestCase):
@@ -102,6 +102,30 @@ class DocumentationTest(unittest.TestCase):
         result = type("Result", (), {"returncode": 0, "stdout": json.dumps(value), "stderr": ""})()
         with patch.object(language_docs, "run", return_value=result), self.assertRaisesRegex(RuntimeError, "another product version"):
             docs.contracts(Path("unused"), self.root)
+
+    def test_current_compiler_versions_must_match_their_independent_sources(self):
+        for name, text in {**VERSION_FILES, "backends/capi/iprop.h":
+                           "#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 3\n"}.items():
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_text(text, encoding="utf-8")
+        value = {**LANGUAGE, "language_version": {"major": 0, "minor": 4}, "format_version": {"major": 0, "minor": 4},
+                 "c_api_version": {"major": 0, "minor": 3}, "abi_version": {"major": 0, "minor": 4},
+                 "c_abi_soversion": "0.4"}
+
+        def describe(**changes):
+            result = type("Result", (), {"returncode": 0, "stdout": json.dumps({**value, **changes}), "stderr": ""})()
+            # Only the version cross-check is under test; read_language has its own corpus.
+            with patch.object(language_docs, "run", return_value=result), \
+                    patch.object(language_docs, "read_language", lambda language, profile: language):
+                return language_docs.contracts(Path("unused"), self.root)
+
+        self.assertEqual(describe()["c_abi_soversion"], "0.4")
+        for key, changed, message in (("format_version", {"major": 0, "minor": 5}, "format_version 0.5 != 0.4"),
+                                      ("language_version", {"major": 0, "minor": 5}, "language_version 0.5 != 0.4"),
+                                      ("c_api_version", {"major": 0, "minor": 2}, "c_api_version 0.2 != 0.3"),
+                                      ("c_abi_soversion", "0.5", "c_abi_soversion 0.5 != 0.4")):
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, "differs from the source versions: " + message):
+                describe(**{key: changed})
 
     def test_archived_documentation_rejects_tampering_missing_files_and_dirty_sources(self):
         with patch.object(language_docs, "contracts", return_value=LANGUAGE):

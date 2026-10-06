@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,6 +21,7 @@ from contract_readers import (CURRENT, HISTORICAL, LANGUAGE_SCHEMA_VERSION,
     DIAGNOSTICS_SCHEMA_VERSION, DOCUMENTATION_SCHEMA_VERSION, parse_json,
     read_language, read_diagnostics, read_manifest)
 import language_docs
+from release_common import VERSION_SOURCES
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS = {'language':'language-description', 'diagnostics':'compiler-diagnostics',
@@ -147,7 +149,9 @@ def main():
         # when the default compact-reference configuration is absent.
         shadow = temp/'source-checkout'
         shadow.mkdir()
-        shutil.copyfile(ROOT/'CMakeLists.txt',shadow/'CMakeLists.txt')
+        for name, _ in VERSION_SOURCES.values():
+            (shadow/name).parent.mkdir(parents=True,exist_ok=True)
+            shutil.copyfile(ROOT/name,shadow/name)
         for directory in ('docs','examples','spec','plans'):
             shutil.copytree(ROOT/directory,shadow/directory)
         (shadow/'docs/llm-reference.json').unlink()
@@ -157,6 +161,15 @@ def main():
         except RuntimeError as error:
             assert 'Current compiler rules require' in str(error), error
         assert not (temp/'missing-config-output').exists()
+        # The real export cannot describe a checkout whose emitted format differs.
+        constants = shadow/'runtime/iprop/Constants.hpp'
+        constants.write_text(re.sub(r'(\bkVersionMinor\s*=\s*)(\d+)', lambda m: m[1]+str(int(m[2])+1),
+                                    constants.read_text(encoding='utf-8'), count=1), encoding='utf-8')
+        try:
+            language_docs.contracts(compiler,shadow)
+            raise AssertionError('A compiler emitting another format was accepted')
+        except RuntimeError as error:
+            assert 'differs from the source versions: format_version' in str(error), error
         bundle = temp/'bundle'
         language_docs.build(compiler,bundle)
         manifest = read_manifest(parse_json((bundle/'docs/language-manifest.json').read_bytes()))
@@ -210,7 +223,7 @@ def main():
         subprocess.run([node,str(ROOT/'editor/test/contract-corpus.js'),str(fixture)],check=True,timeout=30)
     report = {'passed':True,'schema_validation':args.schema,'profile':'current',
               'builtin_count':len(language['builtins']),'registered_examples':len(examples),
-              'missing_current_config_rejected':True,'rehashed_catalog_rejected':True,
+              'missing_current_config_rejected':True,'source_version_mismatch_rejected':True,'rehashed_catalog_rejected':True,
               'rehashed_schema_rejected':True,'valid_current_archive_accepted':True,
               'mutations':results,'protocol_versions':{'language':1,'diagnostics':1,'manifest':1}}
     if args.report:

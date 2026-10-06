@@ -567,8 +567,12 @@ Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
 C API consumers before writing `dist/iprop-0.4.0.tar.gz` (committed source),
 `dist/iprop-0.4.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
-The native archive records its source commit and included backends in
-`release.json`. Pass `--check` to validate an in-progress build without
+The native archive records its source commit, included backends and the
+independent `product_version`, `language_version`, `format_version`,
+`c_api_version` and `c_abi_soversion` in `release.json`; packaging rejects an
+installed compiler whose export differs from these source versions. A tagged
+release requires the frozen specification of the emitted format, not one named
+after the product. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.
 
 Compiler optimization checks and measured reductions are recorded in

@@ -90,6 +90,33 @@
       "schema": false
     },
     {
+      "id": "missing C ABI SOVERSION",
+      "path": [
+        "c_abi_soversion"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "SOVERSION outside ABI line",
+      "path": [
+        "c_abi_soversion"
+      ],
+      "value": "0.5",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "product-shaped SOVERSION",
+      "path": [
+        "c_abi_soversion"
+      ],
+      "value": "0.4.0",
+      "accept": false,
+      "schema": false
+    },
+    {
       "id": "wrong effect type",
       "path": [
         "builtins",

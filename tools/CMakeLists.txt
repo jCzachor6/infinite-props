@@ -8,7 +8,8 @@ add_executable(ipc
 target_link_libraries(ipc PRIVATE iprop_compiler)
 target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
     IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
-    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR})
+    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR}
+    IPROP_C_ABI_SOVERSION="${IPROP_C_ABI_SOVERSION}")
 if(WIN32)
     # Only the production executable selects the Unicode CRT entry. The
     # diagnostic fault probe includes ipc.cpp with its standard main renamed.

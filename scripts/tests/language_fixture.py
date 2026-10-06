@@ -14,6 +14,14 @@ LANGUAGE = {"schema_version": 1, "product_version": "0.4.0", "builtins": [
         "evaluation_order": ["$uniform", "seed", "v", "a", "at", "rot", "mirror_x", "mirror_y"]}},
     "emoji_aliases": [{"word": "asset", "codepoint": 128230}]}
 
+# Each release version lives in its own source and changes independently.
+VERSION_FILES = {
+    "language/ips/Version.hpp": "inline constexpr unsigned kLanguageVersionMajor=0;\n"
+                                "inline constexpr unsigned kLanguageVersionMinor=4;\n",
+    "runtime/iprop/Constants.hpp": "inline constexpr u16 kVersionMajor = 0;\ninline constexpr u16 kVersionMinor = 4;\n",
+    "cmake/CAbi.cmake": "set(IPROP_C_ABI_VERSION_MAJOR 0)\nset(IPROP_C_ABI_VERSION_MINOR 4)\n",
+}
+
 
 def fixture(root):
     for name, content in {

@@ -14,14 +14,22 @@ This is a capability description, not a promise of planned syntax.
 | `language_version.major`, `.minor` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. |
 | `format_version.major`, `.minor` | Binary format emitted by this compiler, from runtime constants. This is not a range of formats accepted by a loaded library. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
-| `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`. |
+| `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
+| `c_abi_soversion` | The runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. |
 
 The current values are product `0.4.0`, source language `0.5`, emitted format
-`0.4`, C header API `0.3` and ABI line `0.4`. These values are independent:
-signed source inputs do not introduce a new binary input type. The C versions
-describe the bundled contract without loading the C library; query a loaded
-library with `iprop_library_query` for its actual capabilities and supported
-format range. See [the ABI policy](c-api-abi.md).
+`0.4`, C header API `0.3` and ABI line/SOVERSION `0.4`. These values are
+independent: signed source inputs do not introduce a new binary input type.
+The C versions describe the bundled contract without loading the C library;
+query a loaded library with `iprop_library_query` for its actual capabilities
+and supported format range. See [the ABI policy](c-api-abi.md).
+
+Release preflight and package manifests (`release.json`) use the same names as
+strings: `product_version`, `language_version`, `format_version`,
+`c_api_version` and `c_abi_soversion`. Packaging and documentation builds
+reject a compiler whose export differs from the versions in the source tree.
+A release requires the frozen specification of its `format_version`, never one
+named after the product: product 0.5 checks `spec/iprop-v0.4.md`.
 
 ## Source rules
 

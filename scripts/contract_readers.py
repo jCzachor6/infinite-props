@@ -22,6 +22,7 @@ EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
 STAGES = {'lex', 'parse', 'import', 'typing', 'planning', 'validation', 'io', 'cli', 'internal'}
 HASH = re.compile(r'^[0-9a-f]{64}$')
 PRODUCT = re.compile(r'^\d+\.\d+\.\d+$')
+SOVERSION = re.compile(r'^\d+\.\d+$')
 
 
 def require(condition, path):
@@ -114,7 +115,7 @@ def read_language(value, profile=CURRENT):
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
     modern = profile == CURRENT
     if modern:
-        obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
+        obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'c_abi_soversion', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
     else:
         require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical product version')
         if 'language_version' in value:
@@ -123,6 +124,10 @@ def read_language(value, profile=CURRENT):
     for key in ['language_version', 'format_version', 'c_api_version', 'abi_version']:
         if key in value:
             version(value[key], key)
+    if 'c_abi_soversion' in value:
+        require('abi_version' in value and SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
+                value['c_abi_soversion'] == f"{int(value['abi_version']['major'])}.{int(value['abi_version']['minor'])}",
+                'c_abi_soversion matches abi_version')
     require(type(value['builtins']) is list and bool(value['builtins']), 'builtins')
     names = []
     for builtin in value['builtins']:

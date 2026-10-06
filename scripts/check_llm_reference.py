@@ -10,6 +10,7 @@ from urllib.parse import unquote, urlsplit
 
 import language_docs as docs
 import llm_reference as llm
+from release_common import VERSION_SOURCES
 
 
 def require(condition, message):
@@ -101,7 +102,9 @@ def main():
             shutil.copytree(root / folder, copied / folder)
         for folder in ['language', 'recipes']:
             shutil.copytree(root / 'examples' / folder, copied / 'examples' / folder)
-        shutil.copyfile(root / 'CMakeLists.txt', copied / 'CMakeLists.txt')
+        for name, _ in VERSION_SOURCES.values():
+            (copied / name).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(root / name, copied / name)
         source_before = snapshot(root / 'examples/language')
         broken = json.loads(json.dumps(config))
         broken['diagnostic_pairs'][0]['diagnostic_code'] = 'IPS-TYPE-999'

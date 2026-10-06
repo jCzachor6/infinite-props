@@ -126,7 +126,8 @@ add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_pro
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
 target_compile_definitions(compiler_diagnostic_failure_probe PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
     IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
-    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR})
+    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR}
+    IPROP_C_ABI_SOVERSION="${IPROP_C_ABI_SOVERSION}")
 iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)

@@ -21,11 +21,12 @@ import language_docs
 import release_assets
 from contract_readers import HISTORICAL
 from functools import partial
-from language_fixture import LANGUAGE, fixture as language_fixture
+from language_fixture import LANGUAGE, VERSION_FILES, fixture as language_fixture
 
 
 VERSION = "0.4.0"
 HEADER = b"#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 2\n"
+FROZEN_SPEC = "# `.iprop` Format and Virtual Machine — Specification v{0}\n\n**Status:** Frozen v{0} contract.\n"
 REPORTS = ["reports-native-Linux-X64", "reports-native-macOS-ARM64", "reports-native-Windows-X64",
            "reports-wasm", "reports-native-backends", "reports-sanitizers"]
 
@@ -46,8 +47,9 @@ def repository(root):
         "website/package.json": '{"version":"0.4.0"}',
         "website/package-lock.json": '{"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}',
         "CHANGELOG.md": "# Changelog\n\n## v0.4.0 — 2026-01-01\n\nRelease notes.\n",
-        "spec/iprop-v0.4.md": "**Status:** Frozen v0.4 contract.\n",
+        "spec/iprop-v0.4.md": FROZEN_SPEC.format("0.4"),
         "backends/capi/iprop.h": HEADER.decode(),
+        **VERSION_FILES,
     }.items():
         target = root / file
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -134,13 +136,59 @@ class ReleaseGatesTest(unittest.TestCase):
 
     def test_candidate_changelog_or_specification_cannot_be_published(self):
         for file, text, message in (("CHANGELOG.md", "## v0.4.0 — release candidate\n\nNotes.\n", "Date the changelog"),
-                                    ("spec/iprop-v0.4.md", "**Status:** release candidate; semantics frozen\n", "Freeze the format")):
+                                    ("spec/iprop-v0.4.md", FROZEN_SPEC.format("0.4").replace("Frozen v0.4 contract", "release candidate; semantics frozen"),
+                                     "Freeze the format")):
             with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary) / "repo"
                 repository(root)
                 (root / file).write_text(text, encoding="utf-8")
                 with self.assertRaisesRegex(RuntimeError, message):
                     metadata(root, "v0.4.0", publishing=True)
+
+    def test_release_checks_the_emitted_frozen_format_not_the_product_number(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repo"
+            repository(root)
+            for file, text in {
+                "CMakeLists.txt": "project(iprop VERSION 0.5.0)\n",
+                "editor/package.json": '{"version":"0.5.0"}',
+                "website/package.json": '{"version":"0.5.0"}',
+                "website/package-lock.json": '{"version":"0.5.0","packages":{"":{"version":"0.5.0"}}}',
+                "CHANGELOG.md": "# Changelog\n\n## v0.5.0 — 2026-10-06\n\nRelease notes.\n",
+                "language/ips/Version.hpp": VERSION_FILES["language/ips/Version.hpp"].replace("Minor=4", "Minor=5"),
+                "backends/capi/iprop.h": "#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 3\n",
+            }.items():
+                (root / file).write_text(text, encoding="utf-8")
+            self.assertFalse((root / "spec/iprop-v0.5.md").exists())
+            release = metadata(root, "v0.5.0", publishing=True)
+            self.assertEqual({key: release[key] for key in ("product_version", "language_version", "format_version",
+                                                            "c_api_version", "c_abi_soversion", "tag")},
+                             {"product_version": "0.5.0", "language_version": "0.5", "format_version": "0.4",
+                              "c_api_version": "0.3", "c_abi_soversion": "0.4", "tag": "v0.5.0"})
+            # A frozen-looking specification named after the product cannot
+            # stand in for the format the release actually emits.
+            (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
+            (root / "spec/iprop-v0.4.md").unlink()
+            with self.assertRaisesRegex(RuntimeError, "Missing the emitted format specification spec/iprop-v0.4.md"):
+                metadata(root, "v0.5.0", publishing=True)
+            (root / "spec/iprop-v0.4.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "does not specify format 0.4"):
+                metadata(root, "v0.5.0", publishing=True)
+            # A new emitted format requires its own frozen specification.
+            (root / "runtime/iprop/Constants.hpp").write_text(
+                VERSION_FILES["runtime/iprop/Constants.hpp"].replace("Minor = 4", "Minor = 5"), encoding="utf-8")
+            self.assertEqual(metadata(root, "v0.5.0", publishing=True)["format_version"], "0.5")
+
+    def test_unreadable_version_source_is_a_release_error(self):
+        for file, text in (("cmake/CAbi.cmake", "set(IPROP_C_ABI_SOVERSION 0.4)\n"),
+                           ("language/ips/Version.hpp", "inline constexpr unsigned kLanguageVersionMajor=0;\n"),
+                           ("backends/capi/iprop.h", "/* IPROP_API_VERSION_MAJOR 0 */\n")):
+            with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary) / "repo"
+                repository(root)
+                (root / file).write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(RuntimeError, "Cannot read .* from " + file):
+                    metadata(root)
 
     def test_tag_must_identify_the_checkout_and_belong_to_main(self):
         with tempfile.TemporaryDirectory() as temporary:

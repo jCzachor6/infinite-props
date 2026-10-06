@@ -18,15 +18,50 @@ def run(*args, capture=False):
     return result.stdout.strip() if capture else None
 
 
-def product_version():
-    return re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)",
-                     (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")).group(1)
+# Independent release versions, each read from the source that defines it. The
+# C ABI line names the runtime library's SOVERSION; it is configured separately
+# and is neither the product, the C API nor the format version.
+VERSION_SOURCES = {
+    "product_version": ("CMakeLists.txt", (r"\bVERSION\s+(\d+\.\d+\.\d+)",)),
+    "language_version": ("language/ips/Version.hpp", (r"\bkLanguageVersionMajor\s*=\s*(\d+)\s*;",
+                                                      r"\bkLanguageVersionMinor\s*=\s*(\d+)\s*;")),
+    "format_version": ("runtime/iprop/Constants.hpp", (r"\bkVersionMajor\s*=\s*(\d+)\s*;",
+                                                       r"\bkVersionMinor\s*=\s*(\d+)\s*;")),
+    "c_api_version": ("backends/capi/iprop.h", (r"^#define IPROP_API_VERSION_MAJOR\s+(\d+)\b",
+                                                r"^#define IPROP_API_VERSION_MINOR\s+(\d+)\b")),
+    "c_abi_soversion": ("cmake/CAbi.cmake", (r"^set\(IPROP_C_ABI_VERSION_MAJOR\s+(\d+)\)",
+                                             r"^set\(IPROP_C_ABI_VERSION_MINOR\s+(\d+)\)")),
+}
+
+
+def _source_version(root, key):
+    file, patterns = VERSION_SOURCES[key]
+    text = (root / file).read_text(encoding="utf-8")
+    parts = [re.search(pattern, text, re.M) for pattern in patterns]
+    if not all(parts):
+        raise RuntimeError("Cannot read " + key + " from " + file)
+    return ".".join(part.group(1) for part in parts)
+
+
+def product_version(root=ROOT):
+    return _source_version(root, "product_version")
 
 
 def api_version(root=ROOT):
-    header = (root / "backends/capi/iprop.h").read_text(encoding="utf-8")
-    return ".".join(re.search(rf"#define IPROP_API_VERSION_{part}\s+(\d+)", header).group(1)
-                    for part in ("MAJOR", "MINOR"))
+    return _source_version(root, "c_api_version")
+
+
+def versions(root=ROOT):
+    return {key: _source_version(root, key) for key in VERSION_SOURCES}
+
+
+def described_versions(language):
+    """Release version names for a current `ipc --describe-language` export."""
+    def pair(key):
+        return f"{int(language[key]['major'])}.{int(language[key]['minor'])}"
+    return {"product_version": language["product_version"], "language_version": pair("language_version"),
+            "format_version": pair("format_version"), "c_api_version": pair("c_api_version"),
+            "c_abi_soversion": language["c_abi_soversion"]}
 
 
 def source_conflict_copies(root=ROOT):

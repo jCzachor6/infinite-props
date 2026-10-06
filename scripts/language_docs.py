@@ -13,7 +13,7 @@ from collections import Counter
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
-from release_common import ROOT
+from release_common import ROOT, described_versions, product_version, versions
 from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, parse_json,
                               read_language, read_manifest)
 
@@ -74,10 +74,15 @@ def contracts(compiler, root=ROOT, profile=CURRENT):
     result = run(compiler, "--describe-language")
     require(result.returncode == 0, "Cannot describe the language: " + result.stderr)
     value = parse_json(result.stdout)
-    version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)", read(root / "CMakeLists.txt"))[1]
-    require(type(value) is dict and value.get("schema_version") == 1 and value.get("product_version") == version,
+    require(type(value) is dict and value.get("schema_version") == 1 and value.get("product_version") == product_version(root),
             "Compiler language description belongs to another product version")
-    return read_language(value, profile)
+    language = read_language(value, profile)
+    if profile == CURRENT:
+        # Language, format, C API and SOVERSION change independently of the product.
+        described, expected = described_versions(language), versions(root)
+        require(described == expected, "Compiler language description differs from the source versions: " +
+                ", ".join(f"{key} {described[key]} != {expected[key]}" for key in expected if described[key] != expected[key]))
+    return language
 
 
 def identity(root, version):

@@ -2,10 +2,11 @@
 """Check the language profile against the actual compiler acceptance boundary."""
 import json
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
+
+from release_common import described_versions, versions
 
 
 def main():
@@ -17,22 +18,11 @@ def main():
     description = json.loads(process.stdout)
     assert description['schema_version'] == 1
 
-    def version(path, major, minor):
-        text = (source / path).read_text(encoding='utf-8')
-        return {'major': int(re.search(major, text)[1]),
-                'minor': int(re.search(minor, text)[1])}
-
-    assert description['language_version'] == version('language/ips/Version.hpp',
-        r'kLanguageVersionMajor\s*=\s*(\d+)', r'kLanguageVersionMinor\s*=\s*(\d+)')
-    assert description['format_version'] == version('runtime/iprop/Constants.hpp',
-        r'kVersionMajor\s*=\s*(\d+)', r'kVersionMinor\s*=\s*(\d+)')
-    assert description['c_api_version'] == version('backends/capi/iprop.h',
-        r'IPROP_API_VERSION_MAJOR\s+(\d+)', r'IPROP_API_VERSION_MINOR\s+(\d+)')
-    assert description['abi_version'] == version('cmake/CAbi.cmake',
-        r'IPROP_C_ABI_VERSION_MAJOR\s+(\d+)', r'IPROP_C_ABI_VERSION_MINOR\s+(\d+)')
-    product = re.search(r'project\(iprop\s+VERSION\s+(\S+)',
-                        (source / 'CMakeLists.txt').read_text())[1]
-    assert description['product_version'] == product
+    # Each version comes from its own source; none is derived from another.
+    expected = versions(source)
+    assert described_versions(description) == expected, (described_versions(description), expected)
+    major, minor = expected['c_abi_soversion'].split('.')
+    assert description['abi_version'] == {'major': int(major), 'minor': int(minor)}
 
     rules = description['source_rules']
     assert rules['inputs'] == [

@@ -8,8 +8,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from release_common import (ROOT, api_version, committed_source, extract_archive, product_version,
-                            require_no_source_copies, run, sha256, write_archive, write_checksums, write_json)
+from release_common import (ROOT, committed_source, extract_archive, product_version, require_no_source_copies,
+                            run, sha256, versions, write_archive, write_checksums, write_json)
 from language_docs import verify as verify_documentation
 
 
@@ -78,8 +78,8 @@ def main():
             print("Release package validation: PASS (no archives created)")
             return
 
-        manifest = {"product_version": version, "c_api_version": api_version(),
-                    "source_commit": commit, "system": system, "architecture": arch,
+        # validate_install proved that the installed compiler exports these versions.
+        manifest = {**versions(ROOT), "source_commit": commit, "system": system, "architecture": arch,
                     "backends": {"capi": True,
                                  "sfml": (prefix / "bin" / ("iprop_sfml.exe" if system == "windows" else "iprop_sfml")).exists(),
                                  "godot": (prefix / "share/iprop/godot").exists()}}

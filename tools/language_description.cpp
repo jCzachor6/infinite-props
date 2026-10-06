@@ -175,7 +175,8 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
         << ",\"minor\":" << IPROP_API_VERSION_MINOR
         << "},\"abi_version\":{\"major\":" << IPROP_C_ABI_VERSION_MAJOR
         << ",\"minor\":" << IPROP_C_ABI_VERSION_MINOR
-        << "},\"format_version\":{\"major\":" << kVersionMajor << ",\"minor\":" << kVersionMinor
+        << "},\"c_abi_soversion\":\"" << jsonEscape(IPROP_C_ABI_SOVERSION)
+        << "\",\"format_version\":{\"major\":" << kVersionMajor << ",\"minor\":" << kVersionMinor
         << "},\"builtins\":[";
     bool first = true;
     for (const auto& [name, spec] : ips::builtinSpecs()) {

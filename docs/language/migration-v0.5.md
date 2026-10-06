@@ -21,6 +21,10 @@ Source changes add no bytecode instructions or binary input types. Product,
 language, format, API and ABI versions must be queried independently. The six
 legacy C entry points, their layouts and generation policy remain supported.
 A source declaration does not create metadata that the binary never stored.
+`ipc --describe-language`, release preflight and package `release.json` name
+them `product_version`, `language_version`, `format_version`, `c_api_version`
+and `c_abi_soversion`. A 0.5 release checks the frozen `spec/iprop-v0.4.md`
+of the format it emits; there is no `iprop-v0.5.md` binary specification.
 
 ## Source syntax and argument binding
 
