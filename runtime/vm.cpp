@@ -3,6 +3,8 @@
 #include "iprop/VmInternals.hpp"
 
 #include <cmath>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
 
 namespace iprop {
@@ -322,6 +324,8 @@ void Execution::ensureControl(u16 functionIndex) {
 
 struct VM::Impl {
     detail::Execution ex;
+    bool finished = false;
+    bool taken = false;
 
     explicit Impl(const LoadedFile& file) : ex(file) {}
 };
@@ -411,6 +415,7 @@ VM::VM(VM&&) noexcept = default;
 VM& VM::operator=(VM&&) noexcept = default;
 
 void VM::run() {
+    if (impl_->taken) throw std::logic_error("VM result already consumed");
     detail::Execution& ex = impl_->ex;
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
@@ -431,14 +436,19 @@ void VM::run() {
             ex.trap("reserved opcode", ErrorReason::RuntimeViolation);
         }
     }
+    impl_->finished = true;
 }
 
-const Canvas& VM::canvas() const { return impl_->ex.canvas; }
+const Canvas& VM::canvas() const {
+    if (impl_->taken) throw std::logic_error("VM result already consumed");
+    return impl_->ex.canvas;
+}
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
 const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
 
 GenerationResult VM::result() const {
+    if (impl_->taken) throw std::logic_error("VM result already consumed");
     GenerationResult result;
     result.image = impl_->ex.canvas;
     const auto& slots = impl_->ex.outputSlots;
@@ -453,6 +463,35 @@ GenerationResult VM::result() const {
         output.circles = slots[i].circles;
         result.outputs.push_back(std::move(output));
     }
+    return result;
+}
+
+GenerationResult VM::takeResult() {
+    if (impl_->taken) throw std::logic_error("VM result already consumed");
+    if (!impl_->finished) throw std::logic_error("VM has not completed successfully");
+    static_assert(std::is_nothrow_move_assignable_v<Canvas>);
+    static_assert(std::is_nothrow_move_assignable_v<std::string>);
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<OutputPoint>>);
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<OutputRect>>);
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<OutputCircle>>);
+    auto& ex = impl_->ex;
+    GenerationResult result;
+    // The only allocation happens before any ownership is transferred.
+    // Everything after resize is nonthrowing, including returning the result.
+    result.outputs.resize(ex.outputSlots.size());
+    result.image = std::move(ex.canvas);
+    ex.canvas = Canvas{};
+    for (std::size_t i = 0; i < ex.outputSlots.size(); ++i) {
+        auto& output = result.outputs[i];
+        auto& slot = ex.outputSlots[i];
+        output.name = std::move(ex.outputNames[i]);
+        output.kind = slot.kind;
+        output.isList = slot.isList;
+        output.points = std::move(slot.points);
+        output.rects = std::move(slot.rects);
+        output.circles = std::move(slot.circles);
+    }
+    impl_->taken = true;
     return result;
 }
 

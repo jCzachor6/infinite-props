@@ -87,6 +87,13 @@ public:
     // run().
     GenerationResult result() const;
 
+    // Consumes the successful generation once, moving its canvas, names and
+    // output payloads. Throws std::logic_error before a successful run or
+    // after consumption. If allocating the output table fails, the VM remains
+    // intact and this call can be retried. After success, run(), canvas() and
+    // result() reject further access; fuel/debugStack remain available.
+    GenerationResult takeResult();
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

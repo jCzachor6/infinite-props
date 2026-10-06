@@ -64,6 +64,7 @@ add_executable(iprop_tests
     validation/parts_test.cpp
     opcode_spec_test.cpp
     vm_test.cpp
+    vm_result_test.cpp
     control_test.cpp
     control_validation_test.cpp
     math/integer_test.cpp
@@ -114,6 +115,11 @@ add_executable(source_printer_failure_probe language/source_printer_failure_prob
 target_link_libraries(source_printer_failure_probe PRIVATE ips_lang)
 iprop_warnings(source_printer_failure_probe)
 add_test(NAME source_printer_allocation_failures COMMAND source_printer_failure_probe)
+
+add_executable(vm_result_allocation_probe vm_result_allocation_probe.cpp)
+target_link_libraries(vm_result_allocation_probe PRIVATE iprop_compiler)
+iprop_warnings(vm_result_allocation_probe)
+add_test(NAME vm_result_allocations COMMAND vm_result_allocation_probe)
 
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)

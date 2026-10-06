@@ -158,7 +158,7 @@ void generateProgram(const iprop_program& program, const GenerationInputs& input
     VM vm(program.file, inputs);
     context.stage = ErrorStage::Execute;
     vm.run();
-    result.generation = vm.result();
+    result.generation = vm.takeResult();
     fillResult(&result, program.file);
 }
 
