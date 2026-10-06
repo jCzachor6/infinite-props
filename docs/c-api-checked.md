@@ -137,6 +137,20 @@ to compatible retained program data. Parameter IDs/names/types are validated
 before the VM, with strict unknown/duplicate/type rules rather than legacy
 uniform-array behavior. A parameter set is read only during generation.
 
+The strict request check already exists as one private validator,
+`checkGenerationRequest`, which P.5 will call; it has no public symbol yet.
+It rejects, in this order and before any VM setup or allocation: a NULL,
+shorter-than-four-byte or nonzero-flags options descriptor
+(`INVALID_ARGUMENT`); parameters from another program load
+(`FOREIGN_PARAMETERS`, even for identical bytes); then `VARIANT_RANGE`,
+`ARCHETYPE_RANGE` and `CANVAS_SIZE`. The ranges come from the same
+`checkGenerationArguments` the VM constructor uses, so each verdict equals the
+VM's own setup check. The new entry reports them as `E_ARGUMENT` at
+`ARGUMENTS` stage. Parameter IDs, names, types and duplicates were already
+enforced when the values were set, by single setters or
+[strict override lists](c-api-parameters.md#strict-override-lists). Legacy
+`iprop_generate` keeps its VM-setup `E_TRAP` for the same ranges.
+
 The entry point will use the same input model, VM and checked error boundary,
 publish one independent result on success, preserve the old output pointer on
 failure, and retain no caller options/error storage after return. Existing

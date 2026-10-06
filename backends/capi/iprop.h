@@ -199,6 +199,7 @@ typedef struct {
 #define IPROP_CAP_METADATA_EXTENDED (UINT64_C(1) << 9)
 #define IPROP_CAP_PARAMETERS (UINT64_C(1) << 10)
 #define IPROP_CAP_RESULT_STATISTICS (UINT64_C(1) << 11)
+#define IPROP_CAP_PARAMETER_OVERRIDES (UINT64_C(1) << 14)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -280,6 +281,9 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_ARCHETYPE_RANGE UINT32_C(4002)
 #define IPROP_REASON_CANVAS_SIZE UINT32_C(4003)
 #define IPROP_REASON_UNIFORM_TYPE UINT32_C(4004)
+#define IPROP_REASON_UNKNOWN_PARAMETER UINT32_C(4005)
+#define IPROP_REASON_DUPLICATE_PARAMETER UINT32_C(4006)
+#define IPROP_REASON_FOREIGN_PARAMETERS UINT32_C(4007)
 #define IPROP_REASON_OUT_OF_MEMORY UINT32_C(5000)
 #define IPROP_REASON_INTERNAL UINT32_C(5001)
 
@@ -475,7 +479,54 @@ IPROP_API iprop_status_ex iprop_parameters_set_named(iprop_parameters* parameter
  * output cannot overlap caller inputs/outputs or parameter storage. Get_named
  * output cannot overlap name bytes. Aliases fail without error/input/output
  * writes. Set_named may share readable name/value bytes. Required handles and
- * outputs are non-null; free accepts NULL. No shared-builder thread guarantee. */
+ * outputs are non-null; free accepts NULL. No shared-builder thread guarantee.
+ * A well-formed ID or name absent from the root inputs is UNKNOWN_PARAMETER;
+ * malformed views/descriptors remain INVALID_ARGUMENT. */
+
+/* Override list targets. Zero is never valid, so every element names its
+ * selector explicitly; an empty byte-counted name is a valid name. */
+typedef uint32_t iprop_parameter_target;
+#define IPROP_PARAMETER_TARGET_ID UINT32_C(1)
+#define IPROP_PARAMETER_TARGET_NAME UINT32_C(2)
+
+/* One element of a strict override list. struct_size is the element's actual
+ * capacity: at least four bytes and at most the list stride. Absent flags mean
+ * zero; nonzero complete flags are rejected. target selects input_id (a root
+ * input ID) or name (exact byte-counted UTF-8); the other selector is never
+ * read. type and its active value follow iprop_parameter_value_ex: exact
+ * binary tag, complete active field, inactive fields never read, F32 bits
+ * preserved. Init writes capacity and zeroes complete known fields, preserving
+ * partial fields, padding and tail; NULL or capacity below four writes nothing. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    iprop_parameter_target target;
+    uint32_t input_id;
+    iprop_utf8_view name;
+    iprop_input_type type;
+    iprop_color_rgba8 color;
+    float f32;
+    uint32_t u32;
+} iprop_parameter_override_ex;
+
+IPROP_API iprop_status_ex iprop_parameter_override_ex_init(iprop_parameter_override_ex* out, uint32_t capacity);
+/* Applies count elements placed every stride bytes from overrides; the stride
+ * is never inferred from struct_size or this header's sizeof. Count zero is a
+ * successful no-op that reads no element (overrides may be NULL). Elements
+ * are validated in list order before any value changes. Malformed list,
+ * size, flags, target, type, view or active field: INVALID_ARGUMENT. Unknown
+ * ID/name: UNKNOWN_PARAMETER. Type differing from the declaration:
+ * UNIFORM_TYPE. A later element resolving to an input already listed, by ID
+ * or name: DUPLICATE_PARAMETER. Each is E_ARGUMENT at ARGUMENTS stage and
+ * changes no value. Success replaces exactly the listed values. A separate
+ * call, like a repeated setter, updates a value again; only one list cannot
+ * name an input twice. Error storage cannot overlap the list, its name bytes
+ * or parameter storage, and the list cannot overlap parameter storage; such
+ * aliases fail without writes. The call allocates nothing. */
+IPROP_API iprop_status_ex iprop_parameters_set_overrides(iprop_parameters* parameters,
+                                                       const iprop_parameter_override_ex* overrides,
+                                                       uint32_t count, uint32_t stride,
+                                                       iprop_error_ex* error);
 
 /* Fixed-width declaration tags, separate from the frozen legacy enum. */
 typedef uint32_t iprop_output_kind_ex;

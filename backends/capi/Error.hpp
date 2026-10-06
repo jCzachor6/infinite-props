@@ -43,6 +43,9 @@ static_assert(static_cast<uint32_t>(ErrorReason::VariantRange) == IPROP_REASON_V
 static_assert(static_cast<uint32_t>(ErrorReason::ArchetypeRange) == IPROP_REASON_ARCHETYPE_RANGE);
 static_assert(static_cast<uint32_t>(ErrorReason::CanvasSize) == IPROP_REASON_CANVAS_SIZE);
 static_assert(static_cast<uint32_t>(ErrorReason::UniformType) == IPROP_REASON_UNIFORM_TYPE);
+static_assert(static_cast<uint32_t>(ErrorReason::UnknownParameter) == IPROP_REASON_UNKNOWN_PARAMETER);
+static_assert(static_cast<uint32_t>(ErrorReason::DuplicateParameter) == IPROP_REASON_DUPLICATE_PARAMETER);
+static_assert(static_cast<uint32_t>(ErrorReason::ForeignParameters) == IPROP_REASON_FOREIGN_PARAMETERS);
 static_assert(static_cast<uint32_t>(ErrorReason::OutOfMemory) == IPROP_REASON_OUT_OF_MEMORY);
 static_assert(static_cast<uint32_t>(ErrorReason::Internal) == IPROP_REASON_INTERNAL);
 

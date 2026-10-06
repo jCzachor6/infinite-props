@@ -23,7 +23,8 @@ enum class ErrorReason : std::uint32_t {
     NumericRange = 3010, InvalidOutput = 3011, PartOutputMissing = 3012,
     InvalidPart = 3013, StreamUnderflow = 3014,
     InvalidArgument = 4000, VariantRange = 4001, ArchetypeRange = 4002,
-    CanvasSize = 4003, UniformType = 4004,
+    CanvasSize = 4003, UniformType = 4004, UnknownParameter = 4005,
+    DuplicateParameter = 4006, ForeignParameters = 4007,
     OutOfMemory = 5000, Internal = 5001,
 };
 

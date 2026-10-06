@@ -10,8 +10,10 @@
 namespace iprop::capi {
 
 // Shared exact declaration lookup for root/part reflection and parameters.
+// Parameter operations report an absent well-formed name with their own cause.
 inline CallOutcome findInput(const LoadedFile& file, std::span<const InputDecl> inputs,
-                             iprop_utf8_view name, uint32_t* outIndex) noexcept {
+                             iprop_utf8_view name, uint32_t* outIndex,
+                             ErrorReason notFound = ErrorReason::InvalidArgument) noexcept {
     if (outIndex == nullptr) return CallOutcome::argument("out_index is null");
     std::string_view sought;
     if (!readUtf8View(name, sought))
@@ -22,7 +24,7 @@ inline CallOutcome findInput(const LoadedFile& file, std::span<const InputDecl> 
             return {};
         }
     }
-    return CallOutcome::argument("input name was not found");
+    return CallOutcome::argument("input name was not found", notFound);
 }
 
 inline void inputDefault(const InputDecl& input, UniformValue& value) noexcept {

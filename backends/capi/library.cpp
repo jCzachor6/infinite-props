@@ -27,7 +27,8 @@ iprop::capi::CallOutcome queryLibrary(iprop_library_info_ex* out) noexcept {
         IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX |
         IPROP_CAP_ROOT_INPUT_REFLECTION | IPROP_CAP_OUTPUT_DECLARATIONS |
         IPROP_CAP_PART_REFLECTION | IPROP_CAP_METADATA_EXTENDED |
-        IPROP_CAP_PARAMETERS | IPROP_CAP_RESULT_STATISTICS;
+        IPROP_CAP_PARAMETERS | IPROP_CAP_RESULT_STATISTICS |
+        IPROP_CAP_PARAMETER_OVERRIDES;
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_library_info_ex, field), info.field)
     WRITE(product_major); WRITE(product_minor); WRITE(product_patch);
     WRITE(api_major); WRITE(api_minor); WRITE(abi_major); WRITE(abi_minor);

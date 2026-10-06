@@ -330,25 +330,37 @@ struct VM::Impl {
     explicit Impl(const LoadedFile& file) : ex(file) {}
 };
 
+ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 archetype,
+                                     u32 sizeX, u32 sizeY) noexcept {
+    if (variant >= meta.variants) return ErrorReason::VariantRange;
+    if (archetype >= meta.archetypes) return ErrorReason::ArchetypeRange;
+    // The size cap is a runtime defense: a corrupt meta or host request must
+    // not trigger a multi-gigabyte allocation.
+    const u32 targetW = sizeX != 0 ? sizeX : meta.sizeX;
+    const u32 targetH = sizeY != 0 ? sizeY : meta.sizeY;
+    if (targetW > kMaxCanvasSide || targetH > kMaxCanvasSide) return ErrorReason::CanvasSize;
+    return ErrorReason::None;
+}
+
 VM::VM(const LoadedFile& file, const GenerationInputs& inputs)
     : impl_(std::make_unique<Impl>(file)) {
     impl_->ex.budget = file.meta.fuel;
     impl_->ex.fuel = file.meta.fuel;
 
-    if (inputs.variant >= file.meta.variants) {
+    switch (checkGenerationArguments(file.meta, inputs.variant, inputs.archetype,
+                                     inputs.sizeX, inputs.sizeY)) {
+    case ErrorReason::VariantRange:
         throw Trap("variant index out of range", ErrorReason::VariantRange, ErrorStage::Arguments);
-    }
-    if (inputs.archetype >= file.meta.archetypes) {
+    case ErrorReason::ArchetypeRange:
         throw Trap("archetype index out of range", ErrorReason::ArchetypeRange, ErrorStage::Arguments);
+    case ErrorReason::CanvasSize:
+        throw Trap("canvas too large", ErrorReason::CanvasSize, ErrorStage::Arguments);
+    default: break;
     }
 
-    // Target canvas and scale (spec §8.1). The size cap is a runtime defense:
-    // a corrupt meta must not trigger a multi-gigabyte allocation.
+    // Target canvas and scale (spec §8.1), within the checked size cap.
     const u32 targetW = inputs.sizeX != 0 ? inputs.sizeX : file.meta.sizeX;
     const u32 targetH = inputs.sizeY != 0 ? inputs.sizeY : file.meta.sizeY;
-    if (targetW > kMaxCanvasSide || targetH > kMaxCanvasSide) {
-        throw Trap("canvas too large", ErrorReason::CanvasSize, ErrorStage::Arguments);
-    }
     impl_->ex.canvas.resize(targetW, targetH);
     impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
     impl_->ex.canvas.scaleY = static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY);

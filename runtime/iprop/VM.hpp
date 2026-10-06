@@ -54,6 +54,13 @@ struct GenerationInputs {
     std::map<std::string, UniformValue> uniforms;
 };
 
+// Host-argument checks of spec §8.1, in the VM's order: variant, archetype,
+// then the target canvas (zero dimensions select the meta size). Shared by the
+// VM constructor, which keeps its legacy Trap, and strict C entries, which
+// reject before VM setup. Returns ErrorReason::None; never allocates or throws.
+ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 archetype,
+                                     u32 sizeX, u32 sizeY) noexcept;
+
 // The VM executes a LoadedFile. The caller MUST have run validate() first
 // (spec §14: validation completes before execution); the VM does not
 // re-validate. Execution consumes the fuel budget (§8.3) and raises Trap (a

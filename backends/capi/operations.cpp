@@ -150,9 +150,36 @@ CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs
         if (uniform.name == nullptr || type > IPROP_UNIFORM_U32)
             return CallOutcome::argument("uniform name or type is invalid");
         // Frozen behavior: first duplicate wins and unknown names are ignored
-        // by the same VM input model. Strict parameters belong to P.5.
+        // by the same VM input model. Strict lists are parameter overrides.
         inputs.uniforms.emplace(uniform.name, toUniform(uniform, type));
     }
+    return {};
+}
+
+CallOutcome checkGenerationRequest(const iprop_program& program,
+                                   const iprop_generate_options_ex* options,
+                                   const iprop_parameters* parameters,
+                                   GenerateOptions& out) noexcept {
+    GenerateOptions request;
+    switch (readGenerateOptions(options, request)) {
+    case OptionIssue::None: break;
+    case OptionIssue::NullDescriptor: return CallOutcome::argument("generation options are null");
+    case OptionIssue::DescriptorTooSmall:
+        return CallOutcome::argument("generation options are smaller than four bytes");
+    case OptionIssue::UnknownFlags: return CallOutcome::argument("generation option flags are unsupported");
+    }
+    if (parameters != nullptr && !parametersCompatible(program, *parameters))
+        return CallOutcome::argument("parameters belong to another program load", ErrorReason::ForeignParameters);
+    switch (checkGenerationArguments(program.data->meta, request.variant, request.archetype,
+                                     request.sizeX, request.sizeY)) {
+    case ErrorReason::VariantRange:
+        return CallOutcome::argument("variant index out of range", ErrorReason::VariantRange);
+    case ErrorReason::ArchetypeRange:
+        return CallOutcome::argument("archetype index out of range", ErrorReason::ArchetypeRange);
+    case ErrorReason::CanvasSize: return CallOutcome::argument("canvas too large", ErrorReason::CanvasSize);
+    default: break;
+    }
+    out = request;
     return {};
 }
 

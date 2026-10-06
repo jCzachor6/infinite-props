@@ -211,6 +211,49 @@ int main(int argc, char** argv) {
         std::free(storage);
     }
 
+    // Override lists validate and replace values without allocation, on both
+    // success and every rejection. A list stored in the handle or its values
+    // is an alias and fails before any error, list or value write.
+    {
+        std::array<iprop_parameter_override_ex, 3> list{};
+        for (auto& item : list) CHECK(iprop_parameter_override_ex_init(&item, sizeof(item)) == IPROP_EX_OK);
+        list[0].target = IPROP_PARAMETER_TARGET_ID; list[0].input_id = 4; list[0].type = IPROP_INPUT_U32; list[0].u32 = 9;
+        list[1].target = IPROP_PARAMETER_TARGET_NAME; list[1].name = {"zero", 4}; list[1].type = IPROP_INPUT_F32;
+        std::memcpy(&list[1].f32, &nan, sizeof(nan));
+        list[2] = list[0];
+        {
+            AllocationGuard guard(1);
+            CHECK(iprop_parameters_set_overrides(parameters, list.data(), 2, sizeof(list[0]), &error) == IPROP_EX_OK);
+            CHECK(iprop_parameters_set_overrides(parameters, list.data(), 3, sizeof(list[0]), &error) == IPROP_EX_E_ARGUMENT &&
+                  error.reason == IPROP_REASON_DUPLICATE_PARAMETER);
+            list[2].input_id = 8;
+            CHECK(iprop_parameters_set_overrides(parameters, list.data(), 3, sizeof(list[0]), &error) == IPROP_EX_E_ARGUMENT &&
+                  error.reason == IPROP_REASON_UNKNOWN_PARAMETER);
+            list[2].input_id = 0;
+            CHECK(iprop_parameters_set_overrides(parameters, list.data(), 3, sizeof(list[0]), &error) == IPROP_EX_E_ARGUMENT &&
+                  error.reason == IPROP_REASON_UNIFORM_TYPE);
+            list[2].type = 7;
+            CHECK(iprop_parameters_set_overrides(parameters, list.data(), 3, sizeof(list[0]), &error) == IPROP_EX_E_ARGUMENT &&
+                  error.reason == IPROP_REASON_INVALID_ARGUMENT);
+            CHECK(iprop_parameters_get(parameters, 4, &got, nullptr) == IPROP_EX_OK && got.u32 == 9);
+            CHECK(iprop_parameters_get(parameters, 1, &got, nullptr) == IPROP_EX_OK && bits(got.f32) == nan);
+        }
+        CHECK(count == 0 && injected == 0);
+        std::memcpy(handleBefore.data(), parameters, sizeof(*parameters));
+        std::memcpy(valuesBefore.data(), parameters->values.data(), sizeof(valuesBefore));
+        const iprop_error_ex errorBefore = error;
+        const auto* inValues = reinterpret_cast<const iprop_parameter_override_ex*>(parameters->values.data());
+        const auto* inHandle = reinterpret_cast<const iprop_parameter_override_ex*>(parameters);
+        {
+            AllocationGuard guard(1);
+            CHECK(iprop_parameters_set_overrides(parameters, inValues, 1, sizeof(iprop::UniformValue), &error) == IPROP_EX_E_ARGUMENT);
+            CHECK(iprop_parameters_set_overrides(parameters, inHandle, 1, sizeof(uint32_t), &error) == IPROP_EX_E_ARGUMENT);
+        }
+        CHECK(count == 0 && injected == 0 && std::memcmp(&error, &errorBefore, sizeof(error)) == 0);
+        CHECK(std::memcmp(handleBefore.data(), parameters, sizeof(*parameters)) == 0);
+        CHECK(std::memcmp(valuesBefore.data(), parameters->values.data(), sizeof(valuesBefore)) == 0);
+    }
+
     // Clone preserves NaN payload independently. Reset uses stored defaults
     // without allocation; a separate immutable fixture proves NaN defaults too.
     CHECK(iprop_parameters_set(parameters, 1, &value, nullptr) == IPROP_EX_OK);
@@ -242,6 +285,6 @@ int main(int argc, char** argv) {
     iprop_parameters_free(clone);
     CHECK(retained.expired());
     iprop_parameters_free(emptyParameters); iprop_program_free(empty); iprop_program_free(reloaded);
-    std::printf("%zu actual create/clone OOM points, internal exceptions, allocation-free updates/errors, identity and final-owner lifetime: PASS\n", faultCases);
+    std::printf("%zu actual create/clone OOM points, internal exceptions, allocation-free updates/lists/errors, identity and final-owner lifetime: PASS\n", faultCases);
     return 0;
 }
