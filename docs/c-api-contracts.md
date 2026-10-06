@@ -93,3 +93,11 @@ locations from valid zero offsets/indices. This foundation adds no structured
 load/query/generate consumer or error capability yet. Its call-local ErrorSink
 snapshots caller-owned message storage, performs no allocation while reporting,
 and preserves the descriptor's buffer/capacity inputs.
+
+`ErrorBoundary.hpp` adds the shared new-operation exception policy: originating
+argument checks become `E_ARGUMENT`, load/validation failures `E_FORMAT`, and
+an actual execution `Trap` `E_TRAP`; allocation failure is `E_OOM`, while
+unexpected exceptions are `E_INTERNAL`. Its bounded error output is optional,
+and malformed output storage stops the operation before publication. Legacy
+entry points keep their existing classification. See
+[the policy and stage/type distinction](runtime-errors.md#new-status-policy-and-exception-boundary).

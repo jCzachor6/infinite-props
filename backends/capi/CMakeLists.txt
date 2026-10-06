@@ -88,6 +88,7 @@ set(IPROP_CAPI_SOURCES
     ${CMAKE_SOURCE_DIR}/tests/golden/noise.ipa
     ${CMAKE_SOURCE_DIR}/tests/golden/parts.ipa
     ${CMAKE_CURRENT_SOURCE_DIR}/test/uniforms.ipa
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/error-trap.ipa
     ${CMAKE_CURRENT_SOURCE_DIR}/test/vector-branch.ipa)
 
 set(IPROP_CAPI_IPROPS "")
@@ -148,6 +149,13 @@ iprop_warnings(capi_error_sink)
 add_dependencies(capi_error_sink capi_golden)
 add_test(NAME capi_error_sink COMMAND capi_error_sink
     ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${owner_fixture})
+
+add_executable(capi_error_boundary test/error_boundary.cpp)
+target_link_libraries(capi_error_boundary PRIVATE iprop_capi_static)
+iprop_warnings(capi_error_boundary)
+add_dependencies(capi_error_boundary capi_golden)
+add_test(NAME capi_error_boundary COMMAND capi_error_boundary
+    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${IPROP_CAPI_GOLDEN_DIR}/error-trap.iprop)
 
     add_test(NAME capi_conformance
         COMMAND capi_conformance

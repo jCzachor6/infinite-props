@@ -153,6 +153,12 @@ The common error sink clears success and renders argument/OOM/runtime messages
 without allocating. Structured load/generation consumers are introduced in
 subsequent tasks; this initializer does not advertise an error capability.
 
+The shared new-operation boundary distinguishes typed argument/setup errors,
+load/validation errors, actual execution traps, OOM and unexpected internal
+exceptions. Legacy calls retain their old classification. See the
+[status policy](../../docs/runtime-errors.md#new-status-policy-and-exception-boundary);
+the boundary adds no public operation or capability yet.
+
 New collections use count/get/find accessors returning one caller-sized
 descriptor at a time. They do not return arrays whose stride depends on a
 newer `sizeof`. All initializers reject null or capacities below four without
