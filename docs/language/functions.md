@@ -40,6 +40,19 @@ their left-to-right order. Part calls have their [own order](composition.md#part
 short-circuit evaluation. RNG effects remain even when a selected result is
 discarded. `roll`/`choose` isolate their stream after argument evaluation.
 
+The compiler export supplies each signature's `evaluation_order` and
+intrinsic `effects` from the same registry used for binding and lowering.
+An intrinsic summary excludes argument expressions: even a pure outer call
+may draw, advance the stream or trap while evaluating a helper argument.
+Helpers have a conservative callee summary because their bodies may draw,
+write outputs or trap; it is not a promise that every helper has those effects.
+
+The following checks named helper order and eager seeded choices against a
+replayed stream. Its guards exhaust fuel only if the observed order/state
+differs. Helpers also demonstrate scalar replacement and list appends:
+
+<!-- example: ../../examples/language/call-effects.ips -->
+
 <!-- example: ../../examples/language/errors/unknown-argument.ips -->
 
 <!-- example: ../../examples/language/errors/helper-uniform.ips -->
@@ -48,3 +61,10 @@ discarded. `roll`/`choose` isolate their stream after argument evaluation.
 
 These rejected examples demonstrate unknown parameter names, direct uniform
 access from a helper and recursion respectively.
+
+Binding the same slot positionally and by name is also rejected. Duplicate
+helper parameter names are rejected even when the helper is never called:
+
+<!-- example: ../../examples/language/errors/duplicate-call-argument.ips -->
+
+<!-- example: ../../examples/language/errors/duplicate-helper-parameter.ips -->

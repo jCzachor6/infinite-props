@@ -47,6 +47,17 @@ Uniforms are visible in `draw`; pass their values explicitly to helpers.
 
 <!-- example: ../../examples/language/signed-input.ips -->
 
+Both examples are accepted source 0.5 programs. Their old parser/type errors
+belong only to the frozen 0.4 baseline. A negative floating default is valid;
+a mathematically negative `u32` default is still invalid. Defaults outside
+the signed range and non-literal declaration expressions are also rejected:
+
+<!-- example: ../../examples/language/errors/negative-u32-default.ips -->
+
+<!-- example: ../../examples/language/errors/i32-default-range.ips -->
+
+<!-- example: ../../examples/language/errors/declaration-constant.ips -->
+
 Input names `seed`, `v`, `a`, `at`, `rot`, `mirror_x` and `mirror_y` are
 reserved. Inputs and outputs cannot share a name; declarations of the same
 kind must have unique names. Inputs cannot be assigned or used as loop counters.

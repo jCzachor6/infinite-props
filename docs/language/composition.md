@@ -25,7 +25,11 @@ placement are errors. Input names `variant` and `archetype` remain ordinary
 uniform names; they do not alias the `v` and `a` controls. Unspecified
 uniforms use the part's defaults. `at` positions the part's declared origin.
 Call order determines paint order; the parent's RNG stream is restored
-after the part executes.
+after the part executes to its state after the dynamic argument expressions.
+An override containing `unit()` therefore still advances the parent stream;
+random draws made by the child use its isolated stream. A part may paint and
+write its own outputs, and its conservative exported effect summary includes
+callee/placement/selector checks rather than assuming the child is pure.
 
 Optional transform arguments are compile-time integers: `rot` is 0, 90, 180
 or 270; `mirror_x`/`mirror_y` are 0 or 1, including boolean constants.
@@ -48,6 +52,11 @@ of named arguments in the source. Transform
 arguments are compile-time constants. Each dynamic argument evaluates once.
 See [parts and D4 transforms](../../spec/iprop-v0.3.md#105-part-transforms-v03)
 for the exact geometry mapping and rectangle bounds.
+
+The current example uses named controls in a different written order from
+their evaluation order. Omitted overrides use the part's resolved declaration
+defaults, including signed integer and floating constants; no new runtime
+input type is introduced for a signed source declaration.
 
 <!-- example: ../../examples/language/errors/list-read.ips -->
 

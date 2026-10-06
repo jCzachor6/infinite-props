@@ -36,7 +36,8 @@ bytes; line/column positions are one-based Unicode codepoints. CLI/I/O locations
 may be null. Optional expected/actual types, suggestions, related locations and
 fix-its have explicit fields. See the [protocol](../compiler-diagnostics.md)
 and [schema](../compiler-diagnostics.schema.json). `--diagnostics=text` selects
-the readable renderer. Multi-error recovery follows in the B.5 task.
+the readable renderer. Bounded recovery collects at most 20 diagnostics;
+dependent cascades are suppressed and a damaged AST never reaches generation.
 
 `ipc entry.ips --format canonical.ips` also writes canonical parseable source.
 The output uses two-space indentation, explicit expression grouping, word
@@ -137,6 +138,12 @@ Integer division/remainder by zero traps; float division follows IEEE-754.
 Noise coordinate checks, nonfinite HSV hue, invalid geometry, unset part
 output reads and unbalanced stream pops can also trap. Traps must be handled
 by the host; a partial image is not a successful generation result.
+
+`--describe-language` separates each signature's intrinsic checks from its
+argument expressions and from `effect_rules.resource_traps`. Fuel exhaustion
+and the runtime call-depth limit can affect otherwise valid programs.
+Operand-stack bounds are checked by executable validation; allocation failure
+is a host/resource failure rather than a signature's numeric precondition.
 
 <!-- example: ../../examples/language/traps/divide-by-zero.ips -->
 

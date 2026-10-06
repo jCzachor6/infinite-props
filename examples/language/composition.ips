@@ -1,9 +1,9 @@
-import leaf from "part.ips"
+import leaf from "part.ips";
 asset Composition {
   size 16x16
   output point attached
   draw {
-    leaf.draw(seed = seed, v = v, a = a, at = {8, 8}, tint = #fc9, rot = 90, mirror_x = 1)
+    leaf.draw(at = {8, 8}, a = a, tint = #fc9, seed = seed, v = v, rot = 90, mirror_x = 1)
     attached = leaf.outputs.anchor
     pixel(int(leaf.outputs.anchor.x), int(leaf.outputs.anchor.y), #fff)
   }

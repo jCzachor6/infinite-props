@@ -113,3 +113,29 @@ For a negative U32 default in signed range, the compiler suggests `input i32`
 and supplies an exact edit of the type token; out-of-range defaults do not
 receive that edit, because changing the type cannot repair them. The editor
 must verify `source_id` before applying the replacement.
+
+## Current source 0.5 examples
+
+Negative floating defaults and source `input i32` are accepted. The registered
+[negative-default](../examples/language/negative-default.ips) and
+[signed-input](../examples/language/signed-input.ips) programs are successful
+current cases; their former 0.4 errors remain in the frozen historical baseline.
+The API/product version alone does not determine source acceptance.
+
+These separate rejected examples exercise the current causes through the real
+compiler. The code identifies the cause family; the owning range, message and
+optional edit identify the declaration or binding to repair.
+
+| Registered rejection | Stable code | Repair |
+| --- | --- | --- |
+| [Arithmetic palette element](../examples/language/errors/declaration-constant.ips) | `IPS-TYPE-002` | Use a literal with optional parentheses and one numeric minus |
+| [Out-of-range signed default](../examples/language/errors/i32-default-range.ips) | `IPS-TYPE-003` | Keep the mathematical value within the signed range |
+| [Negative unsigned default](../examples/language/errors/negative-u32-default.ips) | `IPS-TYPE-004` | Use `input i32` for a signed default; the supplied type-token edit is source-bound |
+| [Duplicate call binding](../examples/language/errors/duplicate-call-argument.ips) | `IPS-TYPE-001` | Bind each parameter slot once, including mixed positional/named calls |
+| [Duplicate helper parameter](../examples/language/errors/duplicate-helper-parameter.ips) | `IPS-TYPE-001` | Give every parameter a unique name, even in unused helpers |
+
+These are compile-time errors, unlike the registered
+[unmatched stream pop](../examples/language/traps/stream-pop.ips), which passes
+`--check` and traps only during generation. Signature `effects` in
+`--describe-language` describe intrinsic checks; an argument/helper may trap
+as well, and fuel/call-depth failures are execution-wide resource effects.

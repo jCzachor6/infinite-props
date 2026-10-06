@@ -68,6 +68,9 @@ Integer arithmetic wraps modulo 2³². `/` and `%` use signed integer semantics
 when both operands are integers; division by zero traps. Shift counts are
 masked to five bits, and `>>` is logical (zero-filling). Floating division
 uses IEEE-754 results, including NaN/infinity.
+Signed division of `-2147483648` by `-1` also traps for overflow; signed
+remainder for that pair is zero. These checks are distinct from the ordinary
+wrapping behavior of integer addition, subtraction and multiplication.
 
 Vectors use `{x, y}`, expose `.x` and `.y`, support componentwise `+`, `-`,
 `*`, `/` with another vector, vector `*`/`/` scalar, scalar `*` vector and

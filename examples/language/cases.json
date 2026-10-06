@@ -6,6 +6,7 @@
     {"file": "types.ips", "expect": "pass"},
     {"file": "control-flow.ips", "expect": "pass"},
     {"file": "functions.ips", "expect": "pass"},
+    {"file": "call-effects.ips", "expect": "pass"},
     {"file": "random.ips", "expect": "pass"},
     {"file": "math.ips", "expect": "pass"},
     {"file": "drawing.ips", "expect": "pass"},
@@ -21,15 +22,21 @@
     {"file": "errors/local-type.ips", "expect": "compile-error", "message": "cannot assign f32"},
     {"file": "errors/float-condition.ips", "expect": "compile-error", "message": "condition must be an integer"},
     {"file": "errors/unknown-argument.ips", "expect": "compile-error", "message": "has no argument 'colour'"},
+    {"file": "errors/duplicate-call-argument.ips", "expect": "compile-error", "message": "duplicate 'x' argument"},
+    {"file": "errors/duplicate-helper-parameter.ips", "expect": "compile-error", "message": "duplicate parameter 'x'"},
     {"file": "errors/helper-uniform.ips", "expect": "compile-error", "message": "only visible inside 'draw'"},
     {"file": "errors/recursion.ips", "expect": "compile-error", "message": "recursive call"},
     {"file": "errors/integer-ramp.ips", "expect": "compile-error", "message": "ramp requires a color or f32 palette"},
     {"file": "errors/list-read.ips", "expect": "compile-error", "message": "cannot read list output"},
     {"file": "errors/immutable-input.ips", "expect": "compile-error", "message": "cannot assign to input"},
     {"file": "negative-default.ips", "expect": "pass"},
+    {"file": "errors/negative-u32-default.ips", "expect": "compile-error", "message": "negative default of input u32"},
+    {"file": "errors/i32-default-range.ips", "expect": "compile-error", "message": "must be in [-2147483648, 2147483647]"},
+    {"file": "errors/declaration-constant.ips", "expect": "compile-error", "message": "declaration constants must be literals"},
     {"file": "errors/compound-local.ips", "expect": "compile-error", "message": "cannot store rect"},
     {"file": "traps/fuel.ips", "expect": "trap", "message": "fuel exhausted"},
     {"file": "traps/noise-domain.ips", "expect": "trap", "message": "noise coordinate out of range"},
-    {"file": "traps/divide-by-zero.ips", "expect": "trap", "message": "divide by zero"}
+    {"file": "traps/divide-by-zero.ips", "expect": "trap", "message": "divide by zero"},
+    {"file": "traps/stream-pop.ips", "expect": "trap", "message": "stream stack underflow"}
   ]
 }

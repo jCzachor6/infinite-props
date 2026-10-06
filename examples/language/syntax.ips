@@ -1,13 +1,19 @@
 // Comments can contain arbitrary valid UTF-8: współrzędne.
 asset SourceSyntax {
   size 8x8;
+  origin 0, 0;
+  variants 1;
+  archetypes 1;
+  input i32 offset = -(0);
+  output point anchor;
   palette colors = [#abc, #1234, #abcdef, #abcdef80,];
   draw {
-    /* Newlines and semicolons are optional block separators. */
+    /* A semicolon separates statements; a newline is whitespace. */
     x = 0x1; y = 1e0
     point = {x, y,}
     pixel(int(point.x), int(point.y), colors[0],)
     value = -3 + int(2.5)
     if (true && !false) { pixel(value + 2, 2, #fff) }
+    anchor = {offset, 0}
   }
 }

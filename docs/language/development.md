@@ -30,6 +30,19 @@ Uniform defaults are validated with their declarations and retain their exact
 stored values. These additive fields come from the same call signatures used
 by binding, typing, lowering and source formatting.
 
+`source_rules` records actual input/value types, widening, legacy local scope,
+visibility and restrictions. Every signature also has intrinsic `effects`;
+`effect_rules` describes helper/part summaries, output writes and resource
+failures. Read these from the compiler export instead of maintaining a second
+signature/effect list. A callee or argument may have effects beyond an outer
+operation's intrinsic summary. The language-description contract explains
+the fields and links executable acceptance checks.
+
+Keep current cases consistent with source language 0.5. `negative-default.ips`
+and `signed-input.ips` are successful examples now; their old errors remain
+only in the immutable 0.4 baseline. Add restricted-constant or signed-range
+failures under separate filenames rather than relabeling those valid programs.
+
 ```sh
 python3 scripts/language_docs.py check --compiler build/tools/ipc
 python3 scripts/language_docs.py build --compiler build/tools/ipc

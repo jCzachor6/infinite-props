@@ -1,14 +1,15 @@
 asset PaletteHelpers {
   size 8x8
   palette colors = [#123, #9dc, #fc9]
-  palette levels = [0, 0.5, 1]
+  palette levels = [-(0.0), 0.5, 1]
   palette integers = [1, 2, 3]
+  palette signed = [-2, -(1), 0]
   draw {
     c = colors[index(3)]
     last = integers[-1]
     continuous = ramp(colors, 0.5)
     intensity = ramp(t = 0.5, palette = levels)
     rect(0, 0, 8, 8, c)
-    pixel(last, 2, color.scale(continuous, intensity))
+    pixel(last + signed[1] + 1, 2, color.scale(continuous, intensity))
   }
 }

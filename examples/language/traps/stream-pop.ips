@@ -1,0 +1,4 @@
+asset UnbalancedStream {
+  size 8x8
+  draw { stream_pop() }
+}

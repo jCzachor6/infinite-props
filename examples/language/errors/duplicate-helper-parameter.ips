@@ -1,0 +1,5 @@
+asset DuplicateParameter {
+  size 8x8
+  draw {}
+  unused(x: i32, x: f32) {}
+}
