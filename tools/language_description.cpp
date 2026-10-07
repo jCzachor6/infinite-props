@@ -1,4 +1,5 @@
 #include "language_description.hpp"
+#include "json.hpp"
 #include "ips/BuiltinArguments.hpp"
 #include "ips/CallPlan.hpp"
 #include "ips/Typing.hpp"
@@ -7,8 +8,6 @@
 #include "ips/ExportSchema.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
-
-#include <nlohmann/json.hpp>
 
 #include <cstdint>
 #include <ostream>
@@ -19,8 +18,7 @@
 
 namespace iprop::tools {
 namespace {
-// Insertion order is the published field order of the schema 1 export.
-using Json = nlohmann::ordered_json;
+// Json keeps insertion order: the published field order of the schema 1 export.
 
 Json operationEffects(const OperationEffects& effects) {
     Json mayTrap = Json::array();
@@ -36,10 +34,10 @@ Json operationEffects(const OperationEffects& effects) {
 }
 
 Json effectRules() {
-    auto rules = Json::parse(R"({"intrinsic_scope":"operation_excluding_arguments_and_resources",
-        "argument_effects":"evaluated_before_operation_in_caller_stream",
-        "resource_traps":["fuel_exhausted","call_depth_limit"],"validation_limits":["operand_stack_limit"],
-        "allocation_failure":true})");
+    auto rules = Json::object({{"intrinsic_scope", "operation_excluding_arguments_and_resources"},
+        {"argument_effects", "evaluated_before_operation_in_caller_stream"},
+        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit"})},
+        {"validation_limits", Json::array({"operand_stack_limit"})}, {"allocation_failure", true}});
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
     rules["seed_read"] = operationEffects(findOpcode(Opcode::StreamState)->effects);
@@ -93,23 +91,22 @@ Json sourceRules() {
     typeRules["local_reassignment"] = "exact_type";
     auto rules = Json::object({{"inputs", std::move(inputs)}, {"types", std::move(typeRules)}});
     // Fixed rules of the current compiler, in their published order.
-    rules.update(Json::parse(R"({
-        "locals":{"declaration":"first_assignment","scope":"function",
-            "type_inference_order":"source_traversal","definite_assignment_analysis":false,
-            "unexecuted_initializer":"typed_zero","read_requires_prior_assignment":true},
-        "visibility":{"uniforms":"draw_only","uniforms_read_only":true,
-            "helper_parameters_read_only":true,
-            "draw_controls":{"names":["v","a"],"type":"i32","read_only":true},
-            "seed":"current_rng_state_in_all_functions","palettes":"all_asset_functions"},
-        "named_calls":{"targets":["builtin","helper","part"],"mixed_positional_and_named":true,
-            "positional_binding":"positional_parameter_ordinal",
-            "named_arguments_advance_positional_ordinal":false,"duplicate_arguments":false,
-            "unknown_arguments":false},
-        "restrictions":{"recursive_helpers":false,"nested_part_imports":false,
-            "let_declarations":false,"fn_declarations":false,"named_geometry_constructors":false},
-        "effect_order":{"binary_operands":"left_to_right","logical_operators":"short_circuit_left_to_right",
-            "call_arguments":"signature_evaluation_order","named_arguments_change_evaluation_order":false,
-            "part_parent_rng":"restored_after_child"}})"));
+    rules["locals"] = Json::object({{"declaration", "first_assignment"}, {"scope", "function"},
+        {"type_inference_order", "source_traversal"}, {"definite_assignment_analysis", false},
+        {"unexecuted_initializer", "typed_zero"}, {"read_requires_prior_assignment", true}});
+    rules["visibility"] = Json::object({{"uniforms", "draw_only"}, {"uniforms_read_only", true},
+        {"helper_parameters_read_only", true},
+        {"draw_controls", Json::object({{"names", Json::array({"v", "a"})}, {"type", "i32"}, {"read_only", true}})},
+        {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"}});
+    rules["named_calls"] = Json::object({{"targets", Json::array({"builtin", "helper", "part"})},
+        {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
+        {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},
+        {"unknown_arguments", false}});
+    rules["restrictions"] = Json::object({{"recursive_helpers", false}, {"nested_part_imports", false},
+        {"let_declarations", false}, {"fn_declarations", false}, {"named_geometry_constructors", false}});
+    rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
+        {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},
+        {"named_arguments_change_evaluation_order", false}, {"part_parent_rng", "restored_after_child"}});
     return rules;
 }
 

@@ -1,8 +1,7 @@
 #include "ipval.hpp"
+#include "json.hpp"
 
 #include "iprop/Validator.hpp"
-
-#include <nlohmann/json.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -27,14 +26,14 @@ ValidationReport validateReport(std::span<const u8> bytes) {
 namespace {
 
 std::string jsonReport(const std::string& file, const ValidationReport& report) {
-    using Json = nlohmann::ordered_json;
+    using tools::Json;
     Json violations = Json::array();
     for (const Violation& violation : report.violations)
         violations.push_back(Json::object({{"offset", violation.offset}, {"message", violation.message}}));
     const auto document = Json::object({{"file", file}, {"valid", report.valid},
                                          {"violations", std::move(violations)}});
-    // File names and messages may hold invalid UTF-8: replace it, keeping valid JSON.
-    return document.dump(2, ' ', false, Json::error_handler_t::replace) + "\n";
+    // File names and messages may hold invalid UTF-8: Json replaces it, keeping valid JSON.
+    return document.dump(2) + "\n";
 }
 
 } // namespace

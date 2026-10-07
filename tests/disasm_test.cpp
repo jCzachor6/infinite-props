@@ -1,7 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <nlohmann/json.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -13,6 +11,7 @@
 #include "ipdis.hpp"
 #include "ipval.hpp"
 #include "ipa.hpp"
+#include "json.hpp"
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
@@ -295,7 +294,11 @@ TEST_CASE("ipval --json writes one valid JSON report for any path bytes") {
     const auto report = [](std::initializer_list<const char*> args, int expectedExit) {
         CaptureStdout capture;
         REQUIRE(Argv(args).ipval() == expectedExit);
-        return nlohmann::json::parse(capture.text.str());
+        return capture.text.str();
+    };
+    const auto expected = [](const std::string& file, const char* valid, const char* violations) {
+        return "{\n  \"file\": " + tools::Json(file).dump() + ",\n  \"valid\": " + valid +
+            ",\n  \"violations\": " + violations + "\n}\n";
     };
     const std::vector<u8> validBytes = compileChecked(kFixture);
     const auto validPath = std::filesystem::temp_directory_path() / "ipval-json-valid.iprop";
@@ -306,23 +309,19 @@ TEST_CASE("ipval --json writes one valid JSON report for any path bytes") {
     }
     const auto badPath = writeTemp("ipval-json-bad.iprop", "junk");
 
-    const auto valid = report({"ipval", "--json", validPath.string().c_str()}, 0);
-    REQUIRE(valid["file"] == validPath.string());
-    REQUIRE(valid["valid"] == true);
-    REQUIRE(valid["violations"] == nlohmann::json::array());
+    REQUIRE(report({"ipval", "--json", validPath.string().c_str()}, 0) ==
+            expected(validPath.string(), "true", "[]"));
+    REQUIRE(report({"ipval", "--json", badPath.string().c_str()}, 1) ==
+            expected(badPath.string(), "false", "[\n    {\n      \"offset\": 4,\n"
+                     "      \"message\": \"file too small: header truncated\"\n    }\n  ]"));
 
-    const auto invalid = report({"ipval", "--json", badPath.string().c_str()}, 1);
-    REQUIRE(invalid["valid"] == false);
-    REQUIRE(invalid["violations"].size() == 1);
-    REQUIRE(invalid["violations"][0]["offset"] == 4);
-    REQUIRE(invalid["violations"][0]["message"].get<std::string>().find("too small") != std::string::npos);
-
-    // A control byte is escaped and invalid UTF-8 becomes U+FFFD; neither the
-    // file nor its name needs to exist for the I/O report.
-    const auto unreadable = report({"ipval", "--json", "missing-\x01-\xff.iprop"}, 2);
-    REQUIRE(unreadable["file"] == "missing-\x01-\xEF\xBF\xBD.iprop");
-    REQUIRE(unreadable["valid"] == false);
-    REQUIRE(unreadable["violations"][0]["message"] == "cannot open file");
+    // A control byte is escaped and each maximal ill-formed UTF-8 subpart
+    // becomes U+FFFD; neither the file nor its name needs to exist.
+    const char* const missing = "\"missing-\\u0001-\xEF\xBF\xBD-\xEF\xBF\xBD-"
+        "\xEF\xBF\xBD\xEF\xBF\xBD\xEF\xBF\xBD-\xC5\xBC.iprop\"";
+    REQUIRE(report({"ipval", "--json", "missing-\x01-\xff-\xe2\x82-\xed\xa0\x80-\xc5\xbc.iprop"}, 2) ==
+            "{\n  \"file\": " + std::string(missing) + ",\n  \"valid\": false,\n  \"violations\": [\n"
+            "    {\n      \"offset\": 0,\n      \"message\": \"cannot open file\"\n    }\n  ]\n}\n");
 
     std::filesystem::remove(validPath);
     std::filesystem::remove(badPath);
