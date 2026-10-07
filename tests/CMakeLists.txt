@@ -133,6 +133,8 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME runtime_matrix_comparators COMMAND ${IPROP_NODE_EXECUTABLE}
+        --test "${CMAKE_SOURCE_DIR}/scripts/tests/runtime_matrix_wasm.test.js")
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")

@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "measurement_kind": "actual current native matrix and exact artifact WASM comparison",
+  "source_commit": "a1ffab9d56dea117168862a00dc9e346389e13ed",
+  "versions": {
+    "product_version": "0.4.0",
+    "language_version": "0.5",
+    "format_version": "0.4",
+    "c_api_version": "0.3",
+    "c_abi_soversion": "0.4"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "frozen_release": "66d34c2831585afb231022da9296528a912e962e",
+  "frozen_manifest_sha256": "5de0fd814fa409a170d30546265e670fb091c9964eeb0253564cbb07cafbbf28",
+  "native_tools_sha256": {
+    "ipc": "b1ede504f655acb476c3dbd0604a0814274457bb7e855d6aa0a6ef9fe4209863",
+    "ipgen": "3d2614efc2eb7d913dedca0f9b1c26842d6d279891b37d673e35d93d6dee9b5d",
+    "ipa": "a83b7166ac7db6a833aa8bb849ff65280154e7be2fac90bcb2a6fb11fd9ad2f2"
+  },
+  "harness_sha256": {
+    "native": "25a966e19eb7b98a2f80e6f2e22fc3834e7213cabc785bcc0e4331a9e4e03cc3",
+    "wasm": "d2d22a67d1a364bca18fcf0250a59887b14ca19589ad6193aa1ee89b8bd19518"
+  },
+  "full_reports": {
+    "native": {
+      "filename": "native-runtime-matrix.json",
+      "sha256": "963575dbd4f6c1fc64730239f71027ba4e4436932b60ecec269651718fa5edbc",
+      "bytes": 11460165
+    },
+    "wasm": {
+      "filename": "wasm-runtime-matrix.json",
+      "sha256": "aa3568a5ab38da98efeaf2b895e638bb414964000c0ef2d594ee054ef11e6cc6",
+      "bytes": 2486071
+    }
+  },
+  "scope": {
+    "seeds": [
+      0,
+      1,
+      2,
+      7,
+      26
+    ],
+    "variants": [
+      0
+    ],
+    "archetypes": [
+      0
+    ],
+    "size": "asset default",
+    "optimizations": [
+      "reference",
+      "optimized"
+    ],
+    "debug_modes": [
+      "debug",
+      "stripped"
+    ],
+    "containers": [
+      "plain",
+      "compress"
+    ],
+    "optimized_size_gate": "expanded bytes; compressed entropy deltas reported separately",
+    "historical_size_gate": false,
+    "workers": 4,
+    "per_command_timeout_seconds": 30
+  },
+  "summary": {
+    "released_sources": {
+      "sources": 87,
+      "compile_attempts": 696,
+      "compile_rejections": 80,
+      "successful_generations": 2840,
+      "traps": 240,
+      "artifact_bytes": {
+        "debug/plain/reference": {
+          "bytes": 167528,
+          "expanded_bytes": 167528
+        },
+        "debug/plain/optimized": {
+          "bytes": 149798,
+          "expanded_bytes": 149798
+        },
+        "debug/compress/reference": {
+          "bytes": 38140,
+          "expanded_bytes": 167528
+        },
+        "debug/compress/optimized": {
+          "bytes": 36935,
+          "expanded_bytes": 149798
+        },
+        "stripped/plain/reference": {
+          "bytes": 94720,
+          "expanded_bytes": 94720
+        },
+        "stripped/plain/optimized": {
+          "bytes": 85650,
+          "expanded_bytes": 85650
+        },
+        "stripped/compress/reference": {
+          "bytes": 32808,
+          "expanded_bytes": 94720
+        },
+        "stripped/compress/optimized": {
+          "bytes": 31795,
+          "expanded_bytes": 85650
+        }
+      },
+      "expanded_optimized_no_growth_passed": true,
+      "compressed_optimized_larger_pairs": 52,
+      "historical_size": {
+        "matched_plain_artifacts": 300,
+        "released_bytes": 496096,
+        "current_bytes": 496096,
+        "delta_bytes": 0,
+        "grown_artifacts": 0,
+        "shrunk_artifacts": 0,
+        "new_source_paths_without_historical_size": []
+      }
+    },
+    "current_sources": {
+      "sources": 111,
+      "compile_attempts": 888,
+      "compile_rejections": 120,
+      "successful_generations": 3560,
+      "traps": 280,
+      "artifact_bytes": {
+        "debug/plain/reference": {
+          "bytes": 180816,
+          "expanded_bytes": 180816
+        },
+        "debug/plain/optimized": {
+          "bytes": 161906,
+          "expanded_bytes": 161906
+        },
+        "debug/compress/reference": {
+          "bytes": 43279,
+          "expanded_bytes": 180816
+        },
+        "debug/compress/optimized": {
+          "bytes": 42047,
+          "expanded_bytes": 161906
+        },
+        "stripped/plain/reference": {
+          "bytes": 103884,
+          "expanded_bytes": 103884
+        },
+        "stripped/plain/optimized": {
+          "bytes": 94246,
+          "expanded_bytes": 94246
+        },
+        "stripped/compress/reference": {
+          "bytes": 37291,
+          "expanded_bytes": 103884
+        },
+        "stripped/compress/optimized": {
+          "bytes": 36246,
+          "expanded_bytes": 94246
+        }
+      },
+      "expanded_optimized_no_growth_passed": true,
+      "compressed_optimized_larger_pairs": 65,
+      "historical_size": {
+        "matched_plain_artifacts": 300,
+        "released_bytes": 496096,
+        "current_bytes": 496436,
+        "delta_bytes": 340,
+        "grown_artifacts": 6,
+        "shrunk_artifacts": 0,
+        "new_source_paths_without_historical_size": [
+          "backends/capi/test/image-view.ips",
+          "backends/capi/test/output-values.ips",
+          "backends/capi/test/reflection-defaults.ips",
+          "backends/capi/test/reflection-empty.ips",
+          "backends/capi/test/reflection-output-empty.ips",
+          "backends/capi/test/reflection-output-first.ips",
+          "backends/capi/test/reflection-output-second.ips",
+          "backends/capi/test/reflection-outputs.ips",
+          "backends/capi/test/reflection-part-empty.ips",
+          "backends/capi/test/reflection-part-first.ips",
+          "backends/capi/test/reflection-part-second.ips",
+          "backends/capi/test/reflection-parts.ips",
+          "benchmarks/capi/fixtures/large.ips",
+          "benchmarks/capi/fixtures/lists.ips",
+          "benchmarks/capi/fixtures/part.ips",
+          "benchmarks/capi/fixtures/parts.ips",
+          "benchmarks/capi/fixtures/small.ips",
+          "examples/language/call-effects.ips",
+          "examples/language/errors/declaration-constant.ips",
+          "examples/language/errors/duplicate-call-argument.ips",
+          "examples/language/errors/duplicate-helper-parameter.ips",
+          "examples/language/errors/i32-default-range.ips",
+          "examples/language/errors/negative-u32-default.ips",
+          "examples/language/negative-default.ips",
+          "examples/language/signed-input.ips",
+          "examples/language/traps/stream-pop.ips"
+        ]
+      }
+    }
+  },
+  "frozen_current_runtime": {
+    "passed": true,
+    "successful_generations": 1385,
+    "traps": 120
+  },
+  "wasm_matrix": {
+    "passed": true,
+    "images_and_output_comparisons": 7785,
+    "trap_comparisons": 640,
+    "binary_artifacts": 1685,
+    "reused_module_sha256": {
+      "iprop.js": "3043e9ec2b6c90e1fb10d333e7352b119c0ceeb02c521ed808338f157f70f82f",
+      "iprop.wasm": "cb7dd54d3248ee9bb18b33b445ef3fc39cbb4e842c0a2f39deb1f167662fef44"
+    }
+  },
+  "separate_root_wasm_conformance": {
+    "sha256": "58f9b0bb0132e83abe40986675c5d7f5b068a21d54979f1ed849c46b4f3153c6",
+    "native": {
+      "passed": true,
+      "failures": [],
+      "comparisons": 276,
+      "trapComparisons": 19,
+      "vectorComparisons": 6292,
+      "colorComparisons": 29
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    },
+    "provenance": "WASM built separately by root; recorded runtime/html5 sources match both f3af40c and measured a1ffab9; exact source proof in report archive."
+  },
+  "historical_growth": {
+    "delta_bytes": 340,
+    "changed_source_artifacts": [
+      {
+        "source": "examples/language/palettes.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 660,
+        "current_bytes": 696,
+        "delta": 36,
+        "same_source_bytes": false
+      },
+      {
+        "source": "examples/language/palettes.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 424,
+        "current_bytes": 444,
+        "delta": 20,
+        "same_source_bytes": false
+      },
+      {
+        "source": "examples/language/syntax.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 518,
+        "current_bytes": 604,
+        "delta": 86,
+        "same_source_bytes": false
+      },
+      {
+        "source": "examples/language/syntax.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 348,
+        "current_bytes": 426,
+        "delta": 78,
+        "same_source_bytes": false
+      },
+      {
+        "source": "examples/language/syntax.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 346,
+        "current_bytes": 408,
+        "delta": 62,
+        "same_source_bytes": false
+      },
+      {
+        "source": "examples/language/syntax.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 252,
+        "current_bytes": 310,
+        "delta": 58,
+        "same_source_bytes": false
+      }
+    ],
+    "explanation": "palettes adds signed palette/declaration constants and reference arithmetic; syntax adds declaration separators, a signed input and an observable point output. Same released source recompiled has zero delta."
+  },
+  "uncovered": [
+    "The native/WASM full source corpus is separate from joined focused CAPI/SFML/Godot regressions. Not every full-matrix artifact was rerun through every backend.",
+    "Default variant/archetype/size in the full matrix; wider controls/vector/color/historical-envelope cases are in separate native/WASM conformance.",
+    "macOS arm64 only; no local Linux/Windows/CI runtime validation.",
+    "WASM build reused, not rebuilt by this harness.",
+    "New source paths have no frozen source-level size observation. Expanded optimized\u2264reference holds; some compressed optimized containers grow due to entropy."
+  ],
+  "focused_existing_cpp_regressions": {
+    "passed": true,
+    "test_cases": 17,
+    "assertions": 13860,
+    "test_binary_sha256": "abd695e2eca10e67c62523484e3dffedb5519abef1b9af7146e6ea4a7b9fbf14",
+    "log_sha256": "b081e101913352d1d0581709166598b44629ac6bbc0b7770fb3c9d25927fefe3",
+    "scope": "shift/comparison grouped oracles and RNG; signed input/default raw bits; named/mixed part controls; named helper binding; bound/shared call plans and aliases. Separate from eight-mode standalone source corpus."
+  },
+  "report_archive": {
+    "filename": "language-v0.5-reports-macos-arm64.tar.gz",
+    "bytes": 593155,
+    "sha256": "7bab5e819168b4d858a5102ee955a240cb5c6d1114d16340701e00494ec971fd",
+    "members_manifest": "manifest.json"
+  },
+  "joined_backends": {
+    "source_commit": "a1ffab9d56dea117168862a00dc9e346389e13ed",
+    "native_ctest": {
+      "passed": true,
+      "tests": 69
+    },
+    "capi_sanitizers": {
+      "passed": true,
+      "tests": 45
+    },
+    "sfml_godot_sanitizers_passed": true,
+    "physically_relocated_sdk_passed": true,
+    "proof_member": "backend-source-and-artifact-proof.json",
+    "limitations": [
+      "No local Linux/Windows execution; remote Actions jobs did not start due account billing.",
+      "Focused backend corpus is not a claim that every full native/WASM artifact ran through every backend.",
+      "Product remains0.4.0 until release preparation; no publication claim."
+    ]
+  }
+}

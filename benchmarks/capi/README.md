@@ -82,3 +82,51 @@ Typed values still coexist briefly with packed storage during conversion.
 The captures were sequential on a shared local machine several hours apart;
 their timing medians do not establish a speedup. The final 05-M.5 comparison
 with the original frozen 05-M.1 executable remains a separate task.
+
+## Final adapter comparison (05-M.5)
+
+The [full raw comparison](final-comparison-macos-arm64.json) alternates the
+unchanged 05-M.1 executable with the completed 0.5 C adapter at source commit
+`a1ffab9d56dea117168862a00dc9e346389e13ed`. Its product metadata is still
+0.4.0; source language is 0.5, binary format 0.4, C API 0.3 and ABI 0.4.
+The runtime/adapter sources were committed and unchanged throughout the run.
+The [comparison tool](compare.py) pins the original capture, both executables,
+compiler, sources and input binaries before and after execution.
+
+Six alternating rounds use 20 measured calls and two warm-ups per fixture
+and phase. Fixture order rotates between rounds. All 960 generated result
+hashes match the original capture for the same four seeds and binary inputs;
+1,920 measured load/generate calls are retained, with individual timings and
+C++ allocation counters. This comparison exercises the compatible legacy
+load/generate path; it does not time the new reflection/parameter/typed-read
+entry points.
+
+| Fixture | Generate C++ allocations before → after | Gross requested bytes before → after | Load allocations before → after | Load bytes before → after |
+| --- | ---: | ---: | ---: | ---: |
+| small | 23 → 19 | 3,290 → 2,154 | 26 → 27 | 1,344 → 1,384 |
+| large | 24 → 20 | 525,550 → 263,294 | 24 → 25 | 1,217 → 1,257 |
+| lists | 75 → 65 | 281,646 → 178,998 | 35 → 36 | 2,030 → 2,070 |
+| parts | 79 → 72 | 161,978 → 93,194 | 49 → 50 | 2,385 → 2,425 |
+
+Consuming the VM result removes the additional canvas copy; packing moves
+names and releases the typed payload after copying the fields required by the
+legacy float ABI. Generate uses 4–10 fewer C++ allocation calls in these
+fixtures. Load now uses one additional allocation and 40 additional gross
+requested bytes because the program data is shared with validated parameter
+handles. The comparison records this cost together with the generation gains.
+
+| Fixture | Observed load µs before → after | Observed generate µs before → after |
+| --- | ---: | ---: |
+| small | 2.875 → 2.916 | 1.584 → 1.417 |
+| large | 1.855 → 1.792 | 416.771 → 412.042 |
+| lists | 3.312 → 3.291 | 185.458 → 179.479 |
+| parts | 3.521 → 3.709 | 62.083 → 59.313 |
+
+These local medians describe a shared macOS arm64 host, without CPU isolation
+or frequency pinning. They do not establish a repeatable speedup or a CI
+threshold. Gross requested bytes are allocation traffic, not retained or peak
+memory; dependency malloc/realloc, memcpy counts and CPU counters remain
+unmeasured. Field packing still copies float components. Rendering directly
+into host memory remains a 0.6 task. The frozen baseline, executables and
+input binaries are retained for the workspace, limits and host-memory work
+in 06-K/M/N/Q; later comparisons must preserve these identities.
