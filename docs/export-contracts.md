@@ -61,8 +61,8 @@ integer range. The editor's explicit unsupported-option response permits the
 frozen compiler's text protocol; malformed current JSON does not trigger that
 compatibility path.
 
-Only frozen 0.4 benchmarks and explicitly authored historical test fixtures may
-select the `historical-0.4` catalog reader. That profile is selected by the
+Only the frozen v0.4.0 exports in `tests/fixtures` and explicitly authored
+historical test fixtures may select the `historical-0.4` catalog reader. That profile is selected by the
 caller, never by absent fields, product version or a failed current validation.
 The language schema exposes its frozen shape in `$defs.historical04`; the
 default root remains the complete current contract. Publication, SDK, website

@@ -3,13 +3,13 @@
 **Status:** plan wdrożenia; wszystkie zadania są do wykonania.
 **Data:** 2026-10-05.
 **Baza planowania:** wydane `v0.4.0`, SHA `66d34c2831585afb231022da9296528a912e962e`. Baza implementacji: ukończone/wydane 0.5, którego rzeczywisty SHA utrwalamy w 06-0.1.
-**Cel:** dokończyć jawny, sprawdzalny zapis języka i pętlę LLM oraz dać hostom wielokrotną generację z kontrolą zasobów, współbieżnością i wygodnym SDK.
+**Cel:** dokończyć jawny, sprawdzalny zapis języka oraz dać hostom wielokrotną generację z kontrolą zasobów, współbieżnością i wygodnym SDK.
 
 Ten dokument jest drugą połową [planu 0.5](iprop-v0.5-plan.md). Nie zastępuje zadań 0.5 ani nie powtarza ich implementacji. Oba plany zawierają zmiany języka/narzędzi i C API. Mapa na końcu planu 0.5 rozlicza wszystkie pierwotne zadania i wszystkie dodane propozycje C API.
 
 ## Bilans i zależności
 
-Wstępny nakład: **110 punktów dla 0.5 i 110 dla 0.6 — podział 50/50**. Punkty są względnym szacunkiem implementacji, migracji i weryfikacji, a nie czasem ani zmierzoną produktywnością. Po reproduktorach/benchmarkach przeliczamy obie strony razem. W 0.5 zostają podstawowe kontrakty i naprawy, a w 0.6 funkcje budowane na tych kontraktach.
+Wstępny nakład: **105 punktów dla 0.5 i 97 dla 0.6**. Punkty są względnym szacunkiem implementacji, migracji i weryfikacji, a nie czasem ani zmierzoną produktywnością. Po reproduktorach/benchmarkach przeliczamy obie strony razem. W 0.5 zostają podstawowe kontrakty i naprawy, a w 0.6 funkcje budowane na tych kontraktach.
 
 | Etap | Zakres | Priorytet | Punkty | Zależności |
 | --- | --- | --- | ---: | --- |
@@ -19,7 +19,6 @@ Wstępny nakład: **110 punktów dla 0.5 i 110 dla 0.6 — podział 50/50**. Pun
 | F | Formatter i lint nowego zapisu | P1 | 3 | 05-F, D/E |
 | G | Aktualizacja kontraktu i referencji | P1 | 3 | 05-G, D/E/F |
 | H | Gramatyka i jeden adapter | P1 | 13 | D/E/F/G |
-| I | Pełna naprawa, ewaluacja i benchmark LLM | P1 | 13 | 05-I, H, L/T; CLI pozostaje dostępne |
 | K | Konteksty i współbieżność | P0 | 8 | 05-V/R/P/X/M, 0 |
 | L | Limity hosta i anulowanie | P0 | 8 | K, 05-X |
 | M | Generacja do bufora hosta | P1 | 8 | K/L, 05-O/M |
@@ -28,9 +27,9 @@ Wstępny nakład: **110 punktów dla 0.5 i 110 dla 0.6 — podział 50/50**. Pun
 | T | Osobna biblioteka C API kompilatora | P1 | 8 | 05-B/G/X, D/E/F/G |
 | U | C++ RAII i binding Rust | P1 | 5 | K/L/M/Q/T |
 | J | Integracje, CI i wydanie | P0 | 13 | wszystkie powyższe |
-| **Razem** | | | **110** | |
+| **Razem** | | | **97** | |
 
-Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M → Q → N → T → H → I → U → J`. Poszczególne moduły mogą powstawać po spełnieniu swoich zależności; nie wymagają wielkiego wspólnego refactoru. Pierwszy kamień milowy: składnia/formatter oraz konteksty/limity. Drugi: bufory, batch, kompilator i gramatyka. Trzeci: bindingi, porównania, CI i paczki.
+Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M → Q → N → T → H → U → J`. Poszczególne moduły mogą powstawać po spełnieniu swoich zależności; nie wymagają wielkiego wspólnego refactoru. Pierwszy kamień milowy: składnia/formatter oraz konteksty/limity. Drugi: bufory, batch, kompilator i gramatyka. Trzeci: bindingi, porównania, CI i paczki.
 
 ## Kontrakty 0.6
 
@@ -45,7 +44,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 
 ## 0. Baza i kontrakty
 
-- [ ] **06-0.1** Utrwalić wydane 0.5: SHA, artefakty, nagłówki i binaria klientów API 0.2/0.3, korpus source/binary, diagnostyki, obrazy/outputy/trapy/RNG oraz benchmarki 05-I/M. Uaktualnić rzeczywiste estymaty obu wydań i rejestr decyzji.
+- [ ] **06-0.1** Utrwalić wydane 0.5: SHA, artefakty, nagłówki i binaria klientów API 0.2/0.3, korpus source/binary, diagnostyki, obrazy/outputy/trapy/RNG oraz benchmarki 05-M. Uaktualnić rzeczywiste estymaty obu wydań i rejestr decyzji.
 - [ ] **06-0.2** Przygotować reproduktory let/fn/vec2/shape i kolizji symboli, CFG inicjalizacji, życia buforów, współdzielenia programu, limitów partów/list oraz anulowania długiej operacji rasteryzacji. Zdefiniować nowe poprawne/błędne przykłady przed zmianą implementacji.
 - [ ] **06-0.3** Zapisać kontrakty context/generate_into/batch/compiler i model zasobów; przygotować klienta C99 jako review projektu API. API 0.4 dodaje symbole/capabilities do zamrożonej linii ABI, nie zmienia starych struktur ani wartości. Metadane rozdzielają produkt, język, format, runtime API, compiler API i SONAME.
 
@@ -74,7 +73,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 
 - [ ] **06-F.1** Rozszerzyć formatter 05-F o drukowanie helperów z `fn` i konstruktorów oraz nowy profil kanoniczny. Zachować rozwiązane wiązania i kolejność efektów; kolizje z helperem vec2/aliasem shape mogą wymagać pozostawienia legacy postaci.
 - [ ] **06-F.2** Drukować jawne `let` z podanym typem, jeśli był zapisany. Nie dopisywać `let` do legacy przypisań i nie przenosić deklaracji między gałęziami; lint osobno proponuje migrację i inicjalizację przed rozgałęzieniem.
-- [ ] **06-F.3** Zachować komentarze i ich przypięcie przy nowych deklaracjach/konstruktorach/named calls. Integracja z edytorem, galerią i 06-I korzysta z jednego formattera, bez specjalnego printera dla LLM.
+- [ ] **06-F.3** Zachować komentarze i ich przypięcie przy nowych deklaracjach/konstruktorach/named calls. Integracja z edytorem i galerią korzysta z jednego formattera.
 
 **Akceptacja:** idempotencja, zachowane komentarze i ten sam kod wykonywalny po strip debug dla starego i nowego zapisu; szczególnie CFG, RNG, floaty i kolizje nazw. Ostrzeżenia/migracja nie zmieniają automatycznie źródła ani bytecode'u.
 
@@ -97,19 +96,6 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 
 **Akceptacja:** adapter potrafi wygenerować kompletne źródło `.ips`, które parser przyjmuje; działa także zwykła ścieżka bez adaptera. Przypadki semantycznie błędne nadal trafiają do kompilatora i diagnostyki, a nie są raportowane jako sukces języka.
 
-## I. Pełna pętla napraw i benchmark LLM
-
-- [ ] **06-I.1** Rozwinąć runner 05-I do pełnego przepływu: specyfikacja + kompaktowy kontrakt → generacja → check JSON → kolejne naprawy → check → obraz/outputy → ocena. Włączyć formatter, limity liczby prób/czasu/canvasu/fuel i anulowanie. Zapisywać wszystkie próby i diagnostyki, również niepowodzenia.
-- [ ] **06-I.2** Zachować 24 bazowe zadania i wspólny podzbiór porównania 0.4/0.5/0.6. Nowe zadania let/fn/geometrii/granicy C API raportować oddzielnie, bez wymagania nowych konstrukcji od starszych wersji. Te same modele, parametry, seedy i limity napraw; utrwalić SHA kodu/promptów/referencji/gramatyki i konfigurację backendu.
-- [ ] **06-I.3** Mierzyć first-pass, sukces po naprawach, ich liczbę/kody, trapy, poprawność outputów/obrazu, czas i tokeny. Kryteria funkcjonalne/geometryczne są automatyczne, wizualne wymagające człowieka mają zapis przeglądu. Rozmiar próbki, rozrzut i ograniczenia powtarzalności modelu są częścią raportu.
-- [ ] **06-I.4** Wykonać ablation: bez/z gramatyką i bez/z naprawą, z dopasowanymi budżetami. Porównać bazę 0.4, etap 0.5 i pełne 0.6. Nie przypisywać całego zysku składni i nie utożsamiać kompilacji z poprawnym obrazem; cele ilościowe ustalamy z baseline, brak poprawy ma analizę przypadków.
-- [ ] **06-I.5** Odtwarzać w CI deterministyczny korpus, zapisane błędne odpowiedzi i naprawy; żywy LLM pozostaje osobnym ręcznym/opcjonalnym harmonogramem z limitem kosztu. Surowe wyniki umożliwiają przegląd i odtworzenie bez ponownego wywołania modelu.
-- [ ] **06-I.6** Oddzielić adapter backendu/gramatyki od runnera/oceny. Pozostawić ścieżkę CLI bez wymagania osobnej biblioteki kompilatora; dodać adapter do T, współdzieląc diagnostyki i schemat wyniku. Brak wsparcia gramatyki przez backend korzysta z normalnego generowania i check.
-
-**Artefakty docelowe:** rozszerzone `benchmarks/llm/`, manifesty wersji, prompty, surowe próby, raport 0.4/0.5/0.6, galeria oraz zapis warunków pomiaru.
-
-**Akceptacja:** runner wykonuje cały cykl także na błędnym źródle, trapie, przekroczeniu limitu i anulowaniu. Raport oddziela składnię, semantykę, wykonanie i ocenę obrazu; zapisane próby są odtwarzalne offline.
-
 ## K. Konteksty wykonania i współbieżność — P0
 
 - [ ] **06-K.1** Dodać opaque context związany z przygotowanym programem i używający parametrów 05-P; create/reset/free oraz generację owned. Zależności utrzymują dane przy życiu zgodnie z opisem, także gdy host zwolni swój uchwyt programu. Stare generate pozostaje wejściem bez konieczności zarządzania contextem.
@@ -126,7 +112,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 - [ ] **06-L.2** Dodać limity generacji: fuel, piksele, pamięć robocza/wyniku, liczba elementów outputów. Budżet fuel jest najwyżej meta.fuel, koszt instrukcji nie zmienia się. Opcjonalność limitu i literalne zero mają zdefiniowane znaczenie; stare wywołanie stosuje dawną politykę.
 - [ ] **06-L.3** Liczyć zasoby root i pośrednich canvasów partów, stosów, list outputów i buforów konwersji C, w tym rzeczywiste capacity/reuse. Jawnie oddzielić limity pamięci programu od wykonania i zdefiniować rozliczenie zewnętrznego bufora. Nie reklamować limitu całego procesu/RSS, jeśli kontrolowane są alokacje biblioteki. Checked arithmetic przed iloczynami/stride/reserve.
 - [ ] **06-L.4** Dodać anulowanie przez bezpieczny opaque token i/lub callback z user_data, z określonym lifetime. Sprawdzać je także w długich operacjach rasteryzacji, w ograniczonych odstępach pracy; sam check między opcodes nie wystarczy. Brak cancel pozostaje tani i nie zmienia udanych pikseli ani fuel semantics.
-- [ ] **06-L.5** Oddzielne przyczyny/statusy limit/cancel w nowych wejściach, żadnych częściowych owned results. Po błędzie context nadaje się do resetu/reuse. Opisać statystyki nieudanego wykonania i propagację do batch/LLM; przetestować limity dokładnie na granicy i podczas pracy partu/listy.
+- [ ] **06-L.5** Oddzielne przyczyny/statusy limit/cancel w nowych wejściach, żadnych częściowych owned results. Po błędzie context nadaje się do resetu/reuse. Opisać statystyki nieudanego wykonania i propagację do batch; przetestować limity dokładnie na granicy i podczas pracy partu/listy.
 
 **Akceptacja:** ograniczenia faktycznie zatrzymują kosztowne ścieżki przed niekontrolowaną alokacją i pozwalają przerwać długie operacje. Standardowa generacja zachowuje wynik i budżet 0.4/0.5; ograniczenia nie są nową semantyką opcodes.
 
@@ -160,7 +146,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 - [ ] **06-T.2** Udostępnić check/compile z UTF-8 source bytes, wirtualną nazwą pliku i opcjami, zwracające owned bytes `.iprop` oraz strukturalne diagnostyki. Gettery są sized, kody/zakresy zgodne z CLI/edytorem; błąd nie zapisuje plików ani nie uruchamia subprocessu.
 - [ ] **06-T.3** Resolver importów jest callbackiem hosta z user_data, opisem bazowej/żądanej ścieżki i jasnym kontraktem source-buffer lifetime/release. Compiler utrwala potrzebne źródła; obsługuje błędy importu, zachowując obecne reguły części i zakaz nested imports. Adapter filesystemu pozostaje w CLI/hoście.
 - [ ] **06-T.4** Udostępnić capabilities/opis języka i opcjonalne metadane źródłowe, np. rozróżnienie input i32 od U32. Nie odtwarzać informacji źródłowej z binarnego programu i nie zmieniać formatu 0.4. Osobne kontrakty dla limitów źródła/importów/diagnostyk; wyjątki nie wychodzą przez C boundary.
-- [ ] **06-T.5** Dodać klienta C99 kompilującego w pamięci, przekazującego bytes do runtime, ustawiającego parametry i odczytującego wynik; te same błędy/check i artefakty co CLI dla identycznych opcji. Zintegrować adapter runnera 06-I i sprawdzić działanie runtime SDK bez tej opcjonalnej biblioteki.
+- [ ] **06-T.5** Dodać klienta C99 kompilującego w pamięci, przekazującego bytes do runtime, ustawiającego parametry i odczytującego wynik; te same błędy/check i artefakty co CLI dla identycznych opcji. Sprawdzić działanie runtime SDK bez tej opcjonalnej biblioteki.
 
 **Akceptacja:** kompilacja/check/importy/diagnostyki nie wymagają uruchamiania `ipc`; reguły i bity są zgodne z CLI. Własność source/result/diagnostics jest jawna, OOM nie wypuszcza wyjątku i sam runtime zachowuje lekki zestaw zależności.
 
@@ -180,7 +166,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 - [ ] **06-J.3** Utrzymać test klientów API 0.2/0.3 z nową biblioteką i klienta 0.4. Dodać ASan/UBSan dla lifetime/buffers/arithmetic i TSan dla współdzielonego programu/osobnych contextów oraz cancel. Sprawdzić C99/C++, shared/static, eksporty i layouty na wspieranych platformach; unsupported ABI nie udaje przetestowanego.
 - [ ] **06-J.4** Rozszerzyć korpus języka/edytora/CLI i `cases.json`/`check-optimizations.py` o rzeczywiste zachowanie. Sprawdzić optimized/reference, debug/strip, compressed/plain i frozen obrazy/outputy/trapy/RNG dla native/WASM/C/SFML/Godot. Zachować zasadę optimized ≤ reference, a wzrost względem historycznej wersji raportować osobno.
 - [ ] **06-J.5** Zintegrować nowe parametry/metadane/błędy i contexty w SFML/Godot; użyć limitów/cancel tam, gdzie istnieje konsument. Pakować podręcznik 0.6, LLM_REFERENCE, gramatykę z hashami, C API reference, przykłady i manifest w SDK/WASM/stronie oraz opcjonalny compiler/binding. Sprawdzić SDK po przeniesieniu i brak niepotrzebnej zależności runtime od kompilatora.
-- [ ] **06-J.6** Po akceptacji zamknąć changelog, migrację 0.5 → 0.6, raporty LLM/performance, finalne review, zielone CI dla jednego SHA i commit przygotowania 0.6.0. Merge develop → main, tag i publikacja należą do późniejszego zadania release.
+- [ ] **06-J.6** Po akceptacji zamknąć changelog, migrację 0.5 → 0.6, raporty performance, finalne review, zielone CI dla jednego SHA i commit przygotowania 0.6.0. Merge develop → main, tag i publikacja należą do późniejszego zadania release.
 
 **Akceptacja:** wszystkie wymagane joby przechodzą, paczki zawierają opisane możliwości i właściwe wersje. Legacy C API i korpus 0.4/0.5 zachowują kontrakt, a nowe funkcje mają dowody poprawności i ograniczeń.
 
@@ -191,7 +177,7 @@ Przykładowa kolejność commitów: `0 → D → E → F → G → K → L → M
 | Analiza inicjalizacji | Osobny przebieg CFG nad AST/planem, bez logiki drukowania lub emittera |
 | Deklaracje/konstruktory | Istniejący binder/typing/Planner; jeden plan efektów i kolejności |
 | Gramatyka | Maszynowy opis, generatory EBNF/profilu, zgodność z rzeczywistym lexerem/parserem |
-| Generowanie LLM | Adapter backendu; osobno runner napraw i kryteria obrazu/outputów |
+| Generowanie LLM | Adapter backendu |
 | Dane programu | Niezmienne metadata/validated execution plan, współdzielone zgodnie z lifetime |
 | Context | Workspace/reuse, snapshot parametrów i stan jednej generacji |
 | Zasoby/cancel | Polityka budżetu i token; egzekwowanie w VM/raster/storage, mapowanie błędów w C adapterze |
@@ -230,16 +216,16 @@ asset Crystal {
 ## Zasady pracy i zamknięcia
 
 - Review sąsiednich kontraktów i adekwatna weryfikacja poprzedzają osobny commit każdej ukończonej naprawy; większe funkcje mają sekwencję działających kroków. Release nie miesza się z refactorem.
-- Nie powtarzamy pełnej macierzy bez nowej zmiany/ryzyka; uruchamiamy ją na kamieniach milowych i kandydacie wydania. Żywy LLM pozostaje pomiarem odrębnym od deterministycznego CI.
+- Nie powtarzamy pełnej macierzy bez nowej zmiany/ryzyka; uruchamiamy ją na kamieniach milowych i kandydacie wydania.
 - Każdy etap obejmuje opis API/języka, przykłady, przypadki negatywne i migrację konsumentów. Nie dodajemy klas/generyków/rekurencji/nested imports/nowych opcodes ani nowych formatów pikseli w ramach tych zadań.
 
 **Kryteria zakończenia:**
 
-- [ ] Wszystkie etapy 0/D/E/F/G/H/I/K/L/M/N/Q/T/U/J mają implementację, weryfikację i commity.
+- [ ] Wszystkie etapy 0/D/E/F/G/H/K/L/M/N/Q/T/U/J mają implementację, weryfikację i commity.
 - [ ] Jawne deklaracje, analiza inicjalizacji, konstruktory i formatter działają razem, bez nowych błędów starych źródeł.
-- [ ] Gramatyka/adapter i pełna naprawa mają odtwarzalne raporty, właściwe referencje i limity kosztu.
+- [ ] Gramatyka i adapter mają właściwe referencje.
 - [ ] Contexty, współbieżność, limity/cancel, owned/into i batch mają zweryfikowane zasoby, błędy i lifetime.
 - [ ] Kompilator C działa w pamięci i jest oddzielny od runtime; RAII/binding są sprawdzone z zainstalowanego SDK.
 - [ ] API 0.2/0.3 i formaty 0.1–0.4 zachowują zgodność, obrazy/outputy/trapy/RNG; SONAME nie zmienia się wraz z produktem.
-- [ ] Raporty LLM/performance, pełna/kompaktowa dokumentacja, gramatyka i rozpakowane paczki odpowiadają jednemu SHA; finalny zakres ma review i wymagane zielone CI.
+- [ ] Raporty performance, pełna/kompaktowa dokumentacja, gramatyka i rozpakowane paczki odpowiadają jednemu SHA; finalny zakres ma review i wymagane zielone CI.
 - [ ] Materiały są gotowe do odrębnego zadania release 0.6.0.

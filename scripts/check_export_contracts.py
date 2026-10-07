@@ -104,10 +104,11 @@ def main():
     process = run(compiler,'--describe-language')
     assert process.returncode == 0 and not process.stderr
     language = read_language(parse_json(process.stdout))
-    frozen = parse_json((ROOT/'benchmarks/llm/baseline-reference/language.json').read_bytes())
+    # Exports of the released v0.4.0 compiler and documentation bundle.
+    frozen = parse_json((ROOT/'tests/fixtures/v0.4.0-language.json').read_bytes())
     assert accepts(read_language,frozen) is False
     read_language(frozen,HISTORICAL)
-    frozen_manifest = parse_json((ROOT/'benchmarks/llm/baseline-reference/language-manifest.json').read_bytes())
+    frozen_manifest = parse_json((ROOT/'tests/fixtures/v0.4.0-language-manifest.json').read_bytes())
     read_manifest(frozen_manifest,HISTORICAL)
     assert not accepts(read_manifest,frozen_manifest)
     assert accepts(lambda v:read_language(v,HISTORICAL),language) is False

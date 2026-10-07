@@ -12,7 +12,7 @@ from release_common import described_versions, read_version_matrix
 
 class ContractReaderTest(unittest.TestCase):
     def test_manifest_schema_migration_has_no_implicit_fallback(self):
-        old = json.loads((Path(__file__).resolve().parents[2] / 'benchmarks/llm/baseline-reference/language-manifest.json').read_bytes())
+        old = json.loads((Path(__file__).resolve().parents[2] / 'tests/fixtures/v0.4.0-language-manifest.json').read_bytes())
         before = json.dumps(old, sort_keys=True)
         self.assertIs(read_manifest(old,HISTORICAL),old)
         with self.assertRaisesRegex(RuntimeError,'manifest schema version'):

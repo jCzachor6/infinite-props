@@ -5,7 +5,7 @@
 **Baza:** wydane `v0.4.0`, commit `66d34c2831585afb231022da9296528a912e962e` na `main`.
 **Cel:** poprawne źródło i czytelna diagnostyka dla człowieka/LLM oraz C API, które opisuje asset, sprawdza parametry i ma rozszerzalny kontrakt.
 
-Ten dokument i [plan 0.6](iprop-v0.6-plan.md) zastępują poprzedni, wspólny plan 0.5. Łączny zakres obejmuje wszystkie 56 pierwotnych zadań oraz wszystkie propozycje C API. Mapa na końcu rozlicza przeniesione i podzielone zadania. Plan rozwija wydanie v0.4.0, istniejący [podręcznik](../docs/language/index.md), formatter, rejestr builtinów, `--describe-language` i testy dokumentacji.
+Ten dokument i [plan 0.6](iprop-v0.6-plan.md) zastępują poprzedni, wspólny plan 0.5. Łączny zakres obejmuje wszystkie 49 pierwotnych zadań oraz wszystkie propozycje C API. Mapa na końcu rozlicza przeniesione i podzielone zadania. Plan rozwija wydanie v0.4.0, istniejący [podręcznik](../docs/language/index.md), formatter, rejestr builtinów, `--describe-language` i testy dokumentacji.
 
 ## Podział pół na pół
 
@@ -13,10 +13,10 @@ Oba wydania zawierają język/narzędzia oraz C API. Podział wynika z zależno�
 
 | Obszar | 0.5 | 0.6 |
 | --- | --- | --- |
-| Język i narzędzia LLM | Poprawki parsera/defaultów/palet, named args, JSON/check, komentarze w formatterze, kompaktowa referencja, pomiar bazowy | `let`/`fn`, analiza inicjalizacji, konstruktory geometrii, gramatyka i adapter, pełna pętla napraw i oceny |
+| Język i narzędzia LLM | Poprawki parsera/defaultów/palet, named args, JSON/check, komentarze w formatterze, kompaktowa referencja | `let`/`fn`, analiza inicjalizacji, konstruktory geometrii, gramatyka i adapter |
 | C API | Rozszerzalne ABI, wersje/capabilities, introspekcja, walidowane parametry, błędy, typowane odczyty, przenoszenie wyniku VM i podstawowe statystyki | Konteksty i współbieżność, limity/anulowanie, bufory hosta, batch, C API kompilatora, RAII i binding |
 | Zgodność i wydanie | Rozdzielenie wersji, stary klient z nową biblioteką, migracja przykładów i SDK | Rozszerzenie macierzy o współbieżność, limity, bindingi, gramatykę i nowe paczki |
-| Wstępny nakład względny | **110 punktów — 50%** | **110 punktów — 50%** |
+| Wstępny nakład względny | **105 punktów — 52%** | **97 punktów — 48%** |
 
 Punkty są szacunkiem względnej złożoności całych etapów, uwzględniającym implementację, migrację i weryfikację; nie są godzinami ani pomiarem. Równa liczba checkboxów nie oznacza równej pracy. Po bazowych reproduktorach i pomiarach aktualizujemy estymaty obu planów razem, zachowując zależności oraz podobny nakład. Nie usuwamy zadań, aby wyrównać tabelę.
 
@@ -36,11 +36,10 @@ Punkty są szacunkiem względnej złożoności całych etapów, uwzględniający
 | X | Strukturalne błędy i nowe wejścia `_ex` | P0 | 8 | V, B |
 | O | Obraz i typowane odczyty wyjść | P1 | 5 | R, X |
 | M | Odbiór wyniku bez zbędnej kopii, statystyki | P1 | 5 | O, 0 |
-| I | Korpus, podstawowa naprawa i pomiar 0.4 → 0.5 | P1 | 5 | G, B; korpus od 0 |
 | J | Integracje, CI i paczki | P0 | 13 | wszystkie powyższe |
-| **Razem** | | | **110** | |
+| **Razem** | | | **105** | |
 
-Przykładowa kolejność commitów: `0 → V → A → B → X → R → P → C → F → O → M → G → I → J`. Etapy mają małe, kolejno działające kroki. Pierwszy kamień milowy: poprawki/check/binder oraz ABI/reflection/errors/parametry. Drugi: formatter, odczyty wyniku, referencja i pomiary. Trzeci: zgodność i wydanie. Prace 0.6 zaczynają się z utrwalonej bazy 0.5.
+Przykładowa kolejność commitów: `0 → V → A → B → X → R → P → C → F → O → M → G → J`. Etapy mają małe, kolejno działające kroki. Pierwszy kamień milowy: poprawki/check/binder oraz ABI/reflection/errors/parametry. Drugi: formatter, odczyty wyniku, referencja i pomiary. Trzeci: zgodność i wydanie. Prace 0.6 zaczynają się z utrwalonej bazy 0.5.
 
 ## Wersje i zgodność
 
@@ -80,14 +79,12 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 - [x] **05-0.2** Zapisać powyższe decyzje w rozdziałach źródłowego podręcznika i krótkim dokumencie migracji 0.4 → 0.5. Rozdzielić kontrakt składni, reguły typowania i semantykę wykonania.
   Dowód: rozdział `docs/language/migration-v0.5.md` oddziela składnię, typowanie i wykonanie, opisuje wersje, ABI, ownership oraz granicę 0.6. Podręcznik i plany są pakowane offline; walidacja generowanej książki i 9 testów dokumentacji przeszły.
 
-- [x] **05-0.3** Zdefiniować stały zestaw zadań LLM i procedurę pomiaru przed modyfikacją kompilatora. Zachować wyniki bazowe oraz konfigurację umożliwiającą porównania w 05-I i 06-I.
-  Dowód: `benchmarks/llm/` — stałe 24 zadania i protokół, zamrożony handbook/export, dokładny prompt i rzeczywiste odpowiedzi modelu. Baza 0.4: 24/24 kompilacji i publicznych kryteriów, 194 rendery; pełne surowe dowody z hashami, 7 testów runnera. Jedna próba na zadanie, zero napraw; nieznane metryki oraz ludzka ocena marble jawnie niezmierzone/pending.
 
 - [x] **05-0.4** Przygotować małe reproduktory każdej niekonsekwencji z A i kolizji named args oraz błędów C API z V/R/P/X; kolizje let/fn/geometrii realizuje 06-0.2. Odnotować rzeczywisty wynik obecnego kompilatora, a nie samo powodzenie parsera.
 
 Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minimalnych źródeł, 178 rzeczywistych kompilacji, 40 obserwacji C API i 45 kontrolowanych prób OOM. Wykryto dwie ucieczki wyjątków z catch oraz akceptowanie niepoprawnego enumu; przyszłe API jawnie oznaczone jako niedostępne w 0.4.
 
-**Akceptacja:** każda proponowana konstrukcja ma określone znaczenie, przykład poprawny i przykład błędny. Baza 0.4 ma identyfikator commita; wyniki pomiarów mają opis warunków. Brak pomiaru LLM jest oznaczony jako brak danych.
+**Akceptacja:** każda proponowana konstrukcja ma określone znaczenie, przykład poprawny i przykład błędny. Baza 0.4 ma identyfikator commita; wyniki pomiarów mają opis warunków.
 
 ## A. Usunięcie niekonsekwencji języka — P0
 
@@ -154,8 +151,8 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
   Dowód: formatter pozostawia pierwsze przypisania w if/else, while i pustym for, nie dodaje let/fn ani nie przejmuje nazw helperów let/fn/vec2. Dedicated fixture zachowuje idempotencję i stripped executable bytes w obu trybach; 299 asercji porównuje typed-zero locals, obraz, raw output bits i końcowe RNG probes z niezależnym programem dla 2 wariantów/3 seedów przed i po formatowaniu. Pełny smoke i language_documentation przeszły; osobna migracja/lint nie jest automatycznym formatowaniem.
 - [x] **05-F.4** Wprowadzić formatowanie bez binarnego artefaktu, np. `ipc entry.ips --format canonical.ips --format-only`. Zachować dotychczasowe `--format` z kompilacją. Błąd nie nadpisuje docelowego źródła; importy zachowują znaczenie względnych ścieżek.
   Dowód: --format-only wymaga --format, odrzuca output/check i zachowuje pełne compile/validate in memory bez .iprop. Exclusive same-filesystem temporary directory + atomic replacement chroni poprzedni source przy parse/import/planning/validation i IO errors; aliases entry/import/binary odrzucane przed zapisem. Relokacja zachowuje import targets/aliases/comments także przez parent symlink i symlink/..; final destination symlink zastępowany bez zmiany referenta. Naprawiony lexical false-positive. Real CLI native i ASan+UBSan, niezależny review/read-only-directory/held-FD/hardlink probes oraz strict SFML/Godot build i 33/33 CTest przeszły. Windows production wmain konwertuje jawnie UTF-16→UTF-8 niezależnie od ACP; probe pozostaje standard main, literal noalloc fallback i cały fault sweep przeszły native. Windows runtime validation pozostaje do CI, bez deklaracji lokalnego wykonania.
-- [x] **05-F.5** Używać formattera w edytorze, galerii i podstawowej pętli 05-I; pełny pipeline napraw rozwija 06-I. Testować komentarze także przy zmianie kolejności named args i kanonizacji literałów signed/defaultów.
-  Dowód: VS Code saved-file provider zwraca edit bez zapisu entry/bufora; hash/version/settings/executable guards, cancellation i cleanup własnego output po child close. Real CLI zachowuje komentarze/importy/signed defaults; 24 recipe sources canonical/idempotent/exact stripped bytes. Runner 0.5 archiwizuje pomocniczy format stage po raw acceptance, zachowuje raw hashes/first-pass/render predicates i frozen0.4 bez format fields. Strict full build, root 6/6 CTest, editor 36/36 bez skip (real frozen0.4) i runner 11/11 przeszły; author replay24tasks/194renders obu wersji równy pre-F5 raw verdicts/bytes/bits/fuel. Windows runner adapter pozostaje niewykonany; przerwany IPC może pozostawić własny staging directory.
+- [x] **05-F.5** Używać formattera w edytorze i galerii. Testować komentarze także przy zmianie kolejności named args i kanonizacji literałów signed/defaultów.
+  Dowód: VS Code saved-file provider zwraca edit bez zapisu entry/bufora; hash/version/settings/executable guards, cancellation i cleanup własnego output po child close. Real CLI zachowuje komentarze/importy/signed defaults; 24 recipe sources canonical/idempotent/exact stripped bytes. Strict full build, root 6/6 CTest i editor 36/36 bez skip (real frozen0.4) przeszły; przerwany IPC może pozostawić własny staging directory.
 
 **Akceptacja:** `format(format(source)) == format(source)`, komentarze zachowane, a program przed/po daje ten sam wykonywalny kod po usunięciu debug source maps. Dotyczy również legacy locals, kolizji nazw, floatów i wyrażeń z RNG.
 
@@ -269,31 +266,18 @@ Dowód 05-0.4: `benchmarks/baselines/v0.4.0/reproducers.json` zachowuje 89 minim
 
 **Akceptacja:** stare i nowe API zachowują ownership i bity wyniku. Statystyki paliwa odpowiadają VM, a raport identyfikuje usunięte kopie. Nie deklarujemy procentowej poprawy przed pomiarem.
 
-## I. Korpus LLM i pomiar pierwszego etapu
-
-- [x] **05-I.1** Utrwalić 24 zadania: np. 16 assetów i 8 napraw, z wymaganiami obrazu/outputów, seedami i kryteriami oceny. Wspólny podzbiór nie wymaga składni niedostępnej w 0.4. Zdefiniować model/parametry/liczbę próbek i zapis promptów zanim zmienimy kompilator.
-  Dowód: 05-0.3 utrwalił rzeczywisty baseline przed zmianami kompilatora; benchmarks/llm/tasks.json nadal ma dokładnie te same 16 assetów/8 napraw, 97 cases i SHA 4862ffb223b403ffc65a418ed4bc5c1064f9423138c9b25e214ac9540c6f3ee0. Protocol SHA c35289e5e472e7bbb1a3c66c5a925c1e60e626bbed9465e3f3828b36766e871f określa 1 próbkę i najwyżej 1 naprawę, wspólny 0.4 subset, seedy/kryteria/budżety i zapis exact prompts. Backend codex_session zatwierdzony przez użytkownika; resolved model/revision/sampling/tokens pozostają jawnie null, więc pilotaż nie deklaruje pełnej powtarzalności. Ponowna kontrola definicji/hashów i wszystkie 7 testów runnera przeszły. Candidate pomiar, pętla napraw, human marble i CI replay pozostają w I.2–I.4.
-- [x] **05-I.2** Przygotować prosty runner CLI: specyfikacja + właściwa referencja → źródło → check JSON → jedna naprawa → ponowny check → obraz/outputy. Adapter historycznego 0.4 używa zwykłej kompilacji w katalogu tymczasowym i diagnostyki tekstowej; kryteria sukcesu i budżety są wspólne, a niedostępne wtedy kody diagnostyk mają jawny brak danych. Zapisywać pełne próby i diagnostyki. Kontrolować czas i rozmiary; do 0.6 weryfikować zadeklarowany fuel/rozmiar przed wykonaniem, bez udawania dostępnych jeszcze limitów C API. Pełny adapter gramatyki i wieloetapowa naprawa są w 06-H/I.
-  Dowód: CLI prepare/import-response/import-repair/status/replay archiwizuje exact full handbook/export/prompts/tools/raw payloads i seals; maximum one repair, fixed denominator24 i jawne brak danych przed response. Modern check JSON używa fail-closed contract reader, historyczny0.4 compile/text adapter zachowuje frozen bytes. Structural canvas/fuel preflight i bounded processes poprzedzają render; format pozostaje auxiliary po raw acceptance. Root 20/20 session tests i 11/11 runner bez skip oraz 2/2 CTest przeszły, w tym actual0.5/frozen0.4 failure→repair→8 renders→offline replay. Niezależny review wykrył brak read_manifest: poprawiony przed output/tool execution z regresją invalid schema/missing/type oraz additive fields. Authored fixtures są dowodem runnera, nie pomiarem LLM; actual candidate24/human review/CI replay pozostają w I.3–I.4, Windows adapter niewykonany.
-- [ ] **05-I.3** Zapisać raport 0.4 → 0.5: first-pass, sukces po naprawie, kody błędów, trapy, zgodność obrazu/outputów, czas i tokeny. Te same zadania, model, parametry, limit napraw i seedy; podać SHA kompilatorów, referencji i promptów oraz ograniczenia zewnętrznego modelu. Kryteria wizualne wymagające człowieka mają zapis przeglądu; cele ilościowe ustalamy po baseline.
-- [ ] **05-I.4** W CI odtwarzać zapisane odpowiedzi i naprawy bez żywego LLM. Pomiary z modelem uruchamiać osobno z limitem kosztu. Zachować dane do porównań 0.4/0.5/0.6 w 06-I; brak wykonanego pomiaru ma status brak danych i nie jest sukcesem.
-
-**Artefakty docelowe:** `benchmarks/llm/` z manifestem, runnerem, promptami, surowymi wynikami, raportem i galerią. Ścieżka jest planowanym artefaktem, a nie istniejącą implementacją.
-
-**Akceptacja:** odtworzenie zapisanych prób nie wymaga modelu; raport oddziela kompilację od poprawności wykonania i obrazu. Referencja 0.5 zawiera tylko funkcje 0.5.
-
 ## J. CI, zgodność i przygotowanie wydania
 
 - [x] **05-J.1** Rozdzielić metadane `product_version`, `language_version`, `format_version`, `c_api_version` i `c_abi_soversion` w eksporcie, manifestach i preflight. Wydanie 0.5 sprawdza faktycznie używany zamrożony format 0.4; nie wymaga pozornej nowej specyfikacji binarnej `iprop-v0.5.md`.
   Dowód: wspólne `release_common.versions` czyta pięć wersji z ich własnych źródeł (CMake, Version.hpp, Constants.hpp, iprop.h, CAbi.cmake), bez wyprowadzania jednej z drugiej. Additive describe schema 1 eksportuje opisane `c_abi_soversion` z tej samej zmiennej CMake co SOVERSION biblioteki; reader wymaga zgodności z `abi_version`. Preflight/preflight.json oraz SDK i web `release.json` zapisują rozdzielone wersje; budowa/weryfikacja dokumentacji i pakowanie odrzucają kompilator, którego eksport różni się od źródeł. Preflight wybiera spec według `format_version` i sprawdza tytuł oraz status frozen: bump produktu 0.5.0 na rzeczywistych plikach przechodzi z `spec/iprop-v0.4.md` bez `iprop-v0.5.md`, a stary preflight w kontroli negatywnej żądał `iprop-v0.5.md`. 42 Python tests, export contracts z JSON Schema (47 mutacji, 38 real CLI cases, real compiler vs zmieniony format źródła) oraz `release.py --check`: 60/60 CTest, przeniesiony SDK i Godot conformance przeszły. Archiwa wymagają czystego commita i nie były tworzone; kolektor paczek i fixture'y release pozostają w J.2.
 - [x] **05-J.2** Dostosować testy pipeline release, fixture'y eksportu i dokumentacji oraz kolektor paczek do rozdzielonych wersji. Zachować weryfikację dokładnego commita, hashy, kompletności dokumentacji i zgodności z zainstalowanym kompilatorem.
-  Dowód: documentation manifest schema2 wymaga pełnej pięciopolowej macierzy; schema1 legacy jest dopuszczony wyłącznie jawnym historical-0.4 profile. Language/diagnostics schema1 zachowane, ABI alias additive/optional i spójny z abi_version. Podręcznik wybiera language_version (0.5), nie produkt (0.4.0). Collectors/SDK/web/CI fail-closed sprawdzają wersje, commit, hashy, kompletność i actual installed compiler. Root po refactorach JSON/Markdown: 58 Python tests, 20 actual/offline I2, formal JSON Schema 55 mutacji/38 real CLI cases, 69/69 CTest i website smoke (6pages, 12exact native/WASM images) PASS. Wszystkie 20 frozen baseline/reference plików zachowane; brak nowego pomiaru modelu w tym etapie.
+  Dowód: documentation manifest schema2 wymaga pełnej pięciopolowej macierzy; schema1 legacy jest dopuszczony wyłącznie jawnym historical-0.4 profile. Language/diagnostics schema1 zachowane, ABI alias additive/optional i spójny z abi_version. Podręcznik wybiera language_version (0.5), nie produkt (0.4.0). Collectors/SDK/web/CI fail-closed sprawdzają wersje, commit, hashy, kompletność i actual installed compiler. Root po refactorach JSON/Markdown: 58 Python tests, formal JSON Schema 55 mutacji/38 real CLI cases, 69/69 CTest i website smoke (6pages, 12exact native/WASM images) PASS.
 - [x] **05-J.3** Rozszerzyć testy języka/edytora/CLI oraz C API: old-client/new-library, sized structs, strict params, reflection/errors, ownership i statystyki. Zamrożony klient 0.2 jest budowany osobno i uruchamiany z nową shared library na wspieranych platformach. Dodać adekwatne ASan/UBSan i weryfikację eksportów/layoutów. Zaktualizować `cases.json` oraz `check-optimizations.py` razem, gdy dawny przypadek błędny staje się poprawny; nie usuwać pozostałych oczekiwanych błędów i trapów.
   Dowód: nowy check_legacy_abi.py w istniejącej Linux/macOS/Windows native matrix buduje PIN released commit66d34c2831585afb231022da9296528a912e962e osobno, następnie raz frozen klient/nagłówek0.2 i ten sam executable uruchamia z nową shared library. Actual OS loader path i SHA, client SHA przed/po, sześć eksportów/layouty i dwie negative controls są obowiązkowe. Root actual macOS gate i shared/static layout2/2 PASS, 58 pipeline Python tests i69/69 CTest PASS; cały CAPI45/45ASan+UBSan zweryfikowany wcześniej na identycznym core. Linux/Windows loader witnesses skonfigurowane, lokalnie niewykonane; final required remote CI pozostaje gate J.6. Signed/default acceptance transitions mają zgodne cases.json/check-optimizations.py, pozostałe oczekiwane rejections/trapy zachowane.
 - [x] **05-J.4** Sprawdzić nowy i stary korpus w trybach optimized/reference, debug/strip i compress/no-compress. Zachować zamrożone obrazy/outputy oraz zgodność native/WASM/C API/SFML/Godot. Istniejąca granica „optimized ≤ reference” nadal dotyczy optymalizacji; wzrost rozmiaru względem 0.4 raportować i uzasadniać oddzielnie.
   Dowód: source a1ffab9, 87 released+111 current sources ×8 konfiguracji ×5 seedów; 696/888 compile attempts, 2840/3560 udanych generations i240/280 trapów. Actual frozen binaries:1385 sukcesów/RNG+120 trapów z identycznym fuel. Native/WASM:1685 dokładnych binary artifacts,7785 obrazów/raw outputs i640 trapów PASS. Expanded optimized≤reference zawsze;117 compressed par rośnie przez entropię, raportowane osobno. Te same released sources:496096→496096B; zmienione palettes/syntax:+340B/6 artifacts z uzasadnieniem. Dołączone69/69 backend CTest,45/45 CAPI SAN, actual SFML/Godot SAN i physically relocated SDK; pełne reports/logi/source+artifact SHA w language-v0.5-reports-macos-arm64.tar.gz. Lokalnie macOS arm64; Linux/Windows i wymagane remote CI pending.
 - [ ] **05-J.5** Pakować pełny podręcznik 0.5, `LLM_REFERENCE.md`, opis C API 0.3, przykłady i manifest we wspólnym układzie SDK/WASM/strony. Gramatyka dołącza w 06-J. Sprawdzić faktycznie rozpakowane archiwa oraz SDK po przeniesieniu do innej ścieżki.
-- [ ] **05-J.6** Zaktualizować SFML/Godot i przykład C99 dla nowych metadanych, parametrów i błędów; zachować legacy entry points. Po spełnieniu kryteriów zamknąć changelog, notatki migracji i raport benchmarku; przeprowadzić review finalnego zakresu, pełne CI i przygotować commit wydania 0.5.0. Merge `develop → main`, tag i publikacja stanowią późniejszy krok wydania, wykonywany w ramach zadania release.
+- [ ] **05-J.6** Zaktualizować SFML/Godot i przykład C99 dla nowych metadanych, parametrów i błędów; zachować legacy entry points. Po spełnieniu kryteriów zamknąć changelog i notatki migracji; przeprowadzić review finalnego zakresu, pełne CI i przygotować commit wydania 0.5.0. Merge `develop → main`, tag i publikacja stanowią późniejszy krok wydania, wykonywany w ramach zadania release.
 
 **Akceptacja:** wszystkie wymagane joby CI przechodzą dla tego samego SHA; archiwa mają zgodne metadane i kompletne nowe materiały. Programy 0.4 zachowują wynik; nowe konstrukcje działają na istniejącym runtime formatu 0.4. C API 0.3 wynika z dodanych funkcji, nie z numeru języka; format pozostaje 0.4 i utrzymujemy dotychczasową linię ABI.
 
@@ -357,13 +341,12 @@ asset Crystal {
 
 ## Mapa pokrycia całego zakresu
 
-Poniższa mapa jest rejestrem zadań, nie drugą listą do wykonania. **56/56 pierwotnych zadań ma przypisane miejsce**. Wiersz z oboma wydaniami oznacza świadomy podział podstawy i rozszerzenia; żaden fragment nie znika. Numery `05-*` i `06-*` wskazują checkboxy w odpowiednim dokumencie.
+Poniższa mapa jest rejestrem zadań, nie drugą listą do wykonania. **49/49 pierwotnych zadań ma przypisane miejsce**. Wiersz z oboma wydaniami oznacza świadomy podział podstawy i rozszerzenia; żaden fragment nie znika. Numery `05-*` i `06-*` wskazują checkboxy w odpowiednim dokumencie.
 
 | Stare ID | Zachowany zakres | Nowe zadania |
 | --- | --- | --- |
 | `0.1` | Baza i korpus 0.4 | `05-0.1` |
 | `0.2` | Kontrakt języka i migracja | `05-0.2`, `06-0.3`, `06-G.3` |
-| `0.3` | Procedura i baseline LLM | `05-0.3`, `05-I.1` |
 | `0.4` | Reproduktory niekonsekwencji/kolizji | `05-0.4`, `06-0.2` |
 | `A.1` | Priorytety porównań | `05-A.1` |
 | `A.2` | Signed defaulty/palety | `05-A.2` |
@@ -394,7 +377,7 @@ Poniższa mapa jest rejestrem zadań, nie drugą listą do wykonania. **56/56 pi
 | `F.2` | Styl kanoniczny i fn | `05-F.2`, `06-F.1` |
 | `F.3` | Bezpieczne deklaracje/let w formatterze | `05-F.3`, `06-F.2` |
 | `F.4` | Format-only | `05-F.4` |
-| `F.5` | Integracja formattera z narzędziami i naprawą | `05-F.5`, `06-F.3`, `06-I.1` |
+| `F.5` | Integracja formattera z narzędziami | `05-F.5`, `06-F.3` |
 | `G.1` | Eksport możliwości i ograniczeń | `05-G.1`, `06-G.1` |
 | `G.2` | Efekty ze wspólnego rejestru | `05-G.2`, `06-G.1` |
 | `G.3` | Generowana referencja LLM | `05-G.3`, `06-G.2` |
@@ -405,12 +388,6 @@ Poniższa mapa jest rejestrem zadań, nie drugą listą do wykonania. **56/56 pi
 | `H.3` | Adapter gramatyki | `06-H.3` |
 | `H.4` | Korpus zgodności parser/gramatyka | `06-H.4` |
 | `H.5` | Manifest/hash i kontrola gramatyki | `06-H.5` |
-| `I.1` | Pełny przepływ napraw/obrazu | `05-I.2`, `06-I.1`, `06-I.6` |
-| `I.2` | 24 zadania LLM | `05-I.1`, `06-I.2` |
-| `I.3` | Metryki i ocena obrazu | `05-I.3`, `06-I.3` |
-| `I.4` | Porównanie wersji | `05-I.3`, `06-I.2`, `06-I.4` |
-| `I.5` | Ablation gramatyka/naprawa | `06-I.4` |
-| `I.6` | Deterministyczne CI i opcjonalny żywy LLM | `05-I.4`, `06-I.5` |
 | `J.1` | Niezależne wersje komponentów | `05-J.1`, `05-V.4`, `06-J.1` |
 | `J.2` | Release/paczki/fixture eksportu | `05-J.2`, `06-J.2` |
 | `J.3` | Testy języka/CLI/edytora | `05-J.3`, `06-J.4` |
@@ -418,7 +395,7 @@ Poniższa mapa jest rejestrem zadań, nie drugą listą do wykonania. **56/56 pi
 | `J.5` | Dokumentacja/gramatyka/przeniesiony SDK | `05-J.5`, `06-H.5`, `06-J.5` |
 | `J.6` | Review i przygotowanie wydania | `05-J.6`, `06-J.6` |
 
-Pełna gramatyka i pomiar jej wkładu przechodzą do 0.6 razem z nową składnią. Porównanie 0.4 → 0.5 pozostaje w 0.5; późniejszy raport rozszerza je o 0.6. Pakowanie dokumentów odbywa się w obu wydaniach, a grammar artifact dołącza po implementacji w 0.6.
+Pełna gramatyka przechodzi do 0.6 razem z nową składnią. Pakowanie dokumentów odbywa się w obu wydaniach, a grammar artifact dołącza po implementacji w 0.6.
 
 | Dodana propozycja | Zachowany zakres C API | Nowe zadania |
 | --- | --- | --- |
@@ -441,4 +418,4 @@ Pełna gramatyka i pomiar jej wkładu przechodzą do 0.6 razem z nową składni�
 | `API-17` | C++ RAII, jeden pełny binding Rust i przykłady C99/SDK | `05-R.5`, `06-U.1`, `06-U.2`, `06-U.3`, `06-U.4` |
 | `API-18` | Integracje SFML/Godot, old/new client, sanitizers i przeniesiony SDK | `05-J.3`, `05-J.5`, `05-J.6`, `06-J.3`, `06-J.5` |
 
-**Kontrola kompletności:** wszystkie powyższe ID mają rzeczywiste checkboxy, punkty etapów sumują się do 110/110, a każda wersja ma język/LLM, C API i osobne kryteria zgodności/wydania.
+**Kontrola kompletności:** wszystkie powyższe ID mają rzeczywiste checkboxy, punkty etapów sumują się do 105/97, a każda wersja ma język/LLM, C API i osobne kryteria zgodności/wydania.
