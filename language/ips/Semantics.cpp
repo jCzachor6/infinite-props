@@ -26,7 +26,7 @@ ValueType outputValueType(OutputKind kind) {
 class Checker {
 public:
     Checker(const Program& program, const std::map<std::string, PartInfo>& parts,
-            std::vector<SourceError>* diagnostics = nullptr, std::size_t limit = 20)
+            std::vector<SourceError>& diagnostics, std::size_t limit)
         : program_(program), parts_(parts), typer_(parts), diagnostics_(diagnostics),
           limit_(std::clamp<std::size_t>(limit, 1, 20)) {
         typer_.resolveFunction = [this](const std::string& name,
@@ -57,7 +57,7 @@ private:
     const Program& program_;
     const std::map<std::string, PartInfo>& parts_;
     Typer typer_;
-    std::vector<SourceError>* diagnostics_;
+    std::vector<SourceError>& diagnostics_;
     std::size_t limit_;
 
     std::map<std::string, const Function*> functions_;
@@ -73,13 +73,12 @@ private:
                           DiagnosticStage::Typing};
     }
 
-    bool atLimit() const { return diagnostics_ && diagnostics_->size() >= limit_; }
+    bool atLimit() const { return diagnostics_.size() >= limit_; }
 
     template<class Check> bool recover(Check check) {
-        if (!diagnostics_) { check(); return true; }
         if (atLimit()) return false;
         try { check(); return true; }
-        catch (const SourceError& diagnostic) { diagnostics_->push_back(diagnostic); }
+        catch (const SourceError& diagnostic) { diagnostics_.push_back(diagnostic); }
         catch (const UnresolvedType&) { /* dependent on an already reported failure */ }
         return false;
     }
@@ -530,14 +529,15 @@ PartInfo partInfoOf(const Asset& asset) {
 
 void checkAsset(const Program& program,
                 const std::map<std::string, PartInfo>& parts) {
-    Checker(program, parts).run();
+    const auto diagnostics = checkAssetDiagnostics(program, parts, 1);
+    if (!diagnostics.empty()) throw diagnostics.front();
 }
 
 std::vector<SourceError> checkAssetDiagnostics(
     const Program& program, const std::map<std::string, PartInfo>& parts,
     std::size_t limit) {
     std::vector<SourceError> diagnostics;
-    Checker(program, parts, &diagnostics, limit).run();
+    Checker(program, parts, diagnostics, limit).run();
     return diagnostics;
 }
 

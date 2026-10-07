@@ -23,10 +23,10 @@ asset a { size 8x8; input i32 offset = -2;
     REQUIRE(recovered.imports.size() == 1);
     CHECK(recovered.imports.front().alias == "part");
     CHECK(formatProgram(*recovered.program) == formatProgram(parse(source)));
-    CHECK(parseDiagnostics(source).empty());
+    CHECK(parseRecovering(source).diagnostics.empty());
 
     const std::string invalid = "asset a { draw { x = ; y = ; } }";
-    auto diagnostics = parseDiagnostics(invalid);
+    auto diagnostics = parseRecovering(invalid).diagnostics;
     REQUIRE(diagnostics.size() == 2);
     CHECK_FALSE(parseRecovering(invalid).program.has_value());
     try {
@@ -170,15 +170,7 @@ TEST_CASE("parser recovery converts lexical failures into one typed diagnostic",
     }
 }
 
-TEST_CASE("parser recovery normalizes nonterminated token streams and makes progress", "[parser-recovery]") {
-    auto tokens = lex("asset a { draw { x = ; y = ; } }");
-    tokens.pop_back();
-    CHECK(parseTokensRecovering(tokens).diagnostics.size() == 2);
-    CHECK(parseTokensRecovering({}).diagnostics.size() == 1);
-    auto validTokens = lex("import p from \"p.ips\"; asset a {}");
-    validTokens.pop_back();
-    CHECK(parseTokensRecovering(validTokens).valid());
-
+TEST_CASE("parser recovery makes progress at failing positions", "[parser-recovery]") {
     // Many tokens at a failing position (including unmatched closing braces)
     // must terminate either at EOF or at the bounded diagnostic cap.
     for (const auto source : {

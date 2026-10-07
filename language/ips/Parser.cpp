@@ -9,25 +9,6 @@
 namespace iprop::ips {
 namespace detail {
 
-Program ParserImpl::parseProgram() {
-    Program program;
-    while (kind() == TokenKind::KeywordImport) {
-        program.imports.push_back(parseImport());
-    }
-    if (kind() != TokenKind::KeywordAsset) {
-        failExpected("an 'asset' block");
-    }
-    program.asset = parseAsset();
-    if (kind() != TokenKind::End) {
-        if (kind() == TokenKind::KeywordAsset) {
-            failHere("multiple asset blocks in one file");
-        }
-        failExpected("end of file");
-    }
-    program.sourceTokens = std::move(tokens_);
-    return program;
-}
-
 ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     ParseResult result;
     recovery_ = &result;
@@ -194,7 +175,6 @@ Asset ParserImpl::parseAsset() {
         try {
             parseDeclaration(asset);
         } catch (const SourceError& error) {
-            if (!recovery_) throw;
             recordError(error);
             synchronize(start, RecoveryScope::Declaration);
         }
@@ -453,7 +433,6 @@ std::vector<Stmt> ParserImpl::parseBlock() {
             statement.sourceRange = {start, pos_};
             body.push_back(std::move(statement));
         } catch (const SourceError& error) {
-            if (!recovery_) throw;
             recordError(error);
             synchronize(start, RecoveryScope::Statement);
         }
@@ -559,22 +538,9 @@ Stmt ParserImpl::parseReturn() {
 } // namespace detail
 
 Program parse(std::string_view source) {
-    return detail::ParserImpl(lex(source)).parseProgram();
-}
-
-Program parseTokens(const std::vector<Token>& tokens) {
-    return detail::ParserImpl(tokens).parseProgram();
-}
-
-ParseResult parseTokensRecovering(const std::vector<Token>& tokens, std::size_t limit) {
-    auto terminated = tokens;
-    // Tool-provided streams need not include EOF. Only the recovering entry
-    // point normalizes them; strict parseTokens keeps its existing contract.
-    if (terminated.empty() || terminated.back().kind != TokenKind::End) {
-        const auto at = terminated.empty() ? SourceLocation{} : terminated.back().location;
-        terminated.push_back(Token{TokenKind::End, {}, at});
-    }
-    return detail::ParserImpl(std::move(terminated)).parseRecoveringProgram(limit);
+    auto result = parseRecovering(source, 1);
+    if (!result.valid()) throw result.diagnostics.front();
+    return std::move(*result.program);
 }
 
 ParseResult parseRecovering(std::string_view source, std::size_t limit) {
@@ -590,13 +556,7 @@ ParseResult parseRecovering(std::string_view source, std::size_t limit) {
         result.limitReached = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics) == 1;
         return result;
     }
-    // Lexer-owned streams already include EOF; transfer them rather than
-    // copying the token vector used by the external-token adapter.
     return detail::ParserImpl(std::move(tokens)).parseRecoveringProgram(limit);
-}
-
-std::vector<SourceError> parseDiagnostics(std::string_view source, std::size_t limit) {
-    return parseRecovering(source, limit).diagnostics;
 }
 
 } // namespace iprop::ips

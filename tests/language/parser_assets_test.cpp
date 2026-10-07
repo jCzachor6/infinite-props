@@ -317,10 +317,3 @@ asset hair {
     REQUIRE(thing != nullptr);
     REQUIRE(std::holds_alternative<Identifier>(*thing->value));
 }
-
-TEST_CASE("parseTokens accepts a pre-lexed stream") {
-    const auto tokens = lex("asset t { size 8x8 }");
-    const Program program = parseTokens(tokens);
-    REQUIRE(program.asset.name == "t");
-    REQUIRE(program.asset.sizeX == 8u);
-}

@@ -1,8 +1,8 @@
 #pragma once
 
 // Recursive-descent parser for .ips: a token stream (from the lexer) into
-// the AST. Strict entries throw SourceError on the first syntax error;
-// diagnostic entries collect bounded errors without exposing partial ASTs.
+// the AST. Parsing collects bounded errors without exposing partial ASTs;
+// parse() is the same pass stopped at, and throwing, the first error.
 
 #include <string_view>
 #include <cstddef>
@@ -14,12 +14,9 @@
 
 namespace iprop::ips {
 
-// Lexes and parses a whole .ips source file.
+// Lexes and parses a whole .ips source file, throwing the first
+// diagnostic of parseRecovering as a SourceError.
 Program parse(std::string_view source);
-
-// Parses an already-lexed token stream (mostly for tests and tools that
-// want to pre-process the tokens).
-Program parseTokens(const std::vector<Token>& tokens);
 
 // Diagnostic parsing never exposes an incomplete AST to generation. Only a
 // completely parsed, error-free file has program; imports contains only fully
@@ -43,10 +40,6 @@ inline constexpr std::size_t kMaxParseDiagnostics = 20;
 // conditional header is discarded rather than diagnosed as sibling code.
 ParseResult parseRecovering(std::string_view source,
                             std::size_t limit = kMaxParseDiagnostics);
-ParseResult parseTokensRecovering(const std::vector<Token>& tokens,
-                                  std::size_t limit = kMaxParseDiagnostics);
-std::vector<SourceError> parseDiagnostics(std::string_view source,
-                                        std::size_t limit = kMaxParseDiagnostics);
 
 // The parser grammar (reference):
 //

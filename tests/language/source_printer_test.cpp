@@ -240,7 +240,7 @@ TEST_CASE("source trivia owns exact comment bytes and Unicode source locations")
     CHECK(find(";").trailingTrivia[0].text == "// after");
     REQUIRE(tokens.back().leadingTrivia.size() == 1);
     CHECK(tokens.back().leadingTrivia[0].text == "// eof");
-    auto program = ips::parseTokens(tokens);
+    auto program = ips::parse(source);
     CHECK(program.sourceTokens.front().leadingTrivia[0].text == leading.text);
     CHECK(program.asset.functions[0].body[0].sourceRange.end > program.asset.functions[0].body[0].sourceRange.begin);
     const auto formatted = ips::formatProgram(program);

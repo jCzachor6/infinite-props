@@ -21,7 +21,7 @@ PartInfo partInfoOf(const Asset& asset);
 // Checks one asset: duplicate declarations, name resolution, type checking,
 // integer-only conditions, part-call arity and slot kinds, input default
 // types. `parts` maps import aliases to the declared surfaces of the
-// imported files. Throws SourceError at the location of the first problem.
+// imported files. Throws the first diagnostic of checkAssetDiagnostics.
 void checkAsset(const Program& program,
                 const std::map<std::string, PartInfo>& parts);
 

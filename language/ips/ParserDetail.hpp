@@ -68,16 +68,12 @@ class ParserImpl {
 public:
     explicit ParserImpl(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
 
-    Program parseProgram();
     ParseResult parseRecoveringProgram(std::size_t limit);
 
     // ---- token helpers (shared) ------------------------------------------
 
+    // The lexer always ends the stream with TokenKind::End.
     const Token& peek(std::size_t ahead = 0) const {
-        if (tokens_.empty()) {
-            static const Token kEnd{};
-            return kEnd;
-        }
         const std::size_t at = pos_ + ahead;
         return at < tokens_.size() ? tokens_[at] : tokens_.back();
     }
