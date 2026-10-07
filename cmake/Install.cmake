@@ -56,7 +56,6 @@ if(Python3_Interpreter_FOUND)
 endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
-    third_party/stb/stb_image.h third_party/stb/stb_image_write.h
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 
 set(iprop_config_dir ${CMAKE_INSTALL_LIBDIR}/cmake/iprop)

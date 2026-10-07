@@ -11,7 +11,6 @@ endif()
 
 add_executable(iprop_tests
     smoke_test.cpp
-    stb_image_impl.cpp
     lexer_test.cpp
     language/parser_assets_test.cpp
     language/parser_statements_test.cpp
@@ -96,12 +95,10 @@ target_link_libraries(iprop_tests PRIVATE
     ipval_lib
     ips_lang
     iprop_compiler
+    iprop_png
     Catch2::Catch2WithMain)
 
 target_include_directories(iprop_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_include_directories(iprop_tests SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 
 iprop_warnings(iprop_tests)
 

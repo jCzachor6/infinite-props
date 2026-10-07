@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "stb_image.h"
-#include "stb_image_write.h"
+#include "png.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -78,51 +77,24 @@ GenerationResult runCase(const GoldenCase& entry) {
     return vm.result();
 }
 
-// Decodes a golden PNG into RGBA bytes.
-std::vector<u8> loadGoldenPng(const char* path, int& width, int& height) {
-    int channels = 0;
-    const std::string file = (root / path).string();
-    unsigned char* pixels = stbi_load(file.c_str(), &width, &height, &channels, 4);
-    REQUIRE(pixels != nullptr);
-    std::vector<u8> result(pixels, pixels + static_cast<std::size_t>(width) * height * 4);
-    stbi_image_free(pixels);
-    return result;
-}
-
 // Compares a canvas against a golden PNG, pixel by pixel (exact).
 void checkImage(const Canvas& canvas, const char* goldenPng) {
+    const std::string file = (root / goldenPng).string();
+    const auto actual = tools::canvasImage(canvas);
     if (regenerate) {
-        std::vector<u8> rgba(static_cast<std::size_t>(canvas.width) * canvas.height * 4);
-        for (u32 y = 0; y < canvas.height; ++y) {
-            for (u32 x = 0; x < canvas.width; ++x) {
-                const Color& pixel = canvas.at(x, y);
-                const std::size_t at = (static_cast<std::size_t>(y) * canvas.width + x) * 4;
-                rgba[at] = pixel.r;
-                rgba[at + 1] = pixel.g;
-                rgba[at + 2] = pixel.b;
-                rgba[at + 3] = pixel.a;
-            }
-        }
-        const std::string file = (root / goldenPng).string();
-        REQUIRE(stbi_write_png(file.c_str(), static_cast<int>(canvas.width),
-                               static_cast<int>(canvas.height), 4, rgba.data(),
-                               static_cast<int>(canvas.width) * 4) != 0);
+        REQUIRE(tools::writePng(file, actual));
         return;
     }
-    int width = 0, height = 0;
-    const auto golden = loadGoldenPng(goldenPng, width, height);
-    REQUIRE(static_cast<u32>(width) == canvas.width);
-    REQUIRE(static_cast<u32>(height) == canvas.height);
-    for (u32 y = 0; y < canvas.height; ++y) {
-        for (u32 x = 0; x < canvas.width; ++x) {
-            const Color& pixel = canvas.at(x, y);
-            const std::size_t at = (static_cast<std::size_t>(y) * canvas.width + x) * 4;
-            INFO("pixel " << x << "," << y);
-            REQUIRE(golden[at] == pixel.r);
-            REQUIRE(golden[at + 1] == pixel.g);
-            REQUIRE(golden[at + 2] == pixel.b);
-            REQUIRE(golden[at + 3] == pixel.a);
-        }
+    const auto golden = tools::readPng(file);
+    REQUIRE(golden.width == canvas.width);
+    REQUIRE(golden.height == canvas.height);
+    for (std::size_t at = 0; at < golden.rgba.size(); at += 4) {
+        const std::size_t pixel = at / 4;
+        INFO("pixel " << pixel % canvas.width << "," << pixel / canvas.width);
+        REQUIRE(golden.rgba[at] == actual.rgba[at]);
+        REQUIRE(golden.rgba[at + 1] == actual.rgba[at + 1]);
+        REQUIRE(golden.rgba[at + 2] == actual.rgba[at + 2]);
+        REQUIRE(golden.rgba[at + 3] == actual.rgba[at + 3]);
     }
 }
 

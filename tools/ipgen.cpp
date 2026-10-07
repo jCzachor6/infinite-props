@@ -1,11 +1,9 @@
 #include "ipgen.hpp"
 
 #include "json.hpp"
+#include "png.hpp"
 
 #include "iprop/VM.hpp"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 
 #include <cmath>
 #include <cstdio>
@@ -257,26 +255,12 @@ int ipgenMain(int argc, char* argv[]) {
                     error.what());
     }
 
-    // PNG (deterministic encoder: pinned stb_image_write revision).
     const std::string pngPath = !options.output.empty()
                                     ? options.output
                                     : options.file.substr(0, options.file.rfind('.')) + "-" +
                                           std::to_string(options.seed) + ".png";
     const Canvas& canvas = result.image;
-    std::vector<u8> rgba(static_cast<std::size_t>(canvas.width) * canvas.height * 4);
-    for (u32 y = 0; y < canvas.height; ++y) {
-        for (u32 x = 0; x < canvas.width; ++x) {
-            const Color& pixel = canvas.at(x, y);
-            const std::size_t at = (static_cast<std::size_t>(y) * canvas.width + x) * 4;
-            rgba[at] = pixel.r;
-            rgba[at + 1] = pixel.g;
-            rgba[at + 2] = pixel.b;
-            rgba[at + 3] = pixel.a;
-        }
-    }
-    if (stbi_write_png(pngPath.c_str(), static_cast<int>(canvas.width),
-                       static_cast<int>(canvas.height), 4, rgba.data(),
-                       static_cast<int>(canvas.width) * 4) == 0) {
+    if (!tools::writePng(pngPath, tools::canvasImage(canvas))) {
         return fail("cannot write PNG '" + pngPath + "'");
     }
 

@@ -242,13 +242,9 @@ foreach(linkage shared static)
     endif()
 endforeach()
 
-add_library(capi_png_decoder STATIC test/stb_image.c)
-target_include_directories(capi_png_decoder SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_capi_test(capi_conformance
     test/conformance.c test/golden.c test/errors.c test/generation.c test/test_support.c
+    test/png_reader.cpp
     ARGS ${golden} ${CMAKE_SOURCE_DIR}/tests/golden)
-target_link_libraries(capi_conformance PRIVATE capi_png_decoder)
-target_include_directories(capi_conformance SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
+target_link_libraries(capi_conformance PRIVATE iprop_png)
 endif()

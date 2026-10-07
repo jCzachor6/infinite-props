@@ -53,13 +53,19 @@ iprop_warnings(ipval)
 # ipa: assemble .ipa text into .iprop binary
 # ipsheet: render a variant × seed grid PNG
 
+# 8-bit RGBA PNG files for the tools and tests, over the runtime's zlib.
+add_library(iprop_png STATIC
+    png.cpp)
+
+target_link_libraries(iprop_png PUBLIC iprop::runtime)
+target_include_directories(iprop_png PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+iprop_warnings(iprop_png)
+
 add_library(ipgen_lib STATIC
     ipgen.cpp)
 
-target_link_libraries(ipgen_lib PUBLIC iprop::runtime)
+target_link_libraries(ipgen_lib PUBLIC iprop::runtime PRIVATE iprop_png)
 target_include_directories(ipgen_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(ipgen_lib SYSTEM PUBLIC
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(ipgen_lib)
 
 add_executable(ipgen
@@ -84,10 +90,8 @@ iprop_warnings(ipa)
 add_library(ipsheet_lib STATIC
     ipsheet.cpp)
 
-target_link_libraries(ipsheet_lib PUBLIC iprop::runtime)
+target_link_libraries(ipsheet_lib PUBLIC iprop::runtime PRIVATE iprop_png)
 target_include_directories(ipsheet_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(ipsheet_lib SYSTEM PUBLIC
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(ipsheet_lib)
 
 add_executable(ipsheet

@@ -3,9 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STBI_ONLY_PNG
-#include "stb_image.h"
-
 /* Generates one corpus entry through the C API and compares the RGBA
    against the committed golden PNG, pixel-exactly. Returns the result
    handle for the caller's output checks (or NULL). */
@@ -47,8 +44,7 @@ static iprop_result* run_case(const char* program_path, const char* png_path,
 
     int width = 0;
     int height = 0;
-    int channels = 0;
-    unsigned char* png = stbi_load(png_path, &width, &height, &channels, 4);
+    unsigned char* png = read_png_rgba(png_path, &width, &height);
     CHECK(png != NULL, "cannot read the golden %s", png_path);
     if (png == NULL) {
         return result;
@@ -70,7 +66,7 @@ static iprop_result* run_case(const char* program_path, const char* png_path,
             }
         }
     }
-    stbi_image_free(png);
+    free(png);
     return result;
 }
 
