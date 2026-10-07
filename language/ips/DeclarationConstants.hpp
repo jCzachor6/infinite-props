@@ -14,8 +14,8 @@ namespace iprop::ips {
 struct ResolvedConstant {
     Value value;
     Literal::Kind kind = Literal::Kind::Int;
-    // Mathematical integer before 32-bit wrapping, for future signed-input
-    // range checks. Ordinary expression/palette integer semantics stay i32.
+    // Mathematical integer before 32-bit wrapping, for input range checks.
+    // Ordinary expression/palette integer semantics stay i32.
     std::optional<i64> mathematicalInteger;
 };
 

@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <functional>
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
@@ -75,6 +78,15 @@ asset portrait {
 std::map<std::string, PartInfo> hairParts() {
     const Program hair = parse(kHairSource);
     return {{"hair", partInfoOf(hair.asset)}};
+}
+
+// Parses each loaded source once, like the compiler's source cache.
+std::vector<std::string> resolveImports(
+    std::string_view entryPath, const std::function<std::string(std::string_view)>& loadSource) {
+    std::map<std::string, Program> programs;
+    return resolveImportOrder(entryPath, [&](std::string_view path) -> const Program& {
+        return programs.emplace(std::string(path), parse(loadSource(path))).first->second;
+    });
 }
 
 } // namespace

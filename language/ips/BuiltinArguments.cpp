@@ -50,11 +50,6 @@ std::vector<const Arg*> bindArguments(const Call& call,
     return result;
 }
 
-std::vector<const Arg*> builtinArguments(const Call& call, const BuiltinSpec& spec,
-                                         std::string_view function) {
-    return bindArguments(call, builtinParameterNames(spec, call.args.size(), call.location, function), function);
-}
-
 std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::size_t arity,
                                               const SourceLocation& at, std::string_view function) {
     std::vector<std::string> names;

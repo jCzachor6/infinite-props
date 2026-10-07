@@ -1,11 +1,10 @@
 #include "ips/Imports.hpp"
 
 #include <set>
-#include <map>
 #include <stdexcept>
 #include <utility>
 
-#include "ips/Parser.hpp"
+#include "ips/Ast.hpp"
 #include "ips/SourceError.hpp"
 
 namespace iprop::ips {
@@ -62,15 +61,6 @@ std::vector<std::string> resolveImportOrder(
 
     visit(std::string(entryPath), {1,1}, std::string(entryPath));
     return order;
-}
-
-std::vector<std::string> resolveImports(
-    std::string_view entryPath,
-    const std::function<std::string(std::string_view path)>& loadSource) {
-    std::map<std::string, Program> programs;
-    return resolveImportOrder(entryPath, [&](std::string_view path) -> const Program& {
-        return programs.emplace(std::string(path), parse(loadSource(path))).first->second;
-    });
 }
 
 } // namespace iprop::ips

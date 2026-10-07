@@ -500,15 +500,8 @@ private:
         const ValueType expected = outputValueType(output.kind);
         // Allowed sources: a vector literal of matching arity, or a part
         // output read of matching kind.
-        ValueType got;
-        SourceLocation at;
-        if (const auto* vector = std::get_if<VectorLit>(&value)) {
-            got = typer_.typeOf(value);
-            at = vector->location;
-        } else {
-            got = typer_.typeOf(value);
-            at = locationOf(value);
-        }
+        const ValueType got = typer_.typeOf(value);
+        const SourceLocation at = locationOf(value);
         if (got != expected) {
             SourceError diagnostic{at, "output '" + output.name + "' expects " +
                           typeName(expected) + ", got " + typeName(got), {},
