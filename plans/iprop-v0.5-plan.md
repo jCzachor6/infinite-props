@@ -74,7 +74,7 @@ Numer SONAME 0.4 pozostaje historyczną nazwą obecnej linii binarnej, a nie num
 ## 0. Kontrakt i punkt odniesienia
 
 - [x] **05-0.1** Utrwalić wydane v0.4.0 i SHA z nagłówka, źródła, diagnostyki, obrazy, outputy, trapy, stan RNG, koszty/rozmiary optimized/reference oraz stary nagłówek i binarnego klienta C API 0.2.
-  Dowód: `benchmarks/baselines/v0.4.0/manifest.json`, zamrożony klient `backends/capi/test/legacy/v0.2`, 87 źródeł, 690 par renderów, 60 par trapów i 5 pełnych stanów RNG; weryfikacja zachowanych artefaktów oraz 11/11 testów bazowych zakończona powodzeniem. Platforma klienta: macOS arm64.
+  Dowód: `benchmarks/baselines/v0.4.0/manifest.json`, zamrożony klient `backends/capi/test/legacy/v0.2`, 85 źródeł, 670 par renderów, 60 par trapów i 5 pełnych stanów RNG; weryfikacja zachowanych artefaktów oraz 11/11 testów bazowych zakończona powodzeniem. Platforma klienta: macOS arm64.
 
 - [x] **05-0.2** Zapisać powyższe decyzje w rozdziałach źródłowego podręcznika i krótkim dokumencie migracji 0.4 → 0.5. Rozdzielić kontrakt składni, reguły typowania i semantykę wykonania.
   Dowód: rozdział `docs/language/migration-v0.5.md` oddziela składnię, typowanie i wykonanie, opisuje wersje, ABI, ownership oraz granicę 0.6. Podręcznik i plany są pakowane offline; walidacja generowanej książki i 9 testów dokumentacji przeszły.
@@ -345,7 +345,7 @@ asset Crystal {
 - [x] Przenoszenie wyniku i statystyki są zweryfikowane, pomiary zachowują warunki i bazę dla 0.6.
   Dowód: 05-M.1–M.5 (`benchmarks/capi/*-macos-arm64.json` z warunkami pomiaru); `vm_result_allocations` i `capi_stats_*` przechodzą dla 18520b4.
 - [x] Korpus 0.4 zachowuje obrazy, outputy, trapy i RNG; format nadal 0.4.
-  Dowód: macierz 05-J.4 (a1ffab9); od niej `runtime/` i źródła C API są niezmienione, a 18520b4 przechodzi goldeny CTest, konformans native/WASM i klienta 0.2. Format emitowany 0.4. Wyjątek z decyzji właściciela: dwa źródła 0.4 z aliasami emoji (`examples/language/emoji.ips`, `backends/html5/test/fixtures/emoji-aliases.ips`) nie kompilują się w 0.5; ich zamrożone binaria i obrazy w bazie 0.4 działają bez zmian.
+  Dowód: macierz 05-J.4 (a1ffab9); od niej `runtime/` i źródła C API są niezmienione, a 18520b4 przechodzi goldeny CTest, konformans native/WASM i klienta 0.2. Format emitowany 0.4.
 - [x] Dokumentacja, edytor, strona i rozpakowane SDK opisują ten sam commit i właściwe wersje; raport macierzy 0.4/0.5 (J.4) jest gotowy.
   Dowód (18520b4): rozpakowane archiwa SDK, WASM i strony mają ten sam manifest (produkt 0.5.0, język 0.5, format 0.4, C API 0.3, SOVERSION 0.4, commit 18520b4); edytor ma wersję 0.5.0 i przechodzi `editor_diagnostics`/`editor_formatting`; raport J.4 to `docs/optimization-acceptance-v0.5.md` z archiwum raportów.
 - [ ] Finalny zakres ma review i zielone wymagane CI; release/merge/tag/publikacja pozostają osobnym zadaniem.

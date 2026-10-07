@@ -5,8 +5,8 @@ This immutable observation belongs to release `v0.4.0`, source commit
 the improved 0.5 compiler. Historical rejections stay here when the live
 language example manifest is updated to accept the repaired constructs.
 
-`manifest.json` records 479 released source/document/fixture blobs and their
-SHA-256 hashes, all **87 released `.ips` entry files**, their actual compile
+`manifest.json` records 476 released source/document/fixture blobs and their
+SHA-256 hashes, **85 released `.ips` entry files**, their actual compile
 diagnostics, debug/stripped reference/optimized binary sizes and hashes,
 and generation observations for seeds `0, 1, 2, 7, 26` with asset-default
 size, variant `0` and archetype `0`. Compilation disables compression so
@@ -14,7 +14,7 @@ artifact sizes describe compiler output rather than compression heuristics.
 The measured scope is explicit: this capture does not exhaust every variant,
 archetype, uniform override or possible input program.
 
-The capture observed **12 compile rejections**, **690 successful exact
+The capture observed **12 compile rejections**, **670 successful exact
 reference/optimized render pairs** and **60 matching trap pairs**. It stores
 exact stderr (including source locations), PNG and decoded RGBA hashes,
 raw IEEE-754 binary32 output hashes, output schemas/counts, input defaults,
