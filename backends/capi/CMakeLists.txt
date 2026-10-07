@@ -44,14 +44,14 @@ foreach(target iprop_capi iprop_capi_static)
     target_include_directories(${target} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
 
+# Clients of either linkage name the library as ${capi_${linkage}}.
+set(capi_shared iprop_capi)
+set(capi_static iprop_capi_static)
+
 # A real C99 host example, built against both forms of the installed C ABI.
 foreach(linkage shared static)
     add_executable(parameter_panel_${linkage} ${CMAKE_SOURCE_DIR}/examples/c/parameter_panel.c)
-    if(linkage STREQUAL "shared")
-        target_link_libraries(parameter_panel_${linkage} PRIVATE iprop_capi)
-    else()
-        target_link_libraries(parameter_panel_${linkage} PRIVATE iprop_capi_static)
-    endif()
+    target_link_libraries(parameter_panel_${linkage} PRIVATE ${capi_${linkage}})
     iprop_warnings(parameter_panel_${linkage})
 endforeach()
 
@@ -63,88 +63,9 @@ add_test(NAME capi_package_compatibility COMMAND ${CMAKE_COMMAND}
     "-DIPROP_SOURCE=${CMAKE_SOURCE_DIR}"
     "-DWORK=${CMAKE_BINARY_DIR}/capi-package-compatibility"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/test/package_compatibility.cmake")
-add_executable(capi_descriptors test/descriptors.cpp)
-target_link_libraries(capi_descriptors PRIVATE iprop_capi_static)
-iprop_warnings(capi_descriptors)
-add_test(NAME capi_descriptors COMMAND capi_descriptors)
-foreach(linkage shared static)
-    add_executable(capi_error_descriptor_${linkage} test/error_descriptor.c)
-    add_executable(capi_error_buffers_${linkage} test/error_buffers.c)
-    add_executable(capi_checked_${linkage} test/checked.c)
-    add_executable(capi_reflection_${linkage} test/reflection.c)
-    add_executable(capi_output_declarations_${linkage} test/output_declarations.c)
-    add_executable(capi_parts_${linkage} test/parts.c)
-    add_executable(capi_metadata_${linkage} test/metadata.c)
-    add_executable(capi_parameters_${linkage} test/parameters.c)
-    add_executable(capi_parameter_setters_${linkage} test/parameter_setters.c)
-    add_executable(capi_parameter_overrides_${linkage} test/parameter_overrides.c)
-    add_executable(capi_library_${linkage} test/library.c)
-    add_executable(capi_stats_${linkage} test/stats.c)
-    if(linkage STREQUAL "shared")
-        target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_output_declarations_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_parts_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_parameters_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_parameter_setters_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_parameter_overrides_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi)
-        target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi)
-    else()
-        target_link_libraries(capi_error_descriptor_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_error_buffers_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_checked_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_reflection_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_output_declarations_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_parts_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_metadata_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_parameters_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_parameter_setters_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_parameter_overrides_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_library_${linkage} PRIVATE iprop_capi_static)
-        target_link_libraries(capi_stats_${linkage} PRIVATE iprop_capi_static)
-    endif()
-    target_compile_definitions(capi_library_${linkage} PRIVATE
-        IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}
-        IPROP_TEST_PRODUCT_MINOR=${PROJECT_VERSION_MINOR}
-        IPROP_TEST_PRODUCT_PATCH=${PROJECT_VERSION_PATCH})
-    iprop_warnings(capi_library_${linkage})
-    iprop_warnings(capi_error_descriptor_${linkage})
-    iprop_warnings(capi_error_buffers_${linkage})
-    iprop_warnings(capi_checked_${linkage})
-    iprop_warnings(capi_reflection_${linkage})
-    iprop_warnings(capi_output_declarations_${linkage})
-    iprop_warnings(capi_parts_${linkage})
-    iprop_warnings(capi_metadata_${linkage})
-    iprop_warnings(capi_stats_${linkage})
-    iprop_warnings(capi_parameters_${linkage})
-    iprop_warnings(capi_parameter_setters_${linkage})
-    iprop_warnings(capi_parameter_overrides_${linkage})
-    add_test(NAME capi_error_descriptor_${linkage} COMMAND capi_error_descriptor_${linkage})
-    add_test(NAME capi_library_${linkage} COMMAND capi_library_${linkage})
-endforeach()
-set(IPROP_CAPI_GOLDEN_DIR ${CMAKE_BINARY_DIR}/capi-golden)
-file(MAKE_DIRECTORY ${IPROP_CAPI_GOLDEN_DIR})
 
-set(image_fixture ${IPROP_CAPI_GOLDEN_DIR}/image-view.iprop)
-add_custom_command(OUTPUT ${image_fixture}
-    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/image-view.ips -o ${image_fixture}
-    DEPENDS ipc test/image-view.ips)
-add_custom_target(capi_image_fixture DEPENDS ${image_fixture})
-foreach(linkage shared static)
-    add_executable(capi_image_view_${linkage} test/image_view.c)
-    if(linkage STREQUAL "shared")
-        target_link_libraries(capi_image_view_${linkage} PRIVATE iprop_capi)
-    else()
-        target_link_libraries(capi_image_view_${linkage} PRIVATE iprop_capi_static)
-    endif()
-    iprop_warnings(capi_image_view_${linkage})
-    add_dependencies(capi_image_view_${linkage} capi_image_fixture)
-    add_test(NAME capi_image_view_${linkage} COMMAND capi_image_view_${linkage} ${image_fixture})
-endforeach()
+set(golden ${CMAKE_BINARY_DIR}/capi-golden)
+file(MAKE_DIRECTORY ${golden})
 
 set(IPROP_CAPI_SOURCES
     ${CMAKE_SOURCE_DIR}/examples/portrait.ipa
@@ -158,7 +79,7 @@ set(IPROP_CAPI_SOURCES
 set(IPROP_CAPI_IPROPS "")
 foreach(source IN LISTS IPROP_CAPI_SOURCES)
     get_filename_component(name ${source} NAME_WE)
-    set(out ${IPROP_CAPI_GOLDEN_DIR}/${name}.iprop)
+    set(out ${golden}/${name}.iprop)
     add_custom_command(
         OUTPUT ${out}
         COMMAND $<TARGET_FILE:ipa> ${source} -o ${out}
@@ -167,16 +88,18 @@ foreach(source IN LISTS IPROP_CAPI_SOURCES)
     list(APPEND IPROP_CAPI_IPROPS ${out})
 endforeach()
 
+# Every compiled fixture below is a dependency of capi_golden, which each C
+# API test builds first.
 add_custom_target(capi_golden DEPENDS ${IPROP_CAPI_IPROPS})
-foreach(linkage shared static)
-    add_dependencies(capi_error_buffers_${linkage} capi_golden)
-    add_dependencies(capi_checked_${linkage} capi_golden)
-    add_test(NAME capi_error_buffers_${linkage} COMMAND capi_error_buffers_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
-    add_test(NAME capi_checked_${linkage} COMMAND capi_checked_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop)
-endforeach()
-set(owner_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-owners.iprop)
+
+set(image_fixture ${golden}/image-view.iprop)
+add_custom_command(OUTPUT ${image_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/image-view.ips -o ${image_fixture}
+    DEPENDS ipc test/image-view.ips)
+add_custom_target(capi_image_fixture DEPENDS ${image_fixture})
+add_dependencies(capi_golden capi_image_fixture)
+
+set(owner_fixture ${golden}/output-owners.iprop)
 add_custom_command(OUTPUT ${owner_fixture}
     COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-owners.ips -o ${owner_fixture}
     DEPENDS ipc test/output-owners.ips test/owner-first.ips test/owner-second.ips)
@@ -184,11 +107,19 @@ add_custom_target(capi_owners DEPENDS ${owner_fixture})
 add_dependencies(capi_golden capi_owners)
 # The separately built frozen client needs these exact two current-tool fixtures.
 add_custom_target(capi_legacy_fixtures DEPENDS
-    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${owner_fixture})
+    ${golden}/uniforms.iprop ${owner_fixture})
+
+set(result_output_fixture ${golden}/output-values.iprop)
+add_custom_command(OUTPUT ${result_output_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-values.ips -o ${result_output_fixture}
+    DEPENDS ipc test/output-values.ips test/reflection-output-first.ips
+        test/reflection-output-empty.ips test/reflection-output-second.ips)
+add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
+add_dependencies(capi_golden capi_result_output_fixture)
 
 foreach(source test/language.ips ../../examples/plant.ips)
     get_filename_component(name ${source} NAME_WE)
-    set(out ${IPROP_CAPI_GOLDEN_DIR}/${name}.iprop)
+    set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)
     add_custom_command(OUTPUT ${out}
         COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/${source} -o ${out}
@@ -198,214 +129,126 @@ foreach(source test/language.ips ../../examples/plant.ips)
 endforeach()
 
 foreach(name reflection-defaults reflection-empty)
-    set(out ${IPROP_CAPI_GOLDEN_DIR}/${name}.iprop)
+    set(out ${golden}/${name}.iprop)
     add_custom_command(OUTPUT ${out}
         COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/${name}.ips --no-compress -o ${out}
         DEPENDS ipc test/${name}.ips)
     add_custom_target(capi_${name} DEPENDS ${out})
     add_dependencies(capi_golden capi_${name})
 endforeach()
+
+# Output and part schemas, each in three physical encodings.
+set(schema_flags_plain --strip --no-compress)
+set(schema_flags_debug --debug --no-compress)
+set(schema_flags_compressed --debug --compress)
+foreach(schema output part)
+    foreach(encoding plain debug compressed)
+        set(out ${golden}/reflection-${schema}s-${encoding}.iprop)
+        add_custom_command(OUTPUT ${out}
+            COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/reflection-${schema}s.ips
+                ${schema_flags_${encoding}} -o ${out}
+            DEPENDS ipc test/reflection-${schema}s.ips test/reflection-${schema}-first.ips
+                test/reflection-${schema}-empty.ips test/reflection-${schema}-second.ips)
+        add_custom_target(capi_${schema}_schema_${encoding} DEPENDS ${out})
+        add_dependencies(capi_golden capi_${schema}_schema_${encoding})
+    endforeach()
+endforeach()
+
+# iprop_capi_test(<name> <source>... [BOTH] [ARGS <arg>...])
+# One test executable run with ARGS. BOTH builds a C99 client twice, as
+# <name>_shared and <name>_static; otherwise <name> links the static library.
+function(iprop_capi_test name)
+    cmake_parse_arguments(PARSE_ARGV 1 test "BOTH" "" "ARGS")
+    set(linkages static)
+    if(test_BOTH)
+        set(linkages shared static)
+    endif()
+    foreach(linkage IN LISTS linkages)
+        set(target ${name})
+        if(test_BOTH)
+            set(target ${name}_${linkage})
+        endif()
+        add_executable(${target} ${test_UNPARSED_ARGUMENTS})
+        target_link_libraries(${target} PRIVATE ${capi_${linkage}})
+        iprop_warnings(${target})
+        add_dependencies(${target} capi_golden)
+        add_test(NAME ${target} COMMAND ${target} ${test_ARGS})
+    endforeach()
+endfunction()
+
+iprop_capi_test(capi_descriptors test/descriptors.cpp)
+iprop_capi_test(capi_error_descriptor test/error_descriptor.c BOTH)
+iprop_capi_test(capi_library test/library.c BOTH)
 foreach(linkage shared static)
-    add_dependencies(capi_reflection_${linkage} capi_golden)
-    add_test(NAME capi_reflection_${linkage} COMMAND capi_reflection_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
+    target_compile_definitions(capi_library_${linkage} PRIVATE
+        IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}
+        IPROP_TEST_PRODUCT_MINOR=${PROJECT_VERSION_MINOR}
+        IPROP_TEST_PRODUCT_PATCH=${PROJECT_VERSION_PATCH})
+endforeach()
+iprop_capi_test(capi_image_view test/image_view.c BOTH ARGS ${image_fixture})
+iprop_capi_test(capi_error_buffers test/error_buffers.c BOTH ARGS ${golden}/uniforms.iprop)
+iprop_capi_test(capi_checked test/checked.c BOTH ARGS ${golden}/uniforms.iprop)
+iprop_capi_test(capi_reflection test/reflection.c BOTH
+    ARGS ${golden}/reflection-defaults.iprop ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_result_outputs test/result_outputs.c BOTH
+    ARGS ${result_output_fixture} ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_output_declarations test/output_declarations.c BOTH
+    ARGS ${golden}/reflection-outputs-plain.iprop ${golden}/reflection-outputs-debug.iprop
+        ${golden}/reflection-outputs-compressed.iprop ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_parts test/parts.c BOTH
+    ARGS ${golden}/reflection-parts-plain.iprop ${golden}/reflection-parts-debug.iprop
+        ${golden}/reflection-parts-compressed.iprop ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_metadata test/metadata.c BOTH
+    ARGS ${golden}/reflection-parts-plain.iprop ${golden}/reflection-parts-debug.iprop
+        ${golden}/reflection-parts-compressed.iprop)
+iprop_capi_test(capi_stats test/stats.c BOTH
+    ARGS ${golden}/reflection-outputs-plain.iprop ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_parameters test/parameters.c BOTH
+    ARGS ${golden}/reflection-defaults.iprop ${golden}/reflection-empty.iprop)
+iprop_capi_test(capi_parameter_setters test/parameter_setters.c BOTH
+    ARGS ${golden}/reflection-defaults.iprop)
+iprop_capi_test(capi_parameter_overrides test/parameter_overrides.c BOTH
+    ARGS ${golden}/reflection-defaults.iprop)
+iprop_capi_test(capi_generate_ex test/generate_ex.c BOTH ARGS ${golden})
+
+iprop_capi_test(capi_error_sink test/error_sink.cpp
+    ARGS ${golden}/uniforms.iprop ${owner_fixture})
+iprop_capi_test(capi_error_boundary test/error_boundary.cpp
+    ARGS ${golden}/uniforms.iprop ${golden}/error-trap.iprop)
+iprop_capi_test(capi_checked_errors test/checked_errors.cpp
+    ARGS ${golden}/uniforms.iprop ${golden}/reflection-outputs-plain.iprop
+        ${golden}/reflection-parts-plain.iprop)
+iprop_capi_test(capi_result_storage test/result_storage.cpp)
+iprop_capi_test(capi_stats_oracle test/stats_oracle.cpp
+    ARGS ${golden}/reflection-outputs-plain.iprop ${golden}/reflection-empty.iprop
+        ${owner_fixture} ${golden}/language.iprop ${golden}/parts.iprop)
+iprop_capi_test(capi_generation_request test/generation_request.cpp ARGS ${golden}/portrait.iprop)
+iprop_capi_test(capi_generate_ex_errors test/generate_ex_errors.cpp
+    ARGS ${golden}/uniforms.iprop ${golden}/portrait.iprop)
+iprop_capi_test(capi_parameter_transactions test/parameter_transactions.cpp
+    ARGS ${golden}/reflection-defaults.iprop)
+iprop_capi_test(capi_parameters_errors test/parameters_errors.cpp
+    ARGS ${golden}/reflection-defaults.iprop ${golden}/reflection-empty.iprop)
+
+foreach(linkage shared static)
     add_dependencies(parameter_panel_${linkage} capi_golden)
     if(Python3_Interpreter_FOUND)
         add_test(NAME capi_parameter_panel_${linkage}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_parameter_panel.py
                 $<TARGET_FILE:parameter_panel_${linkage}>
-                ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
-                ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop
-                ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
+                ${golden}/reflection-defaults.iprop
+                ${golden}/reflection-empty.iprop
+                ${golden}/reflection-parts-plain.iprop)
     endif()
 endforeach()
 
-set(result_output_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-values.iprop)
-add_custom_command(OUTPUT ${result_output_fixture}
-    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-values.ips -o ${result_output_fixture}
-    DEPENDS ipc test/output-values.ips test/reflection-output-first.ips
-        test/reflection-output-empty.ips test/reflection-output-second.ips)
-add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
-foreach(linkage shared static)
-    add_executable(capi_result_outputs_${linkage} test/result_outputs.c)
-    if(linkage STREQUAL "shared")
-        target_link_libraries(capi_result_outputs_${linkage} PRIVATE iprop_capi)
-    else()
-        target_link_libraries(capi_result_outputs_${linkage} PRIVATE iprop_capi_static)
-    endif()
-    iprop_warnings(capi_result_outputs_${linkage})
-    add_dependencies(capi_result_outputs_${linkage} capi_result_output_fixture capi_golden)
-    add_test(NAME capi_result_outputs_${linkage} COMMAND capi_result_outputs_${linkage}
-        ${result_output_fixture} ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-endforeach()
-
-foreach(encoding plain debug compressed)
-    set(out ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-${encoding}.iprop)
-    if(encoding STREQUAL "plain")
-        set(output_schema_flags --strip --no-compress)
-    elseif(encoding STREQUAL "debug")
-        set(output_schema_flags --debug --no-compress)
-    else()
-        set(output_schema_flags --debug --compress)
-    endif()
-    add_custom_command(OUTPUT ${out}
-        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/reflection-outputs.ips
-            ${output_schema_flags} -o ${out}
-        DEPENDS ipc test/reflection-outputs.ips test/reflection-output-first.ips
-            test/reflection-output-empty.ips test/reflection-output-second.ips)
-    add_custom_target(capi_output_schema_${encoding} DEPENDS ${out})
-    add_dependencies(capi_golden capi_output_schema_${encoding})
-endforeach()
-foreach(linkage shared static)
-    add_dependencies(capi_output_declarations_${linkage} capi_golden)
-    add_test(NAME capi_output_declarations_${linkage} COMMAND capi_output_declarations_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-debug.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-compressed.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-endforeach()
-
-foreach(encoding plain debug compressed)
-    set(out ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-${encoding}.iprop)
-    if(encoding STREQUAL "plain")
-        set(part_schema_flags --strip --no-compress)
-    elseif(encoding STREQUAL "debug")
-        set(part_schema_flags --debug --no-compress)
-    else()
-        set(part_schema_flags --debug --compress)
-    endif()
-    add_custom_command(OUTPUT ${out}
-        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/reflection-parts.ips
-            ${part_schema_flags} -o ${out}
-        DEPENDS ipc test/reflection-parts.ips test/reflection-part-first.ips
-            test/reflection-part-empty.ips test/reflection-part-second.ips)
-    add_custom_target(capi_part_schema_${encoding} DEPENDS ${out})
-    add_dependencies(capi_golden capi_part_schema_${encoding})
-endforeach()
-foreach(linkage shared static)
-    add_dependencies(capi_parts_${linkage} capi_golden)
-    add_test(NAME capi_parts_${linkage} COMMAND capi_parts_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-debug.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-compressed.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-    add_dependencies(capi_metadata_${linkage} capi_golden)
-    add_test(NAME capi_metadata_${linkage} COMMAND capi_metadata_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-debug.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-compressed.iprop)
-    add_dependencies(capi_stats_${linkage} capi_golden)
-    add_test(NAME capi_stats_${linkage} COMMAND capi_stats_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-    add_dependencies(capi_parameters_${linkage} capi_golden)
-    add_test(NAME capi_parameters_${linkage} COMMAND capi_parameters_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-    add_dependencies(capi_parameter_setters_${linkage} capi_golden)
-    add_test(NAME capi_parameter_setters_${linkage} COMMAND capi_parameter_setters_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)
-    add_dependencies(capi_parameter_overrides_${linkage} capi_golden)
-    add_test(NAME capi_parameter_overrides_${linkage} COMMAND capi_parameter_overrides_${linkage}
-        ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)
-endforeach()
-
-add_executable(capi_conformance
-    test/conformance.c
-    test/golden.c
-    test/errors.c
-    test/generation.c
-    test/test_support.c)
 add_library(capi_png_decoder STATIC test/stb_image.c)
 target_include_directories(capi_png_decoder SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
-
-target_link_libraries(capi_conformance PRIVATE iprop_capi_static capi_png_decoder)
+iprop_capi_test(capi_conformance
+    test/conformance.c test/golden.c test/errors.c test/generation.c test/test_support.c
+    ARGS ${golden} ${CMAKE_SOURCE_DIR}/tests/golden)
+target_link_libraries(capi_conformance PRIVATE capi_png_decoder)
 target_include_directories(capi_conformance SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party/stb)
-iprop_warnings(capi_conformance)
-add_dependencies(capi_conformance capi_golden)
-
-add_executable(capi_error_sink test/error_sink.cpp)
-target_link_libraries(capi_error_sink PRIVATE iprop_capi_static)
-iprop_warnings(capi_error_sink)
-add_dependencies(capi_error_sink capi_golden)
-add_test(NAME capi_error_sink COMMAND capi_error_sink
-    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${owner_fixture})
-
-add_executable(capi_error_boundary test/error_boundary.cpp)
-target_link_libraries(capi_error_boundary PRIVATE iprop_capi_static)
-iprop_warnings(capi_error_boundary)
-add_dependencies(capi_error_boundary capi_golden)
-add_test(NAME capi_error_boundary COMMAND capi_error_boundary
-    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${IPROP_CAPI_GOLDEN_DIR}/error-trap.iprop)
-
-add_executable(capi_checked_errors test/checked_errors.cpp)
-target_link_libraries(capi_checked_errors PRIVATE iprop_capi_static)
-iprop_warnings(capi_checked_errors)
-add_dependencies(capi_checked_errors capi_golden)
-add_test(NAME capi_checked_errors COMMAND capi_checked_errors ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
-
-add_executable(capi_result_storage test/result_storage.cpp)
-target_link_libraries(capi_result_storage PRIVATE iprop_capi_static)
-iprop_warnings(capi_result_storage)
-add_test(NAME capi_result_storage COMMAND capi_result_storage)
-
-add_executable(capi_stats_oracle test/stats_oracle.cpp)
-target_link_libraries(capi_stats_oracle PRIVATE iprop_capi_static)
-iprop_warnings(capi_stats_oracle)
-add_dependencies(capi_stats_oracle capi_golden)
-add_test(NAME capi_stats_oracle COMMAND capi_stats_oracle
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-outputs-plain.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop
-    ${owner_fixture} ${IPROP_CAPI_GOLDEN_DIR}/language.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/parts.iprop)
-add_executable(capi_generation_request test/generation_request.cpp)
-target_link_libraries(capi_generation_request PRIVATE iprop_capi_static)
-iprop_warnings(capi_generation_request)
-add_dependencies(capi_generation_request capi_golden)
-add_test(NAME capi_generation_request COMMAND capi_generation_request
-    ${IPROP_CAPI_GOLDEN_DIR}/portrait.iprop)
-
-foreach(linkage shared static)
-    add_executable(capi_generate_ex_${linkage} test/generate_ex.c)
-    if(linkage STREQUAL "shared")
-        target_link_libraries(capi_generate_ex_${linkage} PRIVATE iprop_capi)
-    else()
-        target_link_libraries(capi_generate_ex_${linkage} PRIVATE iprop_capi_static)
-    endif()
-    iprop_warnings(capi_generate_ex_${linkage})
-    add_dependencies(capi_generate_ex_${linkage} capi_golden)
-    add_test(NAME capi_generate_ex_${linkage} COMMAND capi_generate_ex_${linkage} ${IPROP_CAPI_GOLDEN_DIR})
-endforeach()
-
-add_executable(capi_generate_ex_errors test/generate_ex_errors.cpp)
-target_link_libraries(capi_generate_ex_errors PRIVATE iprop_capi_static)
-iprop_warnings(capi_generate_ex_errors)
-add_dependencies(capi_generate_ex_errors capi_golden)
-add_test(NAME capi_generate_ex_errors COMMAND capi_generate_ex_errors
-    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${IPROP_CAPI_GOLDEN_DIR}/portrait.iprop)
-
-add_executable(capi_parameter_transactions test/parameter_transactions.cpp)
-target_link_libraries(capi_parameter_transactions PRIVATE iprop_capi_static)
-iprop_warnings(capi_parameter_transactions)
-add_dependencies(capi_parameter_transactions capi_golden)
-add_test(NAME capi_parameter_transactions COMMAND capi_parameter_transactions
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop)
-
-add_executable(capi_parameters_errors test/parameters_errors.cpp)
-target_link_libraries(capi_parameters_errors PRIVATE iprop_capi_static)
-iprop_warnings(capi_parameters_errors)
-add_dependencies(capi_parameters_errors capi_golden)
-add_test(NAME capi_parameters_errors COMMAND capi_parameters_errors
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-defaults.iprop
-    ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
-
-    add_test(NAME capi_conformance
-        COMMAND capi_conformance
-                ${IPROP_CAPI_GOLDEN_DIR}
-                ${CMAKE_SOURCE_DIR}/tests/golden)
 endif()
