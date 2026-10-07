@@ -22,6 +22,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The ABI gate builds the pinned release from a separate git archive.
+          fetch-depth: 0
       - uses: ./.github/actions/setup
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
@@ -55,6 +58,12 @@ jobs:
           python scripts/check_export_contracts.py build/tools/ipc
           --probe build/tests/compiler_diagnostic_failure_probe --schema
           --report build/ci-reports/export-contracts.json
+
+      - name: Run the frozen API 0.2 binary with the replacement library
+        run: >-
+          python scripts/ci_report.py run legacy-abi
+          python scripts/check_legacy_abi.py --build build
+          --static-zlib=${{ runner.os == 'Windows' && 'ON' || 'OFF' }}
 
       - name: Smoke the CLI pipeline
         run: >-
@@ -238,7 +247,7 @@ jobs:
           -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
           '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -fno-sanitize-recover=all'
           '-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all'
-      - name: Build and test all compiler and VM regressions
+      - name: Build and test all compiler, VM and shared/static C API regressions
         run: |
           python scripts/ci_report.py run build cmake --build build --parallel 4
           python scripts/ci_report.py run test ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml

@@ -108,6 +108,8 @@ add_custom_target(godot_demo
     COMMENT "Assembling the Godot demo project")
 
 if(IPROP_BUILD_TESTS)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/../ResultTests.cmake)
+    add_dependencies(iprop_godot capi_golden capi_result_output_fixture backend_result_fixtures)
     find_program(IPROP_GODOT_BINARY
         NAMES Godot godot
         HINTS "${CMAKE_SOURCE_DIR}/../.deps/Godot.app/Contents/MacOS"

@@ -12,6 +12,9 @@ These API 0.3 operations are implemented on the frozen ABI line 0.4:
 | `iprop_result_stats_ex_init` | Initializes a sized result statistics descriptor |
 | `iprop_result_query_image` | Borrows the exact generated pixels with byte count, row stride, format, alpha mode and storage origin |
 | `iprop_image_view_ex_init` | Initializes a sized image view descriptor |
+| `iprop_result_output_count/get/find` | Reads every generated slot and finds exact owner/name pairs |
+| `iprop_result_output_view_ex_init` | Initializes a sized generated output view |
+| `iprop_result_output_point/rect/circle` | Copies one complete typed element after kind/index/capacity checks |
 
 `iprop_library_query` advertises `IPROP_CAP_PROGRAM_LOAD_EX`,
 `IPROP_CAP_PROGRAM_QUERY`, `IPROP_CAP_STRUCTURED_ERRORS` and
@@ -32,6 +35,8 @@ program descriptor, without another query function.
 `IPROP_CAP_IMAGE_VIEW` separately advertises
 [borrowed generated image views](c-api-images.md), including explicit legacy
 destination-alpha semantics and the unchanged pixel pointer.
+`IPROP_CAP_RESULT_OUTPUTS` and `IPROP_CAP_TYPED_OUTPUTS` separately advertise
+[generated output views and typed element copies](c-api-result-outputs.md).
 `IPROP_CAP_PARAMETERS` separately advertises the implemented
 [root parameter handles and generic value operations](c-api-parameters.md).
 `IPROP_CAP_GENERATE_EX` advertises

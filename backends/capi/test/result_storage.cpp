@@ -81,7 +81,7 @@ int main() {
     // have already been released, while every published C view stays valid.
     if (allocations != 3 || result.image.pixels.data() != pixels) return 1;
     for (bool freed : released) if (!freed) return 2;
-    if (result.outputs.size() != 7 || result.packed.size() != 13) return 3;
+    if (result.outputs.size() != 7 || result.packed.size() != 13 || result.ownerCount != 4) return 3;
     const uint32_t owners[] = {0, 0, 0, 0, 0, 2, 3};
     const uint32_t counts[] = {2, 1, 1, 0, 0, 1, 0};
     const iprop_output_kind kinds[] = {IPROP_OUTPUT_POINT, IPROP_OUTPUT_RECT,
@@ -101,6 +101,42 @@ int main() {
     const std::size_t indices[] = {2, 3, 5, 6, 7, 8, 9, 10, 11, 12};
     for (std::size_t i = 0; i < std::size(expected); ++i)
         if (result.packed[indices[i]] != expected[i]) return 6;
+    // Public accessors must not reconstruct names/typed tables or allocate on
+    // any success/expected argument error, including after source data died.
+    iprop_result_output_view_ex outputView{};
+    iprop_error_ex error{};
+    char message[64];
+    uint32_t count = UINT32_MAX, index = UINT32_MAX;
+    iprop_point_value point{};
+    iprop_rect_value rect{};
+    iprop_circle_value circle{};
+    if (iprop_error_ex_init(&error, sizeof(error)) != IPROP_EX_OK) return 9;
+    error.message_buffer = message; error.message_capacity = sizeof(message);
+    allocations = 0;
+    armed = true;
+    bool success = iprop_result_output_count(&result, &count, &error) == IPROP_EX_OK && count == 7;
+    for (uint32_t i = 0; i < count; ++i) {
+        success &= iprop_result_output_view_ex_init(&outputView, sizeof(outputView)) == IPROP_EX_OK;
+        success &= iprop_result_output_get(&result, i, &outputView, &error) == IPROP_EX_OK;
+        success &= outputView.values == result.outputs[i].values && outputView.name.data == result.outputs[i].name;
+        success &= outputView.name.byte_count == names[i].size() && outputView.owner == owners[i];
+        success &= iprop_result_output_find(&result, owners[i], outputView.name, &index, &error) == IPROP_EX_OK && index == i;
+    }
+    success &= iprop_result_output_point(&result, 0, 0, &point, sizeof(point), &error) == IPROP_EX_OK;
+    success &= bits(point.x, 0x80000000) && bits(point.y, 1);
+    success &= iprop_result_output_rect(&result, 1, 0, &rect, sizeof(rect), &error) == IPROP_EX_OK;
+    success &= bits(rect.x, 0x7fc12345) && rect.y == 4 && rect.w == 5 && rect.h == 6;
+    success &= iprop_result_output_circle(&result, 2, 0, &circle, sizeof(circle), &error) == IPROP_EX_OK;
+    success &= circle.x == 7 && circle.y == 8 && circle.radius == 9;
+    success &= iprop_result_output_point(&result, 3, 0, &point, sizeof(point), &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_point(&result, 1, 0, &point, sizeof(point), &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_point(&result, 0, 0, &point, sizeof(point) - 1, &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_get(&result, UINT32_MAX, &outputView, &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_find(&result, 1, {nullptr,0}, &index, &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_find(&result, 4, {nullptr,0}, &index, &error) == IPROP_EX_E_ARGUMENT;
+    success &= iprop_result_output_count(nullptr, &count, &error) == IPROP_EX_E_ARGUMENT;
+    armed = false;
+    if (!success || allocations != 0) return 10;
     const auto view = iprop::capi::resultImage(result);
     if (view.width != 2 || view.height != 1 || view.output_count != 7 ||
         view.pixels[0] != 1 || view.pixels[3] != 4 || view.pixels[4] != 255 ||
@@ -115,6 +151,6 @@ int main() {
     iprop::capi::packResult(empty, std::move(noOutputs), {});
     armed = false;
     if (allocations != 0 || empty.image.pixels.data() != emptyPixels ||
-        !empty.names.empty() || !empty.packed.empty() || !empty.outputs.empty()) return 8;
-    std::puts("C result storage: moved pixels/names, released typed buffers, stable packed views and empty transfer passed");
+        !empty.names.empty() || !empty.packed.empty() || !empty.outputs.empty() || empty.ownerCount != 1) return 8;
+    std::puts("C result storage: moved data, stable packed views, empty transfer and noalloc result accessors passed");
 }

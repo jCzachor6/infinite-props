@@ -59,19 +59,23 @@ export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(roo
     process.stdout.write(result.stdout);
     verifyBundle(bundle, path.resolve(root, compiler));
     const info = JSON.parse(fs.readFileSync(path.join(bundle, "docs/language-manifest.json"), "utf8"));
-    const minor = info.product_version.split(".").slice(0, 2).join(".");
+    const minor = info.language_version;
     const book = fs.readFileSync(path.join(bundle, "docs", `language-v${minor}.md`), "utf8");
     const rendered = renderBook(book, info.headings, bundle);
     const publicDir = path.join(root, "website/public");
     for (const directory of ["docs", "examples", "spec", "plans"])
         fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
     fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
-    // Preserve the old download URL as a generated copy of the same book.
+    // Offer the same source-language book under the reference download directory.
     fs.mkdirSync(path.join(publicDir, "reference"), { recursive: true });
     fs.copyFileSync(path.join(bundle, "docs", `language-v${minor}.md`), path.join(publicDir, "reference", `language-v${minor}.md`));
     const template = fs.readFileSync(path.join(root, "website/templates/language.html"), "utf8");
     const html = template.replace("{{CONTENT}}", rendered.html)
-        .replaceAll("{{VERSION}}", info.product_version).replaceAll("{{MINOR}}", minor);
+        .replaceAll("{{VERSION}}", info.language_version).replaceAll("{{MINOR}}", minor)
+        .replaceAll("{{PRODUCT_VERSION}}", info.product_version)
+        .replaceAll("{{FORMAT_VERSION}}", info.format_version)
+        .replaceAll("{{C_API_VERSION}}", info.c_api_version)
+        .replaceAll("{{C_ABI_SOVERSION}}", info.c_abi_soversion);
     fs.writeFileSync(path.join(root, "website/docs/language.html"), html);
     fs.writeFileSync(path.join(publicDir, "docs/language-index.js"), "const LANGUAGE_SECTIONS = " + JSON.stringify(rendered.search, null, 2) + ";\n");
     console.log(`Rendered handbook: ${info.headings.length} headings, ${rendered.search.length} search entries`);

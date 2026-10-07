@@ -11,7 +11,7 @@ The caller must retain the actual session response; authored fixtures use
 ```sh
 python3 benchmarks/llm/runner/session.py prepare \
   --output /path/to/new-session --tools /path/to/frozen-tools --version 0.5 \
-  --reference /path/to/generated/docs/language-v0.4.md \
+  --reference /path/to/generated/docs/language-v0.5.md \
   --reference-manifest /path/to/generated/docs/language-manifest.json \
   --language-export /path/to/generated/docs/language.json
 python3 benchmarks/llm/runner/session.py import-response \
@@ -28,7 +28,8 @@ protocol prompt are archived and sealed with SHA256 before response import.
 The compact `LLM_REFERENCE.md` is not the comparative pilot reference. Adapter
 `--version 0.5` requires the current 0.5 language contract; product version and
 binary format are recorded independently (both may still be 0.4). The handbook
-filename follows the generated manifest's product version. Compiler source
+filename follows the generated manifest's source-language version; the current
+documentation manifest uses schema 2 with all five version fields. Compiler source
 commit comes from that supplied manifest and is identified as an assertion;
 executable paths and actual binary hashes are observed independently. Frozen
 `--version 0.4` requires the original released handbook/export bytes and source

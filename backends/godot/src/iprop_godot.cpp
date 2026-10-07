@@ -1,6 +1,7 @@
 // The GDExtension implementation (see iprop_godot.hpp).
 
 #include "iprop_godot.hpp"
+#include "../../ResultQueries.hpp"
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -9,11 +10,45 @@
 
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <vector>
 
 using namespace godot;
 
 namespace iprop_godot {
+
+namespace {
+
+// Godot's UTF-8 parser stops at embedded NUL even with an explicit length.
+// Decode bounded non-NUL segments with its parser, then store each U+0000
+// directly in the length-counted String. No UTF-8 decoder is duplicated here.
+bool outputName(iprop_utf8_view view, String& name) {
+    if (view.byte_count == 0) return true;
+    if (std::memchr(view.data, 0, view.byte_count) == nullptr) {
+        return name.parse_utf8(view.data, view.byte_count) == OK;
+    }
+    if (name.resize(static_cast<int64_t>(view.byte_count) + 1) != OK) return false;
+    char32_t* target = name.ptrw();
+    int64_t used = 0;
+    uint32_t begin = 0;
+    while (begin < view.byte_count) {
+        const char* zero = static_cast<const char*>(std::memchr(view.data + begin, 0, view.byte_count - begin));
+        const auto end = zero == nullptr ? view.byte_count : static_cast<uint32_t>(zero - view.data);
+        if (end != begin) {
+            String segment;
+            if (segment.parse_utf8(view.data + begin, end - begin) != OK) return false;
+            std::memcpy(target + used, segment.ptr(), static_cast<size_t>(segment.length()) * sizeof(char32_t));
+            used += segment.length();
+        }
+        if (zero == nullptr) break;
+        target[used++] = 0;
+        begin = end + 1;
+    }
+    target[used] = 0; // String::resize requires the caller to terminate storage.
+    return name.resize(used + 1) == OK;
+}
+
+} // namespace
 
 // ---- IpropAsset -----------------------------------------------------------
 
@@ -105,9 +140,6 @@ Error IpropAsset::load_file(const String& path) {
 
 Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
                                 int64_t archetype) {
-    outputs_.clear();
-    part_outputs_.clear();
-    output_slots_.clear();
     const auto validU32 = [](int64_t value) {
         return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
     };
@@ -133,49 +165,74 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
             String::utf8(error[0] != '\0' ? error : "unknown error"));
         return Ref<Image>();
     }
-    iprop_image image{};
-    iprop_result_image(result, &image);
+    const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> owned(result, iprop_result_free);
+    iprop_error_ex query_error;
+    iprop_error_ex_init(&query_error, sizeof(query_error));
+    query_error.message_buffer = error;
+    query_error.message_capacity = sizeof(error);
+    const auto readFailure = [&]() {
+        UtilityFunctions::printerr("iprop: result read failed: ",
+            String::utf8(error[0] != '\0' ? error : "unsupported result or allocation failure"));
+        return Ref<Image>();
+    };
+    iprop_image_view_ex image;
+    if (iprop::backend::queryImage(result, image, &query_error) != IPROP_EX_OK ||
+        !iprop::backend::rgba8Image(image) ||
+        image.width > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        image.height > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
+        image.byte_count > static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) ||
+        image.byte_count > std::numeric_limits<size_t>::max()) {
+        return readFailure();
+    }
 
     PackedByteArray bytes;
-    bytes.resize(static_cast<int64_t>(image.width) * image.height * 4);
-    std::memcpy(bytes.ptrw(), image.pixels,
-                static_cast<size_t>(image.width) * image.height * 4);
+    if (bytes.resize(static_cast<int64_t>(image.byte_count)) != OK) return readFailure();
+    if (image.byte_count != 0) {
+        std::memcpy(bytes.ptrw(), image.pixels, static_cast<size_t>(image.byte_count));
+    }
+    const Ref<Image> candidate_image = Image::create_from_data(static_cast<int>(image.width),
+        static_cast<int>(image.height), false, Image::FORMAT_RGBA8, bytes);
+    if (candidate_image.is_null() || candidate_image->is_empty()) return readFailure();
 
-    // The structured outputs: name -> { kind, list, values }.
-    for (uint32_t i = 0; i < image.output_count; ++i) {
-        const iprop_output& slot = image.outputs[i];
+    Dictionary candidate_outputs, candidate_parts;
+    Array candidate_slots;
+    uint32_t output_count;
+    if (iprop_result_output_count(result, &output_count, &query_error) != IPROP_EX_OK) return readFailure();
+    for (uint32_t i = 0; i < output_count; ++i) {
+        iprop_result_output_view_ex slot;
+        if (iprop::backend::queryOutput(result, i, slot, &query_error) != IPROP_EX_OK) return readFailure();
+        String name;
+        if (!outputName(slot.name, name)) {
+            return readFailure();
+        }
         Dictionary entry;
         entry["kind"] = static_cast<int64_t>(slot.kind);
         entry["list"] = slot.is_list != 0;
-        const int64_t floatsPerValue =
-            slot.kind == IPROP_OUTPUT_POINT ? 2
-            : slot.kind == IPROP_OUTPUT_RECT ? 4
-                                             : 3;
+        const auto components = iprop::backend::outputComponents(slot.kind);
+        if (components == 0) return readFailure();
         PackedFloat32Array values;
-        values.resize(slot.count * floatsPerValue);
-        if (slot.count != 0) {
-            std::memcpy(values.ptrw(), slot.values,
-                        static_cast<size_t>(slot.count) * floatsPerValue *
-                            sizeof(float));
+        if (values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
+            iprop::backend::copyOutputValues(result, slot, values.ptrw(), &query_error) != IPROP_EX_OK) {
+            return readFailure();
         }
         entry["values"] = values;
-        entry["name"] = String::utf8(slot.name);
+        entry["name"] = name;
+        entry["index"] = static_cast<int64_t>(slot.output_index);
         entry["owner"] = static_cast<int64_t>(slot.owner);
-        output_slots_.append(entry);
+        candidate_slots.append(entry);
         if (slot.owner == 0) {
-            outputs_[String::utf8(slot.name)] = entry;
+            candidate_outputs[name] = entry;
         } else {
             const int64_t owner = slot.owner;
-            Dictionary part = part_outputs_.get(owner, Dictionary());
-            part[String::utf8(slot.name)] = entry;
-            part_outputs_[owner] = part;
+            Dictionary part = candidate_parts.get(owner, Dictionary());
+            part[name] = entry;
+            candidate_parts[owner] = part;
         }
     }
-
-    iprop_result_free(result);
-    return Image::create_from_data(static_cast<int>(image.width),
-                                   static_cast<int>(image.height), false,
-                                   Image::FORMAT_RGBA8, bytes);
+    outputs_ = candidate_outputs;
+    part_outputs_ = candidate_parts;
+    output_slots_ = candidate_slots;
+    return candidate_image;
 }
 
 // ---- IpropSprite2D --------------------------------------------------------

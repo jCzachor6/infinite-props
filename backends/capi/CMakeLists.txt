@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp outputs.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -186,6 +186,9 @@ add_custom_command(OUTPUT ${owner_fixture}
     DEPENDS ipc test/output-owners.ips test/owner-first.ips test/owner-second.ips)
 add_custom_target(capi_owners DEPENDS ${owner_fixture})
 add_dependencies(capi_golden capi_owners)
+# The separately built frozen client needs these exact two current-tool fixtures.
+add_custom_target(capi_legacy_fixtures DEPENDS
+    ${IPROP_CAPI_GOLDEN_DIR}/uniforms.iprop ${owner_fixture})
 
 foreach(source test/language.ips ../../examples/plant.ips)
     get_filename_component(name ${source} NAME_WE)
@@ -220,6 +223,25 @@ foreach(linkage shared static)
                 ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop
                 ${IPROP_CAPI_GOLDEN_DIR}/reflection-parts-plain.iprop)
     endif()
+endforeach()
+
+set(result_output_fixture ${IPROP_CAPI_GOLDEN_DIR}/output-values.iprop)
+add_custom_command(OUTPUT ${result_output_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/output-values.ips -o ${result_output_fixture}
+    DEPENDS ipc test/output-values.ips test/reflection-output-first.ips
+        test/reflection-output-empty.ips test/reflection-output-second.ips)
+add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
+foreach(linkage shared static)
+    add_executable(capi_result_outputs_${linkage} test/result_outputs.c)
+    if(linkage STREQUAL "shared")
+        target_link_libraries(capi_result_outputs_${linkage} PRIVATE iprop_capi)
+    else()
+        target_link_libraries(capi_result_outputs_${linkage} PRIVATE iprop_capi_static)
+    endif()
+    iprop_warnings(capi_result_outputs_${linkage})
+    add_dependencies(capi_result_outputs_${linkage} capi_result_output_fixture capi_golden)
+    add_test(NAME capi_result_outputs_${linkage} COMMAND capi_result_outputs_${linkage}
+        ${result_output_fixture} ${IPROP_CAPI_GOLDEN_DIR}/reflection-empty.iprop)
 endforeach()
 
 foreach(encoding plain debug compressed)

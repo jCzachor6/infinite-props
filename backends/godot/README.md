@@ -60,10 +60,12 @@ templates are not included in the native package.
   `.iprop` through the C API; `generate(seed, variant, archetype)`
   returns a Godot `Image` (RGBA8). The meta (`size`, `origin`, `variants`,
   `archetypes`, `fuel`) and the structured outputs are properties; each
-  root output is a dictionary `{name, owner, kind, list, values}` under
+  root output is a dictionary `{index, name, owner, kind, list, values}` under
   its name in `outputs`. `part_outputs[owner][name]` holds part slots,
   with owner N+1 for part N. `output_slots` preserves all slots in program
-  order, including repeated names; root slots have owner 0.
+  order, including repeated names, unset singular slots and empty lists; root
+  slots have owner 0. Owners are copied unchanged, so a part without output
+  declarations leaves a gap in the owner keys.
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed`/`variant`/`archetype`; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.
@@ -77,6 +79,28 @@ the resource copies metadata through `iprop_program_info_ex_init` and
 `iprop_program_query`. A failed metadata query frees that candidate and keeps
 the previous program, metadata and generated outputs. No borrowed program
 view is retained by the resource.
+
+Generation also copies into a candidate before publishing: the sized image
+view supplies actual dimensions, `byte_count`, tight `row_stride`, RGBA8,
+top-left storage and the legacy destination-alpha mode. Exactly those bytes
+enter the Godot `Image`, with no alpha conversion. Sized output views supply
+owner, kind, list flag, global index and explicit name byte count. Typed
+point/rect/circle accessors fill the existing `PackedFloat32Array` representation
+by named leaf fields; packed strides are not interpreted and already transformed
+D4 geometry is not transformed again. Float bits, including NaN payloads, remain
+unchanged.
+
+Names are decoded using their exact UTF-8 byte count. Godot 4.5.2's UTF-8 parser
+stops at embedded NUL, so the adapter decodes bounded non-NUL segments and
+stores U+0000 directly in its length-counted String. Conformance checks the
+actual String codepoints, dictionary key and suffix. Empty names remain empty.
+The temporary C result owns borrowed image/name/value views; these survive
+`program_free` and later generations until `result_free`. Returned Godot Images
+and published arrays/strings own their copies, survive asset reload/destruction
+and are not overwritten by later generation. A failed generation or result
+read returns a null Image and preserves all previously completed output maps;
+the sprite retains its documented clearing behavior. The shared result reader
+is also installed as `include/iprop/backend/ResultQueries.hpp`.
 
 ## The demo (8.3)
 
@@ -97,6 +121,10 @@ current image as a PNG.
 committed golden PNGs, the pinned `pupilCenter` output, and a PNG export
 round-trip. A hand-written `.godot/extension_list.cfg` replaces the
 editor scan so the fresh build trees work without an import step.
-Compiled 0.2 source fixtures additionally check palettes, typed helpers,
+Compiled source fixtures additionally check palettes, typed helpers,
 loops, raw math bits, empty output lists, variants/archetypes, plant
 composition, duplicate output owners and transactional sprite lifecycle.
+The output-values fixture adds all eight D4 transformations, owner gaps and
+empty singular/list slots. Binary fixtures pin UTF-8/embedded-NUL/empty names
+and raw bits for each geometry kind; retained engine images/output arrays are
+checked after program reload and later generation.

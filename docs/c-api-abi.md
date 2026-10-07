@@ -189,3 +189,49 @@ stride tests, error-buffer/ownership regressions and allocation-failure
 checks when their corresponding API is implemented. Tests must demonstrate
 the promised boundary; rebuilding both sides with the newest header alone
 does not verify old-binary compatibility.
+
+### Native CI acceptance gate
+
+The existing Linux/macOS/Windows native matrix runs
+`python scripts/check_legacy_abi.py --build build` after the current build.
+On Windows pass `--static-zlib=ON` in the MSVC developer environment, with
+`CMAKE_PREFIX_PATH` pointing to `zlib:x64-windows-static-md`, as in CI.
+The released library and frozen C99 client both use the Release `/MD` runtime.
+The gate also works with a local CMake generator; `--generator` overrides its
+Ninja preference. Tests must be enabled in the current build.
+
+The gate verifies the peeled `v0.4.0^{commit}` pin, exports that release into a
+private tree, and builds only its shared C API target with tests, SFML and
+Godot disabled. It links the byte-pinned `test/legacy/v0.2/client.c` once,
+using the byte-identical released header and released shared library (the
+released `ipropc.lib` import library on Windows). It then runs that exact
+executable with both libraries. Current `ipa`/`ipc` generate the actual
+uniform and output-owner fixtures; the client checks metadata, pixels, legacy
+uniform/error behavior, result ownership, owner order and all six exports.
+The existing `capi_library_shared/static` tests check every frozen field offset,
+struct size, status/tag value and current capability contract.
+
+Setting a search path alone is insufficient evidence. The gate records the
+actual library path from macOS dyld events, Linux `LD_DEBUG` initialization
+events, or Windows `LOAD_DLL_DEBUG_EVENT` file handles. Windows observation
+uses the native debug API and does not inject or rebuild the client. It checks
+the loaded file's SHA256, the client SHA256 before/after, and the exact frozen
+layout/export JSON. A valid client report without loader evidence fails.
+Negative controls must reject a run that actually loads the old library when
+the replacement was requested, and a modified copy of the client before
+process creation. Missing loader evidence also fails; it is never inferred
+from environment variables or a successful exit.
+
+`build/ci-reports/legacy-abi/` retains the JSON identities/results, stdout,
+loader events, build logs and the once-built executable in the normal native
+report artifact, including failure diagnostics. `build/legacy-abi/` contains
+private builds; the gate requires an empty work directory to prevent stale
+artifacts. For a fresh local repeat use `--work` and `--report` with new paths.
+`--repository` identifies the Git checkout containing the release tag when
+the gate source itself was exported to a separate directory.
+
+The sanitizer job already builds and runs the entire shared/static C API
+suite, including descriptor canaries, typed setters, image views, transactional
+overrides and checked generation. It remains separate from this Release ABI
+probe: recompilation with sanitizer instrumentation would change the frozen
+executable being tested.

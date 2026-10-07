@@ -122,10 +122,11 @@ class DocumentationTest(unittest.TestCase):
         self.assertEqual(describe()["c_abi_soversion"], "0.4")
         for key, changed, message in (("format_version", {"major": 0, "minor": 5}, "format_version 0.5 != 0.4"),
                                       ("language_version", {"major": 0, "minor": 5}, "language_version 0.5 != 0.4"),
-                                      ("c_api_version", {"major": 0, "minor": 2}, "c_api_version 0.2 != 0.3"),
-                                      ("c_abi_soversion", "0.5", "c_abi_soversion 0.5 != 0.4")):
+                                      ("c_api_version", {"major": 0, "minor": 2}, "c_api_version 0.2 != 0.3")):
             with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, "differs from the source versions: " + message):
                 describe(**{key: changed})
+        with self.assertRaisesRegex(RuntimeError, "ABI alias differs"):
+            describe(c_abi_soversion="0.5")
 
     def test_archived_documentation_rejects_tampering_missing_files_and_dirty_sources(self):
         with patch.object(language_docs, "contracts", return_value=LANGUAGE):

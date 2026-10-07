@@ -3,18 +3,67 @@
 #pragma once
 
 #include "iprop.h"
+#include "../../ResultQueries.hpp"
 
 #include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace iprop::sfml_host {
 
 using Program = std::unique_ptr<iprop_program, decltype(&iprop_program_free)>;
 using Result = std::unique_ptr<iprop_result, decltype(&iprop_result_free)>;
+
+// This borrowed view is valid until result_free, including after program_free
+// and later generations. The host copies byte_count bytes before releasing it.
+inline iprop_image_view_ex queryImage(const iprop_result* result) {
+    iprop_image_view_ex image;
+    if (backend::queryImage(result, image) != IPROP_EX_OK || !backend::rgba8Image(image) ||
+        image.byte_count > std::numeric_limits<std::size_t>::max()) {
+        throw std::runtime_error("unsupported or invalid generated image");
+    }
+    return image;
+}
+
+struct OutputSlot {
+    std::uint32_t index, owner;
+    iprop_output_kind_ex kind;
+    bool isList;
+    std::string name; // Exact UTF-8 bytes, including embedded NUL.
+    std::vector<float> values; // Owned leaf copies; empty declarations remain.
+};
+
+inline std::vector<OutputSlot> copyOutputs(const iprop_result* result) {
+    std::uint32_t count;
+    if (iprop_result_output_count(result, &count, nullptr) != IPROP_EX_OK) {
+        throw std::runtime_error("iprop_result_output_count failed");
+    }
+    std::vector<OutputSlot> outputs;
+    outputs.reserve(count);
+    for (std::uint32_t i = 0; i < count; ++i) {
+        iprop_result_output_view_ex view;
+        if (backend::queryOutput(result, i, view) != IPROP_EX_OK) {
+            throw std::runtime_error("iprop_result_output_get failed");
+        }
+        const auto components = backend::outputComponents(view.kind);
+        if (components == 0 || view.element_count > std::numeric_limits<std::size_t>::max() / components) {
+            throw std::runtime_error("unsupported or oversized output");
+        }
+        OutputSlot slot{view.output_index, view.owner, view.kind, view.is_list != 0, {}, {}};
+        if (view.name.byte_count != 0) slot.name.assign(view.name.data, view.name.byte_count);
+        slot.values.resize(static_cast<std::size_t>(view.element_count) * components);
+        if (backend::copyOutputValues(result, view, slot.values.data()) != IPROP_EX_OK) {
+            throw std::runtime_error("typed result output read failed");
+        }
+        outputs.push_back(std::move(slot));
+    }
+    return outputs;
+}
 
 // A callable avoids carrying glibc's function attributes into a template
 // argument, which GCC rejects under -Werror=ignored-attributes.

@@ -145,7 +145,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL compiled plant source")
 
-	# Empty/bad generations clear the sprite. Failed reloads preserve the
+	# Empty/bad generations clear the sprite. Failed generations/reloads preserve the
 	# complete prior asset; successful reloads notify existing sprite users.
 	var lifecycle := IpropAsset.new()
 	var sprite := IpropSprite2D.new()
@@ -181,9 +181,9 @@ func _init() -> void:
 			printerr("FAIL invalid binary reload replaced loaded asset")
 		DirAccess.remove_absolute(invalid_path)
 	sprite.variant = 99
-	if sprite.texture != null or not lifecycle.outputs.is_empty():
+	if sprite.texture != null or lifecycle.outputs != old_outputs:
 		failures += 1
-		printerr("FAIL failed generation kept stale texture/outputs")
+		printerr("FAIL failed generation texture/map publication")
 	sprite.variant = 0
 	if sprite.texture == null:
 		failures += 1
@@ -194,7 +194,104 @@ func _init() -> void:
 	if lifecycle.generate(4294967296, 0, 0) != null or lifecycle.generate(0, -1, 0) != null:
 		failures += 1
 		printerr("FAIL Godot integer input truncation")
+	if lifecycle.outputs != old_outputs:
+		failures += 1
+		printerr("FAIL rejected arguments replaced published outputs")
 	sprite.free()
+
+	# Existing helper/part fixture: every D4 transform, owner gap, unset
+	# singular and empty list. Typed reads keep the already transformed leaves.
+	var typed := IpropAsset.new()
+	if typed.load_file(args[0] + "/output-values.iprop") != OK:
+		failures += 1
+	else:
+		var points := [Vector2(1,2), Vector2(2,7), Vector2(7,6), Vector2(6,1),
+			Vector2(7,2), Vector2(1,6), Vector2(2,1), Vector2(6,7)]
+		var rects := [PackedFloat32Array([1,2,3,4]), PackedFloat32Array([2,4,4,3]),
+			PackedFloat32Array([4,2,3,4]), PackedFloat32Array([2,1,4,3]),
+			PackedFloat32Array([4,2,3,4]), PackedFloat32Array([1,2,3,4]),
+			PackedFloat32Array([2,1,4,3]), PackedFloat32Array([2,4,4,3])]
+		var names := ["anchor", "collider", "zone", "anchors", "colliders", "zones"]
+		var transforms := [0,1,2,3,4,7,5,6]
+		var saved_image: Image
+		var saved_bytes: PackedByteArray
+		var saved_slots: Array
+		for v in range(8):
+			var image := typed.generate(26, v, 0)
+			var slots: Array = typed.output_slots
+			if image == null or slots.size() != 18 or typed.part_outputs.keys() != [1,3]:
+				failures += 1
+				printerr("FAIL typed output owner gaps/counts")
+				continue
+			for i in range(slots.size()):
+				var owner := 0 if i < 6 else (1 if i < 12 else 3)
+				var local := i % 6
+				var count := (int(v != 0) if local == 0 else (1 if local < 3 else 2)) if owner == 0 \
+					else ((1 if local < 3 else 0) if owner == 1 else (2 if local == 0 else 0))
+				var is_list := local >= 3 if owner < 3 else (local == 0 or local >= 4)
+				if slots[i]["index"] != i or slots[i]["owner"] != owner \
+						or slots[i]["name"] != names[local] or slots[i]["list"] != is_list \
+						or slots[i]["kind"] != local % 3 or slots[i]["values"].size() != count * [2,4,3][local % 3]:
+					failures += 1
+			var point: Vector2 = points[transforms[v]]
+			if slots[6]["values"] != PackedFloat32Array([point.x, point.y]) \
+					or slots[7]["values"] != rects[transforms[v]] \
+					or slots[8]["values"] != PackedFloat32Array([point.x, point.y, 3]) \
+					or slots[0]["values"].is_empty() != (v == 0) \
+					or not slots[9]["values"].is_empty() or not slots[13]["values"].is_empty() \
+					or slots[12]["values"] != PackedFloat32Array([9,10,11,12]) \
+					or slots[3]["values"] != PackedFloat32Array([1,2,11,12]):
+				failures += 1
+				printerr("FAIL typed D4/empty/list/helper outputs v", v)
+			if v == 0:
+				saved_image = image
+				saved_bytes = image.get_data()
+				saved_slots = slots
+		# Reload frees the previous program; prior engine objects remain owned.
+		if typed.load_file(args[0] + "/portrait.iprop") != OK \
+				or typed.generate(0,0,0) == null or saved_image.get_data() != saved_bytes \
+				or saved_slots[0]["values"].size() != 0 or saved_slots[3]["values"].size() != 4:
+			failures += 1
+			printerr("FAIL engine image/output lifetime after reload/new generation")
+
+	# Check the actual engine String for embedded NUL; a length-taking UTF-8
+	# conversion alone is not evidence. Float arrays must retain exact bits.
+	var raw := IpropAsset.new()
+	var expected_bits := [0x80000000,1,0x7fc12345,0xff800000,0x7f800000,
+		0xffc12345,0x80000001,0x3f800000,0x80000000]
+	for fixture in ["backend-raw-values.iprop", "backend-empty-values.iprop"]:
+		if raw.load_file(args[0] + "/" + fixture) != OK or raw.generate(0,0,0) == null:
+			failures += 1
+			printerr("FAIL raw output fixture load/generate")
+			continue
+		var slots: Array = raw.output_slots
+		var exact_name: String = slots[0]["name"]
+		var zeros_name: String = slots[2]["name"]
+		if slots.size() != 6 or exact_name.length() != 9 or exact_name.unicode_at(0) != 112 \
+				or exact_name.unicode_at(1) != 322 or exact_name.unicode_at(2) != 0 \
+				or exact_name.to_utf8_buffer() != PackedByteArray([112,197,130,0,115,117,102,102,105,120]) \
+				or exact_name.substr(3) != "suffix" or slots[1]["name"] != "" \
+				or not raw.outputs.has(exact_name) or raw.part_outputs.keys() != [2] \
+				or raw.outputs.has("pł") or zeros_name.length() != 4 \
+				or zeros_name.unicode_at(0) != 0 or zeros_name.unicode_at(1) != 99 \
+				or zeros_name.unicode_at(2) != 0 or zeros_name.unicode_at(3) != 0 \
+				or zeros_name.to_utf8_buffer() != PackedByteArray([0,99,0,0]) \
+				or raw.outputs[zeros_name]["index"] != 2 or raw.outputs[""]["index"] != 1:
+			failures += 1
+			printerr("FAIL exact UTF-8/NUL/empty names and owner gap")
+		var component := 0
+		for i in range(slots.size()):
+			var values: PackedFloat32Array = slots[i]["values"]
+			if fixture == "backend-raw-values.iprop" and i < 3:
+				var value_bits := values.to_byte_array()
+				for j in range(values.size()):
+					if value_bits.decode_u32(j * 4) != expected_bits[component]:
+						failures += 1
+						printerr("FAIL exact raw output bits at ", component)
+					component += 1
+			elif not values.is_empty():
+				failures += 1
+				printerr("FAIL missing singular slot unexpectedly populated")
 
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")

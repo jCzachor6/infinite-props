@@ -15,7 +15,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from publish_release import publish
 from release_assets import collect, verify_bundle, verify_jobs, verify_source
-from release_common import sha256, write_json
+from release_common import sha256, versions, write_json
 from release_preflight import metadata, validate_tag
 import language_docs
 import release_assets
@@ -84,7 +84,7 @@ def inputs(directory, root, commit):
     for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
-        manifest = {"product_version": VERSION, "source_commit": commit, "system": system, "architecture": arch,
+        manifest = {**versions(root), "source_commit": commit, "system": system, "architecture": arch,
                     "c_api_version": "0.2", "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
         file = sdk / f"iprop-{VERSION}-{system}-{arch}.tar.gz"
         archive(file, manifest, documentation=documentation)
@@ -98,7 +98,7 @@ def inputs(directory, root, commit):
     web = directory / "web-build"
     web.mkdir()
     wasm = b"fixture module bytes"
-    manifest = {"product_version": VERSION, "source_commit": commit, "wasm_sha256": hashlib.sha256(wasm).hexdigest()}
+    manifest = {**versions(root), "source_commit": commit, "wasm_sha256": hashlib.sha256(wasm).hexdigest()}
     artifacts = {}
     for kind in ("wasm", "website"):
         file = web / f"iprop-{VERSION}-{kind}.tar.gz"
@@ -109,13 +109,42 @@ def inputs(directory, root, commit):
     for name in REPORTS:
         report = directory / name
         report.mkdir()
-        write_json(report / "summary.json", {"product_version": VERSION, "source_commit": commit, "passed": True,
+        write_json(report / "summary.json", {**versions(root), "source_commit": commit, "passed": True,
                    "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
                    "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}],
                    "github": {"run_id": os.environ.get("GITHUB_RUN_ID", "fixture")}})
 
 
 class ReleaseGatesTest(unittest.TestCase):
+    def test_collector_rejects_missing_malformed_and_conflicting_version_fields(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'repo'
+            commit = repository(root)
+            source = Path(temporary) / 'inputs'
+            inputs(source, root, commit)
+            path = source / REPORTS[0] / 'summary.json'
+            original = json.loads(path.read_text())
+            for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+                for case in ('missing','type','mismatch'):
+                    value = copy.deepcopy(original)
+                    if case == 'missing': del value[key]
+                    else: value[key] = 4 if case == 'type' else '9.9'
+                    write_json(path,value)
+                    with self.subTest(key=key,case=case), self.assertRaises(RuntimeError):
+                        collect(source,Path(temporary)/(key+'-'+case),VERSION,commit,root)
+            write_json(path,original)
+            # Rewritten archive/validation hashes cannot conceal a false matrix.
+            sdk = source / 'sdk-macOS-arm64'
+            archive_path = sdk / f'iprop-{VERSION}-macos-arm64.tar.gz'
+            manifest = {**versions(root),'source_commit':commit,'system':'macos','architecture':'arm64',
+                        'c_api_version':'9.9','backends':{'capi':True,'sfml':False,'godot':False}}
+            archive(archive_path,manifest,documentation=source/'documentation')
+            validation = sdk / (archive_path.name[:-7]+'-validation.json')
+            value = json.loads(validation.read_text());value['artifacts'][archive_path.name]=sha256(archive_path)
+            value['c_api_version']='9.9';write_json(validation,value)
+            with self.assertRaises(RuntimeError):
+                collect(source,Path(temporary)/'rehashed-sdk',VERSION,commit,root)
+
     def setUp(self):
         # Only these explicitly frozen fixture archives use the legacy profile.
         reader = patch.object(release_assets, "verify_documentation",
@@ -165,6 +194,16 @@ class ReleaseGatesTest(unittest.TestCase):
                                                             "c_api_version", "c_abi_soversion", "tag")},
                              {"product_version": "0.5.0", "language_version": "0.5", "format_version": "0.4",
                               "c_api_version": "0.3", "c_abi_soversion": "0.4", "tag": "v0.5.0"})
+            # The collector identity path accepts independently versioned
+            # artifacts; it must not infer any field from the product minor.
+            jobs = {name: {**versions(root), "source_commit": "a" * 40, "passed": True,
+                           "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
+                           "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]}
+                    for name in REPORTS}
+            verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
+            jobs[REPORTS[0]]["format_version"] = "0.5"
+            with self.assertRaisesRegex(RuntimeError, "Version matrix differs"):
+                verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
             # A frozen-looking specification named after the product cannot
             # stand in for the format the release actually emits.
             (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
@@ -207,7 +246,7 @@ class ReleaseGatesTest(unittest.TestCase):
                 validate_tag(root, "v0.4.1", "main")
 
     def test_missing_failed_foreign_or_all_skipped_job_cannot_pass(self):
-        jobs = {name: {"product_version": VERSION, "source_commit": "a" * 40, "passed": True,
+        jobs = {name: {**versions(release_assets.ROOT), "source_commit": "a" * 40, "passed": True,
                        "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
                        "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]} for name in REPORTS}
         verify_jobs(jobs, VERSION, "a" * 40)

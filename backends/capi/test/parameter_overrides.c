@@ -258,6 +258,38 @@ int main(int argc, char** argv) {
       CHECK(snapshot(parameters,got)==0 && got[4].u32==3 && bits(&got[1].f32)==one);
     }
 
+    /* A malformed capacity cannot hide readable name fields from alias
+     * preflight, including a late name after an earlier semantic failure. */
+    { struct { iprop_parameter_override_ex pair[2]; unsigned char tail[8]; } wide;
+      unsigned char before_list[sizeof(wide)]; iprop_parameter_value_ex before[INPUTS];
+      char name[]="zero"; uint32_t first_bad;
+      memset(&wide,0xa5,sizeof(wide));
+      wide.pair[0]=by_id(4,IPROP_INPUT_U32,3); wide.pair[1]=by_name(name,IPROP_INPUT_F32,one);
+      wide.pair[1].struct_size=sizeof(wide.pair[1])+sizeof(wide.tail);
+      CHECK(snapshot(parameters,before)==0);
+      for(first_bad=0;first_bad<2;++first_bad) {
+        wide.pair[0].flags=first_bad; memcpy(before_list,&wide,sizeof(wide));
+        error.message_buffer=name; error.message_capacity=sizeof(name); saved=error;
+        CHECK(iprop_parameters_set_overrides(parameters,wide.pair,2,sizeof(wide.pair[0]),&error)==IPROP_EX_E_ARGUMENT);
+        CHECK(strcmp(name,"zero")==0 && memcmp(&error,&saved,sizeof(error))==0 && memcmp(&wide,before_list,sizeof(wide))==0);
+        CHECK(snapshot(parameters,got)==0 && memcmp(before,got,sizeof(got))==0);
+      }
+      /* Only a complete name prefix is actually present in this row. */
+      { const uint32_t stride=offsetof(iprop_parameter_override_ex,name)+offsetof(iprop_utf8_view,byte_count)+4;
+        const uint32_t claimed=stride+4;
+        unsigned char* row=(unsigned char*)malloc(claimed);
+        CHECK(row!=NULL); memcpy(row,&wide.pair[1],stride); memcpy(row,&claimed,4); saved=error;
+        CHECK(iprop_parameters_set_overrides(parameters,(const iprop_parameter_override_ex*)(void*)row,1,stride,&error)==IPROP_EX_E_ARGUMENT);
+        CHECK(strcmp(name,"zero")==0 && memcmp(&error,&saved,sizeof(error))==0);
+        CHECK(snapshot(parameters,got)==0 && memcmp(before,got,sizeof(got))==0); free(row);
+      }
+      error.message_buffer=message; error.message_capacity=sizeof(message);
+      /* Even a short-stride list span is protected before argument reporting. */
+      saved=error;
+      CHECK(iprop_parameters_set_overrides(parameters,(const iprop_parameter_override_ex*)(const void*)&error,1,3,&error)==IPROP_EX_E_ARGUMENT);
+      CHECK(memcmp(&error,&saved,sizeof(error))==0 && snapshot(parameters,got)==0 && memcmp(before,got,sizeof(got))==0);
+    }
+
     /* Lists resolve through retained data after program_free and mutate only
      * their own handle; the program's other parameter handles are unaffected. */
     CHECK(iprop_parameters_clone(parameters,&clone,NULL)==IPROP_EX_OK);

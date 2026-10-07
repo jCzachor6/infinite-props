@@ -37,14 +37,13 @@ RenderedImage generateSingle(iprop_program* program, std::uint32_t seed,
                              std::uint32_t variant) {
     const iprop::sfml_host::Result result(
         iprop::sfml_host::generate(program, seed, variant, 0), iprop_result_free);
-    iprop_image image;
-    iprop_result_image(result.get(), &image);
+    const auto image = iprop::sfml_host::queryImage(result.get());
     RenderedImage out;
     out.width = image.width;
     out.height = image.height;
-    out.pixels.assign(image.pixels,
-                      image.pixels + static_cast<std::size_t>(image.width) *
-                                         image.height * 4);
+    if (image.byte_count != 0) {
+        out.pixels.assign(image.pixels, image.pixels + static_cast<std::size_t>(image.byte_count));
+    }
     return out;
 }
 

@@ -68,6 +68,11 @@ saved in JSON, including their final newline.
    list is `docs/language/book.json`, beginning with `docs/language/index.md`.
    Save `ipc --describe-language` stdout verbatim and hash all reference bytes.
    Current modified documentation must not replace the frozen reference.
+   For the current 0.5 candidate, use the complete generated
+   `docs/language-v0.5.md`, catalog and documentation manifest schema 2 from
+   the same source/compiler pair. Its product remains 0.4.0; the handbook
+   filename follows the source language. Frozen 0.4 keeps its exact schema-1
+   manifest and full archived handbook through the explicit historical profile.
 3. Archive exact task/protocol bytes and prompt template hashes. Create a fresh
    generator agent with `fork_turns=none` for each version, supplying only the
    saved prompt, version reference/export, manifest and output destination.

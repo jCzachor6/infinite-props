@@ -224,6 +224,54 @@ CallOutcome setOverrides(iprop_parameters* parameters, const unsigned char* list
     }
     return {};
 }
+
+// Walk every safely readable input span before reporting even a malformed
+// element. A size larger than its stride does not hide complete name fields.
+// The error descriptor is checked in one pass before its optional fields are
+// read; a second pass checks the message buffer before ErrorSink binding.
+template<class Visitor>
+bool walkOverrideInputs(const iprop_parameters* parameters, const unsigned char* list,
+                        uint32_t count, uint32_t stride, std::size_t listBytes,
+                        bool readableElements, Visitor&& visitor) noexcept {
+    if (!visitor(ProtectedSpan{parameters, parameters ? sizeof(*parameters) : 0}) ||
+        !visitor(ProtectedSpan{parameters ? parameters->values.data() : nullptr,
+                              parameters ? parameters->values.size() * sizeof(iprop::UniformValue) : 0}) ||
+        !visitor(ProtectedSpan{list, listBytes})) return false;
+    if (!readableElements) return true;
+    for (uint32_t index = 0; index < count; ++index) {
+        const auto* element = list + std::size_t{index} * stride;
+        uint32_t claimed = 0;
+        (void)descriptorSize(element, claimed);
+        const auto readable = std::min(claimed, stride);
+        if (readable < kOverrideNameCount + sizeof(uint32_t) ||
+            readField<iprop_parameter_target>(element, readable, offsetof(iprop_parameter_override_ex, target)) !=
+                IPROP_PARAMETER_TARGET_NAME) continue;
+        if (!visitor(ProtectedSpan{readField<const char*>(element, readable, kOverrideNameData),
+                                   readField<uint32_t>(element, readable, kOverrideNameCount)})) return false;
+    }
+    return true;
+}
+
+bool overrideErrorAliases(const iprop_parameters* parameters, const unsigned char* list,
+                          uint32_t count, uint32_t stride, std::size_t listBytes,
+                          bool readableElements, const iprop_error_ex* error) noexcept {
+    if (error == nullptr) return false;
+    uint32_t errorSize = 0;
+    const bool validError = descriptorSize(error, errorSize);
+    const auto descriptorBytes = std::max<std::size_t>(errorSize, sizeof(uint32_t));
+    if (!walkOverrideInputs(parameters, list, count, stride, listBytes, readableElements,
+        [&](ProtectedSpan input) noexcept {
+            return !storageOverlaps(error, descriptorBytes, input.data, input.size);
+        })) return true;
+    if (!validError) return false;
+    const auto* buffer = readField<char*>(error, errorSize, offsetof(iprop_error_ex, message_buffer));
+    const auto capacity = readField<uint32_t>(error, errorSize, offsetof(iprop_error_ex, message_capacity));
+    if (storageOverlaps(buffer, capacity, error, descriptorBytes)) return true;
+    return !walkOverrideInputs(parameters, list, count, stride, listBytes, readableElements,
+        [&](ProtectedSpan input) noexcept {
+            return !storageOverlaps(buffer, capacity, input.data, input.size);
+        });
+}
 } // namespace
 
 extern "C" {
@@ -311,10 +359,10 @@ iprop_status_ex iprop_parameters_set_overrides(iprop_parameters* parameters,
                                               uint32_t count, uint32_t stride, iprop_error_ex* error) {
     using namespace iprop::capi;
     const auto* list = reinterpret_cast<const unsigned char*>(overrides);
-    const bool shaped = count != 0 && list != nullptr && stride >= sizeof(uint32_t) &&
-        uint64_t{count} * stride <= SIZE_MAX;
-    const std::size_t listBytes = shaped ? std::size_t{count} * stride : 0;
-    if (shaped) {
+    const bool addressable = count != 0 && list != nullptr && uint64_t{count} * stride <= SIZE_MAX;
+    const std::size_t listBytes = addressable ? std::size_t{count} * stride : 0;
+    const bool readableElements = addressable && stride >= sizeof(uint32_t);
+    if (addressable) {
         // Decoding values after the first replacement requires list storage
         // separate from the handle and its values; error text must not land in
         // any name. Both aliases are rejected before error binding.
@@ -323,18 +371,9 @@ iprop_status_ex iprop_parameters_set_overrides(iprop_parameters* parameters,
              storageOverlaps(list, listBytes, parameters->values.data(),
                              parameters->values.size() * sizeof(iprop::UniformValue))))
             return IPROP_EX_E_ARGUMENT;
-        for (uint32_t index = 0; index < count; ++index) {
-            const auto* element = list + std::size_t{index} * stride;
-            uint32_t size = 0;
-            if (!descriptorSize(element, size) || size > stride || size < kOverrideNameCount + sizeof(uint32_t) ||
-                readField<iprop_parameter_target>(element, size, offsetof(iprop_parameter_override_ex, target)) !=
-                    IPROP_PARAMETER_TARGET_NAME)
-                continue;
-            if (errorStorageAliases(error, readField<const char*>(element, size, kOverrideNameData),
-                                    readField<uint32_t>(element, size, kOverrideNameCount)))
-                return IPROP_EX_E_ARGUMENT;
-        }
     }
+    if (overrideErrorAliases(parameters, list, count, stride, listBytes, readableElements, error))
+        return IPROP_EX_E_ARGUMENT;
     std::array<char, 160> message{};
     return parameterBoundary(parameters, nullptr, 0, error,
         [&] { return setOverrides(parameters, list, count, stride, message); }, {list, listBytes});

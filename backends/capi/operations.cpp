@@ -11,6 +11,7 @@ namespace iprop::capi {
 // its full capacity and finalize both tables before publishing any view.
 void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file) {
     result.image = std::move(generation.image);
+    result.ownerCount = static_cast<uint32_t>(file.code.parts.size()) + 1;
 
     auto& outputs = generation.outputs;
     result.names.reserve(outputs.size());

@@ -30,7 +30,7 @@ def snapshot(root):
 def args_for(root, tools, reference, version='0.4', only=None):
     frozen = version == '0.4'
     return SimpleNamespace(output=root, tools=tools, version=version,
-        reference=reference / ('handbook.md' if frozen else 'docs/language-v0.4.md'),
+        reference=reference / ('handbook.md' if frozen else 'docs/language-v0.5.md'),
         language_export=reference / ('language.json' if frozen else 'docs/language.json'),
         reference_manifest=reference / ('language-manifest.json' if frozen else 'docs/language-manifest.json'),
         tasks=run.REPO / 'benchmarks/llm/tasks.json', protocol=run.REPO / 'benchmarks/llm/protocol.json',
@@ -358,7 +358,7 @@ class ActualCliTests(unittest.TestCase):
             for case in ['unknown_schema', 'missing_required', 'wrong_known_type']:
                 broken = copy.deepcopy(manifest)
                 if case == 'unknown_schema':
-                    broken['schema_version'] = 2
+                    broken['schema_version'] = manifest['schema_version'] + 1
                 elif case == 'missing_required':
                     del broken['headings']
                 else:

@@ -2,14 +2,15 @@
 
 The current compiler exports source language **0.5** while the product remains
 **0.4.0**. JSON protocol versions are independent of product, source language,
-binary format, C API and runtime ABI versions. Each protocol is currently
-schema **1**:
+binary format, C API and runtime ABI versions. The language and diagnostic
+protocols use schema **1**; generated documentation
+manifests use schema **2**:
 
 | Payload | Formal contract | Consumer |
 | --- | --- | --- |
 | `ipc --describe-language` | [Language description](language-description.schema.json) | Documentation and LLM generators, catalog checks |
 | `ipc --check --diagnostics=json` | [Compiler diagnostics](compiler-diagnostics.schema.json) | Editor and executable example checks |
-| Generated `docs/language-manifest.json` | [Documentation manifest](documentation-manifest.schema.json) | SDK/archive verification and website rendering |
+| Generated `docs/language-manifest.json` (schema 2) | [Documentation manifest](documentation-manifest.schema.json) | SDK/archive verification and website rendering |
 
 The schema documents every emitted field. Builtin names, overloads, parameter
 binding and effects come from the compiler's shared registries; schemas contain
@@ -22,6 +23,21 @@ reject missing required fields, malformed known fields and unsupported schema
 versions. Changing a known field's type, meaning or enum domain requires a new
 schema version, a documented migration and updated executable consumer cases;
 changing the source-language or product version alone does not migrate JSON.
+
+Documentation manifest schema 2 replaces schema 1 for current bundles. It
+requires five independent flat strings: `product_version` (major.minor.patch),
+`language_version`, `format_version`, `c_api_version` and `c_abi_soversion`
+(major.minor). Current values are `0.4.0`, `0.5`, `0.4`, `0.3` and `0.4`.
+SDK/Web manifests, preflight and CI/collector reports carry the same fields.
+The compiler's schema-1 version pairs and `abi_version` retain their existing
+types; `c_abi_soversion` is an optional alias checked against that ABI pair.
+Verification compares source constants, compiler exports and every artifact
+matrix. Valid checksums cannot override version mismatches.
+
+Current handbooks use the source-language filename `language-v0.5.md`, even
+while the product remains `0.4.0`. The format specification remains
+`spec/iprop-v0.4.md`. Product release tags, source language, emitted format,
+C API features and the ABI loader line are never inferred from one another.
 
 Formal schemas check structure. Small protocol readers additionally check
 unique names, evaluation-order permutations, source/binary input mappings,
@@ -46,6 +62,9 @@ caller, never by absent fields, product version or a failed current validation.
 The language schema exposes its frozen shape in `$defs.historical04`; the
 default root remains the complete current contract. Publication, SDK, website
 and ordinary documentation commands always use the current profile.
+The explicit historical documentation reader accepts actual legacy schema 1
+without inventing missing version fields; it keeps the frozen `language-v0.4.md`
+filename. Current readers reject legacy manifests and require schema 2.
 
 `compiler_export_contracts` checks actual registry exports, every registered
 language example, CLI and allocation-failure diagnostics, shared mutation cases

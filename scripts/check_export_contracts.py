@@ -107,6 +107,9 @@ def main():
     frozen = parse_json((ROOT/'benchmarks/llm/baseline-reference/language.json').read_bytes())
     assert accepts(read_language,frozen) is False
     read_language(frozen,HISTORICAL)
+    frozen_manifest = parse_json((ROOT/'benchmarks/llm/baseline-reference/language-manifest.json').read_bytes())
+    read_manifest(frozen_manifest,HISTORICAL)
+    assert not accepts(read_manifest,frozen_manifest)
     assert accepts(lambda v:read_language(v,HISTORICAL),language) is False
     malformed_frozen = copy.deepcopy(frozen)
     malformed_frozen['builtins'][0]['overloads'][0]['effects'] = {'rng':'unknown'}
@@ -115,6 +118,8 @@ def main():
         historical = {**schemas['language'], **schemas['language']['$defs']['historical04']}
         Draft202012Validator(historical).validate(frozen)
         assert not Draft202012Validator(historical).is_valid(malformed_frozen)
+        historical_manifest = {**schemas['manifest'], **schemas['manifest']['$defs']['historical04']}
+        Draft202012Validator(historical_manifest).validate(frozen_manifest)
     corpus = parse_json((ROOT/'tests/fixtures/export-contract-mutations.json').read_bytes())
     results, diagnostic_cases = [], []
     with tempfile.TemporaryDirectory(prefix='iprop-export-contract-') as temporary:
@@ -193,6 +198,27 @@ def main():
         with tarfile.open(valid_archive,'w:gz') as tar:
             tar.add(bundle,arcname='bundle')
         language_docs.verify_archive(valid_archive,'bundle',manifest['product_version'],None,root=None)
+        # Correct file hashes cannot override a conflicting version matrix.
+        for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+            changed = {**manifest, key:'9.9'}
+            (bundle/'docs/language-manifest.json').write_text(json.dumps(changed),encoding='utf-8')
+            assert not accepts(lambda _:language_docs.verify(bundle),None), key
+            bad_archive=temp/(key+'-matrix.tar.gz')
+            with tarfile.open(bad_archive,'w:gz') as tar:
+                tar.add(bundle,arcname='bundle')
+            assert not accepts(lambda _:language_docs.verify_archive(bad_archive,'bundle',manifest['product_version'],None,root=None),None), key
+        (bundle/'docs/language-manifest.json').write_text(json.dumps(manifest),encoding='utf-8')
+        catalog_path = bundle/'docs/language.json'
+        original = catalog_path.read_bytes()
+        wrong = copy.deepcopy(language)
+        wrong['format_version']['minor'] += 1
+        catalog_path.write_text(json.dumps(wrong),encoding='utf-8')
+        changed = {**manifest, 'format_version': '0.'+str(wrong['format_version']['minor']),
+                   'files':{**manifest['files'], 'docs/language.json':hashlib.sha256(catalog_path.read_bytes()).hexdigest()}}
+        (bundle/'docs/language-manifest.json').write_text(json.dumps(changed),encoding='utf-8')
+        assert not accepts(lambda _:language_docs.verify(bundle,root=ROOT),None)
+        catalog_path.write_bytes(original)
+        (bundle/'docs/language-manifest.json').write_text(json.dumps(manifest),encoding='utf-8')
         # Rehashing a malformed catalog must not bypass package or site validation.
         catalog = bundle/'docs/language.json'
         original_catalog = catalog.read_bytes()

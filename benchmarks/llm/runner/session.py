@@ -16,6 +16,7 @@ import run
 
 sys.path.insert(0, str(run.REPO / 'scripts'))
 from contract_readers import read_diagnostics, read_language, read_manifest
+from release_common import described_versions, handbook_version, match_versions
 
 TASKS_SHA = '4862ffb223b403ffc65a418ed4bc5c1064f9423138c9b25e214ac9540c6f3ee0'
 PROTOCOL_SHA = 'c35289e5e472e7bbb1a3c66c5a925c1e60e626bbed9465e3f3828b36766e871f'
@@ -102,7 +103,8 @@ def tool_identities(tools):
 
 def verify_tools(identity, override=None):
     require(hashes(Path(__file__).parent, ADAPTER_NAMES) == identity['runner_source_sha256'] and
-            hash_file(run.REPO / 'scripts/contract_readers.py') == identity['contract_reader_sha256'],
+            hash_file(run.REPO / 'scripts/contract_readers.py') == identity['contract_reader_sha256'] and
+            hash_file(run.REPO / 'scripts/release_common.py') == identity['version_reader_sha256'],
             'evaluation adapter source identity changed')
     tools = (override or Path(identity['tools_directory'])).resolve()
     observed = tool_identities(tools)
@@ -151,10 +153,13 @@ def prepare(args):
             'frozen task or protocol bytes differ')
     tasks, protocol = parse_json(sources['tasks.json']), parse_json(sources['protocol.json'])
     catalog = parse_json(sources['language-export.bin'])
-    manifest = read_manifest(parse_json(sources['reference-manifest.json']))
-    read_language(catalog, profile='historical-0.4' if args.version == '0.4' else 'current')
+    profile = 'historical-0.4' if args.version == '0.4' else 'current'
+    manifest = read_manifest(parse_json(sources['reference-manifest.json']), profile)
+    read_language(catalog, profile=profile)
     product = catalog['product_version']
-    book_name = 'docs/language-v' + '.'.join(product.split('.')[:2]) + '.md'
+    book_name = 'docs/language-v' + handbook_version(catalog, profile) + '.md'
+    if profile == 'current':
+        match_versions(manifest, described_versions(catalog))
     require(manifest['product_version'] == product and
             manifest['files'].get(book_name) == run.sha(sources['handbook.bin']) and
             manifest['files'].get('docs/language.json') == run.sha(sources['language-export.bin']),
@@ -200,6 +205,7 @@ def prepare(args):
                 'prepared_at_utc': run.now(), 'maximum_repairs': 1,
                 'runner_source_sha256': hashes(Path(__file__).parent, ADAPTER_NAMES),
                 'contract_reader_sha256': hash_file(run.REPO / 'scripts/contract_readers.py'),
+                'version_reader_sha256': hash_file(run.REPO / 'scripts/release_common.py'),
                 'reference_serialization': 'supplied SDK bytes preserved; full typed JSON value matches raw compiler stdout'}
     prompt = template(protocol, 'generation_template', {
         'exact_frozen_reference': sources['handbook.bin'].decode('utf-8'),

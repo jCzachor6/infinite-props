@@ -46,6 +46,11 @@ Linux graphics/font libraries and the Godot engine/export templates are
 system dependencies. Godot's installed preset has empty template paths;
 set them locally before exporting, following its README.
 
+Current documentation uses manifest schema 2 with separate product, source
+language, emitted format, C API and C ABI versions. The generated handbook is
+`share/iprop/docs/language-v0.5.md` while the product remains 0.4.0. See
+[export contracts and the schema-1 migration](../../docs/export-contracts.md).
+
 Version 0.4 accepts frozen 0.1–0.3 files and v0.4 compressed containers.
 Loading expands and validates the complete file before generation; the
 program owns the expanded bytes. The six legacy C API 0.2 entry points and
@@ -111,6 +116,11 @@ C++ linker, while its source is still compiled as C99.
   count, tight row stride, RGBA8 format and explicit top-left/legacy alpha
   semantics. The pointer and bytes match the unchanged legacy image view.
   See [image views](../../docs/c-api-images.md).
+
+- `iprop_result_output_count/get/find` — every generated slot in original
+  global order, exact owner/name lookup and sized views of legacy pointers.
+  `iprop_result_output_point/rect/circle` copy one checked typed element with
+  explicit capacity. See [result outputs](../../docs/c-api-result-outputs.md).
 
 Every pointer the host receives (pixels, output names, values) is borrowed
 from the result handle and valid until `iprop_result_free`; the host never
@@ -221,6 +231,8 @@ container fields in the existing program descriptor; see
 `IPROP_CAP_RESULT_STATISTICS` advertises the sized completed-result query for
 VM fuel, owned pixel bytes and output element count; see
 [result statistics](../../docs/c-api-statistics.md).
+`IPROP_CAP_RESULT_OUTPUTS` and `IPROP_CAP_TYPED_OUTPUTS` independently advertise
+the [generated slot views and typed copies](../../docs/c-api-result-outputs.md).
 `IPROP_CAP_PARAMETERS` advertises retained root parameter handles with generic
 get/set, clone and reset; see [parameter values](../../docs/c-api-parameters.md).
 `IPROP_CAP_PARAMETERS_TYPED` separately advertises scalar/RGBA8 setters by

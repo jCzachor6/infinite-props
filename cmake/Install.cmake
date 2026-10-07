@@ -5,6 +5,8 @@ install(TARGETS iprop_runtime iprop_capi iprop_capi_static EXPORT ipropTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# Header-only result reads shared by the engine adapters; includes only iprop.h.
+install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iprop/backend)
 # Required by the static target's runtime dependency. C++ headers are
 # implementation details; only iprop.h has the documented ABI contract.
 install(DIRECTORY runtime/iprop DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -44,6 +46,10 @@ if(TARGET iprop_sfml)
 endif()
 
 install(DIRECTORY examples spec docs plans DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+foreach(backend sfml godot)
+    install(FILES backends/${backend}/README.md
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend})
+endforeach()
 if(Python3_Interpreter_FOUND)
     # Expanded chapters replace their authored directives in installed SDKs.
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)

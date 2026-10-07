@@ -203,6 +203,8 @@ typedef struct {
 #define IPROP_CAP_PARAMETERS_TYPED (UINT64_C(1) << 13)
 #define IPROP_CAP_PARAMETER_OVERRIDES (UINT64_C(1) << 14)
 #define IPROP_CAP_GENERATE_EX (UINT64_C(1) << 15)
+#define IPROP_CAP_RESULT_OUTPUTS (UINT64_C(1) << 16)
+#define IPROP_CAP_TYPED_OUTPUTS (UINT64_C(1) << 17)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -712,6 +714,67 @@ typedef struct {
 IPROP_API iprop_status_ex iprop_image_view_ex_init(iprop_image_view_ex* out, uint32_t capacity);
 IPROP_API iprop_status_ex iprop_result_query_image(const iprop_result* result,
                                                  iprop_image_view_ex* out, iprop_error_ex* error);
+
+/* Generated output slot, in exactly the legacy root -> parts global order.
+ * Every declaration is present, including unassigned singular slots (count
+ * zero) and empty lists. A singular element_count is zero or one. Owner zero
+ * is root; owner N+1 is part N, including parts with no output declarations.
+ * output_index matches program_output_get for the program that generated this
+ * result. kind/is_list/name describe the declaration, element_count its values.
+ * stride_floats is 2/4/3 for point/rect/circle; values is exactly the legacy
+ * packed-float pointer, including count-zero slots whose pointer may be
+ * non-NULL. Never dereference values when element_count is zero.
+ * Name is exact byte-counted UTF-8, including embedded NUL; inspect its pointer
+ * and length only when both complete fields fit. Names/values belong to result
+ * until result_free and survive program_free and other generations.
+ * Sized view policy is identical to image view: four-byte minimum, absent
+ * flags zero, nonzero complete flags rejected, only complete output fields
+ * written, size/flags/partial fields/padding/future tail unchanged. */
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint32_t output_index;
+    uint32_t owner;
+    iprop_output_kind_ex kind;
+    uint32_t is_list;
+    uint32_t element_count;
+    uint32_t stride_floats;
+    iprop_utf8_view name;
+    const float* values;
+} iprop_result_output_view_ex;
+
+IPROP_API iprop_status_ex iprop_result_output_view_ex_init(iprop_result_output_view_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_result_output_count(const iprop_result* result,
+                                                   uint32_t* out_count, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_output_get(const iprop_result* result, uint32_t output_index,
+                                                 iprop_result_output_view_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_output_find(const iprop_result* result, uint32_t owner,
+                                                  iprop_utf8_view name, uint32_t* out_index,
+                                                  iprop_error_ex* error);
+
+/* Fixed leaf records, not sized/extensible descriptors. Each float is the
+ * exact stored IEEE binary32 value: no arithmetic, normalization or conversion.
+ * Typed accessors require out_capacity >= sizeof(the corresponding record),
+ * publish the complete record only on success, and preserve any extra bytes.
+ * Wrong slot/kind/element index, null result/out or insufficient capacity is
+ * E_ARGUMENT. A count-zero slot has no valid element index. The caller owns
+ * the copied record, which remains valid after result_free. out_capacity is
+ * actual writable allocation capacity; the library cannot verify false claims.
+ * All result output operations preserve output on failure; optional bounded
+ * errors and descriptor/message overlaps follow the checked query policy. */
+typedef struct { float x, y; } iprop_point_value;
+typedef struct { float x, y, w, h; } iprop_rect_value;
+typedef struct { float x, y, radius; } iprop_circle_value;
+
+IPROP_API iprop_status_ex iprop_result_output_point(const iprop_result* result, uint32_t output_index,
+                                                   uint32_t element_index, iprop_point_value* out,
+                                                   uint32_t out_capacity, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_output_rect(const iprop_result* result, uint32_t output_index,
+                                                  uint32_t element_index, iprop_rect_value* out,
+                                                  uint32_t out_capacity, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_output_circle(const iprop_result* result, uint32_t output_index,
+                                                    uint32_t element_index, iprop_circle_value* out,
+                                                    uint32_t out_capacity, iprop_error_ex* error);
 
 /* Checked generation from validated parameters. program, options and
  * out_result are required. parameters is optional: NULL selects the stored

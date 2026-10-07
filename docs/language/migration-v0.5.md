@@ -159,8 +159,14 @@ byte count, tight stride, format and explicit storage origin/legacy alpha mode.
 Its pointer and bytes are identical to `iprop_result_image` and remain owned by
 the result. See [image views](../c-api-images.md).
 
-Root parameter handles and new checked generated-value accessors remain
-planned. Optimization
+`IPROP_CAP_RESULT_OUTPUTS` exposes every generated declaration slot and exact
+owner/name lookup. `IPROP_CAP_TYPED_OUTPUTS` independently exposes checked
+point/rect/circle copies with explicit whole-record capacity. Both preserve
+legacy pointers/packing and exact stored float bits; borrowed views survive
+`program_free`, while typed copies survive `result_free`. See
+[result outputs](../c-api-result-outputs.md).
+
+Root parameter handles remain planned. Optimization
 level selection also remains planned; the existing production optimizer and
 `--no-opt` are available. Do not infer those planned capabilities from the API
 feature version. Query the actual loaded library's capability bits.

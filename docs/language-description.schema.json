@@ -30,7 +30,7 @@
     "c_abi_soversion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",
-      "description": "SOVERSION of the bundled runtime C library, configured independently of the product, C API and format versions; equals abi_version major.minor."
+      "description": "SOVERSION of the bundled runtime C library, configured independently of the product, C API and format versions; equals abi_version major.minor. Optional additive alias in schema 1; producers emit it and readers validate consistency when present."
     },
     "source_rules": {
       "type": "object",
@@ -709,7 +709,6 @@
     "format_version",
     "c_api_version",
     "abi_version",
-    "c_abi_soversion",
     "source_rules",
     "effect_rules",
     "call_rules",

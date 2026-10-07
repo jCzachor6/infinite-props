@@ -55,13 +55,51 @@ def versions(root=ROOT):
     return {key: _source_version(root, key) for key in VERSION_SOURCES}
 
 
+def read_version_matrix(value):
+    """Typed flat version fields; unknown additive metadata remains untouched."""
+    if type(value) is not dict:
+        raise RuntimeError("Invalid version matrix: expected an object")
+    result = {}
+    for key in VERSION_SOURCES:
+        pattern = r"[0-9]+\.[0-9]+\.[0-9]+" if key == "product_version" else r"[0-9]+\.[0-9]+"
+        if type(value.get(key)) is not str or not re.fullmatch(pattern, value[key]):
+            raise RuntimeError("Invalid version matrix: missing or malformed " + key)
+        result[key] = value[key]
+    return result
+
+
+def match_versions(actual, expected):
+    actual, expected = read_version_matrix(actual), read_version_matrix(expected)
+    if actual != expected:
+        raise RuntimeError("Version matrix differs: " + repr(actual) + " != " + repr(expected))
+    return actual
+
+
 def described_versions(language):
     """Release version names for a current `ipc --describe-language` export."""
+    if type(language) is not dict:
+        raise RuntimeError("Invalid compiled version matrix: expected an object")
     def pair(key):
-        return f"{int(language[key]['major'])}.{int(language[key]['minor'])}"
-    return {"product_version": language["product_version"], "language_version": pair("language_version"),
+        value = language.get(key)
+        if type(value) is not dict or any(type(value.get(part)) not in {int, float} or
+                not 0 <= value[part] <= 9007199254740991 or int(value[part]) != value[part]
+                for part in ("major", "minor")):
+            raise RuntimeError("Invalid version pair: " + key)
+        return f"{int(value['major'])}.{int(value['minor'])}"
+    abi = pair("abi_version")
+    if "c_abi_soversion" in language and (type(language['c_abi_soversion']) is not str or language['c_abi_soversion'] != abi):
+        raise RuntimeError("C ABI alias differs from abi_version")
+    return read_version_matrix({"product_version": language.get("product_version"), "language_version": pair("language_version"),
             "format_version": pair("format_version"), "c_api_version": pair("c_api_version"),
-            "c_abi_soversion": language["c_abi_soversion"]}
+            "c_abi_soversion": abi})
+
+
+def handbook_version(language, profile="current"):
+    if profile == "current":
+        return described_versions(language)["language_version"]
+    if profile != "historical-0.4":
+        raise RuntimeError("Unknown handbook profile")
+    return "0.4"  # Explicit frozen filename, never a missing-current-field fallback.
 
 
 def source_conflict_copies(root=ROOT):

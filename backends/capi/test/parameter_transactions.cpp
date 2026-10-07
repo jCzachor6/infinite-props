@@ -175,6 +175,7 @@ int main(int argc, char** argv) {
         // Error descriptor or message inside protected handle/value/name/list
         // storage: rejected before binding, with every byte left as it was.
         std::vector<std::pair<iprop_error_ex*, char*>> aliases = {
+            {reinterpret_cast<iprop_error_ex*>(parameters), message},
             {reinterpret_cast<iprop_error_ex*>(parameters->values.data()), message},
             {&error, reinterpret_cast<char*>(parameters->values.data())},
             {&error, reinterpret_cast<char*>(parameters)}};

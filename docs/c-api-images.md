@@ -69,5 +69,5 @@ overlapping its own error descriptor, returns `E_ARGUMENT` while preserving
 both outputs. A zero-capacity message span touches no buffer bytes.
 
 Pixel/image queries execute no VM and allocate no new storage. They do not
-expose structured output values; those remain available through the unchanged
-legacy image output collection until separate typed result accessors exist.
+expose structured output values; use the unchanged legacy output collection or
+the [generated output views and typed copies](c-api-result-outputs.md).

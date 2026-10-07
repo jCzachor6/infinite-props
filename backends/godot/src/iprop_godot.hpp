@@ -52,7 +52,8 @@ public:
     bool is_loaded() const { return program_ != nullptr; }
 
     // Generates one tuple; returns the RGBA8 image. The structured outputs
-    // are stored and exposed through get_outputs().
+    // are copied and exposed through get_outputs(). A failure preserves the
+    // previously completed generation's maps; returned Images own their bytes.
     godot::Ref<godot::Image> generate(int64_t seed, int64_t variant,
                                       int64_t archetype);
 

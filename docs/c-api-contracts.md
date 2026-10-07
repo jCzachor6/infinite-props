@@ -64,6 +64,19 @@ RGBA8 pointer, actual generated dimensions, tight row stride and explicit
 top-left storage origin. Its `LEGACY_DESTINATION` alpha mode names the frozen
 compositor; queries preserve all stored bytes without alpha conversion.
 
+[Generated output views](c-api-result-outputs.md) preserve every declaration
+slot and the exact legacy name/value pointers, including zero-count slots.
+Owner-qualified lookup remains valid after `program_free`; typed point/rect/
+circle accessors copy whole caller-owned records with explicit capacity and
+preserve all stored float bits. Copies remain valid after `result_free`.
+
+The [SFML](../backends/sfml/README.md) and [Godot](../backends/godot/README.md)
+adapters use those sized views and typed leaves. They copy the exact generated
+image byte count and output names' explicit UTF-8 lengths before releasing the
+result; engine-owned copies survive program reload, result release and later
+generation. Neither adapter remaps owners, repeats D4 transforms or infers
+geometry from a packed-float stride.
+
 Free functions accept `NULL`. Other handles are required unless their function
 explicitly documents a null default; required output pointers are non-null.
 Functions do not accept stale handles or invalid pointers. No shared-handle
@@ -124,7 +137,7 @@ and malformed output storage stops the operation before publication. Legacy
 entry points keep their existing classification. See
 [the policy and stage/type distinction](runtime-errors.md#new-status-policy-and-exception-boundary).
 
-Checked load, metadata, root-input and output-declaration queries reject
+Checked load, metadata, reflection and result queries reject
 error descriptor/message spans that
 overlap their output pointer/query storage, or a writable message span that
 overlaps its own error descriptor. They return `E_ARGUMENT` without invoking

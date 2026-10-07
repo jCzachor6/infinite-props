@@ -6,11 +6,12 @@ Historical input is admitted only by an explicit caller-selected profile.
 """
 import json
 import re
+from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
 LANGUAGE_SCHEMA_VERSION = 1
 DIAGNOSTICS_SCHEMA_VERSION = 1
-DOCUMENTATION_SCHEMA_VERSION = 1
+DOCUMENTATION_SCHEMA_VERSION = 2
 CURRENT = 'current'
 HISTORICAL = 'historical-0.4'
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
@@ -115,7 +116,7 @@ def read_language(value, profile=CURRENT):
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
     modern = profile == CURRENT
     if modern:
-        obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'c_abi_soversion', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
+        obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
     else:
         require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical product version')
         if 'language_version' in value:
@@ -272,10 +273,19 @@ def read_diagnostics(value, exit_code=None):
     return value
 
 
-def read_manifest(value):
+def read_manifest(value, profile=CURRENT):
+    require(type(profile) is str and profile in {CURRENT, HISTORICAL}, 'manifest profile')
     obj(value, ['schema_version', 'product_version', 'source_commit', 'working_tree_dirty', 'status', 'tag', 'builtin_count', 'example_count', 'headings', 'source_files', 'files'], 'documentation manifest')
-    require(type(value['schema_version']) in {int, float} and value['schema_version'] == DOCUMENTATION_SCHEMA_VERSION, 'manifest schema version')
+    require(type(value['schema_version']) in {int, float} and
+            value['schema_version'] == (DOCUMENTATION_SCHEMA_VERSION if profile == CURRENT else 1), 'manifest schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'manifest product')), 'manifest product')
+    if profile == CURRENT:
+        try:
+            read_version_matrix(value)
+        except RuntimeError as error:
+            require(False, str(error))
+    else:
+        require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical manifest product version')
     require(value['source_commit'] is None or re.fullmatch(r'[0-9a-f]{40}', text(value['source_commit'], 'source commit')), 'source commit')
     boolean(value['working_tree_dirty'], 'dirty')
     require(type(value['status']) is str and value['status'] in {'released', 'development / release candidate'}, 'manifest status')

@@ -95,8 +95,8 @@
         "c_abi_soversion"
       ],
       "delete": true,
-      "accept": false,
-      "schema": false
+      "accept": true,
+      "schema": true
     },
     {
       "id": "SOVERSION outside ABI line",
@@ -395,7 +395,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 1.0,
+      "value": 2.0,
       "accept": true,
       "schema": true
     },
@@ -413,7 +413,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 2,
+      "value": 3,
       "accept": false,
       "schema": false
     },
@@ -498,6 +498,90 @@
         "C:/escape"
       ],
       "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing language_version",
+      "path": [
+        "language_version"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong type language_version",
+      "path": [
+        "language_version"
+      ],
+      "value": {
+        "major": 0,
+        "minor": 4
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing format_version",
+      "path": [
+        "format_version"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong type format_version",
+      "path": [
+        "format_version"
+      ],
+      "value": {
+        "major": 0,
+        "minor": 4
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing c_api_version",
+      "path": [
+        "c_api_version"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong type c_api_version",
+      "path": [
+        "c_api_version"
+      ],
+      "value": {
+        "major": 0,
+        "minor": 4
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing c_abi_soversion",
+      "path": [
+        "c_abi_soversion"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong type c_abi_soversion",
+      "path": [
+        "c_abi_soversion"
+      ],
+      "value": {
+        "major": 0,
+        "minor": 4
+      },
       "accept": false,
       "schema": false
     }

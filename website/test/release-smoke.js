@@ -55,6 +55,7 @@ async function main() {
         assert.ok(html.includes(`id="${section.a}"`), `missing search anchor: ${section.t}`);
     }
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
+    assert.equal(docs.schema_version, 2);
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
     const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
@@ -66,11 +67,16 @@ async function main() {
     for (const [file, digest] of Object.entries(docs.source_files))
         assert.equal(hash(Buffer.from(fs.readFileSync(path.join(root, file), "utf8").replace(/\r\n/g, "\n"))), digest, `stale documentation input: ${file}`);
     const compiler = path.join(tools, fs.existsSync(path.join(tools, "ipc.exe")) ? "ipc.exe" : "ipc");
+    const verified = spawnSync(process.env.IPROP_PYTHON || "python3", [
+        path.join(root, "scripts/language_docs.py"), "verify", "--output-dir", site,
+        "--against-source", "--compiler", compiler
+    ], { encoding: "utf8" });
+    assert.equal(verified.status, 0, verified.stderr || String(verified.error));
     const described = spawnSync(compiler, ["--describe-language"], { encoding: "utf8" });
     assert.equal(described.status, 0, described.stderr);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8")), JSON.parse(described.stdout));
-    const book = fs.readFileSync(path.join(site, "docs", `language-v${version.split(".").slice(0, 2).join(".")}.md`));
-    assert.deepEqual(book, fs.readFileSync(path.join(site, "reference", `language-v${version.split(".").slice(0, 2).join(".")}.md`)));
+    const book = fs.readFileSync(path.join(site, "docs", `language-v${docs.language_version}.md`));
+    assert.deepEqual(book, fs.readFileSync(path.join(site, "reference", `language-v${docs.language_version}.md`)));
     const Module = await require(path.join(site, "iprop.js"))({ locateFile: () => path.join(site, "iprop.wasm") });
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-website-"));
     let comparisons = 0;

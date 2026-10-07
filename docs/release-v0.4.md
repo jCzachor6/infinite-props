@@ -36,6 +36,14 @@ retain API 0.2; use the installed 0.4 CMake package for updated hosts.
 
 ## Build and package
 
+Current packaging reports independent product, source language, binary format,
+C API and C ABI versions. The collector verifies all five fields against the
+source constants in every SDK, Web archive, validation report and CI report.
+Generated documentation now uses manifest schema 2 and names its handbook
+after the source language; [export contracts](export-contracts.md) documents
+the explicit frozen schema-1 profile. The emitted format remains 0.4 and its
+specification stays frozen independently of later product versions.
+
 Native builds and installed CMake consumers need zlib >= 1.2.9. Linux uses
 the `zlib1g-dev` package; macOS can use the platform SDK. Windows CI supplies
 `zlib:x64-windows-static-md` through vcpkg and adds its installation to

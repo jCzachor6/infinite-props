@@ -15,7 +15,7 @@ This is a capability description, not a promise of planned syntax.
 | `format_version.major`, `.minor` | Binary format emitted by this compiler, from runtime constants. This is not a range of formats accepted by a loaded library. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
-| `c_abi_soversion` | The runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. |
+| `c_abi_soversion` | Optional additive alias in schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
 The current values are product `0.4.0`, source language `0.5`, emitted format
 `0.4`, C header API `0.3` and ABI line/SOVERSION `0.4`. These values are

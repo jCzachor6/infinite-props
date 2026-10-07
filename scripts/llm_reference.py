@@ -95,7 +95,8 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
     symbols = select(symbols, config['defaults']['symbols'], builtins, 'symbol')
     budget = config['defaults']['max_bytes'] if max_bytes is None else max_bytes
     require(type(budget) is int and 0 < budget <= config['maximum_bytes'], 'byte budget must be in [1, ' + str(config['maximum_bytes']) + ']')
-    minor = '.'.join(language['product_version'].split('.')[:2])
+    from release_common import handbook_version
+    minor = handbook_version(language)
 
     def version(key):
         value = language[key]
