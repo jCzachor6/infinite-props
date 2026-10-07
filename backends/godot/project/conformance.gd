@@ -112,8 +112,8 @@ func _init() -> void:
 			printerr("FAIL root output overwritten")
 
 	# Current compiler source, including a list with zero values. Native
-	# size/uniform overrides are covered by the C API; this adapter exposes
-	# the seed/variant/archetype parameters and default asset size/inputs.
+	# size overrides are covered by the C API; this adapter exposes the
+	# seed/variant/archetype parameters, the asset size and the root inputs.
 	var language := IpropAsset.new()
 	if language.load_file(args[0] + "/language.iprop") != OK:
 		failures += 1
@@ -144,6 +144,69 @@ func _init() -> void:
 	if plant.load_file(args[0] + "/plant.iprop") != OK or plant.generate(26, 0, 0) == null:
 		failures += 1
 		printerr("FAIL compiled plant source")
+
+	# Root inputs: reflection, typed setters (negative ints keep i32 bits),
+	# rejected values that change nothing, sprite refresh, reset and reload.
+	var unloaded := IpropAsset.new()
+	if unloaded.set_input("base", Color8(0, 0, 0)) != ERR_UNCONFIGURED \
+			or unloaded.reset_inputs() != ERR_UNCONFIGURED or not unloaded.inputs.is_empty():
+		failures += 1
+		printerr("FAIL inputs before load")
+	var tinted := IpropAsset.new()
+	if tinted.load_file(args[0] + "/uniforms.iprop") != OK:
+		failures += 1
+		printerr("FAIL uniforms fixture load")
+	else:
+		var defaults := [Color8(0x33, 0x55, 0xaa), 1.0, 1]
+		var declared: Array = tinted.inputs
+		var shape := declared.map(func(input): return [input["index"], input["name"], input["type"]])
+		if shape != [[0, "base", "color"], [1, "fx", "f32"], [2, "ux", "u32"]] \
+				or declared.map(func(input): return input["default"]) != defaults \
+				or declared.map(func(input): return input["value"]) != defaults:
+			failures += 1
+			printerr("FAIL input reflection ", declared)
+		var plain := tinted.generate(0, 0, 0)
+		var sprite_view := IpropSprite2D.new()
+		sprite_view.asset = tinted
+		if tinted.set_input("base", Color8(255, 0, 0)) != OK or tinted.set_input("fx", 5.5) != OK \
+				or tinted.set_input("ux", 3) != OK:
+			failures += 1
+			printerr("FAIL set_input")
+		var set_values := [Color8(255, 0, 0), 5.5, 3]
+		for rejected in [["missing", 1], ["ux", 1.5], ["ux", 4294967296], ["ux", -2147483649],
+				["base", 1], ["fx", "x"]]:
+			if tinted.set_input(rejected[0], rejected[1]) != ERR_INVALID_PARAMETER:
+				failures += 1
+				printerr("FAIL accepted input ", rejected)
+		if tinted.inputs.map(func(input): return input["value"]) != set_values:
+			failures += 1
+			printerr("FAIL input values after rejected sets")
+		var custom := tinted.generate(0, 0, 0)
+		if plain == null or custom == null or custom.get_pixel(0, 0) != Color8(255, 0, 0) \
+				or custom.get_pixel(1, 1) == plain.get_pixel(1, 1) \
+				or custom.get_pixel(2, 2) == plain.get_pixel(2, 2):
+			failures += 1
+			printerr("FAIL generation with inputs")
+		if sprite_view.texture == null \
+				or sprite_view.texture.get_image().get_data() != custom.get_data():
+			failures += 1
+			printerr("FAIL sprite refresh after set_input")
+		if tinted.set_input("ux", -2) != OK or tinted.inputs[2]["value"] != 4294967294:
+			failures += 1
+			printerr("FAIL negative u32 input bits")
+		if tinted.reset_inputs() != OK or tinted.generate(0, 0, 0).get_data() != plain.get_data():
+			failures += 1
+			printerr("FAIL reset_inputs")
+		tinted.set_input("fx", 2)
+		if tinted.load_file(args[0] + "/uniforms.iprop") != OK \
+				or tinted.inputs.map(func(input): return input["value"]) != defaults:
+			failures += 1
+			printerr("FAIL reload keeps old inputs")
+		if tinted.load_file(args[0] + "/shapes.iprop") != OK or tinted.set_input("base", Color8(0, 0, 0)) \
+				!= ERR_INVALID_PARAMETER:
+			failures += 1
+			printerr("FAIL inputs follow the loaded program")
+		sprite_view.free()
 
 	# Empty/bad generations clear the sprite. Failed generations/reloads preserve the
 	# complete prior asset; successful reloads notify existing sprite users.

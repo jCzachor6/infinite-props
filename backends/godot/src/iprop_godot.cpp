@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -22,7 +23,7 @@ namespace {
 // Godot's UTF-8 parser stops at embedded NUL even with an explicit length.
 // Decode bounded non-NUL segments with its parser, then store each U+0000
 // directly in the length-counted String. No UTF-8 decoder is duplicated here.
-bool outputName(iprop_utf8_view view, String& name) {
+bool decodeName(iprop_utf8_view view, String& name) {
     if (view.byte_count == 0) return true;
     if (std::memchr(view.data, 0, view.byte_count) == nullptr) {
         return name.parse_utf8(view.data, view.byte_count) == OK;
@@ -48,6 +49,47 @@ bool outputName(iprop_utf8_view view, String& name) {
     return name.resize(used + 1) == OK;
 }
 
+// A structured C API error with its own message buffer.
+class Failure {
+public:
+    Failure() {
+        iprop_error_ex_init(&error_, sizeof(error_));
+        error_.message_buffer = message_;
+        error_.message_capacity = sizeof(message_);
+    }
+    Failure(const Failure&) = delete;
+    Failure& operator=(const Failure&) = delete;
+
+    iprop_error_ex* get() { return &error_; }
+
+    // Prints "iprop: <operation> failed: <message> (reason N)".
+    void print(const char* operation, const char* fallback = "unknown error") const {
+        UtilityFunctions::printerr("iprop: ", operation, " failed: ",
+            String::utf8(message_[0] != '\0' ? message_ : fallback),
+            " (reason ", static_cast<int64_t>(error_.reason), ")");
+    }
+
+private:
+    iprop_error_ex error_;
+    char message_[512] = {};
+};
+
+const char* typeName(iprop_input_type type) {
+    switch (type) {
+    case IPROP_INPUT_COLOR: return "color";
+    case IPROP_INPUT_F32: return "f32";
+    default: return "u32";
+    }
+}
+
+Variant inputValue(iprop_input_type type, iprop_color_rgba8 color, float f32, uint32_t u32) {
+    switch (type) {
+    case IPROP_INPUT_COLOR: return Color::from_rgba8(color.r, color.g, color.b, color.a);
+    case IPROP_INPUT_F32: return f32;
+    default: return static_cast<int64_t>(u32);
+    }
+}
+
 } // namespace
 
 // ---- IpropAsset -----------------------------------------------------------
@@ -55,6 +97,9 @@ bool outputName(iprop_utf8_view view, String& name) {
 void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("load_file", "path"), &IpropAsset::load_file);
     ClassDB::bind_method(D_METHOD("is_loaded"), &IpropAsset::is_loaded);
+    ClassDB::bind_method(D_METHOD("get_inputs"), &IpropAsset::get_inputs);
+    ClassDB::bind_method(D_METHOD("set_input", "name", "value"), &IpropAsset::set_input);
+    ClassDB::bind_method(D_METHOD("reset_inputs"), &IpropAsset::reset_inputs);
     ClassDB::bind_method(D_METHOD("generate", "seed", "variant", "archetype"),
                          &IpropAsset::generate);
     ClassDB::bind_method(D_METHOD("get_size"), &IpropAsset::get_size);
@@ -71,6 +116,7 @@ void IpropAsset::_bind_methods() {
     ADD_PROPERTY(PropertyInfo(Variant::INT, "variants"), "", "get_variants");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "archetypes"), "", "get_archetypes");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "fuel"), "", "get_fuel");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "inputs"), "", "get_inputs");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "outputs"), "",
                  "get_outputs");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "part_outputs"), "",
@@ -82,8 +128,8 @@ void IpropAsset::_bind_methods() {
 IpropAsset::IpropAsset() = default;
 
 IpropAsset::~IpropAsset() {
+    iprop_parameters_free(parameters_);
     iprop_program_free(program_);
-    program_ = nullptr;
 }
 
 Error IpropAsset::load_file(const String& path) {
@@ -96,35 +142,29 @@ Error IpropAsset::load_file(const String& path) {
         UtilityFunctions::printerr("iprop: empty file: ", path);
         return ERR_INVALID_DATA;
     }
-    char error[512] = {};
-    iprop_program* candidate = nullptr;
-    const iprop_status status = iprop_program_load(
-        bytes.ptr(), static_cast<size_t>(bytes.size()), &candidate, error,
-        sizeof(error));
-    if (status != IPROP_OK) {
-        UtilityFunctions::printerr(
-            "iprop: load failed: ",
-            String::utf8(error[0] != '\0' ? error : "unknown error"));
+    Failure failure;
+    iprop_program* loaded = nullptr;
+    if (iprop_program_load_ex(bytes.ptr(), static_cast<uint64_t>(bytes.size()), &loaded,
+                              failure.get()) != IPROP_EX_OK) {
+        failure.print("load");
         return ERR_INVALID_DATA;
     }
+    std::unique_ptr<iprop_program, decltype(&iprop_program_free)> candidate(loaded, iprop_program_free);
     iprop_program_info_ex meta;
-    iprop_error_ex query_error;
-    const bool initialized =
-        iprop_program_info_ex_init(&meta, sizeof(meta)) == IPROP_EX_OK &&
-        iprop_error_ex_init(&query_error, sizeof(query_error)) == IPROP_EX_OK;
-    if (initialized) {
-        query_error.message_buffer = error;
-        query_error.message_capacity = sizeof(error);
-    }
-    if (!initialized || iprop_program_query(candidate, &meta, &query_error) != IPROP_EX_OK) {
-        iprop_program_free(candidate);
-        UtilityFunctions::printerr(
-            "iprop: metadata query failed: ",
-            String::utf8(initialized && error[0] != '\0' ? error : "unknown error"));
+    if (iprop_program_info_ex_init(&meta, sizeof(meta)) != IPROP_EX_OK ||
+        iprop_program_query(candidate.get(), &meta, failure.get()) != IPROP_EX_OK) {
+        failure.print("metadata query");
         return ERR_INVALID_DATA;
     }
+    iprop_parameters* parameters = nullptr;
+    if (iprop_parameters_create(candidate.get(), &parameters, failure.get()) != IPROP_EX_OK) {
+        failure.print("parameter setup");
+        return ERR_INVALID_DATA;
+    }
+    iprop_parameters_free(parameters_);
     iprop_program_free(program_);
-    program_ = candidate;
+    parameters_ = parameters;
+    program_ = candidate.release();
     outputs_.clear();
     part_outputs_.clear();
     output_slots_.clear();
@@ -134,6 +174,96 @@ Error IpropAsset::load_file(const String& path) {
     variants_ = static_cast<int64_t>(meta.variants);
     archetypes_ = static_cast<int64_t>(meta.archetypes);
     fuel_ = static_cast<int64_t>(meta.fuel);
+    emit_changed();
+    return OK;
+}
+
+Array IpropAsset::get_inputs() const {
+    Array inputs;
+    if (program_ == nullptr) return inputs;
+    Failure failure;
+    uint32_t count = 0;
+    if (iprop_program_input_count(program_, &count, failure.get()) != IPROP_EX_OK) {
+        failure.print("input query");
+        return inputs;
+    }
+    for (uint32_t i = 0; i < count; ++i) {
+        iprop_input_info_ex info;
+        iprop_parameter_value_ex value;
+        String name;
+        if (iprop_input_info_ex_init(&info, sizeof(info)) != IPROP_EX_OK ||
+            iprop_parameter_value_ex_init(&value, sizeof(value)) != IPROP_EX_OK ||
+            iprop_program_input_get(program_, i, &info, failure.get()) != IPROP_EX_OK ||
+            iprop_parameters_get(parameters_, info.input_index, &value, failure.get()) != IPROP_EX_OK ||
+            !decodeName(info.name, name)) {
+            failure.print("input query");
+            return Array();
+        }
+        Dictionary entry;
+        entry["index"] = static_cast<int64_t>(info.input_index);
+        entry["name"] = name;
+        entry["type"] = typeName(info.type);
+        entry["default"] = inputValue(info.type, info.color_default, info.f32_default, info.u32_default);
+        entry["value"] = inputValue(value.type, value.color, value.f32, value.u32);
+        inputs.append(entry);
+    }
+    return inputs;
+}
+
+Error IpropAsset::set_input(const String& name, const Variant& value) {
+    if (parameters_ == nullptr) {
+        UtilityFunctions::printerr("iprop: set_input before load_file");
+        return ERR_UNCONFIGURED;
+    }
+    const CharString bytes = name.utf8();
+    const iprop_utf8_view view{bytes.get_data(), static_cast<uint32_t>(bytes.length())};
+    Failure failure;
+    iprop_parameter_value_ex current;
+    if (iprop_parameter_value_ex_init(&current, sizeof(current)) != IPROP_EX_OK ||
+        iprop_parameters_get_named(parameters_, view, &current, failure.get()) != IPROP_EX_OK) {
+        failure.print("set_input");
+        return ERR_INVALID_PARAMETER;
+    }
+    // The declared type picks the setter; u32 inputs also take negative i32 bits.
+    const Variant::Type kind = value.get_type();
+    iprop_status_ex status;
+    if (current.type == IPROP_INPUT_COLOR && kind == Variant::COLOR) {
+        const Color color = value;
+        const iprop_color_rgba8 rgba{static_cast<uint8_t>(color.get_r8()), static_cast<uint8_t>(color.get_g8()),
+                                     static_cast<uint8_t>(color.get_b8()), static_cast<uint8_t>(color.get_a8())};
+        status = iprop_parameters_set_color_named(parameters_, view, rgba, failure.get());
+    } else if (current.type == IPROP_INPUT_F32 && (kind == Variant::FLOAT || kind == Variant::INT)) {
+        status = iprop_parameters_set_f32_named(parameters_, view, static_cast<float>(static_cast<double>(value)),
+                                                failure.get());
+    } else if (const int64_t number = kind == Variant::INT ? static_cast<int64_t>(value) : -1;
+               current.type == IPROP_INPUT_U32 && kind == Variant::INT &&
+               number >= std::numeric_limits<int32_t>::min() && number <= std::numeric_limits<uint32_t>::max()) {
+        status = number < 0
+            ? iprop_parameters_set_i32_named(parameters_, view, static_cast<int32_t>(number), failure.get())
+            : iprop_parameters_set_u32_named(parameters_, view, static_cast<uint32_t>(number), failure.get());
+    } else {
+        UtilityFunctions::printerr("iprop: set_input failed: ", name, " is a ", typeName(current.type),
+            " input; pass a Color, a number or an int in -2147483648..4294967295 respectively");
+        return ERR_INVALID_PARAMETER;
+    }
+    if (status != IPROP_EX_OK) {
+        failure.print("set_input");
+        return ERR_INVALID_PARAMETER;
+    }
+    emit_changed();
+    return OK;
+}
+
+Error IpropAsset::reset_inputs() {
+    if (parameters_ == nullptr) {
+        UtilityFunctions::printerr("iprop: reset_inputs before load_file");
+        return ERR_UNCONFIGURED;
+    }
+    Failure failure;
+    if (iprop_parameters_reset(parameters_, failure.get()) != IPROP_EX_OK) {
+        failure.print("reset_inputs");
+        return FAILED;
+    }
     emit_changed();
     return OK;
 }
@@ -151,32 +281,24 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
         UtilityFunctions::printerr("iprop: generate before load_file");
         return Ref<Image>();
     }
-    iprop_generate_options options{};
+    iprop_generate_options_ex options;
+    iprop_generate_options_ex_init(&options, sizeof(options));
     options.seed = static_cast<uint32_t>(seed);
     options.variant = static_cast<uint32_t>(variant);
     options.archetype = static_cast<uint32_t>(archetype);
-    char error[512] = {};
+    Failure failure;
     iprop_result* result = nullptr;
-    const iprop_status status =
-        iprop_generate(program_, &options, &result, error, sizeof(error));
-    if (status != IPROP_OK) {
-        UtilityFunctions::printerr(
-            "iprop: generate failed: ",
-            String::utf8(error[0] != '\0' ? error : "unknown error"));
+    if (iprop_generate_ex(program_, &options, parameters_, &result, failure.get()) != IPROP_EX_OK) {
+        failure.print("generate");
         return Ref<Image>();
     }
     const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> owned(result, iprop_result_free);
-    iprop_error_ex query_error;
-    iprop_error_ex_init(&query_error, sizeof(query_error));
-    query_error.message_buffer = error;
-    query_error.message_capacity = sizeof(error);
     const auto readFailure = [&]() {
-        UtilityFunctions::printerr("iprop: result read failed: ",
-            String::utf8(error[0] != '\0' ? error : "unsupported result or allocation failure"));
+        failure.print("result read", "unsupported result or allocation failure");
         return Ref<Image>();
     };
     iprop_image_view_ex image;
-    if (iprop::backend::queryImage(result, image, &query_error) != IPROP_EX_OK ||
+    if (iprop::backend::queryImage(result, image, failure.get()) != IPROP_EX_OK ||
         !iprop::backend::rgba8Image(image) ||
         image.width > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
         image.height > static_cast<uint32_t>(std::numeric_limits<int>::max()) ||
@@ -197,12 +319,12 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
     Dictionary candidate_outputs, candidate_parts;
     Array candidate_slots;
     uint32_t output_count;
-    if (iprop_result_output_count(result, &output_count, &query_error) != IPROP_EX_OK) return readFailure();
+    if (iprop_result_output_count(result, &output_count, failure.get()) != IPROP_EX_OK) return readFailure();
     for (uint32_t i = 0; i < output_count; ++i) {
         iprop_result_output_view_ex slot;
-        if (iprop::backend::queryOutput(result, i, slot, &query_error) != IPROP_EX_OK) return readFailure();
+        if (iprop::backend::queryOutput(result, i, slot, failure.get()) != IPROP_EX_OK) return readFailure();
         String name;
-        if (!outputName(slot.name, name)) {
+        if (!decodeName(slot.name, name)) {
             return readFailure();
         }
         Dictionary entry;
@@ -212,7 +334,7 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
         if (components == 0) return readFailure();
         PackedFloat32Array values;
         if (values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
-            iprop::backend::copyOutputValues(result, slot, values.ptrw(), &query_error) != IPROP_EX_OK) {
+            iprop::backend::copyOutputValues(result, slot, values.ptrw(), failure.get()) != IPROP_EX_OK) {
             return readFailure();
         }
         entry["values"] = values;

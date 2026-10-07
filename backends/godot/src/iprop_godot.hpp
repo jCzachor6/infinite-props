@@ -1,8 +1,9 @@
 // The Godot GDExtension over the C API (tasks 8.1/8.2).
 //
 // IpropAsset (Resource): loads a .iprop file through the ipropc library,
-// generates one (seed, variant, archetype) tuple into a Godot Image and
-// exposes the meta and the structured outputs as properties.
+// keeps one parameter set for its root inputs, generates one (seed, variant,
+// archetype) tuple into a Godot Image and exposes the meta and the structured
+// outputs as properties.
 //
 // IpropSprite2D (Sprite2D): a convenience node holding an IpropAsset and a
 // seed/variant/archetype; refresh() regenerates the texture.
@@ -20,6 +21,7 @@
 #include <godot_cpp/variant/packed_byte_array.hpp>
 #include <godot_cpp/variant/packed_float32_array.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/variant.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 
@@ -30,6 +32,7 @@ class IpropAsset : public godot::Resource {
     GDCLASS(IpropAsset, godot::Resource)
 
     iprop_program* program_ = nullptr;
+    iprop_parameters* parameters_ = nullptr; // created with each load
     godot::Vector2i size_{};
     godot::Vector2 origin_{};
     int64_t variants_ = 0;
@@ -48,8 +51,22 @@ public:
 
     // Loads and validates a .iprop (a res:// or absolute path). Returns OK,
     // ERR_FILE_NOT_FOUND or ERR_INVALID_DATA (the last error is printed).
+    // A successful load starts from the program's default inputs.
     godot::Error load_file(const godot::String& path);
     bool is_loaded() const { return program_ != nullptr; }
+
+    // The root inputs in declaration order: {index, name, type ("color",
+    // "f32" or "u32"), default, value}. Colors are Color, f32 float, u32 int.
+    godot::Array get_inputs() const;
+    // Sets one input for later generations: a Color for a color input, a
+    // number for f32, an int in -2^31..2^32-1 for u32 (negative values keep
+    // their i32 bits). Returns OK, ERR_UNCONFIGURED before a load, or
+    // ERR_INVALID_PARAMETER for an unknown name, a mismatched type or an out
+    // of range value (the error and its reason code are printed). Success
+    // emits `changed`.
+    godot::Error set_input(const godot::String& name, const godot::Variant& value);
+    // Restores every input to its default; emits `changed`.
+    godot::Error reset_inputs();
 
     // Generates one tuple; returns the RGBA8 image. The structured outputs
     // are copied and exposed through get_outputs(). A failure preserves the

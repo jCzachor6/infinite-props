@@ -66,19 +66,37 @@ templates are not included in the native package.
   order, including repeated names, unset singular slots and empty lists; root
   slots have owner 0. Owners are copied unchanged, so a part without output
   declarations leaves a gap in the owner keys.
+- **Inputs** — each load starts a parameter set at the program's defaults.
+  `inputs` lists the root inputs in declaration order as
+  `{index, name, type, default, value}`, with type `"color"`, `"f32"` or
+  `"u32"`. `set_input(name, value)` takes a `Color`, a number or an int in
+  `-2147483648..4294967295` (negative ints keep their i32 bits) and returns
+  `OK`, `ERR_UNCONFIGURED` before a load or `ERR_INVALID_PARAMETER` for an
+  unknown name, a mismatched type or an out of range value, printing the C API
+  message and reason code. `reset_inputs()` restores the defaults. Rejected
+  values change nothing; accepted ones and resets emit `changed`.
+
+  ```gdscript
+  var asset := IpropAsset.new()
+  asset.load_file("res://tinted.iprop") # declares `input color tint`
+  asset.set_input("tint", Color8(0x99, 0xdd, 0xcc))
+  var image := asset.generate(26, 0, 0)
+  ```
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed`/`variant`/`archetype`; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.
   Clearing the asset or a failed generation clears the texture. Successful
-  asset reloads emit `changed` and refresh its sprites; failed reloads keep
-  the previous program and metadata together. Generation arguments must be
+  asset reloads and input changes emit `changed` and refresh its sprites;
+  failed reloads keep the previous program, inputs and metadata together. Generation arguments must be
   integers in `0..4294967295`.
 
-Loading still uses the legacy C entry point. Before publishing its candidate,
-the resource copies metadata through `iprop_program_info_ex_init` and
-`iprop_program_query`. A failed metadata query frees that candidate and keeps
-the previous program, metadata and generated outputs. No borrowed program
-view is retained by the resource.
+Loading uses `iprop_program_load_ex`. Before publishing its candidate, the
+resource copies metadata through `iprop_program_info_ex_init` and
+`iprop_program_query` and creates the candidate's parameter set. A failure
+frees the candidate and keeps the previous program, inputs, metadata and
+generated outputs. No borrowed program view is retained by the resource:
+input names are copied on each `inputs` read. Generation passes the set to
+`iprop_generate_ex`.
 
 Generation also copies into a candidate before publishing: the sized image
 view supplies actual dimensions, `byte_count`, tight `row_stride`, RGBA8,
