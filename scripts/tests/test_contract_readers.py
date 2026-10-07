@@ -5,23 +5,21 @@ import sys
 import unittest
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from contract_readers import (CURRENT,HISTORICAL,parse_json,read_diagnostics,read_language,read_manifest)
+from contract_readers import (parse_json,read_diagnostics,read_language,read_manifest)
 from language_fixture import LANGUAGE
 from release_common import described_versions, read_version_matrix
 
 
 class ContractReaderTest(unittest.TestCase):
-    def test_manifest_schema_migration_has_no_implicit_fallback(self):
-        old = json.loads((Path(__file__).resolve().parents[2] / 'tests/fixtures/v0.4.0-language-manifest.json').read_bytes())
-        before = json.dumps(old, sort_keys=True)
-        self.assertIs(read_manifest(old,HISTORICAL),old)
-        with self.assertRaisesRegex(RuntimeError,'manifest schema version'):
-            read_manifest(old)
-        self.assertEqual(json.dumps(old, sort_keys=True),before)
-        current = {**old,'schema_version':2,'language_version':'0.5','format_version':'0.4',
-                   'c_api_version':'0.3','c_abi_soversion':'0.4'}
+    def test_manifest_requires_schema_2_and_its_version_matrix(self):
+        current = {'schema_version':2,'product_version':'0.4.0','language_version':'0.5','format_version':'0.4',
+                   'c_api_version':'0.3','c_abi_soversion':'0.4','source_commit':None,'working_tree_dirty':False,
+                   'status':'development / release candidate','tag':None,'builtin_count':1,'example_count':1,
+                   'headings':[{'title':'Book','anchor':'book','level':1}],
+                   'source_files':{'docs/language/index.md':'a'*64},'files':{'docs/language.json':'b'*64}}
         self.assertIs(read_manifest(current),current)
-        with self.assertRaises(RuntimeError): read_manifest(current,HISTORICAL)
+        with self.assertRaisesRegex(RuntimeError,'manifest schema version'):
+            read_manifest({**current,'schema_version':1})
         for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
             for value in (None,False,4,{'major':0,'minor':4},'0.4.0'):
                 with self.subTest(key=key,value=value), self.assertRaises(RuntimeError):
@@ -40,13 +38,14 @@ class ContractReaderTest(unittest.TestCase):
         for value in (True,0.5,None):
             with self.assertRaises(RuntimeError): described_versions({**catalog,'abi_version':{'major':0,'minor':value}})
 
-    def test_legacy_requires_explicit_profile_even_for_product_0_4(self):
-        with self.assertRaisesRegex(RuntimeError,'current language required fields'):
-            read_language(LANGUAGE)
-        self.assertIs(read_language(LANGUAGE,HISTORICAL),LANGUAGE)
-        for profile in ('unknown',None,[]):
-            with self.assertRaises(RuntimeError):
-                read_language(LANGUAGE,profile)
+    def test_language_requires_the_current_schema_and_rules(self):
+        self.assertIs(read_language(LANGUAGE),LANGUAGE)
+        with self.assertRaisesRegex(RuntimeError,'language schema version'):
+            read_language({**LANGUAGE,'schema_version':1})
+        for key in ('source_rules','effect_rules','call_rules','language_version'):
+            missing = dict(LANGUAGE); del missing[key]
+            with self.subTest(key=key), self.assertRaisesRegex(RuntimeError,'language required fields'):
+                read_language(missing)
 
     def test_malformed_top_level_and_unsupported_versions_are_rejected(self):
         for value in (None,False,[],{}, {'schema_version':2}):

@@ -26,10 +26,9 @@ changing the source-language or product version alone does not migrate JSON.
 
 Language description schema 2 removes the `emoji_aliases` list that schema 1
 required, because source language 0.5 no longer has lexer emoji aliases. All
-other fields keep their schema 1 types and meanings. The `historical-0.4`
-reader still accepts frozen schema 1 exports with that list.
+other fields keep their schema 1 types and meanings.
 
-Documentation manifest schema 2 replaces schema 1 for current bundles. It
+Documentation manifest schema 2 replaces schema 1. It
 requires five independent flat strings: `product_version` (major.minor.patch),
 `language_version`, `format_version`, `c_api_version` and `c_abi_soversion`
 (major.minor). Current values are `0.4.0`, `0.5`, `0.4`, `0.3` and `0.4`.
@@ -61,15 +60,9 @@ integer range. The editor's explicit unsupported-option response permits the
 frozen compiler's text protocol; malformed current JSON does not trigger that
 compatibility path.
 
-Only the frozen v0.4.0 exports in `tests/fixtures` and explicitly authored
-historical test fixtures may select the `historical-0.4` catalog reader. That profile is selected by the
-caller, never by absent fields, product version or a failed current validation.
-The language schema exposes its frozen shape in `$defs.historical04`; the
-default root remains the complete current contract. Publication, SDK, website
-and ordinary documentation commands always use the current profile.
-The explicit historical documentation reader accepts actual legacy schema 1
-without inventing missing version fields; it keeps the frozen `language-v0.4.md`
-filename. Current readers reject legacy manifests and require schema 2.
+Readers accept only these current schemas. A released 0.4 language export or
+a schema 1 documentation manifest is rejected; no reader falls back to an older
+shape.
 
 `compiler_export_contracts` checks actual registry exports, every registered
 language example, CLI and allocation-failure diagnostics, shared mutation cases

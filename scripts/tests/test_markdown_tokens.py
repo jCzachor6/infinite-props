@@ -9,8 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import language_docs
 import llm_reference as llm
 import markdown_tokens as md
-from contract_readers import HISTORICAL
-from language_fixture import LANGUAGE, fixture
+from language_fixture import LANGUAGE, fixture, reference_stub
 
 TRICKY = """# Book ##
 
@@ -78,8 +77,8 @@ class HandbookAssemblyTest(unittest.TestCase):
 
     def build(self):
         output = Path(self.temporary.name) / "book"
-        with patch.object(language_docs, "contracts", return_value=LANGUAGE):
-            language_docs.build(Path("unused"), output, self.root, profile=HISTORICAL)
+        with patch.object(language_docs, "contracts", return_value=LANGUAGE), reference_stub():
+            language_docs.build(Path("unused"), output, self.root)
         return next((output / "docs").glob("language-v*.md")).read_text()
 
     def test_book_nests_only_real_headings_and_rewrites_only_real_links(self):

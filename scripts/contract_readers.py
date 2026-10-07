@@ -2,7 +2,6 @@
 
 JSON Schema checks in CI are independent of these runtime invariants. There is
 no generic schema interpreter here and no catalogue of builtin signatures.
-Historical input is admitted only by an explicit caller-selected profile.
 """
 import json
 import re
@@ -10,11 +9,8 @@ from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
 LANGUAGE_SCHEMA_VERSION = 2
-HISTORICAL_LANGUAGE_SCHEMA_VERSION = 1
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
-CURRENT = 'current'
-HISTORICAL = 'historical-0.4'
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
@@ -81,7 +77,7 @@ def effects(value, path):
     strings(value['may_trap'], path + '.may_trap', TRAP_CHECKS)
 
 
-def ordered_signature(value, path, typed=True, modern=True):
+def ordered_signature(value, path, typed=True):
     obj(value, ['parameters'], path)
     require(type(value['parameters']) is list, path + '.parameters')
     names = []
@@ -101,36 +97,22 @@ def ordered_signature(value, path, typed=True, modern=True):
                 else:
                     require(default == 'input_declaration', path + '.default')
     require(len(names) == len(set(names)), path + ' unique parameter names')
-    if modern or 'evaluation_order' in value:
-        order = strings(value.get('evaluation_order'), path + '.evaluation_order')
-        require(len(order) == len(names) and set(order) == set(names), path + ' evaluation permutation')
+    order = strings(value.get('evaluation_order'), path + '.evaluation_order')
+    require(len(order) == len(names) and set(order) == set(names), path + ' evaluation permutation')
     if typed:
         require(type(value.get('result')) is str and value['result'] in VALUE_TYPES, path + '.result')
-    if typed and (modern or 'effects' in value):
         effects(value.get('effects'), path + '.effects')
 
 
-def read_language(value, profile=CURRENT):
-    require(type(profile) is str and profile in {CURRENT, HISTORICAL}, 'language profile')
-    obj(value, ['schema_version', 'product_version', 'builtins'], 'language')
-    modern = profile == CURRENT
-    if modern:
-        obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
-    else:
-        obj(value, ['emoji_aliases'], 'historical language')
-    expected = LANGUAGE_SCHEMA_VERSION if modern else HISTORICAL_LANGUAGE_SCHEMA_VERSION
-    require(type(value['schema_version']) in {int, float} and value['schema_version'] == expected, 'language schema version')
+def read_language(value):
+    obj(value, ['schema_version', 'product_version', 'builtins', 'language_version', 'format_version',
+                'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'language')
+    require(type(value['schema_version']) in {int, float} and value['schema_version'] == LANGUAGE_SCHEMA_VERSION, 'language schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
-    if not modern:
-        require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical product version')
-        if 'language_version' in value:
-            require(value['language_version'] == {'major': 0, 'minor': 4}, 'historical source version')
-        require('source_rules' not in value and 'effect_rules' not in value, 'modern data in historical profile')
     for key in ['language_version', 'format_version', 'c_api_version', 'abi_version']:
-        if key in value:
-            version(value[key], key)
+        version(value[key], key)
     if 'c_abi_soversion' in value:
-        require('abi_version' in value and SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
+        require(SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
                 value['c_abi_soversion'] == f"{int(value['abi_version']['major'])}.{int(value['abi_version']['minor'])}",
                 'c_abi_soversion matches abi_version')
     require(type(value['builtins']) is list and bool(value['builtins']), 'builtins')
@@ -140,84 +122,70 @@ def read_language(value, profile=CURRENT):
         names.append(text(builtin['name'], 'builtin.name', True))
         require(type(builtin['overloads']) is list and (builtin['overloads'] or 'variadic' in builtin), 'builtin.overloads')
         for signature in builtin['overloads']:
-            ordered_signature(signature, 'overload', modern=modern)
+            ordered_signature(signature, 'overload')
             if 'opcode' in signature or 'minimum_format_minor' in signature:
                 text(signature.get('opcode'), 'opcode', True)
                 integer(signature.get('minimum_format_minor'), 'minimum_format_minor', maximum=255)
         if 'variadic' in builtin:
             signature = builtin['variadic']
-            ordered_signature(signature, 'variadic', modern=modern)
+            ordered_signature(signature, 'variadic')
             integer(signature.get('minimum_arguments'), 'minimum_arguments', 1)
             require(signature['minimum_arguments'] == len(signature['parameters']), 'variadic minimum template arity')
             require(type(signature.get('repeat')) is str and signature['repeat'] in {'choices', 'coordinate_pairs'}, 'variadic repeat')
             if signature['repeat'] == 'choices':
-                if modern or 'choice_types' in signature:
-                    strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
-                if modern or 'choice_evaluation' in signature:
-                    require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
+                strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
+                require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
     require(len(names) == len(set(names)), 'unique builtin names')
-    if not modern:
-        # Frozen 0.4 exports list lexer emoji aliases, which 0.5 removed.
-        require(type(value['emoji_aliases']) is list and bool(value['emoji_aliases']), 'emoji_aliases')
-        words, scalars = [], []
-        for alias in value['emoji_aliases']:
-            obj(alias, ['word', 'codepoint'], 'emoji alias')
-            words.append(text(alias['word'], 'emoji word', True))
-            integer(alias['codepoint'], 'emoji scalar', 0, 0x10ffff)
-            require(not 0xd800 <= alias['codepoint'] <= 0xdfff, 'emoji Unicode scalar')
-            scalars.append(alias['codepoint'])
-        require(len(words) == len(set(words)) and len(scalars) == len(set(scalars)), 'unique emoji aliases')
-    if modern:
-        rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
-        require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
-        source_types = []
-        for item in rules['inputs']:
-            obj(item, ['source_type', 'binary_type', 'value_type'], 'input mapping')
-            require(all(type(item[key]) is str for key in ['source_type', 'binary_type', 'value_type']) and item['source_type'] in {'i32', 'u32', 'f32', 'color'} and item['binary_type'] in {'u32', 'f32', 'color'} and item['value_type'] in VALUE_TYPES, 'input types')
-            require(item['binary_type'] == ('u32' if item['source_type'] == 'i32' else item['source_type']), 'binary input mapping')
-            require(item['value_type'] == ('i32' if item['source_type'] in {'i32', 'u32'} else item['source_type']), 'expression input mapping')
-            source_types.append(item['source_type'])
-        require(len(source_types) == len(set(source_types)), 'unique source input types')
-        types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
-        for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-            strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2'}, True)
-        require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
-        require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
-        require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
-        require(types['local_reassignment'] == 'exact_type', 'local reassignment')
-        require(type(types['implicit_widening']) is list, 'implicit widening')
-        conversions = []
-        for item in types['implicit_widening']:
-            obj(item, ['from', 'to', 'contexts'], 'widening')
-            require(item['from'] == 'i32' and item['to'] == 'f32' and
-                    item['from'] in types['storable'] and item['to'] in types['storable'], 'widening types')
-            strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns'}, True)
-            conversions.append((item['from'], item['to']))
-        require(len(conversions) == len(set(conversions)), 'unique widening rules')
-        _strings_and_bools(rules['locals'], {'declaration': {'first_assignment'}, 'scope': {'function'}, 'type_inference_order': {'source_traversal'}, 'unexecuted_initializer': {'typed_zero'}}, ['definite_assignment_analysis', 'read_requires_prior_assignment'], 'locals')
-        visibility = rules['visibility']
-        _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
-        controls = obj(visibility.get('draw_controls'), ['names', 'type', 'read_only'], 'draw controls')
-        strings(controls['names'], 'draw control names', {'v', 'a'}, nonempty=True)
-        require(controls['type'] == 'i32', 'draw control type')
-        boolean(controls['read_only'], 'draw controls read_only')
-        named = rules['named_calls']
-        _strings_and_bools(named, {'positional_binding': {'positional_parameter_ordinal'}}, ['mixed_positional_and_named', 'named_arguments_advance_positional_ordinal', 'duplicate_arguments', 'unknown_arguments'], 'named_calls')
-        strings(named.get('targets'), 'named call targets', {'builtin', 'helper', 'part'}, True)
-        _strings_and_bools(rules['restrictions'], {}, ['recursive_helpers', 'nested_part_imports', 'let_declarations', 'fn_declarations', 'named_geometry_constructors'], 'restrictions')
-        _strings_and_bools(rules['effect_order'], {'binary_operands': {'left_to_right'}, 'logical_operators': {'short_circuit_left_to_right'}, 'call_arguments': {'signature_evaluation_order'}, 'part_parent_rng': {'restored_after_child'}}, ['named_arguments_change_evaluation_order'], 'effect_order')
-        call = obj(value['call_rules'], ['helper_evaluation_order', 'part'], 'call_rules')
-        require(call['helper_evaluation_order'] == 'declaration', 'helper evaluation order')
-        ordered_signature(call['part'], 'part', typed=False)
-        effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
-        require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
-        strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit'})
-        strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
-        boolean(effect['allocation_failure'], 'allocation failure')
-        for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:
-            effects(effect[key], key)
-        policy = obj(effect['output_write_policy'], ['singular', 'list'], 'output policy')
-        require(policy['singular'] == 'replace' and policy['list'] == 'append', 'output write policy')
+    rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
+    source_types = []
+    for item in rules['inputs']:
+        obj(item, ['source_type', 'binary_type', 'value_type'], 'input mapping')
+        require(all(type(item[key]) is str for key in ['source_type', 'binary_type', 'value_type']) and item['source_type'] in {'i32', 'u32', 'f32', 'color'} and item['binary_type'] in {'u32', 'f32', 'color'} and item['value_type'] in VALUE_TYPES, 'input types')
+        require(item['binary_type'] == ('u32' if item['source_type'] == 'i32' else item['source_type']), 'binary input mapping')
+        require(item['value_type'] == ('i32' if item['source_type'] in {'i32', 'u32'} else item['source_type']), 'expression input mapping')
+        source_types.append(item['source_type'])
+    require(len(source_types) == len(set(source_types)), 'unique source input types')
+    types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
+    for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2'}, True)
+    require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
+    require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
+    require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
+    require(types['local_reassignment'] == 'exact_type', 'local reassignment')
+    require(type(types['implicit_widening']) is list, 'implicit widening')
+    conversions = []
+    for item in types['implicit_widening']:
+        obj(item, ['from', 'to', 'contexts'], 'widening')
+        require(item['from'] == 'i32' and item['to'] == 'f32' and
+                item['from'] in types['storable'] and item['to'] in types['storable'], 'widening types')
+        strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns'}, True)
+        conversions.append((item['from'], item['to']))
+    require(len(conversions) == len(set(conversions)), 'unique widening rules')
+    _strings_and_bools(rules['locals'], {'declaration': {'first_assignment'}, 'scope': {'function'}, 'type_inference_order': {'source_traversal'}, 'unexecuted_initializer': {'typed_zero'}}, ['definite_assignment_analysis', 'read_requires_prior_assignment'], 'locals')
+    visibility = rules['visibility']
+    _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
+    controls = obj(visibility.get('draw_controls'), ['names', 'type', 'read_only'], 'draw controls')
+    strings(controls['names'], 'draw control names', {'v', 'a'}, nonempty=True)
+    require(controls['type'] == 'i32', 'draw control type')
+    boolean(controls['read_only'], 'draw controls read_only')
+    named = rules['named_calls']
+    _strings_and_bools(named, {'positional_binding': {'positional_parameter_ordinal'}}, ['mixed_positional_and_named', 'named_arguments_advance_positional_ordinal', 'duplicate_arguments', 'unknown_arguments'], 'named_calls')
+    strings(named.get('targets'), 'named call targets', {'builtin', 'helper', 'part'}, True)
+    _strings_and_bools(rules['restrictions'], {}, ['recursive_helpers', 'nested_part_imports', 'let_declarations', 'fn_declarations', 'named_geometry_constructors'], 'restrictions')
+    _strings_and_bools(rules['effect_order'], {'binary_operands': {'left_to_right'}, 'logical_operators': {'short_circuit_left_to_right'}, 'call_arguments': {'signature_evaluation_order'}, 'part_parent_rng': {'restored_after_child'}}, ['named_arguments_change_evaluation_order'], 'effect_order')
+    call = obj(value['call_rules'], ['helper_evaluation_order', 'part'], 'call_rules')
+    require(call['helper_evaluation_order'] == 'declaration', 'helper evaluation order')
+    ordered_signature(call['part'], 'part', typed=False)
+    effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
+    require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
+    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit'})
+    strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
+    boolean(effect['allocation_failure'], 'allocation failure')
+    for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:
+        effects(effect[key], key)
+    policy = obj(effect['output_write_policy'], ['singular', 'list'], 'output policy')
+    require(policy['singular'] == 'replace' and policy['list'] == 'append', 'output write policy')
     return value
 
 
@@ -279,19 +247,15 @@ def read_diagnostics(value, exit_code=None):
     return value
 
 
-def read_manifest(value, profile=CURRENT):
-    require(type(profile) is str and profile in {CURRENT, HISTORICAL}, 'manifest profile')
+def read_manifest(value):
     obj(value, ['schema_version', 'product_version', 'source_commit', 'working_tree_dirty', 'status', 'tag', 'builtin_count', 'example_count', 'headings', 'source_files', 'files'], 'documentation manifest')
     require(type(value['schema_version']) in {int, float} and
-            value['schema_version'] == (DOCUMENTATION_SCHEMA_VERSION if profile == CURRENT else 1), 'manifest schema version')
+            value['schema_version'] == DOCUMENTATION_SCHEMA_VERSION, 'manifest schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'manifest product')), 'manifest product')
-    if profile == CURRENT:
-        try:
-            read_version_matrix(value)
-        except RuntimeError as error:
-            require(False, str(error))
-    else:
-        require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical manifest product version')
+    try:
+        read_version_matrix(value)
+    except RuntimeError as error:
+        require(False, str(error))
     require(value['source_commit'] is None or re.fullmatch(r'[0-9a-f]{40}', text(value['source_commit'], 'source commit')), 'source commit')
     boolean(value['working_tree_dirty'], 'dirty')
     require(type(value['status']) is str and value['status'] in {'released', 'development / release candidate'}, 'manifest status')

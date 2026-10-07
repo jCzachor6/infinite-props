@@ -94,12 +94,8 @@ def described_versions(language):
             "c_abi_soversion": abi})
 
 
-def handbook_version(language, profile="current"):
-    if profile == "current":
-        return described_versions(language)["language_version"]
-    if profile != "historical-0.4":
-        raise RuntimeError("Unknown handbook profile")
-    return "0.4"  # Explicit frozen filename, never a missing-current-field fallback.
+def handbook_version(language):
+    return described_versions(language)["language_version"]
 
 
 def source_conflict_copies(root=ROOT):

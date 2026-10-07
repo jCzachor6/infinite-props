@@ -17,7 +17,7 @@ import subprocess
 import tarfile
 import tempfile
 
-from contract_readers import (CURRENT, HISTORICAL, LANGUAGE_SCHEMA_VERSION,
+from contract_readers import (LANGUAGE_SCHEMA_VERSION,
     DIAGNOSTICS_SCHEMA_VERSION, DOCUMENTATION_SCHEMA_VERSION, parse_json,
     read_language, read_diagnostics, read_manifest)
 import language_docs
@@ -104,23 +104,6 @@ def main():
     process = run(compiler,'--describe-language')
     assert process.returncode == 0 and not process.stderr
     language = read_language(parse_json(process.stdout))
-    # Exports of the released v0.4.0 compiler and documentation bundle.
-    frozen = parse_json((ROOT/'tests/fixtures/v0.4.0-language.json').read_bytes())
-    assert accepts(read_language,frozen) is False
-    read_language(frozen,HISTORICAL)
-    frozen_manifest = parse_json((ROOT/'tests/fixtures/v0.4.0-language-manifest.json').read_bytes())
-    read_manifest(frozen_manifest,HISTORICAL)
-    assert not accepts(read_manifest,frozen_manifest)
-    assert accepts(lambda v:read_language(v,HISTORICAL),language) is False
-    malformed_frozen = copy.deepcopy(frozen)
-    malformed_frozen['builtins'][0]['overloads'][0]['effects'] = {'rng':'unknown'}
-    assert not accepts(lambda v:read_language(v,HISTORICAL),malformed_frozen)
-    if validators:
-        historical = {**schemas['language'], **schemas['language']['$defs']['historical04']}
-        Draft202012Validator(historical).validate(frozen)
-        assert not Draft202012Validator(historical).is_valid(malformed_frozen)
-        historical_manifest = {**schemas['manifest'], **schemas['manifest']['$defs']['historical04']}
-        Draft202012Validator(historical_manifest).validate(frozen_manifest)
     corpus = parse_json((ROOT/'tests/fixtures/export-contract-mutations.json').read_bytes())
     results, diagnostic_cases = [], []
     with tempfile.TemporaryDirectory(prefix='iprop-export-contract-') as temporary:
@@ -165,7 +148,7 @@ def main():
             language_docs.build(compiler,temp/'missing-config-output',root=shadow)
             raise AssertionError('Missing current configuration was accepted')
         except RuntimeError as error:
-            assert 'Current compiler rules require' in str(error), error
+            assert 'requires docs/llm-reference.json' in str(error), error
         assert not (temp/'missing-config-output').exists()
         # The real export cannot describe a checkout whose emitted format differs.
         constants = shadow/'runtime/iprop/Constants.hpp'
@@ -248,7 +231,7 @@ def main():
         node = shutil.which('node')
         assert node, 'Node is required to check editor consumer agreement'
         subprocess.run([node,str(ROOT/'editor/test/contract-corpus.js'),str(fixture)],check=True,timeout=30)
-    report = {'passed':True,'schema_validation':args.schema,'profile':'current',
+    report = {'passed':True,'schema_validation':args.schema,
               'builtin_count':len(language['builtins']),'registered_examples':len(examples),
               'missing_current_config_rejected':True,'source_version_mismatch_rejected':True,'rehashed_catalog_rejected':True,
               'rehashed_schema_rejected':True,'valid_current_archive_accepted':True,

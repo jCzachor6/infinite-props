@@ -19,13 +19,11 @@ from release_common import sha256, versions, write_json
 from release_preflight import metadata, validate_tag
 import language_docs
 import release_assets
-from contract_readers import HISTORICAL
-from functools import partial
-from language_fixture import LANGUAGE, VERSION_FILES, fixture as language_fixture
+from language_fixture import LANGUAGE, VERSION_FILES, fixture as language_fixture, reference_stub
 
 
 VERSION = "0.4.0"
-HEADER = b"#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 2\n"
+HEADER = VERSION_FILES["backends/capi/iprop.h"].encode()
 FROZEN_SPEC = "# `.iprop` Format and Virtual Machine — Specification v{0}\n\n**Status:** Frozen v{0} contract.\n"
 REPORTS = ["reports-native-Linux-X64", "reports-native-macOS-ARM64", "reports-native-Windows-X64",
            "reports-wasm", "reports-native-backends", "reports-sanitizers"]
@@ -48,7 +46,6 @@ def repository(root):
         "website/package-lock.json": '{"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}',
         "CHANGELOG.md": "# Changelog\n\n## v0.4.0 — 2026-01-01\n\nRelease notes.\n",
         "spec/iprop-v0.4.md": FROZEN_SPEC.format("0.4"),
-        "backends/capi/iprop.h": HEADER.decode(),
         **VERSION_FILES,
     }.items():
         target = root / file
@@ -79,13 +76,13 @@ def archive(path, manifest, wasm=None, documentation=None):
 def inputs(directory, root, commit):
     directory.mkdir()
     documentation = directory / "documentation"
-    with patch.object(language_docs, "contracts", return_value=LANGUAGE):
-        language_docs.build(Path("unused"), documentation, root, profile=HISTORICAL)
+    with patch.object(language_docs, "contracts", return_value=LANGUAGE), reference_stub():
+        language_docs.build(Path("unused"), documentation, root)
     for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
         manifest = {**versions(root), "source_commit": commit, "system": system, "architecture": arch,
-                    "c_api_version": "0.2", "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
+                    "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
         file = sdk / f"iprop-{VERSION}-{system}-{arch}.tar.gz"
         archive(file, manifest, documentation=documentation)
         artifacts = {file.name: sha256(file)}
@@ -144,13 +141,6 @@ class ReleaseGatesTest(unittest.TestCase):
             value['c_api_version']='9.9';write_json(validation,value)
             with self.assertRaises(RuntimeError):
                 collect(source,Path(temporary)/'rehashed-sdk',VERSION,commit,root)
-
-    def setUp(self):
-        # Only these explicitly frozen fixture archives use the legacy profile.
-        reader = patch.object(release_assets, "verify_documentation",
-                              partial(language_docs.verify_archive, profile=HISTORICAL))
-        reader.start()
-        self.addCleanup(reader.stop)
 
     def test_matching_versions_and_frozen_dated_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -353,13 +343,6 @@ class FakeGitHub:
 
 
 class PublicationTest(unittest.TestCase):
-    def setUp(self):
-        # Only these explicitly frozen fixture archives use the legacy profile.
-        reader = patch.object(release_assets, "verify_documentation",
-                              partial(language_docs.verify_archive, profile=HISTORICAL))
-        reader.start()
-        self.addCleanup(reader.stop)
-
     def test_upload_readback_precedes_publication_and_same_release_is_idempotent(self):
         with tempfile.TemporaryDirectory() as temporary:
             file = Path(temporary) / "sdk.tar.gz"; file.write_bytes(b"tested SDK")

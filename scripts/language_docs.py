@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from release_common import ROOT, described_versions, handbook_version, match_versions, product_version, versions
-from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, LANGUAGE_SCHEMA_VERSION, parse_json,
+from contract_readers import (DOCUMENTATION_SCHEMA_VERSION, LANGUAGE_SCHEMA_VERSION, parse_json,
                               read_language, read_manifest)
 from markdown_tokens import headings, links, manifest_headings, rewrite_links
 
@@ -50,18 +50,17 @@ def source_path(root, base, name):
     return path
 
 
-def contracts(compiler, root=ROOT, profile=CURRENT):
+def contracts(compiler, root=ROOT):
     result = run(compiler, "--describe-language")
     require(result.returncode == 0, "Cannot describe the language: " + result.stderr)
     value = parse_json(result.stdout)
     require(type(value) is dict and value.get("product_version") == product_version(root),
             "Compiler language description belongs to another product version")
-    language = read_language(value, profile)
-    if profile == CURRENT:
-        # Language, format, C API and SOVERSION change independently of the product.
-        described, expected = described_versions(language), versions(root)
-        require(described == expected, "Compiler language description differs from the source versions: " +
-                ", ".join(f"{key} {described[key]} != {expected[key]}" for key in expected if described[key] != expected[key]))
+    language = read_language(value)
+    # Language, format, C API and SOVERSION change independently of the product.
+    described, expected = described_versions(language), versions(root)
+    require(described == expected, "Compiler language description differs from the source versions: " +
+            ", ".join(f"{key} {described[key]} != {expected[key]}" for key in expected if described[key] != expected[key]))
     return language
 
 
@@ -165,20 +164,18 @@ def resources(root):
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
     files += list((root / "plans").glob("*.md"))
-    if (root / "docs/llm-reference.json").is_file():
-        files += [root / "docs/llm-reference.json"]
+    files += [root / "docs/llm-reference.json"]
     return files
 
 
-def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None, profile=CURRENT):
+def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None):
     root = root.resolve()
-    language = contracts(compiler, root, profile)
+    language = contracts(compiler, root)
     _, chapters, authored, cases = sources(root, language)
     version = language["product_version"]
-    minor = handbook_version(language, profile)
+    minor = handbook_version(language)
     info = identity(root, version)
-    if profile == CURRENT:
-        info.update(match_versions(described_versions(language), versions(root)))
+    info.update(match_versions(described_versions(language), versions(root)))
     builtins = {b["name"]: b for b in language["builtins"]}
     output, inputs = {}, {}
 
@@ -227,24 +224,18 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     first, rest = combined.split("\n", 1)
     matrix_text = (f"Product: **{version}** · Source language: **{info['language_version']}** · "
                    f"Binary format: **{info['format_version']}** · C API: **{info['c_api_version']}** · "
-                   f"C ABI: **{info['c_abi_soversion']}**" if profile == CURRENT else f"Version: **{version}**")
+                   f"C ABI: **{info['c_abi_soversion']}**")
     combined = first + "\n\n" + matrix_text + f" · Status: **{info['status']}** · Source: `{info['source_commit'] or 'source archive'}`\n" + rest
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"
-    llm_checks = []
-    has_llm_config = (root / "docs/llm-reference.json").is_file()
-    require(has_llm_config or "source_rules" not in language,
-            "Current compiler rules require docs/llm-reference.json")
-    require(has_llm_config or all(value is None for value in (llm_sections, llm_symbols, llm_max_bytes)),
-            "LLM selections require docs/llm-reference.json")
-    if has_llm_config:
-        from llm_reference import render
-        output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
-                                                     llm_sections, llm_symbols, llm_max_bytes)
+    require((root / "docs/llm-reference.json").is_file(), "Documentation requires docs/llm-reference.json")
+    from llm_reference import render
+    output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
+                                                 llm_sections, llm_symbols, llm_max_bytes)
     # Ship the linked standalone sources and frozen numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
-    info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION if profile == CURRENT else 1, "builtin_count": len(builtins), "example_count": len(cases),
+    info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION, "builtin_count": len(builtins), "example_count": len(cases),
                  "headings": manifest_headings(combined),
                  "source_files": dict(sorted(inputs.items())),
                  "files": {name: digest(text.encode("utf-8")) for name, text in sorted(output.items())}})
@@ -266,7 +257,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(content, encoding="utf-8", newline="\n")
     write_json(destination / "docs/language-manifest.json", info)
-    verify(destination, version, info["source_commit"], root=root, profile=profile)
+    verify(destination, version, info["source_commit"], root=root)
     # Execution evidence belongs to the check report, not a new manifest schema.
     if llm_checks:
         info["llm_reference_checks"] = llm_checks
@@ -282,8 +273,8 @@ def member_name(name):
     return name
 
 
-def verify_contents(load, version=None, commit=None, root=None, clean=False, profile=CURRENT):
-    manifest = read_manifest(parse_json(load("docs/language-manifest.json")), profile)
+def verify_contents(load, version=None, commit=None, root=None, clean=False):
+    manifest = read_manifest(parse_json(load("docs/language-manifest.json")))
     if version is not None:
         require(manifest.get("product_version") == version, "Documentation version differs")
     if commit is not None:
@@ -292,36 +283,32 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False, pro
         require(manifest.get("working_tree_dirty") is False, "Documentation was generated from an uncommitted checkout")
     for name, expected in manifest["files"].items():
         require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
-    language = read_language(parse_json(load("docs/language.json")), profile)
+    language = read_language(parse_json(load("docs/language.json")))
     require(language["product_version"] == manifest["product_version"] and
             len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
-    if profile == CURRENT:
-        match_versions(manifest, described_versions(language))
-        required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
-        for name, schema_version in (("language-description", LANGUAGE_SCHEMA_VERSION), ("compiler-diagnostics", 1),
-                                     ("documentation-manifest", DOCUMENTATION_SCHEMA_VERSION)):
-            path = "docs/" + name + ".schema.json"
-            required_contracts.add(path)
-            schema = parse_json(load(path))
-            require(type(schema) is dict and schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema" and
-                    type(schema.get("properties")) is dict and
-                    type(schema["properties"].get("schema_version")) is dict and
-                    schema["properties"]["schema_version"].get("type") == "integer" and
-                    type(schema["properties"]["schema_version"].get("const")) in {int, float} and
-                    schema["properties"]["schema_version"].get("const") == schema_version,
-                    "Documentation schema contract differs: " + path)
-        require(required_contracts <= manifest["files"].keys(), "Current documentation omits export contracts")
+    match_versions(manifest, described_versions(language))
+    required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
+    for name, schema_version in (("language-description", LANGUAGE_SCHEMA_VERSION), ("compiler-diagnostics", 1),
+                                 ("documentation-manifest", DOCUMENTATION_SCHEMA_VERSION)):
+        path = "docs/" + name + ".schema.json"
+        required_contracts.add(path)
+        schema = parse_json(load(path))
+        require(type(schema) is dict and schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema" and
+                type(schema.get("properties")) is dict and
+                type(schema["properties"].get("schema_version")) is dict and
+                schema["properties"]["schema_version"].get("type") == "integer" and
+                type(schema["properties"]["schema_version"].get("const")) in {int, float} and
+                schema["properties"]["schema_version"].get("const") == schema_version,
+                "Documentation schema contract differs: " + path)
+    require(required_contracts <= manifest["files"].keys(), "Current documentation omits export contracts")
     cases = json.loads(load("examples/language/cases.json"))["cases"]
     require(len(cases) == manifest["example_count"], "Documentation example count differs")
-    minor = handbook_version(language, profile)
-    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md"}
-    if "docs/llm-reference.json" in manifest["source_files"]:
-        required.add("LLM_REFERENCE.md")
+    minor = handbook_version(language)
+    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md", "LLM_REFERENCE.md"}
     require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
     if root is not None:
         root = root.resolve()
-        if profile == CURRENT:
-            match_versions(manifest, versions(root))
+        match_versions(manifest, versions(root))
         _, chapters, _, _ = sources(root, language)
         expected = {p.relative_to(root).as_posix(): digest(read(p).encode("utf-8")) for p in [*chapters, *resources(root)]}
         require(manifest["source_files"] == expected, "Documentation inputs differ from the source checkout")
@@ -332,20 +319,20 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False, pro
     return manifest
 
 
-def verify(directory, version=None, commit=None, root=None, compiler=None, clean=False, profile=CURRENT):
+def verify(directory, version=None, commit=None, root=None, compiler=None, clean=False):
     directory = directory.resolve()
     def load(name):
         file = directory.joinpath(*PurePosixPath(member_name(name)).parts)
         require(file.resolve().is_relative_to(directory) and file.is_file(), "Missing or escaping documentation member: " + name)
         return file.read_bytes()
-    manifest = verify_contents(load, version, commit, root, clean, profile)
+    manifest = verify_contents(load, version, commit, root, clean)
     if compiler is not None:
-        require(json.loads(load("docs/language.json")) == contracts(compiler, root or ROOT, profile),
+        require(json.loads(load("docs/language.json")) == contracts(compiler, root or ROOT),
                 "Documentation signatures differ from the installed compiler")
     return manifest
 
 
-def verify_archive(file, prefix, version, commit, root=ROOT, profile=CURRENT):
+def verify_archive(file, prefix, version, commit, root=ROOT):
     with tarfile.open(file, "r:gz") as archive:
         names = [m.name for m in archive]
         require(len(names) == len(set(names)), "Duplicate archive member")
@@ -355,7 +342,7 @@ def verify_archive(file, prefix, version, commit, root=ROOT, profile=CURRENT):
             member = archive.getmember(name)
             require(member.isfile(), "Archived documentation is not a file: " + name)
             return archive.extractfile(member).read()
-        return verify_contents(load, version, commit, root, clean=True, profile=profile)
+        return verify_contents(load, version, commit, root, clean=True)
 
 
 def check_examples(compiler, language, cases, root=ROOT):

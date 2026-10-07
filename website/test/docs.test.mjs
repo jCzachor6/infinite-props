@@ -59,7 +59,7 @@ test("website rejects a rehashed catalog missing current protocol fields before 
             source_files: { "docs/language/index.md": hash(payload["docs/language/index.md"]) },
             files: Object.fromEntries(Object.entries(payload).map(([name, data]) => [name, hash(data)])) };
         fs.writeFileSync(path.join(directory, "docs/language-manifest.json"), JSON.stringify(info));
-        assert.throws(() => verifyBundle(directory), /current language required fields/);
+        assert.throws(() => verifyBundle(directory), /language required fields/);
         info.schema_version = 3;
         fs.writeFileSync(path.join(directory, "docs/language-manifest.json"), JSON.stringify(info));
         assert.throws(() => verifyBundle(directory), /manifest schema version/);
