@@ -2,27 +2,7 @@
 
 const { createHash } = require("node:crypto");
 const { execFile } = require("node:child_process");
-const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
-
-// Compatibility with the compiler 0.4 text protocol, including Windows paths.
-function parseDiagnostics(stderr, entry) {
-    const byFile = new Map();
-    let currentFile = entry;
-    for (const line of stderr.split(/\r?\n/)) {
-        const complete = line.match(/^ipc: (.+):(\d+):(\d+): error: (.*)$/);
-        const header = line.match(/^ipc: (.+):$/);
-        if (header) { currentFile = header[1]; continue; }
-        const located = complete ? complete.slice(2) : line.match(/^(\d+):(\d+): error: (.*)$/)?.slice(1);
-        if (!located) continue;
-        const file = complete ? complete[1] : currentFile;
-        const list = byFile.get(file) ?? [];
-        list.push({ line: Number(located[0]), column: Number(located[1]), message: located[2] });
-        byFile.set(file, list);
-    }
-    return byFile;
-}
 
 // Compiler columns count Unicode codepoints; conversion belongs at the editor
 // boundary. The JSON parser and saved fixes keep the original UTF-8 positions.
@@ -106,11 +86,6 @@ function fixEdits(source, diagnostic) {
     return edits;
 }
 
-function unsupportedOptions(result) {
-    return [1, 2].includes(result.exitCode) && result.stdout.trim() === "" &&
-        /^ipc: unknown option '(?:--check|--diagnostics=json)'\r?\n?$/.test(result.stderr);
-}
-
 async function runCompilerDiagnostics(binary, entry, { signal, execute = execFile, timeout = 15000 } = {}) {
     const cwd = path.dirname(entry);
     const run = args => new Promise((resolve, reject) => {
@@ -122,26 +97,10 @@ async function runCompilerDiagnostics(binary, entry, { signal, execute = execFil
         });
     });
     const result = await run([entry, "--check", "--diagnostics=json"]);
-    if (!unsupportedOptions(result)) return { ...parseJsonDiagnostics(result.stdout, result.exitCode), protocol: "json" };
-
-    // Legacy ipc compiles as its only check mode. Isolate its output from the
-    // entry folder, use a unique directory for every request, and always clean it.
-    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-diagnostics-"));
-    try {
-        const legacy = await run([entry, "-o", path.join(temp, "checked.iprop")]);
-        if (![0, 1].includes(legacy.exitCode)) throw new Error(legacy.stderr || "legacy compiler failed");
-        const list = [];
-        for (const [file, items] of parseDiagnostics(legacy.stderr, entry)) {
-            for (const item of items) list.push({ file, location: { line: item.line, column: item.column },
-                range: null, message: item.message, severity: "error", code: null, stage: null,
-                source_id: null, suggestions: [], related_locations: [], fix_its: [] });
-        }
-        if (legacy.exitCode && !list.length) list.push({ file: entry, location: null, range: null,
-            message: legacy.stderr.trim() || "legacy compilation failed", severity: "error", code: null, stage: null,
-            source_id: null, suggestions: [], related_locations: [], fix_its: [] });
-        return { protocol: "text", status: legacy.exitCode ? "invalid_source" : "ok", diagnostics: list };
-    } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+    // A compiler without JSON diagnostics (such as 0.4) explains itself on stderr.
+    if (!result.stdout.trim()) throw new Error(result.stderr.trim() || "compiler returned no diagnostic JSON");
+    return parseJsonDiagnostics(result.stdout, result.exitCode);
 }
 
-module.exports = { parseDiagnostics, parseJsonDiagnostics, utf16Column, editorRange,
+module.exports = { parseJsonDiagnostics, utf16Column, editorRange,
     sourceContentId, fixEdits, runCompilerDiagnostics };

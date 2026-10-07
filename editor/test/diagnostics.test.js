@@ -5,14 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { parseDiagnostics, utf16Column } = require("../diagnostics");
-
-test("parses canonical and legacy diagnostics with paths containing colons", () => {
-    const parsed = parseDiagnostics("ipc: C:\\a b\\t.ips:12:3: error: bad\r\nsource\r\n  ^\r\n" +
-        "ipc: part.ips:\n2:8: error: other\n", "entry.ips");
-    assert.deepEqual(parsed.get("C:\\a b\\t.ips"), [{ line:12,column:3,message:"bad" }]);
-    assert.deepEqual(parsed.get("part.ips"), [{ line:2,column:8,message:"other" }]);
-});
+const { parseJsonDiagnostics, utf16Column } = require("../diagnostics");
 
 test("maps codepoint columns to VS Code UTF-16 positions", () => {
     assert.equal(utf16Column("a📦ąx", 1), 0);
@@ -28,16 +21,16 @@ test("real compiler errors retain source ownership through imports and lowering"
     const asset = "asset t { size 8x8 draw { } }";
     const run = (files, expectedFile, message) => {
         for (const [name, source] of Object.entries(files)) fs.writeFileSync(path.join(dir,name),source);
-        const result = spawnSync(ipc,["entry.ips"],{cwd:dir,encoding:"utf8"});
+        const result = spawnSync(ipc,["entry.ips","--check","--diagnostics=json"],{cwd:dir,encoding:"utf8"});
         assert.equal(result.status,1,result.stderr);
-        const errors = parseDiagnostics(result.stderr,"entry.ips");
-        assert.equal(errors.size,1,result.stderr);
-        const [error] = errors.get(expectedFile) || [];
-        assert.ok(error,result.stderr);
-        assert.ok(error.line > 0 && error.column > 0);
+        const { diagnostics } = parseJsonDiagnostics(result.stdout,result.status);
+        assert.equal(diagnostics.length,1,result.stdout);
+        const [error] = diagnostics;
+        assert.equal(error.file,expectedFile,result.stdout);
+        const at = error.range?.start ?? error.location;
+        assert.ok(at.line > 0 && at.column > 0);
         assert.match(error.message,message);
-        assert.ok(result.stderr.includes("^"),result.stderr);
-        return error;
+        return at;
     };
     try {
         run({"entry.ips":'import tile from "tile.ips"\nasset t { size 8x8 draw {\n' +
@@ -50,10 +43,10 @@ test("real compiler errors retain source ownership through imports and lowering"
         run({"tile.ips":"asset t { size 8x8 origin unit(),0 draw { } }"},
             "tile.ips",/origin must be a constant/);
         const unicode = "/* 📦ż */ asset t { size 8x8 draw { smooh(0.5) } }";
-        const error = run({"entry.ips":unicode}, "entry.ips", /did you mean 'smooth'/);
+        const at = run({"entry.ips":unicode}, "entry.ips", /did you mean 'smooth'/);
         const offset = unicode.indexOf("smooh");
-        assert.equal(error.column, Array.from(unicode.slice(0,offset)).length + 1);
-        assert.equal(utf16Column(unicode,error.column), offset);
+        assert.equal(at.column, Array.from(unicode.slice(0,offset)).length + 1);
+        assert.equal(utf16Column(unicode,at.column), offset);
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
 
@@ -104,7 +97,7 @@ test("compiler exports canonical source with identical executable roundtrips", (
     } finally { fs.rmSync(dir,{recursive:true,force:true}); }
 });
 
-const { parseJsonDiagnostics, editorRange, sourceContentId, fixEdits, runCompilerDiagnostics } = require("../diagnostics");
+const { editorRange, sourceContentId, fixEdits, runCompilerDiagnostics } = require("../diagnostics");
 const { editorHarness } = require("./support/editor");
 
 function point(source, offset) {
@@ -201,63 +194,26 @@ test("fix transactions require exact source bytes and reject overlapping or inco
     assert.equal(fixEdits(bomSource, bomDiagnostic), null);
 });
 
-test("diagnostic transport falls back only for unsupported options and cleans unique legacy artifacts", async () => {
+test("diagnostic transport makes one JSON request and rejects every other response", async () => {
     const dir = workspace();
     const entry = path.join(dir, "entry.ips");
-    const calls = [];
-    const run = async () => runCompilerDiagnostics("ipc", entry, { execute: (_binary, args, _options, callback) => {
-        calls.push(args);
-        if (args.includes("--check")) callback({ code: 1 }, "", "ipc: unknown option '--check'\n");
-        else {
-            fs.writeFileSync(args[2], "legacy bytes");
-            callback(null, "compiled source\n", "");
-        }
-    } });
     try {
-        assert.equal((await run()).protocol, "text");
-        assert.equal((await run()).protocol, "text");
-        const outputs = calls.filter(args => args.includes("-o")).map(args => args[2]);
-        assert.equal(outputs.length, 2);
-        assert.notEqual(outputs[0], outputs[1]);
-        for (const output of outputs) assert.equal(fs.existsSync(path.dirname(output)), false);
-        assert.deepEqual(fs.readdirSync(dir), ["entry.ips"]);
         for (const response of [
-            { code: 1, stdout: "", stderr: "ipc: entry.ips:1:1: error: invalid source\n" },
-            { code: 0, stdout: "{", stderr: "" },
+            { code: 1, stdout: "", stderr: "ipc: unknown option '--check'\n", error: /unknown option '--check'/ },
+            { code: 1, stdout: "", stderr: "ipc: entry.ips:1:1: error: invalid source\n", error: /invalid source/ },
+            { code: 0, stdout: "{", stderr: "", error: /JSON/ },
             { code: 2, stdout: JSON.stringify(envelope([], "cli_error")), stderr: "" },
         ]) {
-            let count = 0;
-            const request = runCompilerDiagnostics("ipc", entry, { execute: (_binary, _args, _options, callback) => {
-                ++count;
+            const calls = [];
+            const request = runCompilerDiagnostics("ipc", entry, { execute: (_binary, args, _options, callback) => {
+                calls.push(args);
                 callback(response.code ? { code: response.code } : null, response.stdout, response.stderr);
             } });
-            if (response.stdout.startsWith("{\"schema")) assert.equal((await request).protocol, "json");
-            else await assert.rejects(request, /JSON/);
-            assert.equal(count, 1);
+            if (response.error) await assert.rejects(request, response.error);
+            else assert.equal((await request).status, "cli_error");
+            assert.deepEqual(calls, [[entry, "--check", "--diagnostics=json"]]);
         }
-    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-});
-
-test("cancelled legacy checks remove their temporary output directory", async () => {
-    const dir = workspace();
-    const controller = new AbortController();
-    let output, started;
-    const fallbackStarted = new Promise(resolve => { started = resolve; });
-    const request = runCompilerDiagnostics("ipc", path.join(dir, "entry.ips"), {
-        signal: controller.signal, execute: (_binary, args, options, callback) => {
-            if (args.includes("--check")) callback({ code: 1 }, "", "ipc: unknown option '--check'\n");
-            else {
-                output = args[2]; fs.writeFileSync(output, "partial");
-                options.signal.addEventListener("abort", () => callback({ code: "ABORT_ERR" }, "", ""), { once: true });
-                started();
-            }
-        },
-    });
-    try {
-        await fallbackStarted;
-        controller.abort();
-        await assert.rejects(request);
-        assert.equal(fs.existsSync(path.dirname(output)), false);
+        assert.deepEqual(fs.readdirSync(dir), ["entry.ips"]);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -268,7 +224,6 @@ test("real JSON compiler exposes import ownership, exclusive ranges, exact hashe
     fs.writeFileSync(path.join(dir, "tile.ips"), source);
     try {
         const result = await runCompilerDiagnostics(ipc, path.join(dir, "entry.ips"));
-        assert.equal(result.protocol, "json");
         assert.equal(result.status, "invalid_source");
         const [d] = result.diagnostics;
         assert.equal(d.file, "tile.ips");
@@ -284,25 +239,6 @@ test("real JSON compiler exposes import ownership, exclusive ranges, exact hashe
             bytes.subarray(range.end.byte_offset)]).toString();
         fs.writeFileSync(path.join(dir, "tile.ips"), repaired);
         assert.equal((await runCompilerDiagnostics(ipc, path.join(dir, "entry.ips"))).status, "ok");
-        assert.deepEqual(fs.readdirSync(dir).sort(), ["entry.ips", "tile.ips"]);
-    } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-});
-
-test("frozen compiler 0.4 produces real text diagnostics without writing beside the entry", {
-    skip: !process.env.IPROP_LEGACY_COMPILER,
-}, async () => {
-    const dir = workspace('import tile from "tile.ips"\nasset t { size 8x8 draw{} }');
-    fs.writeFileSync(path.join(dir, "tile.ips"), "/* 📦 */ asset tile { size 8x8 draw { smooh(0.5) } }");
-    try {
-        const result = await runCompilerDiagnostics(process.env.IPROP_LEGACY_COMPILER, path.join(dir, "entry.ips"));
-        assert.equal(result.protocol, "text");
-        assert.equal(result.status, "invalid_source");
-        assert.equal(result.diagnostics[0].file, "tile.ips");
-        assert.match(result.diagnostics[0].message, /smooth/);
-        assert.equal(result.diagnostics[0].code, null);
-        assert.deepEqual(fs.readdirSync(dir).sort(), ["entry.ips", "tile.ips"]);
-        fs.writeFileSync(path.join(dir, "tile.ips"), "asset tile { size 8x8 draw{} }");
-        assert.equal((await runCompilerDiagnostics(process.env.IPROP_LEGACY_COMPILER, path.join(dir, "entry.ips"))).status, "ok");
         assert.deepEqual(fs.readdirSync(dir).sort(), ["entry.ips", "tile.ips"]);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
@@ -432,7 +368,7 @@ test("change/delete events immediately invalidate diagnostics and in-flight resu
     } finally { h.dispose(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("protocol failure is visible in the editor and never triggers text fallback", async () => {
+test("protocol failure is visible in the editor and is not retried", async () => {
     const dir = workspace();
     let calls = 0;
     const h = editorHarness(dir, (_binary, _args, _options, callback) => { ++calls; callback(null, "{", ""); });
@@ -464,14 +400,12 @@ test("native invalid UTF-8 diagnostics retain their raw-byte identity and appear
     } finally { h.dispose(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("legacy fallback never attaches saved-file errors to an already dirty imported buffer", async () => {
+test("saved-file diagnostics never attach to an already dirty imported buffer", async () => {
     const dir = workspace();
-    const source = "asset tile { size 8x8 draw { smooh(0.5) } }";
+    const source = fs.readFileSync(path.join(dir, "entry.ips"), "utf8");
     fs.writeFileSync(path.join(dir, "tile.ips"), source);
-    const h = editorHarness(dir, (_binary, args, _options, callback) => {
-        if (args.includes("--check")) callback({ code: 1 }, "", "ipc: unknown option '--check'\n");
-        else callback({ code: 1 }, "", "ipc: tile.ips:1:29: error: unknown function\n");
-    });
+    const h = editorHarness(dir, (_binary, _args, _options, callback) =>
+        callbackJson(callback, envelope([jsonDiagnostic(source, { file: "tile.ips" })])));
     try {
         const imported = h.document(path.join(dir, "tile.ips"));
         imported.text = "// unsaved first line\n" + source;

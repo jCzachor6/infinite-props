@@ -56,9 +56,7 @@ The editor also checks diagnostic status against process exit, exact source
 hashes, UTF-8 boundaries and transactional fix ranges before applying edits.
 Offsets are half-open UTF-8 byte ranges; lines and columns are one-based, with
 columns counting Unicode codepoints. Protocol integers fit JavaScript's exact
-integer range. The editor's explicit unsupported-option response permits the
-frozen compiler's text protocol; malformed current JSON does not trigger that
-compatibility path.
+integer range.
 
 Readers accept only these current schemas. A released 0.4 language export or
 a schema 1 documentation manifest is rejected; no reader falls back to an older

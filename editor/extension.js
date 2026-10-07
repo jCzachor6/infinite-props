@@ -227,11 +227,9 @@ async function compileActive() {
         if (changedSource) log.appendLine("discarded diagnostics for changed source; save and check again");
         else if (result.status === "ok" && snapshots.every(snapshot => !snapshot.doc.isDirty))
             vscode.window.setStatusBarMessage("iprop: ✓ checks", 3000);
-        if (result.protocol === "text") log.appendLine("compiler 0.4 text diagnostics (temporary output cleaned)");
     } catch (error) {
         if (!current()) return;
-        // A transport/protocol failure is visible and never silently retried as
-        // text. Only an explicit unsupported-option response enables fallback.
+        // A transport or protocol failure is reported, never hidden or retried.
         log.appendLine("diagnostics failed: " + error.message);
         vscode.window.setStatusBarMessage("iprop: diagnostics failed — see the iprop output", 5000);
     } finally {

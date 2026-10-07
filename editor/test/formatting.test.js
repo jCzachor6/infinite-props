@@ -187,7 +187,7 @@ test("abort cleanup waits for actual child close and leaves unrelated staging in
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("unsupported formatting, transport failure and invalid UTF-8 never edit or enable fallback", async () => {
+test("unsupported formatting, transport failure and invalid UTF-8 never edit", async () => {
     for (const failure of [
         { error: { code: 2 }, stderr: "ipc: unknown option '--format-only'" },
         { error: { killed: true, message: "timed out" }, stderr: "" },

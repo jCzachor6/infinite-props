@@ -69,13 +69,9 @@ edit rejects the transaction. A fix changes the buffer and does not save it.
 Suggestions without an exact fix are informational actions; the editor does not
 infer replacements from diagnostic messages.
 
-Compiler 0.4 remains supported. Only its explicit `unknown option '--check'`
-(or `--diagnostics=json`) response enables a text fallback. The legacy compiler
-writes its checked binary into a unique temporary directory, which is removed
-on success, error or cancellation. Text fallback provides point locations and
-errors; it has no JSON codes, severities, byte ranges or source-bound fixes.
-A program error, timeout, invalid JSON or mismatched JSON status does not trigger
-fallback; transport failures are reported in the **iprop** output channel.
+Diagnostics require a compiler with `--check --diagnostics=json` (language 0.5).
+An older compiler, a timeout, invalid JSON or a mismatched JSON status is
+reported in the **iprop** output channel; the editor never retries another way.
 
 Run the editor tests with the current native tools:
 
@@ -83,16 +79,12 @@ Run the editor tests with the current native tools:
 IPROP_COMPILER="$PWD/build/tools/ipc" node --test editor/test/*.test.js
 ```
 
-Set `IPROP_LEGACY_COMPILER` to a frozen 0.4 `ipc` executable to include the real
-legacy compatibility test; otherwise that optional test is skipped.
-
 ## Canonical formatting
 
 Use VS Code's **Format Document** action with compiler 0.5. The formatter reads
 saved files, so the entry and other open IPS buffers must be saved. It returns
-an edit for the buffer; it does not save the edit. Compiler 0.4 still supports
-diagnostics and preview, but unsupported formatting is reported without a
-fallback that compiles beside the source.
+an edit for the buffer; it does not save the edit. A compiler without
+`--format-only` reports an error and the buffer is left unchanged.
 
 The temporary source output is exclusively reserved in the entry's physical
 parent directory, preserving the meaning of relative imports when the edit is
@@ -141,7 +133,7 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 | Path | What |
 | ---- | ---- |
 | `extension.js` | activation, diagnostic mapping, guarded code actions and watchers |
-| `diagnostics.js` | JSON validation, compiler transport, text fallback and source-bound edit checks |
+| `diagnostics.js` | JSON validation, compiler transport and source-bound edit checks |
 | `formatting.js` | compiler identity and owned temporary source output for formatting |
 | `syntaxes/ips.tmLanguage.json` | the TextMate grammar |
 | `language-configuration.json` | comments and brackets |
@@ -149,7 +141,7 @@ Then reload the window (Cmd+Shift+P → *Developer: Reload Window*). Open any
 
 JSON diagnostics use schema 1 and the shared `contracts.js` reader. Unknown
 additive fields are allowed; missing fields, unknown schema versions and
-status/exit mismatches are rejected. Malformed current JSON never selects the
-legacy text protocol. UTF-8/source-id checks still guard every applied fix.
+status/exit mismatches are rejected. UTF-8/source-id checks still guard every
+applied fix.
 The same real diagnostic mutation corpus is checked by Python, the editor and
 the formal schema in `compiler_export_contracts`.
