@@ -137,6 +137,16 @@ asset expr {
     REQUIRE(ifStmt->elseBranch.size() == 1);
 }
 
+TEST_CASE("a call result can be the base of a member access") {
+    const Program program = parse("asset m { draw { z = f().g } }");
+    const auto* z = std::get_if<VarDecl>(&program.asset.functions[0].body[0]);
+    REQUIRE(z != nullptr);
+    const auto* member = std::get_if<Member>(z->value.get());
+    REQUIRE(member != nullptr);
+    CHECK(member->name == "g");
+    CHECK(std::holds_alternative<Call>(*member->object));
+}
+
 TEST_CASE("user functions beyond draw parse") {
     const std::string source = R"(
 asset multi {

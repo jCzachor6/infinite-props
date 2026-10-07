@@ -10,7 +10,6 @@ add_library(ips_lang STATIC
     ips/Suggestions.cpp
     ips/Parser.cpp
     ips/ParserExpr.cpp
-    ips/Printer.cpp
     ips/SourcePrinter.cpp
     ips/Types.cpp
     ips/Typing.cpp
