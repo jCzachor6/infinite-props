@@ -65,7 +65,7 @@ std::vector<u8> Assembler::assemble() {
     meta.writeF32(asset.originY ? foldOrigin(*asset.originY) : 0.f);
     meta.writeU32(asset.variants.value_or(1));
     meta.writeU32(asset.archetypes.value_or(1));
-    meta.writeU64(1000000); // fuel
+    meta.writeU64(2000000); // fuel
     meta.writeU16(0);       // emission: no offset/radius/colour
     for (int i = 0; i < 6; ++i) {
         meta.writeU8(0);

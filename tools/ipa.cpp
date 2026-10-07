@@ -97,7 +97,7 @@ struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
     u32 variants = 1, archetypes = 1;
-    u64 fuel = 1000000;
+    u64 fuel = 2000000;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;

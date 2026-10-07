@@ -118,7 +118,7 @@ can exceed a resource limit or encounter invalid data.
 
 ## Execution limits
 
-The compiler currently emits a default fuel budget of 1,000,000. The host
+The compiler currently emits a default fuel budget of 2,000,000. The host
 can supply its invocation budget; each executed instruction/drawing operation
 retains its normative cost. Optimizations may reduce total fuel without
 changing image/output bits. A loop need not be statically bounded, but

@@ -15,6 +15,8 @@ SONAME 0.4. Migration and packaging instructions:
   memory. Text and JSON diagnostics share stable codes, byte and codepoint
   ranges, bounded recovery and distinct exit codes. The editor consumes the
   JSON protocol with guarded quick fixes.
+- Fuel: compiled assets get a default fuel budget of 2,000,000 instead of
+  1,000,000; files compiled earlier keep their stored budget.
 - Calls (C): one binder and call plan serve builtins, helpers and parts.
   Helpers and part controls accept named arguments; evaluation order follows
   the declaration and is exported with each signature.

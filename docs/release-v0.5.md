@@ -25,6 +25,8 @@ reference; the [changelog](../CHANGELOG.md) lists every area.
   versions separately. Contract readers accept only the current schemas.
 - The editor requires a 0.5 compiler: its fallback to 0.4 text diagnostics is
   removed.
+- `ipc` writes a default fuel budget of 2,000,000 instead of 1,000,000. The
+  budget is stored in each file, so recompile existing assets to raise it.
 
 The binary format stays 0.4: 0.5 adds no instructions or input types, and
 frozen 0.1–0.4 files load and generate unchanged. The
