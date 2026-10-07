@@ -1,5 +1,6 @@
 #include "../Handles.hpp"
 #include "../LegacyBoundary.hpp"
+#include "check.h"
 
 #include <cstdio>
 #include <cstdlib>
@@ -33,8 +34,6 @@ void operator delete(void* memory) noexcept { std::free(memory); }
 void operator delete[](void* memory) noexcept { std::free(memory); }
 void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
-
-#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "checked errors: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 int main(int argc, char** argv) {
     CHECK(argc == 4);

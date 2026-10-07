@@ -1,10 +1,5 @@
 #include "iprop.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "extended metadata: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 /* Pin the entire original prefix without relying on a platform's alignment. */
 typedef struct {
@@ -18,25 +13,6 @@ SAME_OFFSET(struct_size); SAME_OFFSET(size_x); SAME_OFFSET(size_y); SAME_OFFSET(
 SAME_OFFSET(origin_y); SAME_OFFSET(variants); SAME_OFFSET(archetypes); SAME_OFFSET(fuel);
 #undef SAME_OFFSET
 typedef char extension_begins_after_old_size[(offsetof(iprop_program_info_ex, has_emission) == sizeof(old_program_info)) ? 1 : -1];
-
-static uint32_t read_u32(const uint8_t* bytes) {
-    return (uint32_t)bytes[0] | (uint32_t)bytes[1] << 8 |
-        (uint32_t)bytes[2] << 16 | (uint32_t)bytes[3] << 24;
-}
-static void write_u32(uint8_t* bytes, uint32_t value) {
-    bytes[0] = (uint8_t)value; bytes[1] = (uint8_t)(value >> 8);
-    bytes[2] = (uint8_t)(value >> 16); bytes[3] = (uint8_t)(value >> 24);
-}
-static uint32_t bits(const float* value) { uint32_t result; memcpy(&result, value, 4); return result; }
-static int read_fixture(const char* path, uint8_t** bytes, size_t* size) {
-    FILE* file = fopen(path, "rb");
-    long length;
-    CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    length = ftell(file); CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-    *bytes = (uint8_t*)malloc((size_t)length);
-    CHECK(*bytes != NULL && fread(*bytes, 1, (size_t)length, file) == (size_t)length);
-    CHECK(fclose(file) == 0); *size = (size_t)length; return 0;
-}
 
 static int exact_prefixes(iprop_program* program, const iprop_program_info_ex* expected, iprop_error_ex* error) {
     uint32_t capacity;
@@ -103,7 +79,7 @@ int main(int argc, char** argv) {
         CHECK(info.format_minor == ((uint32_t)bytes[6] | (uint32_t)bytes[7] << 8));
         CHECK(info.container_flags == read_u32(bytes + 8));
         CHECK(info.has_emission == 0 && info.emission_color.r == 0 && info.emission_color.g == 0 && info.emission_color.b == 0 && info.emission_color.a == 0);
-        CHECK(bits(&info.emission_offset_x) == 0 && bits(&info.emission_offset_y) == 0 && bits(&info.emission_radius) == 0);
+        CHECK(float_bits(&info.emission_offset_x) == 0 && float_bits(&info.emission_offset_y) == 0 && float_bits(&info.emission_radius) == 0);
         CHECK(exact_prefixes(program, &info, &error) == 0);
         iprop_program_free(program); program = NULL;
         if (variant == 1) { plain = bytes; plain_size = size; } else free(bytes);
@@ -134,7 +110,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_info_ex_init(&info, sizeof(info)) == IPROP_EX_OK);
     CHECK(iprop_program_query(emissive, &info, &error) == IPROP_EX_OK);
     CHECK(info.has_emission == 1 && info.emission_color.r == 0x12 && info.emission_color.g == 0x34 && info.emission_color.b == 0x56 && info.emission_color.a == 0x78);
-    CHECK(bits(&info.emission_offset_x) == UINT32_C(0x80000000) && bits(&info.emission_offset_y) == 1 && bits(&info.emission_radius) == UINT32_C(0x7fc12345));
+    CHECK(float_bits(&info.emission_offset_x) == UINT32_C(0x80000000) && float_bits(&info.emission_offset_y) == 1 && float_bits(&info.emission_radius) == UINT32_C(0x7fc12345));
     CHECK(info.format_major == physical_major && info.format_minor == physical_minor && info.container_flags == 0);
     CHECK(exact_prefixes(emissive, &info, &error) == 0);
     memcpy(&before, &info, sizeof(info));

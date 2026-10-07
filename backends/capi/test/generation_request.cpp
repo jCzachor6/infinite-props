@@ -1,4 +1,5 @@
 #include "../Operations.hpp"
+#include "check.h"
 
 #include "iprop/Constants.hpp"
 
@@ -25,8 +26,6 @@ void operator delete(void* memory) noexcept { std::free(memory); }
 void operator delete[](void* memory) noexcept { std::free(memory); }
 void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
-
-#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "generation request: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 using namespace iprop;
 using namespace iprop::capi;

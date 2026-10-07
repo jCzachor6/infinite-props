@@ -1,10 +1,5 @@
 #include "iprop.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "result stats: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 static int prefixes(const iprop_result* result, const iprop_result_stats_ex* expected) {
     const size_t offsets[] = {offsetof(iprop_result_stats_ex, fuel_budget),
@@ -116,8 +111,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_library_info_ex_init(&library, sizeof(library)) == IPROP_EX_OK);
     CHECK(iprop_library_query(&library) == IPROP_EX_OK && (library.capabilities & IPROP_CAP_RESULT_STATISTICS) != 0);
     for (fixture = 1; fixture <= 2; ++fixture) {
-        FILE* file = fopen(argv[fixture], "rb");
-        long length;
+        size_t length;
         uint8_t* bytes;
         iprop_program* program = NULL;
         iprop_result *first = NULL, *second = NULL;
@@ -125,10 +119,7 @@ int main(int argc, char** argv) {
         iprop_result_stats_ex stats, saved;
         iprop_program_info_ex meta;
         char message[128];
-        CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-        length = ftell(file); CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-        bytes = (uint8_t*)malloc((size_t)length); CHECK(bytes != NULL);
-        CHECK(fread(bytes, 1, (size_t)length, file) == (size_t)length && fclose(file) == 0);
+        CHECK(read_fixture(argv[fixture], &bytes, &length) == 0);
         CHECK(iprop_program_load_ex(bytes, (uint64_t)length, &program, NULL) == IPROP_EX_OK);
         free(bytes);
         CHECK(iprop_program_info_ex_init(&meta, sizeof(meta)) == IPROP_EX_OK);

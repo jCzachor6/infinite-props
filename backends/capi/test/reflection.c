@@ -1,39 +1,9 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "root reflection: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 typedef char input_type_is_fixed_width[(sizeof(iprop_input_type) == 4) ? 1 : -1];
 typedef char rgba8_is_four_bytes[(sizeof(iprop_color_rgba8) == 4) ? 1 : -1];
 
-static int read_fixture(const char* path, uint8_t** out, size_t* size) {
-    FILE* file = fopen(path, "rb");
-    long length;
-    CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    length = ftell(file);
-    CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-    *out = (uint8_t*)malloc((size_t)length);
-    CHECK(*out != NULL && fread(*out, 1, (size_t)length, file) == (size_t)length);
-    CHECK(fclose(file) == 0);
-    *size = (size_t)length;
-    return 0;
-}
-
-static uint32_t read_u32(const uint8_t* bytes) {
-    return (uint32_t)bytes[0] | (uint32_t)bytes[1] << 8 |
-        (uint32_t)bytes[2] << 16 | (uint32_t)bytes[3] << 24;
-}
-static void write_u32(uint8_t* bytes, uint32_t value) {
-    bytes[0] = (uint8_t)value; bytes[1] = (uint8_t)(value >> 8);
-    bytes[2] = (uint8_t)(value >> 16); bytes[3] = (uint8_t)(value >> 24);
-}
-static uint32_t float_bits(const float* value) {
-    uint32_t bits;
-    memcpy(&bits, value, sizeof(bits));
-    return bits;
-}
 static size_t section_offset(const uint8_t* bytes, size_t size, uint32_t id) {
     size_t i;
     uint32_t count;

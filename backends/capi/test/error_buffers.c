@@ -1,10 +1,5 @@
 #include "iprop.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "error buffers: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 int main(int argc, char** argv) {
     const uint8_t junk[] = {1, 2, 3};
@@ -15,8 +10,7 @@ int main(int argc, char** argv) {
     iprop_generate_options options = {0};
     iprop_uniform uniform = {0};
     size_t capacity, length;
-    FILE* file;
-    long file_size;
+    size_t file_size;
     uint8_t* bytes;
     CHECK(argc == 2);
     CHECK(iprop_program_load(junk, sizeof(junk), &program, message, sizeof(message)) == IPROP_E_FORMAT);
@@ -47,14 +41,8 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_load(NULL, 4, &program, untouched, sizeof(untouched)) == IPROP_E_ARGUMENT);
     CHECK(strcmp(untouched, "SENTINEL") == 0);
 
-    file = fopen(argv[1], "rb");
-    CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    file_size = ftell(file);
-    CHECK(file_size > 0 && fseek(file, 0, SEEK_SET) == 0);
-    bytes = (uint8_t*)malloc((size_t)file_size);
-    CHECK(bytes != NULL && fread(bytes, 1, (size_t)file_size, file) == (size_t)file_size);
-    CHECK(fclose(file) == 0);
-    CHECK(iprop_program_load(bytes, (size_t)file_size, &program, untouched, sizeof(untouched)) == IPROP_OK);
+    CHECK(read_fixture(argv[1], &bytes, &file_size) == 0);
+    CHECK(iprop_program_load(bytes, file_size, &program, untouched, sizeof(untouched)) == IPROP_OK);
     CHECK(program != NULL && strcmp(untouched, "SENTINEL") == 0);
     free(bytes);
     {

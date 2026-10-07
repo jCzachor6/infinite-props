@@ -1,10 +1,6 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "image view: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 #define FIELD(name) {offsetof(iprop_image_view_ex, name), sizeof(((iprop_image_view_ex*)0)->name)}
 
 typedef struct { size_t offset, size; } field;
@@ -202,8 +198,7 @@ int main(int argc, char** argv) {
         1,2,3,255, 171,205,239,255, 10,11,12,255
     };
     uint8_t override[6*4*4] = {0};
-    FILE* file;
-    long length;
+    size_t length;
     uint8_t* bytes;
     iprop_library_info_ex library;
     iprop_program_info_ex meta;
@@ -217,10 +212,7 @@ int main(int argc, char** argv) {
     CHECK(sizeof(iprop_pixel_format) == 4 && sizeof(iprop_image_alpha_mode) == 4 && sizeof(iprop_image_origin) == 4);
     CHECK(iprop_library_info_ex_init(&library, sizeof(library)) == IPROP_EX_OK);
     CHECK(iprop_library_query(&library) == IPROP_EX_OK && (library.capabilities & IPROP_CAP_IMAGE_VIEW) != 0);
-    file = fopen(argv[1], "rb"); CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    length = ftell(file); CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-    bytes = (uint8_t*)malloc((size_t)length); CHECK(bytes != NULL);
-    CHECK(fread(bytes, 1, (size_t)length, file) == (size_t)length && fclose(file) == 0);
+    CHECK(read_fixture(argv[1], &bytes, &length) == 0);
     CHECK(iprop_program_load_ex(bytes, (uint64_t)length, &program, NULL) == IPROP_EX_OK);
     free(bytes);
     CHECK(iprop_program_info_ex_init(&meta, sizeof(meta)) == IPROP_EX_OK);

@@ -1,18 +1,6 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "typed parameters: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
-static uint32_t bits(const float* value) { uint32_t result; memcpy(&result, value, 4); return result; }
-static uint32_t read_u32(const uint8_t* b) { return (uint32_t)b[0] | (uint32_t)b[1]<<8 | (uint32_t)b[2]<<16 | (uint32_t)b[3]<<24; }
-static int fixture(const char* path, uint8_t** bytes, size_t* size) {
-    FILE* f=fopen(path,"rb"); long n;
-    CHECK(f != NULL && fseek(f,0,SEEK_END)==0); n=ftell(f); CHECK(n>0 && fseek(f,0,SEEK_SET)==0);
-    *bytes=(uint8_t*)malloc((size_t)n); CHECK(*bytes != NULL && fread(*bytes,1,(size_t)n,f)==(size_t)n);
-    CHECK(fclose(f)==0); *size=(size_t)n; return 0;
-}
 int main(int argc, char** argv) {
     uint8_t* bytes; size_t size;
     iprop_program* program=NULL;
@@ -27,7 +15,7 @@ int main(int argc, char** argv) {
     const uint32_t unsigned_values[]={0,UINT32_MAX,UINT32_C(0x80000000),UINT32_C(0x7fffffff)};
     const int32_t signed_values[]={INT32_MIN,INT32_MAX,-7,-1,0};
     const iprop_color_rgba8 color={1,2,3,4};
-    CHECK(argc==2 && fixture(argv[1],&bytes,&size)==0);
+    CHECK(argc==2 && read_fixture(argv[1],&bytes,&size)==0);
     CHECK(iprop_program_load_ex(bytes,size,&program,NULL)==IPROP_EX_OK);
     CHECK(iprop_parameters_create(program,&parameters,NULL)==IPROP_EX_OK);
     CHECK(iprop_parameter_value_ex_init(&got,sizeof(got))==IPROP_EX_OK);
@@ -42,10 +30,10 @@ int main(int argc, char** argv) {
     for(index=0;index<sizeof(f32_bits)/sizeof(f32_bits[0]);++index) {
         float f; memcpy(&f,&f32_bits[index],4);
         CHECK(iprop_parameters_set_f32(parameters,1,f,&error)==IPROP_EX_OK);
-        CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && bits(&got.f32)==f32_bits[index]);
+        CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && float_bits(&got.f32)==f32_bits[index]);
         CHECK(got.type==IPROP_INPUT_F32 && got.color.a==0 && got.u32==0);
         CHECK(iprop_parameters_set_f32_named(parameters,(iprop_utf8_view){"zero",4},f,&error)==IPROP_EX_OK);
-        CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && bits(&got.f32)==f32_bits[index]);
+        CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && float_bits(&got.f32)==f32_bits[index]);
         CHECK(error.status==IPROP_EX_OK && error.reason==IPROP_REASON_NONE && error.message_required_bytes==0 && message[0]=='\0');
     }
     for(index=0;index<sizeof(unsigned_values)/sizeof(unsigned_values[0]);++index) {
@@ -66,7 +54,7 @@ int main(int argc, char** argv) {
     }
     CHECK(iprop_parameters_set_color(parameters,0,color,&error)==IPROP_EX_OK);
     CHECK(iprop_parameters_set_color_named(parameters,(iprop_utf8_view){"tint",4},color,&error)==IPROP_EX_OK);
-    CHECK(iprop_parameters_get(parameters,0,&got,NULL)==IPROP_EX_OK && memcmp(&got.color,&color,4)==0 && bits(&got.f32)==0 && got.u32==0);
+    CHECK(iprop_parameters_get(parameters,0,&got,NULL)==IPROP_EX_OK && memcmp(&got.color,&color,4)==0 && float_bits(&got.f32)==0 && got.u32==0);
 
     /* Every rejected request preserves all parameter values, with the same
      * typed reason as generic P.1; success clears a prior failure report. */
@@ -158,7 +146,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_parameters_get(parameters,6,&got,NULL)==IPROP_EX_OK && got.u32==UINT32_C(0x80000000));
     CHECK(iprop_parameters_set_u32_named(parameters,(iprop_utf8_view){"maximum",7},UINT32_C(0x7fffffff),&error)==IPROP_EX_OK);
     CHECK(iprop_parameters_reset(parameters,&error)==IPROP_EX_OK);
-    CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && bits(&got.f32)==UINT32_C(0x80000000));
+    CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && float_bits(&got.f32)==UINT32_C(0x80000000));
     CHECK(iprop_parameters_get(parameters,5,&got,NULL)==IPROP_EX_OK && got.u32==UINT32_C(0xfffffff9));
     iprop_parameters_free(parameters);
     puts("C99 typed parameter setters: exact f32/U32/i32/color values, strict ID/name/type validation, transactions/errors and retained lifetime: PASS");

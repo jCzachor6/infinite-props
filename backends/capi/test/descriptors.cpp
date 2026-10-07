@@ -1,12 +1,11 @@
 #include "../Options.hpp"
 #include "../Utf8View.hpp"
+#include "check.h"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
-
-#define CHECK(c) do { if (!(c)) { std::fprintf(stderr, "descriptor: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 
 int main() {
     std::string_view name = "preserved";

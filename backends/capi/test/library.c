@@ -1,10 +1,6 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "library query: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 #define LAYOUT(type, size) typedef char layout_##type[(sizeof(type) == (size)) ? 1 : -1]
 #define OFFSET(type, field, offset) typedef char offset_##type##_##field[(offsetof(type, field) == (offset)) ? 1 : -1]
 

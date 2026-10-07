@@ -1,21 +1,8 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "parameter overrides: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 #define INPUTS 8
 #define NO_INDEX UINT32_MAX
-
-static uint32_t bits(const float* value) { uint32_t result; memcpy(&result, value, 4); return result; }
-static int fixture(const char* path, uint8_t** bytes, size_t* size) {
-    FILE* f=fopen(path,"rb"); long n;
-    CHECK(f != NULL && fseek(f,0,SEEK_END)==0); n=ftell(f); CHECK(n>0 && fseek(f,0,SEEK_SET)==0);
-    *bytes=(uint8_t*)malloc((size_t)n); CHECK(*bytes != NULL && fread(*bytes,1,(size_t)n,f)==(size_t)n);
-    CHECK(fclose(f)==0); *size=(size_t)n; return 0;
-}
 
 /* Unselected selectors and inactive values hold unreadable garbage: a name
  * count far beyond its two-byte literal, or a nonexistent input ID. */
@@ -68,7 +55,7 @@ int main(int argc, char** argv) {
     const size_t f32_end=offsetof(iprop_parameter_override_ex,f32)+4;
     const size_t color_end=offsetof(iprop_parameter_override_ex,color)+4;
     memcpy(&raw_color,&color,4);
-    CHECK(argc==2 && fixture(argv[1],&bytes,&size)==0);
+    CHECK(argc==2 && read_fixture(argv[1],&bytes,&size)==0);
     CHECK(iprop_program_load_ex(bytes,size,&program,NULL)==IPROP_EX_OK);
     CHECK(iprop_parameters_create(program,&parameters,NULL)==IPROP_EX_OK);
     CHECK(iprop_library_info_ex_init(&library,sizeof(library))==IPROP_EX_OK);
@@ -112,9 +99,9 @@ int main(int argc, char** argv) {
     CHECK(iprop_parameters_set_overrides(parameters,list,5,sizeof(list[0]),&error)==IPROP_EX_OK);
     CHECK(error.status==IPROP_EX_OK && error.reason==IPROP_REASON_NONE && error.message_required_bytes==0 && message[0]=='\0');
     CHECK(snapshot(parameters,got)==0);
-    CHECK(got[1].type==IPROP_INPUT_F32 && bits(&got[1].f32)==nan && got[1].u32==0);
-    CHECK(got[4].u32==7 && got[5].u32==UINT32_MAX && bits(&got[2].f32)==negative_zero);
-    CHECK(memcmp(&got[0].color,&color,4)==0 && bits(&got[0].f32)==0);
+    CHECK(got[1].type==IPROP_INPUT_F32 && float_bits(&got[1].f32)==nan && got[1].u32==0);
+    CHECK(got[4].u32==7 && got[5].u32==UINT32_MAX && float_bits(&got[2].f32)==negative_zero);
+    CHECK(memcmp(&got[0].color,&color,4)==0 && float_bits(&got[0].f32)==0);
     for(id=3;id<INPUTS;id+=3) CHECK(memcmp(&got[id],&defaults[id],sizeof(got[id]))==0);
     CHECK(memcmp(&got[7],&defaults[7],sizeof(got[7]))==0);
 
@@ -124,17 +111,17 @@ int main(int argc, char** argv) {
     CHECK(snapshot(parameters,defaults)==0 && memcmp(defaults,got,sizeof(got))==0);
     single=by_name("zero",IPROP_INPUT_F32,one);
     CHECK(iprop_parameters_set_overrides(parameters,&single,1,sizeof(single),&error)==IPROP_EX_OK);
-    CHECK(snapshot(parameters,got)==0 && bits(&got[1].f32)==one);
+    CHECK(snapshot(parameters,got)==0 && float_bits(&got[1].f32)==one);
     single=by_id(1,IPROP_INPUT_F32,negative_zero);
     CHECK(iprop_parameters_set_overrides(parameters,&single,1,sizeof(single),&error)==IPROP_EX_OK);
-    CHECK(snapshot(parameters,got)==0 && bits(&got[1].f32)==negative_zero);
+    CHECK(snapshot(parameters,got)==0 && float_bits(&got[1].f32)==negative_zero);
     { iprop_parameter_value_ex value; float two=2.0f;
       CHECK(iprop_parameter_value_ex_init(&value,sizeof(value))==IPROP_EX_OK); value.type=IPROP_INPUT_F32; value.f32=two;
       CHECK(iprop_parameters_set(parameters,1,&value,&error)==IPROP_EX_OK);
       CHECK(iprop_parameters_set(parameters,1,&value,&error)==IPROP_EX_OK);
-      CHECK(snapshot(parameters,got)==0 && bits(&got[1].f32)==bits(&two)); }
+      CHECK(snapshot(parameters,got)==0 && float_bits(&got[1].f32)==float_bits(&two)); }
     CHECK(iprop_parameters_set_overrides(parameters,&single,1,sizeof(single),&error)==IPROP_EX_OK);
-    CHECK(snapshot(parameters,got)==0 && bits(&got[1].f32)==negative_zero);
+    CHECK(snapshot(parameters,got)==0 && float_bits(&got[1].f32)==negative_zero);
 
     /* One list cannot name an input twice, by ID, by name or mixed; the
      * duplicate is reported before its value type is considered. */
@@ -214,7 +201,7 @@ int main(int argc, char** argv) {
       for(n=0;n<3;++n) { single=by_id(f32_ids[n],IPROP_INPUT_F32,f32_values[n]); single.struct_size=(uint32_t)f32_end;
           memcpy(packed+n*f32_end,&single,f32_end); }
       CHECK(iprop_parameters_set_overrides(parameters,(const iprop_parameter_override_ex*)(void*)packed,3,(uint32_t)f32_end,&error)==IPROP_EX_OK);
-      CHECK(snapshot(parameters,got)==0 && bits(&got[1].f32)==one && bits(&got[2].f32)==nan && bits(&got[3].f32)==negative_zero);
+      CHECK(snapshot(parameters,got)==0 && float_bits(&got[1].f32)==one && float_bits(&got[2].f32)==nan && float_bits(&got[3].f32)==negative_zero);
       free(packed);
       packed=(unsigned char*)malloc(color_end); CHECK(packed!=NULL);
       single=by_name("tint",IPROP_INPUT_COLOR,UINT32_C(0x08070605)); single.struct_size=(uint32_t)color_end;
@@ -255,7 +242,7 @@ int main(int argc, char** argv) {
       error.message_buffer=message; error.message_capacity=sizeof(message);
       /* The same storage succeeds once error text cannot land in it. */
       CHECK(iprop_parameters_set_overrides(parameters,pair,2,sizeof(pair[0]),&error)==IPROP_EX_OK);
-      CHECK(snapshot(parameters,got)==0 && got[4].u32==3 && bits(&got[1].f32)==one);
+      CHECK(snapshot(parameters,got)==0 && got[4].u32==3 && float_bits(&got[1].f32)==one);
     }
 
     /* A malformed capacity cannot hide readable name fields from alias

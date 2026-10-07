@@ -1,19 +1,6 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "parameters: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
-static uint32_t bits(const float* f) { uint32_t value; memcpy(&value, f, 4); return value; }
-static uint32_t read_u32(const uint8_t* b) { return (uint32_t)b[0] | (uint32_t)b[1] << 8 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24; }
-static void write_u32(uint8_t* b, uint32_t v) { b[0]=(uint8_t)v; b[1]=(uint8_t)(v>>8); b[2]=(uint8_t)(v>>16); b[3]=(uint8_t)(v>>24); }
-static int fixture(const char* path, uint8_t** bytes, size_t* size) {
-    FILE* f=fopen(path,"rb"); long n;
-    CHECK(f != NULL && fseek(f,0,SEEK_END)==0); n=ftell(f); CHECK(n>0 && fseek(f,0,SEEK_SET)==0);
-    *bytes=(uint8_t*)malloc((size_t)n); CHECK(*bytes != NULL && fread(*bytes,1,(size_t)n,f)==(size_t)n);
-    CHECK(fclose(f)==0); *size=(size_t)n; return 0;
-}
 int main(int argc, char** argv) {
     uint8_t *bytes,*empty_bytes; size_t size,empty_size;
     iprop_program *program=NULL,*empty=NULL;
@@ -24,7 +11,7 @@ int main(int argc, char** argv) {
     iprop_error_ex error;
     char message[96]; uint32_t count,id,capacity,type;
     const uint32_t integer_defaults[]={UINT32_MAX,UINT32_C(0xfffffff9),UINT32_C(0x80000000),UINT32_C(0x7fffffff)};
-    CHECK(argc==3 && fixture(argv[1],&bytes,&size)==0 && fixture(argv[2],&empty_bytes,&empty_size)==0);
+    CHECK(argc==3 && read_fixture(argv[1],&bytes,&size)==0 && read_fixture(argv[2],&empty_bytes,&empty_size)==0);
     CHECK(iprop_error_ex_init(&error,sizeof(error))==IPROP_EX_OK); error.message_buffer=message; error.message_capacity=sizeof(message);
     CHECK(iprop_program_load_ex(bytes,size,&program,&error)==IPROP_EX_OK);
     CHECK(iprop_program_load_ex(empty_bytes,empty_size,&empty,&error)==IPROP_EX_OK); free(empty_bytes);
@@ -40,13 +27,13 @@ int main(int argc, char** argv) {
     for(id=0;id<count;++id) {
         CHECK(iprop_program_input_get(program,id,&input,&error)==IPROP_EX_OK);
         CHECK(iprop_parameters_get_named(parameters,input.name,&got,&error)==IPROP_EX_OK && got.type==input.type);
-        if(input.type==IPROP_INPUT_COLOR) CHECK(memcmp(&got.color,&input.color_default,4)==0 && bits(&got.f32)==0 && got.u32==0);
-        if(input.type==IPROP_INPUT_F32) CHECK(bits(&got.f32)==bits(&input.f32_default) && got.u32==0 && got.color.a==0);
-        if(input.type==IPROP_INPUT_U32) CHECK(got.u32==input.u32_default && bits(&got.f32)==0 && got.color.a==0);
+        if(input.type==IPROP_INPUT_COLOR) CHECK(memcmp(&got.color,&input.color_default,4)==0 && float_bits(&got.f32)==0 && got.u32==0);
+        if(input.type==IPROP_INPUT_F32) CHECK(float_bits(&got.f32)==float_bits(&input.f32_default) && got.u32==0 && got.color.a==0);
+        if(input.type==IPROP_INPUT_U32) CHECK(got.u32==input.u32_default && float_bits(&got.f32)==0 && got.color.a==0);
         CHECK(iprop_parameters_get(parameters,id,&value,NULL)==IPROP_EX_OK && memcmp(&got,&value,sizeof(value))==0);
     }
     for(id=4;id<8;++id) CHECK(iprop_parameters_get(parameters,id,&got,NULL)==IPROP_EX_OK && got.type==IPROP_INPUT_U32 && got.u32==integer_defaults[id-4]);
-    CHECK(iprop_parameters_get(parameters,1,&got,&error)==IPROP_EX_OK && bits(&got.f32)==UINT32_C(0x80000000));
+    CHECK(iprop_parameters_get(parameters,1,&got,&error)==IPROP_EX_OK && float_bits(&got.f32)==UINT32_C(0x80000000));
 
     /* Exact setter allocations omit all inactive trailing fields. Too short
      * values fail without changing the previous value. */
@@ -69,8 +56,8 @@ int main(int argc, char** argv) {
         CHECK(iprop_parameters_get(parameters,selected,&got,NULL)==IPROP_EX_OK);
         if(capacity<required) CHECK(memcmp(&got,&before,sizeof(got))==0);
         else if(type==0) CHECK(got.color.r==1 && got.color.g==2 && got.color.b==3 && got.color.a==4);
-        else if(type==1) CHECK(bits(&got.f32)==raw && got.color.a==0 && got.u32==0);
-        else CHECK(got.u32==raw && bits(&got.f32)==0 && got.color.a==0);
+        else if(type==1) CHECK(float_bits(&got.f32)==raw && got.color.a==0 && got.u32==0);
+        else CHECK(got.u32==raw && float_bits(&got.f32)==0 && got.color.a==0);
         free(storage);
     }
     /* All exact getter and initializer prefixes preserve partial fields/tail. */
@@ -153,7 +140,7 @@ int main(int argc, char** argv) {
     /* Readable name/value inputs may share storage; inactive color is ignored. */
     memcpy(&value.color,"zero",4);
     CHECK(iprop_parameters_set_named(parameters,(iprop_utf8_view){(const char*)&value.color,4},&value,&error)==IPROP_EX_OK);
-    CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && bits(&got.f32)==UINT32_C(0x80000000) && got.color.a==0);
+    CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && float_bits(&got.f32)==UINT32_C(0x80000000) && got.color.a==0);
     /* Real executable names, including embedded NUL and an actual empty name. */
     { uint8_t* modified=(uint8_t*)malloc(size); size_t at=0,name_at=0; uint32_t section,strings,const_entry=0;
       const char exact[]={(char)0xc3,(char)0xa9,'\0','x','\0'};
@@ -201,7 +188,7 @@ int main(int argc, char** argv) {
     }
     /* Retained data supports exact lookup after the original handle is freed. */
     iprop_program_free(program); program=NULL; memset(bytes,0,size); free(bytes);
-    CHECK(iprop_parameters_get_named(parameters,(iprop_utf8_view){"zero",4},&got,&error)==IPROP_EX_OK && bits(&got.f32)==UINT32_C(0x80000000));
+    CHECK(iprop_parameters_get_named(parameters,(iprop_utf8_view){"zero",4},&got,&error)==IPROP_EX_OK && float_bits(&got.f32)==UINT32_C(0x80000000));
     CHECK(error.status==IPROP_EX_OK && message[0]=='\0');
     CHECK(iprop_parameters_set_named(clone,(iprop_utf8_view){"zero",4},&value,NULL)==IPROP_EX_OK);
     iprop_parameters_free(parameters);

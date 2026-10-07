@@ -1,11 +1,5 @@
 #include "iprop.h"
-
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "error descriptor: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 int main(void) {
     iprop_error_ex error;

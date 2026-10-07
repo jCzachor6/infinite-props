@@ -1,19 +1,10 @@
 #include "iprop.h"
-
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "generate_ex: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 static int fixture(const char* dir, const char* name, iprop_program** program) {
-    char path[1024]; FILE* f; long n; uint8_t* bytes;
+    char path[1024]; size_t n; uint8_t* bytes;
     snprintf(path,sizeof(path),"%s/%s",dir,name);
-    f=fopen(path,"rb");
-    CHECK(f != NULL && fseek(f,0,SEEK_END)==0); n=ftell(f); CHECK(n>0 && fseek(f,0,SEEK_SET)==0);
-    bytes=(uint8_t*)malloc((size_t)n); CHECK(bytes != NULL && fread(bytes,1,(size_t)n,f)==(size_t)n);
-    CHECK(fclose(f)==0);
+    CHECK(read_fixture(path,&bytes,&n)==0);
     CHECK(iprop_program_load_ex(bytes,(uint64_t)n,program,NULL)==IPROP_EX_OK);
     free(bytes); return 0;
 }

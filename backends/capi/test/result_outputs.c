@@ -1,10 +1,6 @@
 #include "iprop.h"
+#include "check.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "result outputs: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
 #define FIELD(n) {offsetof(iprop_result_output_view_ex, n), sizeof(((iprop_result_output_view_ex*)0)->n)}
 typedef struct { size_t offset, size; } field;
 static const field outputs[] = {FIELD(output_index), FIELD(owner), FIELD(kind), FIELD(is_list),
@@ -364,16 +360,6 @@ static int raw_values(void) {
         CHECK(typed(result, kind, 0, view.kind, copy, sizeof(copy), NULL) == IPROP_EX_E_ARGUMENT);
     }
     iprop_result_free(result);
-    return 0;
-}
-static int read_fixture(const char* path, uint8_t** bytes, size_t* size) {
-    FILE* file = fopen(path, "rb");
-    long length;
-    CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    length = ftell(file); CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-    *bytes = (uint8_t*)malloc((size_t)length); CHECK(*bytes != NULL);
-    CHECK(fread(*bytes, 1, (size_t)length, file) == (size_t)length && fclose(file) == 0);
-    *size = (size_t)length;
     return 0;
 }
 static int slots(const iprop_program* program, const iprop_result* result, uint32_t variant) {

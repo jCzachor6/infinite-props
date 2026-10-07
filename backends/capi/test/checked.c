@@ -1,14 +1,8 @@
 #include "iprop.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#define CHECK(c) do { if (!(c)) { fprintf(stderr, "checked API: line %d: %s\n", __LINE__, #c); return 1; } } while (0)
+#include "check.h"
 
 int main(int argc, char** argv) {
-    FILE* file;
-    long length;
+    size_t length;
     uint8_t* bytes;
     const uint8_t junk[] = {1, 2, 3};
     iprop_program* program = NULL;
@@ -19,13 +13,7 @@ int main(int argc, char** argv) {
     char message[128];
     uint32_t capacity;
     CHECK(argc == 2);
-    file = fopen(argv[1], "rb");
-    CHECK(file != NULL && fseek(file, 0, SEEK_END) == 0);
-    length = ftell(file);
-    CHECK(length > 0 && fseek(file, 0, SEEK_SET) == 0);
-    bytes = (uint8_t*)malloc((size_t)length);
-    CHECK(bytes != NULL && fread(bytes, 1, (size_t)length, file) == (size_t)length);
-    CHECK(fclose(file) == 0);
+    CHECK(read_fixture(argv[1], &bytes, &length) == 0);
     CHECK(iprop_error_ex_init(&error, sizeof(error)) == IPROP_EX_OK);
     error.message_buffer = message;
     error.message_capacity = sizeof(message);
@@ -200,7 +188,7 @@ int main(int argc, char** argv) {
         iprop_result_free(result);
     }
     /* Loaded storage is independent of the caller's byte array. */
-    memset(bytes, 0, (size_t)length);
+    memset(bytes, 0, length);
     free(bytes);
     CHECK(iprop_program_query(program, &info, &error) == IPROP_EX_OK);
     {
