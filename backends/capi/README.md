@@ -61,7 +61,7 @@ When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
 prefix in `CMAKE_PREFIX_PATH` for both the library and external consumers.
 This also recognizes the `zs`/`zsd` names used by zlib 1.3.2 on Windows.
 
-## C99 parameter panel example
+## C99 examples
 
 [`examples/c/parameter_panel.c`](../../examples/c/parameter_panel.c) builds a
 host-owned model from root-input reflection. Rows keep the resolved root ID,
@@ -72,9 +72,18 @@ aliases appear as U32 bit patterns. The schema supplies no UI ranges or
 recoverable signed source type. Borrowed program views expire at
 `iprop_program_free`, even if a parameter handle retains internal program data.
 
-The source and its standalone CMake project ship in `share/iprop/examples/c`
-in the installed SDK. Build it from a relocated SDK, compile a real source
-fixture and inspect both panel models (`SDK` is the relocated prefix):
+[`examples/c/render_inputs.c`](../../examples/c/render_inputs.c) renders an
+asset with host-chosen inputs: `iprop_program_load_ex`, one parameter set
+filled from `name=value` arguments through the typed named setters (by the
+type `iprop_parameters_get_named` reports), `iprop_generate_ex`, the borrowed
+image view written as an RGBA PAM file and the result statistics. Every
+failure prints the structured status, reason, stage and VM location, e.g.
+`missing=1 failed: input name was not found (status 4, reason 4005, stage 3)`.
+
+The sources and their standalone CMake project ship in
+`share/iprop/examples/c` in the installed SDK. Build them from a relocated SDK,
+compile a real source fixture and run both linkages (`SDK` is the relocated
+prefix):
 
 ```sh
 cmake -S "$SDK/share/iprop/examples/c" -B panel-build -DCMAKE_PREFIX_PATH="$SDK"
@@ -82,13 +91,14 @@ cmake --build panel-build --config Release
 "$SDK/bin/ipc" "$SDK/share/iprop/examples/recipes/24-uniform-emblem.ips" -o panel.iprop
 ./panel-build/parameter_panel_shared panel.iprop
 ./panel-build/parameter_panel_static panel.iprop
+./panel-build/render_inputs_shared panel.iprop emblem.pam accent=#ff8800 density=3
 ```
 
 With a multi-configuration generator the executables are under
 `panel-build/Release`; Windows shared execution also needs the SDK's `bin`
 directory in `PATH`. The static target propagates `IPROP_CAPI_STATIC` and its
-runtime dependencies. These examples reflect declarations without generating
-an image or constructing parameter handles.
+runtime dependencies. The panel reflects declarations without generating an
+image or constructing parameter handles.
 
 The standalone project uses `find_package(iprop 0.4 CONFIG REQUIRED)` and
 links `iprop::capi` / `iprop::capi_static`; the static executable selects the

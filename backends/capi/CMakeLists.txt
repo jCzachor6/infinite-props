@@ -48,11 +48,13 @@ endforeach()
 set(capi_shared iprop_capi)
 set(capi_static iprop_capi_static)
 
-# A real C99 host example, built against both forms of the installed C ABI.
-foreach(linkage shared static)
-    add_executable(parameter_panel_${linkage} ${CMAKE_SOURCE_DIR}/examples/c/parameter_panel.c)
-    target_link_libraries(parameter_panel_${linkage} PRIVATE ${capi_${linkage}})
-    iprop_warnings(parameter_panel_${linkage})
+# Real C99 host examples, built against both forms of the installed C ABI.
+foreach(example parameter_panel render_inputs)
+    foreach(linkage shared static)
+        add_executable(${example}_${linkage} ${CMAKE_SOURCE_DIR}/examples/c/${example}.c)
+        target_link_libraries(${example}_${linkage} PRIVATE ${capi_${linkage}})
+        iprop_warnings(${example}_${linkage})
+    endforeach()
 endforeach()
 
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
@@ -232,6 +234,7 @@ iprop_capi_test(capi_parameters_errors test/parameters_errors.cpp
 
 foreach(linkage shared static)
     add_dependencies(parameter_panel_${linkage} capi_golden)
+    add_dependencies(render_inputs_${linkage} capi_golden)
     if(Python3_Interpreter_FOUND)
         add_test(NAME capi_parameter_panel_${linkage}
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_parameter_panel.py
@@ -239,6 +242,11 @@ foreach(linkage shared static)
                 ${golden}/reflection-defaults.iprop
                 ${golden}/reflection-empty.iprop
                 ${golden}/reflection-parts-plain.iprop)
+        add_test(NAME capi_render_inputs_${linkage}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/check_render_inputs.py
+                $<TARGET_FILE:render_inputs_${linkage}>
+                ${golden}/uniforms.iprop
+                ${golden}/error-trap.iprop)
     endif()
 endforeach()
 
