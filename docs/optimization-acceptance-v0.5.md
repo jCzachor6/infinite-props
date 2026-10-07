@@ -1,24 +1,23 @@
 # Source-language 0.5 runtime and optimization matrix
 
-Measured locally on macOS arm64 against source `a1ffab9d56dea117168862a00dc9e346389e13ed`.
-The measured product was 0.4.0, with source language 0.5, format 0.4, C API 0.3 and
-C ABI 0.4. The versioned `benchmarks/runtime/language-v0.5-matrix.json` summary
+Measured locally on macOS arm64 against source `e7f730063ad61f3d6a67b48dfdfae7b9dd84e19a`:
+product 0.5.0, source language 0.5, format 0.4, C API 0.3 and C ABI 0.4.
+The versioned `benchmarks/runtime/language-v0.5-matrix.json` summary
 pins the tools, harnesses, complete reports, frozen manifest and supplied WASM.
-These observations include the nlohmann/Markdown tooling integrations. The complete
-reports and backend evidence are retained in
+The complete reports and backend evidence are retained in
 `benchmarks/runtime/language-v0.5-reports-macos-arm64.tar.gz`; its manifest
 records every uncompressed member hash.
 
 The new harness executes the **actual preserved 0.4 binaries with current
-`ipgen`**. All 1,380 image/raw-output results, 120 trap results and five raw
+`ipgen`**. All 1,340 image/raw-output results, 120 trap results and five raw
 RNG probes match the frozen manifest. Fuel budget and spent fuel also match
 for the unchanged binaries. This is separate from the archive integrity check;
 `capture_v04_baseline.py --verify` alone does not test the current runtime.
 The original release tools, sources, images, output JSON and manifest are read
 only throughout the run.
 
-The source matrix extracts all 87 released `.ips` blobs exactly and separately
-uses all 111 current tracked `.ips` files, including 38 registered current
+The source matrix extracts all 85 released `.ips` blobs exactly and separately
+uses all 109 current tracked `.ips` files, including 37 registered current
 language examples, named helper/call effects, signed declarations, parts and
 the 24 recipes. Every entry runs all eight combinations of reference/optimized,
 debug/stripped and automatic compression/expanded output, for seeds
@@ -27,8 +26,8 @@ remain expanded under the compression setting, as required by the format.
 
 | Corpus | Compile attempts | Expected rejected attempts | Successful generations | Traps |
 | --- | ---: | ---: | ---: | ---: |
-| Exact released sources | 696 | 80 | 2,840 | 240 |
-| Current sources | 888 | 120 | 3,560 | 280 |
+| Exact released sources | 680 | 80 | 2,760 | 240 |
+| Current sources | 872 | 120 | 3,480 | 280 |
 
 Ten historical rejection programs still reject in every configuration.
 Two old rejection programs now compile through the implemented signed-default
@@ -44,38 +43,40 @@ counted as eight-mode standalone corpus entries.
 
 | Current artifact mode | Reference total | Optimized total |
 | --- | ---: | ---: |
-| Expanded, debug | 180,816 bytes | 161,906 bytes |
-| Expanded, stripped | 103,884 bytes | 94,246 bytes |
-| Automatic compression, debug | 43,279 bytes | 42,047 bytes |
-| Automatic compression, stripped | 37,291 bytes | 36,246 bytes |
+| Expanded, debug | 179,419 bytes | 160,668 bytes |
+| Expanded, stripped | 102,983 bytes | 93,416 bytes |
+| Automatic compression, debug | 42,723 bytes | 41,504 bytes |
+| Automatic compression, stripped | 36,809 bytes | 35,771 bytes |
 
 **Every expanded optimized artifact fits its own expanded reference.**
 Automatic packing also fits its corresponding expanded artifact and expands
 back to exactly those bytes. Compression entropy is reported separately:
-52 released-source and 65 current-source compressed pairs are larger after
+51 released-source and 64 current-source compressed pairs are larger after
 optimization despite passing the expanded size gate. For example, the current
 bezier debug container grows from 607 to 649 bytes. This does not establish a
 compressed optimized ≤ compressed reference guarantee; the existing optimizer
 gate measures expanded artifacts.
 
 Historical size comparison is separate from that gate. Recompiling the same
-released sources produces exactly the frozen sizes across all 300 comparable
-plain artifacts: 496,096 bytes before and after. For current files sharing
-those source paths the total becomes 496,436 bytes, a 340-byte increase in six
+released sources produces exactly the frozen sizes across all 292 comparable
+plain artifacts: 491,730 bytes before and after. For current files sharing
+those source paths the total becomes 492,070 bytes, a 340-byte increase in six
 artifacts, all with changed source bytes. `palettes.ips` adds signed palette
 constants and reference arithmetic; `syntax.ips` adds declaration separators,
 a signed input and an observable point output. The summary lists each delta.
 New source paths have no historical source-level size measurement.
 
-The supplied new WASM module runs **these same 1,685 binary artifacts** and
-matches 7,785 exact images/raw outputs and 640 trap reasons, including the
+The supplied new WASM module runs **these same 1,645 binary artifacts** and
+matches 7,585 exact images/raw outputs and 640 trap reasons, including the
 preserved binaries and RNG oracle. Its independently supplied conformance
-report also records 276 wider-control image/output comparisons, 19 traps,
+report also records 271 wider-control image/output comparisons, 19 traps,
 6,292 vector boundaries, 29 color boundaries, seven historical compressed
 images and twelve rejected envelopes. Runtime and HTML5 source bytes match
 the pinned source; the WASM module was reused, not rebuilt by this harness.
 
-The archive also joins the separate backend evidence: all 69 root CTests,
+The archive also joins the separate backend evidence, measured earlier at
+`a1ffab9` with the same runtime sources (the SFML/Godot adapters changed later
+and are rechecked by the release gate): all 69 root CTests,
 45 CAPI sanitizer tests, focused SFML and actual Godot sanitizer checks,
 and a physically relocated SDK with independent shared/static consumers.
 Source and installed binary hashes are retained. This focused backend corpus

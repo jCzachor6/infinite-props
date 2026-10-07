@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "measurement_kind": "actual current native matrix and exact artifact WASM comparison",
-  "source_commit": "a1ffab9d56dea117168862a00dc9e346389e13ed",
+  "source_commit": "e7f730063ad61f3d6a67b48dfdfae7b9dd84e19a",
   "versions": {
-    "product_version": "0.4.0",
+    "product_version": "0.5.0",
     "language_version": "0.5",
     "format_version": "0.4",
     "c_api_version": "0.3",
@@ -11,10 +11,10 @@
   },
   "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
   "frozen_release": "66d34c2831585afb231022da9296528a912e962e",
-  "frozen_manifest_sha256": "5de0fd814fa409a170d30546265e670fb091c9964eeb0253564cbb07cafbbf28",
+  "frozen_manifest_sha256": "66ae84a2b16e6312bebc37a3e44e08a6c586a5b69cf8dddc2cd7b73ed7dde628",
   "native_tools_sha256": {
-    "ipc": "b1ede504f655acb476c3dbd0604a0814274457bb7e855d6aa0a6ef9fe4209863",
-    "ipgen": "3d2614efc2eb7d913dedca0f9b1c26842d6d279891b37d673e35d93d6dee9b5d",
+    "ipc": "6fbf9110ea630fb398316d3a91b27847f4bb0eba7e3d17d1aac98804e45d966c",
+    "ipgen": "1b02606fb7afcb285b0f779ea7d693c285d5a472ee046ede66878e91dde05130",
     "ipa": "a83b7166ac7db6a833aa8bb849ff65280154e7be2fac90bcb2a6fb11fd9ad2f2"
   },
   "harness_sha256": {
@@ -24,13 +24,13 @@
   "full_reports": {
     "native": {
       "filename": "native-runtime-matrix.json",
-      "sha256": "963575dbd4f6c1fc64730239f71027ba4e4436932b60ecec269651718fa5edbc",
-      "bytes": 11460165
+      "bytes": 12937099,
+      "sha256": "d0be2a75e6484278903754819399f621acadccf0981e48e06995426e3025dbd2"
     },
     "wasm": {
       "filename": "wasm-runtime-matrix.json",
-      "sha256": "aa3568a5ab38da98efeaf2b895e638bb414964000c0ef2d594ee054ef11e6cc6",
-      "bytes": 2486071
+      "bytes": 2425260,
+      "sha256": "e7c865d70ae1452076257a2b1b687553797ab394dcb47db55bb9a84f436c8dd3"
     }
   },
   "scope": {
@@ -67,51 +67,51 @@
   },
   "summary": {
     "released_sources": {
-      "sources": 87,
-      "compile_attempts": 696,
+      "sources": 85,
+      "compile_attempts": 680,
       "compile_rejections": 80,
-      "successful_generations": 2840,
+      "successful_generations": 2760,
       "traps": 240,
       "artifact_bytes": {
         "debug/plain/reference": {
-          "bytes": 167528,
-          "expanded_bytes": 167528
+          "bytes": 166131,
+          "expanded_bytes": 166131
         },
         "debug/plain/optimized": {
-          "bytes": 149798,
-          "expanded_bytes": 149798
+          "bytes": 148560,
+          "expanded_bytes": 148560
         },
         "debug/compress/reference": {
-          "bytes": 38140,
-          "expanded_bytes": 167528
+          "bytes": 37584,
+          "expanded_bytes": 166131
         },
         "debug/compress/optimized": {
-          "bytes": 36935,
-          "expanded_bytes": 149798
+          "bytes": 36392,
+          "expanded_bytes": 148560
         },
         "stripped/plain/reference": {
-          "bytes": 94720,
-          "expanded_bytes": 94720
+          "bytes": 93819,
+          "expanded_bytes": 93819
         },
         "stripped/plain/optimized": {
-          "bytes": 85650,
-          "expanded_bytes": 85650
+          "bytes": 84820,
+          "expanded_bytes": 84820
         },
         "stripped/compress/reference": {
-          "bytes": 32808,
-          "expanded_bytes": 94720
+          "bytes": 32326,
+          "expanded_bytes": 93819
         },
         "stripped/compress/optimized": {
-          "bytes": 31795,
-          "expanded_bytes": 85650
+          "bytes": 31320,
+          "expanded_bytes": 84820
         }
       },
       "expanded_optimized_no_growth_passed": true,
-      "compressed_optimized_larger_pairs": 52,
+      "compressed_optimized_larger_pairs": 51,
       "historical_size": {
-        "matched_plain_artifacts": 300,
-        "released_bytes": 496096,
-        "current_bytes": 496096,
+        "matched_plain_artifacts": 292,
+        "released_bytes": 491730,
+        "current_bytes": 491730,
         "delta_bytes": 0,
         "grown_artifacts": 0,
         "shrunk_artifacts": 0,
@@ -119,51 +119,51 @@
       }
     },
     "current_sources": {
-      "sources": 111,
-      "compile_attempts": 888,
+      "sources": 109,
+      "compile_attempts": 872,
       "compile_rejections": 120,
-      "successful_generations": 3560,
+      "successful_generations": 3480,
       "traps": 280,
       "artifact_bytes": {
         "debug/plain/reference": {
-          "bytes": 180816,
-          "expanded_bytes": 180816
+          "bytes": 179419,
+          "expanded_bytes": 179419
         },
         "debug/plain/optimized": {
-          "bytes": 161906,
-          "expanded_bytes": 161906
+          "bytes": 160668,
+          "expanded_bytes": 160668
         },
         "debug/compress/reference": {
-          "bytes": 43279,
-          "expanded_bytes": 180816
+          "bytes": 42723,
+          "expanded_bytes": 179419
         },
         "debug/compress/optimized": {
-          "bytes": 42047,
-          "expanded_bytes": 161906
+          "bytes": 41504,
+          "expanded_bytes": 160668
         },
         "stripped/plain/reference": {
-          "bytes": 103884,
-          "expanded_bytes": 103884
+          "bytes": 102983,
+          "expanded_bytes": 102983
         },
         "stripped/plain/optimized": {
-          "bytes": 94246,
-          "expanded_bytes": 94246
+          "bytes": 93416,
+          "expanded_bytes": 93416
         },
         "stripped/compress/reference": {
-          "bytes": 37291,
-          "expanded_bytes": 103884
+          "bytes": 36809,
+          "expanded_bytes": 102983
         },
         "stripped/compress/optimized": {
-          "bytes": 36246,
-          "expanded_bytes": 94246
+          "bytes": 35771,
+          "expanded_bytes": 93416
         }
       },
       "expanded_optimized_no_growth_passed": true,
-      "compressed_optimized_larger_pairs": 65,
+      "compressed_optimized_larger_pairs": 64,
       "historical_size": {
-        "matched_plain_artifacts": 300,
-        "released_bytes": 496096,
-        "current_bytes": 496436,
+        "matched_plain_artifacts": 292,
+        "released_bytes": 491730,
+        "current_bytes": 492070,
         "delta_bytes": 340,
         "grown_artifacts": 6,
         "shrunk_artifacts": 0,
@@ -200,25 +200,25 @@
   },
   "frozen_current_runtime": {
     "passed": true,
-    "successful_generations": 1385,
+    "successful_generations": 1345,
     "traps": 120
   },
   "wasm_matrix": {
     "passed": true,
-    "images_and_output_comparisons": 7785,
+    "images_and_output_comparisons": 7585,
     "trap_comparisons": 640,
-    "binary_artifacts": 1685,
+    "binary_artifacts": 1645,
     "reused_module_sha256": {
       "iprop.js": "3043e9ec2b6c90e1fb10d333e7352b119c0ceeb02c521ed808338f157f70f82f",
       "iprop.wasm": "cb7dd54d3248ee9bb18b33b445ef3fc39cbb4e842c0a2f39deb1f167662fef44"
     }
   },
   "separate_root_wasm_conformance": {
-    "sha256": "58f9b0bb0132e83abe40986675c5d7f5b068a21d54979f1ed849c46b4f3153c6",
+    "sha256": "60befd69fb23733fbac4e8dd00d484fec4611ed29a7f8fada08e5ac93cbd9414",
     "native": {
       "passed": true,
       "failures": [],
-      "comparisons": 276,
+      "comparisons": 271,
       "trapComparisons": 19,
       "vectorComparisons": 6292,
       "colorComparisons": 29
@@ -227,13 +227,12 @@
       "images": 7,
       "rejections": 12
     },
-    "provenance": "WASM built separately by root; recorded runtime/html5 sources match both f3af40c and measured a1ffab9; exact source proof in report archive."
+    "provenance": "WASM built from 18520b4; runtime/html5 sources are identical at the measured commit (wasm-source-proof.json)."
   },
   "historical_growth": {
     "delta_bytes": 340,
     "changed_source_artifacts": [
       {
-        "source": "examples/language/palettes.ips",
         "mode": "debug",
         "optimization": "reference",
         "released_bytes": 660,
@@ -242,7 +241,6 @@
         "same_source_bytes": false
       },
       {
-        "source": "examples/language/palettes.ips",
         "mode": "stripped",
         "optimization": "reference",
         "released_bytes": 424,
@@ -251,7 +249,6 @@
         "same_source_bytes": false
       },
       {
-        "source": "examples/language/syntax.ips",
         "mode": "debug",
         "optimization": "reference",
         "released_bytes": 518,
@@ -260,7 +257,6 @@
         "same_source_bytes": false
       },
       {
-        "source": "examples/language/syntax.ips",
         "mode": "debug",
         "optimization": "optimized",
         "released_bytes": 348,
@@ -269,7 +265,6 @@
         "same_source_bytes": false
       },
       {
-        "source": "examples/language/syntax.ips",
         "mode": "stripped",
         "optimization": "reference",
         "released_bytes": 346,
@@ -278,7 +273,6 @@
         "same_source_bytes": false
       },
       {
-        "source": "examples/language/syntax.ips",
         "mode": "stripped",
         "optimization": "optimized",
         "released_bytes": 252,
@@ -300,14 +294,14 @@
     "passed": true,
     "test_cases": 17,
     "assertions": 13860,
-    "test_binary_sha256": "abd695e2eca10e67c62523484e3dffedb5519abef1b9af7146e6ea4a7b9fbf14",
-    "log_sha256": "b081e101913352d1d0581709166598b44629ac6bbc0b7770fb3c9d25927fefe3",
+    "test_binary_sha256": "21fe73e351a5232a3c8e01c57fdcbd5b8d555c944f1237c7a676422713c3fc75",
+    "log_sha256": "447d0da906c189e688f3267be9fcc55368b79042831ab0bd52a2ec94d20b4337",
     "scope": "shift/comparison grouped oracles and RNG; signed input/default raw bits; named/mixed part controls; named helper binding; bound/shared call plans and aliases. Separate from eight-mode standalone source corpus."
   },
   "report_archive": {
     "filename": "language-v0.5-reports-macos-arm64.tar.gz",
-    "bytes": 593155,
-    "sha256": "7bab5e819168b4d858a5102ee955a240cb5c6d1114d16340701e00494ec971fd",
+    "bytes": 592512,
+    "sha256": "32aeb3042e38a4f570f08b5d452e28390d33eb5e0bf220f043ab3cefac1372ed",
     "members_manifest": "manifest.json"
   },
   "joined_backends": {
