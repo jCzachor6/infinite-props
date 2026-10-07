@@ -6,8 +6,11 @@
 // One-shot modes (no window) make the host's paths scriptable and
 // verifiable against the reference generator:
 //
-//   iprop_sfml [file.iprop] [--seed N] [--variant V]
+//   iprop_sfml [file.iprop] [--seed N] [--variant V] [--set input=value]...
 //              [--export out.png] [--atlas out.png] [--screenshot out.png]
+//
+// --set overrides one declared input: #RRGGBB[AA] colours, decimal f32 and
+// u32 (a leading minus sets an i32 input).
 
 #include "Host.hpp"
 #include "Render.hpp"
@@ -20,6 +23,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -33,10 +37,10 @@ struct RenderedImage {
     std::vector<std::uint8_t> pixels;
 };
 
-RenderedImage generateSingle(iprop_program* program, std::uint32_t seed,
-                             std::uint32_t variant) {
+RenderedImage generateSingle(const iprop_program* program, const iprop_parameters* parameters,
+                             std::uint32_t seed, std::uint32_t variant) {
     const iprop::sfml_host::Result result(
-        iprop::sfml_host::generate(program, seed, variant, 0), iprop_result_free);
+        iprop::sfml_host::generate(program, seed, variant, 0, parameters), iprop_result_free);
     const auto image = iprop::sfml_host::queryImage(result.get());
     RenderedImage out;
     out.width = image.width;
@@ -49,9 +53,9 @@ RenderedImage generateSingle(iprop_program* program, std::uint32_t seed,
 
 // The variant × seed grid: rows are variants (wrapped at the meta count),
 // columns are consecutive seeds.
-RenderedImage generateAtlas(iprop_program* program, const iprop_program_info_ex& meta,
-                            std::uint32_t seed, std::uint32_t variant) {
-    const RenderedImage first = generateSingle(program, seed, variant);
+RenderedImage generateAtlas(const iprop_program* program, const iprop_parameters* parameters,
+                            const iprop_program_info_ex& meta, std::uint32_t seed, std::uint32_t variant) {
+    const RenderedImage first = generateSingle(program, parameters, seed, variant);
     const std::uint32_t tileWidth = first.width;
     const std::uint32_t tileHeight = first.height;
     RenderedImage atlas;
@@ -64,7 +68,7 @@ RenderedImage generateAtlas(iprop_program* program, const iprop_program_info_ex&
             (variant + row) % (meta.variants != 0 ? meta.variants : 1);
         for (std::uint32_t col = 0; col < kAtlasSide; ++col) {
             const RenderedImage tile =
-                generateSingle(program, seed + col, tileVariant);
+                generateSingle(program, parameters, seed + col, tileVariant);
             for (std::uint32_t y = 0; y < tile.height; ++y) {
                 const std::uint8_t* src =
                     tile.pixels.data() + (static_cast<std::size_t>(y) *
@@ -113,6 +117,7 @@ int run(int argc, char** argv) {
     std::string exportPath;
     std::string atlasPath;
     std::string screenshotPath;
+    std::vector<std::pair<std::string, std::string>> inputs;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--seed") {
@@ -125,6 +130,13 @@ int run(int argc, char** argv) {
             atlasPath = nextArg(i, argc, argv, "--atlas");
         } else if (arg == "--screenshot") {
             screenshotPath = nextArg(i, argc, argv, "--screenshot");
+        } else if (arg == "--set") {
+            const std::string assignment = nextArg(i, argc, argv, "--set");
+            const auto equals = assignment.find('=');
+            if (equals == std::string::npos || equals == 0) {
+                throw std::runtime_error("--set requires input=value: " + assignment);
+            }
+            inputs.emplace_back(assignment.substr(0, equals), assignment.substr(equals + 1));
         } else if (arg.rfind("--", 0) == 0) {
             std::fprintf(stderr, "unknown option %s\n", arg.c_str());
             return 2;
@@ -137,11 +149,15 @@ int run(int argc, char** argv) {
     const iprop::sfml_host::Program program(
         iprop::sfml_host::loadProgram(bytes), iprop_program_free);
     const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program.get());
+    const iprop::sfml_host::Parameters parameters = iprop::sfml_host::createParameters(program.get());
+    for (const auto& [name, value] : inputs) {
+        iprop::sfml_host::setParameter(parameters.get(), name, value);
+    }
 
     // The one-shot modes — the same code paths the interactive keys use,
     // exercised without a window.
     if (!exportPath.empty()) {
-        const RenderedImage image = generateSingle(program.get(), seed, variant);
+        const RenderedImage image = generateSingle(program.get(), parameters.get(), seed, variant);
         if (!savePng(image, exportPath)) {
             std::fprintf(stderr, "export to %s failed\n", exportPath.c_str());
             return 1;
@@ -151,7 +167,7 @@ int run(int argc, char** argv) {
     }
     if (!atlasPath.empty()) {
         const RenderedImage atlas =
-            generateAtlas(program.get(), meta, seed, variant);
+            generateAtlas(program.get(), parameters.get(), meta, seed, variant);
         if (!savePng(atlas, atlasPath)) {
             std::fprintf(stderr, "atlas export to %s failed\n",
                          atlasPath.c_str());
@@ -187,7 +203,7 @@ int run(int argc, char** argv) {
     };
 
     if (!screenshotPath.empty()) {
-        uploadSingle(generateSingle(program.get(), seed, variant));
+        uploadSingle(generateSingle(program.get(), parameters.get(), seed, variant));
         window.clear(sf::Color(24, 24, 28));
         window.draw(sprite);
         window.display();
@@ -209,9 +225,9 @@ int run(int argc, char** argv) {
     // The interactive loop.
     const auto refresh = [&]() {
         if (atlas) {
-            uploadAtlas(generateAtlas(program.get(), meta, seed, variant));
+            uploadAtlas(generateAtlas(program.get(), parameters.get(), meta, seed, variant));
         } else {
-            uploadSingle(generateSingle(program.get(), seed, variant));
+            uploadSingle(generateSingle(program.get(), parameters.get(), seed, variant));
         }
         window.setTitle("iprop - " + path + " - seed " +
                         std::to_string(seed) + " variant " +
@@ -257,7 +273,7 @@ int run(int argc, char** argv) {
                     break;
                 case sf::Keyboard::Key::S: {
                     const RenderedImage image =
-                        generateSingle(program.get(), seed, variant);
+                        generateSingle(program.get(), parameters.get(), seed, variant);
                     const std::string outPath =
                         "iprop-export-seed" + std::to_string(seed) +
                         "-variant" + std::to_string(variant) + ".png";

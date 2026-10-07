@@ -5,12 +5,15 @@
 #include "iprop.h"
 #include "../../ResultQueries.hpp"
 
+#include <charconv>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -18,6 +21,36 @@ namespace iprop::sfml_host {
 
 using Program = std::unique_ptr<iprop_program, decltype(&iprop_program_free)>;
 using Result = std::unique_ptr<iprop_result, decltype(&iprop_result_free)>;
+using Parameters = std::unique_ptr<iprop_parameters, decltype(&iprop_parameters_free)>;
+
+// Caller-owned structured error storage for one C API call. The descriptor
+// points at this object's message buffer, so it is neither copied nor moved.
+class Error {
+public:
+    Error() {
+        if (iprop_error_ex_init(&value_, sizeof(value_)) != IPROP_EX_OK) {
+            throw std::runtime_error("iprop error initialization failed");
+        }
+        value_.message_buffer = message_;
+        value_.message_capacity = sizeof(message_);
+    }
+    Error(const Error&) = delete;
+    Error& operator=(const Error&) = delete;
+
+    iprop_error_ex* get() { return &value_; }
+
+    // Throws the operation's message and its stable cause on failure.
+    void check(iprop_status_ex status, const char* operation) const {
+        if (status == IPROP_EX_OK) return;
+        throw std::runtime_error(std::string(operation) + " failed: " +
+                                 (message_[0] != '\0' ? message_ : "no message") +
+                                 " (reason " + std::to_string(value_.reason) + ")");
+    }
+
+private:
+    iprop_error_ex value_{};
+    char message_[512] = {};
+};
 
 // This borrowed view is valid until result_free, including after program_free
 // and later generations. The host copies byte_count bytes before releasing it.
@@ -95,53 +128,90 @@ inline std::vector<std::uint8_t> readFile(const std::string& path) {
 // Loads and validates the file; throws with the located message on
 // failure. The returned handle must be freed by the caller.
 inline iprop_program* loadProgram(const std::vector<std::uint8_t>& bytes) {
-    char error[512] = {};
+    Error error;
     iprop_program* program = nullptr;
-    const iprop_status status = iprop_program_load(bytes.data(), bytes.size(),
-                                                   &program, error,
-                                                   sizeof(error));
-    if (status != IPROP_OK) {
-        throw std::runtime_error(error[0] != '\0' ? error
-                                                  : "iprop_program_load failed");
-    }
+    error.check(iprop_program_load_ex(bytes.data(), bytes.size(), &program, error.get()),
+                "iprop_program_load_ex");
     return program;
 }
 
 // Copies metadata through the sized contract; no borrowed views escape.
 inline iprop_program_info_ex queryProgram(const iprop_program* program) {
     iprop_program_info_ex info;
-    char message[512] = {};
-    iprop_error_ex error;
-    if (iprop_program_info_ex_init(&info, sizeof(info)) != IPROP_EX_OK ||
-        iprop_error_ex_init(&error, sizeof(error)) != IPROP_EX_OK) {
-        throw std::runtime_error("iprop metadata initialization failed");
-    }
-    error.message_buffer = message;
-    error.message_capacity = sizeof(message);
-    if (iprop_program_query(program, &info, &error) != IPROP_EX_OK) {
-        throw std::runtime_error(message[0] != '\0' ? message
-                                                   : "iprop_program_query failed");
-    }
+    Error error;
+    error.check(iprop_program_info_ex_init(&info, sizeof(info)), "iprop_program_info_ex_init");
+    error.check(iprop_program_query(program, &info, error.get()), "iprop_program_query");
     return info;
 }
 
-// Generates one (seed, variant, archetype) tuple; throws on failure. The
+// A parameter set holding the program's declared defaults.
+inline Parameters createParameters(const iprop_program* program) {
+    Error error;
+    iprop_parameters* parameters = nullptr;
+    error.check(iprop_parameters_create(program, &parameters, error.get()), "iprop_parameters_create");
+    return Parameters(parameters, iprop_parameters_free);
+}
+
+// Sets one input from text, typed by its declaration: #RRGGBB or #RRGGBBAA
+// colours, decimal f32 and decimal u32 (a leading minus stores i32 bits).
+inline void setParameter(iprop_parameters* parameters, std::string_view name, std::string_view text) {
+    const iprop_utf8_view view{name.data(), static_cast<std::uint32_t>(name.size())};
+    Error error;
+    iprop_parameter_value_ex current;
+    error.check(iprop_parameter_value_ex_init(&current, sizeof(current)), "iprop_parameter_value_ex_init");
+    error.check(iprop_parameters_get_named(parameters, view, &current, error.get()), "iprop_parameters_get_named");
+    const auto invalid = [&] { return std::runtime_error("invalid value '" + std::string(text) + "' for input " + std::string(name)); };
+    const char* end = text.data() + text.size();
+    switch (current.type) {
+    case IPROP_INPUT_COLOR: {
+        if ((text.size() != 7 && text.size() != 9) || text[0] != '#') throw invalid();
+        std::uint8_t channels[4] = {0, 0, 0, 255};
+        for (std::size_t i = 0; i < (text.size() - 1) / 2; ++i) {
+            const char* at = text.data() + 1 + i * 2;
+            if (std::from_chars(at, at + 2, channels[i], 16).ptr != at + 2) throw invalid();
+        }
+        error.check(iprop_parameters_set_color_named(parameters, view,
+                    {channels[0], channels[1], channels[2], channels[3]}, error.get()), "iprop_parameters_set_color_named");
+        return;
+    }
+    case IPROP_INPUT_F32: {
+        const std::string copy(text);
+        char* parsed = nullptr;
+        const float value = std::strtof(copy.c_str(), &parsed);
+        if (copy.empty() || parsed != copy.c_str() + copy.size()) throw invalid();
+        error.check(iprop_parameters_set_f32_named(parameters, view, value, error.get()), "iprop_parameters_set_f32_named");
+        return;
+    }
+    case IPROP_INPUT_U32:
+        if (!text.empty() && text[0] == '-') {
+            std::int32_t value = 0;
+            if (std::from_chars(text.data(), end, value).ptr != end) throw invalid();
+            error.check(iprop_parameters_set_i32_named(parameters, view, value, error.get()), "iprop_parameters_set_i32_named");
+        } else {
+            std::uint32_t value = 0;
+            if (std::from_chars(text.data(), end, value).ptr != end) throw invalid();
+            error.check(iprop_parameters_set_u32_named(parameters, view, value, error.get()), "iprop_parameters_set_u32_named");
+        }
+        return;
+    default:
+        throw std::runtime_error("unsupported input type for " + std::string(name));
+    }
+}
+
+// Generates one (seed, variant, archetype) tuple from the given parameters,
+// or the stored defaults when none are given; throws on failure. The
 // returned handle must be freed by the caller.
-inline iprop_result* generate(iprop_program* program, std::uint32_t seed,
-                              std::uint32_t variant,
-                              std::uint32_t archetype) {
-    iprop_generate_options options{};
+inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
+                              std::uint32_t variant, std::uint32_t archetype,
+                              const iprop_parameters* parameters = nullptr) {
+    Error error;
+    iprop_generate_options_ex options;
+    error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
     options.seed = seed;
     options.variant = variant;
     options.archetype = archetype;
-    char error[512] = {};
     iprop_result* result = nullptr;
-    const iprop_status status = iprop_generate(program, &options, &result,
-                                               error, sizeof(error));
-    if (status != IPROP_OK) {
-        throw std::runtime_error(error[0] != '\0' ? error
-                                                  : "iprop_generate failed");
-    }
+    error.check(iprop_generate_ex(program, &options, parameters, &result, error.get()), "iprop_generate_ex");
     return result;
 }
 

@@ -27,8 +27,13 @@ Without SFML the backend is skipped gracefully. This produces:
 
 - Loads the `.iprop` through the C API and draws the generated RGBA
   (nearest-neighbour, fitted and centered in the 640×640 window).
-- Copies metadata through `iprop_program_info_ex_init` and
-  `iprop_program_query`; load and generation retain their legacy entry points.
+- Loads through `iprop_program_load_ex`, copies metadata through
+  `iprop_program_query` and generates through `iprop_generate_ex` from an
+  `iprop_parameters` set. Failures report the C API message and its stable
+  `iprop_error_ex` reason code.
+- `--set input=value` (repeatable) overrides a declared input by name:
+  `#RRGGBB` or `#RRGGBBAA` colours, decimal `f32` and `u32`, where a leading
+  minus sets an `i32` input. The type comes from the program's declaration.
 - Reads generated images through `iprop_result_query_image`, checking RGBA8,
   top-left storage, the legacy destination-alpha mode and tight row stride.
   Copies exactly `byte_count` bytes; it does not convert alpha or infer the
@@ -47,6 +52,7 @@ reference `ipgen`):
 
 ```
 iprop_sfml file.iprop --seed 3 --export out.png         # the S-key path
+iprop_sfml file.iprop --set tint=#9dc --export out.png  # an input override
 iprop_sfml file.iprop --seed 3 --atlas out.png          # the A-key atlas
 iprop_sfml file.iprop --seed 3 --screenshot out.png     # one windowed frame,
                                                         # read back from the

@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -251,6 +252,44 @@ int main(int argc, char** argv) {
                                                      "failed copy must not replace published outputs"); }
             result.reset();
             CHECK(slots[0].name == std::string(name, sizeof(name)-1), "owned names survive result_free");
+        }
+    }
+
+    // Inputs set by name through the checked parameter API render exactly as
+    // the legacy named-uniform overrides; unknown names and bad text fail.
+    {
+        const iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/uniforms.iprop")), &iprop_program_free);
+        const auto parameters = iprop::sfml_host::createParameters(program.get());
+        iprop::sfml_host::setParameter(parameters.get(), "base", "#ff000080");
+        iprop::sfml_host::setParameter(parameters.get(), "fx", "5.5");
+        iprop::sfml_host::setParameter(parameters.get(), "ux", "3");
+        const iprop::sfml_host::Result checked(
+            iprop::sfml_host::generate(program.get(), 0, 0, 0, parameters.get()), &iprop_result_free);
+        iprop_uniform uniforms[3] = {};
+        uniforms[0].name = "base"; uniforms[0].type = IPROP_UNIFORM_COLOR;
+        uniforms[0].r = 255; uniforms[0].a = 128;
+        uniforms[1].name = "fx"; uniforms[1].type = IPROP_UNIFORM_F32; uniforms[1].f = 5.5f;
+        uniforms[2].name = "ux"; uniforms[2].type = IPROP_UNIFORM_U32; uniforms[2].u = 3;
+        iprop_generate_options options{};
+        options.uniforms = uniforms;
+        options.uniform_count = 3;
+        iprop_result* legacy = nullptr;
+        char message[256] = {};
+        CHECK(iprop_generate(program.get(), &options, &legacy, message, sizeof(message)) == IPROP_OK,
+              "legacy uniforms: %s", message);
+        const iprop::sfml_host::Result legacyResult(legacy, &iprop_result_free);
+        if (legacy != nullptr) {
+            const auto a = iprop::sfml_host::queryImage(checked.get());
+            const auto b = iprop::sfml_host::queryImage(legacy);
+            CHECK(a.byte_count == b.byte_count && std::memcmp(a.pixels, b.pixels, a.byte_count) == 0,
+                  "parameters differ from the legacy uniforms");
+        }
+        for (const auto& [name, value] : {std::pair{"missing", "1"}, {"ux", "-"}, {"base", "#12"}, {"fx", "x"}}) {
+            try {
+                iprop::sfml_host::setParameter(parameters.get(), name, value);
+                CHECK(false, "accepted %s=%s", name, value);
+            } catch (const std::runtime_error&) {}
         }
     }
 
