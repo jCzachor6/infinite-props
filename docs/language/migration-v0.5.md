@@ -9,9 +9,9 @@ also records work that remains planned.
 
 ## Independent versions
 
-| Contract | Frozen 0.4 release | Current checkout |
+| Contract | Frozen 0.4 release | 0.5 release |
 | --- | --- | --- |
-| Product | 0.4.0 | 0.4.0 until the release-version task |
+| Product | 0.4.0 | 0.5.0 |
 | Source language | 0.4 | 0.5 |
 | Binary format | 0.4, accepting legacy 0.1–0.3 | 0.4, unchanged |
 | Runtime C API feature version | 0.2 | 0.3, additive |

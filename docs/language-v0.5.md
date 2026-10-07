@@ -13,5 +13,5 @@ The complete generated book is `build/language-docs/docs/language-v0.5.md`.
 Its signatures come from `ipc --describe-language`.
 Native SDKs and WASM packages ship that book under `docs/`; the website
 renders it as `docs/language.html` and offers the Markdown download.
-The product remains 0.4.0, binary format 0.4, C API 0.3 and C ABI 0.4;
+The product is 0.5.0, binary format 0.4, C API 0.3 and C ABI 0.4;
 [export contracts](export-contracts.md) describes the separate version fields.

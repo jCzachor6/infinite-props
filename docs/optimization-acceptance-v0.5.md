@@ -1,7 +1,7 @@
 # Source-language 0.5 runtime and optimization matrix
 
 Measured locally on macOS arm64 against source `a1ffab9d56dea117168862a00dc9e346389e13ed`.
-The product remains 0.4.0, source language 0.5, format 0.4, C API 0.3 and
+The measured product was 0.4.0, with source language 0.5, format 0.4, C API 0.3 and
 C ABI 0.4. The versioned `benchmarks/runtime/language-v0.5-matrix.json` summary
 pins the tools, harnesses, complete reports, frozen manifest and supplied WASM.
 These observations include the nlohmann/Markdown tooling integrations. The complete

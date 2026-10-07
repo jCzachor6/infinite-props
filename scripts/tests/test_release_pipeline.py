@@ -236,19 +236,22 @@ class ReleaseGatesTest(unittest.TestCase):
                 validate_tag(root, "v0.4.1", "main")
 
     def test_missing_failed_foreign_or_all_skipped_job_cannot_pass(self):
-        jobs = {name: {**versions(release_assets.ROOT), "source_commit": "a" * 40, "passed": True,
+        # Job reports carry the checkout's own versions, whatever the fixture's.
+        release = versions(release_assets.ROOT)
+        version = release["product_version"]
+        jobs = {name: {**release, "source_commit": "a" * 40, "passed": True,
                        "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
                        "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]} for name in REPORTS}
-        verify_jobs(jobs, VERSION, "a" * 40)
+        verify_jobs(jobs, version, "a" * 40)
         bad = copy.deepcopy(jobs); del bad[REPORTS[-1]]
         with self.assertRaises(RuntimeError):
-            verify_jobs(bad, VERSION, "a" * 40)
+            verify_jobs(bad, version, "a" * 40)
         for field, value in (("passed", False), ("source_commit", "b" * 40),
                              ("steps", [{"passed": False, "returncode": 1}]),
                              ("test_reports", [{"tests": 1, "failures": 0, "skipped": 1}])):
             bad = copy.deepcopy(jobs); bad[REPORTS[0]][field] = value
             with self.subTest(field=field), self.assertRaises(RuntimeError):
-                verify_jobs(bad, VERSION, "a" * 40)
+                verify_jobs(bad, version, "a" * 40)
 
     def test_complete_bundle_and_tampered_asset(self):
         with tempfile.TemporaryDirectory() as temporary:

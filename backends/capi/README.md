@@ -21,7 +21,7 @@ or `iprop::capi_static`. The shared target can be consumed by a C-only
 project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
 and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
 The installed DLL/import library and static archive have distinct names.
-The released 0.4.0 shared library uses ABI line / SONAME `0.4`.
+The shared library uses ABI line / SONAME `0.4`, first released with 0.4.0.
 That historical loader identity is independent of the C API feature version;
 additive API releases must retain it. `cmake/CAbi.cmake` independently defines
 that line and the earliest compatible product (`0.4.0`). The build and runtime
@@ -48,7 +48,7 @@ set them locally before exporting, following its README.
 
 Current documentation uses manifest schema 2 with separate product, source
 language, emitted format, C API and C ABI versions. The generated handbook is
-`share/iprop/docs/language-v0.5.md` while the product remains 0.4.0. See
+`share/iprop/docs/language-v0.5.md`, named after the source language. See
 [export contracts and the schema-1 migration](../../docs/export-contracts.md).
 
 Version 0.4 accepts frozen 0.1–0.3 files and v0.4 compressed containers.

@@ -7,8 +7,8 @@ seed, variant, archetype and optional input uniforms.
 
 This checkout implements source language **0.5**. Product, source language,
 binary format, C API and ABI versions are independent: `ipc --describe-language`
-reports the versions of the compiler being used. The product is still 0.4.0
-until the release version changes; the binary format and ABI remain 0.4.
+reports the versions of the compiler being used. Product 0.5.0 ships source
+language 0.5; the binary format and ABI remain 0.4.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected
