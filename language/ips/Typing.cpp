@@ -171,7 +171,14 @@ ValueType Typer::infer(const Expr& expr) {
                   "vec2 has only .x and .y components, got '" +
                       member.name + "'");
         }
-        return typePartRead(expr);
+        // Any other value has no members; only part paths remain above.
+        if (object == ValueType::Color) {
+            error(member.location,
+                  "color channels cannot be read, got '." + member.name +
+                      "'; keep the channels as numbers and build the color with rgb() or rgba()");
+        }
+        error(member.location, std::string(typeName(object)) +
+                                   " has no components, got '." + member.name + "'");
     }
     if (const auto* call = std::get_if<Call>(&expr)) {
         return typeCall(*call);

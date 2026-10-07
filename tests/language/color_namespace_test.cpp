@@ -33,3 +33,11 @@ TEST_CASE("bare mix and shade are no longer language builtins") {
     semantic_test::expectCheckError(semantic_test::wrap("color.mix(5, #ffffff, 0.5)"),
                                     "must be color, got i32");
 }
+
+TEST_CASE("member access on a color or scalar names the value type") {
+    semantic_test::expectCheckError(semantic_test::wrap("c = #336699 r = c.r"),
+                                    "color channels cannot be read, got '.r'");
+    semantic_test::expectCheckError(semantic_test::wrap("n = 3 m = n.x"), "i32 has no components, got '.x'");
+    semantic_test::expectCheckError(semantic_test::wrap("p = {1.0, 2.0} w = p.z"),
+                                    "vec2 has only .x and .y components, got 'z'");
+}

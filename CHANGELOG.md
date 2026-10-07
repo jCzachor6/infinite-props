@@ -14,7 +14,8 @@ SONAME 0.4. Migration and packaging instructions:
 - Checking and diagnostics (B): `ipc --check` runs the full pipeline in
   memory. Text and JSON diagnostics share stable codes, byte and codepoint
   ranges, bounded recovery and distinct exit codes. The editor consumes the
-  JSON protocol with guarded quick fixes.
+  JSON protocol with guarded quick fixes. Member access on a color or number
+  names the value type instead of reporting a missing part.
 - Fuel: compiled assets get a default fuel budget of 2,000,000 instead of
   1,000,000; files compiled earlier keep their stored budget.
 - Calls (C): one binder and call plan serve builtins, helpers and parts.
