@@ -48,4 +48,4 @@ of the registered example tree. No executable is written beside its source.
 The generated file, selection configuration and source explanations/examples
 are covered by the existing documentation manifest hashes. `language_docs.py
 check` writes execution evidence to its report. Archive/source verification
-retains existing schema version 1; this task adds no new export-schema contract.
+uses the existing export schemas; this task adds no new export-schema contract.

@@ -9,7 +9,8 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 1
+LANGUAGE_SCHEMA_VERSION = 2
+HISTORICAL_LANGUAGE_SCHEMA_VERSION = 1
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 CURRENT = 'current'
@@ -111,13 +112,16 @@ def ordered_signature(value, path, typed=True, modern=True):
 
 def read_language(value, profile=CURRENT):
     require(type(profile) is str and profile in {CURRENT, HISTORICAL}, 'language profile')
-    obj(value, ['schema_version', 'product_version', 'builtins', 'emoji_aliases'], 'language')
-    require(type(value['schema_version']) in {int, float} and value['schema_version'] == LANGUAGE_SCHEMA_VERSION, 'language schema version')
-    require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
+    obj(value, ['schema_version', 'product_version', 'builtins'], 'language')
     modern = profile == CURRENT
     if modern:
         obj(value, ['language_version', 'format_version', 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'current language')
     else:
+        obj(value, ['emoji_aliases'], 'historical language')
+    expected = LANGUAGE_SCHEMA_VERSION if modern else HISTORICAL_LANGUAGE_SCHEMA_VERSION
+    require(type(value['schema_version']) in {int, float} and value['schema_version'] == expected, 'language schema version')
+    require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
+    if not modern:
         require(value['product_version'].split('.')[:2] == ['0', '4'], 'historical product version')
         if 'language_version' in value:
             require(value['language_version'] == {'major': 0, 'minor': 4}, 'historical source version')
@@ -152,15 +156,17 @@ def read_language(value, profile=CURRENT):
                 if modern or 'choice_evaluation' in signature:
                     require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
     require(len(names) == len(set(names)), 'unique builtin names')
-    require(type(value['emoji_aliases']) is list and bool(value['emoji_aliases']), 'emoji_aliases')
-    words, scalars = [], []
-    for alias in value['emoji_aliases']:
-        obj(alias, ['word', 'codepoint'], 'emoji alias')
-        words.append(text(alias['word'], 'emoji word', True))
-        integer(alias['codepoint'], 'emoji scalar', 0, 0x10ffff)
-        require(not 0xd800 <= alias['codepoint'] <= 0xdfff, 'emoji Unicode scalar')
-        scalars.append(alias['codepoint'])
-    require(len(words) == len(set(words)) and len(scalars) == len(set(scalars)), 'unique emoji aliases')
+    if not modern:
+        # Frozen 0.4 exports list lexer emoji aliases, which 0.5 removed.
+        require(type(value['emoji_aliases']) is list and bool(value['emoji_aliases']), 'emoji_aliases')
+        words, scalars = [], []
+        for alias in value['emoji_aliases']:
+            obj(alias, ['word', 'codepoint'], 'emoji alias')
+            words.append(text(alias['word'], 'emoji word', True))
+            integer(alias['codepoint'], 'emoji scalar', 0, 0x10ffff)
+            require(not 0xd800 <= alias['codepoint'] <= 0xdfff, 'emoji Unicode scalar')
+            scalars.append(alias['codepoint'])
+        require(len(words) == len(set(words)) and len(scalars) == len(set(scalars)), 'unique emoji aliases')
     if modern:
         rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
         require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')

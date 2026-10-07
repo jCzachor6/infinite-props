@@ -41,8 +41,8 @@ test("website rejects a rehashed catalog missing current protocol fields before 
     const hash = data => createHash("sha256").update(data).digest("hex");
     try {
         const payload = {
-            "docs/language.json": JSON.stringify({ schema_version: 1, product_version: "0.4.0",
-                builtins: [{ name: "unit", overloads: [] }], emoji_aliases: [] }),
+            "docs/language.json": JSON.stringify({ schema_version: 2, product_version: "0.4.0",
+                builtins: [{ name: "unit", overloads: [] }] }),
             "docs/language-v0.4.md": "# Book\n",
             "docs/language/index.md": "# Book\n",
             "examples/language/cases.json": '{"cases":[{"file":"one.ips","expect":"pass"}]}'

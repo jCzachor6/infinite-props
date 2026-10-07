@@ -28,14 +28,6 @@ class DocumentationTest(unittest.TestCase):
         fixture(self.root)
         self.output = Path(self.temporary.name) / "book"
 
-    def test_integral_json_scalar_renders_as_a_unicode_codepoint(self):
-        from copy import deepcopy
-        numeric = deepcopy(LANGUAGE)
-        numeric["emoji_aliases"][0]["codepoint"] = 128230.0
-        with patch.object(language_docs, "contracts", return_value=numeric):
-            docs.build(Path("unused"), self.output, self.root)
-        self.assertIn("U+1F4E6", (self.output / "docs/language-v0.4.md").read_text())
-
     def test_missing_or_duplicate_builtin_explanations_are_rejected(self):
         file = self.root / "docs/language/index.md"
         original = file.read_text()

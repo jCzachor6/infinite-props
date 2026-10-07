@@ -5,7 +5,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 1.0,
+      "value": 2.0,
       "accept": true,
       "schema": true
     },
@@ -39,7 +39,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 2,
+      "value": 3,
       "accept": false,
       "schema": false
     },
@@ -189,17 +189,6 @@
         "default"
       ],
       "value": 0,
-      "accept": false,
-      "schema": false
-    },
-    {
-      "id": "unsafe Unicode scalar",
-      "path": [
-        "emoji_aliases",
-        0,
-        "codepoint"
-      ],
-      "value": 55296,
       "accept": false,
       "schema": false
     },

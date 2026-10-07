@@ -14,12 +14,11 @@ documented builtin in the successful examples.
 
 Each public builtin has exactly one `builtin` directive followed by its
 handwritten behavior and limitations. Signatures/types/named parameter order
-come from `ipc --describe-language`, including variadic forms. The emoji
-table comes from the same export and the lexer registry. Adding a builtin
+come from `ipc --describe-language`, including variadic forms. Adding a builtin
 requires an explanation and executable example; missing/duplicate descriptions
 fail documentation checks.
 
-The schema 1 language export also supplies `evaluation_order` on every
+The schema 2 language export also supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
 compile-time palette and transform slots; `poly` lists coordinates before
 color. `call_rules.helper_evaluation_order` is `declaration`. The part rule

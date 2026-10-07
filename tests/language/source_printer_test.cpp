@@ -53,14 +53,14 @@ TEST_CASE("canonical source formatting normalizes literals names and typed funct
     CHECK(stripDebug(compileProgram(program, {})) == stripDebug(compileProgram(reparsed, {})));
 }
 
-TEST_CASE("canonical words grouping and signed literals preserve exact executable values", "[format-style]") {
-    const auto original = ips::parse(R"(📦 canonical { size 8X8; origin (0),(0);
+TEST_CASE("canonical grouping and signed literals preserve exact executable values", "[format-style]") {
+    const auto original = ips::parse(R"(asset canonical { size 8X8; origin (0),(0);
       variants 0X2; archetypes 0x1;
-      📥 i32 low=(-2147483648); 📥 u32 high=0xFFFFFFFF;
-      📥 f32 zero=(-0.0); 📥 f32 tiny=1.17549435e-38;
-      📤 list point trace;
-      🌈 p=[(-0.0),0x1,1.17549435e-38];
-      ✏ {
+      input i32 low=(-2147483648); input u32 high=0xFFFFFFFF;
+      input f32 zero=(-0.0); input f32 tiny=1.17549435e-38;
+      output list point trace;
+      palette p=[(-0.0),0x1,1.17549435e-38];
+      draw {
         // 📦 in a comment stays literal
         trace={zero,tiny}; trace={p[0],p[2]};
         helper(y=1e-20,x=(-0.0));

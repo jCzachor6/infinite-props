@@ -2,9 +2,9 @@
 
 The current compiler exports source language **0.5** while the product remains
 **0.4.0**. JSON protocol versions are independent of product, source language,
-binary format, C API and runtime ABI versions. The language and diagnostic
-protocols use schema **1**; generated documentation
-manifests use schema **2**:
+binary format, C API and runtime ABI versions. The language description uses
+schema **2**, the diagnostic protocol schema **1** and generated documentation
+manifests schema **2**:
 
 | Payload | Formal contract | Consumer |
 | --- | --- | --- |
@@ -24,12 +24,17 @@ versions. Changing a known field's type, meaning or enum domain requires a new
 schema version, a documented migration and updated executable consumer cases;
 changing the source-language or product version alone does not migrate JSON.
 
+Language description schema 2 removes the `emoji_aliases` list that schema 1
+required, because source language 0.5 no longer has lexer emoji aliases. All
+other fields keep their schema 1 types and meanings. The `historical-0.4`
+reader still accepts frozen schema 1 exports with that list.
+
 Documentation manifest schema 2 replaces schema 1 for current bundles. It
 requires five independent flat strings: `product_version` (major.minor.patch),
 `language_version`, `format_version`, `c_api_version` and `c_abi_soversion`
 (major.minor). Current values are `0.4.0`, `0.5`, `0.4`, `0.3` and `0.4`.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
-The compiler's schema-1 version pairs and `abi_version` retain their existing
+The language export's version pairs and `abi_version` retain their existing
 types; `c_abi_soversion` is an optional alias checked against that ABI pair.
 Verification compares source constants, compiler exports and every artifact
 matrix. Valid checksums cannot override version mismatches.

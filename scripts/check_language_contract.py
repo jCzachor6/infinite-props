@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 
+from contract_readers import LANGUAGE_SCHEMA_VERSION
 from release_common import described_versions, versions
 
 
@@ -16,7 +17,7 @@ def main():
                              text=True, timeout=30, check=True)
     assert not process.stderr, process.stderr
     description = json.loads(process.stdout)
-    assert description['schema_version'] == 1
+    assert description['schema_version'] == LANGUAGE_SCHEMA_VERSION
 
     # Each version comes from its own source; none is derived from another.
     expected = versions(source)

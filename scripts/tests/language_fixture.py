@@ -27,7 +27,7 @@ def fixture(root):
     for name, content in {
         "CMakeLists.txt": "project(iprop VERSION 0.4.0)\n",
         "docs/language/book.json": '{"title":"Book","chapters":["index.md"]}',
-        "docs/language/index.md": "# Book\n\n## unit\n<!-- builtin: unit -->\n\nOne deterministic stream draw.\n\n<!-- example: ../../examples/language/one.ips -->\n\n<!-- aliases -->\n",
+        "docs/language/index.md": "# Book\n\n## unit\n<!-- builtin: unit -->\n\nOne deterministic stream draw.\n\n<!-- example: ../../examples/language/one.ips -->\n",
         "examples/language/cases.json": '{"cases":[{"file":"one.ips","expect":"pass"}]}',
         "examples/language/one.ips": "asset A { size 1x1 draw { x = unit() } }\n",
         "examples/recipes/README.md": "# Recipes\n",

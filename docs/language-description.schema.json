@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 1,
+      "const": 2,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -30,7 +30,7 @@
     "c_abi_soversion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+$",
-      "description": "SOVERSION of the bundled runtime C library, configured independently of the product, C API and format versions; equals abi_version major.minor. Optional additive alias in schema 1; producers emit it and readers validate consistency when present."
+      "description": "SOVERSION of the bundled runtime C library, configured independently of the product, C API and format versions; equals abi_version major.minor. Optional additive alias since schema 1; producers emit it and readers validate consistency when present."
     },
     "source_rules": {
       "type": "object",
@@ -669,37 +669,6 @@
       },
       "description": "Shared registry exports; order is stable but not an identity key.",
       "minItems": 1
-    },
-    "emoji_aliases": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "word": {
-            "type": "string",
-            "description": "ASCII keyword spelling.",
-            "minLength": 1
-          },
-          "codepoint": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 1114111,
-            "description": "Unicode scalar for this lexer alias.",
-            "not": {
-              "minimum": 55296,
-              "maximum": 57343
-            }
-          }
-        },
-        "required": [
-          "word",
-          "codepoint"
-        ],
-        "additionalProperties": true,
-        "description": "One lexer keyword alias."
-      },
-      "description": "Shared lexer aliases.",
-      "minItems": 1
     }
   },
   "required": [
@@ -712,13 +681,12 @@
     "source_rules",
     "effect_rules",
     "call_rules",
-    "builtins",
-    "emoji_aliases"
+    "builtins"
   ],
   "additionalProperties": true,
   "description": "Current compiler language description. Missing current fields never select a historical profile.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "infinite-props language-description schema 1",
+  "title": "infinite-props language-description schema 2",
   "$defs": {
     "version": {
       "type": "object",

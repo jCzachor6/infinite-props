@@ -3,13 +3,11 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/CallPlan.hpp"
 #include "ips/Typing.hpp"
-#include "ips/Lexer.hpp"
 #include "ips/Version.hpp"
 #include "ips/ExportSchema.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
 
-#include <cstdint>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -222,10 +220,6 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["format_version"] = version(kVersionMajor, kVersionMinor);
     document["builtins"] = builtins();
     document["call_rules"] = callRules();
-    Json aliases = Json::array();
-    for (const auto& alias : ips::emojiAliases())
-        aliases.push_back(Json::object({{"word", alias.word}, {"codepoint", static_cast<std::uint32_t>(alias.codepoint)}}));
-    document["emoji_aliases"] = std::move(aliases);
     document["source_rules"] = sourceRules();
     document["effect_rules"] = effectRules();
     // The complete document exists before output: a failure writes nothing.

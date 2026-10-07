@@ -46,6 +46,5 @@ integer semantics.
 <!-- example: ../../examples/language/syntax.ips -->
 
 Trailing commas are accepted in call arguments, helper parameters, palette
-elements and compound literals. [Emoji aliases](tooling.md#emoji-aliases)
-normalize to the same word tokens. Arbitrary Unicode identifiers, variation
-selectors and joined emoji sequences are not accepted as syntax.
+elements and compound literals. Syntax is ASCII: Unicode text may appear only
+in comments and string literals.

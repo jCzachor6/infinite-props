@@ -3,7 +3,6 @@
 #include "ips/Suggestions.hpp"
 
 #include <map>
-#include <array>
 #include <string>
 
 namespace iprop::ips {
@@ -50,26 +49,7 @@ bool isIdentStart(char c) {
 }
 bool isIdentPart(char c) { return isIdentStart(c) || isDigit(c); }
 
-const char* emojiAlias(char32_t point) {
-    for (const auto& alias : emojiAliases())
-        if (alias.codepoint == point) return alias.word;
-    return nullptr;
-}
-
 } // namespace
-
-std::span<const EmojiAlias> emojiAliases() {
-    // Exact scalar values; U+270F/U+1F5C2 have no variation selector.
-    static constexpr std::array<EmojiAlias, 18> aliases{{
-        {0x1F4E6, "asset"}, {0x270F, "draw"}, {0x1F4E5, "input"},
-        {0x1F4E4, "output"}, {0x1F308, "palette"}, {0x1F517, "import"},
-        {0x1F3A8, "color"}, {0x1F4D0, "vec2"}, {0x1F500, "variants"},
-        {0x1F5C2, "archetypes"}, {0x1F518, "point"}, {0x1F7E6, "rect"},
-        {0x2B55, "circle"}, {0x1F44D, "true"}, {0x1F44E, "false"},
-        {0x1F300, "noise"}, {0x1F4CF, "dist"}, {0x1F9A0, "cell"}
-    }};
-    return aliases;
-}
 
 std::vector<Token> lex(std::string_view source) {
     std::vector<Token> tokens;
@@ -268,20 +248,6 @@ std::vector<Token> lex(std::string_view source) {
             const auto found = table.find(text);
             emit(found == table.end() ? TokenKind::Identifier : found->second, std::move(text), at);
             continue;
-        }
-
-        // Lexical aliases carry canonical text into the parser and diagnostics.
-        if (static_cast<unsigned char>(c) >= 0x80) {
-            const auto point = decodeCodepoint(source, pos);
-            if (!point) throw error(at, "invalid UTF-8 in source", DiagnosticCode::InvalidUtf8);
-            if (const auto word = emojiAlias(point->value)) {
-                if (!tokens.empty() && tokens.back().kind == TokenKind::Dot)
-                    throw error(at, "emoji aliases are not allowed for member names; use '" + std::string(word) + "'");
-                for (std::size_t byte = 0; byte < point->bytes; ++byte) advance();
-                const auto found = keywords().find(word);
-                emit(found == keywords().end() ? TokenKind::Identifier : found->second, word, at);
-                continue;
-            }
         }
 
         // Operators and punctuation.

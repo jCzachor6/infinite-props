@@ -79,7 +79,7 @@ def main():
         assert result['diagnostics'][0]['location'] is None, result
         assert result['diagnostics'][0]['range'] is None, result
 
-        unicode_source = '// żółć\r\n📦 t { size 8x8; ✏ {\tvalue=1; /*🌈*/ value=#fff } }'
+        unicode_source = '// żółć\r\nasset t { size 8x8; draw {\tvalue=1; /*🌈*/ value=#fff } }'
         entry.write_bytes(unicode_source.encode('utf-8'))
         result = invoke(['entry.ips', '--check'], 'invalid_source', 1)
         diagnostic = result['diagnostics'][0]

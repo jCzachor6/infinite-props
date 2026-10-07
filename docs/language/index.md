@@ -31,7 +31,7 @@ files; their contents are included in the generated book and tested by CI.
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
 13. [Imports and part composition](composition.md)
-14. [Compiler tools, diagnostics and emoji](tooling.md)
+14. [Compiler tools and diagnostics](tooling.md)
 15. [Grammar](grammar.md)
 16. [Maintaining this documentation](development.md)
 17. [Migration and implementation contracts for 0.5](migration-v0.5.md)

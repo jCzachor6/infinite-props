@@ -251,7 +251,8 @@ def main():
               'builtin_count':len(language['builtins']),'registered_examples':len(examples),
               'missing_current_config_rejected':True,'source_version_mismatch_rejected':True,'rehashed_catalog_rejected':True,
               'rehashed_schema_rejected':True,'valid_current_archive_accepted':True,
-              'mutations':results,'protocol_versions':{'language':1,'diagnostics':1,'manifest':1}}
+              'mutations':results,'protocol_versions':{'language':LANGUAGE_SCHEMA_VERSION,'diagnostics':DIAGNOSTICS_SCHEMA_VERSION,
+                                                    'manifest':DOCUMENTATION_SCHEMA_VERSION}}
     if args.report:
         args.report.parent.mkdir(parents=True,exist_ok=True)
         args.report.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')

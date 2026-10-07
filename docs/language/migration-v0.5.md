@@ -47,6 +47,12 @@ names must be unique, including in unused declarations. Part `seed`, `v`, `a`
 controls can be named; placement, transforms and uniform overrides are named-only.
 Input names `variant` and `archetype` remain ordinary uniforms.
 
+The 18 lexer emoji aliases of 0.4 (for example `📦` for `asset` or `✏` for
+`draw`) are removed. Replace each alias with its word; `ipc --format` of a 0.4
+source cannot do this, because 0.5 rejects the alias as an unexpected
+character. Emoji remain valid in comments and string literals. The language
+description export moves to schema 2 without its `emoji_aliases` list.
+
 The [syntax example](../../examples/language/syntax.ips) uses declaration
 semicolons; [helper](../../examples/language/functions.ips) and
 [composition](../../examples/language/composition.ips) examples use reordered

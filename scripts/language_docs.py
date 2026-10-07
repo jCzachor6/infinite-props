@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from release_common import ROOT, described_versions, handbook_version, match_versions, product_version, versions
-from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, parse_json,
+from contract_readers import (CURRENT, DOCUMENTATION_SCHEMA_VERSION, LANGUAGE_SCHEMA_VERSION, parse_json,
                               read_language, read_manifest)
 from markdown_tokens import headings, links, manifest_headings, rewrite_links
 
@@ -54,7 +54,7 @@ def contracts(compiler, root=ROOT, profile=CURRENT):
     result = run(compiler, "--describe-language")
     require(result.returncode == 0, "Cannot describe the language: " + result.stderr)
     value = parse_json(result.stdout)
-    require(type(value) is dict and value.get("schema_version") == 1 and value.get("product_version") == product_version(root),
+    require(type(value) is dict and value.get("product_version") == product_version(root),
             "Compiler language description belongs to another product version")
     language = read_language(value, profile)
     if profile == CURRENT:
@@ -154,7 +154,6 @@ def sources(root, language):
     require(set(described) == expected and len(described) == len(expected),
             "Builtin descriptions differ from compiler: missing=" + str(sorted(expected - set(described))) +
             ", extra/duplicate=" + str(sorted(set(described) - expected)))
-    require(sum(t.count("<!-- aliases -->") for t in text.values()) == 1, "Require exactly one lexer alias table")
     return book, chapters, text, registered
 
 
@@ -203,9 +202,6 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
                 label += " (`" + case["message"] + "`)"
             return label + ".\n\n```ips\n" + read(file).rstrip() + "\n```"
         content = DIRECTIVE.sub(replace, authored[chapter])
-        aliases = ["| Word | Alias | Unicode scalar |", "| --- | --- | --- |"]
-        aliases += [f"| `{a['word']}` | {chr(int(a['codepoint']))} | U+{int(a['codepoint']):04X} |" for a in language["emoji_aliases"]]
-        content = content.replace("<!-- aliases -->", "\n".join(aliases))
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 
@@ -297,12 +293,12 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False, pro
     for name, expected in manifest["files"].items():
         require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
     language = read_language(parse_json(load("docs/language.json")), profile)
-    require(language.get("schema_version") == 1 and language["product_version"] == manifest["product_version"] and
+    require(language["product_version"] == manifest["product_version"] and
             len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
     if profile == CURRENT:
         match_versions(manifest, described_versions(language))
         required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
-        for name, schema_version in (("language-description", 1), ("compiler-diagnostics", 1),
+        for name, schema_version in (("language-description", LANGUAGE_SCHEMA_VERSION), ("compiler-diagnostics", 1),
                                      ("documentation-manifest", DOCUMENTATION_SCHEMA_VERSION)):
             path = "docs/" + name + ".schema.json"
             required_contracts.add(path)

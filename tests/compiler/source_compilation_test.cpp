@@ -172,16 +172,19 @@ TEST_CASE("source identities and ranges preserve exact UTF-8 bytes including CRL
           "sha256:248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
     CHECK(ips::sourceContentId(std::string(1000000,'a'))==
           "sha256:cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
-    const std::string source="// żółć\r\n📦 t { size 8x8; ✏ {\tvalue= } }";
-    const auto tokens=ips::lex(source);
-    const auto assetRange=ips::sourceRangeAt(source,tokens[0].location);
-    REQUIRE(assetRange);
-    CHECK(assetRange->start.line==2);
-    CHECK(assetRange->start.column==1);
-    CHECK(assetRange->end.column==2);
-    CHECK(source.substr(assetRange->start.byteOffset,
-          assetRange->end.byteOffset-assetRange->start.byteOffset)=="📦");
-    CHECK(!ips::sourcePositionAt(source,assetRange->start.byteOffset+1));
+    // An astral scalar is one column and four bytes; no position splits it.
+    const std::string glyph="// żółć\r\n📦 t { }";
+    const auto rejected=compileSource("glyph.ips",[&](std::string_view) { return glyph; });
+    REQUIRE(rejected.diagnostics.size()==1);
+    REQUIRE(rejected.diagnostics[0].range);
+    const auto& glyphRange=*rejected.diagnostics[0].range;
+    CHECK(glyphRange.start.line==2);
+    CHECK(glyphRange.start.column==1);
+    CHECK(glyphRange.end.column==2);
+    CHECK(glyph.substr(glyphRange.start.byteOffset,
+          glyphRange.end.byteOffset-glyphRange.start.byteOffset)=="📦");
+    CHECK(!ips::sourcePositionAt(glyph,glyphRange.start.byteOffset+1));
+    const std::string source="// żółć\r\nasset t { size 8x8; draw {\tvalue= } }";
     const auto result=compileSource("unicode.ips",[&](std::string_view) { return source; });
     REQUIRE(result.diagnostics.size()==1);
     const auto& diagnostic=result.diagnostics[0];

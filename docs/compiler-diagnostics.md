@@ -42,8 +42,8 @@ not translated into a misleading missing-import diagnostic.
 
 `range.start` and `range.end` contain `byte_offset`, `line`, `column`. Offsets
 are zero-based UTF-8 bytes; lines and columns are one-based Unicode codepoints,
-including tabs as one column. The end is exclusive. A four-byte emoji is one
-column and four bytes, including when it normalizes to an ASCII keyword.
+including tabs as one column. The end is exclusive. A four-byte emoji in a
+comment or string is one column and four bytes.
 CRLF stays in the owning byte snapshot; LF advances the line. EOF may have a
 zero-width range. Diagnostic ranges identify the offending token/anchor,
 not necessarily the complete enclosing expression. Legacy locations without

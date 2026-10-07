@@ -1,4 +1,4 @@
-# Compiler tools, diagnostics and emoji
+# Compiler tools and diagnostics
 
 ## Compiler output
 
@@ -146,19 +146,3 @@ Operand-stack bounds are checked by executable validation; allocation failure
 is a host/resource failure rather than a signature's numeric precondition.
 
 <!-- example: ../../examples/language/traps/divide-by-zero.ips -->
-
-## Emoji aliases
-
-The lexer accepts 18 exact single Unicode scalars alongside their canonical
-word spellings. The alias table is generated from the lexer's actual registry.
-
-<!-- aliases -->
-
-Aliases normalize before parsing, so diagnostics, the AST and formatter use
-word names. Strings/comments retain their original text. Variation selectors
-(including U+FE0F) and ZWJ sequences are rejected in syntax. `draw` uses
-U+270F alone and `archetypes` U+1F5C2 alone. Namespace members retain words:
-`📏.circle(...)` is valid, while `dist.⭕(...)` is rejected. Other syntax keeps
-its word spelling. Both forms compile to the same executable.
-
-<!-- example: ../../examples/language/emoji.ips -->
