@@ -5,7 +5,7 @@
 **Baza:** wydane `v0.4.0`, commit `66d34c2831585afb231022da9296528a912e962e` na `main`.
 **Cel:** poprawne źródło i czytelna diagnostyka dla człowieka/LLM oraz C API, które opisuje asset, sprawdza parametry i ma rozszerzalny kontrakt.
 
-Ten dokument i [plan 0.6](iprop-v0.6-plan.md) zastępują poprzedni, wspólny plan 0.5. Łączny zakres obejmuje wszystkie 56 pierwotnych zadań oraz wszystkie propozycje C API. Mapa na końcu rozlicza przeniesione i podzielone zadania. Plan rozwija [plan 0.4](iprop-v0.4-plan.md), istniejący [podręcznik](../docs/language/index.md), formatter, rejestr builtinów, `--describe-language` i testy dokumentacji.
+Ten dokument i [plan 0.6](iprop-v0.6-plan.md) zastępują poprzedni, wspólny plan 0.5. Łączny zakres obejmuje wszystkie 56 pierwotnych zadań oraz wszystkie propozycje C API. Mapa na końcu rozlicza przeniesione i podzielone zadania. Plan rozwija wydanie v0.4.0, istniejący [podręcznik](../docs/language/index.md), formatter, rejestr builtinów, `--describe-language` i testy dokumentacji.
 
 ## Podział pół na pół
 
