@@ -63,7 +63,7 @@ export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(roo
     const book = fs.readFileSync(path.join(bundle, "docs", `language-v${minor}.md`), "utf8");
     const rendered = renderBook(book, info.headings, bundle);
     const publicDir = path.join(root, "website/public");
-    for (const directory of ["docs", "examples", "spec", "plans"])
+    for (const directory of ["docs", "examples", "spec"])
         fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
     fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
     // Offer the same source-language book under the reference download directory.

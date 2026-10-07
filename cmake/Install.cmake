@@ -45,7 +45,7 @@ if(TARGET iprop_sfml)
     endif()
 endif()
 
-install(DIRECTORY examples spec docs plans DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 # The guides keep their source-tree places, so their relative links resolve.
 foreach(backend capi sfml godot)
     install(FILES backends/${backend}/README.md

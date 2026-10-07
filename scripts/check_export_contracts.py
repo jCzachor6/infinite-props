@@ -141,7 +141,7 @@ def main():
         for name, _ in VERSION_SOURCES.values():
             (shadow/name).parent.mkdir(parents=True,exist_ok=True)
             shutil.copyfile(ROOT/name,shadow/name)
-        for directory in ('docs','examples','spec','plans'):
+        for directory in ('docs','examples','spec'):
             shutil.copytree(ROOT/directory,shadow/directory)
         (shadow/'docs/llm-reference.json').unlink()
         try:

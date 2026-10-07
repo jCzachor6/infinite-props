@@ -54,7 +54,6 @@ website/public/iprop.js
 website/public/iprop.wasm
 website/public/*.iprop
 website/public/spec/
-website/public/plans/
 website/public/reference/
 website/public/recipes/
 website/public/examples/

@@ -163,7 +163,6 @@ def resources(root):
     files += list((root / "spec").glob("*.md"))
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
-    files += list((root / "plans").glob("*.md"))
     files += [root / "docs/llm-reference.json"]
     return files
 

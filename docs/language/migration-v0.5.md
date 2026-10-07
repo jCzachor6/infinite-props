@@ -4,8 +4,7 @@ This chapter describes the implemented source language 0.5 in the current
 checkout. The product release number is separate. Use the compiler's
 `--describe-language` export for its actual versions, capabilities, signatures,
 evaluation order and effects; use the generated book's commit/status to identify
-the documentation snapshot. The [implementation plan](../../plans/iprop-v0.5-plan.md)
-also records work that remains planned.
+the documentation snapshot.
 
 ## Independent versions
 

@@ -98,7 +98,7 @@ def main():
         # Mutate only a private copy of the authored inputs. A changed compiler
         # diagnostic or invalid repair must never overwrite a known good book.
         copied = directory / 'source'
-        for folder in ['docs', 'spec', 'plans']:
+        for folder in ['docs', 'spec']:
             shutil.copytree(root / folder, copied / folder)
         for folder in ['language', 'recipes']:
             shutil.copytree(root / 'examples' / folder, copied / 'examples' / folder)
