@@ -246,9 +246,9 @@ typedef struct {
 IPROP_API iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_ex* out,
                                                        uint32_t capacity);
 
-/* Structured error foundations. Codes identify stable cause categories; they
- * never depend on message wording. New operations consume this descriptor as
- * they are implemented; this declaration does not advertise load/generate_ex.
+/* Structured errors, reported by every API 0.3 operation that takes an
+ * iprop_error_ex*. Codes identify stable cause categories; they never depend
+ * on message wording.
  * Fields are output-only except struct_size and the message buffer/capacity. */
 typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_NONE UINT32_C(0)

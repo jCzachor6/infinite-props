@@ -165,8 +165,8 @@ message.
 
 The [ABI contract](../../docs/c-api-abi.md) records the released baseline,
 supported layouts, legacy behavior and rules for sized descriptors, UTF-8
-views, collection strides and safe initialization. It specifies planned
-API `0.3` conventions; the capability query identifies implemented functions.
+views, collection strides and safe initialization. It specifies the API `0.3`
+conventions; the capability query identifies the loaded library's functions.
 
 ## The loaded library
 

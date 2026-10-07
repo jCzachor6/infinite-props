@@ -136,7 +136,7 @@ debug source locations. It introduces no new declaration syntax; see
 
 ## Implemented C API and remaining work
 
-The additive API 0.3 currently provides checked load/error boundaries, loaded
+The additive API 0.3 provides checked load/error boundaries, loaded
 library version/capability queries, exact stored root-input defaults, output
 declarations and stored part tables/signatures before generation.
 Output declarations retain root/part owner
@@ -172,10 +172,19 @@ legacy pointers/packing and exact stored float bits; borrowed views survive
 `program_free`, while typed copies survive `result_free`. See
 [result outputs](../c-api-result-outputs.md).
 
-Root parameter handles remain planned. Optimization
-level selection also remains planned; the existing production optimizer and
-`--no-opt` are available. Do not infer those planned capabilities from the API
-feature version. Query the actual loaded library's capability bits.
+`IPROP_CAP_PARAMETERS` retains root parameter sets created from a loaded
+program, with typed setters, strict override lists and reset/clone.
+`IPROP_CAP_GENERATE_EX` generates from such a set, rejecting a set from another
+load. Unknown, duplicate and mistyped values fail when set, with stable reason
+codes, instead of being ignored at generation; legacy `iprop_generate` keeps its
+named-uniform policy. See [retained parameters](../c-api-parameters.md) and
+[checked operations](../c-api-checked.md). The SFML host (`--set name=value`),
+the Godot `IpropAsset` (`inputs`, `set_input`, `reset_inputs`) and the C99
+`render_inputs` example use these entry points.
+
+Optimization level selection remains planned; the existing production
+optimizer and `--no-opt` are available. Do not infer planned capabilities from
+the API feature version. Query the actual loaded library's capability bits.
 
 ## Verification and migration
 
