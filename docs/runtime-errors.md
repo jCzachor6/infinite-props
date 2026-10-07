@@ -84,8 +84,7 @@ The optional diagnostic file in `ErrorContext` must stay alive until the
 boundary returns, including stack unwinding. Its owner belongs outside the
 callable; a local destroyed while throwing cannot supply a diagnostic view to
 the catch handler. [Checked load/query publication](c-api-checked.md) follows the
-same lifetime rule; future generation will reuse it. Future limits/cancellation
-causes remain a 0.6 task.
+same lifetime rule; future generation will reuse it.
 
 The six legacy entry points continue using their own frozen classification:
 load maps typed/other failures to `E_FORMAT`, generation maps `Trap` to

@@ -172,8 +172,8 @@ functions on one set from two threads at the same time, and never mutate it
 while another thread reads, clones or generates with it. In 0.5, a program and
 the sets and clones created from it share loaded data and form one handle
 group: hosts serialize calls within a group and use separately loaded programs
-for concurrent workers. Sharing one immutable program across workers is left
-to the 0.6 concurrency audit.
+for concurrent workers. Sharing one program across concurrent workers is not
+supported.
 
 ## Failures, publication and aliases
 

@@ -181,9 +181,9 @@ named-uniform policy. See [retained parameters](../c-api-parameters.md) and
 the Godot `IpropAsset` (`inputs`, `set_input`, `reset_inputs`) and the C99
 `render_inputs` example use these entry points.
 
-Optimization level selection remains planned; the existing production
-optimizer and `--no-opt` are available. Do not infer planned capabilities from
-the API feature version. Query the actual loaded library's capability bits.
+The compiler offers the production optimizer and `--no-opt`. Do not infer
+capabilities from the API feature version; query the actual loaded library's
+capability bits.
 
 ## Verification and migration
 
