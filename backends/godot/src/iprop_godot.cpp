@@ -242,8 +242,10 @@ Error IpropAsset::set_input(const String& name, const Variant& value) {
             ? iprop_parameters_set_i32_named(parameters_, view, static_cast<int32_t>(number), failure.get())
             : iprop_parameters_set_u32_named(parameters_, view, static_cast<uint32_t>(number), failure.get());
     } else {
-        UtilityFunctions::printerr("iprop: set_input failed: ", name, " is a ", typeName(current.type),
-            " input; pass a Color, a number or an int in -2147483648..4294967295 respectively");
+        const char* expected = current.type == IPROP_INPUT_COLOR ? "a Color"
+                             : current.type == IPROP_INPUT_F32   ? "a number"
+                                                                 : "an int in -2147483648..4294967295";
+        UtilityFunctions::printerr("iprop: set_input failed: ", name, " takes ", expected);
         return ERR_INVALID_PARAMETER;
     }
     if (status != IPROP_EX_OK) {
