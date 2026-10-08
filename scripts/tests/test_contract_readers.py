@@ -1,4 +1,5 @@
 """Dependency-free protocol rejection; actual exports are checked by CTest."""
+import copy
 import json
 from pathlib import Path
 import sys
@@ -53,6 +54,36 @@ class ContractReaderTest(unittest.TestCase):
                 with self.subTest(reader=reader.__name__,value=value):
                     with self.assertRaises(RuntimeError):
                         reader(value)
+
+    def test_schema_2_accepts_earlier_exports_without_new_capabilities(self):
+        for components, ranges in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(components=components, random_range=ranges):
+                earlier = copy.deepcopy(LANGUAGE)
+                if not components:
+                    del earlier['source_rules']['types']['components']
+                if not ranges:
+                    del earlier['source_rules']['random_range']
+                original = copy.deepcopy(earlier)
+                self.assertIs(read_language(earlier), earlier)
+                self.assertEqual(earlier, original)
+
+    def test_optional_capabilities_still_reject_malformed_values(self):
+        missing_result = copy.deepcopy(LANGUAGE['source_rules']['types']['components'])
+        del missing_result[0]['result']
+        for components in (None, False, {}, [], 'vec2', missing_result):
+            with self.subTest(components=components):
+                value = copy.deepcopy(LANGUAGE)
+                value['source_rules']['types']['components'] = components
+                with self.assertRaisesRegex(RuntimeError, 'components'):
+                    read_language(value)
+        missing_effects = copy.deepcopy(LANGUAGE['source_rules']['random_range'])
+        del missing_effects['effects']
+        for ranges in (None, False, {}, [], 'to', missing_effects):
+            with self.subTest(random_range=ranges):
+                value = copy.deepcopy(LANGUAGE)
+                value['source_rules']['random_range'] = ranges
+                with self.assertRaisesRegex(RuntimeError, 'random_range'):
+                    read_language(value)
 
     def test_non_json_numbers_do_not_enter_python_only_consumers(self):
         for token in ('NaN','Infinity','-Infinity'):

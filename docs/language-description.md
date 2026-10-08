@@ -51,6 +51,8 @@ identified by `source_type`.
 | `types.implicit_widening[].from`, `.to` | Nonidentity implicit type conversion, derived from the type checker's `argFits`. |
 | `types.implicit_widening[].contexts` | `numeric_operands`, `call_arguments` and `helper_returns` permit the advertised `i32` to `f32` conversion. |
 | `types.local_reassignment` | `exact_type`: later assignment must match the first assignment's type, including when `i32` could otherwise widen to `f32`. |
+| `types.components` | Optional list of readable members, added in source language 0.6 within schema 2. Earlier exports omit it; absence means the export does not describe member access. When present, names correspond to opcodes and share a result type and minimum format minor. |
+| `random_range` | Optional description of random range syntax, overloads and effects, added in source language 0.6 within schema 2. Earlier exports omit it. |
 | `locals.declaration` | `first_assignment`: assigning a fresh name creates its local slot. |
 | `locals.scope` | `function`: branch/loop braces do not create shadowing scopes. |
 | `locals.type_inference_order` | `source_traversal`: the checker visits statements in order, then branch before else branch, including loop bodies. |

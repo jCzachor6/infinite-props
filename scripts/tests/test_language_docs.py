@@ -1,4 +1,5 @@
 """Reject incomplete, stale or corrupted documentation before packaging."""
+import copy
 import json
 import io
 import sys
@@ -85,6 +86,15 @@ class DocumentationTest(unittest.TestCase):
         result = type("Result", (), {"returncode": 0, "stdout": json.dumps(value), "stderr": ""})()
         with patch.object(docs, "run", return_value=result), self.assertRaisesRegex(RuntimeError, "another product version"):
             docs.contracts(Path("unused"), self.root)
+
+    def test_schema_2_bundle_without_new_capabilities_can_be_verified(self):
+        earlier = copy.deepcopy(LANGUAGE)
+        del earlier['source_rules']['types']['components']
+        del earlier['source_rules']['random_range']
+        with patch.object(docs, "contracts", return_value=earlier):
+            docs.build(Path("unused"), self.output, self.root)
+        docs.verify(self.output, "0.4.0", root=self.root)
+        self.assertEqual(json.loads((self.output / "docs/language.json").read_bytes()), earlier)
 
     def test_current_compiler_versions_must_match_their_independent_sources(self):
         def describe(**changes):

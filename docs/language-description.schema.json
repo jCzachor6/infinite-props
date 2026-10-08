@@ -268,7 +268,7 @@
                 "additionalProperties": true,
                 "description": "Read-only member access of one value type; the base evaluates once and draws no randomness."
               },
-              "description": "Read-only member access of one value type; the base evaluates once and draws no randomness.",
+              "description": "Optional capability list added in source language 0.6. Earlier schema-2 exports omit it; absence does not mean member access is unsupported.",
               "minItems": 1
             }
           },
@@ -279,8 +279,7 @@
             "output_only_geometry",
             "point_value_type",
             "implicit_widening",
-            "local_reassignment",
-            "components"
+            "local_reassignment"
           ],
           "additionalProperties": true,
           "description": "Accepted source value categories and conversions."
@@ -713,7 +712,7 @@
             "effects"
           ],
           "additionalProperties": true,
-          "description": "The random range operator 'lower to upper'."
+          "description": "Optional description of the random range operator 'lower to upper', added in source language 0.6. Earlier schema-2 exports omit it."
         }
       },
       "required": [
@@ -723,8 +722,7 @@
         "visibility",
         "named_calls",
         "restrictions",
-        "effect_order",
-        "random_range"
+        "effect_order"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."

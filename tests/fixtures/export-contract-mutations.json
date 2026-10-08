@@ -1,6 +1,55 @@
 {
   "language": [
     {
+      "id": "earlier schema 2 without components",
+      "path": ["source_rules", "types", "components"],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "earlier schema 2 without random range",
+      "path": ["source_rules", "random_range"],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "null optional components",
+      "path": ["source_rules", "types", "components"],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "empty optional components",
+      "path": ["source_rules", "types", "components"],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "component missing result",
+      "path": ["source_rules", "types", "components", 0, "result"],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "null optional random range",
+      "path": ["source_rules", "random_range"],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "random range missing effects",
+      "path": ["source_rules", "random_range", "effects"],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
       "id": "equivalent JSON integer",
       "path": [
         "schema_version"
