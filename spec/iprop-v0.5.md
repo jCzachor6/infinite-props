@@ -3,8 +3,9 @@
 **Status:** Draft v0.5 contract (2026-10-08), frozen when product 0.6.0 is
 released.
 **Scope:** Colour channel reads, uniform random ranges, distributions,
-gradients and segments. The v0.4 section, type, container, mathematical,
-canvas, output, fuel and validation semantics remain frozen.
+gradients and segments, and named part instances with output coordinates in
+the caller's space. The v0.4 section, type, container, mathematical, canvas,
+output, fuel and validation semantics remain frozen for files without them.
 This document inherits [v0.4](iprop-v0.4.md), with the changes below taking
 precedence. The `.ips` language and compiler optimizations are separate.
 
@@ -12,11 +13,13 @@ precedence. The `.ips` language and compiler optimizations are separate.
 
 An interpreter supporting 0.5 MUST continue to accept files with versions
 0.1–0.4 under their existing validation and execution rules. A plain 0.5
-file has the same 20-byte header and section layouts as 0.4.
+file has the same 20-byte header and section layouts as 0.4, plus the
+optional parts section (§6).
 
 The reference compiler and assembler write the oldest minor that holds every
-instruction of the file, and never older than 0.4: a file without a 0.5
-instruction remains a 0.4 file, readable by 0.4 interpreters.
+instruction and section of the file, and never older than 0.4: a file without
+a 0.5 instruction or parts section remains a 0.4 file, readable by 0.4
+interpreters. The compiler writes a parts section for every file with parts.
 
 The compressed envelope of v0.4 §2 is unchanged and remains a 0.4
 container: header flag bit 1 MUST appear only with major 0, minor 4, so a
@@ -352,10 +355,66 @@ or later. The language lowers a colour or vector `a to b [with d]` to `a`,
 `b`, a coefficient `0.0 to 1.0 [with d]` (§3.2 or §4.3) and one of these
 instructions, so all channels or components share one stream step.
 
-## 6. Conformance
+## 6. Part instances
+
+### 6.1 Parts section
+
+Section id 5 ("parts") is valid only in files with minor version 5 or later;
+older files still reject it as an unknown id. It names each entry of the
+code section's part table (v0.3 §6.3) and records which asset draws it:
+
+| Size | Field |
+| ---- | ----- |
+| 4 | `instanceCount` — MUST equal the code section's `partCount` |
+| 4 | name — string index into the const section, per part in part order |
+| 4 | parent — the drawing part's index, or `0xFFFFFFFF` for the root asset |
+
+A name MUST be non-empty and unique among the parts. A parent MUST be
+`0xFFFFFFFF` or smaller than the part's own index, so the parents form a
+tree whose preorder is the part order. Trailing bytes are invalid. Debug
+stripping and compression keep the section; it is semantic, not debug data.
+
+The reference compiler names each part instance by its import alias path
+from the root asset (`hilt`, `hilt.grip`) and orders the instances in
+preorder of import order. A file imported twice, directly or by two
+branches, is two instances with their own functions, inputs and slots.
+The assembler declares instances as `part NAME instance [PARENT]:`.
+
+With the section, the validator also requires that an asset uses only its
+own children: every `part.draw P` and `part.get.* S` in a function reachable
+by `call` from the root's entry function MUST target a part (the owner of
+slot `S`) whose parent is the root, and from part Q's draw function, a part
+whose parent is Q. The part limit of 256 counts instances.
+
+### 6.2 Output coordinates
+
+In a file with a parts section, a value that part P writes to one of its own
+slots, from its draw function or a helper, is mapped once into the
+coordinates of P's caller. The point mapping applies the D4 rule of v0.3
+§10.5 and then adds `(tx / sX, ty / sY)`, where `(tx, ty)` is the rounded
+blit origin of the call in caller pixels (v0.3 §10) and `(sX, sY)` the
+caller's scale. The two additions are binary32, and every NaN coordinate
+becomes `0x7FC00000`. A rect maps its bounds by the v0.3 §10.5 rule and adds
+the offset to `x` and `y`; its width and height are canonicalized the same
+way. A circle maps its centre as a point and keeps its radius.
+
+`part.get.*` returns this mapped value: a parent reads a direct child's
+output in its own coordinates, for example to place the next part there.
+The value delivered to the host is mapped further, at the time of the write,
+through the enclosing calls from the innermost outward to the root asset.
+Each value therefore receives every ancestor transform exactly once, also as
+a list element, and a later call of an ancestor does not move values written
+before it. Root outputs are not mapped. The mappings cost no fuel.
+
+Files without the section, including every 0.1–0.4 file, keep v0.3 §10.5:
+both the read and the delivered value are the part's local value after its
+own D4 transform.
+
+## 7. Conformance
 
 Every 0.1–0.4 file MUST produce the same pixels, structured output bits,
 RNG state, traps and fuel use as under v0.4. Backends MUST return the four
 channel bytes of every colour exactly, including alpha 0 and 255, and MUST
 reproduce the range, distribution, gradient and segment results, stream
-states, traps and fuel use of §3–§5 bit for bit.
+states, traps and fuel use of §3–§5 and the output coordinates of §6 bit
+for bit.

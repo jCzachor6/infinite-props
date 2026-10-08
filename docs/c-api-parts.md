@@ -35,14 +35,19 @@ retained. Geometry or a declaration does not predict generated values.
 
 ## Names and input signatures
 
-Current accepted binary formats store no part/import name. They return
-`name_present == 0`, `name.data == NULL` and `name.byte_count == 0`, including
-debug containers that have a named associated function. A function name is not
-a part name; no import alias or path is inferred from it. Presence is explicit:
-an absent part name differs from an actual empty stored declaration name.
-If a future supported format supplies a part name, its view will follow the
-same program-owned UTF-8 lifetime and bounded fields; this capability does not
-promise that unavailable information.
+A format 0.5 file with a parts section, which the compiler writes for every
+file with parts, names each part instance by its alias path from the root
+asset, such as `hilt` or `hilt.grip`. Such a part returns `name_present == 1`
+and an immutable program-owned UTF-8 `name` view, valid until
+`iprop_program_free`. Hosts can join it with a local output name to present
+`hilt.grip.top`; output lookup still takes the owner and the local name.
+
+Files without that section, including every 0.1–0.4 file, store no part name.
+They return `name_present == 0`, `name.data == NULL` and
+`name.byte_count == 0`, including debug containers that have a named
+associated function. A function name is not a part name; no import alias or
+path is inferred from it. Presence is explicit: an absent part name differs
+from a stored name.
 
 Part input access reuses the [input declaration record, types and exact default
 writer](c-api-reflection.md). `input_index` and find results are local to the

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
@@ -199,10 +200,15 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         }
     }
 
-    // Part names: the alias prefix of their draw function's name.
+    // Part names: the v0.5 instance names, else the alias prefix of their
+    // draw function's name (an alias path for nested parts).
     for (std::size_t i = 0; i < code.parts.size(); ++i) {
+        if (code.parts[i].nameIndex) {
+            names.parts.push_back(pool.strings.at(*code.parts[i].nameIndex));
+            continue;
+        }
         const std::string fnName = names.functions.at(code.parts[i].functionIndex);
-        const auto dot = fnName.find('.');
+        const auto dot = fnName.rfind('.');
         if (dot == std::string::npos) {
             names.parts.push_back("part" + std::to_string(i));
         } else {
@@ -211,12 +217,18 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     }
 
     // Global slot names: root outputs first, then part outputs (spec §4.3).
+    // A part slot whose name is not unique is written `part.output`.
+    std::map<std::string, int> uses;
+    for (const auto& output : meta.outputs) uses[pool.strings.at(output.nameIndex)] += 1;
+    for (const auto& part : code.parts)
+        for (const auto& output : part.outputs) uses[pool.strings.at(output.nameIndex)] += 1;
     for (const auto& output : meta.outputs) {
         names.slots.push_back(pool.strings.at(output.nameIndex));
     }
-    for (const auto& part : code.parts) {
-        for (const auto& output : part.outputs) {
-            names.slots.push_back(pool.strings.at(output.nameIndex));
+    for (std::size_t p = 0; p < code.parts.size(); ++p) {
+        for (const auto& output : code.parts[p].outputs) {
+            const auto& name = pool.strings.at(output.nameIndex);
+            names.slots.push_back(uses[name] > 1 ? names.parts[p] + "." + name : name);
         }
     }
 
@@ -250,7 +262,12 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         if (debugInfo != nullptr && debugInfo->functions.size() == code.functions.size()) {
             debug = &debugInfo->functions[functionIndex];
         }
-        out << "part " << names.parts[i] << ":\n";
+        out << "part " << names.parts[i];
+        if (part.nameIndex) {
+            out << " instance";
+            if (part.parent != kRootParent) out << " " << names.parts.at(part.parent);
+        }
+        out << ":\n";
         out << "  meta: size=" << part.sizeX << "x" << part.sizeY
             << " origin=" << floatText(part.origin.x) << ","
             << floatText(part.origin.y) << "\n";

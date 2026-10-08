@@ -160,7 +160,7 @@ Json sourceRules() {
         {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
         {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},
         {"unknown_arguments", false}});
-    rules["restrictions"] = Json::object({{"recursive_helpers", false}, {"nested_part_imports", false},
+    rules["restrictions"] = Json::object({{"recursive_helpers", false}, {"nested_part_imports", true},
         {"let_declarations", false}, {"fn_declarations", false}, {"named_geometry_constructors", false}});
     rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
         {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},

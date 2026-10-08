@@ -5,7 +5,7 @@
 namespace iprop::math {
 
 inline Vec2 vec2Add(Vec2 a, Vec2 b) { return canonical(Vec2{a.x+b.x, a.y+b.y}); }
-// A point of the segment a-b for finite ends (spec v0.5 §6): a(1 - t) + bt
+// A point of the segment a-b for finite ends (spec v0.5 §5): a(1 - t) + bt
 // per component, kept between the two ends; t is clamped to [0, 1].
 inline Vec2 vec2Mix(Vec2 a, Vec2 b, f32 t) {
     t = t > 0.f ? (t < 1.f ? t : 1.f) : 0.f;

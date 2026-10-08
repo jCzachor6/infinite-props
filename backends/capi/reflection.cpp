@@ -37,8 +37,13 @@ iprop::capi::CallOutcome partInfo(const iprop_program* program, uint32_t index,
     info.input_count = static_cast<uint32_t>(part.inputs.size());
     info.output_begin = partOutputBegin(*program->data, index);
     info.output_count = static_cast<uint32_t>(part.outputs.size());
-    // Part contains no name field. Function names are a different declaration,
-    // and debug/import aliases are never inferred as a stored part name.
+    // Only the v0.5 parts section stores a name: the instance's alias path.
+    // Function names and debug data are never inferred as a part name.
+    if (part.nameIndex) {
+        const auto& name = program->data->pool.strings[*part.nameIndex];
+        info.name_present = 1;
+        info.name = {name.data(), static_cast<uint32_t>(name.size())};
+    }
 #define WRITE(field) writeField(out, capacity, offsetof(iprop_part_info_ex, field), info.field)
     WRITE(part_index); WRITE(owner); WRITE(size_x); WRITE(size_y); WRITE(origin_x); WRITE(origin_y);
     WRITE(input_count); WRITE(output_begin); WRITE(output_count); WRITE(name_present);

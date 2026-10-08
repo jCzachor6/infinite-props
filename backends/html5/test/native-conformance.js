@@ -38,6 +38,8 @@ const sources = [
     ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
+    ["nested-parts", "backends/html5/test/fixtures/nested-parts.ips"],
+    ["colony", "examples/colony/colony.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
 for (const name of fs.readdirSync(path.join(repo, "examples/recipes")).filter(name => name.endsWith(".ips")).sort())
@@ -220,9 +222,18 @@ function run(iprop, toolsDir) {
                 const points = [[1,.5], [.5,3], [3,1.5], [1.5,1], [3,.5], [1,1.5], [.5,1], [1.5,3]];
                 const rects = [[.5,.25,2,1], [.25,1.5,1,2], [1.5,.75,2,1], [.75,.5,1,2],
                                [1.5,.25,2,1], [.5,.75,2,1], [.25,.5,1,2], [.75,1.5,1,2]];
+                // Part outputs are in the caller's asset units: the local D4
+                // value plus the blit origin round(at - origin * scale) / scale
+                // (spec v0.5 section 6), all in binary32.
+                const f32 = Math.fround;
+                const roundAway = value => Math.sign(value) * Math.round(Math.abs(value));
+                const scale = [f32((options.sizeX || 12) / 12), f32((options.sizeY || 8) / 8)];
+                const offset = [f32(roundAway(f32(4 - scale[0])) / scale[0]),
+                                f32(roundAway(f32(1 - f32(.5 * scale[1]))) / scale[1])];
+                const placed = ([x, y, ...rest]) => [f32(x + offset[0]), f32(y + offset[1]), ...rest];
                 const fields = (names, values) => Object.fromEntries(names.map((name, i) => [name, values[i]]));
-                const expectedPoint = fields(["x", "y"], points[kind]);
-                const expectedRect = fields(["x", "y", "w", "h"], rects[kind]);
+                const expectedPoint = fields(["x", "y"], placed(points[kind]));
+                const expectedRect = fields(["x", "y", "w", "h"], placed(rects[kind]));
                 const expectedCircle = {...expectedPoint, r: .25};
                 // Assert independent values as well as native/WASM agreement:
                 // root reads, part writes, helpers, and each list kind.
@@ -231,8 +242,10 @@ function run(iprop, toolsDir) {
                 for (const slot of [1, 5, 8]) assert.deepEqual(values[slot], [expectedRect], label);
                 for (const slot of [2, 6, 9]) assert.deepEqual(values[slot], [expectedCircle], label);
                 if (kind === 6) {
+                    // -0 bounds plus the offset: the offset's own bits.
+                    const bits = value => new Uint32Array(new Float32Array([value]).buffer)[0];
                     assert.deepEqual(result.outputs[10].values[0],
-                                     {x: 0x80000000, y: 0x80000000, w: 0, h: 0}, label + ": zero bounds");
+                                     {x: bits(offset[0]), y: bits(offset[1]), w: 0, h: 0}, label + ": zero bounds");
                     assert.deepEqual(result.outputs[11].values[0],
                                      {x: 0x7fc00000, y: 0x7fc00000, w: 0x7fc00000, h: 0x7fc00000},
                                      label + ": canonical NaN bounds");
@@ -307,6 +320,12 @@ function run(iprop, toolsDir) {
             execFileSync(tool(source.endsWith(".ipa") ? "ipa" : "ipc"),
                          [path.join(repo, source), "-o", file]);
             for (const seed of seeds) compare(file, seed);
+            if (name === "nested-parts") {
+                for (let variant = 0; variant < 8; ++variant) {
+                    compare(file, 26, null, {variant});
+                    compare(file, 26, null, {variant, sizeX: 40, sizeY: 30});
+                }
+            }
             if (name === "part-transforms") {
                 for (let variant = 0; variant < 8; ++variant) {
                     if (variant !== 0) compare(file, 26, null, {variant});

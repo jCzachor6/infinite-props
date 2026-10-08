@@ -35,30 +35,32 @@ bool stepParts(Execution& ex, Instruction ins) {
         if (ex.slotOwner[slot] != ex.frame().lastPart) {
             ex.trap("slot does not belong to the last called part", ErrorReason::InvalidOutput);
         }
+        // The read copy is in the caller's coordinates with a parts section
+        // (spec v0.5 §6); otherwise it equals the published value.
         switch (want) {
         case OutputKind::Point:
             if (output.points.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.points.back().x));
-            ex.push(Value(output.points.back().y));
+            ex.push(Value(output.readPoint.x));
+            ex.push(Value(output.readPoint.y));
             break;
         case OutputKind::Rect:
             if (output.rects.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.rects.back().x));
-            ex.push(Value(output.rects.back().y));
-            ex.push(Value(output.rects.back().w));
-            ex.push(Value(output.rects.back().h));
+            ex.push(Value(output.readRect.x));
+            ex.push(Value(output.readRect.y));
+            ex.push(Value(output.readRect.w));
+            ex.push(Value(output.readRect.h));
             break;
         case OutputKind::Circle:
             if (output.circles.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.circles.back().x));
-            ex.push(Value(output.circles.back().y));
-            ex.push(Value(output.circles.back().r));
+            ex.push(Value(output.readCircle.x));
+            ex.push(Value(output.readCircle.y));
+            ex.push(Value(output.readCircle.r));
             break;
         }
         ++ex.frame().ip;

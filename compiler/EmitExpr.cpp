@@ -122,17 +122,7 @@ void Emitter::emitPointValue(const ips::Expr& expr) {
     if (std::holds_alternative<ips::Member>(expr)) {
         // part.outputs.<name> — the bare pair, byte-identical to v0.2.
         const PartRead read = partReadInfo(expr);
-        const u32 part = plan_.partIndex.at(read.alias);
-        u32 slot = static_cast<u32>(plan_.rootSlots.size());
-        for (u32 i = 0; i < part; ++i) {
-            slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
-        }
-        for (const auto& output : plan_.parts[part]->asset.outputs) {
-            if (output.name == read.output->name) {
-                break;
-            }
-            ++slot;
-        }
+        const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
         return;
     }
@@ -158,8 +148,9 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
     if (base == nullptr) {
         throw ips::SourceError{ips::locationOf(expr), "unsupported member access"};
     }
-    info.alias = base->name;
-    const auto part = plan_.partIndex.find(base->name);
+    // The alias path of the instance: the reader's namespace plus the alias.
+    info.alias = functionNamespace(current_->name) + base->name;
+    const auto part = plan_.partIndex.find(info.alias);
     if (part == plan_.partIndex.end()) {
         throw ips::SourceError{ips::locationOf(expr),
                                "'" + base->name + "' is not an imported part"};
@@ -183,17 +174,7 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
 
 ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const PartRead read = partReadInfo(expr);
-    const u32 part = plan_.partIndex.at(read.alias);
-    u32 slot = static_cast<u32>(plan_.rootSlots.size());
-    for (u32 i = 0; i < part; ++i) {
-        slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
-    }
-    for (const auto& output : plan_.parts[part]->asset.outputs) {
-        if (output.name == read.output->name) {
-            break;
-        }
-        ++slot;
-    }
+    const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
     switch (read.kind) {
     case ips::OutputKind::Point:
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));

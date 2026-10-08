@@ -81,7 +81,7 @@ private:
     void emitPartCall(const PartCall& call);
 
     struct PartRead {
-        std::string alias;
+        std::string alias; // the instance's alias path
         const ips::OutputDecl* output = nullptr;
         ips::OutputKind kind = ips::OutputKind::Point;
     };

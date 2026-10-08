@@ -207,7 +207,7 @@
     },
     "restrictions": {
       "recursive_helpers": false,
-      "nested_part_imports": false,
+      "nested_part_imports": true,
       "let_declarations": false,
       "fn_declarations": false,
       "named_geometry_constructors": false

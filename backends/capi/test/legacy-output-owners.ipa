@@ -1,0 +1,74 @@
+; The released v0.4 library's owner fixture for the frozen ABI client:
+; output-owners.ips without instance names, so it stays format 0.4 (the
+; parts section is v0.5). Both parts sit at {0, 0}, so the values are those
+; of the compiled source.
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=2000000
+output: point anchor
+output: rect collider
+output: circle zone
+part first:
+  meta: size=8x8 origin=0,0
+  output: point anchor
+  output: rect collider
+  output: circle zone
+  fn draw ( i32, i32 ) -> ( ):
+    const.f32 1
+    const.f32 0
+    out.point first.anchor
+    const.f32 1
+    const.f32 0
+    const.f32 1
+    const.f32 1
+    out.rect first.collider
+    const.f32 1
+    const.f32 0
+    const.f32 1
+    out.circle first.zone
+  endfn
+endpart
+part second:
+  meta: size=8x8 origin=0,0
+  output: point anchor
+  output: rect collider
+  output: circle zone
+  fn draw ( i32, i32 ) -> ( ):
+    const.f32 2
+    const.f32 0
+    out.point second.anchor
+    const.f32 2
+    const.f32 0
+    const.f32 1
+    const.f32 1
+    out.rect second.collider
+    const.f32 2
+    const.f32 0
+    const.f32 1
+    out.circle second.zone
+  endfn
+endpart
+fn draw ( i32, i32 ) -> ( ):
+  const.f32 4
+  const.f32 0
+  out.point anchor
+  const.f32 4
+  const.f32 0
+  const.f32 1
+  const.f32 1
+  out.rect collider
+  const.f32 4
+  const.f32 0
+  const.f32 1
+  out.circle zone
+  stream.state
+  local.get 0
+  local.get 1
+  const.f32 0
+  const.f32 0
+  part.draw first
+  stream.state
+  local.get 0
+  local.get 1
+  const.f32 0
+  const.f32 0
+  part.draw second
+endfn

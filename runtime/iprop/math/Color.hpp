@@ -4,7 +4,7 @@
 namespace iprop::math {
 
 Color colorMix(Color a, Color b, f32 t);
-// colorMix on all four channels, each kept between its two ends (spec v0.5 §6).
+// colorMix on all four channels, each kept between its two ends (spec v0.5 §5).
 Color colorMixRgba(Color a, Color b, f32 t);
 Color colorShade(Color c, i32 amount);
 Color colorSetA(Color c, i32 amount);

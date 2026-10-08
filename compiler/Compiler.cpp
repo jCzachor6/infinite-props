@@ -15,8 +15,9 @@ namespace {
 // (IR → .iprop bytes) → validate (dogfooding, spec §14).
 std::vector<u8> compileImpl(
     const ips::Program& entry,
-    const std::map<std::string, const ips::Program*>& parts, bool optimize) {
-    std::unique_ptr<compiler::Plan> plan = compiler::Planner(entry, parts).plan();
+    const std::map<std::string, const ips::Program*>& parts, bool optimize,
+    const std::map<std::string, std::string>& partSources) {
+    std::unique_ptr<compiler::Plan> plan = compiler::Planner(entry, parts, partSources).plan();
 
     std::optional<compiler::Plan> originalPlan;
     if (optimize) originalPlan.emplace(*plan);
@@ -86,8 +87,9 @@ std::vector<u8> compileImpl(
 } // namespace
 
 std::vector<u8> compileProgram(const ips::Program& entry,
-    const std::map<std::string, const ips::Program*>& parts, bool optimize) {
-    try { return compileImpl(entry, parts, optimize); }
+    const std::map<std::string, const ips::Program*>& parts, bool optimize,
+    const std::map<std::string, std::string>& partSources) {
+    try { return compileImpl(entry, parts, optimize, partSources); }
     catch (const compiler::PoolLimit& error) {
         throw ips::SourceError{{1,1}, error.what(), {}, ips::DiagnosticCode::ResourceLimit,
                               ips::DiagnosticStage::Planning};

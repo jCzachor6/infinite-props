@@ -73,7 +73,7 @@ identified by `source_type`.
 | `named_calls.named_arguments_advance_positional_ordinal` | `false`: a named argument does not move that positional cursor. `helper(y=2,1)` can bind `x,y`; `helper(x=2,1)` binds `x` twice and is rejected. |
 | `named_calls.duplicate_arguments`, `.unknown_arguments` | Both are `false`: duplicate parameter binding or an unknown name is rejected. |
 | `restrictions.recursive_helpers` | `false`: direct and indirect helper recursion is rejected; forward helper calls are accepted. |
-| `restrictions.nested_part_imports` | `false`: a compiled imported part cannot itself declare imports. Source loading does not relax this planner restriction. |
+| `restrictions.nested_part_imports` | `true`: an imported asset may import parts of its own, resolved beside the importing file. Each alias path is a separate instance, up to 256 instances after expansion; import cycles are rejected. |
 | `restrictions.let_declarations`, `.fn_declarations`, `.named_geometry_constructors` | All `false`: declaration introducers `let`/`fn` and named geometry value constructors are unavailable. Existing legacy helpers, vector literals, drawing builtins and color constructors retain their implemented syntax. |
 | `effect_order.binary_operands` | `left_to_right`: ordinary binary operand effects execute in that order. |
 | `effect_order.logical_operators` | `short_circuit_left_to_right`: `&&`/`\|\|` may skip the right operand, including its effects. |

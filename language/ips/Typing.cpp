@@ -107,24 +107,37 @@ Typer::Path Typer::flatten(const Expr& expr) const {
     return path;
 }
 
+const PartInfo* Typer::findPart(const std::string& alias) const {
+    const auto found = parts_.find(ns_ + alias);
+    return found == parts_.end() ? nullptr : &found->second;
+}
+
+std::vector<std::string> Typer::partAliases() const {
+    std::vector<std::string> names;
+    for (const auto& [path, info] : parts_) {
+        (void)info;
+        if (path.starts_with(ns_) && path.find('.', ns_.size()) == std::string::npos)
+            names.push_back(path.substr(ns_.size()));
+    }
+    return names;
+}
+
 Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
     PartRead info;
     const Path path = flatten(expr);
     if (path.base.empty()) {
         error(path.location, "unsupported member access");
     }
-    const auto part = parts_.find(path.base);
-    if (part == parts_.end()) {
-        std::vector<std::string> names;
-        for (const auto& partEntry : parts_) names.push_back(partEntry.first);
-        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
+    const auto* part = findPart(path.base);
+    if (part == nullptr) {
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, partAliases()));
     }
     if (path.segments.size() != 2 || path.segments[0] != "outputs") {
         error(path.location, "expected '" + path.base +
                                  ".outputs.<name>' to read a part output");
     }
     info.alias = path.base;
-    for (const auto& output : part->second.outputs) {
+    for (const auto& output : part->outputs) {
         if (output.name == path.segments[1]) {
             info.output = &output;
             info.kind = output.kind;
@@ -132,7 +145,7 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
         }
     }
     std::vector<std::string> names;
-    for (const auto& output : part->second.outputs) names.push_back(output.name);
+    for (const auto& output : part->outputs) names.push_back(output.name);
     error(path.location, "part '" + path.base + "' has no output '" +
                              path.segments[1] + "'" + didYouMean(path.segments[1], names));
 }

@@ -20,7 +20,7 @@
 #include "support/compiler_support.hpp"
 #include "support/test_support.hpp"
 
-// Color gradients and vec2 segments drawn with `to` (spec v0.5 §6).
+// Color gradients and vec2 segments drawn with `to` (spec v0.5 §5).
 
 using namespace iprop;
 

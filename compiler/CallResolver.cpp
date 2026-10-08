@@ -33,8 +33,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         }
         return {call.location, std::move(result)};
     }
-    const auto dot = function_.name.find('.');
-    const auto ns = dot == std::string::npos ? "" : function_.name.substr(0, dot + 1);
+    const auto ns = functionNamespace(function_.name);
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end() &&
         !(ips::builtinYieldsToHelper(name) && plan_.functionId(name, ns))) {
         const auto& spec = found->second;
@@ -64,7 +63,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
         return {call.location, std::move(result)};
     }
     if (std::holds_alternative<ips::Member>(*call.callee))
-        return {call.location, part(call, name.substr(0, name.find('.')))};
+        return {call.location, part(call, ns + name.substr(0, name.find('.')))};
     const auto id = plan_.functionId(name, ns);
     if (!id) throw ips::SourceError{call.location, "unknown function '" + name + "'"};
     const auto& callee = plan_.functions[*id];
@@ -74,9 +73,9 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     return {call.location, std::move(result)};
 }
 
-PartCall CallResolver::part(const ips::Call& call, const std::string& alias) const {
+PartCall CallResolver::part(const ips::Call& call, const std::string& path) const {
     PartCall result{};
-    result.part = plan_.partIndex.at(alias);
+    result.part = plan_.partIndex.at(path);
     const auto& bound = function_.boundCalls.at(&call);
     result.transform = ips::resolvePartTransform(bound);
     const auto& inputs = plan_.parts[result.part]->asset.inputs;

@@ -7,6 +7,7 @@
 #include <cstring>
 #include <fstream>
 #include <new>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -191,7 +192,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_part_count(parts, &partCount, &error) == IPROP_EX_OK);
     CHECK(partCount == 3);
     CHECK(iprop_program_part_get(parts, 0, &part, &error) == IPROP_EX_OK);
-    CHECK(part.owner == 1 && part.name_present == 0 && part.name.data == nullptr && part.name.byte_count == 0);
+    CHECK(part.owner == 1 && part.name_present == 1 && std::string_view(part.name.data, part.name.byte_count) == "first");
     CHECK(iprop_program_part_get(parts, 1, &part, &error) == IPROP_EX_OK);
     CHECK(part.owner == 2 && part.input_count == 0 && part.output_count == 0);
     CHECK(iprop_program_part_input_count(parts, 0, &partInputCount, &error) == IPROP_EX_OK && partInputCount == 4);

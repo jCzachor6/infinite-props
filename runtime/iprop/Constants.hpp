@@ -22,6 +22,7 @@ enum class SectionId : u32 {
     Const = 2,
     Code = 3,
     Debug = 4,
+    Parts = 5, // v0.5: part instance names and parents (spec v0.5 §6)
 };
 
 // Input (uniform) types (spec §4.1).
@@ -228,7 +229,7 @@ enum class Opcode : u8 {
     RngIntWith = 0xAD,
     RngFloatWith = 0xAE,
 
-    // Gradients and segments (spec v0.5 §6; added in v0.5)
+    // Gradients and segments (spec v0.5 §5; added in v0.5)
     ColorMixRgba = 0xAF,
     Vec2Mix = 0xB0,
 
@@ -253,5 +254,8 @@ inline constexpr u32 kRangeDraws = 32;
 
 // Function table: name index marking an unnamed function (spec §6.1).
 inline constexpr u32 kAnonymousName = 0xFFFFFFFFu;
+
+// Part instance section: the parent of a part drawn by the root asset.
+inline constexpr u32 kRootParent = 0xFFFFFFFFu;
 
 } // namespace iprop

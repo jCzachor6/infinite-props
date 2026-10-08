@@ -79,16 +79,21 @@ asset portrait {
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
 
-    // The child output surfaces in the parent.
+    // The child output surfaces in the parent's coordinates: the pupil sits
+    // on the part's origin, which the call placed at {32, 24}.
     const NamedOutput* pupil = result.find("pupilCenter");
     REQUIRE(pupil != nullptr);
     REQUIRE(pupil->points.size() == 1);
-    REQUIRE(pupil->points[0].x == 16.f);
-    REQUIRE(pupil->points[0].y == 8.f);
+    REQUIRE(pupil->points[0].x == 32.f);
+    REQUIRE(pupil->points[0].y == 24.f);
 
-    // The parts' own outputs are present in global slot order.
+    // The parts' own outputs are present in global slot order, in root
+    // coordinates for the host.
     REQUIRE(result.find("top") != nullptr);
+    CHECK(result.find("top")->points[0].x == 32.f);
+    CHECK(result.find("top")->points[0].y == 4.f);
     REQUIRE(result.find("pupil") != nullptr);
+    CHECK(result.find("pupil")->points[0].y == 24.f);
 
     // Deterministic.
     REQUIRE(compileProgram(portraitProgram, parts) == bytes);
@@ -168,34 +173,6 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
     CHECK_THROWS_AS(compileProgram(duplicate, {{"child",&part}}), ips::SourceError);
 }
 
-TEST_CASE("nested part imports are rejected") {
-    const std::string inner = R"(
-import leaf from "leaf.ips"
-asset inner { size 8x8 draw { } }
-)";
-    const std::string leaf = R"(
-asset leaf { size 4x4 draw { } }
-)";
-    const std::string outer = R"(
-import inner from "inner.ips"
-asset outer { size 8x8 draw { inner.draw(1, v, a, at = {0, 0}) } }
-)";
-
-    const ips::Program innerProgram = ips::parse(inner);
-    const ips::Program leafProgram = ips::parse(leaf);
-    const ips::Program outerProgram = ips::parse(outer);
-
-    bool threw = false;
-    try {
-        (void)compileProgram(outerProgram, {{"inner", &innerProgram}});
-    } catch (const ips::SourceError& error) {
-        threw = true;
-        REQUIRE(std::string(error.message).find("nested part imports") !=
-                std::string::npos);
-    }
-    REQUIRE(threw);
-}
-
 TEST_CASE("part placement can read another part's output") {
     const std::string anchor = R"(
 asset anchor {
@@ -231,11 +208,13 @@ asset composite {
     VM vm(loaded, GenerationInputs{5, 0, 0, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
+    // Reads are in the composite's coordinates: the first call puts the spot
+    // at {2, 3}; the second call, drawn there, moves it to {4, 6}.
     const NamedOutput* p = result.find("p");
     REQUIRE(p != nullptr);
     REQUIRE(p->points.size() == 1);
-    REQUIRE(p->points[0].x == 2.f);
-    REQUIRE(p->points[0].y == 3.f);
+    REQUIRE(p->points[0].x == 4.f);
+    REQUIRE(p->points[0].y == 6.f);
 }
 
 namespace {
@@ -293,7 +272,7 @@ TEST_CASE("named and mixed part controls preserve legacy bytes outputs and defau
       draw {
         controls = {v, a}
         uniforms = {variant, archetype}
-        random = {amount, unit()}
+        random = {atan2(amount, -1.0), unit()}
         box = {0, 0, 2, 3}
         zone = {1, 2, 1}
         rect(0, 0, 3, 2, tint)
@@ -335,14 +314,16 @@ TEST_CASE("named and mixed part controls preserve legacy bytes outputs and defau
             }
         }
     }
+    // Published in root coordinates: the child is placed at {8, 4}.
     const auto defaults = generatePartCall(compileProgram(root(forms[1][1]), {{"child", &part}}), 42, 2, 3);
     REQUIRE(defaults.find("controls") != nullptr);
-    CHECK(defaults.find("controls")->points[0].x == 2.f);
-    CHECK(defaults.find("controls")->points[0].y == 3.f);
+    CHECK(defaults.find("controls")->points[0].x == 10.f);
+    CHECK(defaults.find("controls")->points[0].y == 7.f);
     REQUIRE(defaults.find("uniforms") != nullptr);
-    CHECK(defaults.find("uniforms")->points[0].x == 7.f);
-    CHECK(defaults.find("uniforms")->points[0].y == 9.f);
-    CHECK(std::bit_cast<u32>(defaults.find("random")->points[0].x) == 0x80000000u);
+    CHECK(defaults.find("uniforms")->points[0].x == 15.f);
+    CHECK(defaults.find("uniforms")->points[0].y == 13.f);
+    // The -0.0 default reaches the part: atan2(-0, -1) is -pi.
+    CHECK(defaults.find("random")->points[0].x < 8.f);
 }
 
 TEST_CASE("named part controls evaluate uniforms controls and placement once before isolated RNG", "[part-named-controls]") {

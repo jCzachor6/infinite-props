@@ -9,6 +9,7 @@
 #include "iprop/Validator.hpp"
 
 #include <algorithm>
+#include <set>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
@@ -37,6 +38,8 @@ namespace {
 //   part hair:                           (a part: meta/input/output/fn inside)
 //     ...
 //   end
+//   part hilt instance:                  (v0.5 named instance drawn by the root)
+//   part hilt.grip instance hilt:        (v0.5 named instance, child of hilt)
 //   fn draw ( i32, i32, color ) -> ( ):  (types: i32|f32|color)
 //     locals: i32 f32                    (optional extra locals)
 //     const.i32 5
@@ -88,6 +91,8 @@ struct AsmOutput {
 
 struct AsmPart {
     std::string name;
+    bool instance = false;      // stored in the v0.5 parts section
+    std::string parent;         // empty: drawn by the root
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
     std::vector<AsmInput> inputs;
@@ -398,12 +403,16 @@ std::vector<u8> assemble(const std::string& source) {
         }
 
         if (words[0] == "part") {
-            if (words.size() != 2 || function != nullptr || currentPart != nullptr) {
+            const bool instance = words.size() >= 3 && clean(words[2]) == "instance";
+            if ((words.size() != 2 && !(instance && words.size() <= 4)) || function != nullptr ||
+                currentPart != nullptr) {
                 throw error("bad part declaration");
             }
             program.parts.push_back({});
             currentPart = &program.parts.back();
             currentPart->name = clean(words[1]);
+            currentPart->instance = instance;
+            if (words.size() == 4) currentPart->parent = clean(words[3]);
             continue;
         }
 
@@ -601,11 +610,31 @@ std::vector<u8> assemble(const std::string& source) {
         slotIndex[output.name] = static_cast<u32>(slotCount++);
         addString(output.name);
     }
+    // Part slots are also reachable as `part.output`; a bare part slot name
+    // resolves only when no root or other part slot shares it.
+    std::set<std::string> ambiguous;
     for (const auto& part : program.parts) {
         for (const auto& output : part.outputs) {
-            slotIndex[output.name] = static_cast<u32>(slotCount++);
+            const auto slot = static_cast<u32>(slotCount++);
+            const auto existing = slotIndex.find(output.name);
+            if (existing == slotIndex.end()) slotIndex.emplace(output.name, slot);
+            else if (existing->second >= program.outputs.size()) ambiguous.insert(output.name);
+            slotIndex[part.name + "." + output.name] = slot;
             addString(output.name);
         }
+    }
+    for (const auto& name : ambiguous) slotIndex.erase(name);
+    // Named instances (v0.5 parts section): all or none, parents first.
+    const bool instances = !program.parts.empty() && program.parts.front().instance;
+    std::map<std::string, u32> instanceIndex;
+    for (std::size_t i = 0; i < program.parts.size(); ++i) {
+        const auto& part = program.parts[i];
+        if (part.instance != instances) throw SourceError(0, "either every part or none is an instance");
+        if (!instances) continue;
+        if (!part.parent.empty() && !instanceIndex.contains(part.parent))
+            throw SourceError(0, "part instance '" + part.name + "' names an unknown or later parent");
+        instanceIndex.emplace(part.name, static_cast<u32>(i));
+        addString(part.name);
     }
     for (const auto& input : program.inputs) {
         addString(input.name);
@@ -873,17 +902,28 @@ std::vector<u8> assemble(const std::string& source) {
         }
     }
 
+    Writer partInstances;
+    if (instances) {
+        minor = std::max<u16>(minor, 5);
+        partInstances.writeU32(static_cast<u32>(program.parts.size()));
+        for (const auto& part : program.parts) {
+            partInstances.writeU32(stringIndex[part.name]);
+            partInstances.writeU32(part.parent.empty() ? kRootParent : instanceIndex.at(part.parent));
+        }
+    }
+
     // ---- Assemble the file ----
     Writer file;
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
+    const u32 sections = instances ? 4 : 3;
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(0);
-    file.writeU32(3);
+    file.writeU32(sections);
     file.writeU32(0);
-    u32 offset = kHeaderSize + 3 * 12;
+    u32 offset = kHeaderSize + sections * 12;
     const auto section = [&](u32 id, const std::vector<u8>& bytes) {
         file.writeU32(id);
         file.writeU32(offset);
@@ -893,9 +933,11 @@ std::vector<u8> assemble(const std::string& source) {
     section(1, meta.data());
     section(2, consts.data());
     section(3, code.data());
+    if (instances) section(5, partInstances.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
+    if (instances) file.writeBytes(partInstances.data());
 
     const auto bytes = file.data();
 

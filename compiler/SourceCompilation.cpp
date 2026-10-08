@@ -2,6 +2,7 @@
 
 #include "Compiler.hpp"
 #include "iprop/Compression.hpp"
+#include "iprop/Constants.hpp"
 #include "iprop/Debug.hpp"
 #include "iprop/Validator.hpp"
 #include "ips/Imports.hpp"
@@ -10,14 +11,13 @@
 #include "ips/SourceText.hpp"
 
 #include <algorithm>
-#include <set>
 
 namespace iprop {
 
 SourceCompilationResult compileSource(
     std::string_view entryPath,
     const std::function<std::string(std::string_view)>& loadSource,
-    SourceCompilationOptions options) {
+    SourceCompilationOptions options, const ips::ImportResolver& resolveImport) {
     SourceCompilationResult result;
     result.entryPath = entryPath;
     auto stage = ips::DiagnosticStage::Import;
@@ -66,42 +66,58 @@ SourceCompilationResult compileSource(
             discovery.imports = std::move(parsed.imports);
             return discovery;
         };
-        (void)ips::resolveImportOrder(entryPath, loadProgram);
+        // The host resolves each import once; the identifiers are recorded.
+        const auto resolve = [&](std::string_view importer, std::string_view path) {
+            auto target = resolveImport ? resolveImport(importer, path) : ips::resolveImportPath(importer, path);
+            result.imports[std::string(importer)].push_back(target);
+            return target;
+        };
+        const auto order = ips::resolveImportOrder(entryPath, loadProgram, resolve);
         if (!result.diagnostics.empty()) {
             result.status = SourceCompilationStatus::InvalidSource;
             return result;
         }
 
-        const auto& entry = result.programs.at(result.entryPath);
-        std::map<std::string, const ips::Program*> parts;
-        std::map<std::string, ips::PartInfo> surfaces;
-        for (const auto& import : entry.imports) {
-            const auto& part = result.programs.at(import.path);
-            parts.emplace(import.alias, &part);
-            surfaces.emplace(import.alias, ips::partInfoOf(part.asset));
-        }
+        // Each file is checked once, dependencies first, against the
+        // surfaces of its own direct imports.
         stage = ips::DiagnosticStage::Typing;
-        std::set<std::string> checkedParts;
-        for (const auto& import : entry.imports) {
+        for (const auto& path : order) {
             if (result.diagnostics.size() >= limit) break;
-            if (!checkedParts.insert(import.path).second) continue;
-            for (auto& error : ips::checkAssetDiagnostics(result.programs.at(import.path), {},
+            const auto& program = result.programs.at(path);
+            std::map<std::string, ips::PartInfo> surfaces;
+            for (std::size_t i = 0; i < program.imports.size(); ++i)
+                surfaces.emplace(program.imports[i].alias,
+                                 ips::partInfoOf(result.programs.at(result.imports.at(path)[i]).asset));
+            for (auto& error : ips::checkAssetDiagnostics(program, surfaces,
                                                          limit - result.diagnostics.size())) {
-                if (error.path.empty()) error.path = import.path;
+                if (error.path.empty()) error.path = path;
                 appendDiagnostic(error);
             }
-        }
-        if (result.diagnostics.size() < limit) {
-            for (const auto& error : ips::checkAssetDiagnostics(entry, surfaces,
-                                                               limit - result.diagnostics.size()))
-                appendDiagnostic(error);
         }
         if (!result.diagnostics.empty()) {
             result.status = SourceCompilationStatus::InvalidSource;
             return result;
         }
+
+        // One instance per alias path: a file shared by two branches is
+        // parsed once but planned twice. Expansion stops at the part limit,
+        // which the planner reports at the first import past it.
+        std::map<std::string, const ips::Program*> parts;
+        std::map<std::string, std::string> partSources;
+        const auto expand = [&](auto&& self, const std::string& path, const std::string& prefix) -> void {
+            const auto& imports = result.programs.at(path).imports;
+            for (std::size_t i = 0; i < imports.size(); ++i) {
+                if (parts.size() >= kMaxParts) return;
+                const auto& source = result.imports.at(path)[i];
+                parts.emplace(prefix + imports[i].alias, &result.programs.at(source));
+                partSources.emplace(prefix + imports[i].alias, source);
+                self(self, source, prefix + imports[i].alias + ".");
+            }
+        };
+        expand(expand, result.entryPath, "");
         stage = ips::DiagnosticStage::Planning;
-        auto bytes = compileProgram(entry, parts, options.optimize);
+        auto bytes = compileProgram(result.programs.at(result.entryPath), parts,
+                                    options.optimize, partSources);
         stage = ips::DiagnosticStage::Validation;
         if (options.stripDebug) bytes = stripDebug(bytes);
         if (options.compress) bytes = compressFile(bytes);

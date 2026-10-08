@@ -1,4 +1,5 @@
 #include "iprop/PartRenderPlan.hpp"
+#include "iprop/math/Float.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -38,7 +39,21 @@ PartRenderPlan PartRenderPlan::create(const Part& part, Vec2 callerScale,
     plan.targetOrigin = {coordinate(placement.x - part.origin.x * callerScale.x),
                          coordinate(placement.y - part.origin.y * callerScale.y)};
     plan.blitCost = static_cast<u64>(plan.sourceExtent.x) * plan.sourceExtent.y;
+    plan.callerOffset = {static_cast<f32>(plan.targetOrigin.x) / callerScale.x,
+                         static_cast<f32>(plan.targetOrigin.y) / callerScale.y};
     return plan;
+}
+
+// One NaN encoding (spec v0.5 §6), independent of backend operand selection.
+Vec2 PartRenderPlan::toCaller(Vec2 point) const {
+    const Vec2 mapped = transform.mapPoint(point, assetExtent);
+    return math::canonical(Vec2{mapped.x + callerOffset.x, mapped.y + callerOffset.y});
+}
+
+OutputRect PartRenderPlan::toCaller(OutputRect rect) const {
+    const OutputRect mapped = transform.mapRect(rect, assetExtent);
+    return {math::canonical(mapped.x + callerOffset.x), math::canonical(mapped.y + callerOffset.y),
+            math::canonical(mapped.w), math::canonical(mapped.h)};
 }
 
 } // namespace iprop

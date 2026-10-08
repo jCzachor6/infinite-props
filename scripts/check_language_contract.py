@@ -49,7 +49,7 @@ def main():
         'mixed_positional_and_named': True, 'positional_binding': 'positional_parameter_ordinal',
         'named_arguments_advance_positional_ordinal': False,
         'duplicate_arguments': False, 'unknown_arguments': False}
-    assert rules['restrictions'] == {'recursive_helpers': False, 'nested_part_imports': False,
+    assert rules['restrictions'] == {'recursive_helpers': False, 'nested_part_imports': True,
         'let_declarations': False, 'fn_declarations': False, 'named_geometry_constructors': False}
     assert rules['effect_order'] == {'binary_operands': 'left_to_right',
         'logical_operators': 'short_circuit_left_to_right', 'call_arguments': 'signature_evaluation_order',
@@ -124,15 +124,18 @@ def main():
                  'draw{child.draw(a=0,at={0,0},v=0,n=1,seed=seed)}}')
         check('named part controls and uniform', entry, True)
         check('part placement is named only', entry.replace('at={0,0}', '{0,0}'), False)
-        (root / 'grandchild.ips').write_text('asset grandchild {size 8x8 draw{}}')
-        (root / 'child.ips').write_text('import grandchild from "grandchild.ips" '
+        # Nested imports resolve beside the importing file, not the entry.
+        (root / 'parts').mkdir()
+        (root / 'parts' / 'grandchild.ips').write_text('asset grandchild {size 8x8 draw{}}')
+        (root / 'child.ips').write_text('import grandchild from "parts/grandchild.ips" '
             'asset child {size 8x8 input i32 n=-7 draw{grandchild.draw(seed,v,a,at={0,0})}}')
-        # CLI typing can reject an imported asset's own imports before the
-        # planner's explicit nested-part restriction. Both enforce this limit;
-        # parts_test.cpp separately checks the planner diagnostic.
-        check('nested part import', entry, False)
+        check('nested part import', entry, True)
+        (root / 'parts' / 'grandchild.ips').write_text('import back from "../child.ips" asset grandchild {size 8x8 draw{}}')
+        report = check('nested import cycle', entry, False)
+        assert report['diagnostics'][0]['message'] == \
+            'import cycle: child.ips -> parts/grandchild.ips -> child.ips', report
 
-    print(f'Language contract: versions, profile and {len(cases) + 3} acceptance cases passed')
+    print(f'Language contract: versions, profile and {len(cases) + 4} acceptance cases passed')
 
 
 if __name__ == '__main__':

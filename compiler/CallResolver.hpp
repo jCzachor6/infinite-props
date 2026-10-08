@@ -61,6 +61,6 @@ private:
     const Plan& plan_;
     const PlannedFunction& function_;
     PlannedArgument argument(const ips::Expr& expression, ips::ValueType expected) const;
-    PartCall part(const ips::Call& call, const std::string& alias) const;
+    PartCall part(const ips::Call& call, const std::string& path) const;
 };
 } // namespace iprop::compiler

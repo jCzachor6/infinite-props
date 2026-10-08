@@ -43,6 +43,7 @@ add_executable(iprop_tests
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
+    compiler/nested_parts_test.cpp
     compiler/calls_test.cpp
     compiler/effects_test.cpp
     builtin_spec_test.cpp

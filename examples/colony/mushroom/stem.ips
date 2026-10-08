@@ -1,0 +1,17 @@
+// A stem up to 12 pixels tall, growing from its bottom centre.
+asset stem {
+  size 6x12
+  origin 3, 12
+  input i32 height = 8
+  output point top
+
+  draw {
+    y = 12 - height
+    rect(1, y, 4, height, #8c7a64)
+    rect(2, y, 2, height, #eadcc2)
+    rect(3, y + 1, 1, height - 1, #cbb99c)
+    rect(0, 10, 6, 2, #8c7a64)
+    rect(1, 10, 4, 1, #eadcc2)
+    top = {3, y}
+  }
+}

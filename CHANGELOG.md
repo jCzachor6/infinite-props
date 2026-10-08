@@ -36,6 +36,26 @@ In development: source language 0.6 and draft format 0.5. The product stays
   write 0.5 only when a file uses these instructions; other files stay 0.4.
   Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
   0.4 envelope.
+- Language: nested parts. An imported asset may import parts of its own;
+  import paths resolve beside the importing file (`ipc` follows the file
+  system, embedding hosts pass their own resolver to `compileSource`). Each
+  alias path, such as `hilt.grip`, is a separate instance with its own inputs,
+  outputs and RNG stream, even for a file shared by two branches, up to 256
+  instances; cycles are reported with the whole chain. An asset draws and
+  reads only its direct children.
+- Changed: part outputs are in the caller's coordinates. A parent reads
+  `alias.outputs.name` with the child's transform and placement applied, and
+  hosts receive part outputs in root asset coordinates, each enclosing call
+  applied once at write time. Recompiled sources that added the placement by
+  hand must drop it (see the [migration notes](docs/language/migration-v0.6.md)).
+- Format 0.5: the parts section (id 5) names each part instance by its alias
+  path and records its parent; the validator restricts `part.draw` and
+  `part.get` to an asset's own children, and its presence selects the new
+  output coordinates (spec §6). The compiler writes it, and therefore format
+  0.5, for every file with parts; frozen files keep local outputs. The C API
+  part descriptor reports the name with `name_present == 1`. The assembler
+  declares instances as `part NAME instance [PARENT]:`, and a part slot
+  shadowed by a root output name is written `part.output`.
 - Build: Windows executables reserve an 8 MiB stack, like Linux and macOS
   main threads, so compiling a helper chain as deep as the call limit no
   longer overflows MSVC's 1 MiB default.

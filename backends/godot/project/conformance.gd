@@ -263,7 +263,8 @@ func _init() -> void:
 	sprite.free()
 
 	# Existing helper/part fixture: every D4 transform, owner gap, unset
-	# singular and empty list. Typed reads keep the already transformed leaves.
+	# singular and empty list. Typed reads keep the already transformed leaves,
+	# in root coordinates: the D4 image plus the part's blit origin {3, 4}.
 	var typed := IpropAsset.new()
 	if typed.load_file(args[0] + "/output-values.iprop") != OK:
 		failures += 1
@@ -296,9 +297,12 @@ func _init() -> void:
 						or slots[i]["name"] != names[local] or slots[i]["list"] != is_list \
 						or slots[i]["kind"] != local % 3 or slots[i]["values"].size() != count * [2,4,3][local % 3]:
 					failures += 1
-			var point: Vector2 = points[transforms[v]]
+			var point: Vector2 = points[transforms[v]] + Vector2(3, 4)
+			var rect: PackedFloat32Array = rects[transforms[v]].duplicate()
+			rect[0] += 3
+			rect[1] += 4
 			if slots[6]["values"] != PackedFloat32Array([point.x, point.y]) \
-					or slots[7]["values"] != rects[transforms[v]] \
+					or slots[7]["values"] != rect \
 					or slots[8]["values"] != PackedFloat32Array([point.x, point.y, 3]) \
 					or slots[0]["values"].is_empty() != (v == 0) \
 					or not slots[9]["values"].is_empty() or not slots[13]["values"].is_empty() \

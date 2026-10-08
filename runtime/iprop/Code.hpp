@@ -4,6 +4,7 @@
 #include "iprop/Meta.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -43,6 +44,9 @@ struct Part {
     Vec2 origin{};
     std::vector<InputDecl> inputs;
     std::vector<OutputDecl> outputs;
+    // From the v0.5 parts section (spec v0.5 §6); absent in older files.
+    std::optional<u32> nameIndex;
+    u32 parent = kRootParent;
 };
 
 // Parsed `code` section (spec §6).
@@ -62,5 +66,11 @@ struct CodeSection {
 // validity) belong to the Phase 6 validator.
 CodeSection parseCode(std::span<const u8> data, const Section& section,
                       const ConstPool& pool);
+
+// Parses the v0.5 `parts` section (spec v0.5 §6) into the parsed part table:
+// one name and parent per part, names in the pool and unique, every parent a
+// preceding part or kRootParent, no trailing bytes.
+void parsePartInstances(std::span<const u8> data, const Section& section,
+                        const ConstPool& pool, CodeSection& code);
 
 } // namespace iprop

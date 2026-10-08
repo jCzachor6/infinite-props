@@ -1,0 +1,24 @@
+// Nested parts on three levels: the transform of each level, the placement
+// of each call and the caller scale all reach the root outputs, which native
+// and WASM must agree on bit for bit. The tile's outputs include signed zero
+// and NaN bounds.
+import arm from "nested-arm.ips"
+asset nestedParts {
+  size 20x15
+  variants 8
+  output point tip
+  output rect box
+
+  draw {
+    if (v == 0) { arm.draw(seed, v, a, at = {6, 3}) }
+    else if (v == 1) { arm.draw(seed, v, a, at = {6, 3}, rot = 90) }
+    else if (v == 2) { arm.draw(seed, v, a, at = {6, 3}, rot = 180) }
+    else if (v == 3) { arm.draw(seed, v, a, at = {6, 3}, rot = 270) }
+    else if (v == 4) { arm.draw(seed, v, a, at = {6, 3}, mirror_x = true) }
+    else if (v == 5) { arm.draw(seed, v, a, at = {6, 3}, mirror_y = true) }
+    else if (v == 6) { arm.draw(seed, v, a, at = {6, 3}, rot = 90, mirror_y = true) }
+    else { arm.draw(seed, v, a, at = {6, 3}, rot = 90, mirror_x = true) }
+    tip = arm.outputs.tip
+    box = arm.outputs.box
+  }
+}

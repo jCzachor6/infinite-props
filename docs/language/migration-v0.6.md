@@ -14,8 +14,9 @@ number is separate.
 | Runtime C API feature version | 0.3 | 0.3, unchanged |
 | Shared-library compatibility line | SONAME/install-name 0.4 | 0.4, unchanged |
 
-The compiler writes the oldest format that holds a file: 0.5 only when the
-compiled code uses a 0.5 instruction, otherwise 0.4 as before. A runtime from
+The compiler writes the oldest format that holds a file: 0.5 when the
+compiled code uses a 0.5 instruction or has parts, otherwise 0.4 as before. A
+runtime from
 product 0.5.0 or older rejects a 0.5 file by its version instead of misreading
 it, and still runs the 0.4 files. The current runtime loads and generates
 frozen 0.1–0.4 files with unchanged pixels, outputs, RNG, traps and fuel. The
@@ -68,6 +69,39 @@ integer sampler of `to` may take more than one stream step, so replacing
 `index(n)` or `range(a, b)` with `to` changes the later draws of a generator;
 existing generators are not rewritten.
 
+## Nested parts
+
+An imported asset may now import parts of its own (see
+[nested parts](composition.md#nested-parts)). Each import path resolves
+against the file that contains it; `ipc` follows the file system, so
+`link/..` leaves a symlinked directory the way the OS does. Every alias path
+is its own instance with separate inputs, outputs and RNG stream, even when
+two branches import the same file, and at most 256 instances may result.
+Cycles are rejected with the whole chain. In 0.5 an import inside an
+imported file was a compile error, so no accepted 0.5 source is affected by
+the nesting itself.
+
+## Part outputs in the caller's coordinates
+
+Recompiling changes the values of part outputs. A parent now reads
+`alias.outputs.name` in its own coordinates: the child's D4 transform and
+its placement are applied, so the value can place the next part or be
+drawn directly. Before, the read value had only the D4 transform and the
+parent added the placement itself. Hosts likewise receive every part output
+in root asset coordinates, with the transforms of all enclosing calls
+applied once. A source that added the placement by hand must drop that
+addition. Because placing adds `0.0`, a part output that was `-0.0` is now
+`+0.0`, and every NaN coordinate has one encoding.
+
+The compiler records this in the format 0.5 parts section, which also names
+each instance by its alias path (`hilt.grip`); the C API reports that name in
+the existing part descriptor (`name_present == 1`). A file with parts is
+therefore format 0.5 and needs this runtime. Frozen 0.1–0.4 files, which
+have no parts section, keep their local output values and unnamed parts.
+
+## Compatibility
+
 Source 0.5 programs remain valid 0.6 programs. Existing generators need no
 rewrite; `rgb()`, `rgba()`, `color.mix()` and the other color helpers keep
-their results.
+their results. Only part output values change when recompiled, as described
+above.

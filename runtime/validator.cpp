@@ -38,6 +38,7 @@ struct SlotInfo {
     OutputKind kind = OutputKind::Point;
     bool isList = false;
     bool rootOwned = false;
+    u32 part = kRootParent; // the owning part of a part slot
 };
 
 // Every edge preserves the target's complete entry type sequence. Reachability
@@ -401,9 +402,9 @@ std::vector<SlotInfo> buildSlots(const LoadedFile& file) {
     for (const auto& output : file.meta.outputs) {
         slots.push_back({output.kind, output.isList, true});
     }
-    for (const auto& part : file.code.parts) {
-        for (const auto& output : part.outputs) {
-            slots.push_back({output.kind, output.isList, false});
+    for (u32 p = 0; p < file.code.parts.size(); ++p) {
+        for (const auto& output : file.code.parts[p].outputs) {
+            slots.push_back({output.kind, output.isList, false, p});
         }
     }
     return slots;
@@ -534,6 +535,43 @@ void checkPartAcyclicity(const LoadedFile& file) {
     }
 }
 
+// With a parts section, the asset owning a function draws and reads only its
+// own children: functions reachable from the root use parts whose parent is
+// the root, and those reachable from part P use P's children. Outputs are read
+// in the reader's coordinates (spec v0.5 §6).
+void checkPartHierarchy(const LoadedFile& file, const std::vector<SlotInfo>& slots) {
+    const auto& parts = file.code.parts;
+    if (parts.empty() || !parts.front().nameIndex) return;
+    const auto functionCount = file.code.functions.size();
+    const auto owned = [&](u32 entry, u32 owner) {
+        std::vector<u8> visited(functionCount, 0);
+        std::vector<u32> work{entry};
+        while (!work.empty()) {
+            const u32 f = work.back();
+            work.pop_back();
+            if (visited[f]) continue;
+            visited[f] = 1;
+            const auto& fn = file.code.functions[f];
+            for (std::size_t i = 0; i < fn.code.size() / 4; ++i) {
+                const auto ins = decodeInstruction(fn.code.subspan(i * 4, 4));
+                if (ins.opcode == Opcode::Call) work.push_back(ins.operand);
+                const bool get = ins.opcode == Opcode::PartGetPoint || ins.opcode == Opcode::PartGetRect ||
+                                 ins.opcode == Opcode::PartGetCircle;
+                const u32 target = ins.opcode == Opcode::PartDraw ? ins.operand
+                    : get && ins.operand < slots.size() ? slots[ins.operand].part : kRootParent;
+                if (target < parts.size() && parts[target].parent != owner) {
+                    throw FormatError(get ? "part.get of a part that is not a child of the reading asset"
+                                          : "part.draw of a part that is not a child of the drawing asset",
+                        ErrorReason::InvalidInstruction, ErrorStage::Validate,
+                        ErrorLocation::instruction(fn.fileOffset + i * 4, f, static_cast<u32>(i)));
+                }
+            }
+        }
+    };
+    owned(0, kRootParent);
+    for (u32 p = 0; p < parts.size(); ++p) owned(parts[p].functionIndex, p);
+}
+
 } // namespace
 
 LoadedFile loadFile(std::span<const u8> data) {
@@ -547,6 +585,9 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool);
+    if (const auto* parts = file.layout.find(SectionId::Parts)) {
+        parsePartInstances(bytes, *parts, file.pool, file.code);
+    }
     return file;
 }
 
@@ -558,6 +599,7 @@ void validate(const LoadedFile& file) {
         FunctionValidator(file, file.code.functions[index], slots, static_cast<u32>(index)).run();
     }
     checkPartAcyclicity(file);
+    checkPartHierarchy(file, slots);
 }
 
 } // namespace iprop

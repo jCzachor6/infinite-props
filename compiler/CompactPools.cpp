@@ -11,6 +11,7 @@ void compactPools(Plan& plan) {
     };
     metadata(*plan.entry);
     for (const auto* p : plan.parts) metadata(*p);
+    for (const auto& instance : plan.instances) names.insert(instance.path);
     std::vector<bool> ints(old.intsValue().size()), floats(old.floatsValue().size()), colors(old.colorsValue().size());
     for (const auto& f : plan.functions) {
         names.insert(f.name);

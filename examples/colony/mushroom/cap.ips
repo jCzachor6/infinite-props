@@ -1,0 +1,20 @@
+// A dome cap with a lit left side and a few random spots. `peak` is the top
+// centre of the dome.
+asset cap {
+  size 16x9
+  origin 8, 8
+  input color tint = #c8463c
+  output point peak
+
+  draw {
+    oval(8, 8, 7.5, 7.5, color.shade(tint, -70))
+    oval(8, 8, 6.5, 6.5, tint)
+    oval(6, 4.5, 3, 2, color.shade(tint, 40))
+    rect(2, 7, 12, 1, color.shade(tint, -40))
+    rect(3, 8, 10, 1, #d8c8a8)
+    for i in 0..3 {
+      oval(3 to 12, 3 to 6, 1, 0.8, #f4ead8)
+    }
+    peak = {8, 0.5}
+  }
+}
