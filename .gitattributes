@@ -1,6 +1,8 @@
 # Immutable observations retain their exact UTF-8 bytes, including on hosts
 # configured with automatic CRLF conversion.
 benchmarks/baselines/** -text
+# The frozen API 0.2 client and header are hashed against the release.
+backends/capi/test/legacy/v0.2/** -text
 
 # Formatted sources are compared byte for byte with canonical output; keep LF
 # on every checkout, including Windows hosts with automatic CRLF conversion.
