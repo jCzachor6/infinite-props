@@ -1,8 +1,9 @@
 # CI artifacts and reports
 
-Every branch push and pull request runs the native matrix, native/WASM
-conformance, SFML/Godot integration checks and sanitizers. The same workflow
-can also be called by another workflow without duplicating the checks.
+CI runs the native matrix, native/WASM conformance, SFML/Godot integration
+checks and sanitizers on demand: start it from Actions -> CI -> Run workflow
+for the chosen branch. Pushes and pull requests do not start it. The release
+workflow calls the same workflow for every pushed release tag.
 
 Each job retains a `reports-*` artifact for 14 days, including on failure:
 
@@ -97,7 +98,7 @@ JUnit results from every check job. Its artifact contains 13 files: the source,
 three native SDKs, WASM and website archives, four extraction reports, combined
 CI validation, a release manifest and one complete SHA256 checksum list.
 All archive/report identities must match the checkout's product version and
-commit. Every ordinary CI run exercises this collection gate as well.
+commit. Every manual CI run exercises this collection gate as well.
 
 ## Automatic releases
 
@@ -131,8 +132,8 @@ git push origin v0.4.0
 ```
 
 Before creating a release tag, finalize the changelog date and freeze the
-matching specification. Ordinary `develop` pushes retain and validate candidate
-packages without publishing a GitHub Release.
+matching specification. A manual CI run on `develop` retains and validates
+candidate packages without publishing a GitHub Release.
 
 Local diagnostic commands:
 

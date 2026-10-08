@@ -1,9 +1,9 @@
 name: CI
 
+# Runs on demand (Actions -> CI -> Run workflow, on any branch) and from
+# release.yml for every pushed release tag; ordinary pushes start nothing.
 on:
-  push:
-    branches: ['**']
-  pull_request:
+  workflow_dispatch:
   workflow_call:
 
 permissions:
