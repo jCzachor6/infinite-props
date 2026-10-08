@@ -59,6 +59,26 @@ Json types(Predicate include) {
     return names;
 }
 
+// `lower to upper`: the operator's place in the grammar, its typed lowering
+// to the format instructions and their intrinsic effects.
+Json randomRange() {
+    const auto overload = [](const char* type, Opcode opcode, u32 maximumDraws) {
+        const auto* spec = findOpcode(opcode);
+        return Json::object({{"lower", type}, {"upper", type}, {"result", type},
+            {"opcode", spec->mnemonic}, {"minimum_format_minor", spec->minimumMinor},
+            {"bounds", "inclusive"}, {"draws", Json::object({{"minimum", 1}, {"maximum", maximumDraws}})}});
+    };
+    return Json::object({{"operator", "to"}, {"keyword", "contextual"},
+        {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
+        {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
+        {"overloads", Json::array({overload("i32", Opcode::RngInt, kRangeDraws),
+                                   overload("f32", Opcode::RngFloat, 1)})},
+        {"mixed_numeric_bounds", "widen_to_f32"},
+        {"traps", Json::array({"lower_greater_than_upper", "nonfinite_f32_bound"})},
+        {"equal_bounds", "bound_after_one_draw"},
+        {"effects", operationEffects(findOpcode(Opcode::RngInt)->effects)}});
+}
+
 Json sourceRules() {
     Json inputs = Json::array();
     for (const auto type : {ips::InputType::Color, ips::InputType::F32,
@@ -124,6 +144,7 @@ Json sourceRules() {
     rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
         {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},
         {"named_arguments_change_evaluation_order", false}, {"part_parent_rng", "restored_after_child"}});
+    rules["random_range"] = randomRange();
     return rules;
 }
 

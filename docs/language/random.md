@@ -11,6 +11,55 @@ separately from argument effects and execution-wide limits.
 
 <!-- example: ../../examples/language/random.ips -->
 
+## Random ranges with `to`
+
+`lower to upper` draws a value from the current stream every time it is
+evaluated; it is not a list or a stored range. Both bounds are included:
+
+| Bounds | Result | Draw |
+| --- | --- | --- |
+| `i32` and `i32` | `i32` | every integer in the range equally often |
+| any `f32` bound | `f32` | uniform between the bounds; an `i32` bound widens |
+
+```text
+offset = -5 to 5          // one of -5, -4, ..., 5
+thickness = 1.6 to 2.0
+mixed = 1 to 2.0          // f32
+```
+
+The lower bound is evaluated once, then the upper bound, then the value is
+drawn; RNG used inside a bound stays part of the current stream. Equal bounds
+return that value and still consume a draw. A lower bound greater than the
+upper one traps, as does a NaN or infinite `f32` bound; bounds are never
+swapped. Integer draws discard the few raw values that would favour some
+results, so every integer of the range is equally likely for any width, and
+the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
+are in [random ranges](../../spec/iprop-v0.5.md#3-uniform-random-ranges).
+Floating results never leave the bounds, even after rounding.
+
+`to` binds more loosely than arithmetic and shifts and more tightly than
+comparisons, so `base - 2 to base + 2` draws around `base`, and
+`(0 to 100) < 10` compares a draw. Write `c.r + (-5 to 5)` to add a draw to
+an expression. Ranges cannot be chained: `a to b to c` is rejected; use
+`(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
+every range in parentheses.
+
+`to` stays a valid name. Where a statement may end, a following `to = ...`,
+`to.draw(...)` or a call of a declared helper `to(...)` starts the next
+statement, as before; inside parentheses or arguments `to` is always the
+operator. `range()` and `index()` keep their own algorithms and results, so
+existing generators keep their draws; switching them to `to` changes the
+stream.
+
+<!-- example: ../../examples/language/errors/chained-range.ips -->
+
+This example is intentionally rejected: write `(a to b) to c` to draw a bound.
+
+<!-- example: ../../examples/language/traps/reversed-range.ips -->
+
+This program is valid source, but its range is reversed for the default
+input and traps during generation.
+
 ## unit
 <!-- builtin: unit -->
 

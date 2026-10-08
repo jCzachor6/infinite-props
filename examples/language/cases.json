@@ -21,6 +21,7 @@
     {"file": "errors/local-type.ips", "expect": "compile-error", "message": "cannot assign f32"},
     {"file": "errors/color-channel.ips", "expect": "compile-error", "message": "color has only .r, .g, .b and .a channels"},
     {"file": "errors/channel-assignment.ips", "expect": "compile-error", "message": "cannot assign to '.r'"},
+    {"file": "errors/chained-range.ips", "expect": "compile-error", "message": "'to' cannot be chained"},
     {"file": "errors/float-condition.ips", "expect": "compile-error", "message": "condition must be an integer"},
     {"file": "errors/unknown-argument.ips", "expect": "compile-error", "message": "has no argument 'colour'"},
     {"file": "errors/duplicate-call-argument.ips", "expect": "compile-error", "message": "duplicate 'x' argument"},
@@ -38,6 +39,7 @@
     {"file": "traps/fuel.ips", "expect": "trap", "message": "fuel exhausted"},
     {"file": "traps/noise-domain.ips", "expect": "trap", "message": "noise coordinate out of range"},
     {"file": "traps/divide-by-zero.ips", "expect": "trap", "message": "divide by zero"},
-    {"file": "traps/stream-pop.ips", "expect": "trap", "message": "stream stack underflow"}
+    {"file": "traps/stream-pop.ips", "expect": "trap", "message": "stream stack underflow"},
+    {"file": "traps/reversed-range.ips", "expect": "trap", "message": "lower bound exceeds the upper bound"}
   ]
 }

@@ -206,6 +206,9 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `hash` — splitmix32-style integer hash (as in `PaGenerationMath::hash`).
 - `unit`, `range`, `index` — draws from a Weyl-sequence stream
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
+- `lo to hi` draws a uniform value with both bounds included: `i32` for two
+  integer bounds (rejection sampling, no modulo bias), otherwise `f32`.
+  Bounds evaluate once, lower first; reversed or non-finite bounds trap.
 - `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
   all choices once, in signature order, then consumes one selection draw.
   Choices share a scalar/vec2 type; mixed numeric choices widen to f32.

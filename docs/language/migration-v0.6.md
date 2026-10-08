@@ -29,6 +29,22 @@ instructions; compressed containers keep their 0.4 envelope.
 read was a compile error, so no accepted 0.5 source changes meaning. Channels
 are read-only, and colors still do not convert to numbers implicitly.
 
+## Random ranges
+
+`lower to upper` draws a uniform value from the current stream (see
+[random ranges](random.md#random-ranges-with-to)): an `i32` for two integer
+bounds, otherwise an `f32`. It compiles to the format 0.5 `rng.int` and
+`rng.float` instructions. `to` stays an ordinary name: a local, helper or
+part named `to` keeps its meaning, and where an expression could end a
+statement, `to = ...`, `to.draw(...)` and a call of a declared helper
+`to(...)` still start the next statement. Write the operator in parentheses
+to use it there, for example `x = (1 to (5))`.
+
+`index()`, `range()`, `roll()` and `choose()` keep their algorithms. The
+integer sampler of `to` may take more than one stream step, so replacing
+`index(n)` or `range(a, b)` with `to` changes the later draws of a generator;
+existing generators are not rewritten.
+
 Source 0.5 programs remain valid 0.6 programs. Existing generators need no
 rewrite; `rgb()`, `rgba()`, `color.mix()` and the other color helpers keep
 their results.

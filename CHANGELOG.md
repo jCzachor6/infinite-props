@@ -9,13 +9,21 @@ In development: source language 0.6 and draft format 0.5. The product stays
   value as `i32` in 0–255. The base is evaluated once; channels of constant
   colors fold. Channels stay read-only: `c.r = 100` gets its own diagnostic,
   and member errors name the required type or list the available channels.
+- Language: `lo to hi` draws a uniform number from the current stream, both
+  bounds included: `i32` for integer bounds, otherwise `f32`. It binds
+  between shifts and comparisons and cannot be chained; bounds evaluate once,
+  lower first. `to` stays an ordinary name, and existing locals, helpers and
+  parts called `to` keep their meaning.
 - Format 0.5 (draft, [spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
-  `color.b` and `color.a` (0xA4–0xA7). The compiler and assembler write 0.5
-  only when a file uses these instructions; other files stay 0.4. Frozen
-  0.1–0.4 files load and run unchanged, and compressed files keep their 0.4
-  envelope.
+  `color.b` and `color.a` (0xA4–0xA7); `rng.int` (rejection sampling over
+  full u32 draws, at most 31 draws in practice) and `rng.float` (0xA8–0xA9),
+  which trap on reversed or non-finite bounds. The compiler and assembler
+  write 0.5 only when a file uses these instructions; other files stay 0.4.
+  Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
+  0.4 envelope.
 - Language export: `source_rules.types.components` lists the readable
-  members of `vec2` and `color` with their result types and instructions.
+  members of `vec2` and `color` with their result types and instructions;
+  `source_rules.random_range` describes the `to` operator.
 
 ## v0.5.0 — 2026-10-08
 

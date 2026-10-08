@@ -549,6 +549,171 @@
           ],
           "additionalProperties": true,
           "description": "Order of argument, operand and child RNG effects."
+        },
+        "random_range": {
+          "type": "object",
+          "properties": {
+            "operator": {
+              "type": "string",
+              "const": "to",
+              "description": "Infix spelling of the random range."
+            },
+            "keyword": {
+              "type": "string",
+              "enum": [
+                "contextual"
+              ],
+              "description": "The spelling stays a valid name; existing locals, helpers and parts named 'to' keep their meaning."
+            },
+            "precedence": {
+              "type": "object",
+              "properties": {
+                "tighter_than": {
+                  "type": "string",
+                  "description": "Operator that binds more loosely than the range."
+                },
+                "looser_than": {
+                  "type": "string",
+                  "description": "Operator that binds more tightly than the range."
+                }
+              },
+              "required": [
+                "tighter_than",
+                "looser_than"
+              ],
+              "additionalProperties": true,
+              "description": "Position of the range between the binary operator levels."
+            },
+            "chaining": {
+              "type": "boolean",
+              "description": "Whether 'a to b to c' parses; parenthesized ranges may still be bounds."
+            },
+            "evaluation_order": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "lower",
+                  "upper"
+                ],
+                "description": "Bound evaluated once at this position, before the draw."
+              },
+              "description": "Bound evaluation sequence; the draw follows both bounds' effects.",
+              "minItems": 2
+            },
+            "overloads": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lower": {
+                    "type": "string",
+                    "description": "Lower bound type after widening."
+                  },
+                  "upper": {
+                    "type": "string",
+                    "description": "Upper bound type after widening."
+                  },
+                  "result": {
+                    "type": "string",
+                    "description": "Value type of the draw."
+                  },
+                  "opcode": {
+                    "type": "string",
+                    "description": "Instruction mnemonic of the draw."
+                  },
+                  "minimum_format_minor": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 255,
+                    "description": "Oldest binary format minor containing the instruction."
+                  },
+                  "bounds": {
+                    "type": "string",
+                    "enum": [
+                      "inclusive"
+                    ],
+                    "description": "Both bounds are possible results."
+                  },
+                  "draws": {
+                    "type": "object",
+                    "properties": {
+                      "minimum": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Fewest stream steps of one evaluation."
+                      },
+                      "maximum": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Most stream steps of one evaluation; each step after the first costs 1 fuel."
+                      }
+                    },
+                    "required": [
+                      "minimum",
+                      "maximum"
+                    ],
+                    "additionalProperties": true,
+                    "description": "Stream steps taken by one evaluation."
+                  }
+                },
+                "required": [
+                  "lower",
+                  "upper",
+                  "result",
+                  "opcode",
+                  "minimum_format_minor",
+                  "bounds",
+                  "draws"
+                ],
+                "additionalProperties": true,
+                "description": "One accepted bound type pair and its lowering."
+              },
+              "description": "Accepted bound type pairs and their lowerings.",
+              "minItems": 1
+            },
+            "mixed_numeric_bounds": {
+              "type": "string",
+              "enum": [
+                "widen_to_f32"
+              ],
+              "description": "An i32 bound beside an f32 bound widens to f32."
+            },
+            "traps": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "description": "Runtime numeric-range condition checked before the draw."
+              },
+              "description": "Runtime numeric-range conditions checked before the draw.",
+              "uniqueItems": true
+            },
+            "equal_bounds": {
+              "type": "string",
+              "enum": [
+                "bound_after_one_draw"
+              ],
+              "description": "Equal bounds return that bound and still advance the stream."
+            },
+            "effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic effects of the draw, excluding its bounds."
+            }
+          },
+          "required": [
+            "operator",
+            "keyword",
+            "precedence",
+            "chaining",
+            "evaluation_order",
+            "overloads",
+            "mixed_numeric_bounds",
+            "traps",
+            "equal_bounds",
+            "effects"
+          ],
+          "additionalProperties": true,
+          "description": "The random range operator 'lower to upper'."
         }
       },
       "required": [
@@ -558,7 +723,8 @@
         "visibility",
         "named_calls",
         "restrictions",
-        "effect_order"
+        "effect_order",
+        "random_range"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."

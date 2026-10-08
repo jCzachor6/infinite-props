@@ -141,6 +141,7 @@ private:
     ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
+    ValueType typeRandomRange(const RandomRange& range);
 
     struct PartRead {
         std::string alias;

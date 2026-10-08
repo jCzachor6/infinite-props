@@ -217,6 +217,10 @@ enum class Opcode : u8 {
     ColorB = 0xA6,
     ColorA = 0xA7,
 
+    // Uniform random ranges (spec v0.5 §3; added in v0.5)
+    RngInt = 0xA8,
+    RngFloat = 0xA9,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };
@@ -231,6 +235,10 @@ inline constexpr u16 kMaxStackDepth = 512;
 inline constexpr u16 kMaxCallDepth = 256;
 inline constexpr u32 kMaxConstPoolEntries = 65536; // u16 index space
 inline constexpr u32 kMaxCanvasSide = 16384;       // canvas width/height cap
+
+// rng.int draws at most this many u32 values (spec v0.5 §3.1). Part of the
+// format semantics: the count fixes both the stream state and the fuel use.
+inline constexpr u32 kRangeDraws = 32;
 
 // Function table: name index marking an unnamed function (spec §6.1).
 inline constexpr u32 kAnonymousName = 0xFFFFFFFFu;

@@ -1,0 +1,6 @@
+asset ChainedRange {
+  size 8x8
+  draw {
+    size = 1 to 3 to 5
+  }
+}

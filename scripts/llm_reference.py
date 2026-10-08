@@ -116,6 +116,9 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         '; helper parameter types: ' + ', '.join(rules['types']['helper_parameters']) +
         '. Output-only geometry: ' + ', '.join(rules['types']['output_only_geometry']) + '.',
         f"Implicit widening: {widening}; local reassignment: {rules['types']['local_reassignment']}.",
+        f"Random range: `lower to upper`, binding tighter than `{rules['random_range']['precedence']['tighter_than']}` and looser than `{rules['random_range']['precedence']['looser_than']}`; bounds evaluate lower then upper, once, then one draw; "
+        + '; '.join(f"{item['lower']} bounds -> {item['result']} via {item['opcode']}" for item in rules['random_range']['overloads'])
+        + f"; mixed numbers {rules['random_range']['mixed_numeric_bounds'].replace('_', ' ')}; chaining: {str(rules['random_range']['chaining']).lower()}.",
         'Read-only members: ' + '; '.join(item['type'] + ' ' + ', '.join('.' + name for name in item['names']) + ' -> ' + item['result'] for item in rules['types']['components']) + '.',
         f"Locals: {rules['locals']['declaration']}, {rules['locals']['scope']} scope, {rules['locals']['unexecuted_initializer']} if skipped; definite-assignment analysis: {str(rules['locals']['definite_assignment_analysis']).lower()}.",
         f"Uniform visibility: {rules['visibility']['uniforms']}; read-only: {str(rules['visibility']['uniforms_read_only']).lower()}.",

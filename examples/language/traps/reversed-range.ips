@@ -1,0 +1,5 @@
+asset ReversedRange {
+  size 1x1
+  input i32 smallest = 4
+  draw { count = smallest to 3 }
+}

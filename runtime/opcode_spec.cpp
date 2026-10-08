@@ -12,6 +12,8 @@ constexpr OperationEffects effects(Opcode op) {
     switch (op) {
     case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
         return {R::AdvanceCurrent};
+    case Opcode::RngInt: case Opcode::RngFloat:
+        return {R::AdvanceCurrent,false,false,check(C::NumericRange)};
     case Opcode::StreamState: return {R::ReadCurrent};
     case Opcode::StreamPush: return {R::PushSeededStream};
     case Opcode::StreamPop: return {R::RestoreStream,false,false,check(C::StreamStackUnderflow)};
@@ -187,6 +189,8 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::ColorG, "color.g", 5, StackSignature({S::Color}, V::I32)),
     fixed(Opcode::ColorB, "color.b", 5, StackSignature({S::Color}, V::I32)),
     fixed(Opcode::ColorA, "color.a", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::RngInt, "rng.int", 5, StackSignature({S::I32, S::I32}, V::I32)),
+    fixed(Opcode::RngFloat, "rng.float", 5, StackSignature({S::F32, S::F32}, V::F32)),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

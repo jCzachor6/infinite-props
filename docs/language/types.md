@@ -48,11 +48,12 @@ to highest; parentheses explicitly select grouping.
 | 3–5 | `\|`, `^`, `&` | `i32` |
 | 6 | `==`, `!=` | numeric |
 | 7 | `<`, `<=`, `>`, `>=` | numeric |
-| 8 | `<<`, `>>` | `i32` |
-| 9 | `+`, `-` | numeric or vector/vector |
-| 10 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |
-| 11 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
-| 12 | call, member access, palette index | postfix expressions |
+| 8 | `to` (random range, not chainable) | numeric; see [random ranges](random.md#random-ranges-with-to) |
+| 9 | `<<`, `>>` | `i32` |
+| 10 | `+`, `-` | numeric or vector/vector |
+| 11 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |
+| 12 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
+| 13 | call, member access, palette index | postfix expressions |
 
 Shifts bind more tightly than comparisons on either side:
 `value < 1 << bits` means `value < (1 << bits)`, while

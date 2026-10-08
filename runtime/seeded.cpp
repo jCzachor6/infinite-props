@@ -206,6 +206,34 @@ f32 ridgeNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
     return sum / total;
 }
 
+// Uniform inclusive integer range (spec v0.5 §3.1): full u32 draws, values
+// past the largest multiple of the width are rejected. The last of
+// kRangeDraws draws is accepted; every draw after the first costs 1 fuel.
+i32 uniformInt(Execution& ex, i32 lo, i32 hi) {
+    constexpr u64 kDrawSpace = u64{1} << 32;
+    const u64 width = static_cast<u64>(static_cast<i64>(hi) - lo) + 1; // 1 .. 2^32
+    const u64 accepted = kDrawSpace / width * width;
+    for (u32 draw = 1;; ++draw) {
+        Frame& frame = ex.frame();
+        frame.stream += 0x9e3779b9u;
+        const u32 x = hash32(frame.stream);
+        if (x < accepted || draw == kRangeDraws) {
+            return static_cast<i32>(static_cast<u32>(lo) + static_cast<u32>(x % width));
+        }
+        ex.spend(1);
+    }
+}
+
+// Uniform f32 range (spec v0.5 §3.2): one unit() step, the pinned lerp, and
+// the bounds restored when rounding leaves them.
+f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
+    Frame& frame = ex.frame();
+    frame.stream += 0x9e3779b9u;
+    const f32 u = hashUnit(hash32(frame.stream));
+    const f32 value = lo * (1.f - u) + hi * u;
+    return value < lo ? lo : value > hi ? hi : value;
+}
+
 // Advances the current stream by the Weyl constant and pushes unit().
 void advanceAndPushUnit(Execution& ex) {
     Frame& frame = ex.frame();
@@ -262,6 +290,29 @@ bool stepSeeded(Execution& ex, Instruction ins) {
                 std::min(n - 1, static_cast<u32>(u * static_cast<f32>(n))))));
         }
         ++frame.ip;
+        return true;
+    }
+    case Opcode::RngInt: {
+        const i32 hi = ex.popI32();
+        const i32 lo = ex.popI32();
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        ex.push(Value(uniformInt(ex, lo, hi)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::RngFloat: {
+        const f32 hi = ex.popF32();
+        const f32 lo = ex.popF32();
+        if (!std::isfinite(lo) || !std::isfinite(hi)) {
+            ex.trap("random range bounds must be finite", ErrorReason::NumericRange);
+        }
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        ex.push(Value(uniformFloat(ex, lo, hi)));
+        ++ex.frame().ip;
         return true;
     }
     case Opcode::Hash:

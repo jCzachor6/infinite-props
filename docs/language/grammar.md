@@ -44,7 +44,8 @@ bit_or        = bit_xor, { "|", bit_xor } ;
 bit_xor       = bit_and, { "^", bit_and } ;
 bit_and       = equality, { "&", equality } ;
 equality      = comparison, { ("==" | "!="), comparison } ;
-comparison    = shift, { ("<" | "<=" | ">" | ">="), shift } ;
+comparison    = random_range, { ("<" | "<=" | ">" | ">="), random_range } ;
+random_range  = shift, [ "to", shift ] ;  (* contextual "to"; no chaining *)
 shift         = additive, { ("<<" | ">>"), additive } ;
 additive      = multiplicative, { ("+" | "-"), multiplicative } ;
 multiplicative = unary, { ("*" | "/" | "%"), unary } ;

@@ -296,6 +296,11 @@ class SourcePrinter {
                 if (!groups) out_.raw("(");
                 expression(*node.left); out_ << ' ' << binarySymbol(node.op) << ' ';
                 expression(*node.right); if (!groups) out_ << ')';
+            } else if constexpr (std::is_same_v<T, RandomRange>) {
+                // Always grouped, so no surrounding operator seems to bind a bound.
+                if (!groups) out_.raw("(");
+                expression(*node.lower); out_ << " to ";
+                expression(*node.upper); if (!groups) out_ << ')';
             } else if constexpr (std::is_same_v<T, VectorLit>) {
                 out_ << '{';
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {

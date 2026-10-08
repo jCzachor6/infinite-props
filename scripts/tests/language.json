@@ -218,6 +218,34 @@
       "call_arguments": "signature_evaluation_order",
       "named_arguments_change_evaluation_order": false,
       "part_parent_rng": "restored_after_child"
+    },
+    "random_range": {
+      "operator": "to",
+      "keyword": "contextual",
+      "precedence": {"tighter_than": "<", "looser_than": "<<"},
+      "chaining": false,
+      "evaluation_order": ["lower", "upper"],
+      "overloads": [
+        {
+          "lower": "i32",
+          "upper": "i32",
+          "result": "i32",
+          "opcode": "rng.int",
+          "minimum_format_minor": 5,
+          "bounds": "inclusive",
+          "draws": {"minimum": 1, "maximum": 32}
+        }
+      ],
+      "mixed_numeric_bounds": "widen_to_f32",
+      "traps": ["lower_greater_than_upper"],
+      "equal_bounds": "bound_after_one_draw",
+      "effects": {
+        "rng": "advance_current",
+        "writes_canvas": false,
+        "writes_outputs": false,
+        "summary": "intrinsic",
+        "may_trap": ["numeric_range"]
+      }
     }
   },
   "effect_rules": {

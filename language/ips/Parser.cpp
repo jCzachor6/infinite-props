@@ -12,6 +12,15 @@ namespace detail {
 ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     ParseResult result;
     recovery_ = &result;
+    // Only declarations sit directly inside the asset braces, so `to(` there
+    // declares a helper named `to`, which may follow a statement.
+    std::size_t depth = 0;
+    for (std::size_t i = 0; i + 1 < tokens_.size(); ++i) {
+        if (tokens_[i].kind == TokenKind::LBrace) ++depth;
+        if (tokens_[i].kind == TokenKind::RBrace && depth > 0) --depth;
+        if (depth == 1 && tokens_[i].kind == TokenKind::Identifier && tokens_[i].text == "to" &&
+            tokens_[i + 1].kind == TokenKind::LParen) toHelper_ = true;
+    }
     diagnosticLimit_ = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics);
     Program program;
     bool hasAsset = false;
@@ -268,6 +277,7 @@ void ParserImpl::parseSize(Asset& asset) {
 void ParserImpl::parseOrigin(Asset& asset) {
     asset.originX = parseExpr();
     expect(TokenKind::Comma, "',' between origin coordinates");
+    const FlagScope tail(statementTail_, true);
     asset.originY = parseExpr();
     match(TokenKind::Semi);
 }
@@ -468,6 +478,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
     const Token name = advance();
     if (match(TokenKind::Assign)) {
+        const FlagScope tail(statementTail_, true);
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
@@ -535,6 +546,7 @@ Stmt ParserImpl::parseReturn() {
     const SourceLocation at = advance().location; // 'return'
     std::unique_ptr<Expr> value;
     if (kind() != TokenKind::RBrace && kind() != TokenKind::Semi) {
+        const FlagScope tail(statementTail_, true);
         value = parseExpr();
     }
     return Stmt{ReturnStmt{std::move(value), at}};

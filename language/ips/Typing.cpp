@@ -207,6 +207,9 @@ ValueType Typer::infer(const Expr& expr) {
     if (const auto* un = std::get_if<Unary>(&expr)) {
         return typeUnary(*un);
     }
+    if (const auto* range = std::get_if<RandomRange>(&expr)) {
+        return typeRandomRange(*range);
+    }
     error(locationOf(expr), "unsupported expression");
 }
 
@@ -347,6 +350,17 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
                   "' is i32 (use the explicit lerp instead)");
     }
     return resolved.type;
+}
+
+// `lo to hi`: i32 bounds draw an i32; any f32 bound widens both to f32.
+ValueType Typer::typeRandomRange(const RandomRange& range) {
+    const ValueType lower = typeOf(*range.lower);
+    const ValueType upper = typeOf(*range.upper);
+    if (!isNumeric(lower) || !isNumeric(upper)) {
+        error(range.location, "'to' needs numeric bounds, got " + std::string(typeName(lower)) +
+                                  " and " + typeName(upper));
+    }
+    return promote(lower, upper);
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {

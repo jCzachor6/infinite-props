@@ -101,11 +101,19 @@ struct Unary {
     SourceLocation location;
 };
 
+// A random draw: `lower to upper`. Not a value range: every evaluation
+// draws again from the current stream. The location is the `to` token.
+struct RandomRange {
+    std::unique_ptr<Expr> lower;
+    std::unique_ptr<Expr> upper;
+    SourceLocation location;
+};
+
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, Index, Binary,
-                   Unary> {
+                   Unary, RandomRange> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
-                       Binary, Unary>::variant;
+                       Binary, Unary, RandomRange>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };

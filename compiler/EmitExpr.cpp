@@ -78,6 +78,16 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto* un = std::get_if<ips::Unary>(&expr)) {
         return emitUnary(*un);
     }
+    if (const auto* range = std::get_if<ips::RandomRange>(&expr)) {
+        // Lower, then upper, each once; the draw follows both bounds' effects.
+        const bool integer = current_->typeOf(expr) == ips::ValueType::I32;
+        for (const auto* bound : {range->lower.get(), range->upper.get()}) {
+            emitExpr(*bound);
+            if (!integer && current_->typeOf(*bound) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        }
+        ins(integer ? Opcode::RngInt : Opcode::RngFloat);
+        return integer ? ips::ValueType::I32 : ips::ValueType::F32;
+    }
     error(ips::locationOf(expr), "unsupported expression");
 }
 

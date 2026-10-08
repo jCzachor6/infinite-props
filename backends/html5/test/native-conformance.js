@@ -29,6 +29,7 @@ const sources = [
     ["colors", "backends/html5/test/fixtures/colors.ips"],
     ["aliases", "backends/html5/test/fixtures/aliases.ips"],
     ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
+    ["random-ranges", "backends/html5/test/fixtures/random-ranges.ips"],
     ["named-arguments", "backends/html5/test/fixtures/named-arguments.ips"],
     ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
@@ -341,6 +342,13 @@ function run(iprop, toolsDir) {
             [path.join(__dirname, "fixtures/color-errors.ips"), "-o", colorErrors]);
         for (let variant = 0; variant < 4; ++variant) {
             compareTrap(colorErrors, variant, "color.hsv hue shift must be finite");
+        }
+        const rangeErrors = path.join(temporary, "range-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/range-errors.ips"), "-o", rangeErrors]);
+        for (let variant = 0; variant < 4; ++variant) {
+            compareTrap(rangeErrors, variant, variant === 1 || variant === 2
+                ? "random range bounds must be finite" : "random range lower bound exceeds the upper bound");
         }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);

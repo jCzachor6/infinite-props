@@ -19,6 +19,9 @@
       "include": "#keywords"
     },
     {
+      "include": "#rangeOperator"
+    },
+    {
       "include": "#builtins"
     },
     {
@@ -64,6 +67,11 @@
     "keywords": {
       "name": "keyword.control.ips",
       "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|list|palette|size|origin|variants|archetypes)\\b"
+    },
+    "rangeOperator": {
+      "comment": "Contextual: 'to' stays a name before '=', '.' or '('.",
+      "name": "keyword.operator.word.range.ips",
+      "match": "\\bto\\b(?!\\s*(=(?!=)|\\.|\\())"
     },
     "types": {
       "name": "storage.type.ips",
