@@ -1,0 +1,42 @@
+// One iron-to-steel gradient drawn three ways: uniform, a gaussian centred
+// on the middle and a beta leaning to the bright end. Each row shows the
+// gradient bar, ten ingots whose colours come from `dark to light [with d]`
+// and, below, a density strip of 400 positions drawn with the same rule.
+asset MetalGradients {
+  size 96x53
+  draw {
+    dark = #4a3f38
+    light = #e6e9ef
+    rect(0, 0, 96, 53, #1c1a22)
+    distribution centred = gaussian(mean=0.5, sigma=0.12)
+    distribution bright = beta(alpha=5.0, beta=1.6)
+    for row in 0..3 {
+      y = 2 + row * 17
+      for x in 0..12 {
+        rect(2, y + x, 8, 1, color.mix(light, dark, float(x) / 11.0))
+      }
+      for i in 0..10 {
+        c = dark
+        if (row == 0) { c = dark to light }
+        else if (row == 1) { c = dark to light with centred }
+        else { c = dark to light with bright }
+        ingot(14 + i * 8, y, c)
+      }
+      for i in 0..400 {
+        t = 0.0
+        if (row == 0) { t = 0.0 to 1.0 }
+        else if (row == 1) { t = 0.0 to 1.0 with centred }
+        else { t = 0.0 to 1.0 with bright }
+        rect(14 + int(t * 79.0), y + 13, 1, 3, #ffffff18)
+      }
+    }
+  }
+  ingot(x: i32, y: i32, c: color) {
+    rect(x, y + 1, 7, 10, color.shade(c, -60))
+    rect(x + 1, y, 5, 10, color.shade(c, -60))
+    rect(x + 1, y + 1, 5, 8, c)
+    rect(x + 1, y + 1, 5, 1, color.shade(c, 45))
+    rect(x + 1, y + 2, 1, 6, color.shade(c, 25))
+    rect(x + 1, y + 8, 5, 1, color.shade(c, -30))
+  }
+}

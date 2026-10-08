@@ -40,6 +40,9 @@ const sources = [
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["nested-parts", "backends/html5/test/fixtures/nested-parts.ips"],
     ["colony", "examples/colony/colony.ips"],
+    ["preview-metal-gradients", "examples/previews/metal-gradients.ips"],
+    ["preview-parameters", "examples/previews/parameters.ips"],
+    ["preview-segments", "examples/previews/segments.ips"],
     ["demo-noise", "backends/html5/demo/assets/noise.ips"],
 ];
 for (const name of fs.readdirSync(path.join(repo, "examples/recipes")).filter(name => name.endsWith(".ips")).sort())
