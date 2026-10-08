@@ -85,6 +85,9 @@ struct Execution {
     u64 budget = 0;
     u64 fuel = 0;
     std::vector<Frame> frames;
+    // Snapshot before dispatch: call/part operations may advance the frame PC
+    // before a trap. Structured locations identify the failing instruction.
+    ErrorLocation activeInstruction;
     std::vector<std::vector<ControlInfo>> control; // per function index
     // Global output slots, their resolved names, and the owning part index
     // (kNoPartIndex for root slots), spec §4.3/§9.9.
@@ -125,7 +128,7 @@ struct Execution {
     // Precomputes the matching else/end indices of a function's control flow.
     void ensureControl(u16 functionIndex);
 
-    [[noreturn]] void trap(std::string message) const;
+    [[noreturn]] void trap(std::string message, ErrorReason reason) const;
 };
 
 // Composite one pixel onto the current canvas with the §11.1 alpha rule

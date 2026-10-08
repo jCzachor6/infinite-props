@@ -1,0 +1,15 @@
+asset ImageView {
+  size 3x2
+  origin 999, -999
+  draw {
+    pixel(0, 0, #112233)
+    pixel(1, 0, #c8643280)
+    pixel(2, 0, #14283c)
+    pixel(2, 0, #c8643280)
+    pixel(0, 1, #010203)
+    pixel(1, 1, #abcdef)
+    pixel(1, 1, #99887700)
+    pixel(2, 1, #a0204080)
+    pixel(2, 1, #0a0b0c)
+  }
+}

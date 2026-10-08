@@ -225,7 +225,7 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
   clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
 - Every builtin/canvas operation accepts named arguments. See the
-  [v0.4 language reference](docs/language-v0.4.md) for parameter names.
+  [v0.5 language reference](docs/language-v0.5.md) for parameter names.
 - `ipc file.ips --format canonical.ips` exports canonical source during
   compilation, with deterministic formatting and executable roundtrips.
 - The [recipe gallery](examples/recipes/README.md) contains 24 small,
@@ -525,12 +525,16 @@ function signatures, the pinned trig and math packages, constant arrays
 (palettes) and loop control — and lands the native backends on the C API:
 the SFML window and the Godot GDExtension, each with its own conformance.
 v0.3.0 added vectors, distance fields, curves, procedural noise, colour
-utilities and exact part transforms. v0.4.0 adds named calls, RNG sugar,
-canonical formatting, Unicode diagnostics/emoji aliases, 24 recipes,
-the complete language handbook, bit-exact compiler optimizations and lossless
-compression. Product 0.4.0, format 0.4 (with frozen 0.1–0.3 reader compatibility)
-and C API 0.2 are separate contracts. The C ABI layouts retain API 0.2.
-Migration and release commands are in [the 0.4 notes](docs/release-v0.4.md).
+utilities and exact part transforms. v0.4.0 added named calls, RNG sugar,
+canonical formatting, Unicode diagnostics, 24 recipes, the complete language
+handbook, bit-exact compiler optimizations and lossless compression. v0.5.0
+adds signed defaults, `ipc --check` with JSON diagnostics, named helper/part
+arguments, comment-preserving formatting, the language export and
+`LLM_REFERENCE.md`, and C API 0.3: reflection, parameter sets, structured
+errors, image views and typed output reads. Product 0.5.0, source language
+0.5, format 0.4 (with frozen 0.1–0.3 reader compatibility), C API 0.3 and ABI
+line 0.4 are separate contracts; the API 0.2 layouts are unchanged.
+Migration and release commands are in [the 0.5 notes](docs/release-v0.5.md).
 Source, native SDK, WASM and website packages are published by the tagged
 release workflow after validation and can also be built locally.
 GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website
@@ -567,8 +571,12 @@ Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
 C API consumers before writing `dist/iprop-0.4.0.tar.gz` (committed source),
 `dist/iprop-0.4.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
-The native archive records its source commit and included backends in
-`release.json`. Pass `--check` to validate an in-progress build without
+The native archive records its source commit, included backends and the
+independent `product_version`, `language_version`, `format_version`,
+`c_api_version` and `c_abi_soversion` in `release.json`; packaging rejects an
+installed compiler whose export differs from these source versions. A tagged
+release requires the frozen specification of the emitted format, not one named
+after the product. Pass `--check` to validate an in-progress build without
 creating archives. Packaging does not tag, merge, push or publish.
 
 Compiler optimization checks and measured reductions are recorded in

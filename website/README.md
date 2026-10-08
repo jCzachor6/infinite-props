@@ -48,6 +48,10 @@ Run these commands from the repository root after building the native tools.
 The documentation generator requires Python 3.10 or newer and uses
 `build/tools/ipc` by default; override it with `IPROP_COMPILER` and choose
 Python with `IPROP_PYTHON` when needed.
+Set `IPROP_LANGUAGE_DOCS_DIR` to an absolute directory outside cloud
+synchronization to generate the handbook there; the default is
+`build/language-docs`. CMake exposes the same directory setting as a cache
+option for native builds and SDK installation.
 `prepare.sh` reads the requested WASM build directly and compiles the noise
 asset with the current compiler, preventing stale demo modules from entering
 the website. The release smoke check resolves every local page resource/link

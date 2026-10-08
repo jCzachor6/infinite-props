@@ -37,6 +37,37 @@ smoke tests there. `*-validation.json` binds those results to the source commit
 and the actual archive digests. Archive timestamps/ownership are normalized;
 executable permissions and relative library symlinks are preserved.
 
+Local packaging, including `release.py --check`, rejects untracked numbered
+siblings of tracked sources (for example `composition 2.md`) before running
+validation. It reports their paths and never deletes or ignores them. Preserve
+any separate edits outside the checkout before removing a copy; Git history
+can establish whether its contents are an older version. These names can also
+be created by tools outside the packaging scripts. Archive extraction requires
+a new or empty directory and refuses to merge a package into an existing
+source checkout or previously extracted SDK.
+
+If numbered copies return without packaging being run, inspect the checkout's
+sync provider before attributing them to the release scripts. In the macOS
+checkout used during 0.5 development, scoped File Provider logs matched all
+four returning files by item ID and inode: iCloud Drive created them locally
+with `why:itemChangedRemotely`. This establishes remote synchronization as
+the cause of that recurrence, but does not identify which device or tool
+originally created the numbered remote items. Removing a local copy cannot
+guarantee that a later remote change will not restore it. Preserve and compare
+its contents, remove only confirmed duplicates, and keep the packaging guard
+enabled; changing cloud settings is a separate checkout-management decision.
+
+The generated handbook directory is configurable independently of the native
+build directory. In a synchronized checkout, set
+`-DIPROP_LANGUAGE_DOCS_DIR=/absolute/path/outside/cloud/language-docs` when
+configuring CMake. Builds and SDK installation use that exact directory,
+keeping generated manifest ownership checks active. This avoids synchronization
+conflicts in generated documentation; source copies still require the checks
+above.
+The website generator accepts the same absolute directory through the
+`IPROP_LANGUAGE_DOCS_DIR` environment variable. Set it when running website
+builds from a synchronized checkout; its default remains `build/language-docs`.
+
 Native builds with Python generate the complete handbook from `docs/language/`
 and `ipc --describe-language`. CTest compiles and executes all registered
 language examples, including expected failures, and requires successful
@@ -46,8 +77,11 @@ Broken chapter/example links, missing or duplicate builtin explanations,
 incorrect signatures, failed examples and invalid search anchors fail CI.
 
 Every SDK ships the book under `share/iprop/docs/`; WASM and website archives
-use `docs/` at their root. `language-manifest.json` records the product version,
-source commit, development/release status, compiler catalog and file digests.
+use `docs/` at their root. Schema-2 `language-manifest.json` records separate
+product, source-language, format, C API and C ABI versions, source commit,
+development/release status, compiler catalog and file digests. The current
+book is `language-v0.5.md`; the collector checks all five version fields
+against their source constants in every archive and validation/CI report.
 Installed SDK checks compare it with the installed compiler. Archive collection
 also requires the complete documentation payload, unchanged authored inputs,
 the same commit/version and a clean source checkout for generated documentation.

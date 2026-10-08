@@ -1,8 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <functional>
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include "ips/Imports.hpp"
 #include "ips/Parser.hpp"
@@ -77,6 +80,15 @@ std::map<std::string, PartInfo> hairParts() {
     return {{"hair", partInfoOf(hair.asset)}};
 }
 
+// Parses each loaded source once, like the compiler's source cache.
+std::vector<std::string> resolveImports(
+    std::string_view entryPath, const std::function<std::string(std::string_view)>& loadSource) {
+    std::map<std::string, Program> programs;
+    return resolveImportOrder(entryPath, [&](std::string_view path) -> const Program& {
+        return programs.emplace(std::string(path), parse(loadSource(path))).first->second;
+    });
+}
+
 } // namespace
 
 TEST_CASE("valid programs check cleanly") {
@@ -87,21 +99,21 @@ TEST_CASE("valid programs check cleanly") {
 TEST_CASE("part calls are validated against the part surface") {
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));
 
-    // Wrong positional arity.
+    // Missing control and excessive positional arity.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, at = {0, 0}) } }",
-        hairParts(), "exactly three positional");
+        hairParts(), "missing argument 'a'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
-        hairParts(), "exactly three positional");
+        hairParts(), "too many positional arguments");
 
     // Missing `at`.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3) } }",
-        hairParts(), "requires an 'at");
+        hairParts(), "missing argument 'at");
 
     // Wrong `at` type.
     expectCheckError(
@@ -113,7 +125,7 @@ TEST_CASE("part calls are validated against the part surface") {
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
-        hairParts(), "has no input 'bogus'");
+        hairParts(), "has no argument 'bogus'");
 
     // Uniform of the wrong type.
     expectCheckError(

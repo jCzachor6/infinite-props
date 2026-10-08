@@ -77,7 +77,8 @@ std::vector<u8> compileImpl(
     } catch (const FormatError& error) {
         throw ips::SourceError{{1, 1},
                                std::string("compiled program failed validation: ") +
-                                   error.what()};
+                                   error.what(), {}, ips::DiagnosticCode::CompiledValidation,
+                                   ips::DiagnosticStage::Validation};
     }
     return bytes;
 }
@@ -87,7 +88,10 @@ std::vector<u8> compileImpl(
 std::vector<u8> compileProgram(const ips::Program& entry,
     const std::map<std::string, const ips::Program*>& parts, bool optimize) {
     try { return compileImpl(entry, parts, optimize); }
-    catch (const compiler::PoolLimit& error) { throw ips::SourceError{{1,1}, error.what()}; }
+    catch (const compiler::PoolLimit& error) {
+        throw ips::SourceError{{1,1}, error.what(), {}, ips::DiagnosticCode::ResourceLimit,
+                              ips::DiagnosticStage::Planning};
+    }
 }
 
 } // namespace iprop

@@ -1,0 +1,9 @@
+asset child {
+  size 32x32
+  input f32 offset = -0.0
+  output list point very_long_point_list_output_name
+  draw {
+    rect(0, 0, 32, 32, #c608)
+    for i in 0..128 { very_long_point_list_output_name = {i, offset + unit()} }
+  }
+}

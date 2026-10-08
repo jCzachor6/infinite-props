@@ -1,0 +1,9 @@
+asset second {
+  size 8x4
+  origin -3, 4
+  input u32 base = 7
+  input f32 amount = 0.5
+  input u32 bits = 9
+  output list point anchor
+  draw { anchor = {9, 10} }
+}

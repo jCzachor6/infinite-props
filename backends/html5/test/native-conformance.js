@@ -31,7 +31,6 @@ const sources = [
     ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
     ["named-arguments", "backends/html5/test/fixtures/named-arguments.ips"],
     ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
-    ["emoji-aliases", "backends/html5/test/fixtures/emoji-aliases.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
     ["parts", "tests/golden/parts.ipa"],

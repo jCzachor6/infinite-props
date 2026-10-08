@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -19,6 +20,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iprop {
@@ -97,7 +99,7 @@ struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
     u32 variants = 1, archetypes = 1;
-    u64 fuel = 1000000;
+    u64 fuel = 2000000;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;
@@ -221,18 +223,30 @@ bool parseIntBits(const std::string& text, u32& bits) {
     }
 }
 
+// Same acceptance as ips::parseFloatBits: the rounded result's class, not the
+// C library's ERANGE convention, decides whether a value is accepted.
 bool parseFloatBits(const std::string& text, u32& bits) {
-    try {
-        std::size_t used = 0;
-        const f32 value = std::stof(text, &used);
-        if (used != text.size()) {
-            return false;
-        }
-        std::memcpy(&bits, &value, sizeof(bits));
-        return true;
-    } catch (...) {
+    char* end = nullptr;
+    const f32 value = std::strtof(text.c_str(), &end);
+    if (end == text.c_str() || end != text.c_str() + text.size()) {
         return false;
     }
+    const int kind = std::fpclassify(value);
+    if (kind == FP_SUBNORMAL) return false;
+    // Overflow; a spelled-out infinity (or NaN) stays valid.
+    if (kind == FP_INFINITE && text.find_first_of("iI") == std::string::npos) return false;
+    if (kind == FP_ZERO) {
+        // Underflow to zero: a nonzero digit before the exponent.
+        const std::size_t x = text.find_first_of("xX");
+        const std::size_t begin = x == std::string::npos ? 0 : x + 1;
+        const std::size_t exponent = text.find_first_of(x == std::string::npos ? "eE" : "pP", begin);
+        const std::string_view mantissa = std::string_view(text).substr(begin, exponent - begin);
+        if (mantissa.find_first_of(x == std::string::npos ? "123456789" : "123456789abcdefABCDEF") !=
+            std::string_view::npos)
+            return false;
+    }
+    std::memcpy(&bits, &value, sizeof(bits));
+    return true;
 }
 
 bool parseColor(const std::string& text, Color& out) {

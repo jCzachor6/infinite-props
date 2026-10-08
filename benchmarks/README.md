@@ -1,5 +1,9 @@
 # Runtime benchmarks
 
+The [native C API baseline](capi/README.md) measures load/generate time and
+C++ allocation traffic for small/large canvases, parts and output lists. It
+retains raw samples and a frozen executable for the later move-result comparison.
+
 Build and run the renderer benchmark (excluded from the default build):
 
 ```sh

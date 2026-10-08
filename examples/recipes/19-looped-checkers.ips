@@ -6,9 +6,11 @@ asset LoopedCheckers {
     rect(0, 0, 32, 32, #101820)
     for y in 0..4 {
       for x in 0..4 {
-        c = #5bf
-        if ((x + y) % 2 == 1) { c = #fd8 }
-        rect(4 + x * 6, 4 + y * 6, 6, 6, c)
+        c = #55bbff
+        if ((((x + y) % 2) == 1)) {
+          c = #ffdd88
+        }
+        rect((4 + (x * 6)), (4 + (y * 6)), 6, 6, c)
       }
     }
   }

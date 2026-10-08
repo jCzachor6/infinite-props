@@ -3,8 +3,8 @@ asset Helpers {
   input color tint = #9dc
   output point anchor
   draw {
-    p = shifted({1, 1}, 2)
-    paint(p, tint)
+    p = shifted(amount = 2, p = {1, 1})
+    paint(tint = tint, p = p)
     amount = twice(2)
   }
   shifted(p: vec2, amount: f32) -> vec2 { return p + {amount, amount} }

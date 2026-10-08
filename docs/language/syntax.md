@@ -3,7 +3,10 @@
 Source must be valid UTF-8. Whitespace separates tokens; newlines do not end
 statements. `//` comments extend to the next newline and `/* ... */` comments
 end at the first closing delimiter (they do not nest). Semicolons are optional
-separators inside function blocks; metadata declarations do not use them.
+separators inside function blocks. One optional semicolon may follow each
+import, `size`, `origin`, `variants`, `archetypes`, `input`, `output` or
+`palette` declaration. Forms without semicolons remain valid; newline is
+whitespace and never implicitly terminates a declaration or expression.
 
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
@@ -34,13 +37,14 @@ precedence over user helpers with the same name.
   `\\`. Strings are not runtime values.
 
 There are no source literals for infinity or NaN; floating operations can
-produce them. Numeric minus is an operator, including in palette expressions:
-palettes require literal tokens and therefore do not accept negative unary
-expressions. Use suitable integer bit-pattern literals when needed.
+produce them. Numeric minus is an operator. Input defaults and palette
+elements admit a small constant grammar: a literal, parentheses and one
+numeric unary minus. They do not admit arithmetic, calls or RNG. Ordinary
+runtime expressions retain their usual operator grammar and wrapping
+integer semantics.
 
 <!-- example: ../../examples/language/syntax.ips -->
 
 Trailing commas are accepted in call arguments, helper parameters, palette
-elements and compound literals. [Emoji aliases](tooling.md#emoji-aliases)
-normalize to the same word tokens. Arbitrary Unicode identifiers, variation
-selectors and joined emoji sequences are not accepted as syntax.
+elements and compound literals. Syntax is ASCII: Unicode text may appear only
+in comments and string literals.

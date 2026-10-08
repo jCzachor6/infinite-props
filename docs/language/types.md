@@ -54,10 +54,12 @@ to highest; parentheses explicitly select grouping.
 | 11 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
 | 12 | call, member access, palette index | postfix expressions |
 
-The current parser accepts a shift expression as the first comparison operand,
-but subsequent comparison operands use additive expressions. Parenthesize a
-shift on the right: `value < (1 << bits)`. The [grammar](grammar.md) records
-this restriction explicitly.
+Shifts bind more tightly than comparisons on either side:
+`value < 1 << bits` means `value < (1 << bits)`, while
+`value << bits < limit` means `(value << bits) < limit`. Comparison chains
+are left-associative: `a < b < c` compares the normalized 0/1 result of
+`a < b` with `c`. Write `a < b && b < c` when both comparisons must hold.
+The [grammar](grammar.md) records these rules.
 
 Comparisons and logical operations return normalized `i32` 0/1. `&&` and
 `||` skip the right operand when its value cannot affect the result, including
@@ -66,6 +68,9 @@ Integer arithmetic wraps modulo 2³². `/` and `%` use signed integer semantics
 when both operands are integers; division by zero traps. Shift counts are
 masked to five bits, and `>>` is logical (zero-filling). Floating division
 uses IEEE-754 results, including NaN/infinity.
+Signed division of `-2147483648` by `-1` also traps for overflow; signed
+remainder for that pair is zero. These checks are distinct from the ordinary
+wrapping behavior of integer addition, subtraction and multiplication.
 
 Vectors use `{x, y}`, expose `.x` and `.y`, support componentwise `+`, `-`,
 `*`, `/` with another vector, vector `*`/`/` scalar, scalar `*` vector and

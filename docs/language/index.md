@@ -5,10 +5,14 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-The language version follows the product version. Development documentation
-describes the checkout being built; a release ships the documentation from
-its exact tag. The generated book identifies its version, status and source
-commit. Historical contracts are available in the corresponding Git tags.
+This checkout implements source language **0.5**. Product, source language,
+binary format, C API and ABI versions are independent: `ipc --describe-language`
+reports the versions of the compiler being used. Product 0.5.0 ships source
+language 0.5; the binary format and ABI remain 0.4.
+Development documentation describes the checkout being built; a release ships
+documentation from its exact tag. The generated book identifies its product
+version, status and source commit. Historical 0.4 contracts and rejected
+examples remain frozen in their baseline and Git tag.
 
 Read the chapters in order to learn the language, or use the function index
 in the generated book to look up a builtin. Each chapter links actual `.ips`
@@ -27,9 +31,10 @@ files; their contents are included in the generated book and tested by CI.
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
 13. [Imports and part composition](composition.md)
-14. [Compiler tools, diagnostics and emoji](tooling.md)
+14. [Compiler tools and diagnostics](tooling.md)
 15. [Grammar](grammar.md)
 16. [Maintaining this documentation](development.md)
+17. [Migration and implementation contracts for 0.5](migration-v0.5.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

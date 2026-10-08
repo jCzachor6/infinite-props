@@ -8,12 +8,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from release_common import ROOT, committed_source, write_json
+from release_common import ROOT, committed_source, versions, write_json
 
 
 def metadata(root, tag=None, publishing=False):
-    version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)",
-                        (root / "CMakeLists.txt").read_text(encoding="utf-8")).group(1)
+    release = versions(root)
+    version = release["product_version"]
     if tag is not None and tag != "v" + version:
         raise RuntimeError("Tag must match the product version: v" + version)
     for file in ("editor/package.json", "website/package.json", "website/package-lock.json"):
@@ -33,12 +33,20 @@ def metadata(root, tag=None, publishing=False):
         if not date:
             raise RuntimeError("Date the changelog as '## v" + version + " — YYYY-MM-DD' before tagging")
         datetime.date.fromisoformat(date.group(1))
-        minor = ".".join(version.split(".")[:2])
-        spec = (root / f"spec/iprop-v{minor}.md").read_text(encoding="utf-8")
+        # The release emits format_version, which need not change with the
+        # product or language; its existing specification must be frozen.
+        name = "spec/iprop-v" + release["format_version"] + ".md"
+        try:
+            spec = (root / name).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            raise RuntimeError("Missing the emitted format specification " + name) from None
+        title = re.search(r"^# .*\bSpecification v(\d+\.\d+)\s*$", spec, re.M)
+        if not title or title.group(1) != release["format_version"]:
+            raise RuntimeError(name + " does not specify format " + release["format_version"])
         status = re.search(r"^\*\*Status:\*\*\s*(.+)$", spec, re.M)
         if not status or "frozen" not in status.group(1).lower() or re.search(r"candidate|draft", status.group(1), re.I):
-            raise RuntimeError("Freeze the format specification status before tagging")
-    return {"product_version": version, "tag": "v" + version, "notes": notes}
+            raise RuntimeError("Freeze the format specification status before tagging: " + name)
+    return {**release, "tag": "v" + version, "notes": notes}
 
 
 def validate_tag(root, tag, main_ref):
@@ -68,7 +76,8 @@ def main():
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write(f"version={result['product_version']}\ncommit={result['source_commit']}\n")
-    print("Release preflight: PASS " + args.tag + " at " + result["source_commit"])
+    print(f"Release preflight: PASS {args.tag} at {result['source_commit']} (language {result['language_version']}, "
+          f"format {result['format_version']}, C API {result['c_api_version']}, SOVERSION {result['c_abi_soversion']})")
 
 
 if __name__ == "__main__":

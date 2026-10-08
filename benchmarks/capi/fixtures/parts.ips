@@ -1,0 +1,11 @@
+import child from "part.ips"
+asset composite {
+  size 128x128
+  output list point very_long_point_list_output_name
+  draw {
+    child.draw(seed, 0, 0, at = {16, 16})
+    child.draw(seed ^ 7, 0, 0, at = {48, 48}, offset = 2.0)
+    child.draw(seed ^ 26, 0, 0, at = {80, 80})
+    very_long_point_list_output_name = {unit(), unit()}
+  }
+}

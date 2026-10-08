@@ -26,13 +26,25 @@ std::vector<ValueType> declaredParamTypes(const Function& function) {
     return params;
 }
 
+std::vector<std::string> declaredParamNames(const Function& function) {
+    std::vector<std::string> names;
+    for (const auto& param : function.params) names.push_back(param.name);
+    return names;
+}
+
 // ---- Typer -------------------------------------------------------------------
 
 Typer::Typer(const std::map<std::string, PartInfo>& parts) : parts_(parts) {}
 
+BoundCallPlan Typer::bind(const Call& call, CallSignature signature, std::string_view name) {
+    auto bound = bindCall(call, std::move(signature), name);
+    calls_.insert_or_assign(&call, bound);
+    return bound;
+}
+
 [[noreturn]] void Typer::error(const SourceLocation& at,
                                std::string message) const {
-    throw SourceError{at, std::move(message)};
+    throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
 }
 
 void Typer::enterFunction(const Program& owner, const Function& function,
@@ -41,9 +53,12 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     isDraw_ = isDraw;
     ns_ = std::move(ns);
     locals_.clear();
+    invalidLocals_.clear();
     expressions_.clear();
+    calls_.clear();
     for (const auto& param : function.params) {
-        locals_.emplace(param.name, valueTypeOf(param.type));
+        if (!locals_.emplace(param.name, valueTypeOf(param.type)).second)
+            error(param.location, "duplicate parameter '" + param.name + "'");
     }
     if (isDraw) {
         locals_.emplace("v", ValueType::I32);
@@ -52,11 +67,16 @@ void Typer::enterFunction(const Program& owner, const Function& function,
 }
 
 void Typer::declareLocal(const std::string& name, ValueType type) {
+    invalidLocals_.erase(name);
     locals_.emplace(name, type);
 }
 
+void Typer::declareInvalidLocal(const std::string& name) {
+    if (!locals_.contains(name)) invalidLocals_.insert(name);
+}
+
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, ns_, locals_, expressions_};
+    return Scope{owner_, isDraw_, ns_, locals_, expressions_, invalidLocals_, calls_};
 }
 
 void Typer::restoreScope(Scope scope) {
@@ -65,6 +85,8 @@ void Typer::restoreScope(Scope scope) {
     ns_ = std::move(scope.ns);
     locals_ = std::move(scope.locals);
     expressions_ = std::move(scope.expressions);
+    invalidLocals_ = std::move(scope.invalidLocals);
+    calls_ = std::move(scope.calls);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -149,7 +171,14 @@ ValueType Typer::infer(const Expr& expr) {
                   "vec2 has only .x and .y components, got '" +
                       member.name + "'");
         }
-        return typePartRead(expr);
+        // Any other value has no members; only part paths remain above.
+        if (object == ValueType::Color) {
+            error(member.location,
+                  "color channels cannot be read, got '." + member.name +
+                      "'; keep the channels as numbers and build the color with rgb() or rgba()");
+        }
+        error(member.location, std::string(typeName(object)) +
+                                   " has no components, got '." + member.name + "'");
     }
     if (const auto* call = std::get_if<Call>(&expr)) {
         return typeCall(*call);
@@ -187,6 +216,7 @@ ValueType Typer::typeLiteral(const Literal& lit) {
 }
 
 ValueType Typer::typeIdentifier(const Identifier& id) {
+    if (invalidLocals_.contains(id.name)) throw UnresolvedType{};
     const auto local = locals_.find(id.name);
     if (local != locals_.end()) {
         return local->second;
@@ -285,7 +315,8 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
     if (call.args.size() != 2) {
         error(call.location, "ramp takes a palette name and a t value");
     }
-    const auto args = bindArguments(call, rampParameterNames(), name.name);
+    const auto bound = bind(call, rampCallSignature(), name.name);
+    const auto& args = bound.arguments;
     const auto* paletteName =
         std::get_if<Identifier>(args[0]->value.get());
     if (paletteName == nullptr) {

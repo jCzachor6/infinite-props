@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Constants.hpp"
+#include "iprop/OpcodeSpec.hpp"
 #include "ips/Types.hpp"
 
 #include <map>
@@ -42,5 +43,9 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arit
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
+
+// Fixed overload effects come from their opcode contract. Variadic/special
+// lowering effects are attached to the lowering, never a parallel name table.
+OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload = nullptr);
 
 } // namespace iprop::ips

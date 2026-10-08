@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <string>
+#include <utility>
 
 #include "ips/Ast.hpp"
 #include "ips/Parser.hpp"
@@ -11,6 +12,77 @@
 // (semicolons, else-if, soft keywords as values) are pinned.
 
 using namespace iprop::ips;
+
+namespace {
+
+const Binary& requireBinary(const Expr& expression, Binary::Op operation) {
+    const auto* node = std::get_if<Binary>(&expression);
+    REQUIRE(node != nullptr);
+    REQUIRE(node->op == operation);
+    return *node;
+}
+
+} // namespace
+
+TEST_CASE("comparison operands share shift precedence") {
+    const std::pair<const char*, Binary::Op> operators[] = {
+        {"<", Binary::Op::Lt}, {"<=", Binary::Op::Le},
+        {">", Binary::Op::Gt}, {">=", Binary::Op::Ge},
+    };
+    for (const auto& [token, operation] : operators) {
+        INFO(token);
+        const Program program = parse(
+            std::string("asset expr { draw { result = left << 1 ") +
+            token + " right >> 1 } }");
+        const auto& statement = std::get<VarDecl>(program.asset.functions[0].body[0]);
+        const auto& comparison = requireBinary(*statement.value, operation);
+        requireBinary(*comparison.left, Binary::Op::Shl);
+        requireBinary(*comparison.right, Binary::Op::Shr);
+    }
+}
+
+TEST_CASE("shifted comparisons preserve arithmetic bitwise and logical precedence") {
+    const Program program = parse(R"(
+asset expr {
+  draw { result = 1 + 2 << 3 < 64 >> 1 == 1 & 3 ^ 2 | 1 && 0 || 1 }
+})");
+    const auto& statement = std::get<VarDecl>(program.asset.functions[0].body[0]);
+    const auto& logicalOr = requireBinary(*statement.value, Binary::Op::Or);
+    const auto& logicalAnd = requireBinary(*logicalOr.left, Binary::Op::And);
+    const auto& bitOr = requireBinary(*logicalAnd.left, Binary::Op::BitOr);
+    const auto& bitXor = requireBinary(*bitOr.left, Binary::Op::Xor);
+    const auto& bitAnd = requireBinary(*bitXor.left, Binary::Op::BitAnd);
+    const auto& equality = requireBinary(*bitAnd.left, Binary::Op::Eq);
+    const auto& comparison = requireBinary(*equality.left, Binary::Op::Lt);
+    const auto& leftShift = requireBinary(*comparison.left, Binary::Op::Shl);
+    requireBinary(*leftShift.left, Binary::Op::Add);
+    requireBinary(*comparison.right, Binary::Op::Shr);
+}
+
+TEST_CASE("comparison and shift chains remain left associative") {
+    const Program program = parse(R"(
+asset expr {
+  draw {
+    comparisons = left << 1 < middle >> 1 <= right << 2
+    shifts = value << 1 >> 2
+    grouped = left < (middle < right)
+  }
+})");
+    const auto& body = program.asset.functions[0].body;
+    const auto& comparisons = requireBinary(*std::get<VarDecl>(body[0]).value,
+                                           Binary::Op::Le);
+    const auto& first = requireBinary(*comparisons.left, Binary::Op::Lt);
+    requireBinary(*first.left, Binary::Op::Shl);
+    requireBinary(*first.right, Binary::Op::Shr);
+    requireBinary(*comparisons.right, Binary::Op::Shl);
+    const auto& shifts = requireBinary(*std::get<VarDecl>(body[1]).value,
+                                      Binary::Op::Shr);
+    requireBinary(*shifts.left, Binary::Op::Shl);
+    const auto& grouped = requireBinary(*std::get<VarDecl>(body[2]).value,
+                                       Binary::Op::Lt);
+    REQUIRE(std::holds_alternative<Identifier>(*grouped.left));
+    requireBinary(*grouped.right, Binary::Op::Lt);
+}
 
 TEST_CASE("expression precedence and forms") {
     const std::string source = R"(
@@ -63,6 +135,16 @@ asset expr {
     const auto* ifStmt = std::get_if<IfStmt>(&body[7]);
     REQUIRE(ifStmt != nullptr);
     REQUIRE(ifStmt->elseBranch.size() == 1);
+}
+
+TEST_CASE("a call result can be the base of a member access") {
+    const Program program = parse("asset m { draw { z = f().g } }");
+    const auto* z = std::get_if<VarDecl>(&program.asset.functions[0].body[0]);
+    REQUIRE(z != nullptr);
+    const auto* member = std::get_if<Member>(z->value.get());
+    REQUIRE(member != nullptr);
+    CHECK(member->name == "g");
+    CHECK(std::holds_alternative<Call>(*member->object));
 }
 
 TEST_CASE("user functions beyond draw parse") {

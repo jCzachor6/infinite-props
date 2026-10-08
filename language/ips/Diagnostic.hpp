@@ -1,0 +1,63 @@
+#pragma once
+
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace iprop::ips {
+
+// One-based Unicode codepoint positions. Byte ranges are added separately;
+// neither a tab nor an astral Unicode scalar is multiple columns here.
+struct SourceLocation {
+    std::size_t line = 1;
+    std::size_t column = 1;
+    std::size_t byteOffset = std::string_view::npos;
+    std::size_t endByteOffset = std::string_view::npos;
+};
+
+struct SourcePosition { std::size_t byteOffset=0, line=1, column=1; };
+struct SourceRange { SourcePosition start, end; }; // end-exclusive
+struct RelatedLocation { std::string path, message; SourceRange range; };
+struct FixIt { SourceRange range; std::string replacement, sourceId; };
+struct SourceEdit { SourceLocation location; std::string replacement; };
+
+enum class DiagnosticSeverity { Error, Warning, Note };
+enum class DiagnosticStatus { Success, InvalidSource, CLIError, InternalError };
+enum class DiagnosticStage { Unspecified, Lexer, Parser, Import, Typing, Planning, Validation, IO, CLI, Internal };
+enum class DiagnosticCode {
+    Unspecified, InvalidUtf8, LexicalError, ExpectedToken, InvalidSyntax,
+    ImportCycle, SourceIO, TypeError, DeclarationConstant, SignedDefaultRange,
+    UnsignedDefaultNegative, PlanError, ResourceLimit, CompiledValidation,
+    CLIArgument, InternalError
+};
+
+// Stable protocol identifiers are assigned from typed causes/stages, never
+// inferred by matching a human message. Generic codes cover a stage until a
+// specific cause is explicitly annotated; existing identifiers never change.
+std::string_view diagnosticCodeName(DiagnosticCode code) noexcept;
+std::string_view diagnosticStageName(DiagnosticStage stage) noexcept;
+std::string_view diagnosticSeverityName(DiagnosticSeverity severity) noexcept;
+DiagnosticCode defaultDiagnosticCode(DiagnosticStage stage) noexcept;
+std::string_view diagnosticStatusName(DiagnosticStatus status) noexcept;
+int diagnosticExitCode(DiagnosticStatus status) noexcept;
+
+struct Diagnostic {
+    std::string message;
+    std::string path;
+    std::optional<SourceLocation> location;
+    DiagnosticCode code = DiagnosticCode::InternalError;
+    DiagnosticStage stage = DiagnosticStage::Internal;
+    DiagnosticSeverity severity = DiagnosticSeverity::Error;
+    std::optional<SourceRange> range{};
+    std::optional<std::string> expectedType{}, actualType{};
+    std::vector<std::string> suggestions{};
+    std::vector<RelatedLocation> relatedLocations{};
+    std::vector<FixIt> fixIts{};
+    std::optional<std::string> sourceId{};
+};
+
+DiagnosticStatus diagnosticStatusFor(const std::vector<Diagnostic>& diagnostics) noexcept;
+
+} // namespace iprop::ips

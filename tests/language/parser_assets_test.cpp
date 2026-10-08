@@ -4,6 +4,7 @@
 
 #include "ips/Ast.hpp"
 #include "ips/Parser.hpp"
+#include "ips/Printer.hpp"
 #include "ips/SourceError.hpp"
 
 // The .ips parser: sketch grammars parse into the expected AST, malformed
@@ -11,6 +12,36 @@
 // (semicolons, else-if, soft keywords as values) are pinned.
 
 using namespace iprop::ips;
+
+TEST_CASE("metadata and imports accept one optional terminating semicolon") {
+    const std::string declarations = R"(import child from "child.ips"
+        asset t { size 8X8 origin 1 + 2, 3 variants 2 archetypes 3
+        input i32 n=-(7) input f32 f=-0.0 output list point p
+        palette levels=[0,0.5,1] draw { p={n,f} } })";
+    const std::string terminated = R"(import child from "child.ips";
+        asset t { size 8X8; origin 1 +
+        2, 3; variants 2; archetypes 3;
+        input i32 n=-(7); input f32 f=-0.0; output list point p;
+        palette levels=[0,0.5,1]; draw { p={n,f}; } })";
+    CHECK(formatProgram(parse(declarations)) == formatProgram(parse(terminated)));
+    CHECK_NOTHROW(parse("asset t { size 8 8; draw{} }"));
+    CHECK_NOTHROW(parse("asset t { size 8x8\n; output point p\n; draw{} }"));
+}
+
+TEST_CASE("metadata semicolons do not create implicit newline or empty declarations") {
+    for (const std::string source : {
+            "import child from \"child.ips\";; asset t { size 8x8 draw{} }",
+            "asset t { ; size 8x8 draw{} }",
+            "asset t { size 8; 8 draw{} }",
+            "asset t { size 8x8;; draw{} }",
+            "asset t { size 8x8 origin 0; , 0 draw{} }",
+            "asset t { size 8x8 input i32 n=1\n+2 draw{} }",
+            "asset t { size 8x8 palette p=[1;2] draw{} }",
+            "asset t { size 8x8 draw{}; }"}) {
+        INFO(source);
+        CHECK_THROWS_AS(parse(source), SourceError);
+    }
+}
 
 namespace {
 
@@ -285,11 +316,4 @@ asset hair {
     const auto* thing = std::get_if<VarDecl>(&body[2]);
     REQUIRE(thing != nullptr);
     REQUIRE(std::holds_alternative<Identifier>(*thing->value));
-}
-
-TEST_CASE("parseTokens accepts a pre-lexed stream") {
-    const auto tokens = lex("asset t { size 8x8 }");
-    const Program program = parseTokens(tokens);
-    REQUIRE(program.asset.name == "t");
-    REQUIRE(program.asset.sizeX == 8u);
 }

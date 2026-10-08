@@ -2,7 +2,7 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
-#include <set>
+#include <algorithm>
 
 namespace iprop::ips {
 namespace {
@@ -51,7 +51,9 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    const auto args = builtinArguments(call, signature, name.name);
+    const auto bound = bind(call,
+        builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
+    const auto& args = bound.arguments;
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
@@ -100,18 +102,10 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
             "; did you mean 'color." + name.name + "'?" : didYouMean(name.name, candidates);
         error(call.location, "undefined function '" + name.name + "'" + hint);
     }
-    if (surface->params.size() != call.args.size()) {
-        error(call.location,
-              "function '" + name.name + "' expects " +
-                  std::to_string(surface->params.size()) +
-                  " arguments, got " + std::to_string(call.args.size()));
-    }
-    for (std::size_t i = 0; i < call.args.size(); ++i) {
-        const Arg& arg = call.args[i];
-        if (arg.name.has_value()) {
-            error(arg.location,
-                  "function '" + name.name + "' does not take named arguments");
-        }
+    const auto bound = bind(call, helperCallSignature(surface->names), name.name);
+    const auto& args = bound.arguments;
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const Arg& arg = *args[i];
         const ValueType got = typeOf(*arg.value);
         if (!argFits(surface->params[i], got)) {
             error(locationOf(*arg.value),
@@ -123,7 +117,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     return surface->result.value_or(ValueType::Void);
 }
 
-// `part.draw(seed, variant, archetype, at = {x, y}, uniforms...)`
+// `part.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)`
 ValueType Typer::typePartCall(const Call& call) {
     const Path path = flatten(*call.callee);
     if (path.base.empty() || path.segments.size() != 1 ||
@@ -137,81 +131,35 @@ ValueType Typer::typePartCall(const Call& call) {
         error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
     }
 
-    // Exactly three positional arguments: seed, variant, archetype.
-    std::size_t positional = 0;
-    bool hasAt = false;
-    std::set<std::string> named;
-    for (const auto& arg : call.args) {
-        if (!arg.name.has_value()) {
-            if (positional >= 3) {
-                error(arg.location,
-                      "part call takes exactly three positional "
-                      "arguments (seed, variant, archetype)");
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(ValueType::I32, got)) {
-                error(locationOf(*arg.value),
-                      "part call argument must be an integer, got " +
-                          std::string(typeName(got)));
-            }
-            ++positional;
-        } else {
-            if (!named.insert(*arg.name).second)
-                error(arg.location, "duplicate '" + *arg.name + "' argument");
-            if (*arg.name == "at") {
-                hasAt = true;
-                const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::Vec2) {
-                    error(locationOf(*arg.value),
-                          "'at' must be a vec2 {x, y}, got " +
-                              std::string(typeName(got)));
-                }
-                continue;
-            }
-            if (*arg.name == "mirror_x" || *arg.name == "mirror_y" ||
-                *arg.name == "rot") {
-                const ValueType got = typeOf(*arg.value);
-                if (got != ValueType::I32) {
-                    error(locationOf(*arg.value),
-                          "'" + *arg.name + "' must be an integer, got " +
-                              std::string(typeName(got)));
-                }
-                continue;
-            }
-            // A uniform override: must be a declared input of the part.
-            const PartInput* input = nullptr;
-            for (const auto& candidate : part->second.inputs) {
-                if (candidate.name == *arg.name) {
-                    input = &candidate;
-                    break;
-                }
-            }
-            if (input == nullptr) {
-                std::vector<std::string> names{"at", "mirror_x", "mirror_y", "rot"};
-                for (const auto& declared : part->second.inputs) names.push_back(declared.name);
-                error(arg.location,
-                      "part '" + path.base + "' has no input '" + *arg.name + "'" + didYouMean(*arg.name, names));
-            }
-            const ValueType got = typeOf(*arg.value);
-            if (!argFits(valueTypeOf(input->type), got)) {
-                error(locationOf(*arg.value),
-                      "input '" + *arg.name + "' of part '" + path.base +
-                          "' must be " + typeName(valueTypeOf(input->type)) +
-                          ", got " + typeName(got));
-            }
-        }
+    const auto bound = bind(call, partCallSignature(part->second.inputs), path.base + ".draw");
+    const auto& args = bound.arguments;
+    for (std::size_t i=0;i<3;++i) {
+        const auto got = typeOf(*args[i]->value);
+        if (got != ValueType::I32)
+            error(locationOf(*args[i]->value), "part call argument must be an integer, got " +
+                  std::string(typeName(got)));
     }
-    if (positional != 3) {
-        error(call.location,
-              "part call takes exactly three positional "
-              "arguments (seed, variant, archetype), got " +
-                  std::to_string(positional));
+    const auto placement = typeOf(*args[3]->value);
+    if (placement != ValueType::Vec2)
+        error(locationOf(*args[3]->value), "'at' must be a vec2 {x, y}, got " +
+              std::string(typeName(placement)));
+    for (std::size_t i=4;i<7;++i) {
+        if (!args[i]) continue;
+        const auto got = typeOf(*args[i]->value);
+        if (got != ValueType::I32)
+            error(locationOf(*args[i]->value), "'" + *args[i]->name +
+                  "' must be an integer, got " + std::string(typeName(got)));
     }
-    if (!hasAt) {
-        error(call.location,
-              "part call requires an 'at = {x, y}' placement argument");
+    for (std::size_t i=0;i<part->second.inputs.size();++i) {
+        const auto* arg = args[7+i];
+        if (!arg) continue;
+        const auto& input = part->second.inputs[i];
+        const auto got = typeOf(*arg->value);
+        if (!argFits(valueTypeOf(input.type), got))
+            error(locationOf(*arg->value), "input '" + input.name + "' of part '" + path.base +
+                  "' must be " + typeName(valueTypeOf(input.type)) + ", got " + typeName(got));
     }
-    (void)resolvePartTransform(call);
+    (void)resolvePartTransform(bound);
     return ValueType::Void;
 }
 

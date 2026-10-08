@@ -1,0 +1,11 @@
+asset first {
+  size 4x2
+  origin -0.0, 0.5
+  input color base = #12345678
+  input f32 amount = (-0.0)
+  input u32 bits = 0xffffffff
+  input i32 negative = -7
+  output point anchor
+  output list circle trail
+  draw { anchor = {1, 2} pixel(0, 0, base) }
+}

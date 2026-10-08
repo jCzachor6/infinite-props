@@ -1,0 +1,5 @@
+asset NegativeUnsigned {
+  size 8x8
+  input u32 offset = -1
+  draw {}
+}

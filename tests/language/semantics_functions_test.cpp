@@ -109,10 +109,9 @@ asset t {
         "recursive call");
     expectCheckError(
         "asset t { size 8x8 draw { x = f(1, 2) } f(n: i32) -> i32 { return n } }",
-        "expects 1 arguments");
-    expectCheckError(
-        "asset t { size 8x8 draw { f(n = 1) } f(n: i32) -> i32 { return n } }",
-        "does not take named arguments");
+        "too many positional arguments");
+    CHECK_NOTHROW(checkAsset(parse(
+        "asset t { size 8x8 draw { f(n = 1) } f(n: i32) -> i32 { return n } }"),{}));
     expectCheckError(
         "asset t { size 8x8 draw { x = f(1.5) } f(n: i32) -> i32 { return n } }",
         "must be i32");
@@ -179,6 +178,20 @@ asset t {
         "asset t { size 8x8 draw { c = tint(1) } "
         "tint(c: color) -> color { return c } }",
         "argument 1 of 'tint' must be color, got i32");
+}
+
+TEST_CASE("named helpers reject unknown duplicate missing ambiguous and wrong-type bindings") {
+    const std::string suffix="} paint(x:i32,tint:color){pixel(x,0,tint);} }";
+    for (const auto& [call,message] : std::vector<std::pair<std::string,const char*>>{
+        {"paint(x=1,color=#fff)","has no argument 'color'"},
+        {"paint(1,x=2,tint=#fff)","duplicate 'x'"},
+        {"paint(tint=#fff)","missing argument 'x'"},
+        {"paint(x=1,tint=#fff,tint=#f00)","duplicate 'tint'"},
+        {"paint(tint=1,x=2)","must be color"}
+    }) expectCheckError("asset t {size 8x8 draw{"+call+suffix,message);
+    expectCheckError("asset t {size 8x8 draw{} unused(x:i32,x:f32){} }","duplicate parameter 'x'");
+    CHECK_NOTHROW(checkAsset(parse("asset t {size 8x8 draw{paint(tint=#9dc,x=8)} "
+        "paint(x:i32,tint:color){pixel(x,0,tint)} }"),{}));
 }
 
 TEST_CASE("loop control cannot escape into a lazily checked helper") {

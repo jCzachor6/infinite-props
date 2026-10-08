@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "infinite-props compiler diagnostics schema 1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "product_version",
+    "language_version",
+    "status",
+    "diagnostics"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Diagnostics protocol version independent of source-language version.",
+      "type": "integer"
+    },
+    "product_version": {
+      "type": "string",
+      "description": "Compiler product build version."
+    },
+    "language_version": {
+      "type": "object",
+      "required": [
+        "major",
+        "minor"
+      ],
+      "properties": {
+        "major": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Protocol field major.",
+          "maximum": 9007199254740991
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Protocol field minor.",
+          "maximum": 9007199254740991
+        }
+      },
+      "description": "Source-language acceptance version."
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "invalid_source",
+        "cli_error",
+        "internal_error"
+      ],
+      "description": "ok=exit0; invalid_source=exit1; cli_error=exit2; internal_error=exit3."
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      },
+      "description": "Ordered diagnostics for this invocation."
+    }
+  },
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": [
+        "byte_offset",
+        "line",
+        "column"
+      ],
+      "properties": {
+        "byte_offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Zero-based UTF-8 byte offset in the reported source snapshot.",
+          "maximum": 9007199254740991
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based physical source line.",
+          "maximum": 9007199254740991
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "One-based Unicode codepoint column.",
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "required": [
+        "start",
+        "end"
+      ],
+      "properties": {
+        "start": {
+          "$ref": "#/$defs/position",
+          "description": "Inclusive beginning of the half-open range."
+        },
+        "end": {
+          "$ref": "#/$defs/position",
+          "description": "Exclusive end of the range."
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": [
+        "code",
+        "stage",
+        "severity",
+        "message",
+        "file",
+        "location",
+        "range",
+        "source_id",
+        "expected_type",
+        "actual_type",
+        "suggestions",
+        "related_locations",
+        "fix_its"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^IPS-[A-Z]+-[0-9]{3}$",
+          "description": "Stable diagnostic identity; message prose is not an identifier."
+        },
+        "stage": {
+          "enum": [
+            "lex",
+            "parse",
+            "import",
+            "typing",
+            "planning",
+            "validation",
+            "io",
+            "cli",
+            "internal"
+          ],
+          "description": "Compiler stage that produced this diagnostic."
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "note"
+          ],
+          "description": "Error, warning or informational note."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable explanation."
+        },
+        "file": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Source path, or null for a global diagnostic."
+        },
+        "location": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "line",
+                "column"
+              ],
+              "properties": {
+                "line": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "One-based physical source line.",
+                  "maximum": 9007199254740991
+                },
+                "column": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "One-based Unicode codepoint column.",
+                  "maximum": 9007199254740991
+                }
+              }
+            }
+          ],
+          "description": "Primary source line and codepoint column, or null."
+        },
+        "range": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/range"
+            }
+          ],
+          "description": "Half-open primary UTF-8 source range, or null."
+        },
+        "source_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          ],
+          "description": "SHA-256 of the exact source bytes, or null when unavailable."
+        },
+        "expected_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Expected source type, or null when unavailable."
+        },
+        "actual_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Observed source type, or null when unavailable."
+        },
+        "suggestions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Human-readable correction hints."
+        },
+        "related_locations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "file",
+              "message",
+              "range"
+            ],
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Source path, or null for a global diagnostic."
+              },
+              "message": {
+                "type": "string",
+                "description": "Human-readable explanation."
+              },
+              "range": {
+                "$ref": "#/$defs/range",
+                "description": "Half-open primary UTF-8 source range, or null."
+              }
+            }
+          },
+          "description": "Related source locations for context."
+        },
+        "fix_its": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "range",
+              "replacement",
+              "source_id"
+            ],
+            "properties": {
+              "range": {
+                "$ref": "#/$defs/range",
+                "description": "Half-open primary UTF-8 source range, or null."
+              },
+              "replacement": {
+                "type": "string",
+                "description": "Replacement source text, including intentional whitespace."
+              },
+              "source_id": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "description": "SHA-256 of the exact source bytes, or null when unavailable."
+              }
+            }
+          },
+          "description": "Source-bound transactional replacements; consumers verify snapshots and UTF-8 boundaries."
+        }
+      }
+    }
+  },
+  "description": "Structured source diagnostics; source positions are one-based Unicode codepoints and UTF-8 byte offsets. Exit/status and ordered-range invariants are validated by consumers."
+}

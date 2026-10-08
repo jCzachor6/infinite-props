@@ -8,14 +8,9 @@
 #include <exception>
 #include <string>
 #include <string_view>
+#include "ips/Diagnostic.hpp"
 
 namespace iprop::ips {
-
-// 1-based line and Unicode codepoint column (tabs count as one).
-struct SourceLocation {
-    std::size_t line = 1;
-    std::size_t column = 1;
-};
 
 // A source error with a location. Derives from std::exception so test
 // frameworks and tools report the message.
@@ -23,9 +18,16 @@ struct SourceError : std::exception {
     SourceLocation location;
     std::string message;
     std::string path; // optional owning file, relative to the compilation entry
+    DiagnosticCode code;
+    DiagnosticStage stage;
+    std::optional<std::string> expectedType{}, actualType{};
+    std::vector<std::string> suggestions{};
+    std::vector<SourceEdit> edits{};
 
-    SourceError(SourceLocation at, std::string text, std::string sourcePath = {})
-        : location(at), message(std::move(text)), path(std::move(sourcePath)) {}
+    SourceError(SourceLocation at, std::string text, std::string sourcePath = {},
+                DiagnosticCode reason = DiagnosticCode::Unspecified,
+                DiagnosticStage phase = DiagnosticStage::Unspecified)
+        : location(at), message(std::move(text)), path(std::move(sourcePath)), code(reason), stage(phase) {}
 
     const char* what() const noexcept override { return message.c_str(); }
 };
@@ -33,5 +35,6 @@ struct SourceError : std::exception {
 // Formats "line:col: error: <message>" plus the offending source line and
 // a caret pointing at the column.
 std::string formatError(std::string_view source, const SourceError& error);
+std::string formatDiagnostic(std::string_view source, const Diagnostic& diagnostic);
 
 } // namespace iprop::ips

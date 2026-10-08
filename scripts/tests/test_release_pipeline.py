@@ -15,14 +15,16 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from publish_release import publish
 from release_assets import collect, verify_bundle, verify_jobs, verify_source
-from release_common import sha256, write_json
+from release_common import sha256, versions, write_json
 from release_preflight import metadata, validate_tag
 import language_docs
-from language_fixture import LANGUAGE, fixture as language_fixture
+import release_assets
+from language_fixture import LANGUAGE, VERSION_FILES, fixture as language_fixture, reference_stub
 
 
 VERSION = "0.4.0"
-HEADER = b"#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 2\n"
+HEADER = VERSION_FILES["backends/capi/iprop.h"].encode()
+FROZEN_SPEC = "# `.iprop` Format and Virtual Machine — Specification v{0}\n\n**Status:** Frozen v{0} contract.\n"
 REPORTS = ["reports-native-Linux-X64", "reports-native-macOS-ARM64", "reports-native-Windows-X64",
            "reports-wasm", "reports-native-backends", "reports-sanitizers"]
 
@@ -43,8 +45,8 @@ def repository(root):
         "website/package.json": '{"version":"0.4.0"}',
         "website/package-lock.json": '{"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}',
         "CHANGELOG.md": "# Changelog\n\n## v0.4.0 — 2026-01-01\n\nRelease notes.\n",
-        "spec/iprop-v0.4.md": "**Status:** Frozen v0.4 contract.\n",
-        "backends/capi/iprop.h": HEADER.decode(),
+        "spec/iprop-v0.4.md": FROZEN_SPEC.format("0.4"),
+        **VERSION_FILES,
     }.items():
         target = root / file
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -74,13 +76,13 @@ def archive(path, manifest, wasm=None, documentation=None):
 def inputs(directory, root, commit):
     directory.mkdir()
     documentation = directory / "documentation"
-    with patch.object(language_docs, "contracts", return_value=LANGUAGE):
+    with patch.object(language_docs, "contracts", return_value=LANGUAGE), reference_stub():
         language_docs.build(Path("unused"), documentation, root)
     for system, runner, arch in (("linux", "Linux", "x86_64"), ("macos", "macOS", "arm64"), ("windows", "Windows", "x86_64")):
         sdk = directory / ("sdk-" + runner + "-" + arch)
         sdk.mkdir()
-        manifest = {"product_version": VERSION, "source_commit": commit, "system": system, "architecture": arch,
-                    "c_api_version": "0.2", "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
+        manifest = {**versions(root), "source_commit": commit, "system": system, "architecture": arch,
+                    "backends": {"capi": True, "sfml": system == "linux", "godot": system == "linux"}}
         file = sdk / f"iprop-{VERSION}-{system}-{arch}.tar.gz"
         archive(file, manifest, documentation=documentation)
         artifacts = {file.name: sha256(file)}
@@ -93,7 +95,7 @@ def inputs(directory, root, commit):
     web = directory / "web-build"
     web.mkdir()
     wasm = b"fixture module bytes"
-    manifest = {"product_version": VERSION, "source_commit": commit, "wasm_sha256": hashlib.sha256(wasm).hexdigest()}
+    manifest = {**versions(root), "source_commit": commit, "wasm_sha256": hashlib.sha256(wasm).hexdigest()}
     artifacts = {}
     for kind in ("wasm", "website"):
         file = web / f"iprop-{VERSION}-{kind}.tar.gz"
@@ -104,13 +106,42 @@ def inputs(directory, root, commit):
     for name in REPORTS:
         report = directory / name
         report.mkdir()
-        write_json(report / "summary.json", {"product_version": VERSION, "source_commit": commit, "passed": True,
+        write_json(report / "summary.json", {**versions(root), "source_commit": commit, "passed": True,
                    "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
                    "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}],
                    "github": {"run_id": os.environ.get("GITHUB_RUN_ID", "fixture")}})
 
 
 class ReleaseGatesTest(unittest.TestCase):
+    def test_collector_rejects_missing_malformed_and_conflicting_version_fields(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'repo'
+            commit = repository(root)
+            source = Path(temporary) / 'inputs'
+            inputs(source, root, commit)
+            path = source / REPORTS[0] / 'summary.json'
+            original = json.loads(path.read_text())
+            for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+                for case in ('missing','type','mismatch'):
+                    value = copy.deepcopy(original)
+                    if case == 'missing': del value[key]
+                    else: value[key] = 4 if case == 'type' else '9.9'
+                    write_json(path,value)
+                    with self.subTest(key=key,case=case), self.assertRaises(RuntimeError):
+                        collect(source,Path(temporary)/(key+'-'+case),VERSION,commit,root)
+            write_json(path,original)
+            # Rewritten archive/validation hashes cannot conceal a false matrix.
+            sdk = source / 'sdk-macOS-arm64'
+            archive_path = sdk / f'iprop-{VERSION}-macos-arm64.tar.gz'
+            manifest = {**versions(root),'source_commit':commit,'system':'macos','architecture':'arm64',
+                        'c_api_version':'9.9','backends':{'capi':True,'sfml':False,'godot':False}}
+            archive(archive_path,manifest,documentation=source/'documentation')
+            validation = sdk / (archive_path.name[:-7]+'-validation.json')
+            value = json.loads(validation.read_text());value['artifacts'][archive_path.name]=sha256(archive_path)
+            value['c_api_version']='9.9';write_json(validation,value)
+            with self.assertRaises(RuntimeError):
+                collect(source,Path(temporary)/'rehashed-sdk',VERSION,commit,root)
+
     def test_matching_versions_and_frozen_dated_metadata(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repo"
@@ -124,13 +155,69 @@ class ReleaseGatesTest(unittest.TestCase):
 
     def test_candidate_changelog_or_specification_cannot_be_published(self):
         for file, text, message in (("CHANGELOG.md", "## v0.4.0 — release candidate\n\nNotes.\n", "Date the changelog"),
-                                    ("spec/iprop-v0.4.md", "**Status:** release candidate; semantics frozen\n", "Freeze the format")):
+                                    ("spec/iprop-v0.4.md", FROZEN_SPEC.format("0.4").replace("Frozen v0.4 contract", "release candidate; semantics frozen"),
+                                     "Freeze the format")):
             with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary) / "repo"
                 repository(root)
                 (root / file).write_text(text, encoding="utf-8")
                 with self.assertRaisesRegex(RuntimeError, message):
                     metadata(root, "v0.4.0", publishing=True)
+
+    def test_release_checks_the_emitted_frozen_format_not_the_product_number(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "repo"
+            repository(root)
+            for file, text in {
+                "CMakeLists.txt": "project(iprop VERSION 0.5.0)\n",
+                "editor/package.json": '{"version":"0.5.0"}',
+                "website/package.json": '{"version":"0.5.0"}',
+                "website/package-lock.json": '{"version":"0.5.0","packages":{"":{"version":"0.5.0"}}}',
+                "CHANGELOG.md": "# Changelog\n\n## v0.5.0 — 2026-10-06\n\nRelease notes.\n",
+                "language/ips/Version.hpp": VERSION_FILES["language/ips/Version.hpp"].replace("Minor=4", "Minor=5"),
+                "backends/capi/iprop.h": "#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 3\n",
+            }.items():
+                (root / file).write_text(text, encoding="utf-8")
+            self.assertFalse((root / "spec/iprop-v0.5.md").exists())
+            release = metadata(root, "v0.5.0", publishing=True)
+            self.assertEqual({key: release[key] for key in ("product_version", "language_version", "format_version",
+                                                            "c_api_version", "c_abi_soversion", "tag")},
+                             {"product_version": "0.5.0", "language_version": "0.5", "format_version": "0.4",
+                              "c_api_version": "0.3", "c_abi_soversion": "0.4", "tag": "v0.5.0"})
+            # The collector identity path accepts independently versioned
+            # artifacts; it must not infer any field from the product minor.
+            jobs = {name: {**versions(root), "source_commit": "a" * 40, "passed": True,
+                           "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
+                           "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]}
+                    for name in REPORTS}
+            verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
+            jobs[REPORTS[0]]["format_version"] = "0.5"
+            with self.assertRaisesRegex(RuntimeError, "Version matrix differs"):
+                verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
+            # A frozen-looking specification named after the product cannot
+            # stand in for the format the release actually emits.
+            (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
+            (root / "spec/iprop-v0.4.md").unlink()
+            with self.assertRaisesRegex(RuntimeError, "Missing the emitted format specification spec/iprop-v0.4.md"):
+                metadata(root, "v0.5.0", publishing=True)
+            (root / "spec/iprop-v0.4.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "does not specify format 0.4"):
+                metadata(root, "v0.5.0", publishing=True)
+            # A new emitted format requires its own frozen specification.
+            (root / "runtime/iprop/Constants.hpp").write_text(
+                VERSION_FILES["runtime/iprop/Constants.hpp"].replace("Minor = 4", "Minor = 5"), encoding="utf-8")
+            self.assertEqual(metadata(root, "v0.5.0", publishing=True)["format_version"], "0.5")
+
+    def test_unreadable_version_source_is_a_release_error(self):
+        for file, text in (("cmake/CAbi.cmake", "set(IPROP_C_ABI_SOVERSION 0.4)\n"),
+                           ("language/ips/Version.hpp", "inline constexpr unsigned kLanguageVersionMajor=0;\n"),
+                           ("backends/capi/iprop.h", "/* IPROP_API_VERSION_MAJOR 0 */\n")):
+            with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary) / "repo"
+                repository(root)
+                (root / file).write_text(text, encoding="utf-8")
+                with self.assertRaisesRegex(RuntimeError, "Cannot read .* from " + file):
+                    metadata(root)
 
     def test_tag_must_identify_the_checkout_and_belong_to_main(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -149,19 +236,22 @@ class ReleaseGatesTest(unittest.TestCase):
                 validate_tag(root, "v0.4.1", "main")
 
     def test_missing_failed_foreign_or_all_skipped_job_cannot_pass(self):
-        jobs = {name: {"product_version": VERSION, "source_commit": "a" * 40, "passed": True,
+        # Job reports carry the checkout's own versions, whatever the fixture's.
+        release = versions(release_assets.ROOT)
+        version = release["product_version"]
+        jobs = {name: {**release, "source_commit": "a" * 40, "passed": True,
                        "steps": [{"passed": True, "returncode": 0}], "report_errors": [],
                        "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]} for name in REPORTS}
-        verify_jobs(jobs, VERSION, "a" * 40)
+        verify_jobs(jobs, version, "a" * 40)
         bad = copy.deepcopy(jobs); del bad[REPORTS[-1]]
         with self.assertRaises(RuntimeError):
-            verify_jobs(bad, VERSION, "a" * 40)
+            verify_jobs(bad, version, "a" * 40)
         for field, value in (("passed", False), ("source_commit", "b" * 40),
                              ("steps", [{"passed": False, "returncode": 1}]),
                              ("test_reports", [{"tests": 1, "failures": 0, "skipped": 1}])):
             bad = copy.deepcopy(jobs); bad[REPORTS[0]][field] = value
             with self.subTest(field=field), self.assertRaises(RuntimeError):
-                verify_jobs(bad, VERSION, "a" * 40)
+                verify_jobs(bad, version, "a" * 40)
 
     def test_complete_bundle_and_tampered_asset(self):
         with tempfile.TemporaryDirectory() as temporary:

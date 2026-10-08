@@ -1,0 +1,12 @@
+asset reflection {
+  size 8x8
+  input color tint = #12345678
+  input f32 zero = (-0.0)
+  input f32 fraction = 0.5
+  input f32 rounded = 16777217
+  input u32 high = 0xffffffff
+  input i32 negative = -7
+  input i32 minimum = -2147483648
+  input i32 maximum = 2147483647
+  draw { pixel(0, 0, tint) }
+}

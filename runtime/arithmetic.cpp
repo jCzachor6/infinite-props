@@ -54,9 +54,9 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::I32DivS: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
-        if (b == 0) ex.trap("divide by zero");
+        if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
         if (a == std::numeric_limits<i32>::min() && b == -1) {
-            ex.trap("integer overflow");
+            ex.trap("integer overflow", ErrorReason::IntegerOverflow);
         }
         ex.push(Value(a / b));
         ++ex.frame().ip;
@@ -65,7 +65,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::I32DivU: {
         const u32 b = static_cast<u32>(ex.popI32());
         const u32 a = static_cast<u32>(ex.popI32());
-        if (b == 0) ex.trap("divide by zero");
+        if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
         ex.push(Value(static_cast<i32>(a / b)));
         ++ex.frame().ip;
         return true;
@@ -73,7 +73,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::I32RemS: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
-        if (b == 0) ex.trap("divide by zero");
+        if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
         if (a == std::numeric_limits<i32>::min() && b == -1) {
             ex.push(Value(i32{0}));
         } else {
@@ -85,7 +85,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
     case Opcode::I32RemU: {
         const u32 b = static_cast<u32>(ex.popI32());
         const u32 a = static_cast<u32>(ex.popI32());
-        if (b == 0) ex.trap("divide by zero");
+        if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
         ex.push(Value(static_cast<i32>(a % b)));
         ++ex.frame().ip;
         return true;

@@ -10,6 +10,7 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from release_common import match_versions, versions
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,18 +32,18 @@ def output(command):
 def environment(directory):
     path = directory / "environment.json"
     if not path.exists():
-        version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)",
-                            (ROOT / "CMakeLists.txt").read_text(encoding="utf-8")).group(1)
         write_json(path, {
             "source_commit": output(["git", "rev-parse", "HEAD"]),
-            "product_version": version,
+            **versions(ROOT),
             "system": platform.system(), "architecture": platform.machine(),
             "python": platform.python_version(),
             "tools": {name: output([name, "--version"]) for name in ("cmake", "node", "c++")},
             "github": {key: os.environ.get("GITHUB_" + key.upper())
                        for key in ("run_id", "run_attempt", "job", "ref", "sha")},
         })
-    return json.loads(path.read_text(encoding="utf-8"))
+    value = json.loads(path.read_text(encoding="utf-8"))
+    match_versions(value, versions(ROOT))
+    return value
 
 
 def run_command(directory, name, command):

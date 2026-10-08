@@ -2,10 +2,22 @@
 
 add_executable(ipc
     ipc.cpp
+    source_diagnostics.cpp
     language_description.cpp)
 
 target_link_libraries(ipc PRIVATE iprop_compiler)
-target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(ipc PRIVATE IPROP_PRODUCT_VERSION="${PROJECT_VERSION}"
+    IPROP_C_ABI_VERSION_MAJOR=${IPROP_C_ABI_VERSION_MAJOR}
+    IPROP_C_ABI_VERSION_MINOR=${IPROP_C_ABI_VERSION_MINOR}
+    IPROP_C_ABI_SOVERSION="${IPROP_C_ABI_SOVERSION}")
+if(WIN32)
+    # Only the production executable selects the Unicode CRT entry. The
+    # diagnostic fault probe includes ipc.cpp with its standard main renamed.
+    target_compile_definitions(ipc PRIVATE IPROP_WINDOWS_UTF8_ENTRY=1)
+    if(MINGW)
+        target_link_options(ipc PRIVATE -municode)
+    endif()
+endif()
 iprop_warnings(ipc)
 
 # ipdis: disassemble an .iprop binary into .ipa text
@@ -41,13 +53,19 @@ iprop_warnings(ipval)
 # ipa: assemble .ipa text into .iprop binary
 # ipsheet: render a variant × seed grid PNG
 
+# 8-bit RGBA PNG files for the tools and tests, over the runtime's zlib.
+add_library(iprop_png STATIC
+    png.cpp)
+
+target_link_libraries(iprop_png PUBLIC iprop::runtime)
+target_include_directories(iprop_png PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+iprop_warnings(iprop_png)
+
 add_library(ipgen_lib STATIC
     ipgen.cpp)
 
-target_link_libraries(ipgen_lib PUBLIC iprop::runtime)
+target_link_libraries(ipgen_lib PUBLIC iprop::runtime PRIVATE iprop_png)
 target_include_directories(ipgen_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(ipgen_lib SYSTEM PUBLIC
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(ipgen_lib)
 
 add_executable(ipgen
@@ -72,10 +90,8 @@ iprop_warnings(ipa)
 add_library(ipsheet_lib STATIC
     ipsheet.cpp)
 
-target_link_libraries(ipsheet_lib PUBLIC iprop::runtime)
+target_link_libraries(ipsheet_lib PUBLIC iprop::runtime PRIVATE iprop_png)
 target_include_directories(ipsheet_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(ipsheet_lib SYSTEM PUBLIC
-    ${CMAKE_SOURCE_DIR}/third_party/stb)
 iprop_warnings(ipsheet_lib)
 
 add_executable(ipsheet

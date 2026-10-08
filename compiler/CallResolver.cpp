@@ -22,9 +22,9 @@ PlannedArgument CallResolver::argument(const ips::Expr& expression, ips::ValueTy
 ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     using T = ips::ValueType;
     const auto name = calleeName(*call.callee);
+    const auto& bound = function_.boundCalls.at(&call);
+    const auto& args = bound.arguments;
     if (name == "ramp") {
-        const std::vector<std::string> names{"palette", "t"};
-        const auto args = ips::bindArguments(call, names, name);
         RampCall result{&plan_.palette(*function_.owner, *args[0]->value),
             argument(*args[1]->value, T::F32), {}};
         if (const auto& value = function_.expression(*result.position.expression).constant; value) {
@@ -35,7 +35,6 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     }
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end()) {
         const auto& spec = found->second;
-        const auto args = ips::builtinArguments(call, spec, name);
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));
         if ((spec.lowering == ips::BuiltinLowering::Pick && args.size() >= 2) ||
@@ -44,18 +43,19 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
             const auto type = ips::selectionType(std::span(types).subspan(first));
             if (!type) throw ips::SourceError{call.location, "invalid choices"};
             SelectionCall result{*type, {}};
-            if (first) result.seed = argument(*args[0]->value, T::I32);
-            for (std::size_t i = first; i < args.size(); ++i) result.choices.push_back(argument(*args[i]->value, *type));
+            for (const auto slot : bound.signature.evaluationOrder) {
+                if (first && slot == 0) result.seed = argument(*args[slot]->value, T::I32);
+                else result.choices.push_back(argument(*args[slot]->value, *type));
+            }
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
         if (spec.lowering == ips::BuiltinLowering::Polygon) {
-            for (std::size_t i = 1; i < args.size(); ++i)
-                result.arguments.push_back(argument(*args[i]->value, T::F32));
-            result.arguments.push_back(argument(*args[0]->value, T::Color));
+            for (const auto i : bound.signature.evaluationOrder)
+                result.arguments.push_back(argument(*args[i]->value, i == 0 ? T::Color : T::F32));
         } else {
             if (!result.overload) throw ips::SourceError{call.location,"invalid builtin overload"};
-            for (std::size_t i = 0; i < args.size(); ++i)
+            for (const auto i : bound.signature.evaluationOrder)
                 result.arguments.push_back(argument(*args[i]->value, result.overload->params[i].type));
         }
         return {call.location, std::move(result)};
@@ -68,33 +68,28 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     if (!id) throw ips::SourceError{call.location, "unknown function '" + name + "'"};
     const auto& callee = plan_.functions[*id];
     UserCall result{*id, callee.langResult.value_or(T::Void), {}};
-    for (std::size_t i = 0; i < call.args.size(); ++i)
-        result.arguments.push_back(argument(*call.args[i].value, ips::valueTypeOf(callee.ast->params[i].type)));
+    for (const auto i : bound.signature.evaluationOrder)
+        result.arguments.push_back(argument(*args[i]->value, ips::valueTypeOf(callee.ast->params[i].type)));
     return {call.location, std::move(result)};
 }
 
 PartCall CallResolver::part(const ips::Call& call, const std::string& alias) const {
     PartCall result{};
     result.part = plan_.partIndex.at(alias);
-    result.transform = ips::resolvePartTransform(call);
-    std::map<std::string, const ips::Expr*> named;
-    std::size_t positional = 0;
-    for (const auto& arg : call.args) {
-        if (arg.name) named.emplace(*arg.name, arg.value.get());
-        else result.positional.at(positional++) = argument(*arg.value, ips::ValueType::I32);
-    }
-    result.at = named.at("at");
-    for (const auto& input : plan_.parts[result.part]->asset.inputs) {
-        if (const auto found = named.find(input.name); found != named.end()) {
-            const auto expected = ips::valueTypeOf(input.type);
-            result.uniforms.emplace_back(argument(*found->second, expected));
+    const auto& bound = function_.boundCalls.at(&call);
+    result.transform = ips::resolvePartTransform(bound);
+    const auto& inputs = plan_.parts[result.part]->asset.inputs;
+    const auto& args = bound.arguments;
+    for (const auto slot : bound.signature.evaluationOrder) {
+        if (slot >= 4 && slot < 7) continue; // compile-time transforms
+        if (slot == 3) {
+            result.arguments.emplace_back(PartCall::Placement{args[slot]->value.get()});
+        } else if (const auto* supplied = args[slot]) {
+            const auto expected = slot < 3 ? ips::ValueType::I32 : ips::valueTypeOf(inputs[slot-7].type);
+            result.arguments.emplace_back(argument(*supplied->value, expected));
         } else {
-            Value value;
-            if (!std::holds_alternative<ips::Literal>(*input.defaultValue) ||
-                !ips::foldExpression(*input.defaultValue, value))
-                throw ips::SourceError{input.location, "part input '" + input.name + "' has no constant default",
-                    plan_.sourcePath(plan_.parts[result.part])};
-            result.uniforms.emplace_back(value);
+            const auto* declaration = std::get<const ips::InputDecl*>(bound.signature.defaults[slot]);
+            result.arguments.emplace_back(plan_.inputDefaults.at(declaration).value);
         }
     }
     return result;

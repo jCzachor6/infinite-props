@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.5.0 — 2026-10-08
+
+Product/editor/website version: 0.5.0. Source language: 0.5. Format: 0.4,
+unchanged. C API: 0.3, additive over the frozen 0.2 layouts on ABI line /
+SONAME 0.4. Migration and packaging instructions:
+[release notes](docs/release-v0.5.md).
+
+- Language (A): comparisons parse shifts on both sides; defaults and palette
+  elements accept one numeric unary minus; mixed numeric palettes widen to
+  `f32`; `input i32` checks its signed default and stores U32 bits; one
+  optional semicolon may follow imports and declarations.
+- Checking and diagnostics (B): `ipc --check` runs the full pipeline in
+  memory. Text and JSON diagnostics share stable codes, byte and codepoint
+  ranges, bounded recovery and distinct exit codes. The editor consumes the
+  JSON protocol with guarded quick fixes. Member access on a color or number
+  names the value type instead of reporting a missing part.
+- Fuel: compiled assets get a default fuel budget of 2,000,000 instead of
+  1,000,000; files compiled earlier keep their stored budget.
+- Calls (C): one binder and call plan serve builtins, helpers and parts.
+  Helpers and part controls accept named arguments; evaluation order follows
+  the declaration and is exported with each signature.
+- Formatting (F): comments survive formatting; `--format-only` publishes
+  canonical source atomically without an executable. The editor and recipe
+  gallery format through the same printer.
+- Language export (G): `--describe-language` reports independent versions,
+  source rules, operation effects and trap summaries; the generated
+  `LLM_REFERENCE.md` joins the handbook. Export contracts are versioned and
+  validated in every consumer.
+- C API 0.3 (V/R/P/X/O/M): loaded library versions and capabilities; sized
+  descriptors; checked load and metadata queries; root input, output and part
+  reflection; retained parameter sets with typed setters, strict override
+  lists and `iprop_generate_ex`; structured errors with stable reasons, stages
+  and VM locations; image views, typed output reads and result statistics.
+  The adapter moves completed VM buffers instead of copying them.
+- Hosts and packaging (J): SFML (`--set name=value`) and Godot (`inputs`,
+  `set_input`, `reset_inputs`) load and generate through the checked API. New
+  C99 examples: the reflection panel and `render_inputs`. Release metadata
+  names product, language, format, C API and SOVERSION separately; SDK, WASM
+  and website ship one documentation package.
+- Removed: the 0.4 lexer emoji aliases (language description schema 2), the
+  historical-0.4 contract reader profile, the editor fallback to 0.4 text
+  diagnostics, the LLM benchmark harness and the vendored stb and
+  nlohmann/json libraries, replaced by a small zlib PNG module and an ordered
+  JSON writer.
+
 ## v0.4.0 — 2026-10-05
 
 Product/editor/website version: 0.4.0. Format: 0.4 with frozen 0.1–0.3

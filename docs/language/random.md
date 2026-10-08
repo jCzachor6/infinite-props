@@ -4,6 +4,10 @@ Random operations use the current deterministic 32-bit stream. `seed` reads
 its current state, so saving `saved = seed` before drawing preserves an
 explicit seed value. Changing the number or order of stream draws changes
 later results. Hash/noise operations with explicit seeds do not advance it.
+They may still evaluate effectful arguments first. The shared compiler export
+distinguishes `read_current`, `advance_current`, seeded computation, isolated
+streams and stream push/restore; these summaries describe the operation itself,
+separately from argument effects and execution-wide limits.
 
 <!-- example: ../../examples/language/random.ips -->
 
@@ -77,3 +81,7 @@ This is stream derivation, not the direct seed assignment used by `roll`.
 Restores the most recently pushed stream. An unmatched pop traps. Nesting
 is bounded by the VM's stream-stack limit. Balanced calls isolate a sequence
 of draws while retaining the caller's stream.
+
+This program is valid source but its unmatched pop traps during generation:
+
+<!-- example: ../../examples/language/traps/stream-pop.ips -->

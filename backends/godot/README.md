@@ -60,17 +60,65 @@ templates are not included in the native package.
   `.iprop` through the C API; `generate(seed, variant, archetype)`
   returns a Godot `Image` (RGBA8). The meta (`size`, `origin`, `variants`,
   `archetypes`, `fuel`) and the structured outputs are properties; each
-  root output is a dictionary `{name, owner, kind, list, values}` under
+  root output is a dictionary `{index, name, owner, kind, list, values}` under
   its name in `outputs`. `part_outputs[owner][name]` holds part slots,
   with owner N+1 for part N. `output_slots` preserves all slots in program
-  order, including repeated names; root slots have owner 0.
+  order, including repeated names, unset singular slots and empty lists; root
+  slots have owner 0. Owners are copied unchanged, so a part without output
+  declarations leaves a gap in the owner keys.
+- **Inputs** — each load starts a parameter set at the program's defaults.
+  `inputs` lists the root inputs in declaration order as
+  `{index, name, type, default, value}`, with type `"color"`, `"f32"` or
+  `"u32"`. `set_input(name, value)` takes a `Color`, a number or an int in
+  `-2147483648..4294967295` (negative ints keep their i32 bits) and returns
+  `OK`, `ERR_UNCONFIGURED` before a load or `ERR_INVALID_PARAMETER` for an
+  unknown name, a mismatched type or an out of range value, printing the C API
+  message and reason code. `reset_inputs()` restores the defaults. Rejected
+  values change nothing; accepted ones and resets emit `changed`.
+
+  ```gdscript
+  var asset := IpropAsset.new()
+  asset.load_file("res://tinted.iprop") # declares `input color tint`
+  asset.set_input("tint", Color8(0x99, 0xdd, 0xcc))
+  var image := asset.generate(26, 0, 0)
+  ```
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
   `seed`/`variant`/`archetype`; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.
   Clearing the asset or a failed generation clears the texture. Successful
-  asset reloads emit `changed` and refresh its sprites; failed reloads keep
-  the previous program and metadata together. Generation arguments must be
+  asset reloads and input changes emit `changed` and refresh its sprites;
+  failed reloads keep the previous program, inputs and metadata together. Generation arguments must be
   integers in `0..4294967295`.
+
+Loading uses `iprop_program_load_ex`. Before publishing its candidate, the
+resource copies metadata through `iprop_program_info_ex_init` and
+`iprop_program_query` and creates the candidate's parameter set. A failure
+frees the candidate and keeps the previous program, inputs, metadata and
+generated outputs. No borrowed program view is retained by the resource:
+input names are copied on each `inputs` read. Generation passes the set to
+`iprop_generate_ex`.
+
+Generation also copies into a candidate before publishing: the sized image
+view supplies actual dimensions, `byte_count`, tight `row_stride`, RGBA8,
+top-left storage and the legacy destination-alpha mode. Exactly those bytes
+enter the Godot `Image`, with no alpha conversion. Sized output views supply
+owner, kind, list flag, global index and explicit name byte count. Typed
+point/rect/circle accessors fill the existing `PackedFloat32Array` representation
+by named leaf fields; packed strides are not interpreted and already transformed
+D4 geometry is not transformed again. Float bits, including NaN payloads, remain
+unchanged.
+
+Names are decoded using their exact UTF-8 byte count. Godot 4.5.2's UTF-8 parser
+stops at embedded NUL, so the adapter decodes bounded non-NUL segments and
+stores U+0000 directly in its length-counted String. Conformance checks the
+actual String codepoints, dictionary key and suffix. Empty names remain empty.
+The temporary C result owns borrowed image/name/value views; these survive
+`program_free` and later generations until `result_free`. Returned Godot Images
+and published arrays/strings own their copies, survive asset reload/destruction
+and are not overwritten by later generation. A failed generation or result
+read returns a null Image and preserves all previously completed output maps;
+the sprite retains its documented clearing behavior. The shared result reader
+is also installed as `include/iprop/backend/ResultQueries.hpp`.
 
 ## The demo (8.3)
 
@@ -91,6 +139,10 @@ current image as a PNG.
 committed golden PNGs, the pinned `pupilCenter` output, and a PNG export
 round-trip. A hand-written `.godot/extension_list.cfg` replaces the
 editor scan so the fresh build trees work without an import step.
-Compiled 0.2 source fixtures additionally check palettes, typed helpers,
+Compiled source fixtures additionally check palettes, typed helpers,
 loops, raw math bits, empty output lists, variants/archetypes, plant
 composition, duplicate output owners and transactional sprite lifecycle.
+The output-values fixture adds all eight D4 transformations, owner gaps and
+empty singular/list slots. Binary fixtures pin UTF-8/embedded-NUL/empty names
+and raw bits for each geometry kind; retained engine images/output arrays are
+checked after program reload and later generation.

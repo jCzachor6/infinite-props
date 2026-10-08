@@ -71,12 +71,12 @@ constexpr i32 kExactCellLimit = 16777216; // 2^24: every integer is exact in f32
 // Bounds include the neighbours each algorithm needs, not just the base cell.
 i32 latticeIndex(Execution& ex, f32 coordinate, i32 lower, i32 upper) {
     if (!std::isfinite(coordinate)) {
-        ex.trap("noise coordinate out of range");
+        ex.trap("noise coordinate out of range", ErrorReason::NumericRange);
     }
     const f32 floored = std::floor(coordinate);
     const double index = static_cast<double>(floored);
     if (index < static_cast<double>(lower) || index > static_cast<double>(upper)) {
-        ex.trap("noise coordinate out of range");
+        ex.trap("noise coordinate out of range", ErrorReason::NumericRange);
     }
     return static_cast<i32>(floored);
 }
@@ -86,7 +86,7 @@ i32 latticeIndex(Execution& ex, f32 coordinate, i32 lower, i32 upper) {
 f32 jitterCoordinate(Execution& ex, i32 cell, f32 offset) {
     const f32 lower = static_cast<f32>(cell);
     if (static_cast<double>(lower) != static_cast<double>(cell)) {
-        ex.trap("cell index is not representable as f32");
+        ex.trap("cell index is not representable as f32", ErrorReason::NumericRange);
     }
     const f32 coordinate = lower + offset;
     const double upper = static_cast<double>(cell) + 1.0;
@@ -177,7 +177,7 @@ f32 cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
 
 f32 warpNoise(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
     if (!std::isfinite(amount)) {
-        ex.trap("warp amount out of range");
+        ex.trap("warp amount out of range", ErrorReason::NumericRange);
     }
     const f32 q1 = fbmNoise(ex, x, y, 4, seed);
     const f32 q2 = fbmNoise(ex, x + 3.7f, y + 9.1f, 4, seed);
@@ -230,7 +230,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
     case Opcode::StreamPop: {
         Frame& frame = ex.frame();
         if (frame.savedStreams.empty()) {
-            ex.trap("stream stack underflow");
+            ex.trap("stream stack underflow", ErrorReason::StackUnderflow);
         }
         frame.stream = frame.savedStreams.back();
         frame.savedStreams.pop_back();

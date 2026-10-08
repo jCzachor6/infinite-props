@@ -1,0 +1,8 @@
+asset SignedInput {
+  size 8x8
+  input i32 amount = -7
+  output point value
+  draw {
+    value = {amount, 0}
+  }
+}

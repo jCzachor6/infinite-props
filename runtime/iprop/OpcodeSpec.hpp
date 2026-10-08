@@ -27,6 +27,26 @@ struct StackSignature {
 };
 
 enum class AuxPolicy { Zero, PartTransform };
+
+// Intrinsic effects on validated source, excluding argument-expression effects
+// and execution-wide resource failures. Seeded computations do not use the
+// current stream; isolated calls restore it after their own draw/callee.
+enum class RngEffect { None, ReadCurrent, AdvanceCurrent, PushSeededStream,
+    RestoreStream, SeededComputation, IsolatedSeededStream, SharedCallee, IsolatedCallee };
+enum class EffectCheck : u8 { NumericRange = 1, StreamStackUnderflow = 2,
+    PartRenderArguments = 4, Callee = 8, PartOutputMissing = 16,
+    DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128 };
+struct OperationEffects {
+    RngEffect rng = RngEffect::None;
+    bool writesCanvas = false;
+    bool writesOutputs = false;
+    u8 checks = 0;
+    bool conservative = false;
+    bool operator==(const OperationEffects&) const = default;
+};
+const char* rngEffectName(RngEffect effect);
+const char* effectCheckName(EffectCheck check);
+
 struct OpcodeSpec {
     Opcode opcode;
     const char* mnemonic;
@@ -35,6 +55,7 @@ struct OpcodeSpec {
     AuxPolicy aux = AuxPolicy::Zero;
     // Absent for control flow, metadata-dependent or polymorphic stack ops.
     std::optional<StackSignature> stack;
+    OperationEffects effects;
 };
 
 std::span<const OpcodeSpec> opcodeSpecs();

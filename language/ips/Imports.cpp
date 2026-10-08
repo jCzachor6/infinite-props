@@ -1,16 +1,17 @@
 #include "ips/Imports.hpp"
 
 #include <set>
+#include <stdexcept>
 #include <utility>
 
-#include "ips/Parser.hpp"
+#include "ips/Ast.hpp"
 #include "ips/SourceError.hpp"
 
 namespace iprop::ips {
 
-std::vector<std::string> resolveImports(
+std::vector<std::string> resolveImportOrder(
     std::string_view entryPath,
-    const std::function<std::string(std::string_view path)>& loadSource) {
+    const std::function<const Program&(std::string_view path)>& loadProgram) {
     std::vector<std::string> order;
     std::set<std::string> done;
     std::vector<std::string> chain;
@@ -31,27 +32,25 @@ std::vector<std::string> resolveImports(
                     message += chain[i] + " -> ";
                 }
                 message += path;
-                throw SourceError{importedAt, std::move(message), importer};
+                throw SourceError{importedAt, std::move(message), importer,
+                    DiagnosticCode::ImportCycle, DiagnosticStage::Import};
             }
             inChain.insert(path);
             chain.push_back(path);
 
-            std::string source;
+            const Program* program = nullptr;
             try {
-                source = loadSource(path);
-            } catch (const std::exception& e) {
+                program = &loadProgram(path);
+            } catch (SourceError& error) {
+                if (error.path.empty()) error.path = path;
+                throw;
+            } catch (const std::runtime_error& e) {
                 throw SourceError{importedAt,
                                   std::string("cannot load '") + path +
-                                      "': " + e.what(), importer};
+                                      "': " + e.what(), importer,
+                                      DiagnosticCode::SourceIO, DiagnosticStage::IO};
             }
-            Program program;
-            try {
-                program = parse(source);
-            } catch (SourceError& error) {
-                error.path = path;
-                throw;
-            }
-            for (const auto& import : program.imports) {
+            for (const auto& import : program->imports) {
                 visit(import.path, import.location, path);
             }
             chain.pop_back();

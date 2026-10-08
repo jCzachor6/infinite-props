@@ -1,5 +1,6 @@
 #include "ips/Parser.hpp"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -8,35 +9,157 @@
 namespace iprop::ips {
 namespace detail {
 
-Program ParserImpl::parseProgram() {
+ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
+    ParseResult result;
+    recovery_ = &result;
+    diagnosticLimit_ = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics);
     Program program;
-    while (kind() == TokenKind::KeywordImport) {
-        program.imports.push_back(parseImport());
-    }
-    if (kind() != TokenKind::KeywordAsset) {
-        failExpected("an 'asset' block");
-    }
-    program.asset = parseAsset();
-    if (kind() != TokenKind::End) {
-        if (kind() == TokenKind::KeywordAsset) {
-            failHere("multiple asset blocks in one file");
+    bool hasAsset = false;
+    try {
+        while (kind() != TokenKind::End) {
+            const auto start = pos_;
+            try {
+                if (kind() == TokenKind::KeywordImport && !hasAsset) {
+                    auto import = parseImport();
+                    result.imports.push_back(import);
+                    program.imports.push_back(std::move(import));
+                } else if (kind() == TokenKind::KeywordAsset && !hasAsset) {
+                    program.asset = parseAsset();
+                    hasAsset = true;
+                } else if (kind() == TokenKind::KeywordAsset) {
+                    failHere("multiple asset blocks in one file");
+                } else if (hasAsset) {
+                    failExpected("end of file");
+                } else {
+                    failExpected("an 'asset' block");
+                }
+            } catch (const SourceError& error) {
+                recordError(error);
+                synchronize(start, RecoveryScope::Program);
+            }
         }
-        failExpected("end of file");
+        // A failed declaration/header already explains an incomplete file.
+        // Do not add an expected-asset cascade after synchronizing to EOF.
+        if (!hasAsset && result.diagnostics.empty()) {
+            failExpected("an 'asset' block");
+        }
+        if (result.diagnostics.empty()) {
+            program.sourceTokens = std::move(tokens_);
+            result.program = std::move(program);
+        }
+    } catch (const SourceError& error) {
+        try {
+            recordError(error);
+        } catch (const RecoveryHalt&) {}
+    } catch (const RecoveryHalt&) {}
+    recovery_ = nullptr;
+    return result;
+}
+
+void ParserImpl::recordError(SourceError error) {
+    if (error.stage == DiagnosticStage::Unspecified) error.stage = DiagnosticStage::Parser;
+    if (error.code == DiagnosticCode::Unspecified) error.code = defaultDiagnosticCode(error.stage);
+    recovery_->diagnostics.push_back(std::move(error));
+    if (recovery_->diagnostics.size() >= diagnosticLimit_) {
+        recovery_->limitReached = true;
+        throw RecoveryHalt{};
     }
-    return program;
+    // Stop all enclosing constructs at EOF rather than reporting a missing
+    // delimiter separately for each nested block.
+    if (kind() == TokenKind::End) throw RecoveryHalt{};
+}
+
+bool ParserImpl::recoveryStart(RecoveryScope scope) const {
+    if (scope == RecoveryScope::Program) {
+        return kind() == TokenKind::KeywordImport || kind() == TokenKind::KeywordAsset;
+    }
+    if (scope == RecoveryScope::Declaration) {
+        if (kind() == TokenKind::KeywordInput || kind() == TokenKind::KeywordOutput ||
+            kind() == TokenKind::KeywordDraw) return true;
+        if (kind() == TokenKind::Identifier) {
+            const auto& name = peek().text;
+            if (name == "size" || name == "origin" || name == "variants" ||
+                name == "archetypes" || name == "palette") return true;
+        }
+        return isNameKind(kind()) && kind(1) == TokenKind::LParen;
+    }
+    switch (kind()) {
+    case TokenKind::KeywordIf:
+    case TokenKind::KeywordWhile:
+    case TokenKind::KeywordFor:
+    case TokenKind::KeywordReturn:
+    case TokenKind::KeywordBreak:
+    case TokenKind::KeywordContinue:
+        return true;
+    default:
+        return isNameKind(kind()) &&
+               (kind(1) == TokenKind::Assign || kind(1) == TokenKind::LParen ||
+                kind(1) == TokenKind::Dot);
+    }
+}
+
+void ParserImpl::synchronize(std::size_t start, RecoveryScope scope) {
+    // Include delimiters consumed by the failed production. A declaration
+    // inside a discarded function, or a named argument inside a failed call,
+    // must never be mistaken for a sibling declaration/statement.
+    int braces = 0;
+    int parens = 0;
+    int brackets = 0;
+    bool skippingElseArm = false;
+    const auto update = [&](TokenKind token) {
+        switch (token) {
+        case TokenKind::LBrace: ++braces; break;
+        case TokenKind::RBrace: if (braces > 0) --braces; break;
+        case TokenKind::LParen: ++parens; break;
+        case TokenKind::RParen: if (parens > 0) --parens; break;
+        case TokenKind::LBracket: ++brackets; break;
+        case TokenKind::RBracket: if (brackets > 0) --brackets; break;
+        default: break;
+        }
+    };
+    for (auto at = start; at < pos_; ++at) update(tokens_[at].kind);
+    while (kind() != TokenKind::End) {
+        if (braces == 0) {
+            // Preserve the delimiter owned by parseAsset/parseBlock even if
+            // the failed expression left a parenthesis/bracket unclosed.
+            if (kind() == TokenKind::RBrace && scope != RecoveryScope::Program) return;
+            // ';' cannot occur in an expression: it safely terminates a
+            // failed call/index even when its closing delimiter is missing.
+            if (match(TokenKind::Semi)) return;
+            if (!skippingElseArm && pos_ > start && parens == 0 && brackets == 0 &&
+                recoveryStart(scope)) return;
+        }
+        const bool closesNestedBody = kind() == TokenKind::RBrace && braces == 1;
+        update(advance().kind);
+        if (closesNestedBody) {
+            // Discard an else arm attached to a failed conditional together
+            // with that conditional, rather than reporting it as a sibling.
+            if (scope == RecoveryScope::Statement && kind() == TokenKind::KeywordElse) {
+                advance();
+                skippingElseArm = true;
+                parens = 0;
+                brackets = 0;
+                continue;
+            }
+            return;
+        }
+    }
 }
 
 // ---- declarations -----------------------------------------------------------
 
 Import ParserImpl::parseImport() {
+    const auto start = pos_;
     const SourceLocation at = advance().location; // 'import'
     const Token alias = expectName("an import alias");
     expect(TokenKind::KeywordFrom, "'from'");
     const Token path = expect(TokenKind::String, "a quoted file path");
-    return Import{alias.text, path.text, at};
+    match(TokenKind::Semi);
+    return Import{alias.text, path.text, at, {start, pos_}};
 }
 
 Asset ParserImpl::parseAsset() {
+    const auto assetStart = pos_;
     const SourceLocation at = advance().location; // 'asset'
     const Token name = expect(TokenKind::Identifier, "an asset name");
     expect(TokenKind::LBrace, "'{'");
@@ -48,50 +171,74 @@ Asset ParserImpl::parseAsset() {
         if (kind() == TokenKind::End) {
             failHere("unterminated asset block (missing '}')");
         }
-        switch (kind()) {
-        case TokenKind::KeywordInput:
-            asset.inputs.push_back(parseInput());
-            break;
-        case TokenKind::KeywordOutput:
-            asset.outputs.push_back(parseOutput());
-            break;
-        case TokenKind::KeywordDraw:
-            asset.functions.push_back(parseFunction());
-            break;
-        case TokenKind::Identifier: {
-            const Token declaration = advance();
-            if (declaration.text == "size") {
-                parseSize(asset);
-            } else if (declaration.text == "origin") {
-                parseOrigin(asset);
-            } else if (declaration.text == "variants") {
-                asset.variants = toU32(expect(TokenKind::Int, "a variant count"),
-                                       "variant count");
-            } else if (declaration.text == "archetypes") {
-                asset.archetypes =
-                    toU32(expect(TokenKind::Int, "an archetype count"),
-                          "archetype count");
-            } else if (declaration.text == "palette") {
-                asset.palettes.push_back(parsePalette());
-            } else {
-                const auto hint = keywordSuggestion(declaration.text);
-                if (kind() != TokenKind::LParen && !hint.empty())
-                    throw SourceError{declaration.location, "unknown asset declaration '" + declaration.text + "'" + hint};
-                asset.functions.push_back(parseFunctionAfterName(declaration));
-            }
-            break;
-        }
-        default:
-            // Soft keywords may also name a function.
-            if (isNameKind(kind())) {
-                asset.functions.push_back(parseFunctionAfterName(advance()));
-            } else {
-                failExpected("a declaration inside the asset block");
-            }
+        const auto start = pos_;
+        try {
+            parseDeclaration(asset);
+        } catch (const SourceError& error) {
+            recordError(error);
+            synchronize(start, RecoveryScope::Declaration);
         }
     }
     advance(); // '}'
+    asset.sourceRange = {assetStart, pos_};
     return asset;
+}
+
+void ParserImpl::parseDeclaration(Asset& asset) {
+    const auto start = pos_;
+    switch (kind()) {
+    case TokenKind::KeywordInput:
+        asset.inputs.push_back(parseInput());
+        asset.inputs.back().sourceRange = {start, pos_};
+        break;
+    case TokenKind::KeywordOutput:
+        asset.outputs.push_back(parseOutput());
+        asset.outputs.back().sourceRange = {start, pos_};
+        break;
+    case TokenKind::KeywordDraw:
+        asset.functions.push_back(parseFunction());
+        asset.functions.back().sourceRange = {start, pos_};
+        break;
+    case TokenKind::Identifier: {
+        const Token declaration = advance();
+        if (declaration.text == "size") {
+            parseSize(asset);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Size, {start, pos_}});
+        } else if (declaration.text == "origin") {
+            parseOrigin(asset);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Origin, {start, pos_}});
+        } else if (declaration.text == "variants") {
+            asset.variants = toU32(expect(TokenKind::Int, "a variant count"),
+                                   "variant count");
+            match(TokenKind::Semi);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Variants, {start, pos_}});
+        } else if (declaration.text == "archetypes") {
+            asset.archetypes =
+                toU32(expect(TokenKind::Int, "an archetype count"),
+                      "archetype count");
+            match(TokenKind::Semi);
+            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Archetypes, {start, pos_}});
+        } else if (declaration.text == "palette") {
+            asset.palettes.push_back(parsePalette());
+            asset.palettes.back().sourceRange = {start, pos_};
+        } else {
+            const auto hint = keywordSuggestion(declaration.text);
+            if (kind() != TokenKind::LParen && !hint.empty())
+                throw SourceError{declaration.location, "unknown asset declaration '" + declaration.text + "'" + hint};
+            asset.functions.push_back(parseFunctionAfterName(declaration));
+            asset.functions.back().sourceRange = {start, pos_};
+        }
+        break;
+    }
+    default:
+        // Soft keywords may also name a function.
+        if (isNameKind(kind())) {
+            asset.functions.push_back(parseFunctionAfterName(advance()));
+            asset.functions.back().sourceRange = {start, pos_};
+        } else {
+            failExpected("a declaration inside the asset block");
+        }
+    }
 }
 
 void ParserImpl::parseSize(Asset& asset) {
@@ -115,16 +262,19 @@ void ParserImpl::parseSize(Asset& asset) {
     } else {
         failExpected("a height");
     }
+    match(TokenKind::Semi);
 }
 
 void ParserImpl::parseOrigin(Asset& asset) {
     asset.originX = parseExpr();
     expect(TokenKind::Comma, "',' between origin coordinates");
     asset.originY = parseExpr();
+    match(TokenKind::Semi);
 }
 
 InputDecl ParserImpl::parseInput() {
     advance(); // 'input'
+    const auto typeLocation=peek().location;
     InputType type;
     switch (kind()) {
     case TokenKind::TypeColor: type = InputType::Color; break;
@@ -137,16 +287,31 @@ InputDecl ParserImpl::parseInput() {
     advance();
     const Token name = expectName("an input name");
     expect(TokenKind::Assign, "'=' and a default value");
-    return InputDecl{type, name.text, parseLiteralValue(), name.location};
+    auto value = parseLiteralValue();
+    match(TokenKind::Semi);
+    return InputDecl{type, name.text, std::move(value), name.location,typeLocation};
 }
 
-// The default value of an input is a literal; type checking happens in the
-// semantic phase.
-std::unique_ptr<Expr> ParserImpl::parseLiteralValue() {
+// Input defaults allow parentheses and one unary minus, but no expression
+// operators/calls. Numeric/type validation belongs to the constant resolver.
+std::unique_ptr<Expr> ParserImpl::parseLiteralValue(bool allowMinus) {
+    const auto start = pos_;
+    if (match(TokenKind::LParen)) {
+        auto value = parseLiteralValue(allowMinus);
+        expect(TokenKind::RParen, "')' after the default value");
+        value->sourceRange = {start, pos_};
+        return value;
+    }
+    if (allowMinus && match(TokenKind::Minus)) {
+        const auto at = tokens_[pos_ - 1].location;
+        auto value = std::make_unique<Expr>(Unary{Unary::Op::Neg, parseLiteralValue(false), at});
+        value->sourceRange = value->sourceCoreRange = {start, pos_};
+        return value;
+    }
     if (auto value = parseLiteral()) {
         return value;
     }
-    failExpected("a literal default value");
+    failExpected("a literal default value (parentheses and one numeric unary minus are allowed)");
 }
 
 OutputDecl ParserImpl::parseOutput() {
@@ -162,6 +327,7 @@ OutputDecl ParserImpl::parseOutput() {
     }
     advance();
     const Token name = expectName("an output name");
+    match(TokenKind::Semi);
     return OutputDecl{outputKind, isList, name.text, name.location};
 }
 
@@ -187,6 +353,7 @@ PaletteDecl ParserImpl::parsePalette() {
         }
     }
     expect(TokenKind::RBracket, "']'");
+    match(TokenKind::Semi);
     return PaletteDecl{name.text, std::move(elements), name.location};
 }
 
@@ -259,7 +426,16 @@ std::vector<Stmt> ParserImpl::parseBlock() {
         if (match(TokenKind::Semi)) {
             continue;
         }
-        body.push_back(parseStatement());
+        const auto start = pos_;
+        try {
+            auto statement = parseStatement();
+            match(TokenKind::Semi);
+            statement.sourceRange = {start, pos_};
+            body.push_back(std::move(statement));
+        } catch (const SourceError& error) {
+            recordError(error);
+            synchronize(start, RecoveryScope::Statement);
+        }
     }
     advance(); // '}'
     return body;
@@ -289,13 +465,15 @@ Stmt ParserImpl::parseStatement() {
 }
 
 Stmt ParserImpl::parseIdentifierStatement() {
+    const auto start = pos_;
     const Token name = advance();
     if (match(TokenKind::Assign)) {
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // Otherwise it must be a call (possibly through a member chain).
-    auto expr = parsePostfixAfter(
-        std::make_unique<Expr>(Identifier{name.text, name.location}));
+    auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
+    primary->sourceRange = primary->sourceCoreRange = {start, pos_};
+    auto expr = parsePostfixAfter(std::move(primary));
     if (!std::holds_alternative<Call>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
@@ -309,15 +487,21 @@ Stmt ParserImpl::parseIf() {
     expect(TokenKind::RParen, "')' after the condition");
     auto thenBranch = parseBlock();
     std::vector<Stmt> elseBranch;
+    TokenRange elseRange;
     if (match(TokenKind::KeywordElse)) {
+        elseRange.begin = pos_ - 1;
         if (kind() == TokenKind::KeywordIf) {
-            elseBranch.push_back(parseIf());
+            const auto start = pos_;
+            auto branch = parseIf();
+            branch.sourceRange = {start, pos_};
+            elseBranch.push_back(std::move(branch));
         } else {
             elseBranch = parseBlock();
         }
+        elseRange.end = pos_;
     }
     return Stmt{IfStmt{std::move(condition), std::move(thenBranch),
-                       std::move(elseBranch), at}};
+                       std::move(elseBranch), at, elseRange}};
 }
 
 Stmt ParserImpl::parseWhile() {
@@ -354,11 +538,25 @@ Stmt ParserImpl::parseReturn() {
 } // namespace detail
 
 Program parse(std::string_view source) {
-    return detail::ParserImpl(lex(source)).parseProgram();
+    auto result = parseRecovering(source, 1);
+    if (!result.valid()) throw result.diagnostics.front();
+    return std::move(*result.program);
 }
 
-Program parseTokens(const std::vector<Token>& tokens) {
-    return detail::ParserImpl(tokens).parseProgram();
+ParseResult parseRecovering(std::string_view source, std::size_t limit) {
+    std::vector<Token> tokens;
+    try {
+        tokens = lex(source);
+    } catch (const SourceError& caught) {
+        auto error = caught;
+        if (error.stage == DiagnosticStage::Unspecified) error.stage = DiagnosticStage::Lexer;
+        if (error.code == DiagnosticCode::Unspecified) error.code = defaultDiagnosticCode(error.stage);
+        ParseResult result;
+        result.diagnostics.push_back(std::move(error));
+        result.limitReached = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics) == 1;
+        return result;
+    }
+    return detail::ParserImpl(std::move(tokens)).parseRecoveringProgram(limit);
 }
 
 } // namespace iprop::ips

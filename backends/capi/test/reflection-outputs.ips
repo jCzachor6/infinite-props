@@ -1,0 +1,17 @@
+import first from "reflection-output-first.ips"
+import empty from "reflection-output-empty.ips"
+import second from "reflection-output-second.ips"
+asset schema {
+  size 8x8
+  output point anchor
+  output rect collider
+  output circle zone
+  output list point anchors
+  output list rect colliders
+  output list circle zones
+  draw {
+    first.draw(seed, v, a, at = {0, 0})
+    empty.draw(seed, v, a, at = {0, 0})
+    second.draw(seed, v, a, at = {0, 0})
+  }
+}

@@ -1,0 +1,13 @@
+asset second {
+  size 8x8
+  output list point anchor
+  output rect collider
+  output circle zone
+  output point anchors
+  output list rect colliders
+  output list circle zones
+  draw {
+    anchor = {9, 10}
+    anchor = {11, 12}
+  }
+}

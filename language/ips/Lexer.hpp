@@ -5,11 +5,10 @@
 // lexical level.
 
 #include <string>
-#include <span>
 #include <string_view>
 #include <vector>
 
-#include "ips/SourceError.hpp"
+#include "ips/SourceSyntax.hpp"
 
 namespace iprop::ips {
 
@@ -99,15 +98,11 @@ enum class TokenKind {
 
 struct Token {
     TokenKind kind = TokenKind::End;
-    std::string text; // exact literals/identifiers; emoji aliases carry the canonical word
+    std::string text; // exact literals/identifiers
     SourceLocation location;
+    std::vector<SourceTrivia> leadingTrivia{};
+    std::vector<SourceTrivia> trailingTrivia{};
 };
-
-struct EmojiAlias {
-    char32_t codepoint;
-    const char* word;
-};
-std::span<const EmojiAlias> emojiAliases();
 
 // Lexes the whole source into a token vector ending with TokenKind::End.
 // Throws SourceError on malformed input.

@@ -17,17 +17,17 @@ const Section* FileLayout::find(SectionId id) const {
     return nullptr;
 }
 
-Header parseHeader(std::span<const u8> data) {
+Header parseHeader(std::span<const u8> data, OffsetSpace space) {
     if (data.size() < kHeaderSize) {
-        throw FormatError("file too small: header truncated", data.size());
+        throw FormatError("file too small: header truncated", data.size(), ErrorReason::TruncatedInput, ErrorStage::Load, space);
     }
 
-    Reader reader(data);
+    Reader reader(data, space);
 
     // Magic (spec §2.1).
     for (std::size_t i = 0; i < 4; ++i) {
         if (reader.readU8() != kMagic[i]) {
-            throw FormatError("bad magic: not an .iprop file", i);
+            throw FormatError("bad magic: not an .iprop file", i, ErrorReason::BadMagic, ErrorStage::Load, space);
         }
     }
 
@@ -37,27 +37,27 @@ Header parseHeader(std::span<const u8> data) {
     // implementation knows 0.x with 1 <= x <= 4.
     header.versionMajor = reader.readU16();
     if (header.versionMajor > kVersionMajor) {
-        throw FormatError("unsupported format major version", 4);
+        throw FormatError("unsupported format major version", 4, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);
     }
     header.versionMinor = reader.readU16();
     if (header.versionMinor < 1 || header.versionMinor > kVersionMinor) {
-        throw FormatError("unsupported format minor version", 6);
+        throw FormatError("unsupported format minor version", 6, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);
     }
 
     header.flags = reader.readU32();
     const u32 allowed = header.versionMinor >= 4 ? kFlagDebug | kFlagCompressed : kFlagDebug;
     if ((header.flags & ~allowed) != 0) {
-        throw FormatError("unknown header flag bits", 8);
+        throw FormatError("unknown header flag bits", 8, ErrorReason::InvalidHeader, ErrorStage::Load, space);
     }
 
     const u32 count = reader.readU32();
     header.sectionCount = count;
     if (count < 1 || count > 255) {
-        throw FormatError("section count out of range (1-255)", 12);
+        throw FormatError("section count out of range (1-255)", 12, ErrorReason::InvalidHeader, ErrorStage::Load, space);
     }
 
     if (reader.readU32() != 0) {
-        throw FormatError("reserved header field must be zero", 16);
+        throw FormatError("reserved header field must be zero", 16, ErrorReason::InvalidHeader, ErrorStage::Load, space);
     }
 
     return header;
@@ -65,17 +65,17 @@ Header parseHeader(std::span<const u8> data) {
 
 FileLayout parseLayout(std::span<const u8> data) {
     FileLayout layout;
-    layout.header = parseHeader(data);
+    layout.header = parseHeader(data, OffsetSpace::ExpandedFile);
     layout.totalSize = data.size();
     if (layout.header.hasCompression())
-        throw FormatError("compressed container must be expanded before parsing layout", 8);
+        throw FormatError("compressed container must be expanded before parsing layout", 8, ErrorReason::InvalidLayout, ErrorStage::Load, OffsetSpace::Container);
     const auto count = layout.header.sectionCount;
     Reader reader(data, kHeaderSize, data.size());
 
     // Section table (spec §2.2).
     const std::size_t tableBytes = static_cast<std::size_t>(count) * 12;
     if (kHeaderSize + tableBytes > data.size()) {
-        throw FormatError("section table truncated", data.size());
+        throw FormatError("section table truncated", data.size(), ErrorReason::InvalidLayout);
     }
 
     layout.sections.reserve(count);
@@ -87,22 +87,22 @@ FileLayout parseLayout(std::span<const u8> data) {
         const u32 size = reader.readU32();
 
         if (rawId < 1 || rawId > 4) {
-            throw FormatError("unknown section id " + std::to_string(rawId), entryAt);
+            throw FormatError("unknown section id " + std::to_string(rawId), entryAt, ErrorReason::InvalidLayout);
         }
         if (seen[rawId]) {
-            throw FormatError("duplicate section", entryAt);
+            throw FormatError("duplicate section", entryAt, ErrorReason::InvalidLayout);
         }
         seen[rawId] = true;
 
         // Bounds check in u64: offset + size cannot wrap past the file.
         const u64 end = static_cast<u64>(offset) + static_cast<u64>(size);
         if (offset > data.size() || end > data.size()) {
-            throw FormatError("section outside file bounds", entryAt);
+            throw FormatError("section outside file bounds", entryAt, ErrorReason::InvalidLayout);
         }
 
         // Sections MUST NOT overlap the header or the table (spec §14).
         if (offset < kHeaderSize + tableBytes) {
-            throw FormatError("section overlaps header or section table", entryAt);
+            throw FormatError("section overlaps header or section table", entryAt, ErrorReason::InvalidLayout);
         }
 
         layout.sections.push_back({static_cast<SectionId>(rawId), offset, size});
@@ -119,19 +119,19 @@ FileLayout parseLayout(std::span<const u8> data) {
         const auto& cur = layout.sections[order[i]];
         const u64 prevEnd = static_cast<u64>(prev.offset) + static_cast<u64>(prev.size);
         if (prevEnd > cur.offset) {
-            throw FormatError("sections overlap", kHeaderSize + order[i] * 12);
+            throw FormatError("sections overlap", kHeaderSize + order[i] * 12, ErrorReason::InvalidLayout);
         }
     }
 
     // meta, const and code are REQUIRED (spec §2.2).
     if (!seen[1] || !seen[2] || !seen[3]) {
-        throw FormatError("missing required section (meta, const, code)", 0);
+        throw FormatError("missing required section (meta, const, code)", 0, ErrorReason::InvalidLayout);
     }
 
     // The debug flag must agree with the presence of a debug section (§14).
     const bool debugFlag = (layout.header.flags & kFlagDebug) != 0;
     if (debugFlag != seen[4]) {
-        throw FormatError("debug flag does not match debug section presence", 0);
+        throw FormatError("debug flag does not match debug section presence", 0, ErrorReason::InvalidLayout);
     }
 
     return layout;

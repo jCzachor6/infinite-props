@@ -1,0 +1,10 @@
+asset small {
+  size 16x16
+  input color tint = #369
+  output point very_long_output_name_to_observe_string_allocations
+  draw {
+    rect(0, 0, 16, 16, tint)
+    oval(4, 4, 8, 8, #fff)
+    very_long_output_name_to_observe_string_allocations = {unit(), unit()}
+  }
+}

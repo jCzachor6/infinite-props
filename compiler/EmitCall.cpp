@@ -124,12 +124,11 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
 }
 
 void Emitter::emitPartCall(const PartCall& call) {
-    for (const auto& uniform : call.uniforms) {
-        if (const auto* arg = std::get_if<PlannedArgument>(&uniform)) emitArg(*arg);
-        else emitConst(std::get<Value>(uniform));
+    for (const auto& argument : call.arguments) {
+        if (const auto* arg = std::get_if<PlannedArgument>(&argument)) emitArg(*arg);
+        else if (const auto* at = std::get_if<PartCall::Placement>(&argument)) emitPointValue(*at->expression);
+        else emitConst(std::get<Value>(argument));
     }
-    for (const auto& arg : call.positional) emitArg(arg);
-    emitPointValue(*call.at);
     ins(Opcode::PartDraw, call.transform.kind(), static_cast<u16>(call.part));
 }
 

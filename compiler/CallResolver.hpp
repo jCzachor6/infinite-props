@@ -4,7 +4,6 @@
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Palette.hpp"
 
-#include <array>
 #include <variant>
 
 namespace iprop::compiler {
@@ -36,10 +35,10 @@ struct SelectionCall {
 struct PartCall {
     u32 part;
     D4Transform transform;
-    // Uniforms in declaration order, followed by seed/variant/archetype and at.
-    std::vector<std::variant<PlannedArgument, Value>> uniforms;
-    std::array<PlannedArgument, 3> positional;
-    const ips::Expr* at;
+    struct Placement { const ips::Expr* expression; };
+    // Lowered from the frontend's explicit evaluation order. Placement is
+    // pushed as two coordinates; defaults are already resolved values.
+    std::vector<std::variant<PlannedArgument, Value, Placement>> arguments;
 };
 struct RampCall {
     const ips::ResolvedPalette* palette;
@@ -51,7 +50,7 @@ struct ResolvedCall {
     std::variant<BuiltinCall, UserCall, PartCall, RampCall, SelectionCall> target;
 };
 
-// Binds checked calls to signatures, coercions, defaults and table indices.
+// Lowers frontend-bound calls to coercions, defaults and table indices.
 // It has no code-emission state; the emitter consumes only the returned plan.
 class CallResolver {
 public:

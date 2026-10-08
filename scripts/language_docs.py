@@ -9,15 +9,16 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from collections import Counter
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
-from release_common import ROOT
+from release_common import ROOT, described_versions, handbook_version, match_versions, product_version, versions
+from contract_readers import (DOCUMENTATION_SCHEMA_VERSION, LANGUAGE_SCHEMA_VERSION, parse_json,
+                              read_language, read_manifest)
+from markdown_tokens import headings, links, manifest_headings, rewrite_links
 
 
 DIRECTIVE = re.compile(r"^<!-- (example|builtin): (\S+) -->$", re.M)
-LINK = re.compile(r"\[[^\]\n]+\]\(([^\s)]+)\)")
 
 
 def require(condition, message):
@@ -43,25 +44,6 @@ def run(*args):
                           encoding="utf-8", timeout=60)
 
 
-def slug(text):
-    # GitHub-style heading anchors, also used by the HTML renderer.
-    return re.sub(r"[^\w\s-]", "", text.lower()).strip().replace(" ", "-")
-
-
-def headings(text):
-    result, counts, fence = [], Counter(), False
-    for line in text.splitlines():
-        if line.startswith("```"):
-            fence = not fence
-        if not fence and (match := re.match(r"^(#{1,6}) (.+)$", line)):
-            title = match[2]
-            base = slug(title)
-            anchor = base + ("-" + str(counts[base]) if counts[base] else "")
-            counts[base] += 1
-            result.append({"title": title, "anchor": anchor, "level": len(match[1])})
-    return result
-
-
 def source_path(root, base, name):
     path = (base / unquote(name)).resolve()
     require(path.is_relative_to(root.resolve()) and path.is_file(), "Missing or escaping documentation file: " + name)
@@ -71,14 +53,15 @@ def source_path(root, base, name):
 def contracts(compiler, root=ROOT):
     result = run(compiler, "--describe-language")
     require(result.returncode == 0, "Cannot describe the language: " + result.stderr)
-    value = json.loads(result.stdout)
-    version = re.search(r"\bVERSION\s+(\d+\.\d+\.\d+)", read(root / "CMakeLists.txt"))[1]
-    require(value.get("schema_version") == 1 and value.get("product_version") == version,
+    value = parse_json(result.stdout)
+    require(type(value) is dict and value.get("product_version") == product_version(root),
             "Compiler language description belongs to another product version")
-    names = [b["name"] for b in value["builtins"]]
-    require(len(names) == len(set(names)), "Duplicate compiler builtin")
-    require(value.get("emoji_aliases"), "Missing lexer aliases")
-    return value
+    language = read_language(value)
+    # Language, format, C API and SOVERSION change independently of the product.
+    described, expected = described_versions(language), versions(root)
+    require(described == expected, "Compiler language description differs from the source versions: " +
+            ", ".join(f"{key} {described[key]} != {expected[key]}" for key in expected if described[key] != expected[key]))
+    return language
 
 
 def identity(root, version):
@@ -111,11 +94,11 @@ def signatures(builtin):
         params = ", ".join(p["name"] + ": " + p["type"] for p in overload["parameters"])
         signature = builtin["name"] + "(" + params + ") -> " + overload["result"]
         minor = overload.get("minimum_format_minor")
-        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(minor) if minor is not None else '—'} |")
+        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(int(minor)) if minor is not None else '—'} |")
     if variadic := builtin.get("variadic"):
         params = ", ".join(p["name"] + ": " + p["type"] for p in variadic["parameters"])
         lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering | — |")
-        lines += ["", f"The variadic form requires at least {variadic['minimum_arguments']} arguments."]
+        lines += ["", f"The variadic form requires at least {int(variadic['minimum_arguments'])} arguments."]
         if variadic["repeat"] == "choices":
             lines.append("`T` is a shared storable type; mixed numeric choices widen to `f32`.")
         else:
@@ -132,6 +115,9 @@ def sources(root, language):
             "Book must list every chapter exactly once")
     text = {p: read(p) for p in chapters}
     require(all(headings(t) and headings(t)[0]["level"] == 1 for t in text.values()), "Each chapter needs a title")
+    # Book assembly nests chapters one level by prefixing `#`, as in `## Title`.
+    require(all(h["atx"] and h["level"] < 6 for t in text.values() for h in headings(t)),
+            "Handbook chapters need ATX headings of level 1-5")
     require(headings(text[chapters[0]])[0]["title"] == book["title"], "Book title differs from its first chapter")
     examples = root / "examples/language"
     cases = json.loads(read(examples / "cases.json"))["cases"]
@@ -151,8 +137,8 @@ def sources(root, language):
             else:
                 referenced.add(source_path(root, chapter.parent, name))
         # Validate authored links, including fragments in other Markdown files.
-        for match in LINK.finditer(content):
-            url = urlsplit(match[1])
+        for destination, _ in links(content):
+            url = urlsplit(destination)
             if url.scheme or url.netloc:
                 continue
             target = source_path(root, chapter.parent, url.path) if url.path else chapter
@@ -160,14 +146,13 @@ def sources(root, language):
                 navigation.append(target)
             if url.fragment and target.suffix == ".md":
                 anchors = {h["anchor"] for h in headings(read(target))}
-                require(unquote(url.fragment) in anchors, "Missing Markdown anchor: " + match[1])
+                require(unquote(url.fragment) in anchors, "Missing Markdown anchor: " + destination)
     require(navigation == chapters[1:], "Handbook contents must link every chapter in book order")
     require(set(referenced) == set(registered), "Every registered example must be included in the handbook")
     expected = {b["name"] for b in language["builtins"]}
     require(set(described) == expected and len(described) == len(expected),
             "Builtin descriptions differ from compiler: missing=" + str(sorted(expected - set(described))) +
             ", extra/duplicate=" + str(sorted(set(described) - expected)))
-    require(sum(t.count("<!-- aliases -->") for t in text.values()) == 1, "Require exactly one lexer alias table")
     return book, chapters, text, registered
 
 
@@ -176,17 +161,20 @@ def resources(root):
     files += list((root / "examples/language").rglob("*.ips"))
     files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
     files += list((root / "spec").glob("*.md"))
-    files += list((root / "docs").glob("*optim*.md"))
+    files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
+    files += list((root / "docs").glob("*.schema.json"))
+    files += [root / "docs/llm-reference.json"]
     return files
 
 
-def build(compiler, destination, root=ROOT):
+def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None):
     root = root.resolve()
     language = contracts(compiler, root)
     _, chapters, authored, cases = sources(root, language)
     version = language["product_version"]
-    minor = ".".join(version.split(".")[:2])
+    minor = handbook_version(language)
     info = identity(root, version)
+    info.update(match_versions(described_versions(language), versions(root)))
     builtins = {b["name"]: b for b in language["builtins"]}
     output, inputs = {}, {}
 
@@ -210,46 +198,44 @@ def build(compiler, destination, root=ROOT):
                 label += " (`" + case["message"] + "`)"
             return label + ".\n\n```ips\n" + read(file).rstrip() + "\n```"
         content = DIRECTIVE.sub(replace, authored[chapter])
-        aliases = ["| Word | Alias | Unicode scalar |", "| --- | --- | --- |"]
-        aliases += [f"| `{a['word']}` | {chr(a['codepoint'])} | U+{a['codepoint']:04X} |" for a in language["emoji_aliases"]]
-        content = content.replace("<!-- aliases -->", "\n".join(aliases))
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 
     def flatten(chapter, content):
-        def link(match):
-            url = urlsplit(match[1])
+        def link(destination):
+            url = urlsplit(destination)
             if url.scheme or url.netloc or not url.path:
-                return match[0]
+                return None
             target = source_path(root, chapter.parent, url.path)
             if target in expanded:
-                href = "#" + (url.fragment or headings(expanded[target])[0]["anchor"])
-            else:
-                href = Path(os.path.relpath(target, root / "docs")).as_posix()
-                if url.fragment:
-                    href += "#" + url.fragment
-            return match[0].replace(match[1], href)
-        content = LINK.sub(link, content)
-        # Shift chapter headings without touching literal example code.
-        lines, fence = [], False
-        for line in content.splitlines():
-            if line.startswith("```"):
-                fence = not fence
-            if not fence and chapter != chapters[0] and line.startswith("#"):
-                line = "#" + line
-            lines.append(line)
-        return "\n".join(lines)
+                return "#" + (url.fragment or headings(expanded[target])[0]["anchor"])
+            href = Path(os.path.relpath(target, root / "docs")).as_posix()
+            return href + "#" + url.fragment if url.fragment else href
+        content = rewrite_links(content, link)
+        # Nest chapter headings by one level; code and other text stay literal.
+        lines = content.split("\n")
+        if chapter != chapters[0]:
+            for heading in headings(content):
+                lines[heading["line"]] = "#" + lines[heading["line"]]
+        return "\n".join(lines).removesuffix("\n")
 
     combined = "\n\n".join(flatten(p, expanded[p]) for p in chapters) + "\n"
     first, rest = combined.split("\n", 1)
-    combined = first + "\n\n" + f"Version: **{version}** · Status: **{info['status']}** · Source: `{info['source_commit'] or 'source archive'}`\n" + rest
+    matrix_text = (f"Product: **{version}** · Source language: **{info['language_version']}** · "
+                   f"Binary format: **{info['format_version']}** · C API: **{info['c_api_version']}** · "
+                   f"C ABI: **{info['c_abi_soversion']}**")
+    combined = first + "\n\n" + matrix_text + f" · Status: **{info['status']}** · Source: `{info['source_commit'] or 'source archive'}`\n" + rest
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"
+    require((root / "docs/llm-reference.json").is_file(), "Documentation requires docs/llm-reference.json")
+    from llm_reference import render
+    output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
+                                                 llm_sections, llm_symbols, llm_max_bytes)
     # Ship the linked standalone sources and frozen numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
-    info.update({"schema_version": 1, "builtin_count": len(builtins), "example_count": len(cases),
-                 "headings": headings(combined),
+    info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION, "builtin_count": len(builtins), "example_count": len(cases),
+                 "headings": manifest_headings(combined),
                  "source_files": dict(sorted(inputs.items())),
                  "files": {name: digest(text.encode("utf-8")) for name, text in sorted(output.items())}})
     require(destination.resolve() != root.resolve() and not root.resolve().is_relative_to(destination.resolve()),
@@ -271,6 +257,9 @@ def build(compiler, destination, root=ROOT):
         file.write_text(content, encoding="utf-8", newline="\n")
     write_json(destination / "docs/language-manifest.json", info)
     verify(destination, version, info["source_commit"], root=root)
+    # Execution evidence belongs to the check report, not a new manifest schema.
+    if llm_checks:
+        info["llm_reference_checks"] = llm_checks
     return info
 
 
@@ -284,8 +273,7 @@ def member_name(name):
 
 
 def verify_contents(load, version=None, commit=None, root=None, clean=False):
-    manifest = json.loads(load("docs/language-manifest.json"))
-    require(manifest.get("schema_version") == 1 and manifest.get("files") and manifest.get("source_files"), "Incomplete documentation manifest")
+    manifest = read_manifest(parse_json(load("docs/language-manifest.json")))
     if version is not None:
         require(manifest.get("product_version") == version, "Documentation version differs")
     if commit is not None:
@@ -294,16 +282,32 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
         require(manifest.get("working_tree_dirty") is False, "Documentation was generated from an uncommitted checkout")
     for name, expected in manifest["files"].items():
         require(digest(load(member_name(name))) == expected, "Documentation file changed: " + name)
-    language = json.loads(load("docs/language.json"))
-    require(language.get("schema_version") == 1 and language["product_version"] == manifest["product_version"] and
+    language = read_language(parse_json(load("docs/language.json")))
+    require(language["product_version"] == manifest["product_version"] and
             len(language["builtins"]) == manifest["builtin_count"], "Documentation catalog differs")
+    match_versions(manifest, described_versions(language))
+    required_contracts = {"LLM_REFERENCE.md", "docs/llm-reference.json"}
+    for name, schema_version in (("language-description", LANGUAGE_SCHEMA_VERSION), ("compiler-diagnostics", 1),
+                                 ("documentation-manifest", DOCUMENTATION_SCHEMA_VERSION)):
+        path = "docs/" + name + ".schema.json"
+        required_contracts.add(path)
+        schema = parse_json(load(path))
+        require(type(schema) is dict and schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema" and
+                type(schema.get("properties")) is dict and
+                type(schema["properties"].get("schema_version")) is dict and
+                schema["properties"]["schema_version"].get("type") == "integer" and
+                type(schema["properties"]["schema_version"].get("const")) in {int, float} and
+                schema["properties"]["schema_version"].get("const") == schema_version,
+                "Documentation schema contract differs: " + path)
+    require(required_contracts <= manifest["files"].keys(), "Current documentation omits export contracts")
     cases = json.loads(load("examples/language/cases.json"))["cases"]
     require(len(cases) == manifest["example_count"], "Documentation example count differs")
-    minor = ".".join(manifest["product_version"].split(".")[:2])
-    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md"}
+    minor = handbook_version(language)
+    required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md", "LLM_REFERENCE.md"}
     require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
     if root is not None:
         root = root.resolve()
+        match_versions(manifest, versions(root))
         _, chapters, _, _ = sources(root, language)
         expected = {p.relative_to(root).as_posix(): digest(read(p).encode("utf-8")) for p in [*chapters, *resources(root)]}
         require(manifest["source_files"] == expected, "Documentation inputs differ from the source checkout")
@@ -377,22 +381,30 @@ def main():
     parser.add_argument("--commit", help="required source commit when verifying")
     parser.add_argument("--against-source", action="store_true", help="verify inputs and signatures against this checkout/compiler")
     parser.add_argument("--clean", action="store_true", help="reject documentation generated from uncommitted changes")
+    parser.add_argument("--llm-sections", help="comma-separated LLM section ids; empty selects none")
+    parser.add_argument("--llm-symbols", help="comma-separated compiler builtin names; empty selects none")
+    parser.add_argument("--llm-max-bytes", type=int, help="UTF-8 byte budget for LLM_REFERENCE.md (maximum 16384)")
     args = parser.parse_args()
+    if args.action == "verify" and any(value is not None for value in (args.llm_sections, args.llm_symbols, args.llm_max_bytes)):
+        parser.error("LLM selections apply to build/check, not verify")
     if args.action == "verify":
         info = verify(args.output_dir.resolve(), args.version, args.commit,
                       root=ROOT if args.against_source else None,
                       compiler=args.compiler.resolve() if args.against_source else None, clean=args.clean)
     elif args.action == "build":
-        info = build(args.compiler.resolve(), args.output_dir.resolve())
+        info = build(args.compiler.resolve(), args.output_dir.resolve(), llm_sections=args.llm_sections,
+                     llm_symbols=args.llm_symbols, llm_max_bytes=args.llm_max_bytes)
     else:
         language = contracts(args.compiler.resolve())
         _, _, _, cases = sources(ROOT, language)
         results = check_examples(args.compiler.resolve(), language, cases)
         with tempfile.TemporaryDirectory(prefix="iprop-doc-check-") as temporary:
-            info = build(args.compiler.resolve(), Path(temporary) / "book")
+            info = build(args.compiler.resolve(), Path(temporary) / "book", llm_sections=args.llm_sections,
+                         llm_symbols=args.llm_symbols, llm_max_bytes=args.llm_max_bytes)
         if args.report_dir:
             write_json(args.report_dir / "language-docs.json", {**identity(ROOT, language["product_version"]),
-                       "passed": True, "builtin_count": len(language["builtins"]), "examples": results})
+                       "passed": True, "builtin_count": len(language["builtins"]), "examples": results,
+                       "llm_reference_checks": info.get("llm_reference_checks", [])})
     print(f"Language documentation: PASS {info['product_version']} ({info['builtin_count']} builtins, {info['example_count']} examples)")
 
 

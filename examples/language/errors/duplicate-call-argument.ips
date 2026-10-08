@@ -1,0 +1,4 @@
+asset DuplicateArgument {
+  size 8x8
+  draw { pixel(1, x = 2, color = #fff) }
+}

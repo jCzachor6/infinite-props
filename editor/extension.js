@@ -9,7 +9,8 @@ const { execFile } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
-const { parseDiagnostics, utf16Column } = require("./diagnostics");
+const { runCompilerDiagnostics, editorRange, sourceContentId, fixEdits } = require("./diagnostics");
+const { compilerIdentity, isFormatStagingPath, runCompilerFormatting } = require("./formatting");
 
 let diagnostics;
 let log;
@@ -53,9 +54,112 @@ function toolBinary(configKey, toolName) {
 function compilerBinary() { return toolBinary("compilerPath", "ipc"); }
 function rendererBinary() { return toolBinary("rendererPath", "ipgen"); }
 
-// ---- diagnostics (Phase 28) ----------------------------------------------------
+// ---- compiler diagnostics and guarded quick fixes ----------------------------
 
-function compileActive() {
+let diagnosticGeneration = 0;
+let diagnosticRequest = null;
+let fixOpeningDocument = null;
+const diagnosticMetadata = new WeakMap();
+let formatGeneration = 0;
+let formatRequest = null;
+
+function invalidateFormatting() {
+    ++formatGeneration;
+    formatRequest?.abort();
+    formatRequest = null;
+}
+
+function invalidateDiagnostics() {
+    ++diagnosticGeneration;
+    diagnosticRequest?.abort();
+    diagnosticRequest = null;
+    diagnostics?.clear();
+}
+
+function sourceSnapshot(uri) {
+    const open = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
+    try {
+        const bytes = fs.readFileSync(uri.fsPath);
+        const decoded = bytes.toString("utf8");
+        const text = open ? open.getText() : decoded;
+        const modelText = decoded.replace(/^\ufeff/, "");
+        const normalized = modelText.replace(/\r\n|\r/g, "\n");
+        const savedMatches = text === decoded || (!open?.isDirty &&
+            (text === normalized || text === normalized.replace(/\n/g, "\r\n")));
+        return { text, nativeText: decoded, sourceId: sourceContentId(bytes), savedMatches,
+            validUtf8: Buffer.from(decoded, "utf8").equals(bytes) };
+    } catch {
+        return open ? { text: open.getText(), nativeText: open.getText(), sourceId: null,
+            savedMatches: false, validUtf8: true } : null;
+    }
+}
+
+function currentFixes(document, raw) {
+    const source = sourceSnapshot(document.uri);
+    return source?.savedMatches && source.validUtf8 && source.sourceId === raw.source_id
+        ? fixEdits(source.nativeText, raw) : null;
+}
+
+function ownedUri(file, cwd, entry) {
+    return vscode.Uri.file(file ? path.resolve(cwd, file) : entry);
+}
+
+function vscodeRange(range) {
+    return new vscode.Range(range.start.line, range.start.character, range.end.line, range.end.character);
+}
+
+class IpsFormattingProvider {
+    async provideDocumentFormattingEdits(document, _options, token) {
+        invalidateFormatting();
+        const generation = formatGeneration;
+        if (document.uri.scheme !== "file" || token.isCancellationRequested) return [];
+        const source = sourceSnapshot(document.uri);
+        const documents = new Set([...vscode.workspace.textDocuments, document]);
+        const snapshots = [...documents].filter(doc => doc.languageId === "ips")
+            .map(doc => ({ doc, version: doc.version, text: doc.getText(), source: sourceSnapshot(doc.uri) }));
+        if (!source?.sourceId || !source.savedMatches || !source.validUtf8 ||
+            snapshots.some(snapshot => snapshot.doc.isDirty || !snapshot.source?.savedMatches || !snapshot.source.validUtf8)) {
+            vscode.window.setStatusBarMessage("iprop: save IPS changes before formatting", 3000);
+            return [];
+        }
+        const request = new AbortController();
+        formatRequest = request;
+        const cancellation = token.onCancellationRequested(() => request.abort());
+        const configured = vscode.workspace.getConfiguration("iprop").get("compilerPath");
+        const binary = compilerBinary();
+        try {
+            if (!binary) throw new Error("compiler not found — set iprop.compilerPath");
+            const identity = compilerIdentity(binary, path.dirname(document.fileName));
+            const current = () => {
+                if (generation !== formatGeneration || request.signal.aborted || token.isCancellationRequested ||
+                    configured !== vscode.workspace.getConfiguration("iprop").get("compilerPath") ||
+                    !snapshots.every(snapshot => !snapshot.doc.isDirty && snapshot.doc.version === snapshot.version &&
+                        snapshot.doc.getText() === snapshot.text && sourceSnapshot(snapshot.doc.uri)?.sourceId === snapshot.source.sourceId)) return false;
+                const actual = compilerIdentity(binary, path.dirname(document.fileName));
+                return actual.executable === identity.executable && actual.sourceId === identity.sourceId;
+            };
+            const canonical = await runCompilerFormatting(identity.executable, document.fileName,
+                { execute: execFile, signal: request.signal });
+            if (!current() || canonical === document.getText()) return [];
+            const end = document.positionAt(document.getText().length);
+            return [vscode.TextEdit.replace(new vscode.Range(0, 0, end.line, end.character), canonical)];
+        } catch (error) {
+            if (generation === formatGeneration && !request.signal.aborted && !token.isCancellationRequested) {
+                const message = "iprop: formatting failed: " + error.message;
+                log.appendLine(message);
+                vscode.window.showWarningMessage(message);
+            }
+            return [];
+        } finally {
+            cancellation.dispose();
+            if (formatRequest === request) formatRequest = null;
+        }
+    }
+}
+
+async function compileActive() {
+    invalidateDiagnostics();
+    const generation = diagnosticGeneration;
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== "ips") return;
     const binary = compilerBinary();
@@ -66,27 +170,121 @@ function compileActive() {
     }
     const entry = editor.document.fileName;
     const cwd = path.dirname(entry);
+    const savedSource = sourceSnapshot(vscode.Uri.file(entry));
+    // The CLI reads saved files. Never label a different unsaved buffer as
+    // checked or place a disk diagnostic on text the compiler did not see.
+    if (savedSource?.sourceId && !savedSource.savedMatches) {
+        vscode.window.setStatusBarMessage("iprop: save changes to check the current source", 3000);
+        return;
+    }
+    const documents = new Set([...vscode.workspace.textDocuments, editor.document]);
+    const snapshots = [...documents].filter(doc => doc.languageId === "ips")
+        .map(doc => ({ doc, version: doc.version, text: doc.getText() }));
+    const request = new AbortController();
+    diagnosticRequest = request;
+    const current = () => generation === diagnosticGeneration && !request.signal.aborted &&
+        snapshots.every(snapshot => snapshot.doc.version === snapshot.version && snapshot.doc.getText() === snapshot.text) &&
+        sourceSnapshot(vscode.Uri.file(entry))?.sourceId === savedSource?.sourceId;
+    try {
+        const result = await runCompilerDiagnostics(binary, entry, { execute: execFile, signal: request.signal });
+        if (!current()) return;
+        const byFile = new Map();
+        let changedSource = false;
+        for (const raw of result.diagnostics) {
+            const uri = ownedUri(raw.file, cwd, entry);
+            const source = sourceSnapshot(uri);
+            if ((raw.source_id && source?.sourceId !== raw.source_id) ||
+                ((raw.location || raw.range) && source && !source.savedMatches)) {
+                changedSource = true;
+                continue;
+            }
+            // Invalid UTF-8 has an exact native byte hash, but its replacement
+            // characters in the editor cannot represent the native byte range.
+            // Keep the lexer error at its legacy point; never invent an edit.
+            const range = editorRange(source?.nativeText ?? "", source?.validUtf8 === false ? null : raw.range, raw.location);
+            if (!range) { log.appendLine("diagnostic has an invalid source range: " + raw.code); continue; }
+            const severity = { error: vscode.DiagnosticSeverity.Error, warning: vscode.DiagnosticSeverity.Warning,
+                note: vscode.DiagnosticSeverity.Information }[raw.severity];
+            const diagnostic = new vscode.Diagnostic(vscodeRange(range), raw.message, severity);
+            diagnostic.source = "ipc";
+            if (raw.code) diagnostic.code = raw.code;
+            diagnostic.relatedInformation = raw.related_locations.flatMap(related => {
+                const relatedUri = ownedUri(related.file, cwd, entry);
+                const relatedSource = sourceSnapshot(relatedUri);
+                const relatedRange = relatedSource?.savedMatches && relatedSource.validUtf8
+                    ? editorRange(relatedSource.nativeText, related.range) : null;
+                return relatedRange ? [new vscode.DiagnosticRelatedInformation(
+                    new vscode.Location(relatedUri, vscodeRange(relatedRange)), related.message)] : [];
+            });
+            diagnosticMetadata.set(diagnostic, { raw, uri, generation });
+            const key = uri.toString();
+            const group = byFile.get(key) ?? { uri, diagnostics: [] };
+            group.diagnostics.push(diagnostic);
+            byFile.set(key, group);
+        }
+        if (!current()) return;
+        for (const group of byFile.values()) diagnostics.set(group.uri, group.diagnostics);
+        if (changedSource) log.appendLine("discarded diagnostics for changed source; save and check again");
+        else if (result.status === "ok" && snapshots.every(snapshot => !snapshot.doc.isDirty))
+            vscode.window.setStatusBarMessage("iprop: ✓ checks", 3000);
+    } catch (error) {
+        if (!current()) return;
+        // A transport or protocol failure is reported, never hidden or retried.
+        log.appendLine("diagnostics failed: " + error.message);
+        vscode.window.setStatusBarMessage("iprop: diagnostics failed — see the iprop output", 5000);
+    } finally {
+        if (diagnosticRequest === request) diagnosticRequest = null;
+    }
+}
 
-    execFile(binary, [entry], { cwd, timeout: 15000 }, (error, stdout, stderr) => {
-        const byFile = parseDiagnostics(stderr, entry);
-        for (const [name, list] of byFile) {
-            const uri = vscode.Uri.file(
-                path.isAbsolute(name) ? name : path.join(cwd, name));
-            const open = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
-            let source = open ? open.getText() : "";
-            if (!open) { try { source = fs.readFileSync(uri.fsPath, "utf8"); } catch {} }
-            const lines = source.split(/\r?\n/);
-            diagnostics.set(uri, list.map((d) => {
-                const column = utf16Column(lines[d.line - 1] || "", d.column);
-                return new vscode.Diagnostic(
-                    new vscode.Range(d.line - 1, column, d.line - 1, column),
-                    d.message, vscode.DiagnosticSeverity.Error);
-            }));
+class IpsCodeActionProvider {
+    provideCodeActions(document, _range, context) {
+        const actions = [];
+        for (const diagnostic of context.diagnostics) {
+            const saved = diagnosticMetadata.get(diagnostic);
+            if (!saved || saved.generation !== diagnosticGeneration || saved.uri.toString() !== document.uri.toString()) continue;
+            const { raw } = saved;
+            const source = sourceSnapshot(document.uri);
+            if (raw.source_id && (!source?.savedMatches || source.sourceId !== raw.source_id)) continue;
+            if (currentFixes(document, raw)) {
+                const action = new vscode.CodeAction("Apply compiler fix", vscode.CodeActionKind.QuickFix);
+                action.diagnostics = [diagnostic];
+                action.command = { command: "iprop.applyCompilerFix", title: action.title,
+                    arguments: [{ file: saved.uri.fsPath, diagnostic: raw, generation: saved.generation }] };
+                actions.push(action);
+            }
+            for (const suggestion of raw.suggestions) {
+                const action = new vscode.CodeAction(suggestion, vscode.CodeActionKind.QuickFix);
+                action.diagnostics = [diagnostic];
+                action.command = { command: "iprop.showCompilerSuggestion", title: suggestion, arguments: [suggestion] };
+                actions.push(action);
+            }
         }
-        if (!error) {
-            vscode.window.setStatusBarMessage("iprop: ✓ compiles", 3000);
-        }
+        return actions;
+    }
+}
+
+async function applyCompilerFix(saved) {
+    if (!saved || saved.generation !== diagnosticGeneration) return false;
+    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(saved.file));
+    if (saved.generation !== diagnosticGeneration) return false;
+    let editor;
+    fixOpeningDocument = document;
+    try {
+        editor = await vscode.window.showTextDocument(document, { preview: false, preserveFocus: true });
+    } finally { fixOpeningDocument = null; }
+    if (saved.generation !== diagnosticGeneration || !currentFixes(editor.document, saved.diagnostic)) {
+        vscode.window.showWarningMessage("iprop: source changed; check again before applying this fix");
+        return false;
+    }
+    // TextEditor.edit binds the transaction to the current document version;
+    // it rejects a concurrent edit instead of applying stale positions.
+    const applied = await editor.edit(builder => {
+        for (const fix of currentFixes(editor.document, saved.diagnostic) ?? [])
+            builder.replace(vscodeRange(fix.range), fix.replacement);
     });
+    if (applied) invalidateDiagnostics();
+    return applied;
 }
 
 // ---- the preview panel (Phase 29) -----------------------------------------------
@@ -769,6 +967,16 @@ function activate(context) {
     context.subscriptions.push(
         vscode.commands.registerCommand("iprop.compile", compileActive));
     context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.applyCompilerFix", applyCompilerFix));
+    context.subscriptions.push(
+        vscode.commands.registerCommand("iprop.showCompilerSuggestion", suggestion =>
+            vscode.window.showInformationMessage(suggestion)));
+    context.subscriptions.push(
+        vscode.languages.registerCodeActionsProvider({ language: "ips" }, new IpsCodeActionProvider(),
+            { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] }));
+    context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(
+        { language: "ips", scheme: "file" }, new IpsFormattingProvider()));
+    context.subscriptions.push(
         vscode.commands.registerCommand("iprop.preview", openPreview));
     context.subscriptions.push(
         vscode.languages.registerCodeLensProvider({ language: "ips" },
@@ -803,6 +1011,8 @@ function activate(context) {
 
     let timer = null;
     const schedule = () => {
+        invalidateFormatting();
+        invalidateDiagnostics();
         clearTimeout(timer);
         timer = setTimeout(() => {
             compileActive();
@@ -815,19 +1025,40 @@ function activate(context) {
         if (e.document.fileName.endsWith(".ips")) schedule();
     }));
     context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor(() => schedule()));
+        vscode.window.onDidChangeActiveTextEditor(editor => {
+            // A Problems quick fix may open its owning import. This internal
+            // activation must not cancel the same version/hash-guarded edit.
+            if (editor?.document !== fixOpeningDocument) schedule();
+        }));
+    context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(document => {
+        if (document.languageId === "ips") schedule();
+    }));
+    context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(document => {
+        if (document.languageId === "ips") schedule();
+    }));
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration("iprop.compilerPath")) invalidateFormatting();
+    }));
+    context.subscriptions.push({ dispose() { clearTimeout(timer); deactivate(); } });
 
     // External edits (CLI agents writing files on disk) also recompile.
     const watcher = vscode.workspace.createFileSystemWatcher("**/*.ips");
     context.subscriptions.push(watcher);
-    watcher.onDidChange(schedule);
-    watcher.onDidCreate(schedule);
+    const externalChange = uri => { if (!isFormatStagingPath(uri)) schedule(); };
+    watcher.onDidChange(externalChange);
+    watcher.onDidCreate(externalChange);
+    watcher.onDidDelete(externalChange);
 
     if (vscode.window.activeTextEditor?.document.languageId === "ips") {
         compileActive();
     }
 }
 
-function deactivate() {}
+function deactivate() {
+    invalidateFormatting();
+    ++diagnosticGeneration;
+    diagnosticRequest?.abort();
+    diagnosticRequest = null;
+}
 
 module.exports = { activate, deactivate };

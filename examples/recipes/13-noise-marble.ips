@@ -6,7 +6,7 @@ asset NoiseMarble {
     rect(0, 0, 32, 32, #101820)
     for y in 0..32 {
       for x in 0..32 {
-        t = warp(float(x) / 8, float(y) / 8, 0.8, seed) * 0.5 + 0.5
+        t = ((warp((float(x) / 8), (float(y) / 8), 0.8, seed) * 0.5) + 0.5)
         pixel(x, y, lerp(#18344a, #9cdec8, t))
       }
     }

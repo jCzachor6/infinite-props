@@ -10,7 +10,7 @@ import sys
 import tarfile
 from pathlib import Path
 
-from release_common import ROOT, api_version, committed_source, sha256, write_checksums, write_json
+from release_common import ROOT, committed_source, match_versions, sha256, versions, write_checksums, write_json
 from release_preflight import metadata
 from language_docs import verify_archive as verify_documentation
 
@@ -20,9 +20,11 @@ def require(condition, message):
         raise RuntimeError(message)
 
 
-def identity(value, version, commit):
+def identity(value, version, commit, root=ROOT):
+    require(type(value) is dict, "Artifact identity must be an object")
     require(value.get("product_version") == version and value.get("source_commit") == commit,
             "Artifact version/source commit differs from the release checkout")
+    match_versions(value, versions(root))
 
 
 def archive_manifest(file):
@@ -68,7 +70,7 @@ def verify_source(file, version, commit, root=ROOT):
         require(found == set(expected), "Source archive omits tracked files")
 
 
-def verify_jobs(jobs, version, commit, run_id=None):
+def verify_jobs(jobs, version, commit, run_id=None, root=ROOT):
     patterns = [r"reports-native-Linux-.+", r"reports-native-macOS-.+", r"reports-native-Windows-.+",
                 r"reports-wasm", r"reports-native-backends", r"reports-sanitizers"]
     require(len(jobs) == 6, "Require exactly six CI job reports")
@@ -76,7 +78,7 @@ def verify_jobs(jobs, version, commit, run_id=None):
         require(sum(re.fullmatch(pattern, name) is not None for name in jobs) == 1,
                 "Missing or duplicate required CI job: " + pattern)
     for name, report in jobs.items():
-        identity(report, version, commit)
+        identity(report, version, commit, root)
         require(report.get("passed") is True and report.get("steps") and
                 all(step.get("passed") is True and step.get("returncode") == 0 for step in report["steps"]),
                 "A CI job did not pass: " + name)
@@ -102,11 +104,10 @@ def verify_packages(directory, version, commit, root=ROOT):
         require(system not in natives, "Duplicate native platform: " + system)
         natives[system] = file
         manifest = archive_manifest(file)
-        identity(manifest, version, commit)
+        identity(manifest, version, commit, root)
         require(manifest.get("system") == system and manifest.get("architecture") == architecture,
                 "SDK filename and manifest platform differ")
         require(manifest.get("backends", {}).get("capi") is True, "SDK omits the C API")
-        require(manifest.get("c_api_version") == api_version(root), "SDK contains a different C API version")
         with tarfile.open(file, "r:gz") as archive:
             header = archive.extractfile(file.name[:-7] + "/include/iprop.h").read()
             require(header.replace(b"\r\n", b"\n") == (root / "backends/capi/iprop.h").read_bytes().replace(b"\r\n", b"\n"),
@@ -116,7 +117,7 @@ def verify_packages(directory, version, commit, root=ROOT):
             require(manifest["backends"].get("sfml") is True and manifest["backends"].get("godot") is True,
                     "Linux SDK must include the tested SFML/Godot integrations")
         validation = json.loads((directory / (file.name[:-7] + "-validation.json")).read_text(encoding="utf-8"))
-        identity(validation, version, commit)
+        identity(validation, version, commit, root)
         require(validation.get("passed") is True and
                 all(validation.get("checks", {}).get(key) is True for key in ("ctest", "relocated_sdk", "extracted_sdk", "documentation")),
                 "SDK archive did not pass extraction validation")
@@ -128,7 +129,7 @@ def verify_packages(directory, version, commit, root=ROOT):
         require(file.name in validation.get("artifacts", {}), "SDK validation omits its archive")
     require(set(natives) == {"linux", "macos", "windows"}, "Require Linux, macOS and Windows SDKs")
     web = json.loads((directory / (prefix + "-web-validation.json")).read_text(encoding="utf-8"))
-    identity(web, version, commit)
+    identity(web, version, commit, root)
     require(web.get("passed") is True and all(web.get("checks", {}).get(key) is True
                                             for key in ("extracted_wasm", "extracted_website", "documentation")),
             "WASM/website did not pass extraction validation")
@@ -136,7 +137,7 @@ def verify_packages(directory, version, commit, root=ROOT):
         file = directory / (prefix + "-" + kind + ".tar.gz")
         require(sha256(file) == web.get("artifacts", {}).get(file.name), "Web validation digest mismatch")
         manifest = archive_manifest(file)
-        identity(manifest, version, commit)
+        identity(manifest, version, commit, root)
         require(manifest.get("kind") == kind and manifest.get("wasm_sha256") == web.get("wasm_sha256"),
                 "Web archive and validation manifest differ")
         with tarfile.open(file, "r:gz") as archive:
@@ -163,15 +164,15 @@ def collect(inputs, destination, version, commit, root=ROOT):
                         "Artifact contains a different version: " + file.name)
                 require(not (destination / file.name).exists(), "Duplicate release asset: " + file.name)
                 shutil.copy2(file, destination / file.name)
-    verify_jobs(jobs, version, commit, os.environ.get("GITHUB_RUN_ID"))
+    verify_jobs(jobs, version, commit, os.environ.get("GITHUB_RUN_ID"), root)
     verify_packages(destination, version, commit, root)
     ci = destination / f"iprop-{version}-ci-validation.json"
-    write_json(ci, {"product_version": version, "source_commit": commit, "passed": True, "jobs": jobs})
+    write_json(ci, {**versions(root), "source_commit": commit, "passed": True, "jobs": jobs})
     files = sorted(destination.iterdir())
     expected = 6 + 4 + 1  # source + three SDKs + two web archives, four validation reports, CI report
     require(len(files) == expected, "Unexpected release asset count")
     release = destination / f"iprop-{version}-release.json"
-    write_json(release, {"product_version": version, "source_commit": commit, "passed": True,
+    write_json(release, {**versions(root), "source_commit": commit, "passed": True,
                          "artifacts": {file.name: {"sha256": sha256(file), "bytes": file.stat().st_size} for file in files}})
     write_checksums(destination / f"iprop-{version}-SHA256SUMS.txt", [*files, release])
     verify_bundle(destination, version, commit, root)
@@ -181,7 +182,7 @@ def verify_bundle(directory, version, commit, root=ROOT):
     prefix = "iprop-" + version
     release = directory / (prefix + "-release.json")
     ledger = json.loads(release.read_text(encoding="utf-8"))
-    identity(ledger, version, commit)
+    identity(ledger, version, commit, root)
     require(ledger.get("passed") is True and len(ledger.get("artifacts", {})) == 11, "Incomplete release manifest")
     files = []
     for name, record in ledger["artifacts"].items():
@@ -196,9 +197,9 @@ def verify_bundle(directory, version, commit, root=ROOT):
     expected = "".join(f"{sha256(file)}  {file.name}\n" for file in sorted([*files, release]))
     require(checksums.read_text(encoding="utf-8") == expected, "Release SHA256SUMS differs")
     ci = json.loads((directory / (prefix + "-ci-validation.json")).read_text(encoding="utf-8"))
-    identity(ci, version, commit)
+    identity(ci, version, commit, root)
     require(ci.get("passed") is True, "CI validation failed")
-    verify_jobs(ci["jobs"], version, commit, os.environ.get("GITHUB_RUN_ID"))
+    verify_jobs(ci["jobs"], version, commit, os.environ.get("GITHUB_RUN_ID"), root)
     verify_packages(directory, version, commit, root)
     return [*files, release, checksums]
 

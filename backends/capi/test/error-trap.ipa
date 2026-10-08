@@ -1,0 +1,9 @@
+; Validated execution reaches a real division trap, after VM setup succeeds.
+meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000
+fn draw ( i32, i32 ) -> ( ):
+  local.get 0
+  const.i32 0
+  i32.div_s
+  drop
+  return
+endfn

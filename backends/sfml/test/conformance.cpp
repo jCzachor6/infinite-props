@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -29,7 +30,7 @@ int failures = 0;
         }                                                                  \
     } while (0)
 
-void checkImage(const iprop_image& image, const char* label,
+void checkImage(const iprop_image_view_ex& image, const char* label,
                 const char* pngPath) {
     sf::Image golden;
     CHECK(golden.loadFromFile(pngPath), "cannot load the golden %s",
@@ -47,8 +48,7 @@ void checkImage(const iprop_image& image, const char* label,
     }
     const std::uint8_t* actual = image.pixels;
     const std::uint8_t* expected = golden.getPixelsPtr();
-    const std::size_t count =
-        static_cast<std::size_t>(image.width) * image.height * 4;
+    const auto count = static_cast<std::size_t>(image.byte_count);
     for (std::size_t i = 0; i < count; ++i) {
         if (actual[i] != expected[i]) {
             const std::size_t pixel = i / 4;
@@ -59,6 +59,24 @@ void checkImage(const iprop_image& image, const char* label,
             break;
         }
     }
+}
+
+std::vector<iprop::sfml_host::OutputSlot> checkOutputs(const iprop_result* result) {
+    const auto slots = iprop::sfml_host::copyOutputs(result);
+    iprop_image legacy{};
+    iprop_result_image(result, &legacy); // Compatibility oracle, never the adapter read path.
+    CHECK(slots.size() == legacy.output_count, "all legacy declarations must remain present");
+    for (std::size_t i = 0; i < slots.size(); ++i) {
+        const auto& slot = slots[i];
+        const auto& old = legacy.outputs[i];
+        CHECK(slot.index == i && slot.owner == old.owner && slot.kind == static_cast<uint32_t>(old.kind) &&
+              slot.isList == (old.is_list != 0), "slot %zu metadata", i);
+        const auto count = static_cast<std::size_t>(old.count) * iprop::backend::outputComponents(slot.kind);
+        CHECK(slot.values.size() == count && (count == 0 ||
+              std::memcmp(slot.values.data(), old.values, count * sizeof(float)) == 0),
+              "slot %zu typed float bits differ from legacy", i);
+    }
+    return slots;
 }
 
 } // namespace
@@ -92,18 +110,20 @@ int main(int argc, char** argv) {
             programDir + "/" + entry.program;
         const auto bytes = iprop::sfml_host::readFile(programPath);
         iprop_program* program = iprop::sfml_host::loadProgram(bytes);
+        const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program);
         iprop_result* result =
             iprop::sfml_host::generate(program, entry.seed, 0, 0);
-        iprop_image image;
-        iprop_result_image(result, &image);
+        const auto image = iprop::sfml_host::queryImage(result);
+        checkOutputs(result);
+        CHECK(image.width == meta.size_x && image.height == meta.size_y,
+              "%s: queried metadata size differs from default generation", entry.program);
 
         // The host carries the pixels through sf::Image on the way to
         // the texture; the conformance does the same copy here.
         sf::Image sfmlImage;
         sfmlImage.resize({image.width, image.height}, image.pixels);
         CHECK(std::memcmp(sfmlImage.getPixelsPtr(), image.pixels,
-                          static_cast<std::size_t>(image.width) *
-                              image.height * 4) == 0,
+                          static_cast<std::size_t>(image.byte_count)) == 0,
               "%s: the sf::Image copy must be byte-identical",
               entry.program);
 
@@ -119,8 +139,7 @@ int main(int argc, char** argv) {
             if (reloaded.getSize().x == image.width &&
                 reloaded.getSize().y == image.height) {
                 CHECK(std::memcmp(reloaded.getPixelsPtr(), image.pixels,
-                                  static_cast<std::size_t>(image.width) *
-                                      image.height * 4) == 0,
+                                  static_cast<std::size_t>(image.byte_count)) == 0,
                       "the PNG round-trip must be lossless");
             }
             std::remove(tmpPath.c_str());
@@ -144,8 +163,8 @@ int main(int argc, char** argv) {
             for (std::uint32_t a = 0; a < 2; ++a) {
                 iprop::sfml_host::Result result(
                     iprop::sfml_host::generate(program.get(), 26, v, a), &iprop_result_free);
-                iprop_image image{};
-                iprop_result_image(result.get(), &image);
+                const auto image = iprop::sfml_host::queryImage(result.get());
+                const auto outputs = checkOutputs(result.get());
                 iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
                 target.clear(sf::Color::Transparent);
                 target.draw(sprite);
@@ -154,8 +173,8 @@ int main(int argc, char** argv) {
                 CHECK(rendered.getPixel({0, 0}) == sf::Color(0x33,0x55,0xaa),
                       "language default input pixel");
                 CHECK(rendered.getPixel({a + 1, 1}) == colors[v], "language rendered palette pixel");
-                CHECK(image.output_count == 4 && image.outputs[0].values[0] == static_cast<float>(v + 1) &&
-                      image.outputs[0].values[1] == static_cast<float>(a) + .25f,
+                CHECK(outputs.size() == 4 && outputs[0].values[0] == static_cast<float>(v + 1) &&
+                      outputs[0].values[1] == static_cast<float>(a) + .25f,
                       "language typed helper output");
             }
         }
@@ -163,10 +182,115 @@ int main(int argc, char** argv) {
             iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/plant.iprop")),
             &iprop_program_free);
         iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26, 0, 0), &iprop_result_free);
-        iprop_image image{};
-        iprop_result_image(result.get(), &image);
+        const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Existing root/helper/part fixture: all D4 transforms, owner 2 has no
+    // declarations, unset singulars and empty lists remain in their positions.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/output-values.iprop")), &iprop_program_free);
+        const float points[8][2] = {{1,2},{2,7},{7,6},{6,1},{7,2},{1,6},{2,1},{6,7}};
+        const unsigned transforms[] = {0,1,2,3,4,7,5,6};
+        for (uint32_t v = 0; v < 8; ++v) {
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, v, 0), &iprop_result_free);
+            const auto slots = checkOutputs(result.get());
+            CHECK(slots.size() == 18, "all root and part output slots");
+            for (std::size_t i = 0; i < slots.size(); ++i) {
+                CHECK(slots[i].owner == (i < 6 ? 0u : i < 12 ? 1u : 3u), "owner gap at slot %zu", i);
+                CHECK(slots[i].name == (i % 6 == 0 ? "anchor" : i % 6 == 1 ? "collider" :
+                    i % 6 == 2 ? "zone" : i % 6 == 3 ? "anchors" : i % 6 == 4 ? "colliders" : "zones"),
+                    "exact output name at %zu", i);
+            }
+            CHECK(slots[0].values.empty() == (v == 0) && slots[9].values.empty() &&
+                  slots[13].values.empty() && slots[12].isList && slots[12].values.size() == 4,
+                  "unset singular, empty lists and populated part list");
+            CHECK(std::memcmp(slots[6].values.data(), points[transforms[v]], sizeof(points[0])) == 0,
+                  "D4 output must already be transformed exactly once");
+            if (v == 7) {
+                const auto before = iprop::sfml_host::queryImage(result.get());
+                iprop::sfml_host::Result later(iprop::sfml_host::generate(program.get(), 7, 0, 0), &iprop_result_free);
+                program.reset();
+                const auto after = iprop::sfml_host::queryImage(result.get());
+                CHECK(before.pixels == after.pixels && before.byte_count == after.byte_count,
+                      "borrowed image survives later generation and program_free");
+                checkOutputs(result.get());
+                result.reset();
+                CHECK(slots[12].values == std::vector<float>({9,10,11,12}), "copied geometry survives result_free");
+            }
+        }
+    }
+
+    // Binary fixture supplies values source syntax cannot express: NaN payloads,
+    // infinities, subnormals, signed zero, an empty name and UTF-8 with embedded NUL.
+    {
+        const uint32_t bits[] = {0x80000000,1,0x7fc12345,0xff800000,0x7f800000,
+                                 0xffc12345,0x80000001,0x3f800000,0x80000000};
+        const char name[] = "p\xc5\x82\0suffix";
+        for (const char* fixture : {"backend-raw-values.iprop", "backend-empty-values.iprop"}) {
+            iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+                iprop::sfml_host::readFile(programDir + "/" + fixture)), &iprop_program_free);
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 0, 0, 0), &iprop_result_free);
+            program.reset();
+            auto slots = checkOutputs(result.get());
+            CHECK(slots.size() == 6 && slots[0].name == std::string(name, sizeof(name) - 1) &&
+                  slots[1].name.empty() && slots[2].name == std::string("\0c\0\0", 4) && slots[3].owner == 2,
+                  "byte-counted names and owner gap");
+            std::size_t component = 0;
+            for (std::size_t i = 0; i < slots.size(); ++i) {
+                if (std::strcmp(fixture, "backend-raw-values.iprop") == 0 && i < 3) {
+                    CHECK(std::memcmp(slots[i].values.data(), bits + component,
+                          slots[i].values.size() * sizeof(float)) == 0, "raw bits for kind %zu", i);
+                    component += slots[i].values.size();
+                } else CHECK(slots[i].values.empty(), "unassigned raw fixture slot %zu", i);
+            }
+            const auto old_size = slots.size();
+            try { slots = iprop::sfml_host::copyOutputs(nullptr); CHECK(false, "invalid result accepted"); }
+            catch (const std::runtime_error&) { CHECK(slots.size() == old_size && slots[0].name.size() == sizeof(name)-1,
+                                                     "failed copy must not replace published outputs"); }
+            result.reset();
+            CHECK(slots[0].name == std::string(name, sizeof(name)-1), "owned names survive result_free");
+        }
+    }
+
+    // Inputs set by name through the checked parameter API render exactly as
+    // the legacy named-uniform overrides; unknown names and bad text fail.
+    {
+        const iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/uniforms.iprop")), &iprop_program_free);
+        const auto parameters = iprop::sfml_host::createParameters(program.get());
+        iprop::sfml_host::setParameter(parameters.get(), "base", "#ff000080");
+        iprop::sfml_host::setParameter(parameters.get(), "fx", "5.5");
+        iprop::sfml_host::setParameter(parameters.get(), "ux", "3");
+        const iprop::sfml_host::Result checked(
+            iprop::sfml_host::generate(program.get(), 0, 0, 0, parameters.get()), &iprop_result_free);
+        iprop_uniform uniforms[3] = {};
+        uniforms[0].name = "base"; uniforms[0].type = IPROP_UNIFORM_COLOR;
+        uniforms[0].r = 255; uniforms[0].a = 128;
+        uniforms[1].name = "fx"; uniforms[1].type = IPROP_UNIFORM_F32; uniforms[1].f = 5.5f;
+        uniforms[2].name = "ux"; uniforms[2].type = IPROP_UNIFORM_U32; uniforms[2].u = 3;
+        iprop_generate_options options{};
+        options.uniforms = uniforms;
+        options.uniform_count = 3;
+        iprop_result* legacy = nullptr;
+        char message[256] = {};
+        CHECK(iprop_generate(program.get(), &options, &legacy, message, sizeof(message)) == IPROP_OK,
+              "legacy uniforms: %s", message);
+        const iprop::sfml_host::Result legacyResult(legacy, &iprop_result_free);
+        if (legacy != nullptr) {
+            const auto a = iprop::sfml_host::queryImage(checked.get());
+            const auto b = iprop::sfml_host::queryImage(legacy);
+            CHECK(a.byte_count == b.byte_count && std::memcmp(a.pixels, b.pixels, a.byte_count) == 0,
+                  "parameters differ from the legacy uniforms");
+        }
+        for (const auto& [name, value] : {std::pair{"missing", "1"}, {"ux", "-"}, {"base", "#12"}, {"fx", "x"}}) {
+            try {
+                iprop::sfml_host::setParameter(parameters.get(), name, value);
+                CHECK(false, "accepted %s=%s", name, value);
+            } catch (const std::runtime_error&) {}
+        }
     }
 
     if (failures != 0) {

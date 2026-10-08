@@ -8,8 +8,13 @@ The generated signatures distinguish integer pixels/thickness from floating
 geometry.
 
 The frozen compositor interpolates RGB for translucent sources while retaining
-the destination alpha. Start with an opaque background for translucent glaze
-examples. Exact blending, alpha endpoints and rounding are specified in
+the destination alpha. An opaque source replaces all RGBA bytes. A translucent
+source over initially transparent storage can leave nonzero RGB with alpha zero;
+this is neither standard straight-alpha nor premultiplied-alpha blending.
+Start with an opaque background for translucent glaze examples. The C API
+[image view](../c-api-images.md) identifies this mode as
+`IPROP_IMAGE_ALPHA_LEGACY_DESTINATION` and returns the exact stored bytes.
+Exact blending, alpha endpoints and rounding are specified in
 [pixel blending](../../spec/iprop-v0.3.md#111-pixelx-y-colour).
 
 <!-- example: ../../examples/language/drawing.ips -->

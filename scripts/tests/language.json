@@ -1,0 +1,291 @@
+{
+  "schema_version": 2,
+  "product_version": "0.4.0",
+  "language_version": {
+    "major": 0,
+    "minor": 5
+  },
+  "c_api_version": {
+    "major": 0,
+    "minor": 3
+  },
+  "abi_version": {
+    "major": 0,
+    "minor": 4
+  },
+  "c_abi_soversion": "0.4",
+  "format_version": {
+    "major": 0,
+    "minor": 4
+  },
+  "builtins": [
+    {
+      "name": "unit",
+      "overloads": [
+        {
+          "parameters": [],
+          "result": "f32",
+          "evaluation_order": [],
+          "effects": {
+            "rng": "advance_current",
+            "writes_canvas": false,
+            "writes_outputs": false,
+            "summary": "intrinsic",
+            "may_trap": []
+          },
+          "opcode": "rng.unit",
+          "minimum_format_minor": 1
+        }
+      ]
+    }
+  ],
+  "call_rules": {
+    "helper_evaluation_order": "declaration",
+    "part": {
+      "parameters": [
+        {
+          "name": "seed",
+          "required": true,
+          "positional": true
+        },
+        {
+          "name": "v",
+          "required": true,
+          "positional": true
+        },
+        {
+          "name": "a",
+          "required": true,
+          "positional": true
+        },
+        {
+          "name": "at",
+          "required": true,
+          "positional": false
+        },
+        {
+          "name": "rot",
+          "required": false,
+          "positional": false,
+          "default": 0
+        },
+        {
+          "name": "mirror_x",
+          "required": false,
+          "positional": false,
+          "default": 0
+        },
+        {
+          "name": "mirror_y",
+          "required": false,
+          "positional": false,
+          "default": 0
+        },
+        {
+          "name": "$uniform",
+          "required": false,
+          "positional": false,
+          "default": "input_declaration"
+        }
+      ],
+      "evaluation_order": [
+        "$uniform",
+        "seed",
+        "v",
+        "a",
+        "at",
+        "rot",
+        "mirror_x",
+        "mirror_y"
+      ]
+    }
+  },
+  "source_rules": {
+    "inputs": [
+      {
+        "source_type": "color",
+        "binary_type": "color",
+        "value_type": "color"
+      },
+      {
+        "source_type": "f32",
+        "binary_type": "f32",
+        "value_type": "f32"
+      },
+      {
+        "source_type": "u32",
+        "binary_type": "u32",
+        "value_type": "i32"
+      },
+      {
+        "source_type": "i32",
+        "binary_type": "u32",
+        "value_type": "i32"
+      }
+    ],
+    "types": {
+      "storable": [
+        "i32",
+        "f32",
+        "color",
+        "vec2"
+      ],
+      "helper_parameters": [
+        "i32",
+        "f32",
+        "color",
+        "vec2"
+      ],
+      "helper_value_returns": [
+        "i32",
+        "f32",
+        "color",
+        "vec2"
+      ],
+      "output_only_geometry": [
+        "circle",
+        "rect"
+      ],
+      "point_value_type": "vec2",
+      "implicit_widening": [
+        {
+          "from": "i32",
+          "to": "f32",
+          "contexts": [
+            "numeric_operands",
+            "call_arguments",
+            "helper_returns"
+          ]
+        }
+      ],
+      "local_reassignment": "exact_type"
+    },
+    "locals": {
+      "declaration": "first_assignment",
+      "scope": "function",
+      "type_inference_order": "source_traversal",
+      "definite_assignment_analysis": false,
+      "unexecuted_initializer": "typed_zero",
+      "read_requires_prior_assignment": true
+    },
+    "visibility": {
+      "uniforms": "draw_only",
+      "uniforms_read_only": true,
+      "helper_parameters_read_only": true,
+      "draw_controls": {
+        "names": [
+          "v",
+          "a"
+        ],
+        "type": "i32",
+        "read_only": true
+      },
+      "seed": "current_rng_state_in_all_functions",
+      "palettes": "all_asset_functions"
+    },
+    "named_calls": {
+      "targets": [
+        "builtin",
+        "helper",
+        "part"
+      ],
+      "mixed_positional_and_named": true,
+      "positional_binding": "positional_parameter_ordinal",
+      "named_arguments_advance_positional_ordinal": false,
+      "duplicate_arguments": false,
+      "unknown_arguments": false
+    },
+    "restrictions": {
+      "recursive_helpers": false,
+      "nested_part_imports": false,
+      "let_declarations": false,
+      "fn_declarations": false,
+      "named_geometry_constructors": false
+    },
+    "effect_order": {
+      "binary_operands": "left_to_right",
+      "logical_operators": "short_circuit_left_to_right",
+      "call_arguments": "signature_evaluation_order",
+      "named_arguments_change_evaluation_order": false,
+      "part_parent_rng": "restored_after_child"
+    }
+  },
+  "effect_rules": {
+    "intrinsic_scope": "operation_excluding_arguments_and_resources",
+    "argument_effects": "evaluated_before_operation_in_caller_stream",
+    "resource_traps": [
+      "fuel_exhausted",
+      "call_depth_limit"
+    ],
+    "validation_limits": [
+      "operand_stack_limit"
+    ],
+    "allocation_failure": true,
+    "helper": {
+      "rng": "shared_callee_stream",
+      "writes_canvas": true,
+      "writes_outputs": true,
+      "summary": "conservative",
+      "may_trap": [
+        "callee"
+      ]
+    },
+    "part": {
+      "rng": "isolated_callee_stream",
+      "writes_canvas": true,
+      "writes_outputs": true,
+      "summary": "conservative",
+      "may_trap": [
+        "part_render_arguments",
+        "callee"
+      ]
+    },
+    "seed_read": {
+      "rng": "read_current",
+      "writes_canvas": false,
+      "writes_outputs": false,
+      "summary": "intrinsic",
+      "may_trap": []
+    },
+    "output_write": {
+      "rng": "none",
+      "writes_canvas": false,
+      "writes_outputs": true,
+      "summary": "intrinsic",
+      "may_trap": []
+    },
+    "output_write_policy": {
+      "singular": "replace",
+      "list": "append"
+    },
+    "part_output_read": {
+      "rng": "none",
+      "writes_canvas": false,
+      "writes_outputs": false,
+      "summary": "intrinsic",
+      "may_trap": [
+        "part_output_missing",
+        "part_output_context"
+      ]
+    },
+    "integer_division": {
+      "rng": "none",
+      "writes_canvas": false,
+      "writes_outputs": false,
+      "summary": "intrinsic",
+      "may_trap": [
+        "divide_by_zero",
+        "integer_overflow"
+      ]
+    },
+    "integer_remainder": {
+      "rng": "none",
+      "writes_canvas": false,
+      "writes_outputs": false,
+      "summary": "intrinsic",
+      "may_trap": [
+        "divide_by_zero"
+      ]
+    }
+  }
+}

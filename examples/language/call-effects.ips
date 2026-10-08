@@ -1,0 +1,38 @@
+asset CallEffects {
+  size 8x8
+  output point helper_order
+  output point selected
+  output point last
+  output list point writes
+  draw {
+    saved = seed
+    stream_push(saved)
+    first = unit()
+    second = unit()
+    after = seed
+    stream_pop()
+
+    stream_push(saved)
+    observed = pair(y = unit(), x = unit())
+    // Named arguments still run in x, y declaration order.
+    if (observed.x != first || observed.y != second || seed != after) {
+      while (true) {}
+    }
+    stream_pop()
+    helper_order = observed
+
+    stream_push(saved)
+    choice = choose(value1 = unit(), seed = 123, value0 = unit())
+    // Both choices run eagerly; isolated selection restores this parent state.
+    if (seed != after || (choice != first && choice != second)) {
+      while (true) {}
+    }
+    stream_pop()
+    selected = {choice, 0}
+    record(p = {1, 1})
+    record({2, 2})
+    pixel(1, 1, #9dc)
+  }
+  pair(x: f32, y: f32) -> vec2 { return {x, y} }
+  record(p: vec2) { last = p; writes = p }
+}

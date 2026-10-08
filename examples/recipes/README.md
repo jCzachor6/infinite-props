@@ -6,6 +6,15 @@ or combined with the other recipes. The variant badge demonstrates `v`/`a`;
 the uniform emblem exposes color, scale and density inputs. The attachment
 recipe writes structured point outputs alongside its pixels.
 
+The stored sources use the compiler's canonical style. The 0.5 formatter's
+`--format-only` output is idempotent and preserves their exact stripped bytecode;
+the recipes also compile with the frozen 0.4 compiler. Comments remain in the
+canonical source. Check the gallery with:
+
+```sh
+python3 scripts/check_recipe_format.py build/tools/ipc
+```
+
 ```sh
 build/tools/ipc examples/recipes/09-rounded-mask.ips --strip -o /tmp/rounded.iprop
 build/tools/ipgen /tmp/rounded.iprop --seed 7 -o /tmp/rounded.png

@@ -19,6 +19,7 @@
 #include "ips/Ast.hpp"
 #include "ips/Typing.hpp"
 #include "ips/Palette.hpp"
+#include "ips/DeclarationConstants.hpp"
 #include "Pools.hpp"
 #include "CallResolver.hpp"
 
@@ -50,6 +51,7 @@ struct PlannedFunction {
     std::map<std::string, ips::ValueType> langTypes;
     std::unordered_map<const ips::Expr*, PlannedExpression> expressions;
     std::unordered_map<const ips::Call*, ResolvedCall> calls;
+    ips::CallPlans boundCalls;
 
     const PlannedExpression& expression(const ips::Expr& expr) const {
         return expressions.at(&expr);
@@ -88,6 +90,7 @@ struct Plan {
 
     // Palette annotations are immutable and retain stable addresses in plan copies.
     std::map<const ips::PaletteDecl*, std::shared_ptr<const ips::ResolvedPalette>> palettes;
+    std::map<const ips::InputDecl*, ips::ResolvedConstant> inputDefaults;
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;

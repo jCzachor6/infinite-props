@@ -1,0 +1,8 @@
+# Keep CMake's normal version/range and architecture checks, then reject
+# requests predating this ABI line. Product minors do not imply ABI breaks.
+include("${CMAKE_CURRENT_LIST_DIR}/ipropProductVersion.cmake")
+if(DEFINED PACKAGE_FIND_VERSION AND NOT PACKAGE_FIND_VERSION STREQUAL "" AND
+   PACKAGE_FIND_VERSION VERSION_LESS "@IPROP_C_ABI_MIN_PRODUCT_VERSION@")
+    set(PACKAGE_VERSION_COMPATIBLE FALSE)
+    set(PACKAGE_VERSION_EXACT FALSE)
+endif()

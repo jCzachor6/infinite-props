@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 from release_common import (ROOT, committed_source, extract_archive, product_version,
-                            run, sha256, write_archive, write_checksums, write_json)
+                            run, sha256, versions, write_archive, write_checksums, write_json)
 from language_docs import build as build_documentation, verify as verify_documentation
 
 
@@ -25,8 +25,8 @@ def main():
             raise RuntimeError("The website must contain the current WASM build: " + name)
     destination = args.output_dir.resolve()
     destination.mkdir(parents=True, exist_ok=True)
-    manifest = {"product_version": version, "source_commit": commit,
-                "wasm_sha256": sha256(wasm / "iprop.wasm")}
+    # Documentation verification below proves that the compiler exports these versions.
+    manifest = {**versions(ROOT), "source_commit": commit, "wasm_sha256": sha256(wasm / "iprop.wasm")}
     artifacts = []
     with tempfile.TemporaryDirectory(prefix="iprop-web-release-") as temporary:
         temporary = Path(temporary)

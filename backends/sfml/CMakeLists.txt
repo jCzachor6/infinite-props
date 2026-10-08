@@ -32,6 +32,7 @@ if(SFML_FOUND)
     iprop_warnings(iprop_sfml)
 
     if(IPROP_BUILD_TESTS)
+        include(${CMAKE_CURRENT_SOURCE_DIR}/../ResultTests.cmake)
         add_executable(sfml_render test/render.cpp)
         target_link_libraries(sfml_render PRIVATE SFML::Graphics)
         target_include_directories(sfml_render PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -50,7 +51,7 @@ if(SFML_FOUND)
         target_link_libraries(sfml_conformance PRIVATE iprop_capi_static SFML::Graphics)
         target_include_directories(sfml_conformance PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
         iprop_warnings(sfml_conformance)
-        add_dependencies(sfml_conformance capi_golden)
+        add_dependencies(sfml_conformance capi_golden capi_result_output_fixture backend_result_fixtures)
 
         add_test(NAME sfml_conformance
             COMMAND sfml_conformance

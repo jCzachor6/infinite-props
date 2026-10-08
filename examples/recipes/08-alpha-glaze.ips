@@ -4,9 +4,9 @@ asset AlphaGlaze {
 
   draw {
     rect(0, 0, 32, 32, #101820)
-    rect(3, 3, 26, 26, #fdc)
+    rect(3, 3, 26, 26, #ffddcc)
     for x in 3..29 {
-      alpha = (x - 3) * 10
+      alpha = ((x - 3) * 10)
       rect(x, 3, 1, 26, rgba(r = 20, g = 80, b = 220, a = alpha))
     }
   }

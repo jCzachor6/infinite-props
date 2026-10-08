@@ -1,5 +1,7 @@
 #pragma once
 
+#include "iprop/Error.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -37,21 +39,6 @@ struct Vec2 {
     f32 y = 0.f;
 
     constexpr bool operator==(const Vec2&) const = default;
-};
-
-// A defined, located format/runtime error (spec §14: hosts reject invalid
-// files with a defined error; traps carry precise messages).
-struct FormatError : std::runtime_error {
-    std::size_t offset = 0; // byte offset in the file, when known
-
-    explicit FormatError(std::string message, std::size_t at = 0)
-        : std::runtime_error(std::move(message)), offset(at) {}
-};
-
-// A runtime trap (spec §8.4): a defined error raised during execution with a
-// located message. Derives from FormatError so one catch handles both.
-struct Trap : FormatError {
-    using FormatError::FormatError;
 };
 
 } // namespace iprop

@@ -1,14 +1,13 @@
 #include "ipsheet.hpp"
+#include "png.hpp"
 
 #include "iprop/VM.hpp"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 
 #include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace iprop {
@@ -154,9 +153,7 @@ int ipsheetMain(int argc, char* argv[]) {
         return 1;
     }
 
-    if (stbi_write_png(output.c_str(), static_cast<int>(columns * cellW),
-                       static_cast<int>(rows * cellH), 4, rgba.data(),
-                       static_cast<int>(columns * cellW * 4)) == 0) {
+    if (!tools::writePng(output, {columns * cellW, rows * cellH, std::move(rgba)})) {
         std::cerr << "ipsheet: cannot write '" << output << "'\n";
         return 1;
     }

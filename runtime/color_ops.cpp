@@ -52,7 +52,7 @@ bool stepColor(Execution& ex, Instruction ins) {
         const f32 hueShift = ex.popF32();
         const Color c = ex.popColor();
         if (!std::isfinite(hueShift)) {
-            ex.trap("color.hsv hue shift must be finite");
+            ex.trap("color.hsv hue shift must be finite", ErrorReason::NumericRange);
         }
         ex.push(Value(math::colorHsv(c, hueShift, satScale, valScale)));
         ++ex.frame().ip;

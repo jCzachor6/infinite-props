@@ -49,7 +49,8 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
 
 [[noreturn]] void Planner::error(const ips::SourceLocation& at,
                                  std::string message) {
-    throw ips::SourceError{at, std::move(message)};
+    throw ips::SourceError{at, std::move(message), {}, ips::DiagnosticCode::PlanError,
+                          ips::DiagnosticStage::Planning};
 }
 
 const ips::InputDecl* Planner::ownerInput(const ips::Program* owner,
@@ -74,6 +75,15 @@ const ips::OutputDecl* Planner::ownerOutput(const ips::Program* owner,
 
 std::unique_ptr<Plan> Planner::plan() {
     planParts();
+    const auto prepareDefaults = [&](const ips::Program& owner) {
+        for (const auto& input : owner.asset.inputs) {
+            if (plan_->inputDefaults.contains(&input)) continue;
+            try { plan_->inputDefaults.emplace(&input, ips::resolveInputDefault(input)); }
+            catch (ips::SourceError& error) { error.path = plan_->sourcePath(&owner); throw; }
+        }
+    };
+    prepareDefaults(entry_);
+    for (const auto* part : plan_->parts) prepareDefaults(*part);
     const auto preparePalettes = [&](const ips::Program& owner) {
         for (const auto& palette : owner.asset.palettes) {
             if (plan_->palettes.contains(&palette)) continue;
@@ -90,7 +100,7 @@ std::unique_ptr<Plan> Planner::plan() {
     for (const auto& [alias, part] : parts_) {
         ips::PartInfo info;
         for (const auto& input : part->asset.inputs) {
-            info.inputs.push_back({input.type, input.name});
+            info.inputs.push_back({input.type, input.name, &input});
         }
         for (const auto& output : part->asset.outputs) {
             info.outputs.push_back({output.kind, output.isList, output.name});
@@ -155,7 +165,7 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
     }
     const PlannedFunction& info = plan_->functions[*id];
     return ips::FunctionSurface{ips::declaredParamTypes(*info.ast),
-                                info.langResult};
+                                info.langResult, ips::declaredParamNames(*info.ast)};
 }
 
 void Planner::planParts() {
@@ -295,10 +305,6 @@ void Planner::prepareFunctionBody(const std::string& name) {
             ++slot;
         }
         for (const auto& input : owner->asset.inputs) {
-            if (input.type == ips::InputType::I32) {
-                error(input.location,
-                      "input i32 is not supported by the v0.1 format (use u32)");
-            }
             info.slots.emplace(input.name, slot);
             info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));
             info.params.push_back(runtimeType(ips::valueTypeOf(input.type)));
@@ -395,6 +401,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
         const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
         info.expressions.emplace(expr, PlannedExpression{type, constant});
     }
+    info.boundCalls = typer_->calls();
     typer_->restoreScope(std::move(savedScope));
 
     if (ast->returnType.has_value()) {

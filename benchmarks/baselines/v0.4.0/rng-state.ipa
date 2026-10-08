@@ -1,0 +1,33 @@
+; Minimal raw-state oracle. Each state is split into exact 16-bit halves
+; before conversion to f32, so JSON float-bits preserves every u32 bit.
+meta: size=1x1 variants=1 archetypes=1 fuel=10000
+output: point initial
+output: point advanced
+output: point restored
+fn state ( ) -> ( f32, f32 ):
+  stream.state
+  const.i32 65535
+  i32.and
+  i32.to.f32
+  stream.state
+  const.i32 16
+  i32.shr_u
+  i32.to.f32
+  return
+endfn
+fn draw ( i32, i32 ) -> ( ):
+  call state
+  out.point initial
+  rng.unit
+  drop
+  call state
+  out.point advanced
+  const.i32 7
+  stream.push
+  rng.unit
+  drop
+  stream.pop
+  call state
+  out.point restored
+  return
+endfn

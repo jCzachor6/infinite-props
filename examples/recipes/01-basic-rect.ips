@@ -4,6 +4,6 @@ asset BasicRect {
 
   draw {
     rect(0, 0, 32, 32, #101820)
-    rect(color = #5bf, h = 16, w = 20, y = 8, x = 6)
+    rect(x = 6, y = 8, w = 20, h = 16, color = #55bbff)
   }
 }

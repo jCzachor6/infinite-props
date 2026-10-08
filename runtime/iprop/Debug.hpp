@@ -32,6 +32,12 @@ struct DebugInfo {
 // checks the per-function instruction counts against the code section.
 DebugInfo parseDebug(std::span<const u8> data, const Section& section);
 
+// Optional line lookup for structured errors, without allocation or throwing.
+// Missing, truncated, mismatched or zero line data yields zero. Debug payloads
+// remain informative: an unavailable map must not change execution/validation.
+u32 debugLineAt(std::span<const u8> data, const Section& section,
+                u32 functionIndex, u32 pc, u32 functionCount, u32 instructionCount) noexcept;
+
 // Removes the debug section from a file: clears the header flag, drops the
 // section table entry and shifts the following sections. The remaining
 // bytes are untouched, so execution is identical. Compressed envelopes are

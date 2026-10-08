@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -54,13 +55,27 @@ struct GenerationInputs {
     std::map<std::string, UniformValue> uniforms;
 };
 
+// Host-argument checks of spec §8.1, in the VM's order: variant, archetype,
+// then the target canvas (zero dimensions select the meta size). Shared by the
+// VM constructor, which keeps its legacy Trap, and strict C entries, which
+// reject before VM setup. Returns ErrorReason::None; never allocates or throws.
+ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 archetype,
+                                     u32 sizeX, u32 sizeY) noexcept;
+
 // The VM executes a LoadedFile. The caller MUST have run validate() first
 // (spec §14: validation completes before execution); the VM does not
 // re-validate. Execution consumes the fuel budget (§8.3) and raises Trap (a
 // FormatError) with located messages on runtime violations.
 class VM {
 public:
+    // Root uniforms come from `inputs.uniforms`, looked up by declared name.
     VM(const LoadedFile& file, const GenerationInputs& inputs);
+    // Root uniforms already resolved by root-input ID: exactly one value per
+    // root declaration, in declaration order, each with its declared binary
+    // type (for example a validated C parameter set). No name is looked up;
+    // `inputs.uniforms` must be empty. A mismatch is a caller bug and throws
+    // std::logic_error after the host-argument checks.
+    VM(const LoadedFile& file, const GenerationInputs& inputs, std::span<const UniformValue> rootValues);
     ~VM();
 
     VM(VM&&) noexcept;
@@ -87,9 +102,19 @@ public:
     // run().
     GenerationResult result() const;
 
+    // Consumes the successful generation once, moving its canvas, names and
+    // output payloads. Throws std::logic_error before a successful run or
+    // after consumption. If allocating the output table fails, the VM remains
+    // intact and this call can be retried. After success, run(), canvas() and
+    // result() reject further access; fuel/debugStack remain available.
+    GenerationResult takeResult();
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
+
+    void setup(const LoadedFile& file, const GenerationInputs& inputs,
+               const std::span<const UniformValue>* rootValues);
 };
 
 } // namespace iprop

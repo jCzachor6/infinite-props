@@ -4,7 +4,7 @@
 #include <string.h>
 
 int main(int argc, char** argv) {
-    if (argc != 2 || IPROP_API_VERSION_MAJOR != 0 || IPROP_API_VERSION_MINOR != 2) return 2;
+    if (argc != 2 || IPROP_API_VERSION_MAJOR != 0 || IPROP_API_VERSION_MINOR < 2) return 2;
     FILE* file = fopen(argv[1], "rb");
     if (file == NULL) return 2;
     if (fseek(file, 0, SEEK_END) != 0) { fclose(file); return 2; }

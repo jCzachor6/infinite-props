@@ -38,7 +38,7 @@ bool stepVector(Execution& ex, Instruction ins) {
         } else if (const f32* s = std::get_if<f32>(&right)) {
             ex.push(Value(math::vec2Mul(a, *s)));
         } else {
-            ex.trap("stack type mismatch: expected f32 or vec2");
+            ex.trap("stack type mismatch: expected f32 or vec2", ErrorReason::StackType);
         }
         ++ex.frame().ip;
         return true;
@@ -51,7 +51,7 @@ bool stepVector(Execution& ex, Instruction ins) {
         } else if (const f32* s = std::get_if<f32>(&right)) {
             ex.push(Value(math::vec2Div(a, *s)));
         } else {
-            ex.trap("stack type mismatch: expected f32 or vec2");
+            ex.trap("stack type mismatch: expected f32 or vec2", ErrorReason::StackType);
         }
         ++ex.frame().ip;
         return true;

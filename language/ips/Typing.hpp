@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -16,6 +17,7 @@
 #include "ips/Types.hpp"
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Palette.hpp"
+#include "ips/CallPlan.hpp"
 
 namespace iprop::ips {
 
@@ -24,6 +26,7 @@ namespace iprop::ips {
 struct PartInput {
     InputType type = InputType::Color;
     std::string name;
+    const InputDecl* declaration = nullptr;
 };
 
 struct PartOutput {
@@ -40,13 +43,21 @@ struct PartInfo {
 // The declared parameter types of a function, in declaration order (the
 // uniforms of a draw-like function are not part of its callable surface).
 std::vector<ValueType> declaredParamTypes(const Function& function);
+std::vector<std::string> declaredParamNames(const Function& function);
 
 // What the owner of a Typer knows about a user function: its declared
 // parameter types and its (possibly not-yet-known) return type.
 struct FunctionSurface {
     std::vector<ValueType> params;
     std::optional<ValueType> result;
+    std::vector<std::string> names{};
 };
+
+// Recovery-only control flow: a failed local declaration has no usable type.
+// Propagate that uncertainty without manufacturing a runtime value type or
+// another diagnostic at every dependent expression. Strict typing never
+// installs invalid locals and therefore never throws this marker.
+struct UnresolvedType {};
 
 class Typer {
 public:
@@ -69,11 +80,14 @@ public:
         std::string ns;
         std::map<std::string, ValueType> locals;
         ExpressionTypes expressions;
+        std::set<std::string> invalidLocals{};
+        CallPlans calls{};
     };
 
     void enterFunction(const Program& owner, const Function& function,
                        bool isDraw, std::string ns = "");
     void declareLocal(const std::string& name, ValueType type);
+    void declareInvalidLocal(const std::string& name);
 
     Scope saveScope() const;
     void restoreScope(Scope scope);
@@ -94,9 +108,13 @@ public:
     // The type of an expression, validating it along the way.
     ValueType typeOf(const Expr& expr);
     const ExpressionTypes& expressions() const { return expressions_; }
+    const CallPlans& calls() const { return calls_; }
 
 private:
     ExpressionTypes expressions_;
+    CallPlans calls_;
+    // Return a stable value: typing a nested helper may save/replace Scope.
+    BoundCallPlan bind(const Call& call, CallSignature signature, std::string_view name);
     ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
     const ResolvedPalette& palette(const Identifier& name);
@@ -106,6 +124,7 @@ private:
     bool isDraw_ = false;
     std::string ns_;
     std::map<std::string, ValueType> locals_;
+    std::set<std::string> invalidLocals_;
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) const;
 

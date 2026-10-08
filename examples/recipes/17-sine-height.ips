@@ -5,9 +5,9 @@ asset SineHeight {
   draw {
     rect(0, 0, 32, 32, #101820)
     for x in 2..30 {
-      t = sin(float(x) * 0.25)
-      height = int(remap(t, -1, 1, 4, 22))
-      rect(x, 28 - height, 1, height, lerp(#4a8, #fd8, float(height) / 22))
+      t = sin((float(x) * 0.25))
+      height = int(remap(t, (-1), 1, 4, 22))
+      rect(x, (28 - height), 1, height, lerp(#44aa88, #ffdd88, (float(height) / 22)))
     }
   }
 }

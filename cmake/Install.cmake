@@ -5,6 +5,8 @@ install(TARGETS iprop_runtime iprop_capi iprop_capi_static EXPORT ipropTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# Header-only result reads shared by the engine adapters; includes only iprop.h.
+install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iprop/backend)
 # Required by the static target's runtime dependency. C++ headers are
 # implementation details; only iprop.h has the documented ABI contract.
 install(DIRECTORY runtime/iprop DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -44,22 +46,26 @@ if(TARGET iprop_sfml)
 endif()
 
 install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+# The guides keep their source-tree places, so their relative links resolve.
+foreach(backend capi sfml godot)
+    install(FILES backends/${backend}/README.md
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend})
+endforeach()
 if(Python3_Interpreter_FOUND)
     # Expanded chapters replace their authored directives in installed SDKs.
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
-    third_party/stb/stb_image.h third_party/stb/stb_image_write.h
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 
 set(iprop_config_dir ${CMAKE_INSTALL_LIBDIR}/cmake/iprop)
 configure_package_config_file(cmake/ipropConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/ipropConfig.cmake
     INSTALL_DESTINATION ${iprop_config_dir})
-# Pre-1.0 minor releases may change the ABI; patch updates must match minor.
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/ipropConfigVersion.cmake
-    VERSION ${PROJECT_VERSION} COMPATIBILITY SameMinorVersion)
+# C API package compatibility follows its independently configured ABI line.
+iprop_write_package_version("${CMAKE_CURRENT_BINARY_DIR}" "${PROJECT_VERSION}")
 install(EXPORT ipropTargets NAMESPACE iprop:: DESTINATION ${iprop_config_dir})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropConfig.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/ipropConfigVersion.cmake DESTINATION ${iprop_config_dir})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropProductVersion.cmake DESTINATION ${iprop_config_dir})

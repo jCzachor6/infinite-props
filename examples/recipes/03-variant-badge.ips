@@ -3,13 +3,13 @@ asset VariantBadge {
   size 32x32
   variants 4
   archetypes 3
-  palette colors = [#a34, #db5, #5a8, #49b]
+  palette colors = [#aa3344, #ddbb55, #55aa88, #4499bb]
 
   draw {
     rect(0, 0, 32, 32, #101820)
     rect(5, 5, 22, 22, colors[v])
     for i in 0..(a + 1) {
-      oval(10 + i * 6, 16, 2, 2, #fff)
+      oval((10 + (i * 6)), 16, 2, 2, #ffffff)
     }
   }
 }

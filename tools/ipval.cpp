@@ -1,4 +1,5 @@
 #include "ipval.hpp"
+#include "json.hpp"
 
 #include "iprop/Validator.hpp"
 
@@ -24,42 +25,15 @@ ValidationReport validateReport(std::span<const u8> bytes) {
 
 namespace {
 
-// Minimal JSON escaping for the violation messages.
-std::string jsonEscape(const std::string& text) {
-    std::string result;
-    for (const char c : text) {
-        switch (c) {
-        case '"': result += "\\\""; break;
-        case '\\': result += "\\\\"; break;
-        case '\n': result += "\\n"; break;
-        case '\t': result += "\\t"; break;
-        default:
-            if (static_cast<unsigned char>(c) < 0x20) {
-                char buffer[8];
-                std::snprintf(buffer, sizeof(buffer), "\\u%04x", c);
-                result += buffer;
-            } else {
-                result += c;
-            }
-        }
-    }
-    return result;
-}
-
 std::string jsonReport(const std::string& file, const ValidationReport& report) {
-    std::string out = "{\n";
-    out += "  \"file\": \"" + jsonEscape(file) + "\",\n";
-    out += std::string("  \"valid\": ") + (report.valid ? "true" : "false") + ",\n";
-    out += "  \"violations\": [\n";
-    for (std::size_t i = 0; i < report.violations.size(); ++i) {
-        const Violation& violation = report.violations[i];
-        out += "    {\"offset\": " + std::to_string(violation.offset) +
-               ", \"message\": \"" + jsonEscape(violation.message) + "\"}";
-        out += (i + 1 == report.violations.size() ? "\n" : ",\n");
-    }
-    out += "  ]\n";
-    out += "}\n";
-    return out;
+    using tools::Json;
+    Json violations = Json::array();
+    for (const Violation& violation : report.violations)
+        violations.push_back(Json::object({{"offset", violation.offset}, {"message", violation.message}}));
+    const auto document = Json::object({{"file", file}, {"valid", report.valid},
+                                         {"violations", std::move(violations)}});
+    // File names and messages may hold invalid UTF-8: Json replaces it, keeping valid JSON.
+    return document.dump(2) + "\n";
 }
 
 } // namespace

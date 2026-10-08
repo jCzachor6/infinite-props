@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "stb_image.h"
+#include "png.hpp"
 
 #include "ipgen.hpp"
 
@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -96,17 +97,14 @@ TEST_CASE("ipgen generates a PNG and the result JSON") {
     REQUIRE(code == 0);
 
     // PNG decodes to the expected pixels.
-    int w = 0, h = 0, channels = 0;
-    unsigned char* pixels = stbi_load(png.c_str(), &w, &h, &channels, 4);
-    REQUIRE(pixels != nullptr);
-    REQUIRE(w == 8);
-    REQUIRE(h == 8);
+    const auto image = tools::readPng(png);
+    REQUIRE(image.width == 8);
+    REQUIRE(image.height == 8);
     const std::size_t at = (1 * 8 + 1) * 4;
-    REQUIRE(pixels[at] == 10);
-    REQUIRE(pixels[at + 1] == 20);
-    REQUIRE(pixels[at + 2] == 30);
-    REQUIRE(pixels[at + 3] == 255);
-    stbi_image_free(pixels);
+    REQUIRE(image.rgba[at] == 10);
+    REQUIRE(image.rgba[at + 1] == 20);
+    REQUIRE(image.rgba[at + 2] == 30);
+    REQUIRE(image.rgba[at + 3] == 255);
 
     // JSON mentions the output, the fuel and the size.
     const std::string json = captured.text();
@@ -128,15 +126,12 @@ TEST_CASE("--uniform overrides the palette") {
                           "palette=#010203FF", "-o", png.c_str(), nullptr};
     REQUIRE(ipgenMain(6, const_cast<char**>(args)) == 0);
 
-    int w = 0, h = 0, channels = 0;
-    unsigned char* pixels = stbi_load(png.c_str(), &w, &h, &channels, 4);
-    REQUIRE(pixels != nullptr);
+    const auto image = tools::readPng(png);
     const std::size_t at = (1 * 8 + 1) * 4;
-    REQUIRE(pixels[at] == 1);
-    REQUIRE(pixels[at + 1] == 2);
-    REQUIRE(pixels[at + 2] == 3);
-    REQUIRE(pixels[at + 3] == 255);
-    stbi_image_free(pixels);
+    REQUIRE(image.rgba[at] == 1);
+    REQUIRE(image.rgba[at + 1] == 2);
+    REQUIRE(image.rgba[at + 2] == 3);
+    REQUIRE(image.rgba[at + 3] == 255);
 }
 
 TEST_CASE("a bad uniform value or name fails with exit 1") {
@@ -182,12 +177,9 @@ TEST_CASE("--size changes the output dimensions") {
                           png.c_str(), nullptr};
     REQUIRE(ipgenMain(6, const_cast<char**>(args)) == 0);
 
-    int w = 0, h = 0, channels = 0;
-    unsigned char* pixels = stbi_load(png.c_str(), &w, &h, &channels, 4);
-    REQUIRE(pixels != nullptr);
-    REQUIRE(w == 16);
-    REQUIRE(h == 8);
-    stbi_image_free(pixels);
+    const auto image = tools::readPng(png);
+    REQUIRE(image.width == 16);
+    REQUIRE(image.height == 8);
 }
 
 TEST_CASE("an out-of-range variant fails through the VM") {
@@ -214,4 +206,21 @@ TEST_CASE("unknown options and missing files fail") {
         const char* args[] = {"ipgen", "/nonexistent/path.iprop", nullptr};
         REQUIRE(ipgenMain(2, const_cast<char**>(args)) == 1);
     }
+}
+
+TEST_CASE("PNG files round-trip RGBA pixels and reject other forms") {
+    const tools::Image image{3, 2, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+                                    255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0}};
+    auto png = tools::encodePng(image);
+    const auto decoded = tools::decodePng(png);
+    REQUIRE(decoded.width == 3);
+    REQUIRE(decoded.height == 2);
+    REQUIRE(decoded.rgba == image.rgba);
+
+    auto corrupt = png;
+    corrupt[20] ^= 1; // width byte inside IHDR, under its checksum
+    REQUIRE_THROWS_AS(tools::decodePng(corrupt), std::runtime_error);
+    png[25] = 2; // RGB colour type
+    REQUIRE_THROWS(tools::decodePng(png));
+    REQUIRE_THROWS(tools::encodePng({2, 2, {0, 0, 0, 0}}));
 }

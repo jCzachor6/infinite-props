@@ -15,25 +15,48 @@ the declared counts traps. `draw` declares no parameters or return type.
 
 ## Input uniforms
 
-`input type name = literal` declares a host-settable, read-only uniform.
+`input type name = constant` declares a host-settable, read-only uniform.
 
-| Input type | Literal default | Value inside `draw` |
+| Input type | Constant default | Value inside `draw` |
 | --- | --- | --- |
 | `color` | `#RGB`, `#RGBA`, `#RRGGBB`, `#RRGGBBAA` | `color` |
-| `f32` | integer or floating literal | `f32` |
-| `u32` | integer literal | `i32`, retaining its 32-bit pattern |
+| `f32` | integer or floating literal, optionally negative | `f32` |
+| `u32` | nonnegative integer literal | `i32`, retaining its 32-bit pattern |
+| `i32` | integer in `[-2147483648, 2147483647]`, optionally negative | `i32` |
 
-The parser also recognizes `input i32`, but the current compiler rejects
-it because the binary format provides `u32` uniforms. Use `input u32` for
-integer inputs; expressions interpret the resulting pattern as `i32`.
+`input i32` range-checks the mathematical default before ordinary integer
+wrapping. Thus `-2147483648` is valid and positive `0xffffffff` is rejected.
+It uses the existing binary U32 uniform, preserving the signed two's-complement
+bits without a new binary input type. Root and imported-part defaults and
+part overrides have the same `i32` semantics. The binary metadata cannot
+distinguish source `i32` from `u32`; existing hosts pass U32 bit patterns.
+For example, a host U32 override of `4294967295` yields signed `-1` inside
+`draw` (use that unsigned decimal spelling with `ipgen --uniform`).
 
-Defaults are literal tokens, not expressions. A leading minus is a unary
-operator, so `input f32 amount = -1.0` is rejected. For an integer bit pattern
-such as signed -1, use `0xffffffff`. Inside expressions, negative values are
-written normally. Boolean tokens are not accepted as integer input defaults.
+Defaults permit a literal, parentheses and one numeric unary minus, such as
+`input f32 amount = -(0.5)`. Arithmetic, names, calls and repeated negation
+are rejected. Floating defaults preserve negative zero (`-0.0`); an integer
+spelling used for an `f32` default is converted directly to binary32, without
+first wrapping to an integer bit pattern. Root and part defaults use the
+same conversion. For a `u32` bit pattern representing signed -1, use
+`0xffffffff`; a negative `u32` default suggests `input i32`.
+Boolean tokens are not integer input defaults.
 Uniforms are visible in `draw`; pass their values explicitly to helpers.
 
-<!-- example: ../../examples/language/errors/signed-input.ips -->
+<!-- example: ../../examples/language/negative-default.ips -->
+
+<!-- example: ../../examples/language/signed-input.ips -->
+
+Both examples are accepted source 0.5 programs. Their old parser/type errors
+belong only to the frozen 0.4 baseline. A negative floating default is valid;
+a mathematically negative `u32` default is still invalid. Defaults outside
+the signed range and non-literal declaration expressions are also rejected:
+
+<!-- example: ../../examples/language/errors/negative-u32-default.ips -->
+
+<!-- example: ../../examples/language/errors/i32-default-range.ips -->
+
+<!-- example: ../../examples/language/errors/declaration-constant.ips -->
 
 Input names `seed`, `v`, `a`, `at`, `rot`, `mirror_x` and `mirror_y` are
 reserved. Inputs and outputs cannot share a name; declarations of the same

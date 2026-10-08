@@ -15,7 +15,7 @@ namespace {
 i32 scaledCoord(Execution& ex, f32 value, f32 scale) {
     const f32 scaled = value * scale;
     if (!std::isfinite(scaled) || scaled < -2147483648.f || scaled >= 2147483648.f) {
-        ex.trap("coordinate out of range");
+        ex.trap("coordinate out of range", ErrorReason::NumericRange);
     }
     return static_cast<i32>(std::round(scaled));
 }
@@ -23,7 +23,7 @@ i32 scaledCoord(Execution& ex, f32 value, f32 scale) {
 // A raster coordinate: floor/ceil must stay within i32 (spec §11 formulas).
 i32 coordToInt(Execution& ex, f32 value, const char* what) {
     if (!std::isfinite(value) || value < -2147483648.f || value >= 2147483648.f) {
-        ex.trap(std::string("coordinate out of range (") + what + ")");
+        ex.trap(std::string("coordinate out of range (") + what + ")", ErrorReason::NumericRange);
     }
     return static_cast<i32>(value);
 }
@@ -45,7 +45,7 @@ u64 visitCount(i64 dx, i64 dy) {
 void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
                   f32 thickness, const Color& colour) {
     if (!std::isfinite(thickness)) {
-        ex.trap("curve thickness out of range");
+        ex.trap("curve thickness out of range", ErrorReason::NumericRange);
     }
     if (thickness <= 0.f) {
         return;
@@ -54,7 +54,7 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
         points[i].x *= ex.canvas.scaleX;
         points[i].y *= ex.canvas.scaleY;
         if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) {
-            ex.trap("coordinate out of range (curve control)");
+            ex.trap("coordinate out of range (curve control)", ErrorReason::NumericRange);
         }
     }
     f32 left = points[0].x, right = left, top = points[0].y, bottom = top;

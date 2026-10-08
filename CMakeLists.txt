@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(iprop
-    VERSION 0.4.0
+    VERSION 0.5.0
     DESCRIPTION "A portable binary format and toolchain for seed-based procedural 2D assets"
     LANGUAGES C CXX)
 
@@ -16,6 +16,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/CompilerWarnings.cmake)
 include(GNUInstallDirs)
+include(cmake/CAbi.cmake)
 
 option(IPROP_BUILD_TESTS "Build the test suite" ON)
 option(IPROP_FETCH_DEPS "Fetch test dependencies from the network (Catch2)" ON)
