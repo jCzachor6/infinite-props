@@ -205,7 +205,7 @@ int main(int argc, char** argv) {
         iprop_program_free(original);
     }
     {
-        const char embedded[] = {(char)0xc3, (char)0xa9, '\0', 'x', 'y', 'z', '\0'};
+        const char embedded[] = {'\xc3', '\xa9', '\0', 'x', 'y', 'z', '\0'};
         uint8_t* modified = (uint8_t*)malloc(size);
         size_t at = 0;
         uint32_t strings, section;
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
         index = UINT32_MAX;
         CHECK(iprop_program_output_find(program, UINT32_MAX, expected[0].name, &index, &error) == IPROP_EX_E_ARGUMENT && index == UINT32_MAX);
         CHECK(error.message_required_bytes == strlen("output owner is out of range"));
-        CHECK(error.message_truncated == (capacity < sizeof("output owner is out of range")));
+        CHECK(error.message_truncated == (capacity < sizeof("output owner is out of range") ? 1u : 0u));
         if (capacity == 0) CHECK(exact[0] == 0x5a);
         else {
             const size_t copied = capacity - 1 < error.message_required_bytes ? capacity - 1 : (size_t)error.message_required_bytes;

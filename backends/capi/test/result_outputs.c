@@ -104,7 +104,7 @@ static int errors(const iprop_result* result) {
     iprop_error_ex error, error_before;
     uint32_t id = UINT32_MAX, capacity, kind;
     char message[128];
-    const char bad[] = {(char)0xc5};
+    const char bad[] = {'\xc5'};
     CHECK(iprop_result_output_view_ex_init(NULL, 4) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_result_output_get(result, 0, NULL, NULL) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_result_output_count(NULL, &id, NULL) == IPROP_EX_E_ARGUMENT && id == UINT32_MAX);

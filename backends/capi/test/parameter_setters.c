@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
     }
     /* An actual binary name with UTF-8 and embedded NUL resolves only at the
      * exact byte count; source program lifetime does not constrain setters. */
-    { uint32_t section,strings; size_t at=0; const char exact[]={(char)0xc3,(char)0xa9,'\0','x','\0'};
+    { uint32_t section,strings; size_t at=0; const char exact[]={'\xc3','\xa9','\0','x','\0'};
       iprop_program* named_program=NULL; iprop_parameters* named=NULL;
       CHECK(read_u32(bytes+8)==0);
       for(section=0;section<read_u32(bytes+12);++section) if(read_u32(bytes+20+section*12)==2) at=read_u32(bytes+24+section*12);

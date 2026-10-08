@@ -143,8 +143,8 @@ int main(int argc, char** argv) {
     CHECK(iprop_parameters_get(parameters,1,&got,NULL)==IPROP_EX_OK && float_bits(&got.f32)==UINT32_C(0x80000000) && got.color.a==0);
     /* Real executable names, including embedded NUL and an actual empty name. */
     { uint8_t* modified=(uint8_t*)malloc(size); size_t at=0,name_at=0; uint32_t section,strings,const_entry=0;
-      const char exact[]={(char)0xc3,(char)0xa9,'\0','x','\0'};
-      const char invalid[]={(char)0xc0,(char)0xaf};
+      const char exact[]={'\xc3','\xa9','\0','x','\0'};
+      const char invalid[]={'\xc0','\xaf'};
       iprop_program* binary=NULL; iprop_parameters* named=NULL;
       iprop_parameter_value_ex named_value;
       CHECK(modified!=NULL && read_u32(bytes+8)==0); memcpy(modified,bytes,size);

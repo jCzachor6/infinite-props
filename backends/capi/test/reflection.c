@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
     modified = (uint8_t*)malloc(size);
     CHECK(modified != NULL); memcpy(modified, bytes, size);
     {
-        const char embedded[] = {(char)0xc3, (char)0xa9, '\0', 'x', '\0'};
+        const char embedded[] = {'\xc3', '\xa9', '\0', 'x', '\0'};
         size_t at = section_offset(modified, size, 2), meta = section_offset(modified, size, 1);
         uint32_t strings;
         int replaced = 0;
@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
         error.message_buffer = exact; error.message_capacity = capacity;
         CHECK(iprop_program_input_get(program, UINT32_MAX, &info, &error) == IPROP_EX_E_ARGUMENT);
         CHECK(error.message_required_bytes == strlen("input index is out of range"));
-        CHECK(error.message_truncated == (capacity < sizeof("input index is out of range")));
+        CHECK(error.message_truncated == (capacity < sizeof("input index is out of range") ? 1u : 0u));
         if (capacity == 0) CHECK(exact[0] == 0x5a);
         else {
             const size_t copied = capacity - 1 < error.message_required_bytes ? capacity - 1 : (size_t)error.message_required_bytes;

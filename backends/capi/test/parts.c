@@ -170,14 +170,14 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_part_input_find(program, 0, (iprop_utf8_view){NULL, 1}, &index, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_part_input_find(program, 0, (iprop_utf8_view){NULL, 0}, &index, &error) == IPROP_EX_E_ARGUMENT);
     {
-        const char invalid[] = {(char)0xc0, (char)0xaf};
+        const char invalid[] = {'\xc0', '\xaf'};
         CHECK(iprop_program_part_input_find(program, 0, (iprop_utf8_view){invalid, 2}, &index, &error) == IPROP_EX_E_ARGUMENT && index == UINT32_MAX);
         CHECK(error.reason == IPROP_REASON_INVALID_ARGUMENT && error.stage == IPROP_STAGE_ARGUMENTS && error.location_flags == 0);
     }
     /* Exact embedded-NUL names are shared binary strings but indices/types
      * still come from the selected root/part signature. */
     {
-        const char embedded[] = {(char)0xc3, (char)0xa9, '\0', 'x', '\0'};
+        const char embedded[] = {'\xc3', '\xa9', '\0', 'x', '\0'};
         uint8_t* modified = (uint8_t*)malloc(size);
         size_t at = 0, name_at = 0;
         uint32_t strings, section, const_entry = 0;
@@ -229,7 +229,7 @@ int main(int argc, char** argv) {
         count = UINT32_MAX;
         CHECK(iprop_program_part_input_count(program, UINT32_MAX, &count, &error) == IPROP_EX_E_ARGUMENT && count == UINT32_MAX);
         CHECK(error.message_required_bytes == strlen("part index is out of range"));
-        CHECK(error.message_truncated == (capacity < sizeof("part index is out of range")));
+        CHECK(error.message_truncated == (capacity < sizeof("part index is out of range") ? 1u : 0u));
         if (capacity == 0) CHECK(exact[0] == 0x5a);
         else {
             const size_t copied = capacity - 1 < error.message_required_bytes ? capacity - 1 : (size_t)error.message_required_bytes;
