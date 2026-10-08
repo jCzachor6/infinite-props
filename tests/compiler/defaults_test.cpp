@@ -288,17 +288,19 @@ TEST_CASE("signed part defaults use the same resolved values as root metadata") 
 }
 
 TEST_CASE("float literal acceptance does not depend on the C library's ERANGE convention") {
-    // glibc reports ERANGE for a value that only rounds up to the smallest
-    // normal; Apple's libc does not. Both must accept it and reject the rest.
+    // glibc, Apple's libc and the UCRT disagree on when underflow sets ERANGE
+    // (rounding up to the smallest normal, subnormal results); all must agree.
     const std::pair<const char*, u32> accepted[] = {
-        {"1.17549435e-38", 0x00800000u}, {"3.4028235e38", 0x7f7fffffu}, {"-0.0", 0x80000000u}, {"1e-20", 0x1e3ce508u}};
+        {"1.17549435e-38", 0x00800000u}, {"3.4028235e38", 0x7f7fffffu}, {"-0.0", 0x80000000u}, {"1e-20", 0x1e3ce508u},
+        {"0e-99", 0u}, {"0x0p0", 0u}, {"0x1p-126", 0x00800000u}};
     for (const auto& [literal, expected] : accepted) {
         INFO(literal);
         u32 bits = 0;
         REQUIRE(ips::parseFloatBits(literal, bits));
         CHECK(bits == expected);
     }
-    for (const char* literal : {"1e-40", "1.4e-45", "1e-50", "3.5e38", "1e39", "", "1.0x"}) {
+    for (const char* literal : {"1e-40", "1.4e-45", "1e-50", "0.001e-50", "0x1p-149", "0x1p-200", "3.5e38", "1e39", "",
+                                "1.0x"}) {
         INFO(literal);
         u32 bits = 0;
         CHECK_FALSE(ips::parseFloatBits(literal, bits));

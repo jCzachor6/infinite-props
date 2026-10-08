@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cerrno>
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
@@ -21,6 +20,7 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace iprop {
@@ -224,16 +224,26 @@ bool parseIntBits(const std::string& text, u32& bits) {
 }
 
 // Same acceptance as ips::parseFloatBits: the rounded result's class, not the
-// C library's ERANGE convention, decides whether a tiny value is accepted.
+// C library's ERANGE convention, decides whether a value is accepted.
 bool parseFloatBits(const std::string& text, u32& bits) {
-    errno = 0;
     char* end = nullptr;
     const f32 value = std::strtof(text.c_str(), &end);
     if (end == text.c_str() || end != text.c_str() + text.size()) {
         return false;
     }
-    if (errno == ERANGE && std::fpclassify(value) != FP_NORMAL) {
-        return false;
+    const int kind = std::fpclassify(value);
+    if (kind == FP_SUBNORMAL) return false;
+    // Overflow; a spelled-out infinity (or NaN) stays valid.
+    if (kind == FP_INFINITE && text.find_first_of("iI") == std::string::npos) return false;
+    if (kind == FP_ZERO) {
+        // Underflow to zero: a nonzero digit before the exponent.
+        const std::size_t x = text.find_first_of("xX");
+        const std::size_t begin = x == std::string::npos ? 0 : x + 1;
+        const std::size_t exponent = text.find_first_of(x == std::string::npos ? "eE" : "pP", begin);
+        const std::string_view mantissa = std::string_view(text).substr(begin, exponent - begin);
+        if (mantissa.find_first_of(x == std::string::npos ? "123456789" : "123456789abcdefABCDEF") !=
+            std::string_view::npos)
+            return false;
     }
     std::memcpy(&bits, &value, sizeof(bits));
     return true;
