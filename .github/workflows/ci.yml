@@ -235,7 +235,10 @@ jobs:
   sanitizers:
     runs-on: ubuntu-latest
     env:
-      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+      # GCC's ASan enables stack-use-after-return by default; its fake stack
+      # frames make the interpreter's tiny push/pop calls over 100x slower
+      # (a full-budget fuel trap: 0.4 s without, 5.5 min with).
+      ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:detect_stack_use_after_return=0
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
     steps:
       - uses: actions/checkout@v4
