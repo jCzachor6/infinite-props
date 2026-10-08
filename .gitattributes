@@ -1,3 +1,7 @@
 # Immutable observations retain their exact UTF-8 bytes, including on hosts
 # configured with automatic CRLF conversion.
 benchmarks/baselines/** -text
+
+# Formatted sources are compared byte for byte with canonical output; keep LF
+# on every checkout, including Windows hosts with automatic CRLF conversion.
+*.ips text eol=lf

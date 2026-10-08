@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise real source-only formatting, atomic failures and import relocation."""
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -129,28 +130,31 @@ def main():
             invoke([final_link, '-o', root / 'final-link.iprop', '--no-compress'])
             assert (root / 'final-link.iprop').read_bytes() == (root / 'before.iprop').read_bytes()
 
-            # Resolving "link/.." lexically would choose the decoy, changing pixels.
-            parts = source_dir / 'parts'
-            real = root / 'real'
-            parts.mkdir()
-            (real / 'deep').mkdir(parents=True)
-            (parts / 'link').symlink_to(real / 'deep', target_is_directory=True)
-            (parts / 'tile.ips').write_text('asset decoy {size 8x8 draw{pixel(0,0,#00f);}}')
-            (real / 'tile.ips').write_text('asset real {size 8x8 draw{pixel(0,0,#f00);}}')
-            entry.write_text('import tile from "parts/link/../tile.ips"; '
-                             'asset t {size 8x8 draw{tile.draw(seed,v,a,at={0,0});}}')
-            invoke([entry, '-o', root / 'symlink-before.iprop', '--no-compress'])
-            invoke([entry, '--format', destination, '--format-only'])
-            invoke([destination, '-o', root / 'symlink-after.iprop', '--no-compress'])
-            assert (root / 'symlink-before.iprop').read_bytes() == (root / 'symlink-after.iprop').read_bytes()
-            assert '../real/tile.ips' in destination.read_text(encoding='utf-8')
+            # Windows collapses link\.. before following a directory symlink, so the
+            # compiler itself loads parts/tile.ips there; these cases are POSIX-only.
+            if os.name != 'nt':
+                # Resolving "link/.." lexically would choose the decoy, changing pixels.
+                parts = source_dir / 'parts'
+                real = root / 'real'
+                parts.mkdir()
+                (real / 'deep').mkdir(parents=True)
+                (parts / 'link').symlink_to(real / 'deep', target_is_directory=True)
+                (parts / 'tile.ips').write_text('asset decoy {size 8x8 draw{pixel(0,0,#00f);}}')
+                (real / 'tile.ips').write_text('asset real {size 8x8 draw{pixel(0,0,#f00);}}')
+                entry.write_text('import tile from "parts/link/../tile.ips"; '
+                                 'asset t {size 8x8 draw{tile.draw(seed,v,a,at={0,0});}}')
+                invoke([entry, '-o', root / 'symlink-before.iprop', '--no-compress'])
+                invoke([entry, '--format', destination, '--format-only'])
+                invoke([destination, '-o', root / 'symlink-after.iprop', '--no-compress'])
+                assert (root / 'symlink-before.iprop').read_bytes() == (root / 'symlink-after.iprop').read_bytes()
+                assert '../real/tile.ips' in destination.read_text(encoding='utf-8')
 
-            # A lexically identical path can instead be a distinct writable
-            # decoy. It is not an alias of the physically loaded import.
-            decoy = parts / 'tile.ips'
-            invoke([entry, '--format', decoy, '--format-only'])
-            invoke([decoy, '-o', root / 'decoy-formatted.iprop', '--no-compress'])
-            assert (root / 'symlink-before.iprop').read_bytes() == (root / 'decoy-formatted.iprop').read_bytes()
+                # A lexically identical path can instead be a distinct writable
+                # decoy. It is not an alias of the physically loaded import.
+                decoy = parts / 'tile.ips'
+                invoke([entry, '--format', decoy, '--format-only'])
+                invoke([decoy, '-o', root / 'decoy-formatted.iprop', '--no-compress'])
+                assert (root / 'symlink-before.iprop').read_bytes() == (root / 'decoy-formatted.iprop').read_bytes()
     print('Source-only formatter: relocation, aliases, atomic failure and no-binary checks PASS')
 
 
