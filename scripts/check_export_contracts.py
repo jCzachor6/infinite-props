@@ -162,7 +162,10 @@ def main():
         bundle = temp/'bundle'
         language_docs.build(compiler,bundle)
         manifest = read_manifest(parse_json((bundle/'docs/language-manifest.json').read_bytes()))
-        bases = {'language':language,'diagnostics':diagnostics,'manifest':manifest}
+        # Mutations are written against a candidate identity; on the tagged
+        # release checkout the real manifest is already 'released'.
+        candidate = {**manifest, 'status': 'development / release candidate', 'tag': None}
+        bases = {'language':language,'diagnostics':diagnostics,'manifest':candidate}
         for kind, base in bases.items():
             field_docs(base,schemas[kind],schemas[kind])
             if validators: validators[kind].validate(base)
