@@ -11,6 +11,10 @@ import subprocess
 import time
 
 
+# Win32 creation flag; the subprocess module does not export the debug flags.
+DEBUG_ONLY_THIS_PROCESS = 0x00000002
+
+
 def run_observed(command, *, cwd, env, stdout, stderr, timeout=90):
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     pointer = ctypes.c_void_p
@@ -68,12 +72,11 @@ def run_observed(command, *, cwd, env, stdout, stderr, timeout=90):
         return value[4:] if value.startswith("\\\\?\\") else value
 
     loaded = []
-    process_handles = []
     began = time.monotonic()
     with open(stdout, "wb") as out, open(stderr, "wb") as err:
         proc = subprocess.Popen([str(arg) for arg in command], cwd=cwd, env=env,
                                 stdout=out, stderr=err,
-                                creationflags=subprocess.DEBUG_ONLY_THIS_PROCESS)
+                                creationflags=DEBUG_ONLY_THIS_PROCESS)
         try:
             while True:
                 if time.monotonic() - began > timeout:
@@ -86,17 +89,11 @@ def run_observed(command, *, cwd, env, stdout, stderr, timeout=90):
                 continuation = 0x00010002  # DBG_CONTINUE
                 exited = event.code == 5  # EXIT_PROCESS_DEBUG_EVENT
                 try:
+                    # The debugger owns only the image file handles; the system
+                    # closes process and thread handles as their exit events continue.
                     if event.code == 3:  # CREATE_PROCESS_DEBUG_EVENT
-                        info = event.payload.create
-                        if info.file:
-                            kernel.CloseHandle(info.file)
-                        if info.thread:
-                            kernel.CloseHandle(info.thread)
-                        if info.process and info.process != int(proc._handle):
-                            process_handles.append(info.process)
-                    elif event.code == 2:  # CREATE_THREAD_DEBUG_EVENT
-                        if event.payload.thread:
-                            kernel.CloseHandle(event.payload.thread)
+                        if event.payload.create.file:
+                            kernel.CloseHandle(event.payload.create.file)
                     elif event.code == 6:  # LOAD_DLL_DEBUG_EVENT
                         handle = event.payload.dll.file
                         if handle:
@@ -118,5 +115,3 @@ def run_observed(command, *, cwd, env, stdout, stderr, timeout=90):
         finally:
             if proc.poll() is None:
                 proc.kill()
-            for handle in process_handles:
-                kernel.CloseHandle(handle)
