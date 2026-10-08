@@ -10,7 +10,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <cmath>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -221,18 +223,20 @@ bool parseIntBits(const std::string& text, u32& bits) {
     }
 }
 
+// Same acceptance as ips::parseFloatBits: the rounded result's class, not the
+// C library's ERANGE convention, decides whether a tiny value is accepted.
 bool parseFloatBits(const std::string& text, u32& bits) {
-    try {
-        std::size_t used = 0;
-        const f32 value = std::stof(text, &used);
-        if (used != text.size()) {
-            return false;
-        }
-        std::memcpy(&bits, &value, sizeof(bits));
-        return true;
-    } catch (...) {
+    errno = 0;
+    char* end = nullptr;
+    const f32 value = std::strtof(text.c_str(), &end);
+    if (end == text.c_str() || end != text.c_str() + text.size()) {
         return false;
     }
+    if (errno == ERANGE && std::fpclassify(value) != FP_NORMAL) {
+        return false;
+    }
+    std::memcpy(&bits, &value, sizeof(bits));
+    return true;
 }
 
 bool parseColor(const std::string& text, Color& out) {

@@ -4,6 +4,7 @@
 #include <bit>
 #include <map>
 #include <string>
+#include <utility>
 
 #include "Compiler.hpp"
 #include "Plan.hpp"
@@ -283,6 +284,24 @@ TEST_CASE("signed part defaults use the same resolved values as root metadata") 
         CHECK(result.outputs[2].points[0].x == -0.75f);
         CHECK(result.outputs[2].points[0].y == -3.f);
         CHECK(result.canvas.at(1,1) == Color{255,0,0,255});
+    }
+}
+
+TEST_CASE("float literal acceptance does not depend on the C library's ERANGE convention") {
+    // glibc reports ERANGE for a value that only rounds up to the smallest
+    // normal; Apple's libc does not. Both must accept it and reject the rest.
+    const std::pair<const char*, u32> accepted[] = {
+        {"1.17549435e-38", 0x00800000u}, {"3.4028235e38", 0x7f7fffffu}, {"-0.0", 0x80000000u}, {"1e-20", 0x1e3ce508u}};
+    for (const auto& [literal, expected] : accepted) {
+        INFO(literal);
+        u32 bits = 0;
+        REQUIRE(ips::parseFloatBits(literal, bits));
+        CHECK(bits == expected);
+    }
+    for (const char* literal : {"1e-40", "1.4e-45", "1e-50", "3.5e38", "1e39", "", "1.0x"}) {
+        INFO(literal);
+        u32 bits = 0;
+        CHECK_FALSE(ips::parseFloatBits(literal, bits));
     }
 }
 
