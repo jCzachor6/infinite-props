@@ -37,6 +37,7 @@ add_executable(iprop_tests
     compiler/vectors_test.cpp
     compiler/palettes_test.cpp
     compiler/drawing_test.cpp
+    compiler/color_channels_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
     compiler/calls_test.cpp

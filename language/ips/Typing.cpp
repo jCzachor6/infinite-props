@@ -171,11 +171,23 @@ ValueType Typer::infer(const Expr& expr) {
                   "vec2 has only .x and .y components, got '" +
                       member.name + "'");
         }
-        // Any other value has no members; only part paths remain above.
         if (object == ValueType::Color) {
-            error(member.location,
-                  "color channels cannot be read, got '." + member.name +
-                      "'; keep the channels as numbers and build the color with rgb() or rgba()");
+            if (colorChannel(member.name)) return ValueType::I32;
+            error(member.location, "color has only .r, .g, .b and .a channels, got '." +
+                                       member.name + "'");
+        }
+        // Any other value has no members; only part paths remain above. A
+        // channel or component name says which value type it needs.
+        const bool channel = colorChannel(member.name).has_value();
+        if (channel || member.name == "x" || member.name == "y") {
+            const ValueType needed = channel ? ValueType::Color : ValueType::Vec2;
+            SourceError mismatch{member.location, "'." + member.name + "' reads a " +
+                std::string(channel ? "color channel" : "vec2 component") + " and needs a " +
+                typeName(needed) + ", got " + typeName(object), {}, DiagnosticCode::TypeError,
+                DiagnosticStage::Typing};
+            mismatch.expectedType = typeName(needed);
+            mismatch.actualType = typeName(object);
+            throw mismatch;
         }
         error(member.location, std::string(typeName(object)) +
                                    " has no components, got '." + member.name + "'");

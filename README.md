@@ -225,7 +225,7 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
   clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
 - Every builtin/canvas operation accepts named arguments. See the
-  [v0.5 language reference](docs/language-v0.5.md) for parameter names.
+  [v0.6 language reference](docs/language-v0.6.md) for parameter names.
 - `ipc file.ips --format canonical.ips` exports canonical source during
   compilation, with deterministic formatting and executable roundtrips.
 - The [recipe gallery](examples/recipes/README.md) contains 24 small,

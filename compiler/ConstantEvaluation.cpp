@@ -64,6 +64,10 @@ std::optional<Value> evaluateConstant(Opcode op, std::span<const Value> args) {
     case Opcode::ColorHsv:
         if (!std::isfinite(f(1))) return std::nullopt; // preserve the runtime trap
         return math::colorHsv(c(0), f(1), f(2), f(3));
+    case Opcode::ColorR: return i32{c(0).r};
+    case Opcode::ColorG: return i32{c(0).g};
+    case Opcode::ColorB: return i32{c(0).b};
+    case Opcode::ColorA: return i32{c(0).a};
     case Opcode::Vec2Make: return Vec2{f(0), f(1)};
     case Opcode::Vec2Add: return math::vec2Add(v(0), v(1));
     case Opcode::Vec2Sub: return math::vec2Sub(v(0), v(1));

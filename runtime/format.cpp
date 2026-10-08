@@ -34,7 +34,7 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
     Header header;
 
     // Version: interpreters reject files they cannot fully honour. This
-    // implementation knows 0.x with 1 <= x <= 4.
+    // implementation knows 0.x with 1 <= x <= 5.
     header.versionMajor = reader.readU16();
     if (header.versionMajor > kVersionMajor) {
         throw FormatError("unsupported format major version", 4, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);
@@ -45,7 +45,8 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
     }
 
     header.flags = reader.readU32();
-    const u32 allowed = header.versionMinor >= 4 ? kFlagDebug | kFlagCompressed : kFlagDebug;
+    // The compressed envelope stays a 0.4 container for every inner minor.
+    const u32 allowed = header.versionMinor == 4 ? kFlagDebug | kFlagCompressed : kFlagDebug;
     if ((header.flags & ~allowed) != 0) {
         throw FormatError("unknown header flag bits", 8, ErrorReason::InvalidHeader, ErrorStage::Load, space);
     }

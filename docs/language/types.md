@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | `i32` | signed interpretation of a 32-bit integer pattern | yes |
 | `f32` | IEEE-754 binary32 | yes |
-| `color` | RGBA8 channels | yes |
+| `color` | RGBA8 channels, read as `i32` through `.r`, `.g`, `.b`, `.a` | yes |
 | `vec2` | two `f32` components | yes |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
@@ -76,6 +76,13 @@ Vectors use `{x, y}`, expose `.x` and `.y`, support componentwise `+`, `-`,
 `*`, `/` with another vector, vector `*`/`/` scalar, scalar `*` vector and
 unary minus. Scalar/vector `+`, `-`, `/`, vector comparisons and vector `%`
 are rejected. Components are values rather than assignable fields.
+
+Colors expose `.r`, `.g`, `.b` and `.a` as `i32` values in 0–255 on any color
+expression: a local, input, palette element, helper result or color builtin.
+Reading a channel evaluates its base once and draws no randomness itself.
+Channels are not assignable either, and there is no implicit conversion between
+a color and a number; build a new color with `rgb()`/`rgba()` and use
+`float(c.a) / 255.0` for 0–1 arithmetic. See [color channels](drawing.md#color-channels).
 
 <!-- example: ../../examples/language/errors/local-type.ips -->
 

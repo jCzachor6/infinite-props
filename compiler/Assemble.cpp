@@ -4,6 +4,7 @@
 
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
+#include "iprop/OpcodeSpec.hpp"
 #include "ips/Fold.hpp"
 
 namespace iprop::compiler {
@@ -107,6 +108,7 @@ std::vector<u8> Assembler::assemble() {
     // ---- code section (spec §6) ----
     Writer table;
     Writer streams;
+    u16 minor = kOldestWrittenMinor;
     // The table and the instruction streams are written interleaved: each
     // function's offset is the running size of the streams writer.
     for (const auto& function : plan_.functions) {
@@ -126,6 +128,7 @@ std::vector<u8> Assembler::assemble() {
             table.writeU8(static_cast<u8>(type));
         }
         for (const Instruction& ins : function.code) {
+            minor = writtenMinor(minor, ins.opcode);
             streams.writeU8(static_cast<u8>(ins.opcode));
             streams.writeU8(ins.aux);
             streams.writeU16(ins.operand);
@@ -187,7 +190,7 @@ std::vector<u8> Assembler::assemble() {
         file.writeU8(magic);
     }
     file.writeU16(kVersionMajor);
-    file.writeU16(kVersionMinor);
+    file.writeU16(minor);
     file.writeU32(kFlagDebug); // flags: debug section present
     file.writeU32(4);          // section count
     file.writeU32(0);          // reserved

@@ -474,6 +474,11 @@ Stmt ParserImpl::parseIdentifierStatement() {
     auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
     primary->sourceRange = primary->sourceCoreRange = {start, pos_};
     auto expr = parsePostfixAfter(std::move(primary));
+    if (const auto* member = std::get_if<Member>(expr.get()); member && kind() == TokenKind::Assign) {
+        throw SourceError{member->location, "cannot assign to '." + member->name +
+            "': members are read-only; assign a whole new value instead, such as "
+            "rgba(...) for a color or {x, y} for a vec2"};
+    }
     if (!std::holds_alternative<Call>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }

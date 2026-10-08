@@ -49,12 +49,20 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     }
     if (std::holds_alternative<ips::Member>(expr)) {
         const auto& member = std::get<ips::Member>(expr);
-        // Components yield f32; bare part outputs keep their compound type.
-        // This also distinguishes part.outputs.x from part.outputs.top.x.
-        if (current_->typeOf(expr) == ips::ValueType::F32) {
+        // Components yield f32 and color channels i32; bare part outputs keep
+        // their compound type. This also distinguishes part.outputs.x from
+        // part.outputs.top.x. The object is evaluated exactly once.
+        const auto type = current_->typeOf(expr);
+        if (type == ips::ValueType::F32) {
             emitExpr(*member.object);
             ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
             return ips::ValueType::F32;
+        }
+        if (type == ips::ValueType::I32) {
+            constexpr Opcode channels[] = {Opcode::ColorR, Opcode::ColorG, Opcode::ColorB, Opcode::ColorA};
+            emitExpr(*member.object);
+            ins(channels[*ips::colorChannel(member.name)]);
+            return ips::ValueType::I32;
         }
         return emitPartRead(expr);
     }

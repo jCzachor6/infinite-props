@@ -69,6 +69,29 @@ draws. It operates on pixels already drawn, so place it after the base shapes.
 
 <!-- example: ../../examples/language/colors.ips -->
 
+### Color channels
+
+`c.r`, `c.g`, `c.b` and `c.a` read the stored RGBA8 channels of any color
+value as `i32` in 0–255; alpha is read as stored. The base is evaluated
+exactly once per read, so `makeColor().r` calls the helper once, while
+`makeColor().r` and `makeColor().g` are two calls. Store the color first to
+read the channels of one result. Channel reads of a constant color fold at
+compile time; otherwise they lower to the format 0.5 `color.r`–`color.a`
+instructions, and only such files are written as format 0.5.
+
+Channels are read-only. Build a modified color with `rgb()` or `rgba()`,
+which clamp their channels, so `rgba(c.r + 5, c.g - 3, c.b, c.a)` needs no
+extra `clamp()`. Convert explicitly for 0–1 arithmetic: `float(c.a) / 255.0`.
+
+<!-- example: ../../examples/language/errors/color-channel.ips -->
+
+This example is intentionally rejected: a color has only the four channel
+names, and the diagnostic lists them.
+
+<!-- example: ../../examples/language/errors/channel-assignment.ips -->
+
+This example is intentionally rejected: a channel cannot be assigned.
+
 ### rgb
 <!-- builtin: rgb -->
 

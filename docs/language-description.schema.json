@@ -204,6 +204,72 @@
                 "exact_type"
               ],
               "description": "Reassignment requires the previously inferred exact local type."
+            },
+            "components": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vec2",
+                      "color"
+                    ],
+                    "description": "Value type whose members can be read with '.name'."
+                  },
+                  "names": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": "Member name after the dot."
+                    },
+                    "description": "Readable member names in their stored order.",
+                    "uniqueItems": true,
+                    "minItems": 1
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "f32",
+                      "i32"
+                    ],
+                    "description": "Value type of each member read."
+                  },
+                  "assignable": {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Members are values; assigning to one is rejected."
+                  },
+                  "opcodes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": "Instruction mnemonic of the member at the same position."
+                    },
+                    "description": "Instruction mnemonics, one per name; reads of constant values may fold.",
+                    "minItems": 1
+                  },
+                  "minimum_format_minor": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 255,
+                    "description": "Oldest binary format minor containing these instructions."
+                  }
+                },
+                "required": [
+                  "type",
+                  "names",
+                  "result",
+                  "assignable",
+                  "opcodes",
+                  "minimum_format_minor"
+                ],
+                "additionalProperties": true,
+                "description": "Read-only member access of one value type; the base evaluates once and draws no randomness."
+              },
+              "description": "Read-only member access of one value type; the base evaluates once and draws no randomness.",
+              "minItems": 1
             }
           },
           "required": [
@@ -213,7 +279,8 @@
             "output_only_geometry",
             "point_value_type",
             "implicit_widening",
-            "local_reassignment"
+            "local_reassignment",
+            "components"
           ],
           "additionalProperties": true,
           "description": "Accepted source value categories and conversions."

@@ -42,6 +42,33 @@ function run(iprop, tool, directory) {
     const wasm = iprop.generate(new Uint8Array(bytes), {}).data;
     assert.deepEqual(Array.from(native), expected, "native color boundary contract");
     assert.deepEqual(Array.from(wasm), expected, "WASM color boundary contract");
+    return expected.length / 4 + runChannels(iprop, tool, directory);
+}
+
+// Format 0.5 channel reads: every byte of every channel, painted as an opaque
+// gray so blending cannot hide a wrong value.
+function runChannels(iprop, tool, directory) {
+    const expected = [];
+    let source = "meta: size=1024x1 origin=0,0 variants=1 archetypes=1 fuel=100000\n" +
+        "fn draw ( i32, i32 ) -> ( ):\n";
+    for (let i = 0; i < 256; ++i) {
+        const channels = [i, 255 - i, (i * 7) & 255, (i * 13 + 5) & 255];
+        const hex = "#" + channels.map(x => x.toString(16).padStart(2, "0")).join("");
+        ["r", "g", "b", "a"].forEach((name, k) => {
+            source += `const.i32 ${i * 4 + k}\nconst.i32 0\nconst.color #000000ff\n` +
+                `const.color ${hex}\ncolor.${name}\ncolor.shade\npixel\n`;
+            expected.push(channels[k], channels[k], channels[k], 255);
+        });
+    }
+    source += "endfn\n";
+    const base = path.join(directory, "color-channels");
+    fs.writeFileSync(base + ".ipa", source);
+    execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
+    execFileSync(tool("ipgen"), [base + ".iprop", "-o", base + ".png"]);
+    const native = decodePng(fs.readFileSync(base + ".png")).data;
+    const wasm = iprop.generate(new Uint8Array(fs.readFileSync(base + ".iprop")), {}).data;
+    assert.deepEqual(Array.from(native), expected, "native color channel contract");
+    assert.deepEqual(Array.from(wasm), expected, "WASM color channel contract");
     return expected.length / 4;
 }
 module.exports = { run };

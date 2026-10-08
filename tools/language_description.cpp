@@ -8,6 +8,7 @@
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
 
+#include <algorithm>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -87,6 +88,24 @@ Json sourceRules() {
     typeRules["point_value_type"] = ips::typeName(ips::ValueType::Vec2);
     typeRules["implicit_widening"] = std::move(widening);
     typeRules["local_reassignment"] = "exact_type";
+    // Read-only member reads: one opcode per name, base evaluated once.
+    const auto components = [](ips::ValueType type, ips::ValueType result,
+                               std::initializer_list<std::pair<const char*, Opcode>> names) {
+        Json members = Json::array(), opcodes = Json::array();
+        u16 minor = 0;
+        for (const auto& [name, opcode] : names) {
+            members.push_back(name);
+            opcodes.push_back(findOpcode(opcode)->mnemonic);
+            minor = std::max(minor, findOpcode(opcode)->minimumMinor);
+        }
+        return Json::object({{"type", ips::typeName(type)}, {"names", std::move(members)},
+            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)},
+            {"minimum_format_minor", minor}});
+    };
+    typeRules["components"] = Json::array({
+        components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
+        components(ips::ValueType::Color, ips::ValueType::I32,
+                   {{"r", Opcode::ColorR}, {"g", Opcode::ColorG}, {"b", Opcode::ColorB}, {"a", Opcode::ColorA}})});
     auto rules = Json::object({{"inputs", std::move(inputs)}, {"types", std::move(typeRules)}});
     // Fixed rules of the current compiler, in their published order.
     rules["locals"] = Json::object({{"declaration", "first_assignment"}, {"scope", "function"},

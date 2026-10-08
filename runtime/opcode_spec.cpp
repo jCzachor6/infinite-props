@@ -183,6 +183,10 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::Smoothstep, "smoothstep", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Remap, "remap", 3, StackSignature({S::F32, S::F32, S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Clamp, "clamp", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),
+    fixed(Opcode::ColorR, "color.r", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorG, "color.g", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorB, "color.b", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorA, "color.a", 5, StackSignature({S::Color}, V::I32)),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -192,6 +196,10 @@ constexpr auto kByOpcode = [] {
 } // namespace
 
 std::span<const OpcodeSpec> opcodeSpecs() { return kSpecs; }
+u16 writtenMinor(u16 minor, Opcode opcode) {
+    const auto* spec = findOpcode(opcode);
+    return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
+}
 const char* rngEffectName(RngEffect effect) {
     switch (effect) {
     case RngEffect::None: return "none";

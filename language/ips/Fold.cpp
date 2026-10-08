@@ -1,6 +1,7 @@
 #include "ips/Fold.hpp"
 
 #include "ips/Literals.hpp"
+#include "ips/Types.hpp"
 
 namespace iprop::ips {
 namespace {
@@ -62,6 +63,17 @@ bool ConstantFolder::evaluate(const ips::Expr& expr, Value& out) {
         case Literal::Kind::String:
             return false;
         }
+    }
+    if (const auto* member = std::get_if<Member>(&expr)) {
+        Value object;
+        const auto channel = colorChannel(member->name);
+        if (!channel || !fold(*member->object, object) || !std::holds_alternative<Color>(object)) {
+            return false;
+        }
+        const Color color = std::get<Color>(object);
+        const u8 bytes[] = {color.r, color.g, color.b, color.a};
+        out = static_cast<i32>(bytes[*channel]);
+        return true;
     }
     if (const auto* un = std::get_if<Unary>(&expr)) {
         Value operand;

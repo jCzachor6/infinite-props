@@ -8,6 +8,9 @@
 
 #include "ips/Ast.hpp"
 
+#include <optional>
+#include <string_view>
+
 namespace iprop::ips {
 
 enum class ValueType {
@@ -35,6 +38,9 @@ ValueType promote(ValueType a, ValueType b);
 // i32 widens to f32 (the compiler inserts i32.to.f32); everything else must
 // match exactly.
 bool argFits(ValueType param, ValueType arg);
+
+// The channel read by `c.r`, `c.g`, `c.b` or `c.a`: 0-3 in RGBA order.
+std::optional<unsigned> colorChannel(std::string_view member);
 
 // The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
 ValueType valueTypeOf(ParamType type);

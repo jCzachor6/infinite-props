@@ -1,7 +1,7 @@
 # Migration and contracts for 0.5
 
-This chapter describes the implemented source language 0.5 in the current
-checkout. The product release number is separate. Use the compiler's
+This chapter describes the move from source language 0.4 to 0.5, released as
+product 0.5.0; [0.6](migration-v0.6.md) builds on it. Use the compiler's
 `--describe-language` export for its actual versions, capabilities, signatures,
 evaluation order and effects; use the generated book's commit/status to identify
 the documentation snapshot.

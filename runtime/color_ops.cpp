@@ -58,6 +58,15 @@ bool stepColor(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::ColorR: case Opcode::ColorG: case Opcode::ColorB: case Opcode::ColorA: {
+        // Each channel byte widens to a non-negative i32 (spec v0.5 §2).
+        const Color c = ex.popColor();
+        const u8 channel = ins.opcode == Opcode::ColorR ? c.r : ins.opcode == Opcode::ColorG ? c.g
+                         : ins.opcode == Opcode::ColorB ? c.b : c.a;
+        ex.push(Value(static_cast<i32>(channel)));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::Dither: {
         const i32 y = ex.popI32();
         const i32 x = ex.popI32();

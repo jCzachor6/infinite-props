@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+In development: source language 0.6 and draft format 0.5. The product stays
+0.5.0 until the 0.6.0 release; C API 0.3 and ABI line 0.4 are unchanged.
+
+- Language: `c.r`, `c.g`, `c.b` and `c.a` read the channels of any color
+  value as `i32` in 0–255. The base is evaluated once; channels of constant
+  colors fold. Channels stay read-only: `c.r = 100` gets its own diagnostic,
+  and member errors name the required type or list the available channels.
+- Format 0.5 (draft, [spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
+  `color.b` and `color.a` (0xA4–0xA7). The compiler and assembler write 0.5
+  only when a file uses these instructions; other files stay 0.4. Frozen
+  0.1–0.4 files load and run unchanged, and compressed files keep their 0.4
+  envelope.
+- Language export: `source_rules.types.components` lists the readable
+  members of `vec2` and `color` with their result types and instructions.
+
 ## v0.5.0 — 2026-10-08
 
 Product/editor/website version: 0.5.0. Source language: 0.5. Format: 0.4,

@@ -15,6 +15,13 @@ const char* typeName(ValueType type) {
     return "?";
 }
 
+std::optional<unsigned> colorChannel(std::string_view member) {
+    constexpr std::string_view names[] = {"r", "g", "b", "a"};
+    for (unsigned i = 0; i < 4; ++i)
+        if (member == names[i]) return i;
+    return std::nullopt;
+}
+
 bool isNumeric(ValueType type) {
     return type == ValueType::I32 || type == ValueType::F32;
 }

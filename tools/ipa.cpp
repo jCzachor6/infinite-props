@@ -778,6 +778,7 @@ std::vector<u8> assemble(const std::string& source) {
     // Function table + streams.
     Writer table;
     Writer streams;
+    u16 minor = kOldestWrittenMinor;
     const u32 functionCount = static_cast<u32>(ordered.size());
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         const AsmFunction& fn = *ordered[i];
@@ -802,6 +803,7 @@ std::vector<u8> assemble(const std::string& source) {
             table.writeU8(static_cast<u8>(type));
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
+            minor = writtenMinor(minor, fn.instructions[j].opcode);
             streams.writeU8(static_cast<u8>(fn.instructions[j].opcode));
             streams.writeU8(fn.instructions[j].aux);
             streams.writeU16(operands[i][j]);
@@ -870,7 +872,7 @@ std::vector<u8> assemble(const std::string& source) {
         file.writeU8(magic);
     }
     file.writeU16(kVersionMajor);
-    file.writeU16(kVersionMinor);
+    file.writeU16(minor);
     file.writeU32(0);
     file.writeU32(3);
     file.writeU32(0);

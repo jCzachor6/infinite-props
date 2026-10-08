@@ -40,7 +40,7 @@ std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) 
 }
 
 TEST_CASE("compression preserves entire historical files and source maps exactly") {
-    for (u16 minor : {u16{1},u16{2},u16{3},u16{4}}) {
+    for (u16 minor : {u16{1},u16{2},u16{3},u16{4},u16{5}}) {
         auto plain=original(); plain[6]=static_cast<u8>(minor);
         const auto packed=compressFile(plain);
         REQUIRE(parseHeader(packed).hasCompression());

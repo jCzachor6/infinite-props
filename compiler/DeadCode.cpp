@@ -29,6 +29,7 @@ std::optional<std::size_t> discardableInputs(Opcode op) {
     case Opcode::I32ToF32: case Opcode::F32ToI32:
     case Opcode::ColorMix: case Opcode::ColorShade: case Opcode::ColorSetA:
     case Opcode::ColorMul: case Opcode::ColorScale:
+    case Opcode::ColorR: case Opcode::ColorG: case Opcode::ColorB: case Opcode::ColorA:
     case Opcode::Vec2Make: case Opcode::Vec2Add: case Opcode::Vec2Sub:
     case Opcode::Vec2Mul: case Opcode::Vec2Div: case Opcode::Vec2Neg:
     case Opcode::Vec2X: case Opcode::Vec2Y:

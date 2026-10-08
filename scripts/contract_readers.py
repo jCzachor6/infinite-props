@@ -146,13 +146,20 @@ def read_language(value):
         require(item['value_type'] == ('i32' if item['source_type'] in {'i32', 'u32'} else item['source_type']), 'expression input mapping')
         source_types.append(item['source_type'])
     require(len(source_types) == len(set(source_types)), 'unique source input types')
-    types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
+    types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment', 'components'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
         strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2'}, True)
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
     require(types['local_reassignment'] == 'exact_type', 'local reassignment')
+    require(type(types['components']) is list and bool(types['components']), 'components')
+    for item in types['components']:
+        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes', 'minimum_format_minor'], 'components')
+        require(item['type'] in VALUE_TYPES and item['result'] in VALUE_TYPES and item['assignable'] is False, 'component types')
+        strings(item['names'], 'component names', None, True)
+        require(type(item['opcodes']) is list and len(item['opcodes']) == len(item['names']) and all(type(op) is str for op in item['opcodes']), 'component opcodes')
+        integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
     require(type(types['implicit_widening']) is list, 'implicit widening')
     conversions = []
     for item in types['implicit_widening']:

@@ -116,6 +116,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         '; helper parameter types: ' + ', '.join(rules['types']['helper_parameters']) +
         '. Output-only geometry: ' + ', '.join(rules['types']['output_only_geometry']) + '.',
         f"Implicit widening: {widening}; local reassignment: {rules['types']['local_reassignment']}.",
+        'Read-only members: ' + '; '.join(item['type'] + ' ' + ', '.join('.' + name for name in item['names']) + ' -> ' + item['result'] for item in rules['types']['components']) + '.',
         f"Locals: {rules['locals']['declaration']}, {rules['locals']['scope']} scope, {rules['locals']['unexecuted_initializer']} if skipped; definite-assignment analysis: {str(rules['locals']['definite_assignment_analysis']).lower()}.",
         f"Uniform visibility: {rules['visibility']['uniforms']}; read-only: {str(rules['visibility']['uniforms_read_only']).lower()}.",
         f"Helper argument order: {language['call_rules']['helper_evaluation_order']}. Named arguments change execution order: {str(rules['effect_order']['named_arguments_change_evaluation_order']).lower()}.",

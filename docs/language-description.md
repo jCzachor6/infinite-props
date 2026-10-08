@@ -13,7 +13,7 @@ This is a capability description, not a promise of planned syntax.
 | --- | --- |
 | `product_version` | Toolchain release string from `PROJECT_VERSION`. |
 | `language_version.major`, `.minor` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. |
-| `format_version.major`, `.minor` | Binary format emitted by this compiler, from runtime constants. This is not a range of formats accepted by a loaded library. |
+| `format_version.major`, `.minor` | Newest binary format emitted by this compiler, from runtime constants. A file that needs no newer instruction keeps the oldest sufficient minor, at least 0.4. This is not a range of formats accepted by a loaded library. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |

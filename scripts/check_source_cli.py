@@ -28,7 +28,7 @@ def main():
             report = json.loads(process.stdout)
             assert report['status'] == expected_status, report
             assert report['schema_version'] == 1, report
-            assert report['language_version'] == {'major': 0, 'minor': 5}, report
+            assert report['language_version'] == {'major': 0, 'minor': 6}, report
             assert isinstance(report['product_version'], str), report
             assert isinstance(report['diagnostics'], list), report
             for diagnostic in report['diagnostics']:

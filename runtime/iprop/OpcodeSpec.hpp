@@ -59,6 +59,8 @@ struct OpcodeSpec {
 };
 
 std::span<const OpcodeSpec> opcodeSpecs();
+// The format minor a writer needs once `opcode` is in the file.
+u16 writtenMinor(u16 minor, Opcode opcode);
 const OpcodeSpec* findOpcode(Opcode opcode);
 const OpcodeSpec* findOpcode(std::string_view mnemonic);
 

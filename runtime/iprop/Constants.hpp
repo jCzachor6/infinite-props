@@ -7,7 +7,10 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 4;
+inline constexpr u16 kVersionMinor = 5;
+// Writers emit the oldest minor that holds every instruction (spec v0.5 §1),
+// never older than the 0.4 files written before format 0.5 existed.
+inline constexpr u16 kOldestWrittenMinor = 4;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 inline constexpr u32 kFlagCompressed = 1u << 1; // v0.4 zlib envelope
@@ -207,6 +210,12 @@ enum class Opcode : u8 {
     Smoothstep = 0xA1,
     Remap = 0xA2,
     Clamp = 0xA3,
+
+    // Colour channel reads (spec v0.5 §2; added in v0.5)
+    ColorR = 0xA4,
+    ColorG = 0xA5,
+    ColorB = 0xA6,
+    ColorA = 0xA7,
 
     // Parts (§9.10)
     PartDraw = 0xA0,
