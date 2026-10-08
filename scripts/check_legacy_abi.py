@@ -190,7 +190,9 @@ def gate(args, report):
     if peeled != RELEASE:
         raise GateFailure("release_pin", "v0.4.0 does not resolve to the pinned released commit")
     tag = command(["git", "rev-parse", "v0.4.0"], repository, report_dir, "release-tag")
-    archive = subprocess.run(["git", "archive", RELEASE], cwd=repository, capture_output=True, check=True).stdout
+    # Repository bytes on every host: git archive otherwise applies core.autocrlf (on by default on Windows).
+    archive = subprocess.run(["git", "-c", "core.autocrlf=false", "archive", RELEASE], cwd=repository,
+                             capture_output=True, check=True).stdout
     old_source = work / "released-source"
     old_source.mkdir()
     with tarfile.open(fileobj=io.BytesIO(archive)) as tree:
