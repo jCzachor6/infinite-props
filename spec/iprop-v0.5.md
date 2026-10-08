@@ -1,7 +1,6 @@
 # `.iprop` Format and Virtual Machine — Specification v0.5
 
-**Status:** Draft v0.5 contract (2026-10-08), frozen when product 0.6.0 is
-released.
+**Status:** Frozen v0.5 contract, released with product 0.6.0 (2026-10-08).
 **Scope:** Colour channel reads, uniform random ranges, distributions,
 gradients and segments, and named part instances with output coordinates in
 the caller's space. The v0.4 section, type, container, mathematical, canvas,

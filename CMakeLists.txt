@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(iprop
-    VERSION 0.5.0
+    VERSION 0.6.0
     DESCRIPTION "A portable binary format and toolchain for seed-based procedural 2D assets"
     LANGUAGES C CXX)
 

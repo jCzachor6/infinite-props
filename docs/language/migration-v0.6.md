@@ -1,16 +1,15 @@
 # Migration and contracts for 0.6
 
-This chapter describes source language 0.6 as implemented in the current
-checkout. It is in development on top of product 0.5.0; the product release
-number is separate.
+This chapter describes source language 0.6, released with product 0.6.0.
+The product release number is separate from the language version.
 
 ## Independent versions
 
-| Contract | 0.5 release | Current 0.6 development |
+| Contract | 0.5 release | 0.6 release |
 | --- | --- | --- |
-| Product | 0.5.0 | 0.5.0 until the 0.6.0 release |
+| Product | 0.5.0 | 0.6.0 |
 | Source language | 0.5 | 0.6 |
-| Binary format | 0.4, accepting legacy 0.1–0.3 | 0.5 draft when needed, accepting 0.1–0.4 |
+| Binary format | 0.4, accepting legacy 0.1–0.3 | 0.5 when needed, accepting 0.1–0.4 |
 | Runtime C API feature version | 0.3 | 0.3, unchanged |
 | Shared-library compatibility line | SONAME/install-name 0.4 | 0.4, unchanged |
 
@@ -20,7 +19,7 @@ runtime from
 product 0.5.0 or older rejects a 0.5 file by its version instead of misreading
 it, and still runs the 0.4 files. The current runtime loads and generates
 frozen 0.1–0.4 files with unchanged pixels, outputs, RNG, traps and fuel. The
-draft [format 0.5 specification](../../spec/iprop-v0.5.md) lists the new
+[format 0.5 specification](../../spec/iprop-v0.5.md) lists the new
 instructions; compressed containers keep their 0.4 envelope.
 
 ## Color channel reads

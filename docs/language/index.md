@@ -5,11 +5,11 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements source language **0.6**, in development on top of
-product 0.5.0. Product, source language, binary format, C API and ABI versions
-are independent: `ipc --describe-language` reports the versions of the compiler
-being used. Language 0.6 emits the draft binary format 0.5 when a file needs
-it, otherwise 0.4; the ABI remains 0.4.
+This checkout implements source language **0.6**, released with product
+0.6.0. Product, source language, binary format, C API and ABI versions are
+independent: `ipc --describe-language` reports the versions of the compiler
+being used. Language 0.6 emits binary format 0.5 when a file needs it,
+otherwise 0.4; the ABI remains 0.4.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected

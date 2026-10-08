@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## v0.6.0 — 2026-10-08
 
-In development: source language 0.6 and draft format 0.5. The product stays
-0.5.0 until the 0.6.0 release; C API 0.3 and ABI line 0.4 are unchanged.
+Product/editor/website version: 0.6.0. Source language: 0.6. Format: 0.5,
+for files that use its instructions or have parts; other files stay 0.4. C
+API: 0.3, unchanged, on ABI line / SONAME 0.4. Migration and packaging
+instructions: [release notes](docs/release-v0.6.md).
 
 - Language: `c.r`, `c.g`, `c.b` and `c.a` read the channels of any color
   value as `i32` in 0–255. The base is evaluated once; channels of constant
@@ -24,7 +26,7 @@ In development: source language 0.6 and draft format 0.5. The product stays
   and between two `vec2` values one point of the segment; all channels or
   components share that position, and `with` steers it on 0 to 1.
   `color.mix()` keeps its first-alpha rule.
-- Format 0.5 (draft, [spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
+- Format 0.5 ([spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
   `color.b` and `color.a` (0xA4–0xA7); `rng.int` (rejection sampling over
   full u32 draws, at most 31 draws in practice) and `rng.float` (0xA8–0xA9),
   which trap on reversed or non-finite bounds; type code 4 `distribution`,
@@ -56,6 +58,14 @@ In development: source language 0.6 and draft format 0.5. The product stays
   part descriptor reports the name with `name_present == 1`. The assembler
   declares instances as `part NAME instance [PARENT]:`, and a part slot
   shadowed by a root output name is written `part.output`.
+- Examples: `examples/colony`, three levels of nested parts with a firefly at
+  every reported cap peak, and `examples/previews` for metal gradients,
+  distribution-shaped widths of the same seeds and `vec2` segments. Native
+  and WASM render them bit for bit.
+- Runtime matrix: registered released sources whose meaning changes on
+  purpose (the two that read placed part outputs) are recorded result by
+  result; the [0.6 matrix](docs/optimization-acceptance-v0.6.md) runs the
+  frozen 0.4 binaries, released and current sources in all eight modes.
 - Build: Windows executables reserve an 8 MiB stack, like Linux and macOS
   main threads, so compiling a helper chain as deep as the call limit no
   longer overflows MSVC's 1 MiB default.

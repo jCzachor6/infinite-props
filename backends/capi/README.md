@@ -52,7 +52,7 @@ language, emitted format, C API and C ABI versions. The generated handbook is
 [export contracts and the schema-1 migration](../../docs/export-contracts.md).
 
 The runtime accepts frozen 0.1–0.4 files, v0.4 compressed containers and the
-draft format 0.5 emitted by the current compiler.
+format 0.5 emitted by the 0.6 compiler.
 Loading expands and validates the complete file before generation; the
 program owns the expanded bytes. The six legacy C API 0.2 entry points and
 their struct layouts are unchanged by additive API 0.3. CMake consumers

@@ -39,8 +39,8 @@ Verification compares source constants, compiler exports and every artifact
 matrix. Valid checksums cannot override version mismatches.
 
 Current handbooks use the source-language filename `language-v0.6.md`, not
-the product version. The emitted format is specified by the draft
-`spec/iprop-v0.5.md`, frozen when it is released. Product release tags, source language, emitted format,
+the product version. The emitted format is specified by the frozen
+`spec/iprop-v0.5.md`. Product release tags, source language, emitted format,
 C API features and the ABI loader line are never inferred from one another.
 
 Formal schemas check structure. Small protocol readers additionally check

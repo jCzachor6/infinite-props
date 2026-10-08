@@ -539,10 +539,14 @@ handbook, bit-exact compiler optimizations and lossless compression. v0.5.0
 adds signed defaults, `ipc --check` with JSON diagnostics, named helper/part
 arguments, comment-preserving formatting, the language export and
 `LLM_REFERENCE.md`, and C API 0.3: reflection, parameter sets, structured
-errors, image views and typed output reads. Product 0.5.0, source language
-0.5, format 0.4 (with frozen 0.1–0.3 reader compatibility), C API 0.3 and ABI
-line 0.4 are separate contracts; the API 0.2 layouts are unchanged.
-Migration and release commands are in [the 0.5 notes](docs/release-v0.5.md).
+errors, image views and typed output reads. v0.6.0 adds color channel reads,
+`lo to hi` random ranges over numbers, colors and `vec2` segments, the
+`distribution` type with gaussian, triangular and beta shapes, and nested
+parts whose outputs read in the caller's coordinates. Product 0.6.0, source
+language 0.6, format 0.5 (with frozen 0.1–0.4 reader compatibility), C API
+0.3 and ABI line 0.4 are separate contracts; the API 0.2 layouts are
+unchanged. Migration and release commands are in
+[the 0.6 notes](docs/release-v0.6.md).
 Source, native SDK, WASM and website packages are published by the tagged
 release workflow after validation and can also be built locally.
 GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website

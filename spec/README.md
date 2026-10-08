@@ -13,7 +13,7 @@ that every compiler and interpreter MUST implement.
 | [iprop-v0.2.md](iprop-v0.2.md) | **v0.2 — frozen** | Version-gated trigonometry and math; all frozen 0.1 layouts and algorithms remain supported |
 | [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 — frozen** | Vectors, SDF queries and Bézier strokes, procedural noise, colour and curve utilities, palette ramps and D4 part transforms; all frozen 0.1/0.2 layouts and algorithms remain supported |
 | [iprop-v0.4.md](iprop-v0.4.md) | **v0.4 — frozen** | Lossless bounded zlib/DEFLATE containers; frozen 0.1–0.3 files, VM behavior and output bits remain supported |
-| [iprop-v0.5.md](iprop-v0.5.md) | v0.5 — draft | Colour channel reads, random ranges, distributions, gradients and segments, named part instances with outputs in caller coordinates; frozen 0.1–0.4 files, VM behavior and output bits remain supported |
+| [iprop-v0.5.md](iprop-v0.5.md) | **v0.5 — frozen** | Colour channel reads, random ranges, distributions, gradients and segments, named part instances with outputs in caller coordinates; frozen 0.1–0.4 files, VM behavior and output bits remain supported |
 
 The `.ips` language compiles to this contract. Its complete authoring reference
 is the [language handbook](../docs/language/index.md), checked against the
