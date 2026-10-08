@@ -7,8 +7,6 @@
 #include <algorithm>
 #include <bit>
 #include <charconv>
-#include <iomanip>
-#include <sstream>
 #include <type_traits>
 
 namespace iprop::ips {
@@ -45,11 +43,19 @@ std::string canonicalLiteral(const Literal& literal) {
     if (literal.kind == Literal::Kind::Color) {
         Color color;
         if (parseColor(literal.text, color)) {
-            std::ostringstream out;
-            out << '#' << std::hex << std::setfill('0');
-            for (const auto channel : {color.r, color.g, color.b}) out << std::setw(2) << static_cast<unsigned>(channel);
-            if (color.a != 255) out << std::setw(2) << static_cast<unsigned>(color.a);
-            return out.str();
+            // Plain string appends: an iostream would turn an allocation
+            // failure into a silently truncated literal on some libraries.
+            constexpr char kHex[] = "0123456789abcdef";
+            std::string out = "#";
+            const auto append = [&](unsigned channel) {
+                out += kHex[channel >> 4];
+                out += kHex[channel & 15];
+            };
+            append(color.r);
+            append(color.g);
+            append(color.b);
+            if (color.a != 255) append(color.a);
+            return out;
         }
     }
     if (literal.kind == Literal::Kind::String) return quoteSource(literal.text);

@@ -60,7 +60,10 @@ int main() {
         armed = false;
         const auto count = allocations;
         if (count == 0 || measured != expected ||
-            iprop::ips::formatProgram(iprop::ips::parse(expected)) != expected) return 1;
+            iprop::ips::formatProgram(iprop::ips::parse(expected)) != expected) {
+            std::fprintf(stderr, "unstable formatting: fixture %zu, %zu allocations\n", fixture, count);
+            return 1;
+        }
         for (const bool mode : {false, true}) {
             persistent = mode;
             for (std::size_t at = 0; at < count; ++at) {
@@ -72,7 +75,11 @@ int main() {
                 try {
                     const auto output = iprop::ips::formatProgram(program);
                     armed = false;
-                    if (output != expected) return 2;
+                    if (output != expected) {
+                        std::fprintf(stderr, "fault changed the output: fixture %zu, allocation %zu, persistent %d\n",
+                            fixture, at, mode);
+                        return 2;
+                    }
                 } catch (const std::bad_alloc&) {
                     armed = false;
                     caught = true;
@@ -91,7 +98,10 @@ int main() {
             }
         }
         // A failed formatter call must not mutate the caller's source snapshot.
-        if (iprop::ips::formatProgram(program) != expected) return 5;
+        if (iprop::ips::formatProgram(program) != expected) {
+            std::fprintf(stderr, "failed formatting changed the source: fixture %zu\n", fixture);
+            return 5;
+        }
         std::printf("fixture %zu: %zu allocations, both fault modes contained\n", fixture, count);
     }
     std::printf("%zu allocation failures contained\n", faults);
