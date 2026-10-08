@@ -847,6 +847,74 @@
               ],
               "additionalProperties": true,
               "description": "Optional, added with distributions in source language 0.6: a range shaped by a distribution, 'lower to upper with d'."
+            },
+            "ends": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "color",
+                      "vec2"
+                    ],
+                    "description": "Type of both ends."
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "color",
+                      "vec2"
+                    ],
+                    "description": "Value type of the draw."
+                  },
+                  "coefficient": {
+                    "type": "string",
+                    "enum": [
+                      "shared_unit_interval"
+                    ],
+                    "description": "One coefficient 0.0 to 1.0, with the range's distribution if any, shared by every channel or component."
+                  },
+                  "mixed": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "description": "Channel or component name."
+                    },
+                    "description": "Channels or components interpolated with the shared coefficient.",
+                    "uniqueItems": true,
+                    "minItems": 1
+                  },
+                  "opcode": {
+                    "type": "string",
+                    "description": "Instruction mnemonic of the mix."
+                  },
+                  "minimum_format_minor": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 255,
+                    "description": "Oldest binary format minor containing the mix."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic effects of the mix, excluding the coefficient draw."
+                  }
+                },
+                "required": [
+                  "type",
+                  "result",
+                  "coefficient",
+                  "mixed",
+                  "opcode",
+                  "minimum_format_minor",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "Colors or vec2 values as range ends."
+              },
+              "description": "Optional, added with gradients in source language 0.6: ranges between two colors or two vec2 values.",
+              "minItems": 1
             }
           },
           "required": [

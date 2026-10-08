@@ -20,6 +20,16 @@ Color colorMix(Color a, Color b, f32 t) {
     return Color{channel(a.r, b.r), channel(a.g, b.g), channel(a.b, b.b), a.a};
 }
 
+Color colorMixRgba(Color a, Color b, f32 t) {
+    t = f32MinMax(f32MinMax(t, 0.f, true), 1.f, false);
+    const auto channel = [t](u8 x, u8 y) {
+        const auto mixed = static_cast<u8>(std::fma(static_cast<f32>(x), 1.f - t,
+                                                    static_cast<f32>(y) * t));
+        return std::clamp(mixed, std::min(x, y), std::max(x, y));
+    };
+    return Color{channel(a.r, b.r), channel(a.g, b.g), channel(a.b, b.b), channel(a.a, b.a)};
+}
+
 Color colorShade(Color c, i32 amount) {
     const auto channel = [amount](u8 x) {
         return static_cast<u8>(std::clamp(static_cast<i64>(x) + amount, i64{0}, i64{255}));

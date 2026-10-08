@@ -51,7 +51,7 @@ to highest; parentheses explicitly select grouping.
 | 3–5 | `\|`, `^`, `&` | `i32` |
 | 6 | `==`, `!=` | numeric |
 | 7 | `<`, `<=`, `>`, `>=` | numeric |
-| 8 | `to` (random range, not chainable) | numeric; see [random ranges](random.md#random-ranges-with-to) |
+| 8 | `to` (random range, not chainable) | numbers, two colors or two vec2 values; see [random ranges](random.md#random-ranges-with-to) |
 | 9 | `<<`, `>>` | `i32` |
 | 10 | `+`, `-` | numeric or vector/vector |
 | 11 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |

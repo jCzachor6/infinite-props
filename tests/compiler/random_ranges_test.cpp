@@ -248,10 +248,10 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
     }
     CHECK(sourceError("asset t { size 1x1 draw { x = 0 to 5 x = 1.5 } }").find("cannot assign f32") !=
           std::string::npos);
-    CHECK(sourceError("asset t { size 1x1 draw { x = #000 to #fff } }") ==
-          "'to' needs numeric bounds, got color and color");
+    CHECK(sourceError("asset t { size 1x1 draw { x = #000 to 5 } }") ==
+          "'to' needs two numbers, two colors or two vec2 values, got color and i32");
     CHECK(sourceError("asset t { size 1x1 draw { x = {0, 0} to 5 } }") ==
-          "'to' needs numeric bounds, got vec2 and i32");
+          "'to' needs two numbers, two colors or two vec2 values, got vec2 and i32");
 }
 
 TEST_CASE("bounds evaluate once, lower first, before the draw") {

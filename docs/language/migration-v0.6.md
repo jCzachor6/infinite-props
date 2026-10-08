@@ -40,6 +40,14 @@ statement, `to = ...`, `to.draw(...)` and a call of a declared helper
 `to(...)` still start the next statement. Write the operator in parentheses
 to use it there, for example `x = (1 to (5))`.
 
+## Gradients and segments
+
+`to` also accepts two colors or two `vec2` values and draws one shared
+position between them (see [gradients](random.md#gradients-and-segments)),
+optionally steered by `with`. The format 0.5 instructions `color.mix.rgba` and
+`vec2.mix` perform the mix; `color.mix()` keeps its old meaning, including the
+first color's alpha.
+
 ## Distributions
 
 The new `distribution` type describes a gaussian, triangular or beta

@@ -60,6 +60,7 @@ std::optional<Value> evaluateConstant(Opcode op, std::span<const Value> args) {
     case Opcode::ColorShade: return math::colorShade(c(0), i(1));
     case Opcode::ColorSetA: return math::colorSetA(c(0), i(1));
     case Opcode::ColorMul: return math::colorMul(c(0), c(1));
+    case Opcode::ColorMixRgba: return math::colorMixRgba(c(0), c(1), f(2));
     case Opcode::ColorScale: return math::colorScale(c(0), f(1));
     case Opcode::ColorHsv:
         if (!std::isfinite(f(1))) return std::nullopt; // preserve the runtime trap

@@ -228,6 +228,10 @@ enum class Opcode : u8 {
     RngIntWith = 0xAD,
     RngFloatWith = 0xAE,
 
+    // Gradients and segments (spec v0.5 §6; added in v0.5)
+    ColorMixRgba = 0xAF,
+    Vec2Mix = 0xB0,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };

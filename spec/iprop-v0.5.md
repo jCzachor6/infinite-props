@@ -2,9 +2,9 @@
 
 **Status:** Draft v0.5 contract (2026-10-08), frozen when product 0.6.0 is
 released.
-**Scope:** Colour channel reads, uniform random ranges and distributions. The
-v0.4 section, type, container, mathematical, canvas, output, fuel and
-validation semantics remain frozen.
+**Scope:** Colour channel reads, uniform random ranges, distributions,
+gradients and segments. The v0.4 section, type, container, mathematical,
+canvas, output, fuel and validation semantics remain frozen.
 This document inherits [v0.4](iprop-v0.4.md), with the changes below taking
 precedence. The `.ips` language and compiler optimizations are separate.
 
@@ -326,10 +326,36 @@ the reference test corpus, by `betaQuantile` for shapes between 0.01 and
 traps instead of returning an inaccurate value. The `2^-30` tolerance is
 finer than the `2^-32` resolution of `u`.
 
-## 5. Conformance
+## 5. Gradients and segments
+
+| Op | Mnemonic | Stack | Semantics |
+| -- | -------- | ----- | --------- |
+| 0xAF | color.mix.rgba | `[c c f32] -> [c]` | all four channels mixed, each kept between its two ends |
+| 0xB0 | vec2.mix | `[vec2 vec2 f32] -> [vec2]` | the point of the segment at `t`, kept between its two ends |
+
+Both clamp `t` to `[0, 1]` with `minNum(maxNum(t, 0), 1)` (v0.3 §12.8), so a
+NaN `t` selects the first end. `color.mix.rgba` applies the pinned channel
+formula of `color.mix` (v0.3 §12.6), `u8(fma(x, 1 - t, y * t))` with
+truncation, to R, G, B and A alike, then replaces a channel below
+`min(x, y)` or above `max(x, y)` with that bound; equal colours are returned
+unchanged. Unlike `color.mix`, alpha is mixed rather than copied.
+
+`vec2.mix` traps with a numeric-range error if any of the four end
+components is NaN or infinite. Otherwise each component is
+`x * (1 - t) + y * t` in binary32 without fused multiply-add, replaced by
+`min(x, y)` or `max(x, y)` when rounding leaves that interval, so the result
+never overflows and equal ends are returned unchanged.
+
+Neither instruction touches the stream, canvas or outputs; each costs 1 fuel
+unit. The 0xAF-0xB0 opcodes MUST appear only in files with minor version 5
+or later. The language lowers a colour or vector `a to b [with d]` to `a`,
+`b`, a coefficient `0.0 to 1.0 [with d]` (§3.2 or §4.3) and one of these
+instructions, so all channels or components share one stream step.
+
+## 6. Conformance
 
 Every 0.1–0.4 file MUST produce the same pixels, structured output bits,
 RNG state, traps and fuel use as under v0.4. Backends MUST return the four
 channel bytes of every colour exactly, including alpha 0 and 255, and MUST
-reproduce the range and distribution results, stream states, traps and fuel
-use of §3 and §4 bit for bit.
+reproduce the range, distribution, gradient and segment results, stream
+states, traps and fuel use of §3–§5 bit for bit.

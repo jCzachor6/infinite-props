@@ -201,6 +201,13 @@ def read_language(value):
         require(ranges['mixed_numeric_bounds'] == 'widen_to_f32' and ranges['equal_bounds'] == 'bound_after_one_draw', 'random range rules')
         strings(ranges['traps'], 'random range traps')
         effects(ranges['effects'], 'random range effects')
+        # Gradient ends came after the first 0.6 exports; validate when present.
+        for item in ranges.get('ends', []):
+            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'minimum_format_minor', 'effects'], 'random range ends')
+            require(item['type'] in {'color', 'vec2'} and item['result'] == item['type'] and item['coefficient'] == 'shared_unit_interval' and type(item['opcode']) is str, 'random range ends')
+            strings(item['mixed'], 'random range mixed', None, True)
+            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
+            effects(item['effects'], 'random range ends effects')
         # Distributions came after the first 0.6 exports; validate when present.
         if 'with' in ranges:
             shaped = obj(ranges['with'], ['keyword', 'type', 'evaluation_order', 'overloads', 'truncation', 'integer_rounding', 'fuel', 'traps', 'effects'], 'random range with')

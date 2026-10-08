@@ -20,6 +20,8 @@ evaluated; it is not a list or a stored range. Both bounds are included:
 | --- | --- | --- |
 | `i32` and `i32` | `i32` | every integer in the range equally often |
 | any `f32` bound | `f32` | uniform between the bounds; an `i32` bound widens |
+| `color` and `color` | `color` | one position on the RGBA gradient ([gradients](#gradients-and-segments)) |
+| `vec2` and `vec2` | `vec2` | one point of the segment ([segments](#gradients-and-segments)) |
 
 ```text
 offset = -5 to 5          // one of -5, -4, ..., 5
@@ -50,6 +52,34 @@ statement, as before; inside parentheses or arguments `to` is always the
 operator. `range()` and `index()` keep their own algorithms and results, so
 existing generators keep their draws; switching them to `to` changes the
 stream.
+
+### Gradients and segments
+
+Between two colors or two `vec2` values, `to` draws one position `t` from 0
+to 1 and moves every channel or component by it, so they never vary
+independently. `#000000 to #ffffff` gives only grays, and
+`{0.0, 0.0} to {1.0, 1.0}` only points with equal coordinates; write
+`{0.0 to 1.0, 0.0 to 1.0}` for two independent draws.
+
+```text
+metal = #705845ff to #c8c8c8ff
+position = {12.0, 48.0} to {40.0, 56.0}
+distribution middle = gaussian(mean=0.5, sigma=0.15)
+metal = #705845ff to #e8e8e8ff with middle      // mostly mid-gradient
+```
+
+With `with`, the distribution describes `t` on 0 to 1, as in
+`0.0 to 1.0 with d`, so use a description in those units. Swapping the ends
+reverses the direction a skewed distribution favours. One stream step is
+drawn even for equal ends.
+
+Colors mix their stored RGBA8 channels with the `color.mix` formula, alpha
+included (unlike `color.mix`, which keeps the first alpha); there is no HSV
+or linear-light conversion. Channels truncate as in `color.mix`: every byte
+from a channel's smaller end up to one below its larger end is equally
+likely, and the larger end itself appears only at the exact end of a
+distribution's range. Vectors interpolate each component in `f32` and stay on
+the segment, even for opposite large ends; an infinite or NaN end traps.
 
 <!-- example: ../../examples/language/errors/chained-range.ips -->
 

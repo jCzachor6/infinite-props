@@ -27,7 +27,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
-    case Opcode::ColorHsv: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::ColorHsv: case Opcode::Vec2Mix: return {R::None,false,false,check(C::NumericRange)};
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
@@ -201,6 +201,8 @@ constexpr OpcodeSpec kSpecs[] = {
           StackSignature({S::F32, S::F32, S::F32, S::F32}, V::Distribution)),
     fixed(Opcode::RngIntWith, "rng.int.with", 5, StackSignature({S::I32, S::I32, S::Distribution}, V::I32)),
     fixed(Opcode::RngFloatWith, "rng.float.with", 5, StackSignature({S::F32, S::F32, S::Distribution}, V::F32)),
+    fixed(Opcode::ColorMixRgba, "color.mix.rgba", 5, StackSignature({S::Color, S::Color, S::F32}, V::Color)),
+    fixed(Opcode::Vec2Mix, "vec2.mix", 5, StackSignature({S::Vec2, S::Vec2, S::F32}, V::Vec2)),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

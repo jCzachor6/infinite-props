@@ -4,6 +4,8 @@ Vectors and all geometry calculations use binary32. Signed distances are
 negative inside closed shapes, zero on their boundary and positive outside.
 Segment/Bézier distances are unsigned. Distance queries do not paint pixels;
 combine them with `fill` and a color operation to author coverage.
+A random point of a segment is `a to b` between two `vec2` values; see
+[segments](random.md#gradients-and-segments).
 
 <!-- example: ../../examples/language/geometry.ips -->
 

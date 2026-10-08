@@ -18,6 +18,14 @@ bool stepColor(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::ColorMixRgba: {
+        const f32 t = ex.popF32();
+        const Color b = ex.popColor();
+        const Color a = ex.popColor();
+        ex.push(Value(math::colorMixRgba(a, b, t)));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::ColorShade: {
         const i32 amount = ex.popI32();
         const Color c = ex.popColor();

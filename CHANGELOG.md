@@ -20,6 +20,10 @@ In development: source language 0.6 and draft format 0.5. The product stays
   restricted to the range, never clamping; `i32` ranges round half away from
   zero. Parameters are checked when the constructor runs; helpers named like
   the constructors keep their calls.
+- Language: `to` between two colors draws one position on the RGBA gradient
+  and between two `vec2` values one point of the segment; all channels or
+  components share that position, and `with` steers it on 0 to 1.
+  `color.mix()` keeps its first-alpha rule.
 - Format 0.5 (draft, [spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
   `color.b` and `color.a` (0xA4–0xA7); `rng.int` (rejection sampling over
   full u32 draws, at most 31 draws in practice) and `rng.float` (0xA8–0xA9),
@@ -27,14 +31,16 @@ In development: source language 0.6 and draft format 0.5. The product stays
   `distribution.gaussian`, `.triangular`, `.beta` and `rng.int.with`,
   `rng.float.with` (0xAA–0xAE) with pinned binary64 kernels (AS241,
   Lanczos, incomplete beta, a bounded quantile solver), inverse-CDF
-  truncation and fuel per kernel iteration. The compiler and assembler
+  truncation and fuel per kernel iteration; `color.mix.rgba` and `vec2.mix`
+  (0xAF–0xB0) for gradients and segments. The compiler and assembler
   write 0.5 only when a file uses these instructions; other files stay 0.4.
   Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
   0.4 envelope.
 - Language export: `source_rules.types.components` lists the readable
   members of `vec2` and `color` with their result types and instructions;
   `source_rules.random_range` describes the `to` operator and, under
-  `with`, its distribution form; `distribution` joins the type lists.
+  `with`, its distribution form and, under `ends`, color and vec2 ends;
+  `distribution` joins the type lists.
 
 ## v0.5.0 — 2026-10-08
 

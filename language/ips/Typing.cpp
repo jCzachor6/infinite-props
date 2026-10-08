@@ -353,13 +353,15 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
 }
 
 // `lo to hi [with d]`: i32 bounds draw an i32; any f32 bound widens both to
-// f32. Bounds type before the distribution, in evaluation order.
+// f32. Two colors or two vec2 values draw one position between them. Bounds
+// type before the distribution, in evaluation order.
 ValueType Typer::typeRandomRange(const RandomRange& range) {
     const ValueType lower = typeOf(*range.lower);
     const ValueType upper = typeOf(*range.upper);
-    if (!isNumeric(lower) || !isNumeric(upper)) {
-        error(range.location, "'to' needs numeric bounds, got " + std::string(typeName(lower)) +
-                                  " and " + typeName(upper));
+    const bool ends = lower == upper && (lower == ValueType::Color || lower == ValueType::Vec2);
+    if (!ends && (!isNumeric(lower) || !isNumeric(upper))) {
+        error(range.location, "'to' needs two numbers, two colors or two vec2 values, got " +
+                                  std::string(typeName(lower)) + " and " + typeName(upper));
     }
     if (range.distribution) {
         const ValueType shape = typeOf(*range.distribution);
@@ -371,7 +373,7 @@ ValueType Typer::typeRandomRange(const RandomRange& range) {
             throw mismatch;
         }
     }
-    return promote(lower, upper);
+    return ends ? lower : promote(lower, upper);
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {

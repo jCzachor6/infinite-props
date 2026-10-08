@@ -31,6 +31,7 @@ const sources = [
     ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
     ["random-ranges", "backends/html5/test/fixtures/random-ranges.ips"],
     ["distributions", "backends/html5/test/fixtures/distributions.ips"],
+    ["gradients", "backends/html5/test/fixtures/gradients.ips"],
     ["named-arguments", "backends/html5/test/fixtures/named-arguments.ips"],
     ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
@@ -359,6 +360,12 @@ function run(iprop, toolsDir) {
             "distribution is not initialized", "random range has no probability under the distribution"];
         for (let variant = 0; variant < distributionTraps.length; ++variant) {
             compareTrap(distributionErrors, variant, distributionTraps[variant]);
+        }
+        const segmentErrors = path.join(temporary, "segment-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/segment-errors.ips"), "-o", segmentErrors]);
+        for (let variant = 0; variant < 2; ++variant) {
+            compareTrap(segmentErrors, variant, "vec2 segment ends must be finite");
         }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);

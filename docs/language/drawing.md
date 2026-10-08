@@ -69,6 +69,9 @@ draws. It operates on pixels already drawn, so place it after the base shapes.
 
 <!-- example: ../../examples/language/colors.ips -->
 
+A random color between two ends is `#705845ff to #c8c8c8ff`; see
+[gradients](random.md#gradients-and-segments).
+
 ### Color channels
 
 `c.r`, `c.g`, `c.b` and `c.a` read the stored RGBA8 channels of any color

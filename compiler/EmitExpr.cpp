@@ -81,10 +81,17 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto* range = std::get_if<ips::RandomRange>(&expr)) {
         // Lower, then upper, then the distribution, each once; the draw
         // follows all of their effects.
-        const bool integer = current_->typeOf(expr) == ips::ValueType::I32;
+        const auto type = current_->typeOf(expr);
+        const bool integer = type == ips::ValueType::I32;
+        const bool ends = type == ips::ValueType::Color || type == ips::ValueType::Vec2;
         for (const auto* bound : {range->lower.get(), range->upper.get()}) {
             emitExpr(*bound);
-            if (!integer && current_->typeOf(*bound) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+            if (!integer && !ends && current_->typeOf(*bound) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        }
+        if (ends) {
+            // Colors and vec2 share one position t = (0.0 to 1.0 [with d]).
+            emitConst(0.0f);
+            emitConst(1.0f);
         }
         if (range->distribution) {
             emitExpr(*range->distribution);
@@ -92,7 +99,8 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         } else {
             ins(integer ? Opcode::RngInt : Opcode::RngFloat);
         }
-        return integer ? ips::ValueType::I32 : ips::ValueType::F32;
+        if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
+        return type;
     }
     error(ips::locationOf(expr), "unsupported expression");
 }

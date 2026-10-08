@@ -69,6 +69,16 @@ Json randomRange() {
             {"opcode", spec->mnemonic}, {"minimum_format_minor", spec->minimumMinor},
             {"bounds", "inclusive"}, {"draws", Json::object({{"minimum", 1}, {"maximum", maximumDraws}})}});
     };
+    // Colors and vec2 values: one shared coefficient 0.0 to 1.0 [with d],
+    // then the mix of all channels or components.
+    const auto ends = [](ips::ValueType type, Opcode opcode, std::initializer_list<const char*> parts) {
+        const auto* spec = findOpcode(opcode);
+        Json names = Json::array();
+        for (const char* part : parts) names.push_back(part);
+        return Json::object({{"type", ips::typeName(type)}, {"result", ips::typeName(type)},
+            {"coefficient", "shared_unit_interval"}, {"mixed", std::move(names)}, {"opcode", spec->mnemonic},
+            {"minimum_format_minor", spec->minimumMinor}, {"effects", operationEffects(spec->effects)}});
+    };
     return Json::object({{"operator", "to"}, {"keyword", "contextual"},
         {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
         {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
@@ -85,7 +95,9 @@ Json randomRange() {
             {"fuel", "one_plus_kernel_iterations"},
             {"traps", Json::array({"uninitialized_distribution", "equal_bounds_outside_support",
                                    "no_probability_in_range", "kernel_iteration_limit"})},
-            {"effects", operationEffects(findOpcode(Opcode::RngIntWith)->effects)}})}});
+            {"effects", operationEffects(findOpcode(Opcode::RngIntWith)->effects)}})},
+        {"ends", Json::array({ends(ips::ValueType::Color, Opcode::ColorMixRgba, {"r", "g", "b", "a"}),
+                              ends(ips::ValueType::Vec2, Opcode::Vec2Mix, {"x", "y"})})}});
 }
 
 Json sourceRules() {

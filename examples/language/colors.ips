@@ -11,10 +11,14 @@ asset ColorHelpers {
     scaled = color.scale(multiplied, 0.8)
     adjusted = color.hsv(scaled, 0.25, 1.0, 1.0)
     warmer = rgba(adjusted.r + 5, adjusted.g - 3, adjusted.b, adjusted.a)
+    metal = #705845ff to #c8c8c8ff
+    bright = #705845ff to #e8e8e8ff with beta(alpha=5.0, beta=2.0)
     opacity = float(glaze.a) / 255.0
     rect(0, 0, 8, 8, base)
     rect(2, 2, 4, 4, glaze)
     pixel(1, 1, warmer)
+    pixel(2, 1, metal)
+    pixel(3, 1, bright)
     if (opacity > 0.5 && base.b == 96) {
       pixel(6, 6, #fff)
     }

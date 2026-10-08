@@ -120,6 +120,8 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         lines.append(f"Random range: `lower to upper`, binding tighter than `{rules['random_range']['precedence']['tighter_than']}` and looser than `{rules['random_range']['precedence']['looser_than']}`; bounds evaluate lower then upper, once, then one draw; "
             + '; '.join(f"{item['lower']} bounds -> {item['result']} via {item['opcode']}" for item in rules['random_range']['overloads'])
             + f"; mixed numbers {rules['random_range']['mixed_numeric_bounds'].replace('_', ' ')}; chaining: {str(rules['random_range']['chaining']).lower()}.")
+        if 'ends' in rules['random_range']:
+            lines.append('Gradients and segments: ' + '; '.join(f"{item['type']} to {item['type']} mixes {', '.join(item['mixed'])} with one shared 0-1 coefficient via {item['opcode']}" for item in rules['random_range']['ends']) + '.')
         if 'with' in rules['random_range']:
             shaped = rules['random_range']['with']
             lines.append(f"`lower to upper with d` draws from the distribution `d` {shaped['truncation'].replace('_', ' ')}, evaluating {', '.join(shaped['evaluation_order'])}; i32 bounds round {shaped['integer_rounding'].replace('_', ' ')}.")
