@@ -160,7 +160,7 @@ TEST_CASE("parser recovery reports EOF once without nested cascades", "[parser-r
 TEST_CASE("parser recovery converts lexical failures into one typed diagnostic", "[parser-recovery]") {
     for (const auto& source : {std::string("asset a { draw { @ } }"),
                               std::string("import p from \"unterminated"),
-                              std::string("asset a {}") + char(0xff)}) {
+                              std::string("asset a {}") + '\xff'}) {
         const auto result = parseRecovering(source);
         REQUIRE(result.diagnostics.size() == 1);
         CHECK_FALSE(result.valid());

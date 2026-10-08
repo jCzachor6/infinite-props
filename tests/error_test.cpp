@@ -191,7 +191,7 @@ TEST_CASE("unusable debug maps do not claim a source line or alter the trap", "[
     const auto debug = parseDebug(loaded.bytes(), section);
     const auto instructionsAt = section.offset + 8 + debug.functions[0].localNames.size() * 4;
     const auto lineAt = instructionsAt + 4 + before.pc * 4;
-    for (const auto [at, value] : {std::pair<std::size_t, u32>{section.offset, 0},
+    for (const auto& [at, value] : {std::pair<std::size_t, u32>{section.offset, 0},
              {section.offset + 4, UINT32_MAX}, {instructionsAt, 0}, {lineAt, 0}}) {
         auto bytes = original;
         for (unsigned shift = 0; shift < 4; ++shift)

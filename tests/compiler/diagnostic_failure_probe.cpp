@@ -9,6 +9,12 @@ bool faultArmed=false, persistentFault=false;
 std::size_t allocationIndex=0, failAt=0;
 }
 
+// The replacements below pair malloc/free; GCC sees free() on memory from
+// the replaced operator new after inlining and warns about a mismatch.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
+#endif
 void* operator new(std::size_t size) {
     if (faultArmed && allocationIndex++ >= failAt) {
         if (!persistentFault) faultArmed=false;
@@ -22,6 +28,9 @@ void operator delete(void* pointer) noexcept { std::free(pointer); }
 void operator delete[](void* pointer) noexcept { std::free(pointer); }
 void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
 void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 #define main ipropActualCompilerMain
 #include "../../tools/ipc.cpp"

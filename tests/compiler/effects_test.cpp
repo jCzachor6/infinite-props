@@ -167,7 +167,7 @@ TEST_CASE("intrinsic trap summaries exclude argument traps and execution-wide re
 
 TEST_CASE("part summaries distinguish placement checks missing outputs and isolated RNG", "[effects]") {
     const auto child = ips::parse(R"(asset child {size 4x4 output point p draw{unit();pixel(0,0,#abc);}})");
-    for (const auto [body,reason] : {
+    for (const auto& [body,reason] : {
         std::pair{"child.draw(seed,v,a,at={1.0/0.0,0});", ErrorReason::InvalidPart},
         std::pair{"child.draw(seed,v,a,at={0,0}); p=child.outputs.p;", ErrorReason::PartOutputMissing},
         std::pair{"p=child.outputs.p;", ErrorReason::InvalidOutput}}) {

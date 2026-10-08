@@ -52,6 +52,12 @@ bool renameInput(std::vector<uint8_t>& bytes, const char* from, const char* to, 
 }
 } // namespace
 
+// The replacements below pair malloc/free; GCC sees free() on memory from
+// the replaced operator new after inlining and warns about a mismatch.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
+#endif
 void* operator new(std::size_t size) {
     if (armed && ++count == failAt) {
         ++injected;
@@ -67,6 +73,9 @@ void operator delete(void* memory) noexcept { std::free(memory); }
 void operator delete[](void* memory) noexcept { std::free(memory); }
 void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 int main(int argc, char** argv) {
     CHECK(argc == 3);

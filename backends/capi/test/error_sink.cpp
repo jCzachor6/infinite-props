@@ -232,7 +232,7 @@ int main(int argc, char** argv) {
             {offsetof(iprop_error_ex, message_truncated), 4}};
         for (std::size_t byte = 4; byte < allocated; ++byte) {
             bool completeOutput = false;
-            for (const auto [at, width] : outputFields)
+            for (const auto& [at, width] : outputFields)
                 if (at + width <= capacity && byte >= at && byte < at + width) completeOutput = true;
             if (!completeOutput) CHECK(bytes[byte] == before[byte]);
         }

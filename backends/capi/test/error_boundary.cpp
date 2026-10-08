@@ -22,6 +22,12 @@ struct Unexpected : std::exception {
 };
 }
 
+// The replacements below pair malloc/free; GCC sees free() on memory from
+// the replaced operator new after inlining and warns about a mismatch.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
+#endif
 void* operator new(std::size_t size) {
     if (armed && ++allocationCount == failAt) {
         ++injected;
@@ -35,6 +41,9 @@ void operator delete(void* memory) noexcept { std::free(memory); }
 void operator delete[](void* memory) noexcept { std::free(memory); }
 void operator delete(void* memory, std::size_t) noexcept { std::free(memory); }
 void operator delete[](void* memory, std::size_t) noexcept { std::free(memory); }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 int main(int argc, char** argv) {
     using namespace iprop;
@@ -205,7 +214,7 @@ int main(int argc, char** argv) {
             {offsetof(iprop_error_ex, message_truncated), 4}};
         for (std::size_t byte = 4; byte < allocated; ++byte) {
             bool written = false;
-            for (const auto [at, width] : outputFields)
+            for (const auto& [at, width] : outputFields)
                 if (at + width <= capacity && byte >= at && byte < at + width) written = true;
             if (!written) CHECK(storage[byte] == before[byte]);
         }

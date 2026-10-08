@@ -105,11 +105,11 @@ private:
         else if (const auto* branch = std::get_if<IfStmt>(&stmt)) {
             for (const auto& child : branch->thenBranch) markInvalidBindings(child);
             for (const auto& child : branch->elseBranch) markInvalidBindings(child);
-        } else if (const auto* loop = std::get_if<WhileStmt>(&stmt)) {
-            for (const auto& child : loop->body) markInvalidBindings(child);
-        } else if (const auto* loop = std::get_if<ForStmt>(&stmt)) {
-            markInvalidLocal(loop->variable);
-            for (const auto& child : loop->body) markInvalidBindings(child);
+        } else if (const auto* whileLoop = std::get_if<WhileStmt>(&stmt)) {
+            for (const auto& child : whileLoop->body) markInvalidBindings(child);
+        } else if (const auto* forLoop = std::get_if<ForStmt>(&stmt)) {
+            markInvalidLocal(forLoop->variable);
+            for (const auto& child : forLoop->body) markInvalidBindings(child);
         }
     }
 
