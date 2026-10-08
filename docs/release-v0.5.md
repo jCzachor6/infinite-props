@@ -1,6 +1,6 @@
 # Release 0.5.0
 
-Release date: 2026-10-07. Product, editor and website versions are 0.5.0;
+Release date: 2026-10-08. Product, editor and website versions are 0.5.0;
 source language 0.5, binary format 0.4, C API 0.3 and ABI line / SONAME 0.4
 are separate contracts. The release tag is `v0.5.0` on `main`. Local
 packaging and the tagged publication workflow are described below.

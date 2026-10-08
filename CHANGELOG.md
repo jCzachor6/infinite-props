@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.5.0 — 2026-10-07
+## v0.5.0 — 2026-10-08
 
 Product/editor/website version: 0.5.0. Source language: 0.5. Format: 0.4,
 unchanged. C API: 0.3, additive over the frozen 0.2 layouts on ABI line /
