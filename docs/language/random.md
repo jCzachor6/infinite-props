@@ -11,6 +11,160 @@ separately from argument effects and execution-wide limits.
 
 <!-- example: ../../examples/language/random.ips -->
 
+## Random ranges with `to`
+
+`lower to upper` draws a value from the current stream every time it is
+evaluated; it is not a list or a stored range. Both bounds are included:
+
+| Bounds | Result | Draw |
+| --- | --- | --- |
+| `i32` and `i32` | `i32` | every integer in the range equally often |
+| any `f32` bound | `f32` | uniform between the bounds; an `i32` bound widens |
+| `color` and `color` | `color` | one position on the RGBA gradient ([gradients](#gradients-and-segments)) |
+| `vec2` and `vec2` | `vec2` | one point of the segment ([segments](#gradients-and-segments)) |
+
+```text
+offset = -5 to 5          // one of -5, -4, ..., 5
+thickness = 1.6 to 2.0
+mixed = 1 to 2.0          // f32
+```
+
+The lower bound is evaluated once, then the upper bound, then the value is
+drawn; RNG used inside a bound stays part of the current stream. Equal bounds
+return that value and still consume a draw. A lower bound greater than the
+upper one traps, as does a NaN or infinite `f32` bound; bounds are never
+swapped. Integer draws discard the few raw values that would favour some
+results, so every integer of the range is equally likely for any width, and
+the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
+are in [random ranges](../../spec/iprop-v0.5.md#3-uniform-random-ranges).
+Floating results never leave the bounds, even after rounding.
+
+`to` binds more loosely than arithmetic and shifts and more tightly than
+comparisons, so `base - 2 to base + 2` draws around `base`, and
+`(0 to 100) < 10` compares a draw. Write `c.r + (-5 to 5)` to add a draw to
+an expression. Ranges cannot be chained: `a to b to c` is rejected; use
+`(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
+every range in parentheses.
+
+`to` stays a valid name. Where a statement may end, a following `to = ...`,
+`to.draw(...)` or a call of a declared helper `to(...)` starts the next
+statement, as before; inside parentheses or arguments `to` is always the
+operator. `range()` and `index()` keep their own algorithms and results, so
+existing generators keep their draws; switching them to `to` changes the
+stream.
+
+### Gradients and segments
+
+Between two colors or two `vec2` values, `to` draws one position `t` from 0
+to 1 and moves every channel or component by it, so they never vary
+independently. `#000000 to #ffffff` gives only grays, and
+`{0.0, 0.0} to {1.0, 1.0}` only points with equal coordinates; write
+`{0.0 to 1.0, 0.0 to 1.0}` for two independent draws.
+
+```text
+metal = #705845ff to #c8c8c8ff
+position = {12.0, 48.0} to {40.0, 56.0}
+distribution middle = gaussian(mean=0.5, sigma=0.15)
+metal = #705845ff to #e8e8e8ff with middle      // mostly mid-gradient
+```
+
+With `with`, the distribution describes `t` on 0 to 1, as in
+`0.0 to 1.0 with d`, so use a description in those units. Swapping the ends
+reverses the direction a skewed distribution favours. One stream step is
+drawn even for equal ends.
+
+Colors mix their stored RGBA8 channels with the `color.mix` formula, alpha
+included (unlike `color.mix`, which keeps the first alpha); there is no HSV
+or linear-light conversion. Channels truncate as in `color.mix`: every byte
+from a channel's smaller end up to one below its larger end is equally
+likely, and the larger end itself appears only at the exact end of a
+distribution's range. Vectors interpolate each component in `f32` and stay on
+the segment, even for opposite large ends; an infinite or NaN end traps.
+
+<!-- example: ../../examples/language/errors/chained-range.ips -->
+
+This example is intentionally rejected: write `(a to b) to c` to draw a bound.
+
+<!-- example: ../../examples/language/traps/reversed-range.ips -->
+
+This program is valid source, but its range is reversed for the default
+input and traps during generation.
+
+## Distributions
+
+`lower to upper with d` draws from the distribution `d` restricted to the
+range: values outside `[lower, upper]` are never produced, and the shape
+inside the range is kept, so nothing piles up at the bounds the way a
+clamped draw would. Without `with` a range is uniform.
+
+```text
+distribution softWear = gaussian(mean=0.0, sigma=1.5)
+redOffset = -5 to 5 with softWear          // mostly small offsets
+distribution mostlyClean = beta(alpha=2.0, beta=5.0)
+rust = 0.0 to 1.0 with mostlyClean          // mostly below 0.3
+```
+
+A `distribution` is a value: store it, copy it, pass it to a helper and
+return it from one. `distribution d = ...` declares it explicitly; a plain
+first assignment infers the type as usual. Its parameters are evaluated
+once, when the constructor runs, and may come from inputs, `v`/`a`, earlier
+computations or draws; changing those variables later does not change the
+description. Constructing a distribution draws nothing; every `with` draw
+takes its own value from the current stream, so two ranges using one
+description are two independent draws. Distributions support no arithmetic,
+comparison, members or conversion, and are not inputs, outputs or palette
+elements.
+
+Parameters describe the result's own units; they are not rescaled to the
+range. `-5 to 5 with gaussian(mean=0.0, sigma=2.0)` clusters around 0, while
+the same description with `20 to 30` samples its far tail. A range that
+leaves no probability under the distribution traps, as does an equal range
+outside its natural range. For an `i32` range the continuous draw rounds to
+the nearest integer, halves away from zero; both bounds stay possible, with
+the probability of their half intervals.
+
+Evaluation order is the lower bound, the upper bound, the distribution, then
+one stream step. Parameters are checked when the constructor runs: invalid
+values trap there, even when the description is never used, and an
+unassigned `distribution` local traps when drawn. Draws cost 1 fuel plus 1 per
+iteration of the pinned numerical kernels, typically 20-150; the
+[specification](../../spec/iprop-v0.5.md#4-distributions) gives the exact
+algorithms. A helper named `gaussian`, `triangular` or `beta` takes
+precedence over the constructor of the same name.
+
+<!-- example: ../../examples/language/distributions.ips -->
+
+<!-- example: ../../examples/language/errors/with-number.ips -->
+
+This example is intentionally rejected: `with` needs a distribution.
+
+<!-- example: ../../examples/language/traps/negative-sigma.ips -->
+
+This program is valid source, but its sigma is negative for the default
+input and the constructor traps during generation.
+
+### gaussian
+<!-- builtin: gaussian -->
+
+The normal distribution with centre `mean` and standard deviation `sigma`;
+`sigma` must be positive and both finite. Its natural range is unbounded, so
+any range with probability can use it.
+
+### triangular
+<!-- builtin: triangular -->
+
+A triangle from `min` to `max` whose most frequent values lie at `peak`.
+Requires finite `min < max` and `min <= peak <= max`; a peak at an end makes
+small (or large) values most common.
+
+### beta
+<!-- builtin: beta -->
+
+The beta distribution with shape parameters `alpha` and `beta`, both positive
+and finite, on the natural range `min` to `max` (0 to 1 when omitted;
+`min < max`). `alpha < beta` favours the low end, `alpha > beta` the high end,
+equal values above 1 the middle, and values below 1 both ends.
+
 ## unit
 <!-- builtin: unit -->
 

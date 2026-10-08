@@ -28,8 +28,11 @@ their `values` pointer: it is NULL when the entire packed buffer is empty and
 can be non-NULL otherwise, including a pointer to the end of that buffer. The
 new view preserves that legacy pointer exactly. Nonempty values use the frozen
 component order x/y, x/y/w/h, or x/y/radius. These are the generated values;
-helpers and part D4 transformations have already applied their effects. The
-accessors neither repeat transforms nor reinterpret owner-relative geometry.
+helpers and part D4 transformations have already applied their effects. In a
+file with a parts section (format 0.5) part values are in root asset
+coordinates, with every enclosing placement and transform applied once; in
+older files they stay local to the part after its D4 transform. The accessors
+neither repeat transforms nor reinterpret owner-relative geometry.
 
 `iprop_result_output_find(result, owner, name, &output_index, error)` matches
 both owner and complete UTF-8 name bytes. It never chooses a same-named output

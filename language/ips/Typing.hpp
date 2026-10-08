@@ -75,8 +75,8 @@ public:
     struct Scope {
         const Program* owner = nullptr;
         bool isDraw = false;
-        // The part alias prefix of the function being typed ("" for the
-        // entry asset): bare call names resolve within it first.
+        // The part alias path prefix of the function being typed ("" for
+        // the entry asset): call names and part aliases resolve within it.
         std::string ns;
         std::map<std::string, ValueType> locals;
         ExpressionTypes expressions;
@@ -118,7 +118,11 @@ private:
     ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
     const ResolvedPalette& palette(const Identifier& name);
+    // Parts are keyed by alias path; the current namespace prefixes a
+    // source alias, so each asset sees only its direct imports.
     const std::map<std::string, PartInfo>& parts_;
+    const PartInfo* findPart(const std::string& alias) const;
+    std::vector<std::string> partAliases() const;
 
     const Program* owner_ = nullptr;
     bool isDraw_ = false;
@@ -141,6 +145,8 @@ private:
     ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
+    ValueType typeRandomRange(const RandomRange& range);
+    bool yieldsToHelper(const std::string& name) const;
 
     struct PartRead {
         std::string alias;

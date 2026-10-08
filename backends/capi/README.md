@@ -48,10 +48,11 @@ set them locally before exporting, following its README.
 
 Current documentation uses manifest schema 2 with separate product, source
 language, emitted format, C API and C ABI versions. The generated handbook is
-`share/iprop/docs/language-v0.5.md`, named after the source language. See
+`share/iprop/docs/language-v0.6.md`, named after the source language. See
 [export contracts and the schema-1 migration](../../docs/export-contracts.md).
 
-Version 0.4 accepts frozen 0.1–0.3 files and v0.4 compressed containers.
+The runtime accepts frozen 0.1–0.4 files, v0.4 compressed containers and the
+format 0.5 emitted by the 0.6 compiler.
 Loading expands and validates the complete file before generation; the
 program owns the expanded bytes. The six legacy C API 0.2 entry points and
 their struct layouts are unchanged by additive API 0.3. CMake consumers

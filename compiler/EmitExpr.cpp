@@ -49,12 +49,20 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     }
     if (std::holds_alternative<ips::Member>(expr)) {
         const auto& member = std::get<ips::Member>(expr);
-        // Components yield f32; bare part outputs keep their compound type.
-        // This also distinguishes part.outputs.x from part.outputs.top.x.
-        if (current_->typeOf(expr) == ips::ValueType::F32) {
+        // Components yield f32 and color channels i32; bare part outputs keep
+        // their compound type. This also distinguishes part.outputs.x from
+        // part.outputs.top.x. The object is evaluated exactly once.
+        const auto type = current_->typeOf(expr);
+        if (type == ips::ValueType::F32) {
             emitExpr(*member.object);
             ins(member.name == "x" ? Opcode::Vec2X : Opcode::Vec2Y);
             return ips::ValueType::F32;
+        }
+        if (type == ips::ValueType::I32) {
+            constexpr Opcode channels[] = {Opcode::ColorR, Opcode::ColorG, Opcode::ColorB, Opcode::ColorA};
+            emitExpr(*member.object);
+            ins(channels[*ips::colorChannel(member.name)]);
+            return ips::ValueType::I32;
         }
         return emitPartRead(expr);
     }
@@ -69,6 +77,30 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     }
     if (const auto* un = std::get_if<ips::Unary>(&expr)) {
         return emitUnary(*un);
+    }
+    if (const auto* range = std::get_if<ips::RandomRange>(&expr)) {
+        // Lower, then upper, then the distribution, each once; the draw
+        // follows all of their effects.
+        const auto type = current_->typeOf(expr);
+        const bool integer = type == ips::ValueType::I32;
+        const bool ends = type == ips::ValueType::Color || type == ips::ValueType::Vec2;
+        for (const auto* bound : {range->lower.get(), range->upper.get()}) {
+            emitExpr(*bound);
+            if (!integer && !ends && current_->typeOf(*bound) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        }
+        if (ends) {
+            // Colors and vec2 share one position t = (0.0 to 1.0 [with d]).
+            emitConst(0.0f);
+            emitConst(1.0f);
+        }
+        if (range->distribution) {
+            emitExpr(*range->distribution);
+            ins(integer ? Opcode::RngIntWith : Opcode::RngFloatWith);
+        } else {
+            ins(integer ? Opcode::RngInt : Opcode::RngFloat);
+        }
+        if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
+        return type;
     }
     error(ips::locationOf(expr), "unsupported expression");
 }
@@ -90,17 +122,7 @@ void Emitter::emitPointValue(const ips::Expr& expr) {
     if (std::holds_alternative<ips::Member>(expr)) {
         // part.outputs.<name> — the bare pair, byte-identical to v0.2.
         const PartRead read = partReadInfo(expr);
-        const u32 part = plan_.partIndex.at(read.alias);
-        u32 slot = static_cast<u32>(plan_.rootSlots.size());
-        for (u32 i = 0; i < part; ++i) {
-            slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
-        }
-        for (const auto& output : plan_.parts[part]->asset.outputs) {
-            if (output.name == read.output->name) {
-                break;
-            }
-            ++slot;
-        }
+        const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
         return;
     }
@@ -126,8 +148,9 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
     if (base == nullptr) {
         throw ips::SourceError{ips::locationOf(expr), "unsupported member access"};
     }
-    info.alias = base->name;
-    const auto part = plan_.partIndex.find(base->name);
+    // The alias path of the instance: the reader's namespace plus the alias.
+    info.alias = functionNamespace(current_->name) + base->name;
+    const auto part = plan_.partIndex.find(info.alias);
     if (part == plan_.partIndex.end()) {
         throw ips::SourceError{ips::locationOf(expr),
                                "'" + base->name + "' is not an imported part"};
@@ -151,17 +174,7 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
 
 ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const PartRead read = partReadInfo(expr);
-    const u32 part = plan_.partIndex.at(read.alias);
-    u32 slot = static_cast<u32>(plan_.rootSlots.size());
-    for (u32 i = 0; i < part; ++i) {
-        slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
-    }
-    for (const auto& output : plan_.parts[part]->asset.outputs) {
-        if (output.name == read.output->name) {
-            break;
-        }
-        ++slot;
-    }
+    const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
     switch (read.kind) {
     case ips::OutputKind::Point:
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));

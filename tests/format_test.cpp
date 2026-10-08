@@ -82,6 +82,7 @@ TEST_CASE("unsupported versions fail at their field offsets") {
 
 TEST_CASE("unknown flag bits fail") {
     expectError(rawLayout(0, 1, 2, 1, 0, {{1, 0, 0}}), 8);
+    expectError(rawLayout(0, 5, 2, 1, 0, {{1, 0, 0}}), 8); // the envelope stays a 0.4 container
 }
 
 TEST_CASE("section count out of range fails") {

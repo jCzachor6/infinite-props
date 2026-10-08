@@ -1,9 +1,10 @@
 #pragma once
 
 // Constant folding over checked .ips expressions: evaluates literal
-// arithmetic, comparisons, bitwise and logical operators at compile time
-// (short-circuit semantics preserved). Integer division and remainder are NOT
-// folded so the runtime's divide-by-zero trap stays observable.
+// arithmetic, comparisons, bitwise and logical operators and channel reads of
+// constant colors at compile time (short-circuit semantics preserved).
+// Integer division and remainder are NOT folded so the runtime's
+// divide-by-zero trap stays observable.
 
 #include "iprop/Value.hpp"
 #include "ips/Ast.hpp"

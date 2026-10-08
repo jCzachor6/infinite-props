@@ -92,6 +92,17 @@ bool stepVector(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::Vec2Mix: {
+        const f32 t = ex.popF32();
+        const Vec2 b = ex.popVec2();
+        const Vec2 a = ex.popVec2();
+        if (!std::isfinite(a.x) || !std::isfinite(a.y) || !std::isfinite(b.x) || !std::isfinite(b.y)) {
+            ex.trap("vec2 segment ends must be finite", ErrorReason::NumericRange);
+        }
+        ex.push(Value(math::vec2Mix(a, b, t)));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::Vec2Fold: {
         const i32 n = ex.popI32();
         const Vec2 v = ex.popVec2();

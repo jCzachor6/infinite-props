@@ -207,7 +207,9 @@ int main(int argc, char** argv) {
             CHECK(slots[0].values.empty() == (v == 0) && slots[9].values.empty() &&
                   slots[13].values.empty() && slots[12].isList && slots[12].values.size() == 4,
                   "unset singular, empty lists and populated part list");
-            CHECK(std::memcmp(slots[6].values.data(), points[transforms[v]], sizeof(points[0])) == 0,
+            // Root coordinates: the D4 image plus the part's blit origin {3, 4}.
+            CHECK(slots[6].values.size() == 2 && slots[6].values[0] == points[transforms[v]][0] + 3.f &&
+                  slots[6].values[1] == points[transforms[v]][1] + 4.f,
                   "D4 output must already be transformed exactly once");
             if (v == 7) {
                 const auto before = iprop::sfml_host::queryImage(result.get());

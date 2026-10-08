@@ -2,6 +2,8 @@ asset RandomChoices {
   size 8x8
   draw {
     saved = seed
+    offset = -2 to 2
+    width = 1.5 to 2.5
     u = unit()
     x = int(range(0, 8))
     y = index(8)
@@ -12,6 +14,7 @@ asset RandomChoices {
     nested = choose(saved, choose(saved ^ 1, 1, 2), 3)
     stream_push(saved ^ 2)
     pixel(int(isolated), nested, #fff)
+    rect(4 + offset, 0, width, 1, #fc9)
     stream_pop()
   }
 }

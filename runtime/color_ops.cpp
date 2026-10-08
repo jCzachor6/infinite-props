@@ -18,6 +18,14 @@ bool stepColor(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::ColorMixRgba: {
+        const f32 t = ex.popF32();
+        const Color b = ex.popColor();
+        const Color a = ex.popColor();
+        ex.push(Value(math::colorMixRgba(a, b, t)));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::ColorShade: {
         const i32 amount = ex.popI32();
         const Color c = ex.popColor();
@@ -55,6 +63,15 @@ bool stepColor(Execution& ex, Instruction ins) {
             ex.trap("color.hsv hue shift must be finite", ErrorReason::NumericRange);
         }
         ex.push(Value(math::colorHsv(c, hueShift, satScale, valScale)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::ColorR: case Opcode::ColorG: case Opcode::ColorB: case Opcode::ColorA: {
+        // Each channel byte widens to a non-negative i32 (spec v0.5 §2).
+        const Color c = ex.popColor();
+        const u8 channel = ins.opcode == Opcode::ColorR ? c.r : ins.opcode == Opcode::ColorG ? c.g
+                         : ins.opcode == Opcode::ColorB ? c.b : c.a;
+        ex.push(Value(static_cast<i32>(channel)));
         ++ex.frame().ip;
         return true;
     }

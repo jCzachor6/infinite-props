@@ -1,0 +1,21 @@
+asset gradients {
+  size 16x16
+  output list point segments
+  output list point colors
+  draw {
+    distribution middle = gaussian(mean=0.5, sigma=0.15)
+    bright = beta(alpha=5.0, beta=2.0)
+    for i in 0..48 {
+      metal = #705845ff to #c8c8c8ff
+      b = #40a0ff40 to #ffffff00 with middle
+      c = #ffffffff to #000000ff with bright
+      colors = {metal.r * 256 + metal.a, b.g * 256 + b.a}
+      colors = {c.r, (#123456 to #123456).b}
+      segments = {10.0, 20.0} to {30, 40}
+      segments = {-3.0e38, 3.0e38} to {3.0e38, -3.0e38} with bright
+      segments = {0.25, 0.75} to {0.25, 0.75}
+      pixel(i % 16, i / 3, metal)
+    }
+    rect(0, 12, 16, 4, #000000ff to #ffffffff with middle)
+  }
+}

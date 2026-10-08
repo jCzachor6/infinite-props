@@ -1,0 +1,21 @@
+// Points of `a to b` on a vec2 segment, uniform and steered by a gaussian,
+// next to an independent `{x0 to x1, y0 to y1}` draw that fills the box.
+// The last panel scales `{0.0, 0.0} to {1.0, 1.0}`: both components share
+// one coefficient, so every point lies on the diagonal.
+asset Segments {
+  size 120x40
+  draw {
+    rect(0, 0, 120, 40, #14161c)
+    distribution middle = gaussian(mean=0.5, sigma=0.15)
+    for i in 0..160 {
+      p = {3, 36} to {27, 4}
+      q = {33, 36} to {57, 4} with middle
+      r = {63 to 87, 4 to 36}
+      u = {0.0, 0.0} to {1.0, 1.0}
+      pixel(int(p.x), int(p.y), #7fd4ff60)
+      pixel(int(q.x), int(q.y), #ffc85a60)
+      pixel(int(r.x), int(r.y), #a8ff8a60)
+      pixel(93 + int(u.x * 24.0), 36 - int(u.y * 32.0), #ff8ac860)
+    }
+  }
+}

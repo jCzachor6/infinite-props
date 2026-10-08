@@ -1,0 +1,35 @@
+// colony.ips — a nested composition: the colony imports three mushrooms,
+// and each mushroom imports its own stem and cap (mushroom/). Every branch
+// gets its own tint, stem height and RNG stream. A firefly hovers over each
+// cap at the `peak` anchor the cap reports, so a misplaced anchor shows.
+
+import tall from "mushroom/mushroom.ips"
+import small from "mushroom/mushroom.ips"
+import leaning from "mushroom/mushroom.ips"
+
+asset colony {
+  size 48x32
+  output list point peaks
+
+  draw {
+    rect(0, 27, 48, 5, #4a7a3c)
+    rect(0, 27, 48, 1, #6c9a52)
+    rect(0, 30, 48, 2, #38603a)
+    for i in 0..10 {
+      pixel(0 to 47, 26, #6c9a52)
+    }
+
+    tall.draw(hash(seed ^ 11), v, a, at = {10, 28}, tint = #c8463c, height = 10)
+    firefly(tall.outputs.peak)
+    small.draw(hash(seed ^ 23), v, a, at = {24, 28}, tint = #b07a44, height = 5)
+    firefly(small.outputs.peak)
+    leaning.draw(hash(seed ^ 37), v, a, at = {37, 28}, tint = #8a4a8c, height = 8, mirror_x = true)
+    firefly(leaning.outputs.peak)
+  }
+
+  firefly(peak: vec2) {
+    peaks = peak
+    pixel(int(peak.x), int(peak.y) - 3, #fff3a0)
+    pixel(int(peak.x) - 1, int(peak.y) - 3, #c8b45a)
+  }
+}

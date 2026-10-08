@@ -1,9 +1,11 @@
 #include "Assemble.hpp"
 
+#include <algorithm>
 #include <utility>
 
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
+#include "iprop/OpcodeSpec.hpp"
 #include "ips/Fold.hpp"
 
 namespace iprop::compiler {
@@ -107,6 +109,7 @@ std::vector<u8> Assembler::assemble() {
     // ---- code section (spec §6) ----
     Writer table;
     Writer streams;
+    u16 minor = kOldestWrittenMinor;
     // The table and the instruction streams are written interleaved: each
     // function's offset is the running size of the streams writer.
     for (const auto& function : plan_.functions) {
@@ -115,17 +118,21 @@ std::vector<u8> Assembler::assemble() {
         table.writeU32(static_cast<u32>(function.code.size() * 4));
         table.writeU16(static_cast<u16>(function.params.size()));
         for (const ValueType type : function.params) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(function.results.size()));
         for (const ValueType type : function.results) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(function.locals.size()));
         for (const ValueType type : function.locals) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         for (const Instruction& ins : function.code) {
+            minor = writtenMinor(minor, ins.opcode);
             streams.writeU8(static_cast<u8>(ins.opcode));
             streams.writeU8(ins.aux);
             streams.writeU16(ins.operand);
@@ -140,7 +147,7 @@ std::vector<u8> Assembler::assemble() {
     for (std::size_t i = 0; i < plan_.parts.size(); ++i) {
         const ips::Program* part = plan_.parts[i];
         sourcePath_ = plan_.sourcePath(part);
-        code.writeU32(plan_.functionIndex.at(plan_.entry->imports[i].alias + ".draw"));
+        code.writeU32(plan_.functionIndex.at(plan_.instances[i].path + ".draw"));
         code.writeU32(*part->asset.sizeX);
         code.writeU32(*part->asset.sizeY);
         code.writeF32(part->asset.originX ? foldOrigin(*part->asset.originX) : 0.f);
@@ -159,7 +166,19 @@ std::vector<u8> Assembler::assemble() {
         }
     }
 
-    // ---- file (spec §2) ----
+    // ---- parts section (spec v0.5 §6): instance alias paths and parents.
+    //      Every compiled part has one, so outputs read by a parent are in
+    //      its coordinates and the host receives root coordinates. ----
+    Writer instances;
+    if (!plan_.parts.empty()) {
+        minor = std::max<u16>(minor, 5);
+        instances.writeU32(static_cast<u32>(plan_.instances.size()));
+        for (const auto& instance : plan_.instances) {
+            instances.writeU32(plan_.pools.indexOf(instance.path));
+            instances.writeU32(instance.parent);
+        }
+    }
+
     // ---- debug section (spec §7): local names + the .ips line per
     //      instruction ----
     Writer debug;
@@ -187,11 +206,11 @@ std::vector<u8> Assembler::assemble() {
         file.writeU8(magic);
     }
     file.writeU16(kVersionMajor);
-    file.writeU16(kVersionMinor);
+    file.writeU16(minor);
     file.writeU32(kFlagDebug); // flags: debug section present
-    file.writeU32(4);          // section count
+    file.writeU32(plan_.parts.empty() ? 4 : 5); // section count
     file.writeU32(0);          // reserved
-    u32 offset = kHeaderSize + 4 * 12;
+    u32 offset = kHeaderSize + (plan_.parts.empty() ? 4 : 5) * 12;
     const auto section = [&](u32 id, const std::vector<u8>& bytes) {
         file.writeU32(id);
         file.writeU32(offset);
@@ -201,10 +220,12 @@ std::vector<u8> Assembler::assemble() {
     section(static_cast<u32>(SectionId::Meta), meta.data());
     section(static_cast<u32>(SectionId::Const), consts.data());
     section(static_cast<u32>(SectionId::Code), code.data());
+    if (!plan_.parts.empty()) section(static_cast<u32>(SectionId::Parts), instances.data());
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
+    file.writeBytes(instances.data());
     file.writeBytes(debug.data());
     return file.data();
 }

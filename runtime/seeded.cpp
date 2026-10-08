@@ -1,5 +1,6 @@
 #include "iprop/VmInternals.hpp"
 #include "iprop/math/Curves.hpp"
+#include "iprop/math/Distribution.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -206,6 +207,74 @@ f32 ridgeNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
     return sum / total;
 }
 
+// Uniform inclusive integer range (spec v0.5 §3.1): full u32 draws, values
+// past the largest multiple of the width are rejected. The last of
+// kRangeDraws draws is accepted; every draw after the first costs 1 fuel.
+i32 uniformInt(Execution& ex, i32 lo, i32 hi) {
+    constexpr u64 kDrawSpace = u64{1} << 32;
+    const u64 width = static_cast<u64>(static_cast<i64>(hi) - lo) + 1; // 1 .. 2^32
+    const u64 accepted = kDrawSpace / width * width;
+    for (u32 draw = 1;; ++draw) {
+        Frame& frame = ex.frame();
+        frame.stream += 0x9e3779b9u;
+        const u32 x = hash32(frame.stream);
+        if (x < accepted || draw == kRangeDraws) {
+            return static_cast<i32>(static_cast<u32>(lo) + static_cast<u32>(x % width));
+        }
+        ex.spend(1);
+    }
+}
+
+// Uniform f32 range (spec v0.5 §3.2): one unit() step, the pinned lerp, and
+// the bounds restored when rounding leaves them.
+f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
+    Frame& frame = ex.frame();
+    frame.stream += 0x9e3779b9u;
+    const f32 u = hashUnit(hash32(frame.stream));
+    const f32 value = lo * (1.f - u) + hi * u;
+    return value < lo ? lo : value > hi ? hi : value;
+}
+
+// A range draw shaped by a distribution (spec v0.5 §4.4): one stream step,
+// the coefficient u = (x + 1/2) / 2^32, and 1 fuel per kernel iteration.
+double distributionDraw(Execution& ex, const Distribution& distribution, double lo, double hi) {
+    if (distribution.family == DistributionFamily::None) {
+        ex.trap("distribution is not initialized", ErrorReason::NumericRange);
+    }
+    Frame& frame = ex.frame();
+    frame.stream += 0x9e3779b9u;
+    const double u = (static_cast<double>(hash32(frame.stream)) + 0.5) * 0x1p-32;
+    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
+    switch (draw.status) {
+    case math::DrawStatus::Outside:
+        ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoMass:
+        ex.trap("random range has no probability under the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoConvergence:
+        ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
+    case math::DrawStatus::Ok: break;
+    }
+    ex.spend(draw.steps);
+    return draw.value;
+}
+
+// Round half away from zero (spec v0.5 §4.4); |x| < 2^31 keeps x - t exact.
+i32 roundToInt(double x) {
+    double t = std::trunc(x);
+    const double fraction = x - t;
+    if (fraction >= 0.5) t += 1.0;
+    else if (fraction <= -0.5) t -= 1.0;
+    return static_cast<i32>(t);
+}
+
+Distribution constructed(Execution& ex, DistributionFamily family, std::size_t count, const char* rule) {
+    Distribution distribution;
+    distribution.family = family;
+    for (std::size_t i = count; i > 0; --i) distribution.parameters[i - 1] = ex.popF32();
+    if (!math::validDistribution(distribution)) ex.trap(rule, ErrorReason::NumericRange);
+    return distribution;
+}
+
 // Advances the current stream by the Weyl constant and pushes unit().
 void advanceAndPushUnit(Execution& ex) {
     Frame& frame = ex.frame();
@@ -262,6 +331,71 @@ bool stepSeeded(Execution& ex, Instruction ins) {
                 std::min(n - 1, static_cast<u32>(u * static_cast<f32>(n))))));
         }
         ++frame.ip;
+        return true;
+    }
+    case Opcode::RngInt: {
+        const i32 hi = ex.popI32();
+        const i32 lo = ex.popI32();
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        ex.push(Value(uniformInt(ex, lo, hi)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::RngFloat: {
+        const f32 hi = ex.popF32();
+        const f32 lo = ex.popF32();
+        if (!std::isfinite(lo) || !std::isfinite(hi)) {
+            ex.trap("random range bounds must be finite", ErrorReason::NumericRange);
+        }
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        ex.push(Value(uniformFloat(ex, lo, hi)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::DistributionGaussian:
+        ex.push(Value(constructed(ex, DistributionFamily::Gaussian, 2,
+                                  "gaussian needs a finite mean and a finite sigma > 0")));
+        ++ex.frame().ip;
+        return true;
+    case Opcode::DistributionTriangular:
+        ex.push(Value(constructed(ex, DistributionFamily::Triangular, 3,
+                                  "triangular needs finite min <= peak <= max with min < max")));
+        ++ex.frame().ip;
+        return true;
+    case Opcode::DistributionBeta:
+        ex.push(Value(constructed(ex, DistributionFamily::Beta, 4,
+                                  "beta needs finite alpha > 0, beta > 0 and min < max")));
+        ++ex.frame().ip;
+        return true;
+    case Opcode::RngIntWith: {
+        const Distribution distribution = ex.popDistribution();
+        const i32 hi = ex.popI32();
+        const i32 lo = ex.popI32();
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        const double value = distributionDraw(ex, distribution, lo, hi);
+        ex.push(Value(roundToInt(value)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::RngFloatWith: {
+        const Distribution distribution = ex.popDistribution();
+        const f32 hi = ex.popF32();
+        const f32 lo = ex.popF32();
+        if (!std::isfinite(lo) || !std::isfinite(hi)) {
+            ex.trap("random range bounds must be finite", ErrorReason::NumericRange);
+        }
+        if (lo > hi) {
+            ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
+        }
+        const f32 value = static_cast<f32>(distributionDraw(ex, distribution, lo, hi));
+        ex.push(Value(value < lo ? lo : value > hi ? hi : value));
+        ++ex.frame().ip;
         return true;
     }
     case Opcode::Hash:

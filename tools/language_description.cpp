@@ -8,6 +8,7 @@
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
 
+#include <algorithm>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -48,7 +49,8 @@ Json effectRules() {
 }
 
 constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
-    ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Circle, ips::ValueType::Rect};
+    ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Distribution, ips::ValueType::Circle,
+    ips::ValueType::Rect};
 
 template<class Predicate>
 Json types(Predicate include) {
@@ -56,6 +58,46 @@ Json types(Predicate include) {
     for (const auto type : valueTypes)
         if (include(type)) names.push_back(ips::typeName(type));
     return names;
+}
+
+// `lower to upper`: the operator's place in the grammar, its typed lowering
+// to the format instructions and their intrinsic effects.
+Json randomRange() {
+    const auto overload = [](const char* type, Opcode opcode, u32 maximumDraws) {
+        const auto* spec = findOpcode(opcode);
+        return Json::object({{"lower", type}, {"upper", type}, {"result", type},
+            {"opcode", spec->mnemonic}, {"minimum_format_minor", spec->minimumMinor},
+            {"bounds", "inclusive"}, {"draws", Json::object({{"minimum", 1}, {"maximum", maximumDraws}})}});
+    };
+    // Colors and vec2 values: one shared coefficient 0.0 to 1.0 [with d],
+    // then the mix of all channels or components.
+    const auto ends = [](ips::ValueType type, Opcode opcode, std::initializer_list<const char*> parts) {
+        const auto* spec = findOpcode(opcode);
+        Json names = Json::array();
+        for (const char* part : parts) names.push_back(part);
+        return Json::object({{"type", ips::typeName(type)}, {"result", ips::typeName(type)},
+            {"coefficient", "shared_unit_interval"}, {"mixed", std::move(names)}, {"opcode", spec->mnemonic},
+            {"minimum_format_minor", spec->minimumMinor}, {"effects", operationEffects(spec->effects)}});
+    };
+    return Json::object({{"operator", "to"}, {"keyword", "contextual"},
+        {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
+        {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
+        {"overloads", Json::array({overload("i32", Opcode::RngInt, kRangeDraws),
+                                   overload("f32", Opcode::RngFloat, 1)})},
+        {"mixed_numeric_bounds", "widen_to_f32"},
+        {"traps", Json::array({"lower_greater_than_upper", "nonfinite_f32_bound"})},
+        {"equal_bounds", "bound_after_one_draw"},
+        {"effects", operationEffects(findOpcode(Opcode::RngInt)->effects)},
+        {"with", Json::object({{"keyword", "with"}, {"type", ips::typeName(ips::ValueType::Distribution)},
+            {"evaluation_order", Json::array({"lower", "upper", "distribution"})},
+            {"overloads", Json::array({overload("i32", Opcode::RngIntWith, 1), overload("f32", Opcode::RngFloatWith, 1)})},
+            {"truncation", "conditioned_on_range"}, {"integer_rounding", "nearest_half_away_from_zero"},
+            {"fuel", "one_plus_kernel_iterations"},
+            {"traps", Json::array({"uninitialized_distribution", "equal_bounds_outside_support",
+                                   "no_probability_in_range", "kernel_iteration_limit"})},
+            {"effects", operationEffects(findOpcode(Opcode::RngIntWith)->effects)}})},
+        {"ends", Json::array({ends(ips::ValueType::Color, Opcode::ColorMixRgba, {"r", "g", "b", "a"}),
+                              ends(ips::ValueType::Vec2, Opcode::Vec2Mix, {"x", "y"})})}});
 }
 
 Json sourceRules() {
@@ -78,7 +120,7 @@ Json sourceRules() {
     typeRules["storable"] = types(ips::isStorable);
     typeRules["helper_parameters"] = types([](ips::ValueType value) {
         for (const auto type : {ips::ParamType::I32, ips::ParamType::F32,
-                               ips::ParamType::Color, ips::ParamType::Vec2})
+                               ips::ParamType::Color, ips::ParamType::Vec2, ips::ParamType::Distribution})
             if (ips::valueTypeOf(type) == value) return true;
         return false;
     });
@@ -87,6 +129,24 @@ Json sourceRules() {
     typeRules["point_value_type"] = ips::typeName(ips::ValueType::Vec2);
     typeRules["implicit_widening"] = std::move(widening);
     typeRules["local_reassignment"] = "exact_type";
+    // Read-only member reads: one opcode per name, base evaluated once.
+    const auto components = [](ips::ValueType type, ips::ValueType result,
+                               std::initializer_list<std::pair<const char*, Opcode>> names) {
+        Json members = Json::array(), opcodes = Json::array();
+        u16 minor = 0;
+        for (const auto& [name, opcode] : names) {
+            members.push_back(name);
+            opcodes.push_back(findOpcode(opcode)->mnemonic);
+            minor = std::max(minor, findOpcode(opcode)->minimumMinor);
+        }
+        return Json::object({{"type", ips::typeName(type)}, {"names", std::move(members)},
+            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)},
+            {"minimum_format_minor", minor}});
+    };
+    typeRules["components"] = Json::array({
+        components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
+        components(ips::ValueType::Color, ips::ValueType::I32,
+                   {{"r", Opcode::ColorR}, {"g", Opcode::ColorG}, {"b", Opcode::ColorB}, {"a", Opcode::ColorA}})});
     auto rules = Json::object({{"inputs", std::move(inputs)}, {"types", std::move(typeRules)}});
     // Fixed rules of the current compiler, in their published order.
     rules["locals"] = Json::object({{"declaration", "first_assignment"}, {"scope", "function"},
@@ -100,11 +160,12 @@ Json sourceRules() {
         {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
         {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},
         {"unknown_arguments", false}});
-    rules["restrictions"] = Json::object({{"recursive_helpers", false}, {"nested_part_imports", false},
+    rules["restrictions"] = Json::object({{"recursive_helpers", false}, {"nested_part_imports", true},
         {"let_declarations", false}, {"fn_declarations", false}, {"named_geometry_constructors", false}});
     rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
         {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},
         {"named_arguments_change_evaluation_order", false}, {"part_parent_rng", "restored_after_child"}});
+    rules["random_range"] = randomRange();
     return rules;
 }
 
@@ -142,7 +203,7 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
         {"parameters", std::move(parameters)}, {"evaluation_order", evaluationOrder(signature)},
         {"effects", operationEffects(signature.effects)}});
     if (!polygon) {
-        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2"});
+        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2", "distribution"});
         out["choice_evaluation"] = "eager_once_before_selection_rng";
     }
     return out;

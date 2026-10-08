@@ -12,9 +12,9 @@ Documenting a planned entry point here does not make it available.
 
 | Version | Meaning | Baseline / planned extension |
 | --- | --- | --- |
-| Product | Toolchain and distribution release | 0.4.0 / 0.5.0 |
-| Source language | Accepted `.ips` syntax and diagnostics | 0.4 / 0.5 |
-| Binary format | Executable `.iprop` representation and VM semantics | 0.4 / unchanged |
+| Product | Toolchain and distribution release | 0.4.0 / 0.5.0, 0.6.0 |
+| Source language | Accepted `.ips` syntax and diagnostics | 0.4 / 0.5, 0.6 |
+| Binary format | Executable `.iprop` representation and VM semantics | 0.4 / additive 0.5 |
 | Header C API | Available symbols and descriptors | 0.2 / additive 0.3 |
 | C ABI line | Existing binary layouts, symbols and loader identity | 0.4 / unchanged |
 

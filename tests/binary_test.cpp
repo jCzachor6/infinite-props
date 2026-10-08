@@ -321,7 +321,7 @@ TEST_CASE("format constants match spec section 2") {
     REQUIRE(kMagic[3] == 0x50);
     REQUIRE(kHeaderSize == 20);
     REQUIRE(kVersionMajor == 0);
-    REQUIRE(kVersionMinor == 4);
+    REQUIRE(kVersionMinor == 5);
     REQUIRE(static_cast<u32>(SectionId::Meta) == 1);
     REQUIRE(static_cast<u32>(SectionId::Const) == 2);
     REQUIRE(static_cast<u32>(SectionId::Code) == 3);

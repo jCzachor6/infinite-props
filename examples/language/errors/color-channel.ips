@@ -1,0 +1,7 @@
+asset InvalidChannel {
+  size 8x8
+  draw {
+    tint = #9c785a
+    red = tint.red
+  }
+}

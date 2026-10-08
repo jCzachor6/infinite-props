@@ -7,7 +7,10 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 4;
+inline constexpr u16 kVersionMinor = 5;
+// Writers emit the oldest minor that holds every instruction (spec v0.5 §1),
+// never older than the 0.4 files written before format 0.5 existed.
+inline constexpr u16 kOldestWrittenMinor = 4;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 inline constexpr u32 kFlagCompressed = 1u << 1; // v0.4 zlib envelope
@@ -19,6 +22,7 @@ enum class SectionId : u32 {
     Const = 2,
     Code = 3,
     Debug = 4,
+    Parts = 5, // v0.5: part instance names and parents (spec v0.5 §6)
 };
 
 // Input (uniform) types (spec §4.1).
@@ -208,6 +212,27 @@ enum class Opcode : u8 {
     Remap = 0xA2,
     Clamp = 0xA3,
 
+    // Colour channel reads (spec v0.5 §2; added in v0.5)
+    ColorR = 0xA4,
+    ColorG = 0xA5,
+    ColorB = 0xA6,
+    ColorA = 0xA7,
+
+    // Uniform random ranges (spec v0.5 §3; added in v0.5)
+    RngInt = 0xA8,
+    RngFloat = 0xA9,
+
+    // Distributions (spec v0.5 §4; added in v0.5)
+    DistributionGaussian = 0xAA,
+    DistributionTriangular = 0xAB,
+    DistributionBeta = 0xAC,
+    RngIntWith = 0xAD,
+    RngFloatWith = 0xAE,
+
+    // Gradients and segments (spec v0.5 §5; added in v0.5)
+    ColorMixRgba = 0xAF,
+    Vec2Mix = 0xB0,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };
@@ -223,7 +248,14 @@ inline constexpr u16 kMaxCallDepth = 256;
 inline constexpr u32 kMaxConstPoolEntries = 65536; // u16 index space
 inline constexpr u32 kMaxCanvasSide = 16384;       // canvas width/height cap
 
+// rng.int draws at most this many u32 values (spec v0.5 §3.1). Part of the
+// format semantics: the count fixes both the stream state and the fuel use.
+inline constexpr u32 kRangeDraws = 32;
+
 // Function table: name index marking an unnamed function (spec §6.1).
 inline constexpr u32 kAnonymousName = 0xFFFFFFFFu;
+
+// Part instance section: the parent of a part drawn by the root asset.
+inline constexpr u32 kRootParent = 0xFFFFFFFFu;
 
 } // namespace iprop

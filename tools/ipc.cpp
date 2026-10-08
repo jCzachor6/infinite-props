@@ -3,6 +3,7 @@
 #include "SourceCompilation.hpp"
 #include "source_diagnostics.hpp"
 #include "language_description.hpp"
+#include "ips/Imports.hpp"
 #include "ips/Printer.hpp"
 #include "iprop/Utf8.hpp"
 #include "ips/Version.hpp"
@@ -125,7 +126,7 @@ int runCompiler(int argc, char* argv[]) {
                 << "       ipc <file.ips> --check [--diagnostics=json|text]\n"
                 << "       ipc <file.ips> --format <out.ips> --format-only\n"
                 << "       ipc --describe-language  (JSON language contracts)\n"
-                << "Imports resolve relative to the entry file. Both modes run the full\n"
+                << "Imports resolve relative to the importing file. Both modes run the full\n"
                 << "compiler and validate the final executable in memory. --check writes\n"
                 << "no files and rejects --output/--format. Debug is stripped by default;\n"
                 << "--debug retains source maps; the last --strip/--debug flag wins.\n"
@@ -172,7 +173,21 @@ int runCompiler(int argc, char* argv[]) {
             if (stream.bad()) throw std::runtime_error("source read failed");
             return source;
         };
-        auto result = iprop::compileSource(entryName, loadSource, options);
+        // A file is identified by its physical location relative to the entry
+        // directory, so `link/..` leaves a symlinked directory's target as the
+        // OS does and each file's imports resolve beside the file itself.
+        std::error_code dirError;
+        auto physicalDir = std::filesystem::weakly_canonical(dir, dirError);
+        if (dirError) physicalDir = dir;
+        const auto resolveImport = [&](std::string_view importer, std::string_view path) -> std::string {
+            const auto joined = (dir / utf8Path(importer)).parent_path() / utf8Path(path);
+            std::error_code error;
+            const auto physical = std::filesystem::weakly_canonical(joined, error);
+            if (error) return iprop::ips::resolveImportPath(importer, path);
+            const auto relative = physical.lexically_relative(physicalDir);
+            return pathText(relative.empty() ? physical : relative);
+        };
+        auto result = iprop::compileSource(entryName, loadSource, options, resolveImport);
         if (!result.succeeded()) {
             const auto status = result.status;
             if (json) iprop::tools::writeSourceDiagnosticsJson(std::cout, IPROP_PRODUCT_VERSION, status, result.diagnostics);
@@ -193,10 +208,15 @@ int runCompiler(int argc, char* argv[]) {
                     return fail("--format must target a distinct source output file");
                 auto& program = result.programs.at(entryName);
                 std::map<std::string, const iprop::ips::Program*> parts;
-                for (const auto& import : program.imports) {
-                    if (sameFile(requestedDestination,dir / utf8Path(import.path)))
+                // Every loaded source is protected, including nested imports;
+                // source keys resolve relative to the entry's directory.
+                for (const auto& [path, unused] : result.sources) {
+                    (void)unused;
+                    if (sameFile(requestedDestination,dir / utf8Path(path)))
                         return fail("--format must target a distinct source output file, including imports");
-                    parts.emplace(import.alias, &result.programs.at(import.path));
+                }
+                for (std::size_t i = 0; i < program.imports.size(); ++i) {
+                    parts.emplace(program.imports[i].alias, &result.programs.at(result.imports.at(entryName)[i]));
                 }
                 const auto requestedParent = requestedDestination.parent_path().empty()
                     ? std::filesystem::path(".") : requestedDestination.parent_path();

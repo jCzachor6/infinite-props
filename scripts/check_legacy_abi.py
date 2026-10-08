@@ -251,7 +251,7 @@ def gate(args, report):
     # build tree. The actual old/new runs below use the original exact path.
     shutil.copy2(executable, report_dir / executable.name)
     command(["cmake", "--build", build, "--config", "Release", "--target", "capi_legacy_fixtures", "--parallel", "4"], ROOT, report_dir, "current-fixtures")
-    fixtures = [build / "capi-golden/uniforms.iprop", build / "capi-golden/output-owners.iprop"]
+    fixtures = [build / "capi-golden/uniforms.iprop", build / "capi-golden/legacy-output-owners.iprop"]
     report["fixtures"] = [identity(path) for path in fixtures]
     sha = client["sha256"]
     report["released_run"] = observe(executable, sha, fixtures, old_library, old_library, report_dir, "released-run")

@@ -1,17 +1,8 @@
-# The v0.5 source language
+# The frozen v0.5 source language
 
-The complete reference is the [language handbook](language/index.md).
-Its chapters are the shared source for the website and release documentation.
+The released 0.5 reference is preserved in the 0.5.0 SDK under
+`docs/language-v0.5.md` and in the `v0.5.0` tag of this repository. Current
+tools do not regenerate it.
 
-Build the native tools, then run:
-
-```sh
-python3 scripts/language_docs.py build --compiler build/tools/ipc
-```
-
-The complete generated book is `build/language-docs/docs/language-v0.5.md`.
-Its signatures come from `ipc --describe-language`.
-Native SDKs and WASM packages ship that book under `docs/`; the website
-renders it as `docs/language.html` and offers the Markdown download.
-The product is 0.5.0, binary format 0.4, C API 0.3 and C ABI 0.4;
-[export contracts](export-contracts.md) describes the separate version fields.
+The current [v0.6 source-language reference](language-v0.6.md) uses the shared
+[handbook chapters](language/index.md).

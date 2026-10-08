@@ -1,4 +1,6 @@
 """Check authored excerpt boundaries and exact correction matching."""
+import copy
+import json
 import sys
 import tempfile
 import unittest
@@ -6,9 +8,33 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import llm_reference as llm
+from language_fixture import LANGUAGE
 
 
 class ReferenceSourceTest(unittest.TestCase):
+    def test_capability_summaries_are_optional_for_earlier_schema_2_exports(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            config = root / llm.CONFIG
+            config.parent.mkdir()
+            config.write_text(json.dumps({'sections': [], 'defaults': {
+                'sections': [], 'symbols': [], 'max_bytes': 10000}, 'maximum_bytes': 10000}))
+            identity = {'source_commit': None, 'status': 'development / release candidate',
+                        'working_tree_dirty': False}
+            for components, ranges in ((False, False), (True, False), (False, True), (True, True)):
+                with self.subTest(components=components, random_range=ranges):
+                    language = copy.deepcopy(LANGUAGE)
+                    if not components:
+                        del language['source_rules']['types']['components']
+                    if not ranges:
+                        del language['source_rules']['random_range']
+                    result, evidence = llm.render(root, language, {}, {}, identity, Path('unused'))
+                    self.assertEqual(evidence, [])
+                    self.assertEqual('Read-only members:' in result, components)
+                    self.assertEqual('Random range:' in result, ranges)
+                    if components:
+                        self.assertIn('Read-only members: vec2 .x, .y -> f32.', result)
+
     def test_excerpt_selects_whole_paragraphs_without_literal_code(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()

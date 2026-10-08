@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 project(iprop
-    VERSION 0.5.0
+    VERSION 0.6.0
     DESCRIPTION "A portable binary format and toolchain for seed-based procedural 2D assets"
     LANGUAGES C CXX)
 
@@ -16,6 +16,16 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 include(cmake/CompilerWarnings.cmake)
 include(GNUInstallDirs)
+
+# The front end type-checks helpers depth first, one recursion level per call
+# in a chain, and a chain as long as the 256-frame call limit nearly fills
+# Windows' 1 MiB default stack with MSVC. Executables built here (tools,
+# tests, hosts) reserve the 8 MiB that Linux and macOS give a main thread.
+if(MSVC)
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " /STACK:8388608")
+elseif(MINGW)
+    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,--stack,8388608")
+endif()
 include(cmake/CAbi.cmake)
 
 option(IPROP_BUILD_TESTS "Build the test suite" ON)

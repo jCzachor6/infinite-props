@@ -10,7 +10,7 @@
 
 namespace iprop {
 
-enum class StackType : u8 { I32 = 1, F32 = 2, Color = 4, Vec2 = 8, ScalarOrVec2 = 10 };
+enum class StackType : u8 { I32 = 1, F32 = 2, Color = 4, Vec2 = 8, ScalarOrVec2 = 10, Distribution = 16 };
 constexpr bool accepts(StackType expected, ValueType actual) {
     return (static_cast<u8>(expected) & (1u << static_cast<u8>(actual))) != 0;
 }
@@ -59,6 +59,10 @@ struct OpcodeSpec {
 };
 
 std::span<const OpcodeSpec> opcodeSpecs();
+// The format minor a writer needs once `opcode` or a function slot of `type`
+// is in the file.
+u16 writtenMinor(u16 minor, Opcode opcode);
+u16 writtenMinor(u16 minor, ValueType type);
 const OpcodeSpec* findOpcode(Opcode opcode);
 const OpcodeSpec* findOpcode(std::string_view mnemonic);
 

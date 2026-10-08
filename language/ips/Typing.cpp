@@ -107,24 +107,37 @@ Typer::Path Typer::flatten(const Expr& expr) const {
     return path;
 }
 
+const PartInfo* Typer::findPart(const std::string& alias) const {
+    const auto found = parts_.find(ns_ + alias);
+    return found == parts_.end() ? nullptr : &found->second;
+}
+
+std::vector<std::string> Typer::partAliases() const {
+    std::vector<std::string> names;
+    for (const auto& [path, info] : parts_) {
+        (void)info;
+        if (path.starts_with(ns_) && path.find('.', ns_.size()) == std::string::npos)
+            names.push_back(path.substr(ns_.size()));
+    }
+    return names;
+}
+
 Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
     PartRead info;
     const Path path = flatten(expr);
     if (path.base.empty()) {
         error(path.location, "unsupported member access");
     }
-    const auto part = parts_.find(path.base);
-    if (part == parts_.end()) {
-        std::vector<std::string> names;
-        for (const auto& partEntry : parts_) names.push_back(partEntry.first);
-        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
+    const auto* part = findPart(path.base);
+    if (part == nullptr) {
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, partAliases()));
     }
     if (path.segments.size() != 2 || path.segments[0] != "outputs") {
         error(path.location, "expected '" + path.base +
                                  ".outputs.<name>' to read a part output");
     }
     info.alias = path.base;
-    for (const auto& output : part->second.outputs) {
+    for (const auto& output : part->outputs) {
         if (output.name == path.segments[1]) {
             info.output = &output;
             info.kind = output.kind;
@@ -132,7 +145,7 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
         }
     }
     std::vector<std::string> names;
-    for (const auto& output : part->second.outputs) names.push_back(output.name);
+    for (const auto& output : part->outputs) names.push_back(output.name);
     error(path.location, "part '" + path.base + "' has no output '" +
                              path.segments[1] + "'" + didYouMean(path.segments[1], names));
 }
@@ -171,11 +184,23 @@ ValueType Typer::infer(const Expr& expr) {
                   "vec2 has only .x and .y components, got '" +
                       member.name + "'");
         }
-        // Any other value has no members; only part paths remain above.
         if (object == ValueType::Color) {
-            error(member.location,
-                  "color channels cannot be read, got '." + member.name +
-                      "'; keep the channels as numbers and build the color with rgb() or rgba()");
+            if (colorChannel(member.name)) return ValueType::I32;
+            error(member.location, "color has only .r, .g, .b and .a channels, got '." +
+                                       member.name + "'");
+        }
+        // Any other value has no members; only part paths remain above. A
+        // channel or component name says which value type it needs.
+        const bool channel = colorChannel(member.name).has_value();
+        if (channel || member.name == "x" || member.name == "y") {
+            const ValueType needed = channel ? ValueType::Color : ValueType::Vec2;
+            SourceError mismatch{member.location, "'." + member.name + "' reads a " +
+                std::string(channel ? "color channel" : "vec2 component") + " and needs a " +
+                typeName(needed) + ", got " + typeName(object), {}, DiagnosticCode::TypeError,
+                DiagnosticStage::Typing};
+            mismatch.expectedType = typeName(needed);
+            mismatch.actualType = typeName(object);
+            throw mismatch;
         }
         error(member.location, std::string(typeName(object)) +
                                    " has no components, got '." + member.name + "'");
@@ -194,6 +219,9 @@ ValueType Typer::infer(const Expr& expr) {
     }
     if (const auto* un = std::get_if<Unary>(&expr)) {
         return typeUnary(*un);
+    }
+    if (const auto* range = std::get_if<RandomRange>(&expr)) {
+        return typeRandomRange(*range);
     }
     error(locationOf(expr), "unsupported expression");
 }
@@ -335,6 +363,30 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
                   "' is i32 (use the explicit lerp instead)");
     }
     return resolved.type;
+}
+
+// `lo to hi [with d]`: i32 bounds draw an i32; any f32 bound widens both to
+// f32. Two colors or two vec2 values draw one position between them. Bounds
+// type before the distribution, in evaluation order.
+ValueType Typer::typeRandomRange(const RandomRange& range) {
+    const ValueType lower = typeOf(*range.lower);
+    const ValueType upper = typeOf(*range.upper);
+    const bool ends = lower == upper && (lower == ValueType::Color || lower == ValueType::Vec2);
+    if (!ends && (!isNumeric(lower) || !isNumeric(upper))) {
+        error(range.location, "'to' needs two numbers, two colors or two vec2 values, got " +
+                                  std::string(typeName(lower)) + " and " + typeName(upper));
+    }
+    if (range.distribution) {
+        const ValueType shape = typeOf(*range.distribution);
+        if (shape != ValueType::Distribution) {
+            SourceError mismatch{locationOf(*range.distribution), "'with' needs a distribution, got " +
+                std::string(typeName(shape)), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
+            mismatch.expectedType = typeName(ValueType::Distribution);
+            mismatch.actualType = typeName(shape);
+            throw mismatch;
+        }
+    }
+    return ends ? lower : promote(lower, upper);
 }
 
 ValueType Typer::typeBinary(const Binary& bin) {

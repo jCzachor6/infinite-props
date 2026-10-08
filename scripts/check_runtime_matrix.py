@@ -28,6 +28,13 @@ CONTAINERS = ('plain', 'compress')
 TRANSITIONS = {
     'examples/language/errors/negative-default.ips': '05-C.2 signed declaration constants',
     'examples/language/errors/signed-input.ips': '05-C.2 i32 source input mapped to existing U32 tag',
+    'examples/language/nested-import.ips': '0.6 nested part imports',
+}
+# Released sources whose recompiled meaning changes on purpose. Each differing
+# result is recorded, and an entry that no longer differs is an error.
+SEMANTIC_CHANGES = {
+    'examples/language/composition.ips': '0.6 part outputs in caller coordinates: the anchor read and the pixel drawn there move by the placement',
+    'backends/html5/test/fixtures/part-transforms.ips': '0.6 part outputs in caller coordinates: read and host values include the blit origin',
 }
 
 
@@ -109,8 +116,10 @@ def generate(generator, binary, directory, seeds, timeout):
 
 
 def compile_case(compiler, generator, corpus, index, source, source_root, expected, old, work, seeds, timeout):
+    released = corpus == 'released_sources'
     row = {'source': source, 'source_sha256': sha((source_root / source).read_bytes()),
-           'historical_acceptance_transition': TRANSITIONS.get(source) if corpus == 'released_sources' else None,
+           'historical_acceptance_transition': TRANSITIONS.get(source) if released else None,
+           'semantic_change': SEMANTIC_CHANGES.get(source) if released else None, 'semantic_differences': [],
            'artifacts': {}, 'errors': [], 'container_growth': [], 'historical_size_deltas': []}
     directory = work / corpus / f'{index:03d}'
     for mode in MODES:
@@ -151,7 +160,8 @@ def compile_case(compiler, generator, corpus, index, source, source_root, expect
                     before = old['modes'][mode][optimization]
                     for actual, frozen in zip(artifact['generations'], before['generations']):
                         if comparable(actual) != comparable(frozen):
-                            row['errors'].append(key + f": differs from released semantics at seed {actual['seed']}")
+                            difference = key + f": differs from released semantics at seed {actual['seed']}"
+                            row['semantic_differences' if row['semantic_change'] else 'errors'].append(difference)
                     if container == 'plain':
                         row['historical_size_deltas'].append({'mode': mode, 'optimization': optimization,
                             'released_bytes': before['bytes'], 'current_bytes': artifact['bytes'],
@@ -173,6 +183,8 @@ def compile_case(compiler, generator, corpus, index, source, source_root, expect
                     row['errors'].append(mode + '/' + name + ': compression changed expanded bytes')
                 if packed['bytes'] > plain['bytes']:
                     row['errors'].append(mode + '/' + name + ': automatic compression grew the container')
+    if row['semantic_change'] and not row['semantic_differences']:
+        row['errors'].append('registered semantic change no longer differs from the released result')
     # Every successful configuration must preserve images, inputs and output bits.
     successful = [a for a in row['artifacts'].values() if a['status'] == 0 and 'generations' in a]
     if successful:
@@ -253,6 +265,9 @@ def summarize(rows, manifest):
             'compile_rejections': sum(a['status'] != 0 for a in artifacts),
             'successful_generations': sum(not o['status'] for o in outcomes),
             'traps': sum(bool(o['status']) for o in outcomes), 'artifact_bytes': totals,
+            'semantic_changes': {row['source']: {'reason': row['semantic_change'],
+                                                 'differing_results': len(row['semantic_differences'])}
+                                 for row in records if row.get('semantic_change')},
             'expanded_optimized_no_growth_passed': not any('expanded optimized artifact grew' in e for row in records for e in row['errors']),
             'compressed_optimized_larger_pairs': sum(len(row.get('container_growth', [])) for row in records),
             'historical_size': {'matched_plain_artifacts': len(changes),
@@ -345,7 +360,8 @@ def main():
                   'historical_size_gate': False, 'workers': args.workers, 'per_command_timeout_seconds': args.timeout},
         'frozen_runtime': preserved, 'corpora': rows, 'summary': summaries, 'elapsed_seconds': time.monotonic() - began,
         'platform': platform.platform(), 'limitations': ['Default variant/archetype/size only; wider controls are covered by separate conformance.',
-            'C API/SFML/Godot require separate pinned backend reports.', 'Historical compiler rejections are retained and intentional language acceptance repairs are recorded.']}
+            'C API/SFML/Godot require separate pinned backend reports.', 'Historical compiler rejections are retained and intentional language acceptance repairs are recorded.',
+            'Registered semantic changes of released sources are recorded per differing result, not compared.']}
     (work / 'report.json').write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print('Runtime matrix:', 'PASS' if result['passed'] else 'FAIL', 'report:', work / 'report.json')
     for error in errors[:20]:

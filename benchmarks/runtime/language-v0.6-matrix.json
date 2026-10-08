@@ -1,0 +1,446 @@
+{
+  "schema_version": 1,
+  "measurement_kind": "actual current native matrix and exact artifact WASM comparison",
+  "source_commit": "b6188fcb781accb4cd076d9f03b5b02d65e1d3ab",
+  "versions": {
+    "product_version": "0.6.0",
+    "language_version": "0.6",
+    "format_version": "0.5",
+    "c_api_version": "0.3",
+    "c_abi_soversion": "0.4"
+  },
+  "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "frozen_release": "66d34c2831585afb231022da9296528a912e962e",
+  "frozen_manifest_sha256": "66ae84a2b16e6312bebc37a3e44e08a6c586a5b69cf8dddc2cd7b73ed7dde628",
+  "native_tools_sha256": {
+    "ipc": "f4fc29544ecc5feef576a77b47ad3f1ff4719fb834f5943a606df68a556ca405",
+    "ipgen": "0bad7a3b99047e486e0ce126a49b1bcc1c9cc68ca7d21f3a50714de3752a933b",
+    "ipa": "e2e646b03502ebc1f920f63c472603cf25a7d902cd10ca6f56e5ab20304ba0db"
+  },
+  "harness_sha256": "54d01f8b78994aa62ac1027a5d33b7af241f4bce50d7533e58b66946dfca5d2b",
+  "full_reports": {
+    "native": {
+      "filename": "native-runtime-matrix.json",
+      "bytes": 14005675,
+      "sha256": "8ba2acc49a518d4dc00b7a9b5176e1c1b75502d06f111613d5bb74414e040e1a"
+    },
+    "wasm": {
+      "filename": "wasm-runtime-matrix.json",
+      "bytes": 2646404,
+      "sha256": "77267467d709cd6c36d8825b895b025bdab2249202ee22f8c8d984bee24ea97f"
+    }
+  },
+  "scope": {
+    "seeds": [
+      0,
+      1,
+      2,
+      7,
+      26
+    ],
+    "variants": [
+      0
+    ],
+    "archetypes": [
+      0
+    ],
+    "size": "asset default",
+    "optimizations": [
+      "reference",
+      "optimized"
+    ],
+    "debug_modes": [
+      "debug",
+      "stripped"
+    ],
+    "containers": [
+      "plain",
+      "compress"
+    ],
+    "optimized_size_gate": "expanded bytes; compressed entropy deltas reported separately",
+    "historical_size_gate": false,
+    "workers": 4,
+    "per_command_timeout_seconds": 30
+  },
+  "summary": {
+    "released_sources": {
+      "sources": 85,
+      "compile_attempts": 680,
+      "compile_rejections": 72,
+      "successful_generations": 2800,
+      "traps": 240,
+      "artifact_bytes": {
+        "debug/plain/reference": {
+          "bytes": 167239,
+          "expanded_bytes": 167239
+        },
+        "debug/plain/optimized": {
+          "bytes": 149576,
+          "expanded_bytes": 149576
+        },
+        "debug/compress/reference": {
+          "bytes": 38044,
+          "expanded_bytes": 167239
+        },
+        "debug/compress/optimized": {
+          "bytes": 36876,
+          "expanded_bytes": 149576
+        },
+        "stripped/plain/reference": {
+          "bytes": 94663,
+          "expanded_bytes": 94663
+        },
+        "stripped/plain/optimized": {
+          "bytes": 85620,
+          "expanded_bytes": 85620
+        },
+        "stripped/compress/reference": {
+          "bytes": 32755,
+          "expanded_bytes": 94663
+        },
+        "stripped/compress/optimized": {
+          "bytes": 31752,
+          "expanded_bytes": 85620
+        }
+      },
+      "semantic_changes": {
+        "backends/html5/test/fixtures/part-transforms.ips": {
+          "reason": "0.6 part outputs in caller coordinates: read and host values include the blit origin",
+          "differing_results": 40
+        },
+        "examples/language/composition.ips": {
+          "reason": "0.6 part outputs in caller coordinates: the anchor read and the pixel drawn there move by the placement",
+          "differing_results": 40
+        }
+      },
+      "expanded_optimized_no_growth_passed": true,
+      "compressed_optimized_larger_pairs": 50,
+      "historical_size": {
+        "matched_plain_artifacts": 292,
+        "released_bytes": 491730,
+        "current_bytes": 492538,
+        "delta_bytes": 808,
+        "grown_artifacts": 20,
+        "shrunk_artifacts": 0,
+        "new_source_paths_without_historical_size": []
+      }
+    },
+    "current_sources": {
+      "sources": 131,
+      "compile_attempts": 1048,
+      "compile_rejections": 144,
+      "successful_generations": 4040,
+      "traps": 480,
+      "artifact_bytes": {
+        "debug/plain/reference": {
+          "bytes": 212233,
+          "expanded_bytes": 212233
+        },
+        "debug/plain/optimized": {
+          "bytes": 190765,
+          "expanded_bytes": 190765
+        },
+        "debug/compress/reference": {
+          "bytes": 52379,
+          "expanded_bytes": 212233
+        },
+        "debug/compress/optimized": {
+          "bytes": 51077,
+          "expanded_bytes": 190765
+        },
+        "stripped/plain/reference": {
+          "bytes": 122913,
+          "expanded_bytes": 122913
+        },
+        "stripped/plain/optimized": {
+          "bytes": 112029,
+          "expanded_bytes": 112029
+        },
+        "stripped/compress/reference": {
+          "bytes": 45130,
+          "expanded_bytes": 122913
+        },
+        "stripped/compress/optimized": {
+          "bytes": 44024,
+          "expanded_bytes": 112029
+        }
+      },
+      "semantic_changes": {},
+      "expanded_optimized_no_growth_passed": true,
+      "compressed_optimized_larger_pairs": 72,
+      "historical_size": {
+        "matched_plain_artifacts": 292,
+        "released_bytes": 491730,
+        "current_bytes": 496496,
+        "delta_bytes": 4766,
+        "grown_artifacts": 38,
+        "shrunk_artifacts": 0,
+        "new_source_paths_without_historical_size": [
+          "backends/capi/test/image-view.ips",
+          "backends/capi/test/output-values.ips",
+          "backends/capi/test/reflection-defaults.ips",
+          "backends/capi/test/reflection-empty.ips",
+          "backends/capi/test/reflection-output-empty.ips",
+          "backends/capi/test/reflection-output-first.ips",
+          "backends/capi/test/reflection-output-second.ips",
+          "backends/capi/test/reflection-outputs.ips",
+          "backends/capi/test/reflection-part-empty.ips",
+          "backends/capi/test/reflection-part-first.ips",
+          "backends/capi/test/reflection-part-second.ips",
+          "backends/capi/test/reflection-parts.ips",
+          "backends/html5/test/fixtures/distribution-errors.ips",
+          "backends/html5/test/fixtures/distributions.ips",
+          "backends/html5/test/fixtures/gradients.ips",
+          "backends/html5/test/fixtures/nested-arm.ips",
+          "backends/html5/test/fixtures/nested-parts.ips",
+          "backends/html5/test/fixtures/random-ranges.ips",
+          "backends/html5/test/fixtures/range-errors.ips",
+          "backends/html5/test/fixtures/segment-errors.ips",
+          "benchmarks/capi/fixtures/large.ips",
+          "benchmarks/capi/fixtures/lists.ips",
+          "benchmarks/capi/fixtures/part.ips",
+          "benchmarks/capi/fixtures/parts.ips",
+          "benchmarks/capi/fixtures/small.ips",
+          "examples/colony/colony.ips",
+          "examples/colony/mushroom/cap.ips",
+          "examples/colony/mushroom/mushroom.ips",
+          "examples/colony/mushroom/stem.ips",
+          "examples/language/call-effects.ips",
+          "examples/language/distributions.ips",
+          "examples/language/errors/chained-range.ips",
+          "examples/language/errors/channel-assignment.ips",
+          "examples/language/errors/color-channel.ips",
+          "examples/language/errors/declaration-constant.ips",
+          "examples/language/errors/duplicate-call-argument.ips",
+          "examples/language/errors/duplicate-helper-parameter.ips",
+          "examples/language/errors/i32-default-range.ips",
+          "examples/language/errors/negative-u32-default.ips",
+          "examples/language/errors/with-number.ips",
+          "examples/language/negative-default.ips",
+          "examples/language/signed-input.ips",
+          "examples/language/traps/negative-sigma.ips",
+          "examples/language/traps/reversed-range.ips",
+          "examples/language/traps/stream-pop.ips",
+          "examples/previews/metal-gradients.ips",
+          "examples/previews/parameters.ips",
+          "examples/previews/segments.ips"
+        ]
+      }
+    }
+  },
+  "frozen_current_runtime": {
+    "passed": true,
+    "successful_generations": 1345,
+    "traps": 120
+  },
+  "wasm_matrix": {
+    "passed": true,
+    "images_and_output_comparisons": 8185,
+    "trap_comparisons": 840,
+    "binary_artifacts": 1805,
+    "module_sha256": {
+      "iprop.js": "4c77d70891b7a7773be577342856c8402b06693187ab400c1191c337045d1268",
+      "iprop.wasm": "016eb759536143810cdb9860d1121de7172d3f2071aaf89e8fb75e05db121a87"
+    },
+    "provenance": "WASM rebuilt from the measured commit in build/wasm"
+  },
+  "separate_root_wasm_conformance": {
+    "sha256": "e63633ab662a666b873843b1219ebc7da32d1370358ff0837569b907c11c4bfa",
+    "lines": [
+      "conformance: PASS (7 entries)",
+      "native/WASM compression: PASS (7 exact historical images; 12 matching rejected envelopes)",
+      "native/WASM: PASS (327 pixel-exact images and structured outputs; native pins verified)",
+      "native/WASM runtime errors: PASS (30 matching trap reasons)",
+      "native/WASM vector boundaries: PASS (6292 bit-exact results)",
+      "native/WASM color boundaries: PASS (1053 exact RGBA results)"
+    ]
+  },
+  "historical_growth": {
+    "delta_bytes": 808,
+    "cause": "the format 0.5 parts section of the five released sources with parts",
+    "changed_source_artifacts": [
+      {
+        "source": "backends/capi/test/output-owners.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 1093,
+        "current_bytes": 1144,
+        "delta": 51
+      },
+      {
+        "source": "backends/capi/test/output-owners.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 845,
+        "current_bytes": 896,
+        "delta": 51
+      },
+      {
+        "source": "backends/capi/test/output-owners.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 713,
+        "current_bytes": 764,
+        "delta": 51
+      },
+      {
+        "source": "backends/capi/test/output-owners.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 589,
+        "current_bytes": 640,
+        "delta": 51
+      },
+      {
+        "source": "backends/html5/test/fixtures/part-transforms.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 1977,
+        "current_bytes": 2009,
+        "delta": 32
+      },
+      {
+        "source": "backends/html5/test/fixtures/part-transforms.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 1757,
+        "current_bytes": 1789,
+        "delta": 32
+      },
+      {
+        "source": "backends/html5/test/fixtures/part-transforms.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 1217,
+        "current_bytes": 1249,
+        "delta": 32
+      },
+      {
+        "source": "backends/html5/test/fixtures/part-transforms.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 1113,
+        "current_bytes": 1145,
+        "delta": 32
+      },
+      {
+        "source": "examples/language/composition.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 699,
+        "current_bytes": 731,
+        "delta": 32
+      },
+      {
+        "source": "examples/language/composition.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 619,
+        "current_bytes": 651,
+        "delta": 32
+      },
+      {
+        "source": "examples/language/composition.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 483,
+        "current_bytes": 515,
+        "delta": 32
+      },
+      {
+        "source": "examples/language/composition.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 443,
+        "current_bytes": 475,
+        "delta": 32
+      },
+      {
+        "source": "examples/plant.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 22939,
+        "current_bytes": 22978,
+        "delta": 39
+      },
+      {
+        "source": "examples/plant.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 21544,
+        "current_bytes": 21583,
+        "delta": 39
+      },
+      {
+        "source": "examples/plant.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 12135,
+        "current_bytes": 12174,
+        "delta": 39
+      },
+      {
+        "source": "examples/plant.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 11408,
+        "current_bytes": 11447,
+        "delta": 39
+      },
+      {
+        "source": "examples/portrait.ips",
+        "mode": "debug",
+        "optimization": "reference",
+        "released_bytes": 17363,
+        "current_bytes": 17411,
+        "delta": 48
+      },
+      {
+        "source": "examples/portrait.ips",
+        "mode": "debug",
+        "optimization": "optimized",
+        "released_bytes": 14680,
+        "current_bytes": 14728,
+        "delta": 48
+      },
+      {
+        "source": "examples/portrait.ips",
+        "mode": "stripped",
+        "optimization": "reference",
+        "released_bytes": 9287,
+        "current_bytes": 9335,
+        "delta": 48
+      },
+      {
+        "source": "examples/portrait.ips",
+        "mode": "stripped",
+        "optimization": "optimized",
+        "released_bytes": 7904,
+        "current_bytes": 7952,
+        "delta": 48
+      }
+    ]
+  },
+  "intended_semantic_changes": {
+    "backends/html5/test/fixtures/part-transforms.ips": {
+      "reason": "0.6 part outputs in caller coordinates: read and host values include the blit origin",
+      "differing_results": 40
+    },
+    "examples/language/composition.ips": {
+      "reason": "0.6 part outputs in caller coordinates: the anchor read and the pixel drawn there move by the placement",
+      "differing_results": 40
+    }
+  },
+  "uncovered": [
+    "Default variant/archetype/size in the full matrix; wider controls, nested-part transforms at two sizes, vector/color boundaries and historical envelopes are in the separate native/WASM conformance.",
+    "macOS arm64 locally; Linux, Windows and sanitizer runs come from GitHub CI on the release candidate.",
+    "C API, SFML and Godot run their own conformance in ctest and CI, not every matrix artifact.",
+    "New source paths have no frozen source-level size observation. Expanded optimized<=reference holds; some compressed optimized containers grow due to entropy."
+  ],
+  "report_archive": {
+    "filename": "language-v0.6-reports-macos-arm64.tar.gz",
+    "bytes": 629999,
+    "sha256": "bc838254f527b04936c66fd330c243d35ac6cb891b93201d614d76f35440091b",
+    "members_manifest": "manifest.json"
+  }
+}

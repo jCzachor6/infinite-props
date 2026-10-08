@@ -1,0 +1,27 @@
+asset distributions {
+  size 8x8
+  output list point ints
+  output list point floats
+  shaped(level: f32) -> distribution { return gaussian(mean=level, sigma=0.5 + unit()) }
+  draw {
+    distribution wide = gaussian(mean=0.0, sigma=2.0)
+    tail = gaussian(mean=0.0, sigma=1.0)
+    edge = triangular(min=0.0, peak=0.0, max=4.0)
+    peak = triangular(min=-5.0, peak=1.0, max=5.0)
+    clean = beta(alpha=2.0, beta=5.0)
+    ends = beta(alpha=0.5, beta=0.5)
+    sharp = beta(alpha=0.2, beta=3.0, min=-1.0, max=1.0)
+    heavy = beta(alpha=200.0, beta=300.0)
+    for i in 0..60 {
+      ints = {-5 to 5 with wide, 0 to 10 with beta(alpha=4.0, beta=4.0, min=0.0, max=10.0)}
+      floats = {-5.0 to 5.0 with wide, 20.0 to 30.0 with wide}
+      floats = {8.0 to 9.0 with tail, -9.0 to -8.0 with tail}
+      floats = {0.0 to 4.0 with edge, -2.0 to 3.0 with peak}
+      floats = {0.0 to 1.0 with clean, 0.0 to 1.0 with ends}
+      floats = {-1.0 to 1.0 with sharp, 0.3 to 0.5 with heavy}
+      floats = {0.0 to 2.0 with shaped(float(i) * 0.05), float(i) * 0.6 to 40.0 with tail}
+      ints = {seed >> 16, seed & 65535}
+    }
+    pixel(0 to 7 with edge, 0 to 7 with clean, #fff)
+  }
+}

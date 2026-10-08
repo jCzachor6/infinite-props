@@ -605,9 +605,10 @@ IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program
  * select its contiguous global output range for program_output_get, and
  * program_output_find uses this owner. An empty part may have the same
  * output_begin as the following part while keeping its own owner.
- * Current binary formats do not store a part name: name_present=0, name=NULL/0.
- * A stored function name is not a part/import name. Future stored empty names
- * may be present with byte_count=0; name_present distinguishes availability.
+ * Files with a v0.5 parts section store each part's instance name, its alias
+ * path from the root ("hilt.grip"): name_present=1. Older files store none:
+ * name_present=0, name=NULL/0. A stored function name is not a part/import
+ * name. name_present distinguishes availability from an empty name.
  * Fields except size/flags are outputs, with the existing sized/flag/padding
  * policy. Name pointer/count are bounded separately. Names, if available,
  * would be immutable program-owned UTF-8 views until program_free. */

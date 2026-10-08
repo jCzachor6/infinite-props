@@ -75,6 +75,7 @@ set(IPROP_CAPI_SOURCES
     ${CMAKE_SOURCE_DIR}/tests/golden/noise.ipa
     ${CMAKE_SOURCE_DIR}/tests/golden/parts.ipa
     ${CMAKE_CURRENT_SOURCE_DIR}/test/uniforms.ipa
+    ${CMAKE_CURRENT_SOURCE_DIR}/test/legacy-output-owners.ipa
     ${CMAKE_CURRENT_SOURCE_DIR}/test/error-trap.ipa
     ${CMAKE_CURRENT_SOURCE_DIR}/test/vector-branch.ipa)
 
@@ -107,9 +108,10 @@ add_custom_command(OUTPUT ${owner_fixture}
     DEPENDS ipc test/output-owners.ips test/owner-first.ips test/owner-second.ips)
 add_custom_target(capi_owners DEPENDS ${owner_fixture})
 add_dependencies(capi_golden capi_owners)
-# The separately built frozen client needs these exact two current-tool fixtures.
+# The separately built frozen client needs these exact two current-tool
+# fixtures, assembled as format 0.4 so the released library loads them too.
 add_custom_target(capi_legacy_fixtures DEPENDS
-    ${golden}/uniforms.iprop ${owner_fixture})
+    ${golden}/uniforms.iprop ${golden}/legacy-output-owners.iprop)
 
 set(result_output_fixture ${golden}/output-values.iprop)
 add_custom_command(OUTPUT ${result_output_fixture}
@@ -199,7 +201,7 @@ iprop_capi_test(capi_output_declarations test/output_declarations.c BOTH
         ${golden}/reflection-outputs-compressed.iprop ${golden}/reflection-empty.iprop)
 iprop_capi_test(capi_parts test/parts.c BOTH
     ARGS ${golden}/reflection-parts-plain.iprop ${golden}/reflection-parts-debug.iprop
-        ${golden}/reflection-parts-compressed.iprop ${golden}/reflection-empty.iprop)
+        ${golden}/reflection-parts-compressed.iprop ${golden}/reflection-empty.iprop ${golden}/parts.iprop)
 iprop_capi_test(capi_metadata test/metadata.c BOTH
     ARGS ${golden}/reflection-parts-plain.iprop ${golden}/reflection-parts-debug.iprop
         ${golden}/reflection-parts-compressed.iprop)

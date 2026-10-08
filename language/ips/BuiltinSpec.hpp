@@ -7,13 +7,14 @@
 #include <map>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace iprop::ips {
 
-enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose };
+enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta };
 struct BuiltinParameter {
     std::string name;
     ValueType type;
@@ -41,6 +42,9 @@ struct BuiltinSpec {
 const std::map<std::string, BuiltinSpec>& builtinSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
+// The distribution constructors arrived after helpers could take their
+// names, so a helper declared with one of these names keeps its calls.
+bool builtinYieldsToHelper(std::string_view name);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments);
 

@@ -67,6 +67,14 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"rgb", {V::Color, L::ColorConstructor, {{{{"r", V::I32}, {"g", V::I32}, {"b", V::I32}}, std::nullopt}}}},
         {"rgba", {V::Color, L::ColorConstructor, {{{{"r", V::I32}, {"g", V::I32}, {"b", V::I32}, {"a", V::I32}}, std::nullopt}}}},
         {"round", {V::I32, L::Round, {{{{"x", V::F32}}, std::nullopt}}}},
+        {"gaussian", {V::Distribution, L::Opcode,
+            {{{{"mean", V::F32}, {"sigma", V::F32}}, Opcode::DistributionGaussian}}}},
+        {"triangular", {V::Distribution, L::Opcode,
+            {{{{"min", V::F32}, {"peak", V::F32}, {"max", V::F32}}, Opcode::DistributionTriangular}}}},
+        // Without min and max the natural range is 0-1.
+        {"beta", {V::Distribution, L::Beta, {
+            {{{"alpha", V::F32}, {"beta", V::F32}}, std::nullopt},
+            {{{"alpha", V::F32}, {"beta", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::DistributionBeta}}}},
         {"lerp", {L::Opcode, {
             {{{"a", V::F32}, {"b", V::F32}, {"t", V::F32}}, Opcode::Lerp, V::F32},
             {{{"a", V::Color}, {"b", V::Color}, {"t", V::F32}}, Opcode::ColorMix, V::Color}}}},
@@ -122,6 +130,10 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
     return result;
 }
 
+bool builtinYieldsToHelper(std::string_view name) {
+    return name == "gaussian" || name == "triangular" || name == "beta";
+}
+
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {
     if (overload && overload->opcode) {
         const auto* opcode = findOpcode(*overload->opcode);
@@ -139,6 +151,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
         return {};
     case BuiltinLowering::Round:
     case BuiltinLowering::ColorConstructor: return {};
+    case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;
     }
     throw std::logic_error("unknown builtin lowering effects");
 }

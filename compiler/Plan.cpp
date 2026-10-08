@@ -1,5 +1,6 @@
 #include "Plan.hpp"
 #include "ips/Fold.hpp"
+#include "ips/Imports.hpp"
 
 #include <set>
 #include <utility>
@@ -13,11 +14,27 @@ ValueType runtimeType(ips::ValueType type) {
     case ips::ValueType::F32: return ValueType::F32;
     case ips::ValueType::Color: return ValueType::Color;
     case ips::ValueType::Vec2: return ValueType::Vec2;
+    case ips::ValueType::Distribution: return ValueType::Distribution;
     default: return ValueType::I32; // compounds never enter the tables
     }
 }
 
 } // namespace
+
+std::string functionNamespace(const std::string& functionName) {
+    const auto dot = functionName.rfind('.');
+    return dot == std::string::npos ? std::string() : functionName.substr(0, dot + 1);
+}
+
+u32 Plan::partSlot(u32 part, const std::string& output) const {
+    u32 slot = static_cast<u32>(rootSlots.size());
+    for (u32 i = 0; i < part; ++i) slot += static_cast<u32>(parts[i]->asset.outputs.size());
+    for (const auto& candidate : parts[part]->asset.outputs) {
+        if (candidate.name == output) break;
+        ++slot;
+    }
+    return slot;
+}
 
 std::optional<u32> Plan::functionId(const std::string& name,
                                     const std::string& ownerNamespace) const {
@@ -35,14 +52,16 @@ const ips::ResolvedPalette& Plan::palette(const ips::Program& owner, const ips::
 }
 
 Planner::Planner(const ips::Program& entry,
-                 const std::map<std::string, const ips::Program*>& parts)
-    : entry_(entry), parts_(parts), plan_(std::make_unique<Plan>()) {
+                 const std::map<std::string, const ips::Program*>& parts,
+                 const std::map<std::string, std::string>& partSources)
+    : entry_(entry), parts_(parts), partSources_(partSources),
+      plan_(std::make_unique<Plan>()) {
     plan_->entry = &entry;
 }
 
 std::string Plan::sourcePath(const ips::Program* owner) const {
     for (std::size_t i = 0; i < parts.size(); ++i) {
-        if (parts[i] == owner) return entry->imports[i].path;
+        if (parts[i] == owner) return instances[i].source;
     }
     return {};
 }
@@ -97,15 +116,16 @@ std::unique_ptr<Plan> Planner::plan() {
     registerNames();
 
     // Calls prepare callees lazily while their result types are inferred.
-    for (const auto& [alias, part] : parts_) {
+    // Surfaces are keyed by alias path; the Typer prefixes its namespace.
+    for (std::size_t i = 0; i < plan_->parts.size(); ++i) {
         ips::PartInfo info;
-        for (const auto& input : part->asset.inputs) {
+        for (const auto& input : plan_->parts[i]->asset.inputs) {
             info.inputs.push_back({input.type, input.name, &input});
         }
-        for (const auto& output : part->asset.outputs) {
+        for (const auto& output : plan_->parts[i]->asset.outputs) {
             info.outputs.push_back({output.kind, output.isList, output.name});
         }
-        surfaces_.emplace(alias, std::move(info));
+        surfaces_.emplace(plan_->instances[i].path, std::move(info));
     }
     typer_ = std::make_unique<ips::Typer>(surfaces_);
     typer_->resolveFunction = [this](const std::string& name,
@@ -175,21 +195,34 @@ void Planner::planParts() {
                                     static_cast<u32>(plan_->rootSlots.size() - 1));
     }
 
-    for (const auto& import : entry_.imports) {
-        const auto found = parts_.find(import.alias);
-        if (found == parts_.end()) {
-            error(import.location,
-                  "imported part '" + import.alias + "' was not provided");
+    // Instances in preorder of import order: a flat source keeps its import
+    // order, and each child directly follows its parent's earlier children.
+    const auto expand = [&](auto&& self, const ips::Program& owner, const std::string& prefix,
+                            u32 parent, const std::string& ownerSource) -> void {
+        for (const auto& import : owner.imports) {
+            // Stop expanding before the plan grows past the format limit.
+            if (plan_->parts.size() >= kMaxParts) {
+                throw ips::SourceError{import.location, "too many part instances (limit " +
+                    std::to_string(kMaxParts) + " after expanding nested imports)",
+                    ownerSource, ips::DiagnosticCode::ResourceLimit, ips::DiagnosticStage::Planning};
+            }
+            const std::string path = prefix + import.alias;
+            const auto found = parts_.find(path);
+            if (found == parts_.end()) {
+                throw ips::SourceError{import.location, "imported part '" + path + "' was not provided",
+                    ownerSource, ips::DiagnosticCode::PlanError, ips::DiagnosticStage::Planning};
+            }
+            const auto index = static_cast<u32>(plan_->parts.size());
+            const auto named = partSources_.find(path);
+            const auto source = named != partSources_.end() ? named->second
+                                                            : ips::resolveImportPath(ownerSource, import.path);
+            plan_->partIndex.emplace(path, index);
+            plan_->parts.push_back(found->second);
+            plan_->instances.push_back({path, parent, source});
+            self(self, *found->second, path + ".", index, source);
         }
-        const ips::Program* part = found->second;
-        if (!part->imports.empty()) {
-            throw ips::SourceError{part->imports[0].location,
-                  "nested part imports are not supported yet", import.path};
-        }
-        plan_->partIndex.emplace(import.alias,
-                                static_cast<u32>(plan_->parts.size()));
-        plan_->parts.push_back(part);
-    }
+    };
+    expand(expand, entry_, "", kRootParent, "");
 }
 
 void Planner::planFunctions() {
@@ -210,10 +243,9 @@ void Planner::planFunctions() {
             registryDrawLike_.emplace(function.name, false);
         }
     }
-    for (const auto& import : entry_.imports) {
-        const ips::Program* part = parts_.at(import.alias);
-        for (const auto& function : part->asset.functions) {
-            const std::string name = import.alias + "." + function.name;
+    for (std::size_t i = 0; i < plan_->parts.size(); ++i) {
+        for (const auto& function : plan_->parts[i]->asset.functions) {
+            const std::string name = plan_->instances[i].path + "." + function.name;
             planned.push_back(name);
             registry_.emplace(name, &function);
             registryDrawLike_.emplace(name, function.name == "draw");
@@ -229,25 +261,28 @@ void Planner::planFunctions() {
 
 void Planner::registerNames() {
     // Deterministic order: function names, then slot names (root first, then
-    // parts), then input names.
+    // parts), then input names, then part instance names.
     for (const auto& function : plan_->functions) {
         plan_->pools.addString(function.name);
     }
     for (const auto& output : entry_.asset.outputs) {
         plan_->pools.addString(output.name);
     }
-    for (const auto& import : entry_.imports) {
-        for (const auto& output : parts_.at(import.alias)->asset.outputs) {
+    for (const auto* part : plan_->parts) {
+        for (const auto& output : part->asset.outputs) {
             plan_->pools.addString(output.name);
         }
     }
     for (const auto& input : entry_.asset.inputs) {
         plan_->pools.addString(input.name);
     }
-    for (const auto& import : entry_.imports) {
-        for (const auto& input : parts_.at(import.alias)->asset.inputs) {
+    for (const auto* part : plan_->parts) {
+        for (const auto& input : part->asset.inputs) {
             plan_->pools.addString(input.name);
         }
+    }
+    for (const auto& instance : plan_->instances) {
+        plan_->pools.addString(instance.path);
     }
 }
 
@@ -259,9 +294,9 @@ void Planner::prepareFunction(const std::string& name) {
     try {
         prepareFunctionBody(name);
     } catch (ips::SourceError& error) {
-        const auto dot = name.find('.');
-        if (error.path.empty() && dot != std::string::npos) {
-            error.path = plan_->sourcePath(parts_.at(name.substr(0, dot)));
+        const auto ns = functionNamespace(name);
+        if (error.path.empty() && !ns.empty()) {
+            error.path = plan_->instances[plan_->partIndex.at(ns.substr(0, ns.size() - 1))].source;
         }
         throw;
     }
@@ -280,17 +315,14 @@ void Planner::prepareFunctionBody(const std::string& name) {
     const ips::Function* ast = registry_.at(name);
     const bool drawLike = registryDrawLike_.at(name);
     const ips::Program* owner = &entry_;
-    const auto dot = name.find('.');
-    if (dot != std::string::npos) {
-        owner = parts_.at(name.substr(0, dot));
-    }
-
+    const std::string ns = functionNamespace(name);
     PlannedFunction& info = plan_->functions.at(plan_->functionIndex.at(name));
+    if (!ns.empty()) {
+        info.partOwner = plan_->partIndex.at(ns.substr(0, ns.size() - 1));
+        owner = plan_->parts[*info.partOwner];
+    }
     info.ast = ast;
     info.owner = owner;
-    if (dot != std::string::npos) {
-        info.partOwner = plan_->partIndex.at(name.substr(0, dot));
-    }
     info.drawLike = drawLike;
 
     u32 slot = 0;
@@ -321,8 +353,6 @@ void Planner::prepareFunctionBody(const std::string& name) {
     }
 
     ips::Typer::Scope savedScope = typer_->saveScope();
-    const std::string ns =
-        dot != std::string::npos ? name.substr(0, dot + 1) : "";
     typer_->enterFunction(*owner, *ast, drawLike, ns);
     std::optional<ips::ValueType> returnType;
 

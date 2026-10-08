@@ -43,9 +43,14 @@ struct ControlInfo {
 struct OutputSlot {
     OutputKind kind = OutputKind::Point;
     bool isList = false;
+    // Published values, in root asset coordinates with a parts section.
     std::vector<OutputPoint> points;
     std::vector<OutputRect> rects;
     std::vector<OutputCircle> circles;
+    // The latest value as part.get returns it to the owner's caller.
+    OutputPoint readPoint{};
+    OutputRect readRect{};
+    OutputCircle readCircle{};
 };
 
 // One call frame (spec §8.2).
@@ -116,6 +121,7 @@ struct Execution {
     f32 popF32();
     Color popColor();
     Vec2 popVec2();
+    Distribution popDistribution();
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);

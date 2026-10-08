@@ -15,7 +15,7 @@ asset GeometryHelpers {
     quadratic = dist.bezier(p, {0, 0}, {3, 7}, {7, 0})
     cubic = dist.bezier(p, {0, 0}, {2, 7}, {5, 7}, {7, 0})
     coverage = fill(circleDistance, 1)
-    result = folded
+    result = {0.0, 0.0} to {7.0, 7.0}
     pixel(2, 3, color.scale(#9dc, coverage))
   }
 }

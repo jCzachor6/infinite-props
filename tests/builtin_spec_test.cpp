@@ -19,6 +19,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
         case T::F32: return ValueType::F32;
         case T::Color: return ValueType::Color;
         case T::Vec2: return ValueType::Vec2;
+        case T::Distribution: return ValueType::Distribution;
         default: throw std::logic_error("not a VM value");
         }
     };
@@ -45,13 +46,17 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             std::string args;
             std::string named;
             std::set<std::string> names;
+            int position = 0;
             for (const auto& param : overload.params) {
                 CHECK_FALSE(param.name.empty());
                 CHECK(names.insert(param.name).second);
                 const auto type = param.type;
                 if (!args.empty()) args += ",";
-                // Exact argument types exercise each overload, including identity casts.
-                const std::string value = type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" : type == T::F32 ? "1.0" : "1";
+                ++position;
+                // Exact argument types exercise each overload, including identity
+                // casts; distribution parameters increase so that min < max.
+                const std::string value = type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" :
+                    type == T::F32 ? (overload.result == T::Distribution ? std::to_string(position) + ".0" : "1.0") : "1";
                 args += value;
                 named = param.name + "=" + value + (named.empty() ? "" : "," + named);
             }

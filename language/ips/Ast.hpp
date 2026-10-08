@@ -101,24 +101,42 @@ struct Unary {
     SourceLocation location;
 };
 
+// A random draw: `lower to upper [with distribution]`. Not a value range:
+// every evaluation draws again from the current stream. The location is the
+// `to` token.
+struct RandomRange {
+    std::unique_ptr<Expr> lower;
+    std::unique_ptr<Expr> upper;
+    SourceLocation location;
+    std::unique_ptr<Expr> distribution{}; // null: uniform
+    SourceLocation withLocation{};
+};
+
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, Index, Binary,
-                   Unary> {
+                   Unary, RandomRange> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
-                       Binary, Unary>::variant;
+                       Binary, Unary, RandomRange>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };
 
 // ---- Statements ----------------------------------------------------------
 
+// The declared type of a function parameter or return value: the scalar
+// and vec2 types the VM can store in locals (spec §3/§9). Unlike `input`,
+// there is no u32 — parameters are always locals.
+enum class ParamType { I32, F32, Color, Vec2, Distribution };
+
 struct Stmt;
 
 // `w = range(21, 31)` — declares a local and assigns it in one step.
+// `distribution d = gaussian(...)` also states the type.
 struct VarDecl {
     std::string name;
     std::unique_ptr<Expr> value;
     SourceLocation location;
+    std::optional<ParamType> declaredType{};
 };
 
 // A bare expression statement: a call, e.g. `face(v, a)` or
@@ -213,10 +231,6 @@ struct PaletteDecl {
     TokenRange sourceRange{};
 };
 
-// The declared type of a function parameter or return value: the scalar
-// and vec2 types the VM can store in locals (spec §3/§9). Unlike `input`,
-// there is no u32 — parameters are always locals.
-enum class ParamType { I32, F32, Color, Vec2 };
 
 // One function parameter: a name plus its declared type. Pre-1.0 the type
 // is mandatory — untyped parameters are rejected (the language is not

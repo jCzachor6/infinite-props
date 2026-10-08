@@ -15,8 +15,9 @@ int main(int argc, char** argv) {
     const uint32_t origin_x[] = {UINT32_C(0x80000000), UINT32_C(0x3fc00000), UINT32_C(0xc0400000)};
     const uint32_t origin_y[] = {UINT32_C(0x3f000000), UINT32_C(0xc0000000), UINT32_C(0x40800000)};
     const uint32_t input_counts[] = {4, 0, 3}, output_counts[] = {2, 0, 1}, output_begins[] = {1, 3, 3};
+    const char* names[] = {"first", "empty", "second"};
     uint32_t count = UINT32_MAX, index = UINT32_MAX, capacity, i, j, variant;
-    CHECK(argc == 5);
+    CHECK(argc == 6);
     CHECK(read_fixture(argv[1], &bytes, &size) == 0 && read_u32(bytes + 8) == 0);
     CHECK(iprop_error_ex_init(&error, sizeof(error)) == IPROP_EX_OK);
     error.message_buffer = message; error.message_capacity = sizeof(message);
@@ -37,7 +38,9 @@ int main(int argc, char** argv) {
         CHECK(expected[i].size_x == widths[i] && expected[i].size_y == heights[i]);
         CHECK(float_bits(&expected[i].origin_x) == origin_x[i] && float_bits(&expected[i].origin_y) == origin_y[i]);
         CHECK(expected[i].input_count == input_counts[i] && expected[i].output_count == output_counts[i] && expected[i].output_begin == output_begins[i]);
-        CHECK(expected[i].name_present == 0 && expected[i].name.data == NULL && expected[i].name.byte_count == 0);
+        /* Compiled v0.5 files name each instance by its alias path. */
+        CHECK(expected[i].name_present == 1 && expected[i].name.byte_count == strlen(names[i]) &&
+              memcmp(expected[i].name.data, names[i], strlen(names[i])) == 0);
         CHECK(iprop_program_part_input_count(program, i, &count, &error) == IPROP_EX_OK && count == input_counts[i]);
         for (j = 0; j < count; ++j) {
             CHECK(iprop_program_part_input_get(program, i, j, &input, &error) == IPROP_EX_OK && input.input_index == j);
@@ -62,7 +65,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_part_input_find(program, 1, color_input.name, &index, &error) == IPROP_EX_E_ARGUMENT);
 
     /* Debug/plain and debug/compressed encodings preserve geometry, complete
-     * signatures and unavailable part-name state. */
+     * signatures and instance names. */
     for (variant = 2; variant <= 3; ++variant) {
         iprop_program* encoded = NULL;
         CHECK(read_fixture(argv[variant], &other_bytes, &other_size) == 0);
@@ -75,7 +78,8 @@ int main(int argc, char** argv) {
             CHECK(part.owner == expected[i].owner && part.size_x == widths[i] && part.size_y == heights[i]);
             CHECK(float_bits(&part.origin_x) == origin_x[i] && float_bits(&part.origin_y) == origin_y[i]);
             CHECK(part.input_count == input_counts[i] && part.output_count == output_counts[i] && part.output_begin == output_begins[i]);
-            CHECK(part.name_present == 0 && part.name.data == NULL && part.name.byte_count == 0);
+            CHECK(part.name_present == 1 && part.name.byte_count == strlen(names[i]) &&
+                  memcmp(part.name.data, names[i], strlen(names[i])) == 0);
             CHECK(iprop_program_part_input_count(encoded, i, &count, &error) == IPROP_EX_OK && count == input_counts[i]);
             for (j = 0; j < count; ++j) {
                 CHECK(iprop_program_part_input_get(encoded, i, j, &input, &error) == IPROP_EX_OK);
@@ -87,6 +91,17 @@ int main(int argc, char** argv) {
     CHECK(read_fixture(argv[4], &other_bytes, &other_size) == 0);
     CHECK(iprop_program_load_ex(other_bytes, other_size, &empty, &error) == IPROP_EX_OK); free(other_bytes);
     CHECK(iprop_program_part_count(empty, &count, NULL) == IPROP_EX_OK && count == 0);
+
+    /* Without a parts section no name is stored or inferred from symbols. */
+    {
+        iprop_program* unnamed = NULL;
+        CHECK(read_fixture(argv[5], &other_bytes, &other_size) == 0);
+        CHECK(iprop_program_load_ex(other_bytes, other_size, &unnamed, &error) == IPROP_EX_OK); free(other_bytes);
+        CHECK(iprop_part_info_ex_init(&part, sizeof(part)) == IPROP_EX_OK);
+        CHECK(iprop_program_part_get(unnamed, 0, &part, &error) == IPROP_EX_OK);
+        CHECK(part.name_present == 0 && part.name.data == NULL && part.name.byte_count == 0);
+        iprop_program_free(unnamed);
+    }
 
     /* Every exact part descriptor prefix/tail, including native name padding. */
     for (capacity = 0; capacity <= sizeof(part) + 16; ++capacity) {

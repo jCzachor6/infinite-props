@@ -10,6 +10,7 @@
 #include "iprop/Types.hpp"
 #include "ips/Ast.hpp"
 #include "ips/Diagnostic.hpp"
+#include "ips/Imports.hpp"
 
 namespace iprop {
 
@@ -31,19 +32,24 @@ struct SourceCompilationResult {
     // a changed file to produce a diagnostic. Programs contain no source views.
     std::map<std::string, std::string> sources;
     std::map<std::string, ips::Program> programs;
+    // The file identifier of every import of each loaded file, in order.
+    std::map<std::string, std::vector<std::string>> imports;
     std::vector<CompilationDiagnostic> diagnostics;
     std::vector<u8> bytes; // empty on failure; validated final artifact on success
 
     bool succeeded() const noexcept { return status == SourceCompilationStatus::Success; }
 };
 
-// Shared source/import pipeline: load and parse once per reachable path, check
+// Shared source/import pipeline: load and parse once per reachable file, check
 // types, plan, lower, assemble, optimize and validate entirely in memory.
-// The host defines path resolution through loadSource; this API performs no
-// filesystem writes. The final strip/compression options are checked too.
+// The host maps imports to file identifiers through resolveImport (lexical
+// ips::resolveImportPath when empty) and identifiers to sources through
+// loadSource; this API performs no filesystem writes. The final
+// strip/compression options are checked too.
 SourceCompilationResult compileSource(
     std::string_view entryPath,
     const std::function<std::string(std::string_view path)>& loadSource,
-    SourceCompilationOptions options = {});
+    SourceCompilationOptions options = {},
+    const ips::ImportResolver& resolveImport = {});
 
 } // namespace iprop

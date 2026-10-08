@@ -99,7 +99,7 @@ TEST_CASE("shared call plans preserve effect traces signed defaults aliases and 
     const auto part = ips::parse(R"(asset child {size 4x4
       input f32 z=-0.0 input f32 first=1.0 input f32 second=2.0
       output point defaults
-      draw {defaults={z,first}; pixel(0,0,#abc);}
+      draw {defaults={atan2(z,-1.0),first}; pixel(0,0,#abc);}
     })");
     const auto root = ips::parse(R"(import child from "child.ips" import twin from "child.ips"
       asset root {size 8x8 output list point trace palette p=[0.0,1.0]
@@ -137,7 +137,7 @@ TEST_CASE("shared call plans preserve effect traces signed defaults aliases and 
                     CHECK(std::bit_cast<u32>(actual.outputs[i].points[j].y) == std::bit_cast<u32>(reference.outputs[i].points[j].y));
                 }
             }
-            CHECK(std::bit_cast<u32>(actual.outputs[1].points[0].x) == 0x80000000u);
+            CHECK(actual.outputs[1].points[0].x < 0.f); // atan2(-0, -1): the signed default
         }
     }
 }

@@ -6,8 +6,9 @@
 | --- | --- | --- |
 | `i32` | signed interpretation of a 32-bit integer pattern | yes |
 | `f32` | IEEE-754 binary32 | yes |
-| `color` | RGBA8 channels | yes |
+| `color` | RGBA8 channels, read as `i32` through `.r`, `.g`, `.b`, `.a` | yes |
 | `vec2` | two `f32` components | yes |
+| `distribution` | a [distribution](random.md#distributions) family and its parameters | yes |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
@@ -23,6 +24,8 @@ is performed. Integer-to-float conversion can lose precision.
 ## Variables and scope
 
 The first assignment to a fresh name declares a local and fixes its type.
+`distribution name = value` also states the type and requires a
+distribution value; no other type is written in a declaration.
 Locals belong to the whole function, including those first assigned inside
 a branch or loop; braces do not introduce shadowing scopes. Source is checked
 in traversal order. Initialize a local before branching if it is needed later:
@@ -48,11 +51,12 @@ to highest; parentheses explicitly select grouping.
 | 3–5 | `\|`, `^`, `&` | `i32` |
 | 6 | `==`, `!=` | numeric |
 | 7 | `<`, `<=`, `>`, `>=` | numeric |
-| 8 | `<<`, `>>` | `i32` |
-| 9 | `+`, `-` | numeric or vector/vector |
-| 10 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |
-| 11 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
-| 12 | call, member access, palette index | postfix expressions |
+| 8 | `to` (random range, not chainable) | numbers, two colors or two vec2 values; see [random ranges](random.md#random-ranges-with-to) |
+| 9 | `<<`, `>>` | `i32` |
+| 10 | `+`, `-` | numeric or vector/vector |
+| 11 | `*`, `/`, `%` | numeric; `%` only `i32`; vector forms below |
+| 12 | unary `-`, `!`, `~` | numeric/vector minus; `i32` logical/bitwise not |
+| 13 | call, member access, palette index | postfix expressions |
 
 Shifts bind more tightly than comparisons on either side:
 `value < 1 << bits` means `value < (1 << bits)`, while
@@ -76,6 +80,13 @@ Vectors use `{x, y}`, expose `.x` and `.y`, support componentwise `+`, `-`,
 `*`, `/` with another vector, vector `*`/`/` scalar, scalar `*` vector and
 unary minus. Scalar/vector `+`, `-`, `/`, vector comparisons and vector `%`
 are rejected. Components are values rather than assignable fields.
+
+Colors expose `.r`, `.g`, `.b` and `.a` as `i32` values in 0–255 on any color
+expression: a local, input, palette element, helper result or color builtin.
+Reading a channel evaluates its base once and draws no randomness itself.
+Channels are not assignable either, and there is no implicit conversion between
+a color and a number; build a new color with `rgb()`/`rgba()` and use
+`float(c.a) / 255.0` for 0–1 arithmetic. See [color channels](drawing.md#color-channels).
 
 <!-- example: ../../examples/language/errors/local-type.ips -->
 

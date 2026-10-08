@@ -1,0 +1,41 @@
+// The same ten seeds through three distributions of a stroke's width and
+// colour correction. Column i draws from stream hash(i) in every row, so a
+// low draw stays thin and dark in each row: the inverse CDF keeps the order.
+// The strip under each row is a density plot of 400 widths.
+asset Parameters {
+  size 96x62
+  draw {
+    base = #4f8fc0
+    rect(0, 0, 96, 62, #f2efe6)
+    distribution centred = gaussian(mean=2.5, sigma=0.5)
+    distribution leaning = triangular(min=1.0, peak=4.0, max=4.0)
+    for row in 0..3 {
+      y = 3 + row * 19
+      for i in 0..10 {
+        stream_push(hash(i))
+        width = 0.0
+        shift = 0
+        if (row == 0) {
+          width = 1.0 to 4.0
+          shift = -40 to 40
+        } else if (row == 1) {
+          width = 1.0 to 4.0 with centred
+          shift = -40 to 40 with gaussian(mean=0.0, sigma=12.0)
+        } else {
+          width = 1.0 to 4.0 with leaning
+          shift = -40 to 40 with triangular(min=-40.0, peak=40.0, max=40.0)
+        }
+        stream_pop()
+        x = 6.0 + float(i) * 9.0
+        rect(x - width / 2.0, float(y), width, 12.0, color.shade(base, shift))
+      }
+      for i in 0..400 {
+        w = 0.0
+        if (row == 0) { w = 1.0 to 4.0 }
+        else if (row == 1) { w = 1.0 to 4.0 with centred }
+        else { w = 1.0 to 4.0 with leaning }
+        rect(2 + int((w - 1.0) * 30.0), y + 14, 1, 3, #1c1a2220)
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 LANGUAGE_SCHEMA_VERSION = 2
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
-VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
+VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
@@ -148,11 +148,21 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2'}, True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
     require(types['local_reassignment'] == 'exact_type', 'local reassignment')
+    # Added in source language 0.6 without changing schema 2. Earlier exports
+    # omit this capability list; a present list must still be well formed.
+    if 'components' in types:
+        require(type(types['components']) is list and bool(types['components']), 'components')
+    for item in types.get('components', []):
+        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes', 'minimum_format_minor'], 'components')
+        require(item['type'] in VALUE_TYPES and item['result'] in VALUE_TYPES and item['assignable'] is False, 'component types')
+        strings(item['names'], 'component names', None, True)
+        require(type(item['opcodes']) is list and len(item['opcodes']) == len(item['names']) and all(type(op) is str for op in item['opcodes']), 'component opcodes')
+        integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
     require(type(types['implicit_widening']) is list, 'implicit widening')
     conversions = []
     for item in types['implicit_widening']:
@@ -174,6 +184,38 @@ def read_language(value):
     strings(named.get('targets'), 'named call targets', {'builtin', 'helper', 'part'}, True)
     _strings_and_bools(rules['restrictions'], {}, ['recursive_helpers', 'nested_part_imports', 'let_declarations', 'fn_declarations', 'named_geometry_constructors'], 'restrictions')
     _strings_and_bools(rules['effect_order'], {'binary_operands': {'left_to_right'}, 'logical_operators': {'short_circuit_left_to_right'}, 'call_arguments': {'signature_evaluation_order'}, 'part_parent_rng': {'restored_after_child'}}, ['named_arguments_change_evaluation_order'], 'effect_order')
+    if 'random_range' in rules:
+        ranges = obj(rules['random_range'], ['operator', 'keyword', 'precedence', 'chaining', 'evaluation_order', 'overloads', 'mixed_numeric_bounds', 'traps', 'equal_bounds', 'effects'], 'random_range')
+        require(ranges['operator'] == 'to' and ranges['keyword'] == 'contextual' and type(ranges['chaining']) is bool, 'random range operator')
+        precedence = obj(ranges['precedence'], ['tighter_than', 'looser_than'], 'random range precedence')
+        require(all(type(precedence[key]) is str and precedence[key] for key in precedence), 'random range precedence')
+        require(ranges['evaluation_order'] == ['lower', 'upper'], 'random range evaluation order')
+        require(type(ranges['overloads']) is list and bool(ranges['overloads']), 'random range overloads')
+        for item in ranges['overloads']:
+            obj(item, ['lower', 'upper', 'result', 'opcode', 'minimum_format_minor', 'bounds', 'draws'], 'random range overload')
+            require(all(item[key] in VALUE_TYPES for key in ['lower', 'upper', 'result']) and type(item['opcode']) is str and item['bounds'] == 'inclusive', 'random range overload types')
+            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
+            draws = obj(item['draws'], ['minimum', 'maximum'], 'random range draws')
+            integer(draws['minimum'], 'random range draws', 1)
+            integer(draws['maximum'], 'random range draws', draws['minimum'])
+        require(ranges['mixed_numeric_bounds'] == 'widen_to_f32' and ranges['equal_bounds'] == 'bound_after_one_draw', 'random range rules')
+        strings(ranges['traps'], 'random range traps')
+        effects(ranges['effects'], 'random range effects')
+        # Gradient ends came after the first 0.6 exports; validate when present.
+        for item in ranges.get('ends', []):
+            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'minimum_format_minor', 'effects'], 'random range ends')
+            require(item['type'] in {'color', 'vec2'} and item['result'] == item['type'] and item['coefficient'] == 'shared_unit_interval' and type(item['opcode']) is str, 'random range ends')
+            strings(item['mixed'], 'random range mixed', None, True)
+            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
+            effects(item['effects'], 'random range ends effects')
+        # Distributions came after the first 0.6 exports; validate when present.
+        if 'with' in ranges:
+            shaped = obj(ranges['with'], ['keyword', 'type', 'evaluation_order', 'overloads', 'truncation', 'integer_rounding', 'fuel', 'traps', 'effects'], 'random range with')
+            require(shaped['keyword'] == 'with' and shaped['type'] == 'distribution' and shaped['evaluation_order'] == ['lower', 'upper', 'distribution'], 'random range with')
+            require(type(shaped['overloads']) is list and bool(shaped['overloads']) and all(type(item) is dict and type(item.get('opcode')) is str for item in shaped['overloads']), 'random range with overloads')
+            require(shaped['truncation'] == 'conditioned_on_range' and shaped['integer_rounding'] == 'nearest_half_away_from_zero' and shaped['fuel'] == 'one_plus_kernel_iterations', 'random range with rules')
+            strings(shaped['traps'], 'random range with traps')
+            effects(shaped['effects'], 'random range with effects')
     call = obj(value['call_rules'], ['helper_evaluation_order', 'part'], 'call_rules')
     require(call['helper_evaluation_order'] == 'declaration', 'helper evaluation order')
     ordered_signature(call['part'], 'part', typed=False)

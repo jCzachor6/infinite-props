@@ -50,6 +50,7 @@ TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
         case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
         case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
         case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
+        case ips::ValueType::Distribution: return temporaries_.acquire(ValueType::Distribution);
         default: throw std::logic_error("temporary requires a value type");
         }
     } catch (const std::length_error& exception) {
@@ -220,18 +221,7 @@ u32 Emitter::slotForOutput(const ips::Program* owner,
     if (owner == plan_.entry) {
         return plan_.rootSlotIndex.at(output.name);
     }
-    const u32 part = current_->partOwner.value();
-    u32 slot = static_cast<u32>(plan_.rootSlots.size());
-    for (u32 i = 0; i < part; ++i) {
-        slot += static_cast<u32>(plan_.parts[i]->asset.outputs.size());
-    }
-    for (const auto& candidate : owner->asset.outputs) {
-        if (candidate.name == output.name) {
-            return slot;
-        }
-        ++slot;
-    }
-    return slot;
+    return plan_.partSlot(current_->partOwner.value(), output.name);
 }
 
 void Emitter::emitOutputWrite(const ips::Program* owner,

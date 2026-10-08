@@ -206,6 +206,14 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `hash` — splitmix32-style integer hash (as in `PaGenerationMath::hash`).
 - `unit`, `range`, `index` — draws from a Weyl-sequence stream
   (`state += 0x9e3779b9`, hashed, scaled to `[0,1)`).
+- `lo to hi` draws a uniform value with both bounds included: `i32` for two
+  integer bounds (rejection sampling, no modulo bias), otherwise `f32`.
+  Bounds evaluate once, lower first; reversed or non-finite bounds trap.
+  Two colors or two `vec2` values give one random position on the gradient
+  or segment between them. `lo to hi with d` draws from a `gaussian`,
+  `triangular` or `beta`
+  distribution restricted to the range; `distribution` values can be stored
+  and passed to and returned from helpers.
 - `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
   all choices once, in signature order, then consumes one selection draw.
   Choices share a scalar/vec2 type; mixed numeric choices widen to f32.
@@ -225,7 +233,7 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `rgb(r, g, b)` / `rgba(r, g, b, a)` construct colors from integer channels
   clamped to 0–255; `rgb` uses alpha 255. Arguments run once, in signature order.
 - Every builtin/canvas operation accepts named arguments. See the
-  [v0.5 language reference](docs/language-v0.5.md) for parameter names.
+  [v0.6 language reference](docs/language-v0.6.md) for parameter names.
 - `ipc file.ips --format canonical.ips` exports canonical source during
   compilation, with deterministic formatting and executable roundtrips.
 - The [recipe gallery](examples/recipes/README.md) contains 24 small,
@@ -531,10 +539,14 @@ handbook, bit-exact compiler optimizations and lossless compression. v0.5.0
 adds signed defaults, `ipc --check` with JSON diagnostics, named helper/part
 arguments, comment-preserving formatting, the language export and
 `LLM_REFERENCE.md`, and C API 0.3: reflection, parameter sets, structured
-errors, image views and typed output reads. Product 0.5.0, source language
-0.5, format 0.4 (with frozen 0.1–0.3 reader compatibility), C API 0.3 and ABI
-line 0.4 are separate contracts; the API 0.2 layouts are unchanged.
-Migration and release commands are in [the 0.5 notes](docs/release-v0.5.md).
+errors, image views and typed output reads. v0.6.0 adds color channel reads,
+`lo to hi` random ranges over numbers, colors and `vec2` segments, the
+`distribution` type with gaussian, triangular and beta shapes, and nested
+parts whose outputs read in the caller's coordinates. Product 0.6.0, source
+language 0.6, format 0.5 (with frozen 0.1–0.4 reader compatibility), C API
+0.3 and ABI line 0.4 are separate contracts; the API 0.2 layouts are
+unchanged. Migration and release commands are in
+[the 0.6 notes](docs/release-v0.6.md).
 Source, native SDK, WASM and website packages are published by the tagged
 release workflow after validation and can also be built locally.
 GitHub CI covers the CLI, C API, WASM, SFML and Godot; editor/website

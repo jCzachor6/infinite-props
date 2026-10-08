@@ -58,11 +58,12 @@ asset t {
     REQUIRE(result.image.at(7, 0) == Color{255, 0, 0, 255});
     REQUIRE(result.image.at(6, 1) == Color{0, 255, 0, 255});
     REQUIRE(result.image.at(0, 0) == Color{255, 0, 0, 255});
-    // The output propagates through the mirror: {1, 0} -> {3, 0}.
+    // The output reads in the parent's coordinates: the mirror maps {1, 0}
+    // to {3, 0}, then the blit at (4,0) moves it to {7, 0}.
     const NamedOutput* p = result.find("p");
     REQUIRE(p != nullptr);
     REQUIRE(p->points.size() == 1);
-    REQUIRE(p->points[0].x == 3.f);
+    REQUIRE(p->points[0].x == 7.f);
     REQUIRE(p->points[0].y == 0.f);
 }
 
@@ -266,16 +267,32 @@ asset t {
 })");
     ips::checkAsset(part, {});
     ips::checkAsset(root, {{"tile", partInfoOf(part.asset)}});
-    const auto result = execute(compileProgram(root, {{"tile", &part}}));
-    const auto& zeros = result.outputs[0].rects[0];
+    const auto bytes = compileProgram(root, {{"tile", &part}});
+    // The v0.3 contract (no parts section) publishes the D4 bounds alone,
+    // so minNum's signed zero is observable.
+    std::string text = disassemble(bytes);
+    text.replace(text.find(" instance:"), 10, ":");
+    const auto legacy = execute(assemble(text));
+    const auto& zeros = legacy.outputs[0].rects[0];
     CHECK(std::bit_cast<u32>(zeros.x) == 0x80000000u);
     CHECK(std::bit_cast<u32>(zeros.y) == 0x80000000u);
     CHECK(std::bit_cast<u32>(zeros.w) == 0u);
     CHECK(std::bit_cast<u32>(zeros.h) == 0u);
-    const auto& nan = result.outputs[1].rects[0];
+    const auto& nan = legacy.outputs[1].rects[0];
     CHECK(std::bit_cast<u32>(nan.x) == 0x7FC00000u);
     CHECK(std::bit_cast<u32>(nan.y) == 0x7FC00000u);
     CHECK(std::isnan(nan.w));
     CHECK(std::isnan(nan.h));
+    // Root coordinates add the blit origin in binary32: -0 + 0 is +0, and
+    // every NaN, including the extents, has the one canonical encoding.
+    const auto result = execute(bytes);
+    for (const u32 bits : {std::bit_cast<u32>(result.outputs[0].rects[0].x),
+                           std::bit_cast<u32>(result.outputs[0].rects[0].y),
+                           std::bit_cast<u32>(result.outputs[0].rects[0].w),
+                           std::bit_cast<u32>(result.outputs[0].rects[0].h)})
+        CHECK(bits == 0u);
+    for (const f32 value : {result.outputs[1].rects[0].x, result.outputs[1].rects[0].y,
+                            result.outputs[1].rects[0].w, result.outputs[1].rects[0].h})
+        CHECK(std::bit_cast<u32>(value) == 0x7FC00000u);
 }
 

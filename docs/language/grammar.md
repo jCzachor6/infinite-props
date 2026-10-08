@@ -26,11 +26,11 @@ draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
 parameter     = name, ":", value_type ;
-value_type    = "i32" | "f32" | "color" | "vec2" ;
+value_type    = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 block         = "{", { ";" | statement }, "}" ;
 statement     = assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = name, "=", expression ;
+assignment    = [ "distribution" ], name, "=", expression ;  (* contextual "distribution" *)
 call_statement = name, { postfix_suffix } ;  (* must end as a call AST *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
@@ -44,7 +44,8 @@ bit_or        = bit_xor, { "|", bit_xor } ;
 bit_xor       = bit_and, { "^", bit_and } ;
 bit_and       = equality, { "&", equality } ;
 equality      = comparison, { ("==" | "!="), comparison } ;
-comparison    = shift, { ("<" | "<=" | ">" | ">="), shift } ;
+comparison    = random_range, { ("<" | "<=" | ">" | ">="), random_range } ;
+random_range  = shift, [ "to", shift, [ "with", shift ] ] ;  (* contextual "to"/"with"; no chaining *)
 shift         = additive, { ("<<" | ">>"), additive } ;
 additive      = multiplicative, { ("+" | "-"), multiplicative } ;
 multiplicative = unary, { ("*" | "/" | "%"), unary } ;

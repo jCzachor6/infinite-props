@@ -11,7 +11,7 @@ namespace {
 // Reads one §6.1 type byte; throws a located error for unknown codes.
 ValueType readValueType(Reader& reader, const char* what) {
     const u8 raw = reader.readU8();
-    if (raw > 3) {
+    if (raw > 4) {
         throw FormatError(std::string("unknown ") + what + " type", reader.position() - 1, ErrorReason::InvalidCode);
     }
     return static_cast<ValueType>(raw);
@@ -148,6 +148,34 @@ CodeSection parseCode(std::span<const u8> data, const Section& section, const Co
     }
 
     return code;
+}
+
+void parsePartInstances(std::span<const u8> data, const Section& section,
+                        const ConstPool& pool, CodeSection& code) {
+    Reader reader(data, section.offset, static_cast<std::size_t>(section.offset) + section.size);
+    const u32 count = reader.readU32();
+    if (count != code.parts.size()) {
+        throw FormatError("parts section count differs from the part table", reader.position() - 4,
+                          ErrorReason::InvalidCode);
+    }
+    std::set<std::string> names;
+    for (u32 p = 0; p < count; ++p) {
+        const u32 name = reader.readU32();
+        if (name >= pool.strings.size() || pool.strings[name].empty() || !names.insert(pool.strings[name]).second) {
+            throw FormatError("part instance name missing, empty or duplicate", reader.position() - 4,
+                              ErrorReason::InvalidCode);
+        }
+        const u32 parent = reader.readU32();
+        if (parent != kRootParent && parent >= p) {
+            throw FormatError("part parent must be the root or an earlier part", reader.position() - 4,
+                              ErrorReason::InvalidCode);
+        }
+        code.parts[p].nameIndex = name;
+        code.parts[p].parent = parent;
+    }
+    if (!reader.empty()) {
+        throw FormatError("trailing bytes in parts section", reader.position(), ErrorReason::InvalidCode);
+    }
 }
 
 } // namespace iprop

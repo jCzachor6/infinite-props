@@ -1,0 +1,7 @@
+asset ChannelAssignment {
+  size 8x8
+  draw {
+    tint = #9c785a
+    tint.r = 100
+  }
+}

@@ -1,5 +1,10 @@
 import branch from "composition.ips"
-asset InvalidNestedPart {
-  size 16x16
-  draw { branch.draw(7, 0, 0, at = {0, 0}) }
+asset NestedPart {
+  size 32x16
+  output point attached
+  draw {
+    branch.draw(7, 0, 0, at = {0, 0})
+    attached = branch.outputs.attached
+    branch.draw(9, 0, 0, at = {16, 0}, mirror_x = 1)
+  }
 }

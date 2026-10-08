@@ -19,7 +19,7 @@ ValueType Typer::typeCall(const Call& call) {
             return typeRamp(*name, call);
         }
         const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end()) {
+        if (builtin != builtinSpecs().end() && !yieldsToHelper(name->name)) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);
@@ -89,6 +89,13 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     error(call.location, "no matching overload for '" + name.name + "'");
 }
 
+bool Typer::yieldsToHelper(const std::string& name) const {
+    if (!builtinYieldsToHelper(name)) return false;
+    for (const auto& function : owner_->asset.functions)
+        if (function.name == name) return true;
+    return false;
+}
+
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     if (name.name == "draw")
         error(call.location, "'draw' is an entry block; call a helper or an imported part instead");
@@ -124,14 +131,12 @@ ValueType Typer::typePartCall(const Call& call) {
         path.segments[0] != "draw") {
         error(path.location, "expected 'part.draw(...)'");
     }
-    const auto part = parts_.find(path.base);
-    if (part == parts_.end()) {
-        std::vector<std::string> names;
-        for (const auto& [name, info] : parts_) { (void)info; names.push_back(name); }
-        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, names));
+    const auto* part = findPart(path.base);
+    if (part == nullptr) {
+        error(path.location, "'" + path.base + "' is not an imported part" + didYouMean(path.base, partAliases()));
     }
 
-    const auto bound = bind(call, partCallSignature(part->second.inputs), path.base + ".draw");
+    const auto bound = bind(call, partCallSignature(part->inputs), path.base + ".draw");
     const auto& args = bound.arguments;
     for (std::size_t i=0;i<3;++i) {
         const auto got = typeOf(*args[i]->value);
@@ -150,10 +155,10 @@ ValueType Typer::typePartCall(const Call& call) {
             error(locationOf(*args[i]->value), "'" + *args[i]->name +
                   "' must be an integer, got " + std::string(typeName(got)));
     }
-    for (std::size_t i=0;i<part->second.inputs.size();++i) {
+    for (std::size_t i=0;i<part->inputs.size();++i) {
         const auto* arg = args[7+i];
         if (!arg) continue;
-        const auto& input = part->second.inputs[i];
+        const auto& input = part->inputs[i];
         const auto got = typeOf(*arg->value);
         if (!argFits(valueTypeOf(input.type), got))
             error(locationOf(*arg->value), "input '" + input.name + "' of part '" + path.base +

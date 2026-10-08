@@ -158,6 +158,8 @@ public:
     std::unique_ptr<Expr> parseBitAnd();
     std::unique_ptr<Expr> parseEquality();
     std::unique_ptr<Expr> parseComparison();
+    std::unique_ptr<Expr> parseRandomRange();
+    bool atContextualOperator(std::string_view word, bool helper) const;
     std::unique_ptr<Expr> parseShift();
     std::unique_ptr<Expr> parseAdditive();
     std::unique_ptr<Expr> parseMultiplicative();
@@ -176,8 +178,22 @@ private:
     void synchronize(std::size_t start, RecoveryScope scope);
     bool recoveryStart(RecoveryScope scope) const;
 
+    // Saves a parser flag for one nested construct and restores it.
+    struct FlagScope {
+        bool& flag;
+        bool saved;
+        FlagScope(bool& target, bool value) : flag(target), saved(target) { flag = value; }
+        ~FlagScope() { flag = saved; }
+    };
+
     std::vector<Token> tokens_;
     std::size_t pos_ = 0;
+    // The expression being parsed may be followed by the next statement or
+    // declaration, so a `to` there may start it instead of a random range.
+    bool statementTail_ = false;
+    // The asset declares a helper named `to` or `with`; its call keeps that meaning.
+    bool toHelper_ = false;
+    bool withHelper_ = false;
     ParseResult* recovery_ = nullptr;
     std::size_t diagnosticLimit_ = kMaxParseDiagnostics;
 };

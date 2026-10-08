@@ -191,7 +191,7 @@ asset portrait {
 
     const auto original = compileProgram(portraitProgram, {{"hair", &hairProgram}});
     const std::string text = disassemble(original);
-    REQUIRE(text.find("part hair:") != std::string::npos);
+    REQUIRE(text.find("part hair instance:") != std::string::npos);
     REQUIRE(text.find("part.draw hair") != std::string::npos);
     REQUIRE(text.find("part.get.point top") != std::string::npos);
 

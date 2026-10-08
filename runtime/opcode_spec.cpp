@@ -12,6 +12,10 @@ constexpr OperationEffects effects(Opcode op) {
     switch (op) {
     case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
         return {R::AdvanceCurrent};
+    case Opcode::RngInt: case Opcode::RngFloat: case Opcode::RngIntWith: case Opcode::RngFloatWith:
+        return {R::AdvanceCurrent,false,false,check(C::NumericRange)};
+    case Opcode::DistributionGaussian: case Opcode::DistributionTriangular: case Opcode::DistributionBeta:
+        return {R::None,false,false,check(C::NumericRange)};
     case Opcode::StreamState: return {R::ReadCurrent};
     case Opcode::StreamPush: return {R::PushSeededStream};
     case Opcode::StreamPop: return {R::RestoreStream,false,false,check(C::StreamStackUnderflow)};
@@ -23,7 +27,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
-    case Opcode::ColorHsv: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::ColorHsv: case Opcode::Vec2Mix: return {R::None,false,false,check(C::NumericRange)};
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
@@ -183,6 +187,22 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::Smoothstep, "smoothstep", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Remap, "remap", 3, StackSignature({S::F32, S::F32, S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Clamp, "clamp", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),
+    fixed(Opcode::ColorR, "color.r", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorG, "color.g", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorB, "color.b", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::ColorA, "color.a", 5, StackSignature({S::Color}, V::I32)),
+    fixed(Opcode::RngInt, "rng.int", 5, StackSignature({S::I32, S::I32}, V::I32)),
+    fixed(Opcode::RngFloat, "rng.float", 5, StackSignature({S::F32, S::F32}, V::F32)),
+    fixed(Opcode::DistributionGaussian, "distribution.gaussian", 5,
+          StackSignature({S::F32, S::F32}, V::Distribution)),
+    fixed(Opcode::DistributionTriangular, "distribution.triangular", 5,
+          StackSignature({S::F32, S::F32, S::F32}, V::Distribution)),
+    fixed(Opcode::DistributionBeta, "distribution.beta", 5,
+          StackSignature({S::F32, S::F32, S::F32, S::F32}, V::Distribution)),
+    fixed(Opcode::RngIntWith, "rng.int.with", 5, StackSignature({S::I32, S::I32, S::Distribution}, V::I32)),
+    fixed(Opcode::RngFloatWith, "rng.float.with", 5, StackSignature({S::F32, S::F32, S::Distribution}, V::F32)),
+    fixed(Opcode::ColorMixRgba, "color.mix.rgba", 5, StackSignature({S::Color, S::Color, S::F32}, V::Color)),
+    fixed(Opcode::Vec2Mix, "vec2.mix", 5, StackSignature({S::Vec2, S::Vec2, S::F32}, V::Vec2)),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -192,6 +212,13 @@ constexpr auto kByOpcode = [] {
 } // namespace
 
 std::span<const OpcodeSpec> opcodeSpecs() { return kSpecs; }
+u16 writtenMinor(u16 minor, Opcode opcode) {
+    const auto* spec = findOpcode(opcode);
+    return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
+}
+u16 writtenMinor(u16 minor, ValueType type) {
+    return type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
+}
 const char* rngEffectName(RngEffect effect) {
     switch (effect) {
     case RngEffect::None: return "none";

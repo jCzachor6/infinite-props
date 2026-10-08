@@ -1,5 +1,80 @@
 # Changelog
 
+## v0.6.0 — 2026-10-08
+
+Product/editor/website version: 0.6.0. Source language: 0.6. Format: 0.5,
+for files that use its instructions or have parts; other files stay 0.4. C
+API: 0.3, unchanged, on ABI line / SONAME 0.4. Migration and packaging
+instructions: [release notes](docs/release-v0.6.md).
+
+- Language: `c.r`, `c.g`, `c.b` and `c.a` read the channels of any color
+  value as `i32` in 0–255. The base is evaluated once; channels of constant
+  colors fold. Channels stay read-only: `c.r = 100` gets its own diagnostic,
+  and member errors name the required type or list the available channels.
+- Language: `lo to hi` draws a uniform number from the current stream, both
+  bounds included: `i32` for integer bounds, otherwise `f32`. It binds
+  between shifts and comparisons and cannot be chained; bounds evaluate once,
+  lower first. `to` stays an ordinary name, and existing locals, helpers and
+  parts called `to` keep their meaning.
+- Language: the `distribution` type with the constructors `gaussian`,
+  `triangular` and `beta`, typed `distribution d = ...` declarations and
+  helper parameters and results. `lower to upper with d` draws from `d`
+  restricted to the range, never clamping; `i32` ranges round half away from
+  zero. Parameters are checked when the constructor runs; helpers named like
+  the constructors keep their calls.
+- Language: `to` between two colors draws one position on the RGBA gradient
+  and between two `vec2` values one point of the segment; all channels or
+  components share that position, and `with` steers it on 0 to 1.
+  `color.mix()` keeps its first-alpha rule.
+- Format 0.5 ([spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
+  `color.b` and `color.a` (0xA4–0xA7); `rng.int` (rejection sampling over
+  full u32 draws, at most 31 draws in practice) and `rng.float` (0xA8–0xA9),
+  which trap on reversed or non-finite bounds; type code 4 `distribution`,
+  `distribution.gaussian`, `.triangular`, `.beta` and `rng.int.with`,
+  `rng.float.with` (0xAA–0xAE) with pinned binary64 kernels (AS241,
+  Lanczos, incomplete beta, a bounded quantile solver), inverse-CDF
+  truncation and fuel per kernel iteration; `color.mix.rgba` and `vec2.mix`
+  (0xAF–0xB0) for gradients and segments. The compiler and assembler
+  write 0.5 only when a file uses these instructions; other files stay 0.4.
+  Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
+  0.4 envelope.
+- Language: nested parts. An imported asset may import parts of its own;
+  import paths resolve beside the importing file (`ipc` follows the file
+  system, embedding hosts pass their own resolver to `compileSource`). Each
+  alias path, such as `hilt.grip`, is a separate instance with its own inputs,
+  outputs and RNG stream, even for a file shared by two branches, up to 256
+  instances; cycles are reported with the whole chain. An asset draws and
+  reads only its direct children.
+- Changed: part outputs are in the caller's coordinates. A parent reads
+  `alias.outputs.name` with the child's transform and placement applied, and
+  hosts receive part outputs in root asset coordinates, each enclosing call
+  applied once at write time. Recompiled sources that added the placement by
+  hand must drop it (see the [migration notes](docs/language/migration-v0.6.md)).
+- Format 0.5: the parts section (id 5) names each part instance by its alias
+  path and records its parent; the validator restricts `part.draw` and
+  `part.get` to an asset's own children, and its presence selects the new
+  output coordinates (spec §6). The compiler writes it, and therefore format
+  0.5, for every file with parts; frozen files keep local outputs. The C API
+  part descriptor reports the name with `name_present == 1`. The assembler
+  declares instances as `part NAME instance [PARENT]:`, and a part slot
+  shadowed by a root output name is written `part.output`.
+- Examples: `examples/colony`, three levels of nested parts with a firefly at
+  every reported cap peak, and `examples/previews` for metal gradients,
+  distribution-shaped widths of the same seeds and `vec2` segments. Native
+  and WASM render them bit for bit.
+- Runtime matrix: registered released sources whose meaning changes on
+  purpose (the two that read placed part outputs) are recorded result by
+  result; the [0.6 matrix](docs/optimization-acceptance-v0.6.md) runs the
+  frozen 0.4 binaries, released and current sources in all eight modes.
+- Build: Windows executables reserve an 8 MiB stack, like Linux and macOS
+  main threads, so compiling a helper chain as deep as the call limit no
+  longer overflows MSVC's 1 MiB default.
+- Language export: `source_rules.types.components` lists the readable
+  members of `vec2` and `color` with their result types and instructions;
+  `source_rules.random_range` describes the `to` operator and, under
+  `with`, its distribution form and, under `ends`, color and vec2 ends;
+  `distribution` joins the type lists.
+
 ## v0.5.0 — 2026-10-08
 
 Product/editor/website version: 0.5.0. Source language: 0.5. Format: 0.4,

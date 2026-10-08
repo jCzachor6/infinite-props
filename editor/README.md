@@ -69,7 +69,7 @@ edit rejects the transaction. A fix changes the buffer and does not save it.
 Suggestions without an exact fix are informational actions; the editor does not
 infer replacements from diagnostic messages.
 
-Diagnostics require a compiler with `--check --diagnostics=json` (language 0.5).
+Diagnostics require a compiler with `--check --diagnostics=json` (language 0.5 or newer).
 An older compiler, a timeout, invalid JSON or a mismatched JSON status is
 reported in the **iprop** output channel; the editor never retries another way.
 

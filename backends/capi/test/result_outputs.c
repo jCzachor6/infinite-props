@@ -402,12 +402,17 @@ static int slots(const iprop_program* program, const iprop_result* result, uint3
             for (id = 0; id < sizeof(copied); ++id) CHECK(copied[id] == 0xa5);
         }
         if (expected_count == 0) CHECK(view.values != NULL); /* exact nonempty packed array begin pointer */
-        if (i == 6) CHECK(memcmp(view.values, point[transform[variant]], sizeof(point[0])) == 0);
-        if (i == 7) CHECK(memcmp(view.values, rect[transform[variant]], sizeof(rect[0])) == 0);
-        if (i == 8) {
-            CHECK(memcmp(view.values, point[transform[variant]], sizeof(point[0])) == 0);
-            CHECK(view.values[2] == 3.0f);
+        /* Part values are published in root coordinates: the D4 image in
+           the part, then the blit origin {3, 4} (spec v0.5 section 6). */
+        if (i == 6 || i == 8) {
+            CHECK(view.values[0] == point[transform[variant]][0] + 3.0f &&
+                  view.values[1] == point[transform[variant]][1] + 4.0f);
         }
+        if (i == 7) {
+            CHECK(view.values[0] == rect[transform[variant]][0] + 3.0f && view.values[1] == rect[transform[variant]][1] + 4.0f &&
+                  view.values[2] == rect[transform[variant]][2] && view.values[3] == rect[transform[variant]][3]);
+        }
+        if (i == 8) CHECK(view.values[2] == 3.0f);
         if (i == 0 && variant) CHECK(view.values[0] == 5.0f && view.values[1] == 6.0f);
         if (i == 3 || i == 4 || i == 5) {
             CHECK(view.values[0] == 1.0f && view.values[1] == 2.0f);

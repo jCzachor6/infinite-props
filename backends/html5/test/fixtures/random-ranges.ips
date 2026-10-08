@@ -1,0 +1,21 @@
+asset randomRanges {
+  size 4x4
+  output list point ints
+  output list point floats
+  draw {
+    for i in 0..300 {
+      // Width 2^31 + 1 rejects about half of the raw draws.
+      heavy = -2147483648 to 0
+      ints = {heavy >> 16, heavy & 65535}
+      full = -2147483648 to 2147483647
+      ints = {full >> 16, full & 65535}
+      third = 0 to 3 * (1 << 29) - 1
+      ints = {-5 to 5, third >> 16}
+      ints = {seed >> 16, seed & 65535}
+      floats = {-1.0 to 1.0, 1.6 to 2.0}
+      floats = {-3.0e38 to 3.0e38, 0.1 to 0.1}
+      floats = {i to 300, 3.4028235e38 to 3.4028235e38}
+    }
+    pixel(0 to 3, 0 to 3, #fff)
+  }
+}
