@@ -36,6 +36,9 @@ In development: source language 0.6 and draft format 0.5. The product stays
   write 0.5 only when a file uses these instructions; other files stay 0.4.
   Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
   0.4 envelope.
+- Build: Windows executables reserve an 8 MiB stack, like Linux and macOS
+  main threads, so compiling a helper chain as deep as the call limit no
+  longer overflows MSVC's 1 MiB default.
 - Language export: `source_rules.types.components` lists the readable
   members of `vec2` and `color` with their result types and instructions;
   `source_rules.random_range` describes the `to` operator and, under
