@@ -66,7 +66,13 @@ BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_vi
 std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& call,
     const std::map<std::string, const Program*>& parts) {
     const auto name = calleeName(*call.callee);
-    if (const auto found = builtinSpecs().find(name); found != builtinSpecs().end())
+    const auto declared = [&] {
+        for (const auto& function : program.asset.functions)
+            if (function.name == name) return true;
+        return false;
+    };
+    if (const auto found = builtinSpecs().find(name);
+        found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))
         return bindCall(call, builtinCallSignature(found->second, call.args.size(), call.location, name), name);
     if (name == "ramp") return bindCall(call, rampCallSignature(), name);
     for (const auto& function : program.asset.functions) {

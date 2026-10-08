@@ -142,6 +142,7 @@ private:
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);
     ValueType typeRandomRange(const RandomRange& range);
+    bool yieldsToHelper(const std::string& name) const;
 
     struct PartRead {
         std::string alias;

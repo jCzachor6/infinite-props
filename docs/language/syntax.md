@@ -13,9 +13,10 @@ Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
 `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`, `list`,
 `true`, `false`) are reserved. `draw`, `at`, type names and geometry kind
 names are soft keywords accepted in name positions; `draw` still selects
-the entry block when used as an asset-level function name. `to` is an
-ordinary name that also spells the [random range](random.md#random-ranges-with-to)
-operator. Asset names and
+the entry block when used as an asset-level function name. `to`, `with`
+and `distribution` are ordinary names that also spell the
+[random range](random.md#random-ranges-with-to) operator, its
+[distribution](random.md#distributions) and the typed declaration. Asset names and
 `for` counter names require an ordinary identifier. Asset-level `size`,
 `origin`, `variants`, `archetypes` and `palette` introduce metadata.
 

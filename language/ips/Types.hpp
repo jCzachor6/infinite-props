@@ -18,6 +18,7 @@ enum class ValueType {
     F32,
     Color,
     Vec2,
+    Distribution,
     Rect,
     Circle,
     Void, // no value (canvas operations, part calls)
@@ -27,7 +28,7 @@ const char* typeName(ValueType type);
 
 bool isNumeric(ValueType type);
 
-// Locals can hold scalars and vec2.
+// Locals can hold scalars, vec2 and distributions.
 bool isStorable(ValueType type);
 
 // Numeric mixing: identical types stay, mixed types promote to F32.

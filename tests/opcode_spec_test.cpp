@@ -19,14 +19,21 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
     if (spec.opcode == Opcode::StreamPop) {
         append(helper,Opcode::ConstI32); append(helper,Opcode::StreamPush);
     }
+    // Distribution constructors take increasing parameters (1, 2, 3, 4) so
+    // that min < max holds; every other f32 operand is 1.
+    const bool increasing = spec.stack && spec.stack->result == ValueType::Distribution;
+    u16 nextFloat = 0;
     for (const auto type:arguments) {
         switch (type) {
         case ValueType::I32: append(helper,Opcode::ConstI32); break;
-        case ValueType::F32: append(helper,Opcode::ConstF32); break;
+        case ValueType::F32: append(helper,Opcode::ConstF32,increasing ? nextFloat++ : 0); break;
         case ValueType::Color: append(helper,Opcode::ConstColor); break;
         case ValueType::Vec2:
             append(helper,Opcode::ConstF32); append(helper,Opcode::ConstF32);
             append(helper,Opcode::Vec2Make); break;
+        case ValueType::Distribution:
+            append(helper,Opcode::ConstF32); append(helper,Opcode::ConstF32);
+            append(helper,Opcode::DistributionGaussian); break;
         }
     }
     append(helper,spec.opcode,0,aux); append(helper,Opcode::Return);
@@ -35,7 +42,7 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
     std::vector<u8> results;
     if (spec.stack->result) { results.push_back(static_cast<u8>(*spec.stack->result)); append(draw,Opcode::Drop); }
     append(draw,Opcode::Return);
-    return fullFile(minimalMeta(),constSection({"draw"},{1},{1.f},{{10,20,30,255}}),
+    return fullFile(minimalMeta(),constSection({"draw"},{1},{1.f,2.f,3.f,4.f},{{10,20,30,255}}),
         codeSection({drawSpec(draw),{kAnonymousName,{},results,{},helper}},{}));
 }
 } // namespace
@@ -63,6 +70,7 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
                 const auto mask=sig.inputs[i];
                 args.push_back(mask == StackType::I32 ? ValueType::I32 :
                     mask == StackType::F32 ? ValueType::F32 : mask == StackType::Color ? ValueType::Color :
+                    mask == StackType::Distribution ? ValueType::Distribution :
                     mask == StackType::ScalarOrVec2 && scalar ? ValueType::F32 : ValueType::Vec2);
             }
             const auto file=loadFile(program(spec,args));
@@ -72,7 +80,7 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
             CHECK(vm.debugStack().empty());
             for (std::size_t i=0;i<args.size();++i) {
                 const auto original=args[i];
-                for (const auto wrong:{ValueType::I32,ValueType::F32,ValueType::Color,ValueType::Vec2}) {
+                for (const auto wrong:{ValueType::I32,ValueType::F32,ValueType::Color,ValueType::Vec2,ValueType::Distribution}) {
                     if (accepts(sig.inputs[i],wrong)) continue;
                     args[i]=wrong;
                     CHECK_THROWS_AS(validate(loadFile(program(spec,args))),FormatError);
@@ -88,5 +96,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 140);
+    CHECK(names.size() == 145);
 }

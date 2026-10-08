@@ -11,7 +11,7 @@ namespace {
 // Reads one §6.1 type byte; throws a located error for unknown codes.
 ValueType readValueType(Reader& reader, const char* what) {
     const u8 raw = reader.readU8();
-    if (raw > 3) {
+    if (raw > 4) {
         throw FormatError(std::string("unknown ") + what + " type", reader.position() - 1, ErrorReason::InvalidCode);
     }
     return static_cast<ValueType>(raw);

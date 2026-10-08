@@ -300,7 +300,9 @@ class SourcePrinter {
                 // Always grouped, so no surrounding operator seems to bind a bound.
                 if (!groups) out_.raw("(");
                 expression(*node.lower); out_ << " to ";
-                expression(*node.upper); if (!groups) out_ << ')';
+                expression(*node.upper);
+                if (node.distribution) { out_ << " with "; expression(*node.distribution); }
+                if (!groups) out_ << ')';
             } else if constexpr (std::is_same_v<T, VectorLit>) {
                 out_ << '{';
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {
@@ -344,7 +346,10 @@ class SourcePrinter {
         SourceOutput::Scope range(out_, stmt.sourceRange, true);
         std::visit([&](const auto& node) {
             using T = std::decay_t<decltype(node)>;
-            if constexpr (std::is_same_v<T, VarDecl>) { out_ << node.name << " = "; expression(*node.value); }
+            if constexpr (std::is_same_v<T, VarDecl>) {
+                if (node.declaredType) out_ << "distribution ";
+                out_ << node.name << " = "; expression(*node.value);
+            }
             else if constexpr (std::is_same_v<T, ExprStmt>) expression(*node.expr);
             else if constexpr (std::is_same_v<T, ReturnStmt>) {
                 out_ << "return";

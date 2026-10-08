@@ -71,11 +71,11 @@
     "rangeOperator": {
       "comment": "Contextual: 'to' stays a name before '=', '.' or '('.",
       "name": "keyword.operator.word.range.ips",
-      "match": "\\bto\\b(?!\\s*(=(?!=)|\\.|\\())"
+      "match": "\\b(to|with)\\b(?!\\s*(=(?!=)|\\.|\\())"
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\b(color|f32|u32|i32|vec2|point|rect|circle)\\b"
+      "match": "\\b(color|f32|u32|i32|vec2|point|rect|circle|distribution)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -83,7 +83,7 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "\\b(vec2\\.(len|dot|rot)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+      "match": "\\b(vec2\\.(len|dot|rot)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
     }
   }
 }

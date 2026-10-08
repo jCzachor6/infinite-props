@@ -60,6 +60,81 @@ This example is intentionally rejected: write `(a to b) to c` to draw a bound.
 This program is valid source, but its range is reversed for the default
 input and traps during generation.
 
+## Distributions
+
+`lower to upper with d` draws from the distribution `d` restricted to the
+range: values outside `[lower, upper]` are never produced, and the shape
+inside the range is kept, so nothing piles up at the bounds the way a
+clamped draw would. Without `with` a range is uniform.
+
+```text
+distribution softWear = gaussian(mean=0.0, sigma=1.5)
+redOffset = -5 to 5 with softWear          // mostly small offsets
+distribution mostlyClean = beta(alpha=2.0, beta=5.0)
+rust = 0.0 to 1.0 with mostlyClean          // mostly below 0.3
+```
+
+A `distribution` is a value: store it, copy it, pass it to a helper and
+return it from one. `distribution d = ...` declares it explicitly; a plain
+first assignment infers the type as usual. Its parameters are evaluated
+once, when the constructor runs, and may come from inputs, `v`/`a`, earlier
+computations or draws; changing those variables later does not change the
+description. Constructing a distribution draws nothing; every `with` draw
+takes its own value from the current stream, so two ranges using one
+description are two independent draws. Distributions support no arithmetic,
+comparison, members or conversion, and are not inputs, outputs or palette
+elements.
+
+Parameters describe the result's own units; they are not rescaled to the
+range. `-5 to 5 with gaussian(mean=0.0, sigma=2.0)` clusters around 0, while
+the same description with `20 to 30` samples its far tail. A range that
+leaves no probability under the distribution traps, as does an equal range
+outside its natural range. For an `i32` range the continuous draw rounds to
+the nearest integer, halves away from zero; both bounds stay possible, with
+the probability of their half intervals.
+
+Evaluation order is the lower bound, the upper bound, the distribution, then
+one stream step. Parameters are checked when the constructor runs: invalid
+values trap there, even when the description is never used, and an
+unassigned `distribution` local traps when drawn. Draws cost 1 fuel plus 1 per
+iteration of the pinned numerical kernels, typically 20-150; the
+[specification](../../spec/iprop-v0.5.md#4-distributions) gives the exact
+algorithms. A helper named `gaussian`, `triangular` or `beta` takes
+precedence over the constructor of the same name.
+
+<!-- example: ../../examples/language/distributions.ips -->
+
+<!-- example: ../../examples/language/errors/with-number.ips -->
+
+This example is intentionally rejected: `with` needs a distribution.
+
+<!-- example: ../../examples/language/traps/negative-sigma.ips -->
+
+This program is valid source, but its sigma is negative for the default
+input and the constructor traps during generation.
+
+### gaussian
+<!-- builtin: gaussian -->
+
+The normal distribution with centre `mean` and standard deviation `sigma`;
+`sigma` must be positive and both finite. Its natural range is unbounded, so
+any range with probability can use it.
+
+### triangular
+<!-- builtin: triangular -->
+
+A triangle from `min` to `max` whose most frequent values lie at `peak`.
+Requires finite `min < max` and `min <= peak <= max`; a peak at an end makes
+small (or large) values most common.
+
+### beta
+<!-- builtin: beta -->
+
+The beta distribution with shape parameters `alpha` and `beta`, both positive
+and finite, on the natural range `min` to `max` (0 to 1 when omitted;
+`min < max`). `alpha < beta` favours the low end, `alpha > beta` the high end,
+equal values above 1 the middle, and values below 1 both ends.
+
 ## unit
 <!-- builtin: unit -->
 

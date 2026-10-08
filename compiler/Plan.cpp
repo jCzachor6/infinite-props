@@ -13,6 +13,7 @@ ValueType runtimeType(ips::ValueType type) {
     case ips::ValueType::F32: return ValueType::F32;
     case ips::ValueType::Color: return ValueType::Color;
     case ips::ValueType::Vec2: return ValueType::Vec2;
+    case ips::ValueType::Distribution: return ValueType::Distribution;
     default: return ValueType::I32; // compounds never enter the tables
     }
 }

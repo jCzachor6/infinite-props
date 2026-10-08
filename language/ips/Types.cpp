@@ -8,6 +8,7 @@ const char* typeName(ValueType type) {
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
     case ValueType::Vec2: return "vec2";
+    case ValueType::Distribution: return "distribution";
     case ValueType::Rect: return "rect";
     case ValueType::Circle: return "circle";
     case ValueType::Void: return "void";
@@ -28,7 +29,8 @@ bool isNumeric(ValueType type) {
 
 bool isStorable(ValueType type) {
     return type == ValueType::I32 || type == ValueType::F32 ||
-           type == ValueType::Color || type == ValueType::Vec2;
+           type == ValueType::Color || type == ValueType::Vec2 ||
+           type == ValueType::Distribution;
 }
 
 ValueType promote(ValueType a, ValueType b) {
@@ -49,6 +51,7 @@ ValueType valueTypeOf(ParamType type) {
     case ParamType::F32: return ValueType::F32;
     case ParamType::Color: return ValueType::Color;
     case ParamType::Vec2: return ValueType::Vec2;
+    case ParamType::Distribution: return ValueType::Distribution;
     }
     return ValueType::I32;
 }

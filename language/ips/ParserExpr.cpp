@@ -111,31 +111,41 @@ std::unique_ptr<Expr> ParserImpl::parseComparison() {
     }
 }
 
-// `to` is contextual, so old programs keep their meaning. Where the next
-// statement or declaration may begin, `to = ...`, `to.draw(...)` and a call
-// of a declared helper `to` start it; everywhere else `to` is the operator.
-bool ParserImpl::atRangeOperator() const {
-    if (kind() != TokenKind::Identifier || peek().text != "to") return false;
+// `to` and `with` are contextual, so old programs keep their meaning. Where
+// the next statement or declaration may begin, `to = ...`, `to.draw(...)`
+// and a call of a declared helper `to` start it (likewise for `with`);
+// everywhere else the word is the operator.
+bool ParserImpl::atContextualOperator(std::string_view word, bool helper) const {
+    if (kind() != TokenKind::Identifier || peek().text != word) return false;
     if (!statementTail_) return true;
     switch (kind(1)) {
     case TokenKind::Assign:
     case TokenKind::Dot: return false;
-    case TokenKind::LParen: return !toHelper_;
+    case TokenKind::LParen: return !helper;
     default: return true;
     }
 }
 
 std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
     auto lower = parseShift();
-    if (!atRangeOperator()) return lower;
+    if (!atContextualOperator("to", toHelper_)) return lower;
     const SourceLocation at = advance().location; // 'to'
     auto upper = parseShift();
-    if (atRangeOperator()) {
+    auto end = upper->sourceRange.end;
+    std::unique_ptr<Expr> distribution;
+    SourceLocation withAt{};
+    if (atContextualOperator("with", withHelper_)) {
+        withAt = advance().location; // 'with'
+        distribution = parseShift();
+        end = distribution->sourceRange.end;
+    }
+    if (atContextualOperator("to", toHelper_)) {
         failHere("'to' cannot be chained; parenthesize the range used as a bound, "
                  "for example (a to b) to c");
     }
-    const TokenRange range{lower->sourceRange.begin, upper->sourceRange.end};
-    auto expr = std::make_unique<Expr>(RandomRange{std::move(lower), std::move(upper), at});
+    const TokenRange range{lower->sourceRange.begin, end};
+    auto expr = std::make_unique<Expr>(
+        RandomRange{std::move(lower), std::move(upper), at, std::move(distribution), withAt});
     expr->sourceRange = expr->sourceCoreRange = range;
     return expr;
 }

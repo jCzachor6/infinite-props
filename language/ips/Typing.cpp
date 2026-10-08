@@ -352,13 +352,24 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
     return resolved.type;
 }
 
-// `lo to hi`: i32 bounds draw an i32; any f32 bound widens both to f32.
+// `lo to hi [with d]`: i32 bounds draw an i32; any f32 bound widens both to
+// f32. Bounds type before the distribution, in evaluation order.
 ValueType Typer::typeRandomRange(const RandomRange& range) {
     const ValueType lower = typeOf(*range.lower);
     const ValueType upper = typeOf(*range.upper);
     if (!isNumeric(lower) || !isNumeric(upper)) {
         error(range.location, "'to' needs numeric bounds, got " + std::string(typeName(lower)) +
                                   " and " + typeName(upper));
+    }
+    if (range.distribution) {
+        const ValueType shape = typeOf(*range.distribution);
+        if (shape != ValueType::Distribution) {
+            SourceError mismatch{locationOf(*range.distribution), "'with' needs a distribution, got " +
+                std::string(typeName(shape)), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
+            mismatch.expectedType = typeName(ValueType::Distribution);
+            mismatch.actualType = typeName(shape);
+            throw mismatch;
+        }
     }
     return promote(lower, upper);
 }

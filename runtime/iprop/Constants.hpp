@@ -221,6 +221,13 @@ enum class Opcode : u8 {
     RngInt = 0xA8,
     RngFloat = 0xA9,
 
+    // Distributions (spec v0.5 §4; added in v0.5)
+    DistributionGaussian = 0xAA,
+    DistributionTriangular = 0xAB,
+    DistributionBeta = 0xAC,
+    RngIntWith = 0xAD,
+    RngFloatWith = 0xAE,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };

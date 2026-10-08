@@ -23,6 +23,7 @@ set(IPROP_RUNTIME_SOURCES
     math/sdf.cpp
     math/bezier.cpp
     math/curves.cpp
+    math/distribution.cpp
     math/color.cpp
     seeded.cpp
     canvas.cpp

@@ -12,14 +12,17 @@ namespace detail {
 ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     ParseResult result;
     recovery_ = &result;
-    // Only declarations sit directly inside the asset braces, so `to(` there
-    // declares a helper named `to`, which may follow a statement.
+    // Only declarations sit directly inside the asset braces, so `to(` or
+    // `with(` there declares a helper, whose call may follow a statement.
     std::size_t depth = 0;
     for (std::size_t i = 0; i + 1 < tokens_.size(); ++i) {
         if (tokens_[i].kind == TokenKind::LBrace) ++depth;
         if (tokens_[i].kind == TokenKind::RBrace && depth > 0) --depth;
-        if (depth == 1 && tokens_[i].kind == TokenKind::Identifier && tokens_[i].text == "to" &&
-            tokens_[i + 1].kind == TokenKind::LParen) toHelper_ = true;
+        if (depth == 1 && tokens_[i].kind == TokenKind::Identifier &&
+            tokens_[i + 1].kind == TokenKind::LParen) {
+            if (tokens_[i].text == "to") toHelper_ = true;
+            if (tokens_[i].text == "with") withHelper_ = true;
+        }
     }
     diagnosticLimit_ = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics);
     Program program;
@@ -417,9 +420,14 @@ ParamType ParserImpl::parseParamType() {
         advance();
         return ParamType::Vec2;
     case TokenKind::TypeU32:
-        failHere("u32 is a uniform-only type; parameters are i32, f32, color or vec2");
+        failHere("u32 is a uniform-only type; parameters are i32, f32, color, vec2 or distribution");
     default:
-        failExpected("a parameter type (i32, f32, color or vec2)");
+        // `distribution` is a contextual type name, not a reserved word.
+        if (kind() == TokenKind::Identifier && peek().text == "distribution") {
+            advance();
+            return ParamType::Distribution;
+        }
+        failExpected("a parameter type (i32, f32, color, vec2 or distribution)");
     }
 }
 
@@ -480,6 +488,15 @@ Stmt ParserImpl::parseIdentifierStatement() {
     if (match(TokenKind::Assign)) {
         const FlagScope tail(statementTail_, true);
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
+    }
+    // `distribution d = ...` declares a typed local; `distribution` alone
+    // keeps its meaning as a name.
+    if (name.kind == TokenKind::Identifier && name.text == "distribution" && isNameKind(kind()) &&
+        kind(1) == TokenKind::Assign) {
+        const Token local = advance();
+        advance(); // '='
+        const FlagScope tail(statementTail_, true);
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Distribution}};
     }
     // Otherwise it must be a call (possibly through a member chain).
     auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});

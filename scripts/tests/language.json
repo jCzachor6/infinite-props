@@ -245,6 +245,17 @@
         "writes_outputs": false,
         "summary": "intrinsic",
         "may_trap": ["numeric_range"]
+      },
+      "with": {
+        "keyword": "with",
+        "type": "distribution",
+        "evaluation_order": ["lower", "upper", "distribution"],
+        "overloads": [{"lower": "i32", "upper": "i32", "result": "i32", "opcode": "rng.int.with", "minimum_format_minor": 5, "bounds": "inclusive", "draws": {"minimum": 1, "maximum": 1}}],
+        "truncation": "conditioned_on_range",
+        "integer_rounding": "nearest_half_away_from_zero",
+        "fuel": "one_plus_kernel_iterations",
+        "traps": ["no_probability_in_range"],
+        "effects": {"rng": "advance_current", "writes_canvas": false, "writes_outputs": false, "summary": "intrinsic", "may_trap": ["numeric_range"]}
       }
     }
   },

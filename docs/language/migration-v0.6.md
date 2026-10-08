@@ -40,6 +40,21 @@ statement, `to = ...`, `to.draw(...)` and a call of a declared helper
 `to(...)` still start the next statement. Write the operator in parentheses
 to use it there, for example `x = (1 to (5))`.
 
+## Distributions
+
+The new `distribution` type describes a gaussian, triangular or beta
+distribution; `lower to upper with d` draws from it restricted to the range
+(see [distributions](random.md#distributions)). Constructors and draws use the
+format 0.5 instructions `distribution.gaussian`, `distribution.triangular`,
+`distribution.beta`, `rng.int.with` and `rng.float.with`, whose numerical
+kernels are pinned in binary64 so native and WASM agree bit for bit. A draw
+costs 1 fuel plus the iterations of those kernels.
+
+`distribution`, `with`, `gaussian`, `triangular` and `beta` stay available as
+names. A local or helper called `distribution` or `with` keeps its meaning,
+and a helper called `gaussian`, `triangular` or `beta` takes precedence over
+the constructor of that name, unlike other builtins.
+
 `index()`, `range()`, `roll()` and `choose()` keep their algorithms. The
 integer sampler of `to` may take more than one stream step, so replacing
 `index(n)` or `range(a, b)` with `to` changes the later draws of a generator;

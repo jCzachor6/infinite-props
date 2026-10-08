@@ -41,6 +41,15 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         if (call.overload->opcode) ins(*call.overload->opcode);
         return call.overload->result;
     }
+    if (spec.lowering == ips::BuiltinLowering::Beta) {
+        for (const auto& arg : call.arguments) emitArg(arg);
+        if (call.arguments.size() == 2) {
+            emitConst(0.0f); // the default natural range 0-1
+            emitConst(1.0f);
+        }
+        ins(Opcode::DistributionBeta);
+        return VT::Distribution;
+    }
     if (spec.lowering == ips::BuiltinLowering::Chance) {
         emitArg(call.arguments[0]);
         ins(Opcode::RngUnit);

@@ -117,14 +117,17 @@ std::vector<u8> Assembler::assemble() {
         table.writeU32(static_cast<u32>(function.code.size() * 4));
         table.writeU16(static_cast<u16>(function.params.size()));
         for (const ValueType type : function.params) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(function.results.size()));
         for (const ValueType type : function.results) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(function.locals.size()));
         for (const ValueType type : function.locals) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         for (const Instruction& ins : function.code) {

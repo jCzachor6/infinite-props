@@ -39,6 +39,7 @@ add_executable(iprop_tests
     compiler/drawing_test.cpp
     compiler/color_channels_test.cpp
     compiler/random_ranges_test.cpp
+    compiler/distributions_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
     compiler/calls_test.cpp

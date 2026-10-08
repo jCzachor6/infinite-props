@@ -1,0 +1,20 @@
+asset distributionErrors {
+  size 1x1
+  variants 5
+  output point p
+  draw {
+    zero = 0.0
+    if (v == 0) {
+      d = gaussian(mean=0.0, sigma=zero)
+    } else if (v == 1) {
+      p = {5.0 to 9.0 with triangular(min=0.0, peak=1.0, max=4.0), 0}
+    } else if (v == 2) {
+      p = {5.0 to 5.0 with beta(alpha=2.0, beta=2.0), 0}
+    } else if (v == 3) {
+      if (v == 99) { distribution unset = gaussian(mean=0.0, sigma=1.0) }
+      p = {0 to 1 with unset, 0}
+    } else {
+      p = {0 to 10 with gaussian(mean=1000.0, sigma=1.0), 0}
+    }
+  }
+}

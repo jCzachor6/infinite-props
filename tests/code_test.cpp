@@ -143,7 +143,7 @@ TEST_CASE("invalid code fixtures fail with located errors") {
         w.writeU16(0); // params
         w.writeU16(0); // results
         w.writeU16(1); // locals
-        w.writeU8(4);  // bad local type
+        w.writeU8(5);  // bad local type (4 is distribution since v0.5)
         expectCodeError(w.data(), pool, 22, "local type");
     }
     // Function name outside the pool (name field at 4-7).

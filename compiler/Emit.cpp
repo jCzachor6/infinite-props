@@ -50,6 +50,7 @@ TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
         case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
         case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
         case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
+        case ips::ValueType::Distribution: return temporaries_.acquire(ValueType::Distribution);
         default: throw std::logic_error("temporary requires a value type");
         }
     } catch (const std::length_error& exception) {

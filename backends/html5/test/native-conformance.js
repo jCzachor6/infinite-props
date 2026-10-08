@@ -30,6 +30,7 @@ const sources = [
     ["aliases", "backends/html5/test/fixtures/aliases.ips"],
     ["random-sugar", "backends/html5/test/fixtures/random-sugar.ips"],
     ["random-ranges", "backends/html5/test/fixtures/random-ranges.ips"],
+    ["distributions", "backends/html5/test/fixtures/distributions.ips"],
     ["named-arguments", "backends/html5/test/fixtures/named-arguments.ips"],
     ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
@@ -349,6 +350,15 @@ function run(iprop, toolsDir) {
         for (let variant = 0; variant < 4; ++variant) {
             compareTrap(rangeErrors, variant, variant === 1 || variant === 2
                 ? "random range bounds must be finite" : "random range lower bound exceeds the upper bound");
+        }
+        const distributionErrors = path.join(temporary, "distribution-errors.iprop");
+        execFileSync(tool("ipc"),
+            [path.join(__dirname, "fixtures/distribution-errors.ips"), "-o", distributionErrors]);
+        const distributionTraps = ["gaussian needs a finite mean and a finite sigma > 0",
+            "random range has no probability under the distribution", "random range lies outside the distribution",
+            "distribution is not initialized", "random range has no probability under the distribution"];
+        for (let variant = 0; variant < distributionTraps.length; ++variant) {
+            compareTrap(distributionErrors, variant, distributionTraps[variant]);
         }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);

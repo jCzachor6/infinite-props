@@ -19,6 +19,7 @@ const char* typeName(ValueType type) {
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
     case ValueType::Vec2: return "vec2";
+    case ValueType::Distribution: return "distribution";
     }
     return "?";
 }
@@ -65,6 +66,13 @@ public:
         if (file_.layout.header.versionMinor < 3 &&
             (hasVec2(fn_.params) || hasVec2(fn_.results) || hasVec2(fn_.locals))) {
             fail(0, "vec2 types require format 0.3");
+        }
+        const auto hasDistribution = [](const std::vector<ValueType>& types) {
+            return std::find(types.begin(), types.end(), ValueType::Distribution) != types.end();
+        };
+        if (file_.layout.header.versionMinor < 5 &&
+            (hasDistribution(fn_.params) || hasDistribution(fn_.results) || hasDistribution(fn_.locals))) {
+            fail(0, "distribution types require format 0.5");
         }
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
@@ -174,7 +182,7 @@ private:
             if (reachable_ && !accepts(expected,actual)) {
                 const char* name = expected == StackType::ScalarOrVec2 ? "f32 or vec2" :
                     expected == StackType::I32 ? "i32" : expected == StackType::F32 ? "f32" :
-                    expected == StackType::Color ? "color" : "vec2";
+                    expected == StackType::Color ? "color" : expected == StackType::Distribution ? "distribution" : "vec2";
                 fail(at, std::string("type mismatch: expected ") + name + ", found " +
                          typeName(actual) + " (" + spec.mnemonic + ")");
             }

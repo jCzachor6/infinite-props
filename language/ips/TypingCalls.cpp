@@ -19,7 +19,7 @@ ValueType Typer::typeCall(const Call& call) {
             return typeRamp(*name, call);
         }
         const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end()) {
+        if (builtin != builtinSpecs().end() && !yieldsToHelper(name->name)) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);
@@ -87,6 +87,13 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                 "' must be " + typeName(expected) + ", got " + typeName(types[i]));
     }
     error(call.location, "no matching overload for '" + name.name + "'");
+}
+
+bool Typer::yieldsToHelper(const std::string& name) const {
+    if (!builtinYieldsToHelper(name)) return false;
+    for (const auto& function : owner_->asset.functions)
+        if (function.name == name) return true;
+    return false;
 }
 
 ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {

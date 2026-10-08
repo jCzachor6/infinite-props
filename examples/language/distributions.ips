@@ -1,0 +1,25 @@
+asset Distributions {
+  size 16x8
+  input f32 spread = 1.5
+  output list point wear
+  shaped(level: f32) -> distribution {
+    return gaussian(mean=level, sigma=0.5)
+  }
+  jitter(d: distribution) -> i32 {
+    return -3 to 3 with d
+  }
+  draw {
+    distribution softWear = gaussian(mean=0.0, sigma=spread)
+    edge = triangular(min=0.0, peak=0.0, max=4.0)
+    rust = beta(alpha=2.0, beta=5.0)
+    blades = beta(alpha=2.0, beta=5.0, min=1.6, max=2.0)
+    for i in 0..4 {
+      damage = 0.0 to 4.0 with edge
+      wear = {float(-5 to 5 with softWear), damage}
+      pixel(i, int(7.0 * (0.0 to 1.0 with rust)), #b7410e)
+    }
+    width = 1.6 to 2.0 with blades
+    rect(8, 0, width, 8, #c8c8c8)
+    pixel(12 + jitter(shaped(float(v))), 4, #fff)
+  }
+}

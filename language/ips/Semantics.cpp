@@ -439,6 +439,15 @@ private:
             error(decl.location, "'seed' is a reserved name");
         }
         const ValueType type = typer_.typeOf(*decl.value);
+        if (decl.declaredType && type != valueTypeOf(*decl.declaredType)) {
+            const auto* declared = typeName(valueTypeOf(*decl.declaredType));
+            SourceError diagnostic{locationOf(*decl.value), std::string(declared) + " '" + decl.name +
+                "' needs a " + declared + ", got " + typeName(type), {},
+                DiagnosticCode::TypeError, DiagnosticStage::Typing};
+            diagnostic.expectedType = declared;
+            diagnostic.actualType = typeName(type);
+            throw diagnostic;
+        }
         if (!isStorable(type)) {
             error(decl.location, "cannot store " + std::string(typeName(type)) +
                                      " in local '" + decl.name +

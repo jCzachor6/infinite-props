@@ -32,7 +32,7 @@ def main():
         {'source_type': 'u32', 'binary_type': 'u32', 'value_type': 'i32'},
         {'source_type': 'i32', 'binary_type': 'u32', 'value_type': 'i32'}]
     for field in ('storable', 'helper_parameters', 'helper_value_returns'):
-        assert rules['types'][field] == ['i32', 'f32', 'color', 'vec2']
+        assert rules['types'][field] == ['i32', 'f32', 'color', 'vec2', 'distribution']
     assert rules['types']['output_only_geometry'] == ['circle', 'rect']
     assert rules['types']['point_value_type'] == 'vec2'
     assert rules['types']['implicit_widening'] == [{'from': 'i32', 'to': 'f32',

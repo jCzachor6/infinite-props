@@ -17,6 +17,7 @@ Value zeroValue(ValueType type) {
     case ValueType::F32: return Value(f32{0.f});
     case ValueType::Color: return Value(Color{});
     case ValueType::Vec2: return Value(Vec2{});
+    case ValueType::Distribution: return Value(Distribution{});
     }
     return Value(i32{0});
 }
@@ -122,6 +123,14 @@ Vec2 Execution::popVec2() {
         trap("stack type mismatch: expected vec2", ErrorReason::StackType);
     }
     return std::get<Vec2>(value);
+}
+
+Distribution Execution::popDistribution() {
+    const Value value = pop();
+    if (!std::holds_alternative<Distribution>(value)) {
+        trap("stack type mismatch: expected distribution", ErrorReason::StackType);
+    }
+    return std::get<Distribution>(value);
 }
 
 void Execution::push(Value value) {

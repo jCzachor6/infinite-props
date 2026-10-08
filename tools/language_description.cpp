@@ -49,7 +49,8 @@ Json effectRules() {
 }
 
 constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
-    ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Circle, ips::ValueType::Rect};
+    ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Distribution, ips::ValueType::Circle,
+    ips::ValueType::Rect};
 
 template<class Predicate>
 Json types(Predicate include) {
@@ -76,7 +77,15 @@ Json randomRange() {
         {"mixed_numeric_bounds", "widen_to_f32"},
         {"traps", Json::array({"lower_greater_than_upper", "nonfinite_f32_bound"})},
         {"equal_bounds", "bound_after_one_draw"},
-        {"effects", operationEffects(findOpcode(Opcode::RngInt)->effects)}});
+        {"effects", operationEffects(findOpcode(Opcode::RngInt)->effects)},
+        {"with", Json::object({{"keyword", "with"}, {"type", ips::typeName(ips::ValueType::Distribution)},
+            {"evaluation_order", Json::array({"lower", "upper", "distribution"})},
+            {"overloads", Json::array({overload("i32", Opcode::RngIntWith, 1), overload("f32", Opcode::RngFloatWith, 1)})},
+            {"truncation", "conditioned_on_range"}, {"integer_rounding", "nearest_half_away_from_zero"},
+            {"fuel", "one_plus_kernel_iterations"},
+            {"traps", Json::array({"uninitialized_distribution", "equal_bounds_outside_support",
+                                   "no_probability_in_range", "kernel_iteration_limit"})},
+            {"effects", operationEffects(findOpcode(Opcode::RngIntWith)->effects)}})}});
 }
 
 Json sourceRules() {
@@ -99,7 +108,7 @@ Json sourceRules() {
     typeRules["storable"] = types(ips::isStorable);
     typeRules["helper_parameters"] = types([](ips::ValueType value) {
         for (const auto type : {ips::ParamType::I32, ips::ParamType::F32,
-                               ips::ParamType::Color, ips::ParamType::Vec2})
+                               ips::ParamType::Color, ips::ParamType::Vec2, ips::ParamType::Distribution})
             if (ips::valueTypeOf(type) == value) return true;
         return false;
     });
@@ -182,7 +191,7 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
         {"parameters", std::move(parameters)}, {"evaluation_order", evaluationOrder(signature)},
         {"effects", operationEffects(signature.effects)}});
     if (!polygon) {
-        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2"});
+        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2", "distribution"});
         out["choice_evaluation"] = "eager_once_before_selection_rng";
     }
     return out;

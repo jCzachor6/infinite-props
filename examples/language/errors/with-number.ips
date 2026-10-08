@@ -1,0 +1,6 @@
+asset WithNumber {
+  size 8x8
+  draw {
+    offset = -5 to 5 with 2.0
+  }
+}

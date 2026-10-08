@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 LANGUAGE_SCHEMA_VERSION = 2
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
-VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
+VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
@@ -148,7 +148,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2'}, True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
@@ -201,6 +201,14 @@ def read_language(value):
         require(ranges['mixed_numeric_bounds'] == 'widen_to_f32' and ranges['equal_bounds'] == 'bound_after_one_draw', 'random range rules')
         strings(ranges['traps'], 'random range traps')
         effects(ranges['effects'], 'random range effects')
+        # Distributions came after the first 0.6 exports; validate when present.
+        if 'with' in ranges:
+            shaped = obj(ranges['with'], ['keyword', 'type', 'evaluation_order', 'overloads', 'truncation', 'integer_rounding', 'fuel', 'traps', 'effects'], 'random range with')
+            require(shaped['keyword'] == 'with' and shaped['type'] == 'distribution' and shaped['evaluation_order'] == ['lower', 'upper', 'distribution'], 'random range with')
+            require(type(shaped['overloads']) is list and bool(shaped['overloads']) and all(type(item) is dict and type(item.get('opcode')) is str for item in shaped['overloads']), 'random range with overloads')
+            require(shaped['truncation'] == 'conditioned_on_range' and shaped['integer_rounding'] == 'nearest_half_away_from_zero' and shaped['fuel'] == 'one_plus_kernel_iterations', 'random range with rules')
+            strings(shaped['traps'], 'random range with traps')
+            effects(shaped['effects'], 'random range with effects')
     call = obj(value['call_rules'], ['helper_evaluation_order', 'part'], 'call_rules')
     require(call['helper_evaluation_order'] == 'declaration', 'helper evaluation order')
     ordered_signature(call['part'], 'part', typed=False)

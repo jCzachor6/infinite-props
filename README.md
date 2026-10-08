@@ -209,6 +209,9 @@ calls, because bit-exact parity across platforms is a core requirement:
 - `lo to hi` draws a uniform value with both bounds included: `i32` for two
   integer bounds (rejection sampling, no modulo bias), otherwise `f32`.
   Bounds evaluate once, lower first; reversed or non-finite bounds trap.
+  `lo to hi with d` draws from a `gaussian`, `triangular` or `beta`
+  distribution restricted to the range; `distribution` values can be stored
+  and passed to and returned from helpers.
 - `pick(n)` is an alias for `index(n)`. `pick(a, b, …)` eagerly evaluates
   all choices once, in signature order, then consumes one selection draw.
   Choices share a scalar/vec2 type; mixed numeric choices widen to f32.

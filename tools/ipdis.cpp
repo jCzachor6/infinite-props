@@ -24,6 +24,7 @@ const char* typeName(ValueType type) {
     case ValueType::F32: return "f32";
     case ValueType::Color: return "color";
     case ValueType::Vec2: return "vec2";
+    case ValueType::Distribution: return "distribution";
     }
     return "?";
 }

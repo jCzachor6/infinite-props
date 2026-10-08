@@ -145,6 +145,10 @@ bool parseValueType(const std::string& text, ValueType& out) {
         out = ValueType::Vec2;
         return true;
     }
+    if (text == "distribution") {
+        out = ValueType::Distribution;
+        return true;
+    }
     return false;
 }
 
@@ -792,14 +796,17 @@ std::vector<u8> assemble(const std::string& source) {
         table.writeU32(static_cast<u32>(fn.instructions.size()) * 4);
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(fn.results.size()));
         for (const ValueType type : fn.results) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         table.writeU16(static_cast<u16>(fn.locals.size()));
         for (const ValueType type : fn.locals) {
+            minor = writtenMinor(minor, type);
             table.writeU8(static_cast<u8>(type));
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {

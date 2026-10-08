@@ -16,6 +16,7 @@ enum class ValueType : u8 {
     F32 = 1,
     Color = 2,
     Vec2 = 3,
+    Distribution = 4, // v0.5
 };
 
 // One function declaration plus its instruction stream (spec §6.1/§6.2).

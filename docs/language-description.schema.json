@@ -89,6 +89,7 @@
                 "type": "string",
                 "enum": [
                   "color",
+                  "distribution",
                   "f32",
                   "i32",
                   "vec2"
@@ -105,6 +106,7 @@
                 "type": "string",
                 "enum": [
                   "color",
+                  "distribution",
                   "f32",
                   "i32",
                   "vec2"
@@ -121,6 +123,7 @@
                 "type": "string",
                 "enum": [
                   "color",
+                  "distribution",
                   "f32",
                   "i32",
                   "vec2"
@@ -697,6 +700,153 @@
             "effects": {
               "$ref": "#/$defs/effects",
               "description": "Intrinsic effects of the draw, excluding its bounds."
+            },
+            "with": {
+              "type": "object",
+              "properties": {
+                "keyword": {
+                  "type": "string",
+                  "const": "with",
+                  "description": "Contextual word introducing the distribution after the upper bound."
+                },
+                "type": {
+                  "type": "string",
+                  "const": "distribution",
+                  "description": "Required value type of the distribution operand."
+                },
+                "evaluation_order": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "lower",
+                      "upper",
+                      "distribution"
+                    ],
+                    "description": "Operand evaluated once at this position, before the draw."
+                  },
+                  "description": "Operand evaluation sequence.",
+                  "minItems": 3
+                },
+                "overloads": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "lower": {
+                        "type": "string",
+                        "description": "Lower bound type after widening."
+                      },
+                      "upper": {
+                        "type": "string",
+                        "description": "Upper bound type after widening."
+                      },
+                      "result": {
+                        "type": "string",
+                        "description": "Value type of the draw."
+                      },
+                      "opcode": {
+                        "type": "string",
+                        "description": "Instruction mnemonic of the draw."
+                      },
+                      "minimum_format_minor": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 255,
+                        "description": "Oldest binary format minor containing the instruction."
+                      },
+                      "bounds": {
+                        "type": "string",
+                        "enum": [
+                          "inclusive"
+                        ],
+                        "description": "Both bounds are possible results."
+                      },
+                      "draws": {
+                        "type": "object",
+                        "properties": {
+                          "minimum": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Fewest stream steps of one evaluation."
+                          },
+                          "maximum": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Most stream steps of one evaluation; each step after the first costs 1 fuel."
+                          }
+                        },
+                        "required": [
+                          "minimum",
+                          "maximum"
+                        ],
+                        "additionalProperties": true,
+                        "description": "Stream steps taken by one evaluation."
+                      }
+                    },
+                    "required": [
+                      "lower",
+                      "upper",
+                      "result",
+                      "opcode",
+                      "minimum_format_minor",
+                      "bounds",
+                      "draws"
+                    ],
+                    "additionalProperties": true,
+                    "description": "One accepted bound type pair and its lowering with a distribution."
+                  },
+                  "description": "Accepted bound type pairs with a distribution.",
+                  "minItems": 1
+                },
+                "truncation": {
+                  "type": "string",
+                  "enum": [
+                    "conditioned_on_range"
+                  ],
+                  "description": "The draw follows the distribution restricted to the range, never clamped."
+                },
+                "integer_rounding": {
+                  "type": "string",
+                  "enum": [
+                    "nearest_half_away_from_zero"
+                  ],
+                  "description": "Rounding of the continuous draw for i32 bounds."
+                },
+                "fuel": {
+                  "type": "string",
+                  "enum": [
+                    "one_plus_kernel_iterations"
+                  ],
+                  "description": "Fuel of one draw: 1 plus the iterations of the pinned numerical kernels."
+                },
+                "traps": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "description": "Runtime condition of a distribution draw."
+                  },
+                  "description": "Runtime numeric-range conditions of a distribution draw.",
+                  "uniqueItems": true
+                },
+                "effects": {
+                  "$ref": "#/$defs/effects",
+                  "description": "Intrinsic effects of the draw, excluding its operands."
+                }
+              },
+              "required": [
+                "keyword",
+                "type",
+                "evaluation_order",
+                "overloads",
+                "truncation",
+                "integer_rounding",
+                "fuel",
+                "traps",
+                "effects"
+              ],
+              "additionalProperties": true,
+              "description": "Optional, added with distributions in source language 0.6: a range shaped by a distribution, 'lower to upper with d'."
             }
           },
           "required": [
@@ -1020,6 +1170,7 @@
             "T",
             "circle",
             "color",
+            "distribution",
             "f32",
             "i32",
             "palette<color>",
@@ -1055,6 +1206,7 @@
             "T",
             "circle",
             "color",
+            "distribution",
             "f32",
             "i32",
             "palette<color>",
@@ -1117,6 +1269,7 @@
             "T",
             "circle",
             "color",
+            "distribution",
             "f32",
             "i32",
             "palette<color>",
@@ -1163,6 +1316,7 @@
               "T",
               "circle",
               "color",
+              "distribution",
               "f32",
               "i32",
               "palette<color>",
