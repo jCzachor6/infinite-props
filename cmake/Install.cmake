@@ -45,7 +45,10 @@ if(TARGET iprop_sfml)
     endif()
 endif()
 
-install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+# examples/showcase holds the website's prop binaries, which are not part of
+# the SDK.
+install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop
+    REGEX "/examples/showcase$" EXCLUDE)
 # The guides keep their source-tree places, so their relative links resolve.
 foreach(backend capi sfml godot)
     install(FILES backends/${backend}/README.md

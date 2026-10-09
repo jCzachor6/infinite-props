@@ -489,7 +489,9 @@ interpreter:
 ## 13. Licensing and governance
 
 - Code: **Apache-2.0**.
-- Examples and gallery assets: **CC-BY-4.0**.
+- Examples and gallery assets: **CC-BY-4.0**, except the compiled props in
+  `examples/showcase/`, which are **all rights reserved** (see
+  [their license](examples/showcase/LICENSE.md)).
 - The format specification evolves under semantic versioning; semantic changes
   to existing opcodes are forbidden, additions are feature-flagged.
 - Repository ships `CONTRIBUTING.md` and CI (build, conformance, formatting)
