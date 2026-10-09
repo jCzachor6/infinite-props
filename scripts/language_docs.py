@@ -19,6 +19,8 @@ from markdown_tokens import headings, links, manifest_headings, rewrite_links
 
 
 DIRECTIVE = re.compile(r"^<!-- (example|builtin): (\S+) -->$", re.M)
+# Marks a paragraph that LLM_REFERENCE.md leaves out; the book drops the marker.
+LLM_SKIP = re.compile(r"^<!-- llm: skip -->\n", re.M)
 
 
 def require(condition, message):
@@ -94,10 +96,10 @@ def signatures(builtin):
         params = ", ".join(p["name"] + ": " + p["type"] for p in overload["parameters"])
         signature = builtin["name"] + "(" + params + ") -> " + overload["result"]
         minor = overload.get("minimum_format_minor")
-        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(int(minor)) if minor is not None else '—'} |")
+        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(int(minor)) if minor is not None else 'any'} |")
     if variadic := builtin.get("variadic"):
         params = ", ".join(p["name"] + ": " + p["type"] for p in variadic["parameters"])
-        lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering | — |")
+        lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering | any |")
         lines += ["", f"The variadic form requires at least {int(variadic['minimum_arguments'])} arguments."]
         if variadic["repeat"] == "choices":
             lines.append("`T` is a shared storable type; mixed numeric choices widen to `f32`.")
@@ -197,7 +199,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
             if case.get("message"):
                 label += " (`" + case["message"] + "`)"
             return label + ".\n\n```ips\n" + read(file).rstrip() + "\n```"
-        content = DIRECTIVE.sub(replace, authored[chapter])
+        content = LLM_SKIP.sub("", DIRECTIVE.sub(replace, authored[chapter]))
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 
@@ -383,7 +385,7 @@ def main():
     parser.add_argument("--clean", action="store_true", help="reject documentation generated from uncommitted changes")
     parser.add_argument("--llm-sections", help="comma-separated LLM section ids; empty selects none")
     parser.add_argument("--llm-symbols", help="comma-separated compiler builtin names; empty selects none")
-    parser.add_argument("--llm-max-bytes", type=int, help="UTF-8 byte budget for LLM_REFERENCE.md (maximum 16384)")
+    parser.add_argument("--llm-max-bytes", type=int, help="UTF-8 byte budget for LLM_REFERENCE.md (maximum in docs/llm-reference.json)")
     args = parser.parse_args()
     if args.action == "verify" and any(value is not None for value in (args.llm_sections, args.llm_symbols, args.llm_max_bytes)):
         parser.error("LLM selections apply to build/check, not verify")

@@ -83,12 +83,14 @@ result from expanding the imports. A cycle, including one through an
 equivalent path such as `"../dir/a.ips"`, is an error naming the whole
 chain.
 
+<!-- llm: skip -->
 The following imports the composition example, which itself imports a part,
 and draws it twice; `attached` is the grandchild's anchor in this asset's
 coordinates:
 
 <!-- example: ../../examples/language/nested-import.ips -->
 
+<!-- llm: skip -->
 `examples/colony/` is a larger three-level example: a colony of mushrooms,
 each importing its own stem and cap, with a firefly drawn at every cap's
 reported peak.

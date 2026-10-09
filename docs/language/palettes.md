@@ -19,6 +19,7 @@ locals or used bare except as the first `ramp` argument.
 
 <!-- example: ../../examples/language/palettes.ips -->
 
+<!-- llm: skip -->
 The example includes parenthesized negative integer elements and a negative
 floating zero. `levels` widens its integer stops to `f32`; `integers` and
 `signed` retain `i32`. These use the declaration-constant resolver shared with

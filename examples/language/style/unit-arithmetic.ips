@@ -1,0 +1,7 @@
+asset Plank {
+  size 32x8
+  draw {
+    w = 20 + int(unit() * 11)
+    rect(0, 2, w, 4, #8a5a33)
+  }
+}

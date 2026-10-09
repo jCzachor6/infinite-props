@@ -11,7 +11,10 @@ The frozen compositor interpolates RGB for translucent sources while retaining
 the destination alpha. An opaque source replaces all RGBA bytes. A translucent
 source over initially transparent storage can leave nonzero RGB with alpha zero;
 this is neither standard straight-alpha nor premultiplied-alpha blending.
-Start with an opaque background for translucent glaze examples. The C API
+Start with an opaque background for translucent glaze examples.
+
+<!-- llm: skip -->
+The C API
 [image view](../c-api-images.md) identifies this mode as
 `IPROP_IMAGE_ALPHA_LEGACY_DESTINATION` and returns the exact stored bytes.
 Exact blending, alpha endpoints and rounding are specified in
@@ -78,7 +81,10 @@ A random color between two ends is `#705845ff to #c8c8c8ff`; see
 value as `i32` in 0–255; alpha is read as stored. The base is evaluated
 exactly once per read, so `makeColor().r` calls the helper once, while
 `makeColor().r` and `makeColor().g` are two calls. Store the color first to
-read the channels of one result. Channel reads of a constant color fold at
+read the channels of one result.
+
+<!-- llm: skip -->
+Channel reads of a constant color fold at
 compile time; otherwise they lower to the format 0.5 `color.r`–`color.a`
 instructions, and only such files are written as format 0.5.
 

@@ -29,6 +29,7 @@ by the bytecode validator.
 
 <!-- example: ../../examples/language/errors/float-condition.ips -->
 
+<!-- llm: skip -->
 The second example deliberately fails the integer condition check. A
 nonterminating loop instead compiles and exhausts runtime fuel:
 

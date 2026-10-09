@@ -90,5 +90,6 @@ a color and a number; build a new color with `rgb()`/`rgba()` and use
 
 <!-- example: ../../examples/language/errors/local-type.ips -->
 
+<!-- llm: skip -->
 This example is intentionally rejected: a local fixed as `i32` cannot be
 reassigned an `f32`. CI checks the expected diagnostic.

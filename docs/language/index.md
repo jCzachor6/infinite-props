@@ -32,11 +32,12 @@ files; their contents are included in the generated book and tested by CI.
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
 13. [Imports and part composition](composition.md)
-14. [Compiler tools and diagnostics](tooling.md)
-15. [Grammar](grammar.md)
-16. [Maintaining this documentation](development.md)
-17. [Migration and implementation contracts for 0.5](migration-v0.5.md)
-18. [Migration and implementation contracts for 0.6](migration-v0.6.md)
+14. [Writing idiomatic props](idioms.md)
+15. [Compiler tools and diagnostics](tooling.md)
+16. [Grammar](grammar.md)
+17. [Maintaining this documentation](development.md)
+18. [Migration and implementation contracts for 0.5](migration-v0.5.md)
+19. [Migration and implementation contracts for 0.6](migration-v0.6.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

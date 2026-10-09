@@ -24,6 +24,7 @@ the declared counts traps. `draw` declares no parameters or return type.
 | `u32` | nonnegative integer literal | `i32`, retaining its 32-bit pattern |
 | `i32` | integer in `[-2147483648, 2147483647]`, optionally negative | `i32` |
 
+<!-- llm: skip -->
 `input i32` range-checks the mathematical default before ordinary integer
 wrapping. Thus `-2147483648` is valid and positive `0xffffffff` is rejected.
 It uses the existing binary U32 uniform, preserving the signed two's-complement
@@ -47,6 +48,7 @@ Uniforms are visible in `draw`; pass their values explicitly to helpers.
 
 <!-- example: ../../examples/language/signed-input.ips -->
 
+<!-- llm: skip -->
 Both examples are accepted source 0.5 programs. Their old parser/type errors
 belong only to the frozen 0.4 baseline. A negative floating default is valid;
 a mathematically negative `u32` default is still invalid. Defaults outside

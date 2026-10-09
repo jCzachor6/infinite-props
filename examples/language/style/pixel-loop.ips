@@ -1,0 +1,13 @@
+asset Disc {
+  size 32x32
+  draw {
+    r = 10.0 to 14.0
+    for y in 0..32 {
+      for x in 0..32 {
+        dx = float(x) + 0.5 - 16.0
+        dy = float(y) + 0.5 - 16.0
+        if (dx * dx + dy * dy < r * r) { pixel(x, y, #c0a060) }
+      }
+    }
+  }
+}

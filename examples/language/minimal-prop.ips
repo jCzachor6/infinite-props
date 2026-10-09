@@ -1,0 +1,15 @@
+asset Boulder {
+  size 32x24
+  origin 16,22
+  output rect collider
+
+  draw {
+    distribution typical = gaussian(mean=0.5, sigma=0.18)
+    w = lerp(14.0, 26.0, 0.0 to 1.0 with typical)
+    h = lerp(8.0, 16.0, 0.0 to 1.0 with typical)
+    rock = #5b6170 to #8d94a3 with typical
+    oval(16, 22.0 - h * 0.5, w * 0.5, h * 0.5, rock)
+    oval(16.0 - w * 0.15, 22.0 - h * 0.7, w * 0.25, h * 0.2, color.shade(rock, 3))
+    collider = {16.0 - w * 0.5, 22.0 - h, w, h}
+  }
+}

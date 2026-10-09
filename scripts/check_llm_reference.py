@@ -43,9 +43,18 @@ def main():
             require(f"{label} {version['major']}.{version['minor']}" in reference, 'independent version missing: ' + key)
         require('Product ' + language['product_version'] in reference, 'product version missing')
         checks = info['llm_reference_checks']
-        require(len([c for c in checks if c.get('execution') == 'pass']) == 6, 'minimal forms were not executed')
-        require(len([c for c in checks if c.get('correction_execution') == 'pass']) == 3, 'repair pairs were not executed')
-        require(reference.count('```ips') == len(checks) + 3, 'unregistered/unexecuted code block in reference')
+        examples = {name for entry in config['sections'] if entry['id'] in config['defaults']['sections']
+                    for name in entry.get('examples', []) + entry.get('demos', [])}
+        pairs = len(config['diagnostic_pairs']) + len(config['style_pairs'])
+        require(len([c for c in checks if c.get('execution') == 'pass']) == len(examples), 'selected examples were not executed')
+        require(len([c for c in checks if c.get('correction_execution') == 'pass']) == pairs, 'repair pairs were not executed')
+        require(reference.count('```ips') == len(checks) + pairs, 'unregistered/unexecuted code block in reference')
+        # The complete reference: the idioms first, every builtin once.
+        require(reference.index('## Write idiomatic props') < reference.index('## Before and after') <
+                reference.index('## Compiler rules') < reference.index('## Assets, inputs and outputs'), 'idioms do not lead')
+        require('llm: skip' not in reference, 'a skip marker leaked into the reference')
+        for builtin in language['builtins']:
+            require('`' + builtin['name'] + '(' in reference, 'builtin missing from the reference: ' + builtin['name'])
         # All artifact links must resolve inside the installed documentation tree.
         for target in re.findall(r'\[[^\]\n]+\]\(([^\s)]+)\)', reference):
             url = urlsplit(target)
@@ -113,7 +122,8 @@ def main():
         broken['diagnostic_pairs'][0]['replacements'][0]['after'] = 'x = true;'
         broken_cases.append((broken, 'unexpected compiler acceptance'))
         broken = json.loads(json.dumps(config))
-        broken['sections'][0]['heading'] = 'Stale handbook heading'
+        next(entry for entry in broken['sections'] if isinstance(entry['parts'], list) and
+             entry['id'] in config['defaults']['sections'])['parts'][0]['heading'] = 'Stale handbook heading'
         broken_cases.append((broken, 'missing or ambiguous handbook heading'))
         for broken, expected in broken_cases:
             (copied / llm.CONFIG).write_text(json.dumps(broken), encoding='utf-8')
@@ -131,7 +141,7 @@ def main():
             raise RuntimeError('tampered reference accepted')
         except RuntimeError as error:
             require('Documentation file changed: LLM_REFERENCE.md' in str(error), 'tampered reference escaped ownership')
-        print(f'LLM reference: PASS {reference_bytes} bytes, 6 executable forms, 3 diagnostic repairs, '
+        print(f'LLM reference: PASS {reference_bytes} bytes, {len(examples)} executable forms, {pairs} checked before/after pairs, '
               f'{len(language["builtins"])} selectable builtins/{signatures} signatures')
 
 

@@ -46,6 +46,7 @@ an expression. Ranges cannot be chained: `a to b to c` is rejected; use
 `(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
 every range in parentheses.
 
+<!-- llm: skip -->
 `to` stays a valid name. Where a statement may end, a following `to = ...`,
 `to.draw(...)` or a call of a declared helper `to(...)` starts the next
 statement, as before; inside parentheses or arguments `to` is always the
@@ -87,6 +88,7 @@ This example is intentionally rejected: write `(a to b) to c` to draw a bound.
 
 <!-- example: ../../examples/language/traps/reversed-range.ips -->
 
+<!-- llm: skip -->
 This program is valid source, but its range is reversed for the default
 input and traps during generation.
 
@@ -140,6 +142,7 @@ This example is intentionally rejected: `with` needs a distribution.
 
 <!-- example: ../../examples/language/traps/negative-sigma.ips -->
 
+<!-- llm: skip -->
 This program is valid source, but its sigma is negative for the default
 input and the constructor traps during generation.
 

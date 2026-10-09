@@ -31,9 +31,10 @@ class ReferenceSourceTest(unittest.TestCase):
                     result, evidence = llm.render(root, language, {}, {}, identity, Path('unused'))
                     self.assertEqual(evidence, [])
                     self.assertEqual('Read-only members:' in result, components)
-                    self.assertEqual('Random range:' in result, ranges)
+                    self.assertEqual('`lower to upper` evaluates' in result, ranges)
+                    self.assertIn('## Compiler rules', result)
                     if components:
-                        self.assertIn('Read-only members: vec2 .x, .y -> f32.', result)
+                        self.assertIn('Read-only members: vec2 .x, .y give f32', result)
 
     def test_excerpt_selects_whole_paragraphs_without_literal_code(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -54,6 +55,16 @@ class ReferenceSourceTest(unittest.TestCase):
                 llm.excerpt(root, chapter, text + '\n## Form\nDuplicate.\n', 'Form', 1)
             with self.assertRaisesRegex(RuntimeError, 'invalid paragraph selection'):
                 llm.excerpt(root, chapter, text, 'Form', 3)
+
+    def test_marked_paragraphs_stay_out_of_excerpts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            chapter = root / 'docs/chapter.md'
+            chapter.parent.mkdir()
+            chapter.write_text('# Chapter\n')
+            text = '# Chapter\n\n## Form\nKeep this.\n\n<!-- llm: skip -->\nOnly for the book.\n\nKeep that.\n'
+            body, _ = llm.excerpt(root, chapter, text, 'Form', 'all')
+            self.assertEqual(body, 'Keep this.\n\nKeep that.')
 
     def test_correction_refuses_missing_or_ambiguous_source_text(self):
         pair = {'id': 'repair', 'replacements': [{'before': 'x = 1;', 'after': 'x = 1.0;'}]}

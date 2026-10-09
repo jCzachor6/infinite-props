@@ -18,6 +18,12 @@ come from `ipc --describe-language`, including variadic forms. Adding a builtin
 requires an explanation and executable example; missing/duplicate descriptions
 fail documentation checks.
 
+`LLM_REFERENCE.md` quotes whole chapters for coding agents. Put
+`<!-- llm: skip -->` on the line directly above a paragraph that only matters
+to the documentation itself, implementations or other hosts, such as a note
+about an example the reference does not show; the paragraph stays in the book
+and the reference leaves it out.
+
 The schema 2 language export also supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
 compile-time palette and transform slots; `poly` lists coordinates before

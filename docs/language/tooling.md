@@ -15,9 +15,10 @@ shared call signatures and independent product/language/format/C API/ABI
 versions. See the [language-description contract](../language-description.md)
 for field meanings and executable acceptance cases.
 
-The documentation build also generates a bounded `LLM_REFERENCE.md` from
-selected handbook sections, compiler symbols and checked registered examples.
-See [reference generation](../llm-reference.md) for budgets, selection and
+The documentation build also generates `LLM_REFERENCE.md`, the complete
+language for coding agents: the idioms chapter first, then the handbook's
+language chapters, every builtin and checked registered examples. See
+[reference generation](../llm-reference.md) for its budget, selection and
 validated rejection/repair pairs.
 
 `ipc entry.ips --check --diagnostics=json` runs the same import, parsing,
@@ -138,6 +139,7 @@ Noise coordinate checks, nonfinite HSV hue, invalid geometry, unset part
 output reads and unbalanced stream pops can also trap. Traps must be handled
 by the host; a partial image is not a successful generation result.
 
+<!-- llm: skip -->
 `--describe-language` separates each signature's intrinsic checks from its
 argument expressions and from `effect_rules.resource_traps`. Fuel exhaustion
 and the runtime call-depth limit can affect otherwise valid programs.

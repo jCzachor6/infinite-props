@@ -1,21 +1,309 @@
 {
-  "maximum_bytes": 16384,
+  "maximum_bytes": 98304,
   "defaults": {
-    "max_bytes": 12288,
-    "sections": ["asset", "types", "helper", "part", "palette", "output", "symbols", "diagnostics"],
-    "symbols": ["rect", "pixel", "int", "unit", "ramp"]
+    "max_bytes": 81920,
+    "sections": [
+      "idioms",
+      "style",
+      "assets",
+      "syntax",
+      "types",
+      "control",
+      "helper",
+      "random",
+      "colors",
+      "palette",
+      "part",
+      "limits",
+      "grammar",
+      "builtins",
+      "diagnostics"
+    ],
+    "symbols": [
+      "rect",
+      "pixel",
+      "int",
+      "unit",
+      "ramp"
+    ]
   },
   "sections": [
-    {"id": "asset", "title": "Minimal asset", "chapter": "getting-started.md", "heading": "Your first asset", "skip_paragraphs": 1, "paragraphs": 1, "examples": ["first-asset.ips"]},
-    {"id": "types", "title": "Types", "chapter": "types.md", "heading": "Value types and conversions", "paragraphs": 2},
-    {"id": "helper", "title": "Helper", "chapter": "functions.md", "heading": "User functions and argument evaluation", "paragraphs": 1, "examples": ["functions.ips"]},
-    {"id": "part", "title": "Part", "chapter": "composition.md", "heading": "Imports and part composition", "paragraphs": 1, "examples": ["part.ips", "composition.ips"]},
-    {"id": "palette", "title": "Palette", "chapter": "palettes.md", "heading": "Palettes", "paragraphs": 1, "examples": ["palettes.ips"]},
-    {"id": "output", "title": "Structured output", "chapter": "assets.md", "heading": "Structured outputs", "paragraphs": 1, "examples": ["assets.ips"]}
+    {
+      "id": "idioms",
+      "title": "Write idiomatic props (required style)",
+      "chapter": "idioms.md",
+      "parts": "chapter",
+      "examples": [
+        "minimal-prop.ips",
+        "idioms.ips"
+      ]
+    },
+    {
+      "id": "asset",
+      "title": "Minimal asset",
+      "chapter": "getting-started.md",
+      "parts": [
+        {
+          "heading": "Your first asset",
+          "skip": 1,
+          "paragraphs": 1
+        }
+      ],
+      "demos": [
+        "first-asset.ips"
+      ]
+    },
+    {
+      "id": "assets",
+      "title": "Assets, inputs and outputs",
+      "chapter": "assets.md",
+      "parts": "chapter",
+      "demos": [
+        "assets.ips"
+      ]
+    },
+    {
+      "id": "syntax",
+      "title": "Source syntax and names",
+      "chapter": "syntax.md",
+      "parts": "chapter",
+      "demos": [
+        "syntax.ips"
+      ]
+    },
+    {
+      "id": "types",
+      "title": "Types, expressions and variables",
+      "chapter": "types.md",
+      "parts": "chapter",
+      "demos": [
+        "types.ips"
+      ]
+    },
+    {
+      "id": "control",
+      "title": "Control flow",
+      "chapter": "control-flow.md",
+      "parts": "chapter",
+      "demos": [
+        "control-flow.ips"
+      ]
+    },
+    {
+      "id": "helper",
+      "title": "Helpers",
+      "chapter": "functions.md",
+      "parts": "chapter",
+      "demos": [
+        "functions.ips"
+      ]
+    },
+    {
+      "id": "random",
+      "title": "Randomness: ranges, gradients and distributions",
+      "chapter": "random.md",
+      "parts": [
+        {
+          "heading": "Randomness and seeds"
+        },
+        {
+          "heading": "Random ranges with `to`"
+        },
+        {
+          "heading": "Gradients and segments"
+        },
+        {
+          "heading": "Distributions"
+        }
+      ],
+      "examples": [
+        "distributions.ips"
+      ]
+    },
+    {
+      "id": "colors",
+      "title": "Drawing and colors",
+      "chapter": "drawing.md",
+      "parts": [
+        {
+          "heading": "Drawing and colors"
+        },
+        {
+          "heading": "Color helpers"
+        },
+        {
+          "heading": "Color channels"
+        }
+      ],
+      "demos": [
+        "colors.ips"
+      ]
+    },
+    {
+      "id": "palette",
+      "title": "Palettes",
+      "chapter": "palettes.md",
+      "parts": [
+        {
+          "heading": "Palettes"
+        }
+      ],
+      "demos": [
+        "palettes.ips"
+      ]
+    },
+    {
+      "id": "part",
+      "title": "Parts",
+      "chapter": "composition.md",
+      "parts": "chapter",
+      "demos": [
+        "part.ips",
+        "composition.ips"
+      ]
+    },
+    {
+      "id": "limits",
+      "title": "Execution limits",
+      "chapter": "tooling.md",
+      "parts": [
+        {
+          "heading": "Execution limits"
+        }
+      ]
+    },
+    {
+      "id": "grammar",
+      "title": "Grammar",
+      "chapter": "grammar.md",
+      "parts": [
+        {
+          "heading": "Grammar",
+          "fences": [
+            "ebnf"
+          ]
+        }
+      ]
+    }
   ],
   "diagnostic_pairs": [
-    {"id": "local-type", "title": "Keep a local's fixed type", "file": "errors/local-type.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Infer f32 from the first assignment when later values are floating.", "replacements": [{"before": "x = 1;", "after": "x = 1.0;"}]},
-    {"id": "helper-uniform", "title": "Pass a uniform to a helper", "file": "errors/helper-uniform.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Pass the uniform explicitly through a typed helper parameter.", "replacements": [{"before": "draw { paint() }", "after": "draw { paint(tint) }"}, {"before": "paint() {", "after": "paint(tint: color) {"}]},
-    {"id": "unknown-argument", "title": "Use the declared parameter name", "file": "errors/unknown-argument.ips", "diagnostic_code": "IPS-TYPE-001", "explanation": "Use the parameter name exported by the compiler signature.", "replacements": [{"before": "colour =", "after": "color ="}]}
-  ]
+    {
+      "id": "local-type",
+      "title": "Keep a local's fixed type",
+      "file": "errors/local-type.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "Infer f32 from the first assignment when later values are floating.",
+      "replacements": [
+        {
+          "before": "x = 1;",
+          "after": "x = 1.0;"
+        }
+      ]
+    },
+    {
+      "id": "helper-uniform",
+      "title": "Pass a uniform to a helper",
+      "file": "errors/helper-uniform.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "Pass the uniform explicitly through a typed helper parameter.",
+      "replacements": [
+        {
+          "before": "draw { paint() }",
+          "after": "draw { paint(tint) }"
+        },
+        {
+          "before": "paint() {",
+          "after": "paint(tint: color) {"
+        }
+      ]
+    },
+    {
+      "id": "unknown-argument",
+      "title": "Use the declared parameter name",
+      "file": "errors/unknown-argument.ips",
+      "diagnostic_code": "IPS-TYPE-001",
+      "explanation": "Use the parameter name exported by the compiler signature.",
+      "replacements": [
+        {
+          "before": "colour =",
+          "after": "color ="
+        }
+      ]
+    }
+  ],
+  "style_pairs": [
+    {
+      "id": "unit-arithmetic",
+      "title": "Draw with `to`, not unit() arithmetic",
+      "file": "style/unit-arithmetic.ips",
+      "explanation": "One readable draw with both ends included.",
+      "replacements": [
+        {
+          "before": "w = 20 + int(unit() * 11)",
+          "after": "w = 20 to 30"
+        }
+      ]
+    },
+    {
+      "id": "uniform-proportion",
+      "title": "Shape proportions with a distribution",
+      "file": "style/uniform-proportion.ips",
+      "explanation": "A uniform height makes every second pillar look extreme; a gaussian keeps most near the typical height.",
+      "replacements": [
+        {
+          "before": "h = 14.0 to 26.0",
+          "after": "h = lerp(14.0, 26.0, 0.0 to 1.0 with gaussian(mean=0.5, sigma=0.18))"
+        }
+      ]
+    },
+    {
+      "id": "channel-draws",
+      "title": "Draw a color as one gradient",
+      "file": "style/channel-draws.ips",
+      "explanation": "Independent channel draws leave the intended color family; one gradient draw stays inside it.",
+      "replacements": [
+        {
+          "before": "c = rgb(40 to 90, 120 to 200, 180 to 255)",
+          "after": "c = #2878b4 to #5ac8ff"
+        }
+      ]
+    },
+    {
+      "id": "pixel-loop",
+      "title": "Paint rows, not pixels",
+      "file": "style/pixel-loop.ips",
+      "explanation": "The per-pixel loop spends about 43,000 fuel; one rect per row draws the same disc for about 2,200.",
+      "replacements": [
+        {
+          "before": "    for y in 0..32 {\n      for x in 0..32 {\n        dx = float(x) + 0.5 - 16.0\n        dy = float(y) + 0.5 - 16.0\n        if (dx * dx + dy * dy < r * r) { pixel(x, y, #c0a060) }\n      }\n    }",
+          "after": "    for y in 0..32 {\n      dy = float(y) + 0.5 - 16.0\n      if (dy * dy < r * r) {\n        half = sqrt(r * r - dy * dy)\n        rect(16.0 - half, y, half * 2.0, 1, #c0a060)\n      }\n    }"
+        }
+      ]
+    },
+    {
+      "id": "input-variety",
+      "title": "Let the seed alone vary the prop",
+      "file": "style/input-variety.ips",
+      "explanation": "With only a seed the banner never changes. The default 0 now means roll it from the seed; 1 and 2 still force a look.",
+      "replacements": [
+        {
+          "before": "input u32 pattern = 1",
+          "after": "input u32 pattern = 0"
+        },
+        {
+          "before": "if (pattern == 1) {",
+          "after": "kind = pattern\n    if (pattern == 0) { kind = 1 + (hash(seed ^ 0x6d2b79f5) & 1) }\n    if (kind == 1) {"
+        }
+      ]
+    }
+  ],
+  "hints": {
+    "range": "Prefer `lower to upper`, which includes both ends; `range` keeps its own draws for existing generators.",
+    "unit": "Prefer `0.0 to 1.0`, or `lower to upper` for the value itself.",
+    "index": "Use it to select a palette element; for a number in a range write `lower to upper`.",
+    "pixel": "Prefer one `rect` per row for areas; keep `pixel` for single dots.",
+    "rgb": "For a random color, prefer a gradient draw (`dark to light with d`) to random channels.",
+    "rgba": "For a random color, prefer a gradient draw (`dark to light with d`) to random channels.",
+    "color.mix": "When the mix amount is random, prefer a gradient draw (`dark to light with d`)."
+  }
 }
