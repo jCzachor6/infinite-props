@@ -36,8 +36,8 @@ function checkLinks(directory) {
 
 async function main() {
     const pages = checkLinks(site);
-    assert.equal(pages, 6);
-    for (const minor of [1, 2, 3, 4]) {
+    assert.equal(pages, 7);
+    for (const minor of [1, 2, 3, 4, 5]) {
         const spec = `iprop-v0.${minor}.md`;
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));
     }
@@ -49,7 +49,7 @@ async function main() {
     }
     const nav = vm.runInNewContext(fs.readFileSync(path.join(site, "docs/language-index.js"), "utf8") +
         "\n" + fs.readFileSync(path.join(site, "docs/nav.js"), "utf8") +
-        "\n({ PAGES, SECTIONS })", { document: { addEventListener() {} } });
+        "\n({ SECTIONS })", { document: { addEventListener() {} } });
     for (const section of nav.SECTIONS) {
         const html = fs.readFileSync(path.join(site, "docs", section.p), "utf8");
         assert.ok(html.includes(`id="${section.a}"`), `missing search anchor: ${section.t}`);
@@ -77,19 +77,25 @@ async function main() {
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8")), JSON.parse(described.stdout));
     const book = fs.readFileSync(path.join(site, "docs", `language-v${docs.language_version}.md`));
     assert.deepEqual(book, fs.readFileSync(path.join(site, "reference", `language-v${docs.language_version}.md`)));
+    // The home page showcase: every asset a tile or a game slot renders, the
+    // binaries from examples/showcase (their sources are not public).
+    const home = fs.readFileSync(path.join(site, "index.html"), "utf8");
+    const showcase = [...new Set([...home.matchAll(/data-(?:asset|silhouette)="([\w-]+)"/g)].map(match => match[1]))];
+    assert.equal(showcase.length, 7);
     const Module = await require(path.join(site, "iprop.js"))({ locateFile: () => path.join(site, "iprop.wasm") });
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-website-"));
     let comparisons = 0;
     try {
-        for (const [asset, variants] of [["portrait", [0, 7]], ["plant", [0]], ["noise", [0]]]) {
-            const file = path.join(site, asset + ".iprop");
+        for (const asset of showcase) {
+            const file = path.join(site, "showcase", asset + ".iprop");
             const bytes = fs.readFileSync(file);
-            if (asset === "noise") {
-                assert.equal(bytes.readUInt16LE(6), 4);
-                assert.equal(bytes.readUInt32LE(8) & 1, 0);
-                assert.equal(bytes.readUInt32LE(8) & 2, 2);
-            }
-            for (const seed of [0, 7, 26]) for (const variant of variants) {
+            assert.deepEqual(bytes, fs.readFileSync(path.join(root, "examples/showcase", asset + ".iprop")),
+                             `stale showcase asset: ${asset}`);
+            // Packed 0.4 envelopes: the compiler packs these props.
+            assert.equal(bytes.readUInt16LE(6), 4);
+            assert.equal(bytes.readUInt32LE(8) & 1, 0);
+            assert.equal(bytes.readUInt32LE(8) & 2, 2);
+            for (const seed of [0, 7, 26]) for (const variant of [0, 2]) {
                 const rendered = Module.generate(bytes, seed, variant, 0, 0, 0);
                 const png = path.join(temporary, "native.png");
                 const native = spawnSync(generator, [file, "--seed", String(seed), "--variant", String(variant), "-o", png],
@@ -103,7 +109,7 @@ async function main() {
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 4 specs, 24 recipes, ${comparisons} exact native/WASM images)`);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 5 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

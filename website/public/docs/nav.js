@@ -1,49 +1,42 @@
-// The shared docs chrome: the header nav, the active-page marker and a
-// client-side section search.
+// The documentation search: every searchable section (a title, its page and
+// its anchor) filtered on the client. The page navigation itself is static
+// HTML from templates/partials.
 
-const PAGES = [
-    { t: "Getting started", p: "getting-started.html" },
-    { t: "Language", p: "language.html" },
-    { t: "Format", p: "format.html" },
-    { t: "Backends", p: "backends.html" },
-    { t: "FAQ", p: "faq.html" },
-];
-
-// Every searchable section: a title, its page and its anchor.
 const SECTIONS = [
-    { t: "Getting started — install the toolchain", p: "getting-started.html", a: "install" },
-    { t: "Getting started — your first asset", p: "getting-started.html", a: "first-asset" },
-    { t: "Getting started — the editor", p: "getting-started.html", a: "editor" },
+    { t: "Getting started: download the SDK", p: "getting-started.html", a: "download" },
+    { t: "Getting started: the tools", p: "getting-started.html", a: "tools" },
+    { t: "Getting started: your first asset", p: "getting-started.html", a: "first-asset" },
+    { t: "Getting started: seeds, variants and archetypes", p: "getting-started.html", a: "seeds" },
+    { t: "Getting started: the editor", p: "getting-started.html", a: "editor" },
     ...LANGUAGE_SECTIONS,
-    { t: "Format — the file layout", p: "format.html", a: "layout" },
-    { t: "Format — the sections", p: "format.html", a: "sections" },
-    { t: "Format — determinism", p: "format.html", a: "determinism" },
-    { t: "Backends — the CLI toolchain", p: "backends.html", a: "cli" },
-    { t: "Backends — HTML5 / WASM", p: "backends.html", a: "html5" },
-    { t: "Backends — VS Code", p: "backends.html", a: "vscode" },
-    { t: "Backends — C API, SFML and Godot", p: "backends.html", a: "native" },
-    { t: "FAQ — determinism", p: "faq.html", a: "determinism" },
-    { t: "FAQ — seed, variant, archetype", p: "faq.html", a: "seed" },
-    { t: "FAQ — why a VM", p: "faq.html", a: "vm" },
+    { t: "Format: versions", p: "format.html", a: "versions" },
+    { t: "Format: the file layout", p: "format.html", a: "layout" },
+    { t: "Format: the sections", p: "format.html", a: "sections" },
+    { t: "Format: the virtual machine", p: "format.html", a: "vm" },
+    { t: "Format: determinism", p: "format.html", a: "determinism" },
+    { t: "Backends: the CLI toolchain", p: "backends.html", a: "cli" },
+    { t: "Backends: HTML5 / WASM", p: "backends.html", a: "html5" },
+    { t: "Backends: the C API", p: "backends.html", a: "capi" },
+    { t: "Backends: SFML and Godot", p: "backends.html", a: "engines" },
+    { t: "Backends: VS Code", p: "backends.html", a: "vscode" },
+    { t: "FAQ: determinism", p: "faq.html", a: "determinism" },
+    { t: "FAQ: seed, variant, archetype", p: "faq.html", a: "seed" },
+    { t: "FAQ: why a VM", p: "faq.html", a: "vm" },
+    { t: "FAQ: composed assets", p: "faq.html", a: "parts" },
+    { t: "FAQ: outputs", p: "faq.html", a: "outputs" },
+    { t: "FAQ: contributing", p: "faq.html", a: "contribute" },
 ];
 
-function renderChrome() {
-    const current = location.pathname.split("/").pop() || "getting-started.html";
-    const nav = document.querySelector("header nav");
-    for (const page of PAGES) {
-        const link = document.createElement("a");
-        link.href = page.p;
-        link.textContent = page.t;
-        if (page.p === current) link.className = "active";
-        nav.appendChild(link);
-    }
-
-    const results = document.getElementById("results");
+function bindSearch() {
     const search = document.getElementById("search");
+    const results = document.getElementById("results");
+    if (!search || !results) return;
+
+    const close = () => { results.style.display = "none"; };
     search.addEventListener("input", () => {
         const query = search.value.trim().toLowerCase();
         results.textContent = "";
-        if (query.length < 2) { results.style.display = "none"; return; }
+        if (query.length < 2) { close(); return; }
         const matches = SECTIONS.filter((s) => s.t.toLowerCase().includes(query)).slice(0, 8);
         for (const section of matches) {
             const link = document.createElement("a");
@@ -53,9 +46,17 @@ function renderChrome() {
         }
         results.style.display = matches.length ? "block" : "none";
     });
+    search.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { search.value = ""; close(); search.blur(); }
+        if (event.key === "Enter" && results.firstChild) results.firstChild.click();
+    });
+    document.addEventListener("keydown", (event) => {
+        const typing = event.target.closest && event.target.closest("input, textarea, select");
+        if (event.key === "/" && !typing) { event.preventDefault(); search.focus(); }
+    });
     document.addEventListener("click", (event) => {
-        if (!event.target.closest("#search-wrap")) results.style.display = "none";
+        if (!event.target.closest("#search-wrap")) close();
     });
 }
 
-document.addEventListener("DOMContentLoaded", renderChrome);
+document.addEventListener("DOMContentLoaded", bindSearch);

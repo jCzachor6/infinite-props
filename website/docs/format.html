@@ -2,83 +2,100 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — the format</title>
-<link rel="stylesheet" href="docs.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The binary format · Infinite Props</title>
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <a class="logo" href="../">iprop</a>
-  <nav></nav>
-  <div id="search-wrap">
-    <input id="search" placeholder="search the docs…">
-    <div id="results"></div>
+<!-- @header get-started -->
+<main id="content">
+  <div class="page-head">
+    <div class="container">
+      <h1>The <code>.iprop</code> format</h1>
+      <p>One self-contained binary: metadata, constants and bytecode, with no external resources.</p>
+      <p class="versions">Format {{FORMAT_VERSION}} · released with product {{PRODUCT_VERSION}}</p>
+    </div>
   </div>
-</header>
-<main>
-<h1>The .iprop format</h1>
-<p>A self-contained binary: one file carries the metadata, the constants and
-the bytecode — no external resources. The canonical specification is
-<a href="../spec/iprop-v0.4.md">spec/iprop-v0.4.md</a> in the repository; this
-page summarises it.</p>
+  <div class="container docs">
+    <!-- @docs-nav format -->
+    <article class="prose">
+<p>This page summarises the format. The canonical contract is the specification:
+<a href="../spec/iprop-v{{FORMAT_VERSION}}.md">iprop-v{{FORMAT_VERSION}}.md</a>, which inherits
+<a href="../spec/iprop-v0.4.md">0.4</a> and takes precedence over it. The frozen
+<a href="../spec/iprop-v0.1.md">0.1</a>, <a href="../spec/iprop-v0.2.md">0.2</a> and
+<a href="../spec/iprop-v0.3.md">0.3</a> specifications stay available.</p>
 
-<p>Format 0.4 adds lossless zlib/DEFLATE containers and accepts frozen
-0.1–0.3 files. The vector, distance, noise, colour and D4 contracts inherited
-from <a href="../spec/iprop-v0.3.md">0.3</a> remain unchanged;
-instructions and value types introduced by a later
-format version are rejected in earlier files.</p>
+<h2 id="versions">Versions</h2>
+<p>Format 0.5 adds colour channel reads, uniform random ranges, distributions, gradients and
+segments, and named part instances whose outputs arrive in the caller's coordinates. An interpreter
+for 0.5 still accepts every 0.1–0.4 file under its original rules.</p>
+<ul>
+<li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older
+than 0.4: a file without a 0.5 instruction or a parts section stays a 0.4 file that 0.4 interpreters can read.</li>
+<li>The compressed envelope remains a 0.4 container. Its inner file may have any supported version,
+0.1–0.5; a 0.4 interpreter rejects an inner 0.5 file by its version after expansion.</li>
+<li>Instructions and sections introduced by a later minor are invalid in an earlier file, including in
+unreachable code.</li>
+</ul>
 
 <h2 id="layout">The file layout</h2>
-<p>An expanded 0.4 file retains the existing layout:</p>
-<pre><code>header (20 bytes)          magic "IPRP", version 0.4, flags, section count
+<pre><code>header (20 bytes)              magic "IPRP", version, flags, section count
 section table (12 bytes × N)   id, offset, size
-sections                    meta · const · code · debug (optional)</code></pre>
+sections                       meta · const · code · debug (optional) · parts (0.5)</code></pre>
 <ul>
 <li>All multi-byte values are little-endian; sections are 4-byte aligned.</li>
-<li>The header flag bit 0 marks the debug section (spec §7); the validator
-rejects a flag/section mismatch.</li>
-<li>Header flag bit 1 selects compression only in minor 4. After its 20-byte
-header are the expanded size (u32) and one zlib stream containing the complete
-original file, including its header/table. Both encoded and expanded files
-are bounded to 64 MiB; checksum, exact length, trailing data, dictionaries
-and nesting are checked before execution.</li>
+<li>Header flag bit 0 marks the debug section; the validator rejects a flag/section mismatch.</li>
+<li>Header flag bit 1 marks a packed file (minor 4 headers only). After the 20-byte header come the
+expanded size (u32) and one zlib stream holding the complete original file. Encoded and expanded
+files are bounded to 64 MiB; the checksum, exact length, trailing data, dictionaries and nesting are
+checked before execution.</li>
 </ul>
-<p><code>ipc</code> strips debug data and packs only when smaller by default.
-Use <code>--debug</code> to retain source maps, <code>--no-compress</code> for
-expanded inspection, or <code>--no-opt</code> for reference compiler lowering.
-These switches preserve successful image/output bits. The runtime owns the
-expanded bytes for the lifetime of code/debug views.</p>
+<p><code>ipc</code> strips debug data and packs only when that is smaller. Use <code>--debug</code> to
+keep source maps, <code>--no-compress</code> for an expanded file and <code>--no-opt</code> for the
+reference lowering; none of them changes the image or output bits.</p>
 
 <h2 id="sections">The sections</h2>
 <table>
 <tr><th>section</th><th>contents</th></tr>
-<tr><td><code>meta</code></td><td>the canvas size, the origin, the declared variants/archetypes, the fuel budget, the input uniform entries (type, name, default) and the output slot entries (kind, list flag, name)</td></tr>
-<tr><td><code>const</code></td><td>deduplicated pools: strings, <code>i32</code>, <code>f32</code> and colours — every instruction references them by index</td></tr>
-<tr><td><code>code</code></td><td>the function table (names, signatures, locals, stream offsets) followed by the concatenated instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
-<tr><td><code>debug</code></td><td>informative: per function, the local names and the source line of every instruction (§7); stripping it must not change execution</td></tr>
+<tr><td><code>meta</code></td><td>the canvas size, the origin, the declared variants and archetypes, the fuel budget, the input uniforms (type, name, default) and the output slots (kind, list flag, name)</td></tr>
+<tr><td><code>const</code></td><td>deduplicated pools of strings, <code>i32</code>, <code>f32</code> and colours, referenced by index</td></tr>
+<tr><td><code>code</code></td><td>the function table (names, signatures, locals, offsets), the instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
+<tr><td><code>debug</code></td><td>informative: local names and the source line of every instruction; stripping it never changes execution</td></tr>
+<tr><td><code>parts</code></td><td>0.5: one entry per part instance with its name (the import alias path, such as <code>hilt.grip</code>) and its parent, forming the tree that maps outputs into caller coordinates</td></tr>
 </table>
-<p>Function 0 is the entry point <code>draw</code> with parameters
-<code>(i32 variant, i32 archetype)</code> followed by one parameter per
-uniform. The instruction set (spec §9) covers control flow, the operand
-stack, integer/float/colour/vector arithmetic, the pinned seeded primitives, the
-canvas raster operations, the structured outputs and part calls.</p>
+<p>Function 0 is the entry point <code>draw</code> with parameters <code>(i32 variant, i32 archetype)</code>
+followed by one parameter per uniform.</p>
+
+<h2 id="vm">The virtual machine</h2>
+<ul>
+<li>A stack machine with locals and calls, and <strong>structured control flow only</strong>:
+<code>block</code>, <code>loop</code>, <code>if/else</code>, <code>br</code>, <code>br_if</code>.</li>
+<li>Branches depend on integers only; floats are for geometry and colour.</li>
+<li>Every instruction spends fuel from the budget declared in <code>meta</code>; running out aborts with
+a defined error, so every file terminates.</li>
+<li>The only mutable state is the canvas, the declared outputs, the stack and the locals. Every canvas
+write is bounds-checked.</li>
+</ul>
 
 <h2 id="determinism">Determinism</h2>
 <ul>
-<li>Generation is a pure function of the inputs: identical inputs produce
-identical images and outputs — bit-exact, across platforms and backends.</li>
-<li>The seeded primitives are specification-pinned instructions (not library
-calls): the splitmix32 hash, the Weyl-sequence stream, the value/fault
-noise — every operation's exact algorithm is written down (spec §11–§12).</li>
-<li>The colour helpers pin the fused-multiply-add behaviour, so compiled
-code matches the reference builds bit for bit.</li>
-<li>Every execution runs under a fuel budget (<code>meta.fuel</code>), which
-guarantees termination.</li>
-<li>A golden corpus of (program, seed) images is committed; any compiler or
-interpreter change that alters a golden image is a breaking change.</li>
+<li>Generation is a pure function of its inputs: the same file, seed, variant, archetype, size and
+uniforms give the same image and outputs, bit for bit, on every platform and backend.</li>
+<li>The seeded primitives are specification-pinned instructions, not library calls: the splitmix32
+hash, the Weyl-sequence stream, value and fault noise, and the binary64 kernels behind the
+distributions.</li>
+<li>Colour helpers pin their fused-multiply-add behaviour, so compiled code matches the reference
+builds exactly.</li>
+<li>A committed golden corpus of (program, seed) images guards the pipeline: changing a golden pixel is
+a breaking change.</li>
 </ul>
+    </article>
+  </div>
 </main>
-<footer>iprop — format spec and toolchain</footer>
+<!-- @footer -->
+<script type="module" src="/src/site.ts"></script>
 <script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>

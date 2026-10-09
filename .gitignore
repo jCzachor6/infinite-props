@@ -53,6 +53,7 @@ dist/
 website/public/iprop.js
 website/public/iprop.wasm
 website/public/*.iprop
+website/public/showcase/
 website/public/spec/
 website/public/reference/
 website/public/recipes/

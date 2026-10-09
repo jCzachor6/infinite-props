@@ -13,7 +13,7 @@ test("rendered Markdown preserves tables, escapes raw HTML and generates navigat
     assert.ok(value.html.includes("<table>"));
     assert.ok(value.html.includes("&lt;script&gt;"));
     assert.ok(!value.html.includes("<script>"));
-    assert.deepEqual(value.search, [{ t: "Language — Calls", p: "language.html", a: "calls" }]);
+    assert.deepEqual(value.search, [{ t: "Language: Calls", p: "language.html", a: "calls" }]);
 });
 
 test("missing in-page anchors cannot enter the website", () => {

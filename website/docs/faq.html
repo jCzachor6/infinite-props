@@ -2,63 +2,68 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — FAQ</title>
-<link rel="stylesheet" href="docs.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FAQ · Infinite Props</title>
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <a class="logo" href="../">iprop</a>
-  <nav></nav>
-  <div id="search-wrap">
-    <input id="search" placeholder="search the docs…">
-    <div id="results"></div>
+<!-- @header get-started -->
+<main id="content">
+  <div class="page-head">
+    <div class="container">
+      <h1>FAQ</h1>
+      <p>Short answers to the questions people ask first.</p>
+    </div>
   </div>
-</header>
-<main>
-<h1>FAQ</h1>
-
+  <div class="container docs">
+    <!-- @docs-nav faq -->
+    <article class="prose">
 <h2 id="determinism">Is the output really deterministic?</h2>
-<p>Yes, bit-exactly. Generation is a pure function of the inputs — the seed,
-the variant/archetype indices, the requested size and the uniform values.
-The seeded primitives (hash, stream draws, noise) are specification-pinned
-algorithms, and a golden corpus of committed images guards the pipeline:
-any change that alters a golden pixel is a breaking change.</p>
+<p>Yes, bit for bit. Generation is a pure function of the inputs: the seed, the variant and
+archetype, the requested size and the uniform values. The seeded primitives (the hash, the stream,
+noise and the distribution kernels) are specification-pinned algorithms, and a committed golden
+corpus guards the pipeline: any change to a golden pixel is a breaking change.</p>
 
 <h2 id="seed">What are seed, variant and archetype?</h2>
 <ul>
-<li><strong>seed</strong> — the root of every random stream; the same seed
-always reproduces the same asset.</li>
-<li><strong>archetype</strong> — the coarse form (an asset declares
-<code>archetypes N</code>; think "boulder vs slab").</li>
-<li><strong>variant</strong> — the finer variation within an archetype
-(<code>variants N</code>).</li>
+<li><strong>seed</strong>: the root of every random stream; the same seed always reproduces the same asset.</li>
+<li><strong>archetype</strong>: the coarse form (an asset declares <code>archetypes N</code>; think boulder or slab).</li>
+<li><strong>variant</strong>: the finer variation within it (<code>variants N</code>).</li>
 </ul>
-<p>Both indices are the read-only <code>v</code>/<code>a</code> builtins in the
-<code>draw { ... }</code> entry block,
-so an asset author decides exactly how they shape the output.</p>
+<p>Both indices are the read-only <code>v</code> and <code>a</code> builtins inside <code>draw</code>, so
+each asset decides exactly how they shape the result.</p>
 
-<h2 id="vm">Why a bytecode VM instead of shipping the code?</h2>
-<p>Bytecode is small, self-contained, portable and safe: hosts validate a
-binary before executing it, the instruction set pins every operation, and a
-fuel budget guarantees termination. The same binary runs on every backend —
-the browser, the tools, the future native hosts — with identical pixels.</p>
+<h2 id="vm">Why a bytecode VM instead of shipping code?</h2>
+<p>Bytecode is small, self-contained, portable and safe. Hosts validate a file before running it, the
+instruction set pins every operation and a fuel budget guarantees termination, so the same file runs
+in the browser, the tools and native engines with identical pixels, and an untrusted file cannot harm
+its host.</p>
 
 <h2 id="parts">How do composed assets work?</h2>
-<p>An asset can import other assets as <em>parts</em> (<code>import hair
-from "hair.ips"</code>). The compiler links them into one self-contained
-binary; the parent calls <code>part.draw(seed, v, a, at = {x, y},
-uniforms…)</code> — call order is paint order — and reads the part's
-structured outputs through <code>part.outputs.name</code>.</p>
+<p>An asset imports other assets as <em>parts</em> (<code>import hilt from "hilt.ips"</code>). The
+compiler links them into one self-contained binary. The parent calls
+<code>hilt.draw(seed, v, a, at = {x, y}, …)</code> (call order is paint order) and reads the part's
+outputs through <code>hilt.outputs.name</code>, already mapped into its own coordinates. Parts can
+nest: <code>hilt.grip</code> is a part of a part.</p>
+
+<h2 id="outputs">What are structured outputs for?</h2>
+<p>They carry the data a game needs next to the pixels: <code>point</code>, <code>rect</code> and
+<code>circle</code> slots, single or as lists. A sword reports its <code>tip</code> and <code>grip</code>,
+a portrait its <code>eyes</code>, <code>mouth</code> and the colours it picked, a rock its
+<code>collider</code>. The names are the contract between an asset and its host.</p>
 
 <h2 id="contribute">How do I contribute?</h2>
-<p>The repository is organised by layer: the frozen format spec
-(<code>spec/</code>), the runtime, the language and the compiler, the
-backends, the editor and this website. Every change runs the desktop test
-suite and the golden corpus, and semantic changes require a spec update
-first.</p>
+<p>The repository is organised by layer: the frozen format specifications (<code>spec/</code>), the
+runtime, the language and the compiler, the backends, the editor and this website. Every change runs
+the test suites and the golden corpus, and a semantic change needs a specification update first. See
+<a href="../source.html">Source</a> for the layout and the build.</p>
+    </article>
+  </div>
 </main>
-<footer>iprop — format spec and toolchain</footer>
+<!-- @footer -->
+<script type="module" src="/src/site.ts"></script>
 <script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>

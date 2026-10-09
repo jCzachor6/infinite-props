@@ -37,7 +37,7 @@ export function renderBook(markdown, headings, bundle) {
     }
     if (index !== headings.length) throw new Error("Handbook headings are incomplete");
     const search = headings.filter(h => h.level > 1).map(h => ({
-        t: "Language — " + h.title.replace(/`/g, ""), p: "language.html", a: h.anchor
+        t: "Language: " + h.title.replace(/`/g, ""), p: "language.html", a: h.anchor
     }));
     return { html: md.renderer.render(tokens, md.options, {}), search };
 }

@@ -35,8 +35,7 @@ OpenGL or Vulkan hosts, and produces the same pixels everywhere.
 - Provide backends for HTML5 (WASM), SFML, Godot (GDExtension), OpenGL and
   Vulkan.
 - Provide a web-based pseudo-IDE for authoring and inspecting assets.
-- Provide a website with a playground, documentation, installation guides and a
-  gallery.
+- Provide a website with live examples, documentation and installation guides.
 - Guarantee bit-comparable, cross-platform deterministic output for a given
   (program, seed) pair.
 - Guarantee safe execution: a `.iprop` file MUST be executable in a browser
@@ -432,7 +431,7 @@ interpreter is authoritative for correctness.
 | ------- | ---------- | ---------- |
 | reference | C++20 | Authoritative CPU interpreter; conformance arbiter |
 | capi | C99 + C++20 | The stable C API (`ipropc`); the foundation for every native host |
-| html5 | Emscripten/WASM | Browser execution; powers playground and IDE preview |
+| html5 | Emscripten/WASM | Browser execution; powers the website's live examples and IDE preview |
 | sfml | C++20 + SFML 3.1 | Native desktop host; `sf::Image` output |
 | godot | GDExtension over the C API | Engine integration: `IpropAsset`/`IpropSprite2D` |
 | opengl | C++20 + OpenGL | Execution host: CPU raster → texture upload |
