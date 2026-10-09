@@ -132,6 +132,8 @@ function run(iprop, toolsDir) {
             if (options.variant !== undefined) args.push("--variant", String(options.variant));
             if (options.archetype !== undefined) args.push("--archetype", String(options.archetype));
             if (options.sizeX !== undefined) args.push("--size", options.sizeX + "x" + options.sizeY);
+            for (const [name, value] of Object.entries(options.uniforms || {}))
+                args.push("--uniform", name + "=" + value);
             const result = JSON.parse(execFileSync(tool("ipgen"), args, { encoding: "utf8" }));
             const native = decodePng(fs.readFileSync(png));
             const wasm = iprop.generate(new Uint8Array(fs.readFileSync(file)), { seed, ...options });
@@ -388,6 +390,30 @@ function run(iprop, toolsDir) {
             [path.join(__dirname, "fixtures/segment-errors.ips"), "-o", segmentErrors]);
         for (let variant = 0; variant < 2; ++variant) {
             compareTrap(segmentErrors, variant, "vec2 segment ends must be finite");
+        }
+        // Host uniforms of every input type, and the showcase weapons' emission
+        // layers that the website composites as bloom.
+        const emblem = path.join(temporary, "recipe-24-uniform-emblem.ips.iprop");
+        for (const uniforms of [{accent: "#ff3366", scale: 1.5, density: 3},
+                                {accent: "#20c08080", scale: 0.75, density: 12}, {density: 0}])
+            compare(emblem, 7, null, {uniforms});
+        for (const weapon of ["sword", "staff"]) {
+            const file = path.join(repo, "examples/showcase", weapon + ".iprop");
+            for (const layer of [0, 1])
+                compare(file, 26, null, {variant: 2, uniforms: {quality: 2, glowStrength: 4, layer}});
+        }
+        for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
+                                           [{accent: "#12345"}, /'accent' must be a #RRGGBB/],
+                                           [{density: -1}, /'density' must be an unsigned 32-bit integer/],
+                                           [{density: 1.5}, /'density' must be an unsigned 32-bit integer/],
+                                           [{scale: "2"}, /'scale' must be a number/]]) {
+            const label = "uniform-emblem " + JSON.stringify(uniforms);
+            try {
+                assert.throws(() => iprop.generate(new Uint8Array(fs.readFileSync(emblem)), {uniforms}), message, label);
+                ++trapComparisons;
+            } catch (error) {
+                failures.push(label + ": " + error.message);
+            }
         }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);
