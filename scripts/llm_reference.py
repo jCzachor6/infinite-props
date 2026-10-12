@@ -132,6 +132,13 @@ def compiler_rules(language):
         f"{', '.join(types['helper_parameters'])}. {' and '.join('`' + kind + '`' for kind in types['output_only_geometry'])} exist only as output kinds."]
     widening = ', '.join(item['from'] + ' to ' + item['to'] for item in types['implicit_widening']) or 'nothing'
     lines.append(f"Only {widening} converts implicitly; {phrase(types['local_reassignment'], {'exact_type': 'a local keeps the exact type of its first assignment'})}.")
+    if 'collections' in rules:
+        collection = rules['collections']
+        lines.append(f"`list<T>` is immutable and holds {collection['minimum_length']} to {collection['maximum_length']} elements; "
+                     "empty literals need a known element type. Elements evaluate once left to right; list indices are i32 and trap "
+                     "outside the length. Helpers share immutable data. `list.len` gives i32; `poly` "
+                     "accepts list<vec2> and color, evaluating points first. Direct legacy palette indexing keeps its "
+                     "last-element fallback; a palette passed as a list uses checked indexing and the 256-element limit.")
     if 'random_range' in rules:
         ranged = rules['random_range']
         lines.append('`lower to upper` evaluates the lower bound, then the upper one, then draws once: ' +

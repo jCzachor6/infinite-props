@@ -399,6 +399,37 @@ func _init() -> void:
 					failures += 1
 					printerr("FAIL asset constant bits/metadata ", expected[0])
 
+	var collections := IpropAsset.new()
+	if collections.load_file(args[0] + "/collections.iprop") != OK:
+		failures += 1
+		printerr("FAIL collection load")
+	else:
+		var collection_image := collections.generate(26, 0, 0)
+		if collection_image == null or collection_image.get_size() != Vector2i(32,24):
+			failures += 1
+			printerr("FAIL collection image metadata")
+		else:
+			var expected_collections := [["checks",0x40800000,0x41980000],["direction",0x41900000,0x40000000],
+				["samples",0x41200000,0x41f00000],["state",0x46da8a00,0x475aa600]]
+			for expected in expected_collections:
+				var slot: Dictionary = collections.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL collection output bits/metadata")
+			var rows := [0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
+				0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
+				0xfff80,0xff80,0x1f00,0x300,0,0,0,0]
+			for y in range(24):
+				for x in range(32):
+					var color := Color8(0,0,0,0)
+					if (rows[y] >> x) & 1: color = Color8(146,156,168)
+					if x == 3 and y == 4: color = Color8(52,58,66)
+					if collection_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL collection polygon pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

@@ -1,19 +1,19 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–2 (2026-10-12).
-**Scope:** Signed integer bounds and stable vector normalization. This document
+**Status:** Development contract for product 0.7.0, stages 1–3 (2026-10-12).
+**Scope:** Signed integer bounds, vector normalization and immutable collections. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; collections and surfaces are not implemented
-by stages 1–2. Asset constants are a source/compiler feature and add no binary
-layout, type code or instruction.
+extend this development format; samplers and surfaces are not implemented
+by stages 1–3. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
 
 A runtime supporting this contract accepts formats 0.1–0.6. Plain 0.6 files
-use the same header, sections and value types as 0.5. The four new instructions
-require minor 6, including in unreachable code. Validators reject a newer
+use the same header and retain every existing section/type encoding from 0.5.
+The added instructions and collection sections require minor 6, including in
+unreachable code. Validators reject a newer
 instruction in every older minor rather than ignoring it.
 
 Writers choose the oldest minor needed by the final instructions, function
@@ -108,7 +108,7 @@ are still compilation errors.
 Constant evaluation uses the existing runtime value-operation adapters, so
 math, conversions and constructor validation share the executable's kernels.
 It cannot dispatch helpers, parts, canvas operations or RNG instructions.
-Const adds no required format version: even a constant computed with a 0.6
+Scalar const adds no required format version: even a constant computed with a 0.6
 math operation can use a 0.4 executable. See the
 [source declaration contract](../docs/language/assets.md#asset-constants).
 
@@ -116,7 +116,7 @@ math operation can use a 0.4 executable. See the
 
 C API remains 0.3 and ABI/SONAME remains 0.4. No public enum or struct layout
 changes; the new operations return existing scalar/vector values and publish
-existing geometric output slots.
+existing geometric output slots. Collections are internal helper/local values.
 
 The stage 1 gates cover opcode typing, aux/operand validation, old-format
 rejection including unreachable code, IPA/IPDIS, compressed inner 0.6,
@@ -126,3 +126,115 @@ NaN/infinity traps, optimizer behavior and native/WASM output bits.
 from commit e053240 and pins RGBA, output bits, inputs and fuel. The earlier
 golden corpus and immutable 0.4 baseline remain independent compatibility
 gates. Recompiled-source migrations are checked separately.
+
+## 6. Type descriptors and collection constants
+
+Optional section **6 (`types`)** is a `u32 count`, followed by `count` records:
+`u8 kind`, `u8 element`, `u16 reserved`. Kind is **5 (`list`)**. Element is
+one frozen scalar code: 0 i32, 1 f32, 2 color, 3 vec2, 4 distribution.
+Reserved must be zero; duplicate descriptors, unknown kinds/elements and
+nested collection elements are invalid. Count is at most 65,536. The table
+is independent of instruction aux bytes and is shared by functions and pools.
+
+Function parameter/result/local types retain one byte for frozen codes 0–4.
+A parameterized type instead encodes **`u8 0x80`, `u16 descriptor_index`**.
+References must resolve in section 6. Code 5 alone is not a slot encoding.
+The function table's offsets still refer to the contiguous instruction region;
+the legacy parts table is unchanged. Descriptors apply to complete types:
+`list<i32>` and `list<f32>` never fit each other implicitly.
+
+Optional section **7 (`collections`)** is `u32 count`, followed by entries:
+`u16 descriptor_index`, `u16 length`, then exactly `length` element payloads.
+Count is at most 65,536; length is 0–256; the descriptor must be a list.
+Element payloads are little-endian, with no per-element tag:
+
+| Element | Payload |
+| --- | --- |
+| i32 | 4 exact pattern bytes |
+| f32 | 4 exact IEEE binary32 bytes, including subnormals and NaN payloads |
+| color | 4 RGBA8 bytes |
+| vec2 | x then y, 4 binary32 bytes each |
+| distribution | 1 family byte, then all four binary32 parameters (17 bytes) |
+
+Distribution families and parameter validation are the frozen 0.5 rules;
+unset descriptions are invalid in the pool. All descriptors and entries are
+validated even if unused. Trailing, truncated, oversized or invalid data is
+rejected before execution. Neither section exists in older minors.
+
+## 7. List instructions
+
+All aux bytes are zero. `t` is a descriptor index, `c` a collection index,
+`B<T>` an internal builder unavailable to declared slots or source code.
+
+| Opcode | Mnemonic and operand | Stack, deepest first |
+| --- | --- | --- |
+| 0xB5 | const.list c | `[] -> [list<T>]` |
+| 0xB6 | list.begin t | `[i32 count] -> [B<T>]` |
+| 0xB7 | list.append t | `[B<T>, T] -> [B<T>]` |
+| 0xB8 | list.end t | `[B<T>] -> [list<T>]` |
+| 0xB9 | list.get t | `[list<T>, i32 index] -> [T]` |
+| 0xBA | list.len t | `[list<T>] -> [i32]` |
+| 0xBB | poly.list | `[list<vec2>, color] -> []` |
+
+`list.begin` checks count in 0–256, charges element fuel and memory, then
+allocates a buffer. `list.append` evaluates no hidden expression; it writes
+the already-evaluated element and rejects a full or mismatched builder.
+`list.end` requires the declared count to be filled and freezes the buffer
+without copying elements. `dup` cannot copy a builder. A builder cannot be
+a local, parameter or result, or escape through a mismatched control stack.
+The source compiler evaluates elements left to right, one at a time, keeping
+operand depth bounded independently of list length and element component count.
+
+Lists are immutable handles. Helper calls, returns, assignments and `dup`
+share storage. `const.list` shares the pool entry and charges that entry only
+on its first use in the generation. Indexing requires `0 <= index < length`
+and traps with `IndexRange`; length/index/poly operations trap on an unset
+handle. `poly.list` requires at least three points and uses the identical
+scaling, alpha, clipping, rasterizer and bounding-box fuel of legacy `poly`.
+Point storage is evaluated before the color. Existing variadic/named polygon
+lowering is unchanged.
+
+## 8. Arena limits, fuel and failure
+
+Additional generation data has a **64 MiB** limit. A list allocation charges
+128 bytes of metadata plus 64 bytes per reserved element, identically on all
+targets. This conservative fixed accounting covers value/builder/ownership
+storage and avoids native/WASM layout-dependent acceptance. Sharing handles
+does not charge their buffers again. Frozen buffers remain owned by the
+generation arena and are released when it finishes or is destroyed. Unfinished
+builders and frozen resources are released after a failed format-0.6 generation.
+
+Additional part canvases in 0.6 charge four bytes per source pixel before
+allocation, share the same limit with lists, and release that charge after the
+blit. The root canvas keeps its original limits. Files 0.1–0.5 retain their
+existing part allocation policy. Math/RNG kernels and their fuel remain frozen.
+
+Each list instruction costs base 1 fuel. `list.begin` additionally charges
+one per reserved element before allocation; append/end each have their normal
+base cost. Pool reads, handle copies, length and index have no element scan.
+`poly.list` adds exactly the existing polygon visit cost, before rasterization.
+Memory exhaustion traps with `OutOfMemory` and `generation data exceeds 64 MiB`.
+Fuel exhaustion remains `FuelExhausted`. A trap never produces a successful
+generation result and the failed 0.6 VM cannot resume as a successful run.
+
+Legacy palettes may keep their existing selection-tree lowering and old pool
+limits, including a last-element default for direct indexing. A palette used
+as a first-class list has the new 256-element limit and checked list indices.
+This preserves previously accepted large palette indexing and ramp.
+
+## 9. Tool transport and acceptance
+
+IPA signatures spell parameterized types as `list<T>`. `types:` lists
+descriptors in table order. `collection: list<T> hex` stores the raw element
+payload in hex; `-` spells zero elements. The typed width fixes the count.
+IPDIS emits these declarations and exact raw data, including all floating
+encodings. Instruction descriptor/collection operands are numeric indices;
+they are checked without truncating values beyond u16. Assembly chooses the
+oldest required format and validates its output before writing a file.
+
+Stage 3 additionally verifies empty contexts, every element type, forward
+const-list dependencies, helper sharing, RNG order, 256-element construction,
+index/unset/memory/fuel traps, large legacy palettes, exact polygon images,
+invalid descriptors/pools, old-version gates, debug/strip/compression,
+IPA/IPDIS/formatter and existing C API/SFML/Godot/HTML5 output interfaces.
+Frozen stage-1/2 format-0.6 binaries remain independent runtime evidence.

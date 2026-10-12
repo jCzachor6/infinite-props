@@ -21,7 +21,10 @@ function run(iprop, tool, directory) {
         const name = "constant_" + overloads++;
         const args = signature.parameters.map(parameter => {
             let value;
-            if (parameter.type === "color") value = "#915f34af";
+            if (parameter.type.startsWith("list<")) value = parameter.type === "list<color>" ? "[#915f34af]" :
+                parameter.type === "list<vec2>" ? "[{0.375,0.625}]" : parameter.type === "list<distribution>" ? "[gaussian(0.5,0.18)]" :
+                parameter.type === "list<f32>" ? "[0.375]" : "[3]";
+            else if (parameter.type === "color") value = "#915f34af";
             else if (parameter.type === "vec2") value = "{0.375,0.625}";
             else if (parameter.type === "palette<color>") value = "tones";
             else if (parameter.type === "palette<f32>") value = "levels";

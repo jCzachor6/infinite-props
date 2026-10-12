@@ -81,11 +81,10 @@ asset t {
     expectCheckError(R"(
 asset t { size 8x8 palette p = [#111111] draw { c = p[0.5] } })",
         "palette index must be i32");
-    expectCheckError(wrap("c = missing[0]"), "'missing' is not a palette");
-    expectCheckError(R"(
-asset t { size 8x8 palette p = [#111111] draw { c = p } })",
-        "must be indexed");
-    expectCheckError(wrap("c = 5[0]"), "only palettes can be indexed");
+    expectCheckError(wrap("c = missing[0]"), "undefined name");
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t { size 8x8 palette p = [#111111] draw { c = p } })"), {}));
+    expectCheckError(wrap("c = 5[0]"), "only lists and palettes can be indexed");
     // A local cannot shadow a palette.
     expectCheckError(R"(
 asset t { size 8x8 palette p = [1, 2] draw { p = 3 } })",

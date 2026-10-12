@@ -33,7 +33,7 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
     result.effects = builtinEffects(spec, builtinOverload(spec, arity));
-    if (spec.lowering == BuiltinLowering::Polygon) {
+    if (spec.lowering == BuiltinLowering::Polygon && arity != 2) {
         result.evaluationOrder.erase(result.evaluationOrder.begin());
         result.evaluationOrder.push_back(0);
     }

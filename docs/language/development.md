@@ -26,7 +26,7 @@ and the reference leaves it out.
 
 The schema 3 language export also supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
-compile-time palette and transform slots; `poly` lists coordinates before
+compile-time palette and transform slots; legacy `poly` lists coordinates before
 color. `call_rules.helper_evaluation_order` is `declaration`. The part rule
 uses `$uniform` as a template expanded once per imported input, in declaration
 order. Each part parameter records `required`, `positional`, and an optional
@@ -73,3 +73,7 @@ Release documentation is built from the exact release tag. Development builds
 are labeled as development/candidate documentation and identify their source
 commit. Historical versions remain in their Git tags, rather than copies
 updated accidentally alongside the current chapters.
+
+Parameterized list types and collection rules are emitted from the shared type
+descriptors. Keep schema-3 readers, editor highlighting, fixed list overloads
+and the legacy polygon variadic template aligned when extending collections.

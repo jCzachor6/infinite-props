@@ -7,6 +7,7 @@
 #include "ips/ExportSchema.hpp"
 #include "ips/AssetConstants.hpp"
 #include "iprop/OpcodeSpec.hpp"
+#include "iprop/Collections.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -24,8 +25,8 @@ Json operationEffects(const OperationEffects& effects) {
     Json mayTrap = Json::array();
     for (const auto check : {EffectCheck::NumericRange, EffectCheck::StreamStackUnderflow,
         EffectCheck::PartRenderArguments, EffectCheck::Callee, EffectCheck::PartOutputMissing,
-        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext}) {
-        if ((effects.checks & static_cast<u8>(check)) != 0) mayTrap.push_back(effectCheckName(check));
+        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext, EffectCheck::IndexRange, EffectCheck::UnassignedHandle}) {
+        if ((effects.checks & static_cast<u16>(check)) != 0) mayTrap.push_back(effectCheckName(check));
     }
     return Json::object({{"rng", rngEffectName(effects.rng)}, {"writes_canvas", effects.writesCanvas},
                          {"writes_outputs", effects.writesOutputs},
@@ -36,7 +37,7 @@ Json operationEffects(const OperationEffects& effects) {
 Json effectRules() {
     auto rules = Json::object({{"intrinsic_scope", "operation_excluding_arguments_and_resources"},
         {"argument_effects", "evaluated_before_operation_in_caller_stream"},
-        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit"})},
+        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit"})},
         {"validation_limits", Json::array({"operand_stack_limit"})}, {"allocation_failure", true}});
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
@@ -51,7 +52,10 @@ Json effectRules() {
 
 constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Distribution, ips::ValueType::Circle,
-    ips::ValueType::Rect};
+    ips::ValueType::Rect,
+    ips::ValueType::list(ips::ValueType::I32), ips::ValueType::list(ips::ValueType::F32),
+    ips::ValueType::list(ips::ValueType::Color), ips::ValueType::list(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::Distribution)};
 
 template<class Predicate>
 Json types(Predicate include) {
@@ -119,12 +123,7 @@ Json sourceRules() {
     }
     Json typeRules = Json::object();
     typeRules["storable"] = types(ips::isStorable);
-    typeRules["helper_parameters"] = types([](ips::ValueType value) {
-        for (const auto type : {ips::ParamType::I32, ips::ParamType::F32,
-                               ips::ParamType::Color, ips::ParamType::Vec2, ips::ParamType::Distribution})
-            if (ips::valueTypeOf(type) == value) return true;
-        return false;
-    });
+    typeRules["helper_parameters"] = types(ips::isStorable);
     typeRules["helper_value_returns"] = types(ips::isStorable);
     typeRules["output_only_geometry"] = types([](ips::ValueType value) { return !ips::isStorable(value); });
     typeRules["point_value_type"] = ips::typeName(ips::ValueType::Vec2);
@@ -144,6 +143,9 @@ Json sourceRules() {
             {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)},
             {"minimum_format_minor", minor}});
     };
+    typeRules["parameterized"] = Json::array({Json::object({{"constructor", "list"},
+        {"element_types", types([](ips::ValueType type) { return type.isScalar(); })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}})});
     typeRules["components"] = Json::array({
         components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
         components(ips::ValueType::Color, ips::ValueType::I32,
@@ -174,6 +176,12 @@ Json sourceRules() {
     rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
         {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},
         {"named_arguments_change_evaluation_order", false}, {"part_parent_rng", "restored_after_child"}});
+    rules["collections"] = Json::object({{"literal", "[<elements>]"}, {"minimum_length", 0}, {"maximum_length", kMaxListElements},
+        {"empty_literal", "known_list_type_required"}, {"element_evaluation", "left_to_right_once"},
+        {"numeric_elements", "i32_to_f32_widening"}, {"index_type", "i32"}, {"index_bounds", "trap"},
+        {"mutable", false}, {"helper_transfer", "share_immutable_data"},
+        {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
+        {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
     rules["random_range"] = randomRange();
     return rules;
 }
@@ -191,7 +199,7 @@ Json evaluationOrder(const ips::CallSignature& signature) {
 Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
     using L = ips::BuiltinLowering;
     // Query the actual binder, rather than maintaining another name/arity table.
-    std::size_t minimum = spec.lowering == L::Pick ? 2 : 0;
+    std::size_t minimum = spec.lowering == L::Polygon ? 7 : spec.lowering == L::Pick ? 2 : 0;
     ips::CallSignature signature;
     for (; minimum < 16; ++minimum) {
         try {
@@ -212,7 +220,7 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
         {"parameters", std::move(parameters)}, {"evaluation_order", evaluationOrder(signature)},
         {"effects", operationEffects(signature.effects)}});
     if (!polygon) {
-        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2", "distribution"});
+        out["choice_types"] = types(ips::isStorable);
         out["choice_evaluation"] = "eager_once_before_selection_rng";
     }
     return out;

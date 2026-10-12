@@ -10,9 +10,9 @@ whitespace and never implicitly terminates a declaration or expression.
 
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
-`if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`, `list`,
+`if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`,
 `true`, `false`) are reserved. `draw`, `at`, type names and geometry kind
-names are soft keywords accepted in name positions; `draw` still selects
+names and `list` are soft keywords accepted in name positions; `draw` still selects
 the entry block when used as an asset-level function name. `to`, `with`
 and `distribution` are ordinary names that also spell the
 [random range](random.md#random-ranges-with-to) operator, its
@@ -23,7 +23,7 @@ and `distribution` are ordinary names that also spell the
 only in declaration position. It does not reserve `const` as a helper, local or input name.
 
 Use descriptive names distinct from builtin functions and the namespaces
-`color`, `vec2`, `dist`, `noise` and `cell`. Builtin call resolution takes
+`color`, `vec2`, `dist`, `noise`, `cell` and `list.len`. Builtin call resolution takes
 precedence over user helpers with the same name.
 
 ## Literals
@@ -51,5 +51,5 @@ integer semantics.
 <!-- example: ../../examples/language/syntax.ips -->
 
 Trailing commas are accepted in call arguments, helper parameters, palette
-elements and compound literals. Syntax is ASCII: Unicode text may appear only
+elements, list literals and compound literals. Syntax is ASCII: Unicode text may appear only
 in comments and string literals.

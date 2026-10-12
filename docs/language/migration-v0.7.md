@@ -1,13 +1,13 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–2 of source language 0.7: exact integer bounds,
-stable vector normalization and typed asset constants. Product 0.7.0 is under
-development. Later stages of 0.7, including collections, samplers and surfaces, remain
+This checkout implements stages 1–3 of source language 0.7: exact integer bounds,
+stable vector normalization, typed asset constants and immutable lists. Product 0.7.0 is under
+development. Later stages of 0.7, including samplers and surfaces, remain
 outside the currently implemented language.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–2 |
+| Contract | 0.6 release | 0.7 development, stages 1–3 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -18,7 +18,8 @@ outside the currently implemented language.
 
 Stage 1 used schema 2. Asset declarations now introduce schema 3, with
 `source_rules.asset_constants` and `constant_evaluable` on each builtin
-signature. Parametric types join this schema in the collection stage.
+signature. Parameterized list types now join schema 3, together with `source_rules.collections`
+and `source_rules.types.parameterized`.
 Builtin signatures, effects and required format versions are generated
 from the compiler catalogue and shared by documentation and editor consumers.
 
@@ -82,7 +83,7 @@ generation state and helper calls are source errors. See the
 `const` remains contextual: existing helpers named `const`, and locals/inputs
 with that name, keep their previous behavior. Constant names are read-only
 and cannot shadow or collide with other asset declarations or helper parameters.
-This new syntax adds no required binary format version. A constant normalized
+Scalar declarations add no required binary format version. A constant normalized
 vector or integer bound can therefore compile to 0.4 even without optimization;
 used distribution descriptions retain the existing 0.5 instructions.
 
@@ -109,3 +110,23 @@ unused invalid declarations, contextual names, part isolation, immutable
 bindings, formatter/IPA/IPDIS/debug/strip/compression and native/WASM hosts.
 Frozen binaries are executed directly, including preserved stage-1 format 0.6
 bytes. See the [stage 2 validation report](../validation-v0.7-stage2.md).
+
+## Immutable collections
+
+`list<T>` now supports the current five element types, zero to 256 elements,
+helper parameters/returns, const lists, checked indexing, `list.len` and
+`poly(points: list<vec2>, color: color)`. Empty literals require an element
+context. The old variadic polygon signature and its named coordinates remain
+valid. Lists use format 0.6 type descriptors and immutable arena handles;
+resource types never become host uniforms or geometric output enums.
+
+A legacy palette name may now be passed as a list, subject to the new 256-item
+limit for that use only. Direct palette indexing and ramp keep their old size
+limits and last-element fallback. List parameter/local indices trap instead.
+`list` becomes a soft name so it can introduce both `list<T>` and `list.len`;
+no previously accepted helper or part call is reassigned to a new bare builtin.
+
+Stage 3 verifies all element types, empty contexts, forward const references,
+left-to-right RNG, 256-item builders, shared data, index/unassigned/memory/fuel
+traps, legacy palettes, exact polygon pixels, corrupted descriptors and pools,
+old-format rejection, formatter/IPA/IPDIS, compression and native/WASM hosts.

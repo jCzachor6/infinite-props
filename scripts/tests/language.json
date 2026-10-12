@@ -129,19 +129,37 @@
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "helper_parameters": [
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "helper_value_returns": [
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "output_only_geometry": [
         "circle",
@@ -175,6 +193,20 @@
             "vec2.y"
           ],
           "minimum_format_minor": 3
+        }
+      ],
+      "parameterized": [
+        {
+          "constructor": "list",
+          "element_types": [
+            "i32",
+            "f32",
+            "color",
+            "vec2",
+            "distribution"
+          ],
+          "nested": false,
+          "representation": "immutable_arena_handle"
         }
       ]
     },
@@ -325,8 +357,29 @@
         "f32",
         "color",
         "vec2",
-        "distribution"
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ]
+    },
+    "collections": {
+      "literal": "[<elements>]",
+      "minimum_length": 0,
+      "maximum_length": 256,
+      "empty_literal": "known_list_type_required",
+      "element_evaluation": "left_to_right_once",
+      "numeric_elements": "i32_to_f32_widening",
+      "index_type": "i32",
+      "index_bounds": "trap",
+      "mutable": false,
+      "helper_transfer": "share_immutable_data",
+      "legacy_palette_index": "last_element_fallback",
+      "legacy_palette_length_limit": "unchanged",
+      "palette_as_list_maximum": 256,
+      "generation_data_limit_bytes": 67108864
     }
   },
   "effect_rules": {

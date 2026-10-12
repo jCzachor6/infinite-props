@@ -35,7 +35,7 @@ ValueType Typer::typeCall(const Call& call) {
                 full += "." + segment;
             }
             const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2";
+                path.base == "cell" || path.base == "color" || path.base == "vec2" || full == "list.len";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
@@ -65,7 +65,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
         return *result;
     }
-    if (signature.lowering == BuiltinLowering::Polygon) {
+    if (signature.lowering == BuiltinLowering::Polygon && call.args.size() != 2) {
         for (std::size_t i = 0; i < args.size(); ++i) {
             const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
             const auto got = typeOf(*args[i]->value);
@@ -76,7 +76,14 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return ValueType::Void;
     }
     std::vector<ValueType> types;
-    for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+    const auto* contextual = builtinOverload(signature, args.size());
+    if (contextual) for (const auto& candidate : signature.overloads)
+        if (contextual && candidate.params.size() == args.size()) for (std::size_t i = 0; i < args.size(); ++i)
+            if (candidate.params[i].type != contextual->params[i].type) { contextual = nullptr; break; }
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const auto expected = contextual ? std::optional<ValueType>(contextual->params[i].type) : std::nullopt;
+        types.push_back(typeOf(*args[i]->value, expected));
+    }
     const auto* overload = builtinOverload(signature, types);
     if (overload) return overload->result;
     const auto* arityMatch = builtinOverload(signature, args.size());
@@ -113,7 +120,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     const auto& args = bound.arguments;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];
-        const ValueType got = typeOf(*arg.value);
+        const ValueType got = typeOf(*arg.value, surface->params[i]);
         if (!argFits(surface->params[i], got)) {
             error(locationOf(*arg.value),
                   "argument " + std::to_string(i + 1) + " of '" + name.name +

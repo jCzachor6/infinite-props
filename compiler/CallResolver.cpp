@@ -52,7 +52,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
-        if (spec.lowering == ips::BuiltinLowering::Polygon) {
+        if (spec.lowering == ips::BuiltinLowering::Polygon && args.size() != 2) {
             for (const auto i : bound.signature.evaluationOrder)
                 result.arguments.push_back(argument(*args[i]->value, i == 0 ? T::Color : T::F32));
         } else {

@@ -303,13 +303,13 @@ class SourcePrinter {
                 expression(*node.upper);
                 if (node.distribution) { out_ << " with "; expression(*node.distribution); }
                 if (!groups) out_ << ')';
-            } else if constexpr (std::is_same_v<T, VectorLit>) {
-                out_ << '{';
+            } else if constexpr ((std::is_same_v<T, VectorLit> || std::is_same_v<T, ListLit>)) {
+                out_ << (std::is_same_v<T, ListLit> ? '[' : '{');
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {
                     if (i) out_ << ", ";
                     expression(*node.elements[i]);
                 }
-                out_ << '}';
+                out_ << (std::is_same_v<T, ListLit> ? ']' : '}');
             } else if constexpr (std::is_same_v<T, Call>) {
                 expression(*node.callee); out_ << '(';
                 std::vector<PrintedArgument> args;
@@ -347,7 +347,7 @@ class SourcePrinter {
         std::visit([&](const auto& node) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, VarDecl>) {
-                if (node.declaredType) out_ << "distribution ";
+                if (node.declaredType) out_ << typeName(*node.declaredType) << ' ';
                 out_ << node.name << " = "; expression(*node.value);
             }
             else if constexpr (std::is_same_v<T, ExprStmt>) expression(*node.expr);

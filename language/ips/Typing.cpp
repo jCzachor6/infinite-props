@@ -1,4 +1,6 @@
 #include "ips/Typing.hpp"
+#include "iprop/Collections.hpp"
+#include <algorithm>
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
 
@@ -152,10 +154,11 @@ Typer::PartRead Typer::partReadInfo(const Expr& expr) const {
 
 // ---- expressions -------------------------------------------------------------
 
-ValueType Typer::typeOf(const Expr& expr) {
+ValueType Typer::typeOf(const Expr& expr, std::optional<ValueType> context) {
     if (const auto found = expressions_.find(&expr); found != expressions_.end())
         return found->second;
-    const auto type = infer(expr);
+    const auto* list = std::get_if<ListLit>(&expr);
+    const auto type = list ? typeList(*list, context) : infer(expr);
     expressions_.emplace(&expr, type);
     return type;
 }
@@ -271,8 +274,10 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     // A bare palette name is not a value — it must be indexed.
     for (const auto& palette : owner_->asset.palettes) {
         if (palette.name == id.name) {
-            error(id.location, "palette '" + id.name + "' must be indexed ('" +
-                                   id.name + "[i]')");
+            const auto& resolved = this->palette(id);
+            if (resolved.elements.size() > kMaxListElements)
+                error(id.location, "palette '" + id.name + "' exceeds 256 elements when used as a list");
+            return ValueType::list(resolved.type);
         }
     }
     std::vector<std::string> candidates{"seed"};
@@ -324,18 +329,37 @@ const ResolvedPalette& Typer::palette(const Identifier& name) {
 
 // `palette[i]` — the index must be i32; the result is the (uniform) element
 // type. The checker guarantees literal, homogeneous elements.
+ValueType Typer::typeList(const ListLit& list, std::optional<ValueType> context) {
+    if (list.elements.size() > kMaxListElements) error(list.location, "list literal exceeds 256 elements");
+    std::optional<ValueType> element;
+    if (context && context->isList()) element = context->item();
+    if (list.elements.empty() && !element) error(list.location, "empty list needs a known list<T> type");
+    for (const auto& expression : list.elements) {
+        const auto got = typeOf(*expression);
+        if (!got.isScalar()) error(locationOf(*expression), "list elements must be i32, f32, color, vec2 or distribution, got " + std::string(typeName(got)));
+        if (!element) element = got;
+        else if (element != got) {
+            if ((!context || !context->isList()) && isNumeric(*element) && isNumeric(got)) element = ValueType::F32;
+            else if (!argFits(*element, got)) error(locationOf(*expression), "list element needs " + std::string(typeName(*element)) + ", got " + typeName(got));
+        }
+    }
+    return ValueType::list(*element);
+}
+
 ValueType Typer::typeIndex(const Index& index) {
-    const auto* name = std::get_if<Identifier>(index.object.get());
-    if (name == nullptr) {
-        error(locationOf(*index.object), "only palettes can be indexed");
+    if (const auto* name = std::get_if<Identifier>(index.object.get())) {
+        const auto declared = std::find_if(owner_->asset.palettes.begin(), owner_->asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
+        if (declared != owner_->asset.palettes.end()) {
+            const auto& resolved = palette(*name);
+            if (typeOf(*index.index) != ValueType::I32) error(locationOf(*index.index), "palette index must be i32, got " + std::string(typeName(typeOf(*index.index))));
+            return resolved.type;
+        }
     }
-    const auto& resolved = palette(*name);
-    const ValueType indexType = typeOf(*index.index);
-    if (indexType != ValueType::I32) {
-        error(locationOf(*index.index),
-              "palette index must be i32, got " + std::string(typeName(indexType)));
-    }
-    return resolved.type;
+    const auto object = typeOf(*index.object);
+    if (!object.isList()) error(locationOf(*index.object), "only lists and palettes can be indexed, got " + std::string(typeName(object)));
+    const auto idx = typeOf(*index.index);
+    if (idx != ValueType::I32) error(locationOf(*index.index), "list index must be i32, got " + std::string(typeName(idx)));
+    return object.item();
 }
 
 // `ramp(palette, t)` — the first argument names a palette; the t is the

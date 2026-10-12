@@ -109,6 +109,9 @@ struct Program {
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;
     std::vector<AsmPart> parts;
+    std::vector<TypeDescriptor> types;
+    struct Collection { TypeDescriptor type; std::vector<u8> bytes; u16 count; };
+    std::vector<Collection> collections;
 };
 
 std::vector<std::string> tokens(const std::string& line) {
@@ -134,6 +137,12 @@ std::string clean(const std::string& token) {
 }
 
 bool parseValueType(const std::string& text, ValueType& out) {
+    if (text.starts_with("list<") && text.ends_with(">")) {
+        ValueType item;
+        if (!parseValueType(text.substr(5, text.size() - 6), item) || !item.isScalar()) return false;
+        out = ValueType::list(item);
+        return true;
+    }
     if (text == "i32") {
         out = ValueType::I32;
         return true;
@@ -404,6 +413,41 @@ std::vector<u8> assemble(const std::string& source) {
             input.name = words[2];
             input.defaultValue = words[4];
             (currentPart != nullptr ? currentPart->inputs : program.inputs).push_back(input);
+            continue;
+        }
+
+        if (words[0] == "types:") {
+            if (function || currentPart || words.size() < 2) throw error("bad type descriptor declaration");
+            for (std::size_t i = 1; i < words.size(); ++i) {
+                ValueType type;
+                if (!parseValueType(words[i], type) || !type.isList()) throw error("bad list descriptor");
+                if (std::find(program.types.begin(), program.types.end(), type) != program.types.end()) throw error("duplicate type descriptor");
+                program.types.push_back(type);
+            }
+            continue;
+        }
+        if (words[0] == "collection:") {
+            ValueType type;
+            if (function || currentPart || words.size() != 3 || !parseValueType(words[1], type) || !type.isList())
+                throw error("bad collection declaration");
+            const auto& text = words[2];
+            const auto stride = type.element == ValueType::Vec2 ? 8u : type.element == ValueType::Distribution ? 17u : 4u;
+            if (text != "-" && (text.size() % (2 * stride) || text.size() / (2 * stride) > kMaxListElements))
+                throw error("bad collection size");
+            std::vector<u8> bytes;
+            if (text != "-") for (std::size_t i = 0; i < text.size(); i += 2) {
+                const auto digit = [](char c) -> int {
+                    if (c >= '0' && c <= '9') return c - '0';
+                    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+                    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+                    return -1;
+                };
+                const auto hi = digit(text[i]), lo = digit(text[i + 1]);
+                if (hi < 0 || lo < 0) throw error("bad collection hex data");
+                bytes.push_back(static_cast<u8>(hi * 16 + lo));
+            }
+            const auto count = static_cast<u16>(bytes.size() / stride);
+            program.collections.push_back({type, std::move(bytes), count});
             continue;
         }
 
@@ -751,7 +795,7 @@ std::vector<u8> assemble(const std::string& source) {
         case OperandKind::Depth:
         case OperandKind::Count: {
             u32 value = 0;
-            if (!parseU32Text(instruction.operandText, value)) {
+            if (!parseU32Text(instruction.operandText, value) || value > 65535) {
                 throw SourceError(instruction.line, "bad index operand");
             }
             return static_cast<u16>(value);
@@ -802,6 +846,31 @@ std::vector<u8> assemble(const std::string& source) {
         functionIndex[ordered[i]->name] = static_cast<u32>(i);
     }
 
+    const auto addType = [&](ValueType type) {
+        if (!type.isList()) return;
+        if (std::find(program.types.begin(), program.types.end(), type) == program.types.end()) program.types.push_back(type);
+    };
+    for (const auto* fn : ordered) for (const auto* slots : {&fn->params, &fn->results, &fn->locals})
+        for (const auto type : *slots) addType(type);
+    for (const auto& collection : program.collections) addType(collection.type);
+    Writer descriptors;
+    if (!program.types.empty()) {
+        descriptors.writeU32(static_cast<u32>(program.types.size()));
+        for (const auto type : program.types) {
+            descriptors.writeU8(static_cast<u8>(type.kind)); descriptors.writeU8(static_cast<u8>(type.element)); descriptors.writeU16(0);
+        }
+    }
+    Writer collections;
+    if (!program.collections.empty()) {
+        if (program.collections.size() > kMaxConstPoolEntries) throw SourceError(0, "too many collections");
+        collections.writeU32(static_cast<u32>(program.collections.size()));
+        for (const auto& collection : program.collections) {
+            const auto found = std::find(program.types.begin(), program.types.end(), collection.type);
+            collections.writeU16(static_cast<u16>(found - program.types.begin()));
+            collections.writeU16(collection.count); collections.writeBytes(collection.bytes);
+        }
+    }
+
     // Resolve every operand first: the const pools must be complete when
     // the const section is written.
     std::vector<std::vector<u16>> operands(ordered.size());
@@ -849,17 +918,17 @@ std::vector<u8> assemble(const std::string& source) {
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.results.size()));
         for (const ValueType type : fn.results) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.locals.size()));
         for (const ValueType type : fn.locals) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
             minor = writtenMinor(minor, fn.instructions[j].opcode);
@@ -940,7 +1009,8 @@ std::vector<u8> assemble(const std::string& source) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    const u32 sections = instances ? 4 : 3;
+    if (descriptors.size() || collections.size()) minor = 6;
+    const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) + (collections.size() ? 1u : 0u);
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(0);
@@ -957,10 +1027,13 @@ std::vector<u8> assemble(const std::string& source) {
     section(2, consts.data());
     section(3, code.data());
     if (instances) section(5, partInstances.data());
+    if (descriptors.size()) section(6, descriptors.data());
+    if (collections.size()) section(7, collections.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     if (instances) file.writeBytes(partInstances.data());
+    file.writeBytes(descriptors.data()); file.writeBytes(collections.data());
 
     const auto bytes = file.data();
 

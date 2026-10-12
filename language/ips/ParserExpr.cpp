@@ -261,6 +261,8 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
     }
     case TokenKind::LBrace:
         return parseVector();
+    case TokenKind::LBracket:
+        return parseList();
     case TokenKind::LParen: {
         advance();
         const FlagScope nested(statementTail_, false);
@@ -342,6 +344,22 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
     }
     expect(TokenKind::RBrace, "'}'");
     auto expr = std::make_unique<Expr>(VectorLit{std::move(elements), at});
+    expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+    return expr;
+}
+
+std::unique_ptr<Expr> ParserImpl::parseList() {
+    const auto start = pos_;
+    const FlagScope nested(statementTail_, false);
+    const auto at = expect(TokenKind::LBracket, "'['").location;
+    std::vector<std::unique_ptr<Expr>> elements;
+    while (kind() != TokenKind::RBracket) {
+        if (kind() == TokenKind::End) failHere("unterminated list literal (missing ']')");
+        elements.push_back(parseExpr());
+        if (!match(TokenKind::Comma)) break;
+    }
+    expect(TokenKind::RBracket, "']' after list elements");
+    auto expr = std::make_unique<Expr>(ListLit{std::move(elements), at});
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }

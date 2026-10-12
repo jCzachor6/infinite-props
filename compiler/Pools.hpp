@@ -12,6 +12,8 @@
 #include <vector>
 
 #include "iprop/Types.hpp"
+#include "iprop/Collections.hpp"
+#include <algorithm>
 
 namespace iprop::compiler {
 
@@ -76,6 +78,33 @@ public:
         return index;
     }
 
+    u16 addType(TypeDescriptor type) {
+        if (!type.isList() || !type.isStorable()) throw std::logic_error("expected list descriptor");
+        const auto found = std::find(types.begin(), types.end(), type);
+        if (found != types.end()) return static_cast<u16>(found - types.begin());
+        if (types.size() >= kMaxConstPoolEntries) throw PoolLimit("too many type descriptors");
+        types.push_back(type);
+        return static_cast<u16>(types.size() - 1);
+    }
+    u16 addList(const ListValue& list) {
+        if (!list.data || list.data->elements.size() > kMaxListElements) throw PoolLimit("invalid collection constant");
+        Writer encoding;
+        encoding.writeU8(static_cast<u8>(list.type.element));
+        writeListElements(encoding, *list.data);
+        if (const auto found = listIndex.find(encoding.data()); found != listIndex.end()) return found->second;
+        if (lists.size() >= kMaxConstPoolEntries) throw PoolLimit("too many collection constants");
+        const auto allocation = ResourceArena::listBytes(list.data->elements.size());
+        if (allocation > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
+        collectionBytes += allocation;
+        addType(list.type);
+        const auto index = static_cast<u16>(lists.size());
+        lists.push_back(list);
+        listIndex.emplace(encoding.data(), index);
+        return index;
+    }
+    const std::vector<TypeDescriptor>& typesValue() const { return types; }
+    const std::vector<ListValue>& listsValue() const { return lists; }
+
     // The pool contents, in registration order.
     const std::vector<std::string>& stringsValue() const { return strings; }
     const std::vector<u32>& intsValue() const { return ints; }
@@ -87,6 +116,10 @@ public:
     u32 indexOf(const std::string& text) const { return stringIndex.at(text); }
 
 private:
+    u64 collectionBytes = 0;
+    std::vector<TypeDescriptor> types;
+    std::vector<ListValue> lists;
+    std::map<std::vector<u8>, u16> listIndex;
     std::vector<std::string> strings;
     std::map<std::string, u32> stringIndex;
     std::vector<u32> ints;

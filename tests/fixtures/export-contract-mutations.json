@@ -397,6 +397,82 @@
       "delete": true,
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "nested list descriptor rejected",
+      "path": [
+        "source_rules",
+        "types",
+        "parameterized",
+        0,
+        "nested"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown list element rejected",
+      "path": [
+        "source_rules",
+        "types",
+        "parameterized",
+        0,
+        "element_types"
+      ],
+      "value": [
+        "list<i32>"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "negative list limit rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "maximum_length"
+      ],
+      "value": -1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "mutable list policy rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "mutable"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unchecked index policy rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "index_bounds"
+      ],
+      "value": "last_element_fallback",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "list type signature accepted",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "parameters",
+        0,
+        "type"
+      ],
+      "value": "list<vec2>",
+      "accept": true,
+      "schema": true
     }
   ],
   "diagnostics": [

@@ -12,10 +12,12 @@ LANGUAGE_SCHEMA_VERSION = 3
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
+LIST_TYPES = {'list<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2', 'distribution')}
+VALUE_TYPES |= LIST_TYPES
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow'}
+              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle'}
 EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
 STAGES = {'lex', 'parse', 'import', 'typing', 'planning', 'validation', 'io', 'cli', 'internal'}
 HASH = re.compile(r'^[0-9a-f]{64}$')
@@ -144,7 +146,7 @@ def read_language(value):
         'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
-    strings(constants.get('types'), 'constant types', {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
+    strings(constants.get('types'), 'constant types', ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES), True)
     require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
             not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
@@ -158,7 +160,26 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES), True)
+    if 'parameterized' in types:
+        parameters = types['parameterized']
+        require(type(parameters) is list and len(parameters) == 1, 'parameterized type descriptors')
+        parameter = parameters[0]
+        _strings_and_bools(parameter, {'constructor': {'list'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
+        require(parameter['nested'] is False, 'nested list types')
+        strings(parameter.get('element_types'), 'list element types', {'i32','f32','color','vec2','distribution'}, True)
+        require(set(parameter['element_types']) == {'i32','f32','color','vec2','distribution'}, 'list element types')
+    if 'collections' in rules:
+        collection = rules['collections']
+        _strings_and_bools(collection, {
+            'literal': {'[<elements>]'}, 'empty_literal': {'known_list_type_required'},
+            'element_evaluation': {'left_to_right_once'}, 'numeric_elements': {'i32_to_f32_widening'},
+            'index_type': {'i32'}, 'index_bounds': {'trap'}, 'helper_transfer': {'share_immutable_data'},
+            'legacy_palette_index': {'last_element_fallback'}, 'legacy_palette_length_limit': {'unchanged'}}, ['mutable'], 'collections')
+        require(collection['mutable'] is False, 'immutable collections')
+        for field, expected in [('minimum_length',0),('maximum_length',256),('palette_as_list_maximum',256),('generation_data_limit_bytes',67108864)]:
+            integer(collection.get(field), 'collections.' + field)
+            require(collection[field] == expected, 'collections.' + field)
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
@@ -231,7 +252,7 @@ def read_language(value):
     ordered_signature(call['part'], 'part', typed=False)
     effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
     require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
-    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit'})
+    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit'})
     strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
     boolean(effect['allocation_failure'], 'allocation failure')
     for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:

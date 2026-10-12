@@ -64,7 +64,7 @@ test("asset constants format through the editor with forward references and comm
 test("editor const highlighting preserves ordinary names and helper calls", () => {
     const grammar = JSON.parse(fs.readFileSync(path.join(root, "editor/syntaxes/ips.tmLanguage.json"), "utf8"));
     const introducer = new RegExp(grammar.repository.assetConstant.match);
-    for (const source of ["const i32 Plain=1", "const color iron=#abc", "const distribution typical=gaussian(0,1)"])
+    for (const source of ["const i32 Plain=1", "const color iron=#abc", "const distribution typical=gaussian(0,1)", "const list<vec2> points=[]"])
         assert.equal(introducer.test(source), true, source);
     for (const source of ["const(1)", "const = 1", "input i32 const=1", "const.x"])
         assert.equal(introducer.test(source), false, source);
@@ -247,4 +247,26 @@ test("formatted output ceiling is checked before reading the source into memory"
             execute(_binary, args, _options, callback) { fs.writeFileSync(args.at(-1), "x".repeat(33)); callback(null, "", ""); } }), /byte ceiling/);
         clean(dir);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+
+test("collection formatting and highlighting preserve element types and list call order", async () => {
+    const source = "asset t{size 8x8 const list<vec2> outline=[{1,1},/* corner */{6,1},{1,6}] " +
+        "empty()->list<vec2>{return []} draw{list<color> colors=[] poly(color=#fff,points=outline) items=empty()}}";
+    const dir = workspace(source);
+    const h = editorHarness(dir, execFile); h.settings.compilerPath = compiler;
+    try {
+        const edits = await format(h);
+        assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("/* corner */"));
+        assert.ok(formatted.includes("list<color> colors = []"));
+        assert.ok(formatted.includes("poly(points = outline, color = #ffffff)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        assert.equal(new RegExp(grammar.repository.types.match).test("list<vec2>"),true);
+        assert.equal(new RegExp(grammar.repository.builtins.match).test("list.len(items)"),true);
+    } finally { h.dispose();fs.rmSync(dir,{recursive:true,force:true}); }
 });

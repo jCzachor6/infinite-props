@@ -6,6 +6,54 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Independent stage-2 ordinary polygon/RNG pins, before list support. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/collections.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0}; options.seed = 26;
+        const uint32_t expected[] = {0x40800000,0x41980000,0x41900000,0x40000000,
+            0x41200000,0x41f00000,0x46da8a00,0x475aa600};
+        const uint32_t rows[] = {0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
+            0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
+            0xfff80,0xff80,0x1f00,0x300,0,0,0,0};
+        CHECK(bytes != NULL, "cannot read collection fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err)) == IPROP_OK,
+                  "collection load: %s",err); free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err)) == IPROP_OK,
+                  "collection generation: %s",err); iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width == 32 && image.height == 24 && image.output_count == 4,
+                  "collection image/output metadata");
+            for (uint32_t i = 0; i < image.output_count && i < 4; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1,"collection output metadata");
+                if (output->count == 1) {
+                    uint32_t bits[2]; memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0] == expected[i*2] && bits[1] == expected[i*2+1],"collection bits at %u",i);
+                }
+            }
+            if (image.width == 32 && image.height == 24) for (uint32_t y = 0; y < 24; ++y)
+                for (uint32_t x = 0; x < 32; ++x) {
+                    const uint8_t* actual = image.pixels + (y*32+x)*4;
+                    uint8_t color[4] = {0,0,0,0};
+                    if ((rows[y] >> x) & 1) { color[0]=146; color[1]=156; color[2]=168; color[3]=255; }
+                    if (x == 3 && y == 4) { color[0]=52; color[1]=58; color[2]=66; color[3]=255; }
+                    CHECK(memcmp(actual,color,4) == 0,"collection polygon pixel %u,%u",x,y);
+                }
+            iprop_result_free(result);
+        }
+    }
+
     /* Pins from the preserved stage-1 runtime, using ordinary constructors. */
     {
         char path[1024];

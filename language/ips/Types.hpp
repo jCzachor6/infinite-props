@@ -13,16 +13,7 @@
 
 namespace iprop::ips {
 
-enum class ValueType {
-    I32,
-    F32,
-    Color,
-    Vec2,
-    Distribution,
-    Rect,
-    Circle,
-    Void, // no value (canvas operations, part calls)
-};
+using ValueType = iprop::TypeDescriptor;
 
 const char* typeName(ValueType type);
 

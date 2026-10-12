@@ -8,7 +8,7 @@ using V = ValueType;
 constexpr OperationEffects effects(Opcode op) {
     using R = RngEffect;
     using C = EffectCheck;
-    const auto check = [](C value) { return static_cast<u8>(value); };
+    const auto check = [](C value) { return static_cast<u16>(value); };
     switch (op) {
     case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
         return {R::AdvanceCurrent};
@@ -27,6 +27,10 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
+    case Opcode::ListBegin: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
+    case Opcode::ListLen: return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
         return {R::None,false,false,check(C::NumericRange)};
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
@@ -208,6 +212,13 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::I32Max, "i32.max", 6, StackSignature({S::I32, S::I32}, V::I32)),
     fixed(Opcode::I32Clamp, "i32.clamp", 6, StackSignature({S::I32, S::I32, S::I32}, V::I32)),
     fixed(Opcode::Vec2Normalize, "vec2.normalize", 6, StackSignature({S::Vec2}, V::Vec2)),
+    dynamic(Opcode::ConstList, "const.list", 6, OperandKind::Index),
+    dynamic(Opcode::ListBegin, "list.begin", 6, OperandKind::Index),
+    dynamic(Opcode::ListAppend, "list.append", 6, OperandKind::Index),
+    dynamic(Opcode::ListEnd, "list.end", 6, OperandKind::Index),
+    dynamic(Opcode::ListGet, "list.get", 6, OperandKind::Index),
+    dynamic(Opcode::ListLen, "list.len", 6, OperandKind::Index),
+    dynamic(Opcode::PolyList, "poly.list", 6, OperandKind::None),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -222,7 +233,7 @@ u16 writtenMinor(u16 minor, Opcode opcode) {
     return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
 }
 u16 writtenMinor(u16 minor, ValueType type) {
-    return type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
+    return type.isList() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
 }
 const char* rngEffectName(RngEffect effect) {
     switch (effect) {
@@ -248,6 +259,8 @@ const char* effectCheckName(EffectCheck check) {
     case EffectCheck::DivideByZero: return "divide_by_zero";
     case EffectCheck::IntegerOverflow: return "integer_overflow";
     case EffectCheck::PartOutputContext: return "part_output_context";
+    case EffectCheck::IndexRange: return "index_range";
+    case EffectCheck::UnassignedHandle: return "unassigned_handle";
     }
     return "unknown";
 }

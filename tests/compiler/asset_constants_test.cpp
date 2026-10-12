@@ -88,7 +88,11 @@ TEST_CASE("constant builtins agree with runtime including named arguments and di
                 const auto& param = overload.params[j - 1];
                 if (j != overload.params.size()) call += ",";
                 call += param.name + "=";
-                if (param.type == ips::ValueType::Color) call += "#915f34af";
+                if (param.type.isList()) call += param.type.element == ips::ValueType::Color ? "[#915f34af]" :
+                    param.type.element == ips::ValueType::Vec2 ? "[{0.375,0.625}]" :
+                    param.type.element == ips::ValueType::Distribution ? "[gaussian(0.5,0.18)]" :
+                    param.type.element == ips::ValueType::F32 ? "[0.375]" : "[3]";
+                else if (param.type == ips::ValueType::Color) call += "#915f34af";
                 else if (param.type == ips::ValueType::Vec2) call += "{0.375,0.625}";
                 else if (param.type == ips::ValueType::I32) call += param.name == "seed" ? "0x31ac975b" : "3";
                 else if (param.name == "min") call += "0.0";

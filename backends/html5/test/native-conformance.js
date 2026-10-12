@@ -22,6 +22,7 @@ const sources = [
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["math-bounds", "examples/language/math-bounds.ips"],
     ["asset-constants", "examples/language/asset-constants.ips"],
+    ["collections", "examples/language/collections.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
@@ -128,6 +129,7 @@ function run(iprop, toolsDir) {
     let mathComparisons = 0;
     let constantComparisons = 0;
     let constantOverloads = 0;
+    let collectionEvidence = {};
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -446,11 +448,12 @@ function run(iprop, toolsDir) {
         const constants = require("./constant-conformance.js").run(iprop, tool, temporary);
         constantComparisons = constants.comparisons;
         constantOverloads = constants.overloads;
+        collectionEvidence = require("./collection-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
-        colorComparisons, mathComparisons, constantComparisons, constantOverloads };
+        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

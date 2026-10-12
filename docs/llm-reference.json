@@ -13,6 +13,7 @@
       "random",
       "colors",
       "palette",
+      "collections",
       "part",
       "limits",
       "grammar",
@@ -24,7 +25,8 @@
       "pixel",
       "int",
       "unit",
-      "ramp"
+      "ramp",
+      "list.len"
     ]
   },
   "sections": [
@@ -183,6 +185,24 @@
             "ebnf"
           ]
         }
+      ]
+    },
+    {
+      "id": "collections",
+      "title": "Immutable lists and polygon points",
+      "chapter": "collections.md",
+      "parts": [
+        {
+          "heading": "Literals and types",
+          "paragraphs": 1
+        },
+        {
+          "heading": "Index and length",
+          "paragraphs": 1
+        }
+      ],
+      "examples": [
+        "collections.ips"
       ]
     }
   ],

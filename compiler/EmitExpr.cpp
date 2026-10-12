@@ -25,6 +25,19 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         ins(Opcode::LocalGet, 0, static_cast<u16>(slot));
         return current_->langTypes.at(id->name);
     }
+    if (const auto* list = std::get_if<ips::ListLit>(&expr)) {
+        const auto type = current_->typeOf(expr);
+        const auto descriptor = plan_.pools.addType(type);
+        emitConst(static_cast<i32>(list->elements.size()));
+        ins(Opcode::ListBegin, 0, descriptor);
+        for (const auto& element : list->elements) {
+            emitExpr(*element);
+            if (type.element == ips::ValueType::F32 && current_->typeOf(*element) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+            ins(Opcode::ListAppend, 0, descriptor);
+        }
+        ins(Opcode::ListEnd, 0, descriptor);
+        return type;
+    }
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         // A {x, y} literal in a value context becomes the vec2; the
         // 3/4-element compounds only flow into output writes.
@@ -64,7 +77,11 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {
-        return PaletteLowerer(*this, *current_->expression(expr).palette).index(*index->index);
+        if (const auto* palette = current_->expression(expr).palette) return PaletteLowerer(*this, *palette).index(*index->index);
+        emitExpr(*index->object);
+        emitExpr(*index->index);
+        ins(Opcode::ListGet, 0, plan_.pools.addType(current_->typeOf(*index->object)));
+        return current_->typeOf(expr);
     }
     if (const auto* bin = std::get_if<ips::Binary>(&expr)) {
         return emitBinary(*bin);

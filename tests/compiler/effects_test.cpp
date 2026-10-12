@@ -19,11 +19,13 @@ std::string arguments(const ips::BuiltinOverload& overload, bool invalid = false
     for (const auto& parameter : overload.params) {
         if (!result.empty()) result += ',';
         using T = ips::ValueType;
-        std::string value = parameter.type == T::Color ? "#999999" :
+        std::string value = parameter.type.isList() ? (parameter.type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
+            parameter.type.element == T::Color ? "[#999999]" : parameter.type.element == T::F32 ? "[1.0]" :
+            parameter.type.element == T::Distribution ? "[gaussian(0.5,0.18)]" : "[1]") : parameter.type == T::Color ? "#999999" :
             parameter.type == T::Vec2 ? "{1,1}" : parameter.type == T::F32 ? "1.0" : "1";
         if (parameter.name == "amount") value = "32";
         if (invalid && !injected && parameter.type != T::Color) {
-            value = parameter.type == T::Vec2 ? "{1.0/0.0,1}" :
+            value = parameter.type.isList() ? "[{1.0/0.0,1},{6,1},{1,6}]" : parameter.type == T::Vec2 ? "{1.0/0.0,1}" :
                 parameter.type == T::F32 ? "1.0/0.0" : "2147483647";
             injected = true;
         }

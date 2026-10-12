@@ -105,6 +105,7 @@ struct Execution {
     // The entry frame's stack when it exits; a tooling hook for debuggers
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
+    ResourceArena resources;
 
     explicit Execution(const LoadedFile& f) : file(f) {}
 
@@ -123,6 +124,8 @@ struct Execution {
     Color popColor();
     Vec2 popVec2();
     Distribution popDistribution();
+    ListValue popList();
+    void allocateResource(u64 bytes);
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
@@ -157,6 +160,7 @@ bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);
 bool stepParts(Execution& ex, Instruction ins);
+bool stepCollections(Execution& ex, Instruction ins);
 
 // Compile-time evaluation of one stateless value operation. Uses the same
 // adapters, kernels and traps as generation, without a canvas or RNG stream.

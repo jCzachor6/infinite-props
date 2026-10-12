@@ -9,6 +9,7 @@
 | `color` | RGBA8 channels, read as `i32` through `.r`, `.g`, `.b`, `.a` | yes |
 | `vec2` | two `f32` components | yes |
 | `distribution` | a [distribution](random.md#distributions) family and its parameters | yes |
+| `list<T>` | zero to 256 immutable values of a current element type | yes |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
@@ -25,7 +26,8 @@ is performed. Integer-to-float conversion can lose precision.
 
 The first assignment to a fresh name declares a local and fixes its type.
 `distribution name = value` also states the type and requires a
-distribution value; no other type is written in a declaration.
+distribution value. `list<T> name = value` supplies the element context,
+including for an empty literal. See [collections](collections.md).
 Locals belong to the whole function, including those first assigned inside
 a branch or loop; braces do not introduce shadowing scopes. Source is checked
 in traversal order. Initialize a local before branching if it is needed later:

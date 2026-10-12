@@ -92,7 +92,12 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -109,7 +114,12 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -126,7 +136,12 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -274,6 +289,53 @@
               },
               "description": "Optional capability list added in source language 0.6. Earlier schema-2 exports omit it; absence does not mean member access is unsupported.",
               "minItems": 1
+            },
+            "parameterized": {
+              "type": "array",
+              "description": "Supported parameterized type constructors and immutable runtime representation.",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "constructor",
+                  "element_types",
+                  "nested",
+                  "representation"
+                ],
+                "properties": {
+                  "constructor": {
+                    "type": "string",
+                    "const": "list",
+                    "description": "Parameterized type constructor name."
+                  },
+                  "element_types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "description": "Supported homogeneous element types for this stage.",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "i32",
+                        "f32",
+                        "color",
+                        "vec2",
+                        "distribution"
+                      ]
+                    }
+                  },
+                  "nested": {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Whether this stage supports nested collection elements."
+                  },
+                  "representation": {
+                    "type": "string",
+                    "const": "immutable_arena_handle",
+                    "description": "Internal value ownership and transfer representation."
+                  }
+                }
+              }
             }
           },
           "required": [
@@ -1002,7 +1064,12 @@
                   "f32",
                   "color",
                   "vec2",
-                  "distribution"
+                  "distribution",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>"
                 ],
                 "description": "An implemented asset constant type."
               },
@@ -1053,6 +1120,98 @@
           ],
           "additionalProperties": true,
           "description": "Typed, immutable asset declarations and their compile-time acceptance policy."
+        },
+        "collections": {
+          "type": "object",
+          "description": "Immutable list semantics, legacy palette compatibility and generation resource limits.",
+          "required": [
+            "literal",
+            "minimum_length",
+            "maximum_length",
+            "empty_literal",
+            "element_evaluation",
+            "numeric_elements",
+            "index_type",
+            "index_bounds",
+            "mutable",
+            "helper_transfer",
+            "legacy_palette_index",
+            "legacy_palette_length_limit",
+            "palette_as_list_maximum",
+            "generation_data_limit_bytes"
+          ],
+          "properties": {
+            "literal": {
+              "type": "string",
+              "const": "[<elements>]",
+              "description": "List literal syntax."
+            },
+            "minimum_length": {
+              "type": "integer",
+              "const": 0,
+              "description": "Minimum ordinary list length."
+            },
+            "maximum_length": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum ordinary list length."
+            },
+            "empty_literal": {
+              "type": "string",
+              "const": "known_list_type_required",
+              "description": "Element context required for an empty literal."
+            },
+            "element_evaluation": {
+              "type": "string",
+              "const": "left_to_right_once",
+              "description": "Evaluation order and multiplicity of literal elements."
+            },
+            "numeric_elements": {
+              "type": "string",
+              "const": "i32_to_f32_widening",
+              "description": "Allowed numeric element promotion and contextual literal widening."
+            },
+            "index_type": {
+              "type": "string",
+              "const": "i32",
+              "description": "Required expression type for an index."
+            },
+            "index_bounds": {
+              "type": "string",
+              "const": "trap",
+              "description": "Behavior for negative or out-of-range ordinary list indices."
+            },
+            "mutable": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether element mutation or dynamic growth is supported."
+            },
+            "helper_transfer": {
+              "type": "string",
+              "const": "share_immutable_data",
+              "description": "Storage sharing when passing or returning a list."
+            },
+            "legacy_palette_index": {
+              "type": "string",
+              "const": "last_element_fallback",
+              "description": "Compatibility behavior of direct legacy palette indexing."
+            },
+            "legacy_palette_length_limit": {
+              "type": "string",
+              "const": "unchanged",
+              "description": "Compatibility behavior of existing indexed palette and ramp limits."
+            },
+            "palette_as_list_maximum": {
+              "type": "integer",
+              "const": 256,
+              "description": "Size limit of a palette used as a first-class list."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Maximum additional list and part canvas data charged per generation."
+            }
+          }
         }
       },
       "required": [
@@ -1091,7 +1250,8 @@
             "type": "string",
             "enum": [
               "call_depth_limit",
-              "fuel_exhausted"
+              "fuel_exhausted",
+              "generation_data_limit"
             ],
             "description": "Program-wide execution resource limits."
           },
@@ -1329,7 +1489,9 @@
               "part_output_context",
               "part_output_missing",
               "part_render_arguments",
-              "stream_stack_underflow"
+              "stream_stack_underflow",
+              "index_range",
+              "unassigned_handle"
             ],
             "description": "Call-specific checks; resource-wide traps are separate."
           },
@@ -1368,7 +1530,12 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -1404,7 +1571,12 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1472,7 +1644,12 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1519,7 +1696,12 @@
               "palette<f32>",
               "rect",
               "vec2",
-              "void"
+              "void",
+              "list<i32>",
+              "list<f32>",
+              "list<color>",
+              "list<vec2>",
+              "list<distribution>"
             ],
             "description": "Allowed value types for every eager choice."
           },

@@ -27,11 +27,13 @@ draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
 parameter     = name, ":", value_type ;
-value_type    = "i32" | "f32" | "color" | "vec2" | "distribution" ;
+scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
+list_type     = "list", "<", scalar_type, ">" ;
+value_type    = scalar_type | list_type ;
 block         = "{", { ";" | statement }, "}" ;
 statement     = assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" ], name, "=", expression ;  (* contextual "distribution" *)
+assignment    = [ "distribution" | list_type ], name, "=", expression ;  (* contextual "distribution" *)
 call_statement = name, { postfix_suffix } ;  (* must end as a call AST *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
@@ -54,7 +56,8 @@ unary         = ("-" | "!" | "~"), unary | postfix ;
 postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
-primary       = literal | name | compound | "(", expression, ")" ;
+primary       = literal | name | compound | list_literal | "(", expression, ")" ;
+list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
 expressions   = expression, { ",", expression }, [ "," ] ;
 arguments     = argument, { ",", argument }, [ "," ] ;

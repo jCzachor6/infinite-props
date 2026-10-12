@@ -23,6 +23,8 @@ enum class SectionId : u32 {
     Code = 3,
     Debug = 4,
     Parts = 5, // v0.5: part instance names and parents (spec v0.5 §6)
+    Types = 6, // v0.6: parameterized type descriptors
+    Collections = 7, // v0.6: immutable collection constants
 };
 
 // Input (uniform) types (spec §4.1).
@@ -238,6 +240,13 @@ enum class Opcode : u8 {
     I32Max = 0xB2,
     I32Clamp = 0xB3,
     Vec2Normalize = 0xB4,
+    ConstList = 0xB5,
+    ListBegin = 0xB6,
+    ListAppend = 0xB7,
+    ListEnd = 0xB8,
+    ListGet = 0xB9,
+    ListLen = 0xBA,
+    PolyList = 0xBB,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

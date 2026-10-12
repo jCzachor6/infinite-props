@@ -1,4 +1,5 @@
 #include "Optimizer.hpp"
+#include <algorithm>
 
 namespace iprop::compiler {
 
@@ -23,6 +24,22 @@ void compactPools(Plan& plan) {
         }
     }
     Pools pools;
+    std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size());
+    const auto markType = [&](ValueType type) {
+        if (!type.isList()) return;
+        const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
+        if (found == old.typesValue().end()) throw std::logic_error("missing collection descriptor");
+        types.at(static_cast<std::size_t>(found - old.typesValue().begin())) = true;
+    };
+    for (const auto& f : plan.functions) {
+        for (const auto* slots : {&f.params, &f.results, &f.locals}) for (const auto type : *slots) markType(type);
+        for (const auto ins : f.code) {
+            if (ins.opcode == Opcode::ConstList) {
+                lists.at(ins.operand) = true; markType(old.listsValue().at(ins.operand).type);
+            }
+            if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) types.at(ins.operand) = true;
+        }
+    }
     for (const auto& name : old.stringsValue()) if (names.contains(name)) pools.addString(name);
     const auto remap = [](const auto& values, const auto& used, auto add) {
         std::vector<u16> map(values.size());
@@ -32,7 +49,11 @@ void compactPools(Plan& plan) {
     const auto imap = remap(old.intsValue(), ints, [&](u32 x) { return pools.addInt(x); });
     const auto fmap = remap(old.floatsValue(), floats, [&](u32 x) { return pools.addFloat(x); });
     const auto cmap = remap(old.colorsValue(), colors, [&](Color x) { return pools.addColor(x); });
+    const auto tmap = remap(old.typesValue(), types, [&](ValueType type) { return pools.addType(type); });
+    const auto lmap = remap(old.listsValue(), lists, [&](const ListValue& list) { return pools.addList(list); });
     for (auto& f : plan.functions) for (auto& ins : f.code) {
+        if (ins.opcode == Opcode::ConstList) ins.operand = lmap.at(ins.operand);
+        if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstI32) ins.operand = imap.at(ins.operand);
         if (ins.opcode == Opcode::ConstF32) ins.operand = fmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstColor) ins.operand = cmap.at(ins.operand);

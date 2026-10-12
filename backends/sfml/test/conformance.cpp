@@ -187,6 +187,35 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Independent stage-2 polygon/RNG pins through the existing host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/collections.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image = iprop::sfml_host::queryImage(result.get());
+        const auto slots = checkOutputs(result.get());
+        const std::uint32_t expected[] = {0x40800000,0x41980000,0x41900000,0x40000000,
+            0x41200000,0x41f00000,0x46da8a00,0x475aa600};
+        const std::uint32_t rows[] = {0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
+            0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
+            0xfff80,0xff80,0x1f00,0x300,0,0,0,0};
+        CHECK(image.width==32 && image.height==24 && slots.size()==4,"collection image metadata");
+        for(std::size_t i=0;i<slots.size() && i<4;++i) {
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"collection output metadata");
+            if(slots[i].values.size()==2) {
+                std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"collection output bits");
+            }
+        }
+        if(image.width==32 && image.height==24) for(unsigned y=0;y<24;++y) for(unsigned x=0;x<32;++x) {
+            const std::uint8_t* actual=image.pixels+(y*32+x)*4;
+            std::uint8_t color[4]={0,0,0,0};
+            if((rows[y]>>x)&1) {color[0]=146;color[1]=156;color[2]=168;color[3]=255;}
+            if(x==3 && y==4) {color[0]=52;color[1]=58;color[2]=66;color[3]=255;}
+            CHECK(std::memcmp(actual,color,4)==0,"collection polygon pixel %u,%u",x,y);
+        }
+    }
+
     // Existing root/helper/part fixture: all D4 transforms, owner 2 has no
     // declarations, unset singulars and empty lists remain in their positions.
     {

@@ -16,7 +16,7 @@ the declared counts traps. `draw` declares no parameters or return type.
 ## Asset constants
 
 `const type name = expression` declares an immutable asset value with an
-explicit `i32`, `f32`, `color`, `vec2` or `distribution` type. Constants are
+explicit `i32`, `f32`, `color`, `vec2`, `distribution` or [list<T>](collections.md) type. Constants are
 visible in `draw` and every helper of their defining asset. Imported parts
 resolve their own constants; a parent cannot access a child's constants.
 `i32` initializers may widen to declared `f32`; other types must match.
@@ -52,10 +52,12 @@ an asset declaration introducer; an existing `const(...)` helper, local or
 input named `const` remains valid. Use distinct descriptive names.
 
 Input defaults and legacy palette elements retain their literal-only grammar;
-declaring a constant does not expand those grammar rules. Constants introduce
+declaring a constant does not expand those grammar rules. Scalar constants introduce
 no new opcode, type code, section, host enum or ABI layout. Scalar/vector
 values lower through existing pools and instructions; a used distribution
-needs format 0.5. An unused declaration adds no executable instruction.
+needs format 0.5. An unused declaration adds no executable instruction. Used lists share immutable
+collection data and require format 0.6; scalar results computed from lists
+can retain older formats.
 
 <!-- example: ../../examples/language/errors/const-cycle.ips -->
 <!-- example: ../../examples/language/errors/const-rng.ips -->

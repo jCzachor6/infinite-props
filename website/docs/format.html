@@ -36,7 +36,9 @@ signed integer min/max/clamp and stable vector normalization. The runtime reads
 0.1–0.6; existing mathematical and host output contracts remain frozen. Later
 0.7 features are not implemented by this stage. Stage 2 adds typed asset
 constants evaluated by the compiler through existing runtime operations;
-constants introduce no new binary layout or host interface.</p>
+scalar constants introduce no new binary layout or host interface. Stage 3 adds
+parameterized type descriptors, immutable collection pools and list instructions,
+including <code>poly(list&lt;vec2&gt;, color)</code>; public host layouts remain unchanged.</p>
 <ul>
 <li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older
 than 0.4: a file retaining a new math instruction needs 0.6, while 0.5 instructions
@@ -50,7 +52,7 @@ unreachable code.</li>
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", version, flags, section count
 section table (12 bytes × N)   id, offset, size
-sections                       meta · const · code · debug (optional) · parts (0.5)</code></pre>
+sections                       meta · const · code · debug (optional) · parts (0.5) · types / collections (0.6)</code></pre>
 <ul>
 <li>All multi-byte values are little-endian; sections are 4-byte aligned.</li>
 <li>Header flag bit 0 marks the debug section; the validator rejects a flag/section mismatch.</li>
@@ -67,6 +69,7 @@ reference lowering; none of them changes the image or output bits.</p>
 <table>
 <tr><th>section</th><th>contents</th></tr>
 <tr><td><code>meta</code></td><td>the canvas size, the origin, the declared variants and archetypes, the fuel budget, the input uniforms (type, name, default) and the output slots (kind, list flag, name)</td></tr>
+<tr><td><code>types / collections</code></td><td>format 0.6 descriptors and immutable list data; helper values share arena handles</td></tr>
 <tr><td><code>const</code></td><td>deduplicated pools of strings, <code>i32</code>, <code>f32</code> and colours, referenced by index</td></tr>
 <tr><td><code>code</code></td><td>the function table (names, signatures, locals, offsets), the instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
 <tr><td><code>debug</code></td><td>informative: local names and the source line of every instruction; stripping it never changes execution</td></tr>

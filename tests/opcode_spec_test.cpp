@@ -24,7 +24,7 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
     const bool increasing = spec.stack && spec.stack->result == ValueType::Distribution;
     u16 nextFloat = 0;
     for (const auto type:arguments) {
-        switch (type) {
+        switch (type.kind) {
         case ValueType::I32: append(helper,Opcode::ConstI32); break;
         case ValueType::F32: append(helper,Opcode::ConstF32,increasing ? nextFloat++ : 0); break;
         case ValueType::Color: append(helper,Opcode::ConstColor); break;
@@ -34,6 +34,7 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
         case ValueType::Distribution:
             append(helper,Opcode::ConstF32); append(helper,Opcode::ConstF32);
             append(helper,Opcode::DistributionGaussian); break;
+        default: throw std::logic_error("test requires a scalar opcode");
         }
     }
     append(helper,spec.opcode,0,aux); append(helper,Opcode::Return);
@@ -58,7 +59,9 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
             auto body=retIns();
             append(body,spec.opcode); // version gates must also cover unreachable instructions
             auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
-            REQUIRE_NOTHROW(validate(loadFile(bytes)));
+            const bool collection = static_cast<u8>(spec.opcode) >= static_cast<u8>(Opcode::ConstList) &&
+                static_cast<u8>(spec.opcode) <= static_cast<u8>(Opcode::PolyList);
+            if (!collection) REQUIRE_NOTHROW(validate(loadFile(bytes)));
             bytes[6]=static_cast<u8>(spec.minimumMinor-1);
             CHECK_THROWS_AS(validate(loadFile(bytes)),FormatError);
         }
@@ -96,5 +99,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 151);
+    CHECK(names.size() == 158);
 }

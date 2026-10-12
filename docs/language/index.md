@@ -5,12 +5,13 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements stages 1–2 of source language **0.7**, in development
+This checkout implements stages 1–3 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler emits the oldest required format, from 0.4 to 0.6;
 the ABI remains 0.4. The new implemented features are integer bounds overloads
-and vector normalization, plus typed immutable asset constants; later 0.7
+and vector normalization, typed immutable asset constants, and lists with
+helper transfer and polygon drawing; later 0.7
 stages are not yet available.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
@@ -33,14 +34,15 @@ files; their contents are included in the generated book and tested by CI.
 10. [Vectors and distance fields](geometry.md)
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
-13. [Imports and part composition](composition.md)
-14. [Writing idiomatic props](idioms.md)
-15. [Compiler tools and diagnostics](tooling.md)
-16. [Grammar](grammar.md)
-17. [Maintaining this documentation](development.md)
-18. [Migration and implementation contracts for 0.5](migration-v0.5.md)
-19. [Migration and implementation contracts for 0.6](migration-v0.6.md)
-20. [Migration and implementation contracts for 0.7](migration-v0.7.md)
+13. [Immutable lists](collections.md)
+14. [Imports and part composition](composition.md)
+15. [Writing idiomatic props](idioms.md)
+16. [Compiler tools and diagnostics](tooling.md)
+17. [Grammar](grammar.md)
+18. [Maintaining this documentation](development.md)
+19. [Migration and implementation contracts for 0.5](migration-v0.5.md)
+20. [Migration and implementation contracts for 0.6](migration-v0.6.md)
+21. [Migration and implementation contracts for 0.7](migration-v0.7.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

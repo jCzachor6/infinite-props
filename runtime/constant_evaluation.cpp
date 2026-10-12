@@ -16,7 +16,7 @@ std::optional<Value> evaluateConstantOperation(Opcode op, std::span<const Value>
     const auto& signature = *operation->stack;
     if (args.size() != signature.inputCount) return std::nullopt;
     for (std::size_t i = 0; i < args.size(); ++i)
-        if (!accepts(signature.inputs[i], static_cast<ValueType>(args[i].index()))) return std::nullopt;
+        if (!accepts(signature.inputs[i], valueType(args[i]))) return std::nullopt;
 
     // Only the value-operation groups are dispatched: no calls, control flow,
     // locals, metadata, output slots or rendering can run here. One frame

@@ -63,6 +63,16 @@
     {"file": "traps/divide-by-zero.ips", "expect": "trap", "message": "divide by zero"},
     {"file": "traps/stream-pop.ips", "expect": "trap", "message": "stream stack underflow"},
     {"file": "traps/reversed-range.ips", "expect": "trap", "message": "lower bound exceeds the upper bound"},
-    {"file": "traps/negative-sigma.ips", "expect": "trap", "message": "gaussian needs a finite mean and a finite sigma > 0"}
+    {"file": "traps/negative-sigma.ips", "expect": "trap", "message": "gaussian needs a finite mean and a finite sigma > 0"},
+    {"file": "collections.ips", "expect": "pass"},
+    {"file": "errors/list-empty.ips", "expect": "compile-error", "message": "empty list needs a known list<T> type"},
+    {"file": "errors/list-mixed.ips", "expect": "compile-error", "message": "list element needs i32"},
+    {"file": "errors/list-nested.ips", "expect": "compile-error", "message": "list elements must be"},
+    {"file": "errors/list-assignment.ips", "expect": "compile-error", "message": "list elements are immutable"},
+    {"file": "errors/list-index-type.ips", "expect": "compile-error", "message": "list index must be i32"},
+    {"file": "errors/const-list-index.ips", "expect": "compile-error", "message": "list index out of range"},
+    {"file": "traps/list-index.ips", "expect": "trap", "message": "list index out of range"},
+    {"file": "traps/list-unassigned.ips", "expect": "trap", "message": "list handle is unassigned"},
+    {"file": "traps/poly-list-size.ips", "expect": "trap", "message": "poly requires at least three vertices"}
   ]
 }

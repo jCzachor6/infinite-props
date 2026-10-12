@@ -106,6 +106,25 @@ std::vector<u8> Assembler::assemble() {
         consts.writeColor(color);
     }
 
+    Writer types;
+    Writer collections;
+    if (!plan_.pools.typesValue().empty()) {
+        types.writeU32(static_cast<u32>(plan_.pools.typesValue().size()));
+        for (const auto type : plan_.pools.typesValue()) {
+            types.writeU8(static_cast<u8>(type.kind)); types.writeU8(static_cast<u8>(type.element)); types.writeU16(0);
+        }
+    }
+    if (!plan_.pools.listsValue().empty()) {
+        collections.writeU32(static_cast<u32>(plan_.pools.listsValue().size()));
+        for (const auto& list : plan_.pools.listsValue()) {
+            const auto& descriptors = plan_.pools.typesValue();
+            const auto found = std::find(descriptors.begin(), descriptors.end(), list.type);
+            collections.writeU16(static_cast<u16>(found - descriptors.begin()));
+            collections.writeU16(static_cast<u16>(list.data->elements.size()));
+            writeListElements(collections, *list.data);
+        }
+    }
+
     // ---- code section (spec §6) ----
     Writer table;
     Writer streams;
@@ -119,17 +138,17 @@ std::vector<u8> Assembler::assemble() {
         table.writeU16(static_cast<u16>(function.params.size()));
         for (const ValueType type : function.params) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, plan_.pools.typesValue());
         }
         table.writeU16(static_cast<u16>(function.results.size()));
         for (const ValueType type : function.results) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, plan_.pools.typesValue());
         }
         table.writeU16(static_cast<u16>(function.locals.size()));
         for (const ValueType type : function.locals) {
             minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, plan_.pools.typesValue());
         }
         for (const Instruction& ins : function.code) {
             minor = writtenMinor(minor, ins.opcode);
@@ -200,6 +219,8 @@ std::vector<u8> Assembler::assemble() {
         }
     }
 
+    if (types.size() || collections.size()) minor = 6;
+    const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) + (collections.size() ? 1u : 0u);
     // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : kMagic) {
@@ -208,9 +229,9 @@ std::vector<u8> Assembler::assemble() {
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(kFlagDebug); // flags: debug section present
-    file.writeU32(plan_.parts.empty() ? 4 : 5); // section count
+    file.writeU32(sectionCount); // section count
     file.writeU32(0);          // reserved
-    u32 offset = kHeaderSize + (plan_.parts.empty() ? 4 : 5) * 12;
+    u32 offset = kHeaderSize + sectionCount * 12;
     const auto section = [&](u32 id, const std::vector<u8>& bytes) {
         file.writeU32(id);
         file.writeU32(offset);
@@ -221,11 +242,15 @@ std::vector<u8> Assembler::assemble() {
     section(static_cast<u32>(SectionId::Const), consts.data());
     section(static_cast<u32>(SectionId::Code), code.data());
     if (!plan_.parts.empty()) section(static_cast<u32>(SectionId::Parts), instances.data());
+    if (types.size()) section(static_cast<u32>(SectionId::Types), types.data());
+    if (collections.size()) section(static_cast<u32>(SectionId::Collections), collections.data());
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     file.writeBytes(instances.data());
+    file.writeBytes(types.data());
+    file.writeBytes(collections.data());
     file.writeBytes(debug.data());
     return file.data();
 }

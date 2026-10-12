@@ -12,7 +12,7 @@ namespace iprop {
 
 enum class StackType : u8 { I32 = 1, F32 = 2, Color = 4, Vec2 = 8, ScalarOrVec2 = 10, Distribution = 16 };
 constexpr bool accepts(StackType expected, ValueType actual) {
-    return (static_cast<u8>(expected) & (1u << static_cast<u8>(actual))) != 0;
+    return actual.isScalar() && (static_cast<u8>(expected) & (1u << static_cast<u8>(actual))) != 0;
 }
 
 struct StackSignature {
@@ -33,14 +33,14 @@ enum class AuxPolicy { Zero, PartTransform };
 // current stream; isolated calls restore it after their own draw/callee.
 enum class RngEffect { None, ReadCurrent, AdvanceCurrent, PushSeededStream,
     RestoreStream, SeededComputation, IsolatedSeededStream, SharedCallee, IsolatedCallee };
-enum class EffectCheck : u8 { NumericRange = 1, StreamStackUnderflow = 2,
+enum class EffectCheck : u16 { NumericRange = 1, StreamStackUnderflow = 2,
     PartRenderArguments = 4, Callee = 8, PartOutputMissing = 16,
-    DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128 };
+    DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128, IndexRange = 256, UnassignedHandle = 512 };
 struct OperationEffects {
     RngEffect rng = RngEffect::None;
     bool writesCanvas = false;
     bool writesOutputs = false;
-    u8 checks = 0;
+    u16 checks = 0;
     bool conservative = false;
     bool operator==(const OperationEffects&) const = default;
 };

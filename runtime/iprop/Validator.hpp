@@ -4,6 +4,7 @@
 #include "iprop/Consts.hpp"
 #include "iprop/Format.hpp"
 #include "iprop/Meta.hpp"
+#include "iprop/Collections.hpp"
 
 #include <span>
 #include <vector>
@@ -21,6 +22,7 @@ struct LoadedFile {
     ConstPool pool;
     AssetMeta meta;
     CodeSection code;
+    CollectionPool collections;
 
     std::span<const u8> bytes() const { return storage; }
 

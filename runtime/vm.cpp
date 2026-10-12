@@ -12,12 +12,14 @@ namespace {
 
 // Every frame starts each declared local with the same typed zero value.
 Value zeroValue(ValueType type) {
-    switch (type) {
+    switch (type.kind) {
     case ValueType::I32: return Value(i32{0});
     case ValueType::F32: return Value(f32{0.f});
     case ValueType::Color: return Value(Color{});
     case ValueType::Vec2: return Value(Vec2{});
     case ValueType::Distribution: return Value(Distribution{});
+    case ValueType::List: return Value(ListValue{type, {}});
+    default: break;
     }
     return Value(i32{0});
 }
@@ -30,6 +32,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepCore(ex, ins)) {
         return true;
     }
+    if (stepCollections(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }
@@ -207,6 +210,8 @@ void Execution::callPart(u16 partIndex, u8 transform) {
         trap(error.what(), ErrorReason::InvalidPart);
     }
     spend(render.blitCost);
+    const auto partBytes = static_cast<u64>(render.sourceExtent.x) * static_cast<u64>(render.sourceExtent.y) * sizeof(Color);
+    if (file.layout.header.versionMinor >= 6) allocateResource(partBytes);
     PartCallState state;
     state.partIndex = partIndex;
     state.render = render;
@@ -267,6 +272,8 @@ void Execution::leaveFrame() {
                 }
             }
         }
+        if (file.layout.header.versionMinor >= 6)
+            resources.release(static_cast<u64>(sub.width) * sub.height * sizeof(Color));
         caller.lastPart = state.partIndex; // the part-output register
     } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
@@ -334,6 +341,7 @@ void Execution::ensureControl(u16 functionIndex) {
 struct VM::Impl {
     detail::Execution ex;
     bool finished = false;
+    bool failed = false;
     bool taken = false;
 
     explicit Impl(const LoadedFile& file) : ex(file) {}
@@ -463,7 +471,9 @@ VM& VM::operator=(VM&&) noexcept = default;
 
 void VM::run() {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
+    if (impl_->failed) throw std::logic_error("VM generation failed");
     detail::Execution& ex = impl_->ex;
+    try {
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
         const auto& fn = ex.file.code.functions[frame.functionIndex];
@@ -484,6 +494,19 @@ void VM::run() {
         }
     }
     impl_->finished = true;
+    if (ex.file.layout.header.versionMinor >= 6) {
+        const auto peak = ex.resources.peak;
+        ex.resources = ResourceArena{};
+        ex.resources.peak = peak;
+    }
+    } catch (...) {
+        if (ex.file.layout.header.versionMinor >= 6) {
+            impl_->failed = true;
+            ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear();
+            ex.resources = ResourceArena{};
+        }
+        throw;
+    }
 }
 
 const Canvas& VM::canvas() const {
@@ -495,6 +518,7 @@ u64 VM::fuelBudget() const { return impl_->ex.budget; }
 const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
 
 GenerationResult VM::result() const {
+    if (impl_->failed) throw std::logic_error("VM generation failed");
     if (impl_->taken) throw std::logic_error("VM result already consumed");
     GenerationResult result;
     result.image = impl_->ex.canvas;

@@ -1,6 +1,9 @@
 # Shared by the native product and the independently configured WASM build.
 set(IPROP_RUNTIME_SOURCES
     version.cpp
+    type_descriptor.cpp
+    collections.cpp
+    collection_ops.cpp
     opcode_name.cpp
     opcode_spec.cpp
     debug.cpp

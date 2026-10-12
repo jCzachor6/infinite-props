@@ -58,6 +58,8 @@ contract. Use valid positive radii for ordinary ellipses.
 
 Paints a filled polygon with at least three `(x, y)` pairs. Positional color
 comes first. Named coordinates are `x0`, `y0`, `x1`, `y1`, etc., with `color`.
+`poly(points, color)` also accepts an immutable `list<vec2>` of at least
+three vertices. Its named argument is `points`; points evaluate before color.
 Coordinates evaluate first in vertex order, then color, even for reordered
 named arguments. The point-in-polygon rule is specified in the canvas contract.
 

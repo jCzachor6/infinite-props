@@ -36,12 +36,15 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 const auto* opcode = findOpcode(*overload.opcode);
                 REQUIRE(opcode);
                 CHECK(effects == opcode->effects);
-                REQUIRE(opcode->stack);
+                if (!opcode->stack) {
+                    REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon));
+                } else {
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)
                     CHECK(accepts(opcode->stack->inputs[i],runtimeType(overload.params[i].type)));
                 if (overload.result == T::Void) CHECK_FALSE(opcode->stack->result);
                 else CHECK(opcode->stack->result == runtimeType(overload.result));
+                }
             }
             std::string args;
             std::string named;
@@ -55,7 +58,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" :
+                const std::string value = type.isList() ? (type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
+                    type.element == T::Color ? "[#112233]" : type.element == T::Distribution ? "[gaussian(1,1)]" :
+                    type.element == T::F32 ? "[1.0]" : "[1]") : type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" :
                     type == T::F32 ? (overload.result == T::Distribution ? std::to_string(position) + ".0" : "1.0") : "1";
                 args += value;
                 named = param.name + "=" + value + (named.empty() ? "" : "," + named);

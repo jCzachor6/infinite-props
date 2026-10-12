@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "ips/Lexer.hpp"
+#include "iprop/TypeDescriptor.hpp"
 
 namespace iprop::ips {
 
@@ -73,6 +74,11 @@ struct VectorLit {
     SourceLocation location;
 };
 
+struct ListLit {
+    std::vector<std::unique_ptr<Expr>> elements;
+    SourceLocation location;
+};
+
 // An index into an asset-level palette: `palette[i]`.
 struct Index {
     std::unique_ptr<Expr> object;
@@ -113,9 +119,9 @@ struct RandomRange {
 };
 
 struct Expr
-    : std::variant<Literal, Identifier, Member, Call, VectorLit, Index, Binary,
+    : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
                    Unary, RandomRange> {
-    using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
+    using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
                        Binary, Unary, RandomRange>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
@@ -126,7 +132,7 @@ struct Expr
 // The declared type of a function parameter or return value: the scalar
 // and vec2 types the VM can store in locals (spec §3/§9). Unlike `input`,
 // there is no u32 — parameters are always locals.
-enum class ParamType { I32, F32, Color, Vec2, Distribution };
+using ParamType = iprop::TypeDescriptor;
 
 struct Stmt;
 

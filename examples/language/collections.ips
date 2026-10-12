@@ -1,0 +1,36 @@
+asset collections {
+  size 32 24
+  output point checks
+  output point direction
+  output point samples
+  output point state
+
+  const list<vec2> outline = [{3, 4}, {18, 2}, {25, 15}, {8, 20}]
+  const list<color> steel = [#929ca8, #343a42]
+  const list<distribution> shapes = [gaussian(0.5, 0.18), beta(2, 2)]
+  palette legacy = [7, 11, 19]
+
+  paintShape(points: list<vec2>, tint: color) {
+    poly(points, tint)
+  }
+
+  echo(items: list<i32>) -> list<i32> {
+    return items
+  }
+
+  empty() -> list<vec2> {
+    return []
+  }
+
+  draw {
+    paintShape(outline, steel[0])
+    pixel(3, 4, steel[1])
+    rolls = echo([10 to 15, 20 to 30])
+    storedPalette = legacy
+    checks = {list.len(outline), list.len(empty()) + storedPalette[2]}
+    direction = outline[1]
+    samples = {rolls[0], rolls[1]}
+    shaped = 0.0 to 1.0 with shapes[0]
+    state = {seed & 65535, seed >> 16}
+  }
+}

@@ -1,0 +1,4 @@
+asset list_unassigned {
+  size 1 1
+  draw { if (false) { items = [1] } count = list.len(items) }
+}

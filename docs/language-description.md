@@ -188,3 +188,20 @@ The [versioned export contracts](export-contracts.md) define schema migration,
 required current fields, additive compatibility and explicit frozen profiles.
 The [formal language schema](language-description.schema.json) describes every
 exported field without duplicating registered signatures.
+
+## Parameterized lists
+
+Schema 3 now describes `list<i32>`, `list<f32>`, `list<color>`, `list<vec2>` and
+`list<distribution>` in the generated storable/helper/constant type sets.
+`source_rules.types.parameterized` publishes the `list` constructor, allowed
+element types, nesting policy and `immutable_arena_handle` representation.
+`source_rules.collections` publishes literal evaluation, empty contexts,
+index behavior, transfer/immutability, palette compatibility and resource
+limits. Earlier development schema-3 exports may omit these capabilities;
+a present capability must satisfy its complete contract.
+
+The compiler catalogue adds fixed `list.len` overloads and the two-argument
+`poly(points, color)` overload. The existing variadic polygon template remains
+separate, with its original minimum arity and evaluation order. Type strings
+are canonical descriptor spellings. Effects include `index_range` and
+`unassigned_handle`; generation memory remains an execution-wide resource trap.

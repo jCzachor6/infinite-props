@@ -391,7 +391,7 @@ private:
         if (current_->name == "draw") {
             error(ret.location, "'draw' cannot return a value");
         }
-        const ValueType type = typer_.typeOf(*ret.value);
+        const ValueType type = typer_.typeOf(*ret.value, current_->returnType);
         if (!isStorable(type)) {
             error(ret.location,
                   "cannot return " + std::string(typeName(type)) +
@@ -444,7 +444,9 @@ private:
         if (decl.name == "seed") {
             error(decl.location, "'seed' is a reserved name");
         }
-        const ValueType type = typer_.typeOf(*decl.value);
+        std::optional<ValueType> context = decl.declaredType;
+        if (const auto found = typer_.locals().find(decl.name); found != typer_.locals().end()) context = found->second;
+        const ValueType type = typer_.typeOf(*decl.value, context);
         if (decl.declaredType && type != valueTypeOf(*decl.declaredType)) {
             const auto* declared = typeName(valueTypeOf(*decl.declaredType));
             SourceError diagnostic{locationOf(*decl.value), std::string(declared) + " '" + decl.name +

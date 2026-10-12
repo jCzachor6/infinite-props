@@ -415,6 +415,13 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
 }
 
 ParamType ParserImpl::parseParamType() {
+    if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less) {
+        advance(); advance();
+        if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
+        const auto item = parseParamType();
+        expect(TokenKind::Greater, "'>' after list element type");
+        return ParamType::list(item);
+    }
     switch (kind()) {
     case TokenKind::TypeI32:
         advance();
@@ -493,6 +500,16 @@ Stmt ParserImpl::parseStatement() {
 
 Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
+    if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less &&
+        (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||
+         kind(2) == TokenKind::TypeColor || kind(2) == TokenKind::TypeVec2 ||
+         (kind(2) == TokenKind::Identifier && peek(2).text == "distribution"))) {
+        const auto type = parseParamType();
+        const auto local = expectName("a local list name");
+        expect(TokenKind::Assign, "'=' after local list name");
+        const FlagScope tail(statementTail_, true);
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
+    }
     const Token name = advance();
     if (match(TokenKind::Assign)) {
         const FlagScope tail(statementTail_, true);
@@ -516,6 +533,8 @@ Stmt ParserImpl::parseIdentifierStatement() {
             "': members are read-only; assign a whole new value instead, such as "
             "rgba(...) for a color or {x, y} for a vec2"};
     }
+    if (std::holds_alternative<Index>(*expr) && kind() == TokenKind::Assign)
+        throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
     if (!std::holds_alternative<Call>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }

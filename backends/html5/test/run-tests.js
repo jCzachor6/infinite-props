@@ -55,6 +55,9 @@ async function main() {
         console.log("native/WASM asset constants: PASS (" + native.constantOverloads +
                     " eligible overloads; " + native.constantComparisons +
                     " exact generations, 8 compiler configurations and IPA/IPDIS)");
+        console.log("native/WASM collections: PASS (" + native.collections.comparisons +
+            " exact generations; " + native.collections.traps + " matching traps; " +
+            native.collections.rejections + " malformed/version rejections)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

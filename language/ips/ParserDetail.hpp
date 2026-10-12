@@ -50,6 +50,7 @@ inline bool isNameKind(TokenKind tokenKind) {
     case TokenKind::Identifier:
     case TokenKind::KeywordDraw:
     case TokenKind::KeywordAt:
+    case TokenKind::KeywordList:
     case TokenKind::TypeColor:
     case TokenKind::TypeF32:
     case TokenKind::TypeU32:
@@ -169,6 +170,7 @@ public:
     std::unique_ptr<Expr> parsePrimary();
     std::unique_ptr<Expr> parseLiteral();
     std::unique_ptr<Expr> parseVector();
+    std::unique_ptr<Expr> parseList();
     std::vector<Arg> parseArgs();
 
 private:

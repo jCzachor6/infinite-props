@@ -229,6 +229,22 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         return true;
     }
 
+    case Opcode::PolyList: {
+        const auto colour = ex.popColor();
+        const auto list = ex.popList();
+        if (list.type != ValueType::list(ValueType::Vec2)) ex.trap("poly points must be list<vec2>", ErrorReason::StackType);
+        if (list.data->elements.size() < 3) ex.trap("poly requires at least three vertices", ErrorReason::NumericRange);
+        std::vector<Vec2> points;
+        points.reserve(list.data->elements.size());
+        for (const auto& value : list.data->elements) {
+            const auto point = std::get<Vec2>(value);
+            points.push_back({point.x * sX, point.y * sY});
+        }
+        fillPolygon(ex, points, colour);
+        ++ex.frame().ip;
+        return true;
+    }
+
     case Opcode::Oval: {
         const Color colour = ex.popColor();
         const f32 ry = ex.popF32() * sY;

@@ -106,7 +106,7 @@ public:
     // ---- typing -----------------------------------------------------------
 
     // The type of an expression, validating it along the way.
-    ValueType typeOf(const Expr& expr);
+    ValueType typeOf(const Expr& expr, std::optional<ValueType> context = {});
     const ExpressionTypes& expressions() const { return expressions_; }
     const CallPlans& calls() const { return calls_; }
 
@@ -141,6 +141,7 @@ private:
     ValueType typeUserCall(const Identifier& name, const Call& call);
     ValueType typePartCall(const Call& call);
     ValueType typeVector(const VectorLit& vector);
+    ValueType typeList(const ListLit& list, std::optional<ValueType> context);
     ValueType typeIndex(const Index& index);
     ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);

@@ -95,7 +95,14 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"a", V::Vec2}, {"b", V::Vec2}, {"c", V::Vec2}, {"d", V::Vec2}, {"thickness", V::F32}, {"color", V::Color}}, Opcode::CurveCubic}}}},
         {"oval", {V::Void, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"rx", V::F32}, {"ry", V::F32}, {"color", V::Color}}, Opcode::Oval}}}},
         {"weather", {V::Void, L::Opcode, {{{{"seed", V::I32}, {"amount", V::I32}}, Opcode::Weather}}}},
-        {"poly", {V::Void, L::Polygon, {}}},
+        {"poly", {V::Void, L::Polygon, {
+            {{{"points", V::list(V::Vec2)}, {"color", V::Color}}, Opcode::PolyList}}}},
+        {"list.len", {V::I32, L::ListLength, {
+            {{{"items", V::list(V::I32)}}, Opcode::ListLen},
+            {{{"items", V::list(V::F32)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Color)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Vec2)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Distribution)}}, Opcode::ListLen}}}},
     };
     return table;
 }
@@ -156,6 +163,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
     case BuiltinLowering::Opcode:
         if (!overload) throw std::logic_error("fixed builtin effects require an overload");
         return {};
+    case BuiltinLowering::ListLength: return findOpcode(Opcode::ListLen)->effects;
     case BuiltinLowering::Round:
     case BuiltinLowering::ColorConstructor: return {};
     case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;

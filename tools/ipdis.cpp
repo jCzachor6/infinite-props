@@ -20,16 +20,7 @@
 namespace iprop {
 namespace {
 
-const char* typeName(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return "i32";
-    case ValueType::F32: return "f32";
-    case ValueType::Color: return "color";
-    case ValueType::Vec2: return "vec2";
-    case ValueType::Distribution: return "distribution";
-    }
-    return "?";
-}
+const char* typeName(ValueType type) { return valueTypeName(type); }
 
 std::string floatText(f32 value) {
     char buffer[32];
@@ -251,6 +242,20 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     }
     for (const auto& output : meta.outputs) {
         out << outputEntryText(output, pool) << "\n";
+    }
+
+    if (!loaded.collections.types.empty()) {
+        out << "types:";
+        for (const auto type : loaded.collections.types) out << ' ' << valueTypeName(type);
+        out << '\n';
+    }
+    for (const auto& list : loaded.collections.lists) {
+        Writer data; writeListElements(data, *list.data);
+        out << "collection: " << valueTypeName(list.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
+        if (data.data().empty()) out << '-';
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
     }
 
     // The debug source map, when requested (one entry per function).

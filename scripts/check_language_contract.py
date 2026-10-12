@@ -26,13 +26,15 @@ def main():
     assert description['abi_version'] == {'major': int(major), 'minor': int(minor)}
 
     rules = description['source_rules']
+    scalar_types = ['i32', 'f32', 'color', 'vec2', 'distribution']
+    storable_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
         {'source_type': 'u32', 'binary_type': 'u32', 'value_type': 'i32'},
         {'source_type': 'i32', 'binary_type': 'u32', 'value_type': 'i32'}]
     for field in ('storable', 'helper_parameters', 'helper_value_returns'):
-        assert rules['types'][field] == ['i32', 'f32', 'color', 'vec2', 'distribution']
+        assert rules['types'][field] == storable_types
     assert rules['types']['output_only_geometry'] == ['circle', 'rect']
     assert rules['types']['point_value_type'] == 'vec2'
     assert rules['types']['implicit_widening'] == [{'from': 'i32', 'to': 'f32',
@@ -47,7 +49,7 @@ def main():
         'seed': 'current_rng_state_in_all_functions', 'palettes': 'all_asset_functions',
         'constants': 'all_asset_functions'}
     assert rules['asset_constants'] == {'keyword': 'contextual',
-        'syntax': 'const <type> <name> = <expression>', 'types': ['i32', 'f32', 'color', 'vec2', 'distribution'],
+        'syntax': 'const <type> <name> = <expression>', 'types': storable_types,
         'scope': 'asset', 'visibility': 'all_asset_functions', 'read_only': True,
         'dependencies': 'forward_acyclic', 'evaluation': 'compile_time',
         'check_all_declarations': True, 'check_effects_in_dead_branches': True,
@@ -64,7 +66,20 @@ def main():
 
     # These are language acceptance cases, not JSON snapshots alone. Each
     # advertised rule is exercised by a valid source and/or a rejection.
+    assert rules['types']['parameterized'] == [{'constructor': 'list', 'element_types': scalar_types,
+        'nested': False, 'representation': 'immutable_arena_handle'}]
+    assert rules['collections']['index_bounds'] == 'trap'
+    assert rules['collections']['maximum_length'] == 256
+    assert rules['collections']['generation_data_limit_bytes'] == 67108864
     cases = [
+        ('lists through helpers', 'draw{items=echo([1,2]);n=list.len(items)} echo(items:list<i32>)->list<i32>{return items}', True),
+        ('empty context', 'const list<vec2> empty=[] draw{points=empty}', True),
+        ('empty without context', 'draw{items=[]}', False),
+        ('mixed element rejection', 'draw{items=[1,#abc]}', False),
+        ('list numeric widening', 'draw{items=[1,2.0];x=items[0]}', True),
+        ('nested list rejection', 'draw{items=[[1]]}', False),
+        ('list polygon', 'draw{poly([{0,0},{3,0},{0,3}],#abc)}', True),
+        ('first-class palette', 'palette tones=[#abc,#def] draw{items=tones;n=list.len(items)}', True),
         ('input types', 'input color c=#abc input f32 f=7 input u32 u=4294967295 '
          'input i32 i=-7 draw { n=i+u; x=f+n; pixel(0,0,c) }', True),
         ('signed default bounds', 'input i32 i=2147483648 draw{}', False),

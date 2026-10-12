@@ -15,7 +15,7 @@ def main():
     rng = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
            'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
     checks = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context'}
+              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context', 'index_range', 'unassigned_handle'}
 
     def valid(effects):
         assert set(effects) == {'rng', 'writes_canvas', 'writes_outputs', 'summary', 'may_trap'}, effects
@@ -53,7 +53,7 @@ def main():
     rules = description['effect_rules']
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
-    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit']
+    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']
     assert rules['validation_limits'] == ['operand_stack_limit']
     assert rules['allocation_failure'] is True
     assert rules['output_write_policy'] == {'singular': 'replace', 'list': 'append'}

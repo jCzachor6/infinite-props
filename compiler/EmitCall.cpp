@@ -41,6 +41,16 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         if (call.overload->opcode) ins(*call.overload->opcode);
         return call.overload->result;
     }
+    if (spec.lowering == ips::BuiltinLowering::ListLength) {
+        emitArg(call.arguments[0]);
+        ins(Opcode::ListLen, 0, plan_.pools.addType(call.arguments[0].expected));
+        return VT::I32;
+    }
+    if (spec.lowering == ips::BuiltinLowering::Polygon && call.arguments.size() == 2) {
+        for (const auto& argument : call.arguments) emitArg(argument);
+        ins(Opcode::PolyList);
+        return VT::Void;
+    }
     if (spec.lowering == ips::BuiltinLowering::Beta) {
         for (const auto& arg : call.arguments) emitArg(arg);
         if (call.arguments.size() == 2) {

@@ -13,16 +13,7 @@
 namespace iprop {
 namespace {
 
-const char* typeName(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return "i32";
-    case ValueType::F32: return "f32";
-    case ValueType::Color: return "color";
-    case ValueType::Vec2: return "vec2";
-    case ValueType::Distribution: return "distribution";
-    }
-    return "?";
-}
+const char* typeName(ValueType type) { return valueTypeName(type); }
 
 // Uniform params travel in i32 slots for u32 values (spec §3/§6.1).
 ValueType typeOf(const InputDecl& decl) {
@@ -74,6 +65,14 @@ public:
         if (file_.layout.header.versionMinor < 5 &&
             (hasDistribution(fn_.params) || hasDistribution(fn_.results) || hasDistribution(fn_.locals))) {
             fail(0, "distribution types require format 0.5");
+        }
+        for (const auto* slots : {&fn_.params, &fn_.results, &fn_.locals}) {
+            for (const auto type : *slots) {
+                if (!type.isStorable()) fail(0, "invalid declared value type");
+                if (type.isList() && file_.layout.header.versionMinor < 6) fail(0, "list types require format 0.6");
+                if (type.isList() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
+                    fail(0, "missing declared type descriptor");
+            }
         }
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
@@ -292,9 +291,38 @@ private:
         case Opcode::Dup: {
             if (!reachable_) return;
             if (stack_.empty()) fail(at, "stack underflow (dup)");
+            if (stack_.back().kind == ValueType::Builder) fail(at, "list builder cannot be duplicated");
             push(at, stack_.back());
             return;
         }
+
+        case Opcode::ConstList:
+            if (op >= file_.collections.lists.size()) fail(at, "collection constant index out of range");
+            push(at, file_.collections.lists[op].type);
+            return;
+        case Opcode::ListBegin: case Opcode::ListAppend: case Opcode::ListEnd:
+        case Opcode::ListGet: case Opcode::ListLen: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            const ValueType builder{ValueType::Builder, type.element};
+            if (ins.opcode == Opcode::ListBegin) {
+                expect(at, ValueType::I32, "list size"); push(at, builder);
+            } else if (ins.opcode == Opcode::ListAppend) {
+                expect(at, type.item(), "list element"); expect(at, builder, "list builder"); push(at, builder);
+            } else if (ins.opcode == Opcode::ListEnd) {
+                expect(at, builder, "list builder"); push(at, type);
+            } else if (ins.opcode == Opcode::ListGet) {
+                expect(at, ValueType::I32, "list index"); expect(at, type, "list handle"); push(at, type.item());
+            } else {
+                expect(at, type, "list handle"); push(at, ValueType::I32);
+            }
+            return;
+        }
+        case Opcode::PolyList:
+            if (op != 0) fail(at, "poly.list operand must be zero");
+            expect(at, ValueType::Color, "poly colour");
+            expect(at, ValueType::list(ValueType::Vec2), "poly points");
+            return;
 
         case Opcode::Poly: {
             if (op > kMaxStackDepth) fail(at, "poly vertex count exceeds limit");
@@ -584,7 +612,11 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.layout = parseLayout(bytes);
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
-    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool);
+    if (const auto* types = file.layout.find(SectionId::Types))
+        file.collections.types = parseTypeDescriptors(bytes, *types);
+    if (const auto* lists = file.layout.find(SectionId::Collections))
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types);
+    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);
     }

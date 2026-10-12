@@ -40,3 +40,11 @@ clamping, NaN behavior and lowering are described in
 [the v0.3 ramp contract](../../spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03).
 
 <!-- example: ../../examples/language/errors/integer-ramp.ips -->
+
+## Passing palettes as lists
+
+A palette with at most 256 elements is also a first-class `list<T>` value.
+Pass its name to a helper or assign it to a local to share immutable data.
+A list parameter uses checked indexing; direct legacy `palette[index]` and
+`ramp` retain the last-element fallback and their original size limits.
+See [immutable collections](collections.md).

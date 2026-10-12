@@ -18,6 +18,7 @@ const Asset::Constant* findAssetConstant(const Program& program, const std::stri
 
 bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
     if (!isStorable(overload.result)) return false;
+    if (spec.lowering == BuiltinLowering::ListLength) return true;
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
         spec.lowering == BuiltinLowering::ColorConstructor || spec.lowering == BuiltinLowering::Beta;
@@ -52,7 +53,7 @@ public:
         for (std::size_t i = 0; i < dependencies.size(); ++i) {
             current_ = &program_.asset.constants[i];
             inspect(*current_->value, dependencies[i]);
-            const auto actual = typer_.typeOf(*current_->value);
+            const auto actual = typer_.typeOf(*current_->value, current_->type);
             const auto expected = valueTypeOf(current_->type);
             if (!argFits(expected, actual)) {
                 SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs a " +
@@ -132,6 +133,7 @@ private:
         if (const auto* id = std::get_if<Identifier>(&expression)) {
             const auto found = declarations_.find(id->name);
             if (found != declarations_.end()) { dependencies.insert(found->second); return; }
+            for (const auto& palette : program_.asset.palettes) if (palette.name == id->name) return;
             std::vector<std::string> names;
             for (const auto& [name, index] : declarations_) { (void)index; names.push_back(name); }
             fail(id->location, "cannot read '" + id->name + "'; only asset constants are allowed" + didYouMean(id->name, names));
@@ -156,9 +158,9 @@ private:
         } else if (const auto* member = std::get_if<Member>(&expression)) {
             inspect(*member->object, dependencies);
         } else if (const auto* index = std::get_if<Index>(&expression)) {
-            const auto* palette = std::get_if<Identifier>(index->object.get());
-            if (!palette) fail(index->location, "only asset palettes can be indexed");
-            (void)findPalette(program_, *palette);
+            const auto* name = std::get_if<Identifier>(index->object.get());
+            const bool palette = name && std::any_of(program_.asset.palettes.begin(), program_.asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
+            if (!palette) inspect(*index->object, dependencies);
             inspect(*index->index, dependencies);
         } else if (const auto* binary = std::get_if<Binary>(&expression)) {
             inspect(*binary->left, dependencies); inspect(*binary->right, dependencies);
@@ -166,6 +168,8 @@ private:
             inspect(*unary->operand, dependencies);
         } else if (const auto* vector = std::get_if<VectorLit>(&expression)) {
             for (const auto& element : vector->elements) inspect(*element, dependencies);
+        } else if (const auto* list = std::get_if<ListLit>(&expression)) {
+            for (const auto& element : list->elements) inspect(*element, dependencies);
         } else if (std::holds_alternative<RandomRange>(expression)) {
             fail(locationOf(expression), "random ranges are not allowed");
         }
@@ -187,7 +191,22 @@ private:
             if (!foldExpression(expression, value)) fail(at, "invalid constant literal", DiagnosticCode::AssetConstantValue);
             return value;
         }
-        if (const auto* id = std::get_if<Identifier>(&expression)) return values_.at(id->name);
+        if (const auto* id = std::get_if<Identifier>(&expression)) {
+            if (const auto found = values_.find(id->name); found != values_.end()) return found->second;
+            const auto palette = resolvePalette(findPalette(program_, *id));
+            auto data = std::make_shared<ListData>(ListData{ValueType::list(palette.type), palette.elements});
+            return ListValue{data->type, std::move(data)};
+        }
+        if (const auto* list = std::get_if<ListLit>(&expression)) {
+            auto data = std::make_shared<ListData>();
+            data->type = typer_.typeOf(expression);
+            for (const auto& element : list->elements) {
+                Value value = evaluate(*element);
+                if (data->type.element == ValueType::F32) value = number(value);
+                data->elements.push_back(std::move(value));
+            }
+            return ListValue{data->type, std::move(data)};
+        }
         if (const auto* member = std::get_if<Member>(&expression)) {
             const auto object = evaluate(*member->object);
             if (const auto* v = std::get_if<Vec2>(&object)) return member->name == "x" ? v->x : v->y;
@@ -198,10 +217,18 @@ private:
         if (const auto* vector = std::get_if<VectorLit>(&expression))
             return Vec2{number(evaluate(*vector->elements[0])), number(evaluate(*vector->elements[1]))};
         if (const auto* index = std::get_if<Index>(&expression)) {
-            const auto palette = resolvePalette(findPalette(program_, std::get<Identifier>(*index->object)));
+            const auto* name = std::get_if<Identifier>(index->object.get());
+            const bool legacy = name && std::any_of(program_.asset.palettes.begin(), program_.asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
+            const auto object = legacy ? Value{} : evaluate(*index->object);
             const auto i = std::get<i32>(evaluate(*index->index));
-            return palette.elements[i >= 0 && static_cast<std::size_t>(i) < palette.elements.size() ?
-                static_cast<std::size_t>(i) : palette.elements.size() - 1];
+            if (legacy) {
+                const auto palette = resolvePalette(findPalette(program_, *name));
+                return palette.elements[i >= 0 && static_cast<std::size_t>(i) < palette.elements.size() ?
+                    static_cast<std::size_t>(i) : palette.elements.size() - 1];
+            }
+            const auto& list = std::get<ListValue>(object);
+            if (i < 0 || static_cast<std::size_t>(i) >= list.data->elements.size()) fail(at, "list index out of range", DiagnosticCode::AssetConstantValue);
+            return list.data->elements[static_cast<std::size_t>(i)];
         }
         if (const auto* call = std::get_if<Call>(&expression)) {
             const auto name = callName(*call->callee);
@@ -217,6 +244,8 @@ private:
                 args[i] = evaluate(*bound.arguments[i]->value);
                 if (overload.params[i].type == ValueType::F32) args[i] = number(args[i]);
             }
+            if (spec.lowering == BuiltinLowering::ListLength)
+                return static_cast<i32>(std::get<ListValue>(args[0]).data->elements.size());
             if (overload.opcode) return operation(*overload.opcode, std::move(args), at);
             if (spec.lowering == BuiltinLowering::Opcode) return args[0]; // identity int/float
             if (spec.lowering == BuiltinLowering::Beta) {

@@ -43,6 +43,8 @@ void Emitter::emitConst(const Value& value) {
     } else if (const auto* vector = std::get_if<Vec2>(&value)) {
         emitConst(vector->x); emitConst(vector->y);
         ins(Opcode::Vec2Make);
+    } else if (const auto* list = std::get_if<ListValue>(&value)) {
+        ins(Opcode::ConstList, 0, plan_.pools.addList(*list));
     } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
         const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
             distribution->family == DistributionFamily::Triangular ? 3u : 4u;
@@ -54,7 +56,8 @@ void Emitter::emitConst(const Value& value) {
 
 TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
     try {
-        switch (type) {
+        if (type.isList()) { plan_.pools.addType(type); return temporaries_.acquire(type); }
+        switch (type.kind) {
         case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
         case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
         case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
@@ -79,6 +82,8 @@ bool Emitter::isParam(const std::string& name) const {
 
 void Emitter::emitFunction(PlannedFunction& function) {
     current_ = &function;
+    for (const auto* slots : {&function.params, &function.results, &function.locals})
+        for (const auto type : *slots) if (type.isList()) plan_.pools.addType(type);
     code_.clear();
     lines_.clear();
     currentLine_ = 0;

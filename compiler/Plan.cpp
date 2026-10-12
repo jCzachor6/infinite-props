@@ -9,14 +9,8 @@ namespace iprop::compiler {
 namespace {
 
 ValueType runtimeType(ips::ValueType type) {
-    switch (type) {
-    case ips::ValueType::I32: return ValueType::I32;
-    case ips::ValueType::F32: return ValueType::F32;
-    case ips::ValueType::Color: return ValueType::Color;
-    case ips::ValueType::Vec2: return ValueType::Vec2;
-    case ips::ValueType::Distribution: return ValueType::Distribution;
-    default: return ValueType::I32; // compounds never enter the tables
-    }
+    if (!type.isStorable()) throw std::logic_error("compound type cannot be stored");
+    return type;
 }
 
 } // namespace
@@ -151,8 +145,11 @@ std::unique_ptr<Plan> Planner::plan() {
             for (auto& [expr, annotation] : function.expressions) {
                 if (const auto* call = std::get_if<ips::Call>(expr))
                     function.calls.emplace(call, resolver.resolve(*call));
-                if (const auto* index = std::get_if<ips::Index>(expr))
-                    annotation.palette = &plan_->palette(*function.owner, *index->object);
+                if (const auto* index = std::get_if<ips::Index>(expr)) {
+                    if (const auto* name = std::get_if<ips::Identifier>(index->object.get()))
+                        for (const auto& palette : function.owner->asset.palettes)
+                            if (palette.name == name->name) annotation.palette = &plan_->palette(*function.owner, *index->object);
+                }
             }
         } catch (ips::SourceError& error) {
             if (error.path.empty()) error.path = plan_->sourcePath(function.owner);
@@ -368,7 +365,9 @@ void Planner::prepareFunctionBody(const std::string& name) {
             if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
                 if (ips::findAssetConstant(*owner, decl->name))
                     error(decl->location, "cannot assign to const '" + decl->name + "'");
-                const ips::ValueType type = typer_->typeOf(*decl->value);
+                std::optional<ips::ValueType> context = decl->declaredType;
+                if (const auto found = info.langTypes.find(decl->name); found != info.langTypes.end()) context = found->second;
+                const ips::ValueType type = typer_->typeOf(*decl->value, context);
                 if (ownerOutput(owner, decl->name) != nullptr ||
                     ownerInput(owner, decl->name) != nullptr ||
                     info.slots.count(decl->name) != 0) {
@@ -384,7 +383,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
             } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
                 if (ret->value) {
                     const ips::ValueType type =
-                        typer_->typeOf(*ret->value);
+                        typer_->typeOf(*ret->value, ast->returnType);
                     if (ast->returnType.has_value()) {
                         const ips::ValueType declared =
                             ips::valueTypeOf(*ast->returnType);
@@ -443,6 +442,11 @@ void Planner::prepareFunctionBody(const std::string& name) {
         if (const auto* id = std::get_if<ips::Identifier>(expr)) {
             const auto& assetConstants = plan_->assetConstants.at(owner);
             if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) constant = found->second;
+            else if (type.isList()) for (const auto& declared : owner->asset.palettes) if (declared.name == id->name) {
+                const auto& palette = plan_->palette(*owner, *expr);
+                auto data = std::make_shared<ListData>(ListData{type, palette.elements});
+                constant = ListValue{type, std::move(data)};
+            }
         }
         info.expressions.emplace(expr, PlannedExpression{type, constant});
     }

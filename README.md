@@ -8,9 +8,9 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–2 of product **0.7.0** / source language **0.7**
+This checkout implements stages 1–3 of product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
-typed immutable asset constants visible in draw and helpers.
+typed immutable asset constants and lists visible in draw and helpers.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
 writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
@@ -602,7 +602,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–2; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–3; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -636,7 +636,8 @@ unchanged. Migration and release commands are in
 [the 0.6 notes](docs/release-v0.6.md).
 The current 0.7 development adds exact integer bounds and scaled binary64
 `vec2.normalize`, plus typed asset constants with compile-time dependency and
-distribution validation; see [0.7 migration](docs/language/migration-v0.7.md).
+distribution validation, immutable lists shared through helpers, and list polygons;
+see [0.7 migration](docs/language/migration-v0.7.md).
 The tagged release workflow builds, validates and publishes source, native
 SDK, WASM and website packages. The same packages can be built locally.
 GitHub CI checks the native toolchain/C API, editor contracts, WASM, website,
@@ -716,3 +717,7 @@ Low-level layout/section
 inspection uses `decompressFile` or `LoadedFile::bytes()`. Native builds and
 installed CMake consumers require zlib 1.2.9 or newer; the Emscripten build uses
 its pinned zlib port via `-sUSE_ZLIB=1`.
+
+The [collection validation report](docs/validation-v0.7-stage3.md) covers type
+descriptors, list data and builders, helpers, palette compatibility, exact
+polygon pixels, resource limits and the native/WASM compatibility gates.
