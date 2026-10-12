@@ -1,0 +1,7 @@
+asset unsetDescription {
+  size 1x1
+  draw {
+    if (false) { spec = sampler(10 to 15) }
+    values = spec.pick(0)
+  }
+}

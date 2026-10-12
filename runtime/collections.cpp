@@ -5,9 +5,10 @@
 namespace iprop {
 
 TypeDescriptor valueType(const Value& value) {
+    if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;
     if (const auto* list = std::get_if<ListValue>(&value)) return list->type;
     if (const auto* builder = std::get_if<ListBuilder>(&value))
-        return {TypeDescriptor::Builder, builder->data ? builder->data->list.type.element : TypeDescriptor::Kind::Void};
+        return builder->data ? TypeDescriptor::builder(builder->data->list.type) : TypeDescriptor::Builder;
     return TypeDescriptor(static_cast<TypeDescriptor::Kind>(value.index()));
 }
 
@@ -38,16 +39,42 @@ std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const
         const auto at = reader.position();
         const auto kind = reader.readU8();
         const auto element = reader.readU8();
-        const auto reserved = reader.readU16();
-        if (kind != static_cast<u8>(TypeDescriptor::List) || element > static_cast<u8>(TypeDescriptor::Distribution) || reserved != 0)
-            throw FormatError("invalid list type descriptor", at, ErrorReason::InvalidCode);
-        TypeDescriptor type{TypeDescriptor::List, static_cast<TypeDescriptor::Kind>(element)};
+        const auto reference = reader.readU16();
+        TypeDescriptor type;
+        if (kind == static_cast<u8>(TypeDescriptor::List) && element == kDescriptorReference) {
+            // References only point backward to sampler descriptors, so cycles,
+            // list nesting and dangling/forward references cannot enter the VM.
+            if (reference >= types.size() || !types[reference].isSampler())
+                throw FormatError("invalid list element descriptor reference", at, ErrorReason::InvalidCode);
+            type = TypeDescriptor::list(types[reference]);
+        } else {
+            type = {static_cast<TypeDescriptor::Kind>(kind), static_cast<TypeDescriptor::Kind>(element)};
+            if (!type.isParameterized() || !type.isStorable() || reference != 0)
+                throw FormatError("invalid parameterized type descriptor", at, ErrorReason::InvalidCode);
+        }
         if (std::find(types.begin(), types.end(), type) != types.end())
             throw FormatError("duplicate type descriptor", at, ErrorReason::InvalidCode);
         types.push_back(type);
     }
     if (!reader.empty()) throw FormatError("trailing bytes in type descriptors", reader.position(), ErrorReason::InvalidCode);
     return types;
+}
+
+void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types) {
+    writer.writeU32(static_cast<u32>(types.size()));
+    for (std::size_t i = 0; i < types.size(); ++i) {
+        const auto type = types[i];
+        if (!type.isParameterized() || !type.isStorable()) throw std::logic_error("invalid type descriptor");
+        writer.writeU8(static_cast<u8>(type.kind));
+        if (type.isList() && type.item().isSampler()) {
+            const auto found = std::find(types.begin(), types.begin() + i, type.item());
+            if (found == types.begin() + i) throw std::logic_error("missing preceding sampler descriptor");
+            writer.writeU8(kDescriptorReference);
+            writer.writeU16(static_cast<u16>(found - types.begin()));
+        } else {
+            writer.writeU8(static_cast<u8>(type.element)); writer.writeU16(0);
+        }
+    }
 }
 
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
@@ -61,7 +88,7 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
         const auto at = reader.position();
         const auto index = reader.readU16();
         const auto length = reader.readU16();
-        if (index >= types.size() || !types[index].isList())
+        if (index >= types.size() || !types[index].isList() || !types[index].item().isScalar())
             throw FormatError("collection type descriptor out of range", at, ErrorReason::InvalidConstants);
         if (length > kMaxListElements) throw FormatError("list exceeds 256 elements", at, ErrorReason::InvalidConstants);
         total += ResourceArena::listBytes(length);

@@ -79,7 +79,8 @@ public:
     }
 
     u16 addType(TypeDescriptor type) {
-        if (!type.isList() || !type.isStorable()) throw std::logic_error("expected list descriptor");
+        if (!type.isParameterized() || !type.isStorable()) throw std::logic_error("expected parameterized descriptor");
+        if (type.isList() && type.item().isSampler()) addType(type.item());
         const auto found = std::find(types.begin(), types.end(), type);
         if (found != types.end()) return static_cast<u16>(found - types.begin());
         if (types.size() >= kMaxConstPoolEntries) throw PoolLimit("too many type descriptors");

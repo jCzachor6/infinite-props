@@ -28,6 +28,10 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
     case Opcode::ListBegin: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
+        return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::SamplerPick: case Opcode::SamplerPickList:
+        return {R::AdvanceCurrent,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::ListLen: return {R::None,false,false,check(C::UnassignedHandle)};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
@@ -219,6 +223,11 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::ListGet, "list.get", 6, OperandKind::Index),
     dynamic(Opcode::ListLen, "list.len", 6, OperandKind::Index),
     dynamic(Opcode::PolyList, "poly.list", 6, OperandKind::None),
+    dynamic(Opcode::SamplerValue, "sampler.value", 6, OperandKind::Index),
+    dynamic(Opcode::SamplerRange, "sampler.range", 6, OperandKind::Index),
+    dynamic(Opcode::SamplerWith, "sampler.with", 6, OperandKind::Index),
+    dynamic(Opcode::SamplerPick, "sampler.pick", 6, OperandKind::Index),
+    dynamic(Opcode::SamplerPickList, "sampler.pick.list", 6, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -233,7 +242,7 @@ u16 writtenMinor(u16 minor, Opcode opcode) {
     return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
 }
 u16 writtenMinor(u16 minor, ValueType type) {
-    return type.isList() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
+    return type.isParameterized() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
 }
 const char* rngEffectName(RngEffect effect) {
     switch (effect) {

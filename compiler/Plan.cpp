@@ -1,6 +1,7 @@
 #include "Plan.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
+#include "iprop/Samplers.hpp"
 
 #include <set>
 #include <utility>
@@ -149,6 +150,36 @@ std::unique_ptr<Plan> Planner::plan() {
                     if (const auto* name = std::get_if<ips::Identifier>(index->object.get()))
                         for (const auto& palette : function.owner->asset.palettes)
                             if (palette.name == name->name) annotation.palette = &plan_->palette(*function.owner, *index->object);
+                }
+            }
+            const auto& constants = plan_->assetConstants.at(function.owner);
+            const auto known = [&](const ips::Expr& value) {
+                return ips::knownAssetExpression(*function.owner, value, constants);
+            };
+            const auto invalid = [&](const ips::SourceLocation& at, const char* message) {
+                throw ips::SourceError{at, message, {}, ips::DiagnosticCode::TypeError, ips::DiagnosticStage::Typing};
+            };
+            for (const auto& [expr, annotation] : function.expressions) {
+                if (const auto* pick = std::get_if<ips::SamplerPick>(expr); pick && pick->count) {
+                    if (const auto count = known(*pick->count); count &&
+                        (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
+                        invalid(ips::locationOf(*pick->count), "sampler result count must be between 0 and 256");
+                }
+                if (const auto* capture = std::get_if<ips::SamplerCapture>(expr)) {
+                    const auto* range = std::get_if<ips::RandomRange>(capture->value.get());
+                    auto lower = known(range ? *range->lower : *capture->value);
+                    auto upper = range ? known(*range->upper) : std::optional<Value>(Value{});
+                    if (annotation.type.item() == ValueType::F32) {
+                        for (auto* bound : {&lower, &upper}) if (*bound && std::holds_alternative<i32>(**bound))
+                            *bound = static_cast<f32>(std::get<i32>(**bound));
+                    }
+                    if (lower) if (const auto* message = samplerBoundsError(annotation.type.item(), *lower, Value{}, false))
+                        invalid(capture->location, message);
+                    if (range && upper) if (const auto* message = samplerBoundsError(annotation.type.item(), *upper, Value{}, false))
+                        invalid(capture->location, message);
+                    if (lower && upper) if (const auto* message = samplerBoundsError(annotation.type.item(), *lower, *upper, range != nullptr))
+                        invalid(capture->location, message);
+                    if (range && range->distribution) (void)known(*range->distribution);
                 }
             }
         } catch (ips::SourceError& error) {

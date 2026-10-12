@@ -19,6 +19,7 @@ Value zeroValue(ValueType type) {
     case ValueType::Vec2: return Value(Vec2{});
     case ValueType::Distribution: return Value(Distribution{});
     case ValueType::List: return Value(ListValue{type, {}});
+    case ValueType::Sampler: return Value(SamplerValue{type, {}});
     default: break;
     }
     return Value(i32{0});
@@ -33,6 +34,7 @@ bool dispatch(Execution& ex, Instruction ins) {
         return true;
     }
     if (stepCollections(ex, ins)) return true;
+    if (stepSamplers(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }

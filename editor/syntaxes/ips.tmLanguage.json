@@ -31,6 +31,12 @@
       "include": "#types"
     },
     {
+      "include": "#samplerCapture"
+    },
+    {
+      "include": "#samplerMethod"
+    },
+    {
       "include": "#operators"
     }
   ],
@@ -83,7 +89,7 @@
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\blist\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle|distribution)\\b(?!\\s*=(?!=))"
+      "match": "\\b(list|sampler)\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle|distribution)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -92,6 +98,14 @@
     "builtins": {
       "name": "support.function.builtin.ips",
       "match": "\\b(list\\.len|vec2\\.(len|dot|rot|normalize)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+    },
+    "samplerCapture": {
+      "name": "support.function.sampler.ips",
+      "match": "\\bsampler\\b(?=\\s*\\()"
+    },
+    "samplerMethod": {
+      "name": "support.function.sampler.pick.ips",
+      "match": "(?<=\\.)pick\\b(?=\\s*\\()"
     }
   }
 }

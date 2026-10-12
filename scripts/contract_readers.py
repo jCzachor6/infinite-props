@@ -12,8 +12,9 @@ LANGUAGE_SCHEMA_VERSION = 3
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
-LIST_TYPES = {'list<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2', 'distribution')}
-VALUE_TYPES |= LIST_TYPES
+SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
+LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | SAMPLER_TYPES)}
+VALUE_TYPES |= LIST_TYPES | SAMPLER_TYPES
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
@@ -146,7 +147,8 @@ def read_language(value):
         'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
-    strings(constants.get('types'), 'constant types', ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES), True)
+    constant_types = {'i32', 'f32', 'color', 'vec2', 'distribution'}
+    strings(constants.get('types'), 'constant types', constant_types | {'list<' + item + '>' for item in constant_types}, True)
     require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
             not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
@@ -160,15 +162,49 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES | SAMPLER_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
-        require(type(parameters) is list and len(parameters) == 1, 'parameterized type descriptors')
-        parameter = parameters[0]
-        _strings_and_bools(parameter, {'constructor': {'list'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
-        require(parameter['nested'] is False, 'nested list types')
-        strings(parameter.get('element_types'), 'list element types', {'i32','f32','color','vec2','distribution'}, True)
-        require(set(parameter['element_types']) == {'i32','f32','color','vec2','distribution'}, 'list element types')
+        require(type(parameters) is list and 1 <= len(parameters) <= 2, 'parameterized type descriptors')
+        constructors = set()
+        for parameter in parameters:
+            _strings_and_bools(parameter, {'constructor': {'list', 'sampler'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
+            require(parameter['nested'] is False, 'nested list/sampler types')
+            allowed = {'i32','f32','color','vec2'} if parameter['constructor'] == 'sampler' else {'i32','f32','color','vec2','distribution'} | SAMPLER_TYPES
+            strings(parameter.get('element_types'), 'element types', allowed, True)
+            require(parameter['constructor'] not in constructors, 'duplicate type constructor')
+            constructors.add(parameter['constructor'])
+        require('list' in constructors, 'list type constructor')
+    if 'samplers' in rules:
+        sampler = obj(rules['samplers'], ['syntax', 'capture_evaluation', 'method_evaluation', 'methods', 'capture_effects'], 'samplers')
+        _strings_and_bools(sampler, {
+            'syntax': {'sampler(<value> | <lower> to <upper> [with <distribution>])'},
+            'intrinsic_capture_rng': {'none'}, 'bounds_validation': {'capture'},
+            'probability_mass_validation': {'pick'}, 'method_resolution': {'static_receiver_type_and_arity'},
+            'batch_preflight': {'count_handle_allocation_before_first_draw'}}, ['asset_constants','range_palettes'], 'sampler rules')
+        require(sampler['asset_constants'] is False and sampler['range_palettes'] is False, 'deferred sampler constants and palettes')
+        require(sampler['capture_evaluation'] == 'lower_upper_distribution_once' and sampler['method_evaluation'] == 'receiver_once_before_count_once', 'sampler evaluation order')
+        effects(sampler['capture_effects'], 'sampler capture')
+        require(sampler['capture_effects']['rng'] == 'none', 'sampler capture intrinsic RNG')
+        require(sampler.get('minimum_count') == 0 and sampler.get('maximum_count') == 256 and sampler.get('count_type') == 'i32', 'sampler count')
+        require(sampler.get('constant_description_draws') == 0 and sampler.get('empty_batch_draws') == 0 and sampler.get('unset_empty_batch') == 'trap', 'sampler zero draws')
+        for field in ['minimum_count','maximum_count','constant_description_draws','empty_batch_draws']:
+            integer(sampler.get(field), 'samplers.' + field)
+        require(type(sampler['methods']) is list and len(sampler['methods']) == 8, 'sampler method signatures')
+        signatures = set()
+        for method in sampler['methods']:
+            obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor','effects'], 'sampler method')
+            require(method['name'] == 'pick' and method['receiver'] in SAMPLER_TYPES, 'sampler receiver')
+            require(type(method['parameters']) is list and len(method['parameters']) <= 1, 'sampler parameters')
+            item = method['receiver'][8:-1]
+            batch = bool(method['parameters'])
+            require(method['parameters'] == ([{'name':'n','type':'i32'}] if batch else []), 'sampler count signature')
+            require(method['result'] == ('list<' + item + '>' if batch else item), 'sampler result')
+            require(method['opcode'] == ('sampler.pick.list' if batch else 'sampler.pick') and method['minimum_format_minor'] == 6, 'sampler opcode')
+            effects(method['effects'], 'sampler method effects')
+            require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
+            signatures.add((method['receiver'], batch))
+        require(len(signatures) == 8, 'unique sampler method signatures')
     if 'collections' in rules:
         collection = rules['collections']
         _strings_and_bools(collection, {

@@ -22,6 +22,7 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
             tokens_[i + 1].kind == TokenKind::LParen) {
             if (tokens_[i].text == "to") toHelper_ = true;
             if (tokens_[i].text == "with") withHelper_ = true;
+            if (tokens_[i].text == "sampler") samplerHelper_ = true;
         }
     }
     diagnosticLimit_ = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics);
@@ -414,13 +415,25 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
                     name.location};
 }
 
-ParamType ParserImpl::parseParamType() {
+ParamType ParserImpl::parseParamType(bool insideList) {
     if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less) {
         advance(); advance();
         if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
-        const auto item = parseParamType();
-        expect(TokenKind::Greater, "'>' after list element type");
+        const auto item = parseParamType(true);
+        if (listTypeClosed_) listTypeClosed_ = false;
+        else expect(TokenKind::Greater, "'>' after list element type");
         return ParamType::list(item);
+    }
+    if (kind() == TokenKind::Identifier && peek().text == "sampler" && kind(1) == TokenKind::Less) {
+        advance(); advance();
+        if (kind() == TokenKind::KeywordList || (kind() == TokenKind::Identifier && peek().text == "sampler"))
+            failHere("sampler<T> supports only i32, f32, color or vec2");
+        const auto item = parseParamType();
+        if (!item.isScalar() || item == ParamType::Distribution)
+            failHere("sampler<T> supports only i32, f32, color or vec2");
+        if (insideList && match(TokenKind::Shr)) listTypeClosed_ = true;
+        else expect(TokenKind::Greater, "'>' after sampler element type");
+        return ParamType::sampler(item);
     }
     switch (kind()) {
     case TokenKind::TypeI32:
@@ -500,10 +513,11 @@ Stmt ParserImpl::parseStatement() {
 
 Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
-    if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less &&
+    if (((kind() == TokenKind::KeywordList) ||
+         (kind() == TokenKind::Identifier && peek().text == "sampler")) && kind(1) == TokenKind::Less &&
         (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||
          kind(2) == TokenKind::TypeColor || kind(2) == TokenKind::TypeVec2 ||
-         (kind(2) == TokenKind::Identifier && peek(2).text == "distribution"))) {
+         (kind(2) == TokenKind::Identifier && (peek(2).text == "distribution" || peek(2).text == "sampler")))) {
         const auto type = parseParamType();
         const auto local = expectName("a local list name");
         expect(TokenKind::Assign, "'=' after local list name");
@@ -535,7 +549,8 @@ Stmt ParserImpl::parseIdentifierStatement() {
     }
     if (std::holds_alternative<Index>(*expr) && kind() == TokenKind::Assign)
         throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
-    if (!std::holds_alternative<Call>(*expr)) {
+    if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
+        !std::holds_alternative<SamplerCapture>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};

@@ -1,6 +1,8 @@
 #include "iprop/VmInternals.hpp"
 #include "iprop/math/Curves.hpp"
 #include "iprop/math/Distribution.hpp"
+#include "iprop/math/Color.hpp"
+#include "iprop/math/Vector.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -258,6 +260,11 @@ double distributionDraw(Execution& ex, const Distribution& distribution, double 
     return draw.value;
 }
 
+f32 distributionFloat(Execution& ex, const Distribution& distribution, f32 lo, f32 hi) {
+    const auto value = static_cast<f32>(distributionDraw(ex, distribution, lo, hi));
+    return value < lo ? lo : value > hi ? hi : value;
+}
+
 // Round half away from zero (spec v0.5 §4.4); |x| < 2^31 keeps x - t exact.
 i32 roundToInt(double x) {
     double t = std::trunc(x);
@@ -284,6 +291,28 @@ void advanceAndPushUnit(Execution& ex) {
 }
 
 } // namespace
+
+// Captured ranges call the same pinned kernels as the legacy adapters below.
+// No private RNG state is attached to a description.
+Value drawSampler(Execution& ex, const SamplerData& sampler) {
+    if (sampler.mode == SamplerMode::Constant) return sampler.lower;
+    const auto item = sampler.type.item();
+    const bool with = sampler.mode == SamplerMode::With;
+    if (item == ValueType::I32) {
+        const auto lo = std::get<i32>(sampler.lower), hi = std::get<i32>(sampler.upper);
+        return with ? roundToInt(distributionDraw(ex, sampler.distribution, lo, hi)) : uniformInt(ex, lo, hi);
+    }
+    if (item == ValueType::F32) {
+        const auto lo = std::get<f32>(sampler.lower), hi = std::get<f32>(sampler.upper);
+        if (!with) return uniformFloat(ex, lo, hi);
+        return distributionFloat(ex, sampler.distribution, lo, hi);
+    }
+    const auto t = with ? distributionFloat(ex, sampler.distribution, 0.f, 1.f) : uniformFloat(ex, 0.f, 1.f);
+    ex.spend(1); // The existing color/vec2 interpolation instruction.
+    if (item == ValueType::Color) return math::colorMixRgba(std::get<Color>(sampler.lower), std::get<Color>(sampler.upper), t);
+    if (item == ValueType::Vec2) return math::vec2Mix(std::get<Vec2>(sampler.lower), std::get<Vec2>(sampler.upper), t);
+    ex.trap("unsupported sampler element type", ErrorReason::StackType);
+}
 
 // Seeded primitives (spec §9.6/§9.7, exact algorithms §12).
 bool stepSeeded(Execution& ex, Instruction ins) {
@@ -393,8 +422,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         if (lo > hi) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
-        const f32 value = static_cast<f32>(distributionDraw(ex, distribution, lo, hi));
-        ex.push(Value(value < lo ? lo : value > hi ? hi : value));
+        ex.push(Value(distributionFloat(ex, distribution, lo, hi)));
         ++ex.frame().ip;
         return true;
     }

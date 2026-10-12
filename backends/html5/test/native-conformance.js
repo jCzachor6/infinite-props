@@ -130,6 +130,7 @@ function run(iprop, toolsDir) {
     let constantComparisons = 0;
     let constantOverloads = 0;
     let collectionEvidence = {};
+    let samplerEvidence = {};
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -449,11 +450,12 @@ function run(iprop, toolsDir) {
         constantComparisons = constants.comparisons;
         constantOverloads = constants.overloads;
         collectionEvidence = require("./collection-conformance.js").run(iprop, tool, temporary);
+        samplerEvidence = require("./sampler-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
-        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence };
+        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, samplers: samplerEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

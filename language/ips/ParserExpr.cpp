@@ -231,7 +231,24 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
                 Member{std::move(expr), name.text, name.location});
         } else if (kind() == TokenKind::LParen) {
             const SourceLocation at = locationOf(*expr);
-            expr = std::make_unique<Expr>(Call{std::move(expr), parseArgs(), at});
+            auto args = parseArgs();
+            const auto* name = std::get_if<Identifier>(expr.get());
+            auto* member = std::get_if<Member>(expr.get());
+            if (name && name->name == "sampler" && !samplerHelper_) {
+                if (args.size() != 1 || args[0].name)
+                    throw SourceError{at, "sampler capture takes one positional value or range"};
+                expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at});
+            } else if (member && member->name == "pick") {
+                if (args.size() > 1 || (!args.empty() && args[0].name && *args[0].name != "n"))
+                    throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
+                expr = std::make_unique<Expr>(SamplerPick{std::move(member->object),
+                    args.empty() ? nullptr : std::move(args[0].value), at});
+            } else {
+                if (name && name->name == "sampler" && samplerHelper_)
+                    for (const auto& arg : args) if (std::holds_alternative<RandomRange>(*arg.value))
+                        throw SourceError{at, "sampler capture conflicts with helper 'sampler'; rename the helper before capturing a range"};
+                expr = std::make_unique<Expr>(Call{std::move(expr), std::move(args), at});
+            }
         } else if (kind() == TokenKind::LBracket) {
             const SourceLocation at = locationOf(*expr);
             advance(); // '['

@@ -4,6 +4,7 @@ set(IPROP_RUNTIME_SOURCES
     type_descriptor.cpp
     collections.cpp
     collection_ops.cpp
+    samplers.cpp
     opcode_name.cpp
     opcode_spec.cpp
     debug.cpp

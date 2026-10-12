@@ -25,6 +25,9 @@ def select(value, default, known, label):
 
 
 def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optional=False):
+    # Method signatures are already generated in compiler_rules for every
+    # selection. Their handbook placeholder is not prose or a second table.
+    text = text.replace('<!-- sampler-methods -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
@@ -139,6 +142,13 @@ def compiler_rules(language):
                      "outside the length. Helpers share immutable data. `list.len` gives i32; `poly` "
                      "accepts list<vec2> and color, evaluating points first. Direct legacy palette indexing keeps its "
                      "last-element fallback; a palette passed as a list uses checked indexing and the 256-element limit.")
+    if 'samplers' in rules:
+        from language_docs import sampler_signatures
+        lines += ['Captured samplers evaluate lower, upper and optional distribution once, without an intrinsic draw. '
+                  'Copies/helpers share the immutable description. Receivers evaluate once before the count; '
+                  'batch pick checks count, handle and allocation before results. Constants and empty batches consume no RNG. '
+                  'Asset sampler constants and range palettes are not available yet.', '', sampler_signatures(language)]
+        lines.append('')
     if 'random_range' in rules:
         ranged = rules['random_range']
         lines.append('`lower to upper` evaluates the lower bound, then the upper one, then draws once: ' +

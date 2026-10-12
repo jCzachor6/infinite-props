@@ -1,12 +1,12 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–3 (2026-10-12).
-**Scope:** Signed integer bounds, vector normalization and immutable collections. This document
+**Status:** Development contract for product 0.7.0, stages 1–4 (2026-10-12).
+**Scope:** Signed integer bounds, vector normalization, immutable collections and captured samplers. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; samplers and surfaces are not implemented
-by stages 1–3. Scalar asset constants add no binary layout or instruction.
+extend this development format; range palettes, const samplers and surfaces
+are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
 
@@ -130,10 +130,19 @@ gates. Recompiled-source migrations are checked separately.
 ## 6. Type descriptors and collection constants
 
 Optional section **6 (`types`)** is a `u32 count`, followed by `count` records:
-`u8 kind`, `u8 element`, `u16 reserved`. Kind is **5 (`list`)**. Element is
-one frozen scalar code: 0 i32, 1 f32, 2 color, 3 vec2, 4 distribution.
-Reserved must be zero; duplicate descriptors, unknown kinds/elements and
-nested collection elements are invalid. Count is at most 65,536. The table
+`u8 kind`, `u8 element`, `u16 reference_or_reserved`. The following records are
+supported; all stage-3 list records retain their exact bytes:
+
+| Kind | Element byte | Final u16 | Type |
+| --- | --- | --- | --- |
+| 5 (`list`) | scalar 0–4 | zero | list of i32/f32/color/vec2/distribution |
+| 10 (`sampler`) | scalar 0–3 | zero | sampler of i32/f32/color/vec2 |
+| 5 (`list`) | 0x80 | index of an earlier sampler descriptor | list of sampler<T> |
+
+The referenced sampler must precede the list record. Forward, dangling, cyclic,
+list-of-list and sampler-of-resource references are invalid. Codes 6–9 are not
+wire descriptor kinds. Duplicate descriptors, unknown kinds/elements and
+nonzero scalar-record reserved fields are invalid. Count is at most 65,536. The table
 is independent of instruction aux bytes and is shared by functions and pools.
 
 Function parameter/result/local types retain one byte for frozen codes 0–4.
@@ -145,7 +154,9 @@ the legacy parts table is unchanged. Descriptors apply to complete types:
 
 Optional section **7 (`collections`)** is `u32 count`, followed by entries:
 `u16 descriptor_index`, `u16 length`, then exactly `length` element payloads.
-Count is at most 65,536; length is 0–256; the descriptor must be a list.
+Count is at most 65,536; length is 0–256; the descriptor must be a list of
+frozen scalar elements. Samplers have no constant-pool encoding in this stage,
+including empty lists of descriptions.
 Element payloads are little-endian, with no per-element tag:
 
 | Element | Payload |
@@ -224,7 +235,8 @@ This preserves previously accepted large palette indexing and ramp.
 
 ## 9. Tool transport and acceptance
 
-IPA signatures spell parameterized types as `list<T>`. `types:` lists
+IPA signatures spell parameterized types as `list<T>`, `sampler<T>` or
+`list<sampler<T>>`. `types:` lists
 descriptors in table order. `collection: list<T> hex` stores the raw element
 payload in hex; `-` spells zero elements. The typed width fixes the count.
 IPDIS emits these declarations and exact raw data, including all floating
@@ -238,3 +250,68 @@ index/unset/memory/fuel traps, large legacy palettes, exact polygon images,
 invalid descriptors/pools, old-version gates, debug/strip/compression,
 IPA/IPDIS/formatter and existing C API/SFML/Godot/HTML5 output interfaces.
 Frozen stage-1/2 format-0.6 binaries remain independent runtime evidence.
+
+## 10. Captured samplers and explicit picks
+
+All aux bytes are zero. Every operand `t` indexes a valid sampler descriptor
+in section 6, including in unreachable instructions. No complex type is packed
+into aux. Other descriptor kinds or missing indices are rejected before execution.
+
+| Opcode | Mnemonic and operand | Stack, deepest first |
+| --- | --- | --- |
+| 0xBC | sampler.value t | `[T] -> [sampler<T>]` |
+| 0xBD | sampler.range t | `[T lower, T upper] -> [sampler<T>]` |
+| 0xBE | sampler.with t | `[T lower, T upper, distribution] -> [sampler<T>]` |
+| 0xBF | sampler.pick t | `[sampler<T>] -> [T]` |
+| 0xC0 | sampler.pick.list t | `[sampler<T>, i32 n] -> [list<T>]` |
+
+Construction validates and snapshots its already-evaluated operands. Numeric
+range lower must not exceed upper. f32 and vec2 components must be finite, also
+for value descriptions; color values have no additional restriction. A shaped
+description requires an initialized distribution satisfying the frozen constructor
+rules. Probability mass/support are checked only when a draw executes. Each
+description charges **256 bytes** before allocation, remains immutable and is
+owned by the generation arena. Copy, assignment, parameter and return share
+the allocation without RNG state or a second charge. An unset sampler handle
+traps with `RuntimeViolation` and `sampler handle is unassigned` upon picking.
+
+`sampler.value` returns its stored value on every pick without drawing.
+`sampler.range` and `sampler.with` call the identical 0.5 integer/float kernels:
+inclusive integer rejection sampling, pinned float interpolation and existing
+distribution truncation/rounding. Color/vec2 ranges sample one f32 coefficient
+in [0,1] and call the frozen RGBA/vec2 mix kernels. Equal numeric bounds retain
+the old RNG draw. Integer draws may have redraws; descriptions never have an
+independent stream. Single picks run in the current caller frame's stream.
+
+Source capture has a distinct AST: it evaluates lower, then upper, then optional
+distribution once, and captures only the outer range. Nested random expressions
+in operands remain eager. Source `.pick` has a statically typed receiver and
+arity; the receiver evaluates once before n. There is no implicit conversion
+to T, lazy expression, generic dispatch, `sample` alias or random binding.
+The global eager selection builtin `pick` remains unchanged.
+
+For a batch, both expressions have run before the instruction. Check n in
+**0–256** first (`NumericRange`, `sampler result count must be between 0 and 256`),
+then the sampler handle/type. Charge n element fuel and reserve the entire
+result list before the first draw. Each result comes from that same description
+without reconstructing its bounds/parameters. Freeze/publish the list only
+after all n results succeed. n=0 makes an empty typed list and performs no draw
+or mass check, but still validates the handle. n=1 still returns a list.
+Earlier receiver/count effects remain consumed if preflight fails.
+
+Each capture and single pick pays its base 1 fuel. A nonconstant single pick
+includes the existing scalar draw's base cost in that unit, plus integer redraw
+or distribution kernel costs, and an additional 1 for color/vec2 mixing.
+A batch pays base 1 plus n for storing results, plus each nonconstant draw's
+base 1 and existing kernel/mix costs. Constant descriptions add no draw cost.
+n=0 pays only the batch instruction, aside from source operand evaluation.
+The batch and a manual loop have identical values/RNG, with different loop and
+instruction overhead. Fuel failure cannot expose partial list elements.
+
+`list<sampler<T>>` uses the existing list builder, index, length and sharing
+operations with full element identity. List descriptors remain distinct for
+each sampler element type. Empty literals require context and lists are limited
+to 256 entries. Source const samplers and range palettes are deferred; legacy
+palettes, math/RNG algorithms, parts and all public C layouts remain unchanged.
+Failed format-0.6 executions clear all sampler/list arena ownership and cannot
+publish or resume as a successful generation.

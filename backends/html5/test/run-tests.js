@@ -58,6 +58,9 @@ async function main() {
         console.log("native/WASM collections: PASS (" + native.collections.comparisons +
             " exact generations; " + native.collections.traps + " matching traps; " +
             native.collections.rejections + " malformed/version rejections)");
+        console.log("native/WASM samplers: PASS (" + native.samplers.comparisons +
+            " exact generations; " + native.samplers.traps + " matching traps; " +
+            native.samplers.rejections + " malformed/version rejections)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

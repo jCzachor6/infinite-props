@@ -1,0 +1,32 @@
+asset samplerBars {
+  size 32x24
+  output point checks
+  output point direction
+  output point samples
+  output point state
+
+  identity(spec: sampler<i32>) -> sampler<i32> {
+    return spec
+  }
+
+  paint(widths: list<i32>, tint: color) {
+    for i in 0..list.len(widths) {
+      rect(2, 2 + i * 6, widths[i], 4, tint)
+    }
+  }
+
+  draw {
+    width = identity(sampler(10 to 15 with gaussian(12, 2)))
+    widths = width.pick(3)
+    descriptions = [sampler(#343a42 to #929ca8), sampler(#ffffff)]
+    tint = descriptions[0].pick()
+    segment = sampler({3, 4} to {18, 2} with beta(2, 3))
+    direction = segment.pick()
+    empty = width.pick(0)
+    constant = sampler(40).pick(1)
+    checks = {list.len(widths) + list.len(empty), constant[0]}
+    samples = {widths[0], widths[2]}
+    paint(widths, tint)
+    state = {seed & 65535, seed >> 16}
+  }
+}

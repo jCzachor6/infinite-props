@@ -139,8 +139,14 @@ std::string clean(const std::string& token) {
 bool parseValueType(const std::string& text, ValueType& out) {
     if (text.starts_with("list<") && text.ends_with(">")) {
         ValueType item;
-        if (!parseValueType(text.substr(5, text.size() - 6), item) || !item.isScalar()) return false;
+        if (!parseValueType(text.substr(5, text.size() - 6), item) || (!item.isScalar() && !item.isSampler())) return false;
         out = ValueType::list(item);
+        return true;
+    }
+    if (text.starts_with("sampler<") && text.ends_with(">")) {
+        ValueType item;
+        if (!parseValueType(text.substr(8, text.size() - 9), item) || !item.isScalar() || item == ValueType::Distribution) return false;
+        out = ValueType::sampler(item);
         return true;
     }
     if (text == "i32") {
@@ -420,7 +426,7 @@ std::vector<u8> assemble(const std::string& source) {
             if (function || currentPart || words.size() < 2) throw error("bad type descriptor declaration");
             for (std::size_t i = 1; i < words.size(); ++i) {
                 ValueType type;
-                if (!parseValueType(words[i], type) || !type.isList()) throw error("bad list descriptor");
+                if (!parseValueType(words[i], type) || !type.isParameterized()) throw error("bad parameterized descriptor");
                 if (std::find(program.types.begin(), program.types.end(), type) != program.types.end()) throw error("duplicate type descriptor");
                 program.types.push_back(type);
             }
@@ -847,7 +853,9 @@ std::vector<u8> assemble(const std::string& source) {
     }
 
     const auto addType = [&](ValueType type) {
-        if (!type.isList()) return;
+        if (!type.isParameterized()) return;
+        if (type.isList() && type.item().isSampler() &&
+            std::find(program.types.begin(), program.types.end(), type.item()) == program.types.end()) program.types.push_back(type.item());
         if (std::find(program.types.begin(), program.types.end(), type) == program.types.end()) program.types.push_back(type);
     };
     for (const auto* fn : ordered) for (const auto* slots : {&fn->params, &fn->results, &fn->locals})
@@ -855,10 +863,7 @@ std::vector<u8> assemble(const std::string& source) {
     for (const auto& collection : program.collections) addType(collection.type);
     Writer descriptors;
     if (!program.types.empty()) {
-        descriptors.writeU32(static_cast<u32>(program.types.size()));
-        for (const auto type : program.types) {
-            descriptors.writeU8(static_cast<u8>(type.kind)); descriptors.writeU8(static_cast<u8>(type.element)); descriptors.writeU16(0);
-        }
+        writeTypeDescriptors(descriptors, program.types);
     }
     Writer collections;
     if (!program.collections.empty()) {

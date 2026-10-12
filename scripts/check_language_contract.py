@@ -27,7 +27,9 @@ def main():
 
     rules = description['source_rules']
     scalar_types = ['i32', 'f32', 'color', 'vec2', 'distribution']
-    storable_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
+    constant_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
+    sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
+    storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types]
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -49,7 +51,7 @@ def main():
         'seed': 'current_rng_state_in_all_functions', 'palettes': 'all_asset_functions',
         'constants': 'all_asset_functions'}
     assert rules['asset_constants'] == {'keyword': 'contextual',
-        'syntax': 'const <type> <name> = <expression>', 'types': storable_types,
+        'syntax': 'const <type> <name> = <expression>', 'types': constant_types,
         'scope': 'asset', 'visibility': 'all_asset_functions', 'read_only': True,
         'dependencies': 'forward_acyclic', 'evaluation': 'compile_time',
         'check_all_declarations': True, 'check_effects_in_dead_branches': True,
@@ -66,12 +68,21 @@ def main():
 
     # These are language acceptance cases, not JSON snapshots alone. Each
     # advertised rule is exercised by a valid source and/or a rejection.
-    assert rules['types']['parameterized'] == [{'constructor': 'list', 'element_types': scalar_types,
-        'nested': False, 'representation': 'immutable_arena_handle'}]
+    assert rules['types']['parameterized'] == [{'constructor': 'list', 'element_types': scalar_types + sampler_types,
+        'nested': False, 'representation': 'immutable_arena_handle'}, {'constructor': 'sampler',
+        'element_types': scalar_types[:-1], 'nested': False, 'representation': 'immutable_arena_handle'}]
     assert rules['collections']['index_bounds'] == 'trap'
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
     cases = [
+        ('sampler helper and batch', 'echo(s:sampler<i32>)->sampler<i32>{return s} draw{s=echo(sampler(10 to 15));items=s.pick(3);x=items[0]}', True),
+        ('sampler list', 'draw{items=[sampler(1),sampler(2 to 4)];x=items[0].pick();n=list.len(items)}', True),
+        ('sampler constants deferred', 'const sampler<i32> width=sampler(1 to 2) draw{}', False),
+        ('sampler invalid count', 'draw{s=sampler(1 to 2);x=s.pick(257)}', False),
+        ('sampler count type', 'draw{s=sampler(1 to 2);x=s.pick(1.0)}', False),
+        ('sampler capture bounds', 'draw{s=sampler(4 to 2)}', False),
+        ('sampler capture collision', 'sampler(x:i32)->i32{return x} draw{x=sampler(1 to 2)}', False),
+        ('sampler helper preserved', 'sampler(x:i32)->i32{return x} draw{x=sampler(1)}', True),
         ('lists through helpers', 'draw{items=echo([1,2]);n=list.len(items)} echo(items:list<i32>)->list<i32>{return items}', True),
         ('empty context', 'const list<vec2> empty=[] draw{points=empty}', True),
         ('empty without context', 'draw{items=[]}', False),

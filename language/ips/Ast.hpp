@@ -118,11 +118,23 @@ struct RandomRange {
     SourceLocation withLocation{};
 };
 
+// Capture changes only the outer range into a description. Nested ranges in
+// bounds remain eager expressions; this is neither a lambda nor a lazy call.
+struct SamplerCapture {
+    std::unique_ptr<Expr> value;
+    SourceLocation location;
+};
+struct SamplerPick {
+    std::unique_ptr<Expr> receiver;
+    std::unique_ptr<Expr> count; // null: one scalar result; otherwise list<T>
+    SourceLocation location;
+};
+
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange> {
+                   Unary, RandomRange, SamplerCapture, SamplerPick> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange>::variant;
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };

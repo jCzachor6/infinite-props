@@ -303,6 +303,12 @@ class SourcePrinter {
                 expression(*node.upper);
                 if (node.distribution) { out_ << " with "; expression(*node.distribution); }
                 if (!groups) out_ << ')';
+            } else if constexpr (std::is_same_v<T, SamplerCapture>) {
+                out_ << "sampler("; expression(*node.value); out_ << ')';
+            } else if constexpr (std::is_same_v<T, SamplerPick>) {
+                expression(*node.receiver); out_ << ".pick(";
+                if (node.count) expression(*node.count);
+                out_ << ')';
             } else if constexpr ((std::is_same_v<T, VectorLit> || std::is_same_v<T, ListLit>)) {
                 out_ << (std::is_same_v<T, ListLit> ? '[' : '{');
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {

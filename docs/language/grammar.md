@@ -28,13 +28,14 @@ helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
 parameter     = name, ":", value_type ;
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
-list_type     = "list", "<", scalar_type, ">" ;
-value_type    = scalar_type | list_type ;
+sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
+list_type     = "list", "<", (scalar_type | sampler_type), ">" ;
+value_type    = scalar_type | list_type | sampler_type ;
 block         = "{", { ";" | statement }, "}" ;
 statement     = assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" | list_type ], name, "=", expression ;  (* contextual "distribution" *)
-call_statement = name, { postfix_suffix } ;  (* must end as a call AST *)
+assignment    = [ "distribution" | list_type | sampler_type ], name, "=", expression ;
+call_statement = name, { postfix_suffix } ;  (* must end as a call, capture or pick *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
 while         = "while", "(", expression, ")", block ;
@@ -57,6 +58,8 @@ postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
 primary       = literal | name | compound | list_literal | "(", expression, ")" ;
+sampler_capture = "sampler", "(", expression, ")" ;  (* contextual; the outer random_range is captured *)
+sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
 expressions   = expression, { ",", expression }, [ "," ] ;

@@ -13,6 +13,11 @@ namespace iprop {
 // pinned spec rules when needed.
 struct ListData;
 struct ListBuilderData;
+struct SamplerData;
+struct SamplerValue {
+    TypeDescriptor type;
+    std::shared_ptr<const SamplerData> data;
+};
 struct ListValue {
     TypeDescriptor type;
     std::shared_ptr<const ListData> data;
@@ -20,7 +25,15 @@ struct ListValue {
 struct ListBuilder {
     std::shared_ptr<ListBuilderData> data;
 };
-using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder>;
+using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue>;
+
+enum class SamplerMode : u8 { Constant, Uniform, With };
+struct SamplerData {
+    TypeDescriptor type;
+    SamplerMode mode = SamplerMode::Constant;
+    Value lower, upper;
+    Distribution distribution;
+};
 
 struct ListData {
     TypeDescriptor type;

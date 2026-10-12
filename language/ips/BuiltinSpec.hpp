@@ -40,6 +40,9 @@ struct BuiltinSpec {
 // Language contracts are distinct from VM stack contracts: coercions, overloads
 // and special lowerings belong here, without duplicating them in the emitter.
 const std::map<std::string, BuiltinSpec>& builtinSpecs();
+// Receiver-first signatures for the statically resolved sampler method.
+// Kept separate from global builtin pick and shared by typing/docs/lowering.
+const BuiltinSpec& samplerPickSpec();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
 // The distribution constructors arrived after helpers could take their

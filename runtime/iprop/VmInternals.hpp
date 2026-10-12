@@ -125,6 +125,7 @@ struct Execution {
     Vec2 popVec2();
     Distribution popDistribution();
     ListValue popList();
+    SamplerValue popSampler();
     void allocateResource(u64 bytes);
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
@@ -161,6 +162,8 @@ bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);
 bool stepParts(Execution& ex, Instruction ins);
 bool stepCollections(Execution& ex, Instruction ins);
+bool stepSamplers(Execution& ex, Instruction ins);
+Value drawSampler(Execution& ex, const SamplerData& sampler);
 
 // Compile-time evaluation of one stateless value operation. Uses the same
 // adapters, kernels and traps as generation, without a canvas or RNG stream.

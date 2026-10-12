@@ -14,5 +14,10 @@ bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload);
 // Resolves the asset's complete declaration graph, including unused constants.
 // Forward references are allowed. No helpers or generation state are executed.
 AssetConstants resolveAssetConstants(const Program& program);
+// Probe a runtime expression without folding it or executing any generation
+// effects. Unknown locals/helper calls return nullopt; invalid pure values
+// retain the same located diagnostics as asset constants.
+std::optional<Value> knownAssetExpression(const Program& program, const Expr& expression,
+                                         const AssetConstants& constants);
 
 } // namespace iprop::ips

@@ -8,6 +8,7 @@
 #include "ips/AssetConstants.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Collections.hpp"
+#include "iprop/Samplers.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -55,7 +56,36 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::Rect,
     ips::ValueType::list(ips::ValueType::I32), ips::ValueType::list(ips::ValueType::F32),
     ips::ValueType::list(ips::ValueType::Color), ips::ValueType::list(ips::ValueType::Vec2),
-    ips::ValueType::list(ips::ValueType::Distribution)};
+    ips::ValueType::list(ips::ValueType::Distribution),
+    ips::ValueType::sampler(ips::ValueType::I32), ips::ValueType::sampler(ips::ValueType::F32),
+    ips::ValueType::sampler(ips::ValueType::Color), ips::ValueType::sampler(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::I32)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::F32)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Color)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2))};
+
+Json samplers() {
+    Json methods = Json::array();
+    for (const auto& signature : ips::samplerPickSpec().overloads) {
+        Json parameters = Json::array();
+        for (std::size_t i = 1; i < signature.params.size(); ++i)
+            parameters.push_back(Json::object({{"name", signature.params[i].name}, {"type", ips::typeName(signature.params[i].type)}}));
+        const auto* opcode = findOpcode(*signature.opcode);
+        methods.push_back(Json::object({{"name", "pick"}, {"receiver", ips::typeName(signature.params[0].type)},
+            {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
+            {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
+            {"effects", operationEffects(opcode->effects)}}));
+    }
+    return Json::object({{"syntax", "sampler(<value> | <lower> to <upper> [with <distribution>])"},
+        {"capture_evaluation", "lower_upper_distribution_once"}, {"intrinsic_capture_rng", "none"},
+        {"bounds_validation", "capture"}, {"probability_mass_validation", "pick"},
+        {"method_evaluation", "receiver_once_before_count_once"}, {"method_resolution", "static_receiver_type_and_arity"},
+        {"minimum_count", 0}, {"maximum_count", kMaxListElements}, {"count_type", "i32"},
+        {"batch_preflight", "count_handle_allocation_before_first_draw"},
+        {"constant_description_draws", 0}, {"empty_batch_draws", 0}, {"unset_empty_batch", "trap"},
+        {"capture_effects", operationEffects(findOpcode(Opcode::SamplerRange)->effects)},
+        {"methods", std::move(methods)}, {"asset_constants", false}, {"range_palettes", false}});
+}
 
 template<class Predicate>
 Json types(Predicate include) {
@@ -144,7 +174,9 @@ Json sourceRules() {
             {"minimum_format_minor", minor}});
     };
     typeRules["parameterized"] = Json::array({Json::object({{"constructor", "list"},
-        {"element_types", types([](ips::ValueType type) { return type.isScalar(); })},
+        {"element_types", types([](ips::ValueType type) { return type.isScalar() || type.isSampler(); })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}}),
+        Json::object({{"constructor", "sampler"}, {"element_types", types([](ips::ValueType type) { return type.isScalar() && type != ips::ValueType::Distribution; })},
         {"nested", false}, {"representation", "immutable_arena_handle"}})});
     typeRules["components"] = Json::array({
         components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
@@ -161,7 +193,7 @@ Json sourceRules() {
         {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
         {"constants", "all_asset_functions"}});
     rules["asset_constants"] = Json::object({{"keyword", "contextual"},
-        {"syntax", "const <type> <name> = <expression>"}, {"types", types(ips::isStorable)},
+        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable() && !type.isSampler() && !type.item().isSampler(); })},
         {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
         {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
         {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
@@ -182,6 +214,7 @@ Json sourceRules() {
         {"mutable", false}, {"helper_transfer", "share_immutable_data"},
         {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
         {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
+    rules["samplers"] = samplers();
     rules["random_range"] = randomRange();
     return rules;
 }

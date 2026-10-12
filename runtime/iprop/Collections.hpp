@@ -19,6 +19,7 @@ TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor>
 void writeTypeReference(Writer& writer, TypeDescriptor type,
                         std::span<const TypeDescriptor> types);
 std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section);
+void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types);
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
                                          std::span<const TypeDescriptor> types);
 void writeListElements(Writer& writer, const ListData& list);
@@ -29,6 +30,7 @@ struct ResourceArena {
     u64 bytes = 0;
     u64 peak = 0;
     std::vector<std::shared_ptr<const ListData>> lists;
+    std::vector<std::shared_ptr<const SamplerData>> samplers;
     std::map<u16, ListValue> constants;
     bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; if (bytes > peak) peak = bytes; }
@@ -36,6 +38,7 @@ struct ResourceArena {
     // Fixed accounting is identical on native and WASM, covering storage,
     // builder/control metadata and arena ownership with a conservative slot.
     static u64 listBytes(std::size_t count) { return 128u + count * 64u; }
+    static constexpr u64 samplerBytes() { return 256u; }
 };
 
 } // namespace iprop

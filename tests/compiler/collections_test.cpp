@@ -115,7 +115,7 @@ TEST_CASE("empty lists require an element context and locals retain their list t
     reject("asset t {size 1x1 draw{items=[1,#112233]}}", "list element needs i32");
     reject("asset t {size 1x1 draw{items=[[1]]}}", "list elements must be");
     reject("asset t {size 1x1 f(items:list<list<i32>>){} draw{}}", "nested lists");
-    reject("asset t {size 1x1 f(items:list<sampler<i32>>){} draw{}}", "parameter type");
+    CHECK_NOTHROW(collections("asset t {size 1x1 f(items:list<sampler<i32>>){} draw{}}"));
     reject("asset t {size 1x1 draw{items=[1] items[0]=2}}", "list elements are immutable");
     reject("asset t {size 1x1 draw{items=[1] x=items[0.5]}}", "list index must be i32");
 }

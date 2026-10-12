@@ -58,7 +58,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type.isList() ? (type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
+                const std::string value = type.isList() ? (type.item().isSampler() ?
+                    (type.item().item() == T::Color ? "[sampler(#abc)]" : type.item().item() == T::Vec2 ? "[sampler({1,1})]" :
+                     type.item().item() == T::F32 ? "[sampler(1.0)]" : "[sampler(1)]") : type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
                     type.element == T::Color ? "[#112233]" : type.element == T::Distribution ? "[gaussian(1,1)]" :
                     type.element == T::F32 ? "[1.0]" : "[1]") : type == T::Color ? "#112233" : type == T::Vec2 ? "{1,1}" :
                     type == T::F32 ? (overload.result == T::Distribution ? std::to_string(position) + ".0" : "1.0") : "1";

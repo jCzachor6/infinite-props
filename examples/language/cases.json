@@ -1,5 +1,14 @@
 {
   "cases": [
+    {"file": "errors/sampler-count.ips", "expect": "compile-error", "message": "sampler result count must be between 0 and 256"},
+    {"file": "errors/sampler-count-type.ips", "expect": "compile-error", "message": "sampler result count must be i32"},
+    {"file": "errors/sampler-bounds.ips", "expect": "compile-error", "message": "random range lower bound exceeds the upper bound"},
+    {"file": "errors/sampler-receiver.ips", "expect": "compile-error", "message": ".pick needs a sampler<T> receiver"},
+    {"file": "errors/sampler-helper-collision.ips", "expect": "compile-error", "message": "sampler capture conflicts with helper 'sampler'"},
+    {"file": "traps/sampler-count.ips", "expect": "trap", "message": "sampler result count must be between 0 and 256"},
+    {"file": "traps/sampler-unassigned.ips", "expect": "trap", "message": "sampler handle is unassigned"},
+    {"file": "traps/sampler-mass.ips", "expect": "trap", "message": "random range has no probability under the distribution"},
+    {"file": "samplers.ips", "expect": "pass"},
     {"file": "asset-constants.ips", "expect": "pass"},
     {"file": "errors/const-cycle.ips", "expect": "compile-error", "message": "cyclic const dependency"},
     {"file": "errors/const-rng.ips", "expect": "compile-error", "message": "RNG or generation effects"},

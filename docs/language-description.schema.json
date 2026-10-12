@@ -97,7 +97,15 @@
                   "list<f32>",
                   "list<color>",
                   "list<vec2>",
-                  "list<distribution>"
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -119,7 +127,15 @@
                   "list<f32>",
                   "list<color>",
                   "list<vec2>",
-                  "list<distribution>"
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -141,7 +157,15 @@
                   "list<f32>",
                   "list<color>",
                   "list<vec2>",
-                  "list<distribution>"
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -305,8 +329,11 @@
                 "properties": {
                   "constructor": {
                     "type": "string",
-                    "const": "list",
-                    "description": "Parameterized type constructor name."
+                    "description": "Parameterized type constructor name.",
+                    "enum": [
+                      "list",
+                      "sampler"
+                    ]
                   },
                   "element_types": {
                     "type": "array",
@@ -320,7 +347,11 @@
                         "f32",
                         "color",
                         "vec2",
-                        "distribution"
+                        "distribution",
+                        "sampler<i32>",
+                        "sampler<f32>",
+                        "sampler<color>",
+                        "sampler<vec2>"
                       ]
                     }
                   },
@@ -1212,6 +1243,189 @@
               "description": "Maximum additional list and part canvas data charged per generation."
             }
           }
+        },
+        "samplers": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "sampler(<value> | <lower> to <upper> [with <distribution>])",
+              "description": "Contextual capture syntax; the outer range is captured and other value expressions remain eager."
+            },
+            "capture_evaluation": {
+              "const": "lower_upper_distribution_once",
+              "description": "Capture operand order, each evaluated once before validating and allocating the description."
+            },
+            "intrinsic_capture_rng": {
+              "const": "none",
+              "description": "Capture itself does not advance a stream; operand effects still run."
+            },
+            "bounds_validation": {
+              "const": "capture",
+              "description": "Bounds and distribution parameters are validated when captured."
+            },
+            "probability_mass_validation": {
+              "const": "pick",
+              "description": "Support and probability mass are checked only when drawing."
+            },
+            "method_evaluation": {
+              "const": "receiver_once_before_count_once",
+              "description": "Each method evaluates its receiver once before its optional count, also once."
+            },
+            "method_resolution": {
+              "const": "static_receiver_type_and_arity",
+              "description": "Methods use static sampler receiver type and argument arity, without dynamic dispatch."
+            },
+            "minimum_count": {
+              "const": 0,
+              "description": "Smallest supported batch count, including an empty typed list."
+            },
+            "maximum_count": {
+              "const": 256,
+              "description": "Largest supported batch count, matching the immutable list limit."
+            },
+            "count_type": {
+              "const": "i32",
+              "description": "The batch count is i32; floating counts are rejected."
+            },
+            "batch_preflight": {
+              "const": "count_handle_allocation_before_first_draw",
+              "description": "Count, handle and complete result allocation are checked before the first result draw."
+            },
+            "constant_description_draws": {
+              "const": 0,
+              "description": "Constant descriptions return stored values without RNG steps."
+            },
+            "empty_batch_draws": {
+              "const": 0,
+              "description": "Empty batches do not execute a draw or probability mass check."
+            },
+            "unset_empty_batch": {
+              "const": "trap",
+              "description": "Unset descriptions trap even when the batch count is zero."
+            },
+            "asset_constants": {
+              "const": false,
+              "description": "Whether sampler descriptions may be declared as asset constants in this stage."
+            },
+            "range_palettes": {
+              "const": false,
+              "description": "Whether palette ranges become sampler descriptions in this stage."
+            },
+            "capture_effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic capture effects excluding operand evaluation and resource failures."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 8,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "pick",
+                    "description": "Method name, separate from the global eager selection builtin."
+                  },
+                  "receiver": {
+                    "type": "string",
+                    "enum": [
+                      "sampler<i32>",
+                      "sampler<f32>",
+                      "sampler<color>",
+                      "sampler<vec2>"
+                    ],
+                    "description": "Required sampler receiver descriptor."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "n",
+                          "description": "The only accepted batch count parameter name."
+                        },
+                        "type": {
+                          "const": "i32",
+                          "description": "The required count value type."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "description": "The optional named batch count parameter."
+                    },
+                    "description": "Optional i32 result count; the receiver is not a positional method argument."
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "i32",
+                      "f32",
+                      "color",
+                      "vec2",
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>"
+                    ],
+                    "description": "Single sampled type or immutable list result type."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "sampler.pick",
+                      "sampler.pick.list"
+                    ],
+                    "description": "Descriptor-indexed runtime instruction implementing this signature."
+                  },
+                  "minimum_format_minor": {
+                    "const": 6,
+                    "description": "Oldest format accepting the method instruction and sampler descriptor."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "minimum_format_minor",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "One statically resolved sampler method signature."
+              },
+              "description": "Every current pick signature, generated from the shared receiver-first frontend registry."
+            }
+          },
+          "required": [
+            "syntax",
+            "capture_evaluation",
+            "intrinsic_capture_rng",
+            "bounds_validation",
+            "probability_mass_validation",
+            "method_evaluation",
+            "method_resolution",
+            "minimum_count",
+            "maximum_count",
+            "count_type",
+            "batch_preflight",
+            "constant_description_draws",
+            "empty_batch_draws",
+            "unset_empty_batch",
+            "asset_constants",
+            "range_palettes",
+            "capture_effects",
+            "methods"
+          ],
+          "additionalProperties": true,
+          "description": "Captured descriptions and statically resolved method signatures from the shared frontend registry."
         }
       },
       "required": [
@@ -1535,7 +1749,15 @@
             "list<f32>",
             "list<color>",
             "list<vec2>",
-            "list<distribution>"
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -1576,7 +1798,15 @@
             "list<f32>",
             "list<color>",
             "list<vec2>",
-            "list<distribution>"
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1649,7 +1879,15 @@
             "list<f32>",
             "list<color>",
             "list<vec2>",
-            "list<distribution>"
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1701,7 +1939,15 @@
               "list<f32>",
               "list<color>",
               "list<vec2>",
-              "list<distribution>"
+              "list<distribution>",
+              "sampler<i32>",
+              "sampler<f32>",
+              "sampler<color>",
+              "sampler<vec2>",
+              "list<sampler<i32>>",
+              "list<sampler<f32>>",
+              "list<sampler<color>>",
+              "list<sampler<vec2>>"
             ],
             "description": "Allowed value types for every eager choice."
           },

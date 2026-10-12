@@ -1,13 +1,14 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–3 of source language 0.7: exact integer bounds,
-stable vector normalization, typed asset constants and immutable lists. Product 0.7.0 is under
-development. Later stages of 0.7, including samplers and surfaces, remain
+This checkout implements stages 1–4 of source language 0.7: exact integer bounds,
+stable vector normalization, typed asset constants, immutable lists and captured
+samplers with explicit single/batch picks. Product 0.7.0 is under
+development. Later stages of 0.7, including range palettes and surfaces, remain
 outside the currently implemented language.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–3 |
+| Contract | 0.6 release | 0.7 development, stages 1–4 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -130,3 +131,27 @@ Stage 3 verifies all element types, empty contexts, forward const references,
 left-to-right RNG, 256-item builders, shared data, index/unassigned/memory/fuel
 traps, legacy palettes, exact polygon pixels, corrupted descriptors and pools,
 old-format rejection, formatter/IPA/IPDIS, compression and native/WASM hosts.
+
+## Captured sampling descriptions
+
+`sampler(lower to upper with d)` now captures a description, evaluating its
+bounds/distribution once and making no intrinsic draw. `spec.pick()` returns T;
+`spec.pick(n)` returns `list<T>` of 0–256 stored results. Copying, helper transfer
+and list indexing of descriptions do not draw. Single and batch picks use the
+existing caller stream and frozen `to`/`with` algorithms. No `sample` or `random`
+binding is introduced. See [sampler semantics](samplers.md).
+
+`sampler` stays contextual. A legacy helper `sampler(value:i32)` still accepts
+ordinary value calls. A call with an outer range, such as `sampler(10 to 15)`,
+now produces **exit code 1**, parser diagnostic `IPS-PARSE-001`:
+`sampler capture conflicts with helper 'sampler'; rename the helper before capturing a range`.
+There is no executable artifact. Rename the helper before using capture syntax;
+its eager range call is not silently changed into a captured description.
+Ordinary locals, inputs and part aliases named `sampler` remain valid.
+
+Schema 3 adds `source_rules.samplers`, including eight method signatures from
+the frontend's shared receiver-first registry, their effects and evaluation
+order. Parameterized types now include `sampler<T>` and `list<sampler<T>>`.
+Const sampler declarations and range palettes remain unavailable until the
+next stage. Frozen stage-3 collections and an ordinary-range sampler oracle
+execute directly as compatibility evidence; older fixtures remain unchanged.

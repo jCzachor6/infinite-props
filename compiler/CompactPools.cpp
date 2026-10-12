@@ -26,7 +26,7 @@ void compactPools(Plan& plan) {
     Pools pools;
     std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size());
     const auto markType = [&](ValueType type) {
-        if (!type.isList()) return;
+        if (!type.isParameterized()) return;
         const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
         if (found == old.typesValue().end()) throw std::logic_error("missing collection descriptor");
         types.at(static_cast<std::size_t>(found - old.typesValue().begin())) = true;
@@ -38,6 +38,7 @@ void compactPools(Plan& plan) {
                 lists.at(ins.operand) = true; markType(old.listsValue().at(ins.operand).type);
             }
             if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) types.at(ins.operand) = true;
+            if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) types.at(ins.operand) = true;
         }
     }
     for (const auto& name : old.stringsValue()) if (names.contains(name)) pools.addString(name);
@@ -54,6 +55,7 @@ void compactPools(Plan& plan) {
     for (auto& f : plan.functions) for (auto& ins : f.code) {
         if (ins.opcode == Opcode::ConstList) ins.operand = lmap.at(ins.operand);
         if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
+        if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstI32) ins.operand = imap.at(ins.operand);
         if (ins.opcode == Opcode::ConstF32) ins.operand = fmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstColor) ins.operand = cmap.at(ins.operand);

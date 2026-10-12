@@ -109,10 +109,7 @@ std::vector<u8> Assembler::assemble() {
     Writer types;
     Writer collections;
     if (!plan_.pools.typesValue().empty()) {
-        types.writeU32(static_cast<u32>(plan_.pools.typesValue().size()));
-        for (const auto type : plan_.pools.typesValue()) {
-            types.writeU8(static_cast<u8>(type.kind)); types.writeU8(static_cast<u8>(type.element)); types.writeU16(0);
-        }
+        writeTypeDescriptors(types, plan_.pools.typesValue());
     }
     if (!plan_.pools.listsValue().empty()) {
         collections.writeU32(static_cast<u32>(plan_.pools.listsValue().size()));

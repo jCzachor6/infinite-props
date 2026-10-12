@@ -270,3 +270,24 @@ test("collection formatting and highlighting preserve element types and list cal
         assert.equal(new RegExp(grammar.repository.builtins.match).test("list.len(items)"),true);
     } finally { h.dispose();fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test("sampler formatting preserves captures, arbitrary receivers, types and comments", async () => {
+    const source="asset t{size 1x1 echo(s:sampler<i32>)->sampler<i32>{return s} " +
+        "draw{list<sampler<i32>> items=[sampler((10 to 15)),/* description */sampler(40)] " +
+        "values=echo(items[0]).pick(n=1) value=items[1].pick()}}";
+    const dir=workspace(source);const h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try{
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("list<sampler<i32>> items"));
+        assert.ok(formatted.includes("/* description */"));
+        assert.ok(formatted.includes("echo(items[0]).pick(1)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        assert.equal(new RegExp(grammar.repository.types.match).test("sampler<i32>"),true);
+        assert.equal(new RegExp(grammar.repository.samplerCapture.match).test("sampler(10 to 15)"),true);
+        assert.equal(new RegExp(grammar.repository.samplerMethod.match).test("items[0].pick(3)"),true);
+    }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});

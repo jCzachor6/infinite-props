@@ -14,6 +14,7 @@
       "colors",
       "palette",
       "collections",
+      "samplers",
       "part",
       "limits",
       "grammar",
@@ -181,9 +182,7 @@
       "parts": [
         {
           "heading": "Grammar",
-          "fences": [
-            "ebnf"
-          ]
+          "paragraphs": 2
         }
       ]
     },
@@ -203,6 +202,24 @@
       ],
       "examples": [
         "collections.ips"
+      ]
+    },
+    {
+      "id": "samplers",
+      "title": "Captured descriptions and explicit picks",
+      "chapter": "samplers.md",
+      "parts": [
+        {
+          "heading": "Capture a description",
+          "paragraphs": 1
+        },
+        {
+          "heading": "Pick one or several results",
+          "paragraphs": 1
+        }
+      ],
+      "examples": [
+        "samplers.ips"
       ]
     }
   ],

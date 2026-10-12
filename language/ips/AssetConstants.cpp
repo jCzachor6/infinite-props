@@ -18,7 +18,8 @@ const Asset::Constant* findAssetConstant(const Program& program, const std::stri
 
 bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
     if (!isStorable(overload.result)) return false;
-    if (spec.lowering == BuiltinLowering::ListLength) return true;
+    if (spec.lowering == BuiltinLowering::ListLength)
+        return !overload.params[0].type.item().isSampler(); // sampler constants arrive in the next stage
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
         spec.lowering == BuiltinLowering::ColorConstructor || spec.lowering == BuiltinLowering::Beta;
@@ -42,6 +43,22 @@ class Resolver {
 public:
     explicit Resolver(const Program& program) : program_(program), typer_(parts_) {}
 
+    std::optional<Value> known(const Expr& expression, const AssetConstants& constants) {
+        values_ = constants;
+        for (std::size_t i = 0; i < program_.asset.constants.size(); ++i)
+            declarations_.emplace(program_.asset.constants[i].name, i);
+        Asset::Constant context;
+        context.name = "sampler argument";
+        current_ = &context;
+        std::set<std::size_t> dependencies;
+        try { inspect(expression, dependencies); }
+        catch (const SourceError&) { return std::nullopt; }
+        Function function;
+        typer_.enterFunction(program_, function, false);
+        (void)typer_.typeOf(expression);
+        return evaluate(expression);
+    }
+
     AssetConstants resolve() {
         validateNames();
         Function context;
@@ -52,6 +69,8 @@ public:
         std::set<std::size_t> ready;
         for (std::size_t i = 0; i < dependencies.size(); ++i) {
             current_ = &program_.asset.constants[i];
+            if (current_->type.isSampler() || (current_->type.isList() && current_->type.item().isSampler()))
+                fail(current_->location, "asset sampler constants are not supported yet; use a local sampler description");
             inspect(*current_->value, dependencies[i]);
             const auto actual = typer_.typeOf(*current_->value, current_->type);
             const auto expected = valueTypeOf(current_->type);
@@ -172,6 +191,8 @@ private:
             for (const auto& element : list->elements) inspect(*element, dependencies);
         } else if (std::holds_alternative<RandomRange>(expression)) {
             fail(locationOf(expression), "random ranges are not allowed");
+        } else if (std::holds_alternative<SamplerCapture>(expression) || std::holds_alternative<SamplerPick>(expression)) {
+            fail(locationOf(expression), "asset sampler constants are not supported yet; use a local sampler description");
         }
     }
 
@@ -311,5 +332,9 @@ private:
 } // namespace
 
 AssetConstants resolveAssetConstants(const Program& program) { return Resolver(program).resolve(); }
+std::optional<Value> knownAssetExpression(const Program& program, const Expr& expression,
+                                         const AssetConstants& constants) {
+    return Resolver(program).known(expression, constants);
+}
 
 } // namespace iprop::ips

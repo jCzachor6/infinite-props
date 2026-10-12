@@ -69,8 +69,8 @@ public:
         for (const auto* slots : {&fn_.params, &fn_.results, &fn_.locals}) {
             for (const auto type : *slots) {
                 if (!type.isStorable()) fail(0, "invalid declared value type");
-                if (type.isList() && file_.layout.header.versionMinor < 6) fail(0, "list types require format 0.6");
-                if (type.isList() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
+                if (type.isParameterized() && file_.layout.header.versionMinor < 6) fail(0, "parameterized types require format 0.6");
+                if (type.isParameterized() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
                     fail(0, "missing declared type descriptor");
             }
         }
@@ -304,7 +304,8 @@ private:
         case Opcode::ListGet: case Opcode::ListLen: {
             if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
             const auto type = file_.collections.types[op];
-            const ValueType builder{ValueType::Builder, type.element};
+            if (!type.isList()) fail(at, "expected list descriptor");
+            const auto builder = ValueType::builder(type);
             if (ins.opcode == Opcode::ListBegin) {
                 expect(at, ValueType::I32, "list size"); push(at, builder);
             } else if (ins.opcode == Opcode::ListAppend) {
@@ -315,6 +316,22 @@ private:
                 expect(at, ValueType::I32, "list index"); expect(at, type, "list handle"); push(at, type.item());
             } else {
                 expect(at, type, "list handle"); push(at, ValueType::I32);
+            }
+            return;
+        }
+        case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
+        case Opcode::SamplerPick: case Opcode::SamplerPickList: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            if (!type.isSampler()) fail(at, "expected sampler descriptor");
+            if (ins.opcode == Opcode::SamplerPick || ins.opcode == Opcode::SamplerPickList) {
+                if (ins.opcode == Opcode::SamplerPickList) expect(at, ValueType::I32, "sampler result count");
+                expect(at, type, "sampler receiver");
+                push(at, ins.opcode == Opcode::SamplerPick ? type.item() : ValueType::list(type.item()));
+            } else {
+                if (ins.opcode == Opcode::SamplerWith) expect(at, ValueType::Distribution, "sampler distribution");
+                if (ins.opcode != Opcode::SamplerValue) expect(at, type.item(), "sampler upper bound");
+                expect(at, type.item(), "sampler lower bound"); push(at, type);
             }
             return;
         }

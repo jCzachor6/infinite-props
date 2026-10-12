@@ -226,6 +226,22 @@ ValueType Typer::infer(const Expr& expr) {
     if (const auto* range = std::get_if<RandomRange>(&expr)) {
         return typeRandomRange(*range);
     }
+    if (const auto* capture = std::get_if<SamplerCapture>(&expr)) {
+        const auto* range = std::get_if<RandomRange>(capture->value.get());
+        const auto item = range ? typeRandomRange(*range) : typeOf(*capture->value);
+        const auto type = ValueType::sampler(item);
+        if (!type.isStorable()) error(capture->location, "sampler capture needs i32, f32, color or vec2, got " + std::string(typeName(item)));
+        return type;
+    }
+    if (const auto* pick = std::get_if<SamplerPick>(&expr)) {
+        const auto type = typeOf(*pick->receiver);
+        if (!type.isSampler()) error(pick->location, ".pick needs a sampler<T> receiver, got " + std::string(typeName(type)));
+        std::vector<ValueType> args{type};
+        if (pick->count) args.push_back(typeOf(*pick->count));
+        const auto* signature = builtinOverload(samplerPickSpec(), args);
+        if (!signature) error(locationOf(*pick->count), "sampler result count must be i32");
+        return signature->result;
+    }
     error(locationOf(expr), "unsupported expression");
 }
 
@@ -336,7 +352,8 @@ ValueType Typer::typeList(const ListLit& list, std::optional<ValueType> context)
     if (list.elements.empty() && !element) error(list.location, "empty list needs a known list<T> type");
     for (const auto& expression : list.elements) {
         const auto got = typeOf(*expression);
-        if (!got.isScalar()) error(locationOf(*expression), "list elements must be i32, f32, color, vec2 or distribution, got " + std::string(typeName(got)));
+        if (got.isList()) error(locationOf(*expression), "list elements must be i32, f32, color, vec2 or distribution, got " + std::string(typeName(got)));
+        if (!got.isScalar() && !got.isSampler()) error(locationOf(*expression), "list elements must be scalar values or sampler<T>, got " + std::string(typeName(got)));
         if (!element) element = got;
         else if (element != got) {
             if ((!context || !context->isList()) && isNumeric(*element) && isNumeric(got)) element = ValueType::F32;

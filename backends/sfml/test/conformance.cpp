@@ -187,6 +187,28 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Independent stage-3 ordinary-range pins through the existing host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/samplers.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40400000,0x42200000,0x416ef976,0x401a259f,
+            0x41500000,0x41500000,0x46c16e00,0x45b8a800};
+        CHECK(image.width==32 && image.height==24 && slots.size()==4,"sampler image metadata");
+        for(std::size_t i=0;i<slots.size() && i<4;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"sampler output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"sampler output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            const std::uint8_t* actual=image.pixels+(y*32+x)*4;std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && x<15 && ((y>=2 && y<6)||(y>=8 && y<12)||(y>=14 && y<18))){
+                color[0]=134;color[1]=144;color[2]=156;color[3]=255;}
+            CHECK(std::memcmp(actual,color,4)==0,"sampler pixel %u,%u",x,y);
+        }
+    }
+
     // Independent stage-2 polygon/RNG pins through the existing host layouts.
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(

@@ -1,0 +1,4 @@
+asset invalidDescription {
+  size 1x1
+  draw { spec = sampler(15 to 10) }
+}

@@ -51,6 +51,14 @@ def main():
             assert builtin['variadic']['effects']['rng'] in {'advance_current', 'isolated_seeded_stream'}, builtin
 
     rules = description['effect_rules']
+    samplers = description['source_rules']['samplers']
+    valid(samplers['capture_effects'])
+    assert samplers['capture_effects']['rng'] == 'none'
+    for method in samplers['methods']:
+        valid(method['effects'])
+        assert method['effects']['rng'] == 'advance_current'
+        assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
+        assert method['minimum_format_minor'] == 6
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
     assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']

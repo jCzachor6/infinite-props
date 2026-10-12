@@ -473,6 +473,172 @@
       "value": "list<vec2>",
       "accept": true,
       "schema": true
+    },
+    {
+      "id": "earlier schema 3 without sampler capability",
+      "path": [
+        "source_rules",
+        "samplers"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "null sampler capability",
+      "path": [
+        "source_rules",
+        "samplers"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "boolean sampler count",
+      "path": [
+        "source_rules",
+        "samplers",
+        "minimum_count"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "oversized sampler count",
+      "path": [
+        "source_rules",
+        "samplers",
+        "maximum_count"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong sampler count type",
+      "path": [
+        "source_rules",
+        "samplers",
+        "count_type"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing sampler preflight rule",
+      "path": [
+        "source_rules",
+        "samplers",
+        "batch_preflight"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "empty sampler methods",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "scalar sampler receiver",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "sampler receiver result mismatch",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "result"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "sampler method wrong count name",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        1,
+        "parameters",
+        0,
+        "name"
+      ],
+      "value": "count",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "sampler method no RNG effect",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "value": "none",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "sampler capture has intrinsic RNG",
+      "path": [
+        "source_rules",
+        "samplers",
+        "capture_effects",
+        "rng"
+      ],
+      "value": "advance_current",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "premature sampler constants",
+      "path": [
+        "source_rules",
+        "samplers",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "premature sampler constant list type",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "types"
+      ],
+      "value": [
+        "list<sampler<i32>>"
+      ],
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

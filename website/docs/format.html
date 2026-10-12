@@ -38,7 +38,11 @@ signed integer min/max/clamp and stable vector normalization. The runtime reads
 constants evaluated by the compiler through existing runtime operations;
 scalar constants introduce no new binary layout or host interface. Stage 3 adds
 parameterized type descriptors, immutable collection pools and list instructions,
-including <code>poly(list&lt;vec2&gt;, color)</code>; public host layouts remain unchanged.</p>
+including <code>poly(list&lt;vec2&gt;, color)</code>. Stage 4 adds captured
+<code>sampler&lt;T&gt;</code> descriptions, <code>.pick()</code> and immutable
+<code>.pick(n)</code> batches, using the existing range/RNG algorithms. Descriptors
+can also reference sampler elements in lists. Const samplers, range palettes and
+surfaces remain pending; public host layouts remain unchanged.</p>
 <ul>
 <li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older
 than 0.4: a file retaining a new math instruction needs 0.6, while 0.5 instructions

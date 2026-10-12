@@ -140,7 +140,7 @@ public:
     PaletteDecl parsePalette();
     Function parseFunction();
     Function parseFunctionAfterName(const Token& name);
-    ParamType parseParamType();
+    ParamType parseParamType(bool insideList = false);
     std::vector<Stmt> parseBlock();
     Stmt parseStatement();
     Stmt parseIdentifierStatement();
@@ -195,6 +195,8 @@ private:
     bool statementTail_ = false;
     // The asset declares a helper named `to` or `with`; its call keeps that meaning.
     bool toHelper_ = false;
+    bool samplerHelper_ = false;
+    bool listTypeClosed_ = false;
     bool withHelper_ = false;
     ParseResult* recovery_ = nullptr;
     std::size_t diagnosticLimit_ = kMaxParseDiagnostics;

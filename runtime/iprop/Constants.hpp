@@ -247,6 +247,11 @@ enum class Opcode : u8 {
     ListGet = 0xB9,
     ListLen = 0xBA,
     PolyList = 0xBB,
+    SamplerValue = 0xBC,
+    SamplerRange = 0xBD,
+    SamplerWith = 0xBE,
+    SamplerPick = 0xBF,
+    SamplerPickList = 0xC0,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

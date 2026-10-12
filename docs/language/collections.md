@@ -2,7 +2,8 @@
 
 `list<T>` holds zero to 256 values of one element type: `i32`, `f32`, `color`,
 `vec2` or `distribution`. These are ordinary value types for locals, helper
-parameters, helper returns and asset constants. Lists of lists, samplers and
+parameters, helper returns and asset constants. Runtime lists also accept
+[`sampler<T>` descriptions](samplers.md). Lists of lists and
 surfaces are outside the implemented stage. A list owns immutable data;
 passing, returning or assigning its handle shares that data.
 

@@ -10,6 +10,7 @@
 | `vec2` | two `f32` components | yes |
 | `distribution` | a [distribution](random.md#distributions) family and its parameters | yes |
 | `list<T>` | zero to 256 immutable values of a current element type | yes |
+| `sampler<T>` | captured value/range for explicit picks; T is i32, f32, color or vec2 | yes |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
@@ -28,6 +29,9 @@ The first assignment to a fresh name declares a local and fixes its type.
 `distribution name = value` also states the type and requires a
 distribution value. `list<T> name = value` supplies the element context,
 including for an empty literal. See [collections](collections.md).
+`sampler<T> name = value` declares a [sampling description](samplers.md).
+Sampler and list locals whose initializer does not run contain unset handles;
+using them traps, including a sampler's empty batch pick.
 Locals belong to the whole function, including those first assigned inside
 a branch or loop; braces do not introduce shadowing scopes. Source is checked
 in traversal order. Initialize a local before branching if it is needed later:

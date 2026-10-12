@@ -26,10 +26,10 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stages 1–2 add integer bounds overloads, `vec2.normalize` and typed asset
-constants over existing types. Schema 3 describes constant declaration policy
-and each overload's eligibility; parametric types remain for the collection
-stage. See [0.7 migration](language/migration-v0.7.md).
+Stages 1–4 add integer bounds overloads, `vec2.normalize`, typed asset constants,
+immutable lists and captured samplers. Schema 3 describes the constant policy,
+parameterized types, collection limits and receiver-first sampler methods.
+See [0.7 migration](language/migration-v0.7.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `format_version`,
@@ -50,6 +50,10 @@ identified by `source_type`.
 | `inputs[].binary_type` | Metadata/host override type in the emitted binary; both source integer types use `u32` bit patterns. |
 | `inputs[].value_type` | Type visible to expressions; both integer input types are interpreted as `i32`. |
 | `types.storable` | Types admitted in local slots. |
+| `types.parameterized` | Supported list/sampler constructors, element types and immutable arena ownership. Lists of sampler descriptions are allowed; lists of lists are not. |
+| `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
+| `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
+| `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode, minimum minor and effects. They are separate from the global builtin `pick`. |
 | `types.helper_parameters` | Types admitted in helper parameter declarations. |
 | `types.helper_value_returns` | Types admitted as declared helper return values; a helper without a return declaration may return no value. |
 | `types.output_only_geometry` | Compound geometry values admitted for output writes, but not local slots, helper parameters or helper return values. |
@@ -75,7 +79,7 @@ identified by `source_type`.
 | `visibility.palettes` | `all_asset_functions`: asset palettes are constants visible to draw and helpers. |
 | `visibility.constants` | `all_asset_functions`: typed asset constants are visible to draw and helpers of their defining asset. |
 | `asset_constants.keyword`, `.syntax`, `.scope`, `.visibility` | Contextual `const <type> <name> = <expression>` declarations belong to an asset and are visible in all its functions. |
-| `asset_constants.types` | Implemented declaration types, derived from the shared storable type rules. |
+| `asset_constants.types` | Implemented declaration types, derived from shared type rules; sampler constants are deferred to the next stage. |
 | `asset_constants.read_only` | `true`: assignments, loop counters and parameter shadowing are rejected. |
 | `asset_constants.dependencies`, `.evaluation` | `forward_acyclic`, `compile_time`: forward references are allowed; a cycle is a source error. |
 | `asset_constants.check_all_declarations`, `.check_effects_in_dead_branches` | Both `true`: unused constants and effects in both logical branches are checked. Pure evaluation still short circuits. |
@@ -205,3 +209,13 @@ The compiler catalogue adds fixed `list.len` overloads and the two-argument
 separate, with its original minimum arity and evaluation order. Type strings
 are canonical descriptor spellings. Effects include `index_range` and
 `unassigned_handle`; generation memory remains an execution-wide resource trap.
+
+Stage 4 also publishes `sampler<T>` and `list<sampler<T>>` in storable/helper
+sets. `source_rules.samplers.methods` comes from `samplerPickSpec`, the same
+receiver-first signatures used by the typer and emitter. Both arities have
+intrinsic `advance_current` effects, describing potential draws; constant
+descriptions and zero batches make no draw. Their capture operands can have
+effects of their own. Constant declaration type sets still exclude samplers,
+and `list.len(list<sampler<T>>)` is not marked constant-evaluable until those
+constant inputs are available in the next stage. The full handbook and bounded
+LLM reference generate method tables from this export.

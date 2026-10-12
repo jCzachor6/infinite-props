@@ -430,6 +430,34 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL collection polygon pixel ",x,",",y)
 
+	var samplers := IpropAsset.new()
+	if samplers.load_file(args[0] + "/samplers.iprop") != OK:
+		failures += 1
+		printerr("FAIL sampler load")
+	else:
+		var sampler_image := samplers.generate(26, 0, 0)
+		if sampler_image == null or sampler_image.get_size() != Vector2i(32,24):
+			failures += 1
+			printerr("FAIL sampler image metadata")
+		else:
+			var expected_samplers := [["checks",0x40400000,0x42200000],["direction",0x416ef976,0x401a259f],
+				["samples",0x41500000,0x41500000],["state",0x46c16e00,0x45b8a800]]
+			for expected in expected_samplers:
+				var slot: Dictionary = samplers.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL sampler output bits/metadata")
+			for y in range(24):
+				for x in range(32):
+					var color := Color8(0,0,0,0)
+					if x >= 2 and x < 15 and ((y >= 2 and y < 6) or (y >= 8 and y < 12) or (y >= 14 and y < 18)):
+						color = Color8(134,144,156)
+					if sampler_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL sampler pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

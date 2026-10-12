@@ -113,6 +113,31 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
         return type;
     }
+    if (const auto* capture = std::get_if<ips::SamplerCapture>(&expr)) {
+        const auto type = current_->typeOf(expr);
+        const auto item = type.item();
+        const auto* range = std::get_if<ips::RandomRange>(capture->value.get());
+        const auto bound = [&](const ips::Expr& value) {
+            emitExpr(value);
+            if (item == ips::ValueType::F32 && current_->typeOf(value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        };
+        if (range) {
+            bound(*range->lower); bound(*range->upper);
+            if (range->distribution) emitExpr(*range->distribution);
+        } else bound(*capture->value);
+        ins(!range ? Opcode::SamplerValue : range->distribution ? Opcode::SamplerWith : Opcode::SamplerRange,
+            0, plan_.pools.addType(type));
+        return type;
+    }
+    if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
+        emitExpr(*pick->receiver);
+        if (pick->count) emitExpr(*pick->count);
+        std::vector<ips::ValueType> args{current_->typeOf(*pick->receiver)};
+        if (pick->count) args.push_back(current_->typeOf(*pick->count));
+        ins(*ips::builtinOverload(ips::samplerPickSpec(), args)->opcode, 0,
+            plan_.pools.addType(current_->typeOf(*pick->receiver)));
+        return current_->typeOf(expr);
+    }
     error(ips::locationOf(expr), "unsupported expression");
 }
 

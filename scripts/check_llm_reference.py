@@ -55,6 +55,11 @@ def main():
         require('llm: skip' not in reference, 'a skip marker leaked into the reference')
         for builtin in language['builtins']:
             require('`' + builtin['name'] + '(' in reference, 'builtin missing from the reference: ' + builtin['name'])
+        for method in language['source_rules']['samplers']['methods']:
+            args = ', '.join(parameter['name'] + ': ' + parameter['type'] for parameter in method['parameters'])
+            require(f"| {method['receiver']} | .{method['name']}({args}) | {method['result']} |" in reference,
+                    'sampler method missing from the reference')
+        require('<!-- sampler-methods -->' not in reference, 'method placeholder leaked into reference')
         # All artifact links must resolve inside the installed documentation tree.
         for target in re.findall(r'\[[^\]\n]+\]\(([^\s)]+)\)', reference):
             url = urlsplit(target)

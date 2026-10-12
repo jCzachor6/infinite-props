@@ -2,7 +2,15 @@
 
 namespace iprop {
 const char* valueTypeName(TypeDescriptor type) {
+    if (type.isSampler()) {
+        constexpr const char* names[] = {"sampler<i32>", "sampler<f32>", "sampler<color>", "sampler<vec2>"};
+        return type.isStorable() ? names[static_cast<u8>(type.element)] : "sampler<?>";
+    }
     if (type.isList()) {
+        if (type.element == TypeDescriptor::Sampler) {
+            constexpr const char* names[] = {"list<sampler<i32>>", "list<sampler<f32>>", "list<sampler<color>>", "list<sampler<vec2>>"};
+            return type.isStorable() ? names[static_cast<u8>(type.parameter)] : "list<?>";
+        }
         constexpr const char* names[] = {"list<i32>", "list<f32>", "list<color>",
             "list<vec2>", "list<distribution>"};
         return type.element <= TypeDescriptor::Kind::Distribution ? names[static_cast<u8>(type.element)] : "list<?>";
@@ -18,6 +26,7 @@ const char* valueTypeName(TypeDescriptor type) {
     case TypeDescriptor::Void: return "void";
     case TypeDescriptor::Builder: return "list builder";
     case TypeDescriptor::List: return "list<?>";
+    case TypeDescriptor::Sampler: return "sampler<?>";
     }
     return "?";
 }

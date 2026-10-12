@@ -1,4 +1,5 @@
 #include "ips/BuiltinSpec.hpp"
+#include "iprop/Samplers.hpp"
 #include <stdexcept>
 
 namespace iprop::ips {
@@ -102,9 +103,26 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"items", V::list(V::F32)}}, Opcode::ListLen},
             {{{"items", V::list(V::Color)}}, Opcode::ListLen},
             {{{"items", V::list(V::Vec2)}}, Opcode::ListLen},
-            {{{"items", V::list(V::Distribution)}}, Opcode::ListLen}}}},
+            {{{"items", V::list(V::Distribution)}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::I32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::F32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::Color))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::Vec2))}}, Opcode::ListLen}}}},
     };
     return table;
+}
+
+const BuiltinSpec& samplerPickSpec() {
+    static const BuiltinSpec spec = [] {
+        std::vector<BuiltinOverload> overloads;
+        for (const auto item : kSamplerElementTypes) {
+            const auto receiver = ValueType::sampler(item);
+            overloads.push_back({{{"receiver", receiver}}, Opcode::SamplerPick, item});
+            overloads.push_back({{{"receiver", receiver}, {"n", ValueType::I32}}, Opcode::SamplerPickList, ValueType::list(item)});
+        }
+        return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
+    }();
+    return spec;
 }
 
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity) {
