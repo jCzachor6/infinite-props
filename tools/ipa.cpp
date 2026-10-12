@@ -232,9 +232,21 @@ bool parseIntBits(const std::string& text, u32& bits) {
     }
 }
 
-// Same acceptance as ips::parseFloatBits: the rounded result's class, not the
-// C library's ERANGE convention, decides whether a value is accepted.
+// Decimal literals retain ips::parseFloatBits acceptance. Assembly additionally
+// admits exact raw encodings; their bits are already the binary32 value.
 bool parseFloatBits(const std::string& text, u32& bits) {
+    if (text.starts_with("bits:0x")) {
+        if (text.size() != 15) return false;
+        u32 result = 0;
+        for (const char c : std::string_view(text).substr(7)) {
+            const int digit = c >= '0' && c <= '9' ? c - '0' :
+                c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+            if (digit < 0) return false;
+            result = (result << 4) | static_cast<u32>(digit);
+        }
+        bits = result;
+        return true;
+    }
     char* end = nullptr;
     const f32 value = std::strtof(text.c_str(), &end);
     if (end == text.c_str() || end != text.c_str() + text.size()) {
@@ -256,6 +268,17 @@ bool parseFloatBits(const std::string& text, u32& bits) {
     }
     std::memcpy(&bits, &value, sizeof(bits));
     return true;
+}
+
+// Preserve the legacy decimal-origin parser while accepting the lossless
+// raw-bit spelling emitted for subnormal/nonfinite binary coordinates.
+f32 parseOriginFloat(const std::string& text) {
+    if (!text.starts_with("bits:")) return std::stof(text);
+    u32 bits = 0;
+    if (!parseFloatBits(text, bits)) throw std::invalid_argument("bad raw float bits");
+    f32 value;
+    std::memcpy(&value, &bits, sizeof(value));
+    return value;
 }
 
 bool parseColor(const std::string& text, Color& out) {
@@ -327,8 +350,8 @@ std::vector<u8> assemble(const std::string& source) {
                             throw error("bad origin");
                         }
                         try {
-                            program.originX = std::stof(value.substr(0, comma));
-                            program.originY = std::stof(value.substr(comma + 1));
+                            program.originX = parseOriginFloat(value.substr(0, comma));
+                            program.originY = parseOriginFloat(value.substr(comma + 1));
                         } catch (...) {
                             throw error("bad origin");
                         }
@@ -357,8 +380,8 @@ std::vector<u8> assemble(const std::string& source) {
                             throw error("bad origin");
                         }
                         try {
-                            currentPart->originX = std::stof(value.substr(0, comma));
-                            currentPart->originY = std::stof(value.substr(comma + 1));
+                            currentPart->originX = parseOriginFloat(value.substr(0, comma));
+                            currentPart->originY = parseOriginFloat(value.substr(comma + 1));
                         } catch (...) {
                             throw error("bad origin");
                         }

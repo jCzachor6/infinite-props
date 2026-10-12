@@ -11,6 +11,7 @@ set(IPROP_RUNTIME_SOURCES
     code.cpp
     validator.cpp
     vm.cpp
+    constant_evaluation.cpp
     stack.cpp
     control.cpp
     arithmetic.cpp

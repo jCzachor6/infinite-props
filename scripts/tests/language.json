@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "product_version": "0.4.0",
   "language_version": {
     "major": 0,
@@ -34,7 +34,8 @@
             "may_trap": []
           },
           "opcode": "rng.unit",
-          "minimum_format_minor": 1
+          "minimum_format_minor": 1,
+          "constant_evaluable": false
         }
       ]
     }
@@ -154,7 +155,8 @@
           "contexts": [
             "numeric_operands",
             "call_arguments",
-            "helper_returns"
+            "helper_returns",
+            "asset_constants"
           ]
         }
       ],
@@ -162,10 +164,16 @@
       "components": [
         {
           "type": "vec2",
-          "names": ["x", "y"],
+          "names": [
+            "x",
+            "y"
+          ],
           "result": "f32",
           "assignable": false,
-          "opcodes": ["vec2.x", "vec2.y"],
+          "opcodes": [
+            "vec2.x",
+            "vec2.y"
+          ],
           "minimum_format_minor": 3
         }
       ]
@@ -191,7 +199,8 @@
         "read_only": true
       },
       "seed": "current_rng_state_in_all_functions",
-      "palettes": "all_asset_functions"
+      "palettes": "all_asset_functions",
+      "constants": "all_asset_functions"
     },
     "named_calls": {
       "targets": [
@@ -222,9 +231,15 @@
     "random_range": {
       "operator": "to",
       "keyword": "contextual",
-      "precedence": {"tighter_than": "<", "looser_than": "<<"},
+      "precedence": {
+        "tighter_than": "<",
+        "looser_than": "<<"
+      },
       "chaining": false,
-      "evaluation_order": ["lower", "upper"],
+      "evaluation_order": [
+        "lower",
+        "upper"
+      ],
       "overloads": [
         {
           "lower": "i32",
@@ -233,30 +248,85 @@
           "opcode": "rng.int",
           "minimum_format_minor": 5,
           "bounds": "inclusive",
-          "draws": {"minimum": 1, "maximum": 32}
+          "draws": {
+            "minimum": 1,
+            "maximum": 32
+          }
         }
       ],
       "mixed_numeric_bounds": "widen_to_f32",
-      "traps": ["lower_greater_than_upper"],
+      "traps": [
+        "lower_greater_than_upper"
+      ],
       "equal_bounds": "bound_after_one_draw",
       "effects": {
         "rng": "advance_current",
         "writes_canvas": false,
         "writes_outputs": false,
         "summary": "intrinsic",
-        "may_trap": ["numeric_range"]
+        "may_trap": [
+          "numeric_range"
+        ]
       },
       "with": {
         "keyword": "with",
         "type": "distribution",
-        "evaluation_order": ["lower", "upper", "distribution"],
-        "overloads": [{"lower": "i32", "upper": "i32", "result": "i32", "opcode": "rng.int.with", "minimum_format_minor": 5, "bounds": "inclusive", "draws": {"minimum": 1, "maximum": 1}}],
+        "evaluation_order": [
+          "lower",
+          "upper",
+          "distribution"
+        ],
+        "overloads": [
+          {
+            "lower": "i32",
+            "upper": "i32",
+            "result": "i32",
+            "opcode": "rng.int.with",
+            "minimum_format_minor": 5,
+            "bounds": "inclusive",
+            "draws": {
+              "minimum": 1,
+              "maximum": 1
+            }
+          }
+        ],
         "truncation": "conditioned_on_range",
         "integer_rounding": "nearest_half_away_from_zero",
         "fuel": "one_plus_kernel_iterations",
-        "traps": ["no_probability_in_range"],
-        "effects": {"rng": "advance_current", "writes_canvas": false, "writes_outputs": false, "summary": "intrinsic", "may_trap": ["numeric_range"]}
+        "traps": [
+          "no_probability_in_range"
+        ],
+        "effects": {
+          "rng": "advance_current",
+          "writes_canvas": false,
+          "writes_outputs": false,
+          "summary": "intrinsic",
+          "may_trap": [
+            "numeric_range"
+          ]
+        }
       }
+    },
+    "asset_constants": {
+      "keyword": "contextual",
+      "syntax": "const <type> <name> = <expression>",
+      "scope": "asset",
+      "visibility": "all_asset_functions",
+      "dependencies": "forward_acyclic",
+      "evaluation": "compile_time",
+      "distribution_validation": "compile_time",
+      "read_only": true,
+      "check_all_declarations": true,
+      "check_effects_in_dead_branches": true,
+      "user_helper_calls": false,
+      "generation_state": false,
+      "types": [
+        "i32",
+        "f32",
+        "color",
+        "vec2",
+        "distribution"
+      ]
     }
   },
   "effect_rules": {

@@ -2,49 +2,77 @@
   "language": [
     {
       "id": "earlier schema 2 without components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "delete": true,
       "accept": true,
       "schema": true
     },
     {
       "id": "earlier schema 2 without random range",
-      "path": ["source_rules", "random_range"],
+      "path": [
+        "source_rules",
+        "random_range"
+      ],
       "delete": true,
       "accept": true,
       "schema": true
     },
     {
       "id": "null optional components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "value": null,
       "accept": false,
       "schema": false
     },
     {
       "id": "empty optional components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "value": [],
       "accept": false,
       "schema": false
     },
     {
       "id": "component missing result",
-      "path": ["source_rules", "types", "components", 0, "result"],
+      "path": [
+        "source_rules",
+        "types",
+        "components",
+        0,
+        "result"
+      ],
       "delete": true,
       "accept": false,
       "schema": false
     },
     {
       "id": "null optional random range",
-      "path": ["source_rules", "random_range"],
+      "path": [
+        "source_rules",
+        "random_range"
+      ],
       "value": null,
       "accept": false,
       "schema": false
     },
     {
       "id": "random range missing effects",
-      "path": ["source_rules", "random_range", "effects"],
+      "path": [
+        "source_rules",
+        "random_range",
+        "effects"
+      ],
       "delete": true,
       "accept": false,
       "schema": false
@@ -54,7 +82,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 2.0,
+      "value": 3.0,
       "accept": true,
       "schema": true
     },
@@ -88,7 +116,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 3,
+      "value": 4,
       "accept": false,
       "schema": false
     },
@@ -288,6 +316,85 @@
         "from"
       ],
       "value": "color",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "previous language schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": 2,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "effectful constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "generation_state"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "mutable constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "read_only"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unsupported constant type",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "types",
+        0
+      ],
+      "value": "layer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "constant eligibility is boolean",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "constant_evaluable"
+      ],
+      "value": "false",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing constant eligibility",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "constant_evaluable"
+      ],
+      "delete": true,
       "accept": false,
       "schema": false
     }

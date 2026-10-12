@@ -2,10 +2,13 @@
 #include <catch2/matchers/catch_matchers_string.hpp>
 
 #include <string>
+#include <bit>
+#include <cstdio>
 
 #include "support/test_support.hpp"
 
 #include "ipa.hpp"
+#include "ipdis.hpp"
 
 #include "iprop/VM.hpp"
 
@@ -66,6 +69,36 @@ TEST_CASE("constants are deduplicated into the pools") {
     REQUIRE(loaded.pool.ints.size() == 1);
     REQUIRE(loaded.pool.floats.size() == 1);
     REQUIRE(loaded.pool.ints[0] == 1);
+}
+
+TEST_CASE("assembly preserves subnormal and nonfinite float encodings losslessly") {
+    const std::vector<u32> encodings{0, 0x80000000, 1, 0x80000001, 0x007fffff, 0x00800000,
+        0x7f7fffff, 0x7f800000, 0xff800000, 0x7fc00001, 0xffc12345, 0x7fa00001};
+    std::string source = "meta: size=1x1 origin=bits:0x00000001,bits:0x80000001\n"
+        "input: f32 tiny = bits:0x00000001\nfn draw ( i32, i32, f32 ) -> ( ):\n";
+    for (const auto bits : encodings) {
+        char text[32];
+        std::snprintf(text, sizeof(text), "bits:0x%08x", bits);
+        source += "const.f32 " + std::string(text) + "\ndrop\n";
+    }
+    source += "endfn\n";
+    const auto binary = assemble(source);
+    const auto text = disassemble(binary);
+    CHECK(text.find("bits:0x00000001") != std::string::npos);
+    CHECK(text.find("bits:0x7fc00001") != std::string::npos);
+    CHECK(text.find("bits:0x7fa00001") != std::string::npos);
+    const auto restored = assemble(text);
+    CHECK(disassemble(restored) == text);
+    const auto loaded = loadFile(restored);
+    REQUIRE(loaded.pool.floats.size() == encodings.size());
+    for (std::size_t i = 0; i < encodings.size(); ++i)
+        CHECK(std::bit_cast<u32>(loaded.pool.floats[i]) == encodings[i]);
+    CHECK(std::bit_cast<u32>(loaded.meta.origin.x) == 1);
+    CHECK(std::bit_cast<u32>(loaded.meta.origin.y) == 0x80000001);
+    CHECK(std::bit_cast<u32>(loaded.meta.inputs[0].f32Default) == 1);
+    for (const auto invalid : {"bits:0x1", "bits:0x100000000", "bits:0xggffffff", "bits:0x00000001junk"})
+        CHECK_THROWS_WITH(assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nconst.f32 " +
+            std::string(invalid) + "\ndrop\nendfn\n"), Catch::Matchers::ContainsSubstring("bad float literal"));
 }
 
 TEST_CASE("negative and hex integer literals keep their bit patterns") {

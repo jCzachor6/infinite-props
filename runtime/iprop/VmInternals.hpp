@@ -6,6 +6,7 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Instruction.hpp"
+#include "iprop/OpcodeSpec.hpp"
 #include "iprop/Outputs.hpp"
 #include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
@@ -156,5 +157,11 @@ bool stepSeeded(Execution& ex, Instruction ins);
 bool stepCanvas(Execution& ex, Instruction ins);
 bool stepOutputs(Execution& ex, Instruction ins);
 bool stepParts(Execution& ex, Instruction ins);
+
+// Compile-time evaluation of one stateless value operation. Uses the same
+// adapters, kernels and traps as generation, without a canvas or RNG stream.
+// Returns nullopt for operations that observe/write generation state.
+bool isConstantOperation(const OpcodeSpec& operation);
+std::optional<Value> evaluateConstantOperation(Opcode op, std::span<const Value> args);
 
 } // namespace iprop::detail

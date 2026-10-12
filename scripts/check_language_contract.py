@@ -36,7 +36,7 @@ def main():
     assert rules['types']['output_only_geometry'] == ['circle', 'rect']
     assert rules['types']['point_value_type'] == 'vec2'
     assert rules['types']['implicit_widening'] == [{'from': 'i32', 'to': 'f32',
-        'contexts': ['numeric_operands', 'call_arguments', 'helper_returns']}]
+        'contexts': ['numeric_operands', 'call_arguments', 'helper_returns', 'asset_constants']}]
     assert rules['types']['local_reassignment'] == 'exact_type'
     assert rules['locals'] == {'declaration': 'first_assignment', 'scope': 'function',
         'type_inference_order': 'source_traversal', 'definite_assignment_analysis': False,
@@ -44,7 +44,14 @@ def main():
     assert rules['visibility'] == {'uniforms': 'draw_only', 'uniforms_read_only': True,
         'helper_parameters_read_only': True,
         'draw_controls': {'names': ['v', 'a'], 'type': 'i32', 'read_only': True},
-        'seed': 'current_rng_state_in_all_functions', 'palettes': 'all_asset_functions'}
+        'seed': 'current_rng_state_in_all_functions', 'palettes': 'all_asset_functions',
+        'constants': 'all_asset_functions'}
+    assert rules['asset_constants'] == {'keyword': 'contextual',
+        'syntax': 'const <type> <name> = <expression>', 'types': ['i32', 'f32', 'color', 'vec2', 'distribution'],
+        'scope': 'asset', 'visibility': 'all_asset_functions', 'read_only': True,
+        'dependencies': 'forward_acyclic', 'evaluation': 'compile_time',
+        'check_all_declarations': True, 'check_effects_in_dead_branches': True,
+        'user_helper_calls': False, 'generation_state': False, 'distribution_validation': 'compile_time'}
     assert rules['named_calls'] == {'targets': ['builtin', 'helper', 'part'],
         'mixed_positional_and_named': True, 'positional_binding': 'positional_parameter_ordinal',
         'named_arguments_advance_positional_ordinal': False,
@@ -80,6 +87,17 @@ def main():
         ('mixed float bounds', 'draw{x=1.0;x=min(1,2.0);x=max(1.0,2);x=clamp(1,0,2.0)}', True),
         ('normalize vector', 'draw{p=vec2.normalize(v={3,4})}', True),
         ('normalize needs vector', 'draw{p=vec2.normalize(1)}', False),
+        ('asset constants and forward references', 'const i32 n=next+1 const i32 next=2 '
+         'const f32 width=n const vec2 direction=vec2.normalize({width,4}) '
+         'const color iron=rgb(146,156,168) const distribution d=gaussian(0.5,0.18) '
+         'paint(){pixel(n,0,iron)} draw{paint();x=0.0 to 1.0 with d}', True),
+        ('const contextual helper', 'const(x:i32)->i32{return x} draw{x=const(1)}', True),
+        ('const cycle', 'const i32 x=y const i32 y=x draw{}', False),
+        ('const input effect', 'input i32 n=1 const i32 x=n draw{}', False),
+        ('const seed effect', 'const i32 x=seed draw{}', False),
+        ('const RNG in dead branch', 'const i32 x=false && index(1) draw{}', False),
+        ('const helper call', 'const i32 x=helper() helper()->i32{return 1} draw{}', False),
+        ('const invalid unused distribution', 'const distribution d=beta(0,1) draw{}', False),
         ('uniform explicitly passed', 'input i32 n=1 draw{paint(n)} paint(x:i32){pixel(x,0,#fff)}', True),
         ('uniform hidden from helper', 'input i32 n=1 draw{paint()} paint(){pixel(n,0,#fff)}', False),
         ('uniform read only', 'input i32 n=1 draw{n=2}', False),

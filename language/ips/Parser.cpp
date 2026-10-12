@@ -91,7 +91,8 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
         if (kind() == TokenKind::Identifier) {
             const auto& name = peek().text;
             if (name == "size" || name == "origin" || name == "variants" ||
-                name == "archetypes" || name == "palette") return true;
+                name == "archetypes" || name == "palette" ||
+                (name == "const" && kind(1) != TokenKind::LParen)) return true;
         }
         return isNameKind(kind()) && kind(1) == TokenKind::LParen;
     }
@@ -230,6 +231,14 @@ void ParserImpl::parseDeclaration(Asset& asset) {
                       "archetype count");
             match(TokenKind::Semi);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Archetypes, {start, pos_}});
+        } else if (declaration.text == "const" && kind() != TokenKind::LParen) {
+            const auto type = parseParamType();
+            const Token name = expectName("a constant name");
+            expect(TokenKind::Assign, "'=' and a constant expression");
+            const FlagScope tail(statementTail_, true);
+            auto value = parseExpr();
+            match(TokenKind::Semi);
+            asset.constants.push_back({type, name.text, std::move(value), name.location, {start, pos_}});
         } else if (declaration.text == "palette") {
             asset.palettes.push_back(parsePalette());
             asset.palettes.back().sourceRange = {start, pos_};

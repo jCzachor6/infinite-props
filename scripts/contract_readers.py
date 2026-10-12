@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 2
+LANGUAGE_SCHEMA_VERSION = 3
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
@@ -123,12 +123,14 @@ def read_language(value):
         require(type(builtin['overloads']) is list and (builtin['overloads'] or 'variadic' in builtin), 'builtin.overloads')
         for signature in builtin['overloads']:
             ordered_signature(signature, 'overload')
+            boolean(signature.get('constant_evaluable'), 'constant_evaluable')
             if 'opcode' in signature or 'minimum_format_minor' in signature:
                 text(signature.get('opcode'), 'opcode', True)
                 integer(signature.get('minimum_format_minor'), 'minimum_format_minor', maximum=255)
         if 'variadic' in builtin:
             signature = builtin['variadic']
             ordered_signature(signature, 'variadic')
+            require(signature.get('constant_evaluable') is False, 'variadic constant_evaluable')
             integer(signature.get('minimum_arguments'), 'minimum_arguments', 1)
             require(signature['minimum_arguments'] == len(signature['parameters']), 'variadic minimum template arity')
             require(type(signature.get('repeat')) is str and signature['repeat'] in {'choices', 'coordinate_pairs'}, 'variadic repeat')
@@ -136,7 +138,15 @@ def read_language(value):
                 strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
                 require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
     require(len(names) == len(set(names)), 'unique builtin names')
-    rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'asset_constants', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    constants = rules['asset_constants']
+    _strings_and_bools(constants, {'keyword': {'contextual'}, 'scope': {'asset'},
+        'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
+        'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
+        ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
+    strings(constants.get('types'), 'constant types', {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
+    require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
+            not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
     source_types = []
     for item in rules['inputs']:
@@ -169,12 +179,12 @@ def read_language(value):
         obj(item, ['from', 'to', 'contexts'], 'widening')
         require(item['from'] == 'i32' and item['to'] == 'f32' and
                 item['from'] in types['storable'] and item['to'] in types['storable'], 'widening types')
-        strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns'}, True)
+        strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns', 'asset_constants'}, True)
         conversions.append((item['from'], item['to']))
     require(len(conversions) == len(set(conversions)), 'unique widening rules')
     _strings_and_bools(rules['locals'], {'declaration': {'first_assignment'}, 'scope': {'function'}, 'type_inference_order': {'source_traversal'}, 'unexecuted_initializer': {'typed_zero'}}, ['definite_assignment_analysis', 'read_requires_prior_assignment'], 'locals')
     visibility = rules['visibility']
-    _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
+    _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}, 'constants': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
     controls = obj(visibility.get('draw_controls'), ['names', 'type', 'read_only'], 'draw controls')
     strings(controls['names'], 'draw control names', {'v', 'a'}, nonempty=True)
     require(controls['type'] == 'i32', 'draw control type')

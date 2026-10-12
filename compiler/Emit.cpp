@@ -40,6 +40,15 @@ void Emitter::emitConst(const Value& value) {
         ins(Opcode::ConstF32, 0, static_cast<u16>(plan_.pools.addFloat(bits)));
     } else if (const auto* c = std::get_if<Color>(&value)) {
         ins(Opcode::ConstColor, 0, static_cast<u16>(plan_.pools.addColor(*c)));
+    } else if (const auto* vector = std::get_if<Vec2>(&value)) {
+        emitConst(vector->x); emitConst(vector->y);
+        ins(Opcode::Vec2Make);
+    } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
+        const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
+            distribution->family == DistributionFamily::Triangular ? 3u : 4u;
+        for (std::size_t i = 0; i < count; ++i) emitConst(distribution->parameters[i]);
+        ins(distribution->family == DistributionFamily::Gaussian ? Opcode::DistributionGaussian :
+            distribution->family == DistributionFamily::Triangular ? Opcode::DistributionTriangular : Opcode::DistributionBeta);
     }
 }
 

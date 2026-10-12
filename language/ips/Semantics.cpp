@@ -1,6 +1,7 @@
 #include "ips/Semantics.hpp"
 #include "ips/Palette.hpp"
 #include "ips/DeclarationConstants.hpp"
+#include "ips/AssetConstants.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -95,6 +96,7 @@ private:
         // output, parameter or local. A later valid assignment can establish
         // the type of a recovery-only invalid local.
         if (!findInput(name) && !findOutput(name) && !findPalette(name) &&
+            !findAssetConstant(program_, name) &&
             !isParam(name) && name != "seed" &&
             !(current_->name == "draw" && (name == "v" || name == "a")))
             typer_.declareInvalidLocal(name);
@@ -208,7 +210,7 @@ private:
             namespaceValid = valid && namespaceValid;
             if (valid) recover([&] { checkPaletteDecl(palette); });
         }
-        return namespaceValid;
+        return recover([&] { (void)resolveAssetConstants(program_); }) && namespaceValid;
     }
 
     void checkInputDefault(const InputDecl& input) {
@@ -333,6 +335,8 @@ private:
                           std::string(typeName(type)));
             }
         }
+        if (findAssetConstant(program_, forStmt.variable))
+            error(forStmt.location, "cannot use const '" + forStmt.variable + "' as a loop counter");
         if (forStmt.variable == "seed" ||
             (current_->name == "draw" &&
              (forStmt.variable == "v" || forStmt.variable == "a"))) {
@@ -429,6 +433,8 @@ private:
             error(decl.location,
                   "cannot assign to palette '" + decl.name + "'");
         }
+        if (findAssetConstant(program_, decl.name))
+            error(decl.location, "cannot assign to const '" + decl.name + "'");
         if (current_->name == "draw" && (decl.name == "v" || decl.name == "a")) {
             error(decl.location, "cannot assign to builtin '" + decl.name + "'");
         }

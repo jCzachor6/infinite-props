@@ -56,6 +56,9 @@ async function main() {
     }
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
     assert.equal(docs.schema_version, 2);
+    const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
+    assert.equal(catalogue.schema_version, 3);
+    assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
     const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });

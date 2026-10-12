@@ -8,15 +8,16 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stage 1 of product **0.7.0** / source language **0.7**
-in development: exact integer min/max/clamp and stable vector normalization.
+This checkout implements stages 1–2 of product **0.7.0** / source language **0.7**
+in development: exact integer min/max/clamp, stable vector normalization and
+typed immutable asset constants visible in draw and helpers.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
 writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
 
 Start with the [language handbook](docs/language/index.md), the
 [C API integration guide](backends/capi/README.md) or the
-[0.7 migration and stage 1 notes](docs/language/migration-v0.7.md).
+[0.7 migration and implementation notes](docs/language/migration-v0.7.md).
 
 ## 1. Vision
 
@@ -511,7 +512,8 @@ interpreter is authoritative for correctness.
 - Six CLI tools: `ipc` (compiler), `ipa` (assembler), `ipdis`
   (disassembler), `ipval` (validator), `ipgen` (renderer) and `ipsheet`
   (variant/seed sheets).
-- `ipc --describe-language` exports schema-2 language contracts; JSON
+- `ipc --describe-language` exports schema-3 language contracts, including asset
+  constant policy and builtin constant-evaluation eligibility; JSON
   diagnostics use schema 1. Generated documentation includes `LLM_REFERENCE.md`.
 - Repeated compiles with the same compiler, source/imports and options produce
   identical executable bytes.
@@ -600,7 +602,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stage 1; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–2; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -633,7 +635,8 @@ language 0.6, format 0.5 (with frozen 0.1–0.4 reader compatibility), C API
 unchanged. Migration and release commands are in
 [the 0.6 notes](docs/release-v0.6.md).
 The current 0.7 development adds exact integer bounds and scaled binary64
-`vec2.normalize`; see [stage 1 migration](docs/language/migration-v0.7.md).
+`vec2.normalize`, plus typed asset constants with compile-time dependency and
+distribution validation; see [0.7 migration](docs/language/migration-v0.7.md).
 The tagged release workflow builds, validates and publishes source, native
 SDK, WASM and website packages. The same packages can be built locally.
 GitHub CI checks the native toolchain/C API, editor contracts, WASM, website,
@@ -699,6 +702,8 @@ previous release's source and frozen-binary compatibility. The
 [0.7 stage 1 gates](docs/language/migration-v0.7.md#validation-scope) extend
 that coverage with exact math and preserved pre-change bytes; the
 [stage 1 validation report](docs/validation-v0.7-stage1.md) records the results.
+The [stage 2 validation report](docs/validation-v0.7-stage2.md) covers asset
+constants, contextual names, compiler diagnostics and host conformance.
 
 The current runtime supports formats 0.1–0.6 and the
 [lossless DEFLATE container](spec/iprop-v0.4.md) introduced in 0.4. A compressed

@@ -1,5 +1,13 @@
 {
   "cases": [
+    {"file": "asset-constants.ips", "expect": "pass"},
+    {"file": "errors/const-cycle.ips", "expect": "compile-error", "message": "cyclic const dependency"},
+    {"file": "errors/const-rng.ips", "expect": "compile-error", "message": "RNG or generation effects"},
+    {"file": "errors/const-input.ips", "expect": "compile-error", "message": "cannot read 'amount'"},
+    {"file": "errors/const-seed.ips", "expect": "compile-error", "message": "cannot read 'seed'"},
+    {"file": "errors/const-helper.ips", "expect": "compile-error", "message": "user helper and part calls"},
+    {"file": "errors/const-distribution.ips", "expect": "compile-error", "message": "finite sigma > 0"},
+    {"file": "errors/const-assignment.ips", "expect": "compile-error", "message": "cannot assign to const"},
     {"file": "first-asset.ips", "expect": "pass"},
     {"file": "assets.ips", "expect": "pass"},
     {"file": "syntax.ips", "expect": "pass"},

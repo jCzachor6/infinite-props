@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-# A current compiler export, reduced to the one builtin the handbook describes.
+# A schema-3 protocol fixture with deliberately independent mock versions,
+# reduced to the one builtin the handbook describes.
 LANGUAGE = json.loads(Path(__file__).with_name("language.json").read_text(encoding="utf-8"))
 
 # Each release version lives in its own source and changes independently.
@@ -32,7 +33,7 @@ def fixture(root):
         **VERSION_FILES,
         "docs/language/book.json": '{"title":"Book","chapters":["index.md"]}',
         "docs/language/index.md": "# Book\n\n## unit\n<!-- builtin: unit -->\n\nOne deterministic stream draw.\n\n<!-- example: ../../examples/language/one.ips -->\n",
-        "docs/language-description.schema.json": schema(2),
+        "docs/language-description.schema.json": schema(3),
         "docs/compiler-diagnostics.schema.json": schema(1),
         "docs/documentation-manifest.schema.json": schema(2),
         "docs/llm-reference.json": "{}\n",

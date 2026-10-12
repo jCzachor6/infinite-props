@@ -30,7 +30,7 @@ enum class DiagnosticCode {
     Unspecified, InvalidUtf8, LexicalError, ExpectedToken, InvalidSyntax,
     ImportCycle, SourceIO, TypeError, DeclarationConstant, SignedDefaultRange,
     UnsignedDefaultNegative, PlanError, ResourceLimit, CompiledValidation,
-    CLIArgument, InternalError
+    CLIArgument, InternalError, AssetConstantCycle, AssetConstantEffect, AssetConstantValue
 };
 
 // Stable protocol identifiers are assigned from typed causes/stages, never

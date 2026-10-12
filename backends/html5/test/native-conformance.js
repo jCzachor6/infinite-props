@@ -21,6 +21,7 @@ const sources = [
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["math-bounds", "examples/language/math-bounds.ips"],
+    ["asset-constants", "examples/language/asset-constants.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
@@ -125,6 +126,8 @@ function run(iprop, toolsDir) {
     let vectorComparisons = 0;
     let colorComparisons = 0;
     let mathComparisons = 0;
+    let constantComparisons = 0;
+    let constantOverloads = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -295,6 +298,16 @@ function run(iprop, toolsDir) {
                     {x: 0x40000000, y: 0x40000000},
                 ], label + ": exact integers, normalized direction, zero and mixed overloads");
             }
+            if (path.basename(file) === "asset-constants.iprop") {
+                assert.deepEqual(result.outputs.slice(0, 3).map(slot => slot.values[0]), [
+                    {x: 0x3f800000, y: 0x3f800000}, {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0}
+                ], label + ": constant exact integers and normalization pins");
+                const baseline = JSON.parse(fs.readFileSync(path.join(repo,
+                    "tests/fixtures/frozen-format-v0.6-stage1.json"), "utf8")).cases[1];
+                const expected = baseline.generations.find(g => g.seed === seed);
+                if (expected) assert.deepEqual(result.outputs, expected.outputs,
+                    label + ": preserved runtime constructor outputs and RNG state");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -430,10 +443,14 @@ function run(iprop, toolsDir) {
         vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
         colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
         mathComparisons = require("./math-conformance.js").run(iprop, tool, temporary);
+        const constants = require("./constant-conformance.js").run(iprop, tool, temporary);
+        constantComparisons = constants.comparisons;
+        constantOverloads = constants.overloads;
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons, mathComparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
+        colorComparisons, mathComparisons, constantComparisons, constantOverloads };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

@@ -21,6 +21,9 @@ alone. Existing identifiers are never renumbered or reused.
 | `IPS-TYPE-002` | Invalid declaration constant grammar |
 | `IPS-TYPE-003` | Signed input default outside the mathematical i32 range |
 | `IPS-TYPE-004` | Mathematically negative U32 default |
+| `IPS-CONST-001` | Cyclic asset constant dependency |
+| `IPS-CONST-002` | Constant initializer reads generation state or has forbidden effects/calls |
+| `IPS-CONST-003` | Compile-time value/constructor validation fails |
 | `IPS-PLAN-001` | General planning/lowering restriction |
 | `IPS-LIMIT-001` | Compiler pool/resource limit |
 | `IPS-VALIDATE-001` | Compiled executable rejected by the runtime validator |
@@ -31,8 +34,8 @@ Severities are `error`, `warning`, `note`. Stages are `lex`, `parse`, `import`,
 `typing`, `planning`, `validation`, `io`, `cli`, `internal`. The current
 JSON protocol is [schema 1](compiler-diagnostics.schema.json). It includes
 independent product and source-language versions, status and a diagnostics
-array. The develop compiler identifies source language 0.6 and emits binary
-format 0.5 when a file needs it; its current product version is separate.
+array. The develop compiler identifies source language 0.7 and emits binary
+format 0.6 when a file needs it; its current product version is separate.
 An I/O failure for the entry has no invented source location. An import load
 failure can point at its importing statement because that snapshot exists.
 Unexpected loader exceptions and allocation failures are internal errors,

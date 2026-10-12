@@ -2,9 +2,10 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 2`, which removes the schema 1 `emoji_aliases` list together
-with the lexer aliases; the builtin, call-rule and other fields keep their
-schema 1 meanings. Consumers should ignore unknown additive fields.
+`schema_version: 3`, which adds typed asset declarations and intrinsic
+`constant_evaluable` flags to the schema 2 contracts. Schema 2 removed the
+schema 1 emoji aliases. Consumers require the supported schema version and
+ignore unknown additive fields within it.
 This is a capability description, not a promise of planned syntax.
 
 ## Independent versions
@@ -25,9 +26,9 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stage 1 adds integer bounds overloads and `vec2.normalize` over existing types;
-schema 2 already describes their signatures, effects and minimum format minor.
-The planned schema transition for parametric types is deferred to the collection
+Stages 1–2 add integer bounds overloads, `vec2.normalize` and typed asset
+constants over existing types. Schema 3 describes constant declaration policy
+and each overload's eligibility; parametric types remain for the collection
 stage. See [0.7 migration](language/migration-v0.7.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
@@ -54,7 +55,7 @@ identified by `source_type`.
 | `types.output_only_geometry` | Compound geometry values admitted for output writes, but not local slots, helper parameters or helper return values. |
 | `types.point_value_type` | A point uses the storable `vec2` value type. |
 | `types.implicit_widening[].from`, `.to` | Nonidentity implicit type conversion, derived from the type checker's `argFits`. |
-| `types.implicit_widening[].contexts` | `numeric_operands`, `call_arguments` and `helper_returns` permit the advertised `i32` to `f32` conversion. |
+| `types.implicit_widening[].contexts` | `numeric_operands`, `call_arguments`, `helper_returns` and `asset_constants` permit the advertised `i32` to `f32` conversion. |
 | `types.local_reassignment` | `exact_type`: later assignment must match the first assignment's type, including when `i32` could otherwise widen to `f32`. |
 | `types.components` | Optional list of readable members, added in source language 0.6 within schema 2. Earlier exports omit it; absence means the export does not describe member access. When present, names correspond to opcodes and share a result type and minimum format minor. |
 | `random_range` | Optional description of random range syntax, overloads and effects, added in source language 0.6 within schema 2. Earlier exports omit it. |
@@ -72,6 +73,14 @@ identified by `source_type`.
 | `visibility.draw_controls.names`, `.type`, `.read_only` | Draw's implicit `v` and `a` names are read-only `i32` values. |
 | `visibility.seed` | `current_rng_state_in_all_functions`: draw and helpers may read the current RNG state through `seed`; assignment is rejected. |
 | `visibility.palettes` | `all_asset_functions`: asset palettes are constants visible to draw and helpers. |
+| `visibility.constants` | `all_asset_functions`: typed asset constants are visible to draw and helpers of their defining asset. |
+| `asset_constants.keyword`, `.syntax`, `.scope`, `.visibility` | Contextual `const <type> <name> = <expression>` declarations belong to an asset and are visible in all its functions. |
+| `asset_constants.types` | Implemented declaration types, derived from the shared storable type rules. |
+| `asset_constants.read_only` | `true`: assignments, loop counters and parameter shadowing are rejected. |
+| `asset_constants.dependencies`, `.evaluation` | `forward_acyclic`, `compile_time`: forward references are allowed; a cycle is a source error. |
+| `asset_constants.check_all_declarations`, `.check_effects_in_dead_branches` | Both `true`: unused constants and effects in both logical branches are checked. Pure evaluation still short circuits. |
+| `asset_constants.user_helper_calls`, `.generation_state` | Both `false`: no helper/part execution, inputs, controls, current seed or generation output reads. |
+| `asset_constants.distribution_validation` | `compile_time`: constant distribution constructors validate parameters before an artifact is emitted. |
 | `named_calls.targets` | Named arguments are implemented for builtin, helper and part calls. |
 | `named_calls.mixed_positional_and_named` | Positional and named arguments may appear in the same call. |
 | `named_calls.positional_binding` | `positional_parameter_ordinal`: the first positional argument binds the first positional parameter, and so on. Part placement/transforms/uniforms are named-only, as the exported part signature records. |
@@ -102,6 +111,15 @@ the shared opcode/lowering contracts. `CallSignature.effects` carries this
 metadata through binding, typing and planning; no parallel public signature
 catalogue is used. A generic helper signature conservatively includes callee
 effects. This export does not inspect a particular helper body to prove purity.
+
+Every signature additionally exports `constant_evaluable`. It describes the
+intrinsic operation only: all argument expressions must independently satisfy
+the constant rules. Pure arithmetic, color/vector/SDF/curve operations and
+explicitly seeded noise are eligible. RNG, seeded selection, drawing, outputs
+and calls to user helpers/parts are not. `ramp` uses a compile-time legacy
+palette; the palette index fallback remains unchanged. Builtin eligibility
+comes from the same implementation used by the constant resolver, including
+special color, rounding, conversion and beta lowerings.
 
 | Effect field | Meaning |
 | --- | --- |

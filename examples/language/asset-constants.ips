@@ -1,0 +1,38 @@
+asset asset_constants {
+  size 2x2
+  output point checks
+  output point normalized
+  output point zero
+  output point shaped
+  output point beta_samples
+  output point state
+
+  const i32 Plain = 1
+  const i32 exact = min(later, 16777218)
+  const i32 later = 16777217
+  const color iron = #929ca8
+  const color shadow = color.shade(iron, -7)
+  const vec2 direction = vec2.normalize({3, 4})
+  const vec2 positive_zero = vec2.normalize({-0.0, -0.0})
+  const distribution typical = gaussian(mean=0.5, sigma=spread)
+  const f32 spread = 0.18
+  const distribution tent = triangular(min=0.0, peak=0.25, max=1.0)
+  const distribution skew = beta(alpha=2.0, beta=5.0)
+
+  exact_value() -> i32 { return exact }
+  heading() -> vec2 { return direction }
+  material() -> color { return shadow }
+  shape() -> distribution { return typical }
+
+  draw {
+    before = seed
+    checks = {exact_value() == 16777217, Plain == 1 && before == seed}
+    normalized = heading()
+    zero = positive_zero
+    pixel(0, 0, iron)
+    pixel(1, 0, material())
+    shaped = {0.0 to 1.0 with shape(), 0.0 to 1.0 with tent}
+    beta_samples = {0 to 10 with skew, 0.0 to 1.0 with skew}
+    state = {seed & 65535, seed >> 16}
+  }
+}

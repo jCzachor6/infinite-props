@@ -1,0 +1,6 @@
+asset cyclic_constants {
+  size 1x1
+  const i32 first = second + 1
+  const i32 second = first + 1
+  draw {}
+}

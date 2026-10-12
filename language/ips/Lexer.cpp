@@ -313,7 +313,7 @@ std::vector<Token> lex(std::string_view source) {
 }
 
 std::string keywordSuggestion(std::string_view misspelled) {
-    std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette"};
+    std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette", "const"};
     for (const auto& [name, kind] : keywords()) { (void)kind; names.push_back(name); }
     return didYouMean(misspelled, names);
 }

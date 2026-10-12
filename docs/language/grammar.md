@@ -12,7 +12,7 @@ program       = { import }, asset, EOF ;
 import        = "import", name, "from", string, [ ";" ] ;
 asset         = "asset", identifier, "{", { declaration }, "}" ;
 declaration   = size | origin | variants | archetypes | input | output
-              | palette | draw | helper ;
+              | palette | asset_constant | draw | helper ;
 size          = "size", integer, (integer | xdigits), [ ";" ] ;
 origin        = "origin", expression, ",", expression, [ ";" ] ;
 variants      = "variants", integer, [ ";" ] ;
@@ -22,6 +22,7 @@ input_type    = "color" | "f32" | "u32" | "i32" ;
 output        = "output", [ "list" ], output_kind, name, [ ";" ] ;
 output_kind   = "point" | "circle" | "rect" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
+asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* contextual "const" *)
 draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
@@ -80,6 +81,10 @@ Declaration typing rejects strings as values and permits unary minus only
 on numeric literals. Palette elements use the same restricted constant
 grammar after parsing; a general expression AST does not make it a valid
 palette element.
+
+Asset `const` declarations use the general expression grammar with the
+[compile-time restrictions](assets.md#asset-constants). Their graph permits
+forward references and rejects cycles. `const(...)` still introduces a helper.
 
 Shifts bind more tightly than comparisons on both sides: `value < 1 << bits`
 means `value < (1 << bits)`. Comparison chains associate leftward, so

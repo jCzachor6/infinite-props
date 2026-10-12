@@ -5,6 +5,7 @@
 #include "ips/Typing.hpp"
 #include "ips/Version.hpp"
 #include "ips/ExportSchema.hpp"
+#include "ips/AssetConstants.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "../backends/capi/iprop.h"
 
@@ -114,7 +115,7 @@ Json sourceRules() {
     for (const auto from : valueTypes) for (const auto to : valueTypes) {
         if (from == to || !ips::argFits(to, from)) continue;
         widening.push_back(Json::object({{"from", ips::typeName(from)}, {"to", ips::typeName(to)},
-            {"contexts", Json::array({"numeric_operands", "call_arguments", "helper_returns"})}}));
+            {"contexts", Json::array({"numeric_operands", "call_arguments", "helper_returns", "asset_constants"})}}));
     }
     Json typeRules = Json::object();
     typeRules["storable"] = types(ips::isStorable);
@@ -155,7 +156,15 @@ Json sourceRules() {
     rules["visibility"] = Json::object({{"uniforms", "draw_only"}, {"uniforms_read_only", true},
         {"helper_parameters_read_only", true},
         {"draw_controls", Json::object({{"names", Json::array({"v", "a"})}, {"type", "i32"}, {"read_only", true}})},
-        {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"}});
+        {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
+        {"constants", "all_asset_functions"}});
+    rules["asset_constants"] = Json::object({{"keyword", "contextual"},
+        {"syntax", "const <type> <name> = <expression>"}, {"types", types(ips::isStorable)},
+        {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
+        {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
+        {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
+        {"user_helper_calls", false}, {"generation_state", false},
+        {"distribution_validation", "compile_time"}});
     rules["named_calls"] = Json::object({{"targets", Json::array({"builtin", "helper", "part"})},
         {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
         {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},
@@ -220,7 +229,8 @@ Json builtins() {
                 parameters.push_back(parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type)));
             auto entry = Json::object({{"parameters", std::move(parameters)},
                 {"result", ips::typeName(overload.result)}, {"evaluation_order", evaluationOrder(signature)},
-                {"effects", operationEffects(ips::builtinEffects(spec, &overload))}});
+                {"effects", operationEffects(ips::builtinEffects(spec, &overload))},
+                {"constant_evaluable", ips::constantBuiltin(spec, overload)}});
             if (overload.opcode) {
                 const auto* opcode = findOpcode(*overload.opcode);
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
@@ -231,7 +241,10 @@ Json builtins() {
         }
         auto builtin = Json::object({{"name", name}, {"overloads", std::move(overloads)}});
         if (spec.lowering == ips::BuiltinLowering::Pick || spec.lowering == ips::BuiltinLowering::Choose ||
-            spec.lowering == ips::BuiltinLowering::Polygon) builtin["variadic"] = variadic(name, spec);
+            spec.lowering == ips::BuiltinLowering::Polygon) {
+            builtin["variadic"] = variadic(name, spec);
+            builtin["variadic"]["constant_evaluable"] = false;
+        }
         list.push_back(std::move(builtin));
     }
     // ramp's palette parameter is a language construct, not a VM stack value.
@@ -242,7 +255,7 @@ Json builtins() {
             {"parameters", Json::array({parameter(ramp.parameters[0].name, "palette<" + std::string(ips::typeName(type)) + ">"),
                                         parameter(ramp.parameters[1].name, "f32")})},
             {"result", ips::typeName(type)}, {"evaluation_order", evaluationOrder(ramp)},
-            {"effects", operationEffects(ramp.effects)}}));
+            {"effects", operationEffects(ramp.effects)}, {"constant_evaluable", true}}));
     }
     list.push_back(Json::object({{"name", "ramp"}, {"overloads", std::move(rampOverloads)}}));
     return list;

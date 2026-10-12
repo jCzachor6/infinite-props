@@ -9,6 +9,11 @@ when compression saves space. `--debug` retains source maps/symbols;
 an expanded file; `--no-opt` disables compiler optimization for inspection.
 `ipval` validates a binary, `ipdis` disassembles it and `ipgen` generates
 pixels/outputs. The `.ipa` assembly language is the VM-level tool format.
+For exact binary32 transport, assembly accepts `bits:0xXXXXXXXX` with eight
+hexadecimal digits wherever it accepts f32 constants/defaults/origins. `ipdis`
+uses this spelling for subnormals and nonfinite values, preserving NaN payloads
+and signs. This assembly spelling is not an `.ips` literal; ordinary source
+arithmetic and constant evaluation can produce those values.
 
 `ipc --describe-language` exports the implemented source rules, restrictions,
 shared call signatures and independent product/language/format/C API/ABI

@@ -1,12 +1,13 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stage 1 (2026-10-12).
+**Status:** Development contract for product 0.7.0, stages 1–2 (2026-10-12).
 **Scope:** Signed integer bounds and stable vector normalization. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
 extend this development format; collections and surfaces are not implemented
-by stage 1.
+by stages 1–2. Asset constants are a source/compiler feature and add no binary
+layout, type code or instruction.
 
 ## 1. Versions and containers
 
@@ -94,7 +95,24 @@ in the executable so that optimization preserves the runtime trap.
 | `00000001,00000002` | `3EE4F92E,3F64F92E` |
 | `3F800000,00000001` | `3F800000,00000001` |
 
-## 4. Host compatibility and verification
+## 4. Asset constants and format selection
+
+Source `const` declarations are evaluated before lowering. Scalars use the
+existing constant pools; vec2 values use two f32 constants and `vec2.make`.
+Distribution descriptions use existing parameter constants and their 0.5
+constructor instructions. Runtime constructors retain their checks and cost;
+reading a description performs no RNG draw. Unused declarations add no
+executable instructions, but invalid values and cyclic/effectful dependencies
+are still compilation errors.
+
+Constant evaluation uses the existing runtime value-operation adapters, so
+math, conversions and constructor validation share the executable's kernels.
+It cannot dispatch helpers, parts, canvas operations or RNG instructions.
+Const adds no required format version: even a constant computed with a 0.6
+math operation can use a 0.4 executable. See the
+[source declaration contract](../docs/language/assets.md#asset-constants).
+
+## 5. Host compatibility and verification
 
 C API remains 0.3 and ABI/SONAME remains 0.4. No public enum or struct layout
 changes; the new operations return existing scalar/vector values and publish

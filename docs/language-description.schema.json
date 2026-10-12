@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 2,
+      "const": 3,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -181,7 +181,8 @@
                       "enum": [
                         "call_arguments",
                         "helper_returns",
-                        "numeric_operands"
+                        "numeric_operands",
+                        "asset_constants"
                       ],
                       "description": "Language contexts that permit this conversion."
                     },
@@ -406,6 +407,13 @@
                 "all_asset_functions"
               ],
               "description": "Asset function contexts where palettes are visible."
+            },
+            "constants": {
+              "type": "string",
+              "enum": [
+                "all_asset_functions"
+              ],
+              "description": "Asset constants are visible in draw and helpers of their defining asset."
             }
           },
           "required": [
@@ -414,7 +422,8 @@
             "helper_parameters_read_only",
             "draw_controls",
             "seed",
-            "palettes"
+            "palettes",
+            "constants"
           ],
           "additionalProperties": true,
           "description": "Function contexts that expose uniforms and read-only values."
@@ -931,6 +940,119 @@
           ],
           "additionalProperties": true,
           "description": "Optional description of the random range operator 'lower to upper', added in source language 0.6. Earlier schema-2 exports omit it."
+        },
+        "asset_constants": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "enum": [
+                "contextual"
+              ],
+              "description": "The declaration introducer is not a globally reserved identifier."
+            },
+            "syntax": {
+              "type": "string",
+              "enum": [
+                "const <type> <name> = <expression>"
+              ],
+              "description": "Asset declaration syntax with an explicit value type."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "asset"
+              ],
+              "description": "Constants belong to their defining asset, including each imported part."
+            },
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "all_asset_functions"
+              ],
+              "description": "Constants are readable in draw and helpers of the defining asset."
+            },
+            "dependencies": {
+              "type": "string",
+              "enum": [
+                "forward_acyclic"
+              ],
+              "description": "Forward references are allowed; cycles are rejected before generation."
+            },
+            "evaluation": {
+              "type": "string",
+              "enum": [
+                "compile_time"
+              ],
+              "description": "Initializers are evaluated during compilation with runtime value kernels."
+            },
+            "distribution_validation": {
+              "type": "string",
+              "enum": [
+                "compile_time"
+              ],
+              "description": "Constant distribution parameters are validated during compilation."
+            },
+            "types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "i32",
+                  "f32",
+                  "color",
+                  "vec2",
+                  "distribution"
+                ],
+                "description": "An implemented asset constant type."
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Value types accepted after the contextual const introducer."
+            },
+            "read_only": {
+              "type": "boolean",
+              "const": true,
+              "description": "Assignments, loop counters and parameter shadowing cannot modify constants."
+            },
+            "check_all_declarations": {
+              "type": "boolean",
+              "const": true,
+              "description": "Unused declarations are still type checked and evaluated."
+            },
+            "check_effects_in_dead_branches": {
+              "type": "boolean",
+              "const": true,
+              "description": "RNG and generation dependencies are rejected even in short-circuited expressions."
+            },
+            "user_helper_calls": {
+              "type": "boolean",
+              "const": false,
+              "description": "Helpers and parts are not executed during constant evaluation."
+            },
+            "generation_state": {
+              "type": "boolean",
+              "const": false,
+              "description": "Inputs, controls, seed and generation outputs cannot be read in initializers."
+            }
+          },
+          "required": [
+            "keyword",
+            "syntax",
+            "scope",
+            "visibility",
+            "dependencies",
+            "evaluation",
+            "distribution_validation",
+            "types",
+            "read_only",
+            "check_all_declarations",
+            "check_effects_in_dead_branches",
+            "user_helper_calls",
+            "generation_state"
+          ],
+          "additionalProperties": true,
+          "description": "Typed, immutable asset declarations and their compile-time acceptance policy."
         }
       },
       "required": [
@@ -940,7 +1062,8 @@
         "visibility",
         "named_calls",
         "restrictions",
-        "effect_order"
+        "effect_order",
+        "asset_constants"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
@@ -1133,7 +1256,7 @@
     "builtins"
   ],
   "additionalProperties": true,
-  "description": "Compiler language description.",
+  "description": "Language export schema 3: typed asset constants and intrinsic constant-evaluation eligibility, with independently versioned source, product, format and ABI contracts.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "infinite-props language-description schema 2",
   "$defs": {
@@ -1309,13 +1432,18 @@
           "minimum": 0,
           "maximum": 255,
           "description": "Earliest binary-format minor supporting the opcode."
+        },
+        "constant_evaluable": {
+          "type": "boolean",
+          "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant."
         }
       },
       "required": [
         "parameters",
         "result",
         "evaluation_order",
-        "effects"
+        "effects",
+        "constant_evaluable"
       ],
       "additionalProperties": true,
       "description": "An overload from the shared signature registry."
@@ -1405,6 +1533,11 @@
             "eager_once_before_selection_rng"
           ],
           "description": "All choices evaluate once before selection consumes RNG."
+        },
+        "constant_evaluable": {
+          "type": "boolean",
+          "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant.",
+          "const": false
         }
       },
       "required": [
@@ -1413,7 +1546,8 @@
         "evaluation_order",
         "effects",
         "minimum_arguments",
-        "repeat"
+        "repeat",
+        "constant_evaluable"
       ],
       "additionalProperties": true,
       "description": "Variadic template from the shared binder registry.",

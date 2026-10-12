@@ -8,6 +8,7 @@
 #include "iprop/Validator.hpp"
 
 #include <cstdio>
+#include <bit>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -32,6 +33,14 @@ const char* typeName(ValueType type) {
 
 std::string floatText(f32 value) {
     char buffer[32];
+    const u32 bits = std::bit_cast<u32>(value);
+    const u32 exponent = bits & 0x7f800000u;
+    if (exponent == 0x7f800000u || (exponent == 0 && (bits & 0x7fffffu) != 0)) {
+        // Decimal text cannot retain NaN payloads; source literal parsing
+        // also rejects subnormals. Assembly is a lossless binary transport.
+        std::snprintf(buffer, sizeof(buffer), "bits:0x%08x", bits);
+        return buffer;
+    }
     std::snprintf(buffer, sizeof(buffer), "%.9g", value);
     return buffer;
 }

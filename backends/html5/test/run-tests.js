@@ -52,6 +52,9 @@ async function main() {
                     " exact RGBA results)");
         console.log("native/WASM 0.7 math: PASS (" + native.mathComparisons +
                     " boundary bits, traps, version gates and frozen generations)");
+        console.log("native/WASM asset constants: PASS (" + native.constantOverloads +
+                    " eligible overloads; " + native.constantComparisons +
+                    " exact generations, 8 compiler configurations and IPA/IPDIS)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

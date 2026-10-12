@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute the pre-0.7 bytes and compare RGBA, raw output bits, inputs and fuel."""
+"""Execute frozen bytes and compare RGBA, raw output bits, inputs and fuel."""
 import base64
 import hashlib
 import json
@@ -18,8 +18,9 @@ def sha(data):
 
 def main():
     generator = Path(sys.argv[1]).resolve()
-    fixture = Path(__file__).resolve().parent.parent / 'tests/fixtures/frozen-format-v0.5.json'
-    cases = json.loads(fixture.read_text())['cases']
+    fixtures = Path(__file__).resolve().parent.parent / 'tests/fixtures'
+    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json')
+             for case in json.loads((fixtures / name).read_text())['cases']]
     count = 0
     with tempfile.TemporaryDirectory(prefix='iprop-frozen-math-') as directory:
         directory = Path(directory)
@@ -43,7 +44,7 @@ def main():
                 assert actual['size'] == {'x': width, 'y': height}
                 assert sha(rgba) == expected['rgba_sha256'], (case['source'], expected['seed'], 'RGBA')
                 count += 1
-    print(f'Frozen pre-0.7 math/RNG/parts: {len(cases)} binaries, {count} exact generations')
+    print(f'Frozen formats 0.1-0.6: {len(cases)} binaries, {count} exact generations')
 
 
 if __name__ == '__main__':

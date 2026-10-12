@@ -19,6 +19,7 @@ add_library(ips_lang STATIC
     ips/CallPlan.cpp
     ips/Fold.cpp
     ips/DeclarationConstants.cpp
+    ips/AssetConstants.cpp
     ips/PartTransform.cpp
     ips/Palette.cpp
     ips/Imports.cpp

@@ -20,6 +20,7 @@
 #include "ips/Typing.hpp"
 #include "ips/Palette.hpp"
 #include "ips/DeclarationConstants.hpp"
+#include "ips/AssetConstants.hpp"
 #include "Pools.hpp"
 #include "CallResolver.hpp"
 
@@ -104,6 +105,7 @@ struct Plan {
     // Palette annotations are immutable and retain stable addresses in plan copies.
     std::map<const ips::PaletteDecl*, std::shared_ptr<const ips::ResolvedPalette>> palettes;
     std::map<const ips::InputDecl*, ips::ResolvedConstant> inputDefaults;
+    std::map<const ips::Program*, ips::AssetConstants> assetConstants;
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;

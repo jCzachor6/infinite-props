@@ -16,6 +16,9 @@
       "include": "#numbers"
     },
     {
+      "include": "#assetConstant"
+    },
+    {
       "include": "#keywords"
     },
     {
@@ -32,6 +35,11 @@
     }
   ],
   "repository": {
+    "assetConstant": {
+      "comment": "Contextual: only the declaration introducer before an explicit value type.",
+      "name": "storage.modifier.const.ips",
+      "match": "\\bconst\\b(?=\\s+(i32|f32|color|vec2|distribution)\\b)"
+    },
     "comments": {
       "patterns": [
         {

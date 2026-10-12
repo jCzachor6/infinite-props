@@ -249,6 +249,8 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     if (local != locals_.end()) {
         return local->second;
     }
+    for (const auto& constant : owner_->asset.constants)
+        if (constant.name == id.name) return valueTypeOf(constant.type);
     // Uniforms are parameters of `draw` only.
     if (isDraw_) {
         for (const auto& input : owner_->asset.inputs) {
@@ -277,6 +279,7 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     for (const auto& [name, type] : locals_) { (void)type; candidates.push_back(name); }
     if (isDraw_) for (const auto& input : owner_->asset.inputs) candidates.push_back(input.name);
     for (const auto& palette : owner_->asset.palettes) candidates.push_back(palette.name);
+    for (const auto& constant : owner_->asset.constants) candidates.push_back(constant.name);
     error(id.location, "undefined name '" + id.name + "'" + didYouMean(id.name, candidates));
 }
 

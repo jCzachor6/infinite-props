@@ -6,6 +6,53 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Pins from the preserved stage-1 runtime, using ordinary constructors. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/asset-constants.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        options.seed = 26;
+        const uint32_t expected[] = {UINT32_C(0x3f800000), UINT32_C(0x3f800000),
+            UINT32_C(0x3f19999a), UINT32_C(0x3f4ccccd), 0, 0,
+            UINT32_C(0x3f116e13), UINT32_C(0x3ee83a45), 0, UINT32_C(0x3efbda76),
+            UINT32_C(0x4766fe00), UINT32_C(0x46f1ba00)};
+        CHECK(bytes != NULL, "cannot read asset constant fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "asset constant load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "asset constant generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.width == 2 && image.height == 2 && image.output_count == 6,
+                  "asset constant image/output metadata");
+            for (uint32_t i = 0; i < image.output_count; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1, "asset constant output metadata");
+                if (i < 6 && output->count == 1) {
+                    uint32_t bits[2];
+                    memcpy(bits, output->values, sizeof(bits));
+                    CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                          "asset constant output bits at slot %u", i);
+                }
+            }
+            const uint8_t pixels[] = {146,156,168,255,139,149,161,255,0,0,0,0,0,0,0,0};
+            CHECK(memcmp(image.pixels, pixels, sizeof(pixels)) == 0, "asset constant pixels");
+            iprop_result_free(result);
+        }
+    }
+
     /* Format 0.6 math still uses the frozen host geometry and input layouts. */
     {
         char path[1024];

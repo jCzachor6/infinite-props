@@ -1,9 +1,9 @@
 # Export contracts
 
-The current compiler exports source language **0.5** while the product remains
-**0.4.0**. JSON protocol versions are independent of product, source language,
+The development compiler exports source language **0.7** with product
+**0.7.0**. JSON protocol versions are independent of product, source language,
 binary format, C API and runtime ABI versions. The language description uses
-schema **2**, the diagnostic protocol schema **1** and generated documentation
+schema **3**, the diagnostic protocol schema **1** and generated documentation
 manifests schema **2**:
 
 | Payload | Formal contract | Consumer |
@@ -28,19 +28,27 @@ Language description schema 2 removes the `emoji_aliases` list that schema 1
 required, because source language 0.5 no longer has lexer emoji aliases. All
 other fields keep their schema 1 types and meanings.
 
+Language description schema 3 introduces typed asset constant declarations,
+their evaluation/dependency policy and a `constant_evaluable` flag on each
+builtin signature. Consumers use the current schema together with the compiler
+and generated source identity. Parametric types are not implemented by this
+development stage; their descriptors arrive with the collection stage before
+the complete 0.7 release. Diagnostic and documentation-manifest schemas retain
+their independent versions.
+
 Documentation manifest schema 2 replaces schema 1. It
 requires five independent flat strings: `product_version` (major.minor.patch),
 `language_version`, `format_version`, `c_api_version` and `c_abi_soversion`
-(major.minor). Current values are `0.4.0`, `0.5`, `0.4`, `0.3` and `0.4`.
+(major.minor). Current values are `0.7.0`, `0.7`, `0.6`, `0.3` and `0.4`.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
 The language export's version pairs and `abi_version` retain their existing
 types; `c_abi_soversion` is an optional alias checked against that ABI pair.
 Verification compares source constants, compiler exports and every artifact
 matrix. Valid checksums cannot override version mismatches.
 
-Current handbooks use the source-language filename `language-v0.6.md`, not
-the product version. The emitted format is specified by the frozen
-`spec/iprop-v0.5.md`. Product release tags, source language, emitted format,
+Current handbooks use the source-language filename `language-v0.7.md`, not
+the product version. The emitted format is specified by the development
+`spec/iprop-v0.6.md`, which inherits the frozen older contracts. Product release tags, source language, emitted format,
 C API features and the ABI loader line are never inferred from one another.
 
 Formal schemas check structure. Small protocol readers additionally check
@@ -58,7 +66,7 @@ Offsets are half-open UTF-8 byte ranges; lines and columns are one-based, with
 columns counting Unicode codepoints. Protocol integers fit JavaScript's exact
 integer range.
 
-Readers accept only these current schemas. A released 0.4 language export or
+Readers accept only these current schemas. A schema 1/2 language export or
 a schema 1 documentation manifest is rejected; no reader falls back to an older
 shape.
 

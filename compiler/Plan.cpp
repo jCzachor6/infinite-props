@@ -94,6 +94,13 @@ const ips::OutputDecl* Planner::ownerOutput(const ips::Program* owner,
 
 std::unique_ptr<Plan> Planner::plan() {
     planParts();
+    const auto prepareConstants = [&](const ips::Program& owner) {
+        if (plan_->assetConstants.contains(&owner)) return;
+        try { plan_->assetConstants.emplace(&owner, ips::resolveAssetConstants(owner)); }
+        catch (ips::SourceError& error) { error.path = plan_->sourcePath(&owner); throw; }
+    };
+    prepareConstants(entry_);
+    for (const auto* part : plan_->parts) prepareConstants(*part);
     const auto prepareDefaults = [&](const ips::Program& owner) {
         for (const auto& input : owner.asset.inputs) {
             if (plan_->inputDefaults.contains(&input)) continue;
@@ -359,6 +366,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
     const auto walk = [&](auto&& self, const std::vector<ips::Stmt>& body) -> void {
         for (const auto& stmt : body) {
             if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
+                if (ips::findAssetConstant(*owner, decl->name))
+                    error(decl->location, "cannot assign to const '" + decl->name + "'");
                 const ips::ValueType type = typer_->typeOf(*decl->value);
                 if (ownerOutput(owner, decl->name) != nullptr ||
                     ownerInput(owner, decl->name) != nullptr ||
@@ -399,6 +408,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 self(self, whileStmt->body);
             } else if (const auto* forStmt =
                            std::get_if<ips::ForStmt>(&stmt)) {
+                if (ips::findAssetConstant(*owner, forStmt->variable))
+                    error(forStmt->location, "cannot use const '" + forStmt->variable + "' as a loop counter");
                 typer_->typeOf(*forStmt->from);
                 typer_->typeOf(*forStmt->to);
                 // The loop counter is a real local (the body reads it); the
@@ -428,7 +439,11 @@ void Planner::prepareFunctionBody(const std::string& name) {
     ips::ConstantFolder constants;
     for (const auto& [expr, type] : typer_->expressions()) {
         Value value;
-        const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
+        auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
+        if (const auto* id = std::get_if<ips::Identifier>(expr)) {
+            const auto& assetConstants = plan_->assetConstants.at(owner);
+            if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) constant = found->second;
+        }
         info.expressions.emplace(expr, PlannedExpression{type, constant});
     }
     info.boundCalls = typer_->calls();

@@ -36,6 +36,9 @@ Helpers have their own locals. Parameters are read-only. `draw` also has
 read-only `v`, `a` and inputs; helpers receive these values through parameters.
 `seed` reads the current RNG state in either kind of function and cannot be
 assigned. Palettes are asset-level constants visible to draw and helpers.
+Typed [asset constants](assets.md#asset-constants) are also visible in both
+contexts. Their initializer type must match the declaration, allowing only
+the ordinary i32-to-f32 widening; later assignment or shadowing is rejected.
 
 <!-- example: ../../examples/language/types.ips -->
 

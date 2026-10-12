@@ -14,13 +14,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto& constant = current_->expression(expr).constant; constant) {
         const auto& folded = *constant;
         emitConst(folded);
-        if (std::holds_alternative<i32>(folded)) {
-            return ips::ValueType::I32;
-        }
-        if (std::holds_alternative<f32>(folded)) {
-            return ips::ValueType::F32;
-        }
-        return ips::ValueType::Color;
+        return current_->typeOf(expr);
     }
     if (const auto* id = std::get_if<ips::Identifier>(&expr)) {
         if (id->name == "seed") {

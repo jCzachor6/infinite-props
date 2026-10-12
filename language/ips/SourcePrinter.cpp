@@ -442,6 +442,11 @@ public:
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();
         }
+        for (const auto& constant : asset.constants) {
+            indent(1); SourceOutput::Scope range(out_, constant.sourceRange, false);
+            out_ << "  const " << typeName(valueTypeOf(constant.type)) << ' ' << constant.name << " = ";
+            expression(*constant.value); out_.finishRange(); out_ << '\n'; range.close();
+        }
         for (const auto& palette : asset.palettes) {
             indent(1); SourceOutput::Scope range(out_, palette.sourceRange, false);
             out_ << "  palette " << palette.name << " = [";

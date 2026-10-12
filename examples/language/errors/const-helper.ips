@@ -1,0 +1,6 @@
+asset helper_constant {
+  size 1x1
+  const i32 fixed = answer()
+  answer() -> i32 { return 42 }
+  draw {}
+}

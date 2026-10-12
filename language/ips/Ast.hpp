@@ -275,6 +275,14 @@ struct Asset {
     std::vector<InputDecl> inputs;
     std::vector<OutputDecl> outputs;
     std::vector<PaletteDecl> palettes;
+    struct Constant {
+        ParamType type;
+        std::string name;
+        std::unique_ptr<Expr> value;
+        SourceLocation location;
+        TokenRange sourceRange{};
+    };
+    std::vector<Constant> constants;
     std::vector<Function> functions;
 
     TokenRange sourceRange{};

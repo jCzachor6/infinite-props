@@ -2,7 +2,7 @@
 
 A source file contains imports followed by exactly one `asset name { ... }`.
 An asset requires `size` and one `draw` entry. It may declare an origin,
-variant/archetype counts, inputs, outputs, palettes and helpers. Metadata
+variant/archetype counts, inputs, outputs, palettes, constants and helpers. Metadata
 declarations are outside function bodies. `size 16x16` and `size 16 16` are
 accepted. Origin coordinates are constant numeric expressions; an omitted
 origin is `(0, 0)`. Omitted variant/archetype counts are both 1.
@@ -12,6 +12,64 @@ read-only `i32` names `v` and `a` contain those indices. An invocation outside
 the declared counts traps. `draw` declares no parameters or return type.
 
 <!-- example: ../../examples/language/assets.ips -->
+
+## Asset constants
+
+`const type name = expression` declares an immutable asset value with an
+explicit `i32`, `f32`, `color`, `vec2` or `distribution` type. Constants are
+visible in `draw` and every helper of their defining asset. Imported parts
+resolve their own constants; a parent cannot access a child's constants.
+`i32` initializers may widen to declared `f32`; other types must match.
+Integer arithmetic keeps its wrapping signed 32-bit rules.
+
+<!-- example: ../../examples/language/asset-constants.ips -->
+
+Initializers may reference other constants, including declarations later in
+the asset. The compiler evaluates the acyclic dependency graph once during
+compilation. Arithmetic, component/channel reads and deterministic builtins
+are allowed. `ipc --describe-language` marks each eligible overload with
+`constant_evaluable`; seeded noise is allowed with a constant explicit seed.
+Legacy palette indexing and `ramp` are also allowed, including the last-element
+fallback for an invalid palette index.
+
+The current RNG state `seed`, input uniforms, `v`/`a`, part outputs, RNG draws
+and user helper or part calls are forbidden. This includes seeded selection
+with `roll`/`choose` and equal-bound random ranges. The compiler checks every
+declaration, including unused constants, and checks forbidden effects in
+both branches of `&&`/`||`. Pure evaluation still short circuits: `false &&
+(1 / 0 == 0)` is a valid `i32` constant, while `false && index(1)` is rejected.
+
+Constant `gaussian`, `triangular` and `beta` constructors validate their
+parameters during compilation. An invalid unused description is a source
+error; a dynamic constructor in `draw` retains its existing runtime trap.
+Copying or reading a constant distribution performs no draw. Each `to/with`
+still samples through the existing runtime kernel and stream.
+
+Constant names cannot collide with asset declarations, imported aliases or
+helper parameters, or use the reserved controls/placement names. Constants
+cannot be assigned or used as loop counters. `const` is contextual only as
+an asset declaration introducer; an existing `const(...)` helper, local or
+input named `const` remains valid. Use distinct descriptive names.
+
+Input defaults and legacy palette elements retain their literal-only grammar;
+declaring a constant does not expand those grammar rules. Constants introduce
+no new opcode, type code, section, host enum or ABI layout. Scalar/vector
+values lower through existing pools and instructions; a used distribution
+needs format 0.5. An unused declaration adds no executable instruction.
+
+<!-- example: ../../examples/language/errors/const-cycle.ips -->
+<!-- example: ../../examples/language/errors/const-rng.ips -->
+<!-- example: ../../examples/language/errors/const-input.ips -->
+<!-- example: ../../examples/language/errors/const-seed.ips -->
+<!-- example: ../../examples/language/errors/const-helper.ips -->
+<!-- example: ../../examples/language/errors/const-distribution.ips -->
+<!-- example: ../../examples/language/errors/const-assignment.ips -->
+
+Cycles use `IPS-CONST-001`, forbidden effects/dependencies use `IPS-CONST-002`,
+and failed compile-time value checks use `IPS-CONST-003`. Each diagnostic names
+the constant and locates the offending expression. Type mismatches retain
+`IPS-TYPE-001` with expected and actual types. A rejected source returns exit
+code 1 and creates no compiled artifact.
 
 ## Input uniforms
 

@@ -43,6 +43,8 @@ class ContractReaderTest(unittest.TestCase):
         self.assertIs(read_language(LANGUAGE),LANGUAGE)
         with self.assertRaisesRegex(RuntimeError,'language schema version'):
             read_language({**LANGUAGE,'schema_version':1})
+        with self.assertRaisesRegex(RuntimeError,'language schema version'):
+            read_language({**LANGUAGE,'schema_version':2})
         for key in ('source_rules','effect_rules','call_rules','language_version'):
             missing = dict(LANGUAGE); del missing[key]
             with self.subTest(key=key), self.assertRaisesRegex(RuntimeError,'language required fields'):
@@ -55,7 +57,7 @@ class ContractReaderTest(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         reader(value)
 
-    def test_schema_2_accepts_earlier_exports_without_new_capabilities(self):
+    def test_schema_3_accepts_exports_without_optional_capabilities(self):
         for components, ranges in ((False, False), (True, False), (False, True), (True, True)):
             with self.subTest(components=components, random_range=ranges):
                 earlier = copy.deepcopy(LANGUAGE)

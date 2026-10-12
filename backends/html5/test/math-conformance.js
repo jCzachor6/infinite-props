@@ -99,8 +99,9 @@ function run(iprop, tool, directory) {
     }
 
     // Execute pre-change bytes directly: source recompilation is a separate gate.
-    const frozen = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/frozen-format-v0.5.json"), "utf8"));
-    for (const fixture of frozen.cases) {
+    const frozen = ["frozen-format-v0.5.json", "frozen-format-v0.6-stage1.json"].flatMap(name =>
+        JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures", name), "utf8")).cases);
+    for (const fixture of frozen) {
         const binary = Buffer.from(fixture.binary_base64, "base64");
         assert.equal(sha(binary), fixture.binary_sha256);
         for (const expected of fixture.generations) {

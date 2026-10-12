@@ -375,6 +375,30 @@ func _init() -> void:
 				failures += 1
 				printerr("FAIL format 0.6 math bits/metadata ", expected[0])
 
+	var constants := IpropAsset.new()
+	if constants.load_file(args[0] + "/asset-constants.iprop") != OK:
+		failures += 1
+		printerr("FAIL asset constant load")
+	else:
+		var constant_image := constants.generate(26, 0, 0)
+		if constant_image == null or constant_image.get_size() != Vector2i(2, 2) \
+				or constant_image.get_pixel(0, 0) != Color8(146,156,168) \
+				or constant_image.get_pixel(1, 0) != Color8(139,149,161):
+			failures += 1
+			printerr("FAIL asset constant generation/pixels")
+		else:
+			var expected_constants := [["checks", 0x3f800000, 0x3f800000],
+				["normalized", 0x3f19999a, 0x3f4ccccd], ["zero", 0, 0],
+				["shaped", 0x3f116e13, 0x3ee83a45], ["beta_samples", 0, 0x3efbda76],
+				["state", 0x4766fe00, 0x46f1ba00]]
+			for expected in expected_constants:
+				var slot: Dictionary = constants.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL asset constant bits/metadata ", expected[0])
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

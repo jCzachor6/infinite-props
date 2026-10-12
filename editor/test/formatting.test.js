@@ -38,6 +38,38 @@ function pending(dir) {
 }
 function clean(dir) { assert.equal(fs.readdirSync(dir).filter(name => name.startsWith(".iprop-format-")).length, 0); }
 
+test("asset constants format through the editor with forward references and comments", async () => {
+    const source = "asset t{size 1x1 const vec2 direction=vec2.normalize({next,4}); // direction\n" +
+        "const i32 next=3 const distribution typical=gaussian(sigma=0.18,mean=0.5) draw{point(direction)} " +
+        "point(value:vec2){pixel(0,0,#123)}}";
+    const dir = workspace(source);
+    const h = editorHarness(dir, execFile);
+    h.settings.compilerPath = compiler;
+    try {
+        const edits = await format(h);
+        assert.equal(edits.length, 1, h.warnings.join("\n"));
+        const formatted = edits[0].newText;
+        assert.match(formatted, /const vec2 direction = vec2\.normalize\(\{next, 4\}\)/);
+        assert.ok(formatted.includes("// direction"));
+        assert.ok(formatted.includes("const distribution typical = gaussian(mean = 0.5, sigma = 0.18)"));
+        const target = path.join(dir, "formatted.ips");
+        fs.writeFileSync(target, formatted);
+        const check = spawnSync(compiler, [target, "--check"], {encoding:"utf8"});
+        assert.equal(check.status, 0, check.stderr);
+        assert.equal(fs.readdirSync(dir).filter(name => name.endsWith(".iprop")).length, 0);
+        clean(dir);
+    } finally { h.dispose(); fs.rmSync(dir, {recursive:true,force:true}); }
+});
+
+test("editor const highlighting preserves ordinary names and helper calls", () => {
+    const grammar = JSON.parse(fs.readFileSync(path.join(root, "editor/syntaxes/ips.tmLanguage.json"), "utf8"));
+    const introducer = new RegExp(grammar.repository.assetConstant.match);
+    for (const source of ["const i32 Plain=1", "const color iron=#abc", "const distribution typical=gaussian(0,1)"])
+        assert.equal(introducer.test(source), true, source);
+    for (const source of ["const(1)", "const = 1", "input i32 const=1", "const.x"])
+        assert.equal(introducer.test(source), false, source);
+});
+
 test("real formatting returns one edit without saving the readonly entry or a binary", async () => {
     const source = "// " + "ż😀".repeat(18000) + "\nasset t { size 8x8 input i32 signed=-7 input f32 zero=-0.0 draw { rect(color= /*color*/ #abc,h=8,w=8,y=0,x=0) } }";
     const dir = workspace(source);

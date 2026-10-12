@@ -12,6 +12,8 @@ Forward calls are allowed. Direct and indirect recursion are rejected.
 Pass uniforms and `v`/`a` to helpers explicitly. Helpers share the executing
 asset's RNG stream and may draw or write its declared output slots. A helper
 cannot access a caller's local variables or mutate its own parameters.
+Asset [constants](assets.md#asset-constants) are directly visible to helpers;
+helper parameters cannot shadow their names. Const initializers cannot call helpers.
 Calling a value-returning function as a statement discards its result.
 
 <!-- example: ../../examples/language/functions.ips -->

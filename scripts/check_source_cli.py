@@ -122,8 +122,32 @@ def main():
             entry.write_text('asset t {size 8x8 draw{x=1.0;x=float(' + expression + ')}}', encoding='utf-8')
             invoke(['entry.ips', '--check'], 'ok', 0)
 
+        # Constant rejection is checked on both paths and cannot overwrite
+        # an existing artifact. Stable codes distinguish graph/effect/value.
+        for declarations, code, message in [
+            ('const i32 first=second const i32 second=first', 'IPS-CONST-001',
+             'cyclic const dependency: first -> second -> first'),
+            ('const i32 fixed=seed', 'IPS-CONST-002',
+             "const 'fixed': cannot read 'seed'; only asset constants are allowed"),
+            ('const i32 fixed=false && index(1)', 'IPS-CONST-002',
+             "const 'fixed': 'index' has RNG or generation effects and is not allowed"),
+            ('const distribution unused=gaussian(0.5,0.0)', 'IPS-CONST-003',
+             "const 'unused': gaussian needs a finite mean and a finite sigma > 0"),
+        ]:
+            entry.write_text('asset t{size 8x8 ' + declarations + ' draw{}}', encoding='utf-8')
+            for flags in [[], ['--no-opt'], ['--debug', '--no-compress']]:
+                for args in [['entry.ips', '--check'], ['entry.ips', '-o', 'const-rejected.iprop'],
+                             ['entry.ips', '-o', 'entry.iprop']]:
+                    before = {p.name: p.read_bytes() for p in root.iterdir()}
+                    report = invoke([*args, *flags], 'invalid_source', 1)
+                    assert report['diagnostics'][0]['code'] == code, report
+                    assert report['diagnostics'][0]['message'] == message, report
+                    assert {p.name: p.read_bytes() for p in root.iterdir()} == before
+                    assert not (root / 'const-rejected.iprop').exists()
+
         for source, count, stage in [
             ('asset t {size 8x8 draw{x=; y=;}}', 2, 'parse'),
+            ('asset t {size 8x8 const i32 first=; const f32 second=; draw{}}', 2, 'parse'),
             ('asset t {size 8x8 draw{x=missing; y=x+1; z=another;}}', 2, 'typing'),
             ('asset t {size 8x8 incomplete()->i32{} draw{x=incomplete();}}', 1, 'validation'),
             ('asset t {size 8x8 draw{paint(tint=#fff);} paint(x:i32,tint:color){pixel(x,0,tint);}}', 1, 'typing'),

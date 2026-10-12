@@ -121,7 +121,8 @@ add_custom_command(OUTPUT ${result_output_fixture}
 add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
 add_dependencies(capi_golden capi_result_output_fixture)
 
-foreach(source test/language.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips)
+foreach(source test/language.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
+        ../../examples/language/asset-constants.ips)
     get_filename_component(name ${source} NAME_WE)
     set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)
