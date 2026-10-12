@@ -89,7 +89,7 @@ TEST_CASE("color.r/g/b/a read every channel byte as a zero-extended i32") {
     }
     ipa += "endfn\n";
     const auto bytes = assemble(ipa);
-    CHECK(bytes[6] == kVersionMinor);
+    CHECK(bytes[6] == 5);
     CHECK(assemble(disassemble(bytes)) == bytes);
     const auto result = run(bytes, 0, 0);
     REQUIRE(result.outputs.size() == 2);
@@ -121,7 +121,7 @@ TEST_CASE("source channel reads return every byte of runtime colors as i32") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == kVersionMinor);
+        CHECK(bytes[6] == 5);
         CHECK(usesChannelOpcode(bytes));
         const auto result = execute(bytes);
         REQUIRE(result.outputs.size() == 2);

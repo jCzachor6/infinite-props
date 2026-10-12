@@ -1,0 +1,25 @@
+asset mathBounds {
+  size 8x8
+  input i32 amount = 16777217
+  output point exact
+  output point direction
+  output point zero
+  output point mixed
+
+  bounded(x: i32) -> i32 {
+    return clamp(x, 16777218, 16777216)
+  }
+
+  draw {
+    smallest = min(amount, 16777218)
+    largest = max(amount, 16777216)
+    exact = {smallest == 16777217, largest == bounded(amount)}
+    direction = vec2.normalize({3, 4})
+    zero = vec2.normalize({-0.0, -0.0})
+    fraction = 1.0
+    fraction = float(min(1, 2))
+    fraction = max(1, 2.0)
+    mixed = {fraction, clamp(3, 2.0, 0)}
+    pixel(0, 0, #20c080)
+  }
+}

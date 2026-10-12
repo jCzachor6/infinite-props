@@ -33,6 +33,9 @@ inline f32 vec2Dot(Vec2 a, Vec2 b) {
     return canonical(abx+aby);
 }
 Vec2 vec2Rot(Vec2 v, f32 angle);
+// Finite components only: VM/constant evaluation check this before calling.
+// Scaled binary64 intermediates preserve extreme and subnormal f32 inputs.
+Vec2 vec2Normalize(Vec2 v);
 Vec2 vec2Fold(const Vec2& v, i32 n);
 Vec2 vec2Polar(const Vec2& v);
 

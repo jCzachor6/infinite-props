@@ -1,6 +1,8 @@
 # Vectors and distance fields
 
-Vectors and all geometry calculations use binary32. Signed distances are
+Vectors store binary32 components. Most geometry calculations use binary32;
+normalization uses scaled binary64 intermediates before rounding its result.
+Signed distances are
 negative inside closed shapes, zero on their boundary and positive outside.
 Segment/Bézier distances are unsigned. Distance queries do not paint pixels;
 combine them with `fill` and a color operation to author coverage.
@@ -18,6 +20,17 @@ Returns vector length using the pinned multiply/add/square-root order.
 <!-- builtin: vec2.dot -->
 
 Returns the scalar dot product of two vectors.
+
+## vec2.normalize
+<!-- builtin: vec2.normalize -->
+
+Returns a unit direction from a finite vector. Zero, including signed zero,
+returns `{+0, +0}`. NaN or infinity in either component traps. The scaled
+binary64 algorithm handles maximum and subnormal f32 components without
+overflowing the length; it draws no randomness. See the
+[normalization contract](../../spec/iprop-v0.6.md#3-stable-vector-normalization).
+
+<!-- example: ../../examples/language/math-bounds.ips -->
 
 ## vec2.rot
 <!-- builtin: vec2.rot -->

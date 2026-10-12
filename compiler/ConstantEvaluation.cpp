@@ -4,6 +4,7 @@
 #include "iprop/math/Scalar.hpp"
 #include "iprop/math/Vector.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -20,6 +21,9 @@ std::optional<Value> evaluateConstant(Opcode op, std::span<const Value> args) {
         return std::isfinite(value) ? std::optional<Value>(value) : std::nullopt;
     };
     switch (op) {
+    case Opcode::I32Min: return std::min(i(0), i(1));
+    case Opcode::I32Max: return std::max(i(0), i(1));
+    case Opcode::I32Clamp: return std::clamp(i(0), std::min(i(1), i(2)), std::max(i(1), i(2)));
     case Opcode::I32Add: return static_cast<i32>(u(0) + u(1));
     case Opcode::I32Sub: return static_cast<i32>(u(0) - u(1));
     case Opcode::I32Mul: return static_cast<i32>(u(0) * u(1));
@@ -80,6 +84,9 @@ std::optional<Value> evaluateConstant(Opcode op, std::span<const Value> args) {
         return math::vec2Div(v(0), f(1));
     case Opcode::Vec2Neg: return math::vec2Neg(v(0));
     case Opcode::Vec2Len: return math::vec2Len(v(0));
+    case Opcode::Vec2Normalize:
+        if (!std::isfinite(v(0).x) || !std::isfinite(v(0).y)) return std::nullopt;
+        return math::vec2Normalize(v(0));
     case Opcode::Vec2Dot: return math::vec2Dot(v(0), v(1));
     case Opcode::Vec2Rot: return math::vec2Rot(v(0), f(1));
     case Opcode::Vec2Fold: return math::vec2Fold(v(0), i(1));

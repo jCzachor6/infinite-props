@@ -360,6 +360,21 @@ func _init() -> void:
 				failures += 1
 				printerr("FAIL missing singular slot unexpectedly populated")
 
+	var bounds := IpropAsset.new()
+	if bounds.load_file(args[0] + "/math-bounds.iprop") != OK or bounds.generate(26, 0, 0) == null:
+		failures += 1
+		printerr("FAIL format 0.6 math load/generate")
+	else:
+		var expected_bounds := [["exact", 0x3f800000, 0x3f800000],
+			["direction", 0x3f19999a, 0x3f4ccccd], ["zero", 0, 0], ["mixed", 0x40000000, 0x40000000]]
+		for expected in expected_bounds:
+			var slot: Dictionary = bounds.outputs[expected[0]]
+			var value_bits: PackedByteArray = slot["values"].to_byte_array()
+			if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+					or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+				failures += 1
+				printerr("FAIL format 0.6 math bits/metadata ", expected[0])
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

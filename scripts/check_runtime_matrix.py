@@ -301,7 +301,8 @@ def main():
     identities = {name: file_record(p) for name, p in tool_paths.items()}
     described = command([tool_paths['ipc'], '--describe-language'], args.timeout)
     require(described.returncode == 0 and described_versions(json.loads(described.stdout)) == versions(ROOT), 'compiler/source version mismatch')
-    current_files = subprocess.check_output(['git', 'ls-files', '--', '*.ips'], cwd=ROOT, text=True).splitlines()
+    current_files = subprocess.check_output(['git', 'ls-files', '--cached', '--others', '--exclude-standard',
+                                             '--', '*.ips'], cwd=ROOT, text=True).splitlines()
     require(current_files, 'empty current source corpus')
     source_snapshot = source_identity(current_files)
     work.mkdir(parents=True, exist_ok=False)

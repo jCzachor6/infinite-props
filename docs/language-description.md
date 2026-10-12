@@ -18,12 +18,17 @@ This is a capability description, not a promise of planned syntax.
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `0.6.0`, source language `0.6`, emitted format
-`0.5`, C header API `0.3` and ABI line/SOVERSION `0.4`. These values are
+The current development values are product `0.7.0`, source language `0.7`,
+emitted format `0.6`, C header API `0.3` and ABI line/SOVERSION `0.4`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
+
+Stage 1 adds integer bounds overloads and `vec2.normalize` over existing types;
+schema 2 already describes their signatures, effects and minimum format minor.
+The planned schema transition for parametric types is deferred to the collection
+stage. See [0.7 migration](language/migration-v0.7.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `format_version`,

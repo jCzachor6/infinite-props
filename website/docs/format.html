@@ -23,7 +23,7 @@
     <article class="prose">
 <p>This page summarises the format. The canonical contract is the specification:
 <a href="../spec/iprop-v{{FORMAT_VERSION}}.md">iprop-v{{FORMAT_VERSION}}.md</a>, which inherits
-<a href="../spec/iprop-v0.4.md">0.4</a> and takes precedence over it. The frozen
+<a href="../spec/iprop-v0.5.md">0.5</a> and takes precedence over it. The frozen
 <a href="../spec/iprop-v0.1.md">0.1</a>, <a href="../spec/iprop-v0.2.md">0.2</a> and
 <a href="../spec/iprop-v0.3.md">0.3</a> specifications stay available.</p>
 
@@ -31,11 +31,16 @@
 <p>Format 0.5 adds colour channel reads, uniform random ranges, distributions, gradients and
 segments, and named part instances whose outputs arrive in the caller's coordinates. An interpreter
 for 0.5 still accepts every 0.1–0.4 file under its original rules.</p>
+<p>Format 0.6 is the development contract for product 0.7.0. Stage 1 adds exact
+signed integer min/max/clamp and stable vector normalization. The runtime reads
+0.1–0.6; existing mathematical and host output contracts remain frozen. Later
+0.7 features are not implemented by this stage.</p>
 <ul>
 <li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older
-than 0.4: a file without a 0.5 instruction or a parts section stays a 0.4 file that 0.4 interpreters can read.</li>
+than 0.4: a file retaining a new math instruction needs 0.6, while 0.5 instructions
+or parts need 0.5. Folded constants do not force a newer version.</li>
 <li>The compressed envelope remains a 0.4 container. Its inner file may have any supported version,
-0.1–0.5; a 0.4 interpreter rejects an inner 0.5 file by its version after expansion.</li>
+0.1–0.6; a 0.5 interpreter rejects an inner 0.6 file by its version after expansion.</li>
 <li>Instructions and sections introduced by a later minor are invalid in an earlier file, including in
 unreachable code.</li>
 </ul>

@@ -14,6 +14,7 @@ that every compiler and interpreter MUST implement.
 | [iprop-v0.3.md](iprop-v0.3.md) | **v0.3 — frozen** | Vectors, SDF queries and Bézier strokes, procedural noise, colour and curve utilities, palette ramps and D4 part transforms; all frozen 0.1/0.2 layouts and algorithms remain supported |
 | [iprop-v0.4.md](iprop-v0.4.md) | **v0.4 — frozen** | Lossless bounded zlib/DEFLATE containers; frozen 0.1–0.3 files, VM behavior and output bits remain supported |
 | [iprop-v0.5.md](iprop-v0.5.md) | **v0.5 — frozen** | Colour channel reads, random ranges, distributions, gradients and segments, named part instances with outputs in caller coordinates; frozen 0.1–0.4 files, VM behavior and output bits remain supported |
+| [iprop-v0.6.md](iprop-v0.6.md) | **v0.6 — development, stage 1** | Exact signed integer min/max/clamp and stable vector normalization; frozen 0.1–0.5 contracts remain supported |
 
 The `.ips` language compiles to this contract. Its complete authoring reference
 is the [language handbook](../docs/language/index.md), checked against the
@@ -45,3 +46,4 @@ and needs a spec update first.
 | v0.3.0 | 2026-10-02 | **Released.** Format minor 3 adds vectors, distance fields, curves, procedural noise, colour utilities and D4 part transforms; 0.1/0.2 reader compatibility is preserved. |
 | v0.4.0 | 2026-10-05 | **Released.** Format minor 4 adds lossless compression; compiler/source additions retain existing VM semantics. |
 | v0.5 | 2026-10-08 | Draft: format minor 5 adds the colour channel reads `color.r/g/b/a` the uniform ranges `rng.int`/`rng.float`, distributions and the gradient/segment mixes; the compressed envelope stays a 0.4 container. |
+| v0.6 | 2026-10-12 | Development, product 0.7 stage 1: signed integer bounds and scaled binary64 normalization; the compressed envelope remains 0.4. |

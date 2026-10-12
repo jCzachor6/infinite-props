@@ -34,7 +34,7 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
     Header header;
 
     // Version: interpreters reject files they cannot fully honour. This
-    // implementation knows 0.x with 1 <= x <= 5.
+    // implementation knows 0.x with 1 <= x <= 6.
     header.versionMajor = reader.readU16();
     if (header.versionMajor > kVersionMajor) {
         throw FormatError("unsupported format major version", 4, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);

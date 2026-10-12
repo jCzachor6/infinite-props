@@ -137,8 +137,8 @@ and branch on `kind`.
 
 These compile errors and surprises catch most first drafts:
 
-- `min` and `max` return `f32`, even for two integers; convert with `int()`
-  before assigning to an `i32` local.
+- `min`, `max` and `clamp` return `i32` for integer-only arguments. Use an
+  explicit `float(...)` or one f32 argument before reassigning an f32 local.
 - Colors cannot be compared with `==`. Compare channels, as in
   `tint.a == 0`.
 - `for` bounds must be `i32`: write `for i in 0..int(count)`.

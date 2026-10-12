@@ -50,6 +50,8 @@ async function main() {
                     " bit-exact results)");
         console.log("native/WASM color boundaries: PASS (" + native.colorComparisons +
                     " exact RGBA results)");
+        console.log("native/WASM 0.7 math: PASS (" + native.mathComparisons +
+                    " boundary bits, traps, version gates and frozen generations)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

@@ -7,6 +7,19 @@
 
 namespace iprop::math {
 
+Vec2 vec2Normalize(Vec2 v) {
+    const double x = static_cast<double>(v.x);
+    const double y = static_cast<double>(v.y);
+    const double m = std::max(std::fabs(x), std::fabs(y));
+    if (m == 0.0) return Vec2{0.f, 0.f};
+    const double sx = x / m;
+    const double sy = y / m;
+    const double xx = sx * sx;
+    const double yy = sy * sy;
+    const double length = std::sqrt(xx + yy);
+    return Vec2{static_cast<f32>(sx / length), static_cast<f32>(sy / length)};
+}
+
 Vec2 vec2Rot(Vec2 v, f32 angle) {
     const f32 c = f32Cos(angle);
     const f32 s = f32Sin(angle);

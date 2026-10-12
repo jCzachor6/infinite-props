@@ -15,6 +15,7 @@ std::optional<std::size_t> discardableInputs(Opcode op) {
     case Opcode::I32And: case Opcode::I32Or: case Opcode::I32Xor:
     case Opcode::I32Shl: case Opcode::I32ShrS: case Opcode::I32ShrU:
     case Opcode::I32Neg: case Opcode::I32Not:
+    case Opcode::I32Min: case Opcode::I32Max: case Opcode::I32Clamp:
     case Opcode::I32Eq: case Opcode::I32Ne: case Opcode::I32LtS: case Opcode::I32LtU:
     case Opcode::I32LeS: case Opcode::I32GtS: case Opcode::I32GeS:
     case Opcode::F32Add: case Opcode::F32Sub: case Opcode::F32Mul: case Opcode::F32Div:

@@ -8,14 +8,15 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements product **0.6.0**, source language **0.6**, binary
-format **0.5**, C API **0.3** and C ABI / SONAME **0.4**. These are independent
-contracts. The runtime reads formats 0.1–0.5; the compiler writes 0.4 unless
-the program needs a 0.5 instruction or has parts.
+This checkout implements stage 1 of product **0.7.0** / source language **0.7**
+in development: exact integer min/max/clamp and stable vector normalization.
+The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
+are independent contracts. The runtime reads formats 0.1–0.6; the compiler
+writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
 
 Start with the [language handbook](docs/language/index.md), the
 [C API integration guide](backends/capi/README.md) or the
-[0.6 migration and release notes](docs/release-v0.6.md).
+[0.7 migration and stage 1 notes](docs/language/migration-v0.7.md).
 
 ## 1. Vision
 
@@ -75,8 +76,8 @@ language handbook defines the supported source syntax.
 
 The format is a contract, not an implementation detail. All interpreters MUST
 implement its frozen semantics; the reference interpreter and conformance
-suite enforce them. [Format 0.5](spec/iprop-v0.5.md) inherits the earlier
-specifications and defines the latest additions.
+suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
+[0.5 contract](spec/iprop-v0.5.md) and defines the stage 1 additions.
 
 ### 5.1 Header
 
@@ -85,7 +86,7 @@ specifications and defines the latest additions.
 - Header flags identify debug information and the compressed container.
 - Frozen format semantics MUST remain unchanged. New opcodes and sections
   require a compatible format version; old interpreters MUST reject files
-  they cannot fully honour. The 0.4 compressed envelope may contain a 0.5
+  they cannot fully honour. The 0.4 compressed envelope may contain a 0.6
   executable, whose version is checked after expansion.
 
 ### 5.2 Sections
@@ -599,7 +600,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Implemented; product 0.6.0 reads formats 0.1–0.5 |
+| Format, VM and native toolchain | Product 0.7.0 development, stage 1; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -631,6 +632,8 @@ language 0.6, format 0.5 (with frozen 0.1–0.4 reader compatibility), C API
 0.3 and ABI line 0.4 are separate contracts; the API 0.2 layouts are
 unchanged. Migration and release commands are in
 [the 0.6 notes](docs/release-v0.6.md).
+The current 0.7 development adds exact integer bounds and scaled binary64
+`vec2.normalize`; see [stage 1 migration](docs/language/migration-v0.7.md).
 The tagged release workflow builds, validates and publishes source, native
 SDK, WASM and website packages. The same packages can be built locally.
 GitHub CI checks the native toolchain/C API, editor contracts, WASM, website,
@@ -656,21 +659,21 @@ cellular automata depend on the future buffer/mask work. L-systems and a
 dedicated noise-graph DSL remain outside the language scope; user functions,
 `warp` and curve builtins cover functional noise composition.
 
-Prepare a local release package from a clean, committed checkout:
+Validate a local package from a clean, committed checkout. A complete 0.7
+release requires the remaining stages and a frozen format specification:
 
 ```sh
 cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
 cmake --build build-release --parallel
-scripts/release.sh 0.6.0 build-release --check
-scripts/release.sh 0.6.0 build-release
+scripts/release.sh 0.7.0 build-release --check
 ```
 
 Use `IPROP_SFML=ON` and `IPROP_GODOT=ON` with their dependency paths when
 including those integrations; required mode fails on missing dependencies.
 Godot packages require `GODOTCPP_TARGET=template_release`. The script
 validates CTest, a moved installation, all six tools and external shared/static
-C API consumers before writing `dist/iprop-0.6.0.tar.gz` (committed source),
-`dist/iprop-0.6.0-<os>-<arch>.tar.gz` (native install) and SHA-256 checksums.
+C API consumers before writing versioned source/native archives and SHA-256
+checksums when packaging is requested.
 The native archive records its source commit, included backends and the
 independent `product_version`, `language_version`, `format_version`,
 `c_api_version` and `c_abi_soversion` in `release.json`; packaging rejects an
@@ -691,12 +694,15 @@ See [documentation and artifact checks](docs/ci.md).
 
 Compiler optimization checks and measured reductions are recorded in
 [the v0.4 acceptance report](docs/optimization-acceptance-v0.4.md).
-The [v0.6 runtime matrix](docs/optimization-acceptance-v0.6.md) records current
-source and frozen-binary compatibility across compilation modes and backends.
+The [v0.6 runtime matrix](docs/optimization-acceptance-v0.6.md) records the
+previous release's source and frozen-binary compatibility. The
+[0.7 stage 1 gates](docs/language/migration-v0.7.md#validation-scope) extend
+that coverage with exact math and preserved pre-change bytes; the
+[stage 1 validation report](docs/validation-v0.7-stage1.md) records the results.
 
-The current runtime supports formats 0.1–0.5 and the
+The current runtime supports formats 0.1–0.6 and the
 [lossless DEFLATE container](spec/iprop-v0.4.md) introduced in 0.4. A compressed
-container retains a 0.4 outer header even when its inner executable is 0.5.
+container retains a 0.4 outer header even when its inner executable is 0.6.
 `ipc` strips debug information by default and
 compresses only when the complete output is smaller. Use `--debug` to keep
 source maps and symbols, and `--no-compress` for an expanded file; either

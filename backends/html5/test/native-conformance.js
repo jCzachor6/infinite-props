@@ -20,6 +20,7 @@ const sources = [
     ["plant", "examples/plant.ips"],
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
+    ["math-bounds", "examples/language/math-bounds.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
@@ -123,6 +124,7 @@ function run(iprop, toolsDir) {
     let trapComparisons = 0;
     let vectorComparisons = 0;
     let colorComparisons = 0;
+    let mathComparisons = 0;
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -286,6 +288,13 @@ function run(iprop, toolsDir) {
                 assert.equal(wasm.outputs[2].points[0].x, 1, label);
                 assert.ok(Math.abs(wasm.outputs[2].points[0].y - Math.PI/2) < 1e-6, label);
             }
+            if (path.basename(file) === "math-bounds.iprop") {
+                assert.deepEqual(result.outputs.map(slot => slot.values[0]), [
+                    {x: 0x3f800000, y: 0x3f800000},
+                    {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0},
+                    {x: 0x40000000, y: 0x40000000},
+                ], label + ": exact integers, normalized direction, zero and mixed overloads");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
                 const v = options.variant || 0, a = options.archetype || 0;
@@ -420,10 +429,11 @@ function run(iprop, toolsDir) {
         compare(path.join(temporary, "noise-v2.iprop"), 7);
         vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
         colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
+        mathComparisons = require("./math-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons };
+    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons, mathComparisons };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

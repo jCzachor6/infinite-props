@@ -25,8 +25,12 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"abs", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Abs}}}},
         {"floor", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Floor}}}},
         {"ceil", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Ceil}}}},
-        {"min", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Min}}}},
-        {"max", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Max}}}},
+        {"min", {L::Opcode, {
+            {{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Min, V::F32},
+            {{{"x", V::I32}, {"y", V::I32}}, Opcode::I32Min, V::I32}}}},
+        {"max", {L::Opcode, {
+            {{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Max, V::F32},
+            {{{"x", V::I32}, {"y", V::I32}}, Opcode::I32Max, V::I32}}}},
         {"pow", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Pow}}}},
         {"exp", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Exp}}}},
         {"atan2", {V::F32, L::Opcode, {{{{"y", V::F32}, {"x", V::F32}}, Opcode::F32Atan2}}}},
@@ -54,11 +58,14 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"fold", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}, {"n", V::I32}}, Opcode::Vec2Fold}}}},
         {"polar", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Polar}}}},
         {"vec2.len", {V::F32, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Len}}}},
+        {"vec2.normalize", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Normalize}}}},
         {"vec2.dot", {V::F32, L::Opcode, {{{{"a", V::Vec2}, {"b", V::Vec2}}, Opcode::Vec2Dot}}}},
         {"vec2.rot", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}, {"a", V::F32}}, Opcode::Vec2Rot}}}},
         {"smoothstep", {V::F32, L::Opcode, {{{{"a", V::F32}, {"b", V::F32}, {"t", V::F32}}, Opcode::Smoothstep}}}},
         {"remap", {V::F32, L::Opcode, {{{{"t", V::F32}, {"a", V::F32}, {"b", V::F32}, {"c", V::F32}, {"d", V::F32}}, Opcode::Remap}}}},
-        {"clamp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::Clamp}}}},
+        {"clamp", {L::Opcode, {
+            {{{"x", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::Clamp, V::F32},
+            {{{"x", V::I32}, {"min", V::I32}, {"max", V::I32}}, Opcode::I32Clamp, V::I32}}}},
         {"i32trunc", {V::I32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32ToI32}}}},
         {"int", {V::I32, L::Opcode, {
             {{{"x", V::I32}}, std::nullopt}, {{{"x", V::F32}}, Opcode::F32ToI32}}}},

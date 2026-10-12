@@ -42,6 +42,20 @@ void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
 
 bool stepArithmetic(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
+    case Opcode::I32Min:
+        i32Compare(ex, [](i32 a, i32 b) { return std::min(a, b); });
+        return true;
+    case Opcode::I32Max:
+        i32Compare(ex, [](i32 a, i32 b) { return std::max(a, b); });
+        return true;
+    case Opcode::I32Clamp: {
+        const i32 b = ex.popI32();
+        const i32 a = ex.popI32();
+        const i32 x = ex.popI32();
+        ex.push(Value(std::clamp(x, std::min(a, b), std::max(a, b))));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::I32Add:
         i32Binop(ex, [](u32 a, u32 b) { return a + b; });
         return true;

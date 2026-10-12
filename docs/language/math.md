@@ -71,14 +71,17 @@ Rounds a float upward and returns a float.
 ## min
 <!-- builtin: min -->
 
-Returns the lesser value with pinned minNum semantics: one NaN selects the
+Returns exact signed `i32` when both arguments are integers. If either argument
+is `f32`, integers widen and the floating result uses pinned minNum semantics:
+one NaN selects the
 other argument, two NaNs produce canonical NaN, and negative zero precedes
 positive zero.
 
 ## max
 <!-- builtin: max -->
 
-Returns the greater value with the corresponding maxNum semantics; positive
+Returns exact signed `i32` for two integers, otherwise `f32` with the
+corresponding maxNum semantics; positive
 zero succeeds negative zero.
 
 ## pow
@@ -141,5 +144,9 @@ not an automatic clamp. Degenerate intervals follow the frozen float rules.
 ## clamp
 <!-- builtin: clamp -->
 
-Bounds a numeric value using the pinned min/max operations. Parameter names
-are `x`, `min`, `max`. NaN and signed-zero behavior comes from those operations.
+Bounds a value between the two supplied limits, ordering them first, so reversed
+or equal bounds are valid. All three integer arguments select exact signed
+`i32`; any `f32` argument selects the existing floating operations. Parameter
+names are `x`, `min`, `max`. Floating NaN and signed-zero behavior is unchanged.
+See [0.7 migration](migration-v0.7.md#integer-overloads-and-explicit-f32-migration)
+for assignments to existing f32 locals.

@@ -37,7 +37,7 @@ function checkLinks(directory) {
 async function main() {
     const pages = checkLinks(site);
     assert.equal(pages, 7);
-    for (const minor of [1, 2, 3, 4, 5]) {
+    for (const minor of [1, 2, 3, 4, 5, 6]) {
         const spec = `iprop-v0.${minor}.md`;
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));
     }
@@ -109,7 +109,7 @@ async function main() {
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 5 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 6 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

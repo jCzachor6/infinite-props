@@ -27,7 +27,8 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
-    case Opcode::ColorHsv: case Opcode::Vec2Mix: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
+        return {R::None,false,false,check(C::NumericRange)};
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
@@ -203,6 +204,10 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::RngFloatWith, "rng.float.with", 5, StackSignature({S::F32, S::F32, S::Distribution}, V::F32)),
     fixed(Opcode::ColorMixRgba, "color.mix.rgba", 5, StackSignature({S::Color, S::Color, S::F32}, V::Color)),
     fixed(Opcode::Vec2Mix, "vec2.mix", 5, StackSignature({S::Vec2, S::Vec2, S::F32}, V::Vec2)),
+    fixed(Opcode::I32Min, "i32.min", 6, StackSignature({S::I32, S::I32}, V::I32)),
+    fixed(Opcode::I32Max, "i32.max", 6, StackSignature({S::I32, S::I32}, V::I32)),
+    fixed(Opcode::I32Clamp, "i32.clamp", 6, StackSignature({S::I32, S::I32, S::I32}, V::I32)),
+    fixed(Opcode::Vec2Normalize, "vec2.normalize", 6, StackSignature({S::Vec2}, V::Vec2)),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

@@ -1,0 +1,6 @@
+asset invalidNormalize {
+  size 1x1
+  draw {
+    vec2.normalize({1.0 / 0.0, 1})
+  }
+}

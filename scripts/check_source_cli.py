@@ -28,7 +28,7 @@ def main():
             report = json.loads(process.stdout)
             assert report['status'] == expected_status, report
             assert report['schema_version'] == 1, report
-            assert report['language_version'] == {'major': 0, 'minor': 6}, report
+            assert report['language_version'] == {'major': 0, 'minor': 7}, report
             assert isinstance(report['product_version'], str), report
             assert isinstance(report['diagnostics'], list), report
             for diagnostic in report['diagnostics']:
@@ -107,6 +107,20 @@ def main():
         invoke(['entry.ips', '-o', 'helper.iprop'], 'ok', 0)
         assert (root / 'helper.iprop').read_bytes().startswith(b'IPRP')
         (root / 'helper.iprop').unlink()
+
+        # Source 0.7 deliberately gives integer-only bounds calls an i32
+        # result. Check both CLI paths and the absence of a new binary.
+        for expression in ('min(1,2)', 'max(1,2)', 'clamp(1,0,2)'):
+            entry.write_text('asset t {size 8x8 draw{x=1.0;x=' + expression + '}}', encoding='utf-8')
+            for args in [['entry.ips', '--check'], ['entry.ips', '-o', 'migration.iprop']]:
+                report = invoke(args, 'invalid_source', 1)
+                diagnostic = report['diagnostics'][0]
+                assert diagnostic['code'] == 'IPS-TYPE-001', report
+                assert diagnostic['message'] == "local 'x' is f32, cannot assign i32", report
+                assert diagnostic['expected_type'] == 'f32' and diagnostic['actual_type'] == 'i32', report
+                assert not (root / 'migration.iprop').exists()
+            entry.write_text('asset t {size 8x8 draw{x=1.0;x=float(' + expression + ')}}', encoding='utf-8')
+            invoke(['entry.ips', '--check'], 'ok', 0)
 
         for source, count, stage in [
             ('asset t {size 8x8 draw{x=; y=;}}', 2, 'parse'),

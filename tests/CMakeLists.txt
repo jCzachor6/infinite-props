@@ -31,6 +31,7 @@ add_executable(iprop_tests
     compiler/basics_test.cpp
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
+    compiler/math_bounds_test.cpp
     compiler/defaults_test.cpp
     compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
@@ -146,6 +147,8 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME frozen_math_compatibility COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_frozen_math.py" "$<TARGET_FILE:ipgen>")
     add_test(NAME compiler_diagnostic_failures COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_diagnostic_failures.py" "$<TARGET_FILE:compiler_diagnostic_failure_probe>")
     add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}

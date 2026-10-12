@@ -295,6 +295,31 @@ int main(int argc, char** argv) {
         }
     }
 
+    {
+        iprop::sfml_host::Program program(
+            iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/math-bounds.iprop")),
+            &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, 0, 0), &iprop_result_free);
+        const auto image = iprop::sfml_host::queryImage(result.get());
+        const auto slots = checkOutputs(result.get());
+        const std::uint32_t expected[] = {0x3f800000, 0x3f800000, 0x3f19999a, 0x3f4ccccd,
+                                        0, 0, 0x40000000, 0x40000000};
+        CHECK(slots.size() == 4, "format 0.6 output slots");
+        for (std::size_t i = 0; i < slots.size(); ++i) {
+            CHECK(slots[i].values.size() == 2 && slots[i].owner == 0 && !slots[i].isList,
+                  "format 0.6 output metadata");
+            if (i < 4 && slots[i].values.size() == 2) {
+                std::uint32_t bits[2];
+                std::memcpy(bits, slots[i].values.data(), sizeof(bits));
+                CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                      "format 0.6 math output bits");
+            }
+        }
+        sf::Image rendered;
+        rendered.resize({image.width, image.height}, image.pixels);
+        CHECK(rendered.getPixel({0, 0}) == sf::Color(0x20, 0xc0, 0x80), "format 0.6 math pixel");
+    }
+
     if (failures != 0) {
         std::fprintf(stderr, "%d failure(s)\n", failures);
         return 1;

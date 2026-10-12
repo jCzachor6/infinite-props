@@ -1,0 +1,7 @@
+asset migration {
+  size 1x1
+  draw {
+    x = 1.0
+    x = max(1, 2)
+  }
+}

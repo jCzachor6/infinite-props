@@ -23,7 +23,7 @@ cp "$wasm_dir/iprop.js" "$wasm_dir/iprop.wasm" website/public/
 mkdir -p website/public/showcase
 cp examples/showcase/*.iprop examples/showcase/LICENSE.md website/public/showcase/
 mkdir -p website/public/spec
-cp spec/iprop-v0.1.md spec/iprop-v0.2.md spec/iprop-v0.3.md spec/iprop-v0.4.md spec/iprop-v0.5.md website/public/spec/
+cp spec/iprop-v0.1.md spec/iprop-v0.2.md spec/iprop-v0.3.md spec/iprop-v0.4.md spec/iprop-v0.5.md spec/iprop-v0.6.md website/public/spec/
 mkdir -p website/public/reference website/public/recipes
 cp docs/optimizations-v0.4.md docs/optimization-acceptance-v0.4.md website/public/reference/
 cp examples/recipes/*.ips examples/recipes/README.md website/public/recipes/

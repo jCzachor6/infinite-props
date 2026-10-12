@@ -84,6 +84,13 @@ def main():
     assert by_name['weather']['overloads'][0]['effects']['writes_canvas']
     assert by_name['abs']['overloads'][0]['effects']['may_trap'] == []
     assert by_name['round']['overloads'][0]['effects']['may_trap'] == []
+    for name in ('min', 'max', 'clamp'):
+        assert {entry['result'] for entry in by_name[name]['overloads']} == {'i32', 'f32'}
+        for entry in by_name[name]['overloads']:
+            assert entry['effects']['rng'] == 'none' and not entry['effects']['may_trap']
+    normalize = by_name['vec2.normalize']['overloads'][0]
+    assert normalize['minimum_format_minor'] == 6 and normalize['result'] == 'vec2'
+    assert normalize['effects']['rng'] == 'none' and normalize['effects']['may_trap'] == ['numeric_range']
     assert by_name['stream_pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
     print(f'Language effects: {len(by_name)} builtins, {signatures} signatures and shared effect rules passed')
 

@@ -6,6 +6,51 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Format 0.6 math still uses the frozen host geometry and input layouts. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/math-bounds.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        options.seed = 26;
+        const uint32_t expected[] = {UINT32_C(0x3f800000), UINT32_C(0x3f800000),
+            UINT32_C(0x3f19999a), UINT32_C(0x3f4ccccd), 0, 0,
+            UINT32_C(0x40000000), UINT32_C(0x40000000)};
+        CHECK(bytes != NULL, "cannot read format 0.6 math fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "format 0.6 math load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "format 0.6 math generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.output_count == 4, "format 0.6 host output count");
+            for (uint32_t i = 0; i < image.output_count; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1, "format 0.6 host output metadata");
+                if (i < 4 && output->count == 1) {
+                    uint32_t bits[2];
+                    memcpy(bits, output->values, sizeof(bits));
+                    CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                          "format 0.6 math output bits at slot %u", i);
+                }
+            }
+            CHECK(image.pixels[0] == 0x20 && image.pixels[1] == 0xc0 && image.pixels[2] == 0x80,
+                  "format 0.6 math pixel");
+            iprop_result_free(result);
+        }
+    }
+
     /* The uniform overrides: the fixture's three inputs drive three
        diagonal pixels — the defaults, all three overrides, an unknown
        name (ignored) and a type mismatch (a trap). */

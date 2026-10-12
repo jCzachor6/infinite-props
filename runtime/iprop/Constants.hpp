@@ -7,8 +7,8 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 5;
-// Writers emit the oldest minor that holds every instruction (spec v0.5 §1),
+inline constexpr u16 kVersionMinor = 6;
+// Writers emit the oldest minor that holds every instruction (spec v0.6 §1),
 // never older than the 0.4 files written before format 0.5 existed.
 inline constexpr u16 kOldestWrittenMinor = 4;
 inline constexpr u32 kHeaderSize = 20;
@@ -232,6 +232,12 @@ enum class Opcode : u8 {
     // Gradients and segments (spec v0.5 §5; added in v0.5)
     ColorMixRgba = 0xAF,
     Vec2Mix = 0xB0,
+
+    // Exact integer bounds and stable normalization (spec v0.6 §2–3).
+    I32Min = 0xB1,
+    I32Max = 0xB2,
+    I32Clamp = 0xB3,
+    Vec2Normalize = 0xB4,
 
     // Parts (§9.10)
     PartDraw = 0xA0,
