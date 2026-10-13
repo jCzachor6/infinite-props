@@ -11,12 +11,12 @@ whitespace and never implicitly terminates a declaration or expression.
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
 `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`,
-`true`, `false`) are reserved. `draw`, `at`, type names and geometry kind
+`true`, `false`) and `const`, `to`, `with`, `distribution`, `sampler`,
+`weighted`, `density` and `layer` are reserved. `draw`, `at`, scalar type names and geometry kind
 names and `list` are soft keywords accepted in name positions; `draw` still selects
-the entry block when used as an asset-level function name. `to`, `with`
-and `distribution` are ordinary names that also spell the
-[random range](random.md#random-ranges-with-to) operator, its
-[distribution](random.md#distributions) and the typed declaration. Asset names and
+the entry block when used as an asset-level function name. Reserved words cannot
+name assets, inputs, outputs, locals, helpers, parameters, aliases or members.
+Newly introduced keywords have no contextual compatibility aliases. Asset names and
 `for` counter names require an ordinary identifier. Asset-level `size`,
 `origin`, `variants`, `archetypes` and `palette` introduce metadata.
 `const type name = expression` introduces an [asset constant](assets.md#asset-constants)

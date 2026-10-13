@@ -22,7 +22,7 @@ input_type    = "color" | "f32" | "u32" | "i32" ;
 output        = "output", [ "list" ], output_kind, name, [ ";" ] ;
 output_kind   = "point" | "circle" | "rect" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
-asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* contextual "const" *)
+asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
@@ -49,7 +49,7 @@ bit_xor       = bit_and, { "^", bit_and } ;
 bit_and       = equality, { "&", equality } ;
 equality      = comparison, { ("==" | "!="), comparison } ;
 comparison    = random_range, { ("<" | "<=" | ">" | ">="), random_range } ;
-random_range  = shift, [ "to", shift, [ "with", shift ] ] ;  (* contextual "to"/"with"; no chaining *)
+random_range  = shift, [ "to", shift, [ "with", shift ] ] ;  (* reserved "to"/"with"; no chaining *)
 shift         = additive, { ("<<" | ">>"), additive } ;
 additive      = multiplicative, { ("+" | "-"), multiplicative } ;
 multiplicative = unary, { ("*" | "/" | "%"), unary } ;
@@ -57,10 +57,11 @@ unary         = ("-" | "!" | "~"), unary | postfix ;
 postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
-primary       = literal | name | compound | list_literal | point_distribution | "(", expression, ")" ;
-point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}" ;  (* contextual before brace *)
+primary       = literal | name | compound | list_literal | point_distribution
+              | sampler_capture | "(", expression, ")" ;
+point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}" ;  (* reserved family names *)
 distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
-sampler_capture = "sampler", "(", expression, ")" ;  (* contextual; the outer random_range is captured *)
+sampler_capture = "sampler", "(", expression, ")" ;  (* reserved; the outer random_range is captured *)
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
@@ -71,7 +72,8 @@ literal       = integer | floating | color | string | "true" | "false" ;
 declaration_constant = literal | "(", declaration_constant, ")"
                      | "-", constant_atom ;
 constant_atom = literal | "(", constant_atom, ")" ;
-layer_capture = "layer", name, [ "(", "alpha", "=", "surface.legacy", ")" ], block ;
+surface_mode = "surface.legacy" | "surface.source_over" ;
+layer_capture = "layer", name, [ "(", "alpha", "=", surface_mode, ")" ], block ;
 identifier    = (letter | "_"), { letter | digit | "_" } ;
 xdigits       = ("x" | "X"), digit, { digit } ;
 integer       = digit, { digit } | "0", ("x" | "X"), hex, { hex } ;
@@ -112,11 +114,10 @@ operands. Each key/value pair snapshots its original numeric type in written
 order. See [weighted descriptions](random.md#weighted-point-distributions) and
 [density profiles](random.md#density-point-distributions).
 
-At the top level of a for upper bound, the following brace starts the loop
-body, so numeric bounds named `weighted` or `density` keep their meaning.
-Inside nested arguments, brackets or parentheses, point literals remain
-ordinary expressions.
+Point family names are reserved. A point literal remains an ordinary
+expression, including inside a helper call used as a loop upper bound.
 
-Layer capture is contextual before its result name and block; `layer(...)`
-and ordinary names remain available. `layer name = expression` is a typed
-handle copy. Lists/samplers of surfaces are rejected.
+`layer` is reserved both for capture and the value type. `layer name = expression`
+is a typed handle copy. Lists/samplers of surfaces are rejected. Omitted alpha
+inherits the active target; `surface.paint` uses that target's mode unless blend
+explicitly selects one operation. See [alpha composition](surfaces.md).

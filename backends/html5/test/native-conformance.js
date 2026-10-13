@@ -131,7 +131,7 @@ function run(iprop, toolsDir) {
     let constantOverloads = 0;
     let collectionEvidence = {};
     let samplerEvidence = {};
-    let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {};
+    let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {};
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -420,8 +420,8 @@ function run(iprop, toolsDir) {
         // Host uniforms of every input type, and the showcase weapons' emission
         // layers that the website composites as bloom.
         const emblem = path.join(temporary, "recipe-24-uniform-emblem.ips.iprop");
-        for (const uniforms of [{accent: "#ff3366", scale: 1.5, density: 3},
-                                {accent: "#20c08080", scale: 0.75, density: 12}, {density: 0}])
+        for (const uniforms of [{accent: "#ff3366", scale: 1.5, dotCount: 3},
+                                {accent: "#20c08080", scale: 0.75, dotCount: 12}, {dotCount: 0}])
             compare(emblem, 7, null, {uniforms});
         for (const weapon of ["sword", "staff"]) {
             const file = path.join(repo, "examples/showcase", weapon + ".iprop");
@@ -430,8 +430,8 @@ function run(iprop, toolsDir) {
         }
         for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
                                            [{accent: "#12345"}, /'accent' must be a #RRGGBB/],
-                                           [{density: -1}, /'density' must be an unsigned 32-bit integer/],
-                                           [{density: 1.5}, /'density' must be an unsigned 32-bit integer/],
+                                           [{dotCount: -1}, /'dotCount' must be an unsigned 32-bit integer/],
+                                           [{dotCount: 1.5}, /'dotCount' must be an unsigned 32-bit integer/],
                                            [{scale: "2"}, /'scale' must be a number/]]) {
             const label = "uniform-emblem " + JSON.stringify(uniforms);
             try {
@@ -456,12 +456,13 @@ function run(iprop, toolsDir) {
         pointDistributionEvidence = require("./point-distribution-conformance.js").run(iprop, tool, temporary);
         densityEvidence = require("./density-conformance.js").run(iprop, tool, temporary);
         surfaceEvidence = require("./surface-conformance.js").run(iprop, tool, temporary);
+        sourceOverEvidence = require("./source-over-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
         colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence,
-        samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence };
+        samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

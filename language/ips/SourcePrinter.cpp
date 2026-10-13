@@ -386,7 +386,7 @@ class SourcePrinter {
                 }
             } else if constexpr (std::is_same_v<T, LayerStmt>) {
                 out_ << "layer " << node.name;
-                if (node.explicitAlpha) out_ << "(alpha = surface.legacy)";
+                if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
                 block(node.body, level);
             }
         }, stmt);

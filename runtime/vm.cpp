@@ -221,7 +221,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     state.partIndex = partIndex;
     state.render = render;
     auto nextTarget = RenderTarget::create(static_cast<u32>(render.sourceExtent.x),
-        static_cast<u32>(render.sourceExtent.y), render.sourceScale);
+        static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode);
     state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 

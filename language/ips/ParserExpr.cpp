@@ -112,35 +112,20 @@ std::unique_ptr<Expr> ParserImpl::parseComparison() {
     }
 }
 
-// `to` and `with` are contextual, so old programs keep their meaning. Where
-// the next statement or declaration may begin, `to = ...`, `to.draw(...)`
-// and a call of a declared helper `to` start it (likewise for `with`);
-// everywhere else the word is the operator.
-bool ParserImpl::atContextualOperator(std::string_view word, bool helper) const {
-    if (kind() != TokenKind::Identifier || peek().text != word) return false;
-    if (!statementTail_) return true;
-    switch (kind(1)) {
-    case TokenKind::Assign:
-    case TokenKind::Dot: return false;
-    case TokenKind::LParen: return !helper;
-    default: return true;
-    }
-}
-
 std::unique_ptr<Expr> ParserImpl::parseRandomRange() {
     auto lower = parseShift();
-    if (!atContextualOperator("to", toHelper_)) return lower;
+    if (kind() != TokenKind::KeywordTo) return lower;
     const SourceLocation at = advance().location; // 'to'
     auto upper = parseShift();
     auto end = upper->sourceRange.end;
     std::unique_ptr<Expr> distribution;
     SourceLocation withAt{};
-    if (atContextualOperator("with", withHelper_)) {
+    if (kind() == TokenKind::KeywordWith) {
         withAt = advance().location; // 'with'
         distribution = parseShift();
         end = distribution->sourceRange.end;
     }
-    if (atContextualOperator("to", toHelper_)) {
+    if (kind() == TokenKind::KeywordTo) {
         failHere("'to' cannot be chained; parenthesize the range used as a bound, "
                  "for example (a to b) to c");
     }
@@ -233,28 +218,18 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
         } else if (kind() == TokenKind::LParen) {
             const SourceLocation at = locationOf(*expr);
             auto args = parseArgs();
-            const auto* name = std::get_if<Identifier>(expr.get());
             auto* member = std::get_if<Member>(expr.get());
-            if (name && name->name == "sampler" && !samplerHelper_) {
-                if (args.size() != 1 || args[0].name)
-                    throw SourceError{at, "sampler capture takes one positional value or range"};
-                expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at});
-            } else if (member && member->name == "pick") {
+            if (member && member->name == "pick") {
                 if (args.size() > 1 || (!args.empty() && args[0].name && *args[0].name != "n"))
                     throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
                 expr = std::make_unique<Expr>(SamplerPick{std::move(member->object),
                     args.empty() ? nullptr : std::move(args[0].value), at});
             } else {
-                if (name && name->name == "sampler" && samplerHelper_)
-                    for (const auto& arg : args) if (std::holds_alternative<RandomRange>(*arg.value))
-                        throw SourceError{at, "sampler capture conflicts with helper 'sampler'; rename the helper before capturing a range"};
                 expr = std::make_unique<Expr>(Call{std::move(expr), std::move(args), at});
             }
         } else if (kind() == TokenKind::LBracket) {
             const SourceLocation at = locationOf(*expr);
             advance(); // '['
-            const FlagScope nested(statementTail_, false);
-            const FlagScope body(blockTail_,false);
             auto index = parseExpr();
             expect(TokenKind::RBracket, "']' after the index");
             expr = std::make_unique<Expr>(
@@ -272,8 +247,19 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         return value;
     }
     switch (kind()) {
+    case TokenKind::KeywordWeighted:
+    case TokenKind::KeywordDensity:
+        return parsePointDistribution();
+    case TokenKind::KeywordSampler: {
+        const auto at = advance().location;
+        auto args = parseArgs();
+        if (args.size() != 1 || args[0].name)
+            throw SourceError{at, "sampler capture takes one positional value or range"};
+        auto expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at});
+        expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+        return expr;
+    }
     case TokenKind::Identifier: {
-        if (!blockTail_ && math::pointDistributionSpec(peek().text) && kind(1) == TokenKind::LBrace) return parsePointDistribution();
         const Token name = advance();
         auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
@@ -285,8 +271,6 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
         return parseList();
     case TokenKind::LParen: {
         advance();
-        const FlagScope nested(statementTail_, false);
-        const FlagScope body(blockTail_,false);
         auto expr = parseExpr();
         expect(TokenKind::RParen, "')'");
         expr->sourceRange = {start, pos_};
@@ -347,8 +331,6 @@ std::unique_ptr<Expr> ParserImpl::parseLiteral() {
 
 std::unique_ptr<Expr> ParserImpl::parseVector() {
     const auto start = pos_;
-    const FlagScope nested(statementTail_, false);
-    const FlagScope body(blockTail_,false);
     const SourceLocation at = expect(TokenKind::LBrace, "'{'").location;
     std::vector<std::unique_ptr<Expr>> elements;
     while (kind() != TokenKind::RBrace) {
@@ -372,8 +354,6 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
 
 std::unique_ptr<Expr> ParserImpl::parseList() {
     const auto start = pos_;
-    const FlagScope nested(statementTail_, false);
-    const FlagScope body(blockTail_,false);
     const auto at = expect(TokenKind::LBracket, "'['").location;
     std::vector<std::unique_ptr<Expr>> elements;
     while (kind() != TokenKind::RBracket) {
@@ -390,7 +370,6 @@ std::unique_ptr<Expr> ParserImpl::parseList() {
 std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
     const auto start = pos_;
     const auto name = advance();
-    const FlagScope nested(statementTail_, false);
     expect(TokenKind::LBrace, "'{' after distribution family");
     PointDistributionLiteral literal; literal.location = name.location;
     literal.family = math::pointDistributionSpec(name.text)->family;
@@ -411,8 +390,6 @@ std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
 
 std::vector<Arg> ParserImpl::parseArgs() {
     expect(TokenKind::LParen, "'('");
-    const FlagScope nested(statementTail_, false);
-    const FlagScope body(blockTail_,false);
     std::vector<Arg> args;
     while (kind() != TokenKind::RParen) {
         if (isNameKind(kind()) && peek(1).kind == TokenKind::Assign) {

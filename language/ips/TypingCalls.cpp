@@ -55,10 +55,8 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
     const auto& args = bound.arguments;
     if (signature.lowering == BuiltinLowering::SurfacePaint && args.size() == 2) {
-        const auto* mode = std::get_if<Member>(args[1]->value.get());
-        const auto* base = mode ? std::get_if<Identifier>(mode->object.get()) : nullptr;
-        if (!base || base->name != "surface" || mode->name != "legacy")
-            error(locationOf(*args[1]->value), "surface.paint blend must be surface.legacy; source_over is not available yet");
+        if (!surfaceMode(*args[1]->value))
+            error(locationOf(*args[1]->value), "surface.paint blend must be surface.legacy or surface.source_over");
     }
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {

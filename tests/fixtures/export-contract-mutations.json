@@ -985,6 +985,73 @@
       ],
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "invalid surface keyword",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "keyword"
+      ],
+      "value": "contextual",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface mode_inheritance",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "mode_inheritance"
+      ],
+      "value": "source_capture_mode",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface paint_default_mode",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "paint_default_mode"
+      ],
+      "value": "source_capture_mode",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface source_over_kernel",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "source_over_kernel"
+      ],
+      "value": "linear_light_float",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface rounding_boundary",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "rounding_boundary"
+      ],
+      "value": "once_after_all_layers",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "new reserved keyword omitted",
+      "path": [
+        "source_rules",
+        "reserved_keywords"
+      ],
+      "value": [
+        "layer"
+      ],
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

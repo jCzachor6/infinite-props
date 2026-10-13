@@ -30,6 +30,13 @@ TRANSITIONS = {
     'examples/language/errors/signed-input.ips': '05-C.2 i32 source input mapped to existing U32 tag',
     'examples/language/nested-import.ips': '0.6 nested part imports',
 }
+# Source names intentionally rejected by the reserved-keyword migration. The
+# archived binaries are still executed above; these expectations apply only
+# to recompilation of the original released source, never to current examples.
+SOURCE_REJECTIONS = {
+    'examples/language/assets.ips': 'expected an input name, got density',
+    'examples/recipes/24-uniform-emblem.ips': 'expected an input name, got density',
+}
 # Released sources whose recompiled meaning changes on purpose. Each differing
 # result is recorded, and an entry that no longer differs is an error.
 SEMANTIC_CHANGES = {
@@ -119,6 +126,7 @@ def compile_case(compiler, generator, corpus, index, source, source_root, expect
     released = corpus == 'released_sources'
     row = {'source': source, 'source_sha256': sha((source_root / source).read_bytes()),
            'historical_acceptance_transition': TRANSITIONS.get(source) if released else None,
+           'historical_source_rejection': SOURCE_REJECTIONS.get(source) if released else None,
            'semantic_change': SEMANTIC_CHANGES.get(source) if released else None, 'semantic_differences': [],
            'artifacts': {}, 'errors': [], 'container_growth': [], 'historical_size_deltas': []}
     directory = work / corpus / f'{index:03d}'
@@ -322,7 +330,9 @@ def main():
     for index, old in enumerate(manifest['cases']):
         source = old['source']
         expected = expectations.get(source, {})
-        if source in TRANSITIONS:
+        if source in SOURCE_REJECTIONS:
+            expected = {'expect': 'compile-error', 'message': SOURCE_REJECTIONS[source]}
+        elif source in TRANSITIONS:
             expected = {'expect': 'pass'}
         elif old['modes']['debug']['reference']['status']:
             require(expected.get('expect') == 'compile-error', 'historical rejection lacks an explicit current expectation: ' + source)

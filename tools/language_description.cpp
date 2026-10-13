@@ -115,7 +115,7 @@ Json randomRange() {
             {"coefficient", "shared_unit_interval"}, {"mixed", std::move(names)}, {"opcode", spec->mnemonic},
             {"minimum_format_minor", spec->minimumMinor}, {"effects", operationEffects(spec->effects)}});
     };
-    return Json::object({{"operator", "to"}, {"keyword", "contextual"},
+    return Json::object({{"operator", "to"}, {"keyword", "reserved"},
         {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
         {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
         {"overloads", Json::array({overload("i32", Opcode::RngInt, kRangeDraws),
@@ -193,7 +193,7 @@ Json sourceRules() {
         {"draw_controls", Json::object({{"names", Json::array({"v", "a"})}, {"type", "i32"}, {"read_only", true}})},
         {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
         {"constants", "all_asset_functions"}});
-    rules["asset_constants"] = Json::object({{"keyword", "contextual"},
+    rules["asset_constants"] = Json::object({{"keyword", "reserved"},
         {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable() && !type.isResource(); })},
         {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
         {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
@@ -215,16 +215,25 @@ Json sourceRules() {
         {"mutable", false}, {"helper_transfer", "share_immutable_data"},
         {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
         {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
+    Json reserved = Json::array();
+    for (const auto& name : ips::reservedKeywords()) reserved.push_back(name);
+    rules["reserved_keywords"] = std::move(reserved);
     rules["samplers"] = samplers();
+    Json alphaModes = Json::array();
+    for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({
         {"types", Json::array({ips::typeName(ips::ValueType::Layer)})},
-        {"capture_syntax", "layer <name> [(alpha=surface.legacy)] { <statements> }"},
-        {"keyword", "contextual"}, {"capture_target", "empty_current_geometry_and_scale"},
+        {"capture_syntax", "layer <name> [(alpha=surface.<mode>)] { <statements> }"},
+        {"keyword", "reserved"}, {"capture_target", "empty_current_geometry_and_scale"},
         {"result_binding", "after_scope_exit"}, {"automatic_paint", false},
         {"capture_evaluation", "once_in_current_stream"}, {"helper_transfer", "share_immutable_buffer"},
         {"buffer_format", "RGBA8"}, {"mapping", "placement_and_D4_view_without_pixel_copy"},
-        {"alpha_modes", Json::array({"surface.legacy"})}, {"default_mode", "legacy"},
+        {"alpha_modes", std::move(alphaModes)}, {"default_mode", "legacy"},
         {"mode_arguments", "compile_time_namespace_constants"}, {"paint_evaluation", "image_once_no_rng"},
+        {"mode_inheritance", "active_target_helpers_and_part_canvases_and_blits"},
+        {"paint_default_mode", "active_destination_target"},
+        {"source_over_kernel", "straight_rgba8_u64_nearest_half_up"},
+        {"rounding_boundary", "every_primitive_blit_and_paint"},
         {"paint_opcode", findOpcode(Opcode::SurfacePaint)->mnemonic},
         {"capture_opcode", findOpcode(Opcode::LayerBegin)->mnemonic},
         {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
@@ -251,7 +260,7 @@ Json sourceRules() {
         {"value",std::string(spec.valueMeaning)}, {"equal_bounds",std::string(spec.equalBounds)}}));
     rules["point_distributions"] = Json::object({{"syntax", "<family> { <key>: <value>, ... }"},
         {"families", std::move(families)},
-        {"result", "distribution"}, {"names", "contextual_before_brace"},
+        {"result", "distribution"}, {"names", "reserved"},
         {"operand_types", Json::array({"i32", "f32"})}, {"evaluation", "key_value_pairs_left_to_right_once"},
         {"storage", "immutable_snapshot_original_numeric_types"}, {"intrinsic_rng", "none"},
         {"key_order", "strictly_increasing"}, {"values", "finite_nonnegative_positive_total_mass"},

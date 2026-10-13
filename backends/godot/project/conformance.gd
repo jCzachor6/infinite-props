@@ -578,6 +578,39 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL captured panel pixel ",x,",",y)
 
+	# Exact rational source-over pixels; the ordinary part inherits its caller mode.
+	var glass := IpropAsset.new()
+	if glass.load_file(args[0] + "/source-over-panels.iprop") != OK:
+		failures += 1
+		printerr("FAIL source-over load")
+	else:
+		var glass_image := glass.generate(26, 0, 0)
+		if glass_image == null or glass_image.get_size() != Vector2i(32,24):
+			failures += 1
+			printerr("FAIL source-over image metadata")
+		else:
+			var expected_glass := [["panelSize",0x41f00000,0x41a00000,0],["state",0x41d00000,0,0],["extent",0x41f00000,0x41a00000,1]]
+			for expected in expected_glass:
+				var slot: Dictionary = glass.outputs[expected[0]] if expected[3] == 0 else glass.part_outputs[1][expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != expected[3] or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL source-over output bits/metadata")
+			for y in range(24):
+				for x in range(32):
+					var color := Color8(36,48,64) if y < 12 else Color8(0,0,0,0)
+					if ((x >= 2 and x < 14) or (x >= 18 and x < 30)) and y >= 4 and y < 20:
+						color = Color8(74,104,140) if y < 12 else Color8(112,160,216,128)
+						if (x >= 3 and x < 13) or (x >= 19 and x < 29):
+							if y >= 5 and y < 7:
+								color = Color8(142,161,183)
+							if y >= 17 and y < 19:
+								color = Color8(59,96,136,192)
+					if glass_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL source-over pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

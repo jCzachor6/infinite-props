@@ -225,22 +225,22 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
         const auto at=file.code.functions[0].fileOffset+i*4;const auto ins=decodeInstruction(file.code.functions[0].code.subspan(i*4,4));
         if(ins.opcode==Opcode::LayerBegin){
             for(const u16 destination:{0u,1u,65535u}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
-            auto bad=bytes;bad.at(at+1)=2;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
+            auto bad=bytes;bad.at(at+1)=3;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
         if(ins.opcode==Opcode::SurfacePaint){
-            auto bad=bytes;raw16(bad,at+2,2);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
+            auto bad=bytes;raw16(bad,at+2,3);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
             bad=bytes;bad.at(at+1)=1;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
     }
     auto old=bytes;raw16(old,6,5);CHECK_THROWS_AS(loadFile(old),FormatError);
-    for(const std::string dead:{"layer.begin 0 2\nend\n", "layer.begin 65535\nend\n", "surface.paint 2\n"})
+    for(const std::string dead:{"layer.begin 0 3\nend\n", "layer.begin 65535\nend\n", "surface.paint 3\n"})
         CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\n"+dead+"endfn\n"),std::exception);
 }
 
-TEST_CASE("layer is contextual and illegal handle operations have located diagnostics", "[surfaces]") {
-    const std::string source="asset t{size 2x2 input u32 layer=1 layer(x:i32)->i32{return x} "
-        "draw{for i in 0..layer{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "
-        "layer copy=image;surface.paint(blend=surface.legacy,image=copy);x=layer(2)}}";
+TEST_CASE("layer formatting and illegal handle operations have located diagnostics", "[surfaces]") {
+    const std::string source="asset t{size 2x2 input u32 copies=1 count(x:i32)->i32{return x} "
+        "draw{for i in 0..copies{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "
+        "layer copy=image;surface.paint(blend=surface.legacy,image=copy);x=count(2)}}";
     const auto formatted=ips::formatProgram(ips::parse(source));CHECK(formatted.find("/* mode */")!=std::string::npos);
     CHECK(ips::formatProgram(ips::parse(formatted))==formatted);CHECK(stripDebug(surfaceProgram(source))==stripDebug(surfaceProgram(formatted)));
     for(const auto& [body,message]:std::initializer_list<std::pair<const char*,const char*>>{
@@ -248,7 +248,7 @@ TEST_CASE("layer is contextual and illegal handle operations have located diagno
         {"layer image{}x=image+image","numeric"}, {"layer image{}x=image==image","numeric"},
         {"layer image{}x=image[0]","list"}, {"layer image{}x=image.r","needs a color"},
         {"layer image{}surface.paint(image,blend=1)","surface.legacy"},
-        {"layer image(alpha=surface.source_over){}","source_over"}})
+        {"layer image(alpha=surface.unknown){}","surface.source_over"}})
         rejectSurface("asset t{size 1x1 draw{"+std::string(body)+"}}",message);
     rejectSurface("asset t{size 1x1 const layer image=1 draw{}}","cannot be const");
     rejectSurface("asset t{size 1x1 f(images:list<layer>){}draw{}}","lists of surfaces");

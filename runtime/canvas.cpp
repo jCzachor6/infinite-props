@@ -131,23 +131,13 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
 
 } // namespace
 
-// §11.1 compositing, shared with the part blit (declared in VmInternals.hpp).
-void compositePixel(Execution& ex, i32 x, i32 y, const Color& src) {
+void compositePixel(Execution& ex, i32 x, i32 y, const Color& src, CompositionMode mode) {
     Canvas& canvas = ex.canvas();
     if (!canvas.contains(x, y)) {
         return;
     }
     Color& dst = canvas.at(static_cast<u32>(x), static_cast<u32>(y));
-    if (src.a == 255) {
-        dst = src;
-        return;
-    }
-    const u32 a = src.a;
-    const u32 b = 255u - a;
-    dst = {static_cast<u8>((static_cast<u32>(src.r) * a + static_cast<u32>(dst.r) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.g) * a + static_cast<u32>(dst.g) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.b) * a + static_cast<u32>(dst.b) * b) / 255u),
-           dst.a}; // destination alpha preserved
+    dst = composePixel(dst, src, resolveComposition(mode, ex.target.mode));
 }
 
 // Canvas operations (spec §9.8, exact rasterization §11).

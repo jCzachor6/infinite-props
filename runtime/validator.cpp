@@ -1,5 +1,6 @@
 #include "iprop/Validator.hpp"
 #include "iprop/Compression.hpp"
+#include "iprop/Compositor.hpp"
 
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
@@ -88,7 +89,7 @@ public:
                 if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
                     fail(i, "part transforms require format 0.3");
             }
-            if (spec->aux == AuxPolicy::SurfaceMode && ins.aux > 1)
+            if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
                 fail(i, "unknown layer alpha mode");
             if (file_.layout.header.versionMinor < spec->minimumMinor) {
                 fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
@@ -206,7 +207,7 @@ private:
             labels_.push_back({ins.opcode, stack_, reachable_});
             return;
         case Opcode::SurfacePaint:
-            if (op > 1) fail(at, "unknown surface blend mode");
+            if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
             expect(at, ValueType::Layer, "surface.paint image");
             return;
 

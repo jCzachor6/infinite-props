@@ -59,9 +59,8 @@ distribution parameters, forward references and cycles. Calls to `.pick`,
 RNG, inputs and helper calls cannot run during constant evaluation. Empty const
 lists need their declared type. Range/description palettes use these same
 descriptions; see [sampling palettes](palettes.md#sampling-palettes).
-A legacy helper named `sampler` retains ordinary calls; using an outer
-range in such a call reports a capture collision and requires renaming the
-helper. Ordinary locals named `sampler` remain valid.
+The `sampler` keyword is reserved; rename old helpers, locals, parameters
+and inputs with that spelling before compiling their source.
 
 ## Errors and resource costs
 

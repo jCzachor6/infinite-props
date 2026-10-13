@@ -151,7 +151,7 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         }
         ins(Opcode::End);
     } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
-        ins(Opcode::LayerBegin, capture->explicitAlpha ? 1 : 0,
+        ins(Opcode::LayerBegin, static_cast<u8>(capture->alpha),
             static_cast<u16>(current_->slots.at(capture->name)));
         for (const auto& child : capture->body) emitStmt(child);
         ins(Opcode::End);

@@ -192,9 +192,9 @@ TEST_CASE("point distribution pools and unreachable opcodes reject corrupt and o
     }
 }
 
-TEST_CASE("weighted remains contextual and formats point comments without changing effects", "[point-distribution]") {
-    const auto source = assetPoints("", "weighted=3 density=4 p={weighted,density} x=weighted(2) d=weighted{1:2,/* mass */ 3:4,} p={x,1 to 3 with d}",
-        "weighted(x:i32)->i32{return x+1} density(x:i32)->i32{return x+2}");
+TEST_CASE("weighted formats point comments without changing effects", "[point-distribution]") {
+    const auto source = assetPoints("", "weightCount=3 mass=4 p={weightCount,mass} x=adjustWeight(2) d=weighted{1:2,/* mass */ 3:4,} p={x,1 to 3 with d}",
+        "adjustWeight(x:i32)->i32{return x+1} adjustMass(x:i32)->i32{return x+2}");
     const auto formatted = ips::formatProgram(ips::parse(source)); CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     CHECK(formatted.find("/* mass */") != std::string::npos);
     for (const bool optimize : {false,true}) CHECK(stripDebug(compilePoints(source,optimize)) == stripDebug(compilePoints(formatted,optimize)));

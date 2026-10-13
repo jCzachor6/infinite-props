@@ -391,7 +391,7 @@ TEST_CASE("distribution types are checked in source") {
     CHECK(sourceError("asset t { size 1x1 input distribution d = 1 draw { } }").find("input type") != std::string::npos);
 }
 
-TEST_CASE("'with' parses after a range, formats inside it and keeps old names") {
+TEST_CASE("'with' parses after a range and formats alongside ordinary constructor helpers") {
     CHECK(format("asset t { size 1x1 draw { d = gaussian(mean=0.0, sigma=1.0) x = 1 + 2 to 9 with d < 5 } }")
               .find("x = (((1 + 2) to 9 with d) < 5)") != std::string::npos);
     const auto typed = format("asset t { size 1x1 draw { distribution d=gaussian(sigma=2.0,mean=0.0) x=-5 to 5 with d } }");
@@ -400,16 +400,16 @@ TEST_CASE("'with' parses after a range, formats inside it and keeps old names") 
     CHECK(format(typed) == typed);
     const auto helper = format("asset t { size 1x1 f(d: distribution) -> distribution { return d } draw { } }");
     CHECK(helper.find("f(d: distribution) -> distribution {") != std::string::npos);
-    // Locals named `with` and `distribution`, and helpers named like the
-    // constructors, keep their existing meaning.
+    // Constructor builtins remain ordinary callable names; range/type keywords
+    // cannot name locals or helpers.
     const std::string old = R"(asset t { size 4x1 output list point p
       gaussian(a: i32, b: i32) -> i32 { return a * 10 + b }
       beta(x: f32) -> f32 { return x * 2.0 }
-      with(x: i32) { pixel(x, 0, #fff) }
+      mark(x: i32) { pixel(x, 0, #fff) }
       draw {
-        distribution = 3 with = 4
-        p = {distribution, with}
-        x = 1 with(2)
+        shapeCount = 3 markCount = 4
+        p = {shapeCount, markCount}
+        x = 1 mark(2)
         p = {gaussian(1, 2), beta(0.25)}
         y = (1 to 3 with triangular(min=1.0, peak=2.0, max=3.0)) p = {x, y}
       } })";

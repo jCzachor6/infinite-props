@@ -2,6 +2,12 @@
 
 namespace iprop::ips {
 
+const CompositionSpec* surfaceMode(const Expr& expression) {
+    const auto* member = std::get_if<Member>(&expression);
+    const auto* base = member ? std::get_if<Identifier>(member->object.get()) : nullptr;
+    return base && base->name == "surface" ? compositionSpec(member->name) : nullptr;
+}
+
 const char* typeName(ValueType type) { return iprop::valueTypeName(type); }
 
 std::optional<unsigned> colorChannel(std::string_view member) {

@@ -20,6 +20,7 @@ add_executable(iprop_tests
     language/color_namespace_test.cpp
     language/aliases_test.cpp
     language/random_sugar_test.cpp
+    language/reserved_keywords_test.cpp
     language/named_arguments_test.cpp
     language/direct_seed_test.cpp
     language/diagnostic_hints_test.cpp
@@ -48,6 +49,7 @@ add_executable(iprop_tests
     compiler/point_distributions_test.cpp
     compiler/density_test.cpp
     compiler/surfaces_test.cpp
+    compiler/source_over_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
@@ -154,6 +156,8 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
     add_test(NAME frozen_math_compatibility COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_frozen_math.py" "$<TARGET_FILE:ipgen>")
     add_test(NAME compiler_diagnostic_failures COMMAND ${Python3_EXECUTABLE}

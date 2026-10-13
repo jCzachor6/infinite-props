@@ -209,17 +209,7 @@ TEST_CASE("constant effects cycles and invalid constructors fail without compile
         CHECK_THROWS_AS(compileConstants("asset t{size 1x1 const i32 x=1 draw{" + std::string(body) + "}}", false), ips::SourceError);
 }
 
-TEST_CASE("const remains contextual and each part owns its constants") {
-    const std::string source = R"(asset t{size 1x1 input i32 const=7 output point p
-      const(x:i32)->i32{return x+1}
-      helper()->i32{return const(3)}
-      draw{p={const(const),helper()}}
-    })";
-    for (const bool optimize : {false, true}) {
-        const auto result = execute(compileConstants(source, optimize));
-        CHECK(result.outputs[0].points[0].x == 8.f); CHECK(result.outputs[0].points[0].y == 4.f);
-        CHECK_NOTHROW(compileConstants("asset t{size 1x1 draw{const=3 pixel(const,0,#fff)}}", optimize));
-    }
+TEST_CASE("each part owns its constants") {
     const std::map<std::string,std::string> files{
         {"root.ips", "import child from \"child.ips\" asset t{size 1x1 const i32 n=3 output point p draw{child.draw(seed,0,0,at={0,0}) p={n,child.outputs.p.x}}}"},
         {"child.ips", "asset c{size 1x1 const i32 n=7 output point p get()->i32{return n} draw{p={get(),0}}}"},

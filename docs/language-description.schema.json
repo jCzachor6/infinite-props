@@ -668,9 +668,9 @@
             "keyword": {
               "type": "string",
               "enum": [
-                "contextual"
+                "reserved"
               ],
-              "description": "The spelling stays a valid name; existing locals, helpers and parts named 'to' keep their meaning."
+              "description": "The range operator is lexically reserved, including helper/local/alias name positions."
             },
             "precedence": {
               "type": "object",
@@ -1043,9 +1043,9 @@
             "keyword": {
               "type": "string",
               "enum": [
-                "contextual"
+                "reserved"
               ],
-              "description": "The declaration introducer is not a globally reserved identifier."
+              "description": "The constant declaration introducer is lexically reserved."
             },
             "syntax": {
               "type": "string",
@@ -1117,7 +1117,7 @@
               },
               "minItems": 1,
               "uniqueItems": true,
-              "description": "Value types accepted after the contextual const introducer."
+              "description": "Value types accepted after the reserved const introducer."
             },
             "read_only": {
               "type": "boolean",
@@ -1554,8 +1554,8 @@
             },
             "names": {
               "type": "string",
-              "const": "contextual_before_brace",
-              "description": "Names."
+              "const": "reserved",
+              "description": "Weighted and density are lexically reserved family names."
             },
             "evaluation": {
               "type": "string",
@@ -1715,13 +1715,13 @@
           "properties": {
             "capture_syntax": {
               "type": "string",
-              "const": "layer <name> [(alpha=surface.legacy)] { <statements> }",
+              "const": "layer <name> [(alpha=surface.<mode>)] { <statements> }",
               "description": "Capture syntax."
             },
             "keyword": {
               "type": "string",
-              "const": "contextual",
-              "description": "Keyword."
+              "const": "reserved",
+              "description": "Layer is reserved for capture and its value type; legacy identifiers must be renamed."
             },
             "capture_target": {
               "type": "string",
@@ -1847,7 +1847,8 @@
             "alpha_modes": {
               "type": "array",
               "const": [
-                "surface.legacy"
+                "surface.legacy",
+                "surface.source_over"
               ],
               "description": "Alpha modes.",
               "items": {
@@ -1868,6 +1869,26 @@
                 "type": "string",
                 "description": "One scope cleanup entry."
               }
+            },
+            "mode_inheritance": {
+              "type": "string",
+              "const": "active_target_helpers_and_part_canvases_and_blits",
+              "description": "Helpers share the active target mode; part canvases and their blits inherit it."
+            },
+            "paint_default_mode": {
+              "type": "string",
+              "const": "active_destination_target",
+              "description": "Omitted blend uses the active destination target, irrespective of the captured image mode."
+            },
+            "source_over_kernel": {
+              "type": "string",
+              "const": "straight_rgba8_u64_nearest_half_up",
+              "description": "Source-over uses the normative straight RGBA8 u64 kernel in stored channel space, with nearest ties up."
+            },
+            "rounding_boundary": {
+              "type": "string",
+              "const": "every_primitive_blit_and_paint",
+              "description": "Store a rounded RGBA8 result after each primitive, blit or paint without fusion or reordering."
             }
           },
           "required": [
@@ -1897,10 +1918,46 @@
             "minimum_format_minor",
             "types",
             "alpha_modes",
-            "scope_cleanup"
+            "scope_cleanup",
+            "mode_inheritance",
+            "paint_default_mode",
+            "source_over_kernel",
+            "rounding_boundary"
           ],
           "additionalProperties": true,
           "description": "Immutable generation-local captures on the shared part/canvas mechanism."
+        },
+        "reserved_keywords": {
+          "type": "array",
+          "const": [
+            "asset",
+            "break",
+            "const",
+            "continue",
+            "density",
+            "distribution",
+            "else",
+            "false",
+            "for",
+            "from",
+            "if",
+            "import",
+            "in",
+            "input",
+            "layer",
+            "output",
+            "return",
+            "sampler",
+            "to",
+            "true",
+            "weighted",
+            "while",
+            "with"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Lexically reserved names from the compiler lexer. Newly introduced words have no contextual compatibility aliases."
         }
       },
       "required": [

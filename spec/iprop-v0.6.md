@@ -1,11 +1,11 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–8 (2026-10-13).
-**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets and captured layers. This document
+**Status:** Development contract for product 0.7.0, stages 1–9 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets, captured layers and source-over alpha. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; source-over alpha, masks, clipping and resource
+extend this development format; masks, clipping and resource
 exports are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
@@ -383,14 +383,14 @@ has at most 256 entries and ordinary checked indexing, including helper paramete
 `ramp` accepts only constant color/f32 palettes and rejects descriptions, lists of
 samplers and vec2 palettes without sampling hidden interpolation stops. Source
 metadata advertises these rules and enables sampler constant types/const `list.len`
-overloads; global `pick`, contextual helper names, old binaries and kernels remain
+overloads; global `pick`, ordinary helper names, old binaries and kernels remain
 unchanged.
 
 ## 12. Point distributions and weighted draws
 
 Stage 6 adds family **4 (weighted)** without changing scalar type code 4 or the
 legacy family numbers, parameter records and kernels. The source literal is
-`weighted { key: weight, ... }`, contextual only before `{`. All operands are
+`weighted { key: weight, ... }`, with a reserved family name. All operands are
 i32/f32; each key and weight evaluates once in source order. Keys convert
 exactly from their original type to binary64 for comparisons, preserving every
 i32 including adjacent values above 2^24. They are finite and strictly
@@ -501,7 +501,7 @@ areas in source order in binary64 and requires a positive total. `distribution.b
 accepts family operand 5; references must match family 5 exactly. No older
 family record/kernel/opcode/type code or public host layout changes.
 
-The source is `density { key: height, ... }`, contextual only before `{`.
+The source is `density { key: height, ... }`, with a reserved family name.
 All snapshot, const/effect, sharing, quota, builder and retention rules of
 section 12 apply. For consecutive original points `(a,p)` and `(b,q)`, natural
 area is computed separately as `L=b-a`, `sum=p+q`, `average=sum*0.5`,
@@ -598,7 +598,7 @@ All batch picks repeat this procedure independently on the caller stream.
 
 ## 14. Shared render targets and captured layers
 
-Parts and contextual source `layer name [(alpha=surface.legacy)] { ... }`
+Parts and source `layer name [(alpha=surface.<mode>)] { ... }`
 captures write RGBA8 buffers through the same RenderTarget/Surface mechanism.
 A buffer stores width, height, raster scale and row-major straight RGBA8.
 An immutable view retains its buffer and adds D4 and integer pixel placement;
@@ -625,9 +625,9 @@ Unused/malformed descriptors and newer opcodes in dead code are checked.
 | Op | Mnemonic | Stack | Control / operands |
 | -- | -------- | ----- | ------------------ |
 | 0xC6 | layer.begin local [mode] | unchanged | pushes a layer label, closed by existing end; local must be a declared layer local, not a parameter |
-| 0xC7 | surface.paint mode | `[layer] -> []` | aux=0; mode=0 inherited or 1 legacy |
+| 0xC7 | surface.paint mode | `[layer] -> []` | aux=0; mode=0 inherited, 1 legacy or 2 source-over |
 
-`layer.begin` uses its aux byte for mode=0 inherited or 1 legacy; its u16
+`layer.begin` uses its aux byte for mode=0 inherited, 1 legacy or 2 source-over; its u16
 operand is the destination local index. Unknown mode, wrong/dangling local,
 nonzero paint aux and unbalanced scope fail validation, including dead code.
 Layer labels have no stack results; their entry stack must be preserved like a
@@ -637,10 +637,12 @@ layer label closes it when its end executes. Break/continue therefore close
 only exited captures, including partially drawn ones, and restore every
 previous target. Callee cleanup leaves caller scopes active.
 
-Modes currently resolve to legacy. Source spelling explicitly accepts only
-`surface.legacy`; it cannot obtain a runtime mode from an integer variable.
+Mode 0 resolves against the active destination target. Source spelling accepts
+`surface.legacy` and `surface.source_over`; it cannot obtain a runtime mode from
+an integer variable or const alias. Their ordinary scalar values are 0 and 1,
+respectively; wire mode encodings remain 1 and 2.
 The root remains legacy in format 0.6. Destination alpha, hidden RGB and the
-old channel division order remain frozen. Surface paint and part blits skip
+old channel division order remain frozen. Legacy surface paint and part blits skip
 zero-alpha source pixels. Paint visits the full source in y/x order, applies
 D4's pixel-index mapping followed by integer origin, checks bounds in i64, then
 uses the same pixel compositor as primitives. Part geometry still comes from
@@ -668,3 +670,47 @@ IPA names `layer` in `types`, locals, parameters and results. Layer begin's
 optional third token records nonzero aux (`layer.begin 2 1`); disassembly and
 reassembly preserve it. Compression and stripping keep inner minor 6. No
 public C enum, structure layout, reflection field or host output API changes.
+
+## 15. Source-over and target mode inheritance
+
+The root always starts in legacy, including format 0.6. A named layer with no
+alpha mode inherits its active target. Helpers share that target and mode;
+part canvases and their return blits inherit the caller's active mode. An
+explicit nested layer may override it. Scope cleanup on end/return/break/continue
+restores the complete prior target, including its mode. Trap cleanup restores
+the root and releases all scopes/resources without publishing a successful
+partial result.
+
+Paint with no blend uses the active destination mode, never the image's capture
+mode. An explicit blend affects only that operation and does not change later
+draws. Image handles contain pixels and mapping, without implicit blend state.
+No mode change adds RNG draws, fuel surcharges or different allocation limits.
+
+Source-over operates on straight RGBA8 stored channel values, without
+linear-light conversion or changes to color mixing. For each source/destination
+channel `Cs/Cd` and alpha `As/Ad`, use u64 intermediates and integer division:
+
+```text
+D = As * 255 + Ad * (255 - As)
+Aout = (D + 127) / 255
+N = Cs * As * 255 + Cd * Ad * (255 - As)
+Cout = (N + floor(D / 2)) / D
+```
+
+If D is zero, write RGBA(0,0,0,0). Otherwise store the nearest RGB value with
+ties up, and the rounded alpha above. A zero-alpha source over a visible
+destination leaves it unchanged; over transparent hidden RGB it writes zero.
+Source-over blits therefore process transparent source pixels too. Clipping
+and D4 use the existing pixel mapping; no resampling is introduced.
+
+Store the rounded RGBA8 result after every primitive, part blit and paint.
+Never defer rounding, fuse paints, flatten layers or change operation order.
+The legacy kernel remains byte-exact, including opaque replacement, floor RGB
+division, destination alpha preservation and zero-alpha blit skips. Existing
+executable formats and previously emitted mode 0/1 bytes retain that behavior.
+
+The source keywords `const`, `to`, `with`, `distribution`, `sampler`, `weighted`,
+`density` and `layer` are lexically reserved. Their old use as identifiers is
+an intentional source migration: reject at the token with a parser diagnostic,
+exit code 1 and no artifact. Already compiled files with those names remain
+executable; no binary string/name table restrictions are added.

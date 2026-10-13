@@ -51,9 +51,9 @@
   ],
   "repository": {
     "assetConstant": {
-      "comment": "Contextual: only the declaration introducer before an explicit value type.",
+      "comment": "Reserved asset constant introducer.",
       "name": "storage.modifier.const.ips",
-      "match": "\\bconst\\b(?=\\s+((i32|f32|color|vec2|distribution)\\b|list\\s*<))"
+      "match": "\\bconst\\b"
     },
     "comments": {
       "patterns": [
@@ -92,13 +92,13 @@
       "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|palette|size|origin|variants|archetypes)\\b"
     },
     "rangeOperator": {
-      "comment": "Contextual: 'to' stays a name before '=', '.' or '('.",
+      "comment": "Reserved range and distribution operators.",
       "name": "keyword.operator.word.range.ips",
-      "match": "\\b(to|with)\\b(?!\\s*(=(?!=)|\\.|\\())"
+      "match": "\\b(to|with)\\b"
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\b(list|sampler)\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle|distribution)\\b(?!\\s*=(?!=))|\\blayer\\b(?=\\s+[A-Za-z_][A-Za-z_0-9]*\\s*=)|(?<=:)\\s*\\blayer\\b|(?<=->)\\s*\\blayer\\b"
+      "match": "\\b(distribution|sampler)\\b|\\blist\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -110,7 +110,7 @@
     },
     "samplerCapture": {
       "name": "support.function.sampler.ips",
-      "match": "\\bsampler\\b(?=\\s*\\()"
+      "match": "\\bsampler\\b"
     },
     "samplerMethod": {
       "name": "support.function.sampler.pick.ips",
@@ -118,16 +118,16 @@
     },
     "pointDistribution": {
       "name": "support.function.distribution.ips",
-      "match": "\\b(weighted|density)\\b(?=\\s*\\{)"
+      "match": "\\b(weighted|density)\\b"
     },
     "layerCapture": {
-      "comment": "Contextual capture introducer; ordinary layer names and helper calls keep their spelling.",
+      "comment": "Reserved layer capture and value type.",
       "name": "keyword.control.layer.ips",
-      "match": "\\blayer\\b(?=\\s+[A-Za-z_][A-Za-z_0-9]*\\s*(?:\\{|\\(\\s*alpha\\s*=))"
+      "match": "\\blayer\\b"
     },
     "surfaceMode": {
       "name": "constant.language.surface-mode.ips",
-      "match": "\\bsurface\\.legacy\\b"
+      "match": "\\bsurface\\.(legacy|source_over)\\b"
     }
   }
 }

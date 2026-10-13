@@ -8,6 +8,7 @@
 
 #include "Host.hpp"
 #include "Render.hpp"
+#include "../../capi/test/source_over_reference.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -185,6 +186,25 @@ int main(int argc, char** argv) {
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Exact rational RGBA8 pins through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/source-over-panels.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x41f00000,0x41a00000,0x41d00000,0,0x41f00000,0x41a00000};
+        CHECK(image.width==32 && image.height==24 && slots.size()==3,"source-over metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==(i==2 ? 1u : 0u) && !slots[i].isList,"source-over output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"source-over output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4];source_over_panel_pixel(x,y,color);
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"source-over pixel %u,%u",x,y);
+        }
     }
 
     // Preserved stage-7 direct-render oracle through the unchanged SFML adapter.

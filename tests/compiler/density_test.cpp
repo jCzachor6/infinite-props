@@ -174,8 +174,8 @@ TEST_CASE("density rejects invalid static data and traps unused runtime snapshot
     }
 }
 
-TEST_CASE("density contextual syntax maximum points closed support and fuel remain bounded", "[density]") {
-    const auto source=densityAsset("","density=3 x=density(4) d=density{0:0,/* ramp */1:1,2:0,} p={density,x}","density(x:i32)->i32{return x+1}");
+TEST_CASE("density syntax maximum points closed support and fuel remain bounded", "[density]") {
+    const auto source=densityAsset("","mass=3 x=adjustMass(4) d=density{0:0,/* ramp */1:1,2:0,} p={mass,x}","adjustMass(x:i32)->i32{return x+1}");
     const auto formatted=ips::formatProgram(ips::parse(source));CHECK(ips::formatProgram(ips::parse(formatted))==formatted);
     CHECK(formatted.find("/* ramp */")!=std::string::npos);CHECK(stripDebug(compileDensity(source))==stripDebug(compileDensity(formatted)));
     std::string literal="density{";for(int i=0;i<256;++i){if(i)literal+=",";literal+=std::to_string(i)+":1";}literal+="}";
@@ -193,9 +193,9 @@ TEST_CASE("density contextual syntax maximum points closed support and fuel rema
     }
 }
 
-TEST_CASE("point family names remain numeric upper bounds before loop bodies", "[density]") {
-    const auto source=densityAsset("input i32 density=2 input i32 weighted=3",
-        "for i in 0..density{p={i,0} d=density{0:1,1:1}} for i in 0..weighted{p={i,1}} "
+TEST_CASE("distribution literals and ordinary names work before loop bodies", "[density]") {
+    const auto source=densityAsset("input i32 countA=2 input i32 countB=3",
+        "for i in 0..countA{p={i,0} d=density{0:1,1:1}} for i in 0..countB{p={i,1}} "
         "for i in 0..count(density{0:0,1:1}){p={i,2}}",
         "count(d:distribution)->i32{return 2}");
     const auto formatted=ips::formatProgram(ips::parse(source));

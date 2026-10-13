@@ -1,0 +1,14 @@
+// An ordinary part inherits its caller's active alpha mode for draws and blits.
+asset TranslucentPanel {
+  size 12x16
+  origin 6, 8
+  output point extent
+
+  draw {
+    width = 8 to 12
+    rect(0, 0, width, 16, #70a0d880)
+    rect(1, 1, width - 2, 2, #ffffff60)
+    rect(1, 13, width - 2, 2, #20406080)
+    extent = {width, 16}
+  }
+}

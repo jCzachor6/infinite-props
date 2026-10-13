@@ -48,9 +48,8 @@ still samples through the existing runtime kernel and stream.
 
 Constant names cannot collide with asset declarations, imported aliases or
 helper parameters, or use the reserved controls/placement names. Constants
-cannot be assigned or used as loop counters. `const` is contextual only as
-an asset declaration introducer; an existing `const(...)` helper, local or
-input named `const` remains valid. Use distinct descriptive names.
+cannot be assigned or used as loop counters. `const` is reserved; rename
+existing helpers, locals and inputs with that spelling. Use descriptive names.
 
 <!-- llm: skip -->
 Const samplers capture endpoints and distribution parameters without RNG.

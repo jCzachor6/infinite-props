@@ -1,15 +1,15 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–8 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–9 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
 samplers with explicit single/batch picks, const descriptions, sampling palettes
 and weighted/density distributions, plus captured layers on shared part/render
-targets. Product 0.7.0 is under development. Source-over alpha, masks, clipping
-and part surface exports remain later stages.
+targets and explicit source-over alpha. Product 0.7.0 is under development.
+Masks, clipping and part surface exports remain later stages.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–8 |
+| Contract | 0.6 release | 0.7 development, stages 1–9 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -82,8 +82,8 @@ without adding parameters. Forward references are supported; cycles, RNG,
 generation state and helper calls are source errors. See the
 [complete declaration rules](assets.md#asset-constants).
 
-`const` remains contextual: existing helpers named `const`, and locals/inputs
-with that name, keep their previous behavior. Constant names are read-only
+`const` is reserved. Rename old helpers, locals and inputs with that name.
+Constant names are read-only
 and cannot shadow or collide with other asset declarations or helper parameters.
 Scalar declarations add no required binary format version. A constant normalized
 vector or integer bound can therefore compile to 0.4 even without optimization;
@@ -108,7 +108,7 @@ Finishing this stage is not a complete 0.7 release.
 Stage 2 compares every eligible builtin overload with the existing runtime,
 including raw output bits, pixels and RNG state, in both compiler modes.
 It verifies all five types, forward references, long dependency chains,
-unused invalid declarations, contextual names, part isolation, immutable
+unused invalid declarations, reserved names, part isolation, immutable
 bindings, formatter/IPA/IPDIS/debug/strip/compression and native/WASM hosts.
 Frozen binaries are executed directly, including preserved stage-1 format 0.6
 bytes. See the [stage 2 validation report](../validation-v0.7-stage2.md).
@@ -142,13 +142,9 @@ and list indexing of descriptions do not draw. Single and batch picks use the
 existing caller stream and frozen `to`/`with` algorithms. No `sample` or `random`
 binding is introduced. See [sampler semantics](samplers.md).
 
-`sampler` stays contextual. A legacy helper `sampler(value:i32)` still accepts
-ordinary value calls. A call with an outer range, such as `sampler(10 to 15)`,
-now produces **exit code 1**, parser diagnostic `IPS-PARSE-001`:
-`sampler capture conflicts with helper 'sampler'; rename the helper before capturing a range`.
-There is no executable artifact. Rename the helper before using capture syntax;
-its eager range call is not silently changed into a captured description.
-Ordinary locals, inputs and part aliases named `sampler` remain valid.
+`sampler` is reserved for capture and its parameterized type. Old helpers,
+locals, inputs and aliases with that spelling must be renamed. The parser
+rejects their declarations; no executable artifact is produced.
 
 Schema 3 adds `source_rules.samplers`, including eight method signatures from
 the frontend's shared receiver-first registry, their effects and evaluation
@@ -186,7 +182,7 @@ independent example oracle are executed without regenerating their expected data
 
 Stage 6 adds `weighted { key: weight, ... }` descriptions and section 9 of
 format 0.6. Existing family constructors, kernels and scalar type code 4 stay
-frozen. Contextual names before `(` or assignment retain their meaning. Moving
+frozen. `weighted` is reserved and cannot name a helper or local. Moving
 a threshold-based asset to weighted draws may change its seed mapping; it is
 an explicit asset migration. See [weighted semantics](random.md#weighted-point-distributions).
 
@@ -195,8 +191,8 @@ an explicit asset migration. See [weighted semantics](random.md#weighted-point-d
 Stage 7 adds `density { key: height, ... }`, with one bounded draw obtained
 from clipped piecewise linear area. Equal bounds use closed natural support.
 It reuses format-0.6 point resources and family references; weighted and older
-family results, RNG and frozen executable fuel remain unchanged. Family names
-are contextual before braces, preserving existing `density(...)` helpers.
+family results, RNG and frozen executable fuel remain unchanged. `density`
+is reserved; old helpers and inputs with that name must be renamed.
 See [density profiles](random.md#density-point-distributions).
 
 ## Shared targets and captured layers
@@ -207,10 +203,12 @@ parent. Copy, helper parameter and helper return share immutable storage;
 See [captured layers](surfaces.md) and the
 [normative surface contract](../../spec/iprop-v0.6.md#14-shared-render-targets-and-captured-layers).
 Legacy compositing, hidden RGB, part transforms, caller output coordinates and
-part RNG isolation remain unchanged. Stage 9 introduces explicit source-over
-composition; stage 8 supports only `surface.legacy`.
+part RNG isolation remain unchanged. Explicit `surface.source_over` stores
+correct straight RGBA8 using the normative u64 rounding kernel. Helpers,
+part canvases and their blits inherit the active target mode. Omitted paint
+blend uses the destination target; an explicit blend affects one operation.
 
-`layer` remains contextual, including `input u32 layer` and `layer(...)`.
+`layer` is reserved; old declarations named `layer` must be renamed.
 An old import alias `surface` now receives a located conflict diagnostic;
 rename that alias in source. Already compiled binaries remain executable.
 Cleanup on return/break/continue closes each exited layer and restores its
@@ -220,3 +218,30 @@ The LLM reference default and maximum are 102,400 bytes (100 KiB). This is the
 fixed ceiling through the 0.7 release. Existing frozen binaries and the actual
 stage-7 tools provide separate compatibility evidence; source recompilation
 and new layer behavior are verified independently.
+
+## Reserved keyword source migration
+
+All newly introduced keywords are lexically reserved: `const`, `to`, `with`,
+`distribution`, `sampler`, `weighted`, `density` and `layer`. This is an
+intentional source break, including names introduced during earlier development
+stages. They cannot name assets, helpers, inputs, outputs, parameters, locals,
+loop counters, import aliases or members. The lexer and language catalog share
+one name policy; formatting and editor highlighting follow it.
+
+For example, the old `input u32 layer = 1` compiled with the preserved stage-8
+compiler. The current compiler returns exit 1, parser code `IPS-PARSE-001`,
+`expected an input name, got layer`, at the name, and writes no artifact.
+Old helpers named `sampler` now fail at their declaration with the same code,
+including ordinary value calls. Rename identifiers before recompiling;
+`surface` remains a namespace conflict checked separately.
+
+Maintained examples now use `dotCount` instead of the input name `density`;
+host uniform overrides must use that new name. Historical sources are tested
+for their explicit migration diagnostic. Already compiled files, their older
+input names, RGBA, fuel and RNG are verified by executing their actual frozen
+bytes, without recompilation or rewriting those pins.
+
+The source-over example calls an ordinary part inside `layer glass` and paints
+it with an explicit blend. Five seeds match an independent rational RGBA oracle;
+all alpha pairs and separate old-tool D4/scale/output pins verify composition.
+See [alpha composition](surfaces.md#exact-rgba8-source-over).

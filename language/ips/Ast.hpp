@@ -21,6 +21,7 @@
 
 #include "ips/Lexer.hpp"
 #include "iprop/TypeDescriptor.hpp"
+#include "iprop/Compositor.hpp"
 
 namespace iprop::ips {
 
@@ -215,11 +216,11 @@ struct ForStmt {
     SourceLocation location;
 };
 
-// A contextual capture statement. Its result binds only after the body exits;
+// A capture statement. Its result binds only after the body exits;
 // the body executes on a fresh target without automatically painting its parent.
 struct LayerStmt {
     std::string name;
-    bool explicitAlpha = false; // surface.legacy; omitted mode inherits
+    CompositionMode alpha = CompositionMode::Inherited;
     std::vector<Stmt> body;
     SourceLocation location;
 };

@@ -262,7 +262,7 @@
     },
     "random_range": {
       "operator": "to",
-      "keyword": "contextual",
+      "keyword": "reserved",
       "precedence": {
         "tighter_than": "<",
         "looser_than": "<<"
@@ -340,7 +340,7 @@
       }
     },
     "asset_constants": {
-      "keyword": "contextual",
+      "keyword": "reserved",
       "syntax": "const <type> <name> = <expression>",
       "scope": "asset",
       "visibility": "all_asset_functions",

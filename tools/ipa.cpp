@@ -603,8 +603,8 @@ std::vector<u8> assemble(const std::string& source) {
         }
         if (instruction.opcode == Opcode::LayerBegin && words.size() == 3) {
             u32 mode = 0;
-            if (!parseU32Text(words[2], mode) || mode > 1)
-                throw error("layer alpha mode must be 0 (inherited) or 1 (legacy)");
+            if (!parseU32Text(words[2], mode) || mode > 2)
+                throw error("layer alpha mode must be 0 (inherited), 1 (legacy) or 2 (source_over)");
             instruction.aux = static_cast<u8>(mode);
             words.pop_back();
         }

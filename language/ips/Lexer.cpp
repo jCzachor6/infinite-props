@@ -28,6 +28,14 @@ const std::map<std::string, TokenKind>& keywords() {
         {"true", TokenKind::KeywordTrue},
         {"false", TokenKind::KeywordFalse},
         {"list", TokenKind::KeywordList},
+        {"const", TokenKind::KeywordConst},
+        {"to", TokenKind::KeywordTo},
+        {"with", TokenKind::KeywordWith},
+        {"sampler", TokenKind::KeywordSampler},
+        {"weighted", TokenKind::KeywordWeighted},
+        {"density", TokenKind::KeywordDensity},
+        {"layer", TokenKind::KeywordLayer},
+        {"distribution", TokenKind::TypeDistribution},
         {"color", TokenKind::TypeColor},
         {"f32", TokenKind::TypeF32},
         {"u32", TokenKind::TypeU32},
@@ -312,6 +320,35 @@ std::vector<Token> lex(std::string_view source) {
     return tokens;
 }
 
+// "Soft" keywords may appear wherever a name is expected: `hair.draw(...)`,
+// `at = {32, 4}`, `input color color = #33291f`. Hard keywords (control
+// flow and declaration introducers) stay reserved.
+bool isNameKind(TokenKind tokenKind) {
+    switch (tokenKind) {
+    case TokenKind::Identifier:
+    case TokenKind::KeywordDraw:
+    case TokenKind::KeywordAt:
+    case TokenKind::KeywordList:
+    case TokenKind::TypeColor:
+    case TokenKind::TypeF32:
+    case TokenKind::TypeU32:
+    case TokenKind::TypeI32:
+    case TokenKind::TypeVec2:
+    case TokenKind::KindPoint:
+    case TokenKind::KindRect:
+    case TokenKind::KindCircle:
+        return true;
+    default:
+        return false;
+    }
+}
+
+std::vector<std::string> reservedKeywords() {
+    std::vector<std::string> names;
+    for (const auto& [name, kind] : keywords()) if (!isNameKind(kind)) names.push_back(name);
+    return names;
+}
+
 std::string keywordSuggestion(std::string_view misspelled) {
     std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette", "const"};
     for (const auto& [name, kind] : keywords()) { (void)kind; names.push_back(name); }
@@ -340,6 +377,14 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::KeywordTrue: return "true";
     case TokenKind::KeywordFalse: return "false";
     case TokenKind::KeywordList: return "list";
+    case TokenKind::KeywordConst: return "const";
+    case TokenKind::KeywordTo: return "to";
+    case TokenKind::KeywordWith: return "with";
+    case TokenKind::KeywordSampler: return "sampler";
+    case TokenKind::KeywordWeighted: return "weighted";
+    case TokenKind::KeywordDensity: return "density";
+    case TokenKind::KeywordLayer: return "layer";
+    case TokenKind::TypeDistribution: return "distribution";
     case TokenKind::TypeColor: return "color";
     case TokenKind::TypeF32: return "f32";
     case TokenKind::TypeU32: return "u32";

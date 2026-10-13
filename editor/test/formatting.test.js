@@ -61,13 +61,13 @@ test("asset constants format through the editor with forward references and comm
     } finally { h.dispose(); fs.rmSync(dir, {recursive:true,force:true}); }
 });
 
-test("editor const highlighting preserves ordinary names and helper calls", () => {
+test("editor highlights the reserved const keyword in every position", () => {
     const grammar = JSON.parse(fs.readFileSync(path.join(root, "editor/syntaxes/ips.tmLanguage.json"), "utf8"));
     const introducer = new RegExp(grammar.repository.assetConstant.match);
     for (const source of ["const i32 Plain=1", "const color iron=#abc", "const distribution typical=gaussian(0,1)", "const list<vec2> points=[]"])
         assert.equal(introducer.test(source), true, source);
     for (const source of ["const(1)", "const = 1", "input i32 const=1", "const.x"])
-        assert.equal(introducer.test(source), false, source);
+        assert.equal(introducer.test(source), true, source);
 });
 
 test("real formatting returns one edit without saving the readonly entry or a binary", async () => {
@@ -311,63 +311,65 @@ test("sampling palette formatting preserves const graphs and explicit palette pi
     }finally{h.dispose(); fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test("point distribution literals preserve contextual helpers and pair comments", async () => {
-    const source = "asset t{size 1x1 weighted(x:i32)->i32{return x} " +
+test("point distribution literals preserve pair comments", async () => {
+    const source = "asset t{size 1x1 adjustWeight(x:i32)->i32{return x} " +
         "const distribution d=weighted{16777217:50,/* mass */16777218:20,} " +
-        "draw{x=weighted(2);s=sampler(16777217 to 16777218 with d);items=s.pick(3)}}";
+        "draw{x=adjustWeight(2);s=sampler(16777217 to 16777218 with d);items=s.pick(3)}}";
     const dir = workspace(source), h = editorHarness(dir, execFile); h.settings.compilerPath = compiler;
     try {
         const edits = await format(h); assert.equal(edits.length, 1, h.warnings.join("\n"));
         const formatted = edits[0].newText;
         assert.ok(formatted.includes("weighted {"));
         assert.ok(formatted.includes("/* mass */"));
-        assert.ok(formatted.includes("weighted(2)"));
+        assert.ok(formatted.includes("adjustWeight(2)"));
         const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
         const literal = new RegExp(grammar.repository.pointDistribution.match);
         assert.equal(literal.test("weighted {1:2}"), true);
-        assert.equal(literal.test("weighted(2)"), false);
+        assert.equal(literal.test("weighted(2)"), true);
         fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
         const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
         assert.equal(checked.status,0,checked.stderr); clean(dir);
     } finally { h.dispose(); fs.rmSync(dir,{recursive:true,force:true}); }
 });
 
-test("density literals preserve helper calls and numeric loop-bound names", async () => {
-    const source="asset t{size 1x1 input i32 density=2 " +
-        "make(d:distribution)->i32{return 2} draw{for i in 0..density{d=density{0:0,/* height */1:1}} " +
+test("density literals preserve helper calls and numeric loop bounds", async () => {
+    const source="asset t{size 1x1 input i32 dotCount=2 " +
+        "make(d:distribution)->i32{return 2} draw{for i in 0..dotCount{d=density{0:0,/* height */1:1}} " +
         "for i in 0..make(density{0:1,1:1}){x=i}}}";
     const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
     try {
         const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
         const formatted=edits[0].newText;assert.ok(formatted.includes("/* height */"));
-        assert.ok(formatted.includes("0..density {"));assert.ok(formatted.includes("density {0: 1, 1: 1}"));
+        assert.ok(formatted.includes("0..dotCount {"));assert.ok(formatted.includes("density {0: 1, 1: 1}"));
         fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
         const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
         assert.equal(checked.status,0,checked.stderr);clean(dir);
         const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
         assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density {0:1,1:1}"),true);
-        assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density(2)"),false);
+        assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density(2)"),true);
     } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
 
 
-test("layer captures preserve contextual names, mode comments and helper transfer", async () => {
-    const source="asset t{size 2x2 input u32 layer=1 echo(image:layer)->layer{return image} "+
-        "draw{for i in 0..layer{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "+
-        "layer copy=echo(image);surface.paint(blend=surface.legacy,image=copy)}}";
+test("layer captures preserve mode comments and helper transfer", async () => {
+    const source="asset t{size 2x2 input u32 copies=1 echo(image:layer)->layer{return image} "+
+        "draw{for i in 0..copies{layer image(alpha=/* mode */surface.source_over){pixel(0,0,#fff)}} "+
+        "layer copy=echo(image);surface.paint(blend=surface.source_over,image=copy)}}";
     const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
     try {
         const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
         const formatted=edits[0].newText;assert.ok(formatted.includes("/* mode */"));
-        assert.ok(formatted.includes("0..layer {"));assert.ok(formatted.includes("layer copy = echo(image)"));
-        assert.ok(formatted.includes("surface.paint(image = copy, blend = surface.legacy)"));
+        assert.ok(formatted.includes("0..copies {"));assert.ok(formatted.includes("layer copy = echo(image)"));
+        assert.ok(formatted.includes("surface.paint(image = copy, blend = surface.source_over)"));
         fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
         const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
         assert.equal(checked.status,0,checked.stderr);clean(dir);
         const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
         const capture=new RegExp(grammar.repository.layerCapture.match);
-        for(const text of ["layer image {", "layer image(alpha=surface.legacy){"])assert.equal(capture.test(text),true,text);
-        for(const text of ["input u32 layer=1", "layer(2)", "layer=1", "layer copy=image"])assert.equal(capture.test(text),false,text);
+        for(const text of ["layer image {", "layer image(alpha=surface.source_over){"])assert.equal(capture.test(text),true,text);
+        for(const text of ["input u32 layer=1", "layer(2)", "layer=1", "layer copy=image"])assert.equal(capture.test(text),true,text);
+        const mode=new RegExp(grammar.repository.surfaceMode.match);
+        assert.equal(mode.test("surface.source_over"),true);assert.equal(mode.test("surface.legacy"),true);
         assert.equal(new RegExp(grammar.repository.builtins.match).test("surface.paint(image)"),true);
     } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });

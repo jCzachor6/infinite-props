@@ -1,10 +1,38 @@
 #include "test_support.h"
+#include "source_over_reference.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void check_generation(const char* program_dir) {
     char err[512];
+
+    /* Straight RGBA8 part inheritance through the unchanged C host layout. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/source-over-panels.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x41f00000,0x41a00000,0x41d00000,0,0x41f00000,0x41a00000};
+        CHECK(bytes!=NULL,"cannot read source-over fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"source-over load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"source-over generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==3,"source-over image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==(i==2 ? 1u : 0u) && !output->is_list && output->count==1,"source-over output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"source-over output bits");}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4];source_over_panel_pixel(x,y,color);
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"source-over pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
 
     /* Preserved stage-7 direct-render oracle for the captured panel. */
     {

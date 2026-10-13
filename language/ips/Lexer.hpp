@@ -36,6 +36,13 @@ enum class TokenKind {
     KeywordTrue,
     KeywordFalse,
     KeywordList,
+    KeywordConst,
+    KeywordTo,
+    KeywordWith,
+    KeywordSampler,
+    KeywordWeighted,
+    KeywordDensity,
+    KeywordLayer,
 
     // Type names.
     TypeColor,
@@ -43,6 +50,7 @@ enum class TokenKind {
     TypeU32,
     TypeI32,
     TypeVec2,
+    TypeDistribution,
 
     // Output kinds.
     KindPoint,
@@ -111,5 +119,9 @@ std::vector<Token> lex(std::string_view source);
 // Descriptive name of a token kind (diagnostics and tests).
 const char* tokenName(TokenKind kind);
 std::string keywordSuggestion(std::string_view misspelled);
+
+// The name policy is shared by parsing and the language catalog.
+bool isNameKind(TokenKind kind);
+std::vector<std::string> reservedKeywords();
 
 } // namespace iprop::ips

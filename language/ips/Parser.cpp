@@ -12,27 +12,6 @@ namespace detail {
 ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     ParseResult result;
     recovery_ = &result;
-    // Asset initializers can also contain calls. A helper signature must be
-    // followed by its body or return type, rather than merely sit at depth 1.
-    std::size_t depth = 0;
-    for (std::size_t i = 0; i + 1 < tokens_.size(); ++i) {
-        if (tokens_[i].kind == TokenKind::LBrace) ++depth;
-        if (tokens_[i].kind == TokenKind::RBrace && depth > 0) --depth;
-        if (depth == 1 && tokens_[i].kind == TokenKind::Identifier &&
-            tokens_[i + 1].kind == TokenKind::LParen &&
-            (tokens_[i].text == "to" || tokens_[i].text == "with" || tokens_[i].text == "sampler")) {
-            std::size_t end = i + 1, parentheses = 0;
-            for (; end < tokens_.size(); ++end) {
-                if (tokens_[end].kind == TokenKind::LParen) ++parentheses;
-                if (tokens_[end].kind == TokenKind::RParen && --parentheses == 0) break;
-            }
-            if (end + 1 >= tokens_.size() ||
-                (tokens_[end + 1].kind != TokenKind::LBrace && tokens_[end + 1].kind != TokenKind::Arrow)) continue;
-            if (tokens_[i].text == "to") toHelper_ = true;
-            if (tokens_[i].text == "with") withHelper_ = true;
-            if (tokens_[i].text == "sampler") samplerHelper_ = true;
-        }
-    }
     diagnosticLimit_ = std::clamp(limit, std::size_t{1}, kMaxParseDiagnostics);
     Program program;
     bool hasAsset = false;
@@ -96,12 +75,11 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     }
     if (scope == RecoveryScope::Declaration) {
         if (kind() == TokenKind::KeywordInput || kind() == TokenKind::KeywordOutput ||
-            kind() == TokenKind::KeywordDraw) return true;
+            kind() == TokenKind::KeywordDraw || kind() == TokenKind::KeywordConst) return true;
         if (kind() == TokenKind::Identifier) {
             const auto& name = peek().text;
             if (name == "size" || name == "origin" || name == "variants" ||
-                name == "archetypes" || name == "palette" ||
-                (name == "const" && kind(1) != TokenKind::LParen)) return true;
+                name == "archetypes" || name == "palette") return true;
         }
         return isNameKind(kind()) && kind(1) == TokenKind::LParen;
     }
@@ -112,6 +90,9 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     case TokenKind::KeywordReturn:
     case TokenKind::KeywordBreak:
     case TokenKind::KeywordContinue:
+    case TokenKind::KeywordLayer:
+    case TokenKind::KeywordSampler:
+    case TokenKind::TypeDistribution:
         return true;
     default:
         return isNameKind(kind()) &&
@@ -217,6 +198,16 @@ void ParserImpl::parseDeclaration(Asset& asset) {
         asset.outputs.push_back(parseOutput());
         asset.outputs.back().sourceRange = {start, pos_};
         break;
+    case TokenKind::KeywordConst: {
+        advance();
+        const auto type = parseParamType();
+        const Token name = expectName("a constant name");
+        expect(TokenKind::Assign, "'=' and a constant expression");
+        auto value = parseExpr();
+        match(TokenKind::Semi);
+        asset.constants.push_back({type, name.text, std::move(value), name.location, {start, pos_}});
+        break;
+    }
     case TokenKind::KeywordDraw:
         asset.functions.push_back(parseFunction());
         asset.functions.back().sourceRange = {start, pos_};
@@ -240,14 +231,6 @@ void ParserImpl::parseDeclaration(Asset& asset) {
                       "archetype count");
             match(TokenKind::Semi);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Archetypes, {start, pos_}});
-        } else if (declaration.text == "const" && kind() != TokenKind::LParen) {
-            const auto type = parseParamType();
-            const Token name = expectName("a constant name");
-            expect(TokenKind::Assign, "'=' and a constant expression");
-            const FlagScope tail(statementTail_, true);
-            auto value = parseExpr();
-            match(TokenKind::Semi);
-            asset.constants.push_back({type, name.text, std::move(value), name.location, {start, pos_}});
         } else if (declaration.text == "palette") {
             asset.palettes.push_back(parsePalette());
             asset.palettes.back().sourceRange = {start, pos_};
@@ -298,7 +281,6 @@ void ParserImpl::parseSize(Asset& asset) {
 void ParserImpl::parseOrigin(Asset& asset) {
     asset.originX = parseExpr();
     expect(TokenKind::Comma, "',' between origin coordinates");
-    const FlagScope tail(statementTail_, true);
     asset.originY = parseExpr();
     match(TokenKind::Semi);
 }
@@ -433,9 +415,9 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         else expect(TokenKind::Greater, "'>' after list element type");
         return ParamType::list(item);
     }
-    if (kind() == TokenKind::Identifier && peek().text == "sampler" && kind(1) == TokenKind::Less) {
+    if (kind() == TokenKind::KeywordSampler && kind(1) == TokenKind::Less) {
         advance(); advance();
-        if (kind() == TokenKind::KeywordList || (kind() == TokenKind::Identifier && peek().text == "sampler"))
+        if (kind() == TokenKind::KeywordList || kind() == TokenKind::KeywordSampler)
             failHere("sampler<T> supports only i32, f32, color or vec2");
         const auto item = parseParamType();
         if (!item.isScalar() || item == ParamType::Distribution)
@@ -459,17 +441,14 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         return ParamType::Vec2;
     case TokenKind::TypeU32:
         failHere("u32 is a uniform-only type; parameters are i32, f32, color, vec2 or distribution");
+    case TokenKind::TypeDistribution:
+        advance();
+        return ParamType::Distribution;
+    case TokenKind::KeywordLayer:
+        advance();
+        return ParamType::Layer;
     default:
-        // `distribution` is a contextual type name, not a reserved word.
-        if (kind() == TokenKind::Identifier && peek().text == "distribution") {
-            advance();
-            return ParamType::Distribution;
-        }
-        if (kind() == TokenKind::Identifier && peek().text == "layer") {
-            advance();
-            return ParamType::Layer;
-        }
-        failExpected("a parameter type (i32, f32, color, vec2 or distribution)");
+        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T> or layer)");
     }
 }
 
@@ -503,6 +482,11 @@ std::vector<Stmt> ParserImpl::parseBlock() {
 
 Stmt ParserImpl::parseStatement() {
     switch (kind()) {
+    case TokenKind::KeywordLayer:
+        return parseLayer();
+    case TokenKind::TypeDistribution:
+    case TokenKind::KeywordSampler:
+        return parseIdentifierStatement();
     case TokenKind::KeywordIf:
         return parseIf();
     case TokenKind::KeywordWhile:
@@ -527,48 +511,28 @@ Stmt ParserImpl::parseStatement() {
 Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
     if (((kind() == TokenKind::KeywordList) ||
-         (kind() == TokenKind::Identifier && peek().text == "sampler")) && kind(1) == TokenKind::Less &&
+         kind() == TokenKind::KeywordSampler) && kind(1) == TokenKind::Less &&
         (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||
          kind(2) == TokenKind::TypeColor || kind(2) == TokenKind::TypeVec2 ||
-         (kind(2) == TokenKind::Identifier && (peek(2).text == "distribution" || peek(2).text == "sampler")))) {
+         kind(2) == TokenKind::TypeDistribution || kind(2) == TokenKind::KeywordSampler)) {
         const auto type = parseParamType();
         const auto local = expectName("a local list name");
         expect(TokenKind::Assign, "'=' after local list name");
-        const FlagScope tail(statementTail_, true);
         return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
     }
+    if (kind() == TokenKind::TypeDistribution) {
+        advance();
+        const auto local = expectName("a local distribution name");
+        expect(TokenKind::Assign, "'=' after local distribution name");
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Distribution}};
+    }
+    if (kind() == TokenKind::KeywordSampler) {
+        const auto at = peek().location;
+        return Stmt{ExprStmt{parseExpr(), at}};
+    }
     const Token name = advance();
-    if (name.kind == TokenKind::Identifier && name.text == "layer" && isNameKind(kind()) &&
-        (kind(1) == TokenKind::LBrace || kind(1) == TokenKind::LParen)) {
-        const auto local = advance();
-        bool explicitAlpha = false;
-        if (match(TokenKind::LParen)) {
-            const auto option = expectName("'alpha'");
-            if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' option"};
-            expect(TokenKind::Assign, "'=' after alpha");
-            const auto base = expectName("'surface.legacy'");
-            expect(TokenKind::Dot, "'.' in surface.legacy");
-            const auto mode = expectName("'legacy'");
-            if (base.text != "surface" || mode.text != "legacy")
-                throw SourceError{mode.location, "layer alpha must be surface.legacy; source_over is not available yet"};
-            expect(TokenKind::RParen, "')' after layer alpha");
-            explicitAlpha = true;
-        }
-        return Stmt{LayerStmt{local.text, explicitAlpha, parseBlock(), name.location}};
-    }
     if (match(TokenKind::Assign)) {
-        const FlagScope tail(statementTail_, true);
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
-    }
-    // `distribution d = ...` declares a typed local; `distribution` alone
-    // keeps its meaning as a name.
-    if (name.kind == TokenKind::Identifier && (name.text == "distribution" || name.text == "layer") && isNameKind(kind()) &&
-        kind(1) == TokenKind::Assign) {
-        const Token local = advance();
-        advance(); // '='
-        const FlagScope tail(statementTail_, true);
-        return Stmt{VarDecl{local.text, parseExpr(), local.location,
-            name.text == "layer" ? ParamType::Layer : ParamType::Distribution}};
     }
     // Otherwise it must be a call (possibly through a member chain).
     auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});
@@ -586,6 +550,28 @@ Stmt ParserImpl::parseIdentifierStatement() {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};
+}
+
+Stmt ParserImpl::parseLayer() {
+    const auto at = advance().location;
+    const auto local = expectName("a layer result name");
+    if (match(TokenKind::Assign))
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Layer}};
+    auto alpha = CompositionMode::Inherited;
+    if (match(TokenKind::LParen)) {
+        const auto option = expectName("'alpha'");
+        if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' option"};
+        expect(TokenKind::Assign, "'=' after alpha");
+        const auto base = expectName("'surface'");
+        expect(TokenKind::Dot, "'.' in surface alpha mode");
+        const auto mode = expectName("'legacy' or 'source_over'");
+        const auto* spec = compositionSpec(mode.text);
+        if (base.text != "surface" || !spec)
+            throw SourceError{mode.location, "layer alpha must be surface.legacy or surface.source_over"};
+        alpha = spec->mode;
+        expect(TokenKind::RParen, "')' after layer alpha");
+    }
+    return Stmt{LayerStmt{local.text, alpha, parseBlock(), at}};
 }
 
 Stmt ParserImpl::parseIf() {
@@ -629,10 +615,7 @@ Stmt ParserImpl::parseFor() {
     expect(TokenKind::KeywordIn, "'in' after the loop variable");
     auto from = parseExpr();
     expect(TokenKind::DotDot, "'..' between the loop bounds");
-    auto to = [&]() {
-        const FlagScope body(blockTail_,true);
-        return parseExpr();
-    }();
+    auto to = parseExpr();
     return Stmt{ForStmt{std::move(variable), std::move(from), std::move(to),
                         parseBlock(), at}};
 }
@@ -641,7 +624,6 @@ Stmt ParserImpl::parseReturn() {
     const SourceLocation at = advance().location; // 'return'
     std::unique_ptr<Expr> value;
     if (kind() != TokenKind::RBrace && kind() != TokenKind::Semi) {
-        const FlagScope tail(statementTail_, true);
         value = parseExpr();
     }
     return Stmt{ReturnStmt{std::move(value), at}};

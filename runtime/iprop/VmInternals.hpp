@@ -156,10 +156,11 @@ struct Execution {
     [[noreturn]] void trap(std::string message, ErrorReason reason) const;
 };
 
-// Composite one pixel onto the current canvas with the §11.1 alpha rule
-// (shared by the canvas ops and the part blit).
-void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
-void paintSurface(Execution& ex, const LayerValue& image);
+// Primitives, part blits and paint use the same rounded RGBA8 kernel.
+void compositePixel(Execution& ex, i32 x, i32 y, const Color& src,
+    CompositionMode mode = CompositionMode::Inherited);
+void paintSurface(Execution& ex, const LayerValue& image,
+    CompositionMode mode = CompositionMode::Inherited);
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).

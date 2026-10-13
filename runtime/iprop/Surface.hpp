@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Canvas.hpp"
+#include "iprop/Compositor.hpp"
 #include "iprop/D4Transform.hpp"
 
 #include <memory>
@@ -23,10 +24,12 @@ struct LayerValue {
 };
 struct RenderTarget {
     std::shared_ptr<SurfaceBuffer> buffer;
+    CompositionMode mode = CompositionMode::Legacy;
     Canvas& canvas() { return buffer->raster; }
     const Canvas& canvas() const { return buffer->raster; }
     LayerValue view(SurfaceMapping mapping = {}) const { return {buffer, mapping}; }
-    static RenderTarget create(u32 width, u32 height, Vec2 scale);
+    static RenderTarget create(u32 width, u32 height, Vec2 scale,
+        CompositionMode mode = CompositionMode::Legacy);
 };
 
 inline constexpr u32 kMaxSurfaceScopes = 32;

@@ -71,7 +71,7 @@ function run(iprop,tool,directory){
     for(const seed of seeds)assert.deepEqual(generate(snapshots,seed),generate(manual,seed));
     fs.writeFileSync(base+"-mixed.ipa",execFileSync(tool("ipdis"),[snapshots]));execFileSync(tool("ipa"),[base+"-mixed.ipa","-o",base+"-mixed-restored.iprop"]);
     assert.deepEqual(generate(snapshots,26),generate(base+"-mixed-restored.iprop",26));
-    generate(compile(asset("input i32 density=2 input i32 weighted=3","for i in 0..density{d=density{0:1,1:1} p={i,0}} for i in 0..weighted{p={i,1}}")),26);
+    generate(compile(asset("input i32 countA=2 input i32 countB=3","for i in 0..countA{d=density{0:1,1:1} p={i,0}} for i in 0..countB{p={i,1}}")),26);
     const shared="density{"+Array.from({length:256},(_,i)=>`${i}:1`).join(",")+"}";
     generate(compile(asset(`const distribution shape=${shared}`,"before=seed for i in 0..10000{copy=shape} p={seed==before,0}"),true,"-sharing"),26);
     function trap(binary,message,variant=0){

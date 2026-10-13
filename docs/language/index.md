@@ -5,7 +5,7 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements stages 1–8 of source language **0.7**, in development
+This checkout implements stages 1–9 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler emits the oldest required format, from 0.4 to 0.6;
@@ -16,7 +16,9 @@ stages are not yet available. Weighted literals now provide discrete masses
 with exact integer keys and one bounded draw. Density profiles add continuous
 piecewise linear shapes with clipped integration and a stable inverse. Const samplers and sampling palettes now share
 the same explicit picks. Captured layers share the rendering mechanism of parts
-and preserve immutable images for later painting.
+and preserve immutable images for later painting. Explicit source-over alpha
+uses exact straight RGBA8 rounding; helper and part rendering inherit the active
+target mode. Newly introduced keywords are reserved.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected

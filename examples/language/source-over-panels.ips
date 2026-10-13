@@ -1,0 +1,20 @@
+import panel from "parts/translucent-panel.ips"
+
+asset SourceOverPanels {
+  size 32x24
+  output point panelSize
+  output point state
+
+  reuse(image: layer) -> layer { return image }
+
+  draw {
+    rect(0, 0, 32, 12, #243040)
+    layer glass(alpha=surface.source_over) {
+      panel.draw(seed, 0, 0, at={8, 12})
+      panel.draw(seed, 0, 0, at={24, 12})
+      panelSize = panel.outputs.extent
+    }
+    surface.paint(reuse(glass), blend=surface.source_over)
+    state = {seed & 65535, seed >> 16}
+  }
+}

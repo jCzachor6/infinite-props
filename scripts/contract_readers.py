@@ -142,8 +142,12 @@ def read_language(value):
                 require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
     require(len(names) == len(set(names)), 'unique builtin names')
     rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'asset_constants', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    if 'reserved_keywords' in rules:
+        require(rules['reserved_keywords'] == ['asset', 'break', 'const', 'continue', 'density', 'distribution',
+            'else', 'false', 'for', 'from', 'if', 'import', 'in', 'input', 'layer', 'output', 'return',
+            'sampler', 'to', 'true', 'weighted', 'while', 'with'], 'reserved keywords')
     constants = rules['asset_constants']
-    _strings_and_bools(constants, {'keyword': {'contextual'}, 'scope': {'asset'},
+    _strings_and_bools(constants, {'keyword': {'reserved'}, 'scope': {'asset'},
         'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
@@ -224,23 +228,28 @@ def read_language(value):
         surface = obj(rules['surfaces'], ['types', 'capture_syntax', 'keyword', 'capture_target',
             'result_binding', 'automatic_paint', 'capture_evaluation', 'helper_transfer', 'buffer_format',
             'mapping', 'alpha_modes', 'default_mode', 'mode_arguments', 'paint_evaluation', 'paint_opcode',
+            'mode_inheritance', 'paint_default_mode', 'source_over_kernel', 'rounding_boundary',
             'capture_opcode', 'scope_cleanup', 'maximum_active_scopes', 'generation_data_limit_bytes',
             'capture_bytes', 'capture_fuel', 'paint_fuel', 'unset_handle', 'host_inputs', 'asset_constants',
             'surface_collections', 'minimum_format_minor'], 'surfaces')
         strings(surface['types'], 'surface types', {'layer'}, True)
         require(surface['types'] == ['layer'] and 'layer' in types['storable'], 'surface type declaration')
-        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.legacy)] { <statements> }'},
-            'keyword': {'contextual'}, 'capture_target': {'empty_current_geometry_and_scale'},
+        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.<mode>)] { <statements> }'},
+            'keyword': {'reserved'}, 'capture_target': {'empty_current_geometry_and_scale'},
             'result_binding': {'after_scope_exit'}, 'capture_evaluation': {'once_in_current_stream'},
             'helper_transfer': {'share_immutable_buffer'}, 'buffer_format': {'RGBA8'},
             'mapping': {'placement_and_D4_view_without_pixel_copy'}, 'default_mode': {'legacy'},
             'mode_arguments': {'compile_time_namespace_constants'}, 'paint_evaluation': {'image_once_no_rng'},
+            'mode_inheritance': {'active_target_helpers_and_part_canvases_and_blits'},
+            'paint_default_mode': {'active_destination_target'},
+            'source_over_kernel': {'straight_rgba8_u64_nearest_half_up'},
+            'rounding_boundary': {'every_primitive_blit_and_paint'},
             'paint_opcode': {'surface.paint'}, 'capture_opcode': {'layer.begin'},
             'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'one_plus_target_pixels'},
             'paint_fuel': {'one_plus_source_pixels'}, 'unset_handle': {'trap'}},
             ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections'], 'surface policy')
         require(not any(surface[k] for k in ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections']), 'surface restrictions')
-        require(surface['alpha_modes'] == ['surface.legacy'], 'surface alpha modes')
+        require(surface['alpha_modes'] == ['surface.legacy', 'surface.source_over'], 'surface alpha modes')
         require(surface['scope_cleanup'] == ['end', 'return', 'break', 'continue'], 'surface cleanup')
         integer(surface['maximum_active_scopes'], 'surface scope limit')
         require(surface['maximum_active_scopes'] == 32, 'surface scope limit')
@@ -255,7 +264,7 @@ def read_language(value):
         points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
         _strings_and_bools(points, {
             'syntax': {'<family> { <key>: <value>, ... }'}, 'result': {'distribution'},
-            'names': {'contextual_before_brace'}, 'evaluation': {'key_value_pairs_left_to_right_once'},
+            'names': {'reserved'}, 'evaluation': {'key_value_pairs_left_to_right_once'},
             'storage': {'immutable_snapshot_original_numeric_types'}, 'intrinsic_rng': {'none'},
             'key_order': {'strictly_increasing'}, 'values': {'finite_nonnegative_positive_total_mass'},
             'bounded_draw': {'one_stream_step_then_truncate_and_select'}, 'numeric_kernel': {'binary64_no_fma'},
@@ -315,7 +324,7 @@ def read_language(value):
     _strings_and_bools(rules['effect_order'], {'binary_operands': {'left_to_right'}, 'logical_operators': {'short_circuit_left_to_right'}, 'call_arguments': {'signature_evaluation_order'}, 'part_parent_rng': {'restored_after_child'}}, ['named_arguments_change_evaluation_order'], 'effect_order')
     if 'random_range' in rules:
         ranges = obj(rules['random_range'], ['operator', 'keyword', 'precedence', 'chaining', 'evaluation_order', 'overloads', 'mixed_numeric_bounds', 'traps', 'equal_bounds', 'effects'], 'random_range')
-        require(ranges['operator'] == 'to' and ranges['keyword'] == 'contextual' and type(ranges['chaining']) is bool, 'random range operator')
+        require(ranges['operator'] == 'to' and ranges['keyword'] == 'reserved' and type(ranges['chaining']) is bool, 'random range operator')
         precedence = obj(ranges['precedence'], ['tighter_than', 'looser_than'], 'random range precedence')
         require(all(type(precedence[key]) is str and precedence[key] for key in precedence), 'random range precedence')
         require(ranges['evaluation_order'] == ['lower', 'upper'], 'random range evaluation order')
