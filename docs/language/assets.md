@@ -40,8 +40,8 @@ declaration, including unused constants, and checks forbidden effects in
 both branches of `&&`/`||`. Pure evaluation still short circuits: `false &&
 (1 / 0 == 0)` is a valid `i32` constant, while `false && index(1)` is rejected.
 
-Constant `gaussian`, `triangular` and `beta` constructors validate their
-parameters during compilation. An invalid unused description is a source
+Constant `gaussian`, `triangular`, `beta`, `weighted` and `density` constructors
+validate parameters and points during compilation. An invalid unused description is a source
 error; a dynamic constructor in `draw` retains its existing runtime trap.
 Copying or reading a constant distribution performs no draw. Each `to/with`
 still samples through the existing runtime kernel and stream.
@@ -76,6 +76,7 @@ can retain older formats.
 <!-- example: ../../examples/language/errors/const-distribution.ips -->
 <!-- example: ../../examples/language/errors/const-assignment.ips -->
 
+<!-- llm: skip -->
 Cycles use `IPS-CONST-001`, forbidden effects/dependencies use `IPS-CONST-002`,
 and failed compile-time value checks use `IPS-CONST-003`. Each diagnostic names
 the constant and locates the offending expression. Type mismatches retain

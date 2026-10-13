@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "language_description.hpp"
 #include "json.hpp"
 #include "ips/BuiltinArguments.hpp"
@@ -227,9 +228,12 @@ Json sourceRules() {
         {"first_class_maximum_length", kMaxListElements}, {"legacy_length_limit", "unchanged"},
         {"ramp", "constant_color_or_f32_only"}});
     rules["random_range"] = randomRange();
+    Json families = Json::array();
+    for (const auto& spec : math::kPointDistributionSpecs) families.push_back(Json::object({
+        {"name",std::string(spec.name)}, {"minimum_points",spec.minimumPoints}, {"maximum_points",256},
+        {"value",std::string(spec.valueMeaning)}, {"equal_bounds",std::string(spec.equalBounds)}}));
     rules["point_distributions"] = Json::object({{"syntax", "<family> { <key>: <value>, ... }"},
-        {"families", Json::array({Json::object({{"name", "weighted"}, {"minimum_points", 1}, {"maximum_points", 256},
-            {"value", "discrete_mass"}, {"equal_bounds", "positive_mass_at_point"}})})},
+        {"families", std::move(families)},
         {"result", "distribution"}, {"names", "contextual_before_brace"},
         {"operand_types", Json::array({"i32", "f32"})}, {"evaluation", "key_value_pairs_left_to_right_once"},
         {"storage", "immutable_snapshot_original_numeric_types"}, {"intrinsic_rng", "none"},

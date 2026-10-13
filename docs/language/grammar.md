@@ -58,7 +58,7 @@ postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
 primary       = literal | name | compound | list_literal | point_distribution | "(", expression, ")" ;
-point_distribution = "weighted", "{", [ distribution_points ], "}" ;  (* contextual before brace *)
+point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}" ;  (* contextual before brace *)
 distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
 sampler_capture = "sampler", "(", expression, ")" ;  (* contextual; the outer random_range is captured *)
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
@@ -108,4 +108,10 @@ in declaration initializers. See [palettes](palettes.md#sampling-palettes).
 Point distribution literals accept general numeric runtime expressions. Static
 operands are checked during compilation; const declarations require pure
 operands. Each key/value pair snapshots its original numeric type in written
-order. See [weighted descriptions](random.md#weighted-point-distributions).
+order. See [weighted descriptions](random.md#weighted-point-distributions) and
+[density profiles](random.md#density-point-distributions).
+
+At the top level of a for upper bound, the following brace starts the loop
+body, so numeric bounds named `weighted` or `density` keep their meaning.
+Inside nested arguments, brackets or parentheses, point literals remain
+ordinary expressions.

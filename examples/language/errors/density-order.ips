@@ -1,0 +1,4 @@
+asset invalid_density_order {
+  size 1x1
+  draw { unused = density { 1: 1, 0: 1 } }
+}

@@ -1,14 +1,15 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–6 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–7 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
-samplers with explicit single/batch picks, const descriptions and sampling palettes. Product 0.7.0 is under
-development. Later stages of 0.7, including density distributions and surfaces, remain
+samplers with explicit single/batch picks, const descriptions, sampling palettes
+and weighted/density distributions. Product 0.7.0 is under
+development. Later stages of 0.7, including surfaces, remain
 outside the currently implemented language.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–6 |
+| Contract | 0.6 release | 0.7 development, stages 1–7 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -188,3 +189,12 @@ format 0.6. Existing family constructors, kernels and scalar type code 4 stay
 frozen. Contextual names before `(` or assignment retain their meaning. Moving
 a threshold-based asset to weighted draws may change its seed mapping; it is
 an explicit asset migration. See [weighted semantics](random.md#weighted-point-distributions).
+
+## Density distributions
+
+Stage 7 adds `density { key: height, ... }`, with one bounded draw obtained
+from clipped piecewise linear area. Equal bounds use closed natural support.
+It reuses format-0.6 point resources and family references; weighted and older
+family results, RNG and frozen executable fuel remain unchanged. Family names
+are contextual before braces, preserving existing `density(...)` helpers.
+See [density profiles](random.md#density-point-distributions).

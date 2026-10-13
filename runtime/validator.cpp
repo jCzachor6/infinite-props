@@ -4,6 +4,7 @@
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/D4Transform.hpp"
+#include "iprop/math/Distribution.hpp"
 
 #include <algorithm>
 #include <string>
@@ -306,7 +307,7 @@ private:
             push(at, ValueType::Distribution);
             return;
         case Opcode::DistributionBegin:
-            if (op != static_cast<u16>(DistributionFamily::Weighted)) fail(at, "unknown point distribution family");
+            if (op > 255 || !math::pointDistributionSpec(static_cast<DistributionFamily>(op))) fail(at, "unknown point distribution family");
             expect(at, ValueType::I32, "distribution point count");
             push(at, ValueType::PointBuilder);
             return;

@@ -195,6 +195,57 @@ See the [format and numerical contract](../../spec/iprop-v0.6.md#12-point-distri
 
 <!-- example: ../../examples/language/traps/weighted-runtime-weight.ips -->
 
+### Density point distributions
+
+`density { key: height, ... }` constructs a `distribution` from 2–256 strictly
+increasing finite numeric keys and finite nonnegative heights. Heights describe
+a continuous, piecewise linear density, with positive total trapezoidal area;
+they are not atom weights. Density is zero outside the first/last key. Numeric
+pairs evaluate once in written order and snapshot their original i32/f32 types
+without an intrinsic draw. Consts, copies, lists, helpers and sampler captures
+use the same immutable point buffers as weighted descriptions.
+
+```ips
+distribution heightShape = density { 14.0: 0.0, 18.0: 1.0, 22.0: 0.6, 26.0: 0.0 }
+height = 14.0 to 26.0 with heightShape
+```
+
+A bounded draw clips every intersected segment, interpolates its boundary
+heights and computes its trapezoidal area. One stream step selects a positive
+area interval, then a stable binary64 inverse integral gives the position.
+Zero-area segments are skipped. This preserves the conditional shape without
+redraws or a pile-up caused by clamping rejected samples to the range ends.
+An interval of positive length requires positive bounded area; otherwise it
+traps after its stream step. Equal bounds return that point after one step if
+it lies in the closed natural support, even at zero-height endpoints or gaps;
+equal bounds outside it trap. I32 draws round halves away from zero, while
+f32 and color/vec2 coefficients round once to binary32.
+
+Construction pays base instruction fuel plus one per point; an ordinary draw
+adds two per original segment for clipping/selection, reserved before work.
+Equal-bound support checks use no segment scan. The shared 64 MiB quota counts
+each retained point buffer once. Invalid static data reject before artifacts;
+invalid runtime snapshots trap when constructed, even unused. `density(...)`
+helpers and locals named `density` keep their meaning; the literal starts only
+before `{`. Existing family and weighted kernels stay frozen. See the
+[pinned density contract](../../spec/iprop-v0.6.md#13-density-distributions-and-pinned-integration).
+
+<!-- example: ../../examples/language/point-distributions.ips -->
+
+<!-- example: ../../examples/language/errors/density-size.ips -->
+
+<!-- example: ../../examples/language/errors/density-area.ips -->
+
+<!-- example: ../../examples/language/errors/density-order.ips -->
+
+<!-- example: ../../examples/language/errors/density-negative.ips -->
+
+<!-- example: ../../examples/language/traps/density-mass.ips -->
+
+<!-- example: ../../examples/language/traps/density-support.ips -->
+
+<!-- example: ../../examples/language/traps/density-runtime-height.ips -->
+
 ### gaussian
 <!-- builtin: gaussian -->
 

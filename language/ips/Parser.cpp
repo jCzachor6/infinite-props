@@ -605,7 +605,10 @@ Stmt ParserImpl::parseFor() {
     expect(TokenKind::KeywordIn, "'in' after the loop variable");
     auto from = parseExpr();
     expect(TokenKind::DotDot, "'..' between the loop bounds");
-    auto to = parseExpr();
+    auto to = [&]() {
+        const FlagScope body(blockTail_,true);
+        return parseExpr();
+    }();
     return Stmt{ForStmt{std::move(variable), std::move(from), std::move(to),
                         parseBlock(), at}};
 }

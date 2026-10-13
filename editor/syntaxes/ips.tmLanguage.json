@@ -112,7 +112,7 @@
     },
     "pointDistribution": {
       "name": "support.function.distribution.ips",
-      "match": "\\bweighted\\b(?=\\s*\\{)"
+      "match": "\\b(weighted|density)\\b(?=\\s*\\{)"
     }
   }
 }

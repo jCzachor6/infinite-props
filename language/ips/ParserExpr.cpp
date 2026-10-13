@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "ips/Parser.hpp"
 
 #include <string>
@@ -253,6 +254,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
             const SourceLocation at = locationOf(*expr);
             advance(); // '['
             const FlagScope nested(statementTail_, false);
+            const FlagScope body(blockTail_,false);
             auto index = parseExpr();
             expect(TokenKind::RBracket, "']' after the index");
             expr = std::make_unique<Expr>(
@@ -271,7 +273,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
     }
     switch (kind()) {
     case TokenKind::Identifier: {
-        if (peek().text == "weighted" && kind(1) == TokenKind::LBrace) return parsePointDistribution();
+        if (!blockTail_ && math::pointDistributionSpec(peek().text) && kind(1) == TokenKind::LBrace) return parsePointDistribution();
         const Token name = advance();
         auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
@@ -284,6 +286,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
     case TokenKind::LParen: {
         advance();
         const FlagScope nested(statementTail_, false);
+        const FlagScope body(blockTail_,false);
         auto expr = parseExpr();
         expect(TokenKind::RParen, "')'");
         expr->sourceRange = {start, pos_};
@@ -345,6 +348,7 @@ std::unique_ptr<Expr> ParserImpl::parseLiteral() {
 std::unique_ptr<Expr> ParserImpl::parseVector() {
     const auto start = pos_;
     const FlagScope nested(statementTail_, false);
+    const FlagScope body(blockTail_,false);
     const SourceLocation at = expect(TokenKind::LBrace, "'{'").location;
     std::vector<std::unique_ptr<Expr>> elements;
     while (kind() != TokenKind::RBrace) {
@@ -369,6 +373,7 @@ std::unique_ptr<Expr> ParserImpl::parseVector() {
 std::unique_ptr<Expr> ParserImpl::parseList() {
     const auto start = pos_;
     const FlagScope nested(statementTail_, false);
+    const FlagScope body(blockTail_,false);
     const auto at = expect(TokenKind::LBracket, "'['").location;
     std::vector<std::unique_ptr<Expr>> elements;
     while (kind() != TokenKind::RBracket) {
@@ -388,6 +393,7 @@ std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
     const FlagScope nested(statementTail_, false);
     expect(TokenKind::LBrace, "'{' after distribution family");
     PointDistributionLiteral literal; literal.location = name.location;
+    literal.family = math::pointDistributionSpec(name.text)->family;
     while (kind() != TokenKind::RBrace) {
         if (kind() == TokenKind::End) failHere("unterminated point distribution (missing '}')");
         const auto at = peek().location;
@@ -406,6 +412,7 @@ std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
 std::vector<Arg> ParserImpl::parseArgs() {
     expect(TokenKind::LParen, "'('");
     const FlagScope nested(statementTail_, false);
+    const FlagScope body(blockTail_,false);
     std::vector<Arg> args;
     while (kind() != TokenKind::RParen) {
         if (isNameKind(kind()) && peek(1).kind == TokenKind::Assign) {

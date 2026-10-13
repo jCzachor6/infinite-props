@@ -75,8 +75,14 @@ def main():
     assert rules['collections']['index_bounds'] == 'trap'
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
-    assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}]
+    assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}, {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density','equal_bounds':'closed_natural_support'}]
     cases = [
+        ('density snapshot', 'const distribution d=density{0:0,1:1,2:0} draw{s=sampler(0.0 to 2.0 with d);xs=s.pick(3)}', True),
+        ('density helper remains contextual', 'density(x:i32)->i32{return x} draw{x=density(2);d=density{0:1,1:1}}', True),
+        ('density minimum', 'draw{d=density{0:1}}', False),
+        ('density area', 'draw{d=density{0:0,1:0}}', False),
+        ('density order', 'draw{d=density{1:1,0:1}}', False),
+        ('density negative with runtime key', 'draw{d=density{v:(-1),v+1:1}}', False),
         ('weighted snapshot', 'const distribution d=weighted{16777217:50,16777218:20} draw{s=sampler(16777217 to 16777218 with d);xs=s.pick(3)}', True),
         ('weighted helper remains contextual', 'weighted(x:i32)->i32{return x} draw{x=weighted(2);d=weighted{1:1}}', True),
         ('weighted order', 'draw{d=weighted{2:1,1:2}}', False),

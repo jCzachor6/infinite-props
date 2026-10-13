@@ -31,6 +31,7 @@ set(IPROP_RUNTIME_SOURCES
     math/curves.cpp
     math/distribution.cpp
     math/point_distribution.cpp
+    math/density.cpp
     math/color.cpp
     seeded.cpp
     canvas.cpp

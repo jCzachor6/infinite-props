@@ -241,13 +241,13 @@ f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
 // the coefficient u = (x + 1/2) / 2^32, and 1 fuel per kernel iteration.
 double distributionDraw(Execution& ex, const Distribution& distribution, double lo, double hi) {
     if (distribution.family == DistributionFamily::None ||
-        (distribution.family == DistributionFamily::Weighted && !math::validDistribution(distribution))) {
+        (math::pointDistributionSpec(distribution.family) && !math::validDistribution(distribution))) {
         ex.trap("distribution is not initialized", ErrorReason::NumericRange);
     }
     Frame& frame = ex.frame();
     frame.stream += 0x9e3779b9u;
     const double u = (static_cast<double>(hash32(frame.stream)) + 0.5) * 0x1p-32;
-    ex.spend(math::pointDrawWork(distribution));
+    ex.spend(math::pointDrawWork(distribution, lo, hi));
     const auto draw = math::truncatedDraw(distribution, lo, hi, u);
     switch (draw.status) {
     case math::DrawStatus::Outside:

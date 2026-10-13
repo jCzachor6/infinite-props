@@ -231,7 +231,9 @@ def read_language(value):
             'integer_rounding': {'nearest_half_away_from_zero'}, 'missing_mass': {'trap_after_stream_step'}}, [], 'point distribution policy')
         require(points['operand_types'] == ['i32','f32'], 'point distribution operand types')
         require(points['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,
-                'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}], 'point distribution families')
+                'value':'discrete_mass','equal_bounds':'positive_mass_at_point'},
+                {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density',
+                 'equal_bounds':'closed_natural_support'}], 'point distribution families')
         integer(points.get('generation_data_limit_bytes'), 'point distribution data limit')
         require(points['generation_data_limit_bytes'] == 67108864, 'point distribution data limit')
     if 'collections' in rules:

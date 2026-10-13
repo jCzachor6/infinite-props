@@ -120,7 +120,7 @@
         }
       ],
       "examples": [
-        "weighted.ips"
+        "point-distributions.ips"
       ]
     },
     {

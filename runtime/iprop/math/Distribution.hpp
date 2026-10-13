@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Types.hpp"
+#include <string_view>
 
 namespace iprop::math {
 
@@ -16,13 +17,28 @@ double incompleteBeta(double a, double b, double t, u32& steps);
 
 // Constructor parameter rules (spec v0.5 §4.2).
 bool validDistribution(const Distribution& distribution);
+struct PointDistributionSpec {
+    DistributionFamily family;
+    std::string_view name;
+    u16 minimumPoints;
+    std::string_view valueMeaning, equalBounds;
+};
+inline constexpr std::array<PointDistributionSpec, 2> kPointDistributionSpecs{{
+    {DistributionFamily::Weighted, "weighted", 1, "discrete_mass", "positive_mass_at_point"},
+    {DistributionFamily::Density, "density", 2, "piecewise_linear_density", "closed_natural_support"}}};
+const PointDistributionSpec* pointDistributionSpec(DistributionFamily family);
+const PointDistributionSpec* pointDistributionSpec(std::string_view name);
+const char* pointDistributionCountError(DistributionFamily family, std::size_t count);
 double distributionNumber(const DistributionNumber& number);
 // Shared constructor rules for source constants, file pools and runtime
 // snapshots; null means valid. Prefix validation is used by the builder.
 const char* pointDistributionError(const PointDistributionData& data, bool complete = true);
 const char* pointDistributionEntryError(const DistributionPoint& point,
-                                        const DistributionPoint* previous = nullptr);
-u32 pointDrawWork(const Distribution& distribution);
+                                        const DistributionPoint* previous = nullptr,
+                                        DistributionFamily family = DistributionFamily::Weighted);
+double pointDistributionIncrement(DistributionFamily family, const DistributionPoint& point,
+                                  const DistributionPoint* previous = nullptr);
+u32 pointDrawWork(const Distribution& distribution, double lo, double hi);
 
 enum class DrawStatus : u8 { Ok, Outside, NoMass, NoConvergence, Numerical };
 struct TruncatedDraw {
@@ -31,6 +47,8 @@ struct TruncatedDraw {
     DrawStatus status = DrawStatus::Ok;
 };
 TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u);
+TruncatedDraw densityDistributionDraw(const Distribution& distribution, double lo, double hi, double u);
+TruncatedDraw invertDensitySegment(double length, double p, double q, double area);
 
 // A draw from `distribution` truncated to [lo, hi] (finite, lo <= hi) for the
 // unit coefficient u in (0, 1) (spec v0.5 §4.4).

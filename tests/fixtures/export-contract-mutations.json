@@ -798,6 +798,45 @@
       "value": "unimplemented",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "density invalid minimum",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "minimum_points"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "density wrong value meaning",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "value"
+      ],
+      "value": "discrete_mass",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "density wrong equal bound rule",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "equal_bounds"
+      ],
+      "value": "positive_mass_at_point",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

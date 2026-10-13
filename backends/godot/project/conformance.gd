@@ -516,6 +516,36 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL weighted pixel ",x,",",y)
 
+	var density := IpropAsset.new()
+	if density.load_file(args[0] + "/point-distributions.iprop") != OK:
+		failures += 1
+		printerr("FAIL density load")
+	else:
+		var density_image := density.generate(26, 0, 0)
+		if density_image == null or density_image.get_size() != Vector2i(32,32):
+			failures += 1
+			printerr("FAIL density image metadata")
+		else:
+			var expected_density := [["material",0x40000000,0x40000000],["heights",0x41a085d5,0x41b6b498],
+				["state",0x4766fe00,0x46f1ba00]]
+			for expected in expected_density:
+				var slot: Dictionary = density.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL density output bits/metadata")
+			for y in range(32):
+				for x in range(32):
+					var color := Color8(0,0,0,0)
+					if ((x >= 2 and x < 10) or (x >= 12 and x < 20)) and y >= 8 and y < 28:
+						color = Color8(142,156,112)
+					if x >= 22 and x < 30 and y >= 5 and y < 28:
+						color = Color8(142,156,112)
+					if density_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL density pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

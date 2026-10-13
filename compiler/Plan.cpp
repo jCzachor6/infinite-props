@@ -171,12 +171,13 @@ std::unique_ptr<Plan> Planner::plan() {
                         const auto key = known(*point.key), value = known(*point.value);
                         DistributionPoint checked{key ? numeric(*key) : DistributionNumber(i32{0}),
                             value ? numeric(*value) : DistributionNumber(i32{0})};
-                        if (const auto* message = math::pointDistributionEntryError(checked, key && previous ? &*previous : nullptr))
+                        if (const auto* message = math::pointDistributionEntryError(checked, key && previous ? &*previous : nullptr, literal->family))
                             invalid(point.location, message);
                         previous = key ? std::optional<DistributionPoint>(checked) : std::nullopt;
                         if (value) mass = mass + math::distributionNumber(checked.value); else allWeights = false;
                     }
-                    if (allWeights && !(mass > 0.0)) invalid(literal->location, "weighted needs positive total mass");
+                    if (allWeights && !(mass > 0.0)) invalid(literal->location, literal->family == DistributionFamily::Density ?
+                        "density needs positive total area" : "weighted needs positive total mass");
                     (void)known(*expr);
                 }
                 if (const auto* pick = std::get_if<ips::SamplerPick>(expr); pick && pick->count) {

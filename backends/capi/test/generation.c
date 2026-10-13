@@ -6,6 +6,35 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Independent raw-RNG and binary64 integral pins for density columns. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/point-distributions.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40000000,0x40000000,0x41a085d5,0x41b6b498,0x4766fe00,0x46f1ba00};
+        CHECK(bytes!=NULL,"cannot read density fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"density load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"density generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==32 && image.output_count==3,"density image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"density output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"density bits at %u",i);}
+            }
+            if(image.width==32 && image.height==32)for(uint32_t y=0;y<32;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(((x>=2 && x<10)||(x>=12 && x<20)) && y>=8 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                if(x>=22 && x<30 && y>=5 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"density pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
     /* Independent raw-RNG thresholds select material 2 and one rust layer. */
     {
         char path[1024]; snprintf(path,sizeof(path),"%s/weighted.iprop",program_dir);

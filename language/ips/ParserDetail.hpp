@@ -194,6 +194,9 @@ private:
     // The expression being parsed may be followed by the next statement or
     // declaration, so a `to` there may start it instead of a random range.
     bool statementTail_ = false;
+    // At the top level of a for upper bound, the next brace starts its body;
+    // family-named numeric variables must keep their old meaning there.
+    bool blockTail_ = false;
     // The asset declares a helper named `to` or `with`; its call keeps that meaning.
     bool toHelper_ = false;
     bool samplerHelper_ = false;

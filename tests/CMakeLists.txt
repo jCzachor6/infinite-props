@@ -46,6 +46,7 @@ add_executable(iprop_tests
     compiler/random_ranges_test.cpp
     compiler/distributions_test.cpp
     compiler/point_distributions_test.cpp
+    compiler/density_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp

@@ -26,8 +26,9 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stages 1–6 add integer bounds overloads, `vec2.normalize`, typed asset constants,
-immutable lists, captured/constant samplers and sampling palettes. Schema 3 describes the constant policy,
+Stages 1–7 add integer bounds overloads, `vec2.normalize`, typed asset constants,
+immutable lists, captured/constant samplers, sampling palettes and point distributions.
+Schema 3 describes the constant policy,
 parameterized types, collection limits and receiver-first sampler methods.
 See [0.7 migration](language/migration-v0.7.md).
 
@@ -227,3 +228,10 @@ Stage 6 exports `source_rules.point_distributions`: weighted literals are
 constructors rather than global call signatures. The snapshot, numeric and
 bounded-draw contract is shared by source typing, constant evaluation, runtime
 builders and file validation. Existing helpers with the family name remain calls.
+
+Stage 7 adds density to `source_rules.point_distributions.families`. Family
+names, minimum counts, value meaning and equal-bound rules come from the
+same shared registry used by parsing, typing, builders and file validation.
+No duplicate global signature list is introduced.
+Family names used as numeric for-loop bounds retain the following block
+as their loop body; nested argument expressions may still construct literals.

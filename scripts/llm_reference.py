@@ -174,7 +174,9 @@ def compiler_rules(language):
             for family in points['families']) + '. Numeric pairs evaluate once left to right; keys keep exact i32/f32 types, '
             'increase strictly, and values are finite/nonnegative with positive total mass. Descriptions snapshot without RNG; '
             'use `to ... with d` or capture a sampler. Weighted values are discrete masses; clipped draws consume one stream step, '
-            'and missing mass traps. Color/vec2 use positions on 0–1.')
+            'and missing mass traps. Density values are heights interpolated linearly, zero outside their support; '
+            'draws integrate clipped trapezoids and invert the selected integral. Equal density bounds need only lie in the closed support. '
+            'Color/vec2 use positions on 0–1.')
     if 'components' in types:
         lines.append('Read-only members: ' + '; '.join(item['type'] + ' ' + ', '.join('.' + name for name in item['names']) +
                      ' give ' + item['result'] for item in types['components']) + '.')

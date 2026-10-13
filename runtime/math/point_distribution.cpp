@@ -2,37 +2,70 @@
 #include <cmath>
 
 namespace iprop::math {
+const PointDistributionSpec* pointDistributionSpec(DistributionFamily family) {
+    for (const auto& spec : kPointDistributionSpecs) if (spec.family == family) return &spec;
+    return nullptr;
+}
+const PointDistributionSpec* pointDistributionSpec(std::string_view name) {
+    for (const auto& spec : kPointDistributionSpecs) if (spec.name == name) return &spec;
+    return nullptr;
+}
+const char* pointDistributionCountError(DistributionFamily family, std::size_t count) {
+    const auto* spec = pointDistributionSpec(family);
+    if (!spec) return "unknown point distribution family";
+    if (count < spec->minimumPoints || count > 256) return family == DistributionFamily::Density ?
+        "density needs between 2 and 256 points" : "weighted needs between 1 and 256 points";
+    return nullptr;
+}
 double distributionNumber(const DistributionNumber& number) {
     return std::visit([](auto value) { return static_cast<double>(value); }, number);
 }
 
-const char* pointDistributionEntryError(const DistributionPoint& point, const DistributionPoint* previous) {
+const char* pointDistributionEntryError(const DistributionPoint& point, const DistributionPoint* previous,
+                                        DistributionFamily family) {
     const double key = distributionNumber(point.key), value = distributionNumber(point.value);
     if (!std::isfinite(key) || !std::isfinite(value)) return "distribution points must be finite";
     if (previous && !(distributionNumber(previous->key) < key)) return "distribution keys must be strictly increasing";
-    if (value < 0.0) return "distribution weights must be nonnegative";
+    if (value < 0.0) return family == DistributionFamily::Density ? "distribution densities must be nonnegative" :
+        "distribution weights must be nonnegative";
     return nullptr;
+}
+
+double pointDistributionIncrement(DistributionFamily family, const DistributionPoint& point,
+                                  const DistributionPoint* previous) {
+    const auto value = distributionNumber(point.value);
+    if (family == DistributionFamily::Weighted) return value;
+    if (!previous) return 0.0;
+    const double length = distributionNumber(point.key) - distributionNumber(previous->key);
+    const double sum = distributionNumber(previous->value) + value;
+    const double average = sum * 0.5;
+    return length * average;
 }
 
 const char* pointDistributionError(const PointDistributionData& data, bool complete) {
-    if (data.family != DistributionFamily::Weighted) return "unknown point distribution family";
-    if (data.points.size() > 256 || (complete && data.points.empty()))
-        return "weighted needs between 1 and 256 points";
+    if (!pointDistributionSpec(data.family)) return "unknown point distribution family";
+    if (complete) if (const auto* error = pointDistributionCountError(data.family, data.points.size())) return error;
+    if (data.points.size() > 256) return "distribution exceeds 256 points";
     double total = 0.0;
     for (std::size_t i = 0; i < data.points.size(); ++i) {
-        if (const auto* error = pointDistributionEntryError(data.points[i], i ? &data.points[i - 1] : nullptr)) return error;
-        const auto weight = distributionNumber(data.points[i].value);
-        total = total + weight;
+        const auto* previous = i ? &data.points[i - 1] : nullptr;
+        if (const auto* error = pointDistributionEntryError(data.points[i], previous, data.family)) return error;
+        total = total + pointDistributionIncrement(data.family, data.points[i], previous);
     }
-    if (complete && !(total > 0.0)) return "weighted needs positive total mass";
+    if (complete && !(total > 0.0)) return data.family == DistributionFamily::Density ?
+        "density needs positive total area" : "weighted needs positive total mass";
     return nullptr;
 }
 
-u32 pointDrawWork(const Distribution& distribution) {
-    return distribution.points ? static_cast<u32>(2 * distribution.points->points.size()) : 0;
+u32 pointDrawWork(const Distribution& distribution, double lo, double hi) {
+    if (!distribution.points) return 0;
+    if (distribution.family == DistributionFamily::Density)
+        return lo == hi ? 0 : static_cast<u32>(2 * (distribution.points->points.size() - 1));
+    return static_cast<u32>(2 * distribution.points->points.size());
 }
 
 TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u) {
+    if (distribution.family == DistributionFamily::Density) return densityDistributionDraw(distribution, lo, hi, u);
     TruncatedDraw result;
     if (!distribution.points) { result.status = DrawStatus::NoMass; return result; }
     const auto& points = distribution.points->points;

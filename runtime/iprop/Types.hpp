@@ -47,7 +47,7 @@ struct Vec2 {
 
 // A distribution description (spec v0.5 §4.1): a family and its binary32
 // parameters. None is the typed default of a slot that was never assigned.
-enum class DistributionFamily : u8 { None = 0, Gaussian = 1, Triangular = 2, Beta = 3, Weighted = 4 };
+enum class DistributionFamily : u8 { None = 0, Gaussian = 1, Triangular = 2, Beta = 3, Weighted = 4, Density = 5 };
 // Keep each numeric operand's original type and bits. In particular, adjacent
 // i32 keys above 2^24 must never pass through binary32.
 using DistributionNumber = std::variant<i32, f32>;

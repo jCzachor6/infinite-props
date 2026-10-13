@@ -1,5 +1,13 @@
 {
   "cases": [
+    {"file": "point-distributions.ips", "expect": "pass"},
+    {"file": "errors/density-size.ips", "expect": "compile-error", "message": "between 2 and 256"},
+    {"file": "errors/density-area.ips", "expect": "compile-error", "message": "positive total area"},
+    {"file": "errors/density-order.ips", "expect": "compile-error", "message": "strictly increasing"},
+    {"file": "errors/density-negative.ips", "expect": "compile-error", "message": "nonnegative"},
+    {"file": "traps/density-mass.ips", "expect": "trap", "message": "no probability"},
+    {"file": "traps/density-support.ips", "expect": "trap", "message": "outside the distribution"},
+    {"file": "traps/density-runtime-height.ips", "expect": "trap", "message": "nonnegative"},
     {"file": "weighted.ips", "expect": "pass"},
     {"file": "errors/weighted-order.ips", "expect": "compile-error", "message": "strictly increasing"},
     {"file": "errors/weighted-negative.ips", "expect": "compile-error", "message": "nonnegative"},

@@ -38,9 +38,10 @@ std::vector<Distribution> parseDistributionPool(std::span<const u8> bytes, const
         const auto family = static_cast<DistributionFamily>(reader.readU8());
         const auto reserved = reader.readU8();
         const auto size = reader.readU16();
-        if (family != DistributionFamily::Weighted || reserved)
+        if (!math::pointDistributionSpec(family) || reserved)
             throw FormatError("invalid point distribution family or reserved byte", at, ErrorReason::InvalidConstants);
-        if (!size || size > 256) throw FormatError("weighted needs between 1 and 256 points", at + 2, ErrorReason::InvalidConstants);
+        if (const auto* error = math::pointDistributionCountError(family,size))
+            throw FormatError(error, at + 2, ErrorReason::InvalidConstants);
         total += ResourceArena::distributionBytes(size);
         if (total > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", at, ErrorReason::InvalidConstants);
         auto data = std::make_shared<PointDistributionData>(); data->family = family;
@@ -61,7 +62,7 @@ std::vector<Distribution> parseDistributionPool(std::span<const u8> bytes, const
 Distribution readDistributionData(Reader& reader, std::span<const Distribution> pool) {
     const auto at = reader.position();
     const auto family = static_cast<DistributionFamily>(reader.readU8());
-    if (family == DistributionFamily::Weighted) {
+    if (math::pointDistributionSpec(family)) {
         const auto index = reader.readU16();
         if (index >= pool.size() || pool[index].family != family)
             throw FormatError("distribution constant reference out of range or family mismatch", at, ErrorReason::InvalidConstants);
@@ -104,8 +105,10 @@ bool stepPointDistributions(Execution& ex, Instruction ins) {
     }
     case Opcode::DistributionBegin: {
         const auto count = ex.popI32();
-        if (ins.operand != static_cast<u16>(DistributionFamily::Weighted)) ex.trap("unknown point distribution family", ErrorReason::NumericRange);
-        if (count < 1 || count > 256) ex.trap("weighted needs between 1 and 256 points", ErrorReason::NumericRange);
+        const auto family = static_cast<DistributionFamily>(ins.operand);
+        if (ins.operand > 255 || !math::pointDistributionSpec(family)) ex.trap("unknown point distribution family", ErrorReason::NumericRange);
+        if (const auto* error = math::pointDistributionCountError(family,count < 0 ? 0 : static_cast<std::size_t>(count)))
+            ex.trap(error, ErrorReason::NumericRange);
         ex.spend(static_cast<u64>(count));
         ex.allocateResource(ResourceArena::distributionBytes(static_cast<std::size_t>(count)));
         auto data = std::make_shared<PointDistributionBuilderData>();
@@ -122,8 +125,9 @@ bool stepPointDistributions(Execution& ex, Instruction ins) {
         auto data = builder();
         auto& points = data->distribution.points;
         if (points.size() >= data->expected) ex.trap("too many distribution points", ErrorReason::IndexRange);
-        if (const auto* error = math::pointDistributionEntryError(point, points.empty() ? nullptr : &points.back())) ex.trap(error, ErrorReason::NumericRange);
-        data->mass = data->mass + math::distributionNumber(point.value);
+        const auto* previous = points.empty() ? nullptr : &points.back();
+        if (const auto* error = math::pointDistributionEntryError(point, previous, data->distribution.family)) ex.trap(error, ErrorReason::NumericRange);
+        data->mass = data->mass + math::pointDistributionIncrement(data->distribution.family, point, previous);
         points.push_back(std::move(point));
         ex.push(PointDistributionBuilder{std::move(data)}); break;
     }
@@ -131,7 +135,8 @@ bool stepPointDistributions(Execution& ex, Instruction ins) {
         if (ins.operand) ex.trap("distribution.end operand must be zero", ErrorReason::NumericRange);
         auto data = builder();
         if (data->distribution.points.size() != data->expected) ex.trap("incomplete distribution builder", ErrorReason::IndexRange);
-        if (!(data->mass > 0.0)) ex.trap("weighted needs positive total mass", ErrorReason::NumericRange);
+        if (!(data->mass > 0.0)) ex.trap(data->distribution.family == DistributionFamily::Density ?
+            "density needs positive total area" : "weighted needs positive total mass", ErrorReason::NumericRange);
         std::shared_ptr<const PointDistributionData> frozen(data, &data->distribution);
         ex.resources.distributions.push_back(frozen);
         Distribution d; d.family = frozen->family; d.points = std::move(frozen);

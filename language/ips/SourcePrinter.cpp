@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "ips/Printer.hpp"
 #include "ips/BuiltinArguments.hpp"
 #include "ips/CallPlan.hpp"
@@ -310,7 +311,7 @@ class SourcePrinter {
                 if (node.count) expression(*node.count);
                 out_ << ')';
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
-                out_ << "weighted {";
+                out_ << std::string(math::pointDistributionSpec(node.family)->name) << " {";
                 for (std::size_t i = 0; i < node.points.size(); ++i) {
                     if (i) out_ << ", ";
                     expression(*node.points[i].key); out_ << ": "; expression(*node.points[i].value);

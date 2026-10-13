@@ -463,7 +463,7 @@ std::vector<u8> assemble(const std::string& source) {
             if (variable) {
                 count = 0;
                 for (std::size_t at = 0; at < bytes.size();) {
-                    const auto length = bytes[at] == static_cast<u8>(DistributionFamily::Weighted) ? 3u : 17u;
+                    const auto length = (bytes[at] == static_cast<u8>(DistributionFamily::Weighted) || bytes[at] == static_cast<u8>(DistributionFamily::Density)) ? 3u : 17u;
                     if (length > bytes.size() - at || count == kMaxListElements) throw error("bad distribution collection size");
                     ++count; at += length;
                 }

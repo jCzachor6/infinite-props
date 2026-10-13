@@ -331,3 +331,21 @@ test("point distribution literals preserve contextual helpers and pair comments"
         assert.equal(checked.status,0,checked.stderr); clean(dir);
     } finally { h.dispose(); fs.rmSync(dir,{recursive:true,force:true}); }
 });
+
+test("density literals preserve helper calls and numeric loop-bound names", async () => {
+    const source="asset t{size 1x1 input i32 density=2 " +
+        "make(d:distribution)->i32{return 2} draw{for i in 0..density{d=density{0:0,/* height */1:1}} " +
+        "for i in 0..make(density{0:1,1:1}){x=i}}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try {
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;assert.ok(formatted.includes("/* height */"));
+        assert.ok(formatted.includes("0..density {"));assert.ok(formatted.includes("density {0: 1, 1: 1}"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density {0:1,1:1}"),true);
+        assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density(2)"),false);
+    } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});

@@ -1,11 +1,11 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–6 (2026-10-13).
-**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes and weighted distributions. This document
+**Status:** Development contract for product 0.7.0, stages 1–7 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; Density distributions and surfaces
+extend this development format; Surfaces
 are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
@@ -489,3 +489,109 @@ rounding leaves them; i32 results use the frozen half-away-from-zero conversion.
 Color/vec2 sample this same coefficient on [0,1] and use the frozen mix kernels.
 Batch sampler picks repeat this exact procedure on the caller stream. The RNG
 grid implies quantized proportions, not exact seed-count percentages.
+
+## 13. Density distributions and pinned integration
+
+Stage 7 adds point family **5 (density)** through the same section-9 pool,
+3-byte embedded references, arena and builder instructions as weighted.
+Records require **2–256** points; all key/value tags, reserved fields, finite
+numeric values and strictly increasing exact keys obey section 12. Values
+are nonnegative heights. Constructor validation sums positive-length trapezoid
+areas in source order in binary64 and requires a positive total. `distribution.begin`
+accepts family operand 5; references must match family 5 exactly. No older
+family record/kernel/opcode/type code or public host layout changes.
+
+The source is `density { key: height, ... }`, contextual only before `{`.
+All snapshot, const/effect, sharing, quota, builder and retention rules of
+section 12 apply. For consecutive original points `(a,p)` and `(b,q)`, natural
+area is computed separately as `L=b-a`, `sum=p+q`, `average=sum*0.5`,
+`area=L*average`. Accumulate these areas in written order, starting at +0.
+The first point contributes no segment. An invalid static description rejects
+at compile time; dynamic data trap during construction even if unused.
+
+### Support, stream and clipping
+
+Density is linear between consecutive keys and zero outside the closed natural
+support `[first_key,last_key]`. Validate bounds and initialized description
+before the one frozen `with` stream step, using the same open binary64
+coefficient `u=(hash+0.5)*2^-32`. Support/mass checks occur after this step.
+
+If lo==hi, return lo when it belongs to the closed natural support, even at
+zero-height endpoints or in a zero-density gap. Otherwise trap with
+`random range lies outside the distribution`. No segment scan/fuel is added.
+For positive-length ranges, reserve **2 * (point_count-1)** fuel before work,
+in addition to the base draw, including zero/excluded segments and failures.
+Both scans visit every original segment in source order, without redraws.
+
+For each original segment `(a,p0)` to `(b,q0)`:
+
+```text
+left  = max(lo,a)
+right = min(hi,b)
+if !(left < right): segment_area=+0
+else:
+    height(x):
+        if x==a: return p0
+        if x==b: return q0
+        t=(x-a)/(b-a)
+        l=p0*(1-t)
+        r=q0*t
+        return l+r
+    p=height(left)
+    q=height(right)
+    L=right-left
+    sum=p+q
+    average=sum*0.5
+    segment_area=L*average
+```
+
+Every subtraction, division, multiplication and sum above rounds separately to
+binary64; FMA/reassociation and subnormal flushing are forbidden. Convex
+endpoint interpolation keeps nonnegative heights without cancellation.
+The first scan stores these at most 255 bounded segments in fixed temporary
+storage and accumulates their areas in written order. These are transient
+kernel data, not new generation-owned buffers.
+
+### Stable inverse integral
+
+Set target=u*total_area, cumulative=+0. The second complete scan skips
+zero-area segments and adds each positive area in written order. Select the
+first segment with target < cumulative+segment_area; equality belongs to the
+next positive interval. Set z=target-cumulative before adding that selected
+segment's area. Continue scanning without replacing the selection. No positive
+bounded area traps with `random range has no probability under the distribution`.
+
+For the selected segment, solve its local integral in this pinned order:
+
+```text
+if z==0: x=+0
+else:
+    difference=q-p
+    s=difference/L
+    if s==0: x=z/p
+    else:
+        A=p*p
+        twice_slope=2*s
+        B=twice_slope*z
+        R=A+B
+        if R<0:
+            magnitudes=abs(A)+abs(B)
+            tolerance=(8*2^-52)*magnitudes
+            if -R>tolerance: numerical trap
+            R=+0
+        root=sqrt(R)
+        numerator=2*z
+        denominator=p+root
+        x=numerator/denominator
+```
+
+Use the correctly rounded binary64 square root; no host probability functions.
+A nonfinite solution or other numerical violation traps with
+`distribution draw has a numerical error`. Correct x's endpoint rounding to
+`[0,L]` only after solving the integral, then set value=left+x and restore
+`[left,right]` if that addition leaves them. These corrections preserve the
+chosen positive interval; they never clamp a rejected sample to global bounds.
+Finally use the frozen conversion: one binary32 rounding (restoring the numeric
+bounds when necessary) for f32/coefficient results, or nearest integer, halves
+away from zero, for i32. Color/vec2 use the existing common-coefficient kernels.
+All batch picks repeat this procedure independently on the caller stream.

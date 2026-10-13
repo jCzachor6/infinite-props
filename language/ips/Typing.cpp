@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "ips/Typing.hpp"
 #include "iprop/Collections.hpp"
 #include <algorithm>
@@ -212,7 +213,7 @@ ValueType Typer::infer(const Expr& expr) {
         return typeCall(*call);
     }
     if (const auto* d = std::get_if<PointDistributionLiteral>(&expr)) {
-        if (d->points.empty() || d->points.size() > 256) error(d->location, "weighted needs between 1 and 256 points");
+        if (const auto* message = math::pointDistributionCountError(d->family,d->points.size())) error(d->location,message);
         for (const auto& point : d->points) {
             for (const auto* operand : {point.key.get(), point.value.get()}) {
                 const auto type = typeOf(*operand);

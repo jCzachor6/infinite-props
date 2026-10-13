@@ -187,6 +187,27 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Independent raw-RNG / binary64 density pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/point-distributions.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40000000,0x40000000,0x41a085d5,0x41b6b498,0x4766fe00,0x46f1ba00};
+        CHECK(image.width==32 && image.height==32 && slots.size()==3,"density image metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"density output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"density output bits");}
+        }
+        if(image.width==32 && image.height==32)for(unsigned y=0;y<32;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(((x>=2 && x<10)||(x>=12 && x<20)) && y>=8 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            if(x>=22 && x<30 && y>=5 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"density pixel %u,%u",x,y);
+        }
+    }
+
     // Independent raw-RNG weighted pins through the unchanged host layouts.
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
