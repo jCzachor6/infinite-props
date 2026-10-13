@@ -1,0 +1,661 @@
+{
+  "baseline_commit": "597ccdb50c220c0ca9dc7592a7931a30d0e108e0",
+  "product_version": "0.7.0",
+  "language_version": "0.7",
+  "note": "Captured with unmodified stage-9 tools before masks and clipping. Execute these bytes without regeneration.",
+  "tools": {
+    "ipc": "7a21576cc9a1244bf7c95f07e3b258b11d3be965425c48c72a97015e43cc0f65",
+    "ipgen": "ad05aec6a40cd81da109285609eacf199a691ce734f2684cd7447392b63f0196"
+  },
+  "cases": [
+    {
+      "source": "examples/language/source-over-panels.ips",
+      "source_sha256": "251a090d6e6ed410f08b0594dfa90c2339ee78f2485f035cd40aeed714b3d4f3",
+      "format_minor": 6,
+      "binary_base64": "SVBSUAAABgAAAAAABQAAAAAAAAABAAAAUAAAADwAAAACAAAAjAAAAMkAAAADAAAAVQEAAHkBAAAFAAAAzgIAAAwAAAAGAAAA2gIAAAgAAAAgAAAAGAAAAAAAAAAAAAAAAQAAAAEAAACAhB4AAAAAAAAAAAAAAAAAAAACAAAAAAADAAAAAAAAAAQAAAAMAAAABAAAAGRyYXcFAAAAcmV1c2UKAAAAcGFuZWwuZHJhdwkAAABwYW5lbFNpemUFAAAAc3RhdGUGAAAAZXh0ZW50BQAAAHBhbmVsAQAAAGEFAAAAZ2xhc3MBAAAAdgUAAABpbWFnZQUAAAB3aWR0aAYAAAAAAAAADAAAAAgAAAD//wAAEAAAAAIAAAAJAAAAAAAAAAAAAEIAAEBBAAAAQQAAwEEAAIBBAACAPwAAAEAAAFBBBAAAACQwQP9woNiA////YCBAYIADAAAAAAAAAAAAAACIAAAAAgAAAAAAAQCAAAABAAAAiAAAAAgAAAABAIAAAAEAgAAAAAACAAAAkAAAAHwAAAACAAAAAAACAAABEQAAABEAAAARAAEAEQACABIAAACBAAAAxgICAGYAAAAQAAAAEAAAABEAAwARAAIAoAAAAGYAAAAQAAAAEAAAABEABAARAAIAoAAAAJYAAgCQAAAABQAAABMAAgAIAAEAxwACAGYAAAAQAAMAJwAAAE0AAABmAAAAEAAEACwAAABNAAAAkAABABMAAAAJAAAAEAACABAAAQCoAAAAFAACABEAAAARAAAAEwACAE0AAAARAAUAEgABAIEAAAARAAYAEQAGABMAAgAQAAUAIQAAAE0AAAAVAAMAEQAHABIAAgCBAAAAEQAGABEACAATAAMAEQAHABIAAwCBAAAAEwACAE0AAAARAAUAkAACAAEAAAACAAAADAAAABAAAAAAAMBAAAAAQQAAAQAAAAAABQAAAAEAAAAGAAAA/////wEAAAAMCAAA",
+      "binary_sha256": "6a04651240c61a5f3f6f643f1bb950ed1d03672d8e5078164abe08d047c97d0b",
+      "generations": [
+        {
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 3021
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "panelSize",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1106247680,
+                  "y": 1101004800
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "extent",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1106247680,
+                  "y": 1101004800
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/AAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "rgba_sha256": "23d678e6211f11f5e7e181b4aba427bd12f5e6a76c07582fc9b8771d3e72c738",
+          "outputs_sha256": "e6992c56fc5e1be50800e2ac9a12c6b121ace82d7571e5ce46e1098d537d5af3"
+        },
+        {
+          "seed": 1,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 2929
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "panelSize",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1105199104,
+                  "y": 1101004800
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "extent",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1105199104,
+                  "y": 1101004800
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/AAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "rgba_sha256": "b75ae87e87c0051650299d64f5a184a160872a2e9a14d6ed173ebe4a3c41910d",
+          "outputs_sha256": "a4b94bf26ef8915a92e519c110b85ea798603b3ea3f899617205b5331a2d64bc"
+        },
+        {
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 2837
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "panelSize",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104150528,
+                  "y": 1101004800
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1088421888,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "extent",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104150528,
+                  "y": 1101004800
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/AAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "rgba_sha256": "a43f1a346599e592ae0876ef247a6c8c7e7de25f9e1b47b7a48fdfcc345fbbdd",
+          "outputs_sha256": "6fe58713b9694f1ff2842da68a654829005cfa17bb9a92d06577ab5bfdec909b"
+        },
+        {
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 3021
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "panelSize",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1106247680,
+                  "y": 1101004800
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104150528,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "extent",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1106247680,
+                  "y": 1101004800
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/AAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "rgba_sha256": "23d678e6211f11f5e7e181b4aba427bd12f5e6a76c07582fc9b8771d3e72c738",
+          "outputs_sha256": "f4d93a9786d81eb9b32ac438de681da6e3361a1713e2f9bade567e89ad424452"
+        },
+        {
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 2883
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "panelSize",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104674816,
+                  "y": 1101004800
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1199570688,
+                  "y": 1199570688
+                }
+              ]
+            },
+            {
+              "name": "extent",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104674816,
+                  "y": 1101004800
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/jqG3/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/46ht/+Oobf/jqG3/46ht/+Oobf/jqG3/46ht/9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP8kMED/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/JDBA/yQwQP8kMED/JDBA/yQwQP8kMED/JDBA/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/0pojP9KaIz/SmiM/yQwQP8kMED/JDBA/yQwQP8kMED/AAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAO2CIwDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcKDYgDtgiMA7YIjAO2CIwDtgiMA7YIjAO2CIwDtgiMBwoNiAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IBwoNiAcKDYgHCg2IAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "rgba_sha256": "6201d59b32f067dba6a204f680140f10fd4a456785069d4dc3de6970f15694ba",
+          "outputs_sha256": "749ad734de73dfd7867598307a43bcc08a2541df4b30750acf4816e22063a2f8"
+        }
+      ]
+    },
+    {
+      "source": "inline-stage9-mode-cleanup",
+      "source_sha256": "bd949d9d040f6ea4ff14a821265b33c837e0e3b97ff26fa4c976e906767ed4db",
+      "format_minor": 6,
+      "binary_base64": "SVBSUAAABgAAAAAABAAAAAAAAAABAAAARAAAADQAAAACAAAAeAAAAHwAAAADAAAA9AAAAN4AAAAGAAAA0gEAAAgAAAAEAAAAAgAAAAAAAAAAAAAAAQAAAAEAAACAhB4AAAAAAAAAAAAAAAAAAAABAAAAAAADAAAACgAAAAQAAABkcmF3BAAAAG1hcmsFAAAAZWFybHkFAAAAc3RhdGUBAAAAYQUAAABncm91cAUAAABpbWFnZQEAAAB2AQAAAHgJAAAAZm9yZ290dGVuBgAAAAAAAAABAAAAAgAAAAMAAAD//wAAEAAAAAAAAAABAAAAESIzgAMAAAAAAAAAAAAAAHgAAAACAAAAAAACAIAAAIAAAAEAAAB4AAAAEAAAAAEAAAAAAAACAAAAiAAAAAwAAAAAAAAAAQCAAADGAgMAEAAAAAgAAQDGAAIAEAABAAgAAQAQAAEACAABAAUAAAATAAIAxwAAAAgAAgAQAAIACAABAAUAAAATAAMAxwACABAAAwAQAAEAEgAAAIAAAABmAAAAEAAEACcAAABNAAAAZgAAABAABQAsAAAATQAAAJAAAAATAAAAEAAAABIAAACAAAAAxgEAAAkAAAAFAAAAAAAAAAEAAAAMCAAA",
+      "binary_sha256": "cc09033329247769b86b6d7343f18f2b99faf82d95147f096120360d3f35b033",
+      "generations": [
+        {
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 88
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "ESIzgBEiM8ARIjOAAAAAAAAAAAAAAAAAAAAAAAgRGQA=",
+          "rgba_sha256": "5ddae658d5ca95e8db1be0bc3ea615bd35180d0436be35af473e66b9412130d0",
+          "outputs_sha256": "b8e1838c86d7206aacf057c3821b57b07676bbaef72bb9e95b592e53f403fa77"
+        },
+        {
+          "seed": 1,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 88
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "ESIzgBEiM8ARIjOAAAAAAAAAAAAAAAAAAAAAAAgRGQA=",
+          "rgba_sha256": "5ddae658d5ca95e8db1be0bc3ea615bd35180d0436be35af473e66b9412130d0",
+          "outputs_sha256": "de048c953f428964b4a0eb72302abc0ea663b5c3f30e0bb6864856c243acfd3f"
+        },
+        {
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 88
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1088421888,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "ESIzgBEiM8ARIjOAAAAAAAAAAAAAAAAAAAAAAAgRGQA=",
+          "rgba_sha256": "5ddae658d5ca95e8db1be0bc3ea615bd35180d0436be35af473e66b9412130d0",
+          "outputs_sha256": "f820390d4a2503defd143b9adf3372f0116e86ea59cc067059372cf88374a73a"
+        },
+        {
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 88
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104150528,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "ESIzgBEiM8ARIjOAAAAAAAAAAAAAAAAAAAAAAAgRGQA=",
+          "rgba_sha256": "5ddae658d5ca95e8db1be0bc3ea615bd35180d0436be35af473e66b9412130d0",
+          "outputs_sha256": "4377c80acbe3698a8f2c2713bc5b919a8b1a22061a29e1e072d8b7e882067614"
+        },
+        {
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 88
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1199570688,
+                  "y": 1199570688
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "ESIzgBEiM8ARIjOAAAAAAAAAAAAAAAAAAAAAAAgRGQA=",
+          "rgba_sha256": "5ddae658d5ca95e8db1be0bc3ea615bd35180d0436be35af473e66b9412130d0",
+          "outputs_sha256": "18a0586ea547c1243c862b8cf0053d6edc13c6267af8906ee662e952b62d1c2b"
+        }
+      ],
+      "source_text": "asset t{size 4x2 output point state mark(x:i32){pixel(x,0,#11223380)}early(){layer forgotten(alpha=surface.legacy){return;}}draw{layer image(alpha=surface.source_over){mark(0)layer group{mark(1)mark(1)}surface.paint(group)early()mark(2)}surface.paint(image,blend=surface.source_over)pixel(3,1,#11223380)state={seed&65535,seed>>16}}}"
+    },
+    {
+      "source": "inline-stage9-old-mask-clip-names",
+      "source_sha256": "fd15073bbb9b6c4809deebdaa0382ea6c3f9f9996d394e4fafa3c4bd5e8cbc34",
+      "format_minor": 4,
+      "binary_base64": "SVBSUAAABAAAAAAAAwAAAAAAAAABAAAAOAAAAD0AAAACAAAAdQAAAF0AAAADAAAA0gAAAIYAAAAEAAAAAgAAAAAAAAAAAAAAAQAAAAEAAACAhB4AAAAAAAAAAAAAAAAAAQACAwAAAAMAAAABAAAAAAACAAAACAAAAAQAAABkcmF3BAAAAGNsaXAFAAAAc3RhdGUEAAAAbWFzawEAAABhBQAAAGNvdW50AQAAAHYBAAAAeAIAAAD//wAAEAAAAAIAAAAAAAAAAACAPwEAAACSnKj/AgAAAAAAAAAAAAAATAAAAAMAAAAAAAABAAABAAAATAAAAAgAAAABAAABAAAAABMAAgAIAAEAFAADABEAAAARAAAAEwADAE0AAAARAAEAEgAAAIEAAABmAAAAEAAAACcAAABNAAAAZgAAABAAAQAsAAAATQAAAJAAAAATAAAACQAAAAAAAAA=",
+      "binary_sha256": "c7e63c9d353b247b2ee3aac9d7922df53b5ea84662ab4530f8379002d2c77593",
+      "generations": [
+        {
+          "seed": 0,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 29
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [
+            {
+              "name": "mask",
+              "type": "u32",
+              "default": 3
+            }
+          ],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "kpyo/5KcqP+SnKj/AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "rgba_sha256": "f813e8ea2ae4b1a70a058a03638c2d0dcb3c7ff6bdb86aa5831976608a599f50",
+          "outputs_sha256": "b8e1838c86d7206aacf057c3821b57b07676bbaef72bb9e95b592e53f403fa77"
+        },
+        {
+          "seed": 1,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 29
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [
+            {
+              "name": "mask",
+              "type": "u32",
+              "default": 3
+            }
+          ],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "kpyo/5KcqP+SnKj/AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "rgba_sha256": "f813e8ea2ae4b1a70a058a03638c2d0dcb3c7ff6bdb86aa5831976608a599f50",
+          "outputs_sha256": "de048c953f428964b4a0eb72302abc0ea663b5c3f30e0bb6864856c243acfd3f"
+        },
+        {
+          "seed": 7,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 29
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [
+            {
+              "name": "mask",
+              "type": "u32",
+              "default": 3
+            }
+          ],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1088421888,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "kpyo/5KcqP+SnKj/AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "rgba_sha256": "f813e8ea2ae4b1a70a058a03638c2d0dcb3c7ff6bdb86aa5831976608a599f50",
+          "outputs_sha256": "f820390d4a2503defd143b9adf3372f0116e86ea59cc067059372cf88374a73a"
+        },
+        {
+          "seed": 26,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 29
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [
+            {
+              "name": "mask",
+              "type": "u32",
+              "default": 3
+            }
+          ],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1104150528,
+                  "y": 0
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "kpyo/5KcqP+SnKj/AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "rgba_sha256": "f813e8ea2ae4b1a70a058a03638c2d0dcb3c7ff6bdb86aa5831976608a599f50",
+          "outputs_sha256": "4377c80acbe3698a8f2c2713bc5b919a8b1a22061a29e1e072d8b7e882067614"
+        },
+        {
+          "seed": 4294967295,
+          "variant": 0,
+          "archetype": 0,
+          "size": {
+            "x": 4,
+            "y": 2
+          },
+          "fuel": {
+            "budget": 2000000,
+            "spent": 29
+          },
+          "variants": 1,
+          "archetypes": 1,
+          "inputs": [
+            {
+              "name": "mask",
+              "type": "u32",
+              "default": 3
+            }
+          ],
+          "outputs": [
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1199570688,
+                  "y": 1199570688
+                }
+              ]
+            }
+          ],
+          "rgba_base64": "kpyo/5KcqP+SnKj/AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+          "rgba_sha256": "f813e8ea2ae4b1a70a058a03638c2d0dcb3c7ff6bdb86aa5831976608a599f50",
+          "outputs_sha256": "18a0586ea547c1243c862b8cf0053d6edc13c6267af8906ee662e952b62d1c2b"
+        }
+      ],
+      "source_text": "asset t{size 4x2 input i32 mask=3 output point state clip(x:i32)->i32{return x}draw{count=clip(mask)rect(0,0,count,1,#929ca8)state={seed&65535,seed>>16}}}"
+    }
+  ]
+}

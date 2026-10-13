@@ -107,7 +107,7 @@ diagnostic; rename that alias when migrating its source.
 
 ## Resources and compatibility
 
-At most 32 layer scopes may be active across the complete helper/part call
+At most 32 layer and clip scopes combined may be active across the complete helper/part call
 stack. Each capture reserves `128 + 4 * width * height` bytes from the shared
 64 MiB generation arena. Copies and mapping views charge no second buffer.
 Root canvas allocation retains its existing limits. Extra part canvases use the
@@ -122,5 +122,108 @@ fuel cost. Resources release at the end of generation or on a trap, and a failed
 generation never publishes a partial image. Default fuel remains 2,000,000.
 
 Layers require format 0.6 and use its type descriptor table. They do not add
-public C input/output enums or host layouts. Surface exports, masks and clipping
-are later stages; current host outputs remain points, rectangles and circles.
+public C input/output enums or host layouts. Surface exports are a later stage;
+current host outputs remain points, rectangles and circles.
+
+## Masks from captured alpha
+
+<!-- builtin: mask.from -->
+
+Returns an immutable `mask` view of a layer's alpha, including partial coverage.
+It shares the RGBA8 buffer and mapping without scanning pixels or drawing again.
+Use opaque geometry in a layer when the mask should represent shape alone;
+legacy partial draws on an empty layer keep zero alpha. A mask can be copied,
+passed to a helper or returned. `mask name = expression` is a typed copy.
+Unassigned masks trap. Masks cannot be const, host inputs, geometry outputs or
+list/sampler elements, and have no arithmetic, comparisons or pixel reads.
+`mask` and `clip` are reserved in every name position.
+
+## Coverage algebra
+
+<!-- builtin: mask.union -->
+
+Takes the maximum of the two coverages at each pixel.
+
+<!-- builtin: mask.intersect -->
+
+Takes the minimum of the two coverages at each pixel.
+
+<!-- builtin: mask.subtract -->
+
+Uses `min(a, 255 - b)`, including partial alpha; this is not arithmetic subtraction.
+
+<!-- builtin: mask.invert -->
+
+Uses `255 - a` inside the input's rectangle and zero outside that rectangle.
+
+Two-mask operations allocate the bounding rectangle of both input surfaces,
+at the active target's raster scale. Inputs keep their buffers and coverage.
+Masks are interpreted in the current asset's coordinates; exact D4 and existing
+part raster scales are supported, with no arbitrary resampling. Reads outside
+an input rectangle are zero. Nonfinite scales or unrepresentable bounds trap.
+The result stores one A8 byte per pixel, without a duplicate RGBA image.
+
+<!-- example: ../../examples/language/mask-algebra.ips -->
+
+## Disk morphology and offsets
+
+<!-- builtin: mask.expand -->
+
+Takes the maximum coverage in the disk `dx*dx + dy*dy <= radius*radius`.
+The result includes a border of `radius` pixels outside the original rectangle,
+so an outline can extend beyond it.
+
+<!-- builtin: mask.shrink -->
+
+Takes the minimum in the same disk, including zero outside the surface.
+Its rectangle remains the input rectangle. Radius is `i32` in **0–64**, measured
+in target pixels; radius zero preserves coverage. Constant bad radii reject at
+compilation; dynamic bad radii trap before scanning.
+
+<!-- builtin: mask.offset -->
+
+Moves the mapping by `dx`, `dy` integer target pixels without copying the buffer.
+Offsets may move the whole mask off-canvas. Algebra and morphology retain those
+outside pixels, while painting only writes within the target.
+
+<!-- example: ../../examples/language/masked-badge.ips -->
+
+## Clip scopes and painting masks
+
+`clip(region) { ... }` evaluates its mask once and limits writes on the current
+target. Helpers and layers inherit the active clips. A part starts its own
+canvas without the parent's clips; the parent applies them once at the blit.
+The child's own clips can independently limit its image. Geometric outputs
+remain complete even when the image is clipped.
+
+Combine clip coverage from outer to inner, starting at 255, using
+`(a*b + 127)/255` at each step. Scale primitive/paint source alpha by the combined
+coverage with the same rounding, then use the active legacy/source-over kernel.
+Zero coverage skips the write entirely, preserving hidden RGB in both modes.
+`surface.paint(region, color=...)` first scales color alpha by mask coverage,
+then applies combined clip coverage. A mask requires a color; omitted blend
+inherits the destination mode. Image, color and static blend are evaluated in
+signature order, regardless of named argument order, without implicit RNG.
+
+Weather runs its usual algorithm; each proposed write interpolates the old and
+proposed RGBA channels by combined clip coverage, rounding nearest with halves
+up. Coverage zero preserves the old pixel, and weather still preserves alpha.
+Normal scope exit, return, break and continue restore target, mode and clips in
+reverse entry order. A trap releases generation resources and publishes no image.
+
+An A8 result reserves `128 + width*height` bytes. Its instruction costs one fuel,
+plus one per zeroed pixel and one per algebra output pixel, or one per logical
+disk sample for morphology. This counts all disk samples even when an optimized
+scan stops early. Radius 1 has five samples; radius 64 has 12,853. `mask.from`
+and `offset` cost one without scanning; paint visits each source rectangle pixel.
+Every in-target attempted write charges one per active clip level, including
+zero coverage. Fuel is reserved before allocation or scanning. Shared views do
+not charge the full buffer again.
+
+<!-- example: ../../examples/language/errors/mask-radius.ips -->
+<!-- example: ../../examples/language/errors/clip-type.ips -->
+<!-- example: ../../examples/language/errors/reserved-mask.ips -->
+<!-- example: ../../examples/language/errors/reserved-clip.ips -->
+<!-- example: ../../examples/language/traps/mask-unset.ips -->
+<!-- example: ../../examples/language/traps/mask-radius.ips -->
+<!-- example: ../../examples/language/traps/mask-fuel.ips -->

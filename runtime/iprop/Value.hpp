@@ -35,7 +35,7 @@ struct PointDistributionBuilder {
     std::shared_ptr<PointDistributionBuilderData> data;
 };
 using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
-                           PointDistributionBuilder, LayerValue>;
+                           PointDistributionBuilder, LayerValue, MaskValue>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
 struct SamplerData {

@@ -22,7 +22,7 @@ namespace iprop::detail {
 // Sentinel: no part called yet / a slot owned by the root asset.
 inline constexpr u16 kNoPartIndex = 0xFFFFu;
 
-// Runtime label: kind 0 = block, 1 = loop, 2 = if, 3 = layer. stackHeight is
+// Runtime label: kind 0 = block, 1 = loop, 2 = if, 3 = layer, 4 = clip. stackHeight is
 // the operand stack height at entry; branches restore it (WASM semantics).
 struct Label {
     u8 kind = 0;
@@ -88,6 +88,8 @@ struct LayerScope {
     std::size_t labelDepth = 0;
     u16 local = 0;
     RenderTarget savedTarget;
+    bool isClip = false;
+    std::size_t savedClipDepth = 0;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
@@ -138,6 +140,7 @@ struct Execution {
     ListValue popList();
     SamplerValue popSampler();
     LayerValue popLayer();
+    MaskValue popMask();
     void allocateResource(u64 bytes);
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
@@ -148,6 +151,8 @@ struct Execution {
     void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
     void beginLayer(u16 local, u8 mode);
+    void beginClip();
+    // Unwind layer and clip scopes together, in reverse entry order.
     void closeLayers(std::size_t labelDepth);
 
     // Precomputes the matching else/end indices of a function's control flow.
@@ -161,6 +166,8 @@ void compositePixel(Execution& ex, i32 x, i32 y, const Color& src,
     CompositionMode mode = CompositionMode::Inherited);
 void paintSurface(Execution& ex, const LayerValue& image,
     CompositionMode mode = CompositionMode::Inherited);
+u8 clipCoverage(Execution& ex, i32 x, i32 y);
+void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed);
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).
@@ -181,6 +188,7 @@ bool stepCollections(Execution& ex, Instruction ins);
 bool stepSamplers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
+bool stepMasks(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 
 // Compile-time evaluation of one stateless value operation. Uses the same

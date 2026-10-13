@@ -50,6 +50,7 @@ add_executable(iprop_tests
     compiler/density_test.cpp
     compiler/surfaces_test.cpp
     compiler/source_over_test.cpp
+    compiler/masks_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
@@ -156,6 +157,8 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
     add_test(NAME frozen_math_compatibility COMMAND ${Python3_EXECUTABLE}

@@ -12,6 +12,7 @@
 | `list<T>` | zero to 256 immutable values of a current element type | yes |
 | `sampler<T>` | captured value/range for explicit picks; T is i32, f32, color or vec2 | yes |
 | `layer` | immutable [captured RGBA8 surface](surfaces.md) | yes; no host input, const or collection |
+| `mask` | immutable [coverage view or A8 result](surfaces.md#masks-from-captured-alpha) | yes; same surface restrictions |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 

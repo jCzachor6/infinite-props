@@ -8,7 +8,7 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–9 of product **0.7.0** / source language **0.7**
+This checkout implements stages 1–10 of product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
 typed immutable asset constants, lists, weighted/density distributions and captured samplers visible in draw
 and helpers, with explicit single picks, immutable batches, sampling palettes and
@@ -17,7 +17,9 @@ explicit straight RGBA8 source-over and inherited target modes. Newly introduced
 keywords are reserved; see the source migration notes.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
-writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
+writes the oldest required format, from 0.4 to 0.6. Masks reuse captured alpha,
+support coverage algebra and disk morphology, and clip primitive, paint and
+weather writes. Surface exports and final release gates are pending.
 
 Start with the [language handbook](docs/language/index.md), the
 [C API integration guide](backends/capi/README.md) or the
@@ -82,7 +84,7 @@ language handbook defines the supported source syntax.
 The format is a contract, not an implementation detail. All interpreters MUST
 implement its frozen semantics; the reference interpreter and conformance
 suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
-[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–9.
+[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–10.
 
 ### 5.1 Header
 
@@ -606,7 +608,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–9; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–10; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -661,9 +663,9 @@ showcase. Additional, unimplemented example ideas include:
   biomes with their own palettes.
 
 Future work includes general affine part transforms with pinned resampling,
-masks and multiple rendering passes, full colour arithmetic, `switch`, and
+surface exports and more rendering workflows, full colour arithmetic, `switch`, and
 Bevy/Unity integrations. Whole-canvas generators such as diamond-square and
-cellular automata depend on the future buffer/mask work. L-systems and a
+cellular automata need additional buffer operations. L-systems and a
 dedicated noise-graph DSL remain outside the language scope; user functions,
 `warp` and curve builtins cover functional noise composition.
 
@@ -744,3 +746,7 @@ limits, frozen compatibility and native/WASM/backend checks.
 The [alpha and keyword validation report](docs/validation-v0.7-stage9.md) covers
 straight RGBA8 source-over, inherited target modes, reserved keyword migration
 and independent pixel/part compatibility references.
+
+The [mask and clipping validation report](docs/validation-v0.7-stage10.md) covers
+shared alpha views, coverage algebra, disk morphology, clip scope cleanup,
+part/host behavior and independent native/WASM coverage references.

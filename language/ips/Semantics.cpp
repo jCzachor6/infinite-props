@@ -115,6 +115,8 @@ private:
         } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
             markInvalidLocal(capture->name);
             for (const auto& child : capture->body) markInvalidBindings(child);
+        } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+            for (const auto& child : clip->body) markInvalidBindings(child);
         }
     }
 
@@ -337,6 +339,14 @@ private:
             if (existing != typer_.locals().end() && existing->second != ValueType::Layer)
                 error(capture->location, "layer result '" + capture->name + "' conflicts with a local of type " + typeName(existing->second));
             typer_.declareLocal(capture->name, ValueType::Layer);
+        } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+            const auto type = typer_.typeOf(*clip->mask);
+            if (type != ValueType::Mask)
+                error(locationOf(*clip->mask), "clip requires mask, got " + std::string(typeName(type)));
+            for (const auto& child : clip->body) {
+                if (atLimit()) break;
+                checkRecoveringStmt(child);
+            }
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             checkReturn(*ret);
         } else if (const auto* brk = std::get_if<BreakStmt>(&stmt)) {

@@ -5,7 +5,7 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements stages 1–9 of source language **0.7**, in development
+This checkout implements stages 1–10 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler emits the oldest required format, from 0.4 to 0.6;
@@ -18,7 +18,9 @@ piecewise linear shapes with clipped integration and a stable inverse. Const sam
 the same explicit picks. Captured layers share the rendering mechanism of parts
 and preserve immutable images for later painting. Explicit source-over alpha
 uses exact straight RGBA8 rounding; helper and part rendering inherit the active
-target mode. Newly introduced keywords are reserved.
+target mode. Masks share captured alpha or store A8 algebra/morphology results;
+clip scopes limit primitive, paint and weather writes. A parent's clip applies
+once to a part blit. Newly introduced keywords are reserved.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected
@@ -43,7 +45,7 @@ files; their contents are included in the generated book and tested by CI.
 13. [Immutable lists](collections.md)
 14. [Captured samplers](samplers.md)
 15. [Imports and part composition](composition.md)
-16. [Captured layers](surfaces.md)
+16. [Captured layers, masks and clipping](surfaces.md)
 17. [Writing idiomatic props](idioms.md)
 18. [Compiler tools and diagnostics](tooling.md)
 19. [Grammar](grammar.md)

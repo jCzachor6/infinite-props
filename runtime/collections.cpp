@@ -70,6 +70,7 @@ void writeSamplerData(Writer& writer, const SamplerData& sampler, std::span<cons
 }
 
 TypeDescriptor valueType(const Value& value) {
+    if (std::holds_alternative<MaskValue>(value)) return TypeDescriptor::Mask;
     if (std::holds_alternative<LayerValue>(value)) return TypeDescriptor::Layer;
     if (std::holds_alternative<PointDistributionBuilder>(value)) return TypeDescriptor::PointBuilder;
     if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;

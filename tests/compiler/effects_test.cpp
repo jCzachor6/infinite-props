@@ -131,7 +131,17 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
     for (const auto& [name,spec] : ips::builtinSpecs()) for (const auto& overload : spec.overloads) {
         if ((ips::builtinEffects(spec, &overload).checks & static_cast<u8>(EffectCheck::NumericRange)) == 0) continue;
         INFO(name << " arity " << overload.params.size());
-        const auto program = ips::parse("asset t {size 8x8 draw{" + name + "(" + arguments(overload,true) + ");}}");
+        std::string setup, args=arguments(overload,true);
+        if (name.starts_with("mask.")) {
+            setup="layer image{}region=mask.from(image) ";
+            if (name=="mask.expand" || name=="mask.shrink") args="region,v+65";
+            else if (name=="mask.offset") args="region,2147483647,0";
+            else {
+                setup+="left=mask.offset(region,(-2147483647-1),0)right=mask.offset(region,2147483640,0) ";
+                args="left,right";
+            }
+        }
+        const auto program = ips::parse("asset t {size 8x8 draw{" + setup + name + "(" + args + ");}}");
         for (const bool optimize : {false,true})
             expectTrap(compileProgram(program, {}, optimize), ErrorReason::NumericRange);
     }

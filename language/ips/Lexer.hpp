@@ -43,6 +43,8 @@ enum class TokenKind {
     KeywordWeighted,
     KeywordDensity,
     KeywordLayer,
+    KeywordMask,
+    KeywordClip,
 
     // Type names.
     TypeColor,

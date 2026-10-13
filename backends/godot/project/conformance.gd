@@ -611,6 +611,37 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL source-over pixel ",x,",",y)
 
+	# Coverage/min/complement pins, including legacy clip alpha preservation.
+	var masked := IpropAsset.new()
+	if masked.load_file(args[0] + "/mask-algebra.iprop") != OK:
+		failures += 1
+		printerr("FAIL mask load")
+	else:
+		var mask_image := masked.generate(26, 0, 0)
+		if mask_image == null or mask_image.get_size() != Vector2i(8,4):
+			failures += 1
+			printerr("FAIL mask image metadata")
+		else:
+			var expected_mask := [["stream",PackedInt32Array([0x41d00000,0])],
+				["extent",PackedInt32Array([0,0,0x40a00000,0x40800000])]]
+			for expected in expected_mask:
+				var slot: Dictionary = masked.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != expected[1].size()*4:
+					failures += 1
+					printerr("FAIL mask output metadata")
+				else:
+					for i in range(expected[1].size()):
+						if value_bits.decode_u32(i*4) != expected[1][i]:
+							failures += 1
+							printerr("FAIL mask output bits")
+			for y in range(4):
+				for x in range(8):
+					var color := Color8(166,178,163,128) if x < 2 else Color8(94,172,223,127) if x == 2 else Color8(94,172,223) if x < 5 else Color8(239,186,104)
+					if mask_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL mask pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

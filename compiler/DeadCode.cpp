@@ -54,7 +54,8 @@ std::vector<std::vector<std::size_t>> successors(const std::vector<Instruction>&
     std::vector<std::size_t> ends(n, n), alternatives(n, n), targets(n, n), stack;
     for (std::size_t i = 0; i < n; ++i) {
         switch (code[i].opcode) {
-        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: stack.push_back(i); break;
+        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: case Opcode::ClipBegin:
+            stack.push_back(i); break;
         case Opcode::Else: alternatives[stack.back()] = i; targets[i] = stack.back(); break;
         case Opcode::End: ends[stack.back()] = i; stack.pop_back(); break;
         case Opcode::Br: case Opcode::BrIf: targets[i] = stack.at(stack.size() - 1 - code[i].operand); break;

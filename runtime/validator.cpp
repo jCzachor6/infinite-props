@@ -91,6 +91,9 @@ public:
             }
             if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
                 fail(i, "unknown layer alpha mode");
+            if (ins.opcode >= Opcode::MaskFrom && ins.opcode <= Opcode::ClipBegin &&
+                spec->operand == OperandKind::None && ins.operand != 0)
+                fail(i, "mask/clip operand must be zero");
             if (file_.layout.header.versionMinor < spec->minimumMinor) {
                 fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
                         std::to_string(spec->minimumMinor));
@@ -199,16 +202,47 @@ private:
         switch (ins.opcode) {
 
         case Opcode::LayerBegin:
-            if (op < fn_.params.size() || op >= localCount() || localType(op) != ValueType::Layer)
+        case Opcode::ClipBegin:
+            if (ins.opcode == Opcode::ClipBegin) expect(at, ValueType::Mask, "clip mask");
+            else if (op < fn_.params.size() || op >= localCount() || localType(op) != ValueType::Layer)
                 fail(at, "layer destination must be a layer local");
             if (static_cast<std::size_t>(std::count_if(labels_.begin(), labels_.end(), [](const auto& label) {
-                return label.kind == Opcode::LayerBegin;
+                return label.kind == Opcode::LayerBegin || label.kind == Opcode::ClipBegin;
             })) >= kMaxSurfaceScopes) fail(at, "surface scope depth exceeds 32");
             labels_.push_back({ins.opcode, stack_, reachable_});
             return;
         case Opcode::SurfacePaint:
             if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
             expect(at, ValueType::Layer, "surface.paint image");
+            return;
+        case Opcode::SurfacePaintMask:
+            if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
+            expect(at, ValueType::Color, "surface.paint mask color");
+            expect(at, ValueType::Mask, "surface.paint mask");
+            return;
+        case Opcode::MaskFrom:
+            expect(at, ValueType::Layer, "mask.from image");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
+            expect(at, ValueType::Mask, "mask right operand");
+            expect(at, ValueType::Mask, "mask left operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskInvert:
+            expect(at, ValueType::Mask, "mask.invert operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskExpand: case Opcode::MaskShrink:
+            expect(at, ValueType::I32, "mask radius");
+            expect(at, ValueType::Mask, "mask morphology operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskOffset:
+            expect(at, ValueType::I32, "mask offset dy");
+            expect(at, ValueType::I32, "mask offset dx");
+            expect(at, ValueType::Mask, "mask.offset operand");
+            push(at, ValueType::Mask);
             return;
 
         case Opcode::Block:

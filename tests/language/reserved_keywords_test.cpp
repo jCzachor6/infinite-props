@@ -9,7 +9,7 @@
 using namespace iprop;
 
 TEST_CASE("new keywords are reserved in every name position", "[keywords]") {
-    for (const std::string word : {"const", "to", "with", "distribution", "sampler", "weighted", "density", "layer"}) {
+    for (const std::string word : {"const", "to", "with", "distribution", "sampler", "weighted", "density", "layer", "mask", "clip"}) {
         INFO(word);
         const auto tokens = ips::lex(word + " " + word + "Count");
         CHECK(tokens[0].kind != ips::TokenKind::Identifier);

@@ -261,6 +261,16 @@ enum class Opcode : u8 {
     DistributionEnd = 0xC5,
     LayerBegin = 0xC6,
     SurfacePaint = 0xC7,
+    MaskFrom = 0xC8,
+    MaskUnion = 0xC9,
+    MaskIntersect = 0xCA,
+    MaskSubtract = 0xCB,
+    MaskInvert = 0xCC,
+    MaskExpand = 0xCD,
+    MaskShrink = 0xCE,
+    MaskOffset = 0xCF,
+    SurfacePaintMask = 0xD0,
+    ClipBegin = 0xD1,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

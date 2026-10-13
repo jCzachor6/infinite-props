@@ -1,11 +1,11 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–9 (2026-10-13).
-**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets, captured layers and source-over alpha. This document
+**Status:** Development contract for product 0.7.0, stages 1–10 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets, captured layers, source-over alpha, coverage masks, clipping and disk morphology. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; masks, clipping and resource
+extend this development format; resource
 exports are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
@@ -603,8 +603,8 @@ captures write RGBA8 buffers through the same RenderTarget/Surface mechanism.
 A buffer stores width, height, raster scale and row-major straight RGBA8.
 An immutable view retains its buffer and adds D4 and integer pixel placement;
 creating/copying the view neither copies nor scans pixels. Closed captures
-expose no writable buffer through a language value. Masks/A8 views and part
-resource exports are added in later stages, not through geometry output slots.
+expose no writable buffer through a language value. Mask coverage is specified
+in section 16. Part resource exports remain a later stage and do not use geometry output slots.
 
 A capture starts transparent, with its parent's geometry/scale, and executes
 its block once using the current frame's RNG. Part calls retain their own
@@ -650,7 +650,7 @@ the frozen PartRenderPlan rounding/scale rules; no second transform or
 resampling is applied. Outputs written during capture publish once and retain
 existing owner/caller/root coordinate rules.
 
-At most 32 captures may be active across all frames; static nesting above 32
+At most 32 layer/clip scopes combined may be active across all frames; static nesting above 32
 also rejects. The shared 64 MiB generation arena charges a capture once as
 `128 + 4 * width * height`. Handle copies and D4/placement views cost no second
 buffer. Generation retains captured buffers until success or trap cleanup.
@@ -714,3 +714,128 @@ The source keywords `const`, `to`, `with`, `distribution`, `sampler`, `weighted`
 an intentional source migration: reject at the token with a parser diagnostic,
 exit code 1 and no artifact. Already compiled files with those names remain
 executable; no binary string/name table restrictions are added.
+
+## 16. Coverage masks, clip scopes and disk morphology
+
+`mask` is an immutable coverage handle sharing the surface geometry, raster
+scale and mapping. `mask.from(layer)` views the layer's stored alpha without
+allocation, scanning, geometry replay or RNG. Computed masks store row-major
+A8 in the same buffer abstraction, without RGBA pixel storage. Handle copies,
+helper arguments/results and offset/D4 views share storage. Source `mask` and
+`clip` are reserved, with the same explicit source-migration diagnostic and
+binary compatibility policy as section 15. There is no `mask name { ... }` block.
+
+The mask descriptor is `u8 kind=13, u8 element=8 (Void), u16 reserved=0`, referenced
+by `0x80, u16 descriptor_index`. Masks are storable, passable and returnable,
+but cannot be host inputs, geometry outputs, const, list/sampler elements,
+numeric/comparison operands or pixel-readable values. An unassigned mask traps
+with `mask is unassigned`. Existing descriptors and host enums/layouts stay frozen.
+
+### 16.1. Pixel space and coverage operations
+
+All mask values operate in the current asset's rasterized pixel space. Their
+integer placement and exact D4 map pixel indices once. The mapped raster scale
+must match the active target's scale; existing part canvases already rasterize
+at the appropriate scale, so no resampling is needed. Nonfinite/nonpositive
+scales, mismatched raster scales, invalid storage and bounds outside i32 pixel
+coordinates trap. Width/height must be positive and representable as i32;
+the last occupied pixel, rather than the exclusive right/bottom edge, must
+fit i32. Reads outside an input rectangle give zero.
+
+| Operation | Coverage | Result rectangle |
+| --- | --- | --- |
+| mask.union(a,b) | max(a,b) | bounding rectangle of both inputs |
+| mask.intersect(a,b) | min(a,b) | bounding rectangle of both inputs |
+| mask.subtract(a,b) | min(a,255-b) | bounding rectangle of both inputs |
+| mask.invert(a) | 255-a | input rectangle; zero outside it |
+| mask.expand(a,r) | maximum over the integer disk | input plus r pixels on every edge |
+| mask.shrink(a,r) | minimum over the integer disk, including outside zero | input rectangle |
+| mask.offset(a,dx,dy) | unchanged | translated input rectangle |
+
+Binary algebra samples both operands in the active raster grid, without
+clipping its allocated result to the canvas. Invert complements only the
+input rectangle, including its zero-coverage pixels. Morphology radius is
+an i32 in 0–64; include all integer `(dx,dy)` with `dx*dx+dy*dy <= r*r`.
+Radius zero preserves coverage, radius one has five samples, and radius 64
+has 12,853. Offsets are i32 target pixels and change only the mapping. Every
+changing operation leaves the inputs immutable. Constant bad radii, including
+asset-constant expressions, reject with `IPS-TYPE-001`, exit 1 and no artifact;
+dynamic bad radii trap with `mask radius must be in 0..64` before scanning.
+
+### 16.2. Clip inheritance and pixel writes
+
+`clip(mask) { ... }` evaluates its operand once, installs another coverage
+level and consumes no implicit RNG. Helpers inherit clips. A new layer has
+the parent's geometry and inherits clips; scope cleanup restores its saved
+target, mode and clips. A part starts its own canvas with no parent clips.
+Only its return blit receives the restored parent's clip, exactly once.
+Clips created inside the part independently constrain its stored image.
+Geometric outputs are never clipped. Resource exports remain stage 11.
+
+At each in-target attempted write, start clip coverage at 255 and multiply
+outer to inner using `mul(a,b)=(u32(a)*b+127)/255`. After combining all levels,
+scale the primitive/layer source alpha with the same `mul`. Use the existing
+effective legacy/source-over kernel and store RGBA8 after that write. Coverage
+zero skips the write entirely, including hidden RGB canonicalization.
+
+`surface.paint(mask,color[,blend])` requires color. It evaluates image then
+color then the static mode, independent of named-argument spelling. First
+scale the color's alpha by mask coverage, then by combined clip coverage.
+Zero mask coverage skips that source pixel before any attempted target write;
+nonzero coverage with rounded source alpha zero still uses the compositor.
+Mode omission and one-operation overrides follow section 15. Mask painting
+visits its full source rectangle, while only in-target pixels can write.
+
+Weather retains its algorithm and seeded hash computations. For each proposed
+write, interpolate each old/proposed RGBA channel by combined coverage:
+`(old*(255-coverage)+proposed*coverage+127)/255`. Coverage zero retains the
+old pixel; skipped transparent/protected/hash-ineligible pixels are not write
+attempts. Existing weather alpha preservation and stream behavior remain exact.
+
+Layer/clip scopes share one ordered stack. End, return, break and continue
+unwind only exited scopes in reverse entry order, retaining the partial image
+for every closed capture. A callee's return leaves caller scopes installed.
+Traps clear the entire generation and cannot publish a valid partial image.
+At most 32 combined scopes can be active across the helper/part call stack.
+
+### 16.3. Wire instructions and accounting
+
+All instructions below require inner format 0.6, including unreachable code.
+Their aux/operand are zero except the mask paint mode operand. They have no
+implicit RNG, outputs or changes to old instruction numbers.
+
+| Op | Mnemonic | Stack / control |
+| --- | --- | --- |
+| 0xC8 | mask.from | `[layer] -> [mask]` |
+| 0xC9 | mask.union | `[mask,mask] -> [mask]` |
+| 0xCA | mask.intersect | `[mask,mask] -> [mask]` |
+| 0xCB | mask.subtract | `[mask,mask] -> [mask]` |
+| 0xCC | mask.invert | `[mask] -> [mask]` |
+| 0xCD | mask.expand | `[mask,i32] -> [mask]` |
+| 0xCE | mask.shrink | `[mask,i32] -> [mask]` |
+| 0xCF | mask.offset | `[mask,i32,i32] -> [mask]` |
+| 0xD0 | surface.paint.mask mode | `[mask,color] -> []`; mode 0/1/2 as section 15 |
+| 0xD1 | clip.begin | pops mask, pushes a result-free clip label closed by existing end |
+
+Validation checks stack types, combined lexical scope depth, unused operands,
+descriptor shape, version and balanced labels even in dead code. Runtime adds
+unassigned-handle, mapping, dynamic radius and combined call-depth checks.
+IPA/IPDIS share these mnemonics and the `mask` type spelling. Compression,
+debug/strip, type compaction and oldest-format selection retain their rules.
+
+An A8 result charges `128 + width*height` bytes to the existing 64 MiB generation
+arena. Its fixed metadata/buffer accounting is identical on native and WASM.
+Sharing a buffer does not charge it again. Instructions cost one fuel, plus:
+
+- A8 zeroing: one per allocated pixel.
+- Algebra/invert: one per result pixel.
+- Morphology: one per logical disk sample at each result pixel, including
+  outside-zero samples and samples skipped by early termination.
+- Mask paint: one per visited source-rectangle pixel.
+- An attempted in-target write: one per active clip level, even if coverage
+  becomes zero; no surcharge when no clips are active.
+
+View construction and offset have no per-pixel cost. Reserve zeroing and all
+logical scan work before allocation/scanning, with checked u64 counts. Existing
+part/capture costs and the 2,000,000 default fuel stay unchanged. Resources
+release at generation completion/trap; a failed run does not return an image.

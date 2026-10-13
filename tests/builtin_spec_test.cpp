@@ -8,6 +8,7 @@
 #include "ips/Semantics.hpp"
 
 #include <set>
+#include <algorithm>
 
 using namespace iprop;
 
@@ -27,7 +28,8 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
         for (const auto& overload : spec.overloads) {
             INFO(name << " arity " << overload.params.size());
             const auto effects = ips::builtinEffects(spec, &overload);
-            const auto signature = ips::builtinCallSignature(spec, overload.params.size(), {1,1}, name);
+            const ips::BuiltinSpec concrete{spec.lowering,{overload}};
+            const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             CHECK(signature.effects == effects);
             CHECK_FALSE(effects.conservative);
             if (overload.result == T::Void)
@@ -38,7 +40,10 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 CHECK(effects == opcode->effects);
                 if (!opcode->stack) {
                     REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon ||
-                             spec.lowering == ips::BuiltinLowering::SurfacePaint));
+                             spec.lowering == ips::BuiltinLowering::SurfacePaint ||
+                             (overload.result.isResource() && std::any_of(overload.params.begin(),overload.params.end(),
+                                [](const auto& parameter){return parameter.type.isResource();}))));
+                    CHECK((effects.checks & static_cast<u16>(EffectCheck::UnassignedHandle)) != 0);
                 } else {
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)
@@ -59,7 +64,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Layer ? "image" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
+                const std::string value = type == T::Layer ? "image" : type == T::Mask ? "region" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
                     type.isList() ? (type.item().isSampler() ?
                     (type.item().item() == T::Color ? "[sampler(#abc)]" : type.item().item() == T::Vec2 ? "[sampler({1,1})]" :
                      type.item().item() == T::F32 ? "[sampler(1.0)]" : "[sampler(1)]") : type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
@@ -69,7 +74,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 args += value;
                 named = param.name + "=" + value + (named.empty() ? "" : "," + named);
             }
-            const std::string capture = spec.lowering == ips::BuiltinLowering::SurfacePaint ? "layer image{} " : "";
+            const bool layer = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type.isResource();});
+            const bool mask = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Mask;});
+            const std::string capture = layer ? "layer image{} " + std::string(mask ? "region=mask.from(image) " : "") : "";
             const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));

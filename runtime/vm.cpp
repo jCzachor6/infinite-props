@@ -21,6 +21,7 @@ Value zeroValue(ValueType type) {
     case ValueType::List: return Value(ListValue{type, {}});
     case ValueType::Sampler: return Value(SamplerValue{type, {}});
     case ValueType::Layer: return Value(LayerValue{});
+    case ValueType::Mask: return Value(MaskValue{});
     default: break;
     }
     return Value(i32{0});
@@ -38,6 +39,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepSamplers(ex, ins)) return true;
     if (stepPointDistributions(ex, ins)) return true;
     if (stepSurfaces(ex, ins)) return true;
+    if (stepMasks(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }
@@ -292,6 +294,7 @@ void Execution::ensureControl(u16 functionIndex) {
         switch (ins.opcode) {
         case Opcode::Block:
         case Opcode::LayerBegin:
+        case Opcode::ClipBegin:
         case Opcode::Loop:
         case Opcode::If:
             open.push_back(i);

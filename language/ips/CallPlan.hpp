@@ -28,6 +28,7 @@ using CallPlans = std::unordered_map<const Call*, BoundCallPlan>;
 
 CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function);
+CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType);
 CallSignature helperCallSignature(std::span<const std::string> names);
 CallSignature rampCallSignature();
 CallSignature partCallSignature(std::span<const PartInput> inputs);

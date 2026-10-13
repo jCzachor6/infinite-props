@@ -131,7 +131,7 @@ function run(iprop, toolsDir) {
     let constantOverloads = 0;
     let collectionEvidence = {};
     let samplerEvidence = {};
-    let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {};
+    let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {};
     const failures = [];
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
@@ -457,12 +457,13 @@ function run(iprop, toolsDir) {
         densityEvidence = require("./density-conformance.js").run(iprop, tool, temporary);
         surfaceEvidence = require("./surface-conformance.js").run(iprop, tool, temporary);
         sourceOverEvidence = require("./source-over-conformance.js").run(iprop, tool, temporary);
+        maskEvidence = require("./mask-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
         colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence,
-        samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence };
+        samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

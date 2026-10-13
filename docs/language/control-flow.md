@@ -25,6 +25,11 @@ return precedes another statement; before `}` a bare `return` is sufficient.
 A value-returning helper must return on every reachable path, as required
 by the bytecode validator.
 
+When these statements leave a `layer` or `clip` block, exited scopes close in
+reverse entry order. Layers retain their partial image; target, mode and clip
+coverage are restored before the caller or loop resumes. Caller scopes remain
+active during helper returns. See [surface scopes](surfaces.md#clip-scopes-and-painting-masks).
+
 <!-- example: ../../examples/language/control-flow.ips -->
 
 <!-- example: ../../examples/language/errors/float-condition.ips -->

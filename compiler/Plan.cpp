@@ -489,6 +489,9 @@ void Planner::prepareFunctionBody(const std::string& name) {
                     info.locals.push_back(ValueType::Layer);
                 }
                 typer_->declareLocal(capture->name, ips::ValueType::Layer);
+            } else if (const auto* clip = std::get_if<ips::ClipStmt>(&stmt)) {
+                typer_->typeOf(*clip->mask);
+                self(self, clip->body);
             }
         }
     };

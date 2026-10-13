@@ -91,6 +91,8 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     case TokenKind::KeywordBreak:
     case TokenKind::KeywordContinue:
     case TokenKind::KeywordLayer:
+    case TokenKind::KeywordMask:
+    case TokenKind::KeywordClip:
     case TokenKind::KeywordSampler:
     case TokenKind::TypeDistribution:
         return true;
@@ -447,8 +449,11 @@ ParamType ParserImpl::parseParamType(bool insideList) {
     case TokenKind::KeywordLayer:
         advance();
         return ParamType::Layer;
+    case TokenKind::KeywordMask:
+        advance();
+        return ParamType::Mask;
     default:
-        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T> or layer)");
+        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, layer or mask)");
     }
 }
 
@@ -484,6 +489,14 @@ Stmt ParserImpl::parseStatement() {
     switch (kind()) {
     case TokenKind::KeywordLayer:
         return parseLayer();
+    case TokenKind::KeywordClip: {
+        const auto at = advance().location;
+        expect(TokenKind::LParen, "'(' after clip");
+        auto mask = parseExpr();
+        expect(TokenKind::RParen, "')' after clip mask");
+        return Stmt{ClipStmt{std::move(mask), parseBlock(), at}};
+    }
+    case TokenKind::KeywordMask:
     case TokenKind::TypeDistribution:
     case TokenKind::KeywordSampler:
         return parseIdentifierStatement();
@@ -510,6 +523,15 @@ Stmt ParserImpl::parseStatement() {
 
 Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
+    if (kind() == TokenKind::KeywordMask) {
+        const auto at = peek().location;
+        if (kind(1) == TokenKind::Dot)
+            return Stmt{ExprStmt{parseExpr(), at}};
+        advance();
+        const auto local = expectName("a local mask name");
+        expect(TokenKind::Assign, "'=' after local mask name");
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Mask}};
+    }
     if (((kind() == TokenKind::KeywordList) ||
          kind() == TokenKind::KeywordSampler) && kind(1) == TokenKind::Less &&
         (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||

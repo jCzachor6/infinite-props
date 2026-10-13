@@ -1,0 +1,9 @@
+asset dynamicRadius {
+    size 1x1
+    input i32 radius = 65
+    draw {
+        layer image {}
+        region = mask.from(image)
+        wide = mask.expand(region, radius)
+    }
+}

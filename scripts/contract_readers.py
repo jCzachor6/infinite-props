@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 LANGUAGE_SCHEMA_VERSION = 3
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
-VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer'}
+VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | SAMPLER_TYPES)}
 VALUE_TYPES |= LIST_TYPES | SAMPLER_TYPES
@@ -143,8 +143,8 @@ def read_language(value):
     require(len(names) == len(set(names)), 'unique builtin names')
     rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'asset_constants', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
     if 'reserved_keywords' in rules:
-        require(rules['reserved_keywords'] == ['asset', 'break', 'const', 'continue', 'density', 'distribution',
-            'else', 'false', 'for', 'from', 'if', 'import', 'in', 'input', 'layer', 'output', 'return',
+        require(rules['reserved_keywords'] == ['asset', 'break', 'clip', 'const', 'continue', 'density', 'distribution',
+            'else', 'false', 'for', 'from', 'if', 'import', 'in', 'input', 'layer', 'mask', 'output', 'return',
             'sampler', 'to', 'true', 'weighted', 'while', 'with'], 'reserved keywords')
     constants = rules['asset_constants']
     _strings_and_bools(constants, {'keyword': {'reserved'}, 'scope': {'asset'},
@@ -166,7 +166,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer'} | LIST_TYPES | SAMPLER_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | SAMPLER_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 2, 'parameterized type descriptors')
@@ -232,8 +232,9 @@ def read_language(value):
             'capture_opcode', 'scope_cleanup', 'maximum_active_scopes', 'generation_data_limit_bytes',
             'capture_bytes', 'capture_fuel', 'paint_fuel', 'unset_handle', 'host_inputs', 'asset_constants',
             'surface_collections', 'minimum_format_minor'], 'surfaces')
-        strings(surface['types'], 'surface types', {'layer'}, True)
-        require(surface['types'] == ['layer'] and 'layer' in types['storable'], 'surface type declaration')
+        strings(surface['types'], 'surface types', {'layer', 'mask'}, True)
+        require(surface['types'] == ['layer', 'mask'] and
+            all(t in types['storable'] for t in surface['types']), 'surface type declaration')
         _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.<mode>)] { <statements> }'},
             'keyword': {'reserved'}, 'capture_target': {'empty_current_geometry_and_scale'},
             'result_binding': {'after_scope_exit'}, 'capture_evaluation': {'once_in_current_stream'},
@@ -260,6 +261,36 @@ def read_language(value):
         paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
         require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
             'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
+    if 'masks' in rules:
+        masks = rules['masks']
+        _strings_and_bools(masks, {
+            'from_syntax': {'mask.from(image)'}, 'clip_syntax': {'clip(mask) { <statements> }'},
+            'keyword': {'reserved'}, 'from_storage': {'shared_rgba8_alpha_view'}, 'result_format': {'A8'},
+            'algebra_bounds': {'union_of_input_rectangles'}, 'raster_scale': {'active_target'},
+            'mapping': {'current_asset_placement_and_exact_D4'}, 'invert_bounds': {'input_rectangle'},
+            'radius_type': {'i32'}, 'morphology_neighborhood': {'dx_squared_plus_dy_squared_le_radius_squared'},
+            'expand_bounds': {'input_rectangle_plus_radius_border'}, 'shrink_outside': {'zero'},
+            'offset': {'i32_target_pixels_mapping_view'},
+            'coverage_rounding': {'multiply_nearest_half_up_outer_to_inner'},
+            'mask_paint_alpha': {'color_times_mask_then_combined_clip'},
+            'helper_clip': {'inherit'}, 'layer_clip': {'inherit'}, 'part_clip': {'parent_applies_to_blit_once'},
+            'weather_clip': {'mix_old_and_proposed_rgba_by_coverage'},
+            'clip_evaluation': {'mask_once_no_rng'}, 'from_opcode': {'mask.from'},
+            'clip_opcode': {'clip.begin'}, 'paint_opcode': {'surface.paint.mask'},
+            'result_bytes': {'128_plus_1_per_pixel'}, 'view_fuel': {'one_no_scan'},
+            'algebra_fuel': {'one_plus_zeroed_pixels_plus_result_pixels'},
+            'morphology_fuel': {'one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
+            'clip_write_fuel': {'one_per_active_level'}},
+            ['zero_coverage_write', 'geometry_outputs_clipped'], 'mask policy')
+        require(not masks['zero_coverage_write'] and not masks['geometry_outputs_clipped'], 'mask write policy')
+        for key, expected in [('outside_coverage', 0), ('minimum_radius', 0), ('maximum_radius', 64),
+                              ('combined_scope_limit', 32), ('minimum_format_minor', 6)]:
+            integer(masks.get(key), 'masks.' + key)
+            require(masks[key] == expected, 'masks.' + key)
+        operators = [b for b in value['builtins'] if b['name'].startswith('mask.')]
+        require(len(operators) == 8 and all(o['result'] == 'mask' and
+            o['effects']['rng'] == 'none' and 'unassigned_handle' in o['effects']['may_trap'] and
+            not o['constant_evaluable'] for b in operators for o in b['overloads']), 'mask operator effects')
     if 'point_distributions' in rules:
         points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
         _strings_and_bools(points, {

@@ -11,6 +11,8 @@ external edits).
 - `.ips` syntax highlighting (a TextMate grammar mirroring the lexer's
   tokens: keywords, type names, colour/number literals, comments, strings,
   operators).
+  Reserved `mask`/`clip`, typed surface handles and all mask namespace operations
+  follow the compiler; mask paint arguments format in image/color/blend order.
 - Diagnostics: a debounced full check through the native `ipc` binary on
   edits, saves and external file changes. JSON diagnostics retain exclusive
   source ranges, stable error codes, severity and related locations, including

@@ -38,9 +38,11 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     const auto& spec = *call.spec;
     if (spec.lowering == ips::BuiltinLowering::SurfacePaint) {
         emitArg(call.arguments[0]);
-        const auto mode = call.arguments.size() == 2 ?
-            ips::surfaceMode(*call.arguments[1].expression)->mode : CompositionMode::Inherited;
-        ins(Opcode::SurfacePaint, 0, static_cast<u16>(mode));
+        const bool mask = call.arguments[0].expected == VT::Mask;
+        if (mask) emitArg(call.arguments[1]);
+        const auto mode = call.arguments.size() == (mask ? 3u : 2u) ?
+            ips::surfaceMode(*call.arguments.back().expression)->mode : CompositionMode::Inherited;
+        ins(mask ? Opcode::SurfacePaintMask : Opcode::SurfacePaint, 0, static_cast<u16>(mode));
         return VT::Void;
     }
     if (spec.lowering == ips::BuiltinLowering::Opcode || spec.lowering == ips::BuiltinLowering::Pick) {

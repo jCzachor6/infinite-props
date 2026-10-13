@@ -106,7 +106,8 @@
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
-                  "layer"
+                  "layer",
+                  "mask"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -137,7 +138,8 @@
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
-                  "layer"
+                  "layer",
+                  "mask"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -168,7 +170,8 @@
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
-                  "layer"
+                  "layer",
+                  "mask"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -1836,7 +1839,8 @@
             "types": {
               "type": "array",
               "const": [
-                "layer"
+                "layer",
+                "mask"
               ],
               "description": "Types.",
               "items": {
@@ -1932,6 +1936,7 @@
           "const": [
             "asset",
             "break",
+            "clip",
             "const",
             "continue",
             "density",
@@ -1945,6 +1950,7 @@
             "in",
             "input",
             "layer",
+            "mask",
             "output",
             "return",
             "sampler",
@@ -1958,6 +1964,231 @@
             "type": "string"
           },
           "description": "Lexically reserved names from the compiler lexer. Newly introduced words have no contextual compatibility aliases."
+        },
+        "masks": {
+          "type": "object",
+          "properties": {
+            "from_syntax": {
+              "type": "string",
+              "const": "mask.from(image)",
+              "description": "From syntax."
+            },
+            "clip_syntax": {
+              "type": "string",
+              "const": "clip(mask) { <statements> }",
+              "description": "Clip syntax."
+            },
+            "keyword": {
+              "type": "string",
+              "const": "reserved",
+              "description": "Keyword."
+            },
+            "from_storage": {
+              "type": "string",
+              "const": "shared_rgba8_alpha_view",
+              "description": "From storage."
+            },
+            "result_format": {
+              "type": "string",
+              "const": "A8",
+              "description": "Result format."
+            },
+            "algebra_bounds": {
+              "type": "string",
+              "const": "union_of_input_rectangles",
+              "description": "Algebra bounds."
+            },
+            "raster_scale": {
+              "type": "string",
+              "const": "active_target",
+              "description": "Raster scale."
+            },
+            "mapping": {
+              "type": "string",
+              "const": "current_asset_placement_and_exact_D4",
+              "description": "Mapping."
+            },
+            "invert_bounds": {
+              "type": "string",
+              "const": "input_rectangle",
+              "description": "Invert bounds."
+            },
+            "radius_type": {
+              "type": "string",
+              "const": "i32",
+              "description": "Radius type."
+            },
+            "morphology_neighborhood": {
+              "type": "string",
+              "const": "dx_squared_plus_dy_squared_le_radius_squared",
+              "description": "Morphology neighborhood."
+            },
+            "expand_bounds": {
+              "type": "string",
+              "const": "input_rectangle_plus_radius_border",
+              "description": "Expand bounds."
+            },
+            "shrink_outside": {
+              "type": "string",
+              "const": "zero",
+              "description": "Shrink outside."
+            },
+            "offset": {
+              "type": "string",
+              "const": "i32_target_pixels_mapping_view",
+              "description": "Offset."
+            },
+            "coverage_rounding": {
+              "type": "string",
+              "const": "multiply_nearest_half_up_outer_to_inner",
+              "description": "Coverage rounding."
+            },
+            "mask_paint_alpha": {
+              "type": "string",
+              "const": "color_times_mask_then_combined_clip",
+              "description": "Mask paint alpha."
+            },
+            "helper_clip": {
+              "type": "string",
+              "const": "inherit",
+              "description": "Helper clip."
+            },
+            "layer_clip": {
+              "type": "string",
+              "const": "inherit",
+              "description": "Layer clip."
+            },
+            "part_clip": {
+              "type": "string",
+              "const": "parent_applies_to_blit_once",
+              "description": "Part clip."
+            },
+            "weather_clip": {
+              "type": "string",
+              "const": "mix_old_and_proposed_rgba_by_coverage",
+              "description": "Weather clip."
+            },
+            "clip_evaluation": {
+              "type": "string",
+              "const": "mask_once_no_rng",
+              "description": "Clip evaluation."
+            },
+            "from_opcode": {
+              "type": "string",
+              "const": "mask.from",
+              "description": "From opcode."
+            },
+            "clip_opcode": {
+              "type": "string",
+              "const": "clip.begin",
+              "description": "Clip opcode."
+            },
+            "paint_opcode": {
+              "type": "string",
+              "const": "surface.paint.mask",
+              "description": "Paint opcode."
+            },
+            "result_bytes": {
+              "type": "string",
+              "const": "128_plus_1_per_pixel",
+              "description": "Result bytes."
+            },
+            "view_fuel": {
+              "type": "string",
+              "const": "one_no_scan",
+              "description": "View fuel."
+            },
+            "algebra_fuel": {
+              "type": "string",
+              "const": "one_plus_zeroed_pixels_plus_result_pixels",
+              "description": "Algebra fuel."
+            },
+            "morphology_fuel": {
+              "type": "string",
+              "const": "one_plus_zeroed_pixels_plus_all_logical_disk_samples",
+              "description": "Morphology fuel."
+            },
+            "clip_write_fuel": {
+              "type": "string",
+              "const": "one_per_active_level",
+              "description": "Clip write fuel."
+            },
+            "outside_coverage": {
+              "type": "integer",
+              "const": 0,
+              "description": "Outside coverage."
+            },
+            "minimum_radius": {
+              "type": "integer",
+              "const": 0,
+              "description": "Minimum radius."
+            },
+            "maximum_radius": {
+              "type": "integer",
+              "const": 64,
+              "description": "Maximum radius."
+            },
+            "combined_scope_limit": {
+              "type": "integer",
+              "const": 32,
+              "description": "Combined scope limit."
+            },
+            "minimum_format_minor": {
+              "type": "integer",
+              "const": 6,
+              "description": "Minimum format minor."
+            },
+            "zero_coverage_write": {
+              "type": "boolean",
+              "const": false,
+              "description": "Zero coverage write."
+            },
+            "geometry_outputs_clipped": {
+              "type": "boolean",
+              "const": false,
+              "description": "Geometry outputs clipped."
+            }
+          },
+          "required": [
+            "from_syntax",
+            "clip_syntax",
+            "keyword",
+            "from_storage",
+            "result_format",
+            "algebra_bounds",
+            "raster_scale",
+            "mapping",
+            "invert_bounds",
+            "radius_type",
+            "morphology_neighborhood",
+            "expand_bounds",
+            "shrink_outside",
+            "offset",
+            "coverage_rounding",
+            "mask_paint_alpha",
+            "helper_clip",
+            "layer_clip",
+            "part_clip",
+            "weather_clip",
+            "clip_evaluation",
+            "from_opcode",
+            "clip_opcode",
+            "paint_opcode",
+            "result_bytes",
+            "view_fuel",
+            "algebra_fuel",
+            "morphology_fuel",
+            "clip_write_fuel",
+            "outside_coverage",
+            "minimum_radius",
+            "maximum_radius",
+            "combined_scope_limit",
+            "minimum_format_minor",
+            "zero_coverage_write",
+            "geometry_outputs_clipped"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable coverage views and A8 results, exact disk morphology and scoped pixel clipping."
         }
       },
       "required": [
@@ -2290,7 +2521,8 @@
             "list<sampler<f32>>",
             "list<sampler<color>>",
             "list<sampler<vec2>>",
-            "layer"
+            "layer",
+            "mask"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -2340,7 +2572,8 @@
             "list<sampler<f32>>",
             "list<sampler<color>>",
             "list<sampler<vec2>>",
-            "layer"
+            "layer",
+            "mask"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2422,7 +2655,8 @@
             "list<sampler<f32>>",
             "list<sampler<color>>",
             "list<sampler<vec2>>",
-            "layer"
+            "layer",
+            "mask"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2483,7 +2717,8 @@
               "list<sampler<f32>>",
               "list<sampler<color>>",
               "list<sampler<vec2>>",
-              "layer"
+              "layer",
+              "mask"
             ],
             "description": "Allowed value types for every eager choice."
           },

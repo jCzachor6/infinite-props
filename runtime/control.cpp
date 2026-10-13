@@ -24,12 +24,15 @@ bool stepControl(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::Block:
     case Opcode::Loop:
-    case Opcode::LayerBegin: {
+    case Opcode::LayerBegin:
+    case Opcode::ClipBegin: {
         ex.ensureControl(frame.functionIndex);
         const auto& info = ex.control[frame.functionIndex][frame.ip];
         Label label;
         if (ins.opcode == Opcode::LayerBegin) ex.beginLayer(ins.operand, ins.aux);
-        label.kind = ins.opcode == Opcode::Loop ? 1u : ins.opcode == Opcode::LayerBegin ? 3u : 0u;
+        if (ins.opcode == Opcode::ClipBegin) ex.beginClip();
+        label.kind = ins.opcode == Opcode::Loop ? 1u : ins.opcode == Opcode::LayerBegin ? 3u :
+            ins.opcode == Opcode::ClipBegin ? 4u : 0u;
         label.cont = ins.opcode == Opcode::Loop ? frame.ip + 1 : info.endIndex;
         label.end = info.endIndex;
         label.stackHeight = frame.stack.size();

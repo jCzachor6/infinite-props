@@ -76,6 +76,9 @@ async function main() {
         console.log("native/WASM source-over: PASS (" + native.sourceOver.comparisons +
             " exact generations; " + native.sourceOver.pins + " independent pins; " + native.sourceOver.alpha_pairs +
             " alpha pairs; " + native.sourceOver.traps + " matching traps; " + native.sourceOver.rejections + " malformed/version rejections)");
+        console.log("native/WASM masks: PASS (" + native.masks.comparisons +
+            " exact generations; " + native.masks.pins + " independent pins; " + native.masks.coverage_pairs +
+            " coverage pairs; " + native.masks.traps + " matching traps; " + native.masks.rejections + " malformed/version rejections)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

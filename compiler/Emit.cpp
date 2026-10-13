@@ -19,7 +19,7 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     // the branch depth to the enclosing while's labels. Every label-pushing
     // opcode has a matching End in the validated output, so the vector is
     // balanced and empty at every function boundary.
-    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin) {
+    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin || opcode == Opcode::ClipBegin) {
         labelKinds_.push_back(0);
     } else if (opcode == Opcode::Loop) {
         labelKinds_.push_back(1);
@@ -154,6 +154,11 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
         ins(Opcode::LayerBegin, static_cast<u8>(capture->alpha),
             static_cast<u16>(current_->slots.at(capture->name)));
         for (const auto& child : capture->body) emitStmt(child);
+        ins(Opcode::End);
+    } else if (const auto* clip = std::get_if<ips::ClipStmt>(&stmt)) {
+        emitExpr(*clip->mask);
+        ins(Opcode::ClipBegin);
+        for (const auto& child : clip->body) emitStmt(child);
         ins(Opcode::End);
     } else if (const auto* whileStmt = std::get_if<ips::WhileStmt>(&stmt)) {
         ins(Opcode::Block);

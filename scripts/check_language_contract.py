@@ -31,7 +31,7 @@ def main():
     sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
     storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types]
     constant_types = storable_types.copy()
-    storable_types += ['layer']
+    storable_types += ['layer', 'mask']
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -79,6 +79,8 @@ def main():
     assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}, {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density','equal_bounds':'closed_natural_support'}]
     assert rules['surfaces']['maximum_active_scopes'] == 32
     assert rules['surfaces']['scope_cleanup'] == ['end','return','break','continue']
+    assert rules['masks']['maximum_radius'] == 64
+    assert rules['masks']['part_clip'] == 'parent_applies_to_blit_once'
     cases = [
         ('layer snapshot', 'echo(image:layer)->layer{return image} draw{layer image{pixel(0,0,#fff)} copy=echo(image);surface.paint(copy,blend=surface.legacy)}', True),
         ('layer reserved helper', 'layer(x:i32)->i32{return x} draw{x=layer(2);layer image{}}', False),

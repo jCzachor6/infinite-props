@@ -12,7 +12,7 @@ Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
 `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`,
 `true`, `false`) and `const`, `to`, `with`, `distribution`, `sampler`,
-`weighted`, `density` and `layer` are reserved. `draw`, `at`, scalar type names and geometry kind
+`weighted`, `density`, `layer`, `mask` and `clip` are reserved. `draw`, `at`, scalar type names and geometry kind
 names and `list` are soft keywords accepted in name positions; `draw` still selects
 the entry block when used as an asset-level function name. Reserved words cannot
 name assets, inputs, outputs, locals, helpers, parameters, aliases or members.
@@ -20,10 +20,10 @@ Newly introduced keywords have no contextual compatibility aliases. Asset names 
 `for` counter names require an ordinary identifier. Asset-level `size`,
 `origin`, `variants`, `archetypes` and `palette` introduce metadata.
 `const type name = expression` introduces an [asset constant](assets.md#asset-constants)
-only in declaration position. It does not reserve `const` as a helper, local or input name.
+only in declaration position. The reserved word cannot be used as a name elsewhere.
 
 Use descriptive names distinct from builtin functions and the namespaces
-`color`, `vec2`, `dist`, `noise`, `cell` and `list.len`. Builtin call resolution takes
+`color`, `vec2`, `dist`, `noise`, `cell`, `surface`, `mask` and `list.len`. Builtin call resolution takes
 precedence over user helpers with the same name.
 
 ## Literals

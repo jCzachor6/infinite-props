@@ -63,7 +63,7 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::I32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Color)),
-    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)), ips::ValueType::Layer};
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
 
 Json samplers() {
     Json methods = Json::array();
@@ -222,7 +222,7 @@ Json sourceRules() {
     Json alphaModes = Json::array();
     for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({
-        {"types", Json::array({ips::typeName(ips::ValueType::Layer)})},
+        {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
         {"capture_syntax", "layer <name> [(alpha=surface.<mode>)] { <statements> }"},
         {"keyword", "reserved"}, {"capture_target", "empty_current_geometry_and_scale"},
         {"result_binding", "after_scope_exit"}, {"automatic_paint", false},
@@ -242,6 +242,29 @@ Json sourceRules() {
         {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false},
         {"minimum_format_minor", findOpcode(Opcode::LayerBegin)->minimumMinor}});
+    rules["masks"] = Json::object({
+        {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
+        {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},
+        {"result_format", "A8"}, {"algebra_bounds", "union_of_input_rectangles"},
+        {"raster_scale", "active_target"}, {"mapping", "current_asset_placement_and_exact_D4"},
+        {"outside_coverage", 0}, {"invert_bounds", "input_rectangle"},
+        {"radius_type", "i32"}, {"minimum_radius", 0}, {"maximum_radius", kMaxMaskRadius},
+        {"morphology_neighborhood", "dx_squared_plus_dy_squared_le_radius_squared"},
+        {"expand_bounds", "input_rectangle_plus_radius_border"}, {"shrink_outside", "zero"},
+        {"offset", "i32_target_pixels_mapping_view"},
+        {"coverage_rounding", "multiply_nearest_half_up_outer_to_inner"},
+        {"mask_paint_alpha", "color_times_mask_then_combined_clip"}, {"zero_coverage_write", false},
+        {"helper_clip", "inherit"}, {"layer_clip", "inherit"}, {"part_clip", "parent_applies_to_blit_once"},
+        {"weather_clip", "mix_old_and_proposed_rgba_by_coverage"}, {"geometry_outputs_clipped", false},
+        {"clip_evaluation", "mask_once_no_rng"}, {"combined_scope_limit", kMaxSurfaceScopes},
+        {"from_opcode", findOpcode(Opcode::MaskFrom)->mnemonic},
+        {"clip_opcode", findOpcode(Opcode::ClipBegin)->mnemonic},
+        {"paint_opcode", findOpcode(Opcode::SurfacePaintMask)->mnemonic},
+        {"result_bytes", "128_plus_1_per_pixel"}, {"view_fuel", "one_no_scan"},
+        {"algebra_fuel", "one_plus_zeroed_pixels_plus_result_pixels"},
+        {"morphology_fuel", "one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
+        {"clip_write_fuel", "one_per_active_level"},
+        {"minimum_format_minor", findOpcode(Opcode::MaskFrom)->minimumMinor}});
     rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
         {"element_types", types([](ips::ValueType type) { return type.isSampler() ||
             (type.isScalar() && type != ips::ValueType::Distribution); })},
@@ -315,7 +338,8 @@ Json builtins() {
     for (const auto& [name, spec] : ips::builtinSpecs()) {
         Json overloads = Json::array();
         for (const auto& overload : spec.overloads) {
-            const auto signature = ips::builtinCallSignature(spec, overload.params.size(), {1,1}, name);
+            const ips::BuiltinSpec concrete{spec.lowering, {overload}};
+            const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             Json parameters = Json::array();
             for (std::size_t i = 0; i < overload.params.size(); ++i)
                 parameters.push_back(parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type)));

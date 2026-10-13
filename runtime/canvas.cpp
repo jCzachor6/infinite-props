@@ -137,7 +137,15 @@ void compositePixel(Execution& ex, i32 x, i32 y, const Color& src, CompositionMo
         return;
     }
     Color& dst = canvas.at(static_cast<u32>(x), static_cast<u32>(y));
-    dst = composePixel(dst, src, resolveComposition(mode, ex.target.mode));
+    if (ex.target.clips.empty()) {
+        dst = composePixel(dst, src, resolveComposition(mode, ex.target.mode));
+        return;
+    }
+    const auto coverage = clipCoverage(ex, x, y);
+    if (!coverage) return;
+    auto source = src;
+    source.a = multiplyCoverage(source.a, coverage);
+    dst = composePixel(dst, source, resolveComposition(mode, ex.target.mode));
 }
 
 // Canvas operations (spec §9.8, exact rasterization §11).
@@ -286,7 +294,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
                 const auto tone = [delta](u8 v) {
                     return static_cast<u8>(std::clamp(static_cast<i32>(v) + delta, 0, 255));
                 };
-                c = {tone(c.r), tone(c.g), tone(c.b), c.a};
+                weatherPixel(ex, static_cast<i32>(x), static_cast<i32>(y),
+                    {tone(c.r), tone(c.g), tone(c.b), c.a});
             }
         }
         ++ex.frame().ip;

@@ -2,6 +2,7 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
+#include "ips/AssetConstants.hpp"
 #include <algorithm>
 
 namespace iprop::ips {
@@ -35,7 +36,8 @@ ValueType Typer::typeCall(const Call& call) {
                 full += "." + segment;
             }
             const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2" || path.base == "surface" || full == "list.len";
+                path.base == "cell" || path.base == "color" || path.base == "vec2" ||
+                path.base == "surface" || path.base == "mask" || full == "list.len";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
@@ -51,12 +53,24 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    const auto bound = bind(call,
-        builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
+    auto callSignature = builtinCallSignature(signature, call.args.size(), call.location, name.name);
+    if (signature.lowering == BuiltinLowering::SurfacePaint) {
+        const Arg* image = nullptr;
+        for (const auto& arg : call.args) if (arg.name && *arg.name == "image") { image = &arg; break; }
+        if (!image) for (const auto& arg : call.args) if (!arg.name) { image = &arg; break; }
+        if (image) {
+            const auto type = typeOf(*image->value);
+            if (type != ValueType::Layer && type != ValueType::Mask)
+                error(locationOf(*image->value), "surface.paint image must be layer or mask, got " + std::string(typeName(type)));
+            callSignature = surfacePaintCallSignature(call, type);
+        }
+    }
+    const auto bound = bind(call, std::move(callSignature), name.name);
     const auto& args = bound.arguments;
-    if (signature.lowering == BuiltinLowering::SurfacePaint && args.size() == 2) {
-        if (!surfaceMode(*args[1]->value))
-            error(locationOf(*args[1]->value), "surface.paint blend must be surface.legacy or surface.source_over");
+    if (signature.lowering == BuiltinLowering::SurfacePaint &&
+        bound.signature.parameters.back().name == "blend") {
+        if (!surfaceMode(*args.back()->value))
+            error(locationOf(*args.back()->value), "surface.paint blend must be surface.legacy or surface.source_over");
     }
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {
@@ -89,7 +103,14 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         types.push_back(typeOf(*args[i]->value, expected));
     }
     const auto* overload = builtinOverload(signature, types);
-    if (overload) return overload->result;
+    if (overload) {
+        if (name.name == "mask.expand" || name.name == "mask.shrink") {
+            const auto radius = knownAssetExpression(*owner_, *args[1]->value, resolveAssetConstants(*owner_));
+            if (radius && (std::get<i32>(*radius) < 0 || std::get<i32>(*radius) > kMaxMaskRadius))
+                error(locationOf(*args[1]->value), "mask radius must be in 0..64");
+        }
+        return overload->result;
+    }
     const auto* arityMatch = builtinOverload(signature, args.size());
     for (std::size_t i = 0; i < args.size(); ++i) {
         const auto expected = arityMatch->params[i].type;

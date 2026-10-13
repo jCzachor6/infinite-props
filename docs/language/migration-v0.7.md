@@ -1,15 +1,15 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–9 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–10 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
 samplers with explicit single/batch picks, const descriptions, sampling palettes
 and weighted/density distributions, plus captured layers on shared part/render
 targets and explicit source-over alpha. Product 0.7.0 is under development.
-Masks, clipping and part surface exports remain later stages.
+Masks, clipping, coverage algebra and disk morphology are implemented. Part surface exports remain a later stage.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–9 |
+| Contract | 0.6 release | 0.7 development, stages 1–10 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -222,7 +222,7 @@ and new layer behavior are verified independently.
 ## Reserved keyword source migration
 
 All newly introduced keywords are lexically reserved: `const`, `to`, `with`,
-`distribution`, `sampler`, `weighted`, `density` and `layer`. This is an
+`distribution`, `sampler`, `weighted`, `density`, `layer`, `mask` and `clip`. This is an
 intentional source break, including names introduced during earlier development
 stages. They cannot name assets, helpers, inputs, outputs, parameters, locals,
 loop counters, import aliases or members. The lexer and language catalog share
@@ -245,3 +245,20 @@ The source-over example calls an ordinary part inside `layer glass` and paints
 it with an explicit blend. Five seeds match an independent rational RGBA oracle;
 all alpha pairs and separate old-tool D4/scale/output pins verify composition.
 See [alpha composition](surfaces.md#exact-rgba8-source-over).
+
+## Coverage masks and clip scopes
+
+`mask.from(image)` shares captured alpha; coverage algebra and disk morphology
+create immutable A8 results. `mask.offset` shifts target pixels without copying.
+`clip(region)` limits primitive/paint/weather writes, with outer-to-inner
+rounded coverage and complete cleanup. Helpers/layers inherit clips; parts
+apply the parent clip once on return, with their own internal clips separate.
+Geometric outputs remain complete. See [masks and clipping](surfaces.md#masks-from-captured-alpha)
+and the [normative mask contract](../../spec/iprop-v0.6.md#16-coverage-masks-clip-scopes-and-disk-morphology).
+
+Rename old identifiers `mask` or `clip` before recompiling. The former
+`examples/language/types.ips` variable is now `bitMask`; the original source
+returns exit 1 and `IPS-PARSE-001`, `expected a local mask name, got =`, without
+an artifact. Old input/helper names still work in frozen binaries. Native and
+WASM run the preserved stage-9 source-over/cleanup/old-name binaries unchanged;
+source migration and binary compatibility are separate gates.

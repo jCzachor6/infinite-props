@@ -35,6 +35,8 @@ const std::map<std::string, TokenKind>& keywords() {
         {"weighted", TokenKind::KeywordWeighted},
         {"density", TokenKind::KeywordDensity},
         {"layer", TokenKind::KeywordLayer},
+        {"mask", TokenKind::KeywordMask},
+        {"clip", TokenKind::KeywordClip},
         {"distribution", TokenKind::TypeDistribution},
         {"color", TokenKind::TypeColor},
         {"f32", TokenKind::TypeF32},
@@ -384,6 +386,8 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::KeywordWeighted: return "weighted";
     case TokenKind::KeywordDensity: return "density";
     case TokenKind::KeywordLayer: return "layer";
+    case TokenKind::KeywordMask: return "mask";
+    case TokenKind::KeywordClip: return "clip";
     case TokenKind::TypeDistribution: return "distribution";
     case TokenKind::TypeColor: return "color";
     case TokenKind::TypeF32: return "f32";

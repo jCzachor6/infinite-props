@@ -118,6 +118,15 @@
     {"file": "source-over-panels.ips", "expect": "pass"},
     {"file": "parts/translucent-panel.ips", "expect": "pass"},
     {"file": "errors/reserved-layer.ips", "expect": "compile-error", "message": "expected an input name, got layer"},
-    {"file": "errors/reserved-sampler.ips", "expect": "compile-error", "message": "expected a declaration inside the asset block, got sampler"}
+    {"file": "errors/reserved-sampler.ips", "expect": "compile-error", "message": "expected a declaration inside the asset block, got sampler"},
+    {"file": "masked-badge.ips", "expect": "pass"},
+    {"file": "mask-algebra.ips", "expect": "pass"},
+    {"file": "errors/mask-radius.ips", "expect": "compile-error", "message": "mask radius must be in 0..64"},
+    {"file": "errors/clip-type.ips", "expect": "compile-error", "message": "clip requires mask, got layer"},
+    {"file": "errors/reserved-mask.ips", "expect": "compile-error", "message": "expected an input name, got mask"},
+    {"file": "errors/reserved-clip.ips", "expect": "compile-error", "message": "expected a declaration inside the asset block, got clip"},
+    {"file": "traps/mask-unset.ips", "expect": "trap", "message": "mask is unassigned"},
+    {"file": "traps/mask-radius.ips", "expect": "trap", "message": "mask radius must be in 0..64"},
+    {"file": "traps/mask-fuel.ips", "expect": "trap", "message": "fuel exhausted"}
   ]
 }

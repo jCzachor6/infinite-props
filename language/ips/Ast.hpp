@@ -224,12 +224,17 @@ struct LayerStmt {
     std::vector<Stmt> body;
     SourceLocation location;
 };
+struct ClipStmt {
+    std::unique_ptr<Expr> mask;
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
 
 struct Stmt
     : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                   BreakStmt, ContinueStmt, ForStmt, LayerStmt> {
+                   BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt> {
     using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                       BreakStmt, ContinueStmt, ForStmt, LayerStmt>::variant;
+                       BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt>::variant;
     TokenRange sourceRange{};
 };
 

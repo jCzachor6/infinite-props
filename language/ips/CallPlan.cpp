@@ -44,6 +44,13 @@ CallSignature rampCallSignature() {
     result.effects = {};
     return result;
 }
+CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType) {
+    auto spec = builtinSpecs().at("surface.paint");
+    std::erase_if(spec.overloads, [imageType](const auto& overload) {
+        return overload.params.front().type != imageType;
+    });
+    return builtinCallSignature(spec, call.args.size(), call.location, "surface.paint");
+}
 CallSignature partCallSignature(std::span<const PartInput> inputs) {
     std::vector<std::string> names;
     for (const auto& input : inputs) names.push_back(input.name);
@@ -71,6 +78,14 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
             if (function.name == name) return true;
         return false;
     };
+    if (name == "surface.paint") {
+        // Accepted layer overrides always spell a static surface mode. Mask
+        // painting requires a color; this also works without imported types.
+        bool mask = call.args.size() == 3;
+        for (const auto& arg : call.args) if (arg.name && *arg.name == "color") mask = true;
+        if (call.args.size() == 2 && !call.args[1].name && !surfaceMode(*call.args[1].value)) mask = true;
+        return bindCall(call, surfacePaintCallSignature(call, mask ? ValueType::Mask : ValueType::Layer), name);
+    }
     if (const auto found = builtinSpecs().find(name);
         found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))
         return bindCall(call, builtinCallSignature(found->second, call.args.size(), call.location, name), name);

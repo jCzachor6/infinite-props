@@ -125,7 +125,8 @@ foreach(source test/language.ips ../../examples/plant.ips ../../examples/languag
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
         ../../examples/language/samplers.ips ../../examples/language/sampling-palettes.ips
         ../../examples/language/weighted.ips ../../examples/language/point-distributions.ips
-        ../../examples/language/captured-panels.ips ../../examples/language/source-over-panels.ips)
+        ../../examples/language/captured-panels.ips ../../examples/language/source-over-panels.ips
+        ../../examples/language/mask-algebra.ips)
     get_filename_component(name ${source} NAME_WE)
     set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)

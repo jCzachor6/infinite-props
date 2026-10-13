@@ -30,12 +30,13 @@ parameter     = name, ":", value_type ;
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
 list_type     = "list", "<", (scalar_type | sampler_type), ">" ;
-value_type    = scalar_type | list_type | sampler_type | "layer" ;
+value_type    = scalar_type | list_type | sampler_type | "layer" | "mask" ;
 block         = "{", { ";" | statement }, "}" ;
-statement     = layer_capture | assignment | call_statement | if | while | for
+clip_scope    = "clip", "(", expression, ")", block ;
+statement     = layer_capture | clip_scope | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" | "layer" | list_type | sampler_type ], name, "=", expression ;
-call_statement = name, { postfix_suffix } ;  (* must end as a call, capture or pick *)
+assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type ], name, "=", expression ;
+call_statement = (name | "mask"), { postfix_suffix } ;  (* must end as a call, capture or pick *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
 while         = "while", "(", expression, ")", block ;
@@ -57,7 +58,7 @@ unary         = ("-" | "!" | "~"), unary | postfix ;
 postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
-primary       = literal | name | compound | list_literal | point_distribution
+primary       = literal | name | "mask" | compound | list_literal | point_distribution
               | sampler_capture | "(", expression, ")" ;
 point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}" ;  (* reserved family names *)
 distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
@@ -121,3 +122,7 @@ expression, including inside a helper call used as a loop upper bound.
 is a typed handle copy. Lists/samplers of surfaces are rejected. Omitted alpha
 inherits the active target; `surface.paint` uses that target's mode unless blend
 explicitly selects one operation. See [alpha composition](surfaces.md).
+
+`mask` is also a reserved value type and the mask namespace. `mask.from` uses
+the existing reserved `from` token only in this namespace. `clip` introduces
+a statement block; both words remain unavailable as ordinary names.

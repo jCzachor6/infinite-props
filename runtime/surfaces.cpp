@@ -7,7 +7,7 @@ RenderTarget RenderTarget::create(u32 width, u32 height, Vec2 scale, Composition
     buffer->raster.resize(width, height);
     buffer->raster.scaleX = scale.x;
     buffer->raster.scaleY = scale.y;
-    return {std::move(buffer), mode};
+    return {std::move(buffer), mode, {}};
 }
 
 namespace detail {
@@ -17,6 +17,8 @@ LayerValue Execution::popLayer() {
     const auto* image = std::get_if<LayerValue>(&value);
     if (!image) trap("stack type mismatch: expected layer", ErrorReason::StackType);
     if (!image->buffer) trap("layer is unassigned", ErrorReason::RuntimeViolation);
+    if (image->buffer->format != SurfaceBuffer::Format::RGBA8)
+        trap("layer buffer must be RGBA8", ErrorReason::RuntimeViolation);
     return *image;
 }
 
@@ -55,6 +57,7 @@ void Execution::beginLayer(u16 local, u8 mode) {
     allocateResource(surfaceBytes(width, height));
     auto next = RenderTarget::create(width, height, scale,
         resolveComposition(static_cast<CompositionMode>(mode), target.mode));
+    next.clips = target.clips;
     resources.surfaces.push_back(next.buffer);
     LayerScope scope{frames.size(), frame().labels.size() + 1, local, std::move(target)};
     layerScopes.push_back(std::move(scope));
@@ -66,8 +69,11 @@ void Execution::closeLayers(std::size_t labelDepth) {
            layerScopes.back().labelDepth > labelDepth) {
         auto scope = std::move(layerScopes.back());
         layerScopes.pop_back();
-        frame().locals[scope.local] = target.view();
-        target = std::move(scope.savedTarget);
+        if (scope.isClip) target.clips.resize(scope.savedClipDepth);
+        else {
+            frame().locals[scope.local] = target.view();
+            target = std::move(scope.savedTarget);
+        }
     }
 }
 

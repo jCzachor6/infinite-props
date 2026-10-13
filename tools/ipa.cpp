@@ -140,6 +140,7 @@ std::string clean(const std::string& token) {
 
 bool parseValueType(const std::string& text, ValueType& out) {
     if (text == "layer") { out = ValueType::Layer; return true; }
+    if (text == "mask") { out = ValueType::Mask; return true; }
     if (text.starts_with("list<") && text.ends_with(">")) {
         ValueType item;
         if (!parseValueType(text.substr(5, text.size() - 6), item) || (!item.isScalar() && !item.isSampler())) return false;

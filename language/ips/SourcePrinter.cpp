@@ -388,6 +388,9 @@ class SourcePrinter {
                 out_ << "layer " << node.name;
                 if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
                 block(node.body, level);
+            } else if constexpr (std::is_same_v<T, ClipStmt>) {
+                out_ << "clip("; expression(*node.mask); out_ << ')';
+                block(node.body, level);
             }
         }, stmt);
         out_.finishRange(); out_ << '\n'; range.close();

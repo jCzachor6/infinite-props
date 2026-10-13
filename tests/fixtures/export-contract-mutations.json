@@ -1052,6 +1052,116 @@
       ],
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "invalid mask maximum_radius",
+      "path": [
+        "source_rules",
+        "masks",
+        "maximum_radius"
+      ],
+      "value": 65,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask minimum_radius",
+      "path": [
+        "source_rules",
+        "masks",
+        "minimum_radius"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask outside_coverage",
+      "path": [
+        "source_rules",
+        "masks",
+        "outside_coverage"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask part_clip",
+      "path": [
+        "source_rules",
+        "masks",
+        "part_clip"
+      ],
+      "value": "inherit",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask mask_paint_alpha",
+      "path": [
+        "source_rules",
+        "masks",
+        "mask_paint_alpha"
+      ],
+      "value": "unrounded",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask zero_coverage_write",
+      "path": [
+        "source_rules",
+        "masks",
+        "zero_coverage_write"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask combined_scope_limit",
+      "path": [
+        "source_rules",
+        "masks",
+        "combined_scope_limit"
+      ],
+      "value": 33,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask morphology_fuel",
+      "path": [
+        "source_rules",
+        "masks",
+        "morphology_fuel"
+      ],
+      "value": "visited_samples_only",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask offset",
+      "path": [
+        "source_rules",
+        "masks",
+        "offset"
+      ],
+      "value": "copy_buffer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask from_storage",
+      "path": [
+        "source_rules",
+        "masks",
+        "from_storage"
+      ],
+      "value": "allocated_rgba",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

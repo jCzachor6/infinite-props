@@ -1,11 +1,42 @@
 #include "test_support.h"
 #include "source_over_reference.h"
+#include "mask_reference.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void check_generation(const char* program_dir) {
     char err[512];
+
+    /* Coverage algebra and clipping preserve the existing host output layout. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/mask-algebra.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        CHECK(bytes!=NULL,"cannot read mask fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"mask load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"mask generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==8 && image.height==4 && image.output_count==2,"mask image/output metadata");
+            if(image.output_count==2){
+                const iprop_output* stream=&image.outputs[0];const iprop_output* extent=&image.outputs[1];
+                CHECK(stream->kind==IPROP_OUTPUT_POINT && extent->kind==IPROP_OUTPUT_RECT &&
+                    stream->owner==0 && extent->owner==0 && !stream->is_list && !extent->is_list &&
+                    stream->count==1 && extent->count==1,"mask output kinds/owners");
+                if(stream->count==1 && extent->count==1){uint32_t point[2],rect[4];
+                    memcpy(point,stream->values,sizeof(point));memcpy(rect,extent->values,sizeof(rect));
+                    CHECK(point[0]==0x41d00000 && point[1]==0 && rect[0]==0 && rect[1]==0 &&
+                        rect[2]==0x40a00000 && rect[3]==0x40800000,"mask unclipped output bits");}
+            }
+            if(image.width==8 && image.height==4)for(uint32_t y=0;y<4;++y)for(uint32_t x=0;x<8;++x){
+                uint8_t color[4];mask_algebra_pixel(x,color);
+                CHECK(memcmp(image.pixels+(y*8+x)*4,color,4)==0,"mask pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
 
     /* Straight RGBA8 part inheritance through the unchanged C host layout. */
     {

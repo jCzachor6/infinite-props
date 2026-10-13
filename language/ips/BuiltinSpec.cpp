@@ -100,7 +100,17 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"points", V::list(V::Vec2)}, {"color", V::Color}}, Opcode::PolyList}}}},
         {"surface.paint", {V::Void, L::SurfacePaint, {
             {{{"image", V::Layer}}, Opcode::SurfacePaint},
-            {{{"image", V::Layer}, {"blend", V::I32}}, Opcode::SurfacePaint}}}},
+            {{{"image", V::Layer}, {"blend", V::I32}}, Opcode::SurfacePaint},
+            {{{"image", V::Mask}, {"color", V::Color}}, Opcode::SurfacePaintMask},
+            {{{"image", V::Mask}, {"color", V::Color}, {"blend", V::I32}}, Opcode::SurfacePaintMask}}}},
+        {"mask.from", {V::Mask, L::Opcode, {{{{"image", V::Layer}}, Opcode::MaskFrom}}}},
+        {"mask.union", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskUnion}}}},
+        {"mask.intersect", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskIntersect}}}},
+        {"mask.subtract", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskSubtract}}}},
+        {"mask.invert", {V::Mask, L::Opcode, {{{{"source", V::Mask}}, Opcode::MaskInvert}}}},
+        {"mask.expand", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"radius", V::I32}}, Opcode::MaskExpand}}}},
+        {"mask.shrink", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"radius", V::I32}}, Opcode::MaskShrink}}}},
+        {"mask.offset", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"dx", V::I32}, {"dy", V::I32}}, Opcode::MaskOffset}}}},
         {"list.len", {V::I32, L::ListLength, {
             {{{"items", V::list(V::I32)}}, Opcode::ListLen},
             {{{"items", V::list(V::F32)}}, Opcode::ListLen},

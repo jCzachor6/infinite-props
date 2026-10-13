@@ -37,7 +37,13 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::ListLen: return {R::None,false,false,check(C::UnassignedHandle)};
     case Opcode::LayerBegin: return {R::None,true};
-    case Opcode::SurfacePaint: return {R::None,true,false,check(C::UnassignedHandle)};
+    case Opcode::SurfacePaint: case Opcode::SurfacePaintMask:
+        return {R::None,true,false,check(C::UnassignedHandle)};
+    case Opcode::MaskFrom: case Opcode::MaskInvert: case Opcode::ClipBegin:
+        return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
+    case Opcode::MaskExpand: case Opcode::MaskShrink: case Opcode::MaskOffset:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
         return {R::None,false,false,check(C::NumericRange)};
@@ -239,6 +245,16 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DistributionEnd, "distribution.end", 6, OperandKind::None),
     dynamic(Opcode::LayerBegin, "layer.begin", 6, OperandKind::Index, AuxPolicy::SurfaceMode),
     dynamic(Opcode::SurfacePaint, "surface.paint", 6, OperandKind::Index),
+    dynamic(Opcode::MaskFrom, "mask.from", 6, OperandKind::None),
+    dynamic(Opcode::MaskUnion, "mask.union", 6, OperandKind::None),
+    dynamic(Opcode::MaskIntersect, "mask.intersect", 6, OperandKind::None),
+    dynamic(Opcode::MaskSubtract, "mask.subtract", 6, OperandKind::None),
+    dynamic(Opcode::MaskInvert, "mask.invert", 6, OperandKind::None),
+    dynamic(Opcode::MaskExpand, "mask.expand", 6, OperandKind::None),
+    dynamic(Opcode::MaskShrink, "mask.shrink", 6, OperandKind::None),
+    dynamic(Opcode::MaskOffset, "mask.offset", 6, OperandKind::None),
+    dynamic(Opcode::SurfacePaintMask, "surface.paint.mask", 6, OperandKind::Index),
+    dynamic(Opcode::ClipBegin, "clip.begin", 6, OperandKind::None),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

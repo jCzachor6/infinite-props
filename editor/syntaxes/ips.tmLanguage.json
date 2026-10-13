@@ -4,6 +4,12 @@
   "scopeName": "source.ips",
   "patterns": [
     {
+      "include": "#maskType"
+    },
+    {
+      "include": "#clipScope"
+    },
+    {
       "include": "#layerCapture"
     },
     {
@@ -106,7 +112,7 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "\\b(surface\\.paint|list\\.len|vec2\\.(len|dot|rot|normalize)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+      "match": "\\b(surface\\.paint|mask\\.(from|union|intersect|subtract|invert|expand|shrink|offset)|list\\.len|vec2\\.(len|dot|rot|normalize)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
     },
     "samplerCapture": {
       "name": "support.function.sampler.ips",
@@ -128,6 +134,16 @@
     "surfaceMode": {
       "name": "constant.language.surface-mode.ips",
       "match": "\\bsurface\\.(legacy|source_over)\\b"
+    },
+    "maskType": {
+      "comment": "Reserved mask type and namespace.",
+      "name": "storage.type.mask.ips",
+      "match": "\\bmask\\b(?!\\s*\\.)"
+    },
+    "clipScope": {
+      "comment": "Reserved clip scope.",
+      "name": "keyword.control.clip.ips",
+      "match": "\\bclip\\b"
     }
   }
 }

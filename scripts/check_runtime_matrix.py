@@ -34,6 +34,7 @@ TRANSITIONS = {
 # archived binaries are still executed above; these expectations apply only
 # to recompilation of the original released source, never to current examples.
 SOURCE_REJECTIONS = {
+    'examples/language/types.ips': 'expected a local mask name, got =',
     'examples/language/assets.ips': 'expected an input name, got density',
     'examples/recipes/24-uniform-emblem.ips': 'expected an input name, got density',
 }

@@ -97,3 +97,8 @@ integer rounding, immutable helper transfer,
 mode constants, cleanup, resource accounting and paint effects. Its limits and
 opcodes come from runtime constants and the opcode registry. The LLM reference
 default and maximum are fixed at 100 KiB through the 0.7 release.
+
+`source_rules.masks` adds coverage views, A8 results, bounds, radius and disk
+rules, clip inheritance and normative logical sample costs. Keep the schema,
+strict reader, editor, overload argument names and real compiler probes aligned.
+The mask/clip opcodes and limits come from the same runtime registries.

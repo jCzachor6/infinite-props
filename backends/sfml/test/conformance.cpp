@@ -9,6 +9,7 @@
 #include "Host.hpp"
 #include "Render.hpp"
 #include "../../capi/test/source_over_reference.h"
+#include "../../capi/test/mask_reference.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -186,6 +187,27 @@ int main(int argc, char** argv) {
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Independent mask pins and geometry through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/mask-algebra.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==8 && image.height==4 && slots.size()==2,"mask metadata");
+        if(slots.size()==2){
+            CHECK(slots[0].values.size()==2 && slots[1].values.size()==4,"mask output sizes");
+            if(slots[0].values.size()==2 && slots[1].values.size()==4){std::uint32_t point[2],rect[4];
+                std::memcpy(point,slots[0].values.data(),sizeof(point));std::memcpy(rect,slots[1].values.data(),sizeof(rect));
+                CHECK(point[0]==0x41d00000 && point[1]==0 && rect[0]==0 && rect[1]==0 &&
+                    rect[2]==0x40a00000 && rect[3]==0x40800000,"mask unclipped output bits");}
+            CHECK(slots[0].owner==0 && slots[1].owner==0 && !slots[0].isList && !slots[1].isList,"mask output owners");
+        }
+        if(image.width==8 && image.height==4)for(unsigned y=0;y<4;++y)for(unsigned x=0;x<8;++x){
+            std::uint8_t color[4];mask_algebra_pixel(x,color);
+            CHECK(std::memcmp(image.pixels+(y*8+x)*4,color,4)==0,"mask pixel %u,%u",x,y);
+        }
     }
 
     // Exact rational RGBA8 pins through the unchanged SFML adapter.

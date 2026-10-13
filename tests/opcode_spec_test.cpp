@@ -58,6 +58,7 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
         if (spec.minimumMinor > 1) {
             auto body=retIns();
             append(body,spec.opcode); // version gates must also cover unreachable instructions
+            if(spec.opcode==Opcode::ClipBegin) append(body,Opcode::End);
             auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
             const bool collection = static_cast<u8>(spec.opcode) >= static_cast<u8>(Opcode::ConstList) &&
                 static_cast<u8>(spec.opcode) <= static_cast<u8>(Opcode::SurfacePaint);
@@ -99,5 +100,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 170);
+    CHECK(names.size() == 180);
 }

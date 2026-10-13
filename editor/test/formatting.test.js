@@ -25,6 +25,35 @@ function token() {
         cancel() { this.isCancellationRequested = true; listener?.(); } };
 }
 const format = (h, cancellation = token()) => h.vscode.formatter.provideDocumentFormattingEdits(h.entry, {}, cancellation);
+
+test("mask types scopes and operations highlight without restoring contextual names", () => {
+    const grammar = JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+    const mask = new RegExp(grammar.repository.maskType.match);
+    const clip = new RegExp(grammar.repository.clipScope.match);
+    assert.ok(mask.test("mask region = image")); assert.ok(mask.test("echo(region:mask)->mask"));
+    assert.ok(clip.test("clip /* scope */ (region) {}")); assert.ok(clip.test("input i32 clip = 1"));
+    assert.ok(!mask.test("maskCount")); assert.ok(!clip.test("clipCount"));
+    const builtin = new RegExp(grammar.repository.builtins.match);
+    for (const name of ["from","union","intersect","subtract","invert","expand","shrink","offset"])
+        assert.ok(builtin.test("mask."+name+"("), name);
+});
+
+test("editor formatting retains mask comments and orders mask paint arguments", async () => {
+    const source="asset t{size 3x2 echo(region:mask)->mask{return region}draw{"+
+        "layer image(alpha=surface.source_over){pixel(0,0,#ffffff80)}"+
+        "mask region=echo(mask.from(image))clip(/* region */region){"+
+        "surface.paint(blend=surface.source_over,color=#123,image=region)}}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try {
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const text=edits[0].newText;assert.ok(text.includes("/* region */"));
+        assert.match(text,/mask region = echo\(mask\.from\(image\)\)/);
+        assert.match(text,/surface\.paint\(image = region, color = #112233, blend = surface\.source_over\)/);
+        const output=path.join(dir,"formatted.ips");fs.writeFileSync(output,text);
+        const check=spawnSync(compiler,[output,"--check"],{encoding:"utf8"});assert.equal(check.status,0,check.stderr);
+        clean(dir);
+    } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});
 function pending(dir) {
     const calls = [];
     const h = editorHarness(dir, (binary, args, options, callback) => { calls.push({ binary, args, options, callback }); });

@@ -1,0 +1,10 @@
+asset unsetMask {
+    size 1x1
+    draw {
+        if (v == 1) {
+            layer image {}
+            region = mask.from(image)
+        }
+        clip(region) {}
+    }
+}
