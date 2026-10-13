@@ -30,6 +30,7 @@ def main():
     constant_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
     sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
     storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types]
+    constant_types = storable_types
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -77,7 +78,14 @@ def main():
     cases = [
         ('sampler helper and batch', 'echo(s:sampler<i32>)->sampler<i32>{return s} draw{s=echo(sampler(10 to 15));items=s.pick(3);x=items[0]}', True),
         ('sampler list', 'draw{items=[sampler(1),sampler(2 to 4)];x=items[0].pick();n=list.len(items)}', True),
-        ('sampler constants deferred', 'const sampler<i32> width=sampler(1 to 2) draw{}', False),
+        ('sampler constants', 'const sampler<i32> width=sampler(1 to 2) draw{x=width.pick()}', True),
+        ('constant sampler list', 'const list<sampler<i32>> specs=[sampler(1),sampler(2 to 4)] const i32 n=list.len(specs) draw{x=specs[0].pick(n)}', True),
+        ('range palette', 'palette widths=[10 to 15,20 to 30 with gaussian(25,2),40] draw{s=widths[-1];x=s.pick(3)}', True),
+        ('palette descriptions through helper', 'const sampler<i32> fixed=sampler(40) palette widths=[1 to 2,fixed] echo(s:list<sampler<i32>>)->sampler<i32>{return s[0]} draw{x=echo(widths).pick()}', True),
+        ('vector palette', 'palette points=[{1,2},{3,4}] draw{x=points[-1]}', True),
+        ('sampling ramp rejected', 'palette tones=[#123 to #456,#789] draw{x=ramp(tones,0.5)}', False),
+        ('constant sampler RNG rejected', 'const sampler<i32> bad=sampler(index(3)) draw{}', False),
+        ('constant pick rejected', 'const sampler<i32> s=sampler(1) const i32 bad=s.pick() draw{}', False),
         ('sampler invalid count', 'draw{s=sampler(1 to 2);x=s.pick(257)}', False),
         ('sampler count type', 'draw{s=sampler(1 to 2);x=s.pick(1.0)}', False),
         ('sampler capture bounds', 'draw{s=sampler(4 to 2)}', False),

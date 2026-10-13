@@ -30,7 +30,7 @@ python3 scripts/language_docs.py check --compiler build/tools/ipc \
 ```
 
 Configured section ids are `idioms`, `asset`, `assets`, `syntax`, `types`,
-`control`, `helper`, `random`, `colors`, `palette`, `part`, `limits` and
+`control`, `helper`, `random`, `colors`, `palette`, `collections`, `samplers`, `part`, `limits` and
 `grammar`; `style`, `builtins`, `symbols` and `diagnostics` are generated.
 The compiler rules follow `idioms` and `style` and appear in every document,
 even with an empty selection. Each configured section names a handbook chapter

@@ -84,7 +84,7 @@ Json samplers() {
         {"batch_preflight", "count_handle_allocation_before_first_draw"},
         {"constant_description_draws", 0}, {"empty_batch_draws", 0}, {"unset_empty_batch", "trap"},
         {"capture_effects", operationEffects(findOpcode(Opcode::SamplerRange)->effects)},
-        {"methods", std::move(methods)}, {"asset_constants", false}, {"range_palettes", false}});
+        {"methods", std::move(methods)}, {"asset_constants", true}, {"range_palettes", true}});
 }
 
 template<class Predicate>
@@ -193,7 +193,7 @@ Json sourceRules() {
         {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
         {"constants", "all_asset_functions"}});
     rules["asset_constants"] = Json::object({{"keyword", "contextual"},
-        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable() && !type.isSampler() && !type.item().isSampler(); })},
+        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable(); })},
         {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
         {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
         {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
@@ -215,6 +215,17 @@ Json sourceRules() {
         {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
         {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
     rules["samplers"] = samplers();
+    rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
+        {"element_types", types([](ips::ValueType type) { return type.isSampler() ||
+            (type.isScalar() && type != ips::ValueType::Distribution); })},
+        {"evaluation", "compile_time_no_rng"}, {"sampling_trigger", "outer_range_or_sampler"},
+        {"constant_entries", "lift_to_constant_descriptions_in_sampling_palette"},
+        {"numeric_elements", "i32_to_f32_widening"}, {"index_type", "i32"},
+        {"index_evaluation", "once"}, {"index_bounds", "last_element_fallback"},
+        {"first_class_value", "immutable_list_with_checked_index"},
+        {"minimum_length", 1}, {"sampling_maximum_length", kMaxListElements},
+        {"first_class_maximum_length", kMaxListElements}, {"legacy_length_limit", "unchanged"},
+        {"ramp", "constant_color_or_f32_only"}});
     rules["random_range"] = randomRange();
     return rules;
 }

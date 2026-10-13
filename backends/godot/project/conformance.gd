@@ -458,6 +458,34 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL sampler pixel ",x,",",y)
 
+	var sampling_palettes := IpropAsset.new()
+	if sampling_palettes.load_file(args[0] + "/sampling-palettes.iprop") != OK:
+		failures += 1
+		printerr("FAIL sampling palette load")
+	else:
+		var palette_image := sampling_palettes.generate(26, 0, 0)
+		if palette_image == null or palette_image.get_size() != Vector2i(32,24):
+			failures += 1
+			printerr("FAIL sampling palette image metadata")
+		else:
+			var expected_palettes := [["checks",0x40400000,0x42200000],["direction",0x41aa69ec,0x40000000],
+				["samples",0x41200000,0x41600000],["normalized",0x3f2ac48e,0],["state",0x475a7000,0x47354c00]]
+			for expected in expected_palettes:
+				var slot: Dictionary = sampling_palettes.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL sampling palette output bits/metadata")
+			for y in range(24):
+				for x in range(32):
+					var color := Color8(0,0,0,0)
+					if x >= 2 and ((y >= 2 and y < 6 and x < 12) or (y >= 8 and y < 12 and x < 13) or (y >= 14 and y < 18 and x < 16)):
+						color = Color8(168,173,179)
+					if palette_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL sampling palette pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

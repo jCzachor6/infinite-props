@@ -1,0 +1,6 @@
+asset invalidPalette {
+  size 1x1
+  input i32 lower = 10
+  palette widths = [lower to 15, 40]
+  draw {}
+}

@@ -1,0 +1,9 @@
+asset missingProbability {
+  size 1x1
+  palette positions = [0.0 to 1.0 with triangular(10, 15, 20), 0.5]
+  draw {
+    description = positions[0]
+    empty = description.pick(0)
+    result = description.pick()
+  }
+}

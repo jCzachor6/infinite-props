@@ -28,6 +28,10 @@ The schema 3 language export also supplies `source_rules.samplers.methods`
 from the same receiver-first registry used for typing and lowering. Sampler
 method signatures are separate from global `pick`; their receiver/count order
 and intrinsic effects must be propagated to docs, LLM reference and consumers.
+`source_rules.palettes` records capture/lifting, pure declaration evaluation,
+direct fallback versus first-class checked indexing and ramp restrictions.
+Const sampler types and their list-length overloads use the same resolver and
+catalogue as scalar constants; no parallel signature table is maintained.
 The language export supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
 compile-time palette and transform slots; legacy `poly` lists coordinates before

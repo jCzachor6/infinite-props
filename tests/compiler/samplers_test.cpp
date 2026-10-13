@@ -160,7 +160,7 @@ TEST_CASE("sampler syntax types and known invalid arguments have located diagnos
     rejectSampler("draw{s=sampler(1) s=sampler(1.0)}", "cannot assign sampler<f32>");
     rejectSampler("draw{rect(0,0,sampler(1),1,#abc)}", "must be f32");
     rejectSampler("draw{s=sampler(sampler(1))}", "needs i32, f32, color or vec2");
-    rejectSampler("const sampler<i32> s=sampler(1) draw{}", "not supported yet");
+    CHECK_NOTHROW(samplers("asset t{size 1x1 const sampler<i32> s=sampler(1) draw{}}"));
     rejectSampler("sampler(x:i32)->i32{return x} draw{s=sampler(1 to 2)}", "conflicts with helper");
     CHECK_NOTHROW(samplers("asset t{size 1x1 sampler(x:i32)->i32{return x} draw{x=sampler(1)}}"));
     const auto captured = samplers(asset("s=sampler((1 to 2)+3) value=s.pick() values={value,value}"));

@@ -16,7 +16,8 @@ the declared counts traps. `draw` declares no parameters or return type.
 ## Asset constants
 
 `const type name = expression` declares an immutable asset value with an
-explicit `i32`, `f32`, `color`, `vec2`, `distribution` or [list<T>](collections.md) type. Constants are
+explicit `i32`, `f32`, `color`, `vec2`, `distribution`, [sampler<T>](samplers.md)
+or [list<T>](collections.md) type. Constants are
 visible in `draw` and every helper of their defining asset. Imported parts
 resolve their own constants; a parent cannot access a child's constants.
 `i32` initializers may widen to declared `f32`; other types must match.
@@ -51,7 +52,15 @@ cannot be assigned or used as loop counters. `const` is contextual only as
 an asset declaration introducer; an existing `const(...)` helper, local or
 input named `const` remains valid. Use distinct descriptive names.
 
-Input defaults and legacy palette elements retain their literal-only grammar;
+<!-- llm: skip -->
+Const samplers capture endpoints and distribution parameters without RNG.
+Const lists may contain descriptions and share their immutable data. Sampling
+palettes join this same dependency graph; reading a selected description does
+not draw, while `.pick()` cannot run in a const initializer. See
+[sampling palettes](palettes.md#sampling-palettes).
+
+<!-- llm: skip -->
+Input defaults and legacy literal palette elements retain their literal-only grammar;
 declaring a constant does not expand those grammar rules. Scalar constants introduce
 no new opcode, type code, section, host enum or ABI layout. Scalar/vector
 values lower through existing pools and instructions; a used distribution

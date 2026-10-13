@@ -89,9 +89,16 @@ public:
     }
     u16 addList(const ListValue& list) {
         if (!list.data || list.data->elements.size() > kMaxListElements) throw PoolLimit("invalid collection constant");
+        ListValue canonical = list;
+        if (list.type.item().isSampler()) {
+            auto data = std::make_shared<ListData>(*list.data);
+            for (auto& value : data->elements) value = samplers.at(addSampler(std::get<SamplerValue>(value)));
+            canonical.data = std::move(data);
+        }
         Writer encoding;
         encoding.writeU8(static_cast<u8>(list.type.element));
-        writeListElements(encoding, *list.data);
+        if (list.type.item().isSampler()) encoding.writeU8(static_cast<u8>(list.type.parameter));
+        writeListElements(encoding, *canonical.data, samplers);
         if (const auto found = listIndex.find(encoding.data()); found != listIndex.end()) return found->second;
         if (lists.size() >= kMaxConstPoolEntries) throw PoolLimit("too many collection constants");
         const auto allocation = ResourceArena::listBytes(list.data->elements.size());
@@ -99,12 +106,27 @@ public:
         collectionBytes += allocation;
         addType(list.type);
         const auto index = static_cast<u16>(lists.size());
-        lists.push_back(list);
+        lists.push_back(std::move(canonical));
         listIndex.emplace(encoding.data(), index);
+        return index;
+    }
+    u16 addSampler(const SamplerValue& sampler) {
+        if (!sampler.data || sampler.data->type != sampler.type) throw PoolLimit("invalid sampler constant");
+        Writer encoding;
+        encoding.writeU8(static_cast<u8>(sampler.type.element));
+        writeSamplerData(encoding, *sampler.data);
+        if (const auto found = samplerIndex.find(encoding.data()); found != samplerIndex.end()) return found->second;
+        if (samplers.size() >= kMaxConstPoolEntries) throw PoolLimit("too many sampler constants");
+        if (ResourceArena::samplerBytes() > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
+        collectionBytes += ResourceArena::samplerBytes();
+        addType(sampler.type);
+        const auto index = static_cast<u16>(samplers.size());
+        samplers.push_back(sampler); samplerIndex.emplace(encoding.data(), index);
         return index;
     }
     const std::vector<TypeDescriptor>& typesValue() const { return types; }
     const std::vector<ListValue>& listsValue() const { return lists; }
+    const std::vector<SamplerValue>& samplersValue() const { return samplers; }
 
     // The pool contents, in registration order.
     const std::vector<std::string>& stringsValue() const { return strings; }
@@ -121,6 +143,8 @@ private:
     std::vector<TypeDescriptor> types;
     std::vector<ListValue> lists;
     std::map<std::vector<u8>, u16> listIndex;
+    std::vector<SamplerValue> samplers;
+    std::map<std::vector<u8>, u16> samplerIndex;
     std::vector<std::string> strings;
     std::map<std::string, u32> stringIndex;
     std::vector<u32> ints;

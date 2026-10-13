@@ -228,6 +228,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::SamplerWith, "sampler.with", 6, OperandKind::Index),
     dynamic(Opcode::SamplerPick, "sampler.pick", 6, OperandKind::Index),
     dynamic(Opcode::SamplerPickList, "sampler.pick.list", 6, OperandKind::Index),
+    dynamic(Opcode::ConstSampler, "const.sampler", 6, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

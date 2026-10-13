@@ -6,6 +6,36 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Preserved stage-4 runtime pins for constant samplers and palettes. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/sampling-palettes.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40400000,0x42200000,0x41aa69ec,0x40000000,
+            0x41200000,0x41600000,0x3f2ac48e,0,0x475a7000,0x47354c00};
+        CHECK(bytes!=NULL,"cannot read sampling palette fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"palette load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"palette generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==5,"palette image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<5;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"palette output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"palette bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(x>=2 && ((y>=2 && y<6 && x<12)||(y>=8 && y<12 && x<13)||(y>=14 && y<18 && x<16))){
+                    color[0]=168;color[1]=173;color[2]=179;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"palette pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
     /* Independent stage-3 ordinary-range pins, before sampler support. */
     {
         char path[1024]; snprintf(path,sizeof(path),"%s/samplers.iprop",program_dir);

@@ -1,11 +1,11 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–4 (2026-10-12).
-**Scope:** Signed integer bounds, vector normalization, immutable collections and captured samplers. This document
+**Status:** Development contract for product 0.7.0, stages 1–5 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, and sampling palettes. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; range palettes, const samplers and surfaces
+extend this development format; weighted/density distributions and surfaces
 are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
@@ -155,8 +155,7 @@ the legacy parts table is unchanged. Descriptors apply to complete types:
 Optional section **7 (`collections`)** is `u32 count`, followed by entries:
 `u16 descriptor_index`, `u16 length`, then exactly `length` element payloads.
 Count is at most 65,536; length is 0–256; the descriptor must be a list of
-frozen scalar elements. Samplers have no constant-pool encoding in this stage,
-including empty lists of descriptions.
+frozen scalar elements or sampler<T>. Empty lists of descriptions are valid.
 Element payloads are little-endian, with no per-element tag:
 
 | Element | Payload |
@@ -166,11 +165,12 @@ Element payloads are little-endian, with no per-element tag:
 | color | 4 RGBA8 bytes |
 | vec2 | x then y, 4 binary32 bytes each |
 | distribution | 1 family byte, then all four binary32 parameters (17 bytes) |
+| sampler<T> | u16 index of a constant description in section 8, with exactly the list's element type |
 
 Distribution families and parameter validation are the frozen 0.5 rules;
 unset descriptions are invalid in the pool. All descriptors and entries are
 validated even if unused. Trailing, truncated, oversized or invalid data is
-rejected before execution. Neither section exists in older minors.
+rejected before execution. None of sections 6–8 exists in older minors.
 
 ## 7. List instructions
 
@@ -311,7 +311,77 @@ instruction overhead. Fuel failure cannot expose partial list elements.
 `list<sampler<T>>` uses the existing list builder, index, length and sharing
 operations with full element identity. List descriptors remain distinct for
 each sampler element type. Empty literals require context and lists are limited
-to 256 entries. Source const samplers and range palettes are deferred; legacy
-palettes, math/RNG algorithms, parts and all public C layouts remain unchanged.
+to 256 entries. Const samplers and range palettes use the same descriptions;
+legacy palettes, math/RNG algorithms, parts and all public C layouts remain unchanged.
 Failed format-0.6 executions clear all sampler/list arena ownership and cannot
 publish or resume as a successful generation.
+
+## 11. Constant samplers and sampling palettes
+
+Optional section **8 (`samplers`)** encodes `u32 count` (0–65,536), followed by
+entries in pool order:
+
+| Field | Encoding |
+| --- | --- |
+| description type | u16 index into section 6, requiring sampler<i32/f32/color/vec2> |
+| mode | u8: 0 constant, 1 uniform range, 2 range with distribution |
+| reserved | u8 zero |
+| lower or constant value | exact typed payload: i32/f32/color 4 bytes, vec2 x/y 8 bytes |
+| upper | same typed payload, present only for modes 1/2 |
+| distribution | u8 frozen family and four f32 parameters, present only for mode 2 |
+
+Unknown modes, bad descriptor kinds/indices, nonzero reserved bytes, truncated
+or trailing data, nonfinite f32/vec2 endpoints, reversed numeric ranges and
+invalid distribution parameters reject before execution, including unused
+entries. Positive probability mass is deliberately checked only by a pick.
+Constant mode is distinct from an equal-bound range, preserving their different
+RNG behavior. Endpoint/distribution bits are preserved without a sampled result.
+List references must resolve to this pool and match the complete sampler type.
+The combined fixed accounting of all constant list buffers and descriptions
+must not exceed 64 MiB. Duplicate wire entries are allowed and are distinct
+buffers; writers deduplicate descriptions by exact type, mode and payload bits.
+
+Opcode **0xC1 `const.sampler c`** has aux zero and a u16 sampler pool index.
+Its stack is `[] -> [sampler<T>]`; it requires format 0.6. Invalid aux/index and
+all older minor gates are checked in unreachable code too. It costs base 1
+fuel, retains the immutable description and makes no draw. Its first load
+charges 256 bytes to the generation arena; later reads share the same handle
+without another charge. No new public host type or ABI layout is introduced.
+
+`const.list` of descriptions retains its existing opcode and header. Its first
+load costs an additional 1 fuel per list entry, then preflights the list buffer
+and distinct descriptions not already retained by that generation. The complete
+charge occurs before publishing the list or retaining any new description.
+Repeated entries, standalone const reads and other lists share each pool
+description's charge. Cached list reads pay only the instruction base. Scalar
+constant lists retain their frozen costs. All these resources share the existing
+64 MiB generation quota, including dynamic captures, batches and part canvases.
+
+Asset `const sampler<T>` and `const list<sampler<T>>` use the existing pure
+constant resolver. It resolves one acyclic graph with palette declarations and
+checks all declarations, including unused ones and forbidden effects in dead
+branches. Bounds/parameters may refer forward to other constants; inputs, seed,
+RNG, user helpers and `.pick` cannot execute during compilation. Capture changes
+only an outer range into a description; nested random expressions remain effects
+and are rejected in const initializers. Constant copying/indexing performs no
+draw. An empty const list receives its type from the declaration.
+
+A palette containing an outer range or sampler has type `list<sampler<T>>`.
+Its ranges use the same capture representation; other scalar entries lift to
+constant descriptions. T is i32/f32/color/vec2. Mixed numeric elements widen to
+f32, including i32 description endpoints; other incompatible elements reject.
+A plain scalar/vec2 palette retains value elements. All new palette expressions
+are compile-time values with the same effect and cycle checks. Sampling palettes
+require 1–256 entries. Existing literal palettes preserve their accepted syntax,
+diagnostics, size limits and lowering for direct indexing and ramp.
+
+Direct palette indexing evaluates its i32 index once and returns the selected
+value or description without RNG. Negative or oversized indices select the last
+entry. Only `.pick()` or `.pick(n)` samples the selected description, through the
+existing caller-stream algorithms. A palette copied/passed as a first-class list
+has at most 256 entries and ordinary checked indexing, including helper parameters.
+`ramp` accepts only constant color/f32 palettes and rejects descriptions, lists of
+samplers and vec2 palettes without sampling hidden interpolation stops. Source
+metadata advertises these rules and enables sampler constant types/const `list.len`
+overloads; global `pick`, contextual helper names, old binaries and kernels remain
+unchanged.

@@ -5,8 +5,42 @@
 #include "iprop/math/Curves.hpp"
 #include "iprop/math/MinMax.hpp"
 #include "iprop/math/Scalar.hpp"
+#include "iprop/Collections.hpp"
+#include <algorithm>
 
 namespace iprop::ips {
+
+bool extendedPalette(const PaletteDecl& palette) {
+    return std::any_of(palette.elements.begin(), palette.elements.end(), [](const auto& e) {
+        return std::holds_alternative<RandomRange>(*e) || std::holds_alternative<SamplerCapture>(*e) ||
+            std::holds_alternative<VectorLit>(*e) || std::holds_alternative<Identifier>(*e) ||
+            std::holds_alternative<Index>(*e) || std::holds_alternative<Member>(*e);
+    });
+}
+
+ValueType paletteType(const PaletteDecl& palette, std::span<const ValueType> elements) {
+    if (elements.empty())
+        throw SourceError{palette.location,"palette '"+palette.name+"' needs at least one element"};
+    ValueType item = ValueType::Void;
+    bool descriptions = false;
+    for (std::size_t i = 0; i < elements.size(); ++i) {
+        auto type = elements[i];
+        descriptions |= type.isSampler() || std::holds_alternative<RandomRange>(*palette.elements[i]);
+        if (type.isSampler()) type = type.item();
+        if (!ValueType::sampler(type).isStorable())
+            throw SourceError{locationOf(*palette.elements[i]), "palette '" + palette.name +
+                "' needs i32, f32, color, vec2 or sampler<T> elements, got " + typeName(type)};
+        if (item == ValueType::Void) item = type;
+        else if (item != type) {
+            if (isNumeric(item) && isNumeric(type)) item = ValueType::F32;
+            else throw SourceError{locationOf(*palette.elements[i]), "palette '" + palette.name +
+                "' must have elements of one type (" + typeName(item) + " and " + typeName(type) + " found)"};
+        }
+    }
+    if (descriptions && elements.size() > kMaxListElements)
+        throw SourceError{palette.location, "sampling palette '" + palette.name + "' exceeds 256 elements"};
+    return descriptions ? ValueType::sampler(item) : item;
+}
 
 ResolvedPalette resolvePalette(const PaletteDecl& palette) {
     if (palette.elements.empty())

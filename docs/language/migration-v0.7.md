@@ -1,14 +1,14 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–4 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–5 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
-samplers with explicit single/batch picks. Product 0.7.0 is under
-development. Later stages of 0.7, including range palettes and surfaces, remain
+samplers with explicit single/batch picks, const descriptions and sampling palettes. Product 0.7.0 is under
+development. Later stages of 0.7, including weighted/density distributions and surfaces, remain
 outside the currently implemented language.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–4 |
+| Contract | 0.6 release | 0.7 development, stages 1–5 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -152,6 +152,31 @@ Ordinary locals, inputs and part aliases named `sampler` remain valid.
 Schema 3 adds `source_rules.samplers`, including eight method signatures from
 the frontend's shared receiver-first registry, their effects and evaluation
 order. Parameterized types now include `sampler<T>` and `list<sampler<T>>`.
-Const sampler declarations and range palettes remain unavailable until the
-next stage. Frozen stage-3 collections and an ordinary-range sampler oracle
+Const sampler declarations and range palettes are now available. Frozen stage-3
+collections and an ordinary-range sampler oracle
 execute directly as compatibility evidence; older fixtures remain unchanged.
+
+## Constant descriptions and sampling palettes
+
+Stage 5 adds `const sampler<T>`, `const list<sampler<T>>` and palettes containing
+ranges or descriptions. The existing constant resolver now checks their shared
+dependency graph without RNG or generation state. `palette widths=[10 to 15,40]`
+returns a description when indexed; only `widths[i].pick()` draws. Scalar entries
+become constant descriptions, while ordinary palettes still return values.
+Vec2 palettes and numeric description widening are supported. See
+[sampling palette rules](palettes.md#sampling-palettes).
+
+Direct palette indices retain last-element fallback; a palette passed as a list
+has checked indices. New sampling palettes and first-class lists are limited to
+256 entries; older constant palette indexing/ramp keeps its old limits. Ramp
+rejects descriptions rather than sampling stops. Migrating a value palette to
+ranges changes where RNG is consumed: make the pick explicit and retain a result
+once when several dimensions or color channels must reuse it.
+
+Section 8 stores deduplicated descriptions, opcode `const.sampler` retains them
+and constant lists reference the same immutable data. No public host enum/layout
+changes. All older numbers, scalar/list records, kernels and frozen fuel remain
+unchanged. The eight pick method signatures are unchanged. Schema 3 now enables
+sampler constants and const list-length overloads, and records `source_rules.palettes`.
+The bounded LLM reference remains 80 KiB. Actual archived stage-4 binaries and an
+independent example oracle are executed without regenerating their expected data.

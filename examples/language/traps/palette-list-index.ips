@@ -1,0 +1,10 @@
+asset checkedDescriptionList {
+  size 1x1
+  palette widths = [10 to 15, 40]
+  description(items: list<sampler<i32>>, i: i32) -> sampler<i32> {
+    return items[i]
+  }
+  draw {
+    width = description(widths, -1).pick()
+  }
+}

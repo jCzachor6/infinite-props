@@ -287,11 +287,11 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
     if (id.name == "seed") {
         return ValueType::I32;
     }
-    // A bare palette name is not a value — it must be indexed.
+    // Bare palettes are first-class lists, with the ordinary list size limit.
     for (const auto& palette : owner_->asset.palettes) {
         if (palette.name == id.name) {
             const auto& resolved = this->palette(id);
-            if (resolved.elements.size() > kMaxListElements)
+            if (palette.elements.size() > kMaxListElements)
                 error(id.location, "palette '" + id.name + "' exceeds 256 elements when used as a list");
             return ValueType::list(resolved.type);
         }
@@ -340,7 +340,25 @@ ValueType Typer::typeVector(const VectorLit& vector) {
 const ResolvedPalette& Typer::palette(const Identifier& name) {
     const auto& decl = findPalette(*owner_,name);
     if (const auto found=palettes_.find(&decl); found!=palettes_.end()) return found->second;
-    return palettes_.emplace(&decl,resolvePalette(decl)).first->second;
+    if (!extendedPalette(decl)) return palettes_.emplace(&decl,resolvePalette(decl)).first->second;
+    if (!activePalettes_.insert(&decl).second)
+        throw SourceError{name.location, "cyclic palette dependency: " + name.name, {},
+            DiagnosticCode::AssetConstantCycle, DiagnosticStage::Typing};
+    try {
+        std::vector<ValueType> types;
+        for (const auto& element : decl.elements) types.push_back(typeOf(*element));
+        const auto type = paletteType(decl, types);
+        activePalettes_.erase(&decl);
+        return palettes_.emplace(&decl, ResolvedPalette{type, {}}).first->second;
+    } catch (...) { activePalettes_.erase(&decl); throw; }
+}
+
+ValueType Typer::paletteElementType(const PaletteDecl& declaration) {
+    return palette(Identifier{declaration.name, declaration.location}).type;
+}
+
+void Typer::registerPaletteType(const PaletteDecl& declaration, ValueType type) {
+    palettes_.insert_or_assign(&declaration, ResolvedPalette{type, {}});
 }
 
 // `palette[i]` — the index must be i32; the result is the (uniform) element
@@ -366,7 +384,11 @@ ValueType Typer::typeList(const ListLit& list, std::optional<ValueType> context)
 ValueType Typer::typeIndex(const Index& index) {
     if (const auto* name = std::get_if<Identifier>(index.object.get())) {
         const auto declared = std::find_if(owner_->asset.palettes.begin(), owner_->asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
-        if (declared != owner_->asset.palettes.end()) {
+        const auto local = locals_.find(name->name);
+        // First-class parameters take precedence over the asset palette.
+        // Keep the legacy scalar-name behavior for older source programs.
+        if (declared != owner_->asset.palettes.end() &&
+            (local == locals_.end() || !local->second.isParameterized())) {
             const auto& resolved = palette(*name);
             if (typeOf(*index.index) != ValueType::I32) error(locationOf(*index.index), "palette index must be i32, got " + std::string(typeName(typeOf(*index.index))));
             return resolved.type;
@@ -395,6 +417,15 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
         error(locationOf(*args[0]->value),
               "ramp's first argument must be a palette name");
     }
+    const auto* declaration = std::get_if<Identifier>(args[0]->value.get());
+    if (declaration && std::none_of(owner_->asset.palettes.begin(), owner_->asset.palettes.end(),
+        [&](const auto& p) { return p.name == declaration->name; }) &&
+        (locals_.contains(declaration->name) || std::any_of(owner_->asset.constants.begin(), owner_->asset.constants.end(),
+            [&](const auto& c) { return c.name == declaration->name; }))) {
+        const auto type = typeOf(*args[0]->value);
+        if (type.isList() && type.item().isSampler())
+            error(declaration->location, "ramp does not accept sampling palettes or list<sampler<T>>; pick a value explicitly");
+    }
     const auto& resolved = palette(*paletteName);
     const ValueType t = typeOf(*args[1]->value);
     if (!isNumeric(t)) {
@@ -406,6 +437,10 @@ ValueType Typer::typeRamp(const Identifier& name, const Call& call) {
               "ramp requires a color or f32 palette; '" + paletteName->name +
                   "' is i32 (use the explicit lerp instead)");
     }
+    if (resolved.type != ValueType::Color && resolved.type != ValueType::F32)
+        error(paletteName->location, resolved.type.isSampler() ?
+            "ramp does not accept sampling palettes or list<sampler<T>>; pick a value explicitly" :
+            "ramp requires a color or f32 palette");
     return resolved.type;
 }
 

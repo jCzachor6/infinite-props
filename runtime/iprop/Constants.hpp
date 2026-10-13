@@ -25,6 +25,7 @@ enum class SectionId : u32 {
     Parts = 5, // v0.5: part instance names and parents (spec v0.5 §6)
     Types = 6, // v0.6: parameterized type descriptors
     Collections = 7, // v0.6: immutable collection constants
+    Samplers = 8, // v0.6: immutable sampler constants
 };
 
 // Input (uniform) types (spec §4.1).
@@ -252,6 +253,7 @@ enum class Opcode : u8 {
     SamplerWith = 0xBE,
     SamplerPick = 0xBF,
     SamplerPickList = 0xC0,
+    ConstSampler = 0xC1,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

@@ -1,0 +1,37 @@
+asset samplingPalettes {
+  size 32x24
+  variants 3
+  output point checks
+  output point direction
+  output point samples
+  output point normalized
+  output point state
+
+  const distribution typical = gaussian(mean=25.0, sigma=2.0)
+  const distribution finishCurve = gaussian(mean=0.5, sigma=0.18)
+  const sampler<f32> position = sampler(0.0 to 1.0 with finishCurve)
+  const sampler<color> finish = sampler(#343a42 to #d8dce2 with finishCurve)
+  const list<sampler<i32>> fixed = [sampler(40)]
+
+  palette widths = [10 to 15, 20 to 30 with typical, 40]
+  palette tints = [finish, #929ca8]
+  palette directions = [{3, 2} to {26, 2} with beta(2, 3), {3, 4}]
+
+  description(items: list<sampler<i32>>, i: i32) -> sampler<i32> {
+    return items[i]
+  }
+
+  draw {
+    spec = description(widths, v)
+    values = spec.pick(3)
+    material = tints[0].pick()
+    direction = directions[0].pick()
+    normalized = {position.pick(), 0}
+    checks = {list.len(values), fixed[0].pick(1)[0]}
+    samples = {values[0], values[2]}
+    for i in 0..3 {
+      rect(2, 2 + i * 6, values[i], 4, material)
+    }
+    state = {seed & 65535, seed >> 16}
+  }
+}

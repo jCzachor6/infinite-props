@@ -5,14 +5,15 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements stages 1–4 of source language **0.7**, in development
+This checkout implements stages 1–5 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler emits the oldest required format, from 0.4 to 0.6;
 the ABI remains 0.4. The new implemented features are integer bounds overloads
 and vector normalization, typed immutable asset constants, and lists with
 helper transfer and polygon drawing, and captured samplers with scalar/batch picks; later 0.7
-stages are not yet available.
+stages are not yet available. Const samplers and sampling palettes now share
+the same explicit picks.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected

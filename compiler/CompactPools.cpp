@@ -24,7 +24,7 @@ void compactPools(Plan& plan) {
         }
     }
     Pools pools;
-    std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size());
+    std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size()), samplers(old.samplersValue().size());
     const auto markType = [&](ValueType type) {
         if (!type.isParameterized()) return;
         const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
@@ -36,6 +36,9 @@ void compactPools(Plan& plan) {
         for (const auto ins : f.code) {
             if (ins.opcode == Opcode::ConstList) {
                 lists.at(ins.operand) = true; markType(old.listsValue().at(ins.operand).type);
+            }
+            if (ins.opcode == Opcode::ConstSampler) {
+                samplers.at(ins.operand) = true; markType(old.samplersValue().at(ins.operand).type);
             }
             if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) types.at(ins.operand) = true;
             if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) types.at(ins.operand) = true;
@@ -51,9 +54,19 @@ void compactPools(Plan& plan) {
     const auto fmap = remap(old.floatsValue(), floats, [&](u32 x) { return pools.addFloat(x); });
     const auto cmap = remap(old.colorsValue(), colors, [&](Color x) { return pools.addColor(x); });
     const auto tmap = remap(old.typesValue(), types, [&](ValueType type) { return pools.addType(type); });
+    // Preserve used sampler order, including dependencies of list constants.
+    for (std::size_t i = 0; i < lists.size(); ++i) if (lists[i] && old.listsValue()[i].type.item().isSampler())
+        for (const auto& value : old.listsValue()[i].data->elements) {
+            const auto& sampler = std::get<SamplerValue>(value);
+            const auto found = std::find_if(old.samplersValue().begin(), old.samplersValue().end(),
+                [&](const auto& s) { return s.data == sampler.data; });
+            samplers.at(static_cast<std::size_t>(found - old.samplersValue().begin())) = true;
+        }
+    const auto smap = remap(old.samplersValue(), samplers, [&](const SamplerValue& sampler) { return pools.addSampler(sampler); });
     const auto lmap = remap(old.listsValue(), lists, [&](const ListValue& list) { return pools.addList(list); });
     for (auto& f : plan.functions) for (auto& ins : f.code) {
         if (ins.opcode == Opcode::ConstList) ins.operand = lmap.at(ins.operand);
+        if (ins.opcode == Opcode::ConstSampler) ins.operand = smap.at(ins.operand);
         if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
         if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstI32) ins.operand = imap.at(ins.operand);

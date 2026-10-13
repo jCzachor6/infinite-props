@@ -617,18 +617,18 @@
       "schema": true
     },
     {
-      "id": "premature sampler constants",
+      "id": "sampler constants disabled",
       "path": [
         "source_rules",
         "samplers",
         "asset_constants"
       ],
-      "value": true,
+      "value": false,
       "accept": false,
       "schema": false
     },
     {
-      "id": "premature sampler constant list type",
+      "id": "incomplete sampler constant types",
       "path": [
         "source_rules",
         "asset_constants",
@@ -637,6 +637,118 @@
       "value": [
         "list<sampler<i32>>"
       ],
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "palette evaluation draws",
+      "path": [
+        "source_rules",
+        "palettes",
+        "evaluation"
+      ],
+      "value": "runtime_draws",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette indexing draws",
+      "path": [
+        "source_rules",
+        "palettes",
+        "index_evaluation"
+      ],
+      "value": "draw_once",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette bounds trap",
+      "path": [
+        "source_rules",
+        "palettes",
+        "index_bounds"
+      ],
+      "value": "trap",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette scalar lifting disabled",
+      "path": [
+        "source_rules",
+        "palettes",
+        "constant_entries"
+      ],
+      "value": "keep_scalar",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "ramp implicitly samples",
+      "path": [
+        "source_rules",
+        "palettes",
+        "ramp"
+      ],
+      "value": "sample_descriptions",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette sampling limit raised",
+      "path": [
+        "source_rules",
+        "palettes",
+        "sampling_maximum_length"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette sampling limit boolean",
+      "path": [
+        "source_rules",
+        "palettes",
+        "sampling_maximum_length"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette list fallback",
+      "path": [
+        "source_rules",
+        "palettes",
+        "first_class_value"
+      ],
+      "value": "list_with_fallback",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette generation distribution",
+      "path": [
+        "source_rules",
+        "palettes",
+        "element_types"
+      ],
+      "value": [
+        "distribution"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "range palette disabled",
+      "path": [
+        "source_rules",
+        "samplers",
+        "range_palettes"
+      ],
+      "value": false,
       "accept": false,
       "schema": false
     }

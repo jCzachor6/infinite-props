@@ -250,10 +250,17 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         out << '\n';
     }
     for (const auto& list : loaded.collections.lists) {
-        Writer data; writeListElements(data, *list.data);
+        Writer data; writeListElements(data, *list.data, loaded.collections.samplers);
         out << "collection: " << valueTypeName(list.type) << ' ';
         constexpr char digits[] = "0123456789abcdef";
         if (data.data().empty()) out << '-';
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
+    }
+    for (const auto& sampler : loaded.collections.samplers) {
+        Writer data; writeSamplerData(data, *sampler.data);
+        out << "sampler: " << valueTypeName(sampler.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
         for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
         out << '\n';
     }

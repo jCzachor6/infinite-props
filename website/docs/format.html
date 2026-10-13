@@ -41,7 +41,10 @@ parameterized type descriptors, immutable collection pools and list instructions
 including <code>poly(list&lt;vec2&gt;, color)</code>. Stage 4 adds captured
 <code>sampler&lt;T&gt;</code> descriptions, <code>.pick()</code> and immutable
 <code>.pick(n)</code> batches, using the existing range/RNG algorithms. Descriptors
-can also reference sampler elements in lists. Const samplers, range palettes and
+can also reference sampler elements in lists. Stage 5 adds constant sampler pools,
+const lists of descriptions and compile-time range palettes with explicit picks.
+Direct palette indexing keeps its fallback; first-class list indexing checks bounds.
+Weighted/density distributions and
 surfaces remain pending; public host layouts remain unchanged.</p>
 <ul>
 <li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older

@@ -12,14 +12,22 @@ namespace detail {
 ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
     ParseResult result;
     recovery_ = &result;
-    // Only declarations sit directly inside the asset braces, so `to(` or
-    // `with(` there declares a helper, whose call may follow a statement.
+    // Asset initializers can also contain calls. A helper signature must be
+    // followed by its body or return type, rather than merely sit at depth 1.
     std::size_t depth = 0;
     for (std::size_t i = 0; i + 1 < tokens_.size(); ++i) {
         if (tokens_[i].kind == TokenKind::LBrace) ++depth;
         if (tokens_[i].kind == TokenKind::RBrace && depth > 0) --depth;
         if (depth == 1 && tokens_[i].kind == TokenKind::Identifier &&
-            tokens_[i + 1].kind == TokenKind::LParen) {
+            tokens_[i + 1].kind == TokenKind::LParen &&
+            (tokens_[i].text == "to" || tokens_[i].text == "with" || tokens_[i].text == "sampler")) {
+            std::size_t end = i + 1, parentheses = 0;
+            for (; end < tokens_.size(); ++end) {
+                if (tokens_[end].kind == TokenKind::LParen) ++parentheses;
+                if (tokens_[end].kind == TokenKind::RParen && --parentheses == 0) break;
+            }
+            if (end + 1 >= tokens_.size() ||
+                (tokens_[end + 1].kind != TokenKind::LBrace && tokens_[end + 1].kind != TokenKind::Arrow)) continue;
             if (tokens_[i].text == "to") toHelper_ = true;
             if (tokens_[i].text == "with") withHelper_ = true;
             if (tokens_[i].text == "sampler") samplerHelper_ = true;

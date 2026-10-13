@@ -291,3 +291,22 @@ test("sampler formatting preserves captures, arbitrary receivers, types and comm
         assert.equal(new RegExp(grammar.repository.samplerMethod.match).test("items[0].pick(3)"),true);
     }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test("sampling palette formatting preserves const graphs and explicit palette picks", async () => {
+    const source="asset t{size 1x1 const sampler<i32> fixed=sampler(40) " +
+        "palette widths=[10 to 15,/* captured */20 to 30 with shape,fixed] " +
+        "const distribution shape=gaussian(mean=25,sigma=2) const list<sampler<i32>> specs=widths " +
+        "draw{values=widths[-1].pick(n=3) value=specs[0].pick()}}";
+    const dir=workspace(source); const h=editorHarness(dir,execFile); h.settings.compilerPath=compiler;
+    try{
+        const edits=await format(h); assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("const sampler<i32> fixed"));
+        assert.ok(formatted.includes("const list<sampler<i32>> specs"));
+        assert.ok(formatted.includes("/* captured */"));
+        assert.ok(formatted.includes("widths[(-1)].pick(3)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr); clean(dir);
+    }finally{h.dispose(); fs.rmSync(dir,{recursive:true,force:true});}
+});

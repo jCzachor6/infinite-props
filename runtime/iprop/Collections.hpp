@@ -3,6 +3,7 @@
 #include "iprop/Format.hpp"
 #include "iprop/Value.hpp"
 #include <map>
+#include <set>
 
 namespace iprop {
 
@@ -13,6 +14,7 @@ inline constexpr u8 kDescriptorReference = 0x80;
 struct CollectionPool {
     std::vector<TypeDescriptor> types;
     std::vector<ListValue> lists;
+    std::vector<SamplerValue> samplers;
 };
 
 TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types);
@@ -21,8 +23,14 @@ void writeTypeReference(Writer& writer, TypeDescriptor type,
 std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section);
 void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types);
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
-                                         std::span<const TypeDescriptor> types);
-void writeListElements(Writer& writer, const ListData& list);
+                                         std::span<const TypeDescriptor> types,
+                                         std::span<const SamplerValue> samplers = {});
+void writeListElements(Writer& writer, const ListData& list,
+                       std::span<const SamplerValue> samplers = {});
+std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
+                                          std::span<const TypeDescriptor> types);
+// Payload after the type descriptor: mode, reserved byte and typed data.
+void writeSamplerData(Writer& writer, const SamplerData& sampler);
 
 // One generation owns immutable buffers and charges each allocation once.
 // A handle copy, helper argument or return shares the original allocation.
@@ -32,6 +40,7 @@ struct ResourceArena {
     std::vector<std::shared_ptr<const ListData>> lists;
     std::vector<std::shared_ptr<const SamplerData>> samplers;
     std::map<u16, ListValue> constants;
+    std::set<const SamplerData*> samplerConstants;
     bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; if (bytes > peak) peak = bytes; }
     void release(u64 size) { bytes -= size; }

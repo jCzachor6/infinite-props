@@ -53,9 +53,13 @@ Lists of descriptions use the same checked indices, 256-element limit, empty
 literal context, immutable sharing and `list.len` as other lists. Lists of
 lists, samplers of resources and automatic sampler type widening are rejected.
 
-Asset `const sampler<T>` and palettes containing ranges are deferred to the
-next development stage. Ordinary palettes and their legacy index fallback are
-unchanged. A legacy helper named `sampler` retains ordinary calls; using an outer
+Asset `const sampler<T>` and `const list<sampler<T>>` store compile-time
+descriptions without drawing. The same constant resolver checks endpoints,
+distribution parameters, forward references and cycles. Calls to `.pick`,
+RNG, inputs and helper calls cannot run during constant evaluation. Empty const
+lists need their declared type. Range/description palettes use these same
+descriptions; see [sampling palettes](palettes.md#sampling-palettes).
+A legacy helper named `sampler` retains ordinary calls; using an outer
 range in such a call reports a capture collision and requires renaming the
 helper. Ordinary locals named `sampler` remain valid.
 
@@ -76,6 +80,13 @@ costs its base instruction, one unit per stored element and each draw's existing
 kernel cost. Empty batches have no draw cost; constant descriptions have no RNG
 draw cost. Fuel or memory failure publishes no partially built list or successful
 generation result. See the [format contract](../../spec/iprop-v0.6.md).
+
+Serialized const descriptions share the same arena budget. A first read charges
+each retained description once; repeated reads and aliases share its handle.
+A const list of descriptions charges its list buffer and each distinct retained
+description once, even when entries repeat or a standalone const already uses
+the same description. Its first load also costs one fuel per entry; later
+cached reads cost only the instruction base. Compilation never draws a result.
 
 ## Executable example
 

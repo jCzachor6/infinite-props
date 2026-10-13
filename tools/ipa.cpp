@@ -112,6 +112,7 @@ struct Program {
     std::vector<TypeDescriptor> types;
     struct Collection { TypeDescriptor type; std::vector<u8> bytes; u16 count; };
     std::vector<Collection> collections;
+    std::vector<Collection> samplers;
 };
 
 std::vector<std::string> tokens(const std::string& line) {
@@ -432,13 +433,16 @@ std::vector<u8> assemble(const std::string& source) {
             }
             continue;
         }
-        if (words[0] == "collection:") {
+        if (words[0] == "collection:" || words[0] == "sampler:") {
+            const bool sampler = words[0] == "sampler:";
             ValueType type;
-            if (function || currentPart || words.size() != 3 || !parseValueType(words[1], type) || !type.isList())
-                throw error("bad collection declaration");
+            if (function || currentPart || words.size() != 3 || !parseValueType(words[1], type) ||
+                (sampler ? !type.isSampler() : !type.isList()))
+                throw error(sampler ? "bad sampler declaration" : "bad collection declaration");
             const auto& text = words[2];
-            const auto stride = type.element == ValueType::Vec2 ? 8u : type.element == ValueType::Distribution ? 17u : 4u;
-            if (text != "-" && (text.size() % (2 * stride) || text.size() / (2 * stride) > kMaxListElements))
+            const auto stride = sampler ? 1u : type.item().isSampler() ? 2u :
+                type.element == ValueType::Vec2 ? 8u : type.element == ValueType::Distribution ? 17u : 4u;
+            if (text != "-" && (text.size() % (2 * stride) || (!sampler && text.size() / (2 * stride) > kMaxListElements)))
                 throw error("bad collection size");
             std::vector<u8> bytes;
             if (text != "-") for (std::size_t i = 0; i < text.size(); i += 2) {
@@ -452,8 +456,8 @@ std::vector<u8> assemble(const std::string& source) {
                 if (hi < 0 || lo < 0) throw error("bad collection hex data");
                 bytes.push_back(static_cast<u8>(hi * 16 + lo));
             }
-            const auto count = static_cast<u16>(bytes.size() / stride);
-            program.collections.push_back({type, std::move(bytes), count});
+            const auto count = sampler ? u16{0} : static_cast<u16>(bytes.size() / stride);
+            (sampler ? program.samplers : program.collections).push_back({type, std::move(bytes), count});
             continue;
         }
 
@@ -861,11 +865,13 @@ std::vector<u8> assemble(const std::string& source) {
     for (const auto* fn : ordered) for (const auto* slots : {&fn->params, &fn->results, &fn->locals})
         for (const auto type : *slots) addType(type);
     for (const auto& collection : program.collections) addType(collection.type);
+    for (const auto& sampler : program.samplers) addType(sampler.type);
     Writer descriptors;
     if (!program.types.empty()) {
         writeTypeDescriptors(descriptors, program.types);
     }
     Writer collections;
+    Writer samplers;
     if (!program.collections.empty()) {
         if (program.collections.size() > kMaxConstPoolEntries) throw SourceError(0, "too many collections");
         collections.writeU32(static_cast<u32>(program.collections.size()));
@@ -873,6 +879,14 @@ std::vector<u8> assemble(const std::string& source) {
             const auto found = std::find(program.types.begin(), program.types.end(), collection.type);
             collections.writeU16(static_cast<u16>(found - program.types.begin()));
             collections.writeU16(collection.count); collections.writeBytes(collection.bytes);
+        }
+    }
+    if (!program.samplers.empty()) {
+        if (program.samplers.size() > kMaxConstPoolEntries) throw SourceError(0, "too many sampler constants");
+        samplers.writeU32(static_cast<u32>(program.samplers.size()));
+        for (const auto& sampler : program.samplers) {
+            const auto found = std::find(program.types.begin(), program.types.end(), sampler.type);
+            samplers.writeU16(static_cast<u16>(found - program.types.begin())); samplers.writeBytes(sampler.bytes);
         }
     }
 
@@ -1014,8 +1028,9 @@ std::vector<u8> assemble(const std::string& source) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    if (descriptors.size() || collections.size()) minor = 6;
-    const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) + (collections.size() ? 1u : 0u);
+    if (descriptors.size() || collections.size() || samplers.size()) minor = 6;
+    const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u);
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(0);
@@ -1034,11 +1049,12 @@ std::vector<u8> assemble(const std::string& source) {
     if (instances) section(5, partInstances.data());
     if (descriptors.size()) section(6, descriptors.data());
     if (collections.size()) section(7, collections.data());
+    if (samplers.size()) section(8, samplers.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     if (instances) file.writeBytes(partInstances.data());
-    file.writeBytes(descriptors.data()); file.writeBytes(collections.data());
+    file.writeBytes(descriptors.data()); file.writeBytes(collections.data()); file.writeBytes(samplers.data());
 
     const auto bytes = file.data();
 

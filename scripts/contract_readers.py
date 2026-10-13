@@ -148,7 +148,7 @@ def read_language(value):
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
     constant_types = {'i32', 'f32', 'color', 'vec2', 'distribution'}
-    strings(constants.get('types'), 'constant types', constant_types | {'list<' + item + '>' for item in constant_types}, True)
+    strings(constants.get('types'), 'constant types', constant_types | LIST_TYPES | SAMPLER_TYPES, True)
     require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
             not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
@@ -182,7 +182,22 @@ def read_language(value):
             'intrinsic_capture_rng': {'none'}, 'bounds_validation': {'capture'},
             'probability_mass_validation': {'pick'}, 'method_resolution': {'static_receiver_type_and_arity'},
             'batch_preflight': {'count_handle_allocation_before_first_draw'}}, ['asset_constants','range_palettes'], 'sampler rules')
-        require(sampler['asset_constants'] is False and sampler['range_palettes'] is False, 'deferred sampler constants and palettes')
+        require(sampler['asset_constants'] is True and sampler['range_palettes'] is True, 'sampler constants and palettes')
+        require(set(constants['types']) == constant_types | LIST_TYPES | SAMPLER_TYPES, 'complete constant types')
+        palette = obj(rules.get('palettes'), ['element_types'], 'palettes')
+        _strings_and_bools(palette, {
+            'syntax': {'palette <name> = [<elements>]'}, 'evaluation': {'compile_time_no_rng'},
+            'sampling_trigger': {'outer_range_or_sampler'},
+            'constant_entries': {'lift_to_constant_descriptions_in_sampling_palette'},
+            'numeric_elements': {'i32_to_f32_widening'}, 'index_type': {'i32'}, 'index_evaluation': {'once'},
+            'index_bounds': {'last_element_fallback'}, 'first_class_value': {'immutable_list_with_checked_index'},
+            'legacy_length_limit': {'unchanged'}, 'ramp': {'constant_color_or_f32_only'}}, [], 'palette policy')
+        palette_types = {'i32','f32','color','vec2'} | SAMPLER_TYPES
+        strings(palette['element_types'], 'palette element types', palette_types, True)
+        require(set(palette['element_types']) == palette_types, 'complete palette types')
+        for key, expected in [('minimum_length',1),('sampling_maximum_length',256),('first_class_maximum_length',256)]:
+            integer(palette.get(key), 'palette.' + key)
+            require(palette[key] == expected, 'palette.' + key)
         require(sampler['capture_evaluation'] == 'lower_upper_distribution_once' and sampler['method_evaluation'] == 'receiver_once_before_count_once', 'sampler evaluation order')
         effects(sampler['capture_effects'], 'sampler capture')
         require(sampler['capture_effects']['rng'] == 'none', 'sampler capture intrinsic RNG')

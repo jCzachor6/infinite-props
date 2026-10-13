@@ -8,10 +8,10 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–4 of product **0.7.0** / source language **0.7**
+This checkout implements stages 1–5 of product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
 typed immutable asset constants, lists and captured samplers visible in draw
-and helpers, with explicit single picks and immutable batches.
+and helpers, with explicit single picks, immutable batches and sampling palettes.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
 writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
@@ -603,7 +603,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–4; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–5; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -722,3 +722,7 @@ its pinned zlib port via `-sUSE_ZLIB=1`.
 The [collection validation report](docs/validation-v0.7-stage3.md) covers type
 descriptors, list data and builders, helpers, palette compatibility, exact
 polygon pixels, resource limits and the native/WASM compatibility gates.
+
+The [sampling palette validation report](docs/validation-v0.7-stage5.md) covers
+constant descriptions, range palettes, checked helper scope, shared storage,
+format/tooling, frozen baselines and native/WASM/backend acceptance.

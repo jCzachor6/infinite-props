@@ -187,6 +187,28 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Preserved stage-4 runtime pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/sampling-palettes.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40400000,0x42200000,0x41aa69ec,0x40000000,
+            0x41200000,0x41600000,0x3f2ac48e,0,0x475a7000,0x47354c00};
+        CHECK(image.width==32 && image.height==24 && slots.size()==5,"palette image metadata");
+        for(std::size_t i=0;i<slots.size() && i<5;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"palette output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"palette output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && ((y>=2 && y<6 && x<12)||(y>=8 && y<12 && x<13)||(y>=14 && y<18 && x<16))){
+                color[0]=168;color[1]=173;color[2]=179;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"palette pixel %u,%u",x,y);
+        }
+    }
+
     // Independent stage-3 ordinary-range pins through the existing host layouts.
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(

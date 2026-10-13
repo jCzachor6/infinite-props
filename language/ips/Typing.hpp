@@ -107,6 +107,8 @@ public:
 
     // The type of an expression, validating it along the way.
     ValueType typeOf(const Expr& expr, std::optional<ValueType> context = {});
+    ValueType paletteElementType(const PaletteDecl& declaration);
+    void registerPaletteType(const PaletteDecl& declaration, ValueType type);
     const ExpressionTypes& expressions() const { return expressions_; }
     const CallPlans& calls() const { return calls_; }
 
@@ -117,6 +119,7 @@ private:
     BoundCallPlan bind(const Call& call, CallSignature signature, std::string_view name);
     ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+    std::set<const PaletteDecl*> activePalettes_;
     const ResolvedPalette& palette(const Identifier& name);
     // Parts are keyed by alias path; the current namespace prefixes a
     // source alias, so each asset sees only its direct imports.

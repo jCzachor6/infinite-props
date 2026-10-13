@@ -1,5 +1,15 @@
 {
   "cases": [
+    {"file": "sampling-palettes.ips", "expect": "pass"},
+    {"file": "errors/palette-runtime-bound.ips", "expect": "compile-error", "message": "cannot read 'lower'"},
+    {"file": "errors/const-sampler-cycle.ips", "expect": "compile-error", "message": "cyclic const dependency"},
+    {"file": "errors/palette-ramp.ips", "expect": "compile-error", "message": "ramp does not accept sampling palettes"},
+    {"file": "errors/sampling-palette-types.ips", "expect": "compile-error", "message": "must have elements of one type"},
+    {"file": "errors/const-sampler-effect.ips", "expect": "compile-error", "message": ".pick has RNG or generation effects"},
+    {"file": "errors/sampling-palette-bounds.ips", "expect": "compile-error", "message": "random range lower bound exceeds"},
+    {"file": "traps/palette-list-index.ips", "expect": "trap", "message": "list index out of range"},
+    {"file": "traps/palette-mass.ips", "expect": "trap", "message": "random range has no probability under the distribution"},
+
     {"file": "errors/sampler-count.ips", "expect": "compile-error", "message": "sampler result count must be between 0 and 256"},
     {"file": "errors/sampler-count-type.ips", "expect": "compile-error", "message": "sampler result count must be i32"},
     {"file": "errors/sampler-bounds.ips", "expect": "compile-error", "message": "random range lower bound exceeds the upper bound"},

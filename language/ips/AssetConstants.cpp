@@ -3,6 +3,8 @@
 #include "ips/Typing.hpp"
 #include "ips/Suggestions.hpp"
 #include "iprop/VmInternals.hpp"
+#include "iprop/Samplers.hpp"
+#include "iprop/math/Distribution.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -18,8 +20,7 @@ const Asset::Constant* findAssetConstant(const Program& program, const std::stri
 
 bool constantBuiltin(const BuiltinSpec& spec, const BuiltinOverload& overload) {
     if (!isStorable(overload.result)) return false;
-    if (spec.lowering == BuiltinLowering::ListLength)
-        return !overload.params[0].type.item().isSampler(); // sampler constants arrive in the next stage
+    if (spec.lowering == BuiltinLowering::ListLength) return true;
     if (overload.opcode) return detail::isConstantOperation(*findOpcode(*overload.opcode));
     return spec.lowering == BuiltinLowering::Opcode || spec.lowering == BuiltinLowering::Round ||
         spec.lowering == BuiltinLowering::ColorConstructor || spec.lowering == BuiltinLowering::Beta;
@@ -45,41 +46,45 @@ public:
 
     std::optional<Value> known(const Expr& expression, const AssetConstants& constants) {
         values_ = constants;
-        for (std::size_t i = 0; i < program_.asset.constants.size(); ++i)
-            declarations_.emplace(program_.asset.constants[i].name, i);
+        registerDeclarations();
         Asset::Constant context;
         context.name = "sampler argument";
         current_ = &context;
         std::set<std::size_t> dependencies;
         try { inspect(expression, dependencies); }
         catch (const SourceError&) { return std::nullopt; }
+        if (std::any_of(dependencies.begin(), dependencies.end(), [&](auto i) { return i >= program_.asset.constants.size(); })) {
+            palettes_ = Resolver(program_).resolve().palettes;
+            for (const auto& [palette, value] : palettes_) typer_.registerPaletteType(*palette, value.type);
+        }
         Function function;
         typer_.enterFunction(program_, function, false);
         (void)typer_.typeOf(expression);
         return evaluate(expression);
     }
 
-    AssetConstants resolve() {
+    AssetDeclarations resolve() {
         validateNames();
+        for (std::size_t i = 0; i < program_.asset.palettes.size(); ++i)
+            declarations_.emplace(program_.asset.palettes[i].name, program_.asset.constants.size() + i);
         Function context;
         typer_.enterFunction(program_, context, false);
-        std::vector<std::set<std::size_t>> dependencies(program_.asset.constants.size());
+        std::vector<std::set<std::size_t>> dependencies(declarations_.size());
         std::vector<std::vector<std::size_t>> users(dependencies.size());
         std::vector<std::size_t> pending(dependencies.size());
         std::set<std::size_t> ready;
         for (std::size_t i = 0; i < dependencies.size(); ++i) {
-            current_ = &program_.asset.constants[i];
-            if (current_->type.isSampler() || (current_->type.isList() && current_->type.item().isSampler()))
-                fail(current_->location, "asset sampler constants are not supported yet; use a local sampler description");
-            inspect(*current_->value, dependencies[i]);
-            const auto actual = typer_.typeOf(*current_->value, current_->type);
-            const auto expected = valueTypeOf(current_->type);
-            if (!argFits(expected, actual)) {
-                SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs a " +
-                    typeName(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
-                error.expectedType = typeName(expected);
-                error.actualType = typeName(actual);
-                throw error;
+            select(i);
+            if (currentPalette_) {
+                if (!extendedPalette(*currentPalette_)) (void)resolvePalette(*currentPalette_);
+                else {
+                    for (const auto& element : currentPalette_->elements) {
+                        if (std::holds_alternative<RandomRange>(*element)) inspectCapture(*element, dependencies[i]);
+                        else inspect(*element, dependencies[i]);
+                    }
+                }
+            } else {
+                inspect(*current_->value, dependencies[i]);
             }
             pending[i] = dependencies[i].size();
             if (pending[i] == 0) ready.insert(i);
@@ -90,10 +95,25 @@ public:
         while (!ready.empty()) {
             const auto i = *ready.begin();
             ready.erase(ready.begin());
-            current_ = &program_.asset.constants[i];
-            Value value = evaluate(*current_->value);
-            if (current_->type == ParamType::F32 && std::holds_alternative<i32>(value)) value = number(value);
-            values_.emplace(current_->name, value);
+            select(i);
+            if (currentPalette_) {
+                auto palette = evaluatePalette(*currentPalette_);
+                auto data = std::make_shared<ListData>(ListData{ValueType::list(palette.type), palette.elements});
+                values_.emplace(currentPalette_->name, ListValue{data->type, std::move(data)});
+                palettes_.emplace(currentPalette_, std::move(palette));
+            } else {
+                const auto actual = typer_.typeOf(*current_->value, current_->type);
+                const auto expected = valueTypeOf(current_->type);
+                if (!argFits(expected, actual)) {
+                    SourceError error{locationOf(*current_->value), "const '" + current_->name + "' needs a " +
+                        typeName(expected) + ", got " + typeName(actual), {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
+                    error.expectedType = typeName(expected); error.actualType = typeName(actual);
+                    throw error;
+                }
+                Value value = evaluate(*current_->value);
+                if (current_->type == ParamType::F32 && std::holds_alternative<i32>(value)) value = number(value);
+                values_.emplace(current_->name, value);
+            }
             for (const auto user : users[i]) if (--pending[user] == 0) ready.insert(user);
         }
         if (values_.size() != dependencies.size()) {
@@ -107,12 +127,16 @@ public:
             }
             std::string cycle;
             for (std::size_t at = visited.at(i); at < path.size(); ++at)
-                cycle += program_.asset.constants[path[at]].name + " -> ";
-            cycle += program_.asset.constants[i].name;
-            throw SourceError{program_.asset.constants[path.back()].location,
+                cycle += declarationName(path[at]) + " -> ";
+            cycle += declarationName(i);
+            select(path.back());
+            throw SourceError{currentPalette_ ? currentPalette_->location : current_->location,
                 "cyclic const dependency: " + cycle, {}, DiagnosticCode::AssetConstantCycle, DiagnosticStage::Typing};
         }
-        return std::move(values_);
+        AssetDeclarations result;
+        for (const auto& constant : program_.asset.constants) result.constants.emplace(constant.name, values_.at(constant.name));
+        result.palettes = std::move(palettes_);
+        return result;
     }
 
 private:
@@ -122,10 +146,29 @@ private:
     std::map<std::string, std::size_t> declarations_;
     AssetConstants values_;
     const Asset::Constant* current_ = nullptr;
+    const PaletteDecl* currentPalette_ = nullptr;
+    std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+
+    void registerDeclarations() {
+        for (std::size_t i = 0; i < program_.asset.constants.size(); ++i)
+            declarations_.emplace(program_.asset.constants[i].name, i);
+        for (std::size_t i = 0; i < program_.asset.palettes.size(); ++i)
+            declarations_.emplace(program_.asset.palettes[i].name, program_.asset.constants.size() + i);
+    }
+    void select(std::size_t index) {
+        current_ = nullptr; currentPalette_ = nullptr;
+        if (index < program_.asset.constants.size()) current_ = &program_.asset.constants[index];
+        else currentPalette_ = &program_.asset.palettes[index - program_.asset.constants.size()];
+    }
+    const std::string& declarationName(std::size_t index) const {
+        return index < program_.asset.constants.size() ? program_.asset.constants[index].name :
+            program_.asset.palettes[index - program_.asset.constants.size()].name;
+    }
 
     [[noreturn]] void fail(const SourceLocation& at, std::string message,
                           DiagnosticCode code = DiagnosticCode::AssetConstantEffect) const {
-        throw SourceError{at, "const '" + current_->name + "': " + std::move(message), {}, code, DiagnosticStage::Typing};
+        const auto prefix = currentPalette_ ? "palette '" + currentPalette_->name : "const '" + current_->name;
+        throw SourceError{at, prefix + "': " + std::move(message), {}, code, DiagnosticStage::Typing};
     }
 
     void validateNames() {
@@ -152,7 +195,6 @@ private:
         if (const auto* id = std::get_if<Identifier>(&expression)) {
             const auto found = declarations_.find(id->name);
             if (found != declarations_.end()) { dependencies.insert(found->second); return; }
-            for (const auto& palette : program_.asset.palettes) if (palette.name == id->name) return;
             std::vector<std::string> names;
             for (const auto& [name, index] : declarations_) { (void)index; names.push_back(name); }
             fail(id->location, "cannot read '" + id->name + "'; only asset constants are allowed" + didYouMean(id->name, names));
@@ -163,6 +205,7 @@ private:
                 const auto* palette = std::get_if<Identifier>(bound.arguments[0]->value.get());
                 if (!palette) fail(call->location, "ramp needs a palette name");
                 (void)findPalette(program_, *palette);
+                inspect(*bound.arguments[0]->value, dependencies);
                 inspect(*bound.arguments[1]->value, dependencies);
                 return;
             }
@@ -177,9 +220,7 @@ private:
         } else if (const auto* member = std::get_if<Member>(&expression)) {
             inspect(*member->object, dependencies);
         } else if (const auto* index = std::get_if<Index>(&expression)) {
-            const auto* name = std::get_if<Identifier>(index->object.get());
-            const bool palette = name && std::any_of(program_.asset.palettes.begin(), program_.asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
-            if (!palette) inspect(*index->object, dependencies);
+            inspect(*index->object, dependencies);
             inspect(*index->index, dependencies);
         } else if (const auto* binary = std::get_if<Binary>(&expression)) {
             inspect(*binary->left, dependencies); inspect(*binary->right, dependencies);
@@ -191,9 +232,74 @@ private:
             for (const auto& element : list->elements) inspect(*element, dependencies);
         } else if (std::holds_alternative<RandomRange>(expression)) {
             fail(locationOf(expression), "random ranges are not allowed");
-        } else if (std::holds_alternative<SamplerCapture>(expression) || std::holds_alternative<SamplerPick>(expression)) {
-            fail(locationOf(expression), "asset sampler constants are not supported yet; use a local sampler description");
+        } else if (const auto* capture = std::get_if<SamplerCapture>(&expression)) {
+            inspectCapture(*capture->value, dependencies);
+        } else if (std::holds_alternative<SamplerPick>(expression)) {
+            fail(locationOf(expression), ".pick has RNG or generation effects and is not allowed");
         }
+    }
+
+    void inspectCapture(const Expr& expression, std::set<std::size_t>& dependencies) {
+        if (const auto* range = std::get_if<RandomRange>(&expression)) {
+            inspect(*range->lower, dependencies); inspect(*range->upper, dependencies);
+            if (range->distribution) inspect(*range->distribution, dependencies);
+        } else inspect(expression, dependencies);
+    }
+
+    SamplerValue capture(const Expr& expression) {
+        const auto* range = std::get_if<RandomRange>(&expression);
+        auto data = std::make_shared<SamplerData>();
+        data->type = ValueType::sampler(typer_.typeOf(expression));
+        data->mode = !range ? SamplerMode::Constant : range->distribution ? SamplerMode::With : SamplerMode::Uniform;
+        data->lower = evaluate(range ? *range->lower : expression);
+        if (range) data->upper = evaluate(*range->upper);
+        if (data->type.item() == ValueType::F32) {
+            data->lower = number(data->lower);
+            if (range) data->upper = number(data->upper);
+        }
+        if (range && range->distribution) data->distribution = std::get<Distribution>(evaluate(*range->distribution));
+        if (const auto* message = samplerBoundsError(data->type.item(), data->lower, data->upper, range != nullptr))
+            fail(locationOf(expression), message, DiagnosticCode::AssetConstantValue);
+        if (data->mode == SamplerMode::With && !math::validDistribution(data->distribution))
+            fail(locationOf(expression), "sampler distribution is not initialized or invalid", DiagnosticCode::AssetConstantValue);
+        return {data->type, std::move(data)};
+    }
+
+    ResolvedPalette evaluatePalette(const PaletteDecl& palette) {
+        if (!extendedPalette(palette)) return resolvePalette(palette);
+        ResolvedPalette result{typer_.paletteElementType(palette), {}};
+        for (const auto& element : palette.elements) {
+            Value value = std::holds_alternative<RandomRange>(*element) ? Value(capture(*element)) : evaluate(*element);
+            if (result.type.isSampler()) {
+                if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
+                    if (sampler->type != result.type) {
+                        auto data = std::make_shared<SamplerData>(*sampler->data);
+                        data->type = result.type; data->lower = number(data->lower);
+                        if (data->mode != SamplerMode::Constant) data->upper = number(data->upper);
+                        value = SamplerValue{result.type, std::move(data)};
+                    }
+                } else {
+                    if (result.type.item() == ValueType::F32) value = number(value);
+                    if (const auto* message = samplerBoundsError(result.type.item(), value, Value{}, false))
+                        fail(locationOf(*element), message, DiagnosticCode::AssetConstantValue);
+                    auto data = std::make_shared<SamplerData>(); data->type = result.type; data->lower = value;
+                    value = SamplerValue{result.type, std::move(data)};
+                }
+            } else if (result.type == ValueType::F32) value = number(value);
+            result.elements.push_back(std::move(value));
+        }
+        return result;
+    }
+
+    const ResolvedPalette& resolvedPalette(const Identifier& name) {
+        const auto& declaration = findPalette(program_, name);
+        if (!palettes_.contains(&declaration)) {
+            // A known runtime expression is probed with resolved const values.
+            // Resolve its palette graph once; normal topological evaluation
+            // already has every dependency in this cache.
+            palettes_ = Resolver(program_).resolve().palettes;
+        }
+        return palettes_.at(&declaration);
     }
 
     Value operation(Opcode opcode, std::vector<Value> args, const SourceLocation& at) const {
@@ -214,7 +320,7 @@ private:
         }
         if (const auto* id = std::get_if<Identifier>(&expression)) {
             if (const auto found = values_.find(id->name); found != values_.end()) return found->second;
-            const auto palette = resolvePalette(findPalette(program_, *id));
+            const auto& palette = resolvedPalette(*id);
             auto data = std::make_shared<ListData>(ListData{ValueType::list(palette.type), palette.elements});
             return ListValue{data->type, std::move(data)};
         }
@@ -228,6 +334,7 @@ private:
             }
             return ListValue{data->type, std::move(data)};
         }
+        if (const auto* description = std::get_if<SamplerCapture>(&expression)) return capture(*description->value);
         if (const auto* member = std::get_if<Member>(&expression)) {
             const auto object = evaluate(*member->object);
             if (const auto* v = std::get_if<Vec2>(&object)) return member->name == "x" ? v->x : v->y;
@@ -243,7 +350,7 @@ private:
             const auto object = legacy ? Value{} : evaluate(*index->object);
             const auto i = std::get<i32>(evaluate(*index->index));
             if (legacy) {
-                const auto palette = resolvePalette(findPalette(program_, *name));
+                const auto& palette = resolvedPalette(*name);
                 return palette.elements[i >= 0 && static_cast<std::size_t>(i) < palette.elements.size() ?
                     static_cast<std::size_t>(i) : palette.elements.size() - 1];
             }
@@ -254,8 +361,8 @@ private:
         if (const auto* call = std::get_if<Call>(&expression)) {
             const auto name = callName(*call->callee);
             const auto& bound = typer_.calls().at(call);
-            if (name == "ramp") return sampleRamp(resolvePalette(findPalette(program_,
-                std::get<Identifier>(*bound.arguments[0]->value))), number(evaluate(*bound.arguments[1]->value)));
+            if (name == "ramp") return sampleRamp(resolvedPalette(
+                std::get<Identifier>(*bound.arguments[0]->value)), number(evaluate(*bound.arguments[1]->value)));
             const auto& spec = builtinSpecs().at(name);
             std::vector<ValueType> types;
             for (const auto* arg : bound.arguments) types.push_back(typer_.typeOf(*arg->value));
@@ -331,7 +438,8 @@ private:
 };
 } // namespace
 
-AssetConstants resolveAssetConstants(const Program& program) { return Resolver(program).resolve(); }
+AssetDeclarations resolveAssetDeclarations(const Program& program) { return Resolver(program).resolve(); }
+AssetConstants resolveAssetConstants(const Program& program) { return resolveAssetDeclarations(program).constants; }
 std::optional<Value> knownAssetExpression(const Program& program, const Expr& expression,
                                          const AssetConstants& constants) {
     return Resolver(program).known(expression, constants);

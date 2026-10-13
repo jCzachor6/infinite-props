@@ -33,7 +33,18 @@ bool stepCollections(Execution& ex, Instruction ins) {
         auto cached = ex.resources.constants.find(ins.operand);
         if (cached == ex.resources.constants.end()) {
             const auto& list = ex.file.collections.lists[ins.operand];
-            ex.allocateResource(ResourceArena::listBytes(list.data->elements.size()));
+            u64 bytes = ResourceArena::listBytes(list.data->elements.size());
+            std::set<const SamplerData*> descriptions;
+            if (list.type.item().isSampler()) {
+                ex.spend(list.data->elements.size());
+                for (const auto& value : list.data->elements) {
+                    const auto* data = std::get<SamplerValue>(value).data.get();
+                    if (!ex.resources.samplerConstants.contains(data)) descriptions.insert(data);
+                }
+                bytes += descriptions.size() * ResourceArena::samplerBytes();
+            }
+            ex.allocateResource(bytes);
+            ex.resources.samplerConstants.insert(descriptions.begin(), descriptions.end());
             cached = ex.resources.constants.emplace(ins.operand, list).first;
         }
         ex.push(cached->second);

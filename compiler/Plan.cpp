@@ -91,7 +91,12 @@ std::unique_ptr<Plan> Planner::plan() {
     planParts();
     const auto prepareConstants = [&](const ips::Program& owner) {
         if (plan_->assetConstants.contains(&owner)) return;
-        try { plan_->assetConstants.emplace(&owner, ips::resolveAssetConstants(owner)); }
+        try {
+            auto declarations = ips::resolveAssetDeclarations(owner);
+            plan_->assetConstants.emplace(&owner, std::move(declarations.constants));
+            for (auto& [palette, value] : declarations.palettes)
+                plan_->palettes.emplace(palette, std::make_shared<const ips::ResolvedPalette>(std::move(value)));
+        }
         catch (ips::SourceError& error) { error.path = plan_->sourcePath(&owner); throw; }
     };
     prepareConstants(entry_);
@@ -105,15 +110,6 @@ std::unique_ptr<Plan> Planner::plan() {
     };
     prepareDefaults(entry_);
     for (const auto* part : plan_->parts) prepareDefaults(*part);
-    const auto preparePalettes = [&](const ips::Program& owner) {
-        for (const auto& palette : owner.asset.palettes) {
-            if (plan_->palettes.contains(&palette)) continue;
-            try { plan_->palettes.emplace(&palette,std::make_shared<const ips::ResolvedPalette>(ips::resolvePalette(palette))); }
-            catch (ips::SourceError& error) { error.path=plan_->sourcePath(&owner); throw; }
-        }
-    };
-    preparePalettes(entry_);
-    for (const auto* part : plan_->parts) preparePalettes(*part);
     planFunctions();
     registerNames();
 
@@ -130,6 +126,8 @@ std::unique_ptr<Plan> Planner::plan() {
         surfaces_.emplace(plan_->instances[i].path, std::move(info));
     }
     typer_ = std::make_unique<ips::Typer>(surfaces_);
+    for (const auto& [declaration, palette] : plan_->palettes)
+        typer_->registerPaletteType(*declaration, palette->type);
     typer_->resolveFunction = [this](const std::string& name,
                                            const ips::SourceLocation& at,
                                            const std::string& ns) {
@@ -147,7 +145,8 @@ std::unique_ptr<Plan> Planner::plan() {
                 if (const auto* call = std::get_if<ips::Call>(expr))
                     function.calls.emplace(call, resolver.resolve(*call));
                 if (const auto* index = std::get_if<ips::Index>(expr)) {
-                    if (const auto* name = std::get_if<ips::Identifier>(index->object.get()))
+                    if (const auto* name = std::get_if<ips::Identifier>(index->object.get()); name &&
+                        (!function.langTypes.contains(name->name) || !function.langTypes.at(name->name).isParameterized()))
                         for (const auto& palette : function.owner->asset.palettes)
                             if (palette.name == name->name) annotation.palette = &plan_->palette(*function.owner, *index->object);
                 }
@@ -473,7 +472,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
         if (const auto* id = std::get_if<ips::Identifier>(expr)) {
             const auto& assetConstants = plan_->assetConstants.at(owner);
             if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) constant = found->second;
-            else if (type.isList()) for (const auto& declared : owner->asset.palettes) if (declared.name == id->name) {
+            else if (type.isList() && !info.slots.contains(id->name)) for (const auto& declared : owner->asset.palettes) if (declared.name == id->name) {
                 const auto& palette = plan_->palette(*owner, *expr);
                 auto data = std::make_shared<ListData>(ListData{type, palette.elements});
                 constant = ListValue{type, std::move(data)};

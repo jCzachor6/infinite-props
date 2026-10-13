@@ -95,3 +95,10 @@ forward references and rejects cycles. `const(...)` still introduces a helper.
 Shifts bind more tightly than comparisons on both sides: `value < 1 << bits`
 means `value < (1 << bits)`. Comparison chains associate leftward, so
 `a < b < c` means `(a < b) < c`, not two comparisons joined by `&&`.
+
+## Declaration effects
+
+Asset const and sampling-palette expressions must be pure compile-time values.
+An outer palette range captures a sampler; scalar entries then lift to constant
+descriptions. Runtime list ranges stay eager, and sampler picks cannot execute
+in declaration initializers. See [palettes](palettes.md#sampling-palettes).

@@ -147,7 +147,9 @@ def compiler_rules(language):
         lines += ['Captured samplers evaluate lower, upper and optional distribution once, without an intrinsic draw. '
                   'Copies/helpers share the immutable description. Receivers evaluate once before the count; '
                   'batch pick checks count, handle and allocation before results. Constants and empty batches consume no RNG. '
-                  'Asset sampler constants and range palettes are not available yet.', '', sampler_signatures(language)]
+                  'Const samplers and range palettes store compile-time descriptions. Range palettes lift scalar entries '
+                  'to constant descriptions; indexing selects without RNG and keeps the last-element fallback. '
+                  'Pass them as list<sampler<T>> for checked indexing. Ramp accepts only constant color/f32 palettes.', '', sampler_signatures(language)]
         lines.append('')
     if 'random_range' in rules:
         ranged = rules['random_range']

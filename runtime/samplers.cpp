@@ -35,6 +35,17 @@ SamplerValue Execution::popSampler() {
 }
 
 bool stepSamplers(Execution& ex, Instruction ins) {
+    if (ins.opcode == Opcode::ConstSampler) {
+        if (ins.operand >= ex.file.collections.samplers.size())
+            ex.trap("sampler constant index out of range", ErrorReason::IndexRange);
+        const auto& sampler = ex.file.collections.samplers[ins.operand];
+        if (!ex.resources.samplerConstants.contains(sampler.data.get())) {
+            ex.allocateResource(ResourceArena::samplerBytes());
+            ex.resources.samplerConstants.insert(sampler.data.get());
+        }
+        ex.push(sampler); ++ex.frame().ip;
+        return true;
+    }
     switch (ins.opcode) {
     case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
     case Opcode::SamplerPick: case Opcode::SamplerPickList: break;

@@ -1,0 +1,6 @@
+asset cyclicDescriptions {
+  size 1x1
+  const sampler<i32> spec = widths[0]
+  palette widths = [spec]
+  draw {}
+}

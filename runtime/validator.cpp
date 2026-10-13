@@ -300,6 +300,10 @@ private:
             if (op >= file_.collections.lists.size()) fail(at, "collection constant index out of range");
             push(at, file_.collections.lists[op].type);
             return;
+        case Opcode::ConstSampler:
+            if (op >= file_.collections.samplers.size()) fail(at, "sampler constant index out of range");
+            push(at, file_.collections.samplers[op].type);
+            return;
         case Opcode::ListBegin: case Opcode::ListAppend: case Opcode::ListEnd:
         case Opcode::ListGet: case Opcode::ListLen: {
             if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
@@ -631,8 +635,10 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     if (const auto* types = file.layout.find(SectionId::Types))
         file.collections.types = parseTypeDescriptors(bytes, *types);
+    if (const auto* samplers = file.layout.find(SectionId::Samplers))
+        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections.types);
     if (const auto* lists = file.layout.find(SectionId::Collections))
-        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types);
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers);
     file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);

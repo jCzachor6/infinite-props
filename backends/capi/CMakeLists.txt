@@ -123,7 +123,7 @@ add_dependencies(capi_golden capi_result_output_fixture)
 
 foreach(source test/language.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
-        ../../examples/language/samplers.ips)
+        ../../examples/language/samplers.ips ../../examples/language/sampling-palettes.ips)
     get_filename_component(name ${source} NAME_WE)
     set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)

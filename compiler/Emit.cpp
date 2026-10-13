@@ -45,6 +45,8 @@ void Emitter::emitConst(const Value& value) {
         ins(Opcode::Vec2Make);
     } else if (const auto* list = std::get_if<ListValue>(&value)) {
         ins(Opcode::ConstList, 0, plan_.pools.addList(*list));
+    } else if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
+        ins(Opcode::ConstSampler, 0, plan_.pools.addSampler(*sampler));
     } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
         const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
             distribution->family == DistributionFamily::Triangular ? 3u : 4u;

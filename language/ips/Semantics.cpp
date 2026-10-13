@@ -189,6 +189,7 @@ private:
         }
 
         std::set<std::string> paletteNames;
+        bool paletteDeclarationsValid = true;
         for (const auto& palette : program_.asset.palettes) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
@@ -208,9 +209,14 @@ private:
                 }
             });
             namespaceValid = valid && namespaceValid;
-            if (valid) recover([&] { checkPaletteDecl(palette); });
+            if (valid) paletteDeclarationsValid = recover([&] { checkPaletteDecl(palette); }) && paletteDeclarationsValid;
         }
-        return recover([&] { (void)resolveAssetConstants(program_); }) && namespaceValid;
+        // Do not report the same invalid legacy palette again when resolving
+        // the shared declaration graph. Recovery already recorded its error.
+        return paletteDeclarationsValid && recover([&] {
+            const auto declarations = resolveAssetDeclarations(program_);
+            for (const auto& [palette, value] : declarations.palettes) typer_.registerPaletteType(*palette, value.type);
+        }) && namespaceValid;
     }
 
     void checkInputDefault(const InputDecl& input) {
@@ -222,7 +228,7 @@ private:
             palette.name == "v" || palette.name == "a") {
             error(palette.location, "'" + palette.name + "' is a reserved name");
         }
-        (void)resolvePalette(palette);
+        if (!extendedPalette(palette)) (void)resolvePalette(palette);
     }
 
     // ---- functions ----------------------------------------------------------

@@ -1100,7 +1100,15 @@
                   "list<f32>",
                   "list<color>",
                   "list<vec2>",
-                  "list<distribution>"
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>"
                 ],
                 "description": "An implemented asset constant type."
               },
@@ -1304,11 +1312,11 @@
               "description": "Unset descriptions trap even when the batch count is zero."
             },
             "asset_constants": {
-              "const": false,
+              "const": true,
               "description": "Whether sampler descriptions may be declared as asset constants in this stage."
             },
             "range_palettes": {
-              "const": false,
+              "const": true,
               "description": "Whether palette ranges become sampler descriptions in this stage."
             },
             "capture_effects": {
@@ -1426,6 +1434,106 @@
           ],
           "additionalProperties": true,
           "description": "Captured descriptions and statically resolved method signatures from the shared frontend registry."
+        },
+        "palettes": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "palette <name> = [<elements>]",
+              "description": "Asset palette declaration syntax."
+            },
+            "evaluation": {
+              "const": "compile_time_no_rng",
+              "description": "Palette elements resolve without generation state or RNG."
+            },
+            "sampling_trigger": {
+              "const": "outer_range_or_sampler",
+              "description": "An outer range or sampler element selects a palette of descriptions."
+            },
+            "constant_entries": {
+              "const": "lift_to_constant_descriptions_in_sampling_palette",
+              "description": "Scalar entries of a sampling palette return constants without drawing."
+            },
+            "numeric_elements": {
+              "const": "i32_to_f32_widening",
+              "description": "Mixed numeric elements use f32, including captured endpoints."
+            },
+            "index_type": {
+              "const": "i32",
+              "description": "Palette indexing requires i32."
+            },
+            "index_evaluation": {
+              "const": "once",
+              "description": "The index expression executes exactly once."
+            },
+            "index_bounds": {
+              "const": "last_element_fallback",
+              "description": "Negative and oversized direct palette indices select the last element."
+            },
+            "first_class_value": {
+              "const": "immutable_list_with_checked_index",
+              "description": "A palette passed or copied as a list uses checked list indexing."
+            },
+            "legacy_length_limit": {
+              "const": "unchanged",
+              "description": "Existing constant palette indexing and ramp retain their original limits."
+            },
+            "ramp": {
+              "const": "constant_color_or_f32_only",
+              "description": "Ramp rejects descriptions and vec2 palettes, without implicit sampling."
+            },
+            "element_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "i32",
+                  "f32",
+                  "color",
+                  "vec2",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>"
+                ],
+                "description": "Supported palette element type."
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Homogeneous scalar or description elements with numeric widening."
+            },
+            "minimum_length": {
+              "const": 1,
+              "description": "Palettes cannot be empty."
+            },
+            "sampling_maximum_length": {
+              "const": 256,
+              "description": "Maximum descriptions in a sampling palette."
+            },
+            "first_class_maximum_length": {
+              "const": 256,
+              "description": "Maximum elements when a palette is used as a list."
+            }
+          },
+          "required": [
+            "syntax",
+            "evaluation",
+            "sampling_trigger",
+            "constant_entries",
+            "numeric_elements",
+            "index_type",
+            "index_evaluation",
+            "index_bounds",
+            "first_class_value",
+            "legacy_length_limit",
+            "ramp",
+            "element_types",
+            "minimum_length",
+            "sampling_maximum_length",
+            "first_class_maximum_length"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable constant and sampling palette semantics."
         }
       },
       "required": [

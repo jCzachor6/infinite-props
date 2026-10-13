@@ -1,8 +1,76 @@
 #include "iprop/Collections.hpp"
 #include "iprop/math/Distribution.hpp"
+#include "iprop/Samplers.hpp"
 #include <algorithm>
 
 namespace iprop {
+namespace {
+Value readSamplerBound(Reader& reader, TypeDescriptor type) {
+    switch (type.kind) {
+    case TypeDescriptor::I32: return reader.readI32();
+    case TypeDescriptor::F32: return reader.readF32();
+    case TypeDescriptor::Color: return reader.readColor();
+    case TypeDescriptor::Vec2: return Vec2{reader.readF32(), reader.readF32()};
+    default: throw std::logic_error("invalid sampler bound type");
+    }
+}
+void writeSamplerBound(Writer& writer, const Value& value) {
+    if (const auto* i = std::get_if<i32>(&value)) writer.writeI32(*i);
+    else if (const auto* f = std::get_if<f32>(&value)) writer.writeF32(*f);
+    else if (const auto* c = std::get_if<Color>(&value)) writer.writeColor(*c);
+    else if (const auto* v = std::get_if<Vec2>(&value)) { writer.writeF32(v->x); writer.writeF32(v->y); }
+    else throw std::logic_error("invalid sampler bound value");
+}
+}
+
+std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
+                                          std::span<const TypeDescriptor> types) {
+    auto reader = sectionReader(data, section);
+    const auto count = reader.readU32();
+    if (count > kMaxConstPoolEntries)
+        throw FormatError("too many sampler constants", section.offset, ErrorReason::InvalidConstants);
+    std::vector<SamplerValue> samplers;
+    for (u32 i = 0; i < count; ++i) {
+        const auto at = reader.position();
+        const auto index = reader.readU16();
+        const auto mode = reader.readU8();
+        const auto reserved = reader.readU8();
+        if (index >= types.size() || !types[index].isSampler())
+            throw FormatError("sampler constant type descriptor out of range", at, ErrorReason::InvalidConstants);
+        if (mode > static_cast<u8>(SamplerMode::With) || reserved)
+            throw FormatError("invalid sampler constant mode or reserved byte", at + 2, ErrorReason::InvalidConstants);
+        auto sampler = std::make_shared<SamplerData>();
+        sampler->type = types[index]; sampler->mode = static_cast<SamplerMode>(mode);
+        sampler->lower = readSamplerBound(reader, sampler->type.item());
+        if (sampler->mode != SamplerMode::Constant) sampler->upper = readSamplerBound(reader, sampler->type.item());
+        if (sampler->mode == SamplerMode::With) {
+            sampler->distribution.family = static_cast<DistributionFamily>(reader.readU8());
+            for (auto& parameter : sampler->distribution.parameters) parameter = reader.readF32();
+            if (!math::validDistribution(sampler->distribution))
+                throw FormatError("invalid sampler constant distribution", reader.position() - 17, ErrorReason::InvalidConstants);
+        }
+        if (const auto* error = samplerBoundsError(sampler->type.item(), sampler->lower, sampler->upper,
+                                                 sampler->mode != SamplerMode::Constant))
+            throw FormatError(error, at, ErrorReason::InvalidConstants);
+        samplers.push_back({sampler->type, std::move(sampler)});
+    }
+    if (!reader.empty()) throw FormatError("trailing bytes in sampler constants", reader.position(), ErrorReason::InvalidConstants);
+    return samplers;
+}
+
+void writeSamplerData(Writer& writer, const SamplerData& sampler) {
+    if (!sampler.type.isSampler() || samplerBoundsError(sampler.type.item(), sampler.lower, sampler.upper,
+        sampler.mode != SamplerMode::Constant) || static_cast<u8>(sampler.mode) > static_cast<u8>(SamplerMode::With) ||
+        (sampler.mode == SamplerMode::With && !math::validDistribution(sampler.distribution)))
+        throw std::logic_error("invalid sampler constant");
+    writer.writeU8(static_cast<u8>(sampler.mode)); writer.writeU8(0);
+    writeSamplerBound(writer, sampler.lower);
+    if (sampler.mode != SamplerMode::Constant) writeSamplerBound(writer, sampler.upper);
+    if (sampler.mode == SamplerMode::With) {
+        writer.writeU8(static_cast<u8>(sampler.distribution.family));
+        for (const auto parameter : sampler.distribution.parameters) writer.writeF32(parameter);
+    }
+}
 
 TypeDescriptor valueType(const Value& value) {
     if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;
@@ -78,17 +146,18 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
 }
 
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
-                                         std::span<const TypeDescriptor> types) {
+                                         std::span<const TypeDescriptor> types,
+                                         std::span<const SamplerValue> samplers) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many collection constants", section.offset, ErrorReason::InvalidConstants);
     std::vector<ListValue> lists;
-    u64 total = 0;
+    u64 total = samplers.size() * ResourceArena::samplerBytes();
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto index = reader.readU16();
         const auto length = reader.readU16();
-        if (index >= types.size() || !types[index].isList() || !types[index].item().isScalar())
+        if (index >= types.size() || !types[index].isList())
             throw FormatError("collection type descriptor out of range", at, ErrorReason::InvalidConstants);
         if (length > kMaxListElements) throw FormatError("list exceeds 256 elements", at, ErrorReason::InvalidConstants);
         total += ResourceArena::listBytes(length);
@@ -111,6 +180,13 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
                 list->elements.emplace_back(distribution);
                 break;
             }
+            case TypeDescriptor::Sampler: {
+                const auto reference = reader.readU16();
+                if (reference >= samplers.size() || samplers[reference].type != list->type.item())
+                    throw FormatError("collection sampler reference out of range or type mismatch", reader.position() - 2, ErrorReason::InvalidConstants);
+                list->elements.emplace_back(samplers[reference]);
+                break;
+            }
             default: throw FormatError("invalid collection element type", at, ErrorReason::InvalidConstants);
             }
         }
@@ -120,7 +196,7 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
     return lists;
 }
 
-void writeListElements(Writer& writer, const ListData& list) {
+void writeListElements(Writer& writer, const ListData& list, std::span<const SamplerValue> samplers) {
     for (const auto& value : list.elements) {
         if (valueType(value) != list.type.item()) throw std::logic_error("collection element type mismatch");
         if (const auto* i = std::get_if<i32>(&value)) writer.writeI32(*i);
@@ -131,7 +207,13 @@ void writeListElements(Writer& writer, const ListData& list) {
             writer.writeU8(static_cast<u8>(d->family));
             for (const auto p : d->parameters) writer.writeF32(p);
         }
-        else throw std::logic_error("unsupported collection element");
+        else if (const auto* s = std::get_if<SamplerValue>(&value)) {
+            const auto found = std::find_if(samplers.begin(), samplers.end(), [&](const auto& candidate) {
+                return candidate.type == s->type && candidate.data == s->data;
+            });
+            if (found == samplers.end()) throw std::logic_error("missing collection sampler constant");
+            writer.writeU16(static_cast<u16>(found - samplers.begin()));
+        } else throw std::logic_error("unsupported collection element");
     }
 }
 } // namespace iprop

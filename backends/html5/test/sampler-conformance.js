@@ -158,4 +158,4 @@ function run(iprop,tool,directory){
     generate(binary,26);
     return {comparisons,traps,rejections};
 }
-module.exports={run};
+module.exports={run,sections,instructions};
