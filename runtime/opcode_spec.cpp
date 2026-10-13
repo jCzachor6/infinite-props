@@ -28,6 +28,8 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
     case Opcode::ListBegin: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::DistributionBegin: case Opcode::DistributionAppend: case Opcode::DistributionEnd:
+        return {R::None,false,false,check(C::NumericRange)};
     case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
         return {R::None,false,false,check(C::NumericRange)};
     case Opcode::SamplerPick: case Opcode::SamplerPickList:
@@ -229,6 +231,10 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::SamplerPick, "sampler.pick", 6, OperandKind::Index),
     dynamic(Opcode::SamplerPickList, "sampler.pick.list", 6, OperandKind::Index),
     dynamic(Opcode::ConstSampler, "const.sampler", 6, OperandKind::Index),
+    dynamic(Opcode::ConstDistribution, "const.distribution", 6, OperandKind::Index),
+    dynamic(Opcode::DistributionBegin, "distribution.begin", 6, OperandKind::Index),
+    dynamic(Opcode::DistributionAppend, "distribution.append", 6, OperandKind::Index),
+    dynamic(Opcode::DistributionEnd, "distribution.end", 6, OperandKind::None),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

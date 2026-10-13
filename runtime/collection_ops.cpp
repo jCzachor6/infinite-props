@@ -35,16 +35,29 @@ bool stepCollections(Execution& ex, Instruction ins) {
             const auto& list = ex.file.collections.lists[ins.operand];
             u64 bytes = ResourceArena::listBytes(list.data->elements.size());
             std::set<const SamplerData*> descriptions;
+            std::set<const PointDistributionData*> points;
+            const auto retainPoints = [&](const Distribution& d) {
+                if (d.points && !ex.resources.distributionConstants.contains(d.points.get())) points.insert(d.points.get());
+            };
             if (list.type.item().isSampler()) {
                 ex.spend(list.data->elements.size());
                 for (const auto& value : list.data->elements) {
                     const auto* data = std::get<SamplerValue>(value).data.get();
                     if (!ex.resources.samplerConstants.contains(data)) descriptions.insert(data);
+                    retainPoints(data->distribution);
                 }
                 bytes += descriptions.size() * ResourceArena::samplerBytes();
             }
+            if (list.type.item() == ValueType::Distribution) {
+                for (const auto& value : list.data->elements) retainPoints(std::get<Distribution>(value));
+                if (!points.empty()) ex.spend(list.data->elements.size());
+            }
+            for (const auto* data : points) {
+                ex.spend(data->points.size()); bytes += ResourceArena::distributionBytes(data->points.size());
+            }
             ex.allocateResource(bytes);
             ex.resources.samplerConstants.insert(descriptions.begin(), descriptions.end());
+            ex.resources.distributionConstants.insert(points.begin(), points.end());
             cached = ex.resources.constants.emplace(ins.operand, list).first;
         }
         ex.push(cached->second);

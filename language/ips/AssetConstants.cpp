@@ -230,6 +230,8 @@ private:
             for (const auto& element : vector->elements) inspect(*element, dependencies);
         } else if (const auto* list = std::get_if<ListLit>(&expression)) {
             for (const auto& element : list->elements) inspect(*element, dependencies);
+        } else if (const auto* d = std::get_if<PointDistributionLiteral>(&expression)) {
+            for (const auto& point : d->points) { inspect(*point.key, dependencies); inspect(*point.value, dependencies); }
         } else if (std::holds_alternative<RandomRange>(expression)) {
             fail(locationOf(expression), "random ranges are not allowed");
         } else if (const auto* capture = std::get_if<SamplerCapture>(&expression)) {
@@ -335,6 +337,16 @@ private:
             return ListValue{data->type, std::move(data)};
         }
         if (const auto* description = std::get_if<SamplerCapture>(&expression)) return capture(*description->value);
+        if (const auto* literal = std::get_if<PointDistributionLiteral>(&expression)) {
+            const auto numeric = [](const Value& value) -> DistributionNumber {
+                if (const auto* i = std::get_if<i32>(&value)) return *i;
+                return std::get<f32>(value);
+            };
+            auto data = std::make_shared<PointDistributionData>(); data->family = literal->family;
+            for (const auto& point : literal->points) data->points.push_back({numeric(evaluate(*point.key)), numeric(evaluate(*point.value))});
+            if (const auto* error = math::pointDistributionError(*data)) fail(at, error, DiagnosticCode::AssetConstantValue);
+            Distribution d; d.family = literal->family; d.points = std::move(data); return d;
+        }
         if (const auto* member = std::get_if<Member>(&expression)) {
             const auto object = evaluate(*member->object);
             if (const auto* v = std::get_if<Vec2>(&object)) return member->name == "x" ? v->x : v->y;

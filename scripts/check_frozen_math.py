@@ -19,7 +19,7 @@ def sha(data):
 def main():
     generator = Path(sys.argv[1]).resolve()
     fixtures = Path(__file__).resolve().parent.parent / 'tests/fixtures'
-    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json', 'frozen-format-v0.6-stage2.json', 'frozen-format-v0.6-stage3.json', 'frozen-format-v0.6-stage4.json')
+    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json', 'frozen-format-v0.6-stage2.json', 'frozen-format-v0.6-stage3.json', 'frozen-format-v0.6-stage4.json', 'frozen-format-v0.6-stage5.json')
              for case in json.loads((fixtures / name).read_text())['cases']]
     count = 0
     with tempfile.TemporaryDirectory(prefix='iprop-frozen-math-') as directory:

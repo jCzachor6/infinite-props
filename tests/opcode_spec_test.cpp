@@ -60,7 +60,7 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
             append(body,spec.opcode); // version gates must also cover unreachable instructions
             auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
             const bool collection = static_cast<u8>(spec.opcode) >= static_cast<u8>(Opcode::ConstList) &&
-                static_cast<u8>(spec.opcode) <= static_cast<u8>(Opcode::ConstSampler);
+                static_cast<u8>(spec.opcode) <= static_cast<u8>(Opcode::DistributionEnd);
             if (!collection) REQUIRE_NOTHROW(validate(loadFile(bytes)));
             bytes[6]=static_cast<u8>(spec.minimumMinor-1);
             CHECK_THROWS_AS(validate(loadFile(bytes)),FormatError);
@@ -99,5 +99,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 164);
+    CHECK(names.size() == 168);
 }

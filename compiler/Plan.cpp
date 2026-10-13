@@ -2,6 +2,7 @@
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
 #include "iprop/Samplers.hpp"
+#include "iprop/math/Distribution.hpp"
 
 #include <set>
 #include <utility>
@@ -159,6 +160,25 @@ std::unique_ptr<Plan> Planner::plan() {
                 throw ips::SourceError{at, message, {}, ips::DiagnosticCode::TypeError, ips::DiagnosticStage::Typing};
             };
             for (const auto& [expr, annotation] : function.expressions) {
+                if (const auto* literal = std::get_if<ips::PointDistributionLiteral>(expr)) {
+                    std::optional<DistributionPoint> previous;
+                    bool allWeights = true; double mass = 0.0;
+                    const auto numeric = [](const Value& value) -> DistributionNumber {
+                        if (const auto* i = std::get_if<i32>(&value)) return *i;
+                        return std::get<f32>(value);
+                    };
+                    for (const auto& point : literal->points) {
+                        const auto key = known(*point.key), value = known(*point.value);
+                        DistributionPoint checked{key ? numeric(*key) : DistributionNumber(i32{0}),
+                            value ? numeric(*value) : DistributionNumber(i32{0})};
+                        if (const auto* message = math::pointDistributionEntryError(checked, key && previous ? &*previous : nullptr))
+                            invalid(point.location, message);
+                        previous = key ? std::optional<DistributionPoint>(checked) : std::nullopt;
+                        if (value) mass = mass + math::distributionNumber(checked.value); else allWeights = false;
+                    }
+                    if (allWeights && !(mass > 0.0)) invalid(literal->location, "weighted needs positive total mass");
+                    (void)known(*expr);
+                }
                 if (const auto* pick = std::get_if<ips::SamplerPick>(expr); pick && pick->count) {
                     if (const auto count = known(*pick->count); count &&
                         (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
@@ -469,6 +489,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
     for (const auto& [expr, type] : typer_->expressions()) {
         Value value;
         auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
+        // Constant point literals are still emitted through their builder in
+        // runtime code, preserving operand effects, construction fuel and traps.
         if (const auto* id = std::get_if<ips::Identifier>(expr)) {
             const auto& assetConstants = plan_->assetConstants.at(owner);
             if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) constant = found->second;

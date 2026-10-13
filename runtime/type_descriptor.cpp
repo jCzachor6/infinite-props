@@ -27,6 +27,7 @@ const char* valueTypeName(TypeDescriptor type) {
     case TypeDescriptor::Builder: return "list builder";
     case TypeDescriptor::List: return "list<?>";
     case TypeDescriptor::Sampler: return "sampler<?>";
+    case TypeDescriptor::PointBuilder: return "distribution builder";
     }
     return "?";
 }

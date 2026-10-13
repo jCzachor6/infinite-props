@@ -25,6 +25,7 @@ void compactPools(Plan& plan) {
     }
     Pools pools;
     std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size()), samplers(old.samplersValue().size());
+    std::vector<bool> distributions(old.distributionsValue().size());
     const auto markType = [&](ValueType type) {
         if (!type.isParameterized()) return;
         const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
@@ -34,6 +35,7 @@ void compactPools(Plan& plan) {
     for (const auto& f : plan.functions) {
         for (const auto* slots : {&f.params, &f.results, &f.locals}) for (const auto type : *slots) markType(type);
         for (const auto ins : f.code) {
+            if (ins.opcode == Opcode::ConstDistribution) distributions.at(ins.operand) = true;
             if (ins.opcode == Opcode::ConstList) {
                 lists.at(ins.operand) = true; markType(old.listsValue().at(ins.operand).type);
             }
@@ -62,11 +64,23 @@ void compactPools(Plan& plan) {
                 [&](const auto& s) { return s.data == sampler.data; });
             samplers.at(static_cast<std::size_t>(found - old.samplersValue().begin())) = true;
         }
+    const auto markDistribution = [&](const Distribution& d) {
+        if (!d.points) return;
+        const auto found = std::find_if(old.distributionsValue().begin(), old.distributionsValue().end(),
+            [&](const auto& candidate) { return candidate.points == d.points; });
+        if (found == old.distributionsValue().end()) throw std::logic_error("missing distribution constant");
+        distributions.at(static_cast<std::size_t>(found - old.distributionsValue().begin())) = true;
+    };
+    for (std::size_t i = 0; i < samplers.size(); ++i) if (samplers[i]) markDistribution(old.samplersValue()[i].data->distribution);
+    for (std::size_t i = 0; i < lists.size(); ++i) if (lists[i] && old.listsValue()[i].type.item() == ValueType::Distribution)
+        for (const auto& value : old.listsValue()[i].data->elements) markDistribution(std::get<Distribution>(value));
+    const auto dmap = remap(old.distributionsValue(), distributions, [&](const Distribution& d) { return pools.addDistribution(d); });
     const auto smap = remap(old.samplersValue(), samplers, [&](const SamplerValue& sampler) { return pools.addSampler(sampler); });
     const auto lmap = remap(old.listsValue(), lists, [&](const ListValue& list) { return pools.addList(list); });
     for (auto& f : plan.functions) for (auto& ins : f.code) {
         if (ins.opcode == Opcode::ConstList) ins.operand = lmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstSampler) ins.operand = smap.at(ins.operand);
+        if (ins.opcode == Opcode::ConstDistribution) ins.operand = dmap.at(ins.operand);
         if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
         if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstI32) ins.operand = imap.at(ins.operand);

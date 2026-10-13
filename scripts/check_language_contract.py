@@ -75,7 +75,14 @@ def main():
     assert rules['collections']['index_bounds'] == 'trap'
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
+    assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}]
     cases = [
+        ('weighted snapshot', 'const distribution d=weighted{16777217:50,16777218:20} draw{s=sampler(16777217 to 16777218 with d);xs=s.pick(3)}', True),
+        ('weighted helper remains contextual', 'weighted(x:i32)->i32{return x} draw{x=weighted(2);d=weighted{1:1}}', True),
+        ('weighted order', 'draw{d=weighted{2:1,1:2}}', False),
+        ('weighted mass', 'draw{d=weighted{1:0}}', False),
+        ('weighted negative weight with runtime key', 'draw{d=weighted{v:(-1)}}', False),
+        ('weighted nonnumeric', 'draw{d=weighted{#fff:1}}', False),
         ('sampler helper and batch', 'echo(s:sampler<i32>)->sampler<i32>{return s} draw{s=echo(sampler(10 to 15));items=s.pick(3);x=items[0]}', True),
         ('sampler list', 'draw{items=[sampler(1),sampler(2 to 4)];x=items[0].pick();n=list.len(items)}', True),
         ('sampler constants', 'const sampler<i32> width=sampler(1 to 2) draw{x=width.pick()}', True),

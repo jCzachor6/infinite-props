@@ -130,11 +130,21 @@ struct SamplerPick {
     SourceLocation location;
 };
 
+struct PointDistributionLiteral {
+    struct Point {
+        std::unique_ptr<Expr> key, value;
+        SourceLocation location;
+    };
+    DistributionFamily family = DistributionFamily::Weighted;
+    std::vector<Point> points;
+    SourceLocation location;
+};
+
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange, SamplerCapture, SamplerPick> {
+                   Unary, RandomRange, SamplerCapture, SamplerPick, PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick>::variant;
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };

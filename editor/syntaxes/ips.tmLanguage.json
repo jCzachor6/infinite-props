@@ -4,6 +4,9 @@
   "scopeName": "source.ips",
   "patterns": [
     {
+      "include": "#pointDistribution"
+    },
+    {
       "include": "#comments"
     },
     {
@@ -106,6 +109,10 @@
     "samplerMethod": {
       "name": "support.function.sampler.pick.ips",
       "match": "(?<=\\.)pick\\b(?=\\s*\\()"
+    },
+    "pointDistribution": {
+      "name": "support.function.distribution.ips",
+      "match": "\\bweighted\\b(?=\\s*\\{)"
     }
   }
 }

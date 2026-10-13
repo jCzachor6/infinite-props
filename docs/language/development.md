@@ -85,3 +85,8 @@ updated accidentally alongside the current chapters.
 Parameterized list types and collection rules are emitted from the shared type
 descriptors. Keep schema-3 readers, editor highlighting, fixed list overloads
 and the legacy polygon variadic template aligned when extending collections.
+
+Point distribution capabilities are emitted as `source_rules.point_distributions`,
+separate from global callable signatures. Update their schema, strict readers,
+real compiler acceptance cases, literal formatting/highlighting and executable
+examples together when a family is added.

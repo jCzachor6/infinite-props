@@ -290,11 +290,14 @@ bool validDistribution(const Distribution& d) {
         return finite(p[0]) && finite(p[1]) && p[0] > 0.f && p[1] > 0.f &&
                finite(p[2]) && finite(p[3]) && p[2] < p[3];
     case DistributionFamily::None: return false;
+    case DistributionFamily::Weighted: return d.points && d.points->family == d.family;
     }
     return false;
 }
 
 TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u) {
+    if (distribution.family == DistributionFamily::Weighted)
+        return pointDistributionDraw(distribution, lo, hi, u);
     TruncatedDraw result;
     const Family f = family(distribution);
     try {

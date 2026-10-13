@@ -1534,6 +1534,150 @@
           ],
           "additionalProperties": true,
           "description": "Immutable constant and sampling palette semantics."
+        },
+        "point_distributions": {
+          "type": "object",
+          "description": "Contextual literals constructing immutable point distributions.",
+          "properties": {
+            "syntax": {
+              "type": "string",
+              "const": "<family> { <key>: <value>, ... }",
+              "description": "Syntax."
+            },
+            "result": {
+              "type": "string",
+              "const": "distribution",
+              "description": "Result."
+            },
+            "names": {
+              "type": "string",
+              "const": "contextual_before_brace",
+              "description": "Names."
+            },
+            "evaluation": {
+              "type": "string",
+              "const": "key_value_pairs_left_to_right_once",
+              "description": "Evaluation."
+            },
+            "storage": {
+              "type": "string",
+              "const": "immutable_snapshot_original_numeric_types",
+              "description": "Storage."
+            },
+            "intrinsic_rng": {
+              "type": "string",
+              "const": "none",
+              "description": "Intrinsic rng."
+            },
+            "key_order": {
+              "type": "string",
+              "const": "strictly_increasing",
+              "description": "Key order."
+            },
+            "values": {
+              "type": "string",
+              "const": "finite_nonnegative_positive_total_mass",
+              "description": "Values."
+            },
+            "bounded_draw": {
+              "type": "string",
+              "const": "one_stream_step_then_truncate_and_select",
+              "description": "Bounded draw."
+            },
+            "numeric_kernel": {
+              "type": "string",
+              "const": "binary64_no_fma",
+              "description": "Numeric kernel."
+            },
+            "integer_rounding": {
+              "type": "string",
+              "const": "nearest_half_away_from_zero",
+              "description": "Integer rounding."
+            },
+            "missing_mass": {
+              "type": "string",
+              "const": "trap_after_stream_step",
+              "description": "Missing mass."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Shared generation data quota in bytes."
+            },
+            "operand_types": {
+              "type": "array",
+              "const": [
+                "i32",
+                "f32"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "Original numeric operand types preserved in each snapshot."
+            },
+            "families": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "description": "Implemented point distribution families.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "weighted",
+                    "description": "Contextual family name."
+                  },
+                  "minimum_points": {
+                    "type": "integer",
+                    "const": 1,
+                    "description": "Minimum point count."
+                  },
+                  "maximum_points": {
+                    "type": "integer",
+                    "const": 256,
+                    "description": "Maximum point count."
+                  },
+                  "value": {
+                    "type": "string",
+                    "const": "discrete_mass",
+                    "description": "Meaning of each point value."
+                  },
+                  "equal_bounds": {
+                    "type": "string",
+                    "const": "positive_mass_at_point",
+                    "description": "Equal-bound probability rule."
+                  }
+                },
+                "required": [
+                  "name",
+                  "minimum_points",
+                  "maximum_points",
+                  "value",
+                  "equal_bounds"
+                ],
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": [
+            "syntax",
+            "result",
+            "names",
+            "evaluation",
+            "storage",
+            "intrinsic_rng",
+            "key_order",
+            "values",
+            "bounded_draw",
+            "numeric_kernel",
+            "integer_rounding",
+            "missing_mass",
+            "generation_data_limit_bytes",
+            "operand_types",
+            "families"
+          ],
+          "additionalProperties": true
         }
       },
       "required": [

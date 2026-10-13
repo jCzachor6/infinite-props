@@ -240,12 +240,14 @@ f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
 // A range draw shaped by a distribution (spec v0.5 §4.4): one stream step,
 // the coefficient u = (x + 1/2) / 2^32, and 1 fuel per kernel iteration.
 double distributionDraw(Execution& ex, const Distribution& distribution, double lo, double hi) {
-    if (distribution.family == DistributionFamily::None) {
+    if (distribution.family == DistributionFamily::None ||
+        (distribution.family == DistributionFamily::Weighted && !math::validDistribution(distribution))) {
         ex.trap("distribution is not initialized", ErrorReason::NumericRange);
     }
     Frame& frame = ex.frame();
     frame.stream += 0x9e3779b9u;
     const double u = (static_cast<double>(hash32(frame.stream)) + 0.5) * 0x1p-32;
+    ex.spend(math::pointDrawWork(distribution));
     const auto draw = math::truncatedDraw(distribution, lo, hi, u);
     switch (draw.status) {
     case math::DrawStatus::Outside:
@@ -255,6 +257,8 @@ double distributionDraw(Execution& ex, const Distribution& distribution, double 
     case math::DrawStatus::NoConvergence:
         ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
     case math::DrawStatus::Ok: break;
+    case math::DrawStatus::Numerical:
+        ex.trap("distribution draw has a numerical error", ErrorReason::NumericRange);
     }
     ex.spend(draw.steps);
     return draw.value;

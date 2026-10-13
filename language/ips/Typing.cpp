@@ -211,6 +211,16 @@ ValueType Typer::infer(const Expr& expr) {
     if (const auto* call = std::get_if<Call>(&expr)) {
         return typeCall(*call);
     }
+    if (const auto* d = std::get_if<PointDistributionLiteral>(&expr)) {
+        if (d->points.empty() || d->points.size() > 256) error(d->location, "weighted needs between 1 and 256 points");
+        for (const auto& point : d->points) {
+            for (const auto* operand : {point.key.get(), point.value.get()}) {
+                const auto type = typeOf(*operand);
+                if (!isNumeric(type)) error(locationOf(*operand), "distribution points must be numeric, got " + std::string(typeName(type)));
+            }
+        }
+        return ValueType::Distribution;
+    }
     if (const auto* vector = std::get_if<VectorLit>(&expr)) {
         return typeVector(*vector);
     }

@@ -5,6 +5,7 @@ set(IPROP_RUNTIME_SOURCES
     collections.cpp
     collection_ops.cpp
     samplers.cpp
+    point_distributions.cpp
     opcode_name.cpp
     opcode_spec.cpp
     debug.cpp
@@ -29,6 +30,7 @@ set(IPROP_RUNTIME_SOURCES
     math/bezier.cpp
     math/curves.cpp
     math/distribution.cpp
+    math/point_distribution.cpp
     math/color.cpp
     seeded.cpp
     canvas.cpp

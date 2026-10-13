@@ -187,6 +187,27 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Independent raw-RNG weighted pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/weighted.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40000000,0x40000000,0x3f800000,0x3f800000,0x47738c00,0x4671b800};
+        CHECK(image.width==32 && image.height==24 && slots.size()==3,"weighted image metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"weighted output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"weighted output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && x<30 && y>=2 && y<22){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            if(x>=4 && x<8 && y>=6 && y<18){color[0]=52;color[1]=42;color[2]=34;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"weighted pixel %u,%u",x,y);
+        }
+    }
+
     // Preserved stage-4 runtime pins through the unchanged host layouts.
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(

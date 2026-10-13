@@ -1,11 +1,11 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–5 (2026-10-13).
-**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, and sampling palettes. This document
+**Status:** Development contract for product 0.7.0, stages 1–6 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes and weighted distributions. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; weighted/density distributions and surfaces
+extend this development format; Density distributions and surfaces
 are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
@@ -385,3 +385,107 @@ samplers and vec2 palettes without sampling hidden interpolation stops. Source
 metadata advertises these rules and enables sampler constant types/const `list.len`
 overloads; global `pick`, contextual helper names, old binaries and kernels remain
 unchanged.
+
+## 12. Point distributions and weighted draws
+
+Stage 6 adds family **4 (weighted)** without changing scalar type code 4 or the
+legacy family numbers, parameter records and kernels. The source literal is
+`weighted { key: weight, ... }`, contextual only before `{`. All operands are
+i32/f32; each key and weight evaluates once in source order. Keys convert
+exactly from their original type to binary64 for comparisons, preserving every
+i32 including adjacent values above 2^24. They are finite and strictly
+increasing; weights are finite/nonnegative and their ordered binary64 sum is
+positive. There are 1–256 pairs. Descriptions are immutable snapshots without
+RNG state. Pure asset const expressions validate at compile time; runtime
+constructors validate even if their results are unused.
+
+### Pool and wire references
+
+Optional section **9 (Distributions)** requires minor 6. Its payload is:
+
+```text
+u32 count                         // <= 65536
+repeat count:
+    u8 family                    // 4
+    u8 reserved                  // zero
+    u16 point_count              // 1..256
+    repeat point_count:
+        u8 key_type              // 0 i32, 1 f32
+        u8 value_type            // 0 i32, 1 f32
+        u16 reserved             // zero
+        u32 key_bits             // exact original scalar bits
+        u32 value_bits
+```
+
+Every record is validated, including unused data. Unknown families/types,
+reserved fields, nonfinite values, ordering, count/mass violations, truncation
+and trailing bytes reject at load time. Pools may contain duplicate records;
+writers deduplicate exact encoded bits, including operand types and signed
+zero. Section-table order is irrelevant; parse section 9 before sections 8/7.
+
+An embedded distribution in a sampler/list record keeps the frozen **17-byte**
+encoding for families 1–3 (`u8 family`, four f32 parameters). Family 4 instead
+uses **3 bytes**: `u8 family=4`, `u16 section_9_index`. Validate reference range
+and exact family identity. Each list distribution element remains a complete
+value record; scalar/list/sampler encodings without family 4 are unchanged.
+
+IPA uses `distribution: HEX_RECORD` for a complete section-9 record, in pool
+order. Existing `sampler:` and `collection:` hex records preserve references.
+The assembler computes mixed distribution-list lengths by walking records;
+IPDIS emits their exact bytes. No public C enums, layouts or API are added.
+
+### Builder instructions, ownership and fuel
+
+All instructions require minor 6, aux zero, and validation in dead code:
+
+| Opcode | Mnemonic / operand | Stack, deepest first |
+| --- | --- | --- |
+| 0xC2 | const.distribution c | `[] -> [distribution]`; section-9 index c |
+| 0xC3 | distribution.begin f | `[i32 count] -> [internal builder]`; family f=4 |
+| 0xC4 | distribution.append t | `[builder, key, value] -> [builder]` |
+| 0xC5 | distribution.end | `[builder] -> [distribution]`; operand zero |
+
+Append operand t is 0–3: bit 0 selects f32 key (otherwise i32), bit 1 selects
+f32 value. It describes only the two scalar operands, never a complex type.
+Builder values cannot be duplicated, stored, passed or returned. Begin checks
+count, reserves one fuel per pair and preflights the complete buffer before
+operands run. Append validates each evaluated pair against the preceding key;
+end checks exact length/positive mass and freezes without copying. This bounds
+stack use independently of point count; no 512-slot list of all operands is
+built. A trap destroys pending builders with the failed generation.
+
+A point buffer charges **128 + 32 * count bytes** against the shared 64 MiB
+arena. Helpers, copies, lists and samplers share it. First constant retention
+pays one fuel per point and charges its buffer once; later reads pay only the
+base instruction. Lists/samplers preflight all newly retained buffers before
+publishing any cached handle; duplicate references share their charge.
+Point/list/sampler constant pools share a combined 64 MiB accounting limit.
+Existing scalar constant/list costs remain unchanged. Every new instruction
+also pays the existing base cost of 1.
+
+### Pinned weighted sampling
+
+Validate numeric bounds (finite and lo <= hi) and the initialized distribution
+before drawing. Advance the caller stream by 0x9e3779b9, hash with the frozen
+splitmix32, then compute `u = (binary64(hash) + 0.5) * 2^-32`. Before processing
+points, reserve **2 * point_count fuel** in addition to the base draw. Execute
+two complete source-order scans, including zero and excluded points, even if
+bounded mass is absent:
+
+1. Start mass=+0. For each point with lo <= key <= hi, add its weight in
+   binary64, in written order.
+2. Compute target=u*mass, cumulative=+0. Add only positive weights of included
+   points in written order. Select the first key where target < cumulative;
+   continue the scan without changing that selection. Equality belongs to the
+   next positive interval, never a zero-weight point.
+
+Every arithmetic operation is binary64, correctly rounded separately without
+FMA/reassociation or host probability functions. No redraws occur. If mass is
+zero, trap with `random range has no probability under the distribution`
+after the stream step. Equal bounds require a positive atom exactly there and
+still draw. An impossible unselected positive-mass result traps as a numerical
+error. F32 results round once to binary32 then restore the numeric bounds if
+rounding leaves them; i32 results use the frozen half-away-from-zero conversion.
+Color/vec2 sample this same coefficient on [0,1] and use the frozen mix kernels.
+Batch sampler picks repeat this exact procedure on the caller stream. The RNG
+grid implies quantized proportions, not exact seed-count percentages.

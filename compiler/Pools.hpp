@@ -90,15 +90,18 @@ public:
     u16 addList(const ListValue& list) {
         if (!list.data || list.data->elements.size() > kMaxListElements) throw PoolLimit("invalid collection constant");
         ListValue canonical = list;
-        if (list.type.item().isSampler()) {
+        if (list.type.item().isSampler() || list.type.item() == ValueType::Distribution) {
             auto data = std::make_shared<ListData>(*list.data);
-            for (auto& value : data->elements) value = samplers.at(addSampler(std::get<SamplerValue>(value)));
+            for (auto& value : data->elements) {
+                if (auto* d = std::get_if<Distribution>(&value)) { if (d->points) value = distributions.at(addDistribution(*d)); }
+                else value = samplers.at(addSampler(std::get<SamplerValue>(value)));
+            }
             canonical.data = std::move(data);
         }
         Writer encoding;
         encoding.writeU8(static_cast<u8>(list.type.element));
         if (list.type.item().isSampler()) encoding.writeU8(static_cast<u8>(list.type.parameter));
-        writeListElements(encoding, *canonical.data, samplers);
+        writeListElements(encoding, *canonical.data, samplers, distributions);
         if (const auto found = listIndex.find(encoding.data()); found != listIndex.end()) return found->second;
         if (lists.size() >= kMaxConstPoolEntries) throw PoolLimit("too many collection constants");
         const auto allocation = ResourceArena::listBytes(list.data->elements.size());
@@ -114,19 +117,38 @@ public:
         if (!sampler.data || sampler.data->type != sampler.type) throw PoolLimit("invalid sampler constant");
         Writer encoding;
         encoding.writeU8(static_cast<u8>(sampler.type.element));
-        writeSamplerData(encoding, *sampler.data);
+        SamplerValue canonical = sampler;
+        if (sampler.data->distribution.points) {
+            auto data = std::make_shared<SamplerData>(*sampler.data);
+            data->distribution = distributions.at(addDistribution(data->distribution));
+            canonical.data = std::move(data);
+        }
+        writeSamplerData(encoding, *canonical.data, distributions);
         if (const auto found = samplerIndex.find(encoding.data()); found != samplerIndex.end()) return found->second;
         if (samplers.size() >= kMaxConstPoolEntries) throw PoolLimit("too many sampler constants");
         if (ResourceArena::samplerBytes() > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
         collectionBytes += ResourceArena::samplerBytes();
         addType(sampler.type);
         const auto index = static_cast<u16>(samplers.size());
-        samplers.push_back(sampler); samplerIndex.emplace(encoding.data(), index);
+        samplers.push_back(std::move(canonical)); samplerIndex.emplace(encoding.data(), index);
+        return index;
+    }
+    u16 addDistribution(const Distribution& d) {
+        if (!d.points || d.family != d.points->family) throw PoolLimit("invalid point distribution constant");
+        Writer encoding; writePointDistribution(encoding, *d.points);
+        if (const auto found = distributionIndex.find(encoding.data()); found != distributionIndex.end()) return found->second;
+        if (distributions.size() >= kMaxConstPoolEntries) throw PoolLimit("too many distribution constants");
+        const auto bytes = ResourceArena::distributionBytes(d.points->points.size());
+        if (bytes > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
+        collectionBytes += bytes;
+        const auto index = static_cast<u16>(distributions.size());
+        distributions.push_back(d); distributionIndex.emplace(encoding.data(), index);
         return index;
     }
     const std::vector<TypeDescriptor>& typesValue() const { return types; }
     const std::vector<ListValue>& listsValue() const { return lists; }
     const std::vector<SamplerValue>& samplersValue() const { return samplers; }
+    const std::vector<Distribution>& distributionsValue() const { return distributions; }
 
     // The pool contents, in registration order.
     const std::vector<std::string>& stringsValue() const { return strings; }
@@ -145,6 +167,8 @@ private:
     std::map<std::vector<u8>, u16> listIndex;
     std::vector<SamplerValue> samplers;
     std::map<std::vector<u8>, u16> samplerIndex;
+    std::vector<Distribution> distributions;
+    std::map<std::vector<u8>, u16> distributionIndex;
     std::vector<std::string> strings;
     std::map<std::string, u32> stringIndex;
     std::vector<u32> ints;

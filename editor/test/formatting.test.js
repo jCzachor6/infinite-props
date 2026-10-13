@@ -310,3 +310,24 @@ test("sampling palette formatting preserves const graphs and explicit palette pi
         assert.equal(checked.status,0,checked.stderr); clean(dir);
     }finally{h.dispose(); fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test("point distribution literals preserve contextual helpers and pair comments", async () => {
+    const source = "asset t{size 1x1 weighted(x:i32)->i32{return x} " +
+        "const distribution d=weighted{16777217:50,/* mass */16777218:20,} " +
+        "draw{x=weighted(2);s=sampler(16777217 to 16777218 with d);items=s.pick(3)}}";
+    const dir = workspace(source), h = editorHarness(dir, execFile); h.settings.compilerPath = compiler;
+    try {
+        const edits = await format(h); assert.equal(edits.length, 1, h.warnings.join("\n"));
+        const formatted = edits[0].newText;
+        assert.ok(formatted.includes("weighted {"));
+        assert.ok(formatted.includes("/* mass */"));
+        assert.ok(formatted.includes("weighted(2)"));
+        const grammar = JSON.parse(fs.readFileSync(path.join(__dirname, "../syntaxes/ips.tmLanguage.json"), "utf8"));
+        const literal = new RegExp(grammar.repository.pointDistribution.match);
+        assert.equal(literal.test("weighted {1:2}"), true);
+        assert.equal(literal.test("weighted(2)"), false);
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr); clean(dir);
+    } finally { h.dispose(); fs.rmSync(dir,{recursive:true,force:true}); }
+});

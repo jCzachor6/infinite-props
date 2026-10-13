@@ -39,10 +39,15 @@ bool stepSamplers(Execution& ex, Instruction ins) {
         if (ins.operand >= ex.file.collections.samplers.size())
             ex.trap("sampler constant index out of range", ErrorReason::IndexRange);
         const auto& sampler = ex.file.collections.samplers[ins.operand];
-        if (!ex.resources.samplerConstants.contains(sampler.data.get())) {
-            ex.allocateResource(ResourceArena::samplerBytes());
-            ex.resources.samplerConstants.insert(sampler.data.get());
-        }
+        const auto& d = sampler.data->distribution.points;
+        const bool retainSampler = !ex.resources.samplerConstants.contains(sampler.data.get());
+        const bool retainPoints = d && !ex.resources.distributionConstants.contains(d.get());
+        if (retainPoints) ex.spend(d->points.size());
+        const u64 bytes = (retainSampler ? ResourceArena::samplerBytes() : 0) +
+            (retainPoints ? ResourceArena::distributionBytes(d->points.size()) : 0);
+        ex.allocateResource(bytes);
+        if (retainSampler) ex.resources.samplerConstants.insert(sampler.data.get());
+        if (retainPoints) ex.resources.distributionConstants.insert(d.get());
         ex.push(sampler); ++ex.frame().ip;
         return true;
     }

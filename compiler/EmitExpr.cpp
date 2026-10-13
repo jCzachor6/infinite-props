@@ -38,6 +38,18 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         ins(Opcode::ListEnd, 0, descriptor);
         return type;
     }
+    if (const auto* d = std::get_if<ips::PointDistributionLiteral>(&expr)) {
+        emitConst(static_cast<i32>(d->points.size()));
+        ins(Opcode::DistributionBegin, 0, static_cast<u16>(d->family));
+        for (const auto& point : d->points) {
+            emitExpr(*point.key); emitExpr(*point.value);
+            const u16 types = (current_->typeOf(*point.key) == ips::ValueType::F32 ? 1 : 0) |
+                              (current_->typeOf(*point.value) == ips::ValueType::F32 ? 2 : 0);
+            ins(Opcode::DistributionAppend, 0, types);
+        }
+        ins(Opcode::DistributionEnd);
+        return ips::ValueType::Distribution;
+    }
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         // A {x, y} literal in a value context becomes the vec2; the
         // 3/4-element compounds only flow into output writes.

@@ -751,6 +751,53 @@
       "value": false,
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "null point distributions",
+      "path": [
+        "source_rules",
+        "point_distributions"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted invalid point limit",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        0,
+        "maximum_points"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted wrong snapshot representation",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "storage"
+      ],
+      "value": "f32_keys",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted unknown family",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        0,
+        "name"
+      ],
+      "value": "unimplemented",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

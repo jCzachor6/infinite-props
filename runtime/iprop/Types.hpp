@@ -5,8 +5,11 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <variant>
+#include <vector>
 
 namespace iprop {
 
@@ -44,13 +47,24 @@ struct Vec2 {
 
 // A distribution description (spec v0.5 §4.1): a family and its binary32
 // parameters. None is the typed default of a slot that was never assigned.
-enum class DistributionFamily : u8 { None = 0, Gaussian = 1, Triangular = 2, Beta = 3 };
+enum class DistributionFamily : u8 { None = 0, Gaussian = 1, Triangular = 2, Beta = 3, Weighted = 4 };
+// Keep each numeric operand's original type and bits. In particular, adjacent
+// i32 keys above 2^24 must never pass through binary32.
+using DistributionNumber = std::variant<i32, f32>;
+struct DistributionPoint {
+    DistributionNumber key, value;
+};
+struct PointDistributionData {
+    DistributionFamily family = DistributionFamily::None;
+    std::vector<DistributionPoint> points;
+};
 struct Distribution {
     DistributionFamily family = DistributionFamily::None;
     // gaussian: mean, sigma; triangular: min, peak, max; beta: alpha, beta, min, max
     std::array<f32, 4> parameters{};
+    std::shared_ptr<const PointDistributionData> points;
 
-    constexpr bool operator==(const Distribution&) const = default;
+    bool operator==(const Distribution&) const = default;
 };
 
 } // namespace iprop

@@ -146,6 +146,55 @@ This example is intentionally rejected: `with` needs a distribution.
 This program is valid source, but its sigma is negative for the default
 input and the constructor traps during generation.
 
+### Weighted point distributions
+
+`weighted { key: weight, ... }` constructs a `distribution` from 1–256 numeric
+atoms. Keys keep their original i32/f32 types, increase strictly and are finite.
+Weights are finite and nonnegative, with positive total mass. Pairs evaluate
+key then weight, once in written order, and snapshot without an intrinsic draw.
+Use `lower to upper with d`, or capture it in a sampler; color/vec2 keys denote
+positions on 0–1. Copies, helpers and lists share the immutable snapshot.
+
+```ips
+distribution finish = weighted { 1: 50, 2: 20, 3: 20, 4: 10 }
+style = 1 to 4 with finish
+```
+
+An i32 key remains exact above 2^24; mixed key types convert exactly to binary64
+for comparisons, without first widening integer keys to f32. The weights are
+relative masses, so 50/20/20/10 and 75/20/5 describe proportions. Zero weights
+cannot be selected. The finite RNG grid does not promise exact counts for any
+particular set of seeds. F32 bounds give f32 results; i32 results round the
+selected atom to the nearest integer, halves away from zero.
+
+Bounds and the initialized description are checked before one stream step.
+The draw then filters keys to the inclusive bounds, sums their weights in
+binary64 in source order, and selects the first cumulative mass strictly above
+its target. A tie belongs to the next positive interval. Missing bounded mass
+traps after the step, including equal bounds without a positive atom there.
+There are no redraws. Construction pays base instruction fuel plus one per
+point; sampling pays its base draw plus two per point for the two full scans.
+Buffers share the generation's 64 MiB data quota and are charged once.
+
+Asset `const distribution` and const samplers may use pure weighted literals,
+including forward numeric const references. Invalid static descriptions reject
+before an artifact is written; invalid runtime operands trap at construction,
+even if unused. Only `weighted` followed by `{` starts the literal; a helper
+`weighted(...)` and locals named `weighted` keep their existing meaning.
+See the [format and numerical contract](../../spec/iprop-v0.6.md#12-point-distributions-and-weighted-draws).
+
+<!-- example: ../../examples/language/weighted.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-order.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-negative.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-empty-mass.ips -->
+
+<!-- example: ../../examples/language/traps/weighted-mass.ips -->
+
+<!-- example: ../../examples/language/traps/weighted-runtime-weight.ips -->
+
 ### gaussian
 <!-- builtin: gaussian -->
 

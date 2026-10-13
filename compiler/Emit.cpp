@@ -48,6 +48,10 @@ void Emitter::emitConst(const Value& value) {
     } else if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
         ins(Opcode::ConstSampler, 0, plan_.pools.addSampler(*sampler));
     } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
+        if (distribution->points) {
+            ins(Opcode::ConstDistribution, 0, plan_.pools.addDistribution(*distribution));
+            return;
+        }
         const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
             distribution->family == DistributionFamily::Triangular ? 3u : 4u;
         for (std::size_t i = 0; i < count; ++i) emitConst(distribution->parameters[i]);

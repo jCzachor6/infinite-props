@@ -1,5 +1,11 @@
 {
   "cases": [
+    {"file": "weighted.ips", "expect": "pass"},
+    {"file": "errors/weighted-order.ips", "expect": "compile-error", "message": "strictly increasing"},
+    {"file": "errors/weighted-negative.ips", "expect": "compile-error", "message": "nonnegative"},
+    {"file": "errors/weighted-empty-mass.ips", "expect": "compile-error", "message": "positive total mass"},
+    {"file": "traps/weighted-mass.ips", "expect": "trap", "message": "no probability"},
+    {"file": "traps/weighted-runtime-weight.ips", "expect": "trap", "message": "nonnegative"},
     {"file": "sampling-palettes.ips", "expect": "pass"},
     {"file": "errors/palette-runtime-bound.ips", "expect": "compile-error", "message": "cannot read 'lower'"},
     {"file": "errors/const-sampler-cycle.ips", "expect": "compile-error", "message": "cyclic const dependency"},

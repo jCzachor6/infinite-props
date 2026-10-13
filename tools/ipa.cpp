@@ -113,6 +113,7 @@ struct Program {
     struct Collection { TypeDescriptor type; std::vector<u8> bytes; u16 count; };
     std::vector<Collection> collections;
     std::vector<Collection> samplers;
+    std::vector<std::vector<u8>> distributions;
 };
 
 std::vector<std::string> tokens(const std::string& line) {
@@ -433,16 +434,17 @@ std::vector<u8> assemble(const std::string& source) {
             }
             continue;
         }
-        if (words[0] == "collection:" || words[0] == "sampler:") {
-            const bool sampler = words[0] == "sampler:";
+        if (words[0] == "collection:" || words[0] == "sampler:" || words[0] == "distribution:") {
+            const bool sampler = words[0] == "sampler:", points = words[0] == "distribution:";
             ValueType type;
-            if (function || currentPart || words.size() != 3 || !parseValueType(words[1], type) ||
-                (sampler ? !type.isSampler() : !type.isList()))
-                throw error(sampler ? "bad sampler declaration" : "bad collection declaration");
-            const auto& text = words[2];
-            const auto stride = sampler ? 1u : type.item().isSampler() ? 2u :
-                type.element == ValueType::Vec2 ? 8u : type.element == ValueType::Distribution ? 17u : 4u;
-            if (text != "-" && (text.size() % (2 * stride) || (!sampler && text.size() / (2 * stride) > kMaxListElements)))
+            if (function || currentPart || (points ? words.size() != 2 :
+                (words.size() != 3 || !parseValueType(words[1], type) || (sampler ? !type.isSampler() : !type.isList()))))
+                throw error("bad resource constant declaration");
+            const auto& text = words[points ? 1 : 2];
+            const bool variable = !points && !sampler && type.element == ValueType::Distribution;
+            const auto stride = (sampler || points || variable) ? 1u : type.item().isSampler() ? 2u :
+                type.element == ValueType::Vec2 ? 8u : 4u;
+            if (text != "-" && (text.size() % (2 * stride) || (!sampler && !points && !variable && text.size() / (2 * stride) > kMaxListElements)))
                 throw error("bad collection size");
             std::vector<u8> bytes;
             if (text != "-") for (std::size_t i = 0; i < text.size(); i += 2) {
@@ -456,7 +458,16 @@ std::vector<u8> assemble(const std::string& source) {
                 if (hi < 0 || lo < 0) throw error("bad collection hex data");
                 bytes.push_back(static_cast<u8>(hi * 16 + lo));
             }
-            const auto count = sampler ? u16{0} : static_cast<u16>(bytes.size() / stride);
+            if (points) { program.distributions.push_back(std::move(bytes)); continue; }
+            u16 count = sampler ? u16{0} : static_cast<u16>(bytes.size() / stride);
+            if (variable) {
+                count = 0;
+                for (std::size_t at = 0; at < bytes.size();) {
+                    const auto length = bytes[at] == static_cast<u8>(DistributionFamily::Weighted) ? 3u : 17u;
+                    if (length > bytes.size() - at || count == kMaxListElements) throw error("bad distribution collection size");
+                    ++count; at += length;
+                }
+            }
             (sampler ? program.samplers : program.collections).push_back({type, std::move(bytes), count});
             continue;
         }
@@ -872,6 +883,12 @@ std::vector<u8> assemble(const std::string& source) {
     }
     Writer collections;
     Writer samplers;
+    Writer distributions;
+    if (!program.distributions.empty()) {
+        if (program.distributions.size() > kMaxConstPoolEntries) throw SourceError(0, "too many distribution constants");
+        distributions.writeU32(static_cast<u32>(program.distributions.size()));
+        for (const auto& bytes : program.distributions) distributions.writeBytes(bytes);
+    }
     if (!program.collections.empty()) {
         if (program.collections.size() > kMaxConstPoolEntries) throw SourceError(0, "too many collections");
         collections.writeU32(static_cast<u32>(program.collections.size()));
@@ -1028,9 +1045,9 @@ std::vector<u8> assemble(const std::string& source) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    if (descriptors.size() || collections.size() || samplers.size()) minor = 6;
+    if (descriptors.size() || collections.size() || samplers.size() || distributions.size()) minor = 6;
     const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u);
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(0);
@@ -1050,11 +1067,12 @@ std::vector<u8> assemble(const std::string& source) {
     if (descriptors.size()) section(6, descriptors.data());
     if (collections.size()) section(7, collections.data());
     if (samplers.size()) section(8, samplers.data());
+    if (distributions.size()) section(9, distributions.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     if (instances) file.writeBytes(partInstances.data());
-    file.writeBytes(descriptors.data()); file.writeBytes(collections.data()); file.writeBytes(samplers.data());
+    file.writeBytes(descriptors.data()); file.writeBytes(collections.data()); file.writeBytes(samplers.data()); file.writeBytes(distributions.data());
 
     const auto bytes = file.data();
 

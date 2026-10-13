@@ -309,6 +309,13 @@ class SourcePrinter {
                 expression(*node.receiver); out_ << ".pick(";
                 if (node.count) expression(*node.count);
                 out_ << ')';
+            } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
+                out_ << "weighted {";
+                for (std::size_t i = 0; i < node.points.size(); ++i) {
+                    if (i) out_ << ", ";
+                    expression(*node.points[i].key); out_ << ": "; expression(*node.points[i].value);
+                }
+                out_ << '}';
             } else if constexpr ((std::is_same_v<T, VectorLit> || std::is_same_v<T, ListLit>)) {
                 out_ << (std::is_same_v<T, ListLit> ? '[' : '{');
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {

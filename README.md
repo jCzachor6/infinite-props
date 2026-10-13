@@ -8,9 +8,9 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–5 of product **0.7.0** / source language **0.7**
+This checkout implements stages 1–6 of product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
-typed immutable asset constants, lists and captured samplers visible in draw
+typed immutable asset constants, lists, weighted distributions and captured samplers visible in draw
 and helpers, with explicit single picks, immutable batches and sampling palettes.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
@@ -79,7 +79,7 @@ language handbook defines the supported source syntax.
 The format is a contract, not an implementation detail. All interpreters MUST
 implement its frozen semantics; the reference interpreter and conformance
 suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
-[0.5 contract](spec/iprop-v0.5.md) and defines the stage 1 additions.
+[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–6.
 
 ### 5.1 Header
 
@@ -603,7 +603,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–5; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–6; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -726,3 +726,7 @@ polygon pixels, resource limits and the native/WASM compatibility gates.
 The [sampling palette validation report](docs/validation-v0.7-stage5.md) covers
 constant descriptions, range palettes, checked helper scope, shared storage,
 format/tooling, frozen baselines and native/WASM/backend acceptance.
+
+The [weighted distribution validation report](docs/validation-v0.7-stage6.md)
+covers exact point snapshots, bounded sampling, format transport and native/WASM
+compatibility.

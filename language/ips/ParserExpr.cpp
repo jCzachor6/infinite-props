@@ -271,6 +271,7 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
     }
     switch (kind()) {
     case TokenKind::Identifier: {
+        if (peek().text == "weighted" && kind(1) == TokenKind::LBrace) return parsePointDistribution();
         const Token name = advance();
         auto expr = std::make_unique<Expr>(Identifier{name.text, name.location});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
@@ -377,6 +378,27 @@ std::unique_ptr<Expr> ParserImpl::parseList() {
     }
     expect(TokenKind::RBracket, "']' after list elements");
     auto expr = std::make_unique<Expr>(ListLit{std::move(elements), at});
+    expr->sourceRange = expr->sourceCoreRange = {start, pos_};
+    return expr;
+}
+
+std::unique_ptr<Expr> ParserImpl::parsePointDistribution() {
+    const auto start = pos_;
+    const auto name = advance();
+    const FlagScope nested(statementTail_, false);
+    expect(TokenKind::LBrace, "'{' after distribution family");
+    PointDistributionLiteral literal; literal.location = name.location;
+    while (kind() != TokenKind::RBrace) {
+        if (kind() == TokenKind::End) failHere("unterminated point distribution (missing '}')");
+        const auto at = peek().location;
+        auto key = parseExpr();
+        expect(TokenKind::Colon, "':' between distribution key and value");
+        auto value = parseExpr();
+        literal.points.push_back({std::move(key), std::move(value), at});
+        if (!match(TokenKind::Comma)) break;
+    }
+    expect(TokenKind::RBrace, "'}' after distribution points");
+    auto expr = std::make_unique<Expr>(std::move(literal));
     expr->sourceRange = expr->sourceCoreRange = {start, pos_};
     return expr;
 }

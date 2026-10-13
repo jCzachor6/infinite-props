@@ -292,6 +292,7 @@ private:
             if (!reachable_) return;
             if (stack_.empty()) fail(at, "stack underflow (dup)");
             if (stack_.back().kind == ValueType::Builder) fail(at, "list builder cannot be duplicated");
+            if (stack_.back() == ValueType::PointBuilder) fail(at, "distribution builder cannot be duplicated");
             push(at, stack_.back());
             return;
         }
@@ -299,6 +300,27 @@ private:
         case Opcode::ConstList:
             if (op >= file_.collections.lists.size()) fail(at, "collection constant index out of range");
             push(at, file_.collections.lists[op].type);
+            return;
+        case Opcode::ConstDistribution:
+            if (op >= file_.collections.distributions.size()) fail(at, "distribution constant index out of range");
+            push(at, ValueType::Distribution);
+            return;
+        case Opcode::DistributionBegin:
+            if (op != static_cast<u16>(DistributionFamily::Weighted)) fail(at, "unknown point distribution family");
+            expect(at, ValueType::I32, "distribution point count");
+            push(at, ValueType::PointBuilder);
+            return;
+        case Opcode::DistributionAppend:
+            if (op > 3) fail(at, "invalid distribution point types");
+            expect(at, (op & 2) ? ValueType::F32 : ValueType::I32, "distribution point value");
+            expect(at, (op & 1) ? ValueType::F32 : ValueType::I32, "distribution point key");
+            expect(at, ValueType::PointBuilder, "distribution builder");
+            push(at, ValueType::PointBuilder);
+            return;
+        case Opcode::DistributionEnd:
+            if (op) fail(at, "distribution.end operand must be zero");
+            expect(at, ValueType::PointBuilder, "distribution builder");
+            push(at, ValueType::Distribution);
             return;
         case Opcode::ConstSampler:
             if (op >= file_.collections.samplers.size()) fail(at, "sampler constant index out of range");
@@ -635,10 +657,16 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     if (const auto* types = file.layout.find(SectionId::Types))
         file.collections.types = parseTypeDescriptors(bytes, *types);
+    if (const auto* distributions = file.layout.find(SectionId::Distributions))
+        file.collections.distributions = parseDistributionPool(bytes, *distributions);
     if (const auto* samplers = file.layout.find(SectionId::Samplers))
-        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections.types);
+        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections.types, file.collections.distributions);
     if (const auto* lists = file.layout.find(SectionId::Collections))
-        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers);
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers, file.collections.distributions);
+    u64 poolBytes = file.collections.samplers.size() * ResourceArena::samplerBytes();
+    for (const auto& d : file.collections.distributions) poolBytes += ResourceArena::distributionBytes(d.points->points.size());
+    for (const auto& list : file.collections.lists) poolBytes += ResourceArena::listBytes(list.data->elements.size());
+    if (poolBytes > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", 0, ErrorReason::InvalidConstants);
     file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);

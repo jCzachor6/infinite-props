@@ -167,6 +167,14 @@ def compiler_rules(language):
             lines.append(f"`lower to upper with d` draws from `d` {phrase(shaped['truncation'], {'conditioned_on_range': 'restricted to the range, never clamped'})}; "
                          f"it evaluates {', '.join(shaped['evaluation_order'])} in that order, and i32 ranges round "
                          f"{phrase(shaped['integer_rounding'], {'nearest_half_away_from_zero': 'to the nearest integer, halves away from zero'})}.")
+    if 'point_distributions' in rules:
+        points = rules['point_distributions']
+        lines.append('Point distribution literals: ' + '; '.join(
+            '`' + family['name'] + ' {key: value, ...}` (' + str(family['minimum_points']) + '–256 points)'
+            for family in points['families']) + '. Numeric pairs evaluate once left to right; keys keep exact i32/f32 types, '
+            'increase strictly, and values are finite/nonnegative with positive total mass. Descriptions snapshot without RNG; '
+            'use `to ... with d` or capture a sampler. Weighted values are discrete masses; clipped draws consume one stream step, '
+            'and missing mass traps. Color/vec2 use positions on 0–1.')
     if 'components' in types:
         lines.append('Read-only members: ' + '; '.join(item['type'] + ' ' + ', '.join('.' + name for name in item['names']) +
                      ' give ' + item['result'] for item in types['components']) + '.')

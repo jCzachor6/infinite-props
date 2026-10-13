@@ -1,14 +1,14 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–5 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–6 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
 samplers with explicit single/batch picks, const descriptions and sampling palettes. Product 0.7.0 is under
-development. Later stages of 0.7, including weighted/density distributions and surfaces, remain
+development. Later stages of 0.7, including density distributions and surfaces, remain
 outside the currently implemented language.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–5 |
+| Contract | 0.6 release | 0.7 development, stages 1–6 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -180,3 +180,11 @@ unchanged. The eight pick method signatures are unchanged. Schema 3 now enables
 sampler constants and const list-length overloads, and records `source_rules.palettes`.
 The bounded LLM reference remains 80 KiB. Actual archived stage-4 binaries and an
 independent example oracle are executed without regenerating their expected data.
+
+## Weighted distributions
+
+Stage 6 adds `weighted { key: weight, ... }` descriptions and section 9 of
+format 0.6. Existing family constructors, kernels and scalar type code 4 stay
+frozen. Contextual names before `(` or assignment retain their meaning. Moving
+a threshold-based asset to weighted draws may change its seed mapping; it is
+an explicit asset migration. See [weighted semantics](random.md#weighted-point-distributions).

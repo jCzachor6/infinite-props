@@ -26,7 +26,7 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stages 1–5 add integer bounds overloads, `vec2.normalize`, typed asset constants,
+Stages 1–6 add integer bounds overloads, `vec2.normalize`, typed asset constants,
 immutable lists, captured/constant samplers and sampling palettes. Schema 3 describes the constant policy,
 parameterized types, collection limits and receiver-first sampler methods.
 See [0.7 migration](language/migration-v0.7.md).
@@ -51,6 +51,7 @@ identified by `source_type`.
 | `inputs[].value_type` | Type visible to expressions; both integer input types are interpreted as `i32`. |
 | `types.storable` | Types admitted in local slots. |
 | `types.parameterized` | Supported list/sampler constructors, element types and immutable arena ownership. Lists of sampler descriptions are allowed; lists of lists are not. |
+| `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
 | `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode, minimum minor and effects. They are separate from the global builtin `pick`. |
@@ -221,3 +222,8 @@ effects of their own. Stage 5 enables sampler constant types and marks
 resolver. `source_rules.palettes` describes range capture, scalar lifting and
 direct fallback versus checked list indices. The full handbook and bounded
 LLM reference generate method tables from this export.
+
+Stage 6 exports `source_rules.point_distributions`: weighted literals are
+constructors rather than global call signatures. The snapshot, numeric and
+bounded-draw contract is shared by source typing, constant evaluation, runtime
+builders and file validation. Existing helpers with the family name remain calls.

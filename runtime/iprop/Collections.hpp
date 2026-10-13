@@ -15,6 +15,7 @@ struct CollectionPool {
     std::vector<TypeDescriptor> types;
     std::vector<ListValue> lists;
     std::vector<SamplerValue> samplers;
+    std::vector<Distribution> distributions;
 };
 
 TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types);
@@ -24,13 +25,22 @@ std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const
 void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types);
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
                                          std::span<const TypeDescriptor> types,
-                                         std::span<const SamplerValue> samplers = {});
+                                         std::span<const SamplerValue> samplers = {},
+                                         std::span<const Distribution> distributions = {});
 void writeListElements(Writer& writer, const ListData& list,
-                       std::span<const SamplerValue> samplers = {});
+                       std::span<const SamplerValue> samplers = {},
+                       std::span<const Distribution> distributions = {});
 std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
-                                          std::span<const TypeDescriptor> types);
+                                          std::span<const TypeDescriptor> types,
+                                          std::span<const Distribution> distributions = {});
 // Payload after the type descriptor: mode, reserved byte and typed data.
-void writeSamplerData(Writer& writer, const SamplerData& sampler);
+void writeSamplerData(Writer& writer, const SamplerData& sampler,
+                      std::span<const Distribution> distributions = {});
+std::vector<Distribution> parseDistributionPool(std::span<const u8> data, const Section& section);
+void writePointDistribution(Writer& writer, const PointDistributionData& data);
+Distribution readDistributionData(Reader& reader, std::span<const Distribution> distributions = {});
+void writeDistributionData(Writer& writer, const Distribution& distribution,
+                           std::span<const Distribution> distributions = {});
 
 // One generation owns immutable buffers and charges each allocation once.
 // A handle copy, helper argument or return shares the original allocation.
@@ -41,6 +51,8 @@ struct ResourceArena {
     std::vector<std::shared_ptr<const SamplerData>> samplers;
     std::map<u16, ListValue> constants;
     std::set<const SamplerData*> samplerConstants;
+    std::vector<std::shared_ptr<const PointDistributionData>> distributions;
+    std::set<const PointDistributionData*> distributionConstants;
     bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; if (bytes > peak) peak = bytes; }
     void release(u64 size) { bytes -= size; }
@@ -48,6 +60,7 @@ struct ResourceArena {
     // builder/control metadata and arena ownership with a conservative slot.
     static u64 listBytes(std::size_t count) { return 128u + count * 64u; }
     static constexpr u64 samplerBytes() { return 256u; }
+    static u64 distributionBytes(std::size_t count) { return 128u + count * 32u; }
 };
 
 } // namespace iprop

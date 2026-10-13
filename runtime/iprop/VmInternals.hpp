@@ -163,6 +163,7 @@ bool stepOutputs(Execution& ex, Instruction ins);
 bool stepParts(Execution& ex, Instruction ins);
 bool stepCollections(Execution& ex, Instruction ins);
 bool stepSamplers(Execution& ex, Instruction ins);
+bool stepPointDistributions(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 
 // Compile-time evaluation of one stateless value operation. Uses the same

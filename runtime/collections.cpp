@@ -24,7 +24,8 @@ void writeSamplerBound(Writer& writer, const Value& value) {
 }
 
 std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
-                                          std::span<const TypeDescriptor> types) {
+                                          std::span<const TypeDescriptor> types,
+                                          std::span<const Distribution> distributions) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries)
@@ -44,10 +45,7 @@ std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Secti
         sampler->lower = readSamplerBound(reader, sampler->type.item());
         if (sampler->mode != SamplerMode::Constant) sampler->upper = readSamplerBound(reader, sampler->type.item());
         if (sampler->mode == SamplerMode::With) {
-            sampler->distribution.family = static_cast<DistributionFamily>(reader.readU8());
-            for (auto& parameter : sampler->distribution.parameters) parameter = reader.readF32();
-            if (!math::validDistribution(sampler->distribution))
-                throw FormatError("invalid sampler constant distribution", reader.position() - 17, ErrorReason::InvalidConstants);
+            sampler->distribution = readDistributionData(reader, distributions);
         }
         if (const auto* error = samplerBoundsError(sampler->type.item(), sampler->lower, sampler->upper,
                                                  sampler->mode != SamplerMode::Constant))
@@ -58,7 +56,7 @@ std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Secti
     return samplers;
 }
 
-void writeSamplerData(Writer& writer, const SamplerData& sampler) {
+void writeSamplerData(Writer& writer, const SamplerData& sampler, std::span<const Distribution> distributions) {
     if (!sampler.type.isSampler() || samplerBoundsError(sampler.type.item(), sampler.lower, sampler.upper,
         sampler.mode != SamplerMode::Constant) || static_cast<u8>(sampler.mode) > static_cast<u8>(SamplerMode::With) ||
         (sampler.mode == SamplerMode::With && !math::validDistribution(sampler.distribution)))
@@ -67,12 +65,12 @@ void writeSamplerData(Writer& writer, const SamplerData& sampler) {
     writeSamplerBound(writer, sampler.lower);
     if (sampler.mode != SamplerMode::Constant) writeSamplerBound(writer, sampler.upper);
     if (sampler.mode == SamplerMode::With) {
-        writer.writeU8(static_cast<u8>(sampler.distribution.family));
-        for (const auto parameter : sampler.distribution.parameters) writer.writeF32(parameter);
+        writeDistributionData(writer, sampler.distribution, distributions);
     }
 }
 
 TypeDescriptor valueType(const Value& value) {
+    if (std::holds_alternative<PointDistributionBuilder>(value)) return TypeDescriptor::PointBuilder;
     if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;
     if (const auto* list = std::get_if<ListValue>(&value)) return list->type;
     if (const auto* builder = std::get_if<ListBuilder>(&value))
@@ -147,12 +145,14 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
 
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
                                          std::span<const TypeDescriptor> types,
-                                         std::span<const SamplerValue> samplers) {
+                                         std::span<const SamplerValue> samplers,
+                                         std::span<const Distribution> distributions) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many collection constants", section.offset, ErrorReason::InvalidConstants);
     std::vector<ListValue> lists;
     u64 total = samplers.size() * ResourceArena::samplerBytes();
+    for (const auto& d : distributions) total += ResourceArena::distributionBytes(d.points->points.size());
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto index = reader.readU16();
@@ -171,13 +171,7 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
             case TypeDescriptor::Color: list->elements.emplace_back(reader.readColor()); break;
             case TypeDescriptor::Vec2: list->elements.emplace_back(Vec2{reader.readF32(), reader.readF32()}); break;
             case TypeDescriptor::Distribution: {
-                Distribution distribution;
-                distribution.family = static_cast<DistributionFamily>(reader.readU8());
-                for (auto& parameter : distribution.parameters) parameter = reader.readF32();
-                // Pool constructors have exactly the same validity as runtime constructors.
-                if (!math::validDistribution(distribution))
-                    throw FormatError("invalid collection distribution", reader.position() - 17, ErrorReason::InvalidConstants);
-                list->elements.emplace_back(distribution);
+                list->elements.emplace_back(readDistributionData(reader, distributions));
                 break;
             }
             case TypeDescriptor::Sampler: {
@@ -196,7 +190,8 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
     return lists;
 }
 
-void writeListElements(Writer& writer, const ListData& list, std::span<const SamplerValue> samplers) {
+void writeListElements(Writer& writer, const ListData& list, std::span<const SamplerValue> samplers,
+                       std::span<const Distribution> distributions) {
     for (const auto& value : list.elements) {
         if (valueType(value) != list.type.item()) throw std::logic_error("collection element type mismatch");
         if (const auto* i = std::get_if<i32>(&value)) writer.writeI32(*i);
@@ -204,8 +199,7 @@ void writeListElements(Writer& writer, const ListData& list, std::span<const Sam
         else if (const auto* c = std::get_if<Color>(&value)) writer.writeColor(*c);
         else if (const auto* v = std::get_if<Vec2>(&value)) { writer.writeF32(v->x); writer.writeF32(v->y); }
         else if (const auto* d = std::get_if<Distribution>(&value)) {
-            writer.writeU8(static_cast<u8>(d->family));
-            for (const auto p : d->parameters) writer.writeF32(p);
+            writeDistributionData(writer, *d, distributions);
         }
         else if (const auto* s = std::get_if<SamplerValue>(&value)) {
             const auto found = std::find_if(samplers.begin(), samplers.end(), [&](const auto& candidate) {

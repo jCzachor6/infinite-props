@@ -25,7 +25,16 @@ struct ListValue {
 struct ListBuilder {
     std::shared_ptr<ListBuilderData> data;
 };
-using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue>;
+struct PointDistributionBuilderData {
+    PointDistributionData distribution;
+    std::size_t expected = 0;
+    double mass = 0.0;
+};
+struct PointDistributionBuilder {
+    std::shared_ptr<PointDistributionBuilderData> data;
+};
+using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
+                           PointDistributionBuilder>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
 struct SamplerData {

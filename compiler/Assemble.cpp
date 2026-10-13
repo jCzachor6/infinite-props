@@ -109,6 +109,11 @@ std::vector<u8> Assembler::assemble() {
     Writer types;
     Writer collections;
     Writer samplers;
+    Writer distributions;
+    if (!plan_.pools.distributionsValue().empty()) {
+        distributions.writeU32(static_cast<u32>(plan_.pools.distributionsValue().size()));
+        for (const auto& d : plan_.pools.distributionsValue()) writePointDistribution(distributions, *d.points);
+    }
     if (!plan_.pools.typesValue().empty()) {
         writeTypeDescriptors(types, plan_.pools.typesValue());
     }
@@ -119,7 +124,7 @@ std::vector<u8> Assembler::assemble() {
             const auto found = std::find(descriptors.begin(), descriptors.end(), list.type);
             collections.writeU16(static_cast<u16>(found - descriptors.begin()));
             collections.writeU16(static_cast<u16>(list.data->elements.size()));
-            writeListElements(collections, *list.data, plan_.pools.samplersValue());
+            writeListElements(collections, *list.data, plan_.pools.samplersValue(), plan_.pools.distributionsValue());
         }
     }
     if (!plan_.pools.samplersValue().empty()) {
@@ -128,7 +133,7 @@ std::vector<u8> Assembler::assemble() {
             const auto& descriptors = plan_.pools.typesValue();
             const auto found = std::find(descriptors.begin(), descriptors.end(), sampler.type);
             samplers.writeU16(static_cast<u16>(found - descriptors.begin()));
-            writeSamplerData(samplers, *sampler.data);
+            writeSamplerData(samplers, *sampler.data, plan_.pools.distributionsValue());
         }
     }
 
@@ -226,9 +231,9 @@ std::vector<u8> Assembler::assemble() {
         }
     }
 
-    if (types.size() || collections.size() || samplers.size()) minor = 6;
+    if (types.size() || collections.size() || samplers.size() || distributions.size()) minor = 6;
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u);
     // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : kMagic) {
@@ -253,6 +258,7 @@ std::vector<u8> Assembler::assemble() {
     if (types.size()) section(static_cast<u32>(SectionId::Types), types.data());
     if (collections.size()) section(static_cast<u32>(SectionId::Collections), collections.data());
     if (samplers.size()) section(static_cast<u32>(SectionId::Samplers), samplers.data());
+    if (distributions.size()) section(static_cast<u32>(SectionId::Distributions), distributions.data());
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
@@ -261,6 +267,7 @@ std::vector<u8> Assembler::assemble() {
     file.writeBytes(types.data());
     file.writeBytes(collections.data());
     file.writeBytes(samplers.data());
+    file.writeBytes(distributions.data());
     file.writeBytes(debug.data());
     return file.data();
 }

@@ -171,6 +171,7 @@ public:
     std::unique_ptr<Expr> parseLiteral();
     std::unique_ptr<Expr> parseVector();
     std::unique_ptr<Expr> parseList();
+    std::unique_ptr<Expr> parsePointDistribution();
     std::vector<Arg> parseArgs();
 
 private:

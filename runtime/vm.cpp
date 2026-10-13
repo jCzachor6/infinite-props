@@ -35,6 +35,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     }
     if (stepCollections(ex, ins)) return true;
     if (stepSamplers(ex, ins)) return true;
+    if (stepPointDistributions(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }

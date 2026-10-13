@@ -220,6 +220,20 @@ def read_language(value):
             require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
             signatures.add((method['receiver'], batch))
         require(len(signatures) == 8, 'unique sampler method signatures')
+    if 'point_distributions' in rules:
+        points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
+        _strings_and_bools(points, {
+            'syntax': {'<family> { <key>: <value>, ... }'}, 'result': {'distribution'},
+            'names': {'contextual_before_brace'}, 'evaluation': {'key_value_pairs_left_to_right_once'},
+            'storage': {'immutable_snapshot_original_numeric_types'}, 'intrinsic_rng': {'none'},
+            'key_order': {'strictly_increasing'}, 'values': {'finite_nonnegative_positive_total_mass'},
+            'bounded_draw': {'one_stream_step_then_truncate_and_select'}, 'numeric_kernel': {'binary64_no_fma'},
+            'integer_rounding': {'nearest_half_away_from_zero'}, 'missing_mass': {'trap_after_stream_step'}}, [], 'point distribution policy')
+        require(points['operand_types'] == ['i32','f32'], 'point distribution operand types')
+        require(points['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,
+                'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}], 'point distribution families')
+        integer(points.get('generation_data_limit_bytes'), 'point distribution data limit')
+        require(points['generation_data_limit_bytes'] == 67108864, 'point distribution data limit')
     if 'collections' in rules:
         collection = rules['collections']
         _strings_and_bools(collection, {

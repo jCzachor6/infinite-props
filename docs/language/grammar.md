@@ -57,7 +57,9 @@ unary         = ("-" | "!" | "~"), unary | postfix ;
 postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
-primary       = literal | name | compound | list_literal | "(", expression, ")" ;
+primary       = literal | name | compound | list_literal | point_distribution | "(", expression, ")" ;
+point_distribution = "weighted", "{", [ distribution_points ], "}" ;  (* contextual before brace *)
+distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
 sampler_capture = "sampler", "(", expression, ")" ;  (* contextual; the outer random_range is captured *)
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_literal  = "[", [ expressions ], "]" ;
@@ -102,3 +104,8 @@ Asset const and sampling-palette expressions must be pure compile-time values.
 An outer palette range captures a sampler; scalar entries then lift to constant
 descriptions. Runtime list ranges stay eager, and sampler picks cannot execute
 in declaration initializers. See [palettes](palettes.md#sampling-palettes).
+
+Point distribution literals accept general numeric runtime expressions. Static
+operands are checked during compilation; const declarations require pure
+operands. Each key/value pair snapshots its original numeric type in written
+order. See [weighted descriptions](random.md#weighted-point-distributions).

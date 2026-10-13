@@ -10,10 +10,10 @@ namespace iprop {
 struct TypeDescriptor {
     enum class Kind : u8 {
         I32 = 0, F32 = 1, Color = 2, Vec2 = 3, Distribution = 4,
-        List = 5, Rect = 6, Circle = 7, Void = 8, Builder = 9, Sampler = 10,
+        List = 5, Rect = 6, Circle = 7, Void = 8, Builder = 9, Sampler = 10, PointBuilder = 11,
     };
     static const TypeDescriptor I32, F32, Color, Vec2, Distribution;
-    static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler;
+    static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler, PointBuilder;
     Kind kind = Kind::I32;
     Kind element = Kind::Void;
     // The current language permits one parameterized element: sampler<T>.
@@ -57,6 +57,7 @@ inline constexpr TypeDescriptor TypeDescriptor::Circle{Kind::Circle};
 inline constexpr TypeDescriptor TypeDescriptor::Void{Kind::Void};
 inline constexpr TypeDescriptor TypeDescriptor::Builder{Kind::Builder};
 inline constexpr TypeDescriptor TypeDescriptor::Sampler{Kind::Sampler};
+inline constexpr TypeDescriptor TypeDescriptor::PointBuilder{Kind::PointBuilder};
 
 using ValueType = TypeDescriptor;
 const char* valueTypeName(TypeDescriptor type);

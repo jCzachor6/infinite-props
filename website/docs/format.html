@@ -33,15 +33,16 @@ segments, and named part instances whose outputs arrive in the caller's coordina
 for 0.5 still accepts every 0.1–0.4 file under its original rules.</p>
 <p>Format 0.6 is the development contract for product 0.7.0. Stage 1 adds exact
 signed integer min/max/clamp and stable vector normalization. The runtime reads
-0.1–0.6; existing mathematical and host output contracts remain frozen. Later
-0.7 features are not implemented by this stage. Stage 2 adds typed asset
+0.1–0.6; existing mathematical and host output contracts remain frozen. Stage 2 adds typed asset
 constants evaluated by the compiler through existing runtime operations;
 scalar constants introduce no new binary layout or host interface. Stage 3 adds
 parameterized type descriptors, immutable collection pools and list instructions,
 including <code>poly(list&lt;vec2&gt;, color)</code>. Stage 4 adds captured
 <code>sampler&lt;T&gt;</code> descriptions, <code>.pick()</code> and immutable
 <code>.pick(n)</code> batches, using the existing range/RNG algorithms. Descriptors
-can also reference sampler elements in lists. Stage 5 adds constant sampler pools,
+can also reference sampler elements in lists. Stage 6 adds weighted distribution
+snapshots with exact numeric keys, bounded discrete sampling and shared point pools.
+Stage 5 adds constant sampler pools,
 const lists of descriptions and compile-time range palettes with explicit picks.
 Direct palette indexing keeps its fallback; first-class list indexing checks bounds.
 Weighted/density distributions and

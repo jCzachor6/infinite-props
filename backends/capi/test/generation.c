@@ -6,6 +6,35 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Independent raw-RNG thresholds select material 2 and one rust layer. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/weighted.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40000000,0x40000000,0x3f800000,0x3f800000,0x47738c00,0x4671b800};
+        CHECK(bytes!=NULL,"cannot read weighted fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"weighted load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"weighted generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==3,"weighted image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"weighted output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"weighted bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(x>=2 && x<30 && y>=2 && y<22){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                if(x>=4 && x<8 && y>=6 && y<18){color[0]=52;color[1]=42;color[2]=34;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"weighted pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
     /* Preserved stage-4 runtime pins for constant samplers and palettes. */
     {
         char path[1024]; snprintf(path,sizeof(path),"%s/sampling-palettes.iprop",program_dir);
