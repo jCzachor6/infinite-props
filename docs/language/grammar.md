@@ -30,11 +30,11 @@ parameter     = name, ":", value_type ;
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
 list_type     = "list", "<", (scalar_type | sampler_type), ">" ;
-value_type    = scalar_type | list_type | sampler_type ;
+value_type    = scalar_type | list_type | sampler_type | "layer" ;
 block         = "{", { ";" | statement }, "}" ;
-statement     = assignment | call_statement | if | while | for
+statement     = layer_capture | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" | list_type | sampler_type ], name, "=", expression ;
+assignment    = [ "distribution" | "layer" | list_type | sampler_type ], name, "=", expression ;
 call_statement = name, { postfix_suffix } ;  (* must end as a call, capture or pick *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
@@ -71,6 +71,7 @@ literal       = integer | floating | color | string | "true" | "false" ;
 declaration_constant = literal | "(", declaration_constant, ")"
                      | "-", constant_atom ;
 constant_atom = literal | "(", constant_atom, ")" ;
+layer_capture = "layer", name, [ "(", "alpha", "=", "surface.legacy", ")" ], block ;
 identifier    = (letter | "_"), { letter | digit | "_" } ;
 xdigits       = ("x" | "X"), digit, { digit } ;
 integer       = digit, { digit } | "0", ("x" | "X"), hex, { hex } ;
@@ -115,3 +116,7 @@ At the top level of a for upper bound, the following brace starts the loop
 body, so numeric bounds named `weighted` or `density` keep their meaning.
 Inside nested arguments, brackets or parentheses, point literals remain
 ordinary expressions.
+
+Layer capture is contextual before its result name and block; `layer(...)`
+and ordinary names remain available. `layer name = expression` is a typed
+handle copy. Lists/samplers of surfaces are rejected.

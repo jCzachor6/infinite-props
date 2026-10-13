@@ -54,7 +54,7 @@ std::vector<std::vector<std::size_t>> successors(const std::vector<Instruction>&
     std::vector<std::size_t> ends(n, n), alternatives(n, n), targets(n, n), stack;
     for (std::size_t i = 0; i < n; ++i) {
         switch (code[i].opcode) {
-        case Opcode::Block: case Opcode::Loop: case Opcode::If: stack.push_back(i); break;
+        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: stack.push_back(i); break;
         case Opcode::Else: alternatives[stack.back()] = i; targets[i] = stack.back(); break;
         case Opcode::End: ends[stack.back()] = i; stack.pop_back(); break;
         case Opcode::Br: case Opcode::BrIf: targets[i] = stack.at(stack.size() - 1 - code[i].operand); break;
@@ -96,6 +96,9 @@ bool deadStores(PlannedFunction& f) {
         const auto ins = f.code[i];
         if (ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee) after.reset(ins.operand);
         if (ins.opcode == Opcode::LocalGet) after.set(ins.operand);
+        // A capture writes on every scope exit, including branch/return
+        // cleanup. Keep its destination live across those implicit writes.
+        if (ins.opcode == Opcode::LayerBegin) after.set(ins.operand);
         if (after == live[i]) continue;
         live[i] = after;
         for (const auto j : previous[i]) if (!queued[j]) { work.push_back(j); queued[j] = true; }
@@ -143,7 +146,7 @@ void compactLocals(PlannedFunction& f) {
     const auto params = f.params.size();
     std::vector<bool> used(params + f.locals.size());
     for (const auto ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee)
+        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee || ins.opcode == Opcode::LayerBegin)
             used.at(ins.operand) = true;
     std::vector<u16> remap(used.size());
     std::vector<ValueType> locals;
@@ -154,7 +157,7 @@ void compactLocals(PlannedFunction& f) {
         }
     }
     for (auto& ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee)
+        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee || ins.opcode == Opcode::LayerBegin)
             ins.operand = remap.at(ins.operand);
     for (auto it = f.slots.begin(); it != f.slots.end();) {
         if (it->second >= params && !used.at(it->second)) { f.langTypes.erase(it->first); it = f.slots.erase(it); }

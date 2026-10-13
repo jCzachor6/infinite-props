@@ -1,0 +1,7 @@
+asset layer_type {
+  size 1x1
+  draw {
+    image = 1
+    layer image { pixel(0, 0, #ffffff) }
+  }
+}

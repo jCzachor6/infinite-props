@@ -259,6 +259,8 @@ enum class Opcode : u8 {
     DistributionBegin = 0xC3,
     DistributionAppend = 0xC4,
     DistributionEnd = 0xC5,
+    LayerBegin = 0xC6,
+    SurfacePaint = 0xC7,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

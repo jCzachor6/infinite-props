@@ -26,7 +26,7 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stages 1–7 add integer bounds overloads, `vec2.normalize`, typed asset constants,
+Stages 1–8 add integer bounds overloads, `vec2.normalize`, typed asset constants,
 immutable lists, captured/constant samplers, sampling palettes and point distributions.
 Schema 3 describes the constant policy,
 parameterized types, collection limits and receiver-first sampler methods.

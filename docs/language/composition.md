@@ -5,6 +5,8 @@ the file that contains the import, and an imported asset may import parts
 of its own ([nested parts](#nested-parts)). Duplicate aliases in one asset,
 missing files and import cycles are errors. The compiler links every part
 into one executable; generation does not load source files.
+The alias `surface` is reserved for the [surface namespace](surfaces.md);
+rename an existing import using that alias when recompiling.
 
 <!-- example: ../../examples/language/part.ips -->
 

@@ -1,0 +1,7 @@
+asset surface_blend {
+  size 1x1
+  draw {
+    layer image { pixel(0, 0, #ffffff) }
+    surface.paint(image, blend=1)
+  }
+}

@@ -837,6 +837,154 @@
       "value": "positive_mass_at_point",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "earlier export without surfaces",
+      "path": [
+        "source_rules",
+        "surfaces"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "invalid surface maximum_active_scopes 33",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "maximum_active_scopes"
+      ],
+      "value": 33,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface maximum_active_scopes True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "maximum_active_scopes"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface generation_data_limit_bytes 1",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "generation_data_limit_bytes"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface automatic_paint True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "automatic_paint"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface host_inputs True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "host_inputs"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface asset_constants True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface surface_collections True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "surface_collections"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface alpha_modes ['surface.source_over']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "alpha_modes"
+      ],
+      "value": [
+        "surface.source_over"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface buffer_format A8",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "buffer_format"
+      ],
+      "value": "A8",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface scope_cleanup ['end']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "scope_cleanup"
+      ],
+      "value": [
+        "end"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface minimum_format_minor 5",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "minimum_format_minor"
+      ],
+      "value": 5,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface types ['mask']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "types"
+      ],
+      "value": [
+        "mask"
+      ],
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

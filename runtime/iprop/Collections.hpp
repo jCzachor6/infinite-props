@@ -53,6 +53,7 @@ struct ResourceArena {
     std::set<const SamplerData*> samplerConstants;
     std::vector<std::shared_ptr<const PointDistributionData>> distributions;
     std::set<const PointDistributionData*> distributionConstants;
+    std::vector<std::shared_ptr<const SurfaceBuffer>> surfaces;
     bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; if (bytes > peak) peak = bytes; }
     void release(u64 size) { bytes -= size; }

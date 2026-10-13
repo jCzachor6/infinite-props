@@ -187,6 +187,28 @@ int main(int argc, char** argv) {
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
     }
 
+    // Preserved stage-7 direct-render oracle through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/captured-panels.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x41e00000,0x41900000,0x46f3a600,0x471e3700};
+        CHECK(image.width==32 && image.height==24 && slots.size()==2,"captured panel metadata");
+        for(std::size_t i=0;i<slots.size() && i<2;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"captured panel output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"captured panel output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={36,50,66,255};
+            if(x>=2 && x<30 && y>=3 && y<21){color[0]=52;color[1]=58;color[2]=66;}
+            if(x>=4 && x<28 && y>=5 && y<19){color[0]=146;color[1]=156;color[2]=168;}
+            if((x==4 && y==5)||(x==27 && y==18)){color[0]=192;color[1]=144;color[2]=96;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"captured panel pixel %u,%u",x,y);
+        }
+    }
+
     // Independent raw-RNG / binary64 density pins through the unchanged host layouts.
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(

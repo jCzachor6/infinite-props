@@ -283,25 +283,24 @@ TEST_CASE("list polygon raster fuel and part canvas quota use the shared resourc
     for(const auto scale:std::vector<Vec2>{{1,1},{0.5f,2.f}}) {
         detail::Execution legacy(file), list(file);
         for(auto* ex:{&legacy,&list}) {
-            ex->frames.push_back({});ex->canvas.resize(32,24);
-            ex->canvas.scaleX=scale.x;ex->canvas.scaleY=scale.y;ex->fuel=100000;
+            ex->frames.push_back({});ex->target=RenderTarget::create(32,24,scale);ex->fuel=100000;
         }
         for(const auto point:points){legacy.push(point.x);legacy.push(point.y);}
         legacy.push(Color{146,156,168,255});
         list.push(ListValue{data->type,data});list.push(Color{146,156,168,255});
         REQUIRE(detail::stepCanvas(legacy,{Opcode::Poly,0,4}));
         REQUIRE(detail::stepCanvas(list,{Opcode::PolyList,0,0}));
-        CHECK(legacy.canvas.pixels==list.canvas.pixels);CHECK(legacy.fuel==list.fuel);
+        CHECK(legacy.canvas().pixels==list.canvas().pixels);CHECK(legacy.fuel==list.fuel);
     }
     Function part;part.params={ValueType::I32,ValueType::I32};file.code.functions.push_back(part);
     Part declaration;declaration.functionIndex=1;declaration.sizeX=1024;declaration.sizeY=1024;
     file.code.parts.push_back(declaration);
-    detail::Execution ex(file);ex.frames.push_back({});ex.canvas.resize(1,1);ex.fuel=10000000;
+    detail::Execution ex(file);ex.frames.push_back({});ex.target=RenderTarget::create(1,1,{1,1});ex.fuel=10000000;
     ex.resources.bytes=kMaxGenerationData-1024u*1024u*4u+1u;
     for(const auto value:{0,0,0})ex.push(i32{value});ex.push(0.f);ex.push(0.f);
     try{ex.callPart(0,0);FAIL("part canvas bypassed the arena quota");}
     catch(const Trap& error){CHECK(error.reason==ErrorReason::OutOfMemory);}
-    CHECK(ex.partCalls.empty());CHECK(ex.frames.size()==1);CHECK(ex.canvas.width==1);
+    CHECK(ex.partCalls.empty());CHECK(ex.frames.size()==1);CHECK(ex.canvas().width==1);
 }
 
 TEST_CASE("list formatting preserves comments, declared types and canonical call order") {

@@ -30,7 +30,8 @@ def main():
     constant_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
     sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
     storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types]
-    constant_types = storable_types
+    constant_types = storable_types.copy()
+    storable_types += ['layer']
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -76,7 +77,23 @@ def main():
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
     assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}, {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density','equal_bounds':'closed_natural_support'}]
+    assert rules['surfaces']['maximum_active_scopes'] == 32
+    assert rules['surfaces']['scope_cleanup'] == ['end','return','break','continue']
     cases = [
+        ('layer snapshot', 'echo(image:layer)->layer{return image} draw{layer image{pixel(0,0,#fff)} copy=echo(image);surface.paint(copy,blend=surface.legacy)}', True),
+        ('layer contextual helper', 'layer(x:i32)->i32{return x} draw{x=layer(2);layer image{}}', True),
+        ('layer typed copy', 'draw{layer image{} layer copy=image;surface.paint(copy)}', True),
+        ('layer current result not yet bound', 'draw{layer image{surface.paint(image)}}', False),
+        ('layer const rejected', 'const layer image=1 draw{}', False),
+        ('layer lists rejected', 'echo(images:list<layer>){return;} draw{}', False),
+        ('layer sampler rejected', 'echo(images:sampler<layer>){return;} draw{}', False),
+        ('layer host input rejected', 'input layer image draw{}', False),
+        ('layer geometry output rejected', 'output layer image draw{}', False),
+        ('layer arithmetic rejected', 'draw{layer image{}x=image+image}', False),
+        ('layer comparison rejected', 'draw{layer image{}x=image==image}', False),
+        ('layer target type conflict', 'draw{image=1;layer image{}}', False),
+        ('surface mode static', 'draw{layer image{}surface.paint(image,blend=1)}', False),
+        ('surface source_over deferred', 'draw{layer image(alpha=surface.source_over){}}', False),
         ('density snapshot', 'const distribution d=density{0:0,1:1,2:0} draw{s=sampler(0.0 to 2.0 with d);xs=s.pick(3)}', True),
         ('density helper remains contextual', 'density(x:i32)->i32{return x} draw{x=density(2);d=density{0:1,1:1}}', True),
         ('density minimum', 'draw{d=density{0:1}}', False),

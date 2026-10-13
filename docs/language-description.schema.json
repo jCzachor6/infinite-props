@@ -105,7 +105,8 @@
                   "list<sampler<i32>>",
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
-                  "list<sampler<vec2>>"
+                  "list<sampler<vec2>>",
+                  "layer"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -135,7 +136,8 @@
                   "list<sampler<i32>>",
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
-                  "list<sampler<vec2>>"
+                  "list<sampler<vec2>>",
+                  "layer"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -165,7 +167,8 @@
                   "list<sampler<i32>>",
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
-                  "list<sampler<vec2>>"
+                  "list<sampler<vec2>>",
+                  "layer"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -1706,6 +1709,198 @@
             "families"
           ],
           "additionalProperties": true
+        },
+        "surfaces": {
+          "type": "object",
+          "properties": {
+            "capture_syntax": {
+              "type": "string",
+              "const": "layer <name> [(alpha=surface.legacy)] { <statements> }",
+              "description": "Capture syntax."
+            },
+            "keyword": {
+              "type": "string",
+              "const": "contextual",
+              "description": "Keyword."
+            },
+            "capture_target": {
+              "type": "string",
+              "const": "empty_current_geometry_and_scale",
+              "description": "Capture target."
+            },
+            "result_binding": {
+              "type": "string",
+              "const": "after_scope_exit",
+              "description": "Result binding."
+            },
+            "capture_evaluation": {
+              "type": "string",
+              "const": "once_in_current_stream",
+              "description": "Capture evaluation."
+            },
+            "helper_transfer": {
+              "type": "string",
+              "const": "share_immutable_buffer",
+              "description": "Helper transfer."
+            },
+            "buffer_format": {
+              "type": "string",
+              "const": "RGBA8",
+              "description": "Buffer format."
+            },
+            "mapping": {
+              "type": "string",
+              "const": "placement_and_D4_view_without_pixel_copy",
+              "description": "Mapping."
+            },
+            "default_mode": {
+              "type": "string",
+              "const": "legacy",
+              "description": "Default mode."
+            },
+            "mode_arguments": {
+              "type": "string",
+              "const": "compile_time_namespace_constants",
+              "description": "Mode arguments."
+            },
+            "paint_evaluation": {
+              "type": "string",
+              "const": "image_once_no_rng",
+              "description": "Paint evaluation."
+            },
+            "paint_opcode": {
+              "type": "string",
+              "const": "surface.paint",
+              "description": "Paint opcode."
+            },
+            "capture_opcode": {
+              "type": "string",
+              "const": "layer.begin",
+              "description": "Capture opcode."
+            },
+            "capture_bytes": {
+              "type": "string",
+              "const": "128_plus_4_per_pixel",
+              "description": "Capture bytes."
+            },
+            "capture_fuel": {
+              "type": "string",
+              "const": "one_plus_target_pixels",
+              "description": "Capture fuel."
+            },
+            "paint_fuel": {
+              "type": "string",
+              "const": "one_plus_source_pixels",
+              "description": "Paint fuel."
+            },
+            "unset_handle": {
+              "type": "string",
+              "const": "trap",
+              "description": "Unset handle."
+            },
+            "automatic_paint": {
+              "type": "boolean",
+              "const": false,
+              "description": "Automatic paint."
+            },
+            "host_inputs": {
+              "type": "boolean",
+              "const": false,
+              "description": "Host inputs."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Asset constants."
+            },
+            "surface_collections": {
+              "type": "boolean",
+              "const": false,
+              "description": "Surface collections."
+            },
+            "maximum_active_scopes": {
+              "type": "integer",
+              "const": 32,
+              "description": "Maximum active scopes."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Generation data limit bytes."
+            },
+            "minimum_format_minor": {
+              "type": "integer",
+              "const": 6,
+              "description": "Minimum format minor."
+            },
+            "types": {
+              "type": "array",
+              "const": [
+                "layer"
+              ],
+              "description": "Types.",
+              "items": {
+                "type": "string",
+                "description": "One types entry."
+              }
+            },
+            "alpha_modes": {
+              "type": "array",
+              "const": [
+                "surface.legacy"
+              ],
+              "description": "Alpha modes.",
+              "items": {
+                "type": "string",
+                "description": "One alpha modes entry."
+              }
+            },
+            "scope_cleanup": {
+              "type": "array",
+              "const": [
+                "end",
+                "return",
+                "break",
+                "continue"
+              ],
+              "description": "Scope cleanup.",
+              "items": {
+                "type": "string",
+                "description": "One scope cleanup entry."
+              }
+            }
+          },
+          "required": [
+            "capture_syntax",
+            "keyword",
+            "capture_target",
+            "result_binding",
+            "capture_evaluation",
+            "helper_transfer",
+            "buffer_format",
+            "mapping",
+            "default_mode",
+            "mode_arguments",
+            "paint_evaluation",
+            "paint_opcode",
+            "capture_opcode",
+            "capture_bytes",
+            "capture_fuel",
+            "paint_fuel",
+            "unset_handle",
+            "automatic_paint",
+            "host_inputs",
+            "asset_constants",
+            "surface_collections",
+            "maximum_active_scopes",
+            "generation_data_limit_bytes",
+            "minimum_format_minor",
+            "types",
+            "alpha_modes",
+            "scope_cleanup"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable generation-local captures on the shared part/canvas mechanism."
         }
       },
       "required": [
@@ -2037,7 +2232,8 @@
             "list<sampler<i32>>",
             "list<sampler<f32>>",
             "list<sampler<color>>",
-            "list<sampler<vec2>>"
+            "list<sampler<vec2>>",
+            "layer"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -2086,7 +2282,8 @@
             "list<sampler<i32>>",
             "list<sampler<f32>>",
             "list<sampler<color>>",
-            "list<sampler<vec2>>"
+            "list<sampler<vec2>>",
+            "layer"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2167,7 +2364,8 @@
             "list<sampler<i32>>",
             "list<sampler<f32>>",
             "list<sampler<color>>",
-            "list<sampler<vec2>>"
+            "list<sampler<vec2>>",
+            "layer"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2227,7 +2425,8 @@
               "list<sampler<i32>>",
               "list<sampler<f32>>",
               "list<sampler<color>>",
-              "list<sampler<vec2>>"
+              "list<sampler<vec2>>",
+              "layer"
             ],
             "description": "Allowed value types for every eager choice."
           },

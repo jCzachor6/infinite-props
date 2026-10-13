@@ -19,7 +19,7 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     // the branch depth to the enclosing while's labels. Every label-pushing
     // opcode has a matching End in the validated output, so the vector is
     // balanced and empty at every function boundary.
-    if (opcode == Opcode::If || opcode == Opcode::Block) {
+    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin) {
         labelKinds_.push_back(0);
     } else if (opcode == Opcode::Loop) {
         labelKinds_.push_back(1);
@@ -62,7 +62,7 @@ void Emitter::emitConst(const Value& value) {
 
 TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
     try {
-        if (type.isParameterized()) { plan_.pools.addType(type); return temporaries_.acquire(type); }
+        if (type.needsDescriptor()) { plan_.pools.addType(type); return temporaries_.acquire(type); }
         switch (type.kind) {
         case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
         case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
@@ -89,7 +89,7 @@ bool Emitter::isParam(const std::string& name) const {
 void Emitter::emitFunction(PlannedFunction& function) {
     current_ = &function;
     for (const auto* slots : {&function.params, &function.results, &function.locals})
-        for (const auto type : *slots) if (type.isParameterized()) plan_.pools.addType(type);
+        for (const auto type : *slots) if (type.needsDescriptor()) plan_.pools.addType(type);
     code_.clear();
     lines_.clear();
     currentLine_ = 0;
@@ -149,6 +149,11 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
                 emitStmt(s);
             }
         }
+        ins(Opcode::End);
+    } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
+        ins(Opcode::LayerBegin, capture->explicitAlpha ? 1 : 0,
+            static_cast<u16>(current_->slots.at(capture->name)));
+        for (const auto& child : capture->body) emitStmt(child);
         ins(Opcode::End);
     } else if (const auto* whileStmt = std::get_if<ips::WhileStmt>(&stmt)) {
         ins(Opcode::Block);

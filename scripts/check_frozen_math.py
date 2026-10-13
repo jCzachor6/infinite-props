@@ -19,7 +19,7 @@ def sha(data):
 def main():
     generator = Path(sys.argv[1]).resolve()
     fixtures = Path(__file__).resolve().parent.parent / 'tests/fixtures'
-    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json', 'frozen-format-v0.6-stage2.json', 'frozen-format-v0.6-stage3.json', 'frozen-format-v0.6-stage4.json', 'frozen-format-v0.6-stage5.json', 'frozen-format-v0.6-stage6.json')
+    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json', 'frozen-format-v0.6-stage2.json', 'frozen-format-v0.6-stage3.json', 'frozen-format-v0.6-stage4.json', 'frozen-format-v0.6-stage5.json', 'frozen-format-v0.6-stage6.json', 'frozen-format-v0.6-stage7.json')
              for case in json.loads((fixtures / name).read_text())['cases']]
     count = 0
     with tempfile.TemporaryDirectory(prefix='iprop-frozen-math-') as directory:
@@ -32,8 +32,12 @@ def main():
             binary.write_bytes(data)
             for expected in case['generations']:
                 png = directory / 'render.png'
+                arguments = expected.get('arguments', {})
+                flags = ['--variant', str(arguments.get('variant', 0))] if arguments else []
+                if 'sizeX' in arguments:
+                    flags += ['--size', str(arguments['sizeX']) + 'x' + str(arguments['sizeY'])]
                 result = subprocess.run([str(generator), str(binary), '--seed', str(expected['seed']),
-                                         '--float-bits', '-o', str(png)],
+                                         '--float-bits', *flags, '-o', str(png)],
                                         capture_output=True, text=True, timeout=30, check=True)
                 actual = json.loads(result.stdout)
                 for key in ('size', 'inputs', 'fuel'):

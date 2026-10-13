@@ -65,6 +65,11 @@ bool ConstantFolder::evaluate(const ips::Expr& expr, Value& out) {
         }
     }
     if (const auto* member = std::get_if<Member>(&expr)) {
+        const auto* base = std::get_if<Identifier>(member->object.get());
+        if (base && base->name == "surface" && member->name == "legacy") {
+            out = i32{0};
+            return true;
+        }
         Value object;
         const auto channel = colorChannel(member->name);
         if (!channel || !fold(*member->object, object) || !std::holds_alternative<Color>(object)) {

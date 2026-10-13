@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/TypeDescriptor.hpp"
+#include "iprop/Surface.hpp"
 
 #include <memory>
 #include <variant>
@@ -34,7 +35,7 @@ struct PointDistributionBuilder {
     std::shared_ptr<PointDistributionBuilderData> data;
 };
 using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
-                           PointDistributionBuilder>;
+                           PointDistributionBuilder, LayerValue>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
 struct SamplerData {

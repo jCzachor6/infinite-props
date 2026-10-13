@@ -90,3 +90,8 @@ Point distribution capabilities are emitted as `source_rules.point_distributions
 separate from global callable signatures. Update their schema, strict readers,
 real compiler acceptance cases, literal formatting/highlighting and executable
 examples together when a family is added.
+
+`source_rules.surfaces` describes contextual capture, immutable helper transfer,
+mode constants, cleanup, resource accounting and paint effects. Its limits and
+opcodes come from runtime constants and the opcode registry. The LLM reference
+default and maximum are fixed at 100 KiB through the 0.7 release.

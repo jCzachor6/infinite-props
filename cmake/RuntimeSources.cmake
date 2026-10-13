@@ -35,6 +35,7 @@ set(IPROP_RUNTIME_SOURCES
     math/color.cpp
     seeded.cpp
     canvas.cpp
+    surfaces.cpp
     outputs.cpp
     parts.cpp
     part_render_plan.cpp

@@ -546,6 +546,38 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL density pixel ",x,",",y)
 
+	# Preserved stage-7 direct-render oracle for an immutable captured panel.
+	var panel := IpropAsset.new()
+	if panel.load_file(args[0] + "/captured-panels.iprop") != OK:
+		failures += 1
+		printerr("FAIL captured panel load")
+	else:
+		var panel_image := panel.generate(26, 0, 0)
+		if panel_image == null or panel_image.get_size() != Vector2i(32,24):
+			failures += 1
+			printerr("FAIL captured panel image metadata")
+		else:
+			var expected_panel := [["panelSize",0x41e00000,0x41900000],["state",0x46f3a600,0x471e3700]]
+			for expected in expected_panel:
+				var slot: Dictionary = panel.outputs[expected[0]]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
+					failures += 1
+					printerr("FAIL captured panel output bits/metadata")
+			for y in range(24):
+				for x in range(32):
+					var color := Color8(36,50,66)
+					if x >= 2 and x < 30 and y >= 3 and y < 21:
+						color = Color8(52,58,66)
+					if x >= 4 and x < 28 and y >= 5 and y < 19:
+						color = Color8(146,156,168)
+					if (x == 4 and y == 5) or (x == 27 and y == 18):
+						color = Color8(192,144,96)
+					if panel_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL captured panel pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

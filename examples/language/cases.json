@@ -1,5 +1,13 @@
 {
   "cases": [
+    {"file":"errors/surface-alias.ips","expect":"compile-error","message":"conflicts with the surface namespace"},
+    {"file": "captured-panels.ips", "expect": "pass"},
+    {"file": "errors/layer-type.ips", "expect": "compile-error", "message": "conflicts with a local"},
+    {"file": "errors/layer-const.ips", "expect": "compile-error", "message": "cannot be const"},
+    {"file": "errors/surface-blend.ips", "expect": "compile-error", "message": "blend must be surface.legacy"},
+    {"file": "traps/layer-unset.ips", "expect": "trap", "message": "layer is unassigned"},
+    {"file": "traps/layer-fuel.ips", "expect": "trap", "message": "fuel exhausted"},
+
     {"file": "point-distributions.ips", "expect": "pass"},
     {"file": "errors/density-size.ips", "expect": "compile-error", "message": "between 2 and 256"},
     {"file": "errors/density-area.ips", "expect": "compile-error", "message": "positive total area"},

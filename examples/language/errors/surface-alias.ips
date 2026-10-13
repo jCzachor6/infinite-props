@@ -1,0 +1,6 @@
+import surface from "../part.ips"
+
+asset surface_alias {
+  size 32x24
+  draw { surface.draw(seed, 0, 0, at={16, 12}) }
+}

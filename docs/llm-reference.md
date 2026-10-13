@@ -13,8 +13,9 @@ examples, then before/after pairs that each fix one broken rule, then the
 compiler rules in plain sentences. The handbook follows: assets, syntax,
 types, control flow, helpers, randomness, colors, palettes, parts, execution
 limits and the grammar. Every builtin is listed, and checked repairs close the
-document. The default document has an **81,920-byte UTF-8 budget**, with a
-maximum allowed budget of **98,304 bytes**. Generation fails before replacing
+document. The default document has a **102,400-byte UTF-8 budget (100 KiB)**, with a
+maximum allowed budget of **102,400 bytes**, fixed through the 0.7 release.
+Generation fails before replacing
 output if the selected content exceeds that budget. No section, signature or
 example is silently truncated. Reduce the selection when more detail would
 exceed it.

@@ -63,7 +63,7 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::I32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Color)),
-    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2))};
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)), ips::ValueType::Layer};
 
 Json samplers() {
     Json methods = Json::array();
@@ -194,7 +194,7 @@ Json sourceRules() {
         {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
         {"constants", "all_asset_functions"}});
     rules["asset_constants"] = Json::object({{"keyword", "contextual"},
-        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable(); })},
+        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable() && !type.isResource(); })},
         {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
         {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
         {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
@@ -216,6 +216,23 @@ Json sourceRules() {
         {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
         {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
     rules["samplers"] = samplers();
+    rules["surfaces"] = Json::object({
+        {"types", Json::array({ips::typeName(ips::ValueType::Layer)})},
+        {"capture_syntax", "layer <name> [(alpha=surface.legacy)] { <statements> }"},
+        {"keyword", "contextual"}, {"capture_target", "empty_current_geometry_and_scale"},
+        {"result_binding", "after_scope_exit"}, {"automatic_paint", false},
+        {"capture_evaluation", "once_in_current_stream"}, {"helper_transfer", "share_immutable_buffer"},
+        {"buffer_format", "RGBA8"}, {"mapping", "placement_and_D4_view_without_pixel_copy"},
+        {"alpha_modes", Json::array({"surface.legacy"})}, {"default_mode", "legacy"},
+        {"mode_arguments", "compile_time_namespace_constants"}, {"paint_evaluation", "image_once_no_rng"},
+        {"paint_opcode", findOpcode(Opcode::SurfacePaint)->mnemonic},
+        {"capture_opcode", findOpcode(Opcode::LayerBegin)->mnemonic},
+        {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
+        {"maximum_active_scopes", kMaxSurfaceScopes}, {"generation_data_limit_bytes", kMaxGenerationData},
+        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
+        {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
+        {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false},
+        {"minimum_format_minor", findOpcode(Opcode::LayerBegin)->minimumMinor}});
     rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
         {"element_types", types([](ips::ValueType type) { return type.isSampler() ||
             (type.isScalar() && type != ips::ValueType::Distribution); })},

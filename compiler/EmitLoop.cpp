@@ -10,7 +10,7 @@ bool safeBody(const std::vector<ips::Stmt>& body, const std::string& counter) {
             if (!safeBody(branch->thenBranch, counter) || !safeBody(branch->elseBranch, counter)) return false;
         } else if (const auto* loop = std::get_if<ips::WhileStmt>(&stmt)) {
             if (!safeBody(loop->body, counter)) return false;
-        } else if (std::holds_alternative<ips::ForStmt>(stmt) ||
+        } else if (std::holds_alternative<ips::LayerStmt>(stmt) || std::holds_alternative<ips::ForStmt>(stmt) ||
                    std::holds_alternative<ips::BreakStmt>(stmt) || std::holds_alternative<ips::ContinueStmt>(stmt)) {
             // Nested for-loops own planned hidden bound slots, and branch
             // depths refer to real labels. Keep their normal lowering.

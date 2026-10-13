@@ -1,0 +1,7 @@
+asset layer_unset {
+  size 1x1
+  draw {
+    if (false) { layer image {} }
+    surface.paint(image)
+  }
+}

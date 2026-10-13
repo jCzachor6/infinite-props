@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 LANGUAGE_SCHEMA_VERSION = 3
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
-VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
+VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer'}
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | SAMPLER_TYPES)}
 VALUE_TYPES |= LIST_TYPES | SAMPLER_TYPES
@@ -162,7 +162,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution'} | LIST_TYPES | SAMPLER_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer'} | LIST_TYPES | SAMPLER_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 2, 'parameterized type descriptors')
@@ -220,6 +220,37 @@ def read_language(value):
             require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
             signatures.add((method['receiver'], batch))
         require(len(signatures) == 8, 'unique sampler method signatures')
+    if 'surfaces' in rules:
+        surface = obj(rules['surfaces'], ['types', 'capture_syntax', 'keyword', 'capture_target',
+            'result_binding', 'automatic_paint', 'capture_evaluation', 'helper_transfer', 'buffer_format',
+            'mapping', 'alpha_modes', 'default_mode', 'mode_arguments', 'paint_evaluation', 'paint_opcode',
+            'capture_opcode', 'scope_cleanup', 'maximum_active_scopes', 'generation_data_limit_bytes',
+            'capture_bytes', 'capture_fuel', 'paint_fuel', 'unset_handle', 'host_inputs', 'asset_constants',
+            'surface_collections', 'minimum_format_minor'], 'surfaces')
+        strings(surface['types'], 'surface types', {'layer'}, True)
+        require(surface['types'] == ['layer'] and 'layer' in types['storable'], 'surface type declaration')
+        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.legacy)] { <statements> }'},
+            'keyword': {'contextual'}, 'capture_target': {'empty_current_geometry_and_scale'},
+            'result_binding': {'after_scope_exit'}, 'capture_evaluation': {'once_in_current_stream'},
+            'helper_transfer': {'share_immutable_buffer'}, 'buffer_format': {'RGBA8'},
+            'mapping': {'placement_and_D4_view_without_pixel_copy'}, 'default_mode': {'legacy'},
+            'mode_arguments': {'compile_time_namespace_constants'}, 'paint_evaluation': {'image_once_no_rng'},
+            'paint_opcode': {'surface.paint'}, 'capture_opcode': {'layer.begin'},
+            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'one_plus_target_pixels'},
+            'paint_fuel': {'one_plus_source_pixels'}, 'unset_handle': {'trap'}},
+            ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections'], 'surface policy')
+        require(not any(surface[k] for k in ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections']), 'surface restrictions')
+        require(surface['alpha_modes'] == ['surface.legacy'], 'surface alpha modes')
+        require(surface['scope_cleanup'] == ['end', 'return', 'break', 'continue'], 'surface cleanup')
+        integer(surface['maximum_active_scopes'], 'surface scope limit')
+        require(surface['maximum_active_scopes'] == 32, 'surface scope limit')
+        integer(surface['generation_data_limit_bytes'], 'surface arena limit')
+        require(surface['generation_data_limit_bytes'] == 67108864, 'surface arena limit')
+        integer(surface['minimum_format_minor'], 'surface format')
+        require(surface['minimum_format_minor'] == 6, 'surface format')
+        paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
+        require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
+            'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
     if 'point_distributions' in rules:
         points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
         _strings_and_bools(points, {

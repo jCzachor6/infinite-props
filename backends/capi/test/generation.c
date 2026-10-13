@@ -6,6 +6,36 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Preserved stage-7 direct-render oracle for the captured panel. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/captured-panels.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x41e00000,0x41900000,0x46f3a600,0x471e3700};
+        CHECK(bytes!=NULL,"cannot read captured panel fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"captured panel load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"captured panel generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==2,"captured panel image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<2;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"captured panel output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"captured panel bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={36,50,66,255};
+                if(x>=2 && x<30 && y>=3 && y<21){color[0]=52;color[1]=58;color[2]=66;}
+                if(x>=4 && x<28 && y>=5 && y<19){color[0]=146;color[1]=156;color[2]=168;}
+                if((x==4 && y==5)||(x==27 && y==18)){color[0]=192;color[1]=144;color[2]=96;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"captured panel pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
     /* Independent raw-RNG and binary64 integral pins for density columns. */
     {
         char path[1024]; snprintf(path,sizeof(path),"%s/point-distributions.iprop",program_dir);

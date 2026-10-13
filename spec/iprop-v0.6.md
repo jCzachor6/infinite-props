@@ -1,12 +1,12 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–7 (2026-10-13).
-**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions. This document
+**Status:** Development contract for product 0.7.0, stages 1–8 (2026-10-13).
+**Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets and captured layers. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
-extend this development format; Surfaces
-are not implemented yet. Scalar asset constants add no binary layout or instruction.
+extend this development format; source-over alpha, masks, clipping and resource
+exports are not implemented yet. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
 
@@ -595,3 +595,76 @@ Finally use the frozen conversion: one binary32 rounding (restoring the numeric
 bounds when necessary) for f32/coefficient results, or nearest integer, halves
 away from zero, for i32. Color/vec2 use the existing common-coefficient kernels.
 All batch picks repeat this procedure independently on the caller stream.
+
+## 14. Shared render targets and captured layers
+
+Parts and contextual source `layer name [(alpha=surface.legacy)] { ... }`
+captures write RGBA8 buffers through the same RenderTarget/Surface mechanism.
+A buffer stores width, height, raster scale and row-major straight RGBA8.
+An immutable view retains its buffer and adds D4 and integer pixel placement;
+creating/copying the view neither copies nor scans pixels. Closed captures
+expose no writable buffer through a language value. Masks/A8 views and part
+resource exports are added in later stages, not through geometry output slots.
+
+A capture starts transparent, with its parent's geometry/scale, and executes
+its block once using the current frame's RNG. Part calls retain their own
+stream and existing argument order. On close, the named local becomes a
+snapshot; no automatic parent paint occurs. Primitive draws and weather use
+the current target. The new `surface.paint` builtin evaluates its image once
+and paints using the saved mapping without replaying geometry or RNG.
+
+The `layer` descriptor is the four-byte Types-section record
+`u8 kind=12, u8 element=8 (Void), u16 reserved=0`. Function slots use the
+existing `0x80, u16 descriptor_index` reference. Old scalar codes 0–4,
+list/sampler descriptors, pool encodings and the Parts section are unchanged.
+Layer is storable/passable/returnable, but cannot be an input, const, palette,
+list/sampler element, numeric operand, comparison or pixel-readable value.
+An untouched layer local is unset; paint traps before scanning any pixels.
+Unused/malformed descriptors and newer opcodes in dead code are checked.
+
+| Op | Mnemonic | Stack | Control / operands |
+| -- | -------- | ----- | ------------------ |
+| 0xC6 | layer.begin local [mode] | unchanged | pushes a layer label, closed by existing end; local must be a declared layer local, not a parameter |
+| 0xC7 | surface.paint mode | `[layer] -> []` | aux=0; mode=0 inherited or 1 legacy |
+
+`layer.begin` uses its aux byte for mode=0 inherited or 1 legacy; its u16
+operand is the destination local index. Unknown mode, wrong/dangling local,
+nonzero paint aux and unbalanced scope fail validation, including dead code.
+Layer labels have no stack results; their entry stack must be preserved like a
+block. Return evaluates/retains function results before closing that frame's
+layers. A branch closes layers strictly inside its target label; a branch to a
+layer label closes it when its end executes. Break/continue therefore close
+only exited captures, including partially drawn ones, and restore every
+previous target. Callee cleanup leaves caller scopes active.
+
+Modes currently resolve to legacy. Source spelling explicitly accepts only
+`surface.legacy`; it cannot obtain a runtime mode from an integer variable.
+The root remains legacy in format 0.6. Destination alpha, hidden RGB and the
+old channel division order remain frozen. Surface paint and part blits skip
+zero-alpha source pixels. Paint visits the full source in y/x order, applies
+D4's pixel-index mapping followed by integer origin, checks bounds in i64, then
+uses the same pixel compositor as primitives. Part geometry still comes from
+the frozen PartRenderPlan rounding/scale rules; no second transform or
+resampling is applied. Outputs written during capture publish once and retain
+existing owner/caller/root coordinate rules.
+
+At most 32 captures may be active across all frames; static nesting above 32
+also rejects. The shared 64 MiB generation arena charges a capture once as
+`128 + 4 * width * height`. Handle copies and D4/placement views cost no second
+buffer. Generation retains captured buffers until success or trap cleanup.
+Root storage keeps its existing canvas limits and is excluded from this arena.
+Format-0.6 part canvases retain the existing `4 * width * height` accounting,
+released after blitting; older binaries retain their pre-arena limits.
+
+Layer begin costs base 1 plus N target pixels cleared, reserved before
+allocation. Paint costs base 1 plus N source pixels visited, reserved before
+scanning, even when pixels are transparent/off-target. Primitive and existing
+part call fuel remain unchanged, including the existing upfront part blit
+reservation. Default fuel remains 2,000,000. Exceeding fuel, arena or active
+scope limits traps without publishing a successful partial image. Trap cleanup
+releases frames, captures, saved targets and all generation resources.
+
+IPA names `layer` in `types`, locals, parameters and results. Layer begin's
+optional third token records nonzero aux (`layer.begin 2 1`); disassembly and
+reassembly preserve it. Compression and stripping keep inner minor 6. No
+public C enum, structure layout, reflection field or host output API changes.

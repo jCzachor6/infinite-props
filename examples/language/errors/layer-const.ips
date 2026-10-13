@@ -1,0 +1,5 @@
+asset layer_const {
+  size 1x1
+  const layer image = 1
+  draw {}
+}

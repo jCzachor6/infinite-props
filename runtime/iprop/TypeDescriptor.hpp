@@ -10,10 +10,11 @@ namespace iprop {
 struct TypeDescriptor {
     enum class Kind : u8 {
         I32 = 0, F32 = 1, Color = 2, Vec2 = 3, Distribution = 4,
-        List = 5, Rect = 6, Circle = 7, Void = 8, Builder = 9, Sampler = 10, PointBuilder = 11,
+        List = 5, Rect = 6, Circle = 7, Void = 8, Builder = 9, Sampler = 10, PointBuilder = 11, Layer = 12,
     };
     static const TypeDescriptor I32, F32, Color, Vec2, Distribution;
     static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler, PointBuilder;
+    static const TypeDescriptor Layer;
     Kind kind = Kind::I32;
     Kind element = Kind::Void;
     // The current language permits one parameterized element: sampler<T>.
@@ -34,9 +35,11 @@ struct TypeDescriptor {
     constexpr bool isList() const { return kind == Kind::List; }
     constexpr bool isSampler() const { return kind == Kind::Sampler; }
     constexpr bool isParameterized() const { return isList() || isSampler(); }
+    constexpr bool isResource() const { return kind == Kind::Layer && element == Kind::Void && parameter == Kind::Void; }
+    constexpr bool needsDescriptor() const { return isParameterized() || isResource(); }
     constexpr bool isScalar() const { return kind <= Kind::Distribution && element == Kind::Void && parameter == Kind::Void; }
     constexpr bool isStorable() const {
-        return isScalar() || (isSampler() && element <= Kind::Vec2 && parameter == Kind::Void) ||
+        return isScalar() || isResource() || (isSampler() && element <= Kind::Vec2 && parameter == Kind::Void) ||
             (isList() && ((element <= Kind::Distribution && parameter == Kind::Void) ||
                          (element == Kind::Sampler && parameter <= Kind::Vec2)));
     }
@@ -58,6 +61,7 @@ inline constexpr TypeDescriptor TypeDescriptor::Void{Kind::Void};
 inline constexpr TypeDescriptor TypeDescriptor::Builder{Kind::Builder};
 inline constexpr TypeDescriptor TypeDescriptor::Sampler{Kind::Sampler};
 inline constexpr TypeDescriptor TypeDescriptor::PointBuilder{Kind::PointBuilder};
+inline constexpr TypeDescriptor TypeDescriptor::Layer{Kind::Layer};
 
 using ValueType = TypeDescriptor;
 const char* valueTypeName(TypeDescriptor type);

@@ -384,6 +384,10 @@ class SourcePrinter {
                         block(node.elseBranch, level, out_.sourceStarts(TokenKind::KeywordIf));
                     }
                 }
+            } else if constexpr (std::is_same_v<T, LayerStmt>) {
+                out_ << "layer " << node.name;
+                if (node.explicitAlpha) out_ << "(alpha = surface.legacy)";
+                block(node.body, level);
             }
         }, stmt);
         out_.finishRange(); out_ << '\n'; range.close();

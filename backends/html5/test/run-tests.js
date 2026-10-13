@@ -70,6 +70,9 @@ async function main() {
         console.log("native/WASM density: PASS (" + native.density.comparisons +
             " exact generations; " + native.density.vectors + " independent vectors; " +
             native.density.traps + " matching traps; " + native.density.rejections + " malformed/version rejections)");
+        console.log("native/WASM surfaces: PASS (" + native.surfaces.comparisons +
+            " exact generations; " + native.surfaces.pins + " preserved-tool pins; " +
+            native.surfaces.traps + " matching traps; " + native.surfaces.rejections + " malformed/version rejections)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

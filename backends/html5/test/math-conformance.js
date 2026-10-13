@@ -99,13 +99,13 @@ function run(iprop, tool, directory) {
     }
 
     // Execute pre-change bytes directly: source recompilation is a separate gate.
-    const frozen = ["frozen-format-v0.5.json", "frozen-format-v0.6-stage1.json", "frozen-format-v0.6-stage2.json", "frozen-format-v0.6-stage3.json", "frozen-format-v0.6-stage4.json", "frozen-format-v0.6-stage5.json", "frozen-format-v0.6-stage6.json"].flatMap(name =>
+    const frozen = ["frozen-format-v0.5.json", "frozen-format-v0.6-stage1.json", "frozen-format-v0.6-stage2.json", "frozen-format-v0.6-stage3.json", "frozen-format-v0.6-stage4.json", "frozen-format-v0.6-stage5.json", "frozen-format-v0.6-stage6.json", "frozen-format-v0.6-stage7.json"].flatMap(name =>
         JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures", name), "utf8")).cases);
     for (const fixture of frozen) {
         const binary = Buffer.from(fixture.binary_base64, "base64");
         assert.equal(sha(binary), fixture.binary_sha256);
         for (const expected of fixture.generations) {
-            const result = iprop.generate(new Uint8Array(binary), {seed: expected.seed});
+            const result = iprop.generate(new Uint8Array(binary), {seed: expected.seed, ...expected.arguments});
             assert.deepEqual({x: result.width, y: result.height}, expected.size);
             assert.equal(sha(result.data), expected.rgba_sha256, fixture.source + " frozen RGBA");
             assert.equal(sha(JSON.stringify(canonical(outputBits(result.outputs)))), expected.outputs_sha256,

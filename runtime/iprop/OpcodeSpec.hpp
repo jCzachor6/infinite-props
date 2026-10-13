@@ -26,7 +26,7 @@ struct StackSignature {
     }
 };
 
-enum class AuxPolicy { Zero, PartTransform };
+enum class AuxPolicy { Zero, PartTransform, SurfaceMode };
 
 // Intrinsic effects on validated source, excluding argument-expression effects
 // and execution-wide resource failures. Seeded computations do not use the

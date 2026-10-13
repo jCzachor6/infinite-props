@@ -8,10 +8,11 @@ One `.iprop` file can generate **many reproducible variations** from its seed,
 variant, archetype and input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–7 of product **0.7.0** / source language **0.7**
+This checkout implements stages 1–8 of product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
 typed immutable asset constants, lists, weighted/density distributions and captured samplers visible in draw
-and helpers, with explicit single picks, immutable batches and sampling palettes.
+and helpers, with explicit single picks, immutable batches, sampling palettes and
+immutable captured layers on the shared part/render-target mechanism.
 The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
 are independent contracts. The runtime reads formats 0.1–0.6; the compiler
 writes the oldest required format, from 0.4 to 0.6. Later 0.7 stages are pending.
@@ -79,7 +80,7 @@ language handbook defines the supported source syntax.
 The format is a contract, not an implementation detail. All interpreters MUST
 implement its frozen semantics; the reference interpreter and conformance
 suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
-[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–7.
+[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–8.
 
 ### 5.1 Header
 
@@ -603,7 +604,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–7; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development, stages 1–8; reads formats 0.1–0.6 |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -733,3 +734,7 @@ compatibility.
 
 The [density validation report](docs/validation-v0.7-stage7.md) covers clipped
 integration, stable inverse sampling and independent numerical vectors.
+
+The [captured layer validation report](docs/validation-v0.7-stage8.md) covers
+shared part targets, immutable captures and painting, scope cleanup, resource
+limits, frozen compatibility and native/WASM/backend checks.

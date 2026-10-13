@@ -481,6 +481,14 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 info.locals.push_back(ValueType::I32);
                 ++slot;
                 self(self, forStmt->body);
+            } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
+                self(self, capture->body);
+                if (!info.slots.contains(capture->name)) {
+                    info.slots.emplace(capture->name, slot++);
+                    info.langTypes.emplace(capture->name, ips::ValueType::Layer);
+                    info.locals.push_back(ValueType::Layer);
+                }
+                typer_->declareLocal(capture->name, ips::ValueType::Layer);
             }
         }
     };

@@ -35,7 +35,7 @@ ValueType Typer::typeCall(const Call& call) {
                 full += "." + segment;
             }
             const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2" || full == "list.len";
+                path.base == "cell" || path.base == "color" || path.base == "vec2" || path.base == "surface" || full == "list.len";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
@@ -54,6 +54,12 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     const auto bound = bind(call,
         builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
     const auto& args = bound.arguments;
+    if (signature.lowering == BuiltinLowering::SurfacePaint && args.size() == 2) {
+        const auto* mode = std::get_if<Member>(args[1]->value.get());
+        const auto* base = mode ? std::get_if<Identifier>(mode->object.get()) : nullptr;
+        if (!base || base->name != "surface" || mode->name != "legacy")
+            error(locationOf(*args[1]->value), "surface.paint blend must be surface.legacy; source_over is not available yet");
+    }
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;

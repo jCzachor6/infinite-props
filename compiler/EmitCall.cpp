@@ -36,6 +36,11 @@ void Emitter::emitArg(const PlannedArgument& arg) {
 ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     using VT = ips::ValueType;
     const auto& spec = *call.spec;
+    if (spec.lowering == ips::BuiltinLowering::SurfacePaint) {
+        emitArg(call.arguments[0]);
+        ins(Opcode::SurfacePaint, 0, call.arguments.size() == 2 ? 1 : 0);
+        return VT::Void;
+    }
     if (spec.lowering == ips::BuiltinLowering::Opcode || spec.lowering == ips::BuiltinLowering::Pick) {
         for (const auto& arg : call.arguments) emitArg(arg);
         if (call.overload->opcode) ins(*call.overload->opcode);

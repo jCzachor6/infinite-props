@@ -1,15 +1,15 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–7 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–8 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
 samplers with explicit single/batch picks, const descriptions, sampling palettes
-and weighted/density distributions. Product 0.7.0 is under
-development. Later stages of 0.7, including surfaces, remain
-outside the currently implemented language.
+and weighted/density distributions, plus captured layers on shared part/render
+targets. Product 0.7.0 is under development. Source-over alpha, masks, clipping
+and part surface exports remain later stages.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–7 |
+| Contract | 0.6 release | 0.7 development, stages 1–8 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
@@ -179,7 +179,7 @@ and constant lists reference the same immutable data. No public host enum/layout
 changes. All older numbers, scalar/list records, kernels and frozen fuel remain
 unchanged. The eight pick method signatures are unchanged. Schema 3 now enables
 sampler constants and const list-length overloads, and records `source_rules.palettes`.
-The bounded LLM reference remains 80 KiB. Actual archived stage-4 binaries and an
+The bounded LLM reference has a 100 KiB default and maximum, fixed through the 0.7 release. Actual archived stage-4 binaries and an
 independent example oracle are executed without regenerating their expected data.
 
 ## Weighted distributions
@@ -198,3 +198,25 @@ It reuses format-0.6 point resources and family references; weighted and older
 family results, RNG and frozen executable fuel remain unchanged. Family names
 are contextual before braces, preserving existing `density(...)` helpers.
 See [density profiles](random.md#density-point-distributions).
+
+## Shared targets and captured layers
+
+`layer name { ... }` captures geometry once without automatically painting its
+parent. Copy, helper parameter and helper return share immutable storage;
+`surface.paint(image)` reuses its saved pixels and mapping without RNG.
+See [captured layers](surfaces.md) and the
+[normative surface contract](../../spec/iprop-v0.6.md#14-shared-render-targets-and-captured-layers).
+Legacy compositing, hidden RGB, part transforms, caller output coordinates and
+part RNG isolation remain unchanged. Stage 9 introduces explicit source-over
+composition; stage 8 supports only `surface.legacy`.
+
+`layer` remains contextual, including `input u32 layer` and `layer(...)`.
+An old import alias `surface` now receives a located conflict diagnostic;
+rename that alias in source. Already compiled binaries remain executable.
+Cleanup on return/break/continue closes each exited layer and restores its
+parent target; outputs written inside the block publish once.
+
+The LLM reference default and maximum are 102,400 bytes (100 KiB). This is the
+fixed ceiling through the 0.7 release. Existing frozen binaries and the actual
+stage-7 tools provide separate compatibility evidence; source recompilation
+and new layer behavior are verified independently.

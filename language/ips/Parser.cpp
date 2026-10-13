@@ -428,6 +428,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance(); advance();
         if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
         const auto item = parseParamType(true);
+        if (!item.isScalar() && !item.isSampler()) failHere("lists of surfaces are not supported");
         if (listTypeClosed_) listTypeClosed_ = false;
         else expect(TokenKind::Greater, "'>' after list element type");
         return ParamType::list(item);
@@ -463,6 +464,10 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         if (kind() == TokenKind::Identifier && peek().text == "distribution") {
             advance();
             return ParamType::Distribution;
+        }
+        if (kind() == TokenKind::Identifier && peek().text == "layer") {
+            advance();
+            return ParamType::Layer;
         }
         failExpected("a parameter type (i32, f32, color, vec2 or distribution)");
     }
@@ -533,18 +538,37 @@ Stmt ParserImpl::parseIdentifierStatement() {
         return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
     }
     const Token name = advance();
+    if (name.kind == TokenKind::Identifier && name.text == "layer" && isNameKind(kind()) &&
+        (kind(1) == TokenKind::LBrace || kind(1) == TokenKind::LParen)) {
+        const auto local = advance();
+        bool explicitAlpha = false;
+        if (match(TokenKind::LParen)) {
+            const auto option = expectName("'alpha'");
+            if (option.text != "alpha") throw SourceError{option.location, "layer supports only the 'alpha' option"};
+            expect(TokenKind::Assign, "'=' after alpha");
+            const auto base = expectName("'surface.legacy'");
+            expect(TokenKind::Dot, "'.' in surface.legacy");
+            const auto mode = expectName("'legacy'");
+            if (base.text != "surface" || mode.text != "legacy")
+                throw SourceError{mode.location, "layer alpha must be surface.legacy; source_over is not available yet"};
+            expect(TokenKind::RParen, "')' after layer alpha");
+            explicitAlpha = true;
+        }
+        return Stmt{LayerStmt{local.text, explicitAlpha, parseBlock(), name.location}};
+    }
     if (match(TokenKind::Assign)) {
         const FlagScope tail(statementTail_, true);
         return Stmt{VarDecl{name.text, parseExpr(), name.location}};
     }
     // `distribution d = ...` declares a typed local; `distribution` alone
     // keeps its meaning as a name.
-    if (name.kind == TokenKind::Identifier && name.text == "distribution" && isNameKind(kind()) &&
+    if (name.kind == TokenKind::Identifier && (name.text == "distribution" || name.text == "layer") && isNameKind(kind()) &&
         kind(1) == TokenKind::Assign) {
         const Token local = advance();
         advance(); // '='
         const FlagScope tail(statementTail_, true);
-        return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Distribution}};
+        return Stmt{VarDecl{local.text, parseExpr(), local.location,
+            name.text == "layer" ? ParamType::Layer : ParamType::Distribution}};
     }
     // Otherwise it must be a call (possibly through a member chain).
     auto primary = std::make_unique<Expr>(Identifier{name.text, name.location});

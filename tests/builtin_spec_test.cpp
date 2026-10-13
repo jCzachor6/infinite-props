@@ -37,7 +37,8 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 REQUIRE(opcode);
                 CHECK(effects == opcode->effects);
                 if (!opcode->stack) {
-                    REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon));
+                    REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon ||
+                             spec.lowering == ips::BuiltinLowering::SurfacePaint));
                 } else {
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)
@@ -58,7 +59,8 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type.isList() ? (type.item().isSampler() ?
+                const std::string value = type == T::Layer ? "image" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
+                    type.isList() ? (type.item().isSampler() ?
                     (type.item().item() == T::Color ? "[sampler(#abc)]" : type.item().item() == T::Vec2 ? "[sampler({1,1})]" :
                      type.item().item() == T::F32 ? "[sampler(1.0)]" : "[sampler(1)]") : type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
                     type.element == T::Color ? "[#112233]" : type.element == T::Distribution ? "[gaussian(1,1)]" :
@@ -67,11 +69,12 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 args += value;
                 named = param.name + "=" + value + (named.empty() ? "" : "," + named);
             }
-            const auto program = ips::parse("asset t { size 8x8 draw { "
+            const std::string capture = spec.lowering == ips::BuiltinLowering::SurfacePaint ? "layer image{} " : "";
+            const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));
             const auto bytes = compileProgram(program,{});
-            const auto reordered = ips::parse("asset t { size 8x8 draw { "
+            const auto reordered = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + named + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(reordered,{}));
             CHECK(bytes == compileProgram(reordered,{}));

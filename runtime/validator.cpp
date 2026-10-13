@@ -70,8 +70,8 @@ public:
         for (const auto* slots : {&fn_.params, &fn_.results, &fn_.locals}) {
             for (const auto type : *slots) {
                 if (!type.isStorable()) fail(0, "invalid declared value type");
-                if (type.isParameterized() && file_.layout.header.versionMinor < 6) fail(0, "parameterized types require format 0.6");
-                if (type.isParameterized() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
+                if (type.needsDescriptor() && file_.layout.header.versionMinor < 6) fail(0, "descriptor types require format 0.6");
+                if (type.needsDescriptor() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
                     fail(0, "missing declared type descriptor");
             }
         }
@@ -88,6 +88,8 @@ public:
                 if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
                     fail(i, "part transforms require format 0.3");
             }
+            if (spec->aux == AuxPolicy::SurfaceMode && ins.aux > 1)
+                fail(i, "unknown layer alpha mode");
             if (file_.layout.header.versionMinor < spec->minimumMinor) {
                 fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
                         std::to_string(spec->minimumMinor));
@@ -194,6 +196,19 @@ private:
     void step(std::size_t at, const Instruction ins) {
         const u16 op = ins.operand;
         switch (ins.opcode) {
+
+        case Opcode::LayerBegin:
+            if (op < fn_.params.size() || op >= localCount() || localType(op) != ValueType::Layer)
+                fail(at, "layer destination must be a layer local");
+            if (static_cast<std::size_t>(std::count_if(labels_.begin(), labels_.end(), [](const auto& label) {
+                return label.kind == Opcode::LayerBegin;
+            })) >= kMaxSurfaceScopes) fail(at, "surface scope depth exceeds 32");
+            labels_.push_back({ins.opcode, stack_, reachable_});
+            return;
+        case Opcode::SurfacePaint:
+            if (op > 1) fail(at, "unknown surface blend mode");
+            expect(at, ValueType::Layer, "surface.paint image");
+            return;
 
         case Opcode::Block:
         case Opcode::Loop:

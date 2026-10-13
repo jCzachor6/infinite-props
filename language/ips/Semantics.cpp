@@ -112,6 +112,9 @@ private:
         } else if (const auto* forLoop = std::get_if<ForStmt>(&stmt)) {
             markInvalidLocal(forLoop->variable);
             for (const auto& child : forLoop->body) markInvalidBindings(child);
+        } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+            markInvalidLocal(capture->name);
+            for (const auto& child : capture->body) markInvalidBindings(child);
         }
     }
 
@@ -120,6 +123,8 @@ private:
     void checkImports() {
         std::set<std::string> seen;
         for (const auto& import : program_.imports) {
+            if (import.alias == "surface")
+                error(import.location, "import alias 'surface' conflicts with the surface namespace; rename the alias");
             if (!seen.insert(import.alias).second) {
                 error(import.location,
                       "duplicate import alias '" + import.alias + "'");
@@ -319,6 +324,19 @@ private:
             --loopDepth_;
         } else if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
             checkFor(*forStmt);
+        } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+            if (findOutput(capture->name) || findInput(capture->name) || findPalette(capture->name) ||
+                findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed" ||
+                (current_->name == "draw" && (capture->name == "v" || capture->name == "a")))
+                error(capture->location, "layer result '" + capture->name + "' must be a writable local");
+            for (const auto& child : capture->body) {
+                if (atLimit()) break;
+                checkRecoveringStmt(child);
+            }
+            const auto existing = typer_.locals().find(capture->name);
+            if (existing != typer_.locals().end() && existing->second != ValueType::Layer)
+                error(capture->location, "layer result '" + capture->name + "' conflicts with a local of type " + typeName(existing->second));
+            typer_.declareLocal(capture->name, ValueType::Layer);
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             checkReturn(*ret);
         } else if (const auto* brk = std::get_if<BreakStmt>(&stmt)) {

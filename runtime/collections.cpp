@@ -70,6 +70,7 @@ void writeSamplerData(Writer& writer, const SamplerData& sampler, std::span<cons
 }
 
 TypeDescriptor valueType(const Value& value) {
+    if (std::holds_alternative<LayerValue>(value)) return TypeDescriptor::Layer;
     if (std::holds_alternative<PointDistributionBuilder>(value)) return TypeDescriptor::PointBuilder;
     if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;
     if (const auto* list = std::get_if<ListValue>(&value)) return list->type;
@@ -115,7 +116,7 @@ std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const
             type = TypeDescriptor::list(types[reference]);
         } else {
             type = {static_cast<TypeDescriptor::Kind>(kind), static_cast<TypeDescriptor::Kind>(element)};
-            if (!type.isParameterized() || !type.isStorable() || reference != 0)
+            if (!type.needsDescriptor() || !type.isStorable() || reference != 0)
                 throw FormatError("invalid parameterized type descriptor", at, ErrorReason::InvalidCode);
         }
         if (std::find(types.begin(), types.end(), type) != types.end())
@@ -130,7 +131,7 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
     writer.writeU32(static_cast<u32>(types.size()));
     for (std::size_t i = 0; i < types.size(); ++i) {
         const auto type = types[i];
-        if (!type.isParameterized() || !type.isStorable()) throw std::logic_error("invalid type descriptor");
+        if (!type.needsDescriptor() || !type.isStorable()) throw std::logic_error("invalid type descriptor");
         writer.writeU8(static_cast<u8>(type.kind));
         if (type.isList() && type.item().isSampler()) {
             const auto found = std::find(types.begin(), types.begin() + i, type.item());

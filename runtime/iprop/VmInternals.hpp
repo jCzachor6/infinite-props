@@ -22,7 +22,7 @@ namespace iprop::detail {
 // Sentinel: no part called yet / a slot owned by the root asset.
 inline constexpr u16 kNoPartIndex = 0xFFFFu;
 
-// Runtime label (spec §9.1): kind 0 = block, 1 = loop, 2 = if. stackHeight is
+// Runtime label: kind 0 = block, 1 = loop, 2 = if, 3 = layer. stackHeight is
 // the operand stack height at entry; branches restore it (WASM semantics).
 struct Label {
     u8 kind = 0;
@@ -79,15 +79,23 @@ struct Frame {
 // and blitted.
 struct PartCallState {
     u16 partIndex = kNoPartIndex;
-    Canvas savedCanvas;
+    RenderTarget savedTarget;
     PartRenderPlan render;
+};
+
+struct LayerScope {
+    std::size_t frameDepth = 0;
+    std::size_t labelDepth = 0;
+    u16 local = 0;
+    RenderTarget savedTarget;
 };
 
 // All mutable execution state of one generation (spec §8.4). The public VM
 // owns one Execution; group step functions operate on it.
 struct Execution {
     const LoadedFile& file;
-    Canvas canvas;
+    RenderTarget target;
+    RenderTarget rootTarget; // preserves the existing failed-run canvas tooling hook
     u64 budget = 0;
     u64 fuel = 0;
     std::vector<Frame> frames;
@@ -102,12 +110,15 @@ struct Execution {
     std::vector<u16> slotOwner;
     // Saved caller state of active part calls, mirroring part frames.
     std::vector<PartCallState> partCalls;
+    std::vector<LayerScope> layerScopes;
     // The entry frame's stack when it exits; a tooling hook for debuggers
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
     ResourceArena resources;
 
     explicit Execution(const LoadedFile& f) : file(f) {}
+    Canvas& canvas() { return target.canvas(); }
+    const Canvas& canvas() const { return target.canvas(); }
 
     const Function& fn() const { return file.code.functions[frames.back().functionIndex]; }
     Frame& frame() { return frames.back(); }
@@ -126,6 +137,7 @@ struct Execution {
     Distribution popDistribution();
     ListValue popList();
     SamplerValue popSampler();
+    LayerValue popLayer();
     void allocateResource(u64 bytes);
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
@@ -135,6 +147,8 @@ struct Execution {
     void callFunction(u16 functionIndex);
     void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
+    void beginLayer(u16 local, u8 mode);
+    void closeLayers(std::size_t labelDepth);
 
     // Precomputes the matching else/end indices of a function's control flow.
     void ensureControl(u16 functionIndex);
@@ -145,6 +159,7 @@ struct Execution {
 // Composite one pixel onto the current canvas with the §11.1 alpha rule
 // (shared by the canvas ops and the part blit).
 void compositePixel(Execution& ex, i32 x, i32 y, const Color& src);
+void paintSurface(Execution& ex, const LayerValue& image);
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).
@@ -164,6 +179,7 @@ bool stepParts(Execution& ex, Instruction ins);
 bool stepCollections(Execution& ex, Instruction ins);
 bool stepSamplers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
+bool stepSurfaces(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 
 // Compile-time evaluation of one stateless value operation. Uses the same

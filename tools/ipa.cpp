@@ -139,6 +139,7 @@ std::string clean(const std::string& token) {
 }
 
 bool parseValueType(const std::string& text, ValueType& out) {
+    if (text == "layer") { out = ValueType::Layer; return true; }
     if (text.starts_with("list<") && text.ends_with(">")) {
         ValueType item;
         if (!parseValueType(text.substr(5, text.size() - 6), item) || (!item.isScalar() && !item.isSampler())) return false;
@@ -428,7 +429,7 @@ std::vector<u8> assemble(const std::string& source) {
             if (function || currentPart || words.size() < 2) throw error("bad type descriptor declaration");
             for (std::size_t i = 1; i < words.size(); ++i) {
                 ValueType type;
-                if (!parseValueType(words[i], type) || !type.isParameterized()) throw error("bad parameterized descriptor");
+                if (!parseValueType(words[i], type) || !type.needsDescriptor()) throw error("bad value descriptor");
                 if (std::find(program.types.begin(), program.types.end(), type) != program.types.end()) throw error("duplicate type descriptor");
                 program.types.push_back(type);
             }
@@ -598,6 +599,13 @@ std::vector<u8> assemble(const std::string& source) {
                 throw error("part transform kind must be 0 through 7");
             }
             instruction.aux = static_cast<u8>(kind);
+            words.pop_back();
+        }
+        if (instruction.opcode == Opcode::LayerBegin && words.size() == 3) {
+            u32 mode = 0;
+            if (!parseU32Text(words[2], mode) || mode > 1)
+                throw error("layer alpha mode must be 0 (inherited) or 1 (legacy)");
+            instruction.aux = static_cast<u8>(mode);
             words.pop_back();
         }
         if (def->operand != OperandKind::None) {
@@ -868,7 +876,7 @@ std::vector<u8> assemble(const std::string& source) {
     }
 
     const auto addType = [&](ValueType type) {
-        if (!type.isParameterized()) return;
+        if (!type.needsDescriptor()) return;
         if (type.isList() && type.item().isSampler() &&
             std::find(program.types.begin(), program.types.end(), type.item()) == program.types.end()) program.types.push_back(type.item());
         if (std::find(program.types.begin(), program.types.end(), type) == program.types.end()) program.types.push_back(type);

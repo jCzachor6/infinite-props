@@ -98,6 +98,9 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"weather", {V::Void, L::Opcode, {{{{"seed", V::I32}, {"amount", V::I32}}, Opcode::Weather}}}},
         {"poly", {V::Void, L::Polygon, {
             {{{"points", V::list(V::Vec2)}, {"color", V::Color}}, Opcode::PolyList}}}},
+        {"surface.paint", {V::Void, L::SurfacePaint, {
+            {{{"image", V::Layer}}, Opcode::SurfacePaint},
+            {{{"image", V::Layer}, {"blend", V::I32}}, Opcode::SurfacePaint}}}},
         {"list.len", {V::I32, L::ListLength, {
             {{{"items", V::list(V::I32)}}, Opcode::ListLen},
             {{{"items", V::list(V::F32)}}, Opcode::ListLen},
@@ -182,6 +185,7 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
         if (!overload) throw std::logic_error("fixed builtin effects require an overload");
         return {};
     case BuiltinLowering::ListLength: return findOpcode(Opcode::ListLen)->effects;
+    case BuiltinLowering::SurfacePaint: return findOpcode(Opcode::SurfacePaint)->effects;
     case BuiltinLowering::Round:
     case BuiltinLowering::ColorConstructor: return {};
     case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;

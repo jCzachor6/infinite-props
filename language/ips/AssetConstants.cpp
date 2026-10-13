@@ -84,6 +84,8 @@ public:
                     }
                 }
             } else {
+                if (current_->type.isResource())
+                    fail(current_->location, "surface handles depend on generation and cannot be const");
                 inspect(*current_->value, dependencies[i]);
             }
             pending[i] = dependencies[i].size();
@@ -218,6 +220,8 @@ private:
                 fail(call->location, "'" + name + "' has RNG or generation effects and is not allowed");
             for (const auto& argument : call->args) inspect(*argument.value, dependencies);
         } else if (const auto* member = std::get_if<Member>(&expression)) {
+            if (const auto* base = std::get_if<Identifier>(member->object.get()); base &&
+                base->name == "surface" && member->name == "legacy") return;
             inspect(*member->object, dependencies);
         } else if (const auto* index = std::get_if<Index>(&expression)) {
             inspect(*index->object, dependencies);
@@ -348,6 +352,8 @@ private:
             Distribution d; d.family = literal->family; d.points = std::move(data); return d;
         }
         if (const auto* member = std::get_if<Member>(&expression)) {
+            if (const auto* base = std::get_if<Identifier>(member->object.get()); base &&
+                base->name == "surface" && member->name == "legacy") return i32{0};
             const auto object = evaluate(*member->object);
             if (const auto* v = std::get_if<Vec2>(&object)) return member->name == "x" ? v->x : v->y;
             const auto c = std::get<Color>(object);

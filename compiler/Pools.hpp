@@ -79,7 +79,7 @@ public:
     }
 
     u16 addType(TypeDescriptor type) {
-        if (!type.isParameterized() || !type.isStorable()) throw std::logic_error("expected parameterized descriptor");
+        if (!type.needsDescriptor() || !type.isStorable()) throw std::logic_error("expected value descriptor");
         if (type.isList() && type.item().isSampler()) addType(type.item());
         const auto found = std::find(types.begin(), types.end(), type);
         if (found != types.end()) return static_cast<u16>(found - types.begin());

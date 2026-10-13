@@ -27,7 +27,7 @@ void compactPools(Plan& plan) {
     std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size()), samplers(old.samplersValue().size());
     std::vector<bool> distributions(old.distributionsValue().size());
     const auto markType = [&](ValueType type) {
-        if (!type.isParameterized()) return;
+        if (!type.needsDescriptor()) return;
         const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
         if (found == old.typesValue().end()) throw std::logic_error("missing collection descriptor");
         types.at(static_cast<std::size_t>(found - old.typesValue().begin())) = true;

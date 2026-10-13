@@ -117,7 +117,8 @@ std::string instructionText(const Function& function,
     case OperandKind::Index:
     case OperandKind::Depth:
     case OperandKind::Count:
-        return std::string(mnemonic) + " " + std::to_string(ins.operand);
+        return std::string(mnemonic) + " " + std::to_string(ins.operand) +
+            (ins.opcode == Opcode::LayerBegin && ins.aux ? " " + std::to_string(ins.aux) : "");
     case OperandKind::Name:
         if (ins.opcode == Opcode::Call) {
             return std::string(mnemonic) + " " + names.functions.at(ins.operand);

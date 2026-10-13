@@ -20,6 +20,7 @@ Value zeroValue(ValueType type) {
     case ValueType::Distribution: return Value(Distribution{});
     case ValueType::List: return Value(ListValue{type, {}});
     case ValueType::Sampler: return Value(SamplerValue{type, {}});
+    case ValueType::Layer: return Value(LayerValue{});
     default: break;
     }
     return Value(i32{0});
@@ -36,6 +37,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepCollections(ex, ins)) return true;
     if (stepSamplers(ex, ins)) return true;
     if (stepPointDistributions(ex, ins)) return true;
+    if (stepSurfaces(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }
@@ -208,7 +210,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     if (!d4) trap("invalid part transform", ErrorReason::InvalidPart);
     PartRenderPlan render;
     try {
-        render = PartRenderPlan::create(part, {canvas.scaleX, canvas.scaleY}, {atX, atY}, *d4);
+        render = PartRenderPlan::create(part, {canvas().scaleX, canvas().scaleY}, {atX, atY}, *d4);
     } catch (const std::invalid_argument& error) {
         trap(error.what(), ErrorReason::InvalidPart);
     }
@@ -218,12 +220,12 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     PartCallState state;
     state.partIndex = partIndex;
     state.render = render;
-    state.savedCanvas = std::move(canvas);
+    auto nextTarget = RenderTarget::create(static_cast<u32>(render.sourceExtent.x),
+        static_cast<u32>(render.sourceExtent.y), render.sourceScale);
+    state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 
-    canvas.resize(static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y));
-    canvas.scaleX = render.sourceScale.x;
-    canvas.scaleY = render.sourceScale.y;
+    target = std::move(nextTarget);
 
     Frame next;
     // parseCode bounds the index by kMaxFunctions (1024).
@@ -239,6 +241,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
 }
 
 void Execution::leaveFrame() {
+    closeLayers(0);
     Frame finished = std::move(frames.back());
     frames.pop_back();
     if (frames.empty()) {
@@ -258,25 +261,11 @@ void Execution::leaveFrame() {
         // Restore the caller's canvas and blit the sub-canvas (spec §10.5).
         PartCallState state = std::move(partCalls.back());
         partCalls.pop_back();
-        Canvas sub = std::move(canvas);
-        canvas = std::move(state.savedCanvas);
-        for (u32 sy = 0; sy < sub.height; ++sy) {
-            for (u32 sx = 0; sx < sub.width; ++sx) {
-                const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
-                if (src.a == 0) {
-                    continue; // transparent sub-pixels are not blitted
-                }
-                const auto pixel = state.render.transform.mapPixel(
-                    {static_cast<i32>(sx), static_cast<i32>(sy)}, state.render.sourceExtent);
-                const i64 x = static_cast<i64>(state.render.targetOrigin.x) + pixel.x;
-                const i64 y = static_cast<i64>(state.render.targetOrigin.y) + pixel.y;
-                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
-                    compositePixel(*this, static_cast<i32>(x), static_cast<i32>(y), src);
-                }
-            }
-        }
+        const auto sub = target.view({state.render.transform, state.render.targetOrigin});
+        target = std::move(state.savedTarget);
+        paintSurface(*this, sub);
         if (file.layout.header.versionMinor >= 6)
-            resources.release(static_cast<u64>(sub.width) * sub.height * sizeof(Color));
+            resources.release(static_cast<u64>(sub.buffer->raster.width) * sub.buffer->raster.height * sizeof(Color));
         caller.lastPart = state.partIndex; // the part-output register
     } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
@@ -302,6 +291,7 @@ void Execution::ensureControl(u16 functionIndex) {
         const auto ins = decodeInstruction(fn.code.subspan(i * 4, 4));
         switch (ins.opcode) {
         case Opcode::Block:
+        case Opcode::LayerBegin:
         case Opcode::Loop:
         case Opcode::If:
             open.push_back(i);
@@ -394,9 +384,10 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     if (rootValues != nullptr && (!inputs.uniforms.empty() || rootValues->size() != file.meta.inputs.size())) {
         throw std::logic_error("resolved root values do not match the root declarations");
     }
-    impl_->ex.canvas.resize(targetW, targetH);
-    impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
-    impl_->ex.canvas.scaleY = static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY);
+    impl_->ex.target = RenderTarget::create(targetW, targetH,
+        {static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX),
+         static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY)});
+    impl_->ex.rootTarget = impl_->ex.target;
 
     // Root frame: (i32 variant, i32 archetype), then root uniforms (§6.1).
     detail::Frame root;
@@ -505,7 +496,8 @@ void VM::run() {
     } catch (...) {
         if (ex.file.layout.header.versionMinor >= 6) {
             impl_->failed = true;
-            ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear();
+            ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
+            ex.target = ex.rootTarget;
             ex.resources = ResourceArena{};
         }
         throw;
@@ -514,7 +506,7 @@ void VM::run() {
 
 const Canvas& VM::canvas() const {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
-    return impl_->ex.canvas;
+    return impl_->ex.canvas();
 }
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
@@ -524,7 +516,7 @@ GenerationResult VM::result() const {
     if (impl_->failed) throw std::logic_error("VM generation failed");
     if (impl_->taken) throw std::logic_error("VM result already consumed");
     GenerationResult result;
-    result.image = impl_->ex.canvas;
+    result.image = impl_->ex.canvas();
     const auto& slots = impl_->ex.outputSlots;
     result.outputs.reserve(slots.size());
     for (std::size_t i = 0; i < slots.size(); ++i) {
@@ -553,8 +545,9 @@ GenerationResult VM::takeResult() {
     // The only allocation happens before any ownership is transferred.
     // Everything after resize is nonthrowing, including returning the result.
     result.outputs.resize(ex.outputSlots.size());
-    result.image = std::move(ex.canvas);
-    ex.canvas = Canvas{};
+    result.image = std::move(ex.canvas());
+    ex.target = {};
+    ex.rootTarget = {};
     for (std::size_t i = 0; i < ex.outputSlots.size(); ++i) {
         auto& output = result.outputs[i];
         auto& slot = ex.outputSlots[i];

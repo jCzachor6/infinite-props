@@ -215,11 +215,20 @@ struct ForStmt {
     SourceLocation location;
 };
 
+// A contextual capture statement. Its result binds only after the body exits;
+// the body executes on a fresh target without automatically painting its parent.
+struct LayerStmt {
+    std::string name;
+    bool explicitAlpha = false; // surface.legacy; omitted mode inherits
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
+
 struct Stmt
     : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                   BreakStmt, ContinueStmt, ForStmt> {
+                   BreakStmt, ContinueStmt, ForStmt, LayerStmt> {
     using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                       BreakStmt, ContinueStmt, ForStmt>::variant;
+                       BreakStmt, ContinueStmt, ForStmt, LayerStmt>::variant;
     TokenRange sourceRange{};
 };
 

@@ -1,7 +1,7 @@
 {
-  "maximum_bytes": 98304,
+  "maximum_bytes": 102400,
   "defaults": {
-    "max_bytes": 81920,
+    "max_bytes": 102400,
     "sections": [
       "idioms",
       "style",
@@ -16,6 +16,7 @@
       "collections",
       "samplers",
       "part",
+      "surfaces",
       "limits",
       "grammar",
       "builtins",
@@ -220,6 +221,15 @@
       ],
       "examples": [
         "sampling-palettes.ips"
+      ]
+    },
+    {
+      "id": "surfaces",
+      "title": "Captured layers and surface painting",
+      "chapter": "surfaces.md",
+      "parts": "chapter",
+      "examples": [
+        "captured-panels.ips"
       ]
     }
   ],

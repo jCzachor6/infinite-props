@@ -349,3 +349,25 @@ test("density literals preserve helper calls and numeric loop-bound names", asyn
         assert.equal(new RegExp(grammar.repository.pointDistribution.match).test("density(2)"),false);
     } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test("layer captures preserve contextual names, mode comments and helper transfer", async () => {
+    const source="asset t{size 2x2 input u32 layer=1 echo(image:layer)->layer{return image} "+
+        "draw{for i in 0..layer{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "+
+        "layer copy=echo(image);surface.paint(blend=surface.legacy,image=copy)}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try {
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;assert.ok(formatted.includes("/* mode */"));
+        assert.ok(formatted.includes("0..layer {"));assert.ok(formatted.includes("layer copy = echo(image)"));
+        assert.ok(formatted.includes("surface.paint(image = copy, blend = surface.legacy)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        const capture=new RegExp(grammar.repository.layerCapture.match);
+        for(const text of ["layer image {", "layer image(alpha=surface.legacy){"])assert.equal(capture.test(text),true,text);
+        for(const text of ["input u32 layer=1", "layer(2)", "layer=1", "layer copy=image"])assert.equal(capture.test(text),false,text);
+        assert.equal(new RegExp(grammar.repository.builtins.match).test("surface.paint(image)"),true);
+    } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});

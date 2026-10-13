@@ -36,6 +36,8 @@ constexpr OperationEffects effects(Opcode op) {
         return {R::AdvanceCurrent,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::ListLen: return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::LayerBegin: return {R::None,true};
+    case Opcode::SurfacePaint: return {R::None,true,false,check(C::UnassignedHandle)};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
         return {R::None,false,false,check(C::NumericRange)};
@@ -235,6 +237,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DistributionBegin, "distribution.begin", 6, OperandKind::Index),
     dynamic(Opcode::DistributionAppend, "distribution.append", 6, OperandKind::Index),
     dynamic(Opcode::DistributionEnd, "distribution.end", 6, OperandKind::None),
+    dynamic(Opcode::LayerBegin, "layer.begin", 6, OperandKind::Index, AuxPolicy::SurfaceMode),
+    dynamic(Opcode::SurfacePaint, "surface.paint", 6, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -249,7 +253,7 @@ u16 writtenMinor(u16 minor, Opcode opcode) {
     return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
 }
 u16 writtenMinor(u16 minor, ValueType type) {
-    return type.isParameterized() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
+    return type.needsDescriptor() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
 }
 const char* rngEffectName(RngEffect effect) {
     switch (effect) {
