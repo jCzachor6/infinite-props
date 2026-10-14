@@ -548,7 +548,7 @@ void check_generation(const char* program_dir) {
     }
 
     /* Compiled 0.2 source: palettes, typed helpers, loop control, math,
-       empty lists, variants/archetypes, size and uniform overrides. */
+       empty lists, ordinary v/a inputs, size and uniform overrides. */
     {
         char path[1024];
         snprintf(path, sizeof(path), "%s/language.iprop", program_dir);
@@ -567,8 +567,6 @@ void check_generation(const char* program_dir) {
                 for (uint32_t a = 0; a < 2; ++a) {
                     iprop_generate_options options = {0};
                     options.seed = 26;
-                    options.variant = v;
-                    options.archetype = a;
                     /* A non-square size scales raster coordinates (2x, 3x)
                        while structured outputs remain in asset units. */
                     options.size_x = 16;
@@ -580,8 +578,11 @@ void check_generation(const char* program_dir) {
                     base.g = 0xdd;
                     base.b = 0xcc;
                     base.a = 0xff;
-                    options.uniforms = &base;
-                    options.uniform_count = 1;
+                    iprop_uniform named[3] = {base, {0}, {0}};
+                    named[1].name = "v"; named[1].type = IPROP_UNIFORM_U32; named[1].u = v;
+                    named[2].name = "a"; named[2].type = IPROP_UNIFORM_U32; named[2].u = a;
+                    options.uniforms = named;
+                    options.uniform_count = 3;
                     iprop_result* result = NULL;
                     CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
                           "language generation v%u a%u: %s", v, a, err);

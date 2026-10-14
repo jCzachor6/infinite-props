@@ -4,7 +4,7 @@ Source must be valid UTF-8. Whitespace separates tokens; newlines do not end
 statements. `//` comments extend to the next newline and `/* ... */` comments
 end at the first closing delimiter (they do not nest). Semicolons are optional
 separators inside function blocks. One optional semicolon may follow each
-import, `size`, `origin`, `variants`, `archetypes`, `input`, `output` or
+import, `size`, `origin`, `input`, `output` or
 `palette` or `const` declaration. Forms without semicolons remain valid; newline is
 whitespace and never implicitly terminates a declaration or expression.
 
@@ -18,7 +18,7 @@ the entry block when used as an asset-level function name. Reserved words cannot
 name assets, inputs, outputs, locals, helpers, parameters, aliases or members.
 Newly introduced keywords have no contextual compatibility aliases. Asset names and
 `for` counter names require an ordinary identifier. Asset-level `size`,
-`origin`, `variants`, `archetypes` and `palette` introduce metadata.
+`origin` and `palette` introduce metadata.
 `const type name = expression` introduces an [asset constant](assets.md#asset-constants)
 only in declaration position. The reserved word cannot be used as a name elsewhere.
 

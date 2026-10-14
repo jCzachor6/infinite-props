@@ -22,7 +22,7 @@ std::vector<u8> surfaceProgram(const std::string& text, bool optimize = true) {
     const auto p = ips::parse(text); ips::checkAsset(p, {}); return compileProgram(p, {}, optimize);
 }
 GenerationResult surfaceResult(const std::vector<u8>& bytes, u32 seed = 26, u32 width = 0, u32 height = 0) {
-    const auto file = loadFile(bytes); validate(file); VM vm(file, {seed,0,0,width,height,{}}); vm.run(); return vm.result();
+    const auto file = loadFile(bytes); validate(file); VM vm(file, {seed,width,height,{}}); vm.run(); return vm.result();
 }
 void sameOutputs(const GenerationResult& a, const GenerationResult& b) {
     REQUIRE(a.outputs.size() == b.outputs.size());
@@ -129,17 +129,17 @@ TEST_CASE("return break and continue freeze captures and restore every caller ta
 
 TEST_CASE("captured part trees retain D4 placement scale outputs and isolated RNG", "[surfaces]") {
     for (const int rot : {0,90,180,270}) for (const int mirror : {0,1}) {
-        const std::string call = "child.draw(seed,0,0,at={7.5,6.5},rot="+std::to_string(rot)+",mirror_x="+std::to_string(mirror)+")";
+        const std::string call = "child.draw(seed,at={7.5,6.5},rot="+std::to_string(rot)+",mirror_x="+std::to_string(mirror)+")";
         const std::string header = "import child from \"child.ips\" asset t{size 16x12 output point p output point state ";
         Sources reference{{"root.ips",header+"draw{"+call+" p=child.outputs.p state={seed&65535,seed>>16}}}"},
             {"child.ips",R"(import leaf from "leaf.ips" asset child{size 7x5 origin 2,1 output point p draw{
-              leaf.draw(seed,0,0,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#00ff00)
+              leaf.draw(seed,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#00ff00)
             }})"},
             {"leaf.ips",R"(asset leaf{size 3x2 origin 1,0 output point p draw{pixel(0,0,#929ca8) pixel(2,1,#c09060) p={1.0 to 2.0,0}}})"}};
         Sources captured = reference;
         captured["root.ips"] = header + "draw{layer image{"+call+" p=child.outputs.p} surface.paint(image) state={seed&65535,seed>>16}}}";
         captured["child.ips"] = R"(import leaf from "leaf.ips" asset child{size 7x5 origin 2,1 output point p draw{
-          layer image{leaf.draw(seed,0,0,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#00ff00)} surface.paint(image)
+          layer image{leaf.draw(seed,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#00ff00)} surface.paint(image)
         }})";
         for (const bool optimize : {false,true}) {
             const auto a = surfaceTree(captured,optimize), b = surfaceTree(reference,optimize);
@@ -194,13 +194,12 @@ TEST_CASE("surface scope and shared arena limits fail without publishing an imag
     CHECK(surfaceResult(surfaceProgram(nested)).image.at(0,0)==Color{255,255,255,255});
     const auto innerLoop=surfaceResult(surfaceProgram("asset t{size 2x1 draw{layer image{while(true){pixel(0,0,#fff)break;}pixel(1,0,#929ca8)}surface.paint(image)}}"));
     CHECK(innerLoop.image.at(0,0)==Color{255,255,255,255});CHECK(innerLoop.image.at(1,0)==Color{146,156,168,255});
-    const auto recursive=assemble("meta: size=1x1\ntypes: layer\nfn draw ( i32, i32 ) -> ( ):\ncall nested\nreturn\nendfn\n"
-        "fn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n");
+    const auto recursive=assemble("meta: size=1x1\ntypes: layer\nfn draw ( ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n");
     const auto file=loadFile(recursive);validate(file);VM vm(file,{});
     try{vm.run();FAIL("33rd surface scope accepted");}catch(const Trap& error){CHECK(std::string(error.what())=="surface scope depth exceeds 32");}
     CHECK_THROWS_AS(vm.result(),std::logic_error);CHECK(vm.canvas().at(0,0)==Color{});CHECK_THROWS_AS(vm.run(),std::logic_error);
-    std::string assembly="meta: size=1024x1024 fuel=100000000\ntypes: layer\nfn draw ( i32, i32 ) -> ( ):\nlocals: layer\n";
-    for(int i=0;i<16;++i)assembly+="layer.begin 2\n";
+    std::string assembly="meta: size=1024x1024 fuel=100000000\ntypes: layer\nfn draw ( ) -> ( ):\nlocals: layer\n";
+    for(int i=0;i<16;++i)assembly+="layer.begin 0\n";
     for(int i=0;i<16;++i)assembly+="end\n";
     assembly+="return\nendfn\n";
     const auto oversized=loadFile(assemble(assembly));VM quota(oversized,{});
@@ -212,10 +211,10 @@ TEST_CASE("surface scope and shared arena limits fail without publishing an imag
 
 TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed wire data", "[surfaces]") {
     const auto bytes=surfaceProgram("asset t{size 2x2 draw{layer image(alpha=surface.legacy){pixel(1,1,#fff)}surface.paint(image,blend=surface.legacy)}}",false);
-    const auto file=loadFile(bytes);REQUIRE(file.layout.header.versionMinor==6);
+    const auto file=loadFile(bytes);REQUIRE(file.layout.header.versionMinor==7);
     REQUIRE(file.collections.types==std::vector<ValueType>{ValueType::Layer});
     const auto restored=assemble(disassemble(bytes));CHECK(surfaceResult(restored).image.pixels==surfaceResult(bytes).image.pixels);
-    CHECK(disassemble(restored).find("layer.begin 2 1")!=std::string::npos);
+    CHECK(disassemble(restored).find("layer.begin 0 1")!=std::string::npos);
     CHECK(stripDebug(decompressFile(compressFile(bytes)))==stripDebug(bytes));
     const auto descriptor=file.layout.find(SectionId::Types)->offset+4;
     for(const auto [relative,value]:std::vector<std::pair<std::size_t,u8>>{{0,255},{1,0},{2,1},{3,1}}){
@@ -224,7 +223,7 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
     for(std::size_t i=0;i<file.code.functions[0].code.size()/4;++i){
         const auto at=file.code.functions[0].fileOffset+i*4;const auto ins=decodeInstruction(file.code.functions[0].code.subspan(i*4,4));
         if(ins.opcode==Opcode::LayerBegin){
-            for(const u16 destination:{0u,1u,65535u}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
+            for(const u16 destination:{1u,2u,65535u}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
             auto bad=bytes;bad.at(at+1)=3;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
         if(ins.opcode==Opcode::SurfacePaint){
@@ -234,7 +233,7 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
     }
     auto old=bytes;raw16(old,6,5);CHECK_THROWS_AS(loadFile(old),FormatError);
     for(const std::string dead:{"layer.begin 0 3\nend\n", "layer.begin 65535\nend\n", "surface.paint 3\n"})
-        CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\n"+dead+"endfn\n"),std::exception);
+        CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\n"+dead+"endfn\n"),std::exception);
 }
 
 TEST_CASE("layer formatting and illegal handle operations have located diagnostics", "[surfaces]") {

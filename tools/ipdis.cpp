@@ -236,7 +236,6 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     std::ostringstream out;
     out << "meta: size=" << meta.sizeX << "x" << meta.sizeY
         << " origin=" << floatText(meta.origin.x) << "," << floatText(meta.origin.y)
-        << " variants=" << meta.variants << " archetypes=" << meta.archetypes
         << " fuel=" << meta.fuel << "\n";
     for (const auto& input : meta.inputs) {
         out << inputEntryText(input, pool) << "\n";

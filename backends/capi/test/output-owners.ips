@@ -9,7 +9,7 @@ asset outputs {
     anchor = {4, 0}
     collider = {4, 0, 1, 1}
     zone = {4, 0, 1}
-    first.draw(seed, v, a, at = {0, 0})
-    second.draw(seed, v, a, at = {0, 0})
+    first.draw(seed, at = {0, 0})
+    second.draw(seed, at = {0, 0})
   }
 }

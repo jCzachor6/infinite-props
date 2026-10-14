@@ -15,12 +15,11 @@ using namespace iprop::ips;
 
 TEST_CASE("metadata and imports accept one optional terminating semicolon") {
     const std::string declarations = R"(import child from "child.ips"
-        asset t { size 8X8 origin 1 + 2, 3 variants 2 archetypes 3
-        input i32 n=-(7) input f32 f=-0.0 output list point p
+        asset t { size 8X8 origin 1 + 2, 3 input i32 n=-(7) input f32 f=-0.0 output list point p
         palette levels=[0,0.5,1] draw { p={n,f} } })";
     const std::string terminated = R"(import child from "child.ips";
         asset t { size 8X8; origin 1 +
-        2, 3; variants 2; archetypes 3;
+        2, 3;
         input i32 n=-(7); input f32 f=-0.0; output list point p;
         palette levels=[0,0.5,1]; draw { p={n,f}; } })";
     CHECK(formatProgram(parse(declarations)) == formatProgram(parse(terminated)));
@@ -49,8 +48,6 @@ namespace {
 const std::string kRockSketch = R"(asset rock {
   size 192x192
   origin 96,170
-  variants 5
-  archetypes 4
   input  color palette = #808d74
   output rect  collider
 
@@ -70,9 +67,8 @@ const std::string kPortraitSketch = R"(
 import hair from "hair.ips"
 import eyes from "eyes.ips"
 
-asset portrait {
+asset portrait { input i32 a = 0 input i32 v = 0
   size 64x64
-  variants 8
   input  color skin = #d9b58c
   input  color hairColor = #33291f
   output point pupilCenter
@@ -108,8 +104,6 @@ TEST_CASE("the rock sketch parses into the expected AST") {
     REQUIRE(asset.name == "rock");
     REQUIRE(asset.sizeX == 192u);
     REQUIRE(asset.sizeY == 192u);
-    REQUIRE(asset.variants == 5u);
-    REQUIRE(asset.archetypes == 4u);
     REQUIRE(asset.originX != nullptr);
     REQUIRE(asset.originY != nullptr);
 
@@ -154,9 +148,11 @@ TEST_CASE("the portrait sketch parses imports, named args and members") {
 
     const Asset& asset = program.asset;
     REQUIRE(asset.name == "portrait");
-    REQUIRE(asset.inputs.size() == 2);
-    REQUIRE(asset.inputs[0].name == "skin");
-    REQUIRE(asset.inputs[1].name == "hairColor");
+    REQUIRE(asset.inputs.size() == 4);
+    REQUIRE(asset.inputs[0].name == "a");
+    REQUIRE(asset.inputs[1].name == "v");
+    REQUIRE(asset.inputs[2].name == "skin");
+    REQUIRE(asset.inputs[3].name == "hairColor");
     REQUIRE(asset.outputs.size() == 1);
     REQUIRE(asset.outputs[0].name == "pupilCenter");
 

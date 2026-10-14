@@ -9,8 +9,6 @@
 asset pot {
   size 64x64
   origin 0,0
-  variants 8
-
   input color color = #967864
   input u32   style = 0
   input u32   widthN = 0

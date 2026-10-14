@@ -31,7 +31,7 @@ namespace {
 // .ipa text format:
 //
 //   ; comments
-//   meta: size=64x64 origin=32,60 variants=8 archetypes=1 fuel=1000000
+//   meta: size=64x64 origin=32,60 fuel=1000000
 //   input: color skin = #d9b58c          (type: color|f32|u32)
 //   output: point pupilCenter            (kind: point|rect|circle, opt. "list")
 //   output: list rect colliders
@@ -103,7 +103,6 @@ struct AsmPart {
 struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
-    u32 variants = 1, archetypes = 1;
     u64 fuel = 2000000;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
@@ -377,18 +376,13 @@ std::vector<u8> assemble(const std::string& source) {
                         } catch (...) {
                             throw error("bad origin");
                         }
-                    } else if (key == "variants" && !parseU32Text(value, program.variants)) {
-                        throw error("bad variants");
-                    } else if (key == "archetypes" && !parseU32Text(value, program.archetypes)) {
-                        throw error("bad archetypes");
                     } else if (key == "fuel") {
                         try {
                             program.fuel = std::stoull(value);
                         } catch (...) {
                             throw error("bad fuel");
                         }
-                    } else if (key != "size" && key != "origin" && key != "variants" &&
-                               key != "archetypes" && key != "fuel") {
+                    } else if (key != "size" && key != "origin" && key != "fuel") {
                         throw error("unknown meta key '" + key + "'");
                     }
                 } else {
@@ -767,8 +761,6 @@ std::vector<u8> assemble(const std::string& source) {
     meta.writeU32(program.sizeY);
     meta.writeF32(program.originX);
     meta.writeF32(program.originY);
-    meta.writeU32(program.variants);
-    meta.writeU32(program.archetypes);
     meta.writeU64(program.fuel);
     meta.writeU16(0); // no emission in the assembler v1
     for (int i = 0; i < 6; ++i) {
@@ -1097,7 +1089,7 @@ std::vector<u8> assemble(const std::string& source) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    if (descriptors.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = 6;
+    if (descriptors.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
     const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
         (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     file.writeU16(kVersionMajor);

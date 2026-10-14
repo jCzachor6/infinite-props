@@ -3,13 +3,13 @@
 This is the complete authoring reference for the current compiler. `.ips`
 programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
-seed, variant, archetype and optional input uniforms.
+seed and optional declared input uniforms.
 
 This checkout implements stages 1–11 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
-being used. The compiler emits the oldest required format, from 0.4 to 0.6;
-the ABI remains 0.4. The new implemented features are integer bounds overloads
+being used. The compiler always emits format 0.7; the runtime accepts only 0.7.
+C API 0.4 uses ABI 0.5. There are no implicit variant/archetype controls. The new implemented features are integer bounds overloads
 and vector normalization, typed immutable asset constants, and lists with
 helper transfer and polygon drawing, and captured samplers with scalar/batch picks; later 0.7
 stages are not yet available. Weighted literals now provide discrete masses

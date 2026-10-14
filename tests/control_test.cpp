@@ -17,8 +17,8 @@ namespace {
 std::vector<u8> fileWith(const std::vector<u8>& body, u64 fuel,
                          const std::vector<u8>& locals = {},
                          const std::vector<i32>& ints = {0},
-                         const std::vector<u8>& params = {0, 0}) {
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, fuel, false, {}, 0, 0, 0, {}, {});
+                         const std::vector<u8>& params = {}) {
+    const auto meta = metaSection(8, 8, 0, 0, fuel, false, {}, 0, 0, 0, {}, {});
     const auto pool = constSection({"draw"}, ints, {0.f}, {{0, 0, 0, 255}});
     return fullFile(meta, pool, codeSection({{0, params, {}, locals, body}}, {}));
 }
@@ -41,14 +41,14 @@ TEST_CASE("a loop with br_if sums 1..1000 in exactly 1000 iterations") {
     const auto op = [&](u8 code, u16 operand = 0) {
         for (const auto b : ins(code, 0, operand)) body.push_back(b);
     };
-    ci(0); op(0x14, 2);              // sum = 0
-    ci(1); op(0x14, 3);              // i = 1
+    ci(0); op(0x14, 0);              // sum = 0
+    ci(1); op(0x14, 1);              // i = 1
     op(0x02);                        // loop
-    op(0x13, 2); op(0x13, 3); op(0x20); op(0x14, 2); // sum += i
-    op(0x13, 3); ci(1); op(0x20); op(0x14, 3);       // i += 1
-    op(0x13, 3); ci(2); op(0x36); op(0x07, 0);       // br_if 0 when i <= 1000
+    op(0x13, 0); op(0x13, 1); op(0x20); op(0x14, 0); // sum += i
+    op(0x13, 1); ci(1); op(0x20); op(0x14, 1);       // i += 1
+    op(0x13, 1); ci(2); op(0x36); op(0x07, 0);       // br_if 0 when i <= 1000
     op(0x05);                        // end
-    op(0x13, 2); op(0x16); op(0x09); // drop the sum, return
+    op(0x13, 0); op(0x16); op(0x09); // drop the sum, return
 
     const auto bytes = fileWith(body, 100000, {0, 0}, {0, 1, 1000});
     // 4 (init) + 1 (loop) + 1000 × 12 (body) + 1 (end) + 3 (tail) = 12009.
@@ -120,7 +120,7 @@ TEST_CASE("an unconditional br inside a loop exhausts fuel at the loop start") {
         // br 0 jumps to the loop body, which IS the br itself, so the
         // 101st instruction is the br at instruction index 1.
         const std::size_t base = loaded.layout.find(SectionId::Code)->offset;
-        REQUIRE(error.offset == base + 28);
+        REQUIRE(error.offset == base + 26);
     }
     REQUIRE(threw);
 }

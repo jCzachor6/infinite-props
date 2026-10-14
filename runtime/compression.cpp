@@ -50,7 +50,7 @@ std::vector<u8> compressFile(std::span<const u8> data) {
     Writer encoded;
     for (const auto magic : kMagic) encoded.writeU8(magic);
     encoded.writeU16(kVersionMajor);
-    encoded.writeU16(4);
+    encoded.writeU16(kVersionMinor);
     encoded.writeU32(header.flags | kFlagCompressed);
     encoded.writeU32(header.sectionCount);
     encoded.writeU32(0);

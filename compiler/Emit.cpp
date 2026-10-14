@@ -77,7 +77,6 @@ TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
 }
 
 bool Emitter::isParam(const std::string& name) const {
-    if (current_->drawLike && (name == "v" || name == "a")) return true;
     for (const auto& param : current_->ast->params) {
         if (param.name == name) {
             return true;

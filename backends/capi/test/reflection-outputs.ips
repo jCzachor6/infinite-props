@@ -10,8 +10,8 @@ asset schema {
   output list rect colliders
   output list circle zones
   draw {
-    first.draw(seed, v, a, at = {0, 0})
-    empty.draw(seed, v, a, at = {0, 0})
-    second.draw(seed, v, a, at = {0, 0})
+    first.draw(seed, at = {0, 0})
+    empty.draw(seed, at = {0, 0})
+    second.draw(seed, at = {0, 0})
   }
 }

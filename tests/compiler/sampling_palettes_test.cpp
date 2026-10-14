@@ -185,7 +185,7 @@ TEST_CASE("palette helper transfer uses checked lists and preserves short circui
         VM vm(file,{}); CHECK_THROWS_AS(vm.run(),Trap);
     }
     const auto child = ips::parse("asset child{size 1x1 palette specs=[10 to 15,40] const sampler<i32> s=specs[0] output point p draw{p={s.pick(),s.pick()}}}");
-    const auto root = ips::parse("import child from \"child.ips\" asset t{size 1x1 const sampler<i32> s=sampler(20 to 30) output point p output point state draw{before=seed child.draw(seed,v,a,at={0,0}) p={seed==before,s.pick()} state={seed&65535,seed>>16}}}");
+    const auto root = ips::parse("import child from \"child.ips\" asset t{size 1x1 const sampler<i32> s=sampler(20 to 30) output point p output point state draw{before=seed child.draw(seed,at={0,0}) p={seed==before,s.pick()} state={seed&65535,seed>>16}}}");
     ips::checkAsset(child,{}); ips::checkAsset(root,{{"child",partInfoOf(child.asset)}});
     const auto bytes = compileProgram(root,{{"child",&child}});
     const auto reference = compilePalettes("asset t{size 1x1 output point p output point state draw{p={1,20 to 30} state={seed&65535,seed>>16}}}",false);
@@ -308,7 +308,7 @@ TEST_CASE("sampler pools reject malformed constants references aux and older for
             bad=bytes;bad.at(at+1)=1;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
             bad=bytes;put16(bad,at+2,65535);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
-    CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nconst.sampler 0\nendfn\n"),std::exception);
+    CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nconst.sampler 0\nendfn\n"),std::exception);
     const auto mismatch=stripDebug(compilePalettes("asset t{size 1x1 const sampler<i32> intSpec=sampler(1) "
         "const sampler<f32> floatSpec=sampler(1.0) const list<sampler<i32>> specs=[intSpec] draw{items=specs s=floatSpec}}",false));
     const auto mismatchFile=loadFile(mismatch);
@@ -329,7 +329,7 @@ TEST_CASE("sampling palette and constant list limits preserve large legacy palet
     rejectPalette("const list<sampler<i32>> specs="+repeated(257,"sampler(1)")+" draw{}","exceeds 256");
     const auto large="palette values="+repeated(257,"1.0");
     const auto legacy=compilePalettes("asset t{size 1x1 "+large+" output point p draw{p={values[-1],ramp(values,0.5)}}}");
-    CHECK(loadFile(legacy).layout.header.versionMinor==4);
+    CHECK(loadFile(legacy).layout.header.versionMinor==7);
     CHECK(execute(legacy).outputs[0].points[0].x==1.f);
     rejectPalette(large+" draw{items=values}","exceeds 256 elements when used as a list");
 }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Execute the current runtime and full compiler matrix against old/new sources.
+"""Check current source determinism in eight compiler configurations.
 
-The frozen manifest/artifacts are read only. Preservation means executing their
-actual binaries with the current ipgen, not merely verifying archived hashes.
+Immutable historical binaries must be rejected by the format 0.7 reader.
 """
+import base64
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
@@ -205,40 +205,26 @@ def compile_case(compiler, generator, corpus, index, source, source_root, expect
 
 
 def frozen_runtime(manifest, frozen, generator, work, timeout):
+    # Preserve every archived byte, but enforce the intentionally incompatible
+    # reader boundary. Historical rendering is checked by migrated authoring
+    # fixtures with independent image/output pins, not by accepting old files.
     records, errors = [], []
-    for index, row in enumerate(manifest['cases']):
-        for mode in MODES:
-            for optimization in OPTIMIZATIONS:
-                artifact = row['modes'][mode][optimization]
-                if artifact['status']:
-                    continue
-                binary = frozen / artifact['binary']
-                require(sha(binary.read_bytes()) == artifact['sha256'], 'frozen binary changed')
-                outcomes = generate(generator, binary, work / 'frozen-runtime' / str(index) / mode / optimization,
-                                    manifest['capture']['seeds'], timeout)
-                for actual, expected in zip(outcomes, artifact['generations']):
-                    if comparable(actual) != comparable(expected) or (not actual['status'] and actual['fuel'] != expected['fuel']):
-                        errors.append(row['source'] + '/' + mode + '/' + optimization + ': current runtime differs from frozen result')
-                records.append({'source': row['source'], 'mode': mode, 'optimization': optimization,
-                                'binary': file_record(binary), 'generations': outcomes})
-        if (index + 1) % 20 == 0:
-            print('frozen binaries executed:', index + 1, flush=True)
-    probe = frozen / 'rng-state.iprop'
-    outcomes = generate(generator, probe, work / 'rng', manifest['capture']['seeds'], timeout)
-    for actual, expected in zip(outcomes, manifest['rng_probe']['generations']):
-        require(comparable(actual) == comparable(expected), 'raw RNG output bits changed')
-        values = json.loads(Path(actual['json']['path']).read_bytes())['outputs']
-        states = {}
-        for slot in values:
-            point = slot['values'][0]
-            halves = [int(struct.unpack('<f', struct.pack('<I', point[key]))[0]) for key in ('x', 'y')]
-            states[slot['name']] = halves[0] | halves[1] << 16
-        require(states == expected['states_u32'], 'initial/advanced/restored RNG states changed')
-        actual['states_u32'] = states
-    records.append({'source': manifest['rng_probe']['source'], 'binary': file_record(probe), 'generations': outcomes})
+    fixtures = ROOT / 'tests/fixtures'
+    cases = [case for path in sorted(fixtures.glob('frozen-format-*.json'))
+             for case in json.loads(path.read_text())['cases']]
+    directory = work / 'retired-formats'
+    directory.mkdir()
+    for index, case in enumerate(cases):
+        data = base64.b64decode(case['binary_base64'], validate=True)
+        require(sha(data) == case['binary_sha256'], 'archived binary changed')
+        binary = directory / f'{index}.iprop'
+        binary.write_bytes(data)
+        outcomes = generate(generator, binary, directory / str(index), [0], timeout)
+        if any(row['status'] != 1 or 'unsupported format minor version' not in row['stderr'] for row in outcomes):
+            errors.append(case['source'] + ': retired binary was not rejected at load')
+        records.append({'source': case['source'], 'binary': file_record(binary), 'generations': outcomes})
     return {'passed': not errors, 'errors': errors, 'records': records,
-            'successful_generations': sum(not o['status'] for r in records for o in r['generations']),
-            'traps': sum(bool(o['status']) for r in records for o in r['generations'])}
+            'successful_generations': 0, 'traps': len(records)}
 
 
 def summarize(rows, manifest):
@@ -292,7 +278,7 @@ def summarize(rows, manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('tools', type=Path)
-    parser.add_argument('--frozen-dir', type=Path, required=True)
+    parser.add_argument('--frozen-dir', type=Path, default=ROOT / 'benchmarks/baselines/v0.4.0', help='read-only historical evidence directory')
     parser.add_argument('--manifest', type=Path, default=ROOT / 'benchmarks/baselines/v0.4.0/manifest.json')
     parser.add_argument('--work-dir', type=Path, required=True, help='new directory; frozen evidence is never modified')
     parser.add_argument('--workers', type=int, default=4)
@@ -315,29 +301,9 @@ def main():
     require(current_files, 'empty current source corpus')
     source_snapshot = source_identity(current_files)
     work.mkdir(parents=True, exist_ok=False)
-    old_root = work / 'released-source'
-    old_root.mkdir()
-    for name, value in manifest['source_files'].items():
-        if not name.endswith('.ips'):
-            continue
-        data = subprocess.check_output(['git', 'show', value['git_blob']], cwd=ROOT)
-        require(sha(data) == value['sha256'], 'released Git blob does not match manifest: ' + name)
-        target = old_root / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
     current_cases = json.loads((ROOT / 'examples/language/cases.json').read_bytes())['cases']
     expectations = {'examples/language/' + c['file']: c for c in current_cases}
     jobs = []
-    for index, old in enumerate(manifest['cases']):
-        source = old['source']
-        expected = expectations.get(source, {})
-        if source in SOURCE_REJECTIONS:
-            expected = {'expect': 'compile-error', 'message': SOURCE_REJECTIONS[source]}
-        elif source in TRANSITIONS:
-            expected = {'expect': 'pass'}
-        elif old['modes']['debug']['reference']['status']:
-            require(expected.get('expect') == 'compile-error', 'historical rejection lacks an explicit current expectation: ' + source)
-        jobs.append(('released_sources', index, source, old_root, expected, old))
     jobs += [('current_sources', i, name, ROOT, expectations.get(name, {}), None) for i, name in enumerate(sorted(current_files))]
     began = time.monotonic()
     preserved = frozen_runtime(manifest, frozen, tool_paths['ipgen'], work, args.timeout)
@@ -366,13 +332,13 @@ def main():
         'source_identity': source_snapshot,
         'versions': versions(ROOT), 'tools': identities, 'harness_sha256': sha(Path(__file__).read_bytes()),
         'frozen_manifest': file_record(args.manifest.resolve()), 'frozen_release': RELEASE,
-        'scope': {'seeds': manifest['capture']['seeds'], 'variants': [0], 'archetypes': [0], 'size': 'asset default',
+        'scope': {'seeds': manifest['capture']['seeds'], 'inputs': 'declared defaults', 'size': 'asset default',
                   'optimizations': list(OPTIMIZATIONS), 'debug_modes': list(MODES), 'containers': list(CONTAINERS),
                   'optimized_size_gate': 'expanded bytes; compressed entropy deltas reported separately',
                   'historical_size_gate': False, 'workers': args.workers, 'per_command_timeout_seconds': args.timeout},
         'frozen_runtime': preserved, 'corpora': rows, 'summary': summaries, 'elapsed_seconds': time.monotonic() - began,
-        'platform': platform.platform(), 'limitations': ['Default variant/archetype/size only; wider controls are covered by separate conformance.',
-            'C API/SFML/Godot require separate pinned backend reports.', 'Historical compiler rejections are retained and intentional language acceptance repairs are recorded.',
+        'platform': platform.platform(), 'limitations': ['Default declared inputs and canvas size; explicit overrides are covered by backend conformance.',
+            'C API/SFML/Godot require separate pinned backend reports.', 'Historical binaries are hash-verified and rejected; no released-source compatibility is promised.',
             'Registered semantic changes of released sources are recorded per differing result, not compared.']}
     (work / 'report.json').write_text(json.dumps(result, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print('Runtime matrix:', 'PASS' if result['passed'] else 'FAIL', 'report:', work / 'report.json')

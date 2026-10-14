@@ -5,21 +5,21 @@ A portable binary format and open-source toolchain for **seed-based procedural
 runtime executes it to produce pixels — deterministically, on any platform.
 
 One `.iprop` file can generate **many reproducible variations** from its seed,
-variant, archetype and input uniforms. The asset determines which inputs
+and declared input uniforms. The asset determines which inputs
 change its appearance; different inputs need not produce different images.
 
-This checkout implements stages 1–10 of product **0.7.0** / source language **0.7**
+This checkout implements product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
 typed immutable asset constants, lists, weighted/density distributions and captured samplers visible in draw
 and helpers, with explicit single picks, immutable batches, sampling palettes and
 immutable captured layers on the shared part/render-target mechanism, with
 explicit straight RGBA8 source-over and inherited target modes. Newly introduced
 keywords are reserved; see the source migration notes.
-The binary format is **0.6**, C API **0.3** and C ABI / SONAME **0.4**. These
-are independent contracts. The runtime reads formats 0.1–0.6; the compiler
-writes the oldest required format, from 0.4 to 0.6. Masks reuse captured alpha,
+The binary format is **0.7**, C API **0.4** and C ABI / SONAME **0.5**.
+The compiler and runtime use only format 0.7. Variants, archetypes and their
+host controls are removed; authors declare any selection inputs themselves. Masks reuse captured alpha,
 support coverage algebra and disk morphology, and clip primitive, paint and
-weather writes. Surface exports and final release gates are pending.
+weather writes. Internal mask/layer exports are implemented; the product is under development.
 
 Start with the [language handbook](docs/language/index.md), the
 [C API integration guide](backends/capi/README.md) or the
@@ -83,8 +83,8 @@ language handbook defines the supported source syntax.
 
 The format is a contract, not an implementation detail. All interpreters MUST
 implement its frozen semantics; the reference interpreter and conformance
-suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
-[0.5 contract](spec/iprop-v0.5.md) and defines the additions implemented in stages 1–10.
+suite enforce them. [Format 0.7](spec/iprop-v0.7.md) defines the current metadata and call signatures
+and retains the numerical, drawing and collection algorithms specified in 0.6.
 
 ### 5.1 Header
 
@@ -93,18 +93,18 @@ suite enforce them. [Format 0.6](spec/iprop-v0.6.md) inherits the frozen
 - Header flags identify debug information and the compressed container.
 - Frozen format semantics MUST remain unchanged. New opcodes and sections
   require a compatible format version; old interpreters MUST reject files
-  they cannot fully honour. The 0.4 compressed envelope may contain a 0.6
-  executable, whose version is checked after expansion.
+  they cannot fully honour. Both a compressed envelope and its expanded executable must be version 0.7.
+  Earlier and future versions are rejected before generation.
 
 ### 5.2 Sections
 
 | Section   | Required | Contents |
 | --------- | -------- | -------- |
-| `meta`    | yes      | Canvas size, origin, optional emission metadata, variant/archetype counts, fuel budget and declared input/output signature |
+| `meta`    | yes      | Canvas size, origin, optional emission metadata, fuel budget and declared input/output signature |
 | `const`   | yes      | Constant pool: integers, floats, colours, strings |
-| `code`    | yes      | Instruction stream and function table, including `draw(variant, archetype)` |
+| `code`    | yes      | Instruction stream and function table, including `draw` with exactly the declared input parameters |
 | `debug`   | no       | Symbol names and a source map (`.ips` line → instruction offset); strippable without changing behaviour |
-| `parts`   | for parts in format 0.5 | Part instance names and parents; each import alias path identifies an instance |
+| `parts`   | for parts | Part instance names and parents; each import alias path identifies an instance |
 
 ### 5.3 Metadata
 
@@ -113,11 +113,9 @@ The file carries its rendering metadata and typed declarations inline:
 - `size` — canvas dimensions (pixels).
 - `origin` — the point used for placement.
 - Optional binary `emission` metadata — offset, radius and colour.
-- `variants`, `archetypes` — counts exposed to the interpreter.
 - `fuel` — the maximum instruction budget for one generation (see §6).
 
-The current `.ips` declarations are `size`, `origin`, `variants`, `archetypes`,
-`input`, `output` and `palette`, plus draw/helpers. Collision shapes and
+The current `.ips` declarations are `size`, `origin`, `input`, `output`, `const` and `palette`, plus draw/helpers. Collision shapes and
 additional anchors are named structured outputs, rather than fixed collider
 metadata. The compiler supplies a default fuel budget of 2,000,000;
 embedding hosts can override it. Source syntax does not declare `fuel` or
@@ -139,8 +137,6 @@ identical outputs — both the image and every structured output.
 | Input | Type | Notes |
 | ----- | ---- | ----- |
 | `seed` | u32 | initializes the root RNG stream; tools default to 0 |
-| `variant` | u32 | validated against `meta.variants` |
-| `archetype` | u32 | validated against `meta.archetypes` |
 | `size` | u32×u32 | optional requested dimensions; zero uses the asset's declared size |
 | uniforms | declared | `color`, `f32` and `u32` binary inputs with defaults; source also supports signed `input i32` using U32 bit patterns |
 
@@ -165,7 +161,7 @@ animation by changing those inputs, for example deriving a seed per frame.
 **Generation model** (concrete API signatures differ by backend):
 
 ```
-result = generate(file, { seed, variant, archetype, size, uniforms })
+result = generate(file, { seed, size, uniforms })
         → { image, outputs: { collider, anchors, ... } }
 ```
 
@@ -340,9 +336,9 @@ by the VM specification.
   palette name is valid only as the palette argument of `ramp`.
 - Deterministic grammar with source-located parsing, typing and declaration
   diagnostics. Execution-time fuel and geometry errors are runtime traps.
-- A `draw { ... }` entry block with read-only `v`/`a` builtins; the compiler
-  synthesizes the runtime `(i32, i32)` parameters. Variant/archetype indices arrive as
-  validated integers.
+- A `draw { ... }` entry block with only declared inputs. Its runtime parameters
+  follow input declaration order, starting at slot 0. `v`, `a`, `variants` and
+  `archetypes` are ordinary names with no implicit bindings.
 - Function parameters declare their types (`ageFromUnit(u: f32)` — `i32`,
   `f32`, `color`, `vec2` or `distribution`) and functions that return a value
   declare an explicit return type (`-> i32`). Helper calls accept positional,
@@ -367,7 +363,7 @@ arguments run in signature order (named arguments can be reordered);
 helper arguments run in parameter declaration order, including named calls;
 `poly` evaluates vertex coordinates before its colour. Part calls evaluate
 uniform overrides in
-input declaration order, then seed/variant/archetype and placement; named
+input declaration order, then seed and placement; named
 transform arguments are compile-time constants. An argument is evaluated
 once, including when its result is discarded by a singleton `ramp`.
 
@@ -456,12 +452,12 @@ An asset MAY be composed of smaller assets ("parts"), each authored in its own
   singular outputs as `part.outputs.name`; names and types are checked at
   compile time. In format 0.5, reads include the child's transform and
   placement and are in the caller's coordinates. Host-facing outputs are in
-  root asset coordinates. Frozen 0.1–0.4 files retain their local output
-  coordinates; list outputs cannot be read as source expressions.
+  root asset coordinates. Older file versions are rejected; list outputs
+  cannot be read as source expressions.
 - **Propagation.** The parent MAY assign a part's output to one of its own
   declared outputs, so a child's computed anchor surfaces in the final
   `outputs` map of the composed asset.
-- **Determinism.** Part outputs depend on their supplied inputs, selectors,
+- **Determinism.** Part outputs depend on their supplied inputs,
   transforms and placement. The conformance suite compares the merged
   program as a whole — pixels and every structured output (§9).
 
@@ -517,7 +513,7 @@ interpreter is authoritative for correctness.
   canonical source. Formatting preserves comments and executable meaning.
 - Six CLI tools: `ipc` (compiler), `ipa` (assembler), `ipdis`
   (disassembler), `ipval` (validator), `ipgen` (renderer) and `ipsheet`
-  (variant/seed sheets).
+  (consecutive seed sheets with fixed inputs).
 - `ipc --describe-language` exports schema-3 language contracts, including asset
   constant policy and builtin constant-evaluation eligibility; JSON
   diagnostics use schema 1. Generated documentation includes `LLM_REFERENCE.md`.
@@ -547,8 +543,8 @@ compiler and rendering tools:
 - `.ips` code editor with syntax highlighting and diagnostics.
 - Canonical formatting and guarded compiler-supplied quick fixes.
 - Live preview canvas.
-- Seed / variant / archetype controls and declared input editors.
-- Atlas browser (variant grid).
+- Seed controls and declared input editors.
+- Atlas browser (16 consecutive seeds at fixed inputs).
 - Bytecode inspector and disassembly view (debug section).
 - One-click export of the compiled `.iprop`.
 
@@ -608,7 +604,7 @@ infinite-props/
 
 | Area | Current status |
 | ---- | -------------- |
-| Format, VM and native toolchain | Product 0.7.0 development, stages 1–10; reads formats 0.1–0.6 |
+| Format, VM and native toolchain | Product 0.7.0 development; reads format 0.7 only |
 | C API and HTML5/WASM | Implemented, with native/WASM conformance |
 | SFML and Godot | Implemented optional C API integrations |
 | Authoring tools | VS Code extension with preview, diagnostics, formatting and exports |
@@ -712,9 +708,10 @@ that coverage with exact math and preserved pre-change bytes; the
 The [stage 2 validation report](docs/validation-v0.7-stage2.md) covers asset
 constants, compiler diagnostics and host conformance.
 
-The current runtime supports formats 0.1–0.6 and the
-[lossless DEFLATE container](spec/iprop-v0.4.md) introduced in 0.4. A compressed
-container retains a 0.4 outer header even when its inner executable is 0.6.
+The current runtime supports [format 0.7](spec/iprop-v0.7.md) only, including
+lossless DEFLATE containers whose envelope and payload both carry version 0.7.
+Older binaries must be rebuilt from migrated sources. See the
+[migration guide](docs/variant-archetype-removal.md).
 `ipc` strips debug information by default and
 compresses only when the complete output is smaller. Use `--debug` to keep
 source maps and symbols, and `--no-compress` for an expanded file; either

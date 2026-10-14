@@ -169,7 +169,7 @@ async function renderAll() {
     const base = (Math.random() * 0xFFFFFFFF) >>> 0;
     renderSheet(document.getElementById(asset.id), asset.bytes, base, SEEDS);
     document.getElementById("meta-" + asset.id).textContent =
-      "seeds " + base + " – " + ((base + SEEDS - 1) >>> 0) + " (" + SEEDS + " variants of one asset)";
+      "seeds " + base + " – " + ((base + SEEDS - 1) >>> 0) + " (" + SEEDS + " seeds of one asset)";
   }
 }
 

@@ -16,7 +16,7 @@ def main():
         part = root / 'część.ips'
         part.write_text('asset child { size 8x8; input i32 n=-7; draw{} }', encoding='utf-8')
         entry.write_text('import child from "część.ips"; asset t { size 8x8; '
-                         'draw { child.draw(seed,v,a,at={0,0}) } }', encoding='utf-8')
+                         'draw { child.draw(seed,at={0,0}) } }', encoding='utf-8')
         original = {p.name: p.read_bytes() for p in root.iterdir()}
 
         def invoke(args, expected_status, expected_exit):

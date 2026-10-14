@@ -50,7 +50,7 @@ The output uses two-space indentation, explicit expression grouping, word
 keywords and normalized literals. Calls use the compiler's shared binding and
 evaluation plan: ordinary builtins and helpers follow parameter order, `poly`
 puts vertex coordinates before its colour, and a known part puts uniforms in
-declaration order before seed/v/a/at and transforms. Unknown imports retain
+declaration order before seed/at and transforms. Unknown imports retain
 written order until their declarations are available. Helpers keep their
 existing `helper(parameters) -> type` syntax.
 It must differ from the input and binary output. Comments keep their exact
@@ -135,8 +135,8 @@ Hosts may impose smaller limits on dimensions or total pixel counts.
 Binary pools/indices, function nesting, stream stacks
 and structured outputs also have bounds; see
 [validation and resource limits](../../spec/iprop-v0.3.md#14-validation).
-Compressed v0.4 files bound both encoded and decoded size to 64 MiB.
-Host-specific limits and invalid variant/archetype indices can reject an
+Compressed v0.7 files bound both encoded and decoded size to 64 MiB.
+Host-specific limits and invalid input values can reject an
 invocation before draw starts.
 
 Integer division/remainder by zero traps; float division follows IEEE-754.

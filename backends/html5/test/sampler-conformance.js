@@ -120,9 +120,9 @@ function run(iprop,tool,directory){
     ])for(const optimized of [false,true])trap(compile("asset t{size 1x1 draw{"+body+"}}",optimized),message);
     // Actual quota exhaustion for descriptions and for returned batches.
     for(const body of ["const.i32 1\nsampler.value 0\ndrop\n",
-        "local.get 2\nconst.i32 256\nsampler.pick.list 0\ndrop\n"]){
-        const setup=body.includes("local.get")?"locals: sampler<i32>\nconst.i32 1\nsampler.value 0\nlocal.set 2\n":"";
-        fs.writeFileSync(base+".ipa","meta: size=1x1 fuel=100000000\ntypes: sampler<i32>\nfn draw ( i32, i32 ) -> ( ):\n"+setup+"loop\n"+body+"br 0\nend\nreturn\nendfn\n");
+        "local.get 0\nconst.i32 256\nsampler.pick.list 0\ndrop\n"]){
+        const setup=body.includes("local.get")?"locals: sampler<i32>\nconst.i32 1\nsampler.value 0\nlocal.set 0\n":"";
+        fs.writeFileSync(base+".ipa","meta: size=1x1 fuel=100000000\ntypes: sampler<i32>\nfn draw (  ) -> ( ):\n"+setup+"loop\n"+body+"br 0\nend\nreturn\nendfn\n");
         execFileSync(tool("ipa"),[base+".ipa","-o",base+".iprop"]);trap(base+".iprop",/generation data exceeds 64 MiB/);
     }
     function reject(data){
@@ -138,7 +138,7 @@ function run(iprop,tool,directory){
     }
     // Aux, descriptor bounds and kind are checked for all five operations,
     // also after a return where no operand stack can execute.
-    fs.writeFileSync(base+"-typed-gate.ipa","meta: size=1x1\ntypes: sampler<i32> list<i32>\nfn draw ( i32, i32 ) -> ( ):\n"+
+    fs.writeFileSync(base+"-typed-gate.ipa","meta: size=1x1\ntypes: sampler<i32> list<i32>\nfn draw (  ) -> ( ):\n"+
         "return\nsampler.value 0\nsampler.range 0\nsampler.with 0\nsampler.pick 0\nsampler.pick.list 0\nendfn\n");
     execFileSync(tool("ipa"),[base+"-typed-gate.ipa","-o",base+"-typed-gate.iprop"]);
     const typed=fs.readFileSync(base+"-typed-gate.iprop");
@@ -148,7 +148,7 @@ function run(iprop,tool,directory){
         bad=Buffer.from(typed);bad.writeUInt16LE(1,offset+2);reject(bad);
     }
     // Every sampler opcode is rejected in section-free dead code on minors 1–5.
-    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
+    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     execFileSync(tool("ipa"),[base+"-gate.ipa","-o",base+"-gate.iprop"]);
     const gate=fs.readFileSync(base+"-gate.iprop"),dead=instructions(gate)[1];assert.equal(gate[dead],0);
     for(const opcode of [0xbc,0xbd,0xbe,0xbf,0xc0])for(let minor=1;minor<=5;++minor){

@@ -494,8 +494,6 @@ private:
             const auto& part = file_.code.parts[op];
             expect(at, ValueType::F32, "part offset y");
             expect(at, ValueType::F32, "part offset x");
-            expect(at, ValueType::I32, "part archetype");
-            expect(at, ValueType::I32, "part variant");
             expect(at, ValueType::I32, "part seed");
             for (std::size_t p = part.inputs.size(); p > 0; --p) {
                 expect(at, typeOf(part.inputs[p - 1]), "part uniform");
@@ -563,13 +561,13 @@ void checkEntry(const LoadedFile& file) {
         throw FormatError("entry function must be named 'draw'", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
-    const std::size_t expected = 2 + file.meta.inputs.size();
+    const std::size_t expected = file.meta.inputs.size();
     if (entry.params.size() != expected) {
         throw FormatError("draw signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
     for (std::size_t i = 0; i < expected; ++i) {
-        const ValueType want = i < 2 ? ValueType::I32 : typeOf(file.meta.inputs[i - 2]);
+        const ValueType want = typeOf(file.meta.inputs[i]);
         if (entry.params[i] != want) {
             throw FormatError("draw signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
                 functionLocation(file, entry));
@@ -584,13 +582,13 @@ void checkEntry(const LoadedFile& file) {
 void checkPartSignatures(const LoadedFile& file) {
     for (const auto& part : file.code.parts) {
         const auto& fn = file.code.functions[part.functionIndex];
-        const std::size_t expected = 2 + part.inputs.size();
+        const std::size_t expected = part.inputs.size();
         if (fn.params.size() != expected) {
             throw FormatError("part function signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
                 functionLocation(file, fn));
         }
         for (std::size_t i = 0; i < expected; ++i) {
-            const ValueType want = i < 2 ? ValueType::I32 : typeOf(part.inputs[i - 2]);
+            const ValueType want = typeOf(part.inputs[i]);
             if (fn.params[i] != want) {
                 throw FormatError("part function signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
                     functionLocation(file, fn));

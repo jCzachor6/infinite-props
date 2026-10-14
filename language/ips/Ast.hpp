@@ -321,8 +321,6 @@ struct Asset {
     std::optional<std::uint32_t> sizeY;
     std::unique_ptr<Expr> originX;
     std::unique_ptr<Expr> originY;
-    std::optional<std::uint32_t> variants;
-    std::optional<std::uint32_t> archetypes;
 
     std::vector<InputDecl> inputs;
     std::vector<OutputDecl> outputs;

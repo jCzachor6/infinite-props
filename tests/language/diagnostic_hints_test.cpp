@@ -32,7 +32,7 @@ TEST_CASE("parser hints match expected keywords and misplaced declarations") {
         return std::string{};
     };
     CHECK(message("assset t { size 8x8 draw { } }").find("did you mean 'asset'") != std::string::npos);
-    CHECK(message("asset t { size 8x8 varaints 2 draw { } }").find("did you mean 'variants'") != std::string::npos);
+    CHECK(message("asset t { size 8x8 orgin 0,0 draw { } }").find("did you mean 'origin'") != std::string::npos);
     CHECK(message("asset t { size 8x8 draw { retrun } }").find("did you mean 'return'") != std::string::npos);
     CHECK(message("import tile form \"tile.ips\" asset t { }").find("did you mean 'from'") != std::string::npos);
 }

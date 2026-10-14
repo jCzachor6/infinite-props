@@ -15,24 +15,21 @@ hierarchy level's placement and D4 once; host indices still count geometry only.
 
 <!-- example: ../../examples/language/composition.ips -->
 
-`alias.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)` requires
-three integer controls named `seed`, `v` and `a`. These controls may instead
-be positional in that order, or mix positional and named arguments.
-For example, `alias.draw(a = a, seed, v, at = {8, 4})` binds its two
-positional arguments to `seed` and `v`. Named arguments do not advance the
-positional cursor; binding the same control twice is an error.
+`alias.draw(seed = seed, at = {x, y}, uniforms...)` requires one integer
+seed and a named placement. Seed may be positional or named. Transform
+arguments and input overrides are named only.
 
 Placement `at`, transform arguments and optional input overrides are named
-only. Extra positional arguments, unknown names and missing controls or
+only. Extra positional arguments, unknown names and missing seed or
 placement are errors. Input names `variant` and `archetype` remain ordinary
-uniform names; they do not alias the `v` and `a` controls. Unspecified
+uniform names. Unspecified
 uniforms use the part's defaults. `at` positions the part's declared origin.
 Call order determines paint order; the parent's RNG stream is restored
 after the part executes to its state after the dynamic argument expressions.
 An override containing `unit()` therefore still advances the parent stream;
 random draws made by the child use its isolated stream. A part may paint and
 write its own outputs, and its conservative exported effect summary includes
-callee/placement/selector checks rather than assuming the child is pure.
+callee/placement checks rather than assuming the child is pure.
 
 Optional transform arguments are compile-time integers: `rot` is 0, 90, 180
 or 270; `mirror_x`/`mirror_y` are 0 or 1, including boolean constants.
@@ -54,7 +51,7 @@ later call that does not write it neither replaces nor moves it.
 ## Part call order
 
 Uniform overrides evaluate in the part's input declaration order. Then the
-`seed`, `v`, `a` and placement expressions evaluate, regardless of the order
+`seed` and placement expressions evaluate, regardless of the order
 of named arguments in the source. Transform
 arguments are compile-time constants. Each dynamic argument evaluates once.
 See [parts and D4 transforms](../../spec/iprop-v0.3.md#105-part-transforms-v03)

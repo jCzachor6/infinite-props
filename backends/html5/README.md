@@ -77,7 +77,7 @@ const result = iprop.generate(bytes, { seed: 26 }); // {width, height, data, out
 iprop.drawToCanvas(canvas, result);                 // RGBA -> ImageData
 ```
 
-`generate` inputs: `{seed, variant, archetype, sizeX, sizeY, uniforms}` (all
+`generate` inputs: `{seed, sizeX, sizeY, uniforms}` (all
 optional; the numbers default to 0, and a zero size means the asset's own
 size). `uniforms` sets declared inputs by name, like `ipgen --uniform`:
 numbers for `u32` and `f32` inputs (a `u32` must be an integer in range; an
@@ -86,12 +86,12 @@ colours. Undeclared names and mistyped values throw; omitted inputs keep their
 defaults.
 
 ```js
-const glow = iprop.generate(bytes, { seed: 26, variant: 2, uniforms: { layer: 1, magic: "#33ccff" } });
+const glow = iprop.generate(bytes, { seed: 26, uniforms: { v: 2, renderLayer: 1, magic: "#33ccff" } });
 ```
 
 `data` is a copied `Uint8Array` of RGBA pixels; `outputs` mirrors the desktop
 `GenerationResult` (points/rects/circles per named slot). The raw module
-function is `generate(fileBytes, seed, variant, archetype, sizeX, sizeY[,
+function is `generate(fileBytes, seed, sizeX, sizeY[,
 uniforms])`.
 
 ## Notes

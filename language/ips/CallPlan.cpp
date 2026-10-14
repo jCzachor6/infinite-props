@@ -58,11 +58,11 @@ CallSignature partCallSignature(std::span<const PartInput> inputs) {
     result.effects = findOpcode(Opcode::PartDraw)->effects;
     result.evaluationOrder.clear();
     for (std::size_t i = 0; i < inputs.size(); ++i) {
-        result.evaluationOrder.push_back(7 + i);
-        result.defaults[7 + i] = inputs[i].declaration;
+        result.evaluationOrder.push_back(5 + i);
+        result.defaults[5 + i] = inputs[i].declaration;
     }
-    for (std::size_t i = 0; i < 7; ++i) result.evaluationOrder.push_back(i);
-    for (std::size_t i = 4; i < 7; ++i) result.defaults[i] = i32{0};
+    for (std::size_t i = 0; i < 5; ++i) result.evaluationOrder.push_back(i);
+    for (std::size_t i = 2; i < 5; ++i) result.defaults[i] = i32{0};
     return result;
 }
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function) {

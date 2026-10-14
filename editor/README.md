@@ -23,20 +23,20 @@ external edits).
   one canonical text edit. Save IPS buffers first; formatting leaves the entry
   on disk unchanged and writes no binary.
 - **Live preview** (Cmd+Shift+P → *iprop: Open Preview*): a side panel with
-  the pixel-exact render, seed/variant/archetype sliders, uniform editors
+  the pixel-exact render, seed controls, uniform editors
   for the declared inputs, the fuel readout and the structured outputs. A
   debounced compile-on-edit refreshes it; compile errors show as an overlay.
-- **Atlas** (*iprop: Open Atlas*): a grid of every variant × archetype cell
-  at the current seed; clicking a cell drives the preview.
+- **Atlas** (*iprop: Open Atlas*): a 4×4 grid of 16 consecutive seeds
+  starting at the current seed, with the current declared input values; clicking a cell drives the preview.
 - **Bytecode inspector** (*iprop: Open Bytecode Inspector*): the `ipdis
   --source` disassembly with the debug section's source map — the editor
   cursor highlights the matching instructions, and clicking an instruction
   jumps the editor to its source line. The inspector explicitly compiles
   with `--debug`; binary exports use the stripped production default.
-- **Export** (*iprop: Export .iprop / PNG / Variant Sheet*): one-click
+- **Export** (*iprop: Export .iprop / PNG / Seed Sheet*): one-click
   exports — the `.iprop` is validated with `ipval` after saving, the PNG
-  uses the current seed/variant/archetype, the sheet grids the variants ×
-  a chosen seed count through `ipsheet`.
+  uses the current seed and inputs; the sheet uses the same inputs and
+  a chosen count of consecutive seeds through `ipsheet`.
 - **Imports** (*iprop: Open Import…*): lists the imports of the active file
   and opens the picked part; missing parts surface as compiler errors with
   the file and line.
@@ -110,7 +110,7 @@ its atomic write may leave its own staging directory. Each request uses a
 | `Alt+A` | open the atlas |
 | `Alt+I` | open the bytecode inspector |
 | `Alt+E` | export the `.iprop` |
-| `Alt+Shift+E` | export the variant sheet |
+| `Alt+Shift+E` | export the seed sheet |
 | `Cmd/Ctrl+S` | save (native) |
 
 ## Install

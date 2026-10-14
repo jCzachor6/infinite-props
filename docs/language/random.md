@@ -109,7 +109,7 @@ rust = 0.0 to 1.0 with mostlyClean          // mostly below 0.3
 A `distribution` is a value: store it, copy it, pass it to a helper and
 return it from one. `distribution d = ...` declares it explicitly; a plain
 first assignment infers the type as usual. Its parameters are evaluated
-once, when the constructor runs, and may come from inputs, `v`/`a`, earlier
+once, when the constructor runs, and may come from inputs, earlier
 computations or draws; changing those variables later does not change the
 description. Constructing a distribution draws nothing; every `with` draw
 takes its own value from the current stream, so two ranges using one

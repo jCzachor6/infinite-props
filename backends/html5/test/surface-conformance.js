@@ -1,4 +1,5 @@
 "use strict";
+const {renderSource, renderArguments} = require("./authored-fixtures.js");
 
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const crypto = require("node:crypto"), {execFileSync, spawnSync} = require("node:child_process");
@@ -23,7 +24,7 @@ function run(iprop,tool,directory) {
     function generate(binary,seed=26,options={}) {
         const png=base+".png",flags=[];
         if(options.sizeX)flags.push("--size",`${options.sizeX}x${options.sizeY}`);
-        if(options.variant)flags.push("--variant",String(options.variant));
+        for(const [name,value] of Object.entries(options.uniforms || {})) flags.push("--uniform",name+"="+value);
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...options});
         assert.deepEqual(bits(wasm),native.outputs,"surface output bits");
@@ -47,12 +48,16 @@ function run(iprop,tool,directory) {
     }
     const part=preserved.cases.find(c=>c.source.endsWith("part-targets"));
     const tree=path.join(directory,"surface-tree");fs.mkdirSync(tree);
-    function captured(text) {const start=text.indexOf("draw{");return text.slice(0,start)+"draw{layer image{"+text.slice(start+5,-2)+"}surface.paint(image)}}";}
+    function captured(text) {
+        // Re-author the archived selection as an ordinary declared input.
+        text=text.replace(/\bvariants\s+\d+/g,"input i32 v=0").replace(/\barchetypes\s+\d+/g,"")
+            .replace(/\.draw\(seed,0,0,/g,".draw(seed,");
+        const start=text.indexOf("draw{");return text.slice(0,start)+"draw{layer image{"+text.slice(start+5,-2)+"}surface.paint(image)}}";}
     for(const opt of [false,true]) {
         for(const [name,text] of Object.entries(part.source_texts))fs.writeFileSync(path.join(tree,name),captured(text));
         const binary=path.join(tree,"tree.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),...(opt?[]:["--no-opt"]),"-o",binary]);
         for(const expected of part.generations) {
-            const actual=generate(binary,expected.seed,expected.arguments);
+            const actual=generate(binary,expected.seed,{sizeX:expected.arguments.sizeX,sizeY:expected.arguments.sizeY,uniforms:{v:expected.arguments.variant}});
             assert.equal(actual.rgba_sha256,expected.rgba_sha256,"preserved part/D4/scale pixels");
             assert.equal(actual.outputs_sha256,expected.outputs_sha256,"preserved part outputs/isolation");++pins;
         }
@@ -86,18 +91,18 @@ function run(iprop,tool,directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
     for(const opt of [false,true])for(const source of ["asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",
-        "asset t{size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 1024x1024 draw{layer image{}surface.paint(image)}}"])
+        "asset t{input i32 v=0 size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 1024x1024 draw{layer image{}surface.paint(image)}}"])
         trap(compile(source,opt),/layer is unassigned|divide by zero|fuel exhausted/);
     function assembly(text) {fs.writeFileSync(base+".ipa",text);execFileSync(tool("ipa"),[base+".ipa","-o",base+"-asm.iprop"]);return base+"-asm.iprop";}
-    trap(assembly("meta: size=1x1\ntypes: layer\nfn draw ( i32, i32 ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n"),/surface scope depth exceeds 32/);
-    trap(assembly("meta: size=1024x1024 fuel=100000000\ntypes: layer\nfn draw ( i32, i32 ) -> ( ):\nlocals: layer\n"+"layer.begin 2\n".repeat(16)+"end\n".repeat(16)+"return\nendfn\n"),/64 MiB/);
+    trap(assembly("meta: size=1x1\ntypes: layer\nfn draw (  ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n"),/surface scope depth exceeds 32/);
+    trap(assembly("meta: size=1024x1024 fuel=100000000\ntypes: layer\nfn draw (  ) -> ( ):\nlocals: layer\n"+"layer.begin 0\n".repeat(16)+"end\n".repeat(16)+"return\nendfn\n"),/64 MiB/);
     function reject(data) {const binary=base+"-bad.iprop";fs.writeFileSync(binary,data);const native=spawnSync(tool("ipval"),[binary],{encoding:"utf8"});
         assert.equal(native.status,1,native.stderr);assert.equal(native.signal,null);assert.throws(()=>iprop.generate(new Uint8Array(data),{}));++rejections;}
-    const valid=Buffer.from(fs.readFileSync(compile("asset t{size 1x1 draw{layer image(alpha=surface.legacy){}surface.paint(image,blend=surface.legacy)}}",false,"-wire")));
+    const valid=Buffer.from(fs.readFileSync(compile("asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.legacy){}surface.paint(image,blend=surface.legacy)}}",false,"-wire")));
     const parsed=instructions(valid),types=sections(valid).get(6);
     for(const [at,value] of [[types+4,255],[types+5,0],[types+6,1],[types+7,1]]){const bad=Buffer.from(valid);bad[at]=value;reject(bad);}
     for(const at of parsed)if(valid[at]===0xc6) {
-        for(const operand of [0,1,65535]){const bad=Buffer.from(valid);bad.writeUInt16LE(operand,at+2);reject(bad);}
+        for(const operand of [0,2,65535]){const bad=Buffer.from(valid);bad.writeUInt16LE(operand,at+2);reject(bad);}
         const bad=Buffer.from(valid);bad[at+1]=3;reject(bad);
     } else if(valid[at]===0xc7) {
         const bad=Buffer.from(valid);bad.writeUInt16LE(3,at+2);reject(bad);
@@ -106,13 +111,15 @@ function run(iprop,tool,directory) {
     const old=Buffer.from(valid);old.writeUInt16LE(5,6);reject(old);
     // Dead-code version gates without a Types section, and a wrong paint type.
     for(const opcode of [0xc6,0xc7]) {
-        const binary=assembly("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
+        const binary=assembly("meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
         const data=Buffer.from(fs.readFileSync(binary)),dead=instructions(data).find(i=>data[i]===0);
-        data[dead]=opcode;reject(data);
+        data[dead]=opcode;
+        if(opcode===0xc7)data.writeUInt16LE(3,dead+2); // unknown mode, including unreachable code
+        reject(data);
     }
     const wrong=Buffer.from(valid),paint=instructions(wrong).find(i=>wrong[i]===0xc7),get=instructions(wrong).find(i=>wrong[i]===0x13);
     assert.ok(paint && get);wrong.writeUInt16LE(0,get+2);reject(wrong);
-    generate(compile("asset t{size 1x1 draw{layer image{pixel(0,0,#fff)}surface.paint(image)}}",true,"-recovery"));
+    generate(compile("asset t{input i32 v=0 size 1x1 draw{layer image{pixel(0,0,#fff)}surface.paint(image)}}",true,"-recovery"));
     return {comparisons,traps,rejections,pins};
 }
 module.exports={run};

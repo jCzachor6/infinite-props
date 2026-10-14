@@ -1,4 +1,5 @@
 "use strict";
+const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { decodePng } = require("./png.js");
@@ -20,7 +21,7 @@ function run(iprop, tool, directory) {
     function generate(binary, seed = 26, options = {}) {
         const png = base + ".png", flags = [];
         if (options.sizeX) flags.push("--size", `${options.sizeX}x${options.sizeY}`);
-        if (options.variant) flags.push("--variant", String(options.variant));
+        for(const [name,value] of Object.entries(options.uniforms || {})) flags.push("--uniform",name+"="+value);
         const native = JSON.parse(execFileSync(tool("ipgen"), [binary, "--seed", String(seed), "--float-bits", ...flags, "-o", png], { encoding: "utf8" }));
         const rgba = Buffer.from(decodePng(fs.readFileSync(png)).data);
         const wasm = iprop.generate(new Uint8Array(fs.readFileSync(binary)), { seed, ...options });
@@ -63,7 +64,8 @@ function run(iprop, tool, directory) {
     const part = frozen.cases.find(c => c.source.endsWith("opaque-part-mapping-oracle"));
     const tree = path.join(directory, "mask-tree"); fs.mkdirSync(tree);
     for (const opt of [false, true]) {
-        for (const [name, source] of Object.entries(part.source_texts)) {
+        for (const [name, original] of Object.entries(part.source_texts)) {
+            const source = renderSource(original);
             const start = source.indexOf("draw{");
             const next = source.slice(0, start) + "draw{" +
                 // Frozen rectangles truncate scaled sizes; part canvases round.
@@ -76,7 +78,7 @@ function run(iprop, tool, directory) {
         const binary = path.join(tree, "tree.iprop");
         execFileSync(tool("ipc"), [path.join(tree, "root.ips"), ...(opt ? [] : ["--no-opt"]), "-o", binary]);
         for (const expected of part.generations) {
-            const actual = generate(binary, expected.seed, expected.arguments), rgba = Buffer.from(expected.rgba_base64, "base64");
+            const actual = generate(binary, expected.seed, renderArguments(expected.arguments)), rgba = Buffer.from(expected.rgba_base64, "base64");
             for (let at = 0; at < rgba.length; at += 4) if (rgba[at + 3])
                 rgba[at + 3] = rgba[at] === 17 ? 64 : 32;
             assert.deepEqual(actual.rgba, rgba, "three-level clip/D4/scale frozen positions");
@@ -121,7 +123,7 @@ function run(iprop, tool, directory) {
         ["layer image{}region=mask.from(image)m=mask.expand(region,v+65)", /mask radius must be in 0\.\.64/],
         ["layer image{}region=mask.from(image)m=mask.expand(region,64)", /fuel exhausted/],
         ["layer image{}region=mask.from(image)m=mask.offset(region,2147483647,0)", /mask mapping is not representable/],
-    ]) trap(compile("asset t{size 2x1 draw{" + sample[0] + "}}",opt),sample[1]);
+    ]) trap(compile("asset t{input i32 v=0 size 2x1 draw{" + sample[0] + "}}",opt),sample[1]);
     const retainedMasks = Array.from({length:64}, (_,i) => `region${i}=mask.invert(region)`);
     const memory = compile("asset t{size 1024x1024 draw{layer image{}region=mask.from(image)" + retainedMasks.join("") + "}}", false);
     trap(fuelLimit(memory,200000000), /generation data exceeds 64 MiB/);
@@ -135,7 +137,7 @@ function run(iprop, tool, directory) {
         assert.equal(native.status,1,native.stderr); assert.equal(native.signal,null);
         assert.throws(() => iprop.generate(new Uint8Array(data),{})); ++rejections;
     }
-    const valid = Buffer.from(fs.readFileSync(compile("asset t{size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false)));
+    const valid = Buffer.from(fs.readFileSync(compile("asset t{input i32 v=0 size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false)));
     for (const at of instructions(valid)) if (valid[at] === 0xd0) for (const mode of [3,257,65535]) {
         const bad=Buffer.from(valid); bad.writeUInt16LE(mode,at+2); reject(bad);
     }
@@ -144,7 +146,7 @@ function run(iprop, tool, directory) {
         const bad=Buffer.from(valid); bad[at+relative]=value; reject(bad);
     }
     for (const op of ["mask.from","mask.union","mask.intersect","mask.subtract","mask.invert","mask.expand","mask.shrink","mask.offset","surface.paint.mask 2","clip.begin\nend"]) {
-        fs.writeFileSync(base+".ipa","meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\n"+op+"\nendfn\n");
+        fs.writeFileSync(base+".ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\n"+op+"\nendfn\n");
         execFileSync(tool("ipa"),[base+".ipa","-o",base+"-dead.iprop"]); generate(base+"-dead.iprop");
         const dead=Buffer.from(fs.readFileSync(base+"-dead.iprop")); dead.writeUInt16LE(5,6); reject(dead);
         const current=Buffer.from(fs.readFileSync(base+"-dead.iprop"));

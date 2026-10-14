@@ -182,7 +182,7 @@ private:
             current_ = &program_.asset.constants[i];
             const auto& name = current_->name;
             if (!declarations_.emplace(name, i).second) fail(current_->location, "duplicate constant name", DiagnosticCode::TypeError);
-            if (name == "seed" || name == "v" || name == "a" || name == "at" || name == "rot" ||
+            if (name == "seed" || name == "at" || name == "rot" ||
                 name == "mirror_x" || name == "mirror_y") fail(current_->location, "reserved name", DiagnosticCode::TypeError);
             if (collision(program_.asset.inputs, name) || collision(program_.asset.outputs, name) ||
                 collision(program_.asset.palettes, name) || collision(program_.asset.functions, name) ||

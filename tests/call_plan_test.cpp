@@ -61,12 +61,12 @@ TEST_CASE("part binding records declaration defaults without resolving them whil
       input f32 z=-0.0 input i32 invalid=1.5 draw {} })");
     const auto info = ips::partInfoOf(part.asset);
     const auto signature = ips::partCallSignature(info.inputs);
-    CHECK(signature.evaluationOrder == std::vector<std::size_t>{7,8,0,1,2,3,4,5,6});
+    CHECK(signature.evaluationOrder == std::vector<std::size_t>{5,6,0,1,2,3,4});
     CHECK(signature.effects == findOpcode(Opcode::PartDraw)->effects);
-    CHECK(std::get<const ips::InputDecl*>(signature.defaults[7]) == &part.asset.inputs[0]);
-    CHECK(std::get<const ips::InputDecl*>(signature.defaults[8]) == &part.asset.inputs[1]);
-    CHECK(std::get<i32>(signature.defaults[4]) == 0);
-    const auto root = ips::parse("import child from \"child.ips\" asset t {size 8x8 draw{child.draw(seed,v,a,at={0,0})}}");
+    CHECK(std::get<const ips::InputDecl*>(signature.defaults[5]) == &part.asset.inputs[0]);
+    CHECK(std::get<const ips::InputDecl*>(signature.defaults[6]) == &part.asset.inputs[1]);
+    CHECK(std::get<i32>(signature.defaults[2]) == 0);
+    const auto root = ips::parse("import child from \"child.ips\" asset t {size 8x8 draw{child.draw(seed,at={0,0})}}");
     CHECK_NOTHROW(ips::checkAsset(root, {{"child",info}}));
     // The invalid default belongs to the imported declaration, never the call.
     const auto errors = ips::checkAssetDiagnostics(part, {});
@@ -79,15 +79,15 @@ TEST_CASE("source-only formatting preserves unknown imports and orders known hel
     const auto part = ips::parse("asset child {size 4x4 input f32 z=1.0 input f32 b=2.0 draw{}}");
     const auto root = ips::parse(R"(import child from "child.ips" asset t {size 8x8 draw {
       sink(y=2,x=1)
-      child.draw(a=a,b=unit(),z=unit(),at={0,0},v=v,seed=seed)
+      child.draw(b=unit(),z=unit(),at={0,0},seed=seed)
       poly(#fff,0,0,4,0,0,4)
     } sink(x:f32,y:f32) {} })");
     const auto unknown = ips::formatProgram(root);
-    CHECK(unknown.find("child.draw(a = a, b = unit(), z = unit(), at = {0, 0}, v = v, seed = seed)") != std::string::npos);
+    CHECK(unknown.find("child.draw(b = unit(), z = unit(), at = {0, 0}, seed = seed)") != std::string::npos);
     CHECK(unknown.find("sink(x = 1, y = 2)") != std::string::npos);
     CHECK(unknown.find("poly(x0 = 0, y0 = 0, x1 = 4, y1 = 0, x2 = 0, y2 = 4, #ffffff)") != std::string::npos);
     const auto known = ips::formatProgram(root, {{"child",&part}});
-    CHECK(known.find("child.draw(z = unit(), b = unit(), seed = seed, v = v, a = a, at = {0, 0})") != std::string::npos);
+    CHECK(known.find("child.draw(z = unit(), b = unit(), seed = seed, at = {0, 0})") != std::string::npos);
     const auto reparsed = ips::parse(known);
     CHECK(ips::formatProgram(reparsed, {{"child",&part}}) == known);
     for (bool optimize : {false,true})
@@ -97,7 +97,7 @@ TEST_CASE("source-only formatting preserves unknown imports and orders known hel
 
 TEST_CASE("shared call plans preserve effect traces signed defaults aliases and parent stream after formatting") {
     const auto part = ips::parse(R"(asset child {size 4x4
-      input f32 z=-0.0 input f32 first=1.0 input f32 second=2.0
+      input f32 z=-0.0 input f32 first=1.0 input f32 second=2.0 input i32 v=0 input i32 a=0
       output point defaults
       draw {defaults={atan2(z,-1.0),first}; pixel(0,0,#abc);}
     })");
@@ -110,7 +110,7 @@ TEST_CASE("shared call plans preserve effect traces signed defaults aliases and 
         choose(value1=note(14),seed=note(12),value0=note(13))
         ramp(t=note(15),palette=p)
         child.draw(at={note(20),note(21)},a=note(19),seed=note(17),second=note(16),v=note(18))
-        twin.draw(seed,v,a,at={4,4})
+        twin.draw(seed,at={4,4})
         trace={22,unit()}
       }
       note(tag:i32)->i32 {trace={tag,unit()}; return 0;}

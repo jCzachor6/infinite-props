@@ -264,3 +264,8 @@ iprop_capi_test(capi_conformance
     ARGS ${golden} ${CMAKE_SOURCE_DIR}/tests/golden)
 target_link_libraries(capi_conformance PRIVATE iprop_png)
 endif()
+
+# Distinct loader identity for the intentionally incompatible C ABI.
+if(WIN32)
+    set_target_properties(iprop_capi PROPERTIES OUTPUT_NAME "ipropc-${IPROP_C_ABI_SOVERSION}")
+endif()

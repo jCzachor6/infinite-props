@@ -207,7 +207,7 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::Dither, "dither", 3, StackSignature({S::F32, S::I32, S::I32}, V::F32)),
     fixed(Opcode::Vec2Fold, "vec2.fold", 3, StackSignature({S::Vec2, S::I32}, V::Vec2)),
     fixed(Opcode::Vec2Polar, "vec2.polar", 3, StackSignature({S::Vec2}, V::Vec2)),
-    dynamic(Opcode::PartDraw, "part.draw", 1, OperandKind::Name, AuxPolicy::PartTransform),
+    dynamic(Opcode::PartDraw, "part.draw", 7, OperandKind::Name, AuxPolicy::PartTransform),
     fixed(Opcode::Smoothstep, "smoothstep", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Remap, "remap", 3, StackSignature({S::F32, S::F32, S::F32, S::F32, S::F32}, V::F32)),
     fixed(Opcode::Clamp, "clamp", 3, StackSignature({S::F32, S::F32, S::F32}, V::F32)),

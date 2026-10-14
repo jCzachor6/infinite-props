@@ -3,6 +3,8 @@
 #include "png.hpp"
 
 #include "ipgen.hpp"
+#include "ipsheet.hpp"
+#include "support/compiler_support.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -59,12 +61,12 @@ struct CapturedStdout {
 // output "anchor"; draw paints pixel(1,1) with the palette and writes
 // out.point (1,2).
 std::vector<u8> fixtureFile() {
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0,
+    const auto meta = metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0,
                                   {{0, 1, {10, 20, 30, 255}, 0, 0}}, {{0, 0, 2}});
     std::vector<u8> body;
     for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (x)
     for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (y)
-    for (const auto b : ins(0x13, 0, 2)) body.push_back(b); // local.get 2 (palette)
+    for (const auto b : ins(0x13, 0, 0)) body.push_back(b); // local.get 2 (palette)
     for (const auto b : ins(0x80, 0, 0)) body.push_back(b); // pixel
     for (const auto b : ins(0x11, 0, 0)) body.push_back(b); // const.f32 1
     for (const auto b : ins(0x11, 0, 1)) body.push_back(b); // const.f32 2
@@ -72,7 +74,7 @@ std::vector<u8> fixtureFile() {
     for (const auto b : retIns()) body.push_back(b);
 
     const auto pool = constSection({"draw", "palette", "anchor"}, {0, 1}, {1.f, 2.f}, {});
-    return fullFile(meta, pool, codeSection({{0, {0, 0, 2}, {}, {}, body}}, {}));
+    return fullFile(meta, pool, codeSection({{0, {2}, {}, {}, body}}, {}));
 }
 
 void writeFixture(const TempPath& temp) {
@@ -182,7 +184,7 @@ TEST_CASE("--size changes the output dimensions") {
     REQUIRE(image.height == 8);
 }
 
-TEST_CASE("an out-of-range variant fails through the VM") {
+TEST_CASE("retired host controls are rejected as unknown options") {
     TempPath temp("fixture");
     writeFixture(temp);
     CapturedStdout captured;
@@ -206,6 +208,27 @@ TEST_CASE("unknown options and missing files fail") {
         const char* args[] = {"ipgen", "/nonexistent/path.iprop", nullptr};
         REQUIRE(ipgenMain(2, const_cast<char**>(args)) == 1);
     }
+}
+
+TEST_CASE("seed sheets keep declared input overrides and wrap consecutive seeds") {
+    TempPath temp("seed-sheet");
+    const auto bytes = compiler_test::compileChecked("asset t {size 1x1 input color v=#123 input i32 a=2 draw{pixel(0,0,rgb(v.r,a,seed&255))}}");
+    {
+        std::ofstream file(temp.path, std::ios::binary);
+        file.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    }
+    CapturedStdout captured;
+    const auto file = temp.path.string(), png = temp.pngPath().string();
+    const char* args[] = {"ipsheet",file.c_str(),"--seed","4294967295","--seeds","3","--columns","2",
+                         "--uniform","v=#445566","--uniform","a=7","-o",png.c_str(),nullptr};
+    REQUIRE(ipsheetMain(14,const_cast<char**>(args)) == 0);
+    const auto image=tools::readPng(png);
+    CHECK(image.width == 2);
+    CHECK(image.height == 2);
+    CHECK(image.rgba == std::vector<u8>{68,7,255,255,68,7,0,255,68,7,1,255,0,0,0,0});
+    const char* retired[] = {"ipsheet",file.c_str(),"--variants","2",nullptr};
+    CHECK(ipsheetMain(4,const_cast<char**>(retired)) == 1);
+    CHECK(captured.errText().find("unknown option") != std::string::npos);
 }
 
 TEST_CASE("PNG files round-trip RGBA pixels and reject other forms") {

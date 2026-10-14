@@ -24,7 +24,7 @@ std::vector<u8> maskProgram(const std::string& source, bool optimize = true) {
 }
 GenerationResult runMask(const std::vector<u8>& bytes, u32 seed = 26, u32 width = 0, u32 height = 0) {
     const auto file = loadFile(bytes); validate(file);
-    VM vm(file, {seed,0,0,width,height,{}}); vm.run(); return vm.result();
+    VM vm(file, {seed,width,height,{}}); vm.run(); return vm.result();
 }
 MaskValue coverage(std::initializer_list<u8> values, u32 width, u32 height) {
     auto buffer = std::make_shared<SurfaceBuffer>();
@@ -211,7 +211,7 @@ TEST_CASE("parent clip applies to the part blit once and geometric outputs stay 
         const std::map<std::string,std::string> sources{
             {"root.ips","import child from \"child.ips\" asset t{size 8x6 output point p output point state draw{"
              "layer regionImage(alpha=surface.source_over){rect(0,0,8,6,#ffffff80)}region=mask.from(regionImage)"
-             "layer image(alpha=surface.source_over){clip(region){child.draw(seed,0,0,at={3,2},rot="+std::to_string(rot)+
+             "layer image(alpha=surface.source_over){clip(region){child.draw(seed,at={3,2},rot="+std::to_string(rot)+
              ",mirror_x="+std::to_string(mirror)+")p=child.outputs.p}}surface.paint(image,blend=surface.source_over)state={seed&65535,seed>>16}}}"},
             {"child.ips",R"(asset child{size 3x2 origin 1,0 output point p draw{
               layer regionImage(alpha=surface.source_over){rect(0,0,3,2,#ffffff80)}region=mask.from(regionImage)
@@ -287,7 +287,7 @@ TEST_CASE("mask source types diagnostics and format gates reject invalid uses", 
         CHECK_FALSE(result.succeeded());CHECK(result.bytes.empty());
     }
     const auto valid=maskProgram("asset t{size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false);
-    CHECK(loadFile(valid).layout.header.versionMinor==6);
+    CHECK(loadFile(valid).layout.header.versionMinor==7);
     const auto file=loadFile(valid);
     for(const auto& fn:file.code.functions)for(std::size_t pc=0;pc<fn.code.size()/4;++pc){
         const auto ins=decodeInstruction(fn.code.subspan(pc*4,4));
@@ -305,8 +305,8 @@ TEST_CASE("combined surface scopes unset masks and failure release generation re
     for (const auto& body:{"if(v==1){layer image{}region=mask.from(image)}clip(region){}",
             "layer image{}region=mask.from(image)x=mask.expand(region,v+65)",
             "layer image{}region=mask.from(image)x=mask.expand(region,64)"}) {
-        const auto file=loadFile(maskProgram("asset t{size 1x1 draw{"+std::string(body)+"}}",false));
-        VM vm(file,{26,0,0,0,0,{}});CHECK_THROWS_AS(vm.run(),Trap);
+        const auto file=loadFile(maskProgram("asset t{input i32 v=0 size 1x1 draw{"+std::string(body)+"}}",false));
+        VM vm(file,{26, 0, 0, {}});CHECK_THROWS_AS(vm.run(),Trap);
         CHECK_THROWS_AS(vm.result(),std::logic_error);CHECK(vm.canvas().width==1);
     }
     std::string scopes="layer image{}region=mask.from(image)";

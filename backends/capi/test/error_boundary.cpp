@@ -90,12 +90,9 @@ int main(int argc, char** argv) {
 
     // Each constructor check still throws the legacy Trap type, but the new
     // policy identifies its actual Arguments stage, with no fabricated PC.
-    const ErrorReason setupReasons[] = {ErrorReason::VariantRange, ErrorReason::ArchetypeRange,
-        ErrorReason::CanvasSize, ErrorReason::UniformType};
+    const ErrorReason setupReasons[] = {ErrorReason::CanvasSize, ErrorReason::UniformType};
     for (const auto reason : setupReasons) {
         GenerationInputs inputs;
-        if (reason == ErrorReason::VariantRange) inputs.variant = file.meta.variants;
-        if (reason == ErrorReason::ArchetypeRange) inputs.archetype = file.meta.archetypes;
         if (reason == ErrorReason::CanvasSize) inputs.sizeX = kMaxCanvasSide + 1;
         if (reason == ErrorReason::UniformType) {
             UniformValue value;
@@ -230,7 +227,7 @@ int main(int argc, char** argv) {
     iprop_program* legacyProgram = nullptr;
     CHECK(iprop_program_load(bytes.data(), bytes.size(), &legacyProgram, message, sizeof(message)) == IPROP_OK);
     iprop_generate_options legacyOptions{};
-    legacyOptions.variant = file.meta.variants;
+    legacyOptions.size_x = 16385;
     iprop_result* legacyResult = nullptr;
     CHECK(iprop_generate(legacyProgram, &legacyOptions, &legacyResult, message, sizeof(message)) == IPROP_E_TRAP);
     CHECK(legacyResult == nullptr);

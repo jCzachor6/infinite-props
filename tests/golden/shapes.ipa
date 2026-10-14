@@ -1,8 +1,8 @@
 ; Canvas-shapes corpus entry: rects, ovals, polys, lines, translucent
 ; blending and weather, plus a structured output.
-meta: size=64x64 variants=1 archetypes=1 fuel=100000
+meta: size=64x64 fuel=100000
 output: point anchor
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   const.f32 0.0
   const.f32 0.0
   const.f32 64.0

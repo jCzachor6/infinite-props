@@ -31,15 +31,15 @@ static int same(const iprop_result* a, const iprop_result* b) {
     return 0;
 }
 
-static iprop_generate_options legacy_options(uint32_t seed, uint32_t variant, uint32_t size_x, uint32_t size_y) {
+static iprop_generate_options legacy_options(uint32_t seed, uint32_t size_x, uint32_t size_y) {
     iprop_generate_options o; memset(&o,0,sizeof(o));
-    o.seed=seed; o.variant=variant; o.size_x=size_x; o.size_y=size_y; return o;
+    o.seed=seed; o.size_x=size_x; o.size_y=size_y; return o;
 }
 
-static iprop_generate_options_ex options_ex(uint32_t seed, uint32_t variant, uint32_t size_x, uint32_t size_y) {
+static iprop_generate_options_ex options_ex(uint32_t seed, uint32_t size_x, uint32_t size_y) {
     iprop_generate_options_ex o;
     (void)iprop_generate_options_ex_init(&o,sizeof(o));
-    o.seed=seed; o.variant=variant; o.size_x=size_x; o.size_y=size_y; return o;
+    o.seed=seed; o.size_x=size_x; o.size_y=size_y; return o;
 }
 
 /* A rejected generation keeps the caller's previous output pointer. */
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
     iprop_library_info_ex library;
     iprop_error_ex error; char message[128];
     iprop_generate_options_ex request;
-    uint32_t seed,variant,index;
+    uint32_t seed,index;
     CHECK(argc==2);
     CHECK(fixture(argv[1],"uniforms.iprop",&uniforms)==0 && fixture(argv[1],"portrait.iprop",&portrait)==0);
     CHECK(fixture(argv[1],"output-owners.iprop",&owners)==0 && fixture(argv[1],"error-trap.iprop",&trap)==0);
@@ -69,43 +69,44 @@ int main(int argc, char** argv) {
     CHECK(iprop_error_ex_init(&error,sizeof(error))==IPROP_EX_OK); error.message_buffer=message; error.message_capacity=sizeof(message);
 
     /* Defaults: NULL parameters, a fresh default set and the legacy entry give
-     * the same pixels, output slots and fuel, across seeds, variants, sizes. */
+     * the same pixels, output slots and fuel, across seeds, explicit inputs and sizes. */
     CHECK(iprop_parameters_create(portrait,&defaults,NULL)==IPROP_EX_OK);
-    { const uint32_t seeds[]={0,7,26}, variants[]={0,3,7}, sizes[][2]={{0,0},{32,48},{1,0}};
+    { const uint32_t seeds[]={0,7,26}, sizes[][2]={{0,0},{32,48},{1,0}};
       size_t s;
-      for(seed=0;seed<3;++seed) for(variant=0;variant<3;++variant) for(s=0;s<3;++s) {
-          iprop_generate_options old=legacy_options(seeds[seed],variants[variant],sizes[s][0],sizes[s][1]);
-          request=options_ex(seeds[seed],variants[variant],sizes[s][0],sizes[s][1]);
+      for(seed=0;seed<3;++seed) for(s=0;s<3;++s) {
+          iprop_generate_options old=legacy_options(seeds[seed],sizes[s][0],sizes[s][1]);
+          request=options_ex(seeds[seed],sizes[s][0],sizes[s][1]);
           CHECK(iprop_generate(portrait,&old,&legacy,NULL,0)==IPROP_OK);
-          CHECK(iprop_generate_ex(portrait,&request,NULL,&checked,&error)==IPROP_EX_OK);
+          CHECK(iprop_generate_ex(portrait,&request,defaults,&checked,&error)==IPROP_EX_OK);
           CHECK(error.status==IPROP_EX_OK && message[0]=='\0' && same(legacy,checked)==0);
           iprop_result_free(checked); checked=NULL;
           CHECK(iprop_generate_ex(portrait,&request,defaults,&checked,&error)==IPROP_EX_OK && same(legacy,checked)==0);
           iprop_result_free(checked); iprop_result_free(legacy); checked=legacy=NULL;
       }
     }
-    { iprop_generate_options old=legacy_options(5,0,0,0); request=options_ex(5,0,0,0);
+    CHECK(iprop_parameters_reset(defaults,NULL)==IPROP_EX_OK);
+    { iprop_generate_options old=legacy_options(5,0,0); request=options_ex(5,0,0);
       CHECK(iprop_generate(owners,&old,&legacy,NULL,0)==IPROP_OK);
       CHECK(iprop_generate_ex(owners,&request,NULL,&checked,&error)==IPROP_EX_OK && same(legacy,checked)==0);
       iprop_result_free(checked); iprop_result_free(legacy); checked=legacy=NULL; }
 
     /* A four-byte options prefix requests the source defaults; absent fields
      * are zero even when the caller's storage beyond the prefix is garbage. */
-    { iprop_generate_options old=legacy_options(0,0,0,0); iprop_generate_options old7=legacy_options(7,0,0,0);
+    { iprop_generate_options old=legacy_options(0,0,0); iprop_generate_options old7=legacy_options(7,0,0);
       CHECK(iprop_generate(portrait,&old,&legacy,NULL,0)==IPROP_OK);
-      request=options_ex(UINT32_MAX,UINT32_MAX,UINT32_MAX,UINT32_MAX); request.flags=UINT32_MAX;
+      request=options_ex(UINT32_MAX,UINT32_MAX,UINT32_MAX); request.flags=UINT32_MAX;
       request.struct_size=4;
       CHECK(iprop_generate_ex(portrait,&request,NULL,&checked,&error)==IPROP_EX_OK && same(legacy,checked)==0);
       iprop_result_free(checked); iprop_result_free(legacy); checked=legacy=NULL;
       CHECK(iprop_generate(portrait,&old7,&legacy,NULL,0)==IPROP_OK);
-      request=options_ex(7,UINT32_MAX,UINT32_MAX,UINT32_MAX); request.struct_size=offsetof(iprop_generate_options_ex,variant);
+      request=options_ex(7,UINT32_MAX,UINT32_MAX); request.struct_size=offsetof(iprop_generate_options_ex,size_x);
       CHECK(iprop_generate_ex(portrait,&request,NULL,&checked,&error)==IPROP_EX_OK && same(legacy,checked)==0);
       iprop_result_free(checked); iprop_result_free(legacy); checked=legacy=NULL; }
 
     /* Validated parameter values equal the legacy named overrides. The legacy
      * entry keeps its own policy: unknown names ignored, first duplicate wins. */
     CHECK(iprop_parameters_create(uniforms,&values,NULL)==IPROP_EX_OK);
-    { iprop_uniform named[5]; iprop_generate_options old=legacy_options(3,0,0,0);
+    { iprop_uniform named[5]; iprop_generate_options old=legacy_options(3,0,0);
       iprop_parameter_override_ex list[3]; float ten=10.0f;
       memset(named,0,sizeof(named));
       named[0].name="base"; named[0].type=IPROP_UNIFORM_COLOR; named[0].r=named[0].g=named[0].b=named[0].a=0xff;
@@ -122,7 +123,7 @@ int main(int argc, char** argv) {
       list[2].type=IPROP_INPUT_U32; list[2].u32=7;
       CHECK(iprop_parameters_set_overrides(values,list,3,sizeof(list[0]),NULL)==IPROP_EX_OK);
       CHECK(iprop_generate(uniforms,&old,&legacy,NULL,0)==IPROP_OK);
-      request=options_ex(3,0,0,0);
+      request=options_ex(3,0,0);
       CHECK(iprop_generate_ex(uniforms,&request,values,&checked,&error)==IPROP_EX_OK && same(legacy,checked)==0);
       { iprop_image image; iprop_result_image(checked,&image); CHECK(image.pixels[0]==0xff && image.pixels[3]==0xff); }
       iprop_result_free(checked); checked=NULL;
@@ -164,29 +165,27 @@ int main(int argc, char** argv) {
     /* Argument failures happen before the VM with stable reasons; the legacy
      * entry still reports its VM-setup traps for the same ranges. */
     CHECK(iprop_parameters_create(portrait_again,&foreign,NULL)==IPROP_EX_OK);
-    request=options_ex(0,0,0,0);
+    request=options_ex(0,0,0);
     CHECK(reject(NULL,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0);
     CHECK(reject(portrait,NULL,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0);
     CHECK(iprop_generate_ex(portrait,&request,NULL,NULL,&error)==IPROP_EX_E_ARGUMENT && error.reason==IPROP_REASON_INVALID_ARGUMENT);
     for(index=0;index<4;++index) { request.struct_size=index;
         CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0); }
-    request=options_ex(0,0,0,0); request.flags=1;
+    request=options_ex(0,0,0); request.flags=1;
     CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0);
-    request=options_ex(0,0,0,0);
+    request=options_ex(0,0,0);
     CHECK(reject(portrait,&request,foreign,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_FOREIGN_PARAMETERS,IPROP_STAGE_ARGUMENTS)==0);
     CHECK(iprop_generate_ex(portrait_again,&request,foreign,&checked,&error)==IPROP_EX_OK);
     iprop_result_free(checked); checked=NULL;
-    request=options_ex(0,8,0,0);
-    CHECK(reject(portrait,&request,defaults,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_VARIANT_RANGE,IPROP_STAGE_ARGUMENTS)==0);
-    CHECK(strcmp(message,"variant index out of range")==0 && error.location_flags==0);
-    { iprop_generate_options old=legacy_options(0,8,0,0); char text[64];
+    request=options_ex(0,16385,0);
+    CHECK(reject(portrait,&request,defaults,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_CANVAS_SIZE,IPROP_STAGE_ARGUMENTS)==0);
+    CHECK(error.location_flags==0);
+    { iprop_generate_options old=legacy_options(0,16385,0); char text[64];
       CHECK(iprop_generate(portrait,&old,&legacy,text,sizeof(text))==IPROP_E_TRAP && legacy==NULL); }
-    request=options_ex(0,0,0,0); request.archetype=1;
-    CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_ARCHETYPE_RANGE,IPROP_STAGE_ARGUMENTS)==0);
-    request=options_ex(0,0,16385,0);
+    request=options_ex(0,0,16385);
     CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_CANVAS_SIZE,IPROP_STAGE_ARGUMENTS)==0);
     /* A real VM trap is E_TRAP at EXECUTE with its function/PC location. */
-    request=options_ex(0,0,0,0);
+    request=options_ex(0,0,0);
     CHECK(reject(trap,&request,NULL,&error,IPROP_EX_E_TRAP,IPROP_REASON_DIVIDE_BY_ZERO,IPROP_STAGE_EXECUTE)==0);
     CHECK((error.location_flags&(IPROP_LOCATION_FUNCTION|IPROP_LOCATION_PC))==(IPROP_LOCATION_FUNCTION|IPROP_LOCATION_PC));
     CHECK(error.function_index==0 && error.message_required_bytes==strlen(message));
@@ -199,7 +198,7 @@ int main(int argc, char** argv) {
      * the options, is rejected before any write. */
     { struct { iprop_generate_options_ex options; iprop_result* out; } block; iprop_error_ex saved;
       iprop_result* sentinel=(iprop_result*)(void*)&block; unsigned char before[sizeof(block)];
-      block.options=options_ex(0,0,0,0); block.out=sentinel; memcpy(before,&block,sizeof(block));
+      block.options=options_ex(0,0,0); block.out=sentinel; memcpy(before,&block,sizeof(block));
       CHECK(iprop_generate_ex(portrait,&block.options,NULL,&block.out,(iprop_error_ex*)(void*)&block.out)==IPROP_EX_E_ARGUMENT);
       CHECK(memcmp(&block,before,sizeof(block))==0);
       error.message_buffer=(char*)(void*)&block.options.seed; error.message_capacity=4; memcpy(&saved,&error,sizeof(error));
@@ -211,9 +210,9 @@ int main(int argc, char** argv) {
     }
 
     /* Results survive the program, the parameter set and later generations. */
-    request=options_ex(26,7,0,0);
+    request=options_ex(26,0,0);
     CHECK(iprop_generate_ex(portrait,&request,defaults,&checked,&error)==IPROP_EX_OK);
-    { iprop_generate_options old=legacy_options(26,7,0,0);
+    { iprop_generate_options old=legacy_options(26,0,0);
       CHECK(iprop_generate(portrait_again,&old,&legacy,NULL,0)==IPROP_OK); }
     iprop_parameters_free(defaults); defaults=NULL; iprop_program_free(portrait); portrait=NULL;
     CHECK(iprop_generate_ex(portrait_again,&request,NULL,&previous,&error)==IPROP_EX_OK);

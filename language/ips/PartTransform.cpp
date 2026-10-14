@@ -5,7 +5,7 @@ namespace iprop::ips {
 
 D4Transform resolvePartTransform(const BoundCallPlan& call) {
     i32 rot = 0, mx = 0, my = 0;
-    for (std::size_t slot = 4; slot < 7; ++slot) {
+    for (std::size_t slot = 2; slot < 5; ++slot) {
         const auto* supplied = call.arguments[slot];
         const auto& name = call.signature.parameters[slot].name;
         i32 value = std::get<i32>(call.signature.defaults[slot]);
@@ -17,7 +17,7 @@ D4Transform resolvePartTransform(const BoundCallPlan& call) {
             value = std::get<i32>(folded);
         }
         const auto at = supplied ? locationOf(*supplied->value) : SourceLocation{};
-        if (slot == 4) {
+        if (slot == 2) {
             if (value < 0 || value > 270 || value % 90 != 0) {
                 throw SourceError{at, "the rot transform must be 0, 90, 180 or 270"};
             }
@@ -26,7 +26,7 @@ D4Transform resolvePartTransform(const BoundCallPlan& call) {
             if (value != 0 && value != 1) {
                 throw SourceError{at, "the " + name + " transform must be 0 or 1"};
             }
-            (slot == 5 ? mx : my) = value;
+            (slot == 3 ? mx : my) = value;
         }
     }
     return *D4Transform::fromParameters(rot, mx, my);

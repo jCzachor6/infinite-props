@@ -25,7 +25,7 @@ std::vector<u8> compileExports(const Sources& sources, bool optimize = false) {
     REQUIRE(result.succeeded()); return result.bytes;
 }
 GenerationResult generateExports(const std::vector<u8>& bytes, u32 width = 0, u32 height = 0) {
-    const auto file = loadFile(bytes); validate(file); VM vm(file, {26,0,0,width,height,{}}); vm.run(); return vm.result();
+    const auto file = loadFile(bytes); validate(file); VM vm(file, {26,width,height,{}}); vm.run(); return vm.result();
 }
 std::string transform(u8 kind) {
     constexpr std::array rotations{0,90,180,270,0,0,90,90};
@@ -78,19 +78,19 @@ TEST_CASE("resource exports map shared views once for every D4 pair including ou
 TEST_CASE("three asset levels propagate layer and mask exports through all D4 combinations", "[resource-exports]") {
     for (u8 leaf=0;leaf<8;++leaf) for(u8 middle=0;middle<8;++middle) for(const bool optimize:{false,true}) {
         const Sources exported{
-            {"root.ips","import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,0,0,at={9,7}"+transform(middle)+")"
+            {"root.ips","import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,at={9,7}"+transform(middle)+")"
              "surface.paint(middle.outputs.image,blend=surface.legacy)}}"},
             {"middle.ips","import leaf from \"leaf.ips\" asset t{size 9x7 origin 2,1 output layer image output mask region draw{"
-             "leaf.draw(seed,0,0,at={3,2}"+transform(leaf)+")image=leaf.outputs.image region=leaf.outputs.region}}"},
+             "leaf.draw(seed,at={3,2}"+transform(leaf)+")image=leaf.outputs.image region=leaf.outputs.region}}"},
             {"leaf.ips","asset t{size 3x2 origin 1,0 output layer image output mask region draw{layer captured(alpha=surface.legacy){"
              "pixel(0,0,#11223380)pixel(2,1,#556677ff)}image=captured region=mask.from(captured)}}"}};
         Sources reference=exported;
-        reference["root.ips"]="import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,0,0,at={9,7}"+transform(middle)+")}}";
-        reference["middle.ips"]="import leaf from \"leaf.ips\" asset t{size 9x7 origin 2,1 draw{leaf.draw(seed,0,0,at={3,2}"+transform(leaf)+")}}";
+        reference["root.ips"]="import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,at={9,7}"+transform(middle)+")}}";
+        reference["middle.ips"]="import leaf from \"leaf.ips\" asset t{size 9x7 origin 2,1 draw{leaf.draw(seed,at={3,2}"+transform(leaf)+")}}";
         reference["leaf.ips"]="asset t{size 3x2 origin 1,0 draw{pixel(0,0,#11223380)pixel(2,1,#556677ff)}}";
         const auto actual=compileExports(exported,optimize), expected=compileExports(reference,optimize);
         Sources mask=exported;
-        mask["root.ips"]="import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,0,0,at={9,7}"+transform(middle)+")"
+        mask["root.ips"]="import middle from \"middle.ips\" asset t{size 24x20 draw{middle.draw(seed,at={9,7}"+transform(middle)+")"
             "clip(middle.outputs.region){rect(-1,-1,26,22,#ffffffff)}}}";
         const auto masked=compileExports(mask,optimize);
         for (const auto size: {RasterPoint{24,20},RasterPoint{48,40},RasterPoint{36,50}}) {
@@ -108,9 +108,9 @@ TEST_CASE("three asset levels propagate layer and mask exports through all D4 co
 TEST_CASE("export snapshots survive later calls no-write calls and slot replacement", "[resource-exports]") {
     const Sources sources{
         {"root.ips",R"(import child from "child.ips" asset t{size 8x2 output mask hidden output point p draw{
-          child.draw(1,0,0,at={1,0}) first=child.outputs.image old=child.outputs.region
-          child.draw(2,0,0,at={4,0}) second=child.outputs.image
-          child.draw(3,0,0,at={7,0}) retained=child.outputs.image
+          child.draw(1,at={1,0}) first=child.outputs.image old=child.outputs.region
+          child.draw(2,at={4,0}) second=child.outputs.image
+          child.draw(3,at={7,0}) retained=child.outputs.image
           surface.paint(first)surface.paint(second)surface.paint(retained)
           clip(old){rect(0,0,8,2,#00ff00)}p=child.outputs.p
         }})"},
@@ -144,8 +144,8 @@ TEST_CASE("surface storage is freed at the last handle and accounting tokens can
 }
 
 TEST_CASE("resource exports trap on unset slots wrong last part and absent local handles", "[resource-exports]") {
-    for(const std::string body:{"child.draw(seed,0,0,at={0,0})surface.paint(child.outputs.image)",
-        "child.draw(1,0,0,at={0,0})other.draw(1,0,0,at={0,0})surface.paint(child.outputs.image)"}){
+    for(const std::string body:{"child.draw(seed,at={0,0})surface.paint(child.outputs.image)",
+        "child.draw(1,at={0,0})other.draw(1,at={0,0})surface.paint(child.outputs.image)"}){
         const Sources sources{
             {"root.ips","import child from \"child.ips\" import other from \"child.ips\" asset t{size 2x1 draw{"+body+"}}"},
             {"child.ips","asset t{size 1x1 output layer image draw{if(seed==1){layer captured{pixel(0,0,#fff)}image=captured}}}"}};
@@ -160,7 +160,7 @@ TEST_CASE("resource exports trap on unset slots wrong last part and absent local
 
 TEST_CASE("resource export validation rejects invalid table fields and dead-code ownership", "[resource-exports]") {
     const Sources sources{
-        {"root.ips","import child from \"child.ips\" asset t{size 2x1 output layer image unused(){return;layer captured{}image=captured}draw{child.draw(seed,0,0,at={0,0})surface.paint(child.outputs.image)}}"},
+        {"root.ips","import child from \"child.ips\" asset t{size 2x1 output layer image unused(){return;layer captured{}image=captured}draw{child.draw(seed,at={0,0})surface.paint(child.outputs.image)}}"},
         {"child.ips","asset t{size 1x1 output layer image draw{layer captured{}image=captured}}"}};
     const auto bytes=compileExports(sources);const auto file=loadFile(bytes);const auto section=*file.layout.find(SectionId::ResourceExports);
     for(const auto [offset,value]:{std::pair{0u,65537u},{4u,1000u},{8u,100000u},{28u,100000u}}){

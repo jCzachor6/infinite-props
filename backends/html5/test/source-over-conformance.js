@@ -1,4 +1,5 @@
 "use strict";
+const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const {execFileSync,spawnSync}=require("node:child_process");
 const {decodePng}=require("./png.js");
@@ -16,7 +17,7 @@ function run(iprop,tool,directory) {
     function generate(binary,seed=26,options={}) {
         const png=base+".png",flags=[];
         if(options.sizeX)flags.push("--size",`${options.sizeX}x${options.sizeY}`);
-        if(options.variant)flags.push("--variant",String(options.variant));
+        for(const [name,value] of Object.entries(options.uniforms || {})) flags.push("--uniform",name+"="+value);
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const data=decodePng(fs.readFileSync(png)).data,wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...options});
         assert.deepEqual(Buffer.from(wasm.data),Buffer.from(data),"source-over native/WASM RGBA");
@@ -52,14 +53,14 @@ function run(iprop,tool,directory) {
     const tree=path.join(directory,"source-over-tree");fs.mkdirSync(tree);
     for(const opt of [false,true]) {
         for(const [name,text] of Object.entries(part.source_texts)) {
-            let next=text;
+            let next=renderSource(text);
             if(name==="root.ips") {const start=next.indexOf("draw{");next=next.slice(0,start)+"draw{layer image(alpha=surface.source_over){"+next.slice(start+5,-2)+"}surface.paint(image,blend=surface.source_over)}}";}
             else next=next.replace(/#ff0000\b/g,"#ff000080").replace(/#0000ff\b/g,"#0000ff80").replace(/#112233\b/g,"#11223380");
             fs.writeFileSync(path.join(tree,name),next);
         }
         const binary=path.join(tree,"tree.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),...(opt?[]:["--no-opt"]),"-o",binary]);
         for(const expected of part.generations) {
-            const actual=generate(binary,expected.seed,expected.arguments),rgba=Buffer.from(expected.rgba_base64,"base64");
+            const actual=generate(binary,expected.seed,renderArguments(expected.arguments)),rgba=Buffer.from(expected.rgba_base64,"base64");
             for(let at=3;at<rgba.length;at+=4)if(rgba[at])rgba[at]=128;
             assert.deepEqual(actual.data,rgba,"frozen D4/scale geometry with inherited alpha");
             assert.deepEqual(actual.outputs,expected.outputs,"frozen part output bits/isolation");++pins;
@@ -90,19 +91,19 @@ function run(iprop,tool,directory) {
         assert.equal(native.status,1,native.stderr);assert.equal(native.signal,null);assert.match(native.stderr,message);assert.equal(fs.existsSync(png),false);
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
-    for(const opt of [false,true])for(const source of ["asset t{size 1x1 draw{layer image(alpha=surface.source_over){x=1/(v-v)}}}",
+    for(const opt of [false,true])for(const source of ["asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.source_over){x=1/(v-v)}}}",
         "asset t{size 1024x1024 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}"])
         trap(compile(source,opt),/divide by zero|fuel exhausted/);
     function reject(data) {
         const binary=base+"-bad.iprop";fs.writeFileSync(binary,data);const native=spawnSync(tool("ipval"),[binary],{encoding:"utf8"});
         assert.equal(native.status,1,native.stderr);assert.equal(native.signal,null);assert.throws(()=>iprop.generate(new Uint8Array(data),{}));++rejections;
     }
-    const valid=Buffer.from(fs.readFileSync(compile("asset t{size 1x1 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}",false,"-wire")));
+    const valid=Buffer.from(fs.readFileSync(compile("asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}",false,"-wire")));
     for(const at of instructions(valid))if(valid[at]===0xc6){const bad=Buffer.from(valid);bad[at+1]=3;reject(bad);}
     else if(valid[at]===0xc7)for(const mode of [3,257,65535]){const bad=Buffer.from(valid);bad.writeUInt16LE(mode,at+2);reject(bad);}
     const old=Buffer.from(valid);old.writeUInt16LE(5,6);reject(old);
     // Mode 2 is valid even when unreachable; the pre-0.6 gate is still enforced.
-    fs.writeFileSync(base+".ipa","meta: size=1x1\ntypes: layer\nfn draw ( i32, i32 ) -> ( ):\nlocals: layer\nreturn\nlayer.begin 2 2\nend\nendfn\n");
+    fs.writeFileSync(base+".ipa","meta: size=1x1\ntypes: layer\nfn draw (  ) -> ( ):\nlocals: layer\nreturn\nlayer.begin 0 2\nend\nendfn\n");
     execFileSync(tool("ipa"),[base+".ipa","-o",base+"-dead.iprop"]);generate(base+"-dead.iprop");
     const dead=Buffer.from(fs.readFileSync(base+"-dead.iprop"));dead.writeUInt16LE(5,6);reject(dead);
     assert.ok(sections(valid).has(6));

@@ -6,11 +6,8 @@
 import hair from "hair.ips"
 import eyes from "eyes.ips"
 
-asset portrait {
-  size 64x64
+asset portrait { size 64x64
   origin 32,60
-  variants 8
-
   output point pupilCenter
 
   palette skins = [#f5cdaa, #e4b18b, #d19770, #bb7f59, #9e6547, #7e4f3b, #654031, #e8bea6]
@@ -183,7 +180,7 @@ asset portrait {
 
     // ---- eyes (part: whites, pupils, glints; the pupil anchor surfaces
     //      through eyes.outputs.pupil) ----
-    eyes.draw(seed ^ 0x517cc1b7, v, a, at = {0, 0}, iris = eyeC)
+    eyes.draw(seed ^ 0x517cc1b7, at = {0, 0}, iris = eyeC)
     // part.get.* reads the most recently called part (spec 9.9): the pupil
     // anchor must be captured before the hair call.
     pupilCenter = eyes.outputs.pupil
@@ -212,7 +209,7 @@ asset portrait {
     }
 
     // ---- hairstyle (part: paints over the face; call order is paint order)
-    hair.draw(seed ^ 0x9e3779b9, v, a, at = {0, 0}, style = hairstyle, color = hairC, accent = accentC)
+    hair.draw(seed ^ 0x9e3779b9, at = {0, 0}, style = hairstyle, color = hairC, accent = accentC)
 
   }
 }

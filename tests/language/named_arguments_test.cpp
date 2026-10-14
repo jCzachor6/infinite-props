@@ -41,29 +41,28 @@ TEST_CASE("shared binder represents required optional and named-only parameters"
     }
 }
 
-TEST_CASE("part signature shares the binder without reserving variant or archetype uniforms") {
+TEST_CASE("part signatures contain seed placement transforms and authored uniforms") {
     using namespace ips;
-    const std::vector<std::string> uniforms{"variant","archetype","tint"};
+    const std::vector<std::string> uniforms{"v","a","tint"};
     const auto signature=partParameters(uniforms);
-    REQUIRE(signature.size()==10);
-    CHECK(signature[1].name=="v");
-    CHECK(signature[2].name=="a");
-    CHECK(signature[7].name=="variant");
-    CHECK(signature[8].name=="archetype");
-    const auto program=parse("asset t {size 8x8 draw{child.draw(a=3,seed=1,v=2,at={0,0},variant=4)}}");
+    REQUIRE(signature.size()==8);
+    CHECK(signature[0].name=="seed");
+    CHECK(signature[1].name=="at");
+    CHECK(signature[5].name=="v");
+    CHECK(signature[6].name=="a");
+    const auto program=parse("asset t {size 8x8 draw{child.draw(a=3,seed=1,v=2,at={0,0})}}");
     const auto& call=std::get<Call>(*std::get<ExprStmt>(program.asset.functions[0].body[0]).expr);
     const auto args=partArguments(call,uniforms,"child.draw");
-    REQUIRE(args.size()==10);
+    REQUIRE(args.size()==8);
     CHECK(args[0]==&call.args[1]);
-    CHECK(args[1]==&call.args[2]);
-    CHECK(args[2]==&call.args[0]);
-    CHECK(args[3]==&call.args[3]);
+    CHECK(args[1]==&call.args[3]);
+    CHECK(args[2]==nullptr);
+    CHECK(args[3]==nullptr);
     CHECK(args[4]==nullptr);
-    CHECK(args[5]==nullptr);
-    CHECK(args[6]==nullptr);
-    CHECK(args[7]==&call.args[4]);
-    CHECK(args[8]==nullptr);
-    CHECK(args[9]==nullptr);
+    CHECK(args[5]==&call.args[2]);
+    CHECK(args[6]==&call.args[0]);
+    CHECK(args[7]==nullptr);
+    CHECK_THROWS_AS(partArguments(call,{},"child.draw"),SourceError);
 }
 
 TEST_CASE("named canvas calls and color shorthand compile the plan example") {

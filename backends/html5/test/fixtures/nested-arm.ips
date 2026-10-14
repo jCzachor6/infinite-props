@@ -1,19 +1,18 @@
 // The middle level: draws the transform tile twice, rotated, and passes the
 // second tile's anchor and box up in its own coordinates.
 import tile from "transform-tile.ips"
-asset nestedArm {
+asset nestedArm { input i32 a = 0
   size 9x7
   origin 1.5, 0.5
-  variants 8
   output point tip
   output rect box
   output list point trail
 
   draw {
     rect(0, 0, 9, 7, #20304080)
-    tile.draw(hash(seed ^ 3), 0, a, at = {1, 1})
+    tile.draw(hash(seed ^ 3), at = {1, 1})
     trail = tile.outputs.anchor
-    tile.draw(hash(seed ^ 5), 0, a, at = {5, 3}, rot = 270, mirror_x = true)
+    tile.draw(hash(seed ^ 5), at = {5, 3}, rot = 270, mirror_x = true)
     trail = tile.outputs.anchor
     tip = tile.outputs.anchor
     box = tile.outputs.box

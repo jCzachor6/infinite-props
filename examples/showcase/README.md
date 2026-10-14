@@ -5,10 +5,11 @@ packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64).
 
 Only the binaries live here; their `.ips` sources are kept outside this
-repository. They were compiled with the 0.6 compiler (stripped, packed) from
-the props workspace at commit `30a7dd6`. In every root asset, variant 0 and
-archetype 0 roll from the seed, so a seed alone gives a completely random
-prop:
+repository. They are compiled with format 0.7 from private sources migrated from props
+commit `30a7dd6`. Selection is implemented by ordinary inputs: `v` selects
+authored styles and `a` selects an authored class where declared; default 0
+rolls from the seed. Weapons use `renderLayer` for color/emission selection.
+The runtime provides no variant/archetype counts or selectors.
 
 ```sh
 ipgen sword.iprop --seed 7 -o sword.png

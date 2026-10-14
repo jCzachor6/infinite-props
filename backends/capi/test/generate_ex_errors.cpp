@@ -146,13 +146,13 @@ int main(int argc, char** argv) {
     }
     // Argument rejections allocate nothing at all.
     {
-        options.variant = 1;
+        options.size_x = 16385;
         iprop_result* out = nullptr;
         AllocationGuard guard(1);
         CHECK(iprop_generate_ex(uniforms, &options, parameters, &out, &error) == IPROP_EX_E_ARGUMENT);
         CHECK(iprop_generate_ex(portrait, &options, parameters, &out, &error) == IPROP_EX_E_ARGUMENT);
         CHECK(count == 0 && out == nullptr && error.reason == IPROP_REASON_FOREIGN_PARAMETERS);
-        options.variant = 0;
+        options.size_x = 0;
     }
 
     // Values travel by root-input ID. A stored name with an embedded NUL is
@@ -217,11 +217,11 @@ int main(int argc, char** argv) {
         mistyped[0].type = iprop::InputType::F32;
         try { iprop::VM vm(file, inputs, mistyped); } catch (const std::logic_error&) { threw = true; }
         CHECK(threw);
-        iprop::GenerationInputs badVariant = inputs;
-        badVariant.variant = 1;
+        iprop::GenerationInputs badCanvas = inputs;
+        badCanvas.sizeX = 16385;
         iprop::ErrorReason reason = iprop::ErrorReason::None;
-        try { iprop::VM vm(file, badVariant, std::span(resolved).first(1)); } catch (const iprop::Trap& trap) { reason = trap.reason; }
-        CHECK(reason == iprop::ErrorReason::VariantRange);
+        try { iprop::VM vm(file, badCanvas, std::span(resolved).first(1)); } catch (const iprop::Trap& trap) { reason = trap.reason; }
+        CHECK(reason == iprop::ErrorReason::CanvasSize);
     }
 
     iprop_parameters_free(parameters);

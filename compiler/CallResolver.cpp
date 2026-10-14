@@ -81,11 +81,11 @@ PartCall CallResolver::part(const ips::Call& call, const std::string& path) cons
     const auto& inputs = plan_.parts[result.part]->asset.inputs;
     const auto& args = bound.arguments;
     for (const auto slot : bound.signature.evaluationOrder) {
-        if (slot >= 4 && slot < 7) continue; // compile-time transforms
-        if (slot == 3) {
+        if (slot >= 2 && slot < 5) continue; // compile-time transforms
+        if (slot == 1) {
             result.arguments.emplace_back(PartCall::Placement{args[slot]->value.get()});
         } else if (const auto* supplied = args[slot]) {
-            const auto expected = slot < 3 ? ips::ValueType::I32 : ips::valueTypeOf(inputs[slot-7].type);
+            const auto expected = slot == 0 ? ips::ValueType::I32 : ips::valueTypeOf(inputs[slot-5].type);
             result.arguments.emplace_back(argument(*supplied->value, expected));
         } else {
             const auto* declaration = std::get<const ips::InputDecl*>(bound.signature.defaults[slot]);

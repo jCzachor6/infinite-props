@@ -1,13 +1,12 @@
 import frame from "parts/exported-frame.ips"
 
-asset resourceExports {
-  size 16x12
+asset resourceExports { size 16x12
   output mask retained
   output point anchor
   output point state
 
   draw {
-    frame.draw(seed, v, a, at={5, 4}, mirror_x=1)
+    frame.draw(seed, at={5, 4}, mirror_x=1)
     image = frame.outputs.image
     region = frame.outputs.region
     // Both placements are already saved in the shared views.

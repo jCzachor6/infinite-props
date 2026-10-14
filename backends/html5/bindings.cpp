@@ -1,5 +1,5 @@
 // The HTML5/WASM binding: exposes the reference interpreter to JavaScript
-// through one entry point, `generate(fileBytes, seed, variant, archetype,
+// through one entry point, `generate(fileBytes, seed,
 // sizeX, sizeY[, uniforms]) -> {width, height, data, outputs}`. `uniforms`
 // maps declared input names to values: numbers for u32/f32 inputs and
 // "#RRGGBB" or "#RRGGBBAA" strings for colours, as `ipgen --uniform` takes
@@ -89,8 +89,7 @@ std::map<std::string, UniformValue> readUniforms(const LoadedFile& loaded, emscr
 
 } // namespace
 
-emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 variant,
-                             u32 archetype, u32 sizeX, u32 sizeY,
+emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY,
                              emscripten::val uniforms) {
     // Copy the input bytes out of the JS array view into our own buffer.
     const std::size_t length = fileBytes["byteLength"].as<std::size_t>();
@@ -101,7 +100,7 @@ emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 variant,
     try {
         const auto loaded = iprop::loadFile(bytes);
         iprop::validate(loaded);
-        iprop::VM vm(loaded, {seed, variant, archetype, sizeX, sizeY, readUniforms(loaded, uniforms)});
+        iprop::VM vm(loaded, {seed, sizeX, sizeY, readUniforms(loaded, uniforms)});
         vm.run();
 
         const iprop::Canvas& canvas = vm.canvas();
@@ -200,9 +199,8 @@ emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 variant,
     }
 }
 
-emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 variant,
-                         u32 archetype, u32 sizeX, u32 sizeY) {
-    return generateWith(fileBytes, seed, variant, archetype, sizeX, sizeY,
+emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
+    return generateWith(fileBytes, seed, sizeX, sizeY,
                         emscripten::val::undefined());
 }
 

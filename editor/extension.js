@@ -1,6 +1,6 @@
 // The iprop studio VS Code extension: .ips syntax highlighting, inline
 // diagnostics from the native ipc compiler and a live preview panel with
-// seed/variant/archetype sliders and uniform editors. The integrated
+// seed and input sliders and uniform editors. The integrated
 // terminal is the console for CLI agents (opencode/codex) — they edit the
 // files on disk and the watcher recompiles.
 
@@ -289,7 +289,7 @@ async function applyCompilerFix(saved) {
 
 // ---- the preview panel (Phase 29) -----------------------------------------------
 
-const previewState = { seed: 0, variant: 0, archetype: 0, uniforms: {}, entry: null, compiled: false };
+const previewState = { seed: 0, uniforms: {}, entry: null, compiled: false };
 let previewPanel = null;
 let renderTimer = null;
 let atlasPanel = null;
@@ -320,12 +320,6 @@ function previewHtml() {
   <div class="row"><label>seed</label>
     <input type="range" id="seed-slider" min="0" max="4095" value="0">
     <input type="number" id="seed-value" min="0" value="0"></div>
-  <div class="row"><label>variant</label>
-    <input type="range" id="variant-slider" min="0" max="15" value="0">
-    <input type="number" id="variant-value" min="0" max="15" value="0"></div>
-  <div class="row"><label>archetype</label>
-    <input type="range" id="archetype-slider" min="0" max="15" value="0">
-    <input type="number" id="archetype-value" min="0" max="15" value="0"></div>
   <div id="inputs"></div>
   <div id="status">compile the active .ips to preview it</div>
   <div id="outputs"></div>
@@ -346,8 +340,6 @@ function previewHtml() {
     });
   }
   slider("seed", "seed-slider", "seed-value");
-  slider("variant", "variant-slider", "variant-value");
-  slider("archetype", "archetype-slider", "archetype-value");
 
   window.addEventListener("message", (event) => {
     const message = event.data;
@@ -357,14 +349,6 @@ function previewHtml() {
       document.getElementById("preview").src = "data:image/png;base64," + message.png;
       const json = JSON.parse(message.json);
       // Clamp the sliders to the declared ranges.
-      const variantSlider = document.getElementById("variant-slider");
-      const variantValue = document.getElementById("variant-value");
-      variantSlider.max = json.variants - 1;
-      variantValue.max = json.variants - 1;
-      const archetypeSlider = document.getElementById("archetype-slider");
-      const archetypeValue = document.getElementById("archetype-value");
-      archetypeSlider.max = json.archetypes - 1;
-      archetypeValue.max = json.archetypes - 1;
       status.textContent = "fuel: " + json.fuel.spent + " / " + json.fuel.budget;
       status.className = "";
       outputs.textContent = json.outputs.map((o) =>
@@ -448,7 +432,7 @@ function compileEntry(entry, { debug = false } = {}) {
 }
 
 // Renders one cell of the given binary; resolves with { png (base64), json }.
-function renderCell(ipropPath, seed, variant, archetype, uniforms) {
+function renderCell(ipropPath, seed, uniforms) {
     return new Promise((resolve, reject) => {
         const renderer = rendererBinary();
         if (!renderer) {
@@ -458,7 +442,7 @@ function renderCell(ipropPath, seed, variant, archetype, uniforms) {
         const pngPath = path.join(os.tmpdir(),
             "iprop-cell-" + process.pid + "-" + Math.random().toString(36).slice(2) + ".png");
         const args = [ipropPath, "--seed", String(seed >>> 0),
-            "--variant", String(variant), "--archetype", String(archetype), "-o", pngPath];
+            "-o", pngPath];
         for (const [name, value] of Object.entries(uniforms || {})) {
             args.push("--uniform", name + "=" + value);
         }
@@ -494,7 +478,6 @@ function renderOnly() {
         return;
     }
     const args = [ipropPath, "--seed", String(previewState.seed >>> 0),
-        "--variant", String(previewState.variant), "--archetype", String(previewState.archetype),
         "-o", pngPath];
     for (const [name, value] of Object.entries(previewState.uniforms)) {
         args.push("--uniform", name + "=" + value);
@@ -504,18 +487,6 @@ function renderOnly() {
         if (renderError) {
             log.appendLine("render failed: " + (renderStderr || renderError.message));
             const detail = renderStderr || "";
-            if (detail.includes("variant index out of range")) {
-                previewState.variant = 0;
-                post({ type: "clamp", kind: "variant" });
-                renderOnly();
-                return;
-            }
-            if (detail.includes("archetype index out of range")) {
-                previewState.archetype = 0;
-                post({ type: "clamp", kind: "archetype" });
-                renderOnly();
-                return;
-            }
             post({ type: "error", message: detail || "generation failed" });
             return;
         }
@@ -588,8 +559,6 @@ function openPreview() {
         log.appendLine("message: " + JSON.stringify(message));
         if (message.type === "slider") {
             if (message.kind === "seed") previewState.seed = message.value >>> 0;
-            if (message.kind === "variant") previewState.variant = message.value >>> 0;
-            if (message.kind === "archetype") previewState.archetype = message.value >>> 0;
             scheduleRender();
         } else if (message.type === "uniform") {
             previewState.uniforms[message.name] = message.value;
@@ -626,7 +595,7 @@ function atlasHtml() {
     const message = event.data;
     const status = document.getElementById("status");
     if (message.type === "grid") {
-      status.textContent = "variants × archetypes at seed " + message.seed + " — click a cell to preview it";
+      status.textContent = "consecutive seeds from " + message.seed + " — click a cell to preview it";
       status.className = "";
       const grid = document.getElementById("grid");
       grid.textContent = "";
@@ -637,13 +606,13 @@ function atlasHtml() {
         img.src = "data:image/png;base64," + cell.png;
         const label = document.createElement("div");
         label.className = "label";
-        label.textContent = "v" + cell.variant + " · a" + cell.archetype;
+        label.textContent = "seed " + cell.seed;
         wrap.appendChild(img);
         wrap.appendChild(label);
         wrap.addEventListener("click", () => {
           for (const node of grid.children) node.classList.remove("selected");
           wrap.classList.add("selected");
-          vscode.postMessage({ type: "pick", variant: cell.variant, archetype: cell.archetype });
+          vscode.postMessage({ type: "pick", seed: cell.seed });
         });
         grid.appendChild(wrap);
       }
@@ -665,15 +634,11 @@ async function buildAtlas() {
     }
     try {
         const ipropPath = await compileEntry(entry);
-        // Learn the declared counts from a seed render.
-        const probe = await renderCell(ipropPath, previewState.seed >>> 0, 0, 0, previewState.uniforms);
-        const meta = JSON.parse(probe.json);
         const cells = [];
-        for (let a = 0; a < meta.archetypes; ++a) {
-            for (let v = 0; v < meta.variants; ++v) {
-                const cell = await renderCell(ipropPath, previewState.seed >>> 0, v, a, previewState.uniforms);
-                cells.push({ variant: v, archetype: a, png: cell.png });
-            }
+        for (let index = 0; index < 16; ++index) {
+            const seed = (previewState.seed + index) >>> 0;
+            const cell = await renderCell(ipropPath, seed, previewState.uniforms);
+            cells.push({ seed, png: cell.png });
         }
         if (atlasPanel) {
             atlasPanel.webview.postMessage({ type: "grid", seed: previewState.seed >>> 0, cells });
@@ -695,8 +660,7 @@ function openAtlas() {
     atlasPanel.onDidDispose(() => { atlasPanel = null; });
     atlasPanel.webview.onDidReceiveMessage((message) => {
         if (message.type === "pick") {
-            previewState.variant = message.variant;
-            previewState.archetype = message.archetype;
+            previewState.seed = message.seed >>> 0;
             if (previewPanel) scheduleRender();
             else openPreview();
         }
@@ -862,7 +826,7 @@ async function exportPng() {
     try {
         const compiled = await compileEntry(entry);
         const cell = await renderCell(compiled, previewState.seed >>> 0,
-            previewState.variant, previewState.archetype, previewState.uniforms);
+            previewState.uniforms);
         const target = await vscode.window.showSaveDialog({
             defaultUri: vscode.Uri.file(
                 entry.replace(/\.ips$/, "-" + (previewState.seed >>> 0) + ".png")),
@@ -883,9 +847,8 @@ async function exportSheet() {
     }
     try {
         const compiled = await compileEntry(entry);
-        const probe = JSON.parse((await renderCell(compiled, 0, 0, 0, {})).json);
-        const seedsPick = await vscode.window.showQuickPick(["4", "8", "12"], {
-            placeHolder: "seeds per variant (the grid columns)",
+        const seedsPick = await vscode.window.showQuickPick(["16", "4", "8", "12"], {
+            placeHolder: "number of consecutive seeds",
         });
         if (!seedsPick) return;
         const seeds = parseInt(seedsPick, 10);
@@ -898,8 +861,12 @@ async function exportSheet() {
             vscode.window.showErrorMessage("iprop: ipsheet not found — set iprop.sheetPath");
             return;
         }
-        execFile(tool, [compiled, "--variants", String(probe.variants),
-            "--seeds", String(seeds), "--columns", String(seeds), "-o", target.fsPath],
+        const arguments_ = [compiled, "--seed", String(previewState.seed >>> 0),
+            "--seeds", String(seeds), "--columns", "4", "-o", target.fsPath];
+        for (const [name, value] of Object.entries(previewState.uniforms)) {
+            arguments_.push("--uniform", name + "=" + value);
+        }
+        execFile(tool, arguments_,
             { timeout: 30000 }, (error, _stdout, stderr) => {
                 if (error) {
                     vscode.window.showErrorMessage("iprop: sheet export failed: " + (stderr || error.message));

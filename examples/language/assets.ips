@@ -1,8 +1,6 @@
-asset UniformAsset {
+asset UniformAsset { input i32 a = 0 input i32 v = 0
   size 16x16
   origin 8, 8
-  variants 3
-  archetypes 2
   input color tint = #9dc
   input f32 scale = 1.0
   input u32 dotCount = 2

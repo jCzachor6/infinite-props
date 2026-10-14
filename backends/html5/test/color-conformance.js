@@ -11,8 +11,8 @@ function run(iprop, tool, directory) {
         "utf8").trim().split(/\s+/).map(x => parseInt(x, 16));
     const amounts = [-2147483648, -2147483393, -256, 0, 255, 2147483392, 2147483647];
     const expected = [];
-    let source = `meta: size=${bits.length + amounts.length}x1 origin=0,0 variants=1 archetypes=1 fuel=10000\n` +
-        "fn draw ( i32, i32 ) -> ( ):\n";
+    let source = `meta: size=${bits.length + amounts.length}x1 origin=0,0 fuel=10000\n` +
+        "fn draw (  ) -> ( ):\n";
     for (let i = 0; i < bits.length; ++i) {
         source += `const.i32 ${i}\nconst.i32 0\nconst.color #0080ffff\nconst.color #ff80004d\n` +
             `const.f32 ${100+i}\ncolor.mix\npixel\n`;
@@ -49,8 +49,8 @@ function run(iprop, tool, directory) {
 // gray so blending cannot hide a wrong value.
 function runChannels(iprop, tool, directory) {
     const expected = [];
-    let source = "meta: size=1024x1 origin=0,0 variants=1 archetypes=1 fuel=100000\n" +
-        "fn draw ( i32, i32 ) -> ( ):\n";
+    let source = "meta: size=1024x1 origin=0,0 fuel=100000\n" +
+        "fn draw (  ) -> ( ):\n";
     for (let i = 0; i < 256; ++i) {
         const channels = [i, 255 - i, (i * 7) & 255, (i * 13 + 5) & 255];
         const hex = "#" + channels.map(x => x.toString(16).padStart(2, "0")).join("");

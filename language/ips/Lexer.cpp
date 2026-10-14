@@ -352,7 +352,7 @@ std::vector<std::string> reservedKeywords() {
 }
 
 std::string keywordSuggestion(std::string_view misspelled) {
-    std::vector<std::string> names{"size", "origin", "variants", "archetypes", "palette", "const"};
+    std::vector<std::string> names{"size", "origin", "palette", "const"};
     for (const auto& [name, kind] : keywords()) { (void)kind; names.push_back(name); }
     return didYouMean(misspelled, names);
 }

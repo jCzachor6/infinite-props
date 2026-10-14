@@ -2,14 +2,16 @@
 
 A source file contains imports followed by exactly one `asset name { ... }`.
 An asset requires `size` and one `draw` entry. It may declare an origin,
-variant/archetype counts, inputs, outputs, palettes, constants and helpers. Metadata
+inputs, outputs, palettes, constants and helpers. Metadata
 declarations are outside function bodies. `size 16x16` and `size 16 16` are
 accepted. Origin coordinates are constant numeric expressions; an omitted
-origin is `(0, 0)`. Omitted variant/archetype counts are both 1.
+origin is `(0, 0)`.
 
-The host supplies zero-based variant and archetype indices. In `draw`, the
-read-only `i32` names `v` and `a` contain those indices. An invocation outside
-the declared counts traps. `draw` declares no parameters or return type.
+The host supplies a seed, optional target dimensions and ordinary declared
+input values. `draw` declares no source parameters or return type. There are
+no implicit variant/archetype controls: `v` and `a` are ordinary names and
+must be declared before use. Authors define any style or class selectors
+as input values and decide which selections their asset supports.
 
 <!-- example: ../../examples/language/assets.ips -->
 
@@ -33,7 +35,7 @@ are allowed. `ipc --describe-language` marks each eligible overload with
 Legacy palette indexing and `ramp` are also allowed, including the last-element
 fallback for an invalid palette index.
 
-The current RNG state `seed`, input uniforms, `v`/`a`, part outputs, RNG draws
+The current RNG state `seed`, input uniforms, part outputs, RNG draws
 and user helper or part calls are forbidden. This includes seeded selection
 with `roll`/`choose` and equal-bound random ranges. The compiler checks every
 declaration, including unused constants, and checks forbidden effects in
@@ -64,7 +66,7 @@ declaring a constant does not expand those grammar rules. Scalar constants intro
 no new opcode, type code, section, host enum or ABI layout. Scalar/vector
 values lower through existing pools and instructions; a used distribution
 needs format 0.5. An unused declaration adds no executable instruction. Used lists share immutable
-collection data and require format 0.6; scalar results computed from lists
+collection data in format 0.7; scalar results computed from lists
 can retain older formats.
 
 <!-- example: ../../examples/language/errors/const-cycle.ips -->
@@ -129,7 +131,7 @@ the signed range and non-literal declaration expressions are also rejected:
 
 <!-- example: ../../examples/language/errors/declaration-constant.ips -->
 
-Input names `seed`, `v`, `a`, `at`, `rot`, `mirror_x` and `mirror_y` are
+Input names `seed`, `at`, `rot`, `mirror_x` and `mirror_y` are
 reserved. Inputs and outputs cannot share a name; declarations of the same
 kind must have unique names. Inputs cannot be assigned or used as loop counters.
 

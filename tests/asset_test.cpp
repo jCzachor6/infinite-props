@@ -62,7 +62,7 @@ TEST_CASE("f32 NaN payload survives the const pool bit-exactly") {
 
 TEST_CASE("meta without emission parses completely") {
     const auto poolBytes = namesPool({"palette", "scale", "count", "collider", "anchors"});
-    const auto metaBytes = metaSection(192, 192, 96.f, 170.f, 5, 4, 0x123456789ABull, false,
+    const auto metaBytes = metaSection(192, 192, 96.f, 170.f, 0x123456789ABull, false,
                                        {}, 0, 0, 0,
                                        {{0, 0, {10, 20, 30, 255}, 0, 0},
                                         {1, 1, {}, 2.5f, 0},
@@ -76,8 +76,6 @@ TEST_CASE("meta without emission parses completely") {
     REQUIRE(meta.sizeX == 192);
     REQUIRE(meta.sizeY == 192);
     REQUIRE(meta.origin == Vec2{96.f, 170.f});
-    REQUIRE(meta.variants == 5);
-    REQUIRE(meta.archetypes == 4);
     REQUIRE(meta.fuel == 0x123456789ABull);
     REQUIRE_FALSE(meta.hasEmission);
 
@@ -105,7 +103,7 @@ TEST_CASE("meta without emission parses completely") {
 
 TEST_CASE("meta with emission parses the emission block") {
     const auto poolBytes = namesPool({});
-    const auto metaBytes = metaSection(64, 64, 0, 0, 1, 1, 1000, true,
+    const auto metaBytes = metaSection(64, 64, 0, 0, 1000, true,
                                        {255, 83, 8, 255}, 0.f, -30.f, 7.f, {}, {});
     const auto bytes = fullFile(metaBytes, poolBytes);
     const auto layout = parseLayout(bytes);
@@ -122,7 +120,7 @@ TEST_CASE("meta with emission, inputs and outputs combined") {
     // Exercises the inputCount-at-56 path (spec §4): emission block present
     // and followed by a full I/O signature.
     const auto poolBytes = namesPool({"tint", "weight", "flags", "hit", "glow"});
-    const auto metaBytes = metaSection(128, 96, 64.f, 80.f, 3, 2, 5000, true,
+    const auto metaBytes = metaSection(128, 96, 64.f, 80.f, 5000, true,
                                        {10, 200, 40, 255}, 0.f, -12.f, 5.5f,
                                        {{0, 0, {1, 2, 3, 255}, 0, 0},
                                         {1, 1, {}, 0.25f, 0},
@@ -154,7 +152,7 @@ TEST_CASE("meta with emission, inputs and outputs combined") {
 
 TEST_CASE("root output slots keep declaration order (spec §4.3)") {
     const auto poolBytes = namesPool({"first", "second", "third"});
-    const auto metaBytes = metaSection(8, 8, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+    const auto metaBytes = metaSection(8, 8, 0, 0, 10, false, {}, 0, 0, 0, {},
                                        {{1, 0, 0}, {0, 0, 1}, {2, 1, 2}});
     const auto bytes = fullFile(metaBytes, poolBytes);
     const auto layout = parseLayout(bytes);
@@ -175,69 +173,66 @@ TEST_CASE("invalid meta fixtures fail with located errors") {
     const auto pool = namesPool({"a", "b"});
 
     // sizeX = 0 (size block starts at meta offset 0).
-    expectMetaError(metaSection(0, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {}, {}), pool,
+    expectMetaError(metaSection(0, 64, 0, 0, 10, false, {}, 0, 0, 0, {}, {}), pool,
                     0, "positive");
-    // variants = 0 (variants block at 16).
-    expectMetaError(metaSection(64, 64, 0, 0, 0, 1, 10, false, {}, 0, 0, 0, {}, {}), pool,
-                    16, "at least 1");
-    // fuel = 0 (fuel at 24).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 0, false, {}, 0, 0, 0, {}, {}), pool,
-                    24, "fuel");
-    // Unknown flag bit (flags at 32).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {}, {}, 2),
-                    pool, 32, "flag");
-    // Unknown input type (first input entry: count at 40, entry at 42).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0,
+    // fuel = 0 (fuel at 16).
+    expectMetaError(metaSection(64, 64, 0, 0, 0, false, {}, 0, 0, 0, {}, {}), pool,
+                    16, "fuel");
+    // Unknown flag bit (flags at 24).
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {}, {}, 2),
+                    pool, 24, "flag");
+    // Unknown input type (first input entry: count at 32, entry at 34).
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0,
                                 {{3, 0, {}, 0, 0}}, {}),
-                    pool, 42, "input type");
+                    pool, 34, "input type");
     // Input name outside the pool (name index at entry+1).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0,
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0,
                                 {{0, 99, {}, 0, 0}}, {}),
-                    pool, 43, "outside");
-    // Duplicate input name (second entry starts at 42 + 9).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0,
+                    pool, 35, "outside");
+    // Duplicate input name (second entry starts at 34 + 9).
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0,
                                 {{0, 0, {}, 0, 0}, {0, 0, {}, 0, 0}}, {}),
-                    pool, 51, "duplicate input");
-    // Unknown output kind (no inputs: outputCount at 42, entry at 44).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+                    pool, 43, "duplicate input");
+    // Unknown output kind (no inputs: outputCount at 34, entry at 36).
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {},
                                 {{9, 0, 0}}),
-                    pool, 44, "output kind");
+                    pool, 36, "output kind");
     // Invalid list flag (flag byte at entry+1).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {},
                                 {{0, 9, 0}}),
-                    pool, 45, "list flag");
+                    pool, 37, "list flag");
     // Output name outside the pool (name at entry+4).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {},
                                 {{0, 0, 99}}),
-                    pool, 48, "outside");
-    // Duplicate output name (second entry starts at 44 + 8).
-    expectMetaError(metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+                    pool, 40, "outside");
+    // Duplicate output name (second entry starts at 36 + 8).
+    expectMetaError(metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {},
                                 {{0, 0, 0}, {0, 0, 0}}),
-                    pool, 52, "duplicate output");
+                    pool, 44, "duplicate output");
     // Truncated meta: only 4 bytes — sizeY read fails at offset 4.
     expectMetaError({0, 0, 0, 0}, pool, 4, "end");
 }
 
 TEST_CASE("meta reserved bytes must be zero") {
     const auto pool = namesPool({});
-    // Flip reserved[1] (offset 35 within the section).
-    auto metaBytes = metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {}, {});
-    metaBytes[35] = 0x01;
-    expectMetaError(metaBytes, pool, 35, "reserved");
+    // Flip reserved[1] (offset 27 within the section).
+    auto metaBytes = metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {}, {});
+    metaBytes[27] = 0x01;
+    expectMetaError(metaBytes, pool, 27, "reserved");
 }
 
 TEST_CASE("output entry reserved bytes must be zero") {
     const auto pool = namesPool({"a"});
-    // One output: entry at 44; reserved bytes at 46..47.
-    auto metaBytes = metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {},
+    // One output: entry at 36; reserved bytes at 38..39.
+    auto metaBytes = metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {},
                                  {{0, 0, 0}});
-    metaBytes[47] = 0x01;
-    expectMetaError(metaBytes, pool, 47, "reserved");
+    metaBytes[39] = 0x01;
+    expectMetaError(metaBytes, pool, 39, "reserved");
 }
 
 TEST_CASE("trailing bytes in meta fail") {
     const auto pool = namesPool({});
-    auto metaBytes = metaSection(64, 64, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {}, {});
+    auto metaBytes = metaSection(64, 64, 0, 0, 10, false, {}, 0, 0, 0, {}, {});
     metaBytes.push_back(0xEE); // trailing garbage after the last output
     expectMetaError(metaBytes, pool, metaBytes.size() - 1, "trailing");
 }
@@ -277,7 +272,7 @@ TEST_CASE("trailing bytes in const fail") {
 
 TEST_CASE("parsers reject sections of the wrong id") {
     const auto poolBytes = namesPool({});
-    const auto metaBytes = metaSection(8, 8, 0, 0, 1, 1, 10, false, {}, 0, 0, 0, {}, {});
+    const auto metaBytes = metaSection(8, 8, 0, 0, 10, false, {}, 0, 0, 0, {}, {});
     const auto bytes = fullFile(metaBytes, poolBytes);
     const auto layout = parseLayout(bytes);
 

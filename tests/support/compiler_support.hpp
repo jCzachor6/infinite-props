@@ -14,6 +14,6 @@ struct RunOutcome {
 
 std::vector<iprop::u8> compileChecked(const std::string& source);
 RunOutcome execute(const std::vector<iprop::u8>& bytes, iprop::u32 seed = 42);
-RunOutcome run(const std::vector<iprop::u8>& bytes, iprop::u32 variant, iprop::u32 archetype);
+RunOutcome run(const std::vector<iprop::u8>& bytes, iprop::u32 v, iprop::u32 a);
 
 } // namespace compiler_test

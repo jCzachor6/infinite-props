@@ -444,14 +444,6 @@ public:
             indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Origin), false);
             out_ << "  origin "; expression(*asset.originX); out_ << ", "; expression(*asset.originY); out_.finishRange(); out_ << '\n'; range.close();
         }
-        if (asset.variants) {
-            indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Variants), false);
-            out_ << "variants " << *asset.variants; out_.finishRange(); out_ << '\n'; range.close();
-        }
-        if (asset.archetypes) {
-            indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Archetypes), false);
-            out_ << "archetypes " << *asset.archetypes; out_.finishRange(); out_ << '\n'; range.close();
-        }
         for (const auto& input : asset.inputs) {
             indent(1); SourceOutput::Scope range(out_, input.sourceRange, false);
             out_ << "  input " << (input.type == InputType::U32 ? "u32" : typeName(valueTypeOf(input.type)))

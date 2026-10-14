@@ -198,18 +198,15 @@ inline void setParameter(iprop_parameters* parameters, std::string_view name, st
     }
 }
 
-// Generates one (seed, variant, archetype) tuple from the given parameters,
+// Generates one seed tuple from the given parameters,
 // or the stored defaults when none are given; throws on failure. The
 // returned handle must be freed by the caller.
 inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
-                              std::uint32_t variant, std::uint32_t archetype,
                               const iprop_parameters* parameters = nullptr) {
     Error error;
     iprop_generate_options_ex options;
     error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
     options.seed = seed;
-    options.variant = variant;
-    options.archetype = archetype;
     iprop_result* result = nullptr;
     error.check(iprop_generate_ex(program, &options, parameters, &result, error.get()), "iprop_generate_ex");
     return result;

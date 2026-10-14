@@ -106,15 +106,15 @@ TEST_CASE("VM traps retain legacy policy while structured setup locations are ab
         codeSection({drawSpec(retIns())}, {})));
     validate(loaded);
     GenerationInputs inputs;
-    inputs.variant = 7;
+    inputs.sizeX = kMaxCanvasSide + 1;
     try {
         VM vm(loaded, inputs);
-        FAIL("invalid variant accepted");
+        FAIL("invalid canvas size accepted");
     } catch (const Trap& error) {
         CHECK(error.offset == 0); // legacy text keeps its original offset
         const auto view = capi::describeError(IPROP_EX_E_TRAP, error, &loaded);
         CHECK(view.status == IPROP_EX_E_TRAP);
-        CHECK(view.reason == IPROP_REASON_VARIANT_RANGE);
+        CHECK(view.reason == IPROP_REASON_CANVAS_SIZE);
         CHECK(view.stage == IPROP_STAGE_ARGUMENTS);
         CHECK(view.location_flags == 0);
         CHECK(view.offset_space == IPROP_OFFSET_NONE);
@@ -123,7 +123,7 @@ TEST_CASE("VM traps retain legacy policy while structured setup locations are ab
 
 TEST_CASE("execution traps recover real debug lines and stripped maps stay absent", "[error-metadata]") {
     const auto original = compiler_test::compileChecked(
-        "asset t {\n size 8x8\n draw {\n  x = v\n  y = 1 / x\n  pixel(y,0,#fff)\n }\n}");
+        "asset t { input i32 v = 0 \n size 8x8\n draw {\n  x = v\n  y = 1 / x\n  pixel(y,0,#fff)\n }\n}");
     for (const auto& bytes : {original, compressFile(original), stripDebug(original)}) {
         const auto loaded = loadFile(bytes);
         validate(loaded);
@@ -153,7 +153,7 @@ TEST_CASE("structured call depth location identifies the call before the legacy 
     // Supply both entry params before each recursive call; static validation
     // accepts recursion, while the VM enforces the actual call depth.
     std::vector<u8> recursive;
-    for (const auto& instruction : {ins(0x13, 0, 0), ins(0x13, 0, 1), ins(0x08, 0, 0)})
+    for (const auto& instruction : {ins(0x08, 0, 0)})
         recursive.insert(recursive.end(), instruction.begin(), instruction.end());
     const auto file = loadFile(fullFile(minimalMeta(), richPool({"draw"}),
         codeSection({drawSpec(recursive)}, {})));
@@ -164,15 +164,15 @@ TEST_CASE("structured call depth location identifies the call before the legacy 
         FAIL("unbounded recursion accepted");
     } catch (const Trap& error) {
         CHECK(error.reason == ErrorReason::CallDepth);
-        CHECK(error.location.pc == 2);
-        CHECK(error.location.byteOffset == file.code.entry().fileOffset + 8);
-        CHECK(error.offset == file.code.entry().fileOffset + 12);
+        CHECK(error.location.pc == 0);
+        CHECK(error.location.byteOffset == file.code.entry().fileOffset);
+        CHECK(error.offset == file.code.entry().fileOffset + 4);
     }
 }
 
 TEST_CASE("unusable debug maps do not claim a source line or alter the trap", "[error-metadata]") {
     const auto original = compiler_test::compileChecked(
-        "asset t { size 8x8 draw { x = v y = 1/x pixel(y,0,#fff) } }");
+        "asset t { input i32 v = 0  size 8x8 draw { x = v y = 1/x pixel(y,0,#fff) } }");
     const auto invoke = [](const LoadedFile& file) {
         validate(file);
         try {

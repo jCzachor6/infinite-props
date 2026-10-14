@@ -1,8 +1,8 @@
 // Implicit variant and archetype indices.
 asset VariantBadge {
   size 32x32
-  variants 4
-  archetypes 3
+  input i32 a = 0
+  input i32 v = 0
   palette colors = [#aa3344, #ddbb55, #55aa88, #4499bb]
 
   draw {

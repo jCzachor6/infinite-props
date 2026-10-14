@@ -100,12 +100,10 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_inputs"), &IpropAsset::get_inputs);
     ClassDB::bind_method(D_METHOD("set_input", "name", "value"), &IpropAsset::set_input);
     ClassDB::bind_method(D_METHOD("reset_inputs"), &IpropAsset::reset_inputs);
-    ClassDB::bind_method(D_METHOD("generate", "seed", "variant", "archetype"),
+    ClassDB::bind_method(D_METHOD("generate", "seed"),
                          &IpropAsset::generate);
     ClassDB::bind_method(D_METHOD("get_size"), &IpropAsset::get_size);
     ClassDB::bind_method(D_METHOD("get_origin"), &IpropAsset::get_origin);
-    ClassDB::bind_method(D_METHOD("get_variants"), &IpropAsset::get_variants);
-    ClassDB::bind_method(D_METHOD("get_archetypes"), &IpropAsset::get_archetypes);
     ClassDB::bind_method(D_METHOD("get_fuel"), &IpropAsset::get_fuel);
     ClassDB::bind_method(D_METHOD("get_outputs"), &IpropAsset::get_outputs);
     ClassDB::bind_method(D_METHOD("get_part_outputs"), &IpropAsset::get_part_outputs);
@@ -113,8 +111,6 @@ void IpropAsset::_bind_methods() {
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "origin"), "", "get_origin");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "variants"), "", "get_variants");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "archetypes"), "", "get_archetypes");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "fuel"), "", "get_fuel");
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "inputs"), "", "get_inputs");
     ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "outputs"), "",
@@ -171,8 +167,6 @@ Error IpropAsset::load_file(const String& path) {
     size_ = Vector2i(static_cast<int>(meta.size_x),
                      static_cast<int>(meta.size_y));
     origin_ = Vector2(meta.origin_x, meta.origin_y);
-    variants_ = static_cast<int64_t>(meta.variants);
-    archetypes_ = static_cast<int64_t>(meta.archetypes);
     fuel_ = static_cast<int64_t>(meta.fuel);
     emit_changed();
     return OK;
@@ -270,13 +264,12 @@ Error IpropAsset::reset_inputs() {
     return OK;
 }
 
-Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
-                                int64_t archetype) {
+Ref<Image> IpropAsset::generate(int64_t seed) {
     const auto validU32 = [](int64_t value) {
         return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
     };
-    if (!validU32(seed) || !validU32(variant) || !validU32(archetype)) {
-        UtilityFunctions::printerr("iprop: seed, variant and archetype must fit u32");
+    if (!validU32(seed)) {
+        UtilityFunctions::printerr("iprop: seed must fit u32");
         return Ref<Image>();
     }
     if (program_ == nullptr) {
@@ -286,8 +279,6 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t variant,
     iprop_generate_options_ex options;
     iprop_generate_options_ex_init(&options, sizeof(options));
     options.seed = static_cast<uint32_t>(seed);
-    options.variant = static_cast<uint32_t>(variant);
-    options.archetype = static_cast<uint32_t>(archetype);
     Failure failure;
     iprop_result* result = nullptr;
     if (iprop_generate_ex(program_, &options, parameters_, &result, failure.get()) != IPROP_EX_OK) {
@@ -369,22 +360,11 @@ void IpropSprite2D::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_seed", "seed"),
                          &IpropSprite2D::set_seed);
     ClassDB::bind_method(D_METHOD("get_seed"), &IpropSprite2D::get_seed);
-    ClassDB::bind_method(D_METHOD("set_variant", "variant"),
-                         &IpropSprite2D::set_variant);
-    ClassDB::bind_method(D_METHOD("get_variant"), &IpropSprite2D::get_variant);
-    ClassDB::bind_method(D_METHOD("set_archetype", "archetype"),
-                         &IpropSprite2D::set_archetype);
-    ClassDB::bind_method(D_METHOD("get_archetype"),
-                         &IpropSprite2D::get_archetype);
 
     ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "asset",
                               PROPERTY_HINT_RESOURCE_TYPE, "IpropAsset"),
                  "set_asset", "get_asset");
     ADD_PROPERTY(PropertyInfo(Variant::INT, "seed"), "set_seed", "get_seed");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "variant"), "set_variant",
-                 "get_variant");
-    ADD_PROPERTY(PropertyInfo(Variant::INT, "archetype"), "set_archetype",
-                 "get_archetype");
 }
 
 void IpropSprite2D::_ready() {
@@ -396,7 +376,7 @@ void IpropSprite2D::refresh() {
         set_texture(Ref<Texture2D>());
         return;
     }
-    const Ref<Image> image = asset_->generate(seed_, variant_, archetype_);
+    const Ref<Image> image = asset_->generate(seed_);
     if (image.is_null()) {
         set_texture(Ref<Texture2D>());
         return;
@@ -421,14 +401,6 @@ void IpropSprite2D::set_seed(int64_t seed) {
     refresh();
 }
 
-void IpropSprite2D::set_variant(int64_t variant) {
-    variant_ = variant;
-    refresh();
-}
 
-void IpropSprite2D::set_archetype(int64_t archetype) {
-    archetype_ = archetype;
-    refresh();
-}
 
 } // namespace iprop_godot

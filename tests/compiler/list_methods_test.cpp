@@ -25,7 +25,7 @@ std::vector<u8> compile(const std::string& source, bool optimize=false) {
     auto program=ips::parse(source);ips::checkAsset(program,{});return compileProgram(program,{},optimize);
 }
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed=26) {
-    auto file=loadFile(bytes);validate(file);VM vm(file,{seed,0,0,0,0,{}});vm.run();return vm.result();
+    auto file=loadFile(bytes);validate(file);VM vm(file,{seed, 0, 0, {}});vm.run();return vm.result();
 }
 void rejected(const std::string& body,const std::string& message) {
     const auto result=compileSource("bad-list-method.ips",[&](std::string_view){return "asset t{size 1x1 "+body+"}";});
@@ -154,5 +154,5 @@ TEST_CASE("list method invalid receivers arguments unsupported sorts and unset v
         const auto file=loadFile(compile("asset t{size 1x1 draw{"+std::string(body)+"}}"));VM vm(file,{});CHECK_THROWS_AS(vm.run(),Trap);CHECK_THROWS_AS(vm.result(),std::logic_error);
     }
     for(const auto& dead:{"list.distinct 65535","list.sort 65535"})
-        CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\n"+std::string(dead)+"\nendfn\n"),std::exception);
+        CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\n"+std::string(dead)+"\nendfn\n"),std::exception);
 }

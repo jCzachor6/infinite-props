@@ -53,11 +53,11 @@ function run(iprop, tool, directory) {
     ];
     let comparisons = 0;
     for (const [name, operation, vector] of cases) {
-        let source = "meta: size=1x1 origin=0,0 variants=1 archetypes=1 fuel=1000000\n" +
-                     "output: list point p\nfn draw ( i32, i32 ) -> ( ):\nlocals: vec2\n";
+        let source = "meta: size=1x1 origin=0,0 fuel=1000000\n" +
+                     "output: list point p\nfn draw (  ) -> ( ):\nlocals: vec2\n";
         for (let x = 0; x < bits.length; ++x) for (let y = 0; y < bits.length; ++y) {
             source += v(x,y) + operation(x,y) + (vector ?
-                "local.set 2\nlocal.get 2\nvec2.x\nlocal.get 2\nvec2.y\n" : "const.f32 0\n") +
+                "local.set 0\nlocal.get 0\nvec2.x\nlocal.get 0\nvec2.y\n" : "const.f32 0\n") +
                 "out.list.point p\n";
         }
         source += "endfn\n";

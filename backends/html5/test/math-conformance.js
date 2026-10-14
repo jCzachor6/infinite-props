@@ -41,18 +41,18 @@ function run(iprop, tool, directory) {
     const pairs = pins.map(p => p.slice(0, 2));
     for (const x of corpus) for (const y of corpus) pairs.push([x, y]);
     const encodings = pairs.flat();
-    let source = "meta: size=1x1 variants=1 archetypes=1 fuel=1000000\n" +
-        "output: list point p\nfn draw ( i32, i32 ) -> ( ):\nlocals: vec2\n";
+    let source = "meta: size=1x1 fuel=1000000\n" +
+        "output: list point p\nfn draw (  ) -> ( ):\nlocals: vec2\n";
     for (let i = 0; i < pairs.length; ++i) {
         source += `const.f32 ${100 + i * 2}\nconst.f32 ${101 + i * 2}\nvec2.make\n` +
-            "vec2.normalize\nlocal.set 2\nlocal.get 2\nvec2.x\nlocal.get 2\nvec2.y\nout.list.point p\n";
+            "vec2.normalize\nlocal.set 0\nlocal.get 0\nvec2.x\nlocal.get 0\nvec2.y\nout.list.point p\n";
     }
     source += "endfn\n";
     const base = path.join(directory, "normalize-boundaries");
     fs.writeFileSync(base + ".ipa", source);
     execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
     const bytes = fs.readFileSync(base + ".iprop");
-    assert.equal(bytes.readUInt16LE(6), 6);
+    assert.equal(bytes.readUInt16LE(6), 7);
     replaceFloatConstants(bytes, encodings);
     fs.writeFileSync(base + ".iprop", bytes);
     const native = JSON.parse(execFileSync(tool("ipgen"),
@@ -64,7 +64,7 @@ function run(iprop, tool, directory) {
     comparisons += actual.length;
 
     // Raw NaN payloads and both signs of infinity, in either component.
-    fs.writeFileSync(base + ".ipa", "meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\n" +
+    fs.writeFileSync(base + ".ipa", "meta: size=1x1\nfn draw (  ) -> ( ):\n" +
         "const.f32 100\nconst.f32 101\nvec2.make\nvec2.normalize\ndrop\nendfn\n");
     execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
     const valid = fs.readFileSync(base + ".iprop");
@@ -86,14 +86,14 @@ function run(iprop, tool, directory) {
 
     // Version gates apply to every new opcode even after return.
     for (const opcode of ["i32.min", "i32.max", "i32.clamp", "vec2.normalize"]) {
-        fs.writeFileSync(base + ".ipa", "meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\n" + opcode + "\nendfn\n");
+        fs.writeFileSync(base + ".ipa", "meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\n" + opcode + "\nendfn\n");
         execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
         const gated = fs.readFileSync(base + ".iprop");
-        assert.equal(gated.readUInt16LE(6), 6);
+        assert.equal(gated.readUInt16LE(6), 7);
         iprop.generate(new Uint8Array(gated), {});
         for (let minor = 1; minor <= 5; ++minor) {
             gated.writeUInt16LE(minor, 6);
-            assert.throws(() => iprop.generate(new Uint8Array(gated), {}), /opcodes require format 0\.6/);
+            assert.throws(() => iprop.generate(new Uint8Array(gated), {}), /unsupported format minor version/);
             ++comparisons;
         }
     }
@@ -104,14 +104,8 @@ function run(iprop, tool, directory) {
     for (const fixture of frozen) {
         const binary = Buffer.from(fixture.binary_base64, "base64");
         assert.equal(sha(binary), fixture.binary_sha256);
-        for (const expected of fixture.generations) {
-            const result = iprop.generate(new Uint8Array(binary), {seed: expected.seed, ...expected.arguments});
-            assert.deepEqual({x: result.width, y: result.height}, expected.size);
-            assert.equal(sha(result.data), expected.rgba_sha256, fixture.source + " frozen RGBA");
-            assert.equal(sha(JSON.stringify(canonical(outputBits(result.outputs)))), expected.outputs_sha256,
-                fixture.source + " frozen output bits");
-            ++comparisons;
-        }
+        assert.throws(() => iprop.generate(new Uint8Array(binary), {}), /unsupported format minor version/);
+        ++comparisons;
     }
     return comparisons;
 }

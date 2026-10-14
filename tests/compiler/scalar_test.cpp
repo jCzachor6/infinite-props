@@ -38,7 +38,7 @@ TEST_CASE("shifted comparisons match grouped legacy expressions in both compiler
         {"v & 3 < 1 << 1", "v & (3 < (1 << 1))", {0,0,0,0,0,0,0,0}},
     };
     const auto source = [](const char* expression) {
-        return std::string("asset comparison { size 8x8 variants 8 output point p ") +
+        return std::string("asset comparison { input i32 v=0 size 8x8 output point p ") +
             "draw { p = {" + expression + ", 0} } }";
     };
     for (const auto& test : cases) {
@@ -64,7 +64,7 @@ TEST_CASE("shifted comparisons match grouped legacy expressions in both compiler
 
 TEST_CASE("shifted comparison grouping preserves RNG evaluation") {
     const auto source = [](const char* expression) {
-        return std::string("asset comparison { size 8x8 output point p ") +
+        return std::string("asset comparison { input i32 v=0 size 8x8 output point p ") +
             "draw { p = {" + expression + ", unit()} } }";
     };
     const auto program = ips::parse(source("int(unit() * 8) < 1 << int(unit() * 3)"));
@@ -101,27 +101,27 @@ asset t {
   }
 })";
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: f32 f32
   const.f32 0.5
   f32.sin
-  local.set 2
+  local.set 0
   const.f32 1.25
   f32.cos
-  local.set 3
-  local.get 2
-  local.get 3
+  local.set 1
+  local.get 0
+  local.get 1
   out.point p
-  local.get 2
+  local.get 0
   const.f32 10.0
   f32.mul
   f32.to.i32
   const.i32 0
   const.color #ff0000
   pixel
-  local.get 3
+  local.get 1
   const.f32 10.0
   f32.mul
   f32.to.i32
@@ -185,8 +185,8 @@ asset t {
   }
 })";
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
-fn draw ( i32, i32 ) -> ( ):
+meta: size=8x8 origin=0,0 fuel=1000000
+fn draw (  ) -> ( ):
   const.f32 2.7
   f32.floor
   f32.to.i32
@@ -280,7 +280,7 @@ TEST_CASE("round saturates and distinguishes the floats adjacent to half integer
 TEST_CASE("logical and bitwise not fold and lower correctly") {
     // !5 folds to 0, ~0 folds to -1, and a runtime !v uses the eqz lowering.
     const std::string source = R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
   output point p
   draw {
@@ -341,7 +341,7 @@ asset t {
 })";
     const auto bytes = compileChecked(source);
     const auto loaded = loadFile(bytes);
-    VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{0, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
     const NamedOutput* p = result.find("p");
@@ -363,7 +363,7 @@ asset t {
 })";
     const auto bytes = compileChecked(source);
     const auto loaded = loadFile(bytes);
-    VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{0, 0, 0, {}});
     vm.run();
     const GenerationResult result = vm.result();
     const NamedOutput* p = result.find("p");

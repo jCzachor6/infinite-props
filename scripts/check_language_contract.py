@@ -52,7 +52,6 @@ def main():
         'unexecuted_initializer': 'typed_zero', 'read_requires_prior_assignment': True}
     assert rules['visibility'] == {'uniforms': 'draw_only', 'uniforms_read_only': True,
         'helper_parameters_read_only': True,
-        'draw_controls': {'names': ['v', 'a'], 'type': 'i32', 'read_only': True},
         'seed': 'current_rng_state_in_all_functions', 'palettes': 'all_asset_functions',
         'constants': 'all_asset_functions'}
     assert rules['asset_constants'] == {'keyword': 'reserved',
@@ -186,7 +185,7 @@ def main():
         ('uniform hidden from helper', 'input i32 n=1 draw{paint()} paint(){pixel(n,0,#fff)}', False),
         ('uniform read only', 'input i32 n=1 draw{n=2}', False),
         ('parameter read only', 'draw{} helper(x:i32){x=2}', False),
-        ('draw control read only', 'draw{v=2}', False),
+        ('ordinary control names', 'draw{v=2;a=3;variants=4;archetypes=5}', True),
         ('seed and palettes in helper', 'palette p=[#abc,#fff] draw{paint()} '
          'paint(){pixel(seed&1,0,p[0])}', True),
         ('seed read only', 'draw{seed=2}', False),
@@ -228,14 +227,14 @@ def main():
 
         (root / 'child.ips').write_text('asset child {size 8x8 input i32 n=-7 draw{}}')
         entry = ('import child from "child.ips" asset t {size 8x8 '
-                 'draw{child.draw(a=0,at={0,0},v=0,n=1,seed=seed)}}')
+                 'draw{child.draw(at={0,0},n=1,seed=seed)}}')
         check('named part controls and uniform', entry, True)
         check('part placement is named only', entry.replace('at={0,0}', '{0,0}'), False)
         # Nested imports resolve beside the importing file, not the entry.
         (root / 'parts').mkdir()
         (root / 'parts' / 'grandchild.ips').write_text('asset grandchild {size 8x8 draw{}}')
         (root / 'child.ips').write_text('import grandchild from "parts/grandchild.ips" '
-            'asset child {size 8x8 input i32 n=-7 draw{grandchild.draw(seed,v,a,at={0,0})}}')
+            'asset child {size 8x8 input i32 n=-7 draw{grandchild.draw(seed,at={0,0})}}')
         check('nested part import', entry, True)
         (root / 'parts' / 'grandchild.ips').write_text('import back from "../child.ips" asset grandchild {size 8x8 draw{}}')
         report = check('nested import cycle', entry, False)

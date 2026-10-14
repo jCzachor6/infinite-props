@@ -51,8 +51,7 @@ TEST_CASE("for loops are checked") {
     expectCheckError("asset t { size 8x8 output point p "
                      "draw { for p in 0..2 { } } }",
                      "outputs cannot be loop counters");
-    expectCheckError(wrap("for v in 0..2 { }"),
-                     "'v' is a reserved name");
+    CHECK_NOTHROW(checkAsset(parse(wrap("for v in 0..2 { }")), {}));
     expectCheckError(wrap("for seed in 0..2 { }"), "reserved");
     // A matching existing local is reused; a type clash is an error.
     expectCheckError(wrap("x = 1.5\nfor x in 0..2 { }"),
@@ -126,11 +125,11 @@ asset t {
 TEST_CASE("declared return types are checked against the body") {
     // i32 return values widen to a declared f32 result.
     CHECK_NOTHROW(checkAsset(parse(
-        "asset t { size 8x8 draw { x = g(a) } "
+        "asset t { size 8x8 input i32 a=0 draw { x = g(a) } "
         "g(n: i32) -> f32 { return n } }"), {}));
     // A value that does not fit the declared type is rejected.
     expectCheckError(
-        "asset t { size 8x8 draw { x = f(a) } "
+        "asset t { size 8x8 input i32 a=0 draw { x = f(a) } "
         "f(n: i32) -> i32 { if (n) { return 1 } return 2.5 } }",
         "return type of 'f' is i32, got f32");
     // A returning function must declare its return type (no inference).

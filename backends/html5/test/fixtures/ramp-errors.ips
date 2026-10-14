@@ -1,6 +1,5 @@
-asset rampErrors {
+asset rampErrors { input i32 a = 0 input i32 v = 0
   size 8x8
-  variants 2
   palette height = [1.25]
   palette color = [#123456]
   output point result

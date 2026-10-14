@@ -5,8 +5,6 @@
 asset eyes {
   size 64x64
   origin 0,0
-  variants 8
-
   input color iris = #4b6f7d
 
   output point pupil

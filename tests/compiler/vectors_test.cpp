@@ -27,7 +27,7 @@ TEST_CASE("typed temporary locals keep stable slots in every emission order") {
              {0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}}) {
         const std::string body = statements[order[0]] + statements[order[1]] +
                                  statements[order[2]];
-        const std::string source = "asset t { size 8x8 variants 3 "
+        const std::string source = "asset t { input i32 v=0 size 8x8 "
             "palette colors = [#112233, #445566] "
             "draw { " + body + "pixel(x, flag, c) "
             "pixel(3, 0, helper(v)) } "
@@ -75,37 +75,37 @@ asset t {
 
     // The hand-assembled .ipa reference.
     const std::string ipa = R"(
-meta: size=64x64 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=64x64 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: vec2 vec2 f32 vec2 vec2
   const.f32 3.0
   const.f32 4.0
   vec2.make
-  local.set 2
-  local.get 2
-  local.get 2
+  local.set 0
+  local.get 0
+  local.get 0
   vec2.add
-  local.set 3
-  local.get 3
+  local.set 1
+  local.get 1
   vec2.x
-  local.get 3
+  local.get 1
   vec2.y
   f32.mul
-  local.set 4
-  local.get 2
+  local.set 2
+  local.get 0
   vec2.neg
-  local.set 5
-  local.get 2
+  local.set 3
+  local.get 0
   const.f32 2.0
   call helper
-  local.set 6
-  local.get 6
+  local.set 4
+  local.get 4
   vec2.x
-  local.get 6
+  local.get 4
   vec2.y
   out.point p
-  local.get 4
+  local.get 2
   f32.to.i32
   const.i32 0
   const.color #ff0000
@@ -134,9 +134,8 @@ endfn
 TEST_CASE("vec2 locals are zeroed in root, helper and part frames") {
     SECTION("root and helper") {
         const auto bytes = compileChecked(R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
-  variants 2
   output point rootPoint
   output point helperPoint
   helper(flag: i32) -> vec2 {
@@ -161,17 +160,17 @@ asset t {
         }
     }
     SECTION("part") {
-        const auto part = ips::parse(R"(asset child {
-          size 8x8 variants 2 output point top
+        const auto part = ips::parse(R"(asset child { input i32 v = 0
+          size 8x8 output point top
           draw {
             if (v) { q = {5.0, 6.0} }
             top = q
           }
         })");
         const auto root = ips::parse(R"(import child from "child.ips"
-          asset t { size 8x8 variants 2 output point p
+          asset t { input i32 v=0 size 8x8 output point p
             draw {
-              child.draw(seed, v, a, at = {0, 0})
+              child.draw(seed, v=v, at = {0, 0})
               p = child.outputs.top
             }
           })");
@@ -287,7 +286,7 @@ TEST_CASE("part point outputs expose vec2 components without a temporary") {
         output point translated
         output point bare
         draw {
-          child.draw(seed, v, a, at = {0, 0})
+          child.draw(seed, at = {0, 0})
           components = {child.outputs.top.x, child.outputs.top.y}
           named = {child.outputs.x.x, child.outputs.y.y}
           translated = {(child.outputs.top + {1, 2}).x,

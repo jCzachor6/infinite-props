@@ -57,9 +57,8 @@ templates are not included in the native package.
 ## The extension (8.1/8.2)
 
 - **`IpropAsset` (Resource)** — `load_file(path)` loads and validates a
-  `.iprop` through the C API; `generate(seed, variant, archetype)`
-  returns a Godot `Image` (RGBA8). The meta (`size`, `origin`, `variants`,
-  `archetypes`, `fuel`) and the structured outputs are properties; each
+  `.iprop` through the C API; `generate(seed)`
+  returns a Godot `Image` (RGBA8). The meta (`size`, `origin`, `fuel`) and the structured outputs are properties; each
   root output is a dictionary `{index, name, owner, kind, list, values}` under
   its name in `outputs`. `part_outputs[owner][name]` holds part slots,
   with owner N+1 for part N. `output_slots` preserves all slots in program
@@ -83,7 +82,7 @@ templates are not included in the native package.
   var image := asset.generate(26, 0, 0)
   ```
 - **`IpropSprite2D` (Sprite2D)** — holds an `IpropAsset` plus
-  `seed`/`variant`/`archetype`; `refresh()` regenerates the
+  `seed` and declared inputs; `refresh()` regenerates the
   `ImageTexture`. Setting any property refreshes automatically.
   Clearing the asset or a failed generation clears the texture. Successful
   asset reloads and input changes emit `changed` and refresh its sprites;
@@ -129,7 +128,7 @@ Godot.app/Contents/MacOS/Godot --path build/godot-project
 ```
 
 A `Node2D` script builds an `IpropSprite2D` over `assets/plant.iprop`:
-**Left/Right** cycle the seed, **Up/Down** the variant, **S** exports the
+**Left/Right** cycle the seed; **S** exports the
 current image as a PNG.
 
 ## The conformance (8.2/8.3)
@@ -140,7 +139,7 @@ committed golden PNGs, the pinned `pupilCenter` output, and a PNG export
 round-trip. A hand-written `.godot/extension_list.cfg` replaces the
 editor scan so the fresh build trees work without an import step.
 Compiled source fixtures additionally check palettes, typed helpers,
-loops, raw math bits, empty output lists, variants/archetypes, plant
+loops, raw math bits, empty output lists, authored selection inputs, plant
 composition, duplicate output owners and transactional sprite lifecycle.
 The output-values fixture adds all eight D4 transformations, owner gaps and
 empty singular/list slots. Binary fixtures pin UTF-8/embedded-NUL/empty names

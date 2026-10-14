@@ -51,7 +51,7 @@ iprop_warnings(ipval)
 
 # ipgen: generate a seed-based procedural asset (.iprop → PNG + JSON)
 # ipa: assemble .ipa text into .iprop binary
-# ipsheet: render a variant × seed grid PNG
+# ipsheet: render a seed grid PNG
 
 # 8-bit RGBA PNG files for the tools and tests, over the runtime's zlib.
 add_library(iprop_png STATIC

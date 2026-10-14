@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
         iprop_result_free(second);
         {
             iprop_result* failed = first;
-            options.variant = UINT32_MAX;
+            options.size_x = UINT32_MAX;
             CHECK(iprop_generate(program, &options, &failed, message, sizeof(message)) == IPROP_E_TRAP);
             CHECK(failed == first);
         }

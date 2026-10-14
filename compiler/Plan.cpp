@@ -404,12 +404,6 @@ void Planner::prepareFunctionBody(const std::string& name) {
     if (drawLike) {
         if (!ast->params.empty())
             error(ast->location, "'draw' takes no declared parameters; use 'draw { ... }'");
-        info.params = {ValueType::I32, ValueType::I32}; // variant, archetype
-        for (const std::string pname : {"v", "a"}) {
-            info.slots.emplace(pname, slot);
-            info.langTypes.emplace(pname, ips::ValueType::I32);
-            ++slot;
-        }
         for (const auto& input : owner->asset.inputs) {
             info.slots.emplace(input.name, slot);
             info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));

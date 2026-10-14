@@ -104,21 +104,21 @@ asset t {
     // The hand-assembled reference: the same loop with explicit br depths
     // (br 0 = the loop label, br 1 = the enclosing block).
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: i32 i32
   const.i32 0
-  local.set 2
+  local.set 0
   const.i32 0
-  local.set 3
+  local.set 1
   block
   loop
-    local.get 3
+    local.get 1
     const.i32 1
     i32.add
-    local.set 3
-    local.get 3
+    local.set 1
+    local.get 1
     const.i32 2
     i32.rem_s
     const.i32 1
@@ -126,24 +126,24 @@ fn draw ( i32, i32 ) -> ( ):
     if
       br 1
     end
-    local.get 3
+    local.get 1
     const.i32 5
     i32.gt_s
     if
       br 2
     end
-    local.get 2
-    local.get 3
+    local.get 0
+    local.get 1
     i32.add
-    local.set 2
+    local.set 0
     br 0
   end
   end
-  local.get 2
+  local.get 0
   const.i32 0
   const.color #ff0000
   pixel
-  local.get 2
+  local.get 0
   i32.to.f32
   const.i32 0
   i32.to.f32
@@ -214,44 +214,44 @@ asset t {
     REQUIRE(fromIps.outputs[0].points[0].x == 8);
 
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: i32 i32 i32
   const.i32 0
-  local.set 2
+  local.set 0
   const.i32 0
-  local.set 3
+  local.set 1
   const.i32 5
-  local.set 4
+  local.set 2
   block
   loop
-    local.get 3
-    local.get 4
+    local.get 1
+    local.get 2
     i32.lt_s
     const.i32 0
     i32.eq
     br_if 1
     block
-      local.get 3
+      local.get 1
       const.i32 2
       i32.eq
       if
         br 1
       end
-      local.get 2
-      local.get 3
+      local.get 0
+      local.get 1
       i32.add
-      local.set 2
+      local.set 0
     end
-    local.get 3
+    local.get 1
     const.i32 1
     i32.add
-    local.set 3
+    local.set 1
     br 0
   end
   end
-  local.get 2
+  local.get 0
   i32.to.f32
   const.i32 0
   i32.to.f32

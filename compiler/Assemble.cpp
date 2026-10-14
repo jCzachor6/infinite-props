@@ -65,8 +65,6 @@ std::vector<u8> Assembler::assemble() {
     meta.writeU32(*asset.sizeY);
     meta.writeF32(asset.originX ? foldOrigin(*asset.originX) : 0.f);
     meta.writeF32(asset.originY ? foldOrigin(*asset.originY) : 0.f);
-    meta.writeU32(asset.variants.value_or(1));
-    meta.writeU32(asset.archetypes.value_or(1));
     meta.writeU64(2000000); // fuel
     meta.writeU16(0);       // emission: no offset/radius/colour
     for (int i = 0; i < 6; ++i) {
@@ -250,7 +248,7 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& function : plan_.functions)
             exports.writeU32(function.partOwner.value_or(kRootParent));
     }
-    if (types.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = 6;
+    if (types.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
         (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     // ---- file (spec §2) ----

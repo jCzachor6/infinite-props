@@ -28,33 +28,12 @@
 <a href="../spec/iprop-v0.3.md">0.3</a> specifications stay available.</p>
 
 <h2 id="versions">Versions</h2>
-<p>Format 0.5 adds colour channel reads, uniform random ranges, distributions, gradients and
-segments, and named part instances whose outputs arrive in the caller's coordinates. An interpreter
-for 0.5 still accepts every 0.1–0.4 file under its original rules.</p>
-<p>Format 0.6 is the development contract for product 0.7.0. Stage 1 adds exact
-signed integer min/max/clamp and stable vector normalization. The runtime reads
-0.1–0.6; existing mathematical and host output contracts remain frozen. Stage 2 adds typed asset
-constants evaluated by the compiler through existing runtime operations;
-scalar constants introduce no new binary layout or host interface. Stage 3 adds
-parameterized type descriptors, immutable collection pools and list instructions,
-including <code>poly(list&lt;vec2&gt;, color)</code>. Stage 4 adds captured
-<code>sampler&lt;T&gt;</code> descriptions, <code>.pick()</code> and immutable
-<code>.pick(n)</code> batches, using the existing range/RNG algorithms. Descriptors
-can also reference sampler elements in lists. Stage 5 adds constant sampler pools,
-const lists of descriptions and compile-time range palettes with explicit picks.
-Direct palette indexing keeps its fallback; first-class list indexing checks bounds.
-Stage 6 adds weighted snapshots with exact numeric keys and shared point pools.
-Stage 7 adds piecewise linear density profiles and stable bounded inverse integration.
-Surface stages remain pending; public host layouts remain unchanged.</p>
-<ul>
-<li>The compiler and assembler write the <strong>oldest minor that holds the file</strong>, never older
-than 0.4: a file retaining a new math instruction needs 0.6, while 0.5 instructions
-or parts need 0.5. Folded constants do not force a newer version.</li>
-<li>The compressed envelope remains a 0.4 container. Its inner file may have any supported version,
-0.1–0.6; a 0.5 interpreter rejects an inner 0.6 file by its version after expansion.</li>
-<li>Instructions and sections introduced by a later minor are invalid in an earlier file, including in
-unreachable code.</li>
-</ul>
+<p>The current format is <a href="../spec/iprop-v0.7.md">0.7</a>. Compiler and assembler
+always write 0.7; the runtime rejects every earlier or future version. A compressed envelope
+and its expanded payload must both carry version 0.7. Numerical, drawing, RNG and collection
+algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
+are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.4 /
+ABI 0.5. The historical specifications remain available as archives.</p>
 
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", version, flags, section count
@@ -75,15 +54,14 @@ reference lowering; none of them changes the image or output bits.</p>
 <h2 id="sections">The sections</h2>
 <table>
 <tr><th>section</th><th>contents</th></tr>
-<tr><td><code>meta</code></td><td>the canvas size, the origin, the declared variants and archetypes, the fuel budget, the input uniforms (type, name, default) and the output slots (kind, list flag, name)</td></tr>
+<tr><td><code>meta</code></td><td>the canvas size, the origin, the fuel budget, the input uniforms (type, name, default) and the output slots (kind, list flag, name)</td></tr>
 <tr><td><code>types / collections</code></td><td>format 0.6 descriptors and immutable list data; helper values share arena handles</td></tr>
 <tr><td><code>const</code></td><td>deduplicated pools of strings, <code>i32</code>, <code>f32</code> and colours, referenced by index</td></tr>
 <tr><td><code>code</code></td><td>the function table (names, signatures, locals, offsets), the instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
 <tr><td><code>debug</code></td><td>informative: local names and the source line of every instruction; stripping it never changes execution</td></tr>
 <tr><td><code>parts</code></td><td>0.5: one entry per part instance with its name (the import alias path, such as <code>hilt.grip</code>) and its parent, forming the tree that maps outputs into caller coordinates</td></tr>
 </table>
-<p>Function 0 is the entry point <code>draw</code> with parameters <code>(i32 variant, i32 archetype)</code>
-followed by one parameter per uniform.</p>
+<p>Function 0 is the entry point <code>draw</code> with exactly one parameter per declared input, in declaration order starting at slot 0.</p>
 
 <h2 id="vm">The virtual machine</h2>
 <ul>
@@ -98,7 +76,7 @@ write is bounds-checked.</li>
 
 <h2 id="determinism">Determinism</h2>
 <ul>
-<li>Generation is a pure function of its inputs: the same file, seed, variant, archetype, size and
+<li>Generation is a pure function of its inputs: the same file, seed, size and
 uniforms give the same image and outputs, bit for bit, on every platform and backend.</li>
 <li>The seeded primitives are specification-pinned instructions, not library calls: the splitmix32
 hash, the Weyl-sequence stream, value and fault noise, and the binary64 kernels behind the

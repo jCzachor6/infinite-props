@@ -46,16 +46,15 @@ asset eyes {
 import hair from "hair.ips"
 import eyes from "eyes.ips"
 
-asset portrait {
+asset portrait { input i32 a = 0 input i32 v = 0
   size 64x64
-  variants 8
   input  color skin = #d9b58c
   output point pupilCenter
 
   draw {
     rect(0, 0, 64, 64, skin)
-    hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4})
-    eyes.draw(seed ^ 0x517cc1b7, v, a, at = {32, 24}, color = skin)
+    hair.draw(seed ^ 0x9e3779b9, at = {32, 4})
+    eyes.draw(seed ^ 0x517cc1b7, at = {32, 24}, color = skin)
     pupilCenter = eyes.outputs.pupil
   }
 })";
@@ -75,7 +74,7 @@ asset portrait {
     const auto loaded = loadFile(bytes);
     CHECK_NOTHROW(validate(loaded));
 
-    VM vm(loaded, GenerationInputs{123, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{123, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
 
@@ -100,15 +99,14 @@ asset portrait {
 }
 
 TEST_CASE("two aliases of the same imported program keep independent output slots") {
-    const auto part = ips::parse(R"(asset child { size 8x8 variants 2
-        output point p
+    const auto part = ips::parse(R"(asset child { input i32 v = 0  size 8x8 output point p
         draw { p = {v + 1, 0} } })");
     const auto root = ips::parse(R"(import first from "child.ips"
         import second from "child.ips"
-        asset root { size 8x8
+        asset root { input i32 a = 0  size 8x8
           draw {
-            first.draw(seed, 0, a, at = {0, 0})
-            second.draw(seed, 1, a, at = {0, 0})
+            first.draw(seed, at = {0, 0})
+            second.draw(seed, v=1, at = {0, 0})
           } })");
     ips::checkAsset(part, {});
     ips::checkAsset(root, {{"first", partInfoOf(part.asset)},
@@ -131,8 +129,8 @@ TEST_CASE("helpers resolve within the root or owning part namespace") {
       import second from "second.ips"
       asset root { size 8x8 output point p
         draw {
-          first.draw(seed, v, a, at = {0, 0})
-          second.draw(seed, v, a, at = {0, 0})
+          first.draw(seed, at = {0, 0})
+          second.draw(seed, at = {0, 0})
           p = {helper(7), 0}
         }
         helper(x: i32) -> i32 { return x }
@@ -156,7 +154,7 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
       draw { p = {width, 0} } })");
     const auto root = ips::parse(R"(import child from "child.ips"
       asset root { size 8x8
-        draw { child.draw(seed, v, a, at = {0,0}, width = measure()) }
+        draw { child.draw(seed, at = {0,0}, width = measure()) }
         measure() -> i32 { pixel(0,0,#ffffff80) return 3 }
       })");
     ips::checkAsset(part, {});
@@ -167,7 +165,7 @@ TEST_CASE("part uniform arguments widen once and reject duplicate overrides") {
     CHECK(result.canvas.pixels[0].r == 128);
     const auto duplicate = ips::parse(R"(import child from "child.ips"
       asset root { size 8x8 draw {
-        child.draw(seed,v,a,at={0,0},width=1,width=2)
+        child.draw(seed,at={0,0},width=1,width=2)
       } })");
     CHECK_THROWS_AS(ips::checkAsset(duplicate, {{"child",partInfoOf(part.asset)}}), ips::SourceError);
     CHECK_THROWS_AS(compileProgram(duplicate, {{"child",&part}}), ips::SourceError);
@@ -185,13 +183,13 @@ asset anchor {
     const std::string composite = R"(
 import anchor from "anchor.ips"
 
-asset composite {
+asset composite { input i32 a = 0 input i32 v = 0
   size 8x8
   output point p
 
   draw {
-    anchor.draw(1, v, a, at = {0, 0})
-    anchor.draw(2, v, a, at = anchor.outputs.spot)
+    anchor.draw(1, at = {0, 0})
+    anchor.draw(2, at = anchor.outputs.spot)
     p = anchor.outputs.spot
   }
 })";
@@ -205,7 +203,7 @@ asset composite {
                                       {{"anchor", &anchorProgram}});
     const auto loaded = loadFile(bytes);
     CHECK_NOTHROW(validate(loaded));
-    VM vm(loaded, GenerationInputs{5, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{5, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
     // Reads are in the composite's coordinates: the first call puts the spot
@@ -252,15 +250,15 @@ void comparePartCallResults(const GenerationResult& actual, const GenerationResu
 GenerationResult generatePartCall(const std::vector<u8>& bytes, u32 seed, u32 v = 0, u32 a = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, v, a, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {
+        {"v", {InputType::U32, {}, 0.f, v}}, {"a", {InputType::U32, {}, 0.f, a}}}});
     vm.run();
     return vm.result();
 }
 }
 
-TEST_CASE("named and mixed part controls preserve legacy bytes outputs and defaults", "[part-named-controls]") {
-    const auto part = ips::parse(R"(asset child { size 4x4 variants 3 archetypes 4
-      input i32 variant = 7
+TEST_CASE("named part arguments preserve bytes outputs and defaults", "[part-named-controls]") {
+    const auto part = ips::parse(R"(asset child { input i32 a = 0 input i32 v = 0  size 4x4 input i32 variant = 7
       input i32 archetype = 9
       input f32 amount = -0.0
       input color tint = #f00
@@ -281,17 +279,17 @@ TEST_CASE("named and mixed part controls preserve legacy bytes outputs and defau
     ips::checkAsset(part, {});
     const auto root = [](const std::string& arguments) {
         return ips::parse("import child from \"child.ips\"\n"
-            "asset root { size 16x16 variants 3 archetypes 4 output point after\n"
+            "asset root { input i32 v=0 input i32 a=0 size 16x16 output point after\n"
             "draw { child.draw(" + arguments + ") after = {unit(), unit()} } }");
     };
     const std::vector<std::vector<std::string>> forms{
         {
-            "seed ^ 17, v, a, at={8,4},variant=12,archetype=-3,amount=2,tint=#abc,rot=90,mirror_x=1",
+            "seed ^ 17, v=v, a=a, at={8,4},variant=12,archetype=-3,amount=2,tint=#abc,rot=90,mirror_x=1",
             "a=a,tint=#abc,v=v,archetype=-3,seed=seed ^ 17,at={8,4},variant=12,amount=2,mirror_x=1,rot=90",
-            "a=a,seed ^ 17,variant=12,v,at={8,4},amount=2,archetype=-3,tint=#abc,rot=90,mirror_x=1",
+            "a=a,seed ^ 17,variant=12,v=v,at={8,4},amount=2,archetype=-3,tint=#abc,rot=90,mirror_x=1",
             "seed ^ 17,v=v,a=a,at={8,4},variant=12,archetype=-3,amount=2,tint=#abc,rot=90,mirror_x=1"
         },
-        {"seed,v,a,at={8,4}", "at={8,4},a=a,v=v,seed=seed", "a=a,seed,v,at={8,4}"}
+        {"seed,v=v,a=a,at={8,4}", "at={8,4},a=a,v=v,seed=seed", "a=a,seed,v=v,at={8,4}"}
     };
     for (const auto& group : forms) {
         const auto positional = root(group.front());
@@ -330,6 +328,7 @@ TEST_CASE("named part controls evaluate uniforms controls and placement once bef
     const auto part = ips::parse(R"(asset child { size 2x2
       input f32 variant = 1.0
       input i32 archetype = 2
+      input i32 v=0 input i32 a=0
       output list point childTrace
       draw { for i in 0..12 { childTrace = {i, unit()} } }
     })");
@@ -339,13 +338,13 @@ TEST_CASE("named part controls evaluate uniforms controls and placement once bef
             "note(tag:i32) -> i32 { trace={tag,unit()} pixel(tag,0,#ffffff80) return 0 } }");
     };
     const auto reference = root(
-        "child.draw(note(3),note(4),note(5),at={note(6),note(7)},archetype=note(2),variant=note(1))");
+        "child.draw(note(5),v=note(3),a=note(4),at={note(6),note(7)},archetype=note(2),variant=note(1))");
     const auto baseline = ips::parse(R"(asset root { size 16x16 output list point trace
       draw { for i in 1..9 { trace={i,unit()} pixel(i,0,#ffffff80) } }
     })");
     for (const auto* arguments : {
-        "at={note(6),note(7)},a=note(5),archetype=note(2),seed=note(3),v=note(4),variant=note(1)",
-        "a=note(5),note(3),archetype=note(2),note(4),variant=note(1),at={note(6),note(7)}"
+        "at={note(6),note(7)},a=note(4),archetype=note(2),seed=note(5),v=note(3),variant=note(1)",
+        "a=note(4),note(5),archetype=note(2),v=note(3),variant=note(1),at={note(6),note(7)}"
     }) {
         const auto program = root("child.draw(" + std::string(arguments) + ")");
         for (const bool optimize : {false, true}) {
@@ -376,13 +375,12 @@ TEST_CASE("named part control binding rejects missing duplicate unknown excessiv
     const auto part = ips::parse(R"(asset child { size 2x2
       input i32 variant = 1
       input i32 archetype = 2
+      input i32 v=0 input i32 a=0
       draw { }
     })");
     struct Case { const char* arguments; const char* message; };
     for (const auto test : {
         Case{"v=0,a=0,at={0,0}", "missing argument 'seed'"},
-        Case{"seed=0,a=0,at={0,0}", "missing argument 'v'"},
-        Case{"seed=0,v=0,at={0,0}", "missing argument 'a'"},
         Case{"seed=0,v=0,a=0", "missing argument 'at'"},
         Case{"0,0,0,1,at={0,0}", "too many positional arguments"},
         Case{"0,0,0,{0,0}", "too many positional arguments"},
@@ -392,8 +390,8 @@ TEST_CASE("named part control binding rejects missing duplicate unknown excessiv
         Case{"seed=0,v=0,a=0,at={0,0},at={1,1}", "duplicate 'at'"},
         Case{"seed=0,v=0,a=0,at={0,0},varaint=2", "has no argument 'varaint'"},
         Case{"seed=0.5,v=0,a=0,at={0,0}", "must be an integer"},
-        Case{"seed=0,v=#fff,a=0,at={0,0}", "must be an integer"},
-        Case{"seed=0,v=0,a={0,0},at={0,0}", "must be an integer"},
+        Case{"seed=0,v=#fff,a=0,at={0,0}", "must be i32"},
+        Case{"seed=0,v=0,a={0,0},at={0,0}", "must be i32"},
         Case{"seed=0,v=0,a=0,at=0", "'at' must be a vec2"},
         Case{"seed=0,v=0,a=0,at={0,0},variant=1.5", "must be i32, got f32"},
         Case{"seed=0,v=0,a=0,at={0,0},archetype=#fff", "must be i32, got color"},

@@ -259,8 +259,8 @@ TEST_CASE("sampler descriptors preserve full nested item identity and reject mal
     }
     auto bad=bytes;bad.at(section+5)=4;CHECK_THROWS_AS(loadFile(bad),FormatError); // sampler<distribution>
     bad=bytes;bad16(bad,6,5);CHECK_THROWS_AS(loadFile(bad),FormatError);
-    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\n return\n sampler.pick 0\nendfn\n"),std::exception);
-    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: sampler<i32>\nfn draw ( i32, i32 ) -> ( ):\n return\n list.len 0\nendfn\n"),std::exception);
+    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( ) -> ( ):\n return\n sampler.pick 0\nendfn\n"),std::exception);
+    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: sampler<i32>\nfn draw ( ) -> ( ):\n return\n list.len 0\nendfn\n"),std::exception);
     for (const auto& signature:ips::samplerPickSpec().overloads) {
         CHECK(signature.params[0].type.isSampler());
         CHECK(findOpcode(*signature.opcode)->effects.rng==RngEffect::AdvanceCurrent);
@@ -292,9 +292,9 @@ TEST_CASE("sampler helper draws preserve imported part stream isolation", "[samp
     const auto part=ips::parse("asset child{size 1x1 output point value draw{s=sampler(20 to 30) value={s.pick(),s.pick()}}}");
     const auto oldPart=ips::parse("asset child{size 1x1 output point value draw{value={20 to 30,20 to 30}}}");
     const auto root=ips::parse("import child from \"child.ips\" "+asset("before=seed spec=sampler(10 to 15) values={childDraw(spec),seed==before}",
-        "childDraw(spec:sampler<i32>)->i32{child.draw(7,0,0,at={0,0}) return spec.pick()}"));
+        "childDraw(spec:sampler<i32>)->i32{child.draw(7,at={0,0}) return spec.pick()}"));
     const auto oldRoot=ips::parse("import child from \"child.ips\" "+asset("before=seed values={childDraw(),seed==before}",
-        "childDraw()->i32{child.draw(7,0,0,at={0,0}) return 10 to 15}"));
+        "childDraw()->i32{child.draw(7,at={0,0}) return 10 to 15}"));
     for(const bool optimize:{false,true}){
         const auto bytes=compileProgram(root,{{"child",&part}},optimize);
         const auto reference=compileProgram(oldRoot,{{"child",&oldPart}},false);
@@ -327,7 +327,7 @@ TEST_CASE("invalid dynamic sampler batches retain actual receiver and count effe
         CHECK(ex.resources.samplers.size()==1);CHECK(ex.resources.lists.empty());
     }
     // The public generation failure releases resources and cannot return or resume.
-    VM vm(file,{26,0,0,0,0,{}});
+    VM vm(file,{26, 0, 0, {}});
     CHECK_THROWS_AS(vm.run(),Trap);
     CHECK_THROWS_AS(vm.result(),std::logic_error);
     CHECK_THROWS_AS(vm.run(),std::logic_error);

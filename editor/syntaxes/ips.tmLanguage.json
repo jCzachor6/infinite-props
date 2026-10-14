@@ -98,7 +98,7 @@
     },
     "keywords": {
       "name": "keyword.control.ips",
-      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|palette|size|origin|variants|archetypes)\\b"
+      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|palette|size|origin)\\b"
     },
     "rangeOperator": {
       "comment": "Reserved range and distribution operators.",

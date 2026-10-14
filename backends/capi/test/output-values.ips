@@ -1,9 +1,8 @@
 import first from "reflection-output-first.ips"
 import empty from "reflection-output-empty.ips"
 import second from "reflection-output-second.ips"
-asset values {
+asset values { input i32 v = 0
   size 32x32
-  variants 8
   output point anchor
   output rect collider
   output circle zone
@@ -22,15 +21,15 @@ asset values {
     zone = {8, 9, 10}
     emit(y = 2.0, x = 1.0)
     emit(x = 11.0, y = 12.0)
-    if (v == 0) { first.draw(seed, 0, 0, at = {3, 4}) }
-    if (v == 1) { first.draw(seed, 0, 0, at = {3, 4}, rot = 90) }
-    if (v == 2) { first.draw(seed, 0, 0, at = {3, 4}, rot = 180) }
-    if (v == 3) { first.draw(seed, 0, 0, at = {3, 4}, rot = 270) }
-    if (v == 4) { first.draw(seed, 0, 0, at = {3, 4}, mirror_x = true) }
-    if (v == 5) { first.draw(seed, 0, 0, at = {3, 4}, rot = 90, mirror_x = true) }
-    if (v == 6) { first.draw(seed, 0, 0, at = {3, 4}, rot = 180, mirror_x = true) }
-    if (v == 7) { first.draw(seed, 0, 0, at = {3, 4}, rot = 270, mirror_x = true) }
-    empty.draw(seed, 0, 0, at = {0, 0})
-    second.draw(seed, 0, 0, at = {0, 0})
+    if (v == 0) { first.draw(seed, at = {3, 4}) }
+    if (v == 1) { first.draw(seed, at = {3, 4}, rot = 90) }
+    if (v == 2) { first.draw(seed, at = {3, 4}, rot = 180) }
+    if (v == 3) { first.draw(seed, at = {3, 4}, rot = 270) }
+    if (v == 4) { first.draw(seed, at = {3, 4}, mirror_x = true) }
+    if (v == 5) { first.draw(seed, at = {3, 4}, rot = 90, mirror_x = true) }
+    if (v == 6) { first.draw(seed, at = {3, 4}, rot = 180, mirror_x = true) }
+    if (v == 7) { first.draw(seed, at = {3, 4}, rot = 270, mirror_x = true) }
+    empty.draw(seed, at = {0, 0})
+    second.draw(seed, at = {0, 0})
   }
 }

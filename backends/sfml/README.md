@@ -38,13 +38,11 @@ Without SFML the backend is skipped gracefully. This produces:
   top-left storage, the legacy destination-alpha mode and tight row stride.
   Copies exactly `byte_count` bytes; it does not convert alpha or infer the
   generated dimensions from asset metadata.
-- **Left/Right** cycle the seed; **Up/Down** cycle the variant (wrapped at
-  the meta's `variants`).
-- **A** toggles the atlas view: a 4×4 grid of variants (rows) × seeds
-  (columns) rendered in one texture — the variant × seed map of one asset.
+- **Left/Right** cycle the seed.
+- **A** toggles a 4×4 atlas of 16 consecutive seeds at fixed declared inputs.
 - **S** exports the current image to
-  `iprop-export-seed<N>-variant<V>.png` through `sf::Image::saveToFile`.
-- **Escape** closes the window; the title tracks the asset, seed, variant
+  `iprop-export-seed<N>.png` through `sf::Image::saveToFile`.
+- **Escape** closes the window; the title tracks the asset and seed
   and the atlas state.
 
 The same code paths run headlessly (scriptable, byte-verified against the
@@ -75,7 +73,7 @@ golden PNGs. The shapes entry additionally round-trips
 `saveToFile`/`loadFromFile` to pin the PNG export losslessly.
 Compiled `.ips` fixtures also exercise the current language features and plant
 composition. The source fixture is uploaded and drawn to `sf::RenderTexture`
-for every variant/archetype combination; `sfml_render` separately checks
+for every authored v/a input combination; `sfml_render` separately checks
 texture resizing and viewport fitting for single sprites and atlases.
 Output checks use the same `Host.hpp::copyOutputs` adapter available to the
 host: sized slot queries and typed point/rect/circle reads preserve global

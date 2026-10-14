@@ -11,8 +11,6 @@
 asset flower {
   size 64x64
   origin 0,0
-  variants 8
-
   input u32   species = 0
   input f32   height = 15.0
   input u32   heightN = 0

@@ -39,7 +39,7 @@ TEST_CASE("semantic recovery reports independent errors and suppresses unknown-t
 }
 
 TEST_CASE("recovering lazy helper checks restore caller locals and loop depth") {
-    const std::string source=R"(asset t { size 8x8
+    const std::string source=R"(asset t { input i32 v = 0  size 8x8
         draw { value=1; while(v){ value=broken(value); break; inner=unknown; }
                pixel(value,0,#fff); break; last=unrelated; }
         broken(x:i32)->i32 { failed=notDefined; return failed; }
@@ -234,7 +234,7 @@ TEST_CASE("structured diagnostic codes come from causes and survive message chan
 TEST_CASE("full source pipeline owns snapshots and loads each shared import once") {
     const std::map<std::string,std::string> sources{
         {"entry.ips",R"(import left from "part.ips"; import right from "part.ips";
-            asset t { size 8x8; draw { left.draw(seed,v,a,at={0,0}) right.draw(seed,v,a,at={0,0}) } })"},
+            asset t { size 8x8; draw { left.draw(seed,at={0,0}) right.draw(seed,at={0,0}) } })"},
         {"part.ips",R"(asset p { size 8x8; input i32 n=-7; output point value;
             draw { value={n,unit()} } })"}
     };
@@ -268,7 +268,7 @@ TEST_CASE("source pipeline retains the exact failing import snapshot") {
     int reads=0;
     const auto result=compileSource("entry.ips",[&](std::string_view path) {
         if (path=="entry.ips") return std::string(R"(import p from "bad.ips"
-            asset t { size 8x8 draw { p.draw(seed,v,a,at={0,0}) } })");
+            asset t { size 8x8 draw { p.draw(seed,at={0,0}) } })");
         ++reads;
         return reads==1 ? std::string("asset bad { size 8x8 draw { value= } }") :
                          std::string("asset corrected { size 8x8 draw{} }");

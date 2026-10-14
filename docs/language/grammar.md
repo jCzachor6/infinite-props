@@ -11,12 +11,10 @@ apply after parsing. Strings are only valid as import paths after typing.
 program       = { import }, asset, EOF ;
 import        = "import", name, "from", string, [ ";" ] ;
 asset         = "asset", identifier, "{", { declaration }, "}" ;
-declaration   = size | origin | variants | archetypes | input | output
+declaration   = size | origin | input | output
               | palette | asset_constant | draw | helper ;
 size          = "size", integer, (integer | xdigits), [ ";" ] ;
 origin        = "origin", expression, ",", expression, [ ";" ] ;
-variants      = "variants", integer, [ ";" ] ;
-archetypes    = "archetypes", integer, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
 output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* list: geometry only *)

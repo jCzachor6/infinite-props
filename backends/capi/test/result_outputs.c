@@ -248,7 +248,7 @@ static int errors(const iprop_result* result) {
     return 0;
 }
 
-/* Independent format-0.1 fixture, §4/5/6/9 wire bytes: const.f32 0x11,
+/* Independent format-0.7 fixture, §4/5/6/9 wire bytes: const.f32 0x11,
  * out.point/rect/circle 0x90/91/92. No compiler optimizer or source float
  * spelling can canonicalize the raw-bit oracle; two uncalled parts include
  * an empty owner followed by named singular declarations. */
@@ -271,7 +271,7 @@ static buffer binary_fixture(int write_values) {
     buffer meta = {{0},0}, pool = {{0},0}, code = {{0},0}, file = {{0},0};
     uint32_t i, k = 0, offset = 56;
     put32(&meta, 1); put32(&meta, 1); put32(&meta, 0); put32(&meta, 0);
-    put32(&meta, 1); put32(&meta, 1); put32(&meta, 100); put32(&meta, 0);
+    put32(&meta, 100); put32(&meta, 0);
     put32(&meta, 0); put32(&meta, 0); put16(&meta, 0); put16(&meta, 3);
     for (i = 0; i < 3; ++i) decl(&meta, (uint8_t)i, i + 1);
     put32(&pool, 4);
@@ -285,7 +285,7 @@ static buffer binary_fixture(int write_values) {
     for (i = 0; i < 3; ++i) {
         const uint32_t length = write_values ? 48 : 0;
         put32(&code, i == 0 ? 0 : UINT32_MAX); put32(&code, i == 0 ? 0 : length); put32(&code, i == 0 ? length : 0);
-        put16(&code, 2); put16(&code, 0); put16(&code, 0); put16(&code, 0);
+        put16(&code, 0); put16(&code, 0); put16(&code, 0);
     }
     if (write_values) for (i = 0; i < 3; ++i) {
         uint32_t component, stride = i == 0 ? 2 : i == 1 ? 4 : 3;
@@ -301,7 +301,7 @@ static buffer binary_fixture(int write_values) {
         put16(&code, 0); put16(&code, i == 0 ? 0 : 3);
         if (i) for (kind = 0; kind < 3; ++kind) decl(&code, (uint8_t)kind, kind + 1);
     }
-    append(&file, "IPRP", 4); put16(&file, 0); put16(&file, 1);
+    append(&file, "IPRP", 4); put16(&file, 0); put16(&file, 7);
     put32(&file, 0); put32(&file, 3); put32(&file, 0);
     put32(&file, 1); put32(&file, offset); put32(&file, meta.size); offset += meta.size;
     put32(&file, 2); put32(&file, offset); put32(&file, pool.size); offset += pool.size;
@@ -428,6 +428,9 @@ int main(int argc, char** argv) {
     iprop_result *result = NULL, *later = NULL, *empty = NULL;
     iprop_library_info_ex library;
     iprop_generate_options options = {0};
+    iprop_uniform v = {0};
+    v.name = "v"; v.type = IPROP_UNIFORM_U32;
+    options.uniforms = &v; options.uniform_count = 1;
     iprop_result_output_view_ex saved, view;
     iprop_point_value copied;
     uint32_t variant, count = UINT32_MAX, id = UINT32_MAX;
@@ -440,23 +443,23 @@ int main(int argc, char** argv) {
     CHECK(read_fixture(argv[1], &bytes, &size) == 0);
     CHECK(iprop_program_load_ex(bytes, size, &program, NULL) == IPROP_EX_OK); memset(bytes, 0, size); free(bytes);
     for (variant = 0; variant < 8; ++variant) {
-        options.variant = variant; options.seed = 19 + variant;
+        v.u = variant; options.seed = 19 + variant;
         CHECK(iprop_generate(program, &options, &later, message, sizeof(message)) == IPROP_OK);
         CHECK(slots(program, later, variant) == 0);
         iprop_result_free(later);
     }
-    options.variant = 0;
+    v.u = 0; options.size_x = 0;
     CHECK(iprop_generate(program, &options, &result, message, sizeof(message)) == IPROP_OK);
     CHECK(iprop_result_output_view_ex_init(&saved, sizeof(saved)) == IPROP_EX_OK);
     CHECK(iprop_result_output_get(result, 3, &saved, NULL) == IPROP_EX_OK);
     CHECK(prefixes(result, &saved) == 0 && errors(result) == 0);
     CHECK(iprop_result_output_point(result, 3, 1, &copied, sizeof(copied), NULL) == IPROP_EX_OK);
-    options.variant = 7;
+    v.u = 7;
     CHECK(iprop_generate(program, &options, &later, message, sizeof(message)) == IPROP_OK);
     iprop_result_free(later);
     {
         iprop_result* failed = result;
-        options.variant = UINT32_MAX;
+        options.size_x = UINT32_MAX;
         CHECK(iprop_generate(program, &options, &failed, message, sizeof(message)) == IPROP_E_TRAP && failed == result);
     }
     iprop_program_free(program);
@@ -469,7 +472,7 @@ int main(int argc, char** argv) {
     CHECK(copied.x == 11.0f && copied.y == 12.0f);
     CHECK(read_fixture(argv[2], &bytes, &size) == 0);
     CHECK(iprop_program_load_ex(bytes, size, &empty_program, NULL) == IPROP_EX_OK); free(bytes);
-    options.variant = 0;
+    v.u = 0; options.size_x = 0;
     CHECK(iprop_generate(empty_program, &options, &empty, message, sizeof(message)) == IPROP_OK);
     iprop_program_free(empty_program);
     CHECK(iprop_result_output_count(empty, &count, NULL) == IPROP_EX_OK && count == 0);

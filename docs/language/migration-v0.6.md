@@ -1,5 +1,8 @@
 # Migration and contracts for 0.6
 
+This chapter records a historical release. For current format 0.7, API 0.4 and
+ABI 0.5, including removal of implicit controls, use the [0.7 migration](migration-v0.7.md).
+
 This chapter describes source language 0.6, released with product 0.6.0.
 The product release number is separate from the language version.
 

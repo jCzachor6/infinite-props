@@ -68,27 +68,27 @@ consume one draw.
 With only a seed, and every input at its default, every seed must give a
 visibly different result. Variety must never depend on inputs:
 
-- Variant 0 and archetype 0 roll from the seed, and indices from 1 force one
+- An ordinary style input with default 0 rolls from the seed; values from 1 force one
   look. Derive the roll by hashing the seed, as in
-  `look = v; if (v == 0) { look = 1 + (hash(seed ^ 0x2f6b9a13) & 1) }`, so a
-  rolled variant renders exactly like the same variant chosen explicitly.
+  `look = style; if (style == 0) { look = 1 + (hash(seed ^ 0x2f6b9a13) & 1) }`, so a
+  rolled style renders exactly like the same style chosen explicitly.
 - Input defaults mean "roll it": `0` for `u32` style switches and a
   transparent color for color inputs, as in `input color tint = #00000000`
   read with `if (tint.a == 0) { base = hues[index(4)] }`.
 - Roll every part of the look (shape, material, colors and details) from the
   seed; an input only overrides one of those rolls.
 
-## Keep one silhouette across variants
+## Keep one silhouette across styles
 
-Variants of one seed should read as the same object. Roll the shape inside
+Styles of one seed should read as the same object. Roll the shape inside
 its own stream, `stream_push(hash(seed ^ 0x51ed2701))` ... `stream_pop()`,
-before any variant-dependent choice. Make every roll unconditionally, even
-when a variant does not use it, so a variant never shifts the draws that come
+before any style-dependent choice. Make every roll unconditionally, even
+when a style does not use it, so a style never shifts the draws that come
 after it.
 
 ## Pass inputs to helpers
 
-Helpers see palettes and `seed`, but not inputs and not `v` or `a`. Pass what
+Helpers see palettes and `seed`, but not inputs. Pass what
 they need as typed parameters, as in `paint(base: color, look: i32)`. A local
 keeps the type of its first assignment, so write `x = 0.0` when the value
 becomes `f32` later.

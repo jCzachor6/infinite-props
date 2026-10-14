@@ -6,15 +6,15 @@ const {sections,instructions}=require("./sampler-conformance.js");
 function run(iprop,tool,directory){
     const base=path.join(directory,"density"),seeds=[0,1,7,26,0x61c88647,0x37c2760b,0xffffffff];
     let comparisons=0,traps=0,rejections=0;
-    const asset=(declarations,body,helpers="")=>"asset t{size 16x16 variants 2 output list point p output point state "+declarations+helpers+
+    const asset=(declarations,body,helpers="")=>"asset t{input i32 v=0 size 16x16 output list point p output point state "+declarations+helpers+
         " draw{"+body+" state={seed&65535,seed>>16}}}";
     function compile(source,opt=true,suffix=""){
         const input=base+suffix+".ips",binary=base+suffix+".iprop";fs.writeFileSync(input,source);
         execFileSync(tool("ipc"),[input,...(opt?[]:["--no-opt"]),"--no-compress","-o",binary]);return binary;
     }
     function generate(binary,seed,variant=0){
-        const png=base+".png",native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--variant",String(variant),"--float-bits","-o",png],{encoding:"utf8"}));
-        const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,variant});
+        const png=base+".png",native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),...(variant ? ["--uniform","v="+variant] : []),"--float-bits","-o",png],{encoding:"utf8"}));
+        const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,uniforms:variant ? {v:variant} : {}});
         const outputs=wasm.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
         assert.deepEqual(outputs,native.outputs,"density output bits");assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"density RGBA");
         ++comparisons;return outputs;
@@ -75,9 +75,9 @@ function run(iprop,tool,directory){
     const shared="density{"+Array.from({length:256},(_,i)=>`${i}:1`).join(",")+"}";
     generate(compile(asset(`const distribution shape=${shared}`,"before=seed for i in 0..10000{copy=shape} p={seed==before,0}"),true,"-sharing"),26);
     function trap(binary,message,variant=0){
-        const png=base+"-trap.png",native=spawnSync(tool("ipgen"),[binary,"--variant",String(variant),"-o",png],{encoding:"utf8"});
+        const png=base+"-trap.png",native=spawnSync(tool("ipgen"),[binary,...(variant ? ["--uniform","v="+variant] : []),"-o",png],{encoding:"utf8"});
         assert.equal(native.status,1,native.stderr);assert.match(native.stderr,message);assert.equal(fs.existsSync(png),false);
-        assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{variant}),message);++traps;
+        assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{uniforms:variant ? {v:variant} : {}}),message);++traps;
     }
     for(const body of ["d=density{0:(v-1),1:1}","d=density{v:1,0:1}","d=density{0:v,1:v}","d=density{0:float(v)/float(v),1:1}",
         "d=density{0:0,1:0,2:1} x=0.0 to 1.0 with d","d=density{0:0,1:1} x=2.0 to 2.0 with d",
@@ -94,14 +94,14 @@ function run(iprop,tool,directory){
     for(const id of [7,8])for(const family of [4,255]){const bad=Buffer.from(original);bad[map.get(id)+(id===7?8:16)]=family;reject(bad);}
     for(const id of [7,8]){const bad=Buffer.from(original);bad.writeUInt16LE(65535,map.get(id)+(id===7?9:17));reject(bad);}
     for(let minor=1;minor<=5;++minor){const bad=Buffer.from(original);bad.writeUInt16LE(minor,6);reject(bad);}
-    fs.writeFileSync(base+"-dead.ipa","meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\ndistribution.begin 5\ndistribution.append 0\ndistribution.end\nendfn\n");
+    fs.writeFileSync(base+"-dead.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\ndistribution.begin 5\ndistribution.append 0\ndistribution.end\nendfn\n");
     execFileSync(tool("ipa"),[base+"-dead.ipa","-o",base+"-dead.iprop"]);const dead=fs.readFileSync(base+"-dead.iprop"),ins=instructions(dead);
     for(const i of [1,2,3]){const bad=Buffer.from(dead);bad[ins[i]+1]=1;reject(bad);}
     for(const [i,operand] of [[1,0],[1,261],[2,4],[3,1]]){const bad=Buffer.from(dead);bad.writeUInt16LE(operand,ins[i]+2);reject(bad);}
     const many="density{"+Array.from({length:256},(_,i)=>`${i}:1`).join(",")+"}";
     generate(compile(asset(`const distribution shape=${many}`,`runtime=${many} p={0.0 to 255.0 with shape,0.0 to 255.0 with runtime}`),false,"-max"),26);
     const quota=compile(asset("",`for i in 0..9000{d=${many}}`),false,"-quota"),quotaBytes=fs.readFileSync(quota);
-    quotaBytes.writeBigUInt64LE(100000000n,sections(quotaBytes).get(1)+24);fs.writeFileSync(quota,quotaBytes);trap(quota,/generation data exceeds 64 MiB/);
+    quotaBytes.writeBigUInt64LE(100000000n,sections(quotaBytes).get(1)+16);fs.writeFileSync(quota,quotaBytes);trap(quota,/generation data exceeds 64 MiB/);
     generate(valid,26);return {comparisons,traps,rejections,vectors:vectors.cases.reduce((n,c)=>n+c.rows.length,0)};
 }
 module.exports={run};

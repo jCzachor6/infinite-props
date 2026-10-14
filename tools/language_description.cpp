@@ -204,7 +204,6 @@ Json sourceRules() {
         {"unexecuted_initializer", "typed_zero"}, {"read_requires_prior_assignment", true}});
     rules["visibility"] = Json::object({{"uniforms", "draw_only"}, {"uniforms_read_only", true},
         {"helper_parameters_read_only", true},
-        {"draw_controls", Json::object({{"names", Json::array({"v", "a"})}, {"type", "i32"}, {"read_only", true}})},
         {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
         {"constants", "all_asset_functions"}});
     rules["asset_constants"] = Json::object({{"keyword", "reserved"},

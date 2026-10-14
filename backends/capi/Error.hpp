@@ -39,8 +39,6 @@ static_assert(static_cast<uint32_t>(ErrorReason::PartOutputMissing) == IPROP_REA
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidPart) == IPROP_REASON_INVALID_PART);
 static_assert(static_cast<uint32_t>(ErrorReason::StreamUnderflow) == IPROP_REASON_STREAM_UNDERFLOW);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidArgument) == IPROP_REASON_INVALID_ARGUMENT);
-static_assert(static_cast<uint32_t>(ErrorReason::VariantRange) == IPROP_REASON_VARIANT_RANGE);
-static_assert(static_cast<uint32_t>(ErrorReason::ArchetypeRange) == IPROP_REASON_ARCHETYPE_RANGE);
 static_assert(static_cast<uint32_t>(ErrorReason::CanvasSize) == IPROP_REASON_CANVAS_SIZE);
 static_assert(static_cast<uint32_t>(ErrorReason::UniformType) == IPROP_REASON_UNIFORM_TYPE);
 static_assert(static_cast<uint32_t>(ErrorReason::UnknownParameter) == IPROP_REASON_UNKNOWN_PARAMETER);

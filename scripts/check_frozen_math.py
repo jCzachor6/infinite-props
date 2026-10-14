@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute frozen bytes and compare RGBA, raw output bits, inputs and fuel."""
+"""Verify immutable historical binaries and reject them before generation."""
 import base64
 import hashlib
 import json
@@ -9,7 +9,6 @@ import subprocess
 import sys
 import tempfile
 
-from capture_v04_baseline import png_rgba
 
 
 def sha(data):
@@ -30,25 +29,15 @@ def main():
             assert sha(data) == case['binary_sha256'], case['source']
             assert struct.unpack_from('<H', data, 6)[0] == case['format_minor']
             binary.write_bytes(data)
-            for expected in case['generations']:
-                png = directory / 'render.png'
-                arguments = expected.get('arguments', {})
-                flags = ['--variant', str(arguments.get('variant', 0))] if arguments else []
-                if 'sizeX' in arguments:
-                    flags += ['--size', str(arguments['sizeX']) + 'x' + str(arguments['sizeY'])]
-                result = subprocess.run([str(generator), str(binary), '--seed', str(expected['seed']),
-                                         '--float-bits', *flags, '-o', str(png)],
-                                        capture_output=True, text=True, timeout=30, check=True)
-                actual = json.loads(result.stdout)
-                for key in ('size', 'inputs', 'fuel'):
-                    assert actual[key] == expected[key], (case['source'], expected['seed'], key)
-                outputs = json.dumps(actual['outputs'], sort_keys=True, separators=(',', ':')).encode()
-                assert sha(outputs) == expected['outputs_sha256'], (case['source'], expected['seed'], 'output bits')
-                width, height, rgba = png_rgba(png.read_bytes())
-                assert actual['size'] == {'x': width, 'y': height}
-                assert sha(rgba) == expected['rgba_sha256'], (case['source'], expected['seed'], 'RGBA')
-                count += 1
-    print(f'Frozen formats 0.1-0.6: {len(cases)} binaries, {count} exact generations')
+            png = directory / 'render.png'
+            result = subprocess.run([str(generator), str(binary), '-o', str(png)],
+                                    capture_output=True, text=True, timeout=30)
+            assert result.returncode == 1, (case['source'], result.stderr)
+            assert 'unsupported format minor version' in result.stderr, (case['source'], result.stderr)
+            assert not result.stdout and not png.exists(), case['source']
+            count += 1
+    print(f'Retired formats: {count} immutable binaries rejected before generation')
+
 
 
 if __name__ == '__main__':

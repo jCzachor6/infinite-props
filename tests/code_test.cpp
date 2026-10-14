@@ -54,9 +54,7 @@ TEST_CASE("a draw function with a uniform parses") {
     REQUIRE(code.parts.empty());
     REQUIRE_FALSE(code.entry().isAnonymous());
     REQUIRE(pool.strings[code.entry().nameIndex] == "draw");
-    REQUIRE(code.entry().params.size() == 2);
-    REQUIRE(code.entry().params[0] == ValueType::I32);
-    REQUIRE(code.entry().params[1] == ValueType::I32);
+    REQUIRE(code.entry().params.empty());
     REQUIRE(code.entry().results.empty());
     REQUIRE(code.entry().locals.empty());
     REQUIRE(code.entry().code.size() == instructions.size());
@@ -172,8 +170,8 @@ TEST_CASE("invalid code fixtures fail with located errors") {
         FuncSpec a = drawSpec({0x09, 0, 0, 0});
         FuncSpec b = {kAnonymousName, {}, {}, {}, {0x09, 0, 0, 0}};
         auto bytes = codeSection({a, b}, {});
-        bytes[28] = 8; // offset 8 instead of the contiguous 4
-        expectCodeError(bytes, pool, 24, "contiguous");
+        bytes[26] = 8; // offset 8 instead of the contiguous 4
+        expectCodeError(bytes, pool, 22, "contiguous");
     }
     // Stream length not a multiple of 4 (length field at 12-15).
     {
@@ -264,8 +262,8 @@ TEST_CASE("invalid code fixtures fail with located errors") {
     {
         auto bytes = codeSection({drawSpec({0x09, 0, 0, 0})},
                                  {{0, 8, 8, 0, 0, {}, {{0, 0, 1}}}});
-        bytes[58] = 0x01;
-        expectCodeError(bytes, pool, 58, "reserved");
+        bytes[56] = 0x01;
+        expectCodeError(bytes, pool, 56, "reserved");
     }
     // Trailing bytes after the last part.
     {
@@ -291,7 +289,7 @@ TEST_CASE("duplicate part input names fail at the second entry") {
         (void)parseCode(bytes, *layout.find(SectionId::Code), parsedPool);
     } catch (const FormatError& error) {
         threw = true;
-        CHECK(error.offset == base + 63);
+        CHECK(error.offset == base + 61);
         CHECK(std::string(error.what()).find("duplicate part input") != std::string::npos);
     }
     REQUIRE(threw);

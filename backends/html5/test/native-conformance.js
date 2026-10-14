@@ -134,13 +134,12 @@ function run(iprop, toolsDir) {
     let samplerEvidence = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
+    const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
         try {
             const png = path.join(temporary, "native.png");
             const args = [file, "--seed", String(seed), "--float-bits", "-o", png];
-            if (options.variant !== undefined) args.push("--variant", String(options.variant));
-            if (options.archetype !== undefined) args.push("--archetype", String(options.archetype));
             if (options.sizeX !== undefined) args.push("--size", options.sizeX + "x" + options.sizeY);
             for (const [name, value] of Object.entries(options.uniforms || {}))
                 args.push("--uniform", name + "=" + value);
@@ -233,7 +232,7 @@ function run(iprop, toolsDir) {
                                  expected, label + ": curve toolkit NaN and signed-zero pins");
             }
             if (path.basename(file) === "part-transforms.iprop") {
-                const kind = options.variant || 0;
+                const kind = options.uniforms?.v || 0;
                 const points = [[1,.5], [.5,3], [3,1.5], [1.5,1], [3,.5], [1,1.5], [.5,1], [1.5,3]];
                 const rects = [[.5,.25,2,1], [.25,1.5,1,2], [1.5,.75,2,1], [.75,.5,1,2],
                                [1.5,.25,2,1], [.5,.75,2,1], [.25,.5,1,2], [.75,1.5,1,2]];
@@ -315,7 +314,7 @@ function run(iprop, toolsDir) {
             }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
-                const v = options.variant || 0, a = options.archetype || 0;
+                const v = options.uniforms?.v || 0, a = options.uniforms?.a || 0;
                 assert.deepEqual(wasm.outputs[0].points, [{x: v + 1, y: a + 0.25}], label + ": typed helper/palette");
                 assert.deepEqual(wasm.outputs[2].points, [{x: 0, y: a}, {x: 2, y: a}], label + ": loop control");
             }
@@ -328,7 +327,7 @@ function run(iprop, toolsDir) {
         const label = path.basename(file) + " variant " + variant;
         try {
             const native = spawnSync(tool("ipgen"),
-                [file, "--variant", String(variant), "-o", path.join(temporary, "error.png")],
+                [file, "--uniform", "v="+variant, "-o", path.join(temporary, "error.png")],
                 { encoding: "utf8" });
             if (native.error) throw native.error;
             assert.equal(native.status, 1, label + ": native runtime failure");
@@ -336,7 +335,7 @@ function run(iprop, toolsDir) {
             const message = new RegExp(expectedMessage);
             assert.match(native.stderr, message, label + ": native trap reason");
             const bytes = new Uint8Array(fs.readFileSync(file));
-            assert.throws(() => iprop.generate(bytes, { variant }), message,
+            assert.throws(() => iprop.generate(bytes, { uniforms: {v:variant} }), message,
                           label + ": WASM trap reason");
             ++trapComparisons;
         } catch (error) {
@@ -354,20 +353,20 @@ function run(iprop, toolsDir) {
             for (const seed of seeds) compare(file, seed);
             if (name === "nested-parts") {
                 for (let variant = 0; variant < 8; ++variant) {
-                    compare(file, 26, null, {variant});
-                    compare(file, 26, null, {variant, sizeX: 40, sizeY: 30});
+                    compare(file, 26, null, {uniforms:{v:variant}});
+                    compare(file, 26, null, {uniforms:{v:variant}, sizeX: 40, sizeY: 30});
                 }
             }
             if (name === "part-transforms") {
                 for (let variant = 0; variant < 8; ++variant) {
-                    if (variant !== 0) compare(file, 26, null, {variant});
-                    compare(file, 26, null, {variant, sizeX: 24, sizeY: 24});
+                    if (variant !== 0) compare(file, 26, null, {uniforms:{v:variant}});
+                    compare(file, 26, null, {uniforms:{v:variant}, sizeX: 24, sizeY: 24});
                 }
             }
             if (name === "language") {
                 for (let variant = 0; variant < 3; ++variant) {
                     for (let archetype = 0; archetype < 2; ++archetype) {
-                        compare(file, 26, null, {variant, archetype, sizeX: 16, sizeY: 24});
+                        compare(file, 26, null, {uniforms:{v:variant,a:archetype}, sizeX: 16, sizeY: 24});
                     }
                 }
             }
@@ -427,7 +426,7 @@ function run(iprop, toolsDir) {
         for (const weapon of ["sword", "staff"]) {
             const file = path.join(repo, "examples/showcase", weapon + ".iprop");
             for (const layer of [0, 1])
-                compare(file, 26, null, {variant: 2, uniforms: {quality: 2, glowStrength: 4, layer}});
+                compare(file, 26, null, {uniforms: {v:2,quality: 2, glowStrength: 4, renderLayer:layer}});
         }
         for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
                                            [{accent: "#12345"}, /'accent' must be a #RRGGBB/],
@@ -464,7 +463,7 @@ function run(iprop, toolsDir) {
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
+    return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
         samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, resourceExports: resourceExportEvidence };
 }

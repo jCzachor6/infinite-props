@@ -9,7 +9,7 @@ to `f32`. For example, `paint(tint=#9dc, x=8)` binds to
 `paint(x: i32, tint: color) { pixel(x, 0, tint); }`.
 Forward calls are allowed. Direct and indirect recursion are rejected.
 
-Pass uniforms and `v`/`a` to helpers explicitly. Helpers share the executing
+Pass uniforms to helpers explicitly. Helpers share the executing
 asset's RNG stream and may draw or write its declared output slots. A helper
 cannot access a caller's local variables or mutate its own parameters.
 Asset [constants](assets.md#asset-constants) are directly visible to helpers;

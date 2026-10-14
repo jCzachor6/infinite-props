@@ -6,7 +6,7 @@
 // enchanted ornate weapon each, as a silhouette until hovered.
 //
 // Weapons glow the way a game host would make them: the pack renders its
-// emission map (input `layer` 1) and reports the bloom in its `glow` output
+// emission map (input `renderLayer` 1) and reports the bloom in its `glow` output
 // {palette, power, sigma, gain}; the page blurs the map by sigma and adds it
 // over the sprite.
 //
@@ -34,8 +34,7 @@ interface Result {
 type Uniforms = Record<string, number | string>;
 
 interface IpropModule {
-    generate(fileBytes: Uint8Array, seed: number, variant: number, archetype: number,
-        sizeX: number, sizeY: number, uniforms?: Uniforms): Result;
+    generate(fileBytes: Uint8Array, seed: number, sizeX: number, sizeY: number, uniforms?: Uniforms): Result;
 }
 
 declare global {
@@ -53,8 +52,8 @@ function randomSeed() {
 }
 
 // Renders one asset; the RGBA view into the module heap is copied at once.
-function render(asset: string, seed: number, variant = 0, uniforms: Uniforms = {}) {
-    const result = iprop!.generate(files.get(asset)!, seed >>> 0, variant, 0, 0, 0, uniforms);
+function render(asset: string, seed: number, uniforms: Uniforms = {}) {
+    const result = iprop!.generate(files.get(asset)!, seed >>> 0, 0, 0, uniforms);
     const image = new ImageData(new Uint8ClampedArray(result.data), result.width, result.height);
     return { image, outputs: result.outputs };
 }
@@ -62,14 +61,15 @@ function render(asset: string, seed: number, variant = 0, uniforms: Uniforms = {
 // A weapon's look for a seed, the same every time the seed comes back. The
 // packs keep magic rare (most weapons are plain, half are never enchanted);
 // the showcase leans on it: ornate 1 in 2, soldier 3 in 10, plain 1 in 5,
-// each enchanted (variant 2) 4 times in 5.
+// each enchanted (enchantment 2) 4 times in 5.
 function weaponLook(seed: number) {
     let hash = Math.imul(seed ^ 0x2f6b9a13, 0x9e3779b1);
     hash ^= hash >>> 15;
     hash = Math.imul(hash, 0x85ebca77) >>> 0;
     const pick = hash % 10;
     const quality = pick < 5 ? 2 : pick < 8 ? 3 : 1;
-    return { variant: (hash >>> 8) % 5 === 0 ? 1 : 2, quality, uniforms: { quality } as Uniforms };
+    const enchantment = (hash >>> 8) % 5 === 0 ? 1 : 2;
+    return { enchantment, quality, uniforms: { quality, v: enchantment } as Uniforms };
 }
 
 type Rarity = "common" | "rare" | "epic" | "legendary";
@@ -79,10 +79,10 @@ function glowOf(outputs: Output[]) {
     return outputs.find((output) => output.name === "glow")?.rects[0];
 }
 
-function rarityOf(quality: number, variant: number, outputs: Output[]): Rarity {
+function rarityOf(quality: number, enchantment: number, outputs: Output[]): Rarity {
     if (quality === 1) return "common";
     if (quality === 3) return "rare";
-    return variant === 2 && (glowOf(outputs)?.y ?? 0) >= 4 ? "legendary" : "epic";
+    return enchantment === 2 && (glowOf(outputs)?.y ?? 0) >= 4 ? "legendary" : "epic";
 }
 
 function showRarity(badge: HTMLElement, rarity: Rarity) {
@@ -101,12 +101,12 @@ const emission = document.createElement("canvas");
 // the output's sigma and added in passes that follow the gain (additive passes
 // raise alpha as well as colour, so thin glowing lines still make a visible
 // halo), plus a wider, softer pass.
-function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number, variant: number,
+function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
     uniforms: Uniforms, outputs: Output[]) {
     const glow = glowOf(outputs);
     canvas.hidden = !glow || glow.y <= 0;
     if (!glow || canvas.hidden) return;
-    paint(emission, render(asset, seed, variant, { ...uniforms, layer: 1 }).image);
+    paint(emission, render(asset, seed, { ...uniforms, renderLayer: 1 }).image);
     canvas.width = emission.width + 2 * GLOW_PAD;
     canvas.height = emission.height + 2 * GLOW_PAD;
     const context = canvas.getContext("2d")!;
@@ -206,12 +206,12 @@ class Tile {
     }
 
     draw() {
-        const look = this.glow ? weaponLook(this.seed) : { variant: 0, quality: 0, uniforms: {} };
-        const { image, outputs } = render(this.asset, this.seed, look.variant, look.uniforms);
+        const look = this.glow ? weaponLook(this.seed) : { enchantment: 0, quality: 0, uniforms: {} };
+        const { image, outputs } = render(this.asset, this.seed, look.uniforms);
         paint(this.canvas, image);
-        if (this.glow) paintGlow(this.glow, this.asset, this.seed, look.variant, look.uniforms, outputs);
+        if (this.glow) paintGlow(this.glow, this.asset, this.seed, look.uniforms, outputs);
         if (this.rarity) {
-            const rarity = rarityOf(look.quality, look.variant, outputs);
+            const rarity = rarityOf(look.quality, look.enchantment, outputs);
             showRarity(this.rarity, rarity);
             this.element.dataset.rarity = rarity;
         }
@@ -258,16 +258,16 @@ function schedule(tile: Tile) {
 // ---- the game slots ----------------------------------------------------------------------
 
 // Only the finest: ornate, enchanted and at full power.
-const LEGENDARY: Uniforms = { quality: 2, glowStrength: 4 };
+const LEGENDARY: Uniforms = { v: 2, quality: 2, glowStrength: 4 };
 
 function drawSilhouettes() {
     for (const canvas of Array.from(document.querySelectorAll<HTMLCanvasElement>("[data-silhouette]"))) {
         const asset = canvas.dataset.silhouette!;
         const seed = randomSeed();
-        const { image, outputs } = render(asset, seed, 2, LEGENDARY);
+        const { image, outputs } = render(asset, seed, LEGENDARY);
         paint(canvas, image);
         const glow = canvas.parentElement!.querySelector<HTMLCanvasElement>("canvas.glow");
-        if (glow) paintGlow(glow, asset, seed, 2, LEGENDARY, outputs);
+        if (glow) paintGlow(glow, asset, seed, LEGENDARY, outputs);
     }
 }
 
@@ -310,9 +310,9 @@ function rollItem(wanted: Rarity): Item {
     const asset = names[Math.floor(Math.random() * names.length)];
     for (let seed = randomSeed(), tries = 0; ; ++seed, ++tries) {
         const look = weaponLook(seed);
-        if (look.quality !== QUALITY[wanted] || (wanted === "legendary" && look.variant !== 2)) continue;
-        const { image, outputs } = render(asset, seed, look.variant, look.uniforms);
-        const rarity = rarityOf(look.quality, look.variant, outputs);
+        if (look.quality !== QUALITY[wanted] || (wanted === "legendary" && look.enchantment !== 2)) continue;
+        const { image, outputs } = render(asset, seed, look.uniforms);
+        const rarity = rarityOf(look.quality, look.enchantment, outputs);
         if (rarity === wanted || tries > 50000) return { asset, seed, rarity, image };
     }
 }
@@ -356,10 +356,10 @@ function makeSparks() {
 function showWin(asset: string, seed: number) {
     if (!drop || !dropCanvas) return;
     const look = weaponLook(seed);
-    const { image, outputs } = render(asset, seed, look.variant, look.uniforms);
+    const { image, outputs } = render(asset, seed, look.uniforms);
     paint(dropCanvas, image);
-    paintGlow(drop.querySelector<HTMLCanvasElement>(".win canvas.glow")!, asset, seed, look.variant, look.uniforms, outputs);
-    const rarity = rarityOf(look.quality, look.variant, outputs);
+    paintGlow(drop.querySelector<HTMLCanvasElement>(".win canvas.glow")!, asset, seed, look.uniforms, outputs);
+    const rarity = rarityOf(look.quality, look.enchantment, outputs);
     showRarity(drop.querySelector<HTMLElement>("[data-drop-rarity]")!, rarity);
     drop.querySelector("[data-drop-title]")!.textContent = `${WEAPONS[asset]} #${seed}`;
     dropCanvas.setAttribute("aria-label", `A ${rarity} ${asset}, seed ${seed}`);
@@ -367,7 +367,7 @@ function showWin(asset: string, seed: number) {
     const tip = outputs.find((output) => output.name === "tip")?.points[0];
     const rows: [string, string][] = [
         ["file", `${asset}.iprop · ${formatSize(files.get(asset)!.byteLength)}`],
-        ["inputs", `seed ${seed} · variant ${look.variant} · quality ${look.quality}`],
+        ["inputs", `seed ${seed} · enchantment ${look.enchantment} · quality ${look.quality}`],
         ["glow", glow && glow.y > 0 ? `power ${glow.y} · sigma ${+glow.w.toFixed(2)} · bloom ${+glow.h.toFixed(2)}` : "none"],
         ["tip", tip ? `${Math.round(tip.x)}, ${Math.round(tip.y)}` : "none"],
     ];

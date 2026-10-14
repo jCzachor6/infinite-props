@@ -76,66 +76,67 @@ TEST_CASE("truncated header fails") {
 
 TEST_CASE("unsupported versions fail at their field offsets") {
     expectError(rawLayout(1, 1, 0, 1, 0, {{1, 0, 0}}), 4); // major 1
-    expectError(rawLayout(0, 0, 0, 1, 0, {{1, 0, 0}}), 6); // unsupported pre-format version
+    for (u16 minor=0;minor<kVersionMinor;++minor)
+        expectError(rawLayout(0, minor, 0, 1, 0, {{1, 0, 0}}), 6); // unsupported pre-format version
     expectError(rawLayout(0, kVersionMinor + 1, 0, 1, 0, {{1, 0, 0}}), 6); // future minor
 }
 
 TEST_CASE("unknown flag bits fail") {
-    expectError(rawLayout(0, 1, 2, 1, 0, {{1, 0, 0}}), 8);
-    expectError(rawLayout(0, 5, 2, 1, 0, {{1, 0, 0}}), 8); // the envelope stays a 0.4 container
+    expectError(rawLayout(0, kVersionMinor, 4, 1, 0, {{1, 0, 0}}), 8);
+    expectError(rawLayout(0, kVersionMinor, 4, 1, 0, {{1, 0, 0}}), 8); // unknown flags in the current envelope
 }
 
 TEST_CASE("section count out of range fails") {
-    expectError(rawLayout(0, 1, 0, 0, 0, {}), 12);
-    expectError(rawLayout(0, 1, 0, 256, 0, {}), 12);
+    expectError(rawLayout(0, kVersionMinor, 0, 0, 0, {}), 12);
+    expectError(rawLayout(0, kVersionMinor, 0, 256, 0, {}), 12);
 }
 
 TEST_CASE("non-zero reserved field fails") {
-    expectError(rawLayout(0, 1, 0, 1, 7, {{1, 0, 0}}), 16);
+    expectError(rawLayout(0, kVersionMinor, 0, 1, 7, {{1, 0, 0}}), 16);
 }
 
 TEST_CASE("truncated section table fails") {
     // Header declares 3 sections but the file ends right after the header.
-    expectError(rawLayout(0, 1, 0, 3, 0, {}), 20);
+    expectError(rawLayout(0, kVersionMinor, 0, 3, 0, {}), 20);
 }
 
 TEST_CASE("unknown section id fails at the entry") {
-    const auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 56, 0}, {2, 56, 0}, {99, 56, 0}});
+    const auto bytes = rawLayout(0, kVersionMinor, 0, 3, 0, {{1, 56, 0}, {2, 56, 0}, {99, 56, 0}});
     expectError(bytes, 20 + 2 * 12);
 }
 
 TEST_CASE("duplicate section id fails at the second entry") {
-    const auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 56, 0}, {2, 56, 0}, {2, 56, 0}});
+    const auto bytes = rawLayout(0, kVersionMinor, 0, 3, 0, {{1, 56, 0}, {2, 56, 0}, {2, 56, 0}});
     expectError(bytes, 20 + 2 * 12);
 }
 
 TEST_CASE("section outside file bounds fails") {
-    auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 60, 4}, {2, 64, 4}, {3, 999, 4}});
+    auto bytes = rawLayout(0, kVersionMinor, 0, 3, 0, {{1, 60, 4}, {2, 64, 4}, {3, 999, 4}});
     appendZeros(bytes, 100 - bytes.size());
     expectError(bytes, 20 + 2 * 12);
 }
 
 TEST_CASE("section overlapping the header or table fails") {
     // 3 sections: table ends at 56, but the first section starts inside it.
-    auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 8, 4}, {2, 60, 4}, {3, 64, 4}});
+    auto bytes = rawLayout(0, kVersionMinor, 0, 3, 0, {{1, 8, 4}, {2, 60, 4}, {3, 64, 4}});
     appendZeros(bytes, 70 - bytes.size());
     expectError(bytes, 20 + 0 * 12);
 }
 
 TEST_CASE("overlapping sections fail at the second entry") {
-    auto bytes = rawLayout(0, 1, 0, 3, 0, {{1, 60, 10}, {2, 64, 10}, {3, 80, 10}});
+    auto bytes = rawLayout(0, kVersionMinor, 0, 3, 0, {{1, 60, 10}, {2, 64, 10}, {3, 80, 10}});
     appendZeros(bytes, 90 - bytes.size());
     expectError(bytes, 20 + 1 * 12);
 }
 
 TEST_CASE("missing required sections fail") {
-    expectError(rawLayout(0, 1, 0, 2, 0, {{1, 44, 0}, {2, 44, 0}}), 0);
-    expectError(rawLayout(0, 1, 0, 1, 0, {{3, 32, 0}}), 0);
+    expectError(rawLayout(0, kVersionMinor, 0, 2, 0, {{1, 44, 0}, {2, 44, 0}}), 0);
+    expectError(rawLayout(0, kVersionMinor, 0, 1, 0, {{3, 32, 0}}), 0);
 }
 
 TEST_CASE("debug flag/section mismatch fails") {
     // Flag set but no debug section.
-    expectError(rawLayout(0, 1, kFlagDebug, 3, 0, {{1, 56, 0}, {2, 56, 0}, {3, 56, 0}}), 0);
+    expectError(rawLayout(0, kVersionMinor, kFlagDebug, 3, 0, {{1, 56, 0}, {2, 56, 0}, {3, 56, 0}}), 0);
     // Debug section present but flag clear.
-    expectError(rawLayout(0, 1, 0, 4, 0, {{1, 68, 0}, {2, 68, 0}, {3, 68, 0}, {4, 68, 0}}), 0);
+    expectError(rawLayout(0, kVersionMinor, 0, 4, 0, {{1, 68, 0}, {2, 68, 0}, {3, 68, 0}, {4, 68, 0}}), 0);
 }

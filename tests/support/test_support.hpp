@@ -81,10 +81,10 @@ std::vector<u8> ins(u8 opcode, u8 aux, u16 operand);
 // A single `return` instruction.
 std::vector<u8> retIns();
 
-// The canonical draw function spec: (i32 variant, i32 archetype), named
+// The canonical draw function spec: declared uniforms only, named
 // "draw" (name index 0), no results.
 FuncSpec drawSpec(const std::vector<u8>& body, u32 nameIndex = 0,
-                  const std::vector<u8>& params = {0, 0});
+                  const std::vector<u8>& params = {});
 
 // A tiny program builder for VM tests: deduplicates constants into the
 // const pool and emits instructions. Programs leave values on the entry
@@ -126,12 +126,11 @@ f32 f32FromBits(u32 value);
 std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
                             const std::vector<PartSpec>& parts);
 
-// A minimal valid meta (8x8, 1 variant, 1 archetype, no I/O).
+// A minimal valid meta (8x8, no I/O).
 std::vector<u8> minimalMeta();
 
 // `meta` section bytes (spec §4).
-std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u32 variants,
-                            u32 archetypes, u64 fuel, bool emission, Color emColor,
+std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u64 fuel, bool emission, Color emColor,
                             f32 emX, f32 emY, f32 emR,
                             const std::vector<InputSpec>& inputs,
                             const std::vector<OutputSpec>& outputs,

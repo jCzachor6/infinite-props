@@ -1,4 +1,5 @@
 "use strict";
+const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { decodePng } = require("./png.js");
@@ -32,10 +33,10 @@ function run(iprop,tool,directory) {
     }
     const oracle=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/resource-exports-v0.6.json"),"utf8"));
     for(const expected of oracle.cases) for(const opt of [false,true]) {
-        for(const [name,source] of Object.entries(expected.source_texts)) fs.writeFileSync(path.join(tree,name),source);
+        for(const [name,source] of Object.entries(expected.source_texts)) fs.writeFileSync(path.join(tree,name),renderSource(source));
         const binary=path.join(tree,"tree.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"--no-compress",...(opt?[]:["--no-opt"]),"-o",binary]);
         for(const generation of expected.generations) for(const seed of [0,1,7,26,0xffffffff]) {
-            const result=generate(binary,seed,generation.arguments);
+            const result=generate(binary,seed,renderArguments(generation.arguments));
             assert.deepEqual(result.rgba,Buffer.from(generation.rgba_base64,"base64"),expected.name);
             assert.deepEqual(result.outputs,[{name:"state",kind:"point",list:false,values:[{x:bits(seed&65535),y:bits(seed>>>16)}]}]);++pins;
         }
@@ -50,7 +51,7 @@ function run(iprop,tool,directory) {
     }
     const leaf='asset t{size 2x1 output layer image output mask region draw{if(seed!=3){layer captured{pixel(0,0,rgb(seed*50,0,0))}image=captured region=mask.from(captured)}}}';
     fs.writeFileSync(path.join(tree,"leaf.ips"),leaf);
-    const snapshot='import leaf from "leaf.ips" asset t{size 8x1 draw{leaf.draw(1,0,0,at={1,0})first=leaf.outputs.image old=leaf.outputs.region leaf.draw(2,0,0,at={4,0})second=leaf.outputs.image leaf.draw(3,0,0,at={7,0})surface.paint(first)surface.paint(second)surface.paint(leaf.outputs.image)clip(old){rect(0,0,8,1,#00ff00)}}}';
+    const snapshot='import leaf from "leaf.ips" asset t{size 8x1 draw{leaf.draw(1,at={1,0})first=leaf.outputs.image old=leaf.outputs.region leaf.draw(2,at={4,0})second=leaf.outputs.image leaf.draw(3,at={7,0})surface.paint(first)surface.paint(second)surface.paint(leaf.outputs.image)clip(old){rect(0,0,8,1,#00ff00)}}}';
     for(const opt of [false,true]) {
         fs.writeFileSync(path.join(tree,"root.ips"),snapshot);const binary=path.join(tree,"snapshot.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),...(opt?[]:["--no-opt"]),"-o",binary]);
         const result=generate(binary), expected=Buffer.alloc(32);expected.set([0,255,0,255],4);expected.set([100,0,0,255],16);assert.deepEqual(result.rgba,expected);++pins;
@@ -60,14 +61,14 @@ function run(iprop,tool,directory) {
         assert.equal(native.status,1);assert.match(native.stderr,pattern);assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed:26}),pattern);++traps;
     }
     const unset=base+"-unset.iprop";execFileSync(tool("ipc"),[path.join(repo,"examples/language/traps/export-unset.ips"),"-o",unset]);trap(unset,/part resource export not written/);
-    const wrong='import first from "leaf.ips" import second from "leaf.ips" asset t{size 4x1 draw{first.draw(1,0,0,at={0,0})second.draw(1,0,0,at={2,0})surface.paint(first.outputs.image)}}';
+    const wrong='import first from "leaf.ips" import second from "leaf.ips" asset t{size 4x1 draw{first.draw(1,at={0,0})second.draw(1,at={2,0})surface.paint(first.outputs.image)}}';
     fs.writeFileSync(path.join(tree,"root.ips"),wrong);const wrongBinary=path.join(tree,"wrong.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"-o",wrongBinary]);trap(wrongBinary,/last called part/);
     // Repeated replacement is bounded by live handles, rather than arena history.
     const reusable=compile('asset t{size 1024x1024 draw{layer image{}region=mask.from(image)for i in 0..64{region=mask.invert(region)}}}',["--no-opt"]);
     const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace('fuel=2000000','fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large);
     // A real snapshot survives slot replacement and keeps its allocation alive.
     fs.writeFileSync(path.join(tree,"leaf.ips"),'asset t{size 1024x1024 output layer image draw{layer captured{}image=captured}}');
-    const many=Array.from({length:16},(_,i)=>`leaf.draw(seed,0,0,at={0,0})snapshot${i}=leaf.outputs.image`).join(';');
+    const many=Array.from({length:16},(_,i)=>`leaf.draw(seed,at={0,0})snapshot${i}=leaf.outputs.image`).join(';');
     fs.writeFileSync(path.join(tree,"root.ips"),'import leaf from "leaf.ips" asset t{size 1x1 draw{'+many+'}}');
     const quota=path.join(tree,"quota.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"--no-opt","--no-compress","-o",quota]);
     fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[quota],{encoding:"utf8"}).replace('fuel=2000000','fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);trap(large,/generation data exceeds 64 MiB/);

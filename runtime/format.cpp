@@ -40,13 +40,13 @@ Header parseHeader(std::span<const u8> data, OffsetSpace space) {
         throw FormatError("unsupported format major version", 4, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);
     }
     header.versionMinor = reader.readU16();
-    if (header.versionMinor < 1 || header.versionMinor > kVersionMinor) {
+    if (header.versionMinor != kVersionMinor) {
         throw FormatError("unsupported format minor version", 6, ErrorReason::UnsupportedVersion, ErrorStage::Load, space);
     }
 
     header.flags = reader.readU32();
-    // The compressed envelope stays a 0.4 container for every inner minor.
-    const u32 allowed = header.versionMinor == 4 ? kFlagDebug | kFlagCompressed : kFlagDebug;
+    // The compressed envelope and payload share the current format version.
+    const u32 allowed = kFlagDebug | kFlagCompressed;
     if ((header.flags & ~allowed) != 0) {
         throw FormatError("unknown header flag bits", 8, ErrorReason::InvalidHeader, ErrorStage::Load, space);
     }
@@ -88,7 +88,7 @@ FileLayout parseLayout(std::span<const u8> data) {
         const u32 size = reader.readU32();
 
         // Section 5 (part instances) exists from minor 5 on (spec v0.5 §6).
-        if (rawId < 1 || rawId > (layout.header.versionMinor >= 6 ? 10u : layout.header.versionMinor >= 5 ? 5u : 4u)) {
+        if (rawId < 1 || rawId > 10u) {
             throw FormatError("unknown section id " + std::to_string(rawId), entryAt, ErrorReason::InvalidLayout);
         }
         if (seen[rawId]) {

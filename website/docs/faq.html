@@ -21,19 +21,15 @@
     <!-- @docs-nav faq -->
     <article class="prose">
 <h2 id="determinism">Is the output really deterministic?</h2>
-<p>Yes, bit for bit. Generation is a pure function of the inputs: the seed, the variant and
-archetype, the requested size and the uniform values. The seeded primitives (the hash, the stream,
+<p>Yes, bit for bit. Generation is a pure function of the inputs: the seed, the requested size and the uniform values. The seeded primitives (the hash, the stream,
 noise and the distribution kernels) are specification-pinned algorithms, and a committed golden
 corpus guards the pipeline: any change to a golden pixel is a breaking change.</p>
 
-<h2 id="seed">What are seed, variant and archetype?</h2>
-<ul>
-<li><strong>seed</strong>: the root of every random stream; the same seed always reproduces the same asset.</li>
-<li><strong>archetype</strong>: the coarse form (an asset declares <code>archetypes N</code>; think boulder or slab).</li>
-<li><strong>variant</strong>: the finer variation within it (<code>variants N</code>).</li>
-</ul>
-<p>Both indices are the read-only <code>v</code> and <code>a</code> builtins inside <code>draw</code>, so
-each asset decides exactly how they shape the result.</p>
+<h2 id="seed">Seeds and declared inputs</h2>
+<p>The seed initializes the root random stream. Authors declare any controls they need with
+<code>input</code>, including colors, dimensions or selection indices. Hosts can override these
+values by name; omitted inputs keep their defaults. There are no implicit variant/archetype
+controls. <code>v</code> and <code>a</code> are ordinary names.</p>
 
 <h2 id="vm">Why a bytecode VM instead of shipping code?</h2>
 <p>Bytecode is small, self-contained, portable and safe. Hosts validate a file before running it, the

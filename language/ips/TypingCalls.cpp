@@ -156,7 +156,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     return surface->result.value_or(ValueType::Void);
 }
 
-// `part.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)`
+// `part.draw(seed = seed, at = {x, y}, uniforms...)`
 ValueType Typer::typePartCall(const Call& call) {
     const Path path = flatten(*call.callee);
     if (path.base.empty() || path.segments.size() != 1 ||
@@ -170,17 +170,17 @@ ValueType Typer::typePartCall(const Call& call) {
 
     const auto bound = bind(call, partCallSignature(part->inputs), path.base + ".draw");
     const auto& args = bound.arguments;
-    for (std::size_t i=0;i<3;++i) {
+    for (std::size_t i=0;i<1;++i) {
         const auto got = typeOf(*args[i]->value);
         if (got != ValueType::I32)
             error(locationOf(*args[i]->value), "part call argument must be an integer, got " +
                   std::string(typeName(got)));
     }
-    const auto placement = typeOf(*args[3]->value);
+    const auto placement = typeOf(*args[1]->value);
     if (placement != ValueType::Vec2)
-        error(locationOf(*args[3]->value), "'at' must be a vec2 {x, y}, got " +
+        error(locationOf(*args[1]->value), "'at' must be a vec2 {x, y}, got " +
               std::string(typeName(placement)));
-    for (std::size_t i=4;i<7;++i) {
+    for (std::size_t i=2;i<5;++i) {
         if (!args[i]) continue;
         const auto got = typeOf(*args[i]->value);
         if (got != ValueType::I32)
@@ -188,7 +188,7 @@ ValueType Typer::typePartCall(const Call& call) {
                   "' must be an integer, got " + std::string(typeName(got)));
     }
     for (std::size_t i=0;i<part->inputs.size();++i) {
-        const auto* arg = args[7+i];
+        const auto* arg = args[5+i];
         if (!arg) continue;
         const auto& input = part->inputs[i];
         const auto got = typeOf(*arg->value);

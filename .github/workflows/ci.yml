@@ -59,11 +59,10 @@ jobs:
           --probe build/tests/compiler_diagnostic_failure_probe --schema
           --report build/ci-reports/export-contracts.json
 
-      - name: Run the frozen API 0.2 binary with the replacement library
+      - name: Validate C ABI 0.5 layouts and package compatibility floor
         run: >-
-          python scripts/ci_report.py run legacy-abi
-          python scripts/check_legacy_abi.py --build build
-          --static-zlib=${{ runner.os == 'Windows' && 'ON' || 'OFF' }}
+          python scripts/ci_report.py run abi-boundary
+          python scripts/check_abi_boundary.py --build build
 
       - name: Smoke the CLI pipeline
         run: >-

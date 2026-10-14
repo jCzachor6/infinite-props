@@ -26,7 +26,7 @@ std::vector<u8> sourceOverProgram(const std::string& source, bool optimize = tru
 GenerationResult runSourceOver(const std::vector<u8>& bytes, u32 seed = 26, u32 variant = 0,
         u32 width = 0, u32 height = 0) {
     const auto file = loadFile(bytes); validate(file);
-    VM vm(file, {seed,variant,0,width,height,{}}); vm.run(); return vm.result();
+    VM vm(file, {seed,width,height,{{"v",{InputType::U32,{},0.f,variant}}}}); vm.run(); return vm.result();
 }
 std::vector<u8> sourceOverTree(const std::map<std::string, std::string>& files, bool optimize) {
     SourceCompilationOptions options; options.optimize = optimize;
@@ -162,7 +162,7 @@ TEST_CASE("return break continue and traps restore the full target mode", "[sour
         for (const u32 x : {0u,1u,2u}) CHECK(result.image.at(x,0) == Color{17,34,51,128});
         CHECK(result.image.at(3,0) == Color{8,17,25,0}); CHECK(result.image.at(4,0) == Color{});
         CHECK(result.image.at(0,1) == Color{}); CHECK(result.image.at(1,1) == Color{255,0,0,128});
-        const auto file = loadFile(sourceOverProgram("asset t{size 1x1 draw{pixel(0,0,#11223380) layer outer(alpha=surface.source_over){layer inner(alpha=surface.legacy){x=1/(v-v)}}}}",optimize));
+        const auto file = loadFile(sourceOverProgram("asset t{ input i32 v = 0 size 1x1 draw{pixel(0,0,#11223380) layer outer(alpha=surface.source_over){layer inner(alpha=surface.legacy){x=1/(v-v)}}}}",optimize));
         VM vm(file,{}); CHECK_THROWS_AS(vm.run(),Trap); CHECK(vm.canvas().at(0,0) == Color{8,17,25,0});
         CHECK_THROWS_AS(vm.result(),std::logic_error); CHECK_THROWS_AS(vm.takeResult(),std::logic_error);
     }
@@ -171,12 +171,12 @@ TEST_CASE("return break continue and traps restore the full target mode", "[sour
 TEST_CASE("part canvases and blits inherit source-over across nested D4 and scale", "[source-over]") {
     for (const bool optimize : {false,true}) {
         std::string calls;
-        for (u32 v = 0; v < 8; ++v) calls += "if(v=="+std::to_string(v)+"){child.draw(seed,0,0,at={7.5,6.5},rot="+std::to_string(v%4*90)+",mirror_x="+std::to_string(v/4)+")} ";
+        for (u32 v = 0; v < 8; ++v) calls += "if(v=="+std::to_string(v)+"){child.draw(seed,at={7.5,6.5},rot="+std::to_string(v%4*90)+",mirror_x="+std::to_string(v/4)+")} ";
         const std::map<std::string,std::string> sources{
-            {"root.ips",R"(import child from "child.ips" asset t{size 16x12 variants 8 output point p output point state
+            {"root.ips",R"(import child from "child.ips" asset t{input i32 v=0 size 16x12 output point p output point state
               draw{layer image(alpha=surface.source_over){)"+calls+R"(p=child.outputs.p}surface.paint(image,blend=surface.source_over) pixel(15,11,#11223380) state={seed&65535,seed>>16}}})"},
             {"child.ips",R"(import leaf from "leaf.ips" asset c{size 7x5 origin 2,1 output point p
-              draw{leaf.draw(seed,0,0,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#11223380)}})"},
+              draw{leaf.draw(seed,at={3,2},rot=90,mirror_y=1) p=leaf.outputs.p pixel(6,4,#11223380)}})"},
             {"leaf.ips",R"(asset leaf{size 3x2 origin 1,0 output point p
               draw{pixel(0,0,#ff000080) pixel(2,1,#0000ff80) layer hidden(alpha=surface.legacy){pixel(1,0,#fff)}
                 p={1.0 to 2.0,0}}})"},

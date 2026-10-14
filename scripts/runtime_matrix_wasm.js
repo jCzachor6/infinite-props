@@ -16,7 +16,8 @@ function canonical(value) {
 }
 function trapReason(message) {
     // The CLI and browser wrappers add different prefixes and optional offsets.
-    return message.replace(/^ipgen: generation failed at byte offset [0-9]+: /, "")
+    return message.replace(/^ipgen: invalid \.iprop at byte offset [0-9]+: /, "")
+        .replace(/^ipgen: generation failed at byte offset [0-9]+: /, "")
         .replace(/^generation failed at byte offset [0-9]+: /, "")
         .replace(/^iprop: /, "")
         .replace(/^[^:\n]*Trap(?: at byte offset [0-9]+)?: /, "").trim();

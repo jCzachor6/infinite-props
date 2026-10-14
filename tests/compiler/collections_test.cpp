@@ -89,7 +89,7 @@ TEST_CASE("lists share all current element types through helpers and returns") {
     for (const bool optimize : {false, true}) {
         const auto bytes = collections(source, optimize);
         const auto file = loadFile(bytes);
-        CHECK(file.layout.header.versionMinor == 6);
+        CHECK(file.layout.header.versionMinor == 7);
         CHECK(file.collections.types.size() == 5);
         for (const auto seed : {0u, 1u, 26u, 0xffffffffu}) same(bytes, reference, seed);
         same(assemble(disassemble(bytes)), bytes, 26);
@@ -183,7 +183,7 @@ TEST_CASE("legacy palettes retain fallback and large-palette use without first-c
     }
     const auto prefix="asset t {size 1x1 palette big="+repeated(257,"1.0")+" output point p ";
     const auto legacy=collections(prefix+"draw{p={big[-1],ramp(big,0.5)}}}");
-    CHECK(loadFile(legacy).layout.header.versionMinor==4);
+    CHECK(loadFile(legacy).layout.header.versionMinor==7);
     CHECK(execute(legacy).outputs[0].points[0].x==1.f);
     reject(prefix+"draw{items=big}}", "exceeds 256 elements when used as a list");
 }
@@ -204,7 +204,7 @@ TEST_CASE("list indexing traps and const list dependencies remain compile-time c
     reject("asset t {size 1x1 const list<i32> items=[1] const i32 invalid=items[1] draw{}}", "list index out of range");
     reject("asset t {size 1x1 const list<distribution> items=[gaussian(0,0)] draw{}}", "gaussian");
     const auto folded=collections("asset t {size 1x1 const list<i32> items=[1,2] const i32 n=list.len(items) draw{pixel(n,0,#ffffff)}}");
-    CHECK(loadFile(folded).layout.header.versionMinor==4);
+    CHECK(loadFile(folded).layout.header.versionMinor==7);
 }
 
 TEST_CASE("collection serialization preserves raw values and rejects malformed descriptors and pool data") {
@@ -232,8 +232,8 @@ TEST_CASE("collection serialization preserves raw values and rejects malformed d
     bad=bytes;raw16(bad,listSection+6,257);CHECK_THROWS_AS(loadFile(bad),FormatError);
     bad=bytes;raw32(bad,typeSection,65537);CHECK_THROWS_AS(loadFile(bad),FormatError);
     bad=bytes;raw16(bad,6,5);CHECK_THROWS_AS(loadFile(bad),FormatError);
-    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\n return\n list.get 65535\nendfn\n"),std::exception);
-    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\n const.i32 1\n list.begin 0\n dup\n drop\n list.end 0\n drop\n return\nendfn\n"),std::exception);
+    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( ) -> ( ):\n return\n list.get 65535\nendfn\n"),std::exception);
+    CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: list<i32>\nfn draw ( ) -> ( ):\n const.i32 1\n list.begin 0\n dup\n drop\n list.end 0\n drop\n return\nendfn\n"),std::exception);
 }
 
 TEST_CASE("list builders share frozen storage and charge memory and fuel before allocation") {

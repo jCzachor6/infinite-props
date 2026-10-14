@@ -63,7 +63,7 @@ TEST_CASE("asset constants resolve forward dependencies and all five declared ty
     })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileConstants(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 5);
+        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         const auto result = execute(bytes);
         CHECK(result.outputs[0].points[0].x == 1.f);
         CHECK(result.outputs[0].points[0].y == 1.f);
@@ -211,7 +211,7 @@ TEST_CASE("constant effects cycles and invalid constructors fail without compile
 
 TEST_CASE("each part owns its constants") {
     const std::map<std::string,std::string> files{
-        {"root.ips", "import child from \"child.ips\" asset t{size 1x1 const i32 n=3 output point p draw{child.draw(seed,0,0,at={0,0}) p={n,child.outputs.p.x}}}"},
+        {"root.ips", "import child from \"child.ips\" asset t{size 1x1 const i32 n=3 output point p draw{child.draw(seed,at={0,0}) p={n,child.outputs.p.x}}}"},
         {"child.ips", "asset c{size 1x1 const i32 n=7 output point p get()->i32{return n} draw{p={get(),0}}}"},
     };
     for (const bool optimize : {false, true}) {
@@ -251,12 +251,12 @@ TEST_CASE("const formatter comments assembly debug stripping and oldest formats 
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     for (const bool optimize : {false, true}) {
         const auto bytes = compileConstants(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 4);
+        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         CHECK(stripDebug(bytes) == stripDebug(compileConstants(formatted, optimize)));
         const auto restored = assemble(disassemble(bytes));
         CHECK(disassemble(restored) == disassemble(bytes));
         const auto packed = compressFile(bytes);
-        CHECK(loadFile(packed).layout.header.versionMinor == 4);
+        CHECK(loadFile(packed).layout.header.versionMinor == 7);
         sameGeneration(packed, bytes, 42); sameGeneration(restored, bytes, 42);
     }
 }

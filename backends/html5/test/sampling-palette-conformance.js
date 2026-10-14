@@ -119,7 +119,7 @@ function run(iprop,tool,directory){
         [widths,"n=257 items=widths[0].pick(n)",/result count must be between/],
     ])for(const optimized of [false,true])trap(compile(asset(declaration,body,"selected(s:list<sampler<i32>>,i:i32)->sampler<i32>{return s[i]}"),optimized),message);
     for(const optimized of [false,true])trap(compile(asset(widths,"value=selected(widths,-1).pick()",sameNames),optimized),/list index out of range/);
-    fs.writeFileSync(base+".ipa","meta: size=1x1 fuel=100000000\ntypes: sampler<i32>\nsampler: sampler<i32> 000028000000\nfn draw ( i32, i32 ) -> ( ):\nloop\nconst.sampler 0\nconst.i32 256\nsampler.pick.list 0\ndrop\nbr 0\nend\nreturn\nendfn\n");
+    fs.writeFileSync(base+".ipa","meta: size=1x1 fuel=100000000\ntypes: sampler<i32>\nsampler: sampler<i32> 000028000000\nfn draw (  ) -> ( ):\nloop\nconst.sampler 0\nconst.i32 256\nsampler.pick.list 0\ndrop\nbr 0\nend\nreturn\nendfn\n");
     execFileSync(tool("ipa"),[base+".ipa","-o",base+"-quota.iprop"]);trap(base+"-quota.iprop",/generation data exceeds 64 MiB/);
     function reject(data,message){
         fs.writeFileSync(base+"-bad.iprop",data);const native=spawnSync(tool("ipval"),[base+"-bad.iprop"],{encoding:"utf8"});
@@ -137,10 +137,10 @@ function run(iprop,tool,directory){
     const mismatch=fs.readFileSync(compile("asset t{size 1x1 const sampler<i32> intSpec=sampler(1) const sampler<f32> floatSpec=sampler(1.0) const list<sampler<i32>> specs=[intSpec] draw{items=specs s=floatSpec}}",false));
     const wrongType=Buffer.from(mismatch);wrongType.writeUInt16LE(1,sections(mismatch).get(7)+8);reject(wrongType,/type mismatch/);
     for(let minor=1;minor<=5;++minor){const bad=Buffer.from(original);bad.writeUInt16LE(minor,6);reject(bad);}
-    fs.writeFileSync(base+"-dead.ipa","meta: size=1x1\ntypes: sampler<i32>\nsampler: sampler<i32> 000028000000\nfn draw ( i32, i32 ) -> ( ):\nreturn\nconst.sampler 0\nendfn\n");
+    fs.writeFileSync(base+"-dead.ipa","meta: size=1x1\ntypes: sampler<i32>\nsampler: sampler<i32> 000028000000\nfn draw (  ) -> ( ):\nreturn\nconst.sampler 0\nendfn\n");
     execFileSync(tool("ipa"),[base+"-dead.ipa","-o",base+"-dead.iprop"]);const dead=fs.readFileSync(base+"-dead.iprop"),at=instructions(dead)[1];
     let bad=Buffer.from(dead);bad[at+1]=1;reject(bad);bad=Buffer.from(dead);bad.writeUInt16LE(65535,at+2);reject(bad);
-    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
+    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     execFileSync(tool("ipa"),[base+"-gate.ipa","-o",base+"-gate.iprop"]);const gate=fs.readFileSync(base+"-gate.iprop"),gateAt=instructions(gate)[1];
     for(let minor=1;minor<=5;++minor){bad=Buffer.from(gate);bad[gateAt]=0xc1;bad.writeUInt16LE(minor,6);reject(bad);}
     // File-level quota includes sampler descriptions and list buffers together.

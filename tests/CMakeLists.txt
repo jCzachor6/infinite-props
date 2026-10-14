@@ -39,6 +39,7 @@ add_executable(iprop_tests
     compiler/samplers_test.cpp
     compiler/sampling_palettes_test.cpp
     compiler/defaults_test.cpp
+    compiler/declared_inputs_test.cpp
     compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
@@ -163,7 +164,7 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
-    add_test(NAME frozen_math_compatibility COMMAND ${Python3_EXECUTABLE}
+    add_test(NAME retired_format_rejection COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_frozen_math.py" "$<TARGET_FILE:ipgen>")
     add_test(NAME resource_export_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_resource_export_reference.py")

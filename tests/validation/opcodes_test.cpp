@@ -19,7 +19,7 @@ TEST_CASE("format 0.1 remains supported and rejects every new math opcode") {
     auto legacy = fullFile(minimalMeta(), richPool({"draw"}),
                            codeSection({drawSpec(legacyBody)}, {}));
     legacy[6] = 1;
-    REQUIRE_NOTHROW(validate(loadFile(legacy)));
+    CHECK_THROWS_AS(loadFile(legacy),FormatError);
     for (const u8 opcode : {u8{0x4F}, u8{0x53}, u8{0x54}, u8{0x55}, u8{0x56},
                             u8{0x57}, u8{0x58}, u8{0x59}, u8{0x5A}}) {
         const unsigned args = opcode == 0x56 || opcode == 0x57 ||
@@ -36,8 +36,7 @@ TEST_CASE("format 0.1 remains supported and rejects every new math opcode") {
         auto bytes = fullFile(minimalMeta(), richPool({"draw"}), codeSection(functions, {}));
         REQUIRE_NOTHROW(validate(loadFile(bytes)));
         bytes[6] = 1;
-        expectValidateError(bytes, streamRel(functions, 0) + args * 4,
-                            "require format 0.2");
+        CHECK_THROWS_AS(loadFile(bytes),FormatError);
     }
 }
 
@@ -64,17 +63,16 @@ TEST_CASE("vec2 parameter, result and local types require format 0.3") {
         for (const u8 minor : {u8{1}, u8{2}}) {
             INFO("minor " << static_cast<unsigned>(minor));
             bytes[6] = minor;
-            expectValidateError(bytes, streamRel(functions, 1),
-                                "vec2 types require format 0.3");
+            CHECK_THROWS_AS(loadFile(bytes),FormatError);
         }
     }
     // Even an empty instruction stream must not bypass the type-version gate.
     const std::vector<FuncSpec> functions = {
-        {0, {0, 0}, {}, {3}, {}}};
+        {0, {}, {}, {3}, {}}};
     auto bytes = fullFile(minimalMeta(), richPool({"draw"}), codeSection(functions, {}));
     REQUIRE_NOTHROW(validate(loadFile(bytes)));
     bytes[6] = 2;
-    expectValidateError(bytes, streamRel(functions, 0), "vec2 types require format 0.3");
+    CHECK_THROWS_AS(loadFile(bytes),FormatError);
 }
 
 TEST_CASE("valid battery passes validation") {
@@ -86,11 +84,11 @@ TEST_CASE("valid battery passes validation") {
     }
     // 2. Draw with a colour uniform: params (i32, i32, color).
     {
-        const auto meta = metaSection(8, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0,
+        const auto meta = metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0,
                                       {{0, 1, {1, 2, 3, 255}, 0, 0}}, {});
         const auto body = [] {
             std::vector<u8> b;
-            for (const auto& i : ins(0x13, 0, 2)) b.push_back(i); // local.get 2 (palette)
+            for (const auto& i : ins(0x13, 0, 0)) b.push_back(i); // local.get 2 (palette)
             for (const auto& i : ins(0x10, 0, 0)) b.push_back(i); // const.i32 0
             for (const auto& i : ins(0x51, 0, 0)) b.push_back(i); // color.shade
             for (const auto& i : ins(0x16, 0, 0)) b.push_back(i); // drop
@@ -98,7 +96,7 @@ TEST_CASE("valid battery passes validation") {
             return b;
         }();
         const auto bytes = fullFile(meta, richPool({"draw", "palette"}),
-                                    codeSection({drawSpec(body, 0, {0, 0, 2})}, {}));
+                                    codeSection({drawSpec(body, 0, {2})}, {}));
         REQUIRE_NOTHROW(validate(loadFile(bytes)));
     }
     // 3. Helper function with a result, called from draw.
@@ -120,8 +118,6 @@ TEST_CASE("valid battery passes validation") {
     {
         std::vector<u8> body;
         for (const auto& i : ins(0x10, 0, 0)) body.push_back(i); // seed (i32)
-        for (const auto& i : ins(0x10, 0, 0)) body.push_back(i); // variant
-        for (const auto& i : ins(0x10, 0, 0)) body.push_back(i); // archetype
         for (const auto& i : ins(0x11, 0, 0)) body.push_back(i); // atX (f32)
         for (const auto& i : ins(0x11, 0, 0)) body.push_back(i); // atY (f32)
         for (const auto& i : ins(0xA0, 0, 0)) body.push_back(i); // part.draw 0
@@ -131,7 +127,7 @@ TEST_CASE("valid battery passes validation") {
         for (const auto& i : retIns()) body.push_back(i);
 
         const auto bytes = fullFile(minimalMeta(), richPool({"draw", "pupil"}),
-                                    codeSection({drawSpec(body), {kAnonymousName, {0, 0}, {}, {}, retIns()}},
+                                    codeSection({drawSpec(body), {kAnonymousName, {}, {}, {}, retIns()}},
                                                 {{1, 8, 8, 0, 0, {}, {{0, 0, 1}}}}));
         REQUIRE_NOTHROW(validate(loadFile(bytes)));
     }
@@ -187,7 +183,7 @@ TEST_CASE("valid battery passes validation") {
         for (const auto& b : ins(0x94, 0, 1)) body.push_back(b); // out.list.rect 1
         for (const auto& b : retIns()) body.push_back(b);
 
-        const auto meta = metaSection(8, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0, {},
+        const auto meta = metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0, {},
                                       {{0, 0, 1}, {1, 1, 2}});
         const auto bytes = fullFile(meta, richPool({"draw", "anchor", "colliders"}),
                                     codeSection({drawSpec(body)}, {}));
@@ -219,7 +215,7 @@ TEST_CASE("Bezier additions validate stack types and require format 0.3") {
         auto legacy = fullFile(minimalMeta(), richPool({"draw"}), codeSection(bare, {}));
         for (const u8 minor : {u8{1}, u8{2}}) {
             legacy[6] = minor;
-            expectValidateError(legacy, streamRel(bare, 0), "require format 0.3");
+            CHECK_THROWS_AS(loadFile(legacy),FormatError);
         }
     }
 }

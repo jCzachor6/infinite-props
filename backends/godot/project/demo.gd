@@ -1,5 +1,5 @@
 # The demo (task 8.3): an IpropSprite2D over the plant, cycled with the
-# arrow keys (seeds left/right, variants up/down).
+# left/right arrows to change the seed.
 extends Node2D
 
 var sprite: IpropSprite2D
@@ -25,12 +25,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			sprite.seed = sprite.seed - 1
 		elif event.keycode == KEY_RIGHT:
 			sprite.seed = sprite.seed + 1
-		elif event.keycode == KEY_UP:
-			sprite.variant = (sprite.variant + asset.variants - 1) % asset.variants
-		elif event.keycode == KEY_DOWN:
-			sprite.variant = (sprite.variant + 1) % asset.variants
 		elif event.keycode == KEY_S:
-			var image := asset.generate(sprite.seed, sprite.variant, sprite.archetype)
-			var out_path := "res://iprop-export-seed%d-variant%d.png" % [sprite.seed, sprite.variant]
+			var image := asset.generate(sprite.seed)
+			var out_path := "res://iprop-export-seed%d.png" % sprite.seed
 			image.save_png(out_path)
 			print("exported ", out_path)

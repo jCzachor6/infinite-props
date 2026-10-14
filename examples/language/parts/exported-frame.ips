@@ -1,14 +1,13 @@
 import patch from "exported-patch.ips"
 
-asset exportedFrame {
-  size 5x4
+asset exportedFrame { size 5x4
   origin 1, 1
   output mask region
   output point anchor
   output layer image
 
   draw {
-    patch.draw(seed, v, a, at={2, 1}, rot=90)
+    patch.draw(seed, at={2, 1}, rot=90)
     region = patch.outputs.region
     image = patch.outputs.image
     anchor = patch.outputs.anchor

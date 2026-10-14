@@ -26,7 +26,7 @@ void compare(const std::vector<u8>& actual, const std::vector<u8>& expected, u32
         const auto execute = [&](const std::vector<u8>& bytes) {
             const auto loaded = loadFile(bytes);
             validate(loaded);
-            VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+            VM vm(loaded, GenerationInputs{seed, 0, 0, {}});
             vm.run();
             return vm.result();
         };
@@ -62,7 +62,7 @@ TEST_CASE("DCE removes dead stores locals names and unused palette constants") {
 }
 
 TEST_CASE("DCE retains RNG calls helper effects loop carries and branch liveness") {
-    const std::string source = R"(asset t { size 8x8 variants 2 output point result
+    const std::string source = R"(asset t { input i32 v = 0  size 8x8 output point result
       draw {
         dead=index(3) unused=effect() i=0 x=17
         while(i<3) { x=x+i i=i+1 }
@@ -74,7 +74,7 @@ TEST_CASE("DCE retains RNG calls helper effects loop carries and branch liveness
     })";
     compare(compile(source, true), compile(source, false), 2);
     for (bool optimize : {false,true}) {
-        const auto program = compile("asset t { size 8x8 draw { dead = 1 / v } }", optimize);
+        const auto program = compile("asset t { input i32 v = 0  size 8x8 draw { dead = 1 / v } }", optimize);
         CHECK_THROWS_AS(compiler_test::execute(program), Trap);
     }
 }
@@ -107,13 +107,13 @@ TEST_CASE("folding preserves dividing overflow HSV traps and mutable control reg
         "asset t { size 8x8 draw { dead=color.hsv(#fff,1.0/0.0,1,1) } }"}) {
         for (bool optimize : {false,true}) CHECK_THROWS_AS(compiler_test::execute(compile(source,optimize)), Trap);
     }
-    const std::string source = R"(asset t { size 8x8 variants 2 output point p
+    const std::string source = R"(asset t { input i32 v = 0  size 8x8 output point p
       draw { x=3 if(v==0) { x=4 } else { x=5 } i=0 while(i<3) { x=x+i i=i+1 } p={x,min(-0.0,0.0)} } })";
     compare(compile(source,true),compile(source,false),2);
 }
 
 TEST_CASE("CSE reuses stored pure values with versioned mutable locals") {
-    const std::string repeated = R"(asset t { size 8x8 variants 2 output point p
+    const std::string repeated = R"(asset t { input i32 a = 0 input i32 v = 0  size 8x8 output point p
       draw { x=(v+17)*(a+3) y=(v+17)*(a+3) p={x,y} } })";
     const auto actual = compile(repeated,true), reference = compile(repeated,false);
     compare(actual,reference,2);
@@ -123,10 +123,10 @@ TEST_CASE("CSE reuses stored pure values with versioned mutable locals") {
     for (std::size_t i = 0; i < loaded.code.entry().code.size(); i += 4)
         if (decodeInstruction(loaded.code.entry().code.subspan(i, 4)).opcode == Opcode::I32Mul) ++products;
     CHECK(products == 1);
-    const std::string mutableSource = R"(asset t { size 8x8 variants 2 output point p
+    const std::string mutableSource = R"(asset t { input i32 v = 0  size 8x8 output point p
       draw { x=v+1 y=x*3 x=x+1 z=x*3 p={y,z} } })";
     compare(compile(mutableSource,true),compile(mutableSource,false),2);
-    const std::string effects = R"(asset t { size 8x8 variants 2 output point p
+    const std::string effects = R"(asset t { size 8x8 output point p
       draw { x=unit()+1 y=unit()+1 p={x,y} } })";
     compare(compile(effects,true),compile(effects,false),2);
 }
@@ -148,13 +148,13 @@ TEST_CASE("small constant loops unroll with final counters and side effects pres
         "for i in 0..3 { if(i==1) { break } pixel(i,0,#fff) }",
         "for i in 0..5 { pixel(i,0,#fff) i=i+1 }",
         "for i in 0..3 { for j in 0..3 { pixel(i,j,#fff) } }"}) {
-        const std::string nested = "asset t { size 8x8 draw { " + std::string(body) + " } }";
+        const std::string nested = "asset t { input i32 v=0 size 8x8 draw { " + std::string(body) + " } }";
         compare(compile(nested,true),compile(nested,false));
     }
 }
 
 TEST_CASE("strength reduction preserves signed arithmetic and wrapping bits") {
-    const std::string source = R"(asset t { size 8x8 variants 2 input u32 bits=0x80000001 output point p output point q
+    const std::string source = R"(asset t { size 8x8 input u32 bits=0x80000001 output point p output point q
       draw { x=bits*2 p={x,bits/2} q={(bits&0x7fffffff)/2,((bits>>1)/2)} } })";
     const auto actual = compile(source,true), reference = compile(source,false);
     compare(actual,reference,2);
@@ -175,7 +175,7 @@ TEST_CASE("strength reduction preserves signed arithmetic and wrapping bits") {
 }
 
 TEST_CASE("inline repeated expressions use one computation and anonymous memo storage") {
-    const std::string source = R"(asset t { size 8x8 variants 2 output point p
+    const std::string source = R"(asset t { input i32 a = 0 input i32 v = 0  size 8x8 output point p
       draw { p={(v+17)*(a+3),(v+17)*(a+3)} } })";
     const auto actual = compile(source,true), reference = compile(source,false);
     compare(actual,reference,2);
@@ -189,7 +189,7 @@ TEST_CASE("inline repeated expressions use one computation and anonymous memo st
         "x=v+1 p={x*3,x*3} x=x+1 p={x*3,x*3}",
         "for i in 0..3 { p={(i+17)*(v+3),(i+17)*(v+3)} }",
         "p={pow(float(v)+1,2.0),pow(float(v)+1,2.0)}"}) {
-        const std::string program = "asset t { size 8x8 variants 2 output point p draw { " + std::string(body) + " } }";
+        const std::string program = "asset t { input i32 v=0 input i32 a=0 size 8x8 output point p draw { " + std::string(body) + " } }";
         compare(compile(program,true),compile(program,false),2);
     }
 }

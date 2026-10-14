@@ -76,9 +76,7 @@ std::string checkError(const std::string& source) {
 } // namespace
 
 TEST_CASE("color.r/g/b/a read every channel byte as a zero-extended i32") {
-    std::string ipa = "meta: size=1x1 origin=0,0 variants=1 archetypes=1 fuel=1000000\n"
-                      "output: list point rg\noutput: list point ba\n"
-                      "fn draw ( i32, i32 ) -> ( ):\n";
+    std::string ipa = "meta: size=1x1 origin=0,0 fuel=1000000\noutput: list point rg\noutput: list point ba\nfn draw ( ) -> ( ):\n";
     for (u32 i = 0; i < 256; ++i) {
         const auto color = "const.color " + colorText(channelSample(i)) + "\n";
         for (const char* channel : {"r", "g", "b", "a"}) {
@@ -89,7 +87,7 @@ TEST_CASE("color.r/g/b/a read every channel byte as a zero-extended i32") {
     }
     ipa += "endfn\n";
     const auto bytes = assemble(ipa);
-    CHECK(bytes[6] == 5);
+    CHECK(bytes[6] == 7);
     CHECK(assemble(disassemble(bytes)) == bytes);
     const auto result = run(bytes, 0, 0);
     REQUIRE(result.outputs.size() == 2);
@@ -121,7 +119,7 @@ TEST_CASE("source channel reads return every byte of runtime colors as i32") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 7);
         CHECK(usesChannelOpcode(bytes));
         const auto result = execute(bytes);
         REQUIRE(result.outputs.size() == 2);
@@ -138,7 +136,7 @@ TEST_CASE("source channel reads return every byte of runtime colors as i32") {
 }
 
 TEST_CASE("channel reads accept every color base and fold constant literals") {
-    const std::string source = R"(asset t {
+    const std::string source = R"(asset t { input i32 v = 0
   size 1x1
   input color tint = #10203040
   palette metals = [#705845, #c8c8c8c0]
@@ -268,20 +266,19 @@ TEST_CASE("writers emit format 0.5 only for files that use its instructions") {
     const std::string channels = "asset t { size 1x1 output point p draw { c = #9c785a pixel(0, 0, c) p = {c.r, c.a} } }";
     for (const bool optimize : {false, true}) {
         CHECK(compileSource(plain, optimize)[6] == kOldestWrittenMinor);
-        CHECK(compileSource(channels, false)[6] == 5);
+        CHECK(compileSource(channels, false)[6] == 7);
     }
     // Optimization folds the constant channels away, so that file stays 0.4.
     CHECK(compileSource(channels, true)[6] == kOldestWrittenMinor);
-    const std::string ipa = "meta: size=1x1 origin=0,0 variants=1 archetypes=1 fuel=100\n"
-                            "fn draw ( i32, i32 ) -> ( ):\n  const.color #9c785aff\n";
+    const std::string ipa = "meta: size=1x1 origin=0,0 fuel=100\nfn draw ( ) -> ( ):\n  const.color #9c785aff\n";
     CHECK(assemble(ipa + "  drop\nendfn\n")[6] == kOldestWrittenMinor);
     const auto file = assemble(ipa + "  color.b\n  drop\nendfn\n");
-    CHECK(file[6] == 5);
+    CHECK(file[6] == 7);
     // The compressed envelope stays a 0.4 container around the 0.5 file.
     const auto packed = compressFile(compileSource(channels, false));
     REQUIRE(parseHeader(packed).hasCompression());
-    CHECK(parseHeader(packed).versionMinor == 4);
+    CHECK(parseHeader(packed).versionMinor == 7);
     const auto loaded = loadFile(packed);
-    CHECK(loaded.layout.header.versionMinor == 5);
+    CHECK(loaded.layout.header.versionMinor == 7);
     CHECK(pointBits(packed, 0) == pointBits(compileSource(channels, true), 0));
 }

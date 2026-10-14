@@ -71,7 +71,7 @@ std::vector<u8> compileSource(const std::string& source, bool optimize) {
 std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run();
     std::vector<u32> bits;
     for (const auto& output : vm.result().outputs)
@@ -225,11 +225,11 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 7);
         CHECK(usesOpcode(bytes, Opcode::RngInt));
         CHECK(usesOpcode(bytes, Opcode::RngFloat));
         const auto loaded = loadFile(bytes);
-        VM vm(loaded, GenerationInputs{9, 0, 0, 0, 0, {}});
+        VM vm(loaded, GenerationInputs{9, 0, 0, {}});
         vm.run();
         const auto points = vm.result().outputs[0].points;
         REQUIRE(points.size() == 3 * 64);
@@ -282,7 +282,7 @@ TEST_CASE("bounds evaluate once, lower first, before the draw") {
 }
 
 TEST_CASE("runtime traps keep their reason through compiled ranges") {
-    const std::string reversed = "asset t { size 1x1 variants 2 output point p draw { p = {v to 0, 0} } }";
+    const std::string reversed = "asset t { input i32 v = 0  size 1x1 output point p draw { p = {v to 0, 0} } }";
     const std::string nonfinite = "asset t { size 1x1 output point p draw { z = 0.0 p = {z / z to 1.0, 0} } }";
     for (const bool optimize : {false, true}) {
         CHECK(pointBits(compileSource(reversed, optimize), 0, 0) == std::vector<u32>{0, 0});

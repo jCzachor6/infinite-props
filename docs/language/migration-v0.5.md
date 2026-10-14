@@ -1,5 +1,8 @@
 # Migration and contracts for 0.5
 
+This chapter records a historical release. For current format 0.7, API 0.4 and
+ABI 0.5, including removal of implicit controls, use the [0.7 migration](migration-v0.7.md).
+
 This chapter describes the move from source language 0.4 to 0.5, released as
 product 0.5.0; [0.6](migration-v0.6.md) builds on it. Use the compiler's
 `--describe-language` export for its actual versions, capabilities, signatures,

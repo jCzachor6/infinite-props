@@ -65,10 +65,6 @@ void Typer::enterFunction(const Program& owner, const Function& function,
         if (!locals_.emplace(param.name, valueTypeOf(param.type)).second)
             error(param.location, "duplicate parameter '" + param.name + "'");
     }
-    if (isDraw) {
-        locals_.emplace("v", ValueType::I32);
-        locals_.emplace("a", ValueType::I32);
-    }
 }
 
 void Typer::declareLocal(const std::string& name, ValueType type) {

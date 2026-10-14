@@ -7,8 +7,7 @@ import tall from "mushroom/mushroom.ips"
 import small from "mushroom/mushroom.ips"
 import leaning from "mushroom/mushroom.ips"
 
-asset colony {
-  size 48x32
+asset colony { size 48x32
   output list point peaks
 
   draw {
@@ -19,11 +18,11 @@ asset colony {
       pixel(0 to 47, 26, #6c9a52)
     }
 
-    tall.draw(hash(seed ^ 11), v, a, at = {10, 28}, tint = #c8463c, height = 10)
+    tall.draw(hash(seed ^ 11), at = {10, 28}, tint = #c8463c, height = 10)
     firefly(tall.outputs.peak)
-    small.draw(hash(seed ^ 23), v, a, at = {24, 28}, tint = #b07a44, height = 5)
+    small.draw(hash(seed ^ 23), at = {24, 28}, tint = #b07a44, height = 5)
     firefly(small.outputs.peak)
-    leaning.draw(hash(seed ^ 37), v, a, at = {37, 28}, tint = #8a4a8c, height = 8, mirror_x = true)
+    leaning.draw(hash(seed ^ 37), at = {37, 28}, tint = #8a4a8c, height = 8, mirror_x = true)
     firefly(leaning.outputs.peak)
   }
 

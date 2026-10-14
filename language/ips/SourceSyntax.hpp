@@ -18,7 +18,7 @@ struct TokenRange {
 // source range, including superseded declarations, to preserve their trivia
 // in the asset without duplicating semantic expression trees.
 struct MetadataSyntax {
-    enum class Kind { Size, Origin, Variants, Archetypes };
+    enum class Kind { Size, Origin };
     Kind kind = Kind::Size;
     TokenRange range{};
 };

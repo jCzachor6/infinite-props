@@ -93,9 +93,9 @@ function run(iprop, tool, directory) {
     }
     // Exercise actual builders beyond the memory budget with ample fuel.
     const append=Array.from({length:256},()=>"const.i32 1\nlist.append 0\n").join("");
-    const assembly="meta: size=1x1 fuel=100000000\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\n"+
-        "locals: i32\nconst.i32 0\nlocal.set 2\nblock\nloop\nconst.i32 256\nlist.begin 0\n"+append+
-        "list.end 0\ndrop\nlocal.get 2\nconst.i32 1\ni32.add\nlocal.tee 2\nconst.i32 5000\ni32.lt_s\nbr_if 0\nend\nend\nreturn\nendfn\n";
+    const assembly="meta: size=1x1 fuel=100000000\ntypes: list<i32>\nfn draw (  ) -> ( ):\n"+
+        "locals: i32\nconst.i32 0\nlocal.set 0\nblock\nloop\nconst.i32 256\nlist.begin 0\n"+append+
+        "list.end 0\ndrop\nlocal.get 0\nconst.i32 1\ni32.add\nlocal.tee 0\nconst.i32 5000\ni32.lt_s\nbr_if 0\nend\nend\nreturn\nendfn\n";
     fs.writeFileSync(base+".ipa",assembly);
     execFileSync(tool("ipa"),[base+".ipa","-o",base+".iprop"]);
     trap(base+".iprop",/generation data exceeds 64 MiB/);
@@ -113,20 +113,20 @@ function run(iprop, tool, directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(bad),{}));++rejections;
     }
     // Earlier format minors reject each new opcode in section-free dead code.
-    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
+    fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     execFileSync(tool("ipa"),[base+"-gate.ipa","-o",base+"-gate.iprop"]);
     const gate=fs.readFileSync(base+"-gate.iprop");
     let codeOffset;
     for(let i=0;i<gate.readUInt32LE(12);++i) if(gate.readUInt32LE(20+i*12)===3) codeOffset=gate.readUInt32LE(24+i*12);
     // One function: count, name/offset/length, two params and no results/locals.
-    const dead=codeOffset+24+4;
+    const dead=codeOffset+22+4;
     assert.equal(gate[dead],0);
     for(const opcode of [0xb5,0xb6,0xb7,0xb8,0xb9,0xba,0xbb]) for(let minor=1;minor<=5;++minor) {
         const bad=Buffer.from(gate);bad[dead]=opcode;bad.writeUInt16LE(minor,6);
         fs.writeFileSync(base+"-gate-bad.iprop",bad);
         const native=spawnSync(tool("ipgen"),[base+"-gate-bad.iprop","-o",base+"-bad.png"],{encoding:"utf8"});
-        assert.equal(native.status,1);assert.equal(native.signal,null);assert.match(native.stderr,/opcodes require format 0\.6/);
-        assert.throws(()=>iprop.generate(new Uint8Array(bad),{}),/opcodes require format 0\.6/);++rejections;
+        assert.equal(native.status,1);assert.equal(native.signal,null);assert.match(native.stderr,/unsupported format minor version/);
+        assert.throws(()=>iprop.generate(new Uint8Array(bad),{}),/unsupported format minor version/);++rejections;
     }
     // The module stays usable after resource and handle traps.
     generate(base+".iprop",26);

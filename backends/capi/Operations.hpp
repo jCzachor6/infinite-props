@@ -16,7 +16,7 @@ CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs
 // The one strict request check for new generation entries (generate_ex now,
 // a future generation context later), before VM setup:
 // options descriptor, then parameter-set identity (NULL means defaults), then
-// variant, archetype and target canvas through the VM's shared range check.
+// target canvas through the VM's shared range check.
 // Every failure is an argument outcome with a stable reason; nothing is
 // allocated and `out` is unchanged. The legacy entry keeps its setup traps.
 CallOutcome checkGenerationRequest(const iprop_program& program,

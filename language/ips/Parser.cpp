@@ -78,8 +78,7 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
             kind() == TokenKind::KeywordDraw || kind() == TokenKind::KeywordConst) return true;
         if (kind() == TokenKind::Identifier) {
             const auto& name = peek().text;
-            if (name == "size" || name == "origin" || name == "variants" ||
-                name == "archetypes" || name == "palette") return true;
+            if (name == "size" || name == "origin" || name == "palette") return true;
         }
         return isNameKind(kind()) && kind(1) == TokenKind::LParen;
     }
@@ -222,17 +221,6 @@ void ParserImpl::parseDeclaration(Asset& asset) {
         } else if (declaration.text == "origin") {
             parseOrigin(asset);
             asset.metadataSyntax.push_back({MetadataSyntax::Kind::Origin, {start, pos_}});
-        } else if (declaration.text == "variants") {
-            asset.variants = toU32(expect(TokenKind::Int, "a variant count"),
-                                   "variant count");
-            match(TokenKind::Semi);
-            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Variants, {start, pos_}});
-        } else if (declaration.text == "archetypes") {
-            asset.archetypes =
-                toU32(expect(TokenKind::Int, "an archetype count"),
-                      "archetype count");
-            match(TokenKind::Semi);
-            asset.metadataSyntax.push_back({MetadataSyntax::Kind::Archetypes, {start, pos_}});
         } else if (declaration.text == "palette") {
             asset.palettes.push_back(parsePalette());
             asset.palettes.back().sourceRange = {start, pos_};

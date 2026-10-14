@@ -179,11 +179,11 @@ int main(int argc, char** argv) {
         iprop_program_free(binary);
 
         /* Two complete metadata entries precede fraction's stored default. */
-        CHECK(read_u32(modified + meta + 8) == 0 && modified[meta + 32] == 0);
-        CHECK(modified[meta + 42 + 2 * 9] == IPROP_INPUT_F32);
+        CHECK(read_u32(modified + meta + 8) == 0 && modified[meta + 24] == 0);
+        CHECK(modified[meta + 34 + 2 * 9] == IPROP_INPUT_F32);
         for (i = 0; i < 3; ++i) {
             const uint32_t patterns[] = {UINT32_C(0x00000001), UINT32_C(0x7fc12345), UINT32_C(0x7f812345)};
-            write_u32(modified + meta + 42 + 2 * 9 + 5, patterns[i]);
+            write_u32(modified + meta + 34 + 2 * 9 + 5, patterns[i]);
             binary = NULL;
             CHECK(iprop_program_load_ex(modified, size, &binary, &error) == IPROP_EX_OK);
             CHECK(iprop_program_input_get(binary, 2, &info, &error) == IPROP_EX_OK);

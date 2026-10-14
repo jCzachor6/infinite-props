@@ -142,7 +142,7 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
           lerp(note(3), note(4), note(5))
           round(note(6))
           poly(tint(), note(7), note(8), note(9), note(10), note(11), note(12))
-          child.draw(note(15), note(16), note(17), at={note(18),note(19)},
+          child.draw(note(15), at={note(18),note(19)},
                      second=note(14), first=note(13))
           ramp(p, note(20))
         }
@@ -153,7 +153,7 @@ TEST_CASE("resolved calls preserve argument evaluation order and the RNG stream"
     ips::checkAsset(part, {});
     ips::checkAsset(root, {{"child",partInfoOf(part.asset)}});
     const auto actual = execute(compileProgram(root, {{"child",&part}}));
-    const std::vector<i32> order{1,2,30,3,4,5,6,7,8,9,10,11,12,70,13,14,15,16,17,18,19,20};
+    const std::vector<i32> order{1,2,30,3,4,5,6,7,8,9,10,11,12,70,13,14,15,18,19,20};
     std::string body;
     for (const auto tag : order) body += "trace = {" + std::to_string(tag) + ", unit()}\n";
     const auto reference = execute(compileChecked("asset t { size 8x8 output list point trace "
@@ -193,7 +193,7 @@ TEST_CASE("named helper arguments preserve declaration order widening and RNG ef
 
 TEST_CASE("named helpers inside imported parts bind their own parameter names") {
     const auto root=ips::parse(R"(import child from "child.ips" asset t {size 8x8
-        draw{child.draw(seed,v,a,at={0,0});}
+        draw{child.draw(seed,at={0,0});}
         paint(rootName:i32) {pixel(rootName,7,#f00);}
     })");
     const auto positional=ips::parse(R"(asset child {size 8x8 draw{paint(2,#9dc);}

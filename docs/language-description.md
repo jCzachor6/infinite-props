@@ -2,11 +2,14 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 3`, which adds typed asset declarations and intrinsic
-`constant_evaluable` flags to the schema 2 contracts. Schema 2 removed the
+`schema_version: 4`, which removes implicit draw controls. Schema 3 added typed
+asset declarations and intrinsic `constant_evaluable` flags. Schema 2 removed the
 schema 1 emoji aliases. Consumers require the supported schema version and
-ignore unknown additive fields within it.
+ignore unknown additive fields within it, while rejecting retired draw-control metadata.
 This is a capability description, not a promise of planned syntax.
+
+Per-operation minimum minors record the instruction's original format definition.
+They do not describe accepted file versions: the complete current file must be 0.7.
 
 ## Independent versions
 
@@ -14,13 +17,13 @@ This is a capability description, not a promise of planned syntax.
 | --- | --- |
 | `product_version` | Toolchain release string from `PROJECT_VERSION`. |
 | `language_version.major`, `.minor` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. |
-| `format_version.major`, `.minor` | Newest binary format emitted by this compiler, from runtime constants. A file that needs no newer instruction keeps the oldest sufficient minor, at least 0.4. This is not a range of formats accepted by a loaded library. |
+| `format_version.major`, `.minor` | Newest binary format emitted by this compiler, from runtime constants. Every emitted file uses 0.7. This is not a range of formats accepted by a loaded library. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
 The current development values are product `0.7.0`, source language `0.7`,
-emitted format `0.6`, C header API `0.3` and ABI line/SOVERSION `0.4`. These values are
+emitted format `0.7`, C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
@@ -28,7 +31,7 @@ and supported format range. See [the ABI policy](c-api-abi.md).
 
 Stages 1–8 add integer bounds overloads, `vec2.normalize`, typed asset constants,
 immutable lists, captured/constant samplers, sampling palettes and point distributions.
-Schema 3 describes the constant policy,
+Schema 4 describes the constant policy,
 parameterized types, collection limits and receiver-first sampler methods.
 See [0.7 migration](language/migration-v0.7.md).
 
@@ -79,11 +82,10 @@ identified by `source_type`.
 | `visibility.uniforms` | `draw_only`: helpers receive uniform values through explicit parameters. |
 | `visibility.uniforms_read_only` | Uniform names cannot be assigned. |
 | `visibility.helper_parameters_read_only` | Helper parameter names cannot be assigned. |
-| `visibility.draw_controls.names`, `.type`, `.read_only` | Draw's implicit `v` and `a` names are read-only `i32` values. |
 | `visibility.seed` | `current_rng_state_in_all_functions`: draw and helpers may read the current RNG state through `seed`; assignment is rejected. |
 | `visibility.palettes` | `all_asset_functions`: asset palettes are constants visible to draw and helpers. |
 | `visibility.constants` | `all_asset_functions`: typed asset constants are visible to draw and helpers of their defining asset. |
-| `asset_constants.keyword`, `.syntax`, `.scope`, `.visibility` | Contextual `const <type> <name> = <expression>` declarations belong to an asset and are visible in all its functions. |
+| `asset_constants.keyword`, `.syntax`, `.scope`, `.visibility` | Reserved `const <type> <name> = <expression>` declarations belong to an asset and are visible in all its functions. |
 | `asset_constants.types` | Implemented declaration types, derived from shared type rules, including sampler<T> and list<sampler<T>>. |
 | `asset_constants.read_only` | `true`: assignments, loop counters and parameter shadowing are rejected. |
 | `asset_constants.dependencies`, `.evaluation` | `forward_acyclic`, `compile_time`: forward references are allowed; a cycle is a source error. |

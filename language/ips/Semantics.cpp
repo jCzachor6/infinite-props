@@ -99,8 +99,7 @@ private:
         // the type of a recovery-only invalid local.
         if (!findInput(name) && !findOutput(name) && !findPalette(name) &&
             !findAssetConstant(program_, name) &&
-            !isParam(name) && name != "seed" &&
-            !(current_->name == "draw" && (name == "v" || name == "a")))
+            !isParam(name) && name != "seed")
             typer_.declareInvalidLocal(name);
     }
 
@@ -152,7 +151,7 @@ private:
             if (atLimit()) return false;
             const bool valid = recover([&] {
                 if (input.name == "seed" || input.name == "at" ||
-                    input.name == "v" || input.name == "a" || input.name == "rot" ||
+                    input.name == "rot" ||
                     input.name == "mirror_x" || input.name == "mirror_y") {
                     error(input.location, "'" + input.name + "' is a reserved name");
                 }
@@ -168,8 +167,6 @@ private:
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (output.name == "v" || output.name == "a")
-                    error(output.location, "'" + output.name + "' is a reserved name");
                 if (!outputNames.insert(output.name).second) {
                     error(output.location, "duplicate output '" + output.name + "'");
                 }
@@ -233,8 +230,7 @@ private:
     }
 
     void checkPaletteDecl(const PaletteDecl& palette) {
-        if (palette.name == "seed" || palette.name == "at" ||
-            palette.name == "v" || palette.name == "a") {
+        if (palette.name == "seed" || palette.name == "at") {
             error(palette.location, "'" + palette.name + "' is a reserved name");
         }
         if (!extendedPalette(palette)) (void)resolvePalette(palette);
@@ -330,8 +326,7 @@ private:
             checkFor(*forStmt);
         } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
             if (findOutput(capture->name) || findInput(capture->name) || findPalette(capture->name) ||
-                findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed" ||
-                (current_->name == "draw" && (capture->name == "v" || capture->name == "a")))
+                findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed")
                 error(capture->location, "layer result '" + capture->name + "' must be a writable local");
             for (const auto& child : capture->body) {
                 if (atLimit()) break;
@@ -373,9 +368,7 @@ private:
         }
         if (findAssetConstant(program_, forStmt.variable))
             error(forStmt.location, "cannot use const '" + forStmt.variable + "' as a loop counter");
-        if (forStmt.variable == "seed" ||
-            (current_->name == "draw" &&
-             (forStmt.variable == "v" || forStmt.variable == "a"))) {
+        if (forStmt.variable == "seed") {
             error(forStmt.location, "'" + forStmt.variable + "' is a reserved name");
         }
         if (findOutput(forStmt.variable) != nullptr) {
@@ -471,9 +464,6 @@ private:
         }
         if (findAssetConstant(program_, decl.name))
             error(decl.location, "cannot assign to const '" + decl.name + "'");
-        if (current_->name == "draw" && (decl.name == "v" || decl.name == "a")) {
-            error(decl.location, "cannot assign to builtin '" + decl.name + "'");
-        }
         if (isParam(decl.name)) {
             error(decl.location, "cannot assign to parameter '" + decl.name + "'");
         }

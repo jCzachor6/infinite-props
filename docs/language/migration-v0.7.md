@@ -13,10 +13,10 @@ Masks, clipping, coverage algebra, disk morphology and internal part mask/layer 
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
-| Binary format | 0.5 when needed | 0.6 when needed; reads 0.1–0.6 |
-| C API | 0.3 | 0.3 |
-| ABI / SONAME | 0.4 | 0.4 |
-| Language-description schema | 2 | 3 |
+| Binary format | 0.5 when needed | 0.7 only, including compressed envelope and payload |
+| C API | 0.3 | 0.4 |
+| ABI / SONAME | 0.4 | 0.5 |
+| Language-description schema | 2 | 4 |
 
 Stage 1 used schema 2. Asset declarations now introduce schema 3, with
 `source_rules.asset_constants` and `constant_evaluable` on each builtin
@@ -25,9 +25,9 @@ and `source_rules.types.parameterized`.
 Builtin signatures, effects and required format versions are generated
 from the compiler catalogue and shared by documentation and editor consumers.
 
-The compiler writes the oldest suitable format, at least 0.4. A remaining
-integer bounds or normalize opcode requires 0.6; a folded constant does not.
-The compressed envelope remains 0.4. See [format 0.6](../../spec/iprop-v0.6.md).
+The compiler always writes [format 0.7](../../spec/iprop-v0.7.md). The compressed
+envelope and payload both use 0.7. Older binaries are intentionally rejected.
+Schema 4 removes implicit draw controls; authors declare all inputs themselves.
 
 ## Integer overloads and explicit f32 migration
 
@@ -57,8 +57,8 @@ status `invalid_source`, diagnostic code `IPS-TYPE-001`, message
 the exact code/message and artifact absence for all three overloads.
 
 Other accepted integer-only calls may now retain values that previously
-rounded through f32. This is a source migration; frozen binaries continue
-to execute their original floating instructions with unchanged results.
+rounded through f32. The instruction algorithms remain fixed, but older
+binaries must be rebuilt for the current format 0.7 reader.
 
 ## Normalization
 
@@ -86,7 +86,7 @@ generation state and helper calls are source errors. See the
 Constant names are read-only
 and cannot shadow or collide with other asset declarations or helper parameters.
 Scalar declarations add no required binary format version. A constant normalized
-vector or integer bound can therefore compile to 0.4 even without optimization;
+vector or integer bound can therefore avoid runtime instructions even without optimization;
 used distribution descriptions retain the existing 0.5 instructions.
 
 The formatter preserves declared types and references, and retains comments.
@@ -110,7 +110,7 @@ including raw output bits, pixels and RNG state, in both compiler modes.
 It verifies all five types, forward references, long dependency chains,
 unused invalid declarations, reserved names, part isolation, immutable
 bindings, formatter/IPA/IPDIS/debug/strip/compression and native/WASM hosts.
-Frozen binaries are executed directly, including preserved stage-1 format 0.6
+Historical binaries are hash-verified and rejected by the current reader, including stage-1 format 0.6
 bytes. See the [stage 2 validation report](../validation-v0.7-stage2.md).
 
 ## Immutable collections
@@ -210,14 +210,14 @@ blend uses the destination target; an explicit blend affects one operation.
 
 `layer` is reserved; old declarations named `layer` must be renamed.
 An old import alias `surface` now receives a located conflict diagnostic;
-rename that alias in source. Already compiled binaries remain executable.
+rename that alias in source and rebuild the binary for format 0.7.
 Cleanup on return/break/continue closes each exited layer and restores its
 parent target; outputs written inside the block publish once.
 
 The LLM reference default and maximum are 102,400 bytes (100 KiB). This is the
-fixed ceiling through the 0.7 release. Existing frozen binaries and the actual
-stage-7 tools provide separate compatibility evidence; source recompilation
-and new layer behavior are verified independently.
+fixed ceiling through the 0.7 release. Archived tools and image/output pins
+provide historical evidence; migrated source behavior is checked independently.
+The current reader rejects archived binaries with an older format version.
 
 ## Reserved keyword source migration
 
@@ -237,9 +237,9 @@ including ordinary value calls. Rename identifiers before recompiling;
 
 Maintained examples now use `dotCount` instead of the input name `density`;
 host uniform overrides must use that new name. Historical sources are tested
-for their explicit migration diagnostic. Already compiled files, their older
-input names, RGBA, fuel and RNG are verified by executing their actual frozen
-bytes, without recompilation or rewriting those pins.
+for their explicit migration diagnostic. The historical binary and image/output
+pins remain unchanged. Current tests execute migrated sources against those
+image/output references and reject the archived older-format binaries.
 
 The source-over example calls an ordinary part inside `layer glass` and paints
 it with an explicit blend. Five seeds match an independent rational RGBA oracle;
@@ -259,6 +259,13 @@ and the [normative mask contract](../../spec/iprop-v0.6.md#16-coverage-masks-cli
 Rename old identifiers `mask` or `clip` before recompiling. The former
 `examples/language/types.ips` variable is now `bitMask`; the original source
 returns exit 1 and `IPS-PARSE-001`, `expected a local mask name, got =`, without
-an artifact. Old input/helper names still work in frozen binaries. Native and
-WASM run the preserved stage-9 source-over/cleanup/old-name binaries unchanged;
-source migration and binary compatibility are separate gates.
+an artifact. Native and WASM reject older-format binaries, including ones with
+these historical names. Rebuild migrated sources for format 0.7; historical
+image/output pins still verify the rendering and cleanup algorithms.
+
+## Explicit asset selections
+
+Implicit `v`/`a`, variant/archetype counts and host selectors are removed.
+Declare ordinary inputs for selections and rebuild binaries for format 0.7.
+C clients rebuild for API 0.4 / ABI 0.5. See the
+[migration guide](../variant-archetype-removal.md).

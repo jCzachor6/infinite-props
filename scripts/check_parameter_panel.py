@@ -83,7 +83,7 @@ def main():
         # The stored fraction default begins after two nine-byte input records.
         # Preserve raw subnormal and quiet/signalling NaN payloads without float arithmetic.
         _, meta = sections(modified)[1]
-        default_offset = meta + 42 + 2 * 9 + 5
+        default_offset = meta + 34 + 2 * 9 + 5
         if modified[default_offset - 5] != 1:
             raise RuntimeError('unexpected fixture input encoding')
         for bits in (0x00000001, 0x007fffff, 0x7fc12345, 0x7f812345, 0xffc12345):

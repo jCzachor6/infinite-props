@@ -44,7 +44,7 @@ the language does not perform definite-assignment analysis, and untouched
 runtime local slots have the default value of their type.
 
 Helpers have their own locals. Parameters are read-only. `draw` also has
-read-only `v`, `a` and inputs; helpers receive these values through parameters.
+read-only inputs; helpers receive their values through parameters.
 `seed` reads the current RNG state in either kind of function and cannot be
 assigned. Palettes are asset-level constants visible to draw and helpers.
 Typed [asset constants](assets.md#asset-constants) are also visible in both

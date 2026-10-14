@@ -124,7 +124,7 @@ TEST_CASE("stream controls and helper summaries preserve their advertised observ
     CHECK(actual.outputs[1].points[0].y == 9);
     CHECK(actual.canvas.pixels == expected.canvas.pixels);
     CHECK(actual.canvas.at(2,3) == Color{170,187,204,255});
-    expectTrap(compileChecked("asset t {size 8x8 draw{stream_pop();}}"), ErrorReason::StackUnderflow);
+    expectTrap(compileChecked("asset t {input i32 v=0 size 8x8 draw{stream_pop();}}"), ErrorReason::StackUnderflow);
 }
 
 TEST_CASE("every builtin numeric-range effect has an executable accepted-source trap", "[effects]") {
@@ -141,12 +141,12 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
                 args="left,right";
             }
         }
-        const auto program = ips::parse("asset t {size 8x8 draw{" + setup + name + "(" + args + ");}}");
+        const auto program = ips::parse("asset t {input i32 v=0 size 8x8 draw{" + setup + name + "(" + args + ");}}");
         for (const bool optimize : {false,true})
             expectTrap(compileProgram(program, {}, optimize), ErrorReason::NumericRange);
     }
     for (const bool optimize : {false,true}) {
-        const auto polygon = ips::parse("asset t {size 8x8 draw{poly(#fff,1.0/0.0,0,1,0,0,1);}}");
+        const auto polygon = ips::parse("asset t {input i32 v=0 size 8x8 draw{poly(#fff,1.0/0.0,0,1,0,0,1);}}");
         expectTrap(compileProgram(polygon, {}, optimize), ErrorReason::NumericRange);
     }
 }
@@ -154,20 +154,20 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
 TEST_CASE("intrinsic trap summaries exclude argument traps and execution-wide resource failures", "[effects]") {
     CHECK(ips::builtinEffects(ips::builtinSpecs().at("abs"),
           &ips::builtinSpecs().at("abs").overloads[0]).checks == 0);
-    expectTrap(compileChecked("asset t {size 8x8 draw{abs(1/v);}}"), ErrorReason::DivideByZero);
-    expectTrap(compileChecked("asset t {size 8x8 draw{abs(0x80000000/-1);}}"), ErrorReason::IntegerOverflow);
+    expectTrap(compileChecked("asset t { input i32 v = 0 size 8x8 draw{abs(1/v);}}"), ErrorReason::DivideByZero);
+    expectTrap(compileChecked("asset t {input i32 v=0 size 8x8 draw{abs(0x80000000/-1);}}"), ErrorReason::IntegerOverflow);
     const auto finiteCast = execute(compileChecked(R"(asset t {size 8x8 output point p
         draw{p={int(1.0/0.0),round(1.0/0.0)};}
     })"));
     CHECK(finiteCast.outputs[0].points[0].x == 2147483648.f);
     CHECK(finiteCast.outputs[0].points[0].y == 2147483648.f);
-    auto file = loadFile(compileChecked("asset t {size 8x8 output point p draw{p={abs(float(v)),0};}}"));
+    auto file = loadFile(compileChecked("asset t { input i32 v = 0 size 8x8 output point p draw{p={abs(float(v)),0};}}"));
     file.meta.fuel = 1;
     VM vm(file, {});
     try { vm.run(); FAIL("fuel limit did not trap"); }
     catch (const Trap& trap) { CHECK(trap.reason == ErrorReason::FuelExhausted); }
     // An acyclic helper chain is valid source, yet still consumes call frames.
-    std::string chain = "asset t {size 8x8 draw{f0();}";
+    std::string chain = "asset t {input i32 v=0 size 8x8 draw{f0();}";
     for (unsigned i=0;i<=kMaxCallDepth;++i) {
         chain += "f" + std::to_string(i) + "(){";
         if (i<kMaxCallDepth) chain += "f" + std::to_string(i+1) + "();";
@@ -180,8 +180,8 @@ TEST_CASE("intrinsic trap summaries exclude argument traps and execution-wide re
 TEST_CASE("part summaries distinguish placement checks missing outputs and isolated RNG", "[effects]") {
     const auto child = ips::parse(R"(asset child {size 4x4 output point p draw{unit();pixel(0,0,#abc);}})");
     for (const auto& [body,reason] : {
-        std::pair{"child.draw(seed,v,a,at={1.0/0.0,0});", ErrorReason::InvalidPart},
-        std::pair{"child.draw(seed,v,a,at={0,0}); p=child.outputs.p;", ErrorReason::PartOutputMissing},
+        std::pair{"child.draw(seed,at={1.0/0.0,0});", ErrorReason::InvalidPart},
+        std::pair{"child.draw(seed,at={0,0}); p=child.outputs.p;", ErrorReason::PartOutputMissing},
         std::pair{"p=child.outputs.p;", ErrorReason::InvalidOutput}}) {
         const auto root = ips::parse("import child from \"child.ips\" asset t {size 8x8 output point p draw{" +
                                     std::string(body) + "}}");
@@ -189,7 +189,7 @@ TEST_CASE("part summaries distinguish placement checks missing outputs and isola
             expectTrap(compileProgram(root, {{"child",&child}}, optimize), reason);
     }
     const auto root = ips::parse(R"(import child from "child.ips" asset t {size 8x8 output point p
-        draw{child.draw(seed,v,a,at={0,0});p={0,unit()};}})");
+        draw{child.draw(seed,at={0,0});p={0,unit()};}})");
     const auto actual = execute(compileProgram(root, {{"child",&child}}));
     const auto expected = execute(compileChecked("asset t {size 8x8 output point p draw{p={0,unit()};}}"));
     CHECK(std::bit_cast<u32>(actual.outputs[0].points[0].y) == std::bit_cast<u32>(expected.outputs[0].points[0].y));

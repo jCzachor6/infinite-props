@@ -67,8 +67,8 @@ TEST_CASE("portrait inverse CDF selects every age and respects threshold boundar
     const std::string reference = "meta: size=8x8 fuel=100000\n"
         "input: f32 u = 0\noutput: point sampled\n" +
         assembly.substr(start, end + 5 - start) +
-        "\nfn draw ( i32, i32, f32 ) -> ( ):\n"
-        "local.get 2\ncall ageFromUnit\ni32.to.f32\n"
+        "\nfn draw ( f32 ) -> ( ):\n"
+        "local.get 0\ncall ageFromUnit\ni32.to.f32\n"
         "const.f32 0\nout.point sampled\nendfn\n";
     std::vector<LoadedFile> recipes;
     recipes.push_back(loadFile(compileProgram(probe, {})));
@@ -79,7 +79,7 @@ TEST_CASE("portrait inverse CDF selects every age and respects threshold boundar
             UniformValue uniform;
             uniform.type = InputType::F32;
             uniform.f = value;
-            VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {{"u", uniform}}});
+            VM vm(loaded, GenerationInputs{0,0,0,{{"u",uniform}}});
             vm.run();
             return static_cast<i32>(vm.result().outputs[0].points[0].x);
         };
@@ -112,7 +112,7 @@ TEST_CASE("portrait inverse CDF selects every age and respects threshold boundar
 TEST_CASE("two portrait runs are bit-identical (determinism)") {
     const auto loaded = loadExample();
     const auto run = [&](u32 seed, u32 variant) {
-        VM vm(loaded, {seed, variant, 0, 0, 0, {}});
+        VM vm(loaded, {seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});
         vm.run();
         return vm.result();
     };
@@ -129,7 +129,7 @@ TEST_CASE("two portrait runs are bit-identical (determinism)") {
 
 TEST_CASE("the portrait exposes the pupil anchor") {
     const auto loaded = loadExample();
-    VM vm(loaded, {0, 0, 0, 0, 0, {}});
+    VM vm(loaded, {0, 0, 0, {}});
     vm.run();
     const auto result = vm.result();
     REQUIRE(result.outputs.size() == 1);
@@ -141,7 +141,7 @@ TEST_CASE("the portrait exposes the pupil anchor") {
 TEST_CASE("portrait seeds differ; variants do not (QuantSpace parity)") {
     const auto loaded = loadExample();
     const auto render = [&](u32 seed, u32 variant) {
-        VM vm(loaded, {seed, variant, 0, 0, 0, {}});
+        VM vm(loaded, {seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});
         vm.run();
         return vm.result().image;
     };

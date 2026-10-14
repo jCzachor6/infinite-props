@@ -10,8 +10,8 @@ asset SourceOverPanels {
   draw {
     rect(0, 0, 32, 12, #243040)
     layer glass(alpha=surface.source_over) {
-      panel.draw(seed, 0, 0, at={8, 12})
-      panel.draw(seed, 0, 0, at={24, 12})
+      panel.draw(seed, at={8, 12})
+      panel.draw(seed, at={24, 12})
       panelSize = panel.outputs.extent
     }
     surface.paint(reuse(glass), blend=surface.source_over)

@@ -82,7 +82,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 3.0,
+      "value": 4.0,
       "accept": true,
       "schema": true
     },
@@ -116,7 +116,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 4,
+      "value": 5,
       "accept": false,
       "schema": false
     },
@@ -180,7 +180,7 @@
       "path": [
         "c_abi_soversion"
       ],
-      "value": "0.5",
+      "value": "0.6",
       "accept": false,
       "schema": true
     },
@@ -285,10 +285,11 @@
       "path": [
         "source_rules",
         "visibility",
-        "draw_controls",
-        "type"
+        "draw_controls"
       ],
-      "value": "f32",
+      "value": {
+        "type": "f32"
+      },
       "accept": false,
       "schema": false
     },
@@ -297,12 +298,13 @@
       "path": [
         "source_rules",
         "visibility",
-        "draw_controls",
-        "names"
+        "draw_controls"
       ],
-      "value": [
-        "x"
-      ],
+      "value": {
+        "names": [
+          "x"
+        ]
+      },
       "accept": false,
       "schema": false
     },

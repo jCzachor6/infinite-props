@@ -44,7 +44,7 @@ std::vector<u8> compileSource(const std::string& source, bool optimize) {
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run();
     return vm.result();
 }
@@ -286,10 +286,9 @@ TEST_CASE("integer draws round the continuous draw half away from zero") {
 }
 
 TEST_CASE("distributions are copied values with runtime parameters") {
-    const std::string source = R"(asset t {
+    const std::string source = R"(asset t { input i32 a = 0 input i32 v = 0
   size 1x1
   input f32 spread = 0.8
-  variants 3
   output list point p
   make(level: f32) -> distribution { return gaussian(mean=level, sigma=spread_of(level)) }
   spread_of(level: f32) -> f32 { return 0.1 + level * 0.0 }
@@ -309,7 +308,7 @@ TEST_CASE("distributions are copied values with runtime parameters") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 7);
         for (u32 variant = 0; variant < 3; ++variant) {
             const auto result = generate(bytes, 9, variant);
             const auto& points = result.outputs[0].points;
@@ -358,10 +357,8 @@ TEST_CASE("bounds and then the distribution evaluate once before one draw") {
 }
 
 TEST_CASE("invalid dynamic parameters and unassigned distributions trap, even unused") {
-    const std::string unused = "asset t { size 1x1 variants 2 draw { dead = gaussian(mean=0.0, sigma=float(v) - 0.5) } }";
-    const std::string unset = "asset t { size 1x1 variants 2 output point p draw {\n"
-                              "  if (v == 1) { distribution d = gaussian(mean=0.0, sigma=1.0) }\n"
-                              "  p = {0 to 5 with d, 0} } }";
+    const std::string unused = "asset t { input i32 v = 0  size 1x1 draw { dead = gaussian(mean=0.0, sigma=float(v) - 0.5) } }";
+    const std::string unset = "asset t { input i32 v = 0  size 1x1 output point p draw {\n  if (v == 1) { distribution d = gaussian(mean=0.0, sigma=1.0) }\n  p = {0 to 5 with d, 0} } }";
     for (const bool optimize : {false, true}) {
         CHECK_THROWS_AS(generate(compileSource(unused, optimize), 0, 0), Trap);
         CHECK_NOTHROW(generate(compileSource(unused, optimize), 0, 1) );
@@ -432,6 +429,6 @@ TEST_CASE("'with' parses after a range and formats alongside ordinary constructo
 }
 
 TEST_CASE("files with distributions are format 0.5, including unused helper slots") {
-    CHECK(compileSource("asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }", false)[6] == 5);
-    CHECK(compileSource("asset t { size 1x1 draw { pixel(0, 0, #fff) } }", false)[6] == 4);
+    CHECK(compileSource("asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }", false)[6] == 7);
+    CHECK(compileSource("asset t { size 1x1 draw { pixel(0, 0, #fff) } }", false)[6] == 7);
 }

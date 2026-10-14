@@ -48,8 +48,7 @@ TEST_CASE("mixed numeric palettes resolve one f32 type independent of element or
 }
 
 TEST_CASE("mixed palettes match explicitly widened values through indexing helpers and ramp") {
-    const std::string common = R"(asset mixed { size 8x8 variants 6
-        output point selected output point continuous output point following
+    const std::string common = R"(asset mixed { input i32 v=0 size 8x8 output point selected output point continuous output point following
     )";
     const auto make = [&](const char* values) {
         return ips::parse(common + "palette p=[" + values + R"(]
@@ -91,10 +90,8 @@ TEST_CASE("mixed palettes match explicitly widened values through indexing helpe
 TEST_CASE("palette indexing desugars to the picker ladder with pixel parity") {
     // The palette + indexing form ...
     const std::string palettes = R"(
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 8x8
-  variants 8
-  archetypes 8
   palette leafDark = [#365c38, #4c603e, #264a46, #704430, #54625c]
   draw {
     c = leafDark[v]
@@ -105,10 +102,8 @@ asset t {
 })";
     // ... and the hand-written picker it replaces.
     const std::string picker = R"(
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 8x8
-  variants 8
-  archetypes 8
   draw {
     c = pickLeafDark(v)
     pixel(0, 0, c)
@@ -179,9 +174,8 @@ asset t {
 
 TEST_CASE("dynamic palettes preserve indices and default for every element type") {
     const auto bytes = compileChecked(R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
-  variants 8
   palette ints = [1, 2, 0]
   palette flags = [true, false, true]
   palette floats = [1.25, 2.5, 3.75]
@@ -215,7 +209,7 @@ TEST_CASE("palette elements widen i32 indices and i32 palettes to f32 uses") {
     // An i32 palette feeding an f32 context widens (i32.to.f32), like
     // every other i32 expression.
     const std::string source = R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
   palette w = [2, 4]
   output point p
@@ -255,9 +249,9 @@ asset t {
     // The historical hand-assembled linear .ipa reference for the f32 ramp.
     // New compiler strategies must preserve its result, not its fuel.
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: i32 f32 f32
   const.f32 0.75
   const.f32 0.0
@@ -268,38 +262,38 @@ fn draw ( i32, i32 ) -> ( ):
   f32.mul
   dup
   f32.to.i32
-  local.set 2
-  local.get 2
+  local.set 0
+  local.get 0
   i32.to.f32
   f32.sub
-  local.set 3
+  local.set 1
   block
     const.i32 0
-    local.get 2
+    local.get 0
     i32.eq
     if
       const.f32 0.0
       const.f32 1.0
-      local.get 3
+      local.get 1
       lerp
-      local.set 4
+      local.set 2
       br 1
     end
     const.i32 1
-    local.get 2
+    local.get 0
     i32.eq
     if
       const.f32 1.0
       const.f32 4.0
-      local.get 3
+      local.get 1
       lerp
-      local.set 4
+      local.set 2
       br 1
     end
     const.f32 4.0
-    local.set 4
+    local.set 2
   end
-  local.get 4
+  local.get 2
   const.f32 0.0
   out.point p
 endfn
@@ -363,7 +357,7 @@ TEST_CASE("singleton ramps evaluate their numeric argument exactly once") {
 }
 
 TEST_CASE("singleton ramp arguments retain runtime errors") {
-    const auto bytes = compileChecked(R"(asset t {
+    const auto bytes = compileChecked(R"(asset t { input i32 v = 0
   size 8x8
   palette heights = [1.25]
   draw {
@@ -374,18 +368,18 @@ TEST_CASE("singleton ramp arguments retain runtime errors") {
 }
 
 TEST_CASE("palette resolution stays within each owner including shared part aliases") {
-    const auto part = ips::parse(R"(asset child { size 8x8
+    const auto part = ips::parse(R"(asset child { input i32 v = 0  size 8x8
       palette p = [1.25, 3.75]
       output point value
       draw { value = {p[v], helper()} }
       helper() -> f32 { return ramp(p, 0.5) } })");
     const auto root = ips::parse(R"(import first from "child.ips"
       import second from "child.ips"
-      asset root { size 8x8
+      asset root { input i32 v = 0  size 8x8
         palette p = [#123456, #abcdef]
         draw {
-          first.draw(seed, v, a, at = {0, 0})
-          second.draw(seed, v, a, at = {0, 0})
+          first.draw(seed, at = {0, 0})
+          second.draw(seed, at = {0, 0})
           pixel(0, 0, p[v])
           pixel(1, 0, ramp(p, 1.0))
         } })");

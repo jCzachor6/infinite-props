@@ -192,20 +192,15 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     }
     const auto& part = file.code.parts[partIndex];
 
-    // Stack order (spec §9.10): uniforms…, seed, variant, archetype, atX,
+    // Stack order (spec §9.10): uniforms…, seed, atX,
     // atY — the top is popped first.
     const f32 atY = popF32();
     const f32 atX = popF32();
-    const i32 archetype = popI32();
-    const i32 variant = popI32();
     const u32 seed = static_cast<u32>(popI32());
     const auto& fn = file.code.functions[part.functionIndex];
-    // The part's params are (i32 variant, i32 archetype) + uniforms; the
-    // variant/archetype come from the part.draw arguments.
+    // A part frame receives only its declared uniforms.
     std::vector<Value> args(fn.params.size());
-    args[0] = Value(variant);
-    args[1] = Value(archetype);
-    for (std::size_t p = fn.params.size(); p > 2; --p) {
+    for (std::size_t p = fn.params.size(); p > 0; --p) {
         args[p - 1] = pop();
     }
 
@@ -219,15 +214,13 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     }
     spend(render.blitCost);
     const auto partBytes = static_cast<u64>(render.sourceExtent.x) * static_cast<u64>(render.sourceExtent.y) * sizeof(Color);
-    if (file.layout.header.versionMinor >= 6) allocateResource(partBytes);
+    allocateResource(partBytes);
     PartCallState state;
     state.partIndex = partIndex;
     state.render = render;
-    auto nextTarget = file.layout.header.versionMinor >= 6
-        ? RenderTarget::create(resources.makeSurface(partBytes), static_cast<u32>(render.sourceExtent.x),
-            static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode)
-        : RenderTarget::create(static_cast<u32>(render.sourceExtent.x),
-            static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode);
+    auto nextTarget = RenderTarget::create(resources.makeSurface(partBytes),
+        static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y),
+        render.sourceScale, target.mode);
     state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 
@@ -345,10 +338,7 @@ struct VM::Impl {
     explicit Impl(const LoadedFile& file) : ex(file) {}
 };
 
-ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 archetype,
-                                     u32 sizeX, u32 sizeY) noexcept {
-    if (variant >= meta.variants) return ErrorReason::VariantRange;
-    if (archetype >= meta.archetypes) return ErrorReason::ArchetypeRange;
+ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 sizeX, u32 sizeY) noexcept {
     // The size cap is a runtime defense: a corrupt meta or host request must
     // not trigger a multi-gigabyte allocation.
     const u32 targetW = sizeX != 0 ? sizeX : meta.sizeX;
@@ -372,12 +362,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     impl_->ex.budget = file.meta.fuel;
     impl_->ex.fuel = file.meta.fuel;
 
-    switch (checkGenerationArguments(file.meta, inputs.variant, inputs.archetype,
-                                     inputs.sizeX, inputs.sizeY)) {
-    case ErrorReason::VariantRange:
-        throw Trap("variant index out of range", ErrorReason::VariantRange, ErrorStage::Arguments);
-    case ErrorReason::ArchetypeRange:
-        throw Trap("archetype index out of range", ErrorReason::ArchetypeRange, ErrorStage::Arguments);
+    switch (checkGenerationArguments(file.meta, inputs.sizeX, inputs.sizeY)) {
     case ErrorReason::CanvasSize:
         throw Trap("canvas too large", ErrorReason::CanvasSize, ErrorStage::Arguments);
     default: break;
@@ -399,13 +384,11 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
             impl_->ex.resourceSlots.push_back(zeroValue(output.type));
     }
 
-    // Root frame: (i32 variant, i32 archetype), then root uniforms (§6.1).
+    // Root frame: declared root uniforms only.
     detail::Frame root;
     root.functionIndex = 0;
     const auto& entry = file.code.entry();
     root.locals.reserve(entry.params.size() + entry.locals.size());
-    root.locals.push_back(Value(static_cast<i32>(inputs.variant)));
-    root.locals.push_back(Value(static_cast<i32>(inputs.archetype)));
     for (std::size_t index = 0; index < file.meta.inputs.size(); ++index) {
         const auto& decl = file.meta.inputs[index];
         const UniformValue* value = nullptr;
@@ -498,14 +481,14 @@ void VM::run() {
         }
     }
     impl_->finished = true;
-    if (ex.file.layout.header.versionMinor >= 6) {
+    {
         const auto peak = ex.resources.peak;
         ex.resourceSlots.clear();
         ex.resources.clear();
         ex.resources.peak = peak;
     }
     } catch (...) {
-        if (ex.file.layout.header.versionMinor >= 6) {
+        {
             impl_->failed = true;
             ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
             ex.target = ex.rootTarget;

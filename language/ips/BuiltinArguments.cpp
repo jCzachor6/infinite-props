@@ -92,7 +92,7 @@ std::span<const std::string> rampParameterNames() {
 
 std::vector<ArgumentParameter> partParameters(std::span<const std::string> uniforms) {
     std::vector<ArgumentParameter> result{
-        {"seed"}, {"v"}, {"a"}, {"at",true,false},
+        {"seed"}, {"at",true,false},
         {"rot",false,false}, {"mirror_x",false,false}, {"mirror_y",false,false}
     };
     for (const auto& name : uniforms) result.push_back({name,false,false});

@@ -24,7 +24,7 @@
 <p>Infinite Props is a portable binary format and toolchain for <strong>seed-based procedural
 2D assets</strong>. You author an asset in the <code>.ips</code> language, compile it to a
 self-contained <code>.iprop</code> binary, and any backend renders it deterministically from a
-seed, a variant and an archetype.</p>
+seed and declared input values.</p>
 
 <h2 id="download">Download the SDK</h2>
 <p>Every release ships prebuilt SDKs with the command-line tools (<code>bin/</code>), the C header
@@ -57,7 +57,7 @@ To build everything yourself, see <a href="../source.html">Source</a>.</p>
 <tr><th>tool</th><th>what it does</th></tr>
 <tr><td><code>ipc</code></td><td>compile <code>.ips</code> → <code>.iprop</code></td></tr>
 <tr><td><code>ipgen</code></td><td>render a <code>.iprop</code> to a PNG and print the result JSON (outputs and fuel)</td></tr>
-<tr><td><code>ipsheet</code></td><td>render a variant × seed grid</td></tr>
+<tr><td><code>ipsheet</code></td><td>render a consecutive seed grid</td></tr>
 <tr><td><code>ipdis</code></td><td>disassemble a binary, optionally with source lines</td></tr>
 <tr><td><code>ipval</code></td><td>validate a binary</td></tr>
 <tr><td><code>ipa</code></td><td>assemble <code>.ipa</code> → <code>.iprop</code></td></tr>
@@ -69,8 +69,6 @@ To build everything yourself, see <a href="../source.html">Source</a>.</p>
 <pre><code>asset rock {
   size 64x64
   origin 32,56
-  variants 3
-  archetypes 2
   input  color tint = #808d74
   output rect  collider
 
@@ -99,15 +97,11 @@ next to the pixels, and the fuel the run spent.</p>
 stripped, packed production files by default; add <code>--debug</code> for source maps and symbols or
 <code>--no-compress</code> for an expanded file to inspect.</p>
 
-<h2 id="seeds">Seeds, variants and archetypes</h2>
-<ul>
-<li><strong>seed</strong>: the root of every random stream; it reproduces the asset exactly.</li>
-<li><strong>archetype</strong>: the coarse form, declared with <code>archetypes N</code> (a boulder or a slab).</li>
-<li><strong>variant</strong>: the finer variation, declared with <code>variants N</code> (dry, mossy, snowy).</li>
-</ul>
-<p>Inside <code>draw</code> they are the read-only <code>v</code> and <code>a</code> builtins, so the
-author decides exactly how each one shapes the result. Typed <code>input</code> uniforms with defaults
-let a host pass palettes or switches on top.</p>
+<h2 id="seeds">Seeds and declared inputs</h2>
+<p>The seed initializes the root random stream. Authors declare any controls they need with
+<code>input</code>, including colors, dimensions or selection indices. Hosts can override these
+values by name; omitted inputs keep their defaults. There are no implicit variant/archetype
+controls. <code>v</code> and <code>a</code> are ordinary names.</p>
 
 <h2 id="editor">The editor</h2>
 <p>The VS Code extension (<code>editor/</code> in the repository) adds syntax highlighting, inline

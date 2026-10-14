@@ -1,6 +1,5 @@
-asset noiseV2Errors {
+asset noiseV2Errors { input i32 v = 0
   size 8x8
-  variants 13
   output point result
 
   draw {

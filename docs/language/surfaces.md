@@ -111,8 +111,7 @@ At most 32 layer and clip scopes combined may be active across the complete help
 stack. Each capture reserves `128 + 4 * width * height` bytes from the shared
 64 MiB generation arena. Copies and mapping views charge no second buffer.
 Root canvas allocation retains its existing limits. Extra part canvases use the
-arena in format 0.6 and release their allocation when the last handle expires; formats 0.1–0.5
-retain their previous canvas limits. Existing part allocation, blit fuel,
+arena and release their allocation when the last handle expires. Existing part allocation, blit fuel,
 pixel rules, output transforms and RNG stay unchanged.
 
 A capture instruction costs one fuel plus one per target pixel cleared; paint
@@ -122,7 +121,7 @@ fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
 generation never publishes a partial image. Default fuel remains 2,000,000.
 
-Layers require format 0.6 and use its type descriptor table. They do not add
+Layers use the format 0.7 type descriptor table. They do not add
 public C input/output enums or host layouts. Host outputs remain points,
 rectangles and circles; resource exports use their own internal table.
 

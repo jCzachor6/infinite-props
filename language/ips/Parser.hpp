@@ -45,13 +45,10 @@ ParseResult parseRecovering(std::string_view source,
 //
 //   program    := import* asset
 //   import     := "import" ident "from" string ";"?
-//   asset      := "asset" ident "{" (sizeDecl | originDecl | variantsDecl
-//                  | archetypesDecl | inputDecl | outputDecl | paletteDecl
+//   asset      := "asset" ident "{" (sizeDecl | originDecl | inputDecl | outputDecl | paletteDecl
 //                  | function)* "}"
 //   sizeDecl   := "size" int ("x" digits | int) ";"?
 //   originDecl := "origin" expr "," expr ";"?
-//   variantsDecl := "variants" int ";"?
-//   archetypesDecl := "archetypes" int ";"?
 //   inputDecl  := "input" inputType ident "=" declarationConstant ";"?
 //   declarationConstant := literal | "(" declarationConstant ")"
 //                        | "-" constantAtom

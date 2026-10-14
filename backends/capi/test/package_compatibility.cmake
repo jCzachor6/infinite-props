@@ -22,7 +22,7 @@ function(check product request expected)
         "project(package_selection LANGUAGES NONE)\n"
         "find_package(iprop ${request} QUIET CONFIG PATHS \"${prefix}\" NO_DEFAULT_PATH)\n"
         "if(iprop_FOUND)\n"
-        "  if(NOT ${expected} OR NOT iprop_VERSION VERSION_EQUAL \"${product}\" OR NOT iprop_C_ABI_SOVERSION STREQUAL \"0.4\")\n"
+        "  if(NOT ${expected} OR NOT iprop_VERSION VERSION_EQUAL \"${product}\" OR NOT iprop_C_ABI_SOVERSION STREQUAL \"0.5\")\n"
         "    message(FATAL_ERROR \"Unexpected accepted package/version/ABI\")\n"
         "  endif()\n"
         "elseif(${expected})\n"
@@ -35,19 +35,14 @@ function(check product request expected)
     endif()
 endfunction()
 
-check(0.4.0 "0.4" TRUE)
-check(0.4.0 "0.3" FALSE)
-check(0.4.0 "0.4.0 EXACT" TRUE)
-check(0.4.0 "0.4.1" FALSE)
-check(0.5.0 "0.4" TRUE)
-check(0.5.0 "0.5" TRUE)
-check(0.5.0 "0.3" FALSE)
-check(0.5.0 "0.6" FALSE)
-check(0.5.0 "0.4.0 EXACT" FALSE)
-check(0.5.0 "0.4...0.5" TRUE)
-check(0.5.0 "0.4...<0.5" FALSE)
-check(0.6.0 "0.4" TRUE)
-check(0.6.0 "0.5" TRUE)
-check(0.6.0 "0.6.0 EXACT" TRUE)
-check(0.6.0 "0.6.1" FALSE)
-message(STATUS "C API package compatibility on independent ABI line 0.4: PASS")
+check(0.7.0 "0.7" TRUE)
+check(0.7.0 "0.6" FALSE)
+check(0.7.0 "0.4" FALSE)
+check(0.7.0 "0.7.0 EXACT" TRUE)
+check(0.7.0 "0.7.1" FALSE)
+check(0.8.0 "0.7" TRUE)
+check(0.8.0 "0.8" TRUE)
+check(0.8.0 "0.6...0.8" FALSE)
+check(0.8.0 "0.7...0.8" TRUE)
+check(0.8.0 "0.7...<0.8" FALSE)
+message(STATUS "C API package compatibility floor 0.7.0 on ABI line 0.5: PASS")

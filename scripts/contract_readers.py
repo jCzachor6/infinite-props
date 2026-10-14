@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 3
+LANGUAGE_SCHEMA_VERSION = 4
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
@@ -384,11 +384,8 @@ def read_language(value):
     require(len(conversions) == len(set(conversions)), 'unique widening rules')
     _strings_and_bools(rules['locals'], {'declaration': {'first_assignment'}, 'scope': {'function'}, 'type_inference_order': {'source_traversal'}, 'unexecuted_initializer': {'typed_zero'}}, ['definite_assignment_analysis', 'read_requires_prior_assignment'], 'locals')
     visibility = rules['visibility']
+    require('draw_controls' not in visibility, 'retired draw controls')
     _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}, 'constants': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
-    controls = obj(visibility.get('draw_controls'), ['names', 'type', 'read_only'], 'draw controls')
-    strings(controls['names'], 'draw control names', {'v', 'a'}, nonempty=True)
-    require(controls['type'] == 'i32', 'draw control type')
-    boolean(controls['read_only'], 'draw controls read_only')
     named = rules['named_calls']
     _strings_and_bools(named, {'positional_binding': {'positional_parameter_ordinal'}}, ['mixed_positional_and_named', 'named_arguments_advance_positional_ordinal', 'duplicate_arguments', 'unknown_arguments'], 'named_calls')
     strings(named.get('targets'), 'named call targets', {'builtin', 'helper', 'part'}, True)

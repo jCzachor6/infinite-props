@@ -111,7 +111,7 @@ bool stepResourceExports(Execution& ex, Instruction ins) {
     const bool get = ins.opcode == Opcode::PartGetMask || ins.opcode == Opcode::PartGetLayer;
     const bool put = ins.opcode == Opcode::OutMask || ins.opcode == Opcode::OutLayer;
     if (!get && !put) return false;
-    if (ins.aux || ex.file.layout.header.versionMinor < 6)
+    if (ins.aux)
         ex.trap("invalid resource export instruction", ErrorReason::InvalidInstruction);
     if (ins.operand >= ex.file.resourceExports.size() || ins.operand >= ex.resourceSlots.size())
         ex.trap("resource export slot index out of range", ErrorReason::IndexRange);

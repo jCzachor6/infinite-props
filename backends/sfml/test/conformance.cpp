@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
         iprop_program* program = iprop::sfml_host::loadProgram(bytes);
         const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program);
         iprop_result* result =
-            iprop::sfml_host::generate(program, entry.seed, 0, 0);
+            iprop::sfml_host::generate(program, entry.seed);
         const auto image = iprop::sfml_host::queryImage(result);
         checkOutputs(result);
         CHECK(image.width == meta.size_x && image.height == meta.size_y,
@@ -162,10 +162,13 @@ int main(int argc, char** argv) {
         sf::Sprite sprite(texture);
         sf::RenderTexture target({8, 8});
         const sf::Color colors[] = {{0x11,0x22,0x33}, {0x44,0x55,0x66}, {0x77,0x88,0x99}};
+        auto parameters = iprop::sfml_host::createParameters(program.get());
         for (std::uint32_t v = 0; v < 3; ++v) {
+            iprop::sfml_host::setParameter(parameters.get(), "v", std::to_string(v));
             for (std::uint32_t a = 0; a < 2; ++a) {
+                iprop::sfml_host::setParameter(parameters.get(), "a", std::to_string(a));
                 iprop::sfml_host::Result result(
-                    iprop::sfml_host::generate(program.get(), 26, v, a), &iprop_result_free);
+                    iprop::sfml_host::generate(program.get(), 26, parameters.get()), &iprop_result_free);
                 const auto image = iprop::sfml_host::queryImage(result.get());
                 const auto outputs = checkOutputs(result.get());
                 iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
@@ -184,7 +187,7 @@ int main(int argc, char** argv) {
         iprop::sfml_host::Program plant(
             iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/plant.iprop")),
             &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26, 0, 0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26), &iprop_result_free);
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
@@ -194,7 +197,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir+"/resource-exports.iprop")),&iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0),&iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26),&iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
         CHECK(image.width==16 && image.height==12 && slots.size()==4,"export SFML geometry count");
         for(std::size_t i=0;i<slots.size() && i<4;++i){
@@ -214,7 +217,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/mask-algebra.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
         CHECK(image.width==8 && image.height==4 && slots.size()==2,"mask metadata");
         if(slots.size()==2){
@@ -235,7 +238,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/source-over-panels.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x41f00000,0x41a00000,0x41d00000,0,0x41f00000,0x41a00000};
         CHECK(image.width==32 && image.height==24 && slots.size()==3,"source-over metadata");
@@ -254,7 +257,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/captured-panels.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x41e00000,0x41900000,0x46f3a600,0x471e3700};
         CHECK(image.width==32 && image.height==24 && slots.size()==2,"captured panel metadata");
@@ -276,7 +279,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/point-distributions.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x40000000,0x40000000,0x41a085d5,0x41b6b498,0x4766fe00,0x46f1ba00};
         CHECK(image.width==32 && image.height==32 && slots.size()==3,"density image metadata");
@@ -297,7 +300,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/weighted.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x40000000,0x40000000,0x3f800000,0x3f800000,0x47738c00,0x4671b800};
         CHECK(image.width==32 && image.height==24 && slots.size()==3,"weighted image metadata");
@@ -318,7 +321,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/sampling-palettes.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x40400000,0x42200000,0x41aa69ec,0x40000000,
             0x41200000,0x41600000,0x3f2ac48e,0,0x475a7000,0x47354c00};
@@ -340,7 +343,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/samplers.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
         const std::uint32_t expected[]={0x40400000,0x42200000,0x416ef976,0x401a259f,
             0x41500000,0x41500000,0x46c16e00,0x45b8a800};
@@ -362,7 +365,7 @@ int main(int argc, char** argv) {
     {
         iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
             iprop::sfml_host::readFile(programDir + "/collections.iprop")), &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
         const auto image = iprop::sfml_host::queryImage(result.get());
         const auto slots = checkOutputs(result.get());
         const std::uint32_t expected[] = {0x40800000,0x41980000,0x41900000,0x40000000,
@@ -394,8 +397,10 @@ int main(int argc, char** argv) {
             iprop::sfml_host::readFile(programDir + "/output-values.iprop")), &iprop_program_free);
         const float points[8][2] = {{1,2},{2,7},{7,6},{6,1},{7,2},{1,6},{2,1},{6,7}};
         const unsigned transforms[] = {0,1,2,3,4,7,5,6};
+        auto parameters = iprop::sfml_host::createParameters(program.get());
         for (uint32_t v = 0; v < 8; ++v) {
-            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, v, 0), &iprop_result_free);
+            iprop::sfml_host::setParameter(parameters.get(), "v", std::to_string(v));
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, parameters.get()), &iprop_result_free);
             const auto slots = checkOutputs(result.get());
             CHECK(slots.size() == 18, "all root and part output slots");
             for (std::size_t i = 0; i < slots.size(); ++i) {
@@ -413,7 +418,7 @@ int main(int argc, char** argv) {
                   "D4 output must already be transformed exactly once");
             if (v == 7) {
                 const auto before = iprop::sfml_host::queryImage(result.get());
-                iprop::sfml_host::Result later(iprop::sfml_host::generate(program.get(), 7, 0, 0), &iprop_result_free);
+                iprop::sfml_host::Result later(iprop::sfml_host::generate(program.get(), 7), &iprop_result_free);
                 program.reset();
                 const auto after = iprop::sfml_host::queryImage(result.get());
                 CHECK(before.pixels == after.pixels && before.byte_count == after.byte_count,
@@ -434,7 +439,7 @@ int main(int argc, char** argv) {
         for (const char* fixture : {"backend-raw-values.iprop", "backend-empty-values.iprop"}) {
             iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
                 iprop::sfml_host::readFile(programDir + "/" + fixture)), &iprop_program_free);
-            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 0, 0, 0), &iprop_result_free);
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 0), &iprop_result_free);
             program.reset();
             auto slots = checkOutputs(result.get());
             CHECK(slots.size() == 6 && slots[0].name == std::string(name, sizeof(name) - 1) &&
@@ -467,7 +472,7 @@ int main(int argc, char** argv) {
         iprop::sfml_host::setParameter(parameters.get(), "fx", "5.5");
         iprop::sfml_host::setParameter(parameters.get(), "ux", "3");
         const iprop::sfml_host::Result checked(
-            iprop::sfml_host::generate(program.get(), 0, 0, 0, parameters.get()), &iprop_result_free);
+            iprop::sfml_host::generate(program.get(), 0, parameters.get()), &iprop_result_free);
         iprop_uniform uniforms[3] = {};
         uniforms[0].name = "base"; uniforms[0].type = IPROP_UNIFORM_COLOR;
         uniforms[0].r = 255; uniforms[0].a = 128;
@@ -499,7 +504,7 @@ int main(int argc, char** argv) {
         iprop::sfml_host::Program program(
             iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/math-bounds.iprop")),
             &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, 0, 0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26), &iprop_result_free);
         const auto image = iprop::sfml_host::queryImage(result.get());
         const auto slots = checkOutputs(result.get());
         const std::uint32_t expected[] = {0x3f800000, 0x3f800000, 0x3f19999a, 0x3f4ccccd,
@@ -524,7 +529,7 @@ int main(int argc, char** argv) {
         iprop::sfml_host::Program program(
             iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/asset-constants.iprop")),
             &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, 0, 0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26), &iprop_result_free);
         const auto image = iprop::sfml_host::queryImage(result.get());
         const auto slots = checkOutputs(result.get());
         // Preserved stage-1 constructor pins, including the final RNG state.

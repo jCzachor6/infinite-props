@@ -26,9 +26,8 @@ int main() {
     iprop_generate_options_ex options{};
     CHECK(iprop_generate_options_ex_init(&options, sizeof(options)) == IPROP_EX_OK);
     CHECK(options.struct_size == sizeof(options));
-    CHECK(options.flags == 0 && options.seed == 0 && options.variant == 0 &&
-          options.archetype == 0 && options.size_x == 0 && options.size_y == 0);
-    options.seed = UINT32_MAX; options.variant = 7; options.archetype = 3;
+    CHECK(options.flags == 0 && options.seed == 0 && options.size_x == 0 && options.size_y == 0);
+    options.seed = UINT32_MAX;
     options.size_x = 64; options.size_y = 32;
     for (uint32_t capacity = 4; capacity <= sizeof(options); ++capacity) {
         // Allocate exactly the claimed capacity: ASan can catch prefix reads,
@@ -40,18 +39,15 @@ int main() {
         GenerateOptions read;
         CHECK(readGenerateOptions(static_cast<iprop_generate_options_ex*>(prefix), read) == OptionIssue::None);
         CHECK(read.seed == (capacity >= 12 ? UINT32_MAX : 0));
-        CHECK(read.variant == (capacity >= 16 ? 7u : 0u));
-        CHECK(read.archetype == (capacity >= 20 ? 3u : 0u));
-        CHECK(read.sizeX == (capacity >= 24 ? 64u : 0u));
-        CHECK(read.sizeY == (capacity >= 28 ? 32u : 0u));
+        CHECK(read.sizeX == (capacity >= 16 ? 64u : 0u));
+        CHECK(read.sizeY == (capacity >= 20 ? 32u : 0u));
         std::free(prefix);
     }
-    GenerateOptions preserved{1, 2, 3, 4, 5};
+    GenerateOptions preserved{1, 4, 5};
     for (uint32_t flags : {1u, 2u, UINT32_C(0x80000000), UINT32_MAX}) {
         options.flags = flags;
         CHECK(readGenerateOptions(&options, preserved) == OptionIssue::UnknownFlags);
-        CHECK(preserved.seed == 1 && preserved.variant == 2 && preserved.archetype == 3 &&
-              preserved.sizeX == 4 && preserved.sizeY == 5);
+        CHECK(preserved.seed == 1 && preserved.sizeX == 4 && preserved.sizeY == 5);
     }
     options.struct_size = 3;
     CHECK(readGenerateOptions(&options, preserved) == OptionIssue::DescriptorTooSmall);

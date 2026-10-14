@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "product_version": "0.4.0",
   "language_version": {
     "major": 0,
@@ -222,14 +222,6 @@
       "uniforms": "draw_only",
       "uniforms_read_only": true,
       "helper_parameters_read_only": true,
-      "draw_controls": {
-        "names": [
-          "v",
-          "a"
-        ],
-        "type": "i32",
-        "read_only": true
-      },
       "seed": "current_rng_state_in_all_functions",
       "palettes": "all_asset_functions",
       "constants": "all_asset_functions"

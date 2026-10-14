@@ -29,8 +29,6 @@ const std::string kValidRock = R"(
 asset rock {
   size 192x192
   origin 96,170
-  variants 5
-  archetypes 4
   input  color palette = #808d74
   output rect collider
 
@@ -61,16 +59,15 @@ asset hair {
 const std::string kPortraitSource = R"(
 import hair from "hair.ips"
 
-asset portrait {
+asset portrait { input i32 a = 0 input i32 v = 0
   size 64x64
-  variants 8
   input  color skin = #d9b58c
   input  color hairColor = #33291f
   output point pupilCenter
 
   draw {
     rect(0, 0, 64, 64, skin)
-    hair.draw(seed ^ 0x9e3779b9, v, a, at = {32, 4}, color = hairColor)
+    hair.draw(seed ^ 0x9e3779b9, at = {32, 4}, color = hairColor)
     pupilCenter = hair.outputs.top
   }
 })";
@@ -99,11 +96,11 @@ TEST_CASE("valid programs check cleanly") {
 TEST_CASE("part calls are validated against the part surface") {
     CHECK_NOTHROW(checkAsset(parse(kPortraitSource), hairParts()));
 
-    // Missing control and excessive positional arity.
+    // Missing seed and excessive positional arity.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw { hair.draw(1, 2, at = {0, 0}) } }",
-        hairParts(), "missing argument 'a'");
+        "draw { hair.draw(at = {0, 0}) } }",
+        hairParts(), "missing argument 'seed'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
         "draw { hair.draw(1, 2, 3, 4, at = {0, 0}) } }",
@@ -112,31 +109,31 @@ TEST_CASE("part calls are validated against the part surface") {
     // Missing `at`.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw { hair.draw(1, 2, 3) } }",
+        "draw { hair.draw(1) } }",
         hairParts(), "missing argument 'at");
 
     // Wrong `at` type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw { hair.draw(1, 2, 3, at = 5) } }",
+        "draw { hair.draw(1, at = 5) } }",
         hairParts(), "'at' must be a vec2");
 
     // Unknown uniform.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw { hair.draw(1, 2, 3, at = {0, 0}, bogus = 1) } }",
+        "draw { hair.draw(1, at = {0, 0}, bogus = 1) } }",
         hairParts(), "has no argument 'bogus'");
 
     // Uniform of the wrong type.
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 "
-        "draw { hair.draw(1, 2, 3, at = {0, 0}, volume = #ffffff) } }",
+        "draw { hair.draw(1, at = {0, 0}, volume = #ffffff) } }",
         hairParts(), "must be f32, got color");
 
     // Unknown part.
     expectCheckError(
         "import nope from \"nope.ips\"\nasset t { size 8x8 "
-        "draw { nope.draw(1, 2, 3, at = {0, 0}) } }",
+        "draw { nope.draw(1, at = {0, 0}) } }",
         "was not provided");
 }
 
@@ -150,8 +147,8 @@ TEST_CASE("part transform argument names cannot be declared as uniforms") {
 
 TEST_CASE("part transforms are fully checked before compilation") {
     const auto source = [](const std::string& transform) {
-        return "import hair from \"hair.ips\"\nasset t { size 8x8 draw { "
-               "hair.draw(1,2,3,at={0,0}," + transform + ") } }";
+        return "import hair from \"hair.ips\"\nasset t { size 8x8 input i32 v=0 draw { "
+               "hair.draw(1,at={0,0}," + transform + ") } }";
     };
     CHECK_NOTHROW(checkAsset(parse(source("rot=45+45,mirror_x=1,mirror_y=0")),hairParts()));
     for (const std::string value : {"45", "-90", "360"})
@@ -170,11 +167,11 @@ TEST_CASE("part output reads are validated") {
 
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output point p "
-        "draw { hair.draw(1, 2, 3, at = {0, 0}) p = hair.outputs.nope } }",
+        "draw { hair.draw(1, at = {0, 0}) p = hair.outputs.nope } }",
         hairParts(), "has no output 'nope'");
     expectCheckError(
         "import hair from \"hair.ips\"\nasset t { size 8x8 output rect r "
-        "draw { hair.draw(1, 2, 3, at = {0, 0}) r = hair.outputs.top } }",
+        "draw { hair.draw(1, at = {0, 0}) r = hair.outputs.top } }",
         hairParts(), "expects rect, got vec2");
     expectCheckError(
         "asset t { size 8x8 draw { x = bogus.outputs.p } }",
@@ -194,7 +191,7 @@ asset lp {
         {"lp", partInfoOf(listProgram.asset)}};
     expectCheckError(
         "import lp from \"lp.ips\"\nasset t { size 8x8 output point p "
-        "draw { lp.draw(1, 2, 3, at = {0, 0}) p = lp.outputs.pts } }",
+        "draw { lp.draw(1, at = {0, 0}) p = lp.outputs.pts } }",
         listParts, "cannot read list output");
 }
 

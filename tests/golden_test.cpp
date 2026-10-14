@@ -72,7 +72,9 @@ GenerationResult runCase(const GoldenCase& entry) {
     const auto bytes = assemble(source);
     auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, {entry.seed, entry.variant, entry.archetype, 0, 0, {}});
+    VM vm(loaded, {entry.seed, 0, 0, {
+        {"v", {InputType::U32, {}, 0.f, entry.variant}},
+        {"a", {InputType::U32, {}, 0.f, entry.archetype}}}});
     vm.run();
     return vm.result();
 }
@@ -229,7 +231,7 @@ TEST_CASE("the .ips portrait port reproduces the golden images exactly") {
 
     for (const u32 seed : {0u, 1u, 2u, 7u, 26u}) {
         INFO("seed " << seed);
-        VM vm(loaded, {seed, 0, 0, 0, 0, {}});
+        VM vm(loaded, {seed, 0, 0, {}});
         vm.run();
         const GenerationResult result = vm.result();
         checkImage(result.image,

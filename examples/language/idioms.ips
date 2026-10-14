@@ -1,8 +1,7 @@
-asset Crystal {
+asset Crystal { input i32 v = 0
   size 32x32
   origin 16,30
   // Variant 0 rolls 1 or 2 from the seed; 1 is plain, 2 has a glint.
-  variants 3
   // Transparent means "roll a colour from the seed".
   input color tint = #00000000
   output rect collider

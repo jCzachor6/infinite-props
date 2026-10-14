@@ -26,13 +26,13 @@ std::vector<u8> compileDensity(const std::string& source,bool optimize=true) {
     auto p=ips::parse(source);ips::checkAsset(p,{});return compileProgram(p,{},optimize);
 }
 GenerationResult generateDensity(const std::vector<u8>& bytes,u32 seed=26,u32 variant=0) {
-    const auto file=loadFile(bytes);validate(file);VM vm(file,{seed,variant,0,0,0,{}});vm.run();return vm.result();
+    const auto file=loadFile(bytes);validate(file);VM vm(file,{seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});vm.run();return vm.result();
 }
 std::vector<u32> densityBits(const GenerationResult& r) {
     std::vector<u32> bits;for(const auto& out:r.outputs)for(const auto& p:out.points){bits.push_back(std::bit_cast<u32>(p.x));bits.push_back(std::bit_cast<u32>(p.y));}return bits;
 }
 std::string densityAsset(const std::string& declarations,const std::string& body,const std::string& helpers={}) {
-    return "asset t{size 16x16 variants 2 output list point p output point state "+declarations+helpers+
+    return "asset t{input i32 v=0 size 16x16 output list point p output point state "+declarations+helpers+
         " draw{"+body+" state={seed&65535,seed>>16}}}";
 }
 void rejectDensity(const std::string& source,const std::string& message) {

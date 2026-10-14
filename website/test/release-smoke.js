@@ -37,7 +37,7 @@ function checkLinks(directory) {
 async function main() {
     const pages = checkLinks(site);
     assert.equal(pages, 7);
-    for (const minor of [1, 2, 3, 4, 5, 6]) {
+    for (const minor of [1, 2, 3, 4, 5, 6, 7]) {
         const spec = `iprop-v0.${minor}.md`;
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));
     }
@@ -57,7 +57,7 @@ async function main() {
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
     assert.equal(docs.schema_version, 2);
     const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
-    assert.equal(catalogue.schema_version, 3);
+    assert.equal(catalogue.schema_version, 4);
     assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
@@ -94,25 +94,25 @@ async function main() {
             const bytes = fs.readFileSync(file);
             assert.deepEqual(bytes, fs.readFileSync(path.join(root, "examples/showcase", asset + ".iprop")),
                              `stale showcase asset: ${asset}`);
-            // Packed 0.4 envelopes: the compiler packs these props.
-            assert.equal(bytes.readUInt16LE(6), 4);
+            // Envelope and payload use the current format.
+            assert.equal(bytes.readUInt16LE(6), 7);
             assert.equal(bytes.readUInt32LE(8) & 1, 0);
             assert.equal(bytes.readUInt32LE(8) & 2, 2);
-            for (const seed of [0, 7, 26]) for (const variant of [0, 2]) {
-                const rendered = Module.generate(bytes, seed, variant, 0, 0, 0);
+            for (const seed of [0, 7, 26]) for (const choice of [0, 2]) {
+                const rendered = Module.generate(bytes, seed, 0, 0, {v: choice});
                 const png = path.join(temporary, "native.png");
-                const native = spawnSync(generator, [file, "--seed", String(seed), "--variant", String(variant), "-o", png],
+                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", "v=" + choice, "-o", png],
                                         { encoding: "utf8" });
                 assert.equal(native.status, 0, native.stderr || String(native.error));
                 const decoded = decodePng(fs.readFileSync(png));
                 assert.equal(rendered.width, decoded.width);
                 assert.equal(rendered.height, decoded.height);
-                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} variant ${variant}`);
+                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input v ${choice}`);
                 comparisons++;
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 6 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 7 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

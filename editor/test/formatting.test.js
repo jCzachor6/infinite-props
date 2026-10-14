@@ -126,7 +126,7 @@ test("real formatting returns one edit without saving the readonly entry or a bi
 });
 
 test("output stays in the physical entry parent and preserves imported aliases and comments", async () => {
-    const dir = workspace('import p from "tile.ips" // own import\nasset t { size 8x8 draw { p.draw(seed,v,a,at={0,0}) } }');
+    const dir = workspace('import p from "tile.ips" // own import\nasset t { size 8x8 draw { p.draw(seed,at={0,0}) } }');
     fs.writeFileSync(path.join(dir, "tile.ips"), "asset tile { size 2x2 draw { rect(0,0,2,2,#123) } }");
     const alias = path.join(dir, "parent-alias");
     fs.symlinkSync(dir, alias, process.platform === "win32" ? "junction" : "dir");

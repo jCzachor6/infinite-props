@@ -22,8 +22,6 @@ struct Options {
     std::string file;
     bool floatBits = false;
     u32 seed = 0;
-    u32 variant = 0;
-    u32 archetype = 0;
     u32 sizeX = 0; // 0 = use the meta size
     u32 sizeY = 0;
     std::string output; // PNG path; empty = <stem>-<seed>.png
@@ -38,8 +36,6 @@ void printUsage(std::FILE* out) {
                  "\n"
                  "Options:\n"
                  "  --seed N            generation seed (default 0)\n"
-                 "  --variant V         variant index (default 0)\n"
-                 "  --archetype A       archetype index (default 0)\n"
                  "  --size WxH          requested output size (default: the meta size)\n"
                  "  --uniform name=val  uniform override (repeatable); colours are\n"
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
@@ -144,10 +140,6 @@ int ipgenMain(int argc, char* argv[]) {
             options.floatBits = true;
         } else if (arg == "--seed") {
             if (!parseU32(next("--seed"), options.seed)) invalid = "bad --seed value";
-        } else if (arg == "--variant") {
-            if (!parseU32(next("--variant"), options.variant)) invalid = "bad --variant value";
-        } else if (arg == "--archetype") {
-            if (!parseU32(next("--archetype"), options.archetype)) invalid = "bad --archetype value";
         } else if (arg == "--size") {
             if (!parseSize(next("--size"), options.sizeX, options.sizeY)) invalid = "bad --size value";
         } else if (arg == "--uniform") {
@@ -202,8 +194,6 @@ int ipgenMain(int argc, char* argv[]) {
 
     GenerationInputs inputs;
     inputs.seed = options.seed;
-    inputs.variant = options.variant;
-    inputs.archetype = options.archetype;
     inputs.sizeX = options.sizeX;
     inputs.sizeY = options.sizeY;
 
@@ -244,7 +234,7 @@ int ipgenMain(int argc, char* argv[]) {
     u64 budget = 0;
     u64 spent = 0;
     try {
-        VM vm(loaded, inputs); // setup traps (variant/archetype range, canvas
+        VM vm(loaded, inputs); // setup traps (canvas
                                // size) throw here too
         vm.run();
         result = vm.result();
@@ -267,14 +257,11 @@ int ipgenMain(int argc, char* argv[]) {
     // Result JSON to stdout: the declared inputs (for uniform editors), the
     // fuel readout and the structured outputs.
     std::ostringstream json;
-    json << "{\n  \"seed\": " << options.seed << ",\n  \"variant\": " << options.variant
-         << ",\n  \"archetype\": " << options.archetype << ",\n  \"size\": {\"x\": "
+    json << "{\n  \"seed\": " << options.seed << ",\n  \"size\": {\"x\": "
          << canvas.width << ", \"y\": " << canvas.height
          << "},\n  \"fuel\": {\"budget\": " << budget
          << ", \"spent\": " << spent
-         << "},\n  \"variants\": " << loaded.meta.variants
-         << ",\n  \"archetypes\": " << loaded.meta.archetypes
-         << ",\n  \"inputs\": [";
+         << "},\n  \"inputs\": [";
     for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
         if (i != 0) {
             json << ",";

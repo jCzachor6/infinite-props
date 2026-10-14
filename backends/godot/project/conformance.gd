@@ -33,7 +33,7 @@ func _init() -> void:
 			failures += 1
 			printerr("FAIL load ", entry[0])
 			continue
-		var image := asset.generate(entry[2], 0, 0)
+		var image := asset.generate(entry[2])
 		if image == null:
 			failures += 1
 			printerr("FAIL generate ", entry[0])
@@ -54,7 +54,7 @@ func _init() -> void:
 	# parts' center/spot).
 	var portrait := IpropAsset.new()
 	if portrait.load_file(args[0] + "/portrait.iprop") == OK:
-		portrait.generate(0, 0, 0)
+		portrait.generate(0)
 		var outputs: Dictionary = portrait.outputs
 		if outputs.has("pupilCenter"):
 			var slot: Dictionary = outputs["pupilCenter"]
@@ -75,7 +75,7 @@ func _init() -> void:
 	# The PNG export round-trip (the demo's S-key path).
 	var shapes := IpropAsset.new()
 	if shapes.load_file(args[0] + "/shapes.iprop") == OK:
-		var exported := shapes.generate(0, 0, 0)
+		var exported := shapes.generate(0)
 		exported.save_png("user://roundtrip.png")
 		var reloaded := Image.new()
 		if reloaded.load("user://roundtrip.png") != OK \
@@ -89,7 +89,7 @@ func _init() -> void:
 		printerr("FAIL shapes reload for the round-trip")
 
 	var owners := IpropAsset.new()
-	if owners.load_file(args[0] + "/output-owners.iprop") != OK or owners.generate(0, 0, 0) == null:
+	if owners.load_file(args[0] + "/output-owners.iprop") != OK or owners.generate(0) == null:
 		failures += 1
 		printerr("FAIL owner fixture load/generate")
 	else:
@@ -122,7 +122,9 @@ func _init() -> void:
 		var colors := [Color8(0x11, 0x22, 0x33), Color8(0x44, 0x55, 0x66), Color8(0x77, 0x88, 0x99)]
 		for v in range(3):
 			for a in range(2):
-				var image := language.generate(26, v, a)
+				language.set_input("v", v)
+				language.set_input("a", a)
+				var image := language.generate(26)
 				if image == null:
 					failures += 1
 					continue
@@ -141,7 +143,7 @@ func _init() -> void:
 					failures += 1
 					printerr("FAIL language math bits")
 	var plant := IpropAsset.new()
-	if plant.load_file(args[0] + "/plant.iprop") != OK or plant.generate(26, 0, 0) == null:
+	if plant.load_file(args[0] + "/plant.iprop") != OK or plant.generate(26) == null:
 		failures += 1
 		printerr("FAIL compiled plant source")
 
@@ -165,7 +167,7 @@ func _init() -> void:
 				or declared.map(func(input): return input["value"]) != defaults:
 			failures += 1
 			printerr("FAIL input reflection ", declared)
-		var plain := tinted.generate(0, 0, 0)
+		var plain := tinted.generate(0)
 		var sprite_view := IpropSprite2D.new()
 		sprite_view.asset = tinted
 		if tinted.set_input("base", Color8(255, 0, 0)) != OK or tinted.set_input("fx", 5.5) != OK \
@@ -181,7 +183,7 @@ func _init() -> void:
 		if tinted.inputs.map(func(input): return input["value"]) != set_values:
 			failures += 1
 			printerr("FAIL input values after rejected sets")
-		var custom := tinted.generate(0, 0, 0)
+		var custom := tinted.generate(0)
 		if plain == null or custom == null or custom.get_pixel(0, 0) != Color8(255, 0, 0) \
 				or custom.get_pixel(1, 1) == plain.get_pixel(1, 1) \
 				or custom.get_pixel(2, 2) == plain.get_pixel(2, 2):
@@ -194,7 +196,7 @@ func _init() -> void:
 		if tinted.set_input("ux", -2) != OK or tinted.inputs[2]["value"] != 4294967294:
 			failures += 1
 			printerr("FAIL negative u32 input bits")
-		if tinted.reset_inputs() != OK or tinted.generate(0, 0, 0).get_data() != plain.get_data():
+		if tinted.reset_inputs() != OK or tinted.generate(0).get_data() != plain.get_data():
 			failures += 1
 			printerr("FAIL reset_inputs")
 		tinted.set_input("fx", 2)
@@ -218,8 +220,7 @@ func _init() -> void:
 	if lifecycle.load_file(args[0] + "/shapes.iprop") != OK or sprite.texture == null:
 		failures += 1
 	var old_size: Vector2i = lifecycle.size
-	var old_metadata := [lifecycle.size, lifecycle.origin, lifecycle.variants,
-		lifecycle.archetypes, lifecycle.fuel]
+	var old_metadata := [lifecycle.size, lifecycle.origin, lifecycle.fuel]
 	var old_texture := sprite.texture
 	var old_outputs: Dictionary = lifecycle.outputs.duplicate(true)
 	if lifecycle.load_file(args[0] + "/missing.iprop") != ERR_FILE_NOT_FOUND \
@@ -238,23 +239,22 @@ func _init() -> void:
 		if lifecycle.load_file(invalid_path) != ERR_INVALID_DATA \
 				or not lifecycle.is_loaded() or sprite.texture != old_texture \
 				or lifecycle.outputs != old_outputs \
-				or [lifecycle.size, lifecycle.origin, lifecycle.variants,
-					lifecycle.archetypes, lifecycle.fuel] != old_metadata:
+				or [lifecycle.size, lifecycle.origin, lifecycle.fuel] != old_metadata:
 			failures += 1
 			printerr("FAIL invalid binary reload replaced loaded asset")
 		DirAccess.remove_absolute(invalid_path)
-	sprite.variant = 99
+	sprite.seed = -1
 	if sprite.texture != null or lifecycle.outputs != old_outputs:
 		failures += 1
 		printerr("FAIL failed generation texture/map publication")
-	sprite.variant = 0
+	sprite.seed = 0
 	if sprite.texture == null:
 		failures += 1
 	sprite.asset = null
 	if sprite.texture != null:
 		failures += 1
 		printerr("FAIL null asset kept stale texture")
-	if lifecycle.generate(4294967296, 0, 0) != null or lifecycle.generate(0, -1, 0) != null:
+	if lifecycle.generate(4294967296) != null or lifecycle.generate(-1) != null:
 		failures += 1
 		printerr("FAIL Godot integer input truncation")
 	if lifecycle.outputs != old_outputs:
@@ -281,7 +281,8 @@ func _init() -> void:
 		var saved_bytes: PackedByteArray
 		var saved_slots: Array
 		for v in range(8):
-			var image := typed.generate(26, v, 0)
+			typed.set_input("v", v)
+			var image := typed.generate(26)
 			var slots: Array = typed.output_slots
 			if image == null or slots.size() != 18 or typed.part_outputs.keys() != [1,3]:
 				failures += 1
@@ -316,7 +317,7 @@ func _init() -> void:
 				saved_slots = slots
 		# Reload frees the previous program; prior engine objects remain owned.
 		if typed.load_file(args[0] + "/portrait.iprop") != OK \
-				or typed.generate(0,0,0) == null or saved_image.get_data() != saved_bytes \
+				or typed.generate(0) == null or saved_image.get_data() != saved_bytes \
 				or saved_slots[0]["values"].size() != 0 or saved_slots[3]["values"].size() != 4:
 			failures += 1
 			printerr("FAIL engine image/output lifetime after reload/new generation")
@@ -327,7 +328,7 @@ func _init() -> void:
 	var expected_bits := [0x80000000,1,0x7fc12345,0xff800000,0x7f800000,
 		0xffc12345,0x80000001,0x3f800000,0x80000000]
 	for fixture in ["backend-raw-values.iprop", "backend-empty-values.iprop"]:
-		if raw.load_file(args[0] + "/" + fixture) != OK or raw.generate(0,0,0) == null:
+		if raw.load_file(args[0] + "/" + fixture) != OK or raw.generate(0) == null:
 			failures += 1
 			printerr("FAIL raw output fixture load/generate")
 			continue
@@ -361,7 +362,7 @@ func _init() -> void:
 				printerr("FAIL missing singular slot unexpectedly populated")
 
 	var bounds := IpropAsset.new()
-	if bounds.load_file(args[0] + "/math-bounds.iprop") != OK or bounds.generate(26, 0, 0) == null:
+	if bounds.load_file(args[0] + "/math-bounds.iprop") != OK or bounds.generate(26) == null:
 		failures += 1
 		printerr("FAIL format 0.6 math load/generate")
 	else:
@@ -380,7 +381,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL asset constant load")
 	else:
-		var constant_image := constants.generate(26, 0, 0)
+		var constant_image := constants.generate(26)
 		if constant_image == null or constant_image.get_size() != Vector2i(2, 2) \
 				or constant_image.get_pixel(0, 0) != Color8(146,156,168) \
 				or constant_image.get_pixel(1, 0) != Color8(139,149,161):
@@ -404,7 +405,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL collection load")
 	else:
-		var collection_image := collections.generate(26, 0, 0)
+		var collection_image := collections.generate(26)
 		if collection_image == null or collection_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL collection image metadata")
@@ -435,7 +436,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL sampler load")
 	else:
-		var sampler_image := samplers.generate(26, 0, 0)
+		var sampler_image := samplers.generate(26)
 		if sampler_image == null or sampler_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL sampler image metadata")
@@ -463,7 +464,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL sampling palette load")
 	else:
-		var palette_image := sampling_palettes.generate(26, 0, 0)
+		var palette_image := sampling_palettes.generate(26)
 		if palette_image == null or palette_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL sampling palette image metadata")
@@ -491,7 +492,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL weighted load")
 	else:
-		var weighted_image := weighted.generate(26, 0, 0)
+		var weighted_image := weighted.generate(26)
 		if weighted_image == null or weighted_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL weighted image metadata")
@@ -521,7 +522,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL density load")
 	else:
-		var density_image := density.generate(26, 0, 0)
+		var density_image := density.generate(26)
 		if density_image == null or density_image.get_size() != Vector2i(32,32):
 			failures += 1
 			printerr("FAIL density image metadata")
@@ -552,7 +553,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL captured panel load")
 	else:
-		var panel_image := panel.generate(26, 0, 0)
+		var panel_image := panel.generate(26)
 		if panel_image == null or panel_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL captured panel image metadata")
@@ -584,7 +585,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL source-over load")
 	else:
-		var glass_image := glass.generate(26, 0, 0)
+		var glass_image := glass.generate(26)
 		if glass_image == null or glass_image.get_size() != Vector2i(32,24):
 			failures += 1
 			printerr("FAIL source-over image metadata")
@@ -617,7 +618,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL export load")
 	else:
-		var exported_image := exported.generate(26,0,0)
+		var exported_image := exported.generate(26)
 		if exported_image == null or exported_image.get_size() != Vector2i(16,12) or exported.outputs.size() != 2:
 			failures += 1
 			printerr("FAIL export host image/slots")
@@ -650,7 +651,7 @@ func _init() -> void:
 		failures += 1
 		printerr("FAIL mask load")
 	else:
-		var mask_image := masked.generate(26, 0, 0)
+		var mask_image := masked.generate(26)
 		if mask_image == null or mask_image.get_size() != Vector2i(8,4):
 			failures += 1
 			printerr("FAIL mask image metadata")

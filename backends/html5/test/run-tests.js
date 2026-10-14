@@ -41,7 +41,7 @@ async function main() {
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
-        console.log("native/WASM compression: PASS (" + compression.images + " exact historical images; " + compression.rejections + " matching rejected envelopes)");
+        console.log("native/WASM compression: PASS (" + compression.images + " exact current images; " + compression.rejections + " matching rejected envelopes)");
         console.log("native/WASM: PASS (" + native.comparisons +
                     " pixel-exact images and structured outputs; native pins verified)");
         console.log("native/WASM runtime errors: PASS (" + native.trapComparisons +
@@ -51,7 +51,7 @@ async function main() {
         console.log("native/WASM color boundaries: PASS (" + native.colorComparisons +
                     " exact RGBA results)");
         console.log("native/WASM 0.7 math: PASS (" + native.mathComparisons +
-                    " boundary bits, traps, version gates and frozen generations)");
+                    " boundary bits, traps, version gates and archived-format rejections)");
         console.log("native/WASM asset constants: PASS (" + native.constantOverloads +
                     " eligible overloads; " + native.constantComparisons +
                     " exact generations, 8 compiler configurations and IPA/IPDIS)");
@@ -95,6 +95,6 @@ async function main() {
 
 main().catch(function (error) {
     report({ passed: false, error: error.message, stack: error.stack });
-    console.error("conformance: ERROR - " + error);
+    console.error("conformance: ERROR - " + error.stack);
     process.exit(1);
 });

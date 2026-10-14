@@ -21,7 +21,7 @@ std::vector<u8> compilePoints(const std::string& source, bool optimize = true) {
     return compileProgram(program, {}, optimize);
 }
 GenerationResult generatePoints(const std::vector<u8>& bytes, u32 seed = 26, u32 variant = 0) {
-    const auto file = loadFile(bytes); validate(file); VM vm(file, {seed, variant, 0, 0, 0, {}});
+    const auto file = loadFile(bytes); validate(file); VM vm(file, {seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run(); return vm.result();
 }
 std::vector<u32> outputBits(const GenerationResult& result) {
@@ -32,7 +32,7 @@ std::vector<u32> outputBits(const GenerationResult& result) {
     return bits;
 }
 std::string assetPoints(const std::string& declarations, const std::string& body, const std::string& helpers = {}) {
-    return "asset t{size 4x4 variants 2 output list point p output point state " + declarations + helpers +
+    return "asset t{input i32 v=0 size 4x4 output list point p output point state " + declarations + helpers +
         " draw{" + body + " state={seed&65535,seed>>16}}}";
 }
 void rejectPoints(const std::string& source, const std::string& message) {
@@ -77,7 +77,7 @@ TEST_CASE("weighted draws match independent raw RNG thresholds and rounded atoms
     const std::string source = assetPoints("", "d=weighted{1:50,2:20,3:20,4:10} for i in 0..64{x=1 to 4 with d p={x,0}}");
     for (const bool optimize : {false,true}) {
         const auto bytes = compilePoints(source,optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 6);
+        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         for (u32 seed : {0u,1u,7u,26u,42u,0xffffffffu}) {
             const auto result = generatePoints(bytes,seed);
             u32 stream = seed;
@@ -183,7 +183,7 @@ TEST_CASE("point distribution pools and unreachable opcodes reject corrupt and o
     }
     for (u16 minor=1;minor<6;++minor) {auto bad=bytes;bad[6]=static_cast<u8>(minor);CHECK_THROWS_AS(loadFile(bad),FormatError);}
     for (const auto& instruction : {"const.distribution 0","distribution.begin 4","distribution.append 0","distribution.end"}) {
-        const auto dead=assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
+        const auto dead=assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nnop\nendfn\n");
         auto bad=dead; const auto at=loadFile(bad).code.entry().fileOffset+4;
         const auto opcode = instruction[0]=='c' ? Opcode::ConstDistribution : instruction==std::string("distribution.begin 4") ? Opcode::DistributionBegin :
             instruction==std::string("distribution.append 0") ? Opcode::DistributionAppend : Opcode::DistributionEnd;
@@ -203,7 +203,7 @@ TEST_CASE("weighted formats point comments without changing effects", "[point-di
 TEST_CASE("point draws preserve caller and part streams and preflight processing fuel", "[point-distribution]") {
     const auto child = ips::parse("asset child{size 1x1 const distribution d=weighted{1:75,2:20,3:5} output point p draw{p={1 to 3 with d,1 to 3 with d}}}");
     const auto root = ips::parse("import child from \"child.ips\" "+assetPoints("const distribution shape=weighted{10:1,20:1}",
-        "before=seed child.draw(seed,v,a,at={0,0}) p={seed==before,10 to 20 with shape}"));
+        "before=seed child.draw(seed,at={0,0}) p={seed==before,10 to 20 with shape}"));
     ips::checkAsset(child,{}); ips::checkAsset(root,{{"child",partInfoOf(child.asset)}});
     const auto reference = compilePoints(assetPoints("", "p={1,10 to 20 with weighted{10:1,20:1}}"),false);
     for (const bool optimize : {false,true}) for (const u32 seed : {0u,26u,0xffffffffu}) {

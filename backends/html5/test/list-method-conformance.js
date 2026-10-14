@@ -109,10 +109,10 @@ function run(iprop, tool, directory) {
     const encodings=[0x7fc01234,0x80000000,0x3f800000,0xff800000,0,0x7f800000,0xffc05678,1,0x80000001,0x3f800000];
     const distinctBits=[0x7fc01234,0x80000000,0x3f800000,0xff800000,0x7f800000,1,0x80000001];
     const sortedBits=[0xff800000,0x80000001,0x80000000,0,1,0x3f800000,0x3f800000,0x7f800000,0x7fc01234,0xffc05678];
-    let assembly="meta: size=1x1\ntypes: list<f32>\noutput: list point p\nfn draw ( i32, i32 ) -> ( ):\nlocals: list<f32> list<f32> list<f32>\nconst.i32 10\nlist.begin 0\n";
+    let assembly="meta: size=1x1\ntypes: list<f32>\noutput: list point p\nfn draw (  ) -> ( ):\nlocals: list<f32> list<f32> list<f32>\nconst.i32 10\nlist.begin 0\n";
     for(let i=0;i<encodings.length;++i)assembly+=`const.f32 ${100+i}\nlist.append 0\n`;
-    assembly+="list.end 0\nlocal.set 2\nlocal.get 2\nlist.distinct 0\nlocal.set 3\nlocal.get 2\nlist.sort 0\nlocal.set 4\n";
-    for(const [local,expected] of [[2,encodings],[3,distinctBits],[4,sortedBits]])
+    assembly+="list.end 0\nlocal.set 0\nlocal.get 0\nlist.distinct 0\nlocal.set 1\nlocal.get 0\nlist.sort 0\nlocal.set 2\n";
+    for(const [local,expected] of [[0,encodings],[1,distinctBits],[2,sortedBits]])
         for(let i=0;i<expected.length;++i)assembly+=`local.get ${local}\nconst.i32 ${i}\nlist.get 0\nconst.f32 0\nout.list.point p\n`;
     assembly+="endfn\n";assemble(assembly);
     const exceptional=fs.readFileSync(base+".iprop");replaceFloatConstants(exceptional,encodings);fs.writeFileSync(base+".iprop",exceptional);
@@ -122,10 +122,10 @@ function run(iprop, tool, directory) {
         "if(false){s=sampler(1)}xs=[s];xs.distinct()","if(false){d=gaussian(0,1)}xs=[d];xs.distinct()"])
         for(const optimized of [false,true])trap(compile(`asset t{size 1x1 draw{${body}}}`,optimized?[]:["--no-opt"]),/handle is unassigned/);
     const construct="const.i32 4\nlist.begin 0\n"+[3,1,3,2].map(n=>`const.i32 ${n}\nlist.append 0\n`).join("")+"list.end 0\n";
-    trap(assemble("meta: size=1x1 fuel=29\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\n"+construct+"list.distinct 0\ndrop\nendfn\n"),/fuel exhausted/);
+    trap(assemble("meta: size=1x1 fuel=29\ntypes: list<i32>\nfn draw (  ) -> ( ):\n"+construct+"list.distinct 0\ndrop\nendfn\n"),/fuel exhausted/);
     const reversed=Array.from({length:256},(_,i)=>`const.i32 ${255-i}\nlist.append 0\n`).join("");
-    trap(assemble("meta: size=1x1 fuel=100000000\ntypes: list<i32>\nfn draw ( i32, i32 ) -> ( ):\nlocals: list<i32>\n"+
-        "const.i32 256\nlist.begin 0\n"+reversed+"list.end 0\nlocal.set 2\nloop\nlocal.get 2\nlist.sort 0\ndrop\nbr 0\nend\nendfn\n"),/generation data exceeds 64 MiB/);
+    trap(assemble("meta: size=1x1 fuel=100000000\ntypes: list<i32>\nfn draw (  ) -> ( ):\nlocals: list<i32>\n"+
+        "const.i32 256\nlist.begin 0\n"+reversed+"list.end 0\nlocal.set 0\nloop\nlocal.get 0\nlist.sort 0\ndrop\nbr 0\nend\nendfn\n"),/generation data exceeds 64 MiB/);
 
     function reject(bytes, message) {
         fs.writeFileSync(base+"-invalid.iprop",bytes);
@@ -137,16 +137,16 @@ function run(iprop, tool, directory) {
     const sections = bytes => {
         const result=new Map();for(let i=0;i<bytes.readUInt32LE(12);++i)result.set(bytes.readUInt32LE(20+i*12),bytes.readUInt32LE(24+i*12));return result;
     };
-    assemble("meta: size=1x1\ntypes: list<i32> list<distribution> sampler<i32>\nfn draw ( i32, i32 ) -> ( ):\nreturn\nlist.distinct 0\nlist.sort 0\nendfn\n");
-    const gate=fs.readFileSync(base+".iprop"),dead=sections(gate).get(3)+28;
+    assemble("meta: size=1x1\ntypes: list<i32> list<distribution> sampler<i32>\nfn draw (  ) -> ( ):\nreturn\nlist.distinct 0\nlist.sort 0\nendfn\n");
+    const gate=fs.readFileSync(base+".iprop"),dead=sections(gate).get(3)+26;
     assert.equal(gate[dead],0xd6);assert.equal(gate[dead+4],0xd7);generate(base+".iprop");
     for(const at of [dead,dead+4]) for(const operand of [2,65535]){const bad=Buffer.from(gate);bad.writeUInt16LE(operand,at+2);reject(bad);}
     const unsupported=Buffer.from(gate);unsupported.writeUInt16LE(1,dead+6);reject(unsupported,/list.sort does not support/);
     for(const at of [dead,dead+4]){const bad=Buffer.from(gate);bad[at+1]=1;reject(bad,/aux/);}
-    assemble("meta: size=1x1\nfn draw ( i32, i32 ) -> ( ):\nreturn\nnop\nendfn\n");
-    const old=fs.readFileSync(base+".iprop"),unreachable=sections(old).get(3)+28;
+    assemble("meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
+    const old=fs.readFileSync(base+".iprop"),unreachable=sections(old).get(3)+26;
     assert.equal(old[unreachable],0);
-    for(const opcode of [0xd6,0xd7]) for(let minor=1;minor<=5;++minor){const bad=Buffer.from(old);bad[unreachable]=opcode;bad.writeUInt16LE(minor,6);reject(bad,/format 0\.6/);}
+    for(const opcode of [0xd6,0xd7]) for(let minor=0;minor<7;++minor){const bad=Buffer.from(old);bad[unreachable]=opcode;bad.writeUInt16LE(minor,6);reject(bad,/unsupported format minor version/);}
     // Failed generations do not poison later list operations.
     generate(compile("asset t{size 1x1 output point p draw{xs=[3,1,3].distinct().sort();p={xs[0],xs[1]}}}"),26,points([[1,3]]));
     return {comparisons,pins,traps,rejections,signatures:13};

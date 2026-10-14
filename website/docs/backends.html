@@ -38,7 +38,7 @@ cmake --build build --parallel</code></pre>
 the editor preview. Building it requires Emscripten:</p>
 <pre><code>emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
 cmake --build build/wasm --parallel</code></pre>
-<p>One call renders a file: <code>generate(fileBytes, seed, variant, archetype, sizeX, sizeY[, uniforms])</code>
+<p>One call renders a file: <code>generate(fileBytes, seed, sizeX, sizeY[, uniforms])</code>
 returns <code>{ width, height, data, outputs }</code> with RGBA pixels and the structured outputs.
 <code>uniforms</code> sets declared inputs by name, as <code>ipgen --uniform</code> does: numbers for
 <code>u32</code>/<code>f32</code> inputs and <code>"#RRGGBB"</code> strings for colours. The weapons on the

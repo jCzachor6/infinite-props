@@ -7,10 +7,10 @@ namespace iprop {
 // File header (spec §2.1).
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
 inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 6;
+inline constexpr u16 kVersionMinor = 7;
 // Writers emit the oldest minor that holds every instruction (spec v0.6 §1),
 // never older than the 0.4 files written before format 0.5 existed.
-inline constexpr u16 kOldestWrittenMinor = 4;
+inline constexpr u16 kOldestWrittenMinor = 7;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 inline constexpr u32 kFlagCompressed = 1u << 1; // v0.4 zlib envelope

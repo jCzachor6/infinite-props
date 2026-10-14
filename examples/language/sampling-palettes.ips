@@ -1,6 +1,5 @@
-asset samplingPalettes {
+asset samplingPalettes { input i32 v = 0
   size 32x24
-  variants 3
   output point checks
   output point direction
   output point samples

@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 3,
+      "const": 4,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -456,43 +456,6 @@
               "type": "boolean",
               "description": "Helper parameters cannot be reassigned."
             },
-            "draw_controls": {
-              "type": "object",
-              "properties": {
-                "names": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "a",
-                      "v"
-                    ],
-                    "description": "Visible control names."
-                  },
-                  "description": "Visible control names.",
-                  "uniqueItems": true,
-                  "minItems": 1
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "i32"
-                  ],
-                  "description": "Control value type."
-                },
-                "read_only": {
-                  "type": "boolean",
-                  "description": "Controls cannot be reassigned."
-                }
-              },
-              "required": [
-                "names",
-                "type",
-                "read_only"
-              ],
-              "additionalProperties": true,
-              "description": "Draw-only implicit control values."
-            },
             "seed": {
               "type": "string",
               "enum": [
@@ -519,13 +482,17 @@
             "uniforms",
             "uniforms_read_only",
             "helper_parameters_read_only",
-            "draw_controls",
             "seed",
             "palettes",
             "constants"
           ],
           "additionalProperties": true,
-          "description": "Function contexts that expose uniforms and read-only values."
+          "description": "Function contexts that expose uniforms and read-only values.",
+          "not": {
+            "required": [
+              "draw_controls"
+            ]
+          }
         },
         "named_calls": {
           "type": "object",
