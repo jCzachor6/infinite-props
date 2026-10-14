@@ -161,7 +161,19 @@ ValueType Typer::typeOf(const Expr& expr, std::optional<ValueType> context) {
     if (const auto found = expressions_.find(&expr); found != expressions_.end())
         return found->second;
     const auto* list = std::get_if<ListLit>(&expr);
-    const auto type = list ? typeList(*list, context) : infer(expr);
+    const auto type = [&]() -> ValueType {
+        if (list) return typeList(*list, context);
+        if (const auto* method = std::get_if<ListMethod>(&expr)) {
+            const auto receiver = typeOf(*method->receiver, context);
+            if (!receiver.isList()) error(method->location, "." + method->name + " needs a list<T> receiver, got " + std::string(typeName(receiver)));
+            const auto found = listMethodSpecs().find(method->name);
+            const std::array arguments{receiver};
+            if (found == listMethodSpecs().end() || !builtinOverload(found->second, arguments))
+                error(method->location, "." + method->name + " does not support " + std::string(typeName(receiver)));
+            return receiver;
+        }
+        return infer(expr);
+    }();
     expressions_.emplace(&expr, type);
     return type;
 }

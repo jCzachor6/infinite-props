@@ -1,5 +1,6 @@
 #include "ips/BuiltinSpec.hpp"
 #include "iprop/Samplers.hpp"
+#include "iprop/ListOperations.hpp"
 #include <stdexcept>
 
 namespace iprop::ips {
@@ -123,6 +124,21 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"items", V::list(V::sampler(V::Vec2))}}, Opcode::ListLen}}}},
     };
     return table;
+}
+
+const std::map<std::string, BuiltinSpec>& listMethodSpecs() {
+    static const auto specs = [] {
+        std::vector<BuiltinOverload> distinct, sort;
+        for (const auto item : kListElementTypes) {
+            const auto type = ValueType::list(item);
+            distinct.push_back({{{"receiver", type}}, Opcode::ListDistinct, type});
+            if (isSortableList(type)) sort.push_back({{{"receiver", type}}, Opcode::ListSort, type});
+        }
+        return std::map<std::string, BuiltinSpec>{
+            {"distinct", {BuiltinLowering::Opcode, std::move(distinct)}},
+            {"sort", {BuiltinLowering::Opcode, std::move(sort)}}};
+    }();
+    return specs;
 }
 
 const BuiltinSpec& samplerPickSpec() {

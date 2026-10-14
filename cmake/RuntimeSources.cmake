@@ -4,6 +4,7 @@ set(IPROP_RUNTIME_SOURCES
     type_descriptor.cpp
     collections.cpp
     collection_ops.cpp
+    list_operations.cpp
     samplers.cpp
     point_distributions.cpp
     opcode_name.cpp

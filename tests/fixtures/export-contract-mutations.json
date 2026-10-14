@@ -1162,6 +1162,133 @@
       "value": "allocated_rgba",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "earlier schema 3 without list methods",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "earlier schema 3 without list transformations",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "null list methods",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "list method arguments",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "parameters"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": [
+        {
+          "name": "n",
+          "type": "i32"
+        }
+      ]
+    },
+    {
+      "id": "list method nonlist receiver",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "i32"
+    },
+    {
+      "id": "list method false constant flag",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "constant_evaluable"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": false
+    },
+    {
+      "id": "list method wrong result type",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "result"
+      ],
+      "accept": false,
+      "schema": true,
+      "value": "list<f32>"
+    },
+    {
+      "id": "list method unexpected RNG",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "accept": false,
+      "schema": true,
+      "value": "advance_current"
+    },
+    {
+      "id": "null list transformations",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "list sort unstable policy",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations",
+        "sort"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "unstable"
     }
   ],
   "diagnostics": [

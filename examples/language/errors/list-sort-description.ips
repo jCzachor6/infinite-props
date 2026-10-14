@@ -1,0 +1,7 @@
+asset invalidSort {
+  size 1x1
+  draw {
+    descriptions = [gaussian(0, 1)]
+    invalid = descriptions.sort()
+  }
+}

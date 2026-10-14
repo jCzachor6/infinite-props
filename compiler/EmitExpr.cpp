@@ -141,6 +141,14 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
             0, plan_.pools.addType(type));
         return type;
     }
+    if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
+        emitExpr(*method->receiver);
+        const auto type = current_->typeOf(*method->receiver);
+        const std::array args{type};
+        ins(*ips::builtinOverload(ips::listMethodSpecs().at(method->name), args)->opcode,
+            0, plan_.pools.addType(type));
+        return type;
+    }
     if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
         emitExpr(*pick->receiver);
         if (pick->count) emitExpr(*pick->count);

@@ -36,7 +36,7 @@ clip_scope    = "clip", "(", expression, ")", block ;
 statement     = layer_capture | clip_scope | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
 assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type ], name, "=", expression ;
-call_statement = (name | "mask"), { postfix_suffix } ;  (* must end as a call, capture or pick *)
+call_statement = (name | "mask"), { postfix_suffix } ;  (* must end as a call, capture, pick or list method *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
 while         = "while", "(", expression, ")", block ;
@@ -64,6 +64,7 @@ point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}"
 distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
 sampler_capture = "sampler", "(", expression, ")" ;  (* reserved; the outer random_range is captured *)
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
+list_method   = postfix, (".distinct" | ".sort"), "(", ")" ;  (* ordinary method names, statically typed *)
 list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
 expressions   = expression, { ",", expression }, [ "," ] ;

@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/ListOperations.hpp"
 
 namespace iprop::detail {
 
@@ -28,6 +29,26 @@ bool stepCollections(Execution& ex, Instruction ins) {
         return handle->data;
     };
     switch (ins.opcode) {
+    case Opcode::ListDistinct:
+    case Opcode::ListSort: {
+        const auto expected=type();const auto source=ex.popList();
+        if(source.type!=expected) ex.trap("list type mismatch",ErrorReason::StackType);
+        try {
+            const bool sort=ins.opcode==Opcode::ListSort;
+            // Inspection itself is prepaid; reserve all bounded comparison/copy
+            // work before either algorithm or an output-buffer allocation.
+            const auto n=source.data->elements.size();ex.spend(2u*n);
+            const auto work=listSelectionWork(source,sort);ex.spend(work-2u*n);
+            const auto selection=selectList(source,sort);
+            if(selection.unchanged(source)) ex.push(source);
+            else {
+                ex.allocateResource(ResourceArena::listBytes(selection.count));
+                auto result=materializeListSelection(source,selection);
+                ex.resources.lists.push_back(result.data);ex.push(std::move(result));
+            }
+        } catch(const std::invalid_argument& error) {ex.trap(error.what(),ErrorReason::RuntimeViolation);}
+        break;
+    }
     case Opcode::ConstList: {
         if (ins.operand >= ex.file.collections.lists.size()) ex.trap("collection index out of range", ErrorReason::IndexRange);
         auto cached = ex.resources.constants.find(ins.operand);

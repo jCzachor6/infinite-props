@@ -571,7 +571,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
     if (std::holds_alternative<Index>(*expr) && kind() == TokenKind::Assign)
         throw SourceError{locationOf(*expr), "list elements are immutable; assign a whole new list instead"};
     if (!std::holds_alternative<Call>(*expr) && !std::holds_alternative<SamplerPick>(*expr) &&
-        !std::holds_alternative<SamplerCapture>(*expr)) {
+        !std::holds_alternative<SamplerCapture>(*expr) && !std::holds_alternative<ListMethod>(*expr)) {
         throw SourceError{name.location, "expression statement must be a call" + keywordSuggestion(name.text)};
     }
     return Stmt{ExprStmt{std::move(expr), name.location}};

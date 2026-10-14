@@ -1,5 +1,8 @@
 {
   "cases": [
+    {"file":"list-methods.ips","expect":"pass"},
+    {"file":"errors/list-sort-description.ips","expect":"compile-error","message":".sort does not support list<distribution>"},
+    {"file":"errors/list-method-arguments.ips","expect":"compile-error","message":".distinct takes no arguments"},
     {"file":"resource-exports.ips","expect":"pass"},
     {"file":"errors/export-type.ips","expect":"compile-error","message":"expects mask, got layer"},
     {"file":"errors/export-list.ips","expect":"compile-error","message":"resource exports cannot be lists"},

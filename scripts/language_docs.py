@@ -22,13 +22,18 @@ DIRECTIVE = re.compile(r"^<!-- (example|builtin): (\S+) -->$", re.M)
 # Marks a paragraph that LLM_REFERENCE.md leaves out; the book drops the marker.
 LLM_SKIP = re.compile(r"^<!-- llm: skip -->\n", re.M)
 SAMPLER_METHODS = re.compile(r"^<!-- sampler-methods -->$", re.M)
+LIST_METHODS = re.compile(r"^<!-- list-methods -->$", re.M)
 
-def sampler_signatures(language):
+def method_signatures(methods):
     lines = ['| Receiver | Method | Result |', '| --- | --- | --- |']
-    for method in language['source_rules']['samplers']['methods']:
+    for method in methods:
         arguments = ', '.join(parameter['name'] + ': ' + parameter['type'] for parameter in method['parameters'])
         lines.append(f"| {method['receiver']} | .{method['name']}({arguments}) | {method['result']} |")
     return '\n'.join(lines)
+
+
+def sampler_signatures(language):
+    return method_signatures(language['source_rules']['samplers']['methods'])
 
 
 def require(condition, message):
@@ -208,7 +213,8 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
                 label += " (`" + case["message"] + "`)"
             return label + ".\n\n```ips\n" + read(file).rstrip() + "\n```"
         content = LLM_SKIP.sub("", DIRECTIVE.sub(replace, authored[chapter]))
-        content = SAMPLER_METHODS.sub(lambda _: sampler_signatures(language), content)
+        content = SAMPLER_METHODS.sub(lambda _: method_signatures(language['source_rules']['samplers']['methods']), content)
+        content = LIST_METHODS.sub(lambda _: method_signatures(language['source_rules']['collections']['methods']), content)
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 

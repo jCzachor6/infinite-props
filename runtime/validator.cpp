@@ -1,6 +1,7 @@
 #include "iprop/Validator.hpp"
 #include "iprop/Compression.hpp"
 #include "iprop/Compositor.hpp"
+#include "iprop/ListOperations.hpp"
 
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
@@ -378,10 +379,11 @@ private:
             push(at, file_.collections.samplers[op].type);
             return;
         case Opcode::ListBegin: case Opcode::ListAppend: case Opcode::ListEnd:
-        case Opcode::ListGet: case Opcode::ListLen: {
+        case Opcode::ListGet: case Opcode::ListLen: case Opcode::ListDistinct: case Opcode::ListSort: {
             if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
             const auto type = file_.collections.types[op];
             if (!type.isList()) fail(at, "expected list descriptor");
+            if (ins.opcode == Opcode::ListSort && !isSortableList(type)) fail(at, "list.sort does not support this element type");
             const auto builder = ValueType::builder(type);
             if (ins.opcode == Opcode::ListBegin) {
                 expect(at, ValueType::I32, "list size"); push(at, builder);
@@ -391,6 +393,8 @@ private:
                 expect(at, builder, "list builder"); push(at, type);
             } else if (ins.opcode == Opcode::ListGet) {
                 expect(at, ValueType::I32, "list index"); expect(at, type, "list handle"); push(at, type.item());
+            } else if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) {
+                expect(at, type, "list handle"); push(at, type);
             } else {
                 expect(at, type, "list handle"); push(at, ValueType::I32);
             }

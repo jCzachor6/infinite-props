@@ -88,6 +88,20 @@ Json samplers() {
         {"methods", std::move(methods)}, {"asset_constants", true}, {"range_palettes", true}});
 }
 
+Json listMethods() {
+    Json methods = Json::array();
+    for (const auto& [name, spec] : ips::listMethodSpecs()) {
+        for (const auto& signature : spec.overloads) {
+            const auto* opcode = findOpcode(*signature.opcode);
+            methods.push_back(Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
+                {"parameters", Json::array()}, {"result", ips::typeName(signature.result)},
+                {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
+                {"constant_evaluable", true}, {"effects", operationEffects(opcode->effects)}}));
+        }
+    }
+    return methods;
+}
+
 template<class Predicate>
 Json types(Predicate include) {
     Json names = Json::array();
@@ -214,7 +228,13 @@ Json sourceRules() {
         {"numeric_elements", "i32_to_f32_widening"}, {"index_type", "i32"}, {"index_bounds", "trap"},
         {"mutable", false}, {"helper_transfer", "share_immutable_data"},
         {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
-        {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData}});
+        {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData},
+        {"methods", listMethods()},
+        {"transformations", Json::object({{"evaluation", "receiver_once"}, {"result", "same_type_immutable_list"},
+            {"distinct", "stable_first_occurrence"}, {"sort", "stable_ascending_numeric_or_lexicographic"},
+            {"color_order", "rgba"}, {"vec2_order", "xy"}, {"float_zero", "signed_zeros_equal"},
+            {"float_nan", "one_equivalence_class_last"}, {"description_equality", "structural_original_types_and_bits"},
+            {"element_bits", "preserved"}, {"unchanged_storage", "shared"}})}});
     Json reserved = Json::array();
     for (const auto& name : ips::reservedKeywords()) reserved.push_back(name);
     rules["reserved_keywords"] = std::move(reserved);

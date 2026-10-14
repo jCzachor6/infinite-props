@@ -54,6 +54,8 @@ identified by `source_type`.
 | `types.parameterized` | Supported list/sampler constructors, element types and immutable arena ownership. Lists of sampler descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
+| `collections.methods` | Optional thirteen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, minimum minor, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
+| `collections.transformations` | Optional stable first-occurrence/ascending policies, RGBA/x-y order, float zero/NaN equivalence, structural description equality, preserved element bits and unchanged-buffer sharing. Earlier exports may omit these additive fields. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
 | `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode, minimum minor and effects. They are separate from the global builtin `pick`. |
 | `palettes` | Compile-time capture/lifting, supported scalar/description types, numeric widening, index evaluation/fallback, first-class list limits and ramp restrictions. |

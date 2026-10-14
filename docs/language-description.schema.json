@@ -1255,6 +1255,186 @@
               "type": "integer",
               "const": 67108864,
               "description": "Maximum additional list and part canvas data charged per generation."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 13,
+              "maxItems": 13,
+              "uniqueItems": true,
+              "description": "Optional supported distinct and sort signatures from the shared frontend registry.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "distinct",
+                      "sort"
+                    ],
+                    "description": "Ordinary receiver method name, separate from global builtins."
+                  },
+                  "receiver": {
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>",
+                      "list<distribution>",
+                      "list<sampler<i32>>",
+                      "list<sampler<f32>>",
+                      "list<sampler<color>>",
+                      "list<sampler<vec2>>"
+                    ],
+                    "description": "Statically required immutable list type."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "description": "Both methods accept no arguments."
+                  },
+                  "result": {
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>",
+                      "list<distribution>",
+                      "list<sampler<i32>>",
+                      "list<sampler<f32>>",
+                      "list<sampler<color>>",
+                      "list<sampler<vec2>>"
+                    ],
+                    "description": "Same immutable list type as the receiver."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "list.distinct",
+                      "list.sort"
+                    ],
+                    "description": "Descriptor-indexed runtime instruction."
+                  },
+                  "minimum_format_minor": {
+                    "const": 6,
+                    "description": "Oldest format accepting the method instruction."
+                  },
+                  "constant_evaluable": {
+                    "const": true,
+                    "description": "Allowed in pure asset constant initializers."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects, excluding receiver effects and resource traps."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "minimum_format_minor",
+                  "constant_evaluable",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "Receiver-first immutable list transformation signature.",
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "name": {
+                          "const": "sort"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "receiver": {
+                          "enum": [
+                            "list<i32>",
+                            "list<f32>",
+                            "list<color>",
+                            "list<vec2>"
+                          ]
+                        },
+                        "opcode": {
+                          "const": "list.sort"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "opcode": {
+                          "const": "list.distinct"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "transformations": {
+              "type": "object",
+              "description": "Optional immutable list method comparison, evaluation and sharing policies.",
+              "properties": {
+                "evaluation": {
+                  "const": "receiver_once",
+                  "description": "The receiver is evaluated once before method execution."
+                },
+                "result": {
+                  "const": "same_type_immutable_list",
+                  "description": "The returned list has the receiver type and never mutates the source."
+                },
+                "distinct": {
+                  "const": "stable_first_occurrence",
+                  "description": "Distinct retains the first occurrence of each equal value in original order."
+                },
+                "sort": {
+                  "const": "stable_ascending_numeric_or_lexicographic",
+                  "description": "Sort is ascending and stable for equal elements."
+                },
+                "color_order": {
+                  "const": "rgba",
+                  "description": "Colors compare lexicographically by unsigned RGBA bytes."
+                },
+                "vec2_order": {
+                  "const": "xy",
+                  "description": "Vectors compare lexicographically by x then y."
+                },
+                "float_zero": {
+                  "const": "signed_zeros_equal",
+                  "description": "Numeric positive and negative zero form one equal class."
+                },
+                "float_nan": {
+                  "const": "one_equivalence_class_last",
+                  "description": "All numeric NaNs compare equal and sort after positive infinity."
+                },
+                "description_equality": {
+                  "const": "structural_original_types_and_bits",
+                  "description": "Descriptions compare stored modes, families, original numeric types and bits rather than handle addresses."
+                },
+                "element_bits": {
+                  "const": "preserved",
+                  "description": "Selected elements retain their original stored bits."
+                },
+                "unchanged_storage": {
+                  "const": "shared",
+                  "description": "A transformation that leaves the sequence unchanged shares its data buffer."
+                }
+              },
+              "required": [
+                "evaluation",
+                "result",
+                "distinct",
+                "sort",
+                "color_order",
+                "vec2_order",
+                "float_zero",
+                "float_nan",
+                "description_equality",
+                "element_bits",
+                "unchanged_storage"
+              ],
+              "additionalProperties": true
             }
           }
         },

@@ -35,6 +35,7 @@ add_executable(iprop_tests
     compiler/math_bounds_test.cpp
     compiler/asset_constants_test.cpp
     compiler/collections_test.cpp
+    compiler/list_methods_test.cpp
     compiler/samplers_test.cpp
     compiler/sampling_palettes_test.cpp
     compiler/defaults_test.cpp

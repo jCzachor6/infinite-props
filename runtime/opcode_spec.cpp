@@ -35,7 +35,8 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::SamplerPick: case Opcode::SamplerPickList:
         return {R::AdvanceCurrent,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
-    case Opcode::ListLen: return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::ListLen: case Opcode::ListDistinct: case Opcode::ListSort:
+        return {R::None,false,false,check(C::UnassignedHandle)};
     case Opcode::LayerBegin: return {R::None,true};
     case Opcode::SurfacePaint: case Opcode::SurfacePaintMask:
         return {R::None,true,false,check(C::UnassignedHandle)};
@@ -263,6 +264,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::OutLayer, "out.layer", 6, OperandKind::Index),
     dynamic(Opcode::PartGetMask, "part.get.mask", 6, OperandKind::Index),
     dynamic(Opcode::PartGetLayer, "part.get.layer", 6, OperandKind::Index),
+    dynamic(Opcode::ListDistinct, "list.distinct", 6, OperandKind::Index),
+    dynamic(Opcode::ListSort, "list.sort", 6, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

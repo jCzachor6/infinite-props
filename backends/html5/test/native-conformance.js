@@ -130,6 +130,7 @@ function run(iprop, toolsDir) {
     let constantComparisons = 0;
     let constantOverloads = 0;
     let collectionEvidence = {};
+    let listMethodEvidence = {};
     let samplerEvidence = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
@@ -451,6 +452,7 @@ function run(iprop, toolsDir) {
         constantComparisons = constants.comparisons;
         constantOverloads = constants.overloads;
         collectionEvidence = require("./collection-conformance.js").run(iprop, tool, temporary);
+        listMethodEvidence = require("./list-method-conformance.js").run(iprop, tool, temporary);
         samplerEvidence = require("./sampler-conformance.js").run(iprop, tool, temporary);
         samplingPaletteEvidence = require("./sampling-palette-conformance.js").run(iprop, tool, temporary);
         pointDistributionEvidence = require("./point-distribution-conformance.js").run(iprop, tool, temporary);
@@ -463,7 +465,7 @@ function run(iprop, toolsDir) {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons,
-        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence,
+        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
         samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, resourceExports: resourceExportEvidence };
 }
 

@@ -79,12 +79,25 @@ def main():
     assert rules['collections']['index_bounds'] == 'trap'
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
+    methods = rules['collections']['methods']
+    assert len(methods) == 13
+    assert {(m['name'],m['receiver']) for m in methods} == (
+        {('distinct','list<' + t + '>') for t in scalar_types + sampler_types} |
+        {('sort','list<' + t + '>') for t in scalar_types[:-1]})
+    assert all(m['result'] == m['receiver'] and m['parameters'] == [] and
+               m['constant_evaluable'] and m['effects']['rng'] == 'none' for m in methods)
     assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}, {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density','equal_bounds':'closed_natural_support'}]
     assert rules['surfaces']['maximum_active_scopes'] == 32
     assert rules['surfaces']['scope_cleanup'] == ['end','return','break','continue']
     assert rules['masks']['maximum_radius'] == 64
     assert rules['masks']['part_clip'] == 'parent_applies_to_blit_once'
     cases = [
+        ('list transforms and constant empty chain', 'const list<i32> empty=[].sort().distinct() draw{items=[3,1,3].distinct().sort()}', True),
+        ('list method names remain identifiers', 'sort(x:i32)->i32{return x} distinct(x:i32)->i32{return x} draw{sort=sort(distinct(1))}', True),
+        ('distribution sort rejected', 'draw{items=[gaussian(0,1)].sort()}', False),
+        ('sampler sort rejected', 'draw{items=[sampler(1)].sort()}', False),
+        ('list method arguments rejected', 'draw{items=[1].distinct(1)}', False),
+        ('list method scalar receiver rejected', 'draw{items=(1).sort()}', False),
         ('layer snapshot', 'echo(image:layer)->layer{return image} draw{layer image{pixel(0,0,#fff)} copy=echo(image);surface.paint(copy,blend=surface.legacy)}', True),
         ('layer reserved helper', 'layer(x:i32)->i32{return x} draw{x=layer(2);layer image{}}', False),
         ('layer typed copy', 'draw{layer image{} layer copy=image;surface.paint(copy)}', True),

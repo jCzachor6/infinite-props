@@ -52,6 +52,9 @@
       "include": "#samplerMethod"
     },
     {
+      "include": "#listMethod"
+    },
+    {
       "include": "#operators"
     }
   ],
@@ -121,6 +124,10 @@
     "samplerMethod": {
       "name": "support.function.sampler.pick.ips",
       "match": "(?<=\\.)pick\\b(?=\\s*\\()"
+    },
+    "listMethod": {
+      "name": "support.function.list.ips",
+      "match": "(?<=\\.)(distinct|sort)\\b(?=\\s*\\()"
     },
     "pointDistribution": {
       "name": "support.function.distribution.ips",

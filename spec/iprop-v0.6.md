@@ -907,3 +907,64 @@ IPA represents records in table order as `export: mask|layer name root|index`
 and function ownership as `owner: function_name root|index`. IPDIS preserves
 these declarations, including part/helper owners; numeric opcode operands
 retain resource-table indices through assembly, debug stripping and compression.
+
+## 18. List transformations
+
+`values.distinct()` and `values.sort()` are zero-argument, statically resolved
+list methods. The receiver is evaluated once, including helper and chained
+expressions. Both return the same `list<T>` type without changing the receiver
+or advancing RNG. They are allowed in pure asset constant initializers.
+The names `distinct` and `sort` are ordinary identifiers, not source keywords
+or global builtins. A standalone method statement discards its return value
+while retaining receiver effects and runtime checks.
+
+| Opcode | Mnemonic / u16 operand | Stack |
+| --- | --- | --- |
+| 0xD6 | list.distinct descriptor | `[list<T>] -> [list<T>]` |
+| 0xD7 | list.sort descriptor | `[list<T>] -> [list<T>]` |
+
+Each operand indexes the existing section-8 descriptor table; `aux` is zero.
+Both require format minor 6. Distinct admits all nine storable list element
+types. Sort admits only `i32`, `f32`, `color` and `vec2`. Invalid indices,
+non-list descriptors, unsupported sort types and nonzero aux are rejected,
+including in unreachable instructions. Earlier minors reject both opcodes.
+Pool compaction remaps these descriptor operands. No existing wire value,
+section, host enum, C API/ABI layout or product/source/format version changes.
+
+Distinct retains the first occurrence of each equal element, in input order.
+Sort retains duplicates and is stable ascending. i32 uses signed integer
+comparison without floating conversion; colors use lexicographic unsigned
+RGBA bytes and vectors use lexicographic x then y. Scalar/vector float
+comparison uses numeric order, equates positive and negative zero, and places
+all NaNs in one equivalence class after positive infinity. Selected elements
+retain their original bits, including zero signs and NaN payloads.
+
+Description equality is structural, independent of allocation addresses:
+distributions compare family, all four stored f32 parameter bits and optional
+point family/count and each key/value's original numeric type and stored
+i32 value or f32 bits, in point order. Samplers compare mode, captured lower
+value, upper value for nonconstant modes and the distribution for `With`.
+Their captured f32 bounds/vector components use bit identity. Constant,
+uniform and distributed sampler modes remain distinct even when their draws
+could coincide. Comparing descriptions does not sample them or validate
+range probability mass. An unassigned list, sampler element or distribution
+element traps even when the list contains only one element.
+
+Before comparisons or output allocation, reserve base 1 plus `2*N + W*C`
+fuel. `N` is the input length. For distinct, `C=N*(N-1)/2`; for sort,
+`C=N*ceil(log2(N))`, with `C=0` for zero/one element. `W` is the maximum
+element width (at least 1): i32/f32 1, color 4, vec2 2; distribution
+`7 + 4*point_count` (zero points for analytic descriptions); sampler
+`2 + bound_width*(1 if Constant else 2)` plus its distribution width for
+`With`. Bound width is the scalar/color/vector width. The `2*N` inspection
+reservation is made before inspecting element descriptions; the remaining
+comparison reservation follows before selection. This fixed logical cost
+does not depend on duplicate frequency or a platform's library sort.
+
+The implementation uses a fixed index buffer and stable merge passes for
+sorting, and selects first occurrences for distinct. An unchanged sequence
+shares the original immutable list data without an allocation charge. A
+changed sequence reserves `128 + 64*retained_count` bytes before allocating
+its new list buffer. Description buffers remain shared without another charge.
+Existing 256-element, 64 MiB generation-data and default fuel limits apply.
+Allocation/fuel failure and handle traps publish no partial generation result.

@@ -63,7 +63,8 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
             const bool collection = static_cast<u8>(spec.opcode) >= static_cast<u8>(Opcode::ConstList) &&
                 static_cast<u8>(spec.opcode) <= static_cast<u8>(Opcode::SurfacePaint);
             const bool resourceExport = spec.opcode >= Opcode::OutMask && spec.opcode <= Opcode::PartGetLayer;
-            if (!collection && !resourceExport) REQUIRE_NOTHROW(validate(loadFile(bytes)));
+            const bool listMethod = spec.opcode == Opcode::ListDistinct || spec.opcode == Opcode::ListSort;
+            if (!collection && !resourceExport && !listMethod) REQUIRE_NOTHROW(validate(loadFile(bytes)));
             bytes[6]=static_cast<u8>(spec.minimumMinor-1);
             CHECK_THROWS_AS(validate(loadFile(bytes)),FormatError);
         }
@@ -101,5 +102,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 184);
+    CHECK(names.size() == 186);
 }

@@ -310,6 +310,8 @@ class SourcePrinter {
                 expression(*node.receiver); out_ << ".pick(";
                 if (node.count) expression(*node.count);
                 out_ << ')';
+            } else if constexpr (std::is_same_v<T, ListMethod>) {
+                expression(*node.receiver); out_ << '.' << node.name << "()";
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
                 out_ << std::string(math::pointDistributionSpec(node.family)->name) << " {";
                 for (std::size_t i = 0; i < node.points.size(); ++i) {

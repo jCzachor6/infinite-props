@@ -199,6 +199,10 @@
         {
           "heading": "Index and length",
           "paragraphs": 1
+        },
+        {
+          "heading": "List transformations",
+          "paragraphs": 2
         }
       ],
       "examples": [

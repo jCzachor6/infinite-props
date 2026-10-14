@@ -321,6 +321,27 @@ test("sampler formatting preserves captures, arbitrary receivers, types and comm
     }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+test("list methods preserve chains comments and ordinary helper names", async () => {
+    const source="asset t{size 1x1 const list<i32> none=[].sort().distinct() " +
+        "echo(items:list<i32>)->list<i32>{return items} sort(x:i32)->i32{return x} " +
+        "draw{items=echo([3,/* first duplicate */1,3]).distinct().sort();items.sort();x=sort(1)}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try{
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("/* first duplicate */"));
+        assert.ok(formatted.includes(".distinct().sort()"));
+        assert.ok(formatted.includes("[].sort().distinct()"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        const method=new RegExp(grammar.repository.listMethod.match);
+        assert.ok(method.test("items.distinct()"));assert.ok(method.test("items.sort()"));
+        assert.equal(method.test("sort(1)"),false);assert.equal(method.test("items.sorted()"),false);
+    }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});
+
 test("sampling palette formatting preserves const graphs and explicit palette picks", async () => {
     const source="asset t{size 1x1 const sampler<i32> fixed=sampler(40) " +
         "palette widths=[10 to 15,/* captured */20 to 30 with shape,fixed] " +

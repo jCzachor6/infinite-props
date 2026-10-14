@@ -44,6 +44,7 @@ void compactPools(Plan& plan) {
                 samplers.at(ins.operand) = true; markType(old.samplersValue().at(ins.operand).type);
             }
             if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) types.at(ins.operand) = true;
+            if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) types.at(ins.operand) = true;
             if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) types.at(ins.operand) = true;
         }
     }
@@ -83,6 +84,7 @@ void compactPools(Plan& plan) {
         if (ins.opcode == Opcode::ConstSampler) ins.operand = smap.at(ins.operand);
         if (ins.opcode == Opcode::ConstDistribution) ins.operand = dmap.at(ins.operand);
         if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
+        if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) ins.operand = tmap.at(ins.operand);
         if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstI32) ins.operand = imap.at(ins.operand);
         if (ins.opcode == Opcode::ConstF32) ins.operand = fmap.at(ins.operand);

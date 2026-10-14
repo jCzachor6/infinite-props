@@ -334,6 +334,31 @@ def read_language(value):
         for field, expected in [('minimum_length',0),('maximum_length',256),('palette_as_list_maximum',256),('generation_data_limit_bytes',67108864)]:
             integer(collection.get(field), 'collections.' + field)
             require(collection[field] == expected, 'collections.' + field)
+        # Additive method capabilities; earlier schema 3 exports omit these.
+        if 'methods' in collection:
+            methods = collection['methods']
+            require(type(methods) is list and len(methods) == 13, 'list method signatures')
+            signatures = set()
+            for method in methods:
+                obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor',
+                    'constant_evaluable','effects'], 'list method')
+                require(method['name'] in {'distinct','sort'} and method['receiver'] in LIST_TYPES, 'list method receiver')
+                require(method['name'] != 'sort' or method['receiver'] in {'list<i32>','list<f32>','list<color>','list<vec2>'}, 'sortable list types')
+                require(method['parameters'] == [] and method['result'] == method['receiver'], 'list method signature')
+                require(method['opcode'] == 'list.' + method['name'] and method['minimum_format_minor'] == 6, 'list method opcode')
+                require(method['constant_evaluable'] is True, 'constant list method')
+                effects(method['effects'], 'list method effects')
+                require(method['effects'] == {'rng':'none','writes_canvas':False,'writes_outputs':False,
+                    'summary':'intrinsic','may_trap':['unassigned_handle']}, 'pure list method effects')
+                signatures.add((method['name'],method['receiver']))
+            require(len(signatures) == 13, 'unique list method signatures')
+        if 'transformations' in collection:
+            _strings_and_bools(collection['transformations'], {
+                'evaluation': {'receiver_once'}, 'result': {'same_type_immutable_list'},
+                'distinct': {'stable_first_occurrence'}, 'sort': {'stable_ascending_numeric_or_lexicographic'},
+                'color_order': {'rgba'}, 'vec2_order': {'xy'}, 'float_zero': {'signed_zeros_equal'},
+                'float_nan': {'one_equivalence_class_last'}, 'description_equality': {'structural_original_types_and_bits'},
+                'element_bits': {'preserved'}, 'unchanged_storage': {'shared'}}, [], 'list transformations')
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')

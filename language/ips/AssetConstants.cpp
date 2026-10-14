@@ -4,6 +4,7 @@
 #include "ips/Suggestions.hpp"
 #include "iprop/VmInternals.hpp"
 #include "iprop/Samplers.hpp"
+#include "iprop/ListOperations.hpp"
 #include "iprop/math/Distribution.hpp"
 
 #include <algorithm>
@@ -239,6 +240,8 @@ private:
             fail(locationOf(expression), "random ranges are not allowed");
         } else if (const auto* capture = std::get_if<SamplerCapture>(&expression)) {
             inspectCapture(*capture->value, dependencies);
+        } else if (const auto* method = std::get_if<ListMethod>(&expression)) {
+            inspect(*method->receiver, dependencies);
         } else if (std::holds_alternative<SamplerPick>(expression)) {
             fail(locationOf(expression), ".pick has RNG or generation effects and is not allowed");
         }
@@ -338,6 +341,11 @@ private:
                 data->elements.push_back(std::move(value));
             }
             return ListValue{data->type, std::move(data)};
+        }
+        if (const auto* method = std::get_if<ListMethod>(&expression)) {
+            const auto list = std::get<ListValue>(evaluate(*method->receiver));
+            try { return materializeListSelection(list, selectList(list, method->name == "sort")); }
+            catch (const std::invalid_argument& error) { fail(at, error.what(), DiagnosticCode::AssetConstantValue); }
         }
         if (const auto* description = std::get_if<SamplerCapture>(&expression)) return capture(*description->value);
         if (const auto* literal = std::get_if<PointDistributionLiteral>(&expression)) {

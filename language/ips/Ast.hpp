@@ -130,6 +130,11 @@ struct SamplerPick {
     std::unique_ptr<Expr> count; // null: one scalar result; otherwise list<T>
     SourceLocation location;
 };
+struct ListMethod {
+    std::unique_ptr<Expr> receiver;
+    std::string name; // distinct or sort; never a global keyword
+    SourceLocation location;
+};
 
 struct PointDistributionLiteral {
     struct Point {
@@ -143,9 +148,9 @@ struct PointDistributionLiteral {
 
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange, SamplerCapture, SamplerPick, PointDistributionLiteral> {
+                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, PointDistributionLiteral>::variant;
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };

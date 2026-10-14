@@ -276,6 +276,8 @@ enum class Opcode : u8 {
     OutLayer = 0xD3,
     PartGetMask = 0xD4,
     PartGetLayer = 0xD5,
+    ListDistinct = 0xD6,
+    ListSort = 0xD7,
 
     // Parts (§9.10)
     PartDraw = 0xA0,
