@@ -284,6 +284,8 @@ enum class Opcode : u8 {
     StepperWith = 0xDA,
     StepperPickList = 0xDB,
     ConstStepper = 0xDC,
+    LayerBlur = 0xDD,
+    MaskBlur = 0xDE,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

@@ -47,6 +47,7 @@ constexpr OperationEffects effects(Opcode op) {
         return {R::None,false,false,check(C::UnassignedHandle)};
     case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
     case Opcode::MaskExpand: case Opcode::MaskShrink: case Opcode::MaskOffset:
+    case Opcode::LayerBlur: case Opcode::MaskBlur:
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
     case Opcode::PolyList: return {R::None,true,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ColorHsv: case Opcode::Vec2Mix: case Opcode::Vec2Normalize:
@@ -274,6 +275,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::StepperWith, "stepper.with", 7, OperandKind::Index),
     dynamic(Opcode::StepperPickList, "stepper.pick.list", 7, OperandKind::Index),
     dynamic(Opcode::ConstStepper, "const.stepper", 7, OperandKind::Index),
+    dynamic(Opcode::LayerBlur, "layer.blur", 7, OperandKind::None),
+    dynamic(Opcode::MaskBlur, "mask.blur", 7, OperandKind::None),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

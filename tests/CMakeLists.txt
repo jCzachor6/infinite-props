@@ -54,6 +54,7 @@ add_executable(iprop_tests
     compiler/surfaces_test.cpp
     compiler/source_over_test.cpp
     compiler/masks_test.cpp
+    compiler/blur_test.cpp
     compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
@@ -135,6 +136,11 @@ add_executable(vm_result_allocation_probe vm_result_allocation_probe.cpp)
 target_link_libraries(vm_result_allocation_probe PRIVATE iprop_compiler)
 iprop_warnings(vm_result_allocation_probe)
 add_test(NAME vm_result_allocations COMMAND vm_result_allocation_probe)
+
+add_executable(blur_allocation_probe compiler/blur_allocation_probe.cpp)
+target_link_libraries(blur_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(blur_allocation_probe)
+add_test(NAME blur_allocation_failures COMMAND blur_allocation_probe)
 
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)

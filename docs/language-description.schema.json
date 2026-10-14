@@ -2085,6 +2085,258 @@
               "type": "string",
               "const": "every_primitive_blit_and_paint",
               "description": "Store a rounded RGBA8 result after each primitive, blit or paint without fusion or reordering."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "description": "Optional ordinary layer/mask methods, exported from the shared receiver-first registry.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "blur",
+                    "description": "Ordinary receiver method name, separate from global builtins."
+                  },
+                  "receiver": {
+                    "enum": [
+                      "layer",
+                      "mask"
+                    ],
+                    "description": "Statically required surface type."
+                  },
+                  "parameters": {
+                    "const": [
+                      {
+                        "name": "sigma",
+                        "type": "f32"
+                      }
+                    ],
+                    "description": "One required sigma argument, optionally named; i32 widens to f32.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "sigma",
+                          "description": "Argument name used by named call syntax."
+                        },
+                        "type": {
+                          "const": "f32",
+                          "description": "Required type after implicit i32 widening."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "result": {
+                    "enum": [
+                      "layer",
+                      "mask"
+                    ],
+                    "description": "Same immutable surface type as the receiver."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "layer.blur",
+                      "mask.blur"
+                    ],
+                    "description": "Zero-operand Gaussian filter instruction."
+                  },
+                  "minimum_format_minor": {
+                    "const": 7,
+                    "description": "Oldest format accepting the filter instruction."
+                  },
+                  "constant_evaluable": {
+                    "const": false,
+                    "description": "Blur requires generation and cannot initialize an asset constant."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic effects, excluding receiver and sigma evaluation and resource traps."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "minimum_format_minor",
+                  "constant_evaluable",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "receiver": {
+                          "const": "layer"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "result": {
+                          "const": "layer"
+                        },
+                        "opcode": {
+                          "const": "layer.blur"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "result": {
+                          "const": "mask"
+                        },
+                        "opcode": {
+                          "const": "mask.blur"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "blur": {
+              "type": "object",
+              "description": "Optional Gaussian blur kernel, geometry, alpha and resource policies.",
+              "properties": {
+                "sigma_type": {
+                  "const": "f32",
+                  "description": "Gaussian blur sigma type."
+                },
+                "minimum_sigma": {
+                  "const": 0,
+                  "description": "Gaussian blur minimum sigma."
+                },
+                "maximum_sigma": {
+                  "const": 64,
+                  "description": "Gaussian blur maximum sigma."
+                },
+                "sigma_units": {
+                  "const": "input_raster_pixels",
+                  "description": "Gaussian blur sigma units."
+                },
+                "evaluation": {
+                  "const": "receiver_then_sigma_once",
+                  "description": "Gaussian blur evaluation."
+                },
+                "kernel_radius": {
+                  "const": "ceil_3_sigma",
+                  "description": "Gaussian blur kernel radius."
+                },
+                "maximum_radius": {
+                  "const": 192,
+                  "description": "Gaussian blur maximum radius."
+                },
+                "border": {
+                  "const": "nearest_edge",
+                  "description": "Gaussian blur border."
+                },
+                "passes": {
+                  "const": "horizontal_then_vertical_binary64",
+                  "description": "Gaussian blur passes."
+                },
+                "weights": {
+                  "const": "normalized_pinned_exp_increasing_offset",
+                  "description": "Gaussian blur weights."
+                },
+                "color": {
+                  "const": "premultiplied_stored_channels_unpremultiply_after_both_passes",
+                  "description": "Gaussian blur color."
+                },
+                "rounding": {
+                  "const": "nearest_half_up_zero_alpha_zero_rgb",
+                  "description": "Gaussian blur rounding."
+                },
+                "mask_result": {
+                  "const": "A8_alpha_equivalent",
+                  "description": "Gaussian blur mask result."
+                },
+                "geometry": {
+                  "const": "preserve_dimensions_scale_placement_D4",
+                  "description": "Gaussian blur geometry."
+                },
+                "zero_sigma": {
+                  "const": "validate_then_share_no_allocation",
+                  "description": "Gaussian blur zero sigma."
+                },
+                "clip": {
+                  "const": "paint_only",
+                  "description": "Gaussian blur clip."
+                },
+                "positive_sigma_fuel": {
+                  "const": "one_plus_K_plus_W_H_times_1_plus_2_K",
+                  "description": "Gaussian blur positive sigma fuel."
+                },
+                "scratch_bytes": {
+                  "const": "8_times_W_min_H_K_channels",
+                  "description": "Gaussian blur scratch bytes."
+                },
+                "scratch_channels": {
+                  "const": {
+                    "layer": 4,
+                    "mask": 1
+                  },
+                  "description": "Gaussian blur scratch channels.",
+                  "type": "object",
+                  "properties": {
+                    "layer": {
+                      "const": 4,
+                      "description": "Four premultiplied RGBA binary64 channels per cached pixel."
+                    },
+                    "mask": {
+                      "const": 1,
+                      "description": "One binary64 coverage channel per cached pixel."
+                    }
+                  },
+                  "required": [
+                    "layer",
+                    "mask"
+                  ],
+                  "additionalProperties": true
+                },
+                "scratch_release": {
+                  "const": "success_and_error",
+                  "description": "Gaussian blur scratch release."
+                },
+                "preflight": {
+                  "const": "fuel_and_shared_arena_before_filter",
+                  "description": "Gaussian blur preflight."
+                }
+              },
+              "required": [
+                "sigma_type",
+                "minimum_sigma",
+                "maximum_sigma",
+                "sigma_units",
+                "evaluation",
+                "kernel_radius",
+                "maximum_radius",
+                "border",
+                "passes",
+                "weights",
+                "color",
+                "rounding",
+                "mask_result",
+                "geometry",
+                "zero_sigma",
+                "clip",
+                "positive_sigma_fuel",
+                "scratch_bytes",
+                "scratch_channels",
+                "scratch_release",
+                "preflight"
+              ],
+              "additionalProperties": true
             }
           },
           "required": [
@@ -2121,7 +2373,15 @@
             "rounding_boundary"
           ],
           "additionalProperties": true,
-          "description": "Immutable generation-local captures on the shared part/canvas mechanism."
+          "description": "Immutable generation-local captures on the shared part/canvas mechanism.",
+          "dependentRequired": {
+            "methods": [
+              "blur"
+            ],
+            "blur": [
+              "methods"
+            ]
+          }
         },
         "reserved_keywords": {
           "type": "array",

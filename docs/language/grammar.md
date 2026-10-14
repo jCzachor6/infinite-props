@@ -66,6 +66,7 @@ stepper_capture = "stepper", "(", expression, ")" ;
 stepper_pick  = postfix, ".pick", "(", [ "n", "=" ], expression, ")" ;
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_method   = postfix, (".distinct" | ".sort"), "(", ")" ;  (* ordinary method names, statically typed *)
+surface_blur  = postfix, ".blur", "(", [ "sigma", "=" ], expression, ")" ; (* layer or mask receiver *)
 list_literal  = "[", [ expressions ], "]" ;
 compound      = "{", [ expressions ], "}" ;
 expressions   = expression, { ",", expression }, [ "," ] ;

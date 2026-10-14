@@ -60,6 +60,10 @@ def main():
             require(f"| {method['receiver']} | .{method['name']}({args}) | {method['result']} |" in reference,
                     'sampler method missing from the reference')
         require('<!-- sampler-methods -->' not in reference, 'method placeholder leaked into reference')
+        for method in language['source_rules']['surfaces']['methods']:
+            require(f"| {method['receiver']} | .blur(sigma: f32) | {method['result']} |" in reference,
+                    'surface method missing from the reference')
+        require('<!-- surface-methods -->' not in reference, 'surface method placeholder leaked into reference')
         # All artifact links must resolve inside the installed documentation tree.
         for target in re.findall(r'\[[^\]\n]+\]\(([^\s)]+)\)', reference):
             url = urlsplit(target)

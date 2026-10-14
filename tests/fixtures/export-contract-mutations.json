@@ -1291,6 +1291,174 @@
       "accept": false,
       "schema": false,
       "value": "unstable"
+    },
+    {
+      "id": "blur requires policy",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur requires methods",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur empty signatures",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur receiver type",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur sigma name",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "parameters",
+        0,
+        "name"
+      ],
+      "value": "radius",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur sigma type",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "parameters",
+        0,
+        "type"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur mask result",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        1,
+        "result"
+      ],
+      "value": "layer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur opcode",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "opcode"
+      ],
+      "value": "mask.blur",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur intrinsic RNG",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "value": "advance_current",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "blur sigma bound",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "maximum_sigma"
+      ],
+      "value": 65,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur clip timing",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "clip"
+      ],
+      "value": "filter",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur scratch channels",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "scratch_channels"
+      ],
+      "value": {
+        "layer": 1,
+        "mask": 1
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur missing mask channel",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "scratch_channels",
+        "mask"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

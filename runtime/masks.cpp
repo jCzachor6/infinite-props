@@ -39,16 +39,17 @@ u8 maskCoverage(const MaskValue& mask, i64 x, i64 y) {
 namespace detail {
 namespace {
 
-void validateMask(Execution& ex, const MaskValue& mask) {
+void validateMask(Execution& ex, const MaskValue& mask, bool matchTarget = true) {
     try { (void)maskBounds(mask); }
     catch (const std::invalid_argument& error) { ex.trap(error.what(), ErrorReason::NumericRange); }
     const auto& source = mask.buffer->raster;
     if (mask.buffer->format != SurfaceBuffer::Format::A8 && mask.buffer->format != SurfaceBuffer::Format::RGBA8)
         ex.trap("unknown mask buffer format", ErrorReason::RuntimeViolation);
     const auto scale = mask.mapping.transform.mapExtent(Vec2{source.scaleX, source.scaleY});
-    if (!std::isfinite(scale.x) || !std::isfinite(scale.y) || scale.x <= 0 || scale.y <= 0 ||
-        !std::isfinite(ex.canvas().scaleX) || !std::isfinite(ex.canvas().scaleY) ||
-        scale.x != ex.canvas().scaleX || scale.y != ex.canvas().scaleY)
+    if (!std::isfinite(scale.x) || !std::isfinite(scale.y) || scale.x <= 0 || scale.y <= 0)
+        ex.trap("mask raster scale must be finite and positive", ErrorReason::NumericRange);
+    if (matchTarget && (!std::isfinite(ex.canvas().scaleX) || !std::isfinite(ex.canvas().scaleY) ||
+        scale.x != ex.canvas().scaleX || scale.y != ex.canvas().scaleY))
         ex.trap("mask raster scale does not match the active target", ErrorReason::NumericRange);
     const u64 count = static_cast<u64>(source.width) * source.height;
     if ((mask.buffer->format == SurfaceBuffer::Format::A8 && mask.buffer->coverage.size() != count) ||
@@ -143,12 +144,12 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
 
 } // namespace
 
-MaskValue Execution::popMask() {
+MaskValue Execution::popMask(bool matchTarget) {
     auto value = pop();
     const auto* mask = std::get_if<MaskValue>(&value);
     if (!mask) trap("stack type mismatch: expected mask", ErrorReason::StackType);
     if (!mask->buffer) trap("mask is unassigned", ErrorReason::RuntimeViolation);
-    validateMask(*this, *mask);
+    validateMask(*this, *mask, matchTarget);
     return *mask;
 }
 

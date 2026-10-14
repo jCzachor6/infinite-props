@@ -144,6 +144,15 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
             0, plan_.pools.addType(type));
         return type;
     }
+    if (const auto* blur = std::get_if<ips::SurfaceBlur>(&expr)) {
+        emitExpr(*blur->receiver);
+        emitExpr(*blur->sigma.value);
+        const auto sigma = current_->typeOf(*blur->sigma.value);
+        if (sigma == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        const std::array arguments{current_->typeOf(*blur->receiver), sigma};
+        ins(*ips::builtinOverload(ips::surfaceMethodSpecs().at("blur"), arguments)->opcode);
+        return current_->typeOf(expr);
+    }
     if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
         emitExpr(*method->receiver);
         const auto type = current_->typeOf(*method->receiver);

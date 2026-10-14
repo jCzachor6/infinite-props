@@ -242,6 +242,8 @@ private:
             inspectCapture(*capture->value, dependencies);
         } else if (const auto* method = std::get_if<ListMethod>(&expression)) {
             inspect(*method->receiver, dependencies);
+        } else if (std::holds_alternative<SurfaceBlur>(expression)) {
+            fail(locationOf(expression), ".blur has generation effects and is not allowed");
         } else if (std::holds_alternative<SamplerPick>(expression)) {
             fail(locationOf(expression), ".pick has RNG or generation effects and is not allowed");
         }

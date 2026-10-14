@@ -55,6 +55,9 @@
       "include": "#listMethod"
     },
     {
+      "include": "#surfaceMethod"
+    },
+    {
       "include": "#operators"
     }
   ],
@@ -128,6 +131,10 @@
     "listMethod": {
       "name": "support.function.list.ips",
       "match": "(?<=\\.)(distinct|sort)\\b(?=\\s*\\()"
+    },
+    "surfaceMethod": {
+      "name": "support.function.surface.ips",
+      "match": "(?<=\\.)blur\\b(?=\\s*\\()"
     },
     "pointDistribution": {
       "name": "support.function.distribution.ips",

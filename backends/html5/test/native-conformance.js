@@ -133,6 +133,7 @@ function run(iprop, toolsDir) {
     let listMethodEvidence = {};
     let samplerEvidence = {};
     let stepperEvidence = {};
+    let blurEvidence = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
     const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
@@ -461,13 +462,14 @@ function run(iprop, toolsDir) {
         surfaceEvidence = require("./surface-conformance.js").run(iprop, tool, temporary);
         sourceOverEvidence = require("./source-over-conformance.js").run(iprop, tool, temporary);
         maskEvidence = require("./mask-conformance.js").run(iprop, tool, temporary);
+        blurEvidence = require("./blur-conformance.js").run(iprop, tool, temporary);
         resourceExportEvidence = require("./resource-export-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
-        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, resourceExports: resourceExportEvidence };
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

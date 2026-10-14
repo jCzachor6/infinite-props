@@ -2,12 +2,35 @@
 #include "source_over_reference.h"
 #include "mask_reference.h"
 #include "resource_export_reference.h"
+#include "blur_reference.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void check_generation(const char* program_dir) {
     char err[512];
+
+    /* Both blur instructions retain straight color and alpha via the C ABI. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/gaussian-blur.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length); iprop_program* program=NULL;
+        CHECK(bytes!=NULL,"cannot read blur fixture");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"blur load: %s",err);free(bytes);}
+        if(program){
+            iprop_generate_options options={0}; options.seed=26; iprop_result* result=NULL;
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"blur generation: %s",err);
+            if(result){
+                iprop_image image; iprop_result_image(result,&image);
+                CHECK(image.width==7 && image.height==2 && image.output_count==0,"blur image metadata");
+                if(image.width==7 && image.height==2)for(uint32_t y=0;y<2;++y)for(uint32_t x=0;x<7;++x){
+                    uint8_t color[4];gaussian_blur_pixel(x,y,color);
+                    CHECK(memcmp(image.pixels+(y*7+x)*4,color,4)==0,"blur pixel %u,%u",x,y);
+                }
+                iprop_result_free(result);
+            }
+            iprop_program_free(program);
+        }
+    }
 
     /* Steppers use the existing host ABI and preserve caller RNG for all seeds. */
     {

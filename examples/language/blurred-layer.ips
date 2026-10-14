@@ -1,0 +1,27 @@
+asset blurredLayer {
+    size 96x64
+    input f32 sigma = 2.0
+
+    lantern(cx: f32) -> layer {
+        layer image(alpha = surface.source_over) {
+            rect(cx - 9, 20, 18, 26, #ec8930)
+            rect(cx - 6, 23, 12, 20, #ffe0a0)
+            rect(cx - 3, 26, 6, 14, #fff6da)
+            rect(cx - 11, 17, 22, 4, #8db8c2)
+            rect(cx - 11, 46, 22, 4, #8db8c2)
+            line(cx - 5, 18, cx - 5, 12, 2, #8db8c2)
+            line(cx + 5, 18, cx + 5, 12, 2, #8db8c2)
+            line(cx - 5, 12, cx + 5, 12, 2, #8db8c2)
+        }
+        return image
+    }
+
+    draw {
+        rect(0, 0, 96, 64, #182332)
+        for x in 0..12 { rect(x * 8, 0, 1, 64, #243342) }
+        for y in 0..8 { rect(0, y * 8, 96, 1, #243342) }
+        surface.paint(lantern(24), blend = surface.source_over)
+        softImage = lantern(72).blur(sigma)
+        surface.paint(softImage, blend = surface.source_over)
+    }
+}

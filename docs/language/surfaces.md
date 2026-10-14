@@ -105,6 +105,59 @@ diagnostic; rename that alias when migrating its source.
 <!-- example: ../../examples/language/traps/layer-unset.ips -->
 <!-- example: ../../examples/language/traps/layer-fuel.ips -->
 
+## Gaussian blur
+
+Both surface types provide the ordinary method `.blur(sigma)`:
+
+<!-- surface-methods -->
+
+<!-- llm: skip -->
+Use `softImage = image.blur(2.0)` or `softMask = region.blur(sigma = 2)`.
+The required sigma is f32, with automatic i32 widening, and must be finite
+and in 0–64. Known invalid values fail compilation; invalid dynamic values
+trap with `NumericRange`. Receiver and sigma evaluate once, in that order.
+Helpers may accept and return either result, and calls can chain. `blur` remains
+an ordinary name for locals or helpers; there is no global blur builtin.
+
+<!-- llm: skip -->
+The immutable result preserves dimensions, scale, placement and D4. Sigma is
+measured in the input raster's pixels, independent of the active drawing target.
+No paint or RNG draw happens automatically. Sigma zero validates and shares the
+original handle without allocating; an unassigned handle still traps.
+
+<!-- llm: skip -->
+The filter is a horizontal then vertical Gaussian with radius `ceil(3*sigma)`,
+normalized deterministic weights and nearest-edge repetition. RGBA uses
+premultiplied alpha during both passes and restores straight RGBA8 afterward,
+so transparent pixels do not darken colored edges. Channels use their stored
+values without color-space conversion and round nearest, with ties up. An
+output with zero alpha has zero RGB. Mask blur returns A8 coverage identical
+to the alpha of a blurred layer. The active clip applies when painting the
+result; it does not restrict filtering.
+
+<!-- example: ../../examples/language/blur.ips -->
+
+<!-- llm: skip -->
+The following examples put a sharp source on the left and its blurred result
+on the right. Source-over preserves the color of translucent layers:
+
+<!-- example: ../../examples/language/blurred-layer.ips -->
+<!-- example: ../../examples/language/soft-mask.ips -->
+
+<!-- llm: skip -->
+For positive sigma, filtering costs `1 + K + W*H*(1 + 2*K)` fuel, where
+`K = 2*ceil(3*sigma)+1` and W/H are the input dimensions. Weight preparation,
+result initialization and both passes are reserved before filtering, even for
+constant or transparent images. Output storage and a binary64 row cache share
+the 64 MiB generation arena. The cache holds at most `min(H,K)` rows and costs
+`8*W*min(H,K)*channels` bytes (4 channels for layer, 1 for mask); it is released
+on success or error. The result costs the same as a capture or A8 mask of its
+size. Errors never expose a partial result. Large rasters or wide kernels can
+exhaust the normal fuel budget.
+
+<!-- example: ../../examples/language/errors/blur-sigma.ips -->
+<!-- example: ../../examples/language/traps/blur-sigma.ips -->
+
 ## Resources and compatibility
 
 At most 32 layer and clip scopes combined may be active across the complete helper/part call

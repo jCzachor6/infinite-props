@@ -11,6 +11,7 @@
 #include "../../capi/test/source_over_reference.h"
 #include "../../capi/test/mask_reference.h"
 #include "../../capi/test/resource_export_reference.h"
+#include "../../capi/test/blur_reference.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -191,6 +192,21 @@ int main(int argc, char** argv) {
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Gaussian RGBA and coverage pins survive the SFML texture upload/readback.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir+"/gaussian-blur.iprop")),&iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26),&iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==7 && image.height==2 && slots.empty(),"blur SFML metadata");
+        if(image.width==7 && image.height==2){
+            sf::Texture texture;sf::Sprite sprite(texture);iprop::sfml_host::uploadTexture(texture,sprite,{image.width,image.height},image.pixels);
+            const auto uploaded=texture.copyToImage();
+            for(unsigned y=0;y<2;++y)for(unsigned x=0;x<7;++x){std::uint8_t color[4];gaussian_blur_pixel(x,y,color);
+                CHECK(uploaded.getPixel({x,y})==sf::Color(color[0],color[1],color[2],color[3]),"blur SFML pixel %u,%u",x,y);}
+        }
     }
 
     // Internal resource exports leave the SFML output table and texture bytes intact.

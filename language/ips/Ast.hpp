@@ -136,6 +136,11 @@ struct ListMethod {
     std::string name; // distinct or sort; never a global keyword
     SourceLocation location;
 };
+struct SurfaceBlur {
+    std::unique_ptr<Expr> receiver;
+    Arg sigma;
+    SourceLocation location;
+};
 
 struct PointDistributionLiteral {
     struct Point {
@@ -149,9 +154,9 @@ struct PointDistributionLiteral {
 
 struct Expr
     : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
-                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, PointDistributionLiteral> {
+                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral> {
     using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
-                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, PointDistributionLiteral>::variant;
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };

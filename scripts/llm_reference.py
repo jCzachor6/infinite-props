@@ -27,7 +27,7 @@ def select(value, default, known, label):
 def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optional=False):
     # Method signatures are already generated in compiler_rules for every
     # selection. Their handbook placeholder is not prose or a second table.
-    text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '')
+    text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '').replace('<!-- surface-methods -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
@@ -162,6 +162,17 @@ def compiler_rules(language):
                   'Const descriptions and lists of steppers are supported; picks require generation, distinct compares descriptions, '
                   'and sort rejects them. Empty picks still validate their handle but do not check probability mass.', '',
                   method_signatures(rules['steppers']['methods']), '']
+    if 'methods' in rules.get('surfaces', {}):
+        from language_docs import method_signatures
+        lines += ['Layer/mask `.blur(sigma)` requires finite f32 0-64 (i32 widens), in input pixels. '
+                  'Evaluate receiver then sigma once. Immutable results keep geometry/D4, never paint/use RNG. '
+                  'Zero validates/shares without allocation. Otherwise: Gaussian r=ceil(3*sigma), K=2*r+1, '
+                  'normalized pinnedExp weights, binary64 horizontal then vertical; repeat nearest edges. '
+                  'Premultiply stored RGBA, unpremultiply after both passes, round nearest ties up, zero-alpha RGB=0. '
+                  'Masks return A8 matching alpha. Clip applies on paint. Invalid dynamic sigma traps. '
+                  'Fuel 1+K+W*H*(1+2*K); output and 8*W*min(H,K)*C scratch share 64 MiB (C=4 layer,1 mask). '
+                  'Always release scratch; failures publish nothing.', '',
+                  method_signatures(rules['surfaces']['methods']), '']
     if 'random_range' in rules:
         ranged = rules['random_range']
         lines.append('`lower to upper` evaluates the lower bound, then the upper one, then draws once: ' +

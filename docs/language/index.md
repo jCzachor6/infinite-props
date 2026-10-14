@@ -20,7 +20,9 @@ and preserve immutable images for later painting. Explicit source-over alpha
 uses exact straight RGBA8 rounding; helper and part rendering inherit the active
 target mode. Masks share captured alpha or store A8 algebra/morphology results;
 clip scopes limit primitive, paint and weather writes. A parent's clip applies
-once to a part blit. Newly introduced keywords are reserved.
+once to a part blit. Layers and masks also provide immutable Gaussian
+`.blur(sigma)` in input raster pixels, with premultiplied alpha and nearest-edge
+extension. Newly introduced keywords are reserved; `blur` is an ordinary method name.
 Development documentation describes the checkout being built; a release ships
 documentation from its exact tag. The generated book identifies its product
 version, status and source commit. Historical 0.4 contracts and rejected

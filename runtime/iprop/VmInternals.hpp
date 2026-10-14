@@ -142,7 +142,7 @@ struct Execution {
     ListValue popList();
     SamplerValue popSampler();
     LayerValue popLayer();
-    MaskValue popMask();
+    MaskValue popMask(bool matchTarget = true);
     void allocateResource(u64 bytes);
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
@@ -192,6 +192,7 @@ bool stepSteppers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);
+bool stepBlur(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 

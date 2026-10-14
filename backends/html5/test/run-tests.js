@@ -88,6 +88,8 @@ async function main() {
         console.log("native/WASM resource exports: PASS (" + native.resourceExports.comparisons +
             " exact generations; " + native.resourceExports.pins + " independent pins; " +
             native.resourceExports.traps + " matching traps; " + native.resourceExports.rejections + " malformed/version rejections)");
+        console.log("native/WASM blur: PASS (" + native.blur.comparisons + " exact generations; " + native.blur.pins +
+            " independent 2D pins; " + native.blur.traps + " matching traps; " + native.blur.rejections + " malformed/version rejections)");
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

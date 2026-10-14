@@ -90,9 +90,26 @@ def main():
     assert rules['point_distributions']['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,'value':'discrete_mass','equal_bounds':'positive_mass_at_point'}, {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density','equal_bounds':'closed_natural_support'}]
     assert rules['surfaces']['maximum_active_scopes'] == 32
     assert rules['surfaces']['scope_cleanup'] == ['end','return','break','continue']
+    assert 'blur' not in rules['reserved_keywords']
+    assert all(b['name'] != 'blur' for b in description['builtins'])
+    surface_methods = rules['surfaces']['methods']
+    assert len(surface_methods) == 2 and {m['receiver'] for m in surface_methods} == {'layer','mask'}
+    assert all(m['name'] == 'blur' and m['parameters'] == [{'name':'sigma','type':'f32'}] and
+        m['result'] == m['receiver'] and m['opcode'] == m['receiver'] + '.blur' and
+        m['minimum_format_minor'] == 7 and not m['constant_evaluable'] and
+        m['effects']['rng'] == 'none' and not m['effects']['writes_canvas'] for m in surface_methods)
+    assert rules['surfaces']['blur']['maximum_sigma'] == 64
+    assert rules['surfaces']['blur']['clip'] == 'paint_only'
     assert rules['masks']['maximum_radius'] == 64
     assert rules['masks']['part_clip'] == 'parent_applies_to_blit_once'
     cases = [
+        ('layer blur and helper chain', 'echo(x:layer)->layer{return x.blur(0)} draw{layer image{}surface.paint(echo(image).blur(sigma=2))}', True),
+        ('mask blur and widening', 'draw{layer image{}m=mask.from(image).blur(2);surface.paint(m,#fff)}', True),
+        ('blur ordinary helper name', 'blur(x:i32)->i32{return x} draw{blur=blur(2)}', True),
+        ('blur scalar rejected', 'draw{(1).blur(2)}', False),
+        ('blur sigma type rejected', 'draw{layer image{}image.blur(#fff)}', False),
+        ('blur missing sigma rejected', 'draw{layer image{}image.blur()}', False),
+        ('blur out of range rejected', 'draw{layer image{}image.blur(65)}', False),
         ('list transforms and constant empty chain', 'const list<i32> empty=[].sort().distinct() draw{items=[3,1,3].distinct().sort()}', True),
         ('list method names remain identifiers', 'sort(x:i32)->i32{return x} distinct(x:i32)->i32{return x} draw{sort=sort(distinct(1))}', True),
         ('distribution sort rejected', 'draw{items=[gaussian(0,1)].sort()}', False),

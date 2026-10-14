@@ -42,6 +42,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepPointDistributions(ex, ins)) return true;
     if (stepSurfaces(ex, ins)) return true;
     if (stepMasks(ex, ins)) return true;
+    if (stepBlur(ex, ins)) return true;
     if (stepResourceExports(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;

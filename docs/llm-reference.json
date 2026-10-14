@@ -233,7 +233,8 @@
       "chapter": "surfaces.md",
       "parts": "chapter",
       "examples": [
-        "captured-panels.ips"
+        "captured-panels.ips",
+        "blur.ips"
       ]
     }
   ],

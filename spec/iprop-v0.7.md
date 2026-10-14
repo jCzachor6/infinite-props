@@ -147,6 +147,66 @@ of descriptions are allowed; `.pick(n)` always requires generation and cannot
 be constant-evaluated. Palette reads, sampler picks and the global `pick`
 builtin retain their previous semantics.
 
+## Gaussian blur
+
+The ordinary receiver method `.blur(sigma)` accepts a `layer` or `mask` and
+returns the same type. Its one required parameter is `f32`, optionally named
+`sigma`; source i32 arguments widen to f32. There is no global blur builtin or
+reserved `blur` keyword. Receiver and sigma evaluate once, in that order,
+including in helper returns and method chains. Blur never paints, changes an
+alias, reads RNG or advances a stream. The result preserves input raster
+dimensions, scale, integer placement and D4 view. Sigma is measured in input
+raster pixels, independent of the active target. Active clip is ignored during
+filtering and applies normally when the result is painted.
+
+| Opcode | Mnemonic | Stack |
+| --- | --- | --- |
+| 0xDD | `layer.blur` | `[layer, f32 sigma] -> [layer]` |
+| 0xDE | `mask.blur` | `[mask, f32 sigma] -> [mask]` |
+
+Both require minor 7 and zero operand and aux, including in unreachable code.
+The validator checks the exact receiver and f32 sigma types. No existing
+encoding or public C ABI changes. Known nonfinite or out-of-range sigmas are
+source errors. Dynamic negative, nonfinite or greater-than-64 sigmas trap
+with `NumericRange` and `blur sigma must be finite and in 0..64`. After checking
+sigma, the receiver must be assigned and have valid extent, storage and scale.
+An unassigned handle traps with `RuntimeViolation`, even when sigma is zero.
+Positive and negative zero return the shared input handle without allocation,
+pixel changes or extra fuel beyond the instruction's base cost.
+
+For positive sigma, let `r = ceil(3 * binary64(sigma))`, at most 192, and
+`K = 2*r+1`. In increasing offset order `j = -r..r`, compute binary64 weights
+`pinnedExp(-binary64(j*j) / ((2.0 * binary64(sigma)) * binary64(sigma)))`,
+sum from zero in that order, then divide each weight by the sum. Fused
+multiply-add is forbidden. Convolve horizontally, then vertically, accumulating
+from zero in increasing offset order. A sample outside the input rectangle
+repeats the nearest edge pixel in each axis. Horizontal rows retain binary64
+values without intermediate channel rounding.
+
+RGBA8 input channels are interpreted in stored channel space, without gamma
+or other color-space conversion. Horizontal input is
+`((binary64(R)*A)/255.0, (binary64(G)*A)/255.0,
+(binary64(B)*A)/255.0, binary64(A))`. After both passes, round and clamp alpha
+to a byte. If that byte is zero, RGB is zero. Otherwise round and clamp
+`(filtered_channel * 255.0) / filtered_alpha` using the unrounded alpha.
+All final channels round nearest with ties up: `floor(clamp(x,0,255)+0.5)`.
+This premultiplication prevents hidden RGB or transparent black from creating
+halos. Masks convolve only coverage (A8, or the alpha of an RGBA8 view), return
+A8 and round once after both passes. Their result is byte-identical to the
+alpha of a blurred layer with the same input alpha.
+
+Before filtering, reserve extra fuel `K + W*H*(1 + 2*K)` in addition to the
+instruction's one fuel: weight preparation, result initialization and every
+logical sample in both passes. Edge repetition, caching, transparency and
+constant pixels do not change this cost. A result costs `128 + 4*W*H` bytes
+for layer or `128 + W*H` for mask. The horizontal ring cache costs
+`8 * W * min(H,K) * channels`, where channels is 4 for layer and 1 for mask.
+Both share the existing 64 MiB generation-data arena with captures, parts,
+lists and descriptions. The cache is released on success and every error;
+the output charge lasts until its last handle expires. Fuel and combined
+memory are preflighted before allocation/filtering. A validation, fuel or
+memory failure publishes no partial result.
+
 ## Host contracts
 
 C API 0.4 uses ABI line 0.5 with earliest compatible product 0.7.0. Generation

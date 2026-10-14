@@ -289,6 +289,36 @@ def read_language(value):
         require(surface['generation_data_limit_bytes'] == 67108864, 'surface arena limit')
         integer(surface['minimum_format_minor'], 'surface format')
         require(surface['minimum_format_minor'] == 6, 'surface format')
+        if 'methods' in surface or 'blur' in surface:
+            obj(surface, ['methods', 'blur'], 'surface blur capability')
+            require(len(surface['methods']) == 2, 'surface blur signatures')
+            receivers = set()
+            for method in surface['methods']:
+                obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode', 'minimum_format_minor',
+                    'constant_evaluable', 'effects'], 'surface method')
+                require(method['name'] == 'blur' and method['receiver'] in {'layer', 'mask'}, 'surface blur receiver')
+                require(method['parameters'] == [{'name': 'sigma', 'type': 'f32'}] and
+                    method['result'] == method['receiver'], 'surface blur signature')
+                require(method['opcode'] == method['receiver'] + '.blur' and method['minimum_format_minor'] == 7 and
+                    method['constant_evaluable'] is False, 'surface blur lowering')
+                effects(method['effects'], 'surface blur effects')
+                e = method['effects']
+                require(e['rng'] == 'none' and not e['writes_canvas'] and not e['writes_outputs'] and
+                    set(e['may_trap']) == {'numeric_range', 'unassigned_handle'}, 'surface blur effects')
+                receivers.add(method['receiver'])
+            require(receivers == {'layer', 'mask'}, 'unique surface blur signatures')
+            expected = {'sigma_type': 'f32', 'minimum_sigma': 0, 'maximum_sigma': 64,
+                'sigma_units': 'input_raster_pixels', 'evaluation': 'receiver_then_sigma_once',
+                'kernel_radius': 'ceil_3_sigma', 'maximum_radius': 192, 'border': 'nearest_edge',
+                'passes': 'horizontal_then_vertical_binary64', 'weights': 'normalized_pinned_exp_increasing_offset',
+                'color': 'premultiplied_stored_channels_unpremultiply_after_both_passes',
+                'rounding': 'nearest_half_up_zero_alpha_zero_rgb', 'mask_result': 'A8_alpha_equivalent',
+                'geometry': 'preserve_dimensions_scale_placement_D4', 'zero_sigma': 'validate_then_share_no_allocation',
+                'clip': 'paint_only', 'positive_sigma_fuel': 'one_plus_K_plus_W_H_times_1_plus_2_K',
+                'scratch_bytes': '8_times_W_min_H_K_channels', 'scratch_channels': {'layer': 4, 'mask': 1},
+                'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter'}
+            blur = obj(surface['blur'], list(expected), 'surface blur policy')
+            require(all(blur[key] == expected[key] for key in expected), 'surface blur policy')
         paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
         require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
             'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')

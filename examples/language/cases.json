@@ -1,5 +1,10 @@
 {
   "cases": [
+    {"file":"blur.ips","expect":"pass"},
+    {"file":"blurred-layer.ips","expect":"pass"},
+    {"file":"soft-mask.ips","expect":"pass"},
+    {"file":"errors/blur-sigma.ips","expect":"compile-error","message":"blur sigma must be finite and in 0..64"},
+    {"file":"traps/blur-sigma.ips","expect":"trap","message":"blur sigma must be finite and in 0..64"},
     {"file":"steppers.ips","expect":"pass"},
     {"file":"errors/stepper-count.ips","expect":"compile-error","message":"stepper result count must be between 0 and 256"},
     {"file":"errors/stepper-missing-count.ips","expect":"compile-error","message":"requires one i32 count"},

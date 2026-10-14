@@ -4,7 +4,9 @@
 #include <algorithm>
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
+#include "ips/AssetConstants.hpp"
 
+#include <cmath>
 #include <utility>
 
 namespace iprop::ips {
@@ -175,6 +177,22 @@ ValueType Typer::typeOf(const Expr& expr, std::optional<ValueType> context) {
 }
 
 ValueType Typer::infer(const Expr& expr) {
+    if (const auto* blur = std::get_if<SurfaceBlur>(&expr)) {
+        const auto receiver = typeOf(*blur->receiver);
+        const auto sigma = typeOf(*blur->sigma.value, ValueType::F32);
+        if (receiver != ValueType::Layer && receiver != ValueType::Mask)
+            error(blur->location, ".blur needs a layer or mask receiver, got " + std::string(typeName(receiver)));
+        const std::array arguments{receiver, sigma};
+        const auto* overload = builtinOverload(surfaceMethodSpecs().at("blur"), arguments);
+        if (!overload)
+            error(locationOf(*blur->sigma.value), ".blur sigma must be f32, got " + std::string(typeName(sigma)));
+        if (const auto known = knownAssetExpression(*owner_, *blur->sigma.value, resolveAssetConstants(*owner_))) {
+            const auto value = std::holds_alternative<i32>(*known) ? static_cast<f32>(std::get<i32>(*known)) : std::get<f32>(*known);
+            if (!std::isfinite(value) || value < 0 || value > kMaxBlurSigma)
+                error(locationOf(*blur->sigma.value), "blur sigma must be finite and in 0..64");
+        }
+        return overload->result;
+    }
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         return typeLiteral(*lit);
     }

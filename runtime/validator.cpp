@@ -95,6 +95,8 @@ public:
             if (ins.opcode >= Opcode::MaskFrom && ins.opcode <= Opcode::ClipBegin &&
                 spec->operand == OperandKind::None && ins.operand != 0)
                 fail(i, "mask/clip operand must be zero");
+            if ((ins.opcode == Opcode::LayerBlur || ins.opcode == Opcode::MaskBlur) && ins.operand != 0)
+                fail(i, "blur operand must be zero");
             if (file_.layout.header.versionMinor < spec->minimumMinor) {
                 fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
                         std::to_string(spec->minimumMinor));
@@ -221,6 +223,13 @@ private:
             expect(at, ValueType::Color, "surface.paint mask color");
             expect(at, ValueType::Mask, "surface.paint mask");
             return;
+        case Opcode::LayerBlur: case Opcode::MaskBlur: {
+            expect(at, ValueType::F32, "blur sigma");
+            const auto type = ins.opcode == Opcode::LayerBlur ? ValueType::Layer : ValueType::Mask;
+            expect(at, type, "blur receiver");
+            push(at, type);
+            return;
+        }
         case Opcode::MaskFrom:
             expect(at, ValueType::Layer, "mask.from image");
             push(at, ValueType::Mask);

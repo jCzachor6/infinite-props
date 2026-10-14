@@ -130,6 +130,16 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
     return table;
 }
 
+const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {
+    using V = ValueType;
+    static const std::map<std::string, BuiltinSpec> methods{
+        {"blur", {BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"sigma", V::F32}}, Opcode::LayerBlur, V::Layer},
+            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}}
+    };
+    return methods;
+}
+
 const std::map<std::string, BuiltinSpec>& listMethodSpecs() {
     static const auto specs = [] {
         std::vector<BuiltinOverload> distinct, sort;

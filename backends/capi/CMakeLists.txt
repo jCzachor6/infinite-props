@@ -121,7 +121,7 @@ add_custom_command(OUTPUT ${result_output_fixture}
 add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
 add_dependencies(capi_golden capi_result_output_fixture)
 
-foreach(source test/language.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
+foreach(source test/language.ips test/gaussian-blur.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
         ../../examples/language/samplers.ips ../../examples/language/steppers.ips ../../examples/language/sampling-palettes.ips
         ../../examples/language/weighted.ips ../../examples/language/point-distributions.ips

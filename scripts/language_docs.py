@@ -24,6 +24,7 @@ LLM_SKIP = re.compile(r"^<!-- llm: skip -->\n", re.M)
 SAMPLER_METHODS = re.compile(r"^<!-- sampler-methods -->$", re.M)
 STEPPER_METHODS = re.compile(r"^<!-- stepper-methods -->$", re.M)
 LIST_METHODS = re.compile(r"^<!-- list-methods -->$", re.M)
+SURFACE_METHODS = re.compile(r"^<!-- surface-methods -->$", re.M)
 
 def method_signatures(methods):
     lines = ['| Receiver | Method | Result |', '| --- | --- | --- |']
@@ -217,6 +218,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
         content = SAMPLER_METHODS.sub(lambda _: method_signatures(language['source_rules']['samplers']['methods']), content)
         content = STEPPER_METHODS.sub(lambda _: method_signatures(language['source_rules']['steppers']['methods']), content)
         content = LIST_METHODS.sub(lambda _: method_signatures(language['source_rules']['collections']['methods']), content)
+        content = SURFACE_METHODS.sub(lambda _: method_signatures(language['source_rules']['surfaces']['methods']), content)
         expanded[chapter] = content
         output[chapter.relative_to(root).as_posix()] = content
 

@@ -71,17 +71,29 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
 
+Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signature) {
+    Json parameters = Json::array();
+    for (std::size_t i = 1; i < signature.params.size(); ++i)
+        parameters.push_back(Json::object({{"name", signature.params[i].name}, {"type", ips::typeName(signature.params[i].type)}}));
+    const auto* opcode = findOpcode(*signature.opcode);
+    return Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
+        {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
+        {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
+        {"effects", operationEffects(opcode->effects)}});
+}
+
 Json descriptionMethods(const ips::BuiltinSpec& spec) {
     Json methods = Json::array();
-    for (const auto& signature : spec.overloads) {
-        Json parameters = Json::array();
-        for (std::size_t i = 1; i < signature.params.size(); ++i)
-            parameters.push_back(Json::object({{"name", signature.params[i].name}, {"type", ips::typeName(signature.params[i].type)}}));
-        const auto* opcode = findOpcode(*signature.opcode);
-        methods.push_back(Json::object({{"name", "pick"}, {"receiver", ips::typeName(signature.params[0].type)},
-            {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
-            {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
-            {"effects", operationEffects(opcode->effects)}}));
+    for (const auto& signature : spec.overloads) methods.push_back(receiverMethod("pick", signature));
+    return methods;
+}
+
+Json surfaceMethods() {
+    Json methods = Json::array();
+    for (const auto& [name, spec] : ips::surfaceMethodSpecs()) for (const auto& signature : spec.overloads) {
+        auto method = receiverMethod(name, signature);
+        method["constant_evaluable"] = false;
+        methods.push_back(std::move(method));
     }
     return methods;
 }
@@ -269,6 +281,17 @@ Json sourceRules() {
     Json alphaModes = Json::array();
     for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({
+        {"methods", surfaceMethods()},
+        {"blur", Json::object({{"sigma_type", "f32"}, {"minimum_sigma", 0}, {"maximum_sigma", static_cast<u32>(kMaxBlurSigma)},
+            {"sigma_units", "input_raster_pixels"}, {"evaluation", "receiver_then_sigma_once"},
+            {"kernel_radius", "ceil_3_sigma"}, {"maximum_radius", 192}, {"border", "nearest_edge"},
+            {"passes", "horizontal_then_vertical_binary64"}, {"weights", "normalized_pinned_exp_increasing_offset"},
+            {"color", "premultiplied_stored_channels_unpremultiply_after_both_passes"},
+            {"rounding", "nearest_half_up_zero_alpha_zero_rgb"}, {"mask_result", "A8_alpha_equivalent"},
+            {"geometry", "preserve_dimensions_scale_placement_D4"}, {"zero_sigma", "validate_then_share_no_allocation"},
+            {"clip", "paint_only"}, {"positive_sigma_fuel", "one_plus_K_plus_W_H_times_1_plus_2_K"},
+            {"scratch_bytes", "8_times_W_min_H_K_channels"}, {"scratch_channels", Json::object({{"layer", 4}, {"mask", 1}})},
+            {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"}})},
         {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
         {"capture_syntax", "layer <name> [(alpha=surface.<mode>)] { <statements> }"},
         {"keyword", "reserved"}, {"capture_target", "empty_current_geometry_and_scale"},

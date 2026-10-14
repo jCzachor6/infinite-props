@@ -27,9 +27,18 @@ void ResourceArena::clear() {
 }
 
 std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
+    // The charge precedes this factory. Refund it even if allocation of the
+    // lifetime token or the buffer itself fails before a deleter can own it.
+    struct Refund {
+        ResourceArena& arena;
+        u64 bytes;
+        ~Refund() { arena.release(bytes); }
+    } refund{*this, chargedBytes};
     if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes});
     const std::weak_ptr<SurfaceLifetime> lifetime = surfaceLifetime;
-    auto buffer = std::shared_ptr<SurfaceBuffer>(new SurfaceBuffer,
+    auto* raw = new SurfaceBuffer;
+    refund.bytes = 0; // shared_ptr invokes the deleter if its control allocation fails
+    auto buffer = std::shared_ptr<SurfaceBuffer>(raw,
         [lifetime, chargedBytes](SurfaceBuffer* value) {
             delete value;
             if (const auto live = lifetime.lock(); live && live->bytes)

@@ -45,6 +45,7 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs();
 const BuiltinSpec& samplerPickSpec();
 const BuiltinSpec& stepperPickSpec();
 const std::map<std::string, BuiltinSpec>& listMethodSpecs();
+const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
 // The distribution constructors arrived after helpers could take their

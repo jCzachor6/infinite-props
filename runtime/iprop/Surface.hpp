@@ -45,6 +45,7 @@ struct RenderTarget {
 
 inline constexpr u32 kMaxSurfaceScopes = 32;
 inline constexpr i32 kMaxMaskRadius = 64;
+inline constexpr f32 kMaxBlurSigma = 64.0f;
 // Named captures include their handle/control metadata. Part canvas accounting
 // retains its existing 4 bytes per pixel in format 0.6, and older files remain
 // outside the generation arena.

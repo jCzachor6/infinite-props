@@ -461,3 +461,23 @@ test("resource output declarations preserve comments and use reserved types", as
         assert.equal(new RegExp(grammar.repository.layerCapture.match).test("output layer image"),true);
     } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test("surface blur formats named sigma comments chains and ordinary names", async () => {
+    const source="asset t{size 3x2 blur(x:i32)->i32{return x} echo(image:layer)->layer{return image.blur(0)} "+
+        "draw{layer image{}copy=echo(image)/* receiver */.blur(/* sigma */sigma=1).blur(0.5);"+
+        "region=mask.from(copy).blur(2);image.blur(0);x=blur(3)}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try {
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("/* receiver */"));assert.ok(formatted.includes("/* sigma */"));
+        assert.ok(formatted.includes("sigma = 1"));assert.ok(formatted.includes(".blur(0.5)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        const method=new RegExp(grammar.repository.surfaceMethod.match);
+        assert.ok(method.test("image.blur(2)"));assert.ok(method.test("mask.from(image).blur(sigma=2)"));
+        assert.equal(method.test("blur(2)"),false);assert.equal(method.test("image.blurry(2)"),false);
+    } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});

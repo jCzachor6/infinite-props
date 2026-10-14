@@ -310,6 +310,10 @@ class SourcePrinter {
                 expression(*node.receiver); out_ << ".pick(";
                 if (node.count) expression(*node.count);
                 out_ << ')';
+            } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
+                expression(*node.receiver); out_ << ".blur(";
+                if (node.sigma.name) out_ << "sigma = ";
+                expression(*node.sigma.value); out_ << ')';
             } else if constexpr (std::is_same_v<T, ListMethod>) {
                 expression(*node.receiver); out_ << '.' << node.name << "()";
             } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {

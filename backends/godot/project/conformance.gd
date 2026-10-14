@@ -676,6 +676,25 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL mask pixel ",x,",",y)
 
+	# Independent sigma=1 impulse pins for layer and mask blur through Godot.
+	var blurred := IpropAsset.new()
+	if blurred.load_file(args[0] + "/gaussian-blur.iprop") != OK:
+		failures += 1
+		printerr("FAIL blur load")
+	else:
+		var blur_image := blurred.generate(26)
+		if blur_image == null or blur_image.get_size() != Vector2i(7,2) or not blurred.outputs.is_empty():
+			failures += 1
+			printerr("FAIL blur metadata")
+		else:
+			var blur_alpha := [1,7,31,51,31,7,1]
+			for y in range(2):
+				for x in range(7):
+					var color := Color8(255,80,40,blur_alpha[x]) if y == 0 else Color8(255,255,255,blur_alpha[x])
+					if blur_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL blur pixel ",x,",",y)
+
 	if failures == 0:
 		print("godot conformance: PASS (", entries.size(), " corpus entries + the outputs)")
 	else:

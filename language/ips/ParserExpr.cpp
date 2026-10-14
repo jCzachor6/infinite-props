@@ -226,6 +226,10 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
                     throw SourceError{at, ".pick takes no arguments or one i32 count named 'n'"};
                 expr = std::make_unique<Expr>(SamplerPick{std::move(member->object),
                     args.empty() ? nullptr : std::move(args[0].value), at});
+            } else if (member && member->name == "blur") {
+                if (args.size() != 1 || (args[0].name && *args[0].name != "sigma"))
+                    throw SourceError{at, ".blur takes one f32 sigma, optionally named 'sigma'"};
+                expr = std::make_unique<Expr>(SurfaceBlur{std::move(member->object), std::move(args[0]), at});
             } else if (member && (member->name == "distinct" || member->name == "sort")) {
                 if (!args.empty()) throw SourceError{at, "." + member->name + " takes no arguments"};
                 expr = std::make_unique<Expr>(ListMethod{std::move(member->object), member->name, at});
