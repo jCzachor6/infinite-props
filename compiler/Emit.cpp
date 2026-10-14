@@ -257,6 +257,13 @@ u32 Emitter::slotForOutput(const ips::Program* owner,
 void Emitter::emitOutputWrite(const ips::Program* owner,
                               const ips::OutputDecl& output,
                               const ips::Expr& value) {
+    if (ips::isResourceOutput(output.kind)) {
+        const u32 asset = current_->partOwner.value_or(kRootParent);
+        emitExpr(value);
+        ins(output.kind == ips::OutputKind::Mask ? Opcode::OutMask : Opcode::OutLayer,
+            0, plan_.resourceSlotIndex.at({asset, output.name}));
+        return;
+    }
     const u32 slot = slotForOutput(owner, output);
     if (output.kind == ips::OutputKind::Point) {
         // Points take the vec2 shape: a literal pair, a bare part read or
@@ -277,6 +284,9 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
         emitExpr(value); // part.get.* pushes the right shape
     }
     switch (output.kind) {
+    case ips::OutputKind::Mask:
+    case ips::OutputKind::Layer:
+        break; // handled above
     case ips::OutputKind::Point:
         break; // handled above
     case ips::OutputKind::Rect:

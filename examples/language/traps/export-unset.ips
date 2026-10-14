@@ -1,0 +1,8 @@
+import patch from "../parts/exported-patch.ips"
+asset exportUnset {
+  size 8x4
+  draw {
+    patch.draw(seed, v, a, at={2, 1}, writeExport=0)
+    surface.paint(patch.outputs.image)
+  }
+}

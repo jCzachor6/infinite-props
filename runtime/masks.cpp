@@ -74,14 +74,13 @@ std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bound
     ex.spend(count);
     ex.spend(count * samples);
     ex.allocateResource(maskBytes(bounds.width, bounds.height));
-    auto buffer = std::make_shared<SurfaceBuffer>();
+    auto buffer = ex.resources.makeSurface(maskBytes(bounds.width, bounds.height));
     buffer->format = SurfaceBuffer::Format::A8;
     buffer->raster.width = bounds.width;
     buffer->raster.height = bounds.height;
     buffer->raster.scaleX = ex.canvas().scaleX;
     buffer->raster.scaleY = ex.canvas().scaleY;
     buffer->coverage.assign(static_cast<std::size_t>(count), 0);
-    ex.resources.surfaces.push_back(buffer);
     return buffer;
 }
 

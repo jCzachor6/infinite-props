@@ -1,13 +1,42 @@
 #include "iprop/VmInternals.hpp"
+#include <algorithm>
 
 namespace iprop {
 
 RenderTarget RenderTarget::create(u32 width, u32 height, Vec2 scale, CompositionMode mode) {
-    auto buffer = std::make_shared<SurfaceBuffer>();
+    return create(std::make_shared<SurfaceBuffer>(), width, height, scale, mode);
+}
+
+RenderTarget RenderTarget::create(std::shared_ptr<SurfaceBuffer> buffer,
+        u32 width, u32 height, Vec2 scale, CompositionMode mode) {
     buffer->raster.resize(width, height);
     buffer->raster.scaleX = scale.x;
     buffer->raster.scaleY = scale.y;
     return {std::move(buffer), mode, {}};
+}
+
+ResourceArena::~ResourceArena() { clear(); }
+
+void ResourceArena::clear() {
+    if (surfaceLifetime) surfaceLifetime->bytes = nullptr;
+    surfaceLifetime.reset();
+    surfaces.clear(); lists.clear(); samplers.clear(); constants.clear();
+    samplerConstants.clear(); distributions.clear(); distributionConstants.clear();
+    bytes = 0; peak = 0;
+}
+
+std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
+    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes});
+    const std::weak_ptr<SurfaceLifetime> lifetime = surfaceLifetime;
+    auto buffer = std::shared_ptr<SurfaceBuffer>(new SurfaceBuffer,
+        [lifetime, chargedBytes](SurfaceBuffer* value) {
+            delete value;
+            if (const auto live = lifetime.lock(); live && live->bytes)
+                *live->bytes -= chargedBytes;
+        });
+    std::erase_if(surfaces, [](const auto& item) { return item.expired(); });
+    surfaces.push_back(buffer);
+    return buffer;
 }
 
 namespace detail {
@@ -55,10 +84,9 @@ void Execution::beginLayer(u16 local, u8 mode) {
     const Vec2 scale{canvas().scaleX, canvas().scaleY};
     spend(static_cast<u64>(width) * height);
     allocateResource(surfaceBytes(width, height));
-    auto next = RenderTarget::create(width, height, scale,
+    auto next = RenderTarget::create(resources.makeSurface(surfaceBytes(width, height)), width, height, scale,
         resolveComposition(static_cast<CompositionMode>(mode), target.mode));
     next.clips = target.clips;
-    resources.surfaces.push_back(next.buffer);
     LayerScope scope{frames.size(), frame().labels.size() + 1, local, std::move(target)};
     layerScopes.push_back(std::move(scope));
     target = std::move(next);

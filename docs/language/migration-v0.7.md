@@ -1,15 +1,15 @@
 # Migration and contracts for 0.7
 
-This checkout implements stages 1–10 of source language 0.7: exact integer bounds,
+This checkout implements stages 1–11 of source language 0.7: exact integer bounds,
 stable vector normalization, typed asset constants, immutable lists and captured
 samplers with explicit single/batch picks, const descriptions, sampling palettes
 and weighted/density distributions, plus captured layers on shared part/render
 targets and explicit source-over alpha. Product 0.7.0 is under development.
-Masks, clipping, coverage algebra and disk morphology are implemented. Part surface exports remain a later stage.
+Masks, clipping, coverage algebra, disk morphology and internal part mask/layer exports are implemented.
 
 ## Independent versions
 
-| Contract | 0.6 release | 0.7 development, stages 1–10 |
+| Contract | 0.6 release | 0.7 development, stages 1–11 |
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |

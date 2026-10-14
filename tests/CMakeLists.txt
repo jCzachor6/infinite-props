@@ -51,6 +51,7 @@ add_executable(iprop_tests
     compiler/surfaces_test.cpp
     compiler/source_over_test.cpp
     compiler/masks_test.cpp
+    compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
@@ -163,6 +164,8 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
     add_test(NAME frozen_math_compatibility COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_frozen_math.py" "$<TARGET_FILE:ipgen>")
+    add_test(NAME resource_export_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_resource_export_reference.py")
     add_test(NAME compiler_diagnostic_failures COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_diagnostic_failures.py" "$<TARGET_FILE:compiler_diagnostic_failure_probe>")
     add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}

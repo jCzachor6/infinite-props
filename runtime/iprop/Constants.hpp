@@ -27,6 +27,7 @@ enum class SectionId : u32 {
     Collections = 7, // v0.6: immutable collection constants
     Samplers = 8, // v0.6: immutable sampler constants
     Distributions = 9, // v0.6: immutable point distribution constants
+    ResourceExports = 10, // v0.6: internal mask/layer exports and function owners
 };
 
 // Input (uniform) types (spec §4.1).
@@ -271,6 +272,10 @@ enum class Opcode : u8 {
     MaskOffset = 0xCF,
     SurfacePaintMask = 0xD0,
     ClipBegin = 0xD1,
+    OutMask = 0xD2,
+    OutLayer = 0xD3,
+    PartGetMask = 0xD4,
+    PartGetLayer = 0xD5,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

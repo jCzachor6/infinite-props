@@ -222,8 +222,16 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
 
 ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const PartRead read = partReadInfo(expr);
+    if (ips::isResourceOutput(read.kind)) {
+        const auto slot = plan_.resourceSlotIndex.at({plan_.partIndex.at(read.alias), read.output->name});
+        ins(read.kind == ips::OutputKind::Mask ? Opcode::PartGetMask : Opcode::PartGetLayer, 0, slot);
+        return read.kind == ips::OutputKind::Mask ? ips::ValueType::Mask : ips::ValueType::Layer;
+    }
     const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
     switch (read.kind) {
+    case ips::OutputKind::Mask:
+    case ips::OutputKind::Layer:
+        break; // handled above
     case ips::OutputKind::Point:
         ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
         ins(Opcode::Vec2Make);

@@ -19,8 +19,8 @@ variants      = "variants", integer, [ ";" ] ;
 archetypes    = "archetypes", integer, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
-output        = "output", [ "list" ], output_kind, name, [ ";" ] ;
-output_kind   = "point" | "circle" | "rect" ;
+output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* list: geometry only *)
+output_kind   = "point" | "circle" | "rect" | "mask" | "layer" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
 asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;

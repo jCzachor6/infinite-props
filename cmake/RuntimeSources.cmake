@@ -37,6 +37,7 @@ set(IPROP_RUNTIME_SOURCES
     canvas.cpp
     compositor.cpp
     surfaces.cpp
+    resource_exports.cpp
     masks.cpp
     outputs.cpp
     parts.cpp

@@ -261,6 +261,22 @@ def read_language(value):
         paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
         require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
             'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
+    if 'resource_exports' in rules:
+        exports = rules['resource_exports']
+        _strings_and_bools(exports, {
+            'table': {'separate_from_host_geometry'}, 'syntax': {'output <mask|layer> <name>'},
+            'read': {'direct_child_last_called_part'}, 'unset_slot': {'trap'},
+            'write': {'immutable_snapshot_in_owner_caller_coordinates'},
+            'no_write_call': {'retain_previous_snapshot_and_placement'},
+            'propagation': {'one_placement_scale_and_D4_per_export_level'},
+            'buffer_transfer': {'shared_without_copy'}, 'buffer_release': {'last_handle'},
+            'generation_cleanup': {'success_and_trap'}},
+            ['automatic_paint', 'host_handles', 'list_exports'], 'resource exports')
+        require(exports.get('types') == ['mask', 'layer'], 'resource export types')
+        require(not any(exports[k] for k in ['automatic_paint', 'host_handles', 'list_exports']), 'resource export restrictions')
+        for key, expected in [('maximum_slots',65536),('slot_bytes',64),('write_read_fuel',1),('section_id',10),('minimum_format_minor',6)]:
+            integer(exports.get(key), 'resource_exports.' + key)
+            require(exports[key] == expected, 'resource_exports.' + key)
     if 'masks' in rules:
         masks = rules['masks']
         _strings_and_bools(masks, {

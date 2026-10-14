@@ -111,19 +111,20 @@ At most 32 layer and clip scopes combined may be active across the complete help
 stack. Each capture reserves `128 + 4 * width * height` bytes from the shared
 64 MiB generation arena. Copies and mapping views charge no second buffer.
 Root canvas allocation retains its existing limits. Extra part canvases use the
-arena in format 0.6 and release their allocation after the blit; formats 0.1–0.5
+arena in format 0.6 and release their allocation when the last handle expires; formats 0.1–0.5
 retain their previous canvas limits. Existing part allocation, blit fuel,
 pixel rules, output transforms and RNG stay unchanged.
 
 A capture instruction costs one fuel plus one per target pixel cleared; paint
 costs one plus one per source pixel visited. These costs are reserved before
 allocation or scanning. Drawing inside a layer keeps the primitive's usual
-fuel cost. Resources release at the end of generation or on a trap, and a failed
+fuel cost. Each surface buffer releases when its last handle is destroyed;
+success or a trap clears the generation's remaining handles. A failed
 generation never publishes a partial image. Default fuel remains 2,000,000.
 
 Layers require format 0.6 and use its type descriptor table. They do not add
-public C input/output enums or host layouts. Surface exports are a later stage;
-current host outputs remain points, rectangles and circles.
+public C input/output enums or host layouts. Host outputs remain points,
+rectangles and circles; resource exports use their own internal table.
 
 ## Masks from captured alpha
 
@@ -227,3 +228,35 @@ not charge the full buffer again.
 <!-- example: ../../examples/language/traps/mask-unset.ips -->
 <!-- example: ../../examples/language/traps/mask-radius.ips -->
 <!-- example: ../../examples/language/traps/mask-fuel.ips -->
+
+## Export regions from parts
+
+Declare `output mask region` or `output layer image` in a component and assign
+a matching handle. Its parent reads `child.outputs.region` or
+`child.outputs.image` after calling that direct child. Exporting does not paint:
+explicitly paint a layer or use a mask for clipping. Capture an entire part
+with `layer name { child.draw(...) }`; there is no `part.render`.
+
+Each write freezes a snapshot in the owner's caller coordinates, including
+that call's raster scale, placement and D4. Propagating through the parent's
+own output applies the next hierarchy level once. Local copies retain their
+buffer and mapping after slot replacements. A later call with no write retains
+the previous snapshot **and its previous placement**. Reading requires this
+frame's last-called part; an unwritten slot traps. A root resource output is
+also internal and is not host-readable.
+
+<!-- example: ../../examples/language/resource-exports.ips -->
+<!-- example: ../../examples/language/parts/exported-frame.ips -->
+<!-- example: ../../examples/language/parts/exported-patch.ips -->
+
+The format has a separate resource-export table. C API `output_count`, part
+output ranges and host indices count geometry only; point/rect/circle tags
+and ABI layouts do not change. Slots reserve 64 bytes each in the generation
+arena. Views share a buffer, charge it once, and do not scan pixels. A write
+or read costs one instruction fuel and consumes no RNG. The last handle frees
+its surface; success and traps clear remaining generation resources. Handles
+cannot escape a generation or survive in a cross-seed cache.
+
+<!-- example: ../../examples/language/errors/export-type.ips -->
+<!-- example: ../../examples/language/errors/export-list.ips -->
+<!-- example: ../../examples/language/traps/export-unset.ips -->

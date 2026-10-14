@@ -1,12 +1,12 @@
 # `.iprop` Format and Virtual Machine — Specification v0.6
 
-**Status:** Development contract for product 0.7.0, stages 1–10 (2026-10-13).
+**Status:** Development contract for product 0.7.0, stages 1–11 (2026-10-13).
 **Scope:** Signed integer bounds, vector normalization, immutable collections, captured and constant samplers, sampling palettes, weighted and density distributions, shared render targets, captured layers, source-over alpha, coverage masks, clipping and disk morphology. This document
 inherits [v0.5](iprop-v0.5.md), with the additions below taking precedence.
 Every existing opcode number, type code, section layout, math kernel, RNG,
 canvas operation, output and fuel rule remains frozen. Later 0.7 stages may
 extend this development format; resource
-exports are not implemented yet. Scalar asset constants add no binary layout or instruction.
+exports use the separate table in section 17. Scalar asset constants add no binary layout or instruction.
 
 ## 1. Versions and containers
 
@@ -604,7 +604,7 @@ A buffer stores width, height, raster scale and row-major straight RGBA8.
 An immutable view retains its buffer and adds D4 and integer pixel placement;
 creating/copying the view neither copies nor scans pixels. Closed captures
 expose no writable buffer through a language value. Mask coverage is specified
-in section 16. Part resource exports remain a later stage and do not use geometry output slots.
+in section 16. Part resource exports use section 17, never geometry output slots.
 
 A capture starts transparent, with its parent's geometry/scale, and executes
 its block once using the current frame's RNG. Part calls retain their own
@@ -653,10 +653,10 @@ existing owner/caller/root coordinate rules.
 At most 32 layer/clip scopes combined may be active across all frames; static nesting above 32
 also rejects. The shared 64 MiB generation arena charges a capture once as
 `128 + 4 * width * height`. Handle copies and D4/placement views cost no second
-buffer. Generation retains captured buffers until success or trap cleanup.
+buffer. Captured buffers live until their last handle is destroyed; success and traps clear remaining handles.
 Root storage keeps its existing canvas limits and is excluded from this arena.
 Format-0.6 part canvases retain the existing `4 * width * height` accounting,
-released after blitting; older binaries retain their pre-arena limits.
+released when their last handle is destroyed; older binaries retain their pre-arena limits.
 
 Layer begin costs base 1 plus N target pixels cleared, reserved before
 allocation. Paint costs base 1 plus N source pixels visited, reserved before
@@ -770,7 +770,7 @@ the parent's geometry and inherits clips; scope cleanup restores its saved
 target, mode and clips. A part starts its own canvas with no parent clips.
 Only its return blit receives the restored parent's clip, exactly once.
 Clips created inside the part independently constrain its stored image.
-Geometric outputs are never clipped. Resource exports remain stage 11.
+Geometric outputs are never clipped. Resource exports follow section 17 and do not inherit parent clip coverage.
 
 At each in-target attempted write, start clip coverage at 255 and multiply
 outer to inner using `mul(a,b)=(u32(a)*b+127)/255`. After combining all levels,
@@ -838,4 +838,72 @@ Sharing a buffer does not charge it again. Instructions cost one fuel, plus:
 View construction and offset have no per-pixel cost. Reserve zeroing and all
 logical scan work before allocation/scanning, with checked u64 counts. Existing
 part/capture costs and the 2,000,000 default fuel stay unchanged. Resources
-release at generation completion/trap; a failed run does not return an image.
+release when the last handle is destroyed and at generation completion/trap;
+a failed run does not return an image.
+
+## 17. Internal resource exports
+
+Source `output mask name` and `output layer name` declare singular internal
+slots. They do not extend frozen geometry enums, meta/code geometry outputs,
+the Parts section, C API 0.3 or ABI line 0.4. Host `output_count`, part output
+ranges and every existing output index still refer only to geometry.
+
+Optional section **10 (ResourceExports)** requires format 0.6, even if all
+exports are unused. Its exact little-endian layout is:
+
+```text
+u32 export_count                    // 1..65536
+repeat export_count:
+  u32 owner                         // part index, or 0xffffffff for root
+  u32 name_string_index
+  u16 type_descriptor_index         // mask (13) or layer (12)
+  u16 reserved                      // zero
+u32 function_count                  // exactly the Code function count
+repeat function_count:
+  u32 function_owner                // same owner encoding
+```
+
+Owners and string/type indices must be in range. Resource and geometry names
+must be unique within each owner. Type descriptors are retained for unused
+exports. No trailing bytes are permitted. With exports, every part has an
+existing Parts record; the root entry belongs to root and each part entry to
+that part. Helper calls preserve their declared asset owner. Static validation
+checks every function and instruction, including unused helpers and dead code:
+only an owner may write its slot, and only a direct parent may read it or draw
+the owning part. The table is omitted entirely for programs without exports.
+
+| Op | Mnemonic | Stack |
+| --- | --- | --- |
+| 0xD2 | out.mask slot | `[mask] -> []` |
+| 0xD3 | out.layer slot | `[layer] -> []` |
+| 0xD4 | part.get.mask slot | `[] -> [mask]` |
+| 0xD5 | part.get.layer slot | `[] -> [layer]` |
+
+Aux is zero. The u16 operand indexes only this resource table; bounds, type,
+owner and format are validated even in dead code. Reads require the frame's
+last-called direct child, and an unwritten slot traps with PartOutputMissing.
+Writing an unset handle traps. Neither operation paints, advances RNG, copies
+pixels or scans the buffer; each costs one base instruction fuel.
+
+A write saves an immutable shared view in the owner's caller coordinates.
+The view's D4 is composed with that call's D4; its origin is the minimum of
+the transformed rectangle's pixel corners plus the call's target origin.
+Use checked integer arithmetic for offset/expanded masks, including pixels
+outside the part canvas; unrepresentable i32 bounds trap with NumericRange.
+Raster scale follows D4 axis swapping without resampling. Propagation through
+the parent's own export applies the next hierarchy level exactly once.
+A later call without a write keeps the old buffer **and old mapping**. Copies
+hold their snapshot after slot replacement. Exporting never paints implicitly.
+
+Slots charge 64 bytes each once per generation. Buffers charge their existing
+RGBA8/A8 allocation once, shared by layers, masks, helpers and export slots.
+Destroying the last handle frees storage immediately and releases its quota.
+Part canvases still charge 4 bytes per pixel in format 0.6, the root is excluded,
+and older format limits are unchanged. Success and traps clear remaining
+generation handles, with no cross-generation resources or seed-dependent cache.
+The 64 MiB data cap, combined 32 scope limit and default fuel stay unchanged.
+
+IPA represents records in table order as `export: mask|layer name root|index`
+and function ownership as `owner: function_name root|index`. IPDIS preserves
+these declarations, including part/helper owners; numeric opcode operands
+retain resource-table indices through assembly, debug stripping and compression.

@@ -337,9 +337,12 @@ OutputDecl ParserImpl::parseOutput() {
     case TokenKind::KindPoint: outputKind = OutputKind::Point; break;
     case TokenKind::KindRect: outputKind = OutputKind::Rect; break;
     case TokenKind::KindCircle: outputKind = OutputKind::Circle; break;
+    case TokenKind::KeywordMask: outputKind = OutputKind::Mask; break;
+    case TokenKind::KeywordLayer: outputKind = OutputKind::Layer; break;
     default:
-        failExpected("an output kind (point, rect or circle)");
+        failExpected("an output kind (point, rect, circle, mask or layer)");
     }
+    if (isList && isResourceOutput(outputKind)) failHere("resource exports cannot be lists");
     advance();
     const Token name = expectName("an output name");
     match(TokenKind::Semi);

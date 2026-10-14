@@ -110,6 +110,8 @@ struct Execution {
     std::vector<OutputSlot> outputSlots;
     std::vector<std::string> outputNames;
     std::vector<u16> slotOwner;
+    // Shared immutable snapshots, indexed only by the resource-export table.
+    std::vector<Value> resourceSlots;
     // Saved caller state of active part calls, mirroring part frames.
     std::vector<PartCallState> partCalls;
     std::vector<LayerScope> layerScopes;
@@ -189,6 +191,7 @@ bool stepSamplers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);
+bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
 
 // Compile-time evaluation of one stateless value operation. Uses the same

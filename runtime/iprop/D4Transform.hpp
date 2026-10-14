@@ -12,6 +12,7 @@ struct RasterPoint {
     i32 y = 0;
     constexpr bool operator==(const RasterPoint&) const = default;
 };
+struct RasterPoint64 { i64 x = 0, y = 0; };
 
 // The eight rectangle symmetries. Construction validates the wire kind;
 // pixel indices and continuous edge coordinates deliberately use distinct APIs.
@@ -42,6 +43,10 @@ public:
     constexpr Vec2 mapPoint(Vec2 p, Vec2 extent) const { return map(p, extent); }
     constexpr RasterPoint mapPixel(RasterPoint p, RasterPoint extent) const {
         return map(p, RasterPoint{extent.x - 1, extent.y - 1});
+    }
+    constexpr RasterPoint64 mapPixelWide(RasterPoint64 p, RasterPoint extent) const {
+        return map(p, RasterPoint64{static_cast<i64>(extent.x) - 1,
+                                  static_cast<i64>(extent.y) - 1});
     }
     OutputRect mapRect(OutputRect r, Vec2 extent) const {
         if (kind_ == 0) return r; // identity transports the original bits

@@ -24,8 +24,11 @@ std::string functionNamespace(const std::string& functionName) {
 
 u32 Plan::partSlot(u32 part, const std::string& output) const {
     u32 slot = static_cast<u32>(rootSlots.size());
-    for (u32 i = 0; i < part; ++i) slot += static_cast<u32>(parts[i]->asset.outputs.size());
+    for (u32 i = 0; i < part; ++i)
+        for (const auto& declaration : parts[i]->asset.outputs)
+            if (!ips::isResourceOutput(declaration.kind)) ++slot;
     for (const auto& candidate : parts[part]->asset.outputs) {
+        if (ips::isResourceOutput(candidate.kind)) continue;
         if (candidate.name == output) break;
         ++slot;
     }
@@ -245,6 +248,7 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
 
 void Planner::planParts() {
     for (const auto& output : entry_.asset.outputs) {
+        if (ips::isResourceOutput(output.kind)) continue;
         plan_->rootSlots.push_back({output.kind, output.isList});
         plan_->rootSlotIndex.emplace(output.name,
                                     static_cast<u32>(plan_->rootSlots.size() - 1));
@@ -315,6 +319,21 @@ void Planner::planFunctions() {
 }
 
 void Planner::registerNames() {
+    const auto exports = [&](const ips::Program& program, u32 owner) {
+        for (const auto& output : program.asset.outputs) {
+            if (!ips::isResourceOutput(output.kind)) continue;
+            if (plan_->resourceExports.size() >= kMaxConstPoolEntries)
+                error(output.location, "too many resource exports");
+            const auto type = output.kind == ips::OutputKind::Mask
+                ? ips::ValueType::Mask : ips::ValueType::Layer;
+            plan_->pools.addType(type);
+            plan_->resourceSlotIndex.emplace(std::pair{owner, output.name},
+                static_cast<u16>(plan_->resourceExports.size()));
+            plan_->resourceExports.push_back({owner, output.name, type});
+        }
+    };
+    exports(entry_, kRootParent);
+    for (u32 p = 0; p < plan_->parts.size(); ++p) exports(*plan_->parts[p], p);
     // Deterministic order: function names, then slot names (root first, then
     // parts), then input names, then part instance names.
     for (const auto& function : plan_->functions) {

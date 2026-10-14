@@ -50,6 +50,10 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::OutPoint: case Opcode::OutRect: case Opcode::OutCircle:
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
+    case Opcode::OutMask: case Opcode::OutLayer:
+        return {R::None,false,true,static_cast<u16>(check(C::UnassignedHandle)|check(C::PartOutputContext)|check(C::NumericRange))};
+    case Opcode::PartGetMask: case Opcode::PartGetLayer:
+        return {R::None,false,false,static_cast<u16>(check(C::PartOutputMissing)|check(C::PartOutputContext))};
     case Opcode::PartGetPoint: case Opcode::PartGetRect: case Opcode::PartGetCircle:
         return {R::None,false,false,static_cast<u8>(check(C::PartOutputMissing)|check(C::PartOutputContext))};
     case Opcode::I32DivS:
@@ -255,6 +259,10 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::MaskOffset, "mask.offset", 6, OperandKind::None),
     dynamic(Opcode::SurfacePaintMask, "surface.paint.mask", 6, OperandKind::Index),
     dynamic(Opcode::ClipBegin, "clip.begin", 6, OperandKind::None),
+    dynamic(Opcode::OutMask, "out.mask", 6, OperandKind::Index),
+    dynamic(Opcode::OutLayer, "out.layer", 6, OperandKind::Index),
+    dynamic(Opcode::PartGetMask, "part.get.mask", 6, OperandKind::Index),
+    dynamic(Opcode::PartGetLayer, "part.get.layer", 6, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};

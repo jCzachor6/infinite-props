@@ -428,6 +428,20 @@ private:
         }
 
         // Structured outputs (§9.9).
+        case Opcode::OutMask:
+        case Opcode::OutLayer:
+        case Opcode::PartGetMask:
+        case Opcode::PartGetLayer: {
+            if (op >= file_.resourceExports.size()) fail(at, "resource export slot index out of range");
+            const auto type = ins.opcode == Opcode::OutMask || ins.opcode == Opcode::PartGetMask
+                ? ValueType::Mask : ValueType::Layer;
+            if (file_.resourceExports[op].type != type) fail(at, "resource export type mismatch");
+            const bool get = ins.opcode == Opcode::PartGetMask || ins.opcode == Opcode::PartGetLayer;
+            if (get && file_.resourceExports[op].owner == kRootParent)
+                fail(at, "part.get reads a root-owned resource export");
+            if (get) push(at, type); else expect(at, type, "resource export");
+            return;
+        }
         case Opcode::OutPoint:
             checkSlot(at, op, OutputKind::Point, false, false);
             expect(at, ValueType::F32, "point y");
@@ -722,6 +736,8 @@ LoadedFile loadFile(std::span<const u8> data) {
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);
     }
+    if (const auto* exports = file.layout.find(SectionId::ResourceExports))
+        parseResourceExports(bytes, *exports, file);
     return file;
 }
 
@@ -734,6 +750,7 @@ void validate(const LoadedFile& file) {
     }
     checkPartAcyclicity(file);
     checkPartHierarchy(file, slots);
+    validateResourceOwnership(file);
 }
 
 } // namespace iprop

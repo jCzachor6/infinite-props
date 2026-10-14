@@ -1,0 +1,8 @@
+asset exportType {
+  size 1x1
+  output mask region
+  draw {
+    layer image {}
+    region = image
+  }
+}

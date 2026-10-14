@@ -16,6 +16,11 @@ range and owner for use with these same declaration accessors.
 
 ## Slots and owners
 
+All C API output counts, indices and part output ranges count point/rect/circle
+geometry only. Format 0.6 mask/layer exports use a separate internal table and
+add no host slot, public kind tag or handle accessor. A part containing only
+resource exports has a geometry output count of zero.
+
 The global `output_index` begins with all stored root declarations, followed by
 all declarations of part 0, part 1, and so on. Declaration order within each
 owner is retained. Indices are local to this loaded program; resolve them again

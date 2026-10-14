@@ -402,3 +402,18 @@ test("layer captures preserve mode comments and helper transfer", async () => {
         assert.equal(new RegExp(grammar.repository.builtins.match).test("surface.paint(image)"),true);
     } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test("resource output declarations preserve comments and use reserved types", async () => {
+    const source="asset t{size 1x1 output /* mask */mask region output layer image draw{layer captured{}region=mask.from(captured)image=captured}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try {
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;assert.ok(formatted.includes("/* mask */"));
+        assert.ok(formatted.includes("output layer image"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});assert.equal(checked.status,0,checked.stderr);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        assert.equal(new RegExp(grammar.repository.maskType.match).test("output mask region"),true);
+        assert.equal(new RegExp(grammar.repository.layerCapture.match).test("output layer image"),true);
+    } finally {h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});

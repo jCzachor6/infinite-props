@@ -242,6 +242,16 @@ Json sourceRules() {
         {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false},
         {"minimum_format_minor", findOpcode(Opcode::LayerBegin)->minimumMinor}});
+    rules["resource_exports"] = Json::object({
+        {"types", Json::array({"mask", "layer"})}, {"table", "separate_from_host_geometry"},
+        {"syntax", "output <mask|layer> <name>"}, {"read", "direct_child_last_called_part"},
+        {"unset_slot", "trap"}, {"write", "immutable_snapshot_in_owner_caller_coordinates"},
+        {"no_write_call", "retain_previous_snapshot_and_placement"},
+        {"propagation", "one_placement_scale_and_D4_per_export_level"}, {"automatic_paint", false},
+        {"buffer_transfer", "shared_without_copy"}, {"buffer_release", "last_handle"},
+        {"generation_cleanup", "success_and_trap"}, {"host_handles", false}, {"list_exports", false},
+        {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
+        {"section_id", static_cast<u32>(SectionId::ResourceExports)}, {"minimum_format_minor", 6}});
     rules["masks"] = Json::object({
         {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
         {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},

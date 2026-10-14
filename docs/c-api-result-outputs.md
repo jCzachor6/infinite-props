@@ -7,6 +7,10 @@ API 0.3 operations preserve ABI line 0.4, legacy structs and packed floats.
 
 ## Slots and names
 
+`output_count` and these accessors count geometry only. Internal mask/layer
+exports never appear in the result table; point/rect/circle indices and part
+output ranges retain their existing geometry-table meaning.
+
 `iprop_result_output_count` counts every declared slot, not only assigned
 values. `iprop_result_output_get(result, output_index, &view, error)` reads one
 global slot in root declaration order followed by each part's declarations.

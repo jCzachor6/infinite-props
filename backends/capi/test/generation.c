@@ -1,12 +1,38 @@
 #include "test_support.h"
 #include "source_over_reference.h"
 #include "mask_reference.h"
+#include "resource_export_reference.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void check_generation(const char* program_dir) {
     char err[512];
+
+    /* Resource exports use no host slots, including nested geometry ranges. */
+    {
+        char path[1024];snprintf(path,sizeof(path),"%s/resource-exports.iprop",program_dir);
+        size_t length=0;uint8_t* bytes=read_file(path,&length);iprop_program* program=NULL;iprop_result* result=NULL;
+        iprop_generate_options options={0};options.seed=26;
+        CHECK(bytes!=NULL,"cannot read resource exports");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"export load: %s",err);free(bytes);}
+        if(program){
+            uint32_t count=0;CHECK(iprop_program_output_count(program,&count,NULL)==IPROP_OK && count==4,"export geometry declaration count");
+            for(uint32_t p=0;p<2;++p){iprop_part_info_ex info;iprop_part_info_ex_init(&info,sizeof(info));
+                CHECK(iprop_program_part_get(program,p,&info,NULL)==IPROP_OK,"export part reflection");
+                CHECK(info.output_count==1 && info.output_begin==p+2,"export geometry part range");}
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"export generate: %s",err);iprop_program_free(program);
+        }
+        if(result){iprop_image image;iprop_result_image(result,&image);CHECK(image.width==16 && image.height==12 && image.output_count==4,"export host image/slots");
+            for(uint32_t i=0;i<image.output_count && i<4;++i){const iprop_output* slot=&image.outputs[i];
+                CHECK(slot->kind==IPROP_OUTPUT_POINT && slot->count==1 && !slot->is_list && slot->owner==(i<2?0:i-1),"export geometry tags/owners");
+                if(slot->count==1){uint32_t value[2];memcpy(value,slot->values,sizeof(value));
+                    CHECK(value[0]==(i==1?0x41d00000u:0x41000000u) && value[1]==(i==1?0u:0x40c00000u),"export geometry bits");}}
+            if(image.width==16 && image.height==12)for(uint32_t y=0;y<12;++y)for(uint32_t x=0;x<16;++x){uint8_t color[4];resource_export_pixel(x,y,color);
+                CHECK(memcmp(image.pixels+(y*16+x)*4,color,4)==0,"export pixel %u,%u",x,y);}
+            iprop_result_free(result);
+        }
+    }
 
     /* Coverage algebra and clipping preserve the existing host output layout. */
     {

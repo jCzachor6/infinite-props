@@ -80,7 +80,7 @@ FileLayout parseLayout(std::span<const u8> data) {
     }
 
     layout.sections.reserve(count);
-    bool seen[10] = {}; // section ids 1..9
+    bool seen[11] = {}; // section ids 1..10
     for (u32 i = 0; i < count; ++i) {
         const std::size_t entryAt = kHeaderSize + static_cast<std::size_t>(i) * 12;
         const u32 rawId = reader.readU32();
@@ -88,7 +88,7 @@ FileLayout parseLayout(std::span<const u8> data) {
         const u32 size = reader.readU32();
 
         // Section 5 (part instances) exists from minor 5 on (spec v0.5 §6).
-        if (rawId < 1 || rawId > (layout.header.versionMinor >= 6 ? 9u : layout.header.versionMinor >= 5 ? 5u : 4u)) {
+        if (rawId < 1 || rawId > (layout.header.versionMinor >= 6 ? 10u : layout.header.versionMinor >= 5 ? 5u : 4u)) {
             throw FormatError("unknown section id " + std::to_string(rawId), entryAt, ErrorReason::InvalidLayout);
         }
         if (seen[rawId]) {

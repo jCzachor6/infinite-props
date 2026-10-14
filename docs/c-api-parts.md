@@ -1,5 +1,9 @@
 # Part geometry and signatures
 
+Part output ranges and counts refer only to the host geometry table. Internal
+mask/layer exports are separate and do not change these indices, owners or
+point/rect/circle tags.
+
 API 0.3 provides the loaded executable's stored part table through checked
 queries. `IPROP_CAP_PART_REFLECTION` advertises these implemented operations.
 They do not execute the VM, reconstruct source import paths or grant host

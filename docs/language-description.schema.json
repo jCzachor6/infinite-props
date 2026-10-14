@@ -2189,6 +2189,140 @@
           ],
           "additionalProperties": true,
           "description": "Immutable coverage views and A8 results, exact disk morphology and scoped pixel clipping."
+        },
+        "resource_exports": {
+          "type": "object",
+          "properties": {
+            "types": {
+              "type": "array",
+              "const": [
+                "mask",
+                "layer"
+              ],
+              "description": "Declared internal export types, in canonical order.",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "mask",
+                  "layer"
+                ],
+                "description": "One internal immutable surface type."
+              }
+            },
+            "table": {
+              "type": "string",
+              "const": "separate_from_host_geometry",
+              "description": "Resource slots are separate from all host geometry indices."
+            },
+            "syntax": {
+              "type": "string",
+              "const": "output <mask|layer> <name>",
+              "description": "Source declaration syntax for a singular resource export."
+            },
+            "read": {
+              "type": "string",
+              "const": "direct_child_last_called_part",
+              "description": "Reads require a direct child and this frame's last-called part."
+            },
+            "unset_slot": {
+              "type": "string",
+              "const": "trap",
+              "description": "Reading an unwritten slot traps."
+            },
+            "write": {
+              "type": "string",
+              "const": "immutable_snapshot_in_owner_caller_coordinates",
+              "description": "Writes freeze immutable views in the owner's caller coordinates."
+            },
+            "no_write_call": {
+              "type": "string",
+              "const": "retain_previous_snapshot_and_placement",
+              "description": "A call with no write keeps the previous snapshot and placement."
+            },
+            "propagation": {
+              "type": "string",
+              "const": "one_placement_scale_and_D4_per_export_level",
+              "description": "Each export level applies its existing placement, scale and D4 once."
+            },
+            "automatic_paint": {
+              "type": "boolean",
+              "const": false,
+              "description": "Exporting does not paint the image."
+            },
+            "buffer_transfer": {
+              "type": "string",
+              "const": "shared_without_copy",
+              "description": "Copies share the immutable buffer without copying pixels."
+            },
+            "buffer_release": {
+              "type": "string",
+              "const": "last_handle",
+              "description": "The last handle frees its buffer and releases the quota."
+            },
+            "generation_cleanup": {
+              "type": "string",
+              "const": "success_and_trap",
+              "description": "Successful and failed generations clear remaining resources."
+            },
+            "host_handles": {
+              "type": "boolean",
+              "const": false,
+              "description": "No resource handle is exposed through the public host API."
+            },
+            "list_exports": {
+              "type": "boolean",
+              "const": false,
+              "description": "Resource exports cannot be lists."
+            },
+            "maximum_slots": {
+              "type": "integer",
+              "const": 65536,
+              "description": "Maximum u16-addressable resource slots."
+            },
+            "slot_bytes": {
+              "type": "integer",
+              "const": 64,
+              "description": "Fixed generation-data quota charged per export slot."
+            },
+            "write_read_fuel": {
+              "type": "integer",
+              "const": 1,
+              "description": "Base instruction fuel for each write or read, without scanning."
+            },
+            "section_id": {
+              "type": "integer",
+              "const": 10,
+              "description": "Format section containing resource exports and function owners."
+            },
+            "minimum_format_minor": {
+              "type": "integer",
+              "const": 6,
+              "description": "Oldest binary format admitting resource exports."
+            }
+          },
+          "required": [
+            "types",
+            "table",
+            "syntax",
+            "read",
+            "unset_slot",
+            "write",
+            "no_write_call",
+            "propagation",
+            "automatic_paint",
+            "buffer_transfer",
+            "buffer_release",
+            "generation_cleanup",
+            "host_handles",
+            "list_exports",
+            "maximum_slots",
+            "slot_bytes",
+            "write_read_fuel",
+            "section_id",
+            "minimum_format_minor"
+          ],
+          "additionalProperties": false,
+          "description": "Internal immutable part exports; host geometry indices remain unchanged."
         }
       },
       "required": [

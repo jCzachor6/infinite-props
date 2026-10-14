@@ -11,6 +11,12 @@
 
 namespace iprop {
 
+struct ResourceExport {
+    u32 owner = kRootParent;
+    u32 nameIndex = 0;
+    TypeDescriptor type;
+};
+
 // A fully parsed file. The LoadedFile OWNS its byte buffer: every span
 // (function code, strings) points into the internal storage, so the file is
 // self-contained and may be moved around freely. Move-only (a copy would
@@ -23,6 +29,10 @@ struct LoadedFile {
     AssetMeta meta;
     CodeSection code;
     CollectionPool collections;
+    std::vector<ResourceExport> resourceExports;
+    // Present with resource exports, in function-table order. Explicit ownership
+    // also validates helper functions and instructions in unreachable code.
+    std::vector<u32> functionOwners;
 
     std::span<const u8> bytes() const { return storage; }
 
@@ -40,6 +50,8 @@ private:
 // Parses a complete file: layout, consts, meta, code (Phases 3-5 rules).
 // Throws located FormatError on any structural violation.
 LoadedFile loadFile(std::span<const u8> data);
+void parseResourceExports(std::span<const u8> data, const Section& section, LoadedFile& file);
+void validateResourceOwnership(const LoadedFile& file);
 
 // Static validation per spec §14, run to completion before any execution:
 // entry naming and signature, per-function structured control flow and stack

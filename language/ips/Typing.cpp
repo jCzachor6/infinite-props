@@ -15,6 +15,8 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
+    case OutputKind::Mask: return ValueType::Mask;
+    case OutputKind::Layer: return ValueType::Layer;
     }
     return ValueType::Vec2;
 }

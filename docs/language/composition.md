@@ -7,6 +7,9 @@ missing files and import cycles are errors. The compiler links every part
 into one executable; generation does not load source files.
 The alias `surface` is reserved for the [surface namespace](surfaces.md);
 rename an existing import using that alias when recompiling.
+Parts can share immutable mask/layer snapshots through
+[resource outputs](surfaces.md#export-regions-from-parts). They follow each
+hierarchy level's placement and D4 once; host indices still count geometry only.
 
 <!-- example: ../../examples/language/part.ips -->
 

@@ -19,6 +19,8 @@ TEST_CASE("new keywords are reserved in every name position", "[keywords]") {
             "import " + word + " from \"child.ips\" asset t{size 1x1 draw{}}",
             "asset t{size 1x1 input i32 " + word + "=1 draw{}}",
             "asset t{size 1x1 output point " + word + " draw{}}",
+            "asset t{size 1x1 output mask " + word + " draw{}}",
+            "asset t{size 1x1 output layer " + word + " draw{}}",
             "asset t{size 1x1 const i32 " + word + "=1 draw{}}",
             "asset t{size 1x1 palette " + word + "=[#fff] draw{}}",
             "asset t{size 1x1 " + word + "(x:i32)->i32{return x} draw{}}",

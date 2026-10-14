@@ -254,7 +254,7 @@ TEST_CASE("layer formatting and illegal handle operations have located diagnosti
     rejectSurface("asset t{size 1x1 f(images:list<layer>){}draw{}}","lists of surfaces");
     rejectSurface("asset t{size 1x1 f(images:sampler<layer>){}draw{}}","supports only");
     rejectSurface("asset t{size 1x1 input layer image draw{}}","input type");
-    rejectSurface("asset t{size 1x1 output layer image draw{}}","output kind");
+    rejectSurface("asset t{size 1x1 output list layer image draw{}}","cannot be lists");
     for(const bool optimize:{false,true}) {
         const auto unset=loadFile(surfaceProgram("asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",optimize));VM vm(unset,{});
         try{vm.run();FAIL("unset layer accepted");}catch(const Trap& error){CHECK(std::string(error.what())=="layer is unassigned");CHECK((error.location.flags & ErrorLocation::PC) != 0);}

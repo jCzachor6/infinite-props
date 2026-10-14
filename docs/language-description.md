@@ -235,3 +235,8 @@ same shared registry used by parsing, typing, builders and file validation.
 No duplicate global signature list is introduced.
 Family names used as numeric for-loop bounds retain the following block
 as their loop body; nested argument expressions may still construct literals.
+
+The optional `source_rules.resource_exports` policy describes internal mask/layer
+slots, direct-child and last-called-part reads, immutable snapshots, no-write
+placement retention, shared buffer lifetime, per-generation cleanup and fixed
+slot accounting. These slots are separate from every host geometry output index.

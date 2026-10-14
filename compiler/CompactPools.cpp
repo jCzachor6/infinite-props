@@ -32,6 +32,7 @@ void compactPools(Plan& plan) {
         if (found == old.typesValue().end()) throw std::logic_error("missing collection descriptor");
         types.at(static_cast<std::size_t>(found - old.typesValue().begin())) = true;
     };
+    for (const auto& output : plan.resourceExports) markType(output.type);
     for (const auto& f : plan.functions) {
         for (const auto* slots : {&f.params, &f.results, &f.locals}) for (const auto type : *slots) markType(type);
         for (const auto ins : f.code) {

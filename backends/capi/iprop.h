@@ -602,7 +602,9 @@ IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program
 
 /* Stored part table. part_index N maps to owner N+1, including empty parts.
  * input_count describes the part's own input signature; output_begin/count
- * select its contiguous global output range for program_output_get, and
+ * select its contiguous geometry output range for program_output_get, and
+ * exclude internal format-0.6 mask/layer resource exports. All output_count
+ * fields and output indices count point/rect/circle geometry only.
  * program_output_find uses this owner. An empty part may have the same
  * output_begin as the following part while keeping its own owner.
  * Files with a v0.5 parts section store each part's instance name, its alias

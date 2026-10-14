@@ -41,6 +41,9 @@ def main():
         assert rules['types'][field] == storable_types
     assert rules['types']['output_only_geometry'] == ['circle', 'rect']
     assert rules['types']['point_value_type'] == 'vec2'
+    assert rules['resource_exports']['types'] == ['mask', 'layer']
+    assert rules['resource_exports']['table'] == 'separate_from_host_geometry'
+    assert rules['resource_exports']['buffer_release'] == 'last_handle'
     assert rules['types']['implicit_widening'] == [{'from': 'i32', 'to': 'f32',
         'contexts': ['numeric_operands', 'call_arguments', 'helper_returns', 'asset_constants']}]
     assert rules['types']['local_reassignment'] == 'exact_type'
@@ -90,7 +93,9 @@ def main():
         ('layer lists rejected', 'echo(images:list<layer>){return;} draw{}', False),
         ('layer sampler rejected', 'echo(images:sampler<layer>){return;} draw{}', False),
         ('layer host input rejected', 'input layer image draw{}', False),
-        ('layer geometry output rejected', 'output layer image draw{}', False),
+        ('layer resource export', 'output layer image draw{}', True),
+        ('mask resource export', 'output mask region draw{}', True),
+        ('list resource export rejected', 'output list layer image draw{}', False),
         ('layer arithmetic rejected', 'draw{layer image{}x=image+image}', False),
         ('layer comparison rejected', 'draw{layer image{}x=image==image}', False),
         ('layer target type conflict', 'draw{image=1;layer image{}}', False),

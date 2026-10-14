@@ -95,7 +95,7 @@ TEST_CASE("mask algebra retains partial coverage and the union rectangle", "[mas
     CHECK(inverted.buffer->coverage==std::vector<u8>{0,127,223,63}); CHECK(inverted.mapping.origin==RasterPoint{1,0});
     CHECK(maskCoverage(inverted,0,0)==0); CHECK(maskCoverage(inverted,3,0)==0);
     CHECK(a.buffer->coverage==std::vector<u8>{0,128,255,64}); CHECK(b.buffer->coverage==std::vector<u8>{255,128,32,192});
-    CHECK(ex.resources.bytes==3*134+132); CHECK(ex.fuel==1000-3*12-8);
+    CHECK(ex.resources.bytes==132); CHECK(ex.fuel==1000-3*12-8);
 }
 
 TEST_CASE("mask morphology uses a disk border and normative logical sample fuel", "[masks]") {
@@ -281,7 +281,7 @@ TEST_CASE("mask source types diagnostics and format gates reject invalid uses", 
         {"surface.paint(region,#fff,blend=1)","blend must be surface.legacy"},
         {"m=region+region","arithmetic requires numeric"}, {"m=region==region","comparison"}})
         rejectMask("asset t{size 1x1 draw{layer image{}region=mask.from(image)"+body+"}}",message);
-    for (const auto& source:{"asset t{size 1x1 input mask image draw{}}", "asset t{size 1x1 output mask image draw{}}",
+    for (const auto& source:{"asset t{size 1x1 input mask image draw{}}", "asset t{size 1x1 output list mask image draw{}}",
             "asset t{size 1x1 const mask image=1 draw{}}", "asset t{size 1x1 echo(images:list<mask>){}draw{}}"}) {
         const auto result=compileSource("bad.ips",[&](std::string_view){return source;});
         CHECK_FALSE(result.succeeded());CHECK(result.bytes.empty());

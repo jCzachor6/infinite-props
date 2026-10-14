@@ -126,13 +126,14 @@ foreach(source test/language.ips ../../examples/plant.ips ../../examples/languag
         ../../examples/language/samplers.ips ../../examples/language/sampling-palettes.ips
         ../../examples/language/weighted.ips ../../examples/language/point-distributions.ips
         ../../examples/language/captured-panels.ips ../../examples/language/source-over-panels.ips
-        ../../examples/language/mask-algebra.ips)
+        ../../examples/language/mask-algebra.ips ../../examples/language/resource-exports.ips)
     get_filename_component(name ${source} NAME_WE)
     set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)
     add_custom_command(OUTPUT ${out}
         COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/${source} -o ${out}
-        DEPENDS ipc ${source} ${source_parts} ../../examples/language/parts/translucent-panel.ips)
+        DEPENDS ipc ${source} ${source_parts} ../../examples/language/parts/translucent-panel.ips
+            ../../examples/language/parts/exported-frame.ips ../../examples/language/parts/exported-patch.ips)
     add_custom_target(capi_${name} DEPENDS ${out})
     add_dependencies(capi_golden capi_${name})
 endforeach()

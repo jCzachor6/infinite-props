@@ -45,6 +45,10 @@ void writeDistributionData(Writer& writer, const Distribution& distribution,
 // One generation owns immutable buffers and charges each allocation once.
 // A handle copy, helper argument or return shares the original allocation.
 struct ResourceArena {
+    ResourceArena() = default;
+    ResourceArena(const ResourceArena&) = delete;
+    ResourceArena& operator=(const ResourceArena&) = delete;
+    ~ResourceArena();
     u64 bytes = 0;
     u64 peak = 0;
     std::vector<std::shared_ptr<const ListData>> lists;
@@ -53,7 +57,13 @@ struct ResourceArena {
     std::set<const SamplerData*> samplerConstants;
     std::vector<std::shared_ptr<const PointDistributionData>> distributions;
     std::set<const PointDistributionData*> distributionConstants;
-    std::vector<std::shared_ptr<const SurfaceBuffer>> surfaces;
+    std::vector<std::weak_ptr<const SurfaceBuffer>> surfaces;
+    // The weak accounting token makes externally retained internal handles safe
+    // even after an execution is cleared or destroyed.
+    struct SurfaceLifetime { u64* bytes = nullptr; };
+    std::shared_ptr<SurfaceLifetime> surfaceLifetime;
+    std::shared_ptr<SurfaceBuffer> makeSurface(u64 chargedBytes);
+    void clear();
     bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; if (bytes > peak) peak = bytes; }
     void release(u64 size) { bytes -= size; }

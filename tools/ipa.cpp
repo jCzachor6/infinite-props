@@ -114,6 +114,9 @@ struct Program {
     std::vector<Collection> collections;
     std::vector<Collection> samplers;
     std::vector<std::vector<u8>> distributions;
+    struct Export { TypeDescriptor type; std::string name; u32 owner; };
+    std::vector<Export> resourceExports;
+    std::map<std::string, u32> functionOwners;
 };
 
 std::vector<std::string> tokens(const std::string& line) {
@@ -474,6 +477,21 @@ std::vector<u8> assemble(const std::string& source) {
             continue;
         }
 
+        if (words[0] == "export:" || words[0] == "owner:") {
+            if (function || currentPart) throw error("resource ownership declarations must be global");
+            const bool output = words[0] == "export:";
+            if (words.size() != (output ? 4u : 3u)) throw error("bad resource ownership declaration");
+            u32 owner = kRootParent;
+            if (words.back() != "root" && !parseU32Text(words.back(), owner)) throw error("bad resource owner");
+            if (output) {
+                ValueType type;
+                if (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer))
+                    throw error("resource exports must be mask or layer");
+                program.resourceExports.push_back({type, words[2], owner});
+            } else if (!program.functionOwners.emplace(words[1], owner).second) throw error("duplicate function owner");
+            continue;
+        }
+
         if (words[0] == "output:") {
             if (function != nullptr || words.size() < 3) {
                 throw error("bad output declaration");
@@ -721,6 +739,7 @@ std::vector<u8> assemble(const std::string& source) {
         }
     }
     for (const auto& name : ambiguous) slotIndex.erase(name);
+    for (const auto& output : program.resourceExports) addString(output.name);
     // Named instances (v0.5 parts section): all or none, parents first.
     const bool instances = !program.parts.empty() && program.parts.front().instance;
     std::map<std::string, u32> instanceIndex;
@@ -886,6 +905,7 @@ std::vector<u8> assemble(const std::string& source) {
         for (const auto type : *slots) addType(type);
     for (const auto& collection : program.collections) addType(collection.type);
     for (const auto& sampler : program.samplers) addType(sampler.type);
+    for (const auto& output : program.resourceExports) addType(output.type);
     Writer descriptors;
     if (!program.types.empty()) {
         writeTypeDescriptors(descriptors, program.types);
@@ -1049,14 +1069,37 @@ std::vector<u8> assemble(const std::string& source) {
         }
     }
 
+    Writer exports;
+    if (!program.resourceExports.empty()) {
+        if (program.resourceExports.size() > kMaxConstPoolEntries) throw SourceError(0, "too many resource exports");
+        exports.writeU32(static_cast<u32>(program.resourceExports.size()));
+        for (const auto& output : program.resourceExports) {
+            exports.writeU32(output.owner); exports.writeU32(stringIndex.at(output.name));
+            const auto type = std::find(program.types.begin(), program.types.end(), output.type);
+            exports.writeU16(static_cast<u16>(type - program.types.begin())); exports.writeU16(0);
+        }
+        for (const auto& [name, owner] : program.functionOwners) {
+            (void)owner;
+            if (!functionIndex.contains(name)) throw SourceError(0, "unknown function owner declaration");
+        }
+        exports.writeU32(static_cast<u32>(ordered.size()));
+        for (const auto* fn : ordered) {
+            u32 owner = kRootParent;
+            for (u32 p = 0; p < program.parts.size(); ++p)
+                if (fn == &program.parts[p].function) owner = p;
+            if (const auto found = program.functionOwners.find(fn->name); found != program.functionOwners.end()) owner = found->second;
+            exports.writeU32(owner);
+        }
+    } else if (!program.functionOwners.empty()) throw SourceError(0, "function owners require resource exports");
+
     // ---- Assemble the file ----
     Writer file;
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    if (descriptors.size() || collections.size() || samplers.size() || distributions.size()) minor = 6;
+    if (descriptors.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = 6;
     const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     file.writeU16(kVersionMajor);
     file.writeU16(minor);
     file.writeU32(0);
@@ -1077,11 +1120,13 @@ std::vector<u8> assemble(const std::string& source) {
     if (collections.size()) section(7, collections.data());
     if (samplers.size()) section(8, samplers.data());
     if (distributions.size()) section(9, distributions.data());
+    if (exports.size()) section(10, exports.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     if (instances) file.writeBytes(partInstances.data());
     file.writeBytes(descriptors.data()); file.writeBytes(collections.data()); file.writeBytes(samplers.data()); file.writeBytes(distributions.data());
+    file.writeBytes(exports.data());
 
     const auto bytes = file.data();
 

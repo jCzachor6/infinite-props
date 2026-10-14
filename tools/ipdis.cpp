@@ -244,6 +244,12 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     for (const auto& output : meta.outputs) {
         out << outputEntryText(output, pool) << "\n";
     }
+    const auto ownerText = [](u32 owner) { return owner == kRootParent ? std::string("root") : std::to_string(owner); };
+    for (const auto& output : loaded.resourceExports)
+        out << "export: " << valueTypeName(output.type) << ' ' << pool.strings.at(output.nameIndex)
+            << ' ' << ownerText(output.owner) << '\n';
+    for (u32 f = 0; f < loaded.functionOwners.size(); ++f)
+        out << "owner: " << names.functions[f] << ' ' << ownerText(loaded.functionOwners[f]) << '\n';
 
     if (!loaded.collections.types.empty()) {
         out << "types:";
@@ -306,7 +312,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         for (const auto& output : part.outputs) {
             out << "  " << outputEntryText(output, pool) << "\n";
         }
-        appendFunction(out, "draw", code.functions[functionIndex], names, true,
+        appendFunction(out, loaded.resourceExports.empty() ? "draw" : names.functions[functionIndex], code.functions[functionIndex], names, true,
                        debug);
         out << "endpart\n";
     }

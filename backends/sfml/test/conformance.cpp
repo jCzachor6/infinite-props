@@ -10,6 +10,7 @@
 #include "Render.hpp"
 #include "../../capi/test/source_over_reference.h"
 #include "../../capi/test/mask_reference.h"
+#include "../../capi/test/resource_export_reference.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -187,6 +188,26 @@ int main(int argc, char** argv) {
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Internal resource exports leave the SFML output table and texture bytes intact.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir+"/resource-exports.iprop")),&iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26,0,0),&iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==16 && image.height==12 && slots.size()==4,"export SFML geometry count");
+        for(std::size_t i=0;i<slots.size() && i<4;++i){
+            CHECK(slots[i].owner==(i<2?0u:static_cast<std::uint32_t>(i-1)) && !slots[i].isList && slots[i].values.size()==2,"export SFML output metadata");
+            if(slots[i].values.size()==2){std::uint32_t value[2];std::memcpy(value,slots[i].values.data(),sizeof(value));
+                CHECK(value[0]==(i==1?0x41d00000u:0x41000000u) && value[1]==(i==1?0u:0x40c00000u),"export SFML output bits");}
+        }
+        if(image.width==16 && image.height==12){
+            sf::Texture texture;sf::Sprite sprite(texture);iprop::sfml_host::uploadTexture(texture,sprite,{image.width,image.height},image.pixels);
+            const auto uploaded=texture.copyToImage();
+            for(unsigned y=0;y<12;++y)for(unsigned x=0;x<16;++x){std::uint8_t color[4];resource_export_pixel(x,y,color);
+                CHECK(uploaded.getPixel({x,y})==sf::Color(color[0],color[1],color[2],color[3]),"export SFML texture pixel %u,%u",x,y);}
+        }
     }
 
     // Independent mask pins and geometry through the unchanged SFML adapter.

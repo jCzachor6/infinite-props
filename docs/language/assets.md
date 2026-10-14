@@ -139,6 +139,9 @@ kind must have unique names. Inputs cannot be assigned or used as loop counters.
 value; an unwritten slot remains unset. `output list kind name` appends each
 assignment in execution order. Outputs are written by `draw` or a helper
 belonging to the same asset, and returned to the host alongside the image.
+`output mask name` and `output layer name` instead declare internal
+[resource exports](surfaces.md#export-regions-from-parts). They accept shared
+immutable handles, cannot be lists, and never add host geometry slots.
 
 | Kind | Assignment value |
 | --- | --- |

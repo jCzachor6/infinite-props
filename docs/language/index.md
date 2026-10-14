@@ -5,7 +5,7 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed, variant, archetype and optional input uniforms.
 
-This checkout implements stages 1–10 of source language **0.7**, in development
+This checkout implements stages 1–11 of source language **0.7**, in development
 with product 0.7.0. Product, source language, binary format, C API and ABI versions are
 independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler emits the oldest required format, from 0.4 to 0.6;

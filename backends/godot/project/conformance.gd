@@ -611,6 +611,39 @@ func _init() -> void:
 						failures += 1
 						printerr("FAIL source-over pixel ",x,",",y)
 
+	# Resource-export handles are internal; host geometry and pixels stay exact.
+	var exported := IpropAsset.new()
+	if exported.load_file(args[0] + "/resource-exports.iprop") != OK:
+		failures += 1
+		printerr("FAIL export load")
+	else:
+		var exported_image := exported.generate(26,0,0)
+		if exported_image == null or exported_image.get_size() != Vector2i(16,12) or exported.outputs.size() != 2:
+			failures += 1
+			printerr("FAIL export host image/slots")
+		else:
+			var export_slots := [exported.outputs["anchor"],exported.outputs["state"],exported.part_outputs[1]["anchor"],exported.part_outputs[2]["anchor"]]
+			for i in range(4):
+				var slot: Dictionary = export_slots[i]
+				var value_bits: PackedByteArray = slot["values"].to_byte_array()
+				if slot["owner"] != (0 if i < 2 else i-1) or slot["list"] or value_bits.size() != 8 \
+						or value_bits.decode_u32(0) != (0x41d00000 if i == 1 else 0x41000000) \
+						or value_bits.decode_u32(4) != (0 if i == 1 else 0x40c00000):
+					failures += 1
+					printerr("FAIL export output bits/metadata")
+			for y in range(12):
+				for x in range(16):
+					var color := Color8(0,0,0,0)
+					if x >= 6 and x < 8 and y >= 4 and y < 7:
+						color = Color8(17,34,51,128)
+					if x == 7 and y == 6:
+						color = Color8(136,16,25,128)
+					if x == 6 and y == 4:
+						color = Color8(85,102,119)
+					if exported_image.get_pixel(x,y) != color:
+						failures += 1
+						printerr("FAIL export pixel ",x,",",y)
+
 	# Coverage/min/complement pins, including legacy clip alpha preservation.
 	var masked := IpropAsset.new()
 	if masked.load_file(args[0] + "/mask-algebra.iprop") != OK:

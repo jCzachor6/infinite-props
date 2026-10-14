@@ -1,5 +1,11 @@
 {
   "cases": [
+    {"file":"resource-exports.ips","expect":"pass"},
+    {"file":"errors/export-type.ips","expect":"compile-error","message":"expects mask, got layer"},
+    {"file":"errors/export-list.ips","expect":"compile-error","message":"resource exports cannot be lists"},
+    {"file":"traps/export-unset.ips","expect":"trap","message":"part resource export not written"},
+    {"file":"parts/exported-frame.ips","expect":"pass"},
+    {"file":"parts/exported-patch.ips","expect":"pass"},
     {"file":"errors/surface-alias.ips","expect":"compile-error","message":"conflicts with the surface namespace"},
     {"file": "captured-panels.ips", "expect": "pass"},
     {"file": "errors/layer-type.ips", "expect": "compile-error", "message": "conflicts with a local"},

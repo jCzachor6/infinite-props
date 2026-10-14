@@ -1,0 +1,22 @@
+import frame from "parts/exported-frame.ips"
+
+asset resourceExports {
+  size 16x12
+  output mask retained
+  output point anchor
+  output point state
+
+  draw {
+    frame.draw(seed, v, a, at={5, 4}, mirror_x=1)
+    image = frame.outputs.image
+    region = frame.outputs.region
+    // Both placements are already saved in the shared views.
+    surface.paint(image, blend=surface.source_over)
+    clip(region) {
+      pixel(7, 6, #ff0000)
+    }
+    retained = region
+    anchor = frame.outputs.anchor
+    state = {seed & 65535, seed >> 16}
+  }
+}

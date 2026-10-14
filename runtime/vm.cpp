@@ -40,6 +40,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     if (stepPointDistributions(ex, ins)) return true;
     if (stepSurfaces(ex, ins)) return true;
     if (stepMasks(ex, ins)) return true;
+    if (stepResourceExports(ex, ins)) return true;
     if (stepStack(ex, ins)) {
         return true;
     }
@@ -222,8 +223,11 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     PartCallState state;
     state.partIndex = partIndex;
     state.render = render;
-    auto nextTarget = RenderTarget::create(static_cast<u32>(render.sourceExtent.x),
-        static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode);
+    auto nextTarget = file.layout.header.versionMinor >= 6
+        ? RenderTarget::create(resources.makeSurface(partBytes), static_cast<u32>(render.sourceExtent.x),
+            static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode)
+        : RenderTarget::create(static_cast<u32>(render.sourceExtent.x),
+            static_cast<u32>(render.sourceExtent.y), render.sourceScale, target.mode);
     state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 
@@ -266,8 +270,6 @@ void Execution::leaveFrame() {
         const auto sub = target.view({state.render.transform, state.render.targetOrigin});
         target = std::move(state.savedTarget);
         paintSurface(*this, sub);
-        if (file.layout.header.versionMinor >= 6)
-            resources.release(static_cast<u64>(sub.buffer->raster.width) * sub.buffer->raster.height * sizeof(Color));
         caller.lastPart = state.partIndex; // the part-output register
     } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
@@ -391,6 +393,11 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
         {static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX),
          static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY)});
     impl_->ex.rootTarget = impl_->ex.target;
+    if (!file.resourceExports.empty()) {
+        impl_->ex.allocateResource(static_cast<u64>(file.resourceExports.size()) * 64u);
+        for (const auto& output : file.resourceExports)
+            impl_->ex.resourceSlots.push_back(zeroValue(output.type));
+    }
 
     // Root frame: (i32 variant, i32 archetype), then root uniforms (§6.1).
     detail::Frame root;
@@ -493,7 +500,8 @@ void VM::run() {
     impl_->finished = true;
     if (ex.file.layout.header.versionMinor >= 6) {
         const auto peak = ex.resources.peak;
-        ex.resources = ResourceArena{};
+        ex.resourceSlots.clear();
+        ex.resources.clear();
         ex.resources.peak = peak;
     }
     } catch (...) {
@@ -501,7 +509,8 @@ void VM::run() {
             impl_->failed = true;
             ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
             ex.target = ex.rootTarget;
-            ex.resources = ResourceArena{};
+            ex.resourceSlots.clear();
+            ex.resources.clear();
         }
         throw;
     }

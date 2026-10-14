@@ -70,6 +70,12 @@ struct SlotInfo {
     bool isList = false;
 };
 
+struct PlannedResourceExport {
+    u32 owner = kRootParent;
+    std::string name;
+    ips::ValueType type;
+};
+
 // One part instance of the flattened import tree. The same program may back
 // several instances, each with its own functions, inputs and output slots.
 struct PartInstance {
@@ -94,6 +100,8 @@ struct Plan {
 
     std::vector<SlotInfo> rootSlots;
     std::map<std::string, u32> rootSlotIndex;
+    std::vector<PlannedResourceExport> resourceExports;
+    std::map<std::pair<u32, std::string>, u16> resourceSlotIndex;
 
     std::vector<PlannedFunction> functions;
     std::map<std::string, u32> functionIndex;

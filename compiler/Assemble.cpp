@@ -76,8 +76,9 @@ std::vector<u8> Assembler::assemble() {
     for (const auto& input : asset.inputs) {
         writeInputEntry(meta, input);
     }
-    meta.writeU16(static_cast<u16>(asset.outputs.size()));
+    meta.writeU16(static_cast<u16>(plan_.rootSlots.size()));
     for (const auto& output : asset.outputs) {
+        if (ips::isResourceOutput(output.kind)) continue;
         meta.writeU8(static_cast<u8>(output.kind));
         meta.writeU8(output.isList ? 1 : 0);
         meta.writeU8(0);
@@ -187,8 +188,11 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& input : part->asset.inputs) {
             writeInputEntry(code, input);
         }
-        code.writeU16(static_cast<u16>(part->asset.outputs.size()));
+        const auto geometryCount = std::count_if(part->asset.outputs.begin(), part->asset.outputs.end(),
+            [](const auto& output) { return !ips::isResourceOutput(output.kind); });
+        code.writeU16(static_cast<u16>(geometryCount));
         for (const auto& output : part->asset.outputs) {
+            if (ips::isResourceOutput(output.kind)) continue;
             code.writeU8(static_cast<u8>(output.kind));
             code.writeU8(output.isList ? 1 : 0);
             code.writeU8(0);
@@ -231,9 +235,24 @@ std::vector<u8> Assembler::assemble() {
         }
     }
 
-    if (types.size() || collections.size() || samplers.size() || distributions.size()) minor = 6;
+    Writer exports;
+    if (!plan_.resourceExports.empty()) {
+        exports.writeU32(static_cast<u32>(plan_.resourceExports.size()));
+        for (const auto& output : plan_.resourceExports) {
+            exports.writeU32(output.owner);
+            exports.writeU32(plan_.pools.indexOf(output.name));
+            const auto& descriptors = plan_.pools.typesValue();
+            const auto type = std::find(descriptors.begin(), descriptors.end(), output.type);
+            exports.writeU16(static_cast<u16>(type - descriptors.begin()));
+            exports.writeU16(0);
+        }
+        exports.writeU32(static_cast<u32>(plan_.functions.size()));
+        for (const auto& function : plan_.functions)
+            exports.writeU32(function.partOwner.value_or(kRootParent));
+    }
+    if (types.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = 6;
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : kMagic) {
@@ -259,6 +278,7 @@ std::vector<u8> Assembler::assemble() {
     if (collections.size()) section(static_cast<u32>(SectionId::Collections), collections.data());
     if (samplers.size()) section(static_cast<u32>(SectionId::Samplers), samplers.data());
     if (distributions.size()) section(static_cast<u32>(SectionId::Distributions), distributions.data());
+    if (exports.size()) section(static_cast<u32>(SectionId::ResourceExports), exports.data());
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
@@ -268,6 +288,7 @@ std::vector<u8> Assembler::assemble() {
     file.writeBytes(collections.data());
     file.writeBytes(samplers.data());
     file.writeBytes(distributions.data());
+    file.writeBytes(exports.data());
     file.writeBytes(debug.data());
     return file.data();
 }

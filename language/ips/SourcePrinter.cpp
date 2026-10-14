@@ -457,8 +457,8 @@ public:
         }
         for (const auto& output : asset.outputs) {
             indent(1); SourceOutput::Scope range(out_, output.sourceRange, false);
-            const char* kinds[] = {"point", "rect", "circle"};
-            if (static_cast<unsigned>(output.kind) >= 3)
+            const char* kinds[] = {"point", "rect", "circle", "mask", "layer"};
+            if (static_cast<unsigned>(output.kind) >= 5)
                 throw SourceError{output.location, "invalid output kind in source printer"};
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();

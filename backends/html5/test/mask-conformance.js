@@ -122,7 +122,8 @@ function run(iprop, tool, directory) {
         ["layer image{}region=mask.from(image)m=mask.expand(region,64)", /fuel exhausted/],
         ["layer image{}region=mask.from(image)m=mask.offset(region,2147483647,0)", /mask mapping is not representable/],
     ]) trap(compile("asset t{size 2x1 draw{" + sample[0] + "}}",opt),sample[1]);
-    const memory = compile("asset t{size 1024x1024 draw{layer image{}region=mask.from(image)for i in 0..64{region=mask.invert(region)}}}", false);
+    const retainedMasks = Array.from({length:64}, (_,i) => `region${i}=mask.invert(region)`);
+    const memory = compile("asset t{size 1024x1024 draw{layer image{}region=mask.from(image)" + retainedMasks.join("") + "}}", false);
     trap(fuelLimit(memory,200000000), /generation data exceeds 64 MiB/);
     let helpers = "";
     for (let i=0;i<17;++i) helpers += `scope${i}(region:mask){clip(region){clip(region){${i<16?`scope${i+1}(region)`:""}}}}`;
