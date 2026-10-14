@@ -29,9 +29,10 @@ as the `f32` overload of `int`.
 ## round
 <!-- builtin: round -->
 
-Returns an `i32` using the compiler's `floor(x + 0.5)` lowering followed by
-saturated truncation. Halfway values therefore round toward positive infinity,
-not away from zero.
+Returns an `i32`, rounding to the nearest integer with halfway values away
+from zero, then applying saturated truncation. NaN becomes zero; infinities
+saturate. An i32 argument widens to f32 before rounding. See the
+[rounding contract](../../spec/iprop-v0.7.md#94-float).
 
 ## sqrt
 <!-- builtin: sqrt -->
@@ -44,7 +45,7 @@ preserved according to the floating contract.
 
 Pinned sine approximation, with angle in radians. Exact range reduction,
 nonfinite behavior and polynomial evaluation are specified in
-[trigonometry](../../spec/iprop-v0.3.md#127-trigonometry-v02).
+[trigonometry](../../spec/iprop-v0.7.md#127-trigonometry).
 
 ## cos
 <!-- builtin: cos -->
@@ -89,7 +90,7 @@ zero succeeds negative zero.
 
 Pinned floating exponentiation. Zero, negative bases, integer/noninteger
 exponents, NaN and infinity cases follow
-[the math contract](../../spec/iprop-v0.3.md#128-the-math-package-v02).
+[the math contract](../../spec/iprop-v0.7.md#128-the-math-package).
 
 ## exp
 <!-- builtin: exp -->
@@ -133,7 +134,7 @@ Clamped quintic smootherstep, also used by gradient noise's fade function.
 
 Maps `t` between two edges through clamped smooth interpolation. Exact
 equal-edge and reversed-edge behavior follows
-[the curve toolkit](../../spec/iprop-v0.3.md#1214-the-curve-toolkit-v03).
+[the curve toolkit](../../spec/iprop-v0.7.md#1214-the-curve-toolkit).
 
 ## remap
 <!-- builtin: remap -->
@@ -148,5 +149,5 @@ Bounds a value between the two supplied limits, ordering them first, so reversed
 or equal bounds are valid. All three integer arguments select exact signed
 `i32`; any `f32` argument selects the existing floating operations. Parameter
 names are `x`, `min`, `max`. Floating NaN and signed-zero behavior is unchanged.
-See [0.7 migration](migration-v0.7.md#integer-overloads-and-explicit-f32-migration)
+See [0.7 migration](migration-v0.7.md#keep-integer-and-floating-locals-consistent)
 for assignments to existing f32 locals.

@@ -1,10 +1,10 @@
 # The Godot backend (`backends/godot/`)
 
-The flagship engine integration (task 8): a GDExtension built over the
+The flagship engine integration: a GDExtension built over the
 `ipropc` C API, exposing the procedural assets as Godot resources and
 nodes.
 
-## Pinned versions (task 8.3)
+## Pinned versions
 
 - **Godot 4.5.2** (`4.5.2-stable`).
 - **godot-cpp** at `godot-4.5-stable`.

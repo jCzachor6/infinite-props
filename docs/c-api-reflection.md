@@ -1,6 +1,6 @@
 # Root-input reflection
 
-API 0.3 provides root-input declarations through checked count/get/find calls.
+API 0.4 provides root-input declarations through checked count/get/find calls.
 The loaded library advertises `IPROP_CAP_ROOT_INPUT_REFLECTION` only for these
 implemented operations. [Output declarations](c-api-output-declarations.md)
 have their own capability. [Part tables and input signatures](c-api-parts.md)
@@ -99,5 +99,5 @@ if (iprop_library_query(&library) == IPROP_EX_OK &&
 ```
 
 Both legacy and checked loads produce the same program representation, so
-reflection is available for either successfully loaded handle. The legacy six
-entry points, their layouts, enum policy and generation behavior remain unchanged.
+reflection is available for either successfully loaded handle. Both use API
+0.4 layouts and accept only format 0.7. See the [ABI policy](c-api-abi.md).

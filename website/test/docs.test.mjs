@@ -3,9 +3,38 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { renderBook } from "../scripts/build-docs.mjs";
+import { renderBook, syncDocumentation } from "../scripts/build-docs.mjs";
 
 const headings = [{ title: "Book", anchor: "book", level: 1 }, { title: "Calls", anchor: "calls", level: 2 }];
+
+test("documentation sync retires stale payloads and preserves authored navigation", () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-doc-sync-"));
+    const bundle = path.join(directory, "bundle"), publicDir = path.join(directory, "public");
+    const write = (base, file, content) => {
+        const target = path.join(base, file);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, content);
+    };
+    try {
+        for (const file of ["docs/language-v0.7.md", "docs/language/migration-v0.7.md", "spec/iprop-v0.7.md", "examples/language/new.ips", "LLM_REFERENCE.md"])
+            write(bundle, file, "current");
+        for (const file of ["docs/validation-v0.7-stage1.md", "docs/language-v0.6.md", "docs/language/migration-v0.6.md", "spec/iprop-v0.6.md", "reference/optimizations-v0.4.md", "examples/language/old.ips"])
+            write(publicDir, file, "stale");
+        write(publicDir, "docs/nav.js", "authored navigation");
+        write(publicDir, "favicon.svg", "authored icon");
+        for (let i = 0; i < 2; i++) {
+            syncDocumentation(bundle, publicDir);
+            assert.equal(fs.readFileSync(path.join(publicDir, "docs/nav.js"), "utf8"), "authored navigation");
+            assert.equal(fs.readFileSync(path.join(publicDir, "favicon.svg"), "utf8"), "authored icon");
+            assert.deepEqual(fs.readdirSync(path.join(publicDir, "spec")), ["iprop-v0.7.md"]);
+            assert.ok(!fs.existsSync(path.join(publicDir, "reference")));
+            assert.deepEqual(fs.readdirSync(path.join(publicDir, "docs/language")), ["migration-v0.7.md"]);
+            assert.ok(!fs.existsSync(path.join(publicDir, "docs/validation-v0.7-stage1.md")));
+            assert.ok(!fs.existsSync(path.join(publicDir, "docs/language-v0.6.md")));
+            assert.deepEqual(fs.readdirSync(path.join(publicDir, "examples/language")), ["new.ips"]);
+        }
+    } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
 
 test("rendered Markdown preserves tables, escapes raw HTML and generates navigation", () => {
     const value = renderBook("# Book\n\n<script>alert(1)</script>\n\n## Calls\n\n| Type | Value |\n| --- | --- |\n| f32 | 1.0 |\n\n```ips\n#fff\n```\n", headings, os.tmpdir());

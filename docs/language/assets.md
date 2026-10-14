@@ -64,10 +64,9 @@ not draw, while `.pick()` cannot run in a const initializer. See
 Input defaults and legacy literal palette elements retain their literal-only grammar;
 declaring a constant does not expand those grammar rules. Scalar constants introduce
 no new opcode, type code, section, host enum or ABI layout. Scalar/vector
-values lower through existing pools and instructions; a used distribution
-needs format 0.5. An unused declaration adds no executable instruction. Used lists share immutable
-collection data in format 0.7; scalar results computed from lists
-can retain older formats.
+values lower through scalar pools and instructions. Unused declarations add
+no executable instructions; used list constants share immutable collection
+data. Every executable uses format 0.7, including folded scalar results.
 
 <!-- example: ../../examples/language/errors/const-cycle.ips -->
 <!-- example: ../../examples/language/errors/const-rng.ips -->
@@ -120,9 +119,8 @@ Uniforms are visible in `draw`; pass their values explicitly to helpers.
 <!-- example: ../../examples/language/signed-input.ips -->
 
 <!-- llm: skip -->
-Both examples are accepted source 0.5 programs. Their old parser/type errors
-belong only to the frozen 0.4 baseline. A negative floating default is valid;
-a mathematically negative `u32` default is still invalid. Defaults outside
+A negative floating default is valid; a mathematically negative `u32`
+default is invalid. Defaults outside
 the signed range and non-literal declaration expressions are also rejected:
 
 <!-- example: ../../examples/language/errors/negative-u32-default.ips -->

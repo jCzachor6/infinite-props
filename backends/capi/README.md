@@ -39,7 +39,7 @@ set them locally before exporting, following its README.
 Current documentation uses manifest schema 2 with separate product, source
 language, emitted format, C API and C ABI versions. The generated handbook is
 `share/iprop/docs/language-v0.7.md`, named after the source language. See
-[export contracts and the schema-1 migration](../../docs/export-contracts.md).
+[current export contracts](../../docs/export-contracts.md).
 
 The runtime accepts only format 0.7, in plain or compressed form. Both the
 compressed envelope and expanded payload carry version 0.7. Loading validates
@@ -150,7 +150,7 @@ message.
 6. **Ownership is explicit.** Success hands exactly one handle to the
    caller to free; failure hands none.
 
-The [ABI contract](../../docs/c-api-abi.md) records the released baseline,
+The [ABI contract](../../docs/c-api-abi.md) records the current loader line,
 supported layouts, generation behavior and rules for sized descriptors, UTF-8
 views, collection strides and safe initialization. It specifies the API `0.4`
 conventions; the capability query identifies the loaded library's functions.
@@ -241,10 +241,10 @@ rejected with stable reasons before any value changes.
 parameters. Typed output value accessors receive capabilities only when
 implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
-advertised by this release. A larger API minor number alone does not imply
+advertised by this API. A larger API minor number alone does not imply
 those capabilities.
 
-## The conformance (task 6.2)
+## The conformance
 
 `test/conformance.c` runs C-only suites in `test/golden.c`, `test/errors.c`
 and `test/generation.c`; common assertions and fixtures live in

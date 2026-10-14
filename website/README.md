@@ -9,15 +9,15 @@ getting-started guide with the documentation, and the source page.
 - **Home** (`index.html`): the hero, "What is Infinite Props?", the live
   examples, the main features and the games showcase. The examples are the
   four weapons and three portrait packs under
-  [`../examples/showcase/`](../examples/showcase/), compiled binaries whose
+  `examples/showcase/`, compiled binaries whose
   sources are not public; `prepare.sh` copies them in.
   Every tile shows its file and size and keeps its own seed: auto-roll steps
   it up by one at random moments, and ‹ › (or the arrow keys on a focused
   tile) step it by hand. Weapon tiles mark their `tip`/`grip` outputs on
   hover; the fourth portrait cell lists the latest portrait's structured
   outputs. Weapons lean on their enchanted, ornate looks (chosen per seed
-  through the `quality` input and the variant) and glow like in a game: the
-  page renders the emission map (`layer` 1), blurs it by the `glow`
+  through the declared `quality` and `v` inputs) and glow like in a game: the
+  page renders the emission map (`renderLayer` input 1), blurs it by the `glow`
   output's sigma and adds it back in passes that follow the gain. The game slots show only ornate, enchanted weapons
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
@@ -29,11 +29,6 @@ getting-started guide with the documentation, and the source page.
   idle time; with reduced motion the strip is skipped. The share link
   `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
   the seed alone.
-- **The numbers** under the hero: the sword pack's size (filled in from the
-  file), 2^32 seeds × 2 enchantment variants = 8.6 billion combinations, and
-  ≈ 5 TB for all of them as PNGs, from the 583-byte mean of 150 `ipgen` PNGs
-  (`sword.iprop`, seeds 1–150, measured on 2026-10-09). Remeasure when the
-  sword pack changes.
 - **Get started** (`docs/getting-started.html`) with the documentation
   pages beside it: the `.ips` language reference, the binary format, the
   backends and the FAQ. A client-side section search sits in the docs
@@ -48,8 +43,9 @@ and the actual executable examples. Edit those sources and
 Its downloadable Markdown, chapter files, catalog and version/source manifest
 live under `public/docs/`, with linked examples under `public/examples/`.
 The search index is generated from the same headings. The specifications
-(`public/spec/`), the reference downloads (`public/reference/`) and the 24
-recipes (`public/recipes/`) are copied in as well.
+(`public/spec/`) and the 24 recipes (`public/recipes/`) are copied in as well.
+The handbook download uses the canonical file in `public/docs/`; there is no
+second copy under `reference/`.
 
 ## Shared chrome
 

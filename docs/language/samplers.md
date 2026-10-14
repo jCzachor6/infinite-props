@@ -78,7 +78,7 @@ Copies and helper transfers charge the original allocation once. Batch pick
 costs its base instruction, one unit per stored element and each draw's existing
 kernel cost. Empty batches have no draw cost; constant descriptions have no RNG
 draw cost. Fuel or memory failure publishes no partially built list or successful
-generation result. See the [format contract](../../spec/iprop-v0.6.md).
+generation result. See the [format contract](../../spec/iprop-v0.7.md).
 
 Serialized const descriptions share the same arena budget. A first read charges
 each retained description once; repeated reads and aliases share its handle.

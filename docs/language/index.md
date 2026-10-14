@@ -5,28 +5,12 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed and optional declared input uniforms.
 
-This checkout implements stages 1–11 of source language **0.7**, in development
-with product 0.7.0. Product, source language, binary format, C API and ABI versions are
-independent: `ipc --describe-language` reports the versions of the compiler
-being used. The compiler always emits format 0.7; the runtime accepts only 0.7.
-C API 0.4 uses ABI 0.5. There are no implicit variant/archetype controls. The new implemented features are integer bounds overloads
-and vector normalization, typed immutable asset constants, and lists with
-helper transfer and polygon drawing, and captured samplers with scalar/batch picks and deterministic steppers; later 0.7
-stages are not yet available. Weighted literals now provide discrete masses
-with exact integer keys and one bounded draw. Density profiles add continuous
-piecewise linear shapes with clipped integration and a stable inverse. Const samplers and sampling palettes now share
-the same explicit picks. Captured layers share the rendering mechanism of parts
-and preserve immutable images for later painting. Explicit source-over alpha
-uses exact straight RGBA8 rounding; helper and part rendering inherit the active
-target mode. Masks share captured alpha or store A8 algebra/morphology results;
-clip scopes limit primitive, paint and weather writes. A parent's clip applies
-once to a part blit. Layers and masks also provide immutable Gaussian
-`.blur(sigma)` in input raster pixels, with premultiplied alpha and nearest-edge
-extension. Newly introduced keywords are reserved; `blur` is an ordinary method name.
-Development documentation describes the checkout being built; a release ships
-documentation from its exact tag. The generated book identifies its product
-version, status and source commit. Historical 0.4 contracts and rejected
-examples remain frozen in their baseline and Git tag.
+Source language **0.7** and product **0.7.0** are under development.
+Product, source, format, C API and ABI versions are independent:
+`ipc --describe-language` reports the compiler's contracts. The compiler emits
+format 0.7 and the reader accepts only 0.7; C API 0.4 uses ABI 0.5.
+The generated book identifies its product, development/release status and source
+commit. Earlier documentation is available in Git history.
 
 Read the chapters in order to learn the language, or use the function index
 in the generated book to look up a builtin. Each chapter links actual `.ips`
@@ -53,9 +37,7 @@ files; their contents are included in the generated book and tested by CI.
 19. [Compiler tools and diagnostics](tooling.md)
 20. [Grammar](grammar.md)
 21. [Maintaining this documentation](development.md)
-22. [Migration and implementation contracts for 0.5](migration-v0.5.md)
-23. [Migration and implementation contracts for 0.6](migration-v0.6.md)
-24. [Migration and implementation contracts for 0.7](migration-v0.7.md)
+22. [Migrating from 0.6 to 0.7](migration-v0.7.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

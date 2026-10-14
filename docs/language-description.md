@@ -29,10 +29,8 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities
 and supported format range. See [the ABI policy](c-api-abi.md).
 
-Stages 1–8 add integer bounds overloads, `vec2.normalize`, typed asset constants,
-immutable lists, captured/constant samplers, sampling palettes and point distributions.
-Schema 4 describes the constant policy,
-parameterized types, collection limits and receiver-first sampler methods.
+Schema 4 describes the constant policy, parameterized lists, samplers/steppers,
+point distributions, surfaces, collection limits and receiver-first methods.
 See [0.7 migration](language/migration-v0.7.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
@@ -40,7 +38,8 @@ strings: `product_version`, `language_version`, `format_version`,
 `c_api_version` and `c_abi_soversion`. Packaging and documentation builds
 reject a compiler whose export differs from the versions in the source tree.
 A release requires the frozen specification of its `format_version`, never one
-named after the product: product 0.5 checks `spec/iprop-v0.4.md`.
+named after the product. The current format-0.7 specification remains in
+development; it cannot serve as a frozen release contract.
 
 ## Source rules
 
@@ -172,48 +171,47 @@ intrinsic numeric-range trap.
 Defensive checks for malformed/unvalidated bytecode are outside these source
 summaries. Host invocation checks are also separate from intrinsic calls.
 
-The [effect export check](../scripts/check_language_effects.py), registered as
+The effect export check (`scripts/check_language_effects.py` in the source checkout), registered as
 CTest `compiler_language_effects`, checks every exported signature and alias
 for complete, consistent effects. The shared-registry
-[builtin tests](../tests/builtin_spec_test.cpp) check metadata against every
-opcode overload. The [effect acceptance tests](../tests/compiler/effects_test.cpp)
+builtin tests (`tests/builtin_spec_test.cpp` in the source checkout) check metadata against every
+opcode overload. The effect acceptance tests (`tests/compiler/effects_test.cpp` in the source checkout)
 execute all registered current-stream/seeded overloads, all builtin numeric
 checks, eager selection traces, stream underflow, helper drawing/output writes,
 part placement/output-context/missing-output traps and global fuel/call-depth failures. These tests
 check accepted source with optimization on/off and exact following RNG bits.
 
-The [CLI acceptance corpus](../scripts/check_language_contract.py), registered
+The CLI acceptance corpus (`scripts/check_language_contract.py` in the source checkout), registered
 as CTest `compiler_language_contract`, checks every new version/profile field
 and compiles valid and invalid input/type/local/visibility/named-call/recursion/
 import cases through the real `--check --diagnostics=json` pipeline. It also
 rejects future declaration and geometry-constructor syntax.
 
-The [control-flow tests](../tests/compiler/control_flow_test.cpp) execute
+The control-flow tests (`tests/compiler/control_flow_test.cpp` in the source checkout) execute
 uninitialized branch/loop local slots and left-to-right/short-circuit operand
 effects with optimization enabled and disabled. The
-[call tests](../tests/compiler/calls_test.cpp) execute helper/builtin/polygon/
+call tests (`tests/compiler/calls_test.cpp` in the source checkout) execute helper/builtin/polygon/
 part/ramp argument order, named permutations and RNG traces. The
-[part tests](../tests/compiler/parts_test.cpp) check placement/control ordering
+part tests (`tests/compiler/parts_test.cpp` in the source checkout) check placement/input ordering
 and restoration of the parent RNG. The
-[input tests](../tests/compiler/defaults_test.cpp) check signed input defaults,
+input tests (`tests/compiler/defaults_test.cpp` in the source checkout) check signed input defaults,
 frozen binary metadata and host override bit patterns. These cases are the
 acceptance boundary for changes to the descriptive rules.
 
 The [versioned export contracts](export-contracts.md) define schema migration,
-required current fields, additive compatibility and explicit frozen profiles.
+required current fields and additive compatibility.
 The [formal language schema](language-description.schema.json) describes every
 exported field without duplicating registered signatures.
 
 ## Parameterized lists
 
-Schema 3 now describes `list<i32>`, `list<f32>`, `list<color>`, `list<vec2>` and
+Schema 4 describes `list<i32>`, `list<f32>`, `list<color>`, `list<vec2>` and
 `list<distribution>` in the generated storable/helper/constant type sets.
 `source_rules.types.parameterized` publishes the `list` constructor, allowed
 element types, nesting policy and `immutable_arena_handle` representation.
 `source_rules.collections` publishes literal evaluation, empty contexts,
 index behavior, transfer/immutability, palette compatibility and resource
-limits. Earlier development schema-3 exports may omit these capabilities;
-a present capability must satisfy its complete contract.
+limits. Each published capability must satisfy its complete contract.
 
 The compiler catalogue adds fixed `list.len` overloads and the two-argument
 `poly(points, color)` overload. The existing variadic polygon template remains
@@ -221,23 +219,23 @@ separate, with its original minimum arity and evaluation order. Type strings
 are canonical descriptor spellings. Effects include `index_range` and
 `unassigned_handle`; generation memory remains an execution-wide resource trap.
 
-Stage 4 also publishes `sampler<T>` and `list<sampler<T>>` in storable/helper
+The export also publishes `sampler<T>` and `list<sampler<T>>` in storable/helper
 sets. `source_rules.samplers.methods` comes from `samplerPickSpec`, the same
 receiver-first signatures used by the typer and emitter. Both arities have
 intrinsic `advance_current` effects, describing potential draws; constant
 descriptions and zero batches make no draw. Their capture operands can have
-effects of their own. Stage 5 enables sampler constant types and marks
+effects of their own. It enables sampler constant types and marks
 `list.len(list<sampler<T>>)` constant-evaluable, with the same pure declaration
 resolver. `source_rules.palettes` describes range capture, scalar lifting and
 direct fallback versus checked list indices. The full handbook and bounded
 LLM reference generate method tables from this export.
 
-Stage 6 exports `source_rules.point_distributions`: weighted literals are
+The export includes `source_rules.point_distributions`: weighted literals are
 constructors rather than global call signatures. The snapshot, numeric and
 bounded-draw contract is shared by source typing, constant evaluation, runtime
-builders and file validation. Existing helpers with the family name remain calls.
+builders and file validation. Weighted and density family names are reserved source keywords.
 
-Stage 7 adds density to `source_rules.point_distributions.families`. Family
+Density is also listed in `source_rules.point_distributions.families`. Family
 names, minimum counts, value meaning and equal-bound rules come from the
 same shared registry used by parsing, typing, builders and file validation.
 No duplicate global signature list is introduced.

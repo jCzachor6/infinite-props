@@ -106,8 +106,10 @@ syntax tokens.
 
 The C++ compilation API retains debug information so callers can select an
 artifact policy. The editor requests it for inspection; binary exports use
-production defaults. [Optimization behavior](../optimizations-v0.4.md) describes
-the passes and their preservation contract.
+production defaults. Optimization folds eligible constants, removes unused
+pure computations and compacts pools/locals while preserving image/output bits,
+RNG order, drawing effects and runtime traps. `--no-opt` exposes the reference
+lowering; emitted instruction counts and total fuel may differ.
 
 ## Diagnostics
 
@@ -134,7 +136,7 @@ Canvas dimensions are limited to 16384 per side in the reference runtime.
 Hosts may impose smaller limits on dimensions or total pixel counts.
 Binary pools/indices, function nesting, stream stacks
 and structured outputs also have bounds; see
-[validation and resource limits](../../spec/iprop-v0.3.md#14-validation).
+[validation and resource limits](../../spec/iprop-v0.7.md#14-validation-and-limits).
 Compressed v0.7 files bound both encoded and decoded size to 64 MiB.
 Host-specific limits and invalid input values can reject an
 invocation before draw starts.

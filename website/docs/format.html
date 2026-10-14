@@ -15,17 +15,15 @@
     <div class="container">
       <h1>The <code>.iprop</code> format</h1>
       <p>One self-contained binary: metadata, constants and bytecode, with no external resources.</p>
-      <p class="versions">Format {{FORMAT_VERSION}} · released with product {{PRODUCT_VERSION}}</p>
+      <p class="versions">Format {{FORMAT_VERSION}} · product {{PRODUCT_VERSION}} development</p>
     </div>
   </div>
   <div class="container docs">
     <!-- @docs-nav format -->
     <article class="prose">
 <p>This page summarises the format. The canonical contract is the specification:
-<a href="../spec/iprop-v{{FORMAT_VERSION}}.md">iprop-v{{FORMAT_VERSION}}.md</a>, which inherits
-<a href="../spec/iprop-v0.5.md">0.5</a> and takes precedence over it. The frozen
-<a href="../spec/iprop-v0.1.md">0.1</a>, <a href="../spec/iprop-v0.2.md">0.2</a> and
-<a href="../spec/iprop-v0.3.md">0.3</a> specifications stay available.</p>
+<a href="../spec/iprop-v{{FORMAT_VERSION}}.md">iprop-v{{FORMAT_VERSION}}.md</a>.
+It contains the complete development contract. Earlier versions remain in Git history.</p>
 
 <h2 id="versions">Versions</h2>
 <p>The current format is <a href="../spec/iprop-v0.7.md">0.7</a>. Compiler and assembler
@@ -33,16 +31,16 @@ always write 0.7; the runtime rejects every earlier or future version. A compres
 and its expanded payload must both carry version 0.7. Numerical, drawing, RNG and collection
 algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
 are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.4 /
-ABI 0.5. The historical specifications remain available as archives.</p>
+ABI 0.5. Product 0.7.0 remains under development.</p>
 
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", version, flags, section count
 section table (12 bytes × N)   id, offset, size
-sections                       meta · const · code · debug (optional) · parts (0.5) · types / collections (0.6)</code></pre>
+sections                       meta · const · code · optional debug, parts and resource pools</code></pre>
 <ul>
-<li>All multi-byte values are little-endian; sections are 4-byte aligned.</li>
+<li>All multi-byte values are little-endian; canonical sections are 4-byte aligned.</li>
 <li>Header flag bit 0 marks the debug section; the validator rejects a flag/section mismatch.</li>
-<li>Header flag bit 1 marks a packed file (minor 4 headers only). After the 20-byte header come the
+<li>Header flag bit 1 marks a packed format 0.7 file. After the 20-byte header come the
 expanded size (u32) and one zlib stream holding the complete original file. Encoded and expanded
 files are bounded to 64 MiB; the checksum, exact length, trailing data, dictionaries and nesting are
 checked before execution.</li>
@@ -55,11 +53,13 @@ reference lowering; none of them changes the image or output bits.</p>
 <table>
 <tr><th>section</th><th>contents</th></tr>
 <tr><td><code>meta</code></td><td>the canvas size, the origin, the fuel budget, the input uniforms (type, name, default) and the output slots (kind, list flag, name)</td></tr>
-<tr><td><code>types / collections</code></td><td>format 0.6 descriptors and immutable list data; helper values share arena handles</td></tr>
+<tr><td><code>types / collections</code></td><td>complete type descriptors and immutable list data; helper values share arena handles</td></tr>
 <tr><td><code>const</code></td><td>deduplicated pools of strings, <code>i32</code>, <code>f32</code> and colours, referenced by index</td></tr>
 <tr><td><code>code</code></td><td>the function table (names, signatures, locals, offsets), the instruction streams (4 bytes per instruction: opcode, aux, u16 operand) and the part table</td></tr>
 <tr><td><code>debug</code></td><td>informative: local names and the source line of every instruction; stripping it never changes execution</td></tr>
-<tr><td><code>parts</code></td><td>0.5: one entry per part instance with its name (the import alias path, such as <code>hilt.grip</code>) and its parent, forming the tree that maps outputs into caller coordinates</td></tr>
+<tr><td><code>parts</code></td><td>one entry per part instance with its name (the import alias path, such as <code>hilt.grip</code>) and its parent, forming the tree that maps outputs into caller coordinates</td></tr>
+<tr><td><code>samplers / distributions / steppers</code></td><td>immutable captured descriptions and point pools; sampler picks draw explicitly, steppers produce deterministic batches</td></tr>
+<tr><td><code>resource exports</code></td><td>internal mask/layer slots and function ownership, separate from host geometry outputs</td></tr>
 </table>
 <p>Function 0 is the entry point <code>draw</code> with exactly one parameter per declared input, in declaration order starting at slot 0.</p>
 
@@ -67,11 +67,11 @@ reference lowering; none of them changes the image or output bits.</p>
 <ul>
 <li>A stack machine with locals and calls, and <strong>structured control flow only</strong>:
 <code>block</code>, <code>loop</code>, <code>if/else</code>, <code>br</code>, <code>br_if</code>.</li>
-<li>Branches depend on integers only; floats are for geometry and colour.</li>
+<li>Branch conditions are integers; floating comparisons produce integer 0/1 conditions.</li>
 <li>Every instruction spends fuel from the budget declared in <code>meta</code>; running out aborts with
 a defined error, so every file terminates.</li>
-<li>The only mutable state is the canvas, the declared outputs, the stack and the locals. Every canvas
-write is bounds-checked.</li>
+<li>Mutable state includes render targets, declared outputs, stacks/locals and RNG streams.
+Immutable collections and surfaces share a bounded arena. Every canvas write is bounds-checked.</li>
 </ul>
 
 <h2 id="determinism">Determinism</h2>

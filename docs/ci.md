@@ -47,17 +47,6 @@ be created by tools outside the packaging scripts. Archive extraction requires
 a new or empty directory and refuses to merge a package into an existing
 source checkout or previously extracted SDK.
 
-If numbered copies return without packaging being run, inspect the checkout's
-sync provider before attributing them to the release scripts. In the macOS
-checkout used during 0.5 development, scoped File Provider logs matched all
-four returning files by item ID and inode: iCloud Drive created them locally
-with `why:itemChangedRemotely`. This establishes remote synchronization as
-the cause of that recurrence, but does not identify which device or tool
-originally created the numbered remote items. Removing a local copy cannot
-guarantee that a later remote change will not restore it. Preserve and compare
-its contents, remove only confirmed duplicates, and keep the packaging guard
-enabled; changing cloud settings is a separate checkout-management decision.
-
 The generated handbook directory is configurable independently of the native
 build directory. In a synchronized checkout, set
 `-DIPROP_LANGUAGE_DOCS_DIR=/absolute/path/outside/cloud/language-docs` when
@@ -127,11 +116,12 @@ without further writes. Concurrent publication for one tag is serialized.
 To release after the reviewed changes are merged and the metadata is final:
 
 ```sh
-git tag -a v0.4.0 -m "Release 0.4.0"
-git push origin v0.4.0
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin vX.Y.Z
 ```
 
-Before creating a release tag, finalize the changelog date and freeze the
+Replace X.Y.Z with the finalized release version. Product 0.7.0 remains in
+development. Before creating a release tag, finalize the changelog date and freeze the
 matching specification. A manual CI run on `develop` retains and validates
 candidate packages without publishing a GitHub Release.
 

@@ -1,8 +1,9 @@
 # C API handle and descriptor contracts
 
-These rules govern new API 0.3 functions as they are introduced. Their presence
-in this document does not advertise an unimplemented capability. The frozen
-[API 0.2 policy](c-api-abi.md) continues to govern legacy calls.
+These rules govern API 0.4 sized descriptors and handles on ABI line 0.5.
+Query the loaded library's capability bits before using optional operations.
+The [ABI policy](c-api-abi.md) applies to both checked and untyped entry points;
+clients built against earlier layouts must rebuild.
 
 ## Strings and public types
 
@@ -25,7 +26,7 @@ New statuses, reason/type/kind tags, booleans, IDs, counts and flags use explici
 `uint32_t` or `uint64_t` fields. Signed values use `int32_t`; floating values
 use IEEE-754 binary32 `float`. Pointer width/alignment follow the native ABI.
 No C++ object, allocator, exception, ABI-sized enum or `size_t` is added to new
-descriptor layouts. Existing API 0.2 layouts are unchanged. Leaf records such
+descriptor layouts. Use the current header for all layouts. Leaf records such
 as the UTF-8 view have frozen fields; extensible enclosing descriptors use
 `struct_size`. Collections use single-item accessors, without an inferred
 array stride.
@@ -55,9 +56,9 @@ silently accepted as belonging to each other, even for identical bytes.
 Part-input reflection does not imply host overrides of those inputs. Its
 indices identify only the selected part signature, not root parameter IDs.
 The implemented [part table](c-api-parts.md) uses owner `part_index + 1`; owner
-zero identifies the root. Current binary formats store no part/import name,
-so part name presence is zero and its view is NULL/zero even when the associated
-function has a stored name.
+zero identifies the root. The compiler stores each part's alias path in the
+parts section. A part without an instance-name record reports an absent name;
+reflection never invents one from a function/debug name.
 
 The [sized image query](c-api-images.md) returns the exact legacy result-owned
 RGBA8 pointer, actual generated dimensions, tight row stride and explicit
@@ -80,7 +81,7 @@ geometry from a packed-float stride.
 Free functions accept `NULL`. Other handles are required unless their function
 explicitly documents a null default; required output pointers are non-null.
 Functions do not accept stale handles or invalid pointers. No shared-handle
-concurrency guarantee is introduced in 0.5; use separate handle groups on
+concurrency guarantee is provided; use separate handle groups on
 different threads. A group is one loaded program with the parameter sets and
 clones created from it, because they share its loaded data; results own their
 data. Calls are synchronous and retain no caller callbacks.
@@ -109,9 +110,8 @@ A failed parameter update/reset leaves all values unchanged. Error output is
 the intentional exception: its validated prefix reports the failure, with an
 explicitly bounded caller-owned message buffer. No exception crosses C, even
 when allocating or reporting an error fails; basic error reporting allocates
-no memory. Specific status, reason and message-buffer rules accompany the X
-implementation tasks; the [message-buffer foundation](runtime-errors.md)
-already defines caller capacity, NUL, required length and success clearing.
+no memory. The [message-buffer contract](runtime-errors.md) defines status,
+reason, caller capacity, NUL, required length and success clearing.
 
 Current library/options initializers and query already use these bounded
 descriptor rules. `Utf8View.hpp` provides the common no-allocation validator;

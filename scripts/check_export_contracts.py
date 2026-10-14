@@ -143,6 +143,11 @@ def main():
             shutil.copyfile(ROOT/name,shadow/name)
         for directory in ('docs','examples','spec'):
             shutil.copytree(ROOT/directory,shadow/directory)
+        for resource in language_docs.resources(ROOT):
+            target = shadow/resource.relative_to(ROOT)
+            if not target.exists():
+                target.parent.mkdir(parents=True,exist_ok=True)
+                shutil.copyfile(resource,target)
         (shadow/'docs/llm-reference.json').unlink()
         try:
             language_docs.build(compiler,temp/'missing-config-output',root=shadow)

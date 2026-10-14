@@ -1,7 +1,7 @@
 # The SFML host (`backends/sfml/`)
 
 A native desktop window over the C API — the first backend that proves
-the `ipropc` library end to end (task 7).
+the `ipropc` library end to end.
 
 ## Build
 
@@ -16,7 +16,7 @@ cmake --build build --parallel
 Without SFML the backend is skipped gracefully. This produces:
 
 - `iprop_sfml` — the windowed host (tasks 7.1/7.3);
-- `sfml_conformance` — the headless golden check (task 7.2), registered
+- `sfml_conformance` — the headless golden check, registered
   with `ctest`.
 
 ## The host (7.1/7.3)

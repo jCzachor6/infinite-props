@@ -1,4 +1,4 @@
-// Check the actual built website assets and WASM, including packed 0.4 files.
+// Check the actual built website assets, current documentation and WASM.
 "use strict";
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -37,8 +37,10 @@ function checkLinks(directory) {
 async function main() {
     const pages = checkLinks(site);
     assert.equal(pages, 7);
-    for (const minor of [1, 2, 3, 4, 5, 6, 7]) {
-        const spec = `iprop-v0.${minor}.md`;
+    const specs = fs.readdirSync(path.join(root, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort();
+    assert.deepEqual(specs, ["iprop-v0.7.md"]);
+    assert.deepEqual(fs.readdirSync(path.join(site, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort(), specs);
+    for (const spec of specs) {
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));
     }
     const recipes = fs.readdirSync(path.join(site, "recipes")).filter(name => name.endsWith(".ips"));
@@ -79,7 +81,16 @@ async function main() {
     assert.equal(described.status, 0, described.stderr);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8")), JSON.parse(described.stdout));
     const book = fs.readFileSync(path.join(site, "docs", `language-v${docs.language_version}.md`));
-    assert.deepEqual(book, fs.readFileSync(path.join(site, "reference", `language-v${docs.language_version}.md`)));
+    assert.ok(book.length > 0);
+    // A correct manifest must not mask stale files left by a previous build.
+    const inventory = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
+        entry.isDirectory() ? inventory(path.join(directory, entry.name)) : [path.relative(site, path.join(directory, entry.name)).replaceAll(path.sep, "/")]);
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"]) {
+        const expected = Object.keys(docs.files).filter(file => file.startsWith(directory + "/"));
+        if (directory === "docs") expected.push("docs/language-manifest.json", "docs/nav.js", "docs/language-index.js");
+        assert.deepEqual(inventory(path.join(site, directory)).filter(file => !file.endsWith(".html")).sort(), expected.sort());
+    }
+    assert.ok(!fs.existsSync(path.join(site, "reference")), "stale duplicate reference tree");
     // The home page showcase: every asset a tile or a game slot renders, the
     // binaries from examples/showcase (their sources are not public).
     const home = fs.readFileSync(path.join(site, "index.html"), "utf8");
@@ -112,7 +123,7 @@ async function main() {
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 7 specs, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

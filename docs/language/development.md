@@ -24,7 +24,7 @@ to the documentation itself, implementations or other hosts, such as a note
 about an example the reference does not show; the paragraph stays in the book
 and the reference leaves it out.
 
-The schema 3 language export also supplies `source_rules.samplers.methods`
+The schema 4 language export also supplies `source_rules.samplers.methods`
 from the same receiver-first registry used for typing and lowering. Sampler
 method signatures are separate from global `pick`; their receiver/count order
 and intrinsic effects must be propagated to docs, LLM reference and consumers.
@@ -51,10 +51,9 @@ signature/effect list. A callee or argument may have effects beyond an outer
 operation's intrinsic summary. The language-description contract explains
 the fields and links executable acceptance checks.
 
-Keep current cases consistent with source language 0.5. `negative-default.ips`
-and `signed-input.ips` are successful examples now; their old errors remain
-only in the immutable 0.4 baseline. Add restricted-constant or signed-range
-failures under separate filenames rather than relabeling those valid programs.
+Keep current cases consistent with the implemented language contract.
+Historical snapshots remain unchanged; give new expected failures separate
+fixtures instead of changing a successful case into a rejection.
 
 ```sh
 python3 scripts/language_docs.py check --compiler build/tools/ipc
@@ -83,7 +82,7 @@ commit. Historical versions remain in their Git tags, rather than copies
 updated accidentally alongside the current chapters.
 
 Parameterized list types and collection rules are emitted from the shared type
-descriptors. Keep schema-3 readers, editor highlighting, fixed list overloads
+descriptors. Keep schema-4 readers, editor highlighting, fixed list overloads
 and the legacy polygon variadic template aligned when extending collections.
 
 Point distribution capabilities are emitted as `source_rules.point_distributions`,

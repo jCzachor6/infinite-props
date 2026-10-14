@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
@@ -181,7 +182,35 @@ def resources(root):
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
     files += [root / "docs/llm-reference.json"]
+    # Integration guides link the same contracts in standalone docs, websites
+    # and installed SDKs. Include their linked C examples for offline use.
+    files += list((root / "backends").glob("*/README.md"))
+    files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
+    files += list((root / "examples/c").glob("*.c"))
+    if (root / "examples/c/CMakeLists.txt").is_file():
+        files.append(root / "examples/c/CMakeLists.txt")
     return files
+
+
+def verify_links(load, files):
+    """Every shipped Markdown link must resolve within the offline payload."""
+    anchors = {}
+    available = set(files)
+    available.update(parent.as_posix() for name in files for parent in PurePosixPath(name).parents)
+    for name in sorted(files):
+        if not name.endswith(".md"):
+            continue
+        for destination, _ in links(load(name).decode("utf-8")):
+            url = urlsplit(destination)
+            if url.scheme or url.netloc:
+                continue
+            target = posixpath.normpath(posixpath.join(posixpath.dirname(name), unquote(url.path))) if url.path else name
+            require(target in available, f"Missing offline documentation link: {name}: {destination}")
+            if url.fragment and target.endswith(".md"):
+                if target not in anchors:
+                    anchors[target] = {h["anchor"] for h in headings(load(target).decode("utf-8"))}
+                require(unquote(url.fragment) in anchors[target],
+                        f"Missing offline documentation anchor: {name}: {destination}")
 
 
 def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None, llm_max_bytes=None):
@@ -252,13 +281,14 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     from llm_reference import render
     output["LLM_REFERENCE.md"], llm_checks = render(root, language, authored, cases, info, compiler,
                                                  llm_sections, llm_symbols, llm_max_bytes)
-    # Ship the linked standalone sources and frozen numerical contracts offline.
+    # Ship linked sources, integration guides and numerical contracts offline.
     for file in resources(root):
         output[record(file)] = read(file)
     info.update({"schema_version": DOCUMENTATION_SCHEMA_VERSION, "builtin_count": len(builtins), "example_count": len(cases),
                  "headings": manifest_headings(combined),
                  "source_files": dict(sorted(inputs.items())),
                  "files": {name: digest(text.encode("utf-8")) for name, text in sorted(output.items())}})
+    verify_links(lambda name: output[name].encode("utf-8"), output.keys())
     require(destination.resolve() != root.resolve() and not root.resolve().is_relative_to(destination.resolve()),
             "Documentation output must not replace the source checkout")
     require(not any((root / name).resolve().is_relative_to(destination.resolve()) for name in inputs),
@@ -326,6 +356,7 @@ def verify_contents(load, version=None, commit=None, root=None, clean=False):
     minor = handbook_version(language)
     required = set(manifest["source_files"]) | {"docs/language.json", f"docs/language-v{minor}.md", "LLM_REFERENCE.md"}
     require(set(manifest["files"]) == required, "Documentation manifest omits or adds payload files")
+    verify_links(load, manifest["files"].keys())
     if root is not None:
         root = root.resolve()
         match_versions(manifest, versions(root))

@@ -4,7 +4,7 @@ Part output ranges and counts refer only to the host geometry table. Internal
 mask/layer exports are separate and do not change these indices, owners or
 point/rect/circle tags.
 
-API 0.3 provides the loaded executable's stored part table through checked
+API 0.4 provides the loaded executable's stored part table through checked
 queries. `IPROP_CAP_PART_REFLECTION` advertises these implemented operations.
 They do not execute the VM, reconstruct source import paths or grant host
 overrides of part inputs. Root parameters and
@@ -39,14 +39,14 @@ retained. Geometry or a declaration does not predict generated values.
 
 ## Names and input signatures
 
-A format 0.5 file with a parts section, which the compiler writes for every
+A format 0.7 file with a parts section, which the compiler writes for every
 file with parts, names each part instance by its alias path from the root
 asset, such as `hilt` or `hilt.grip`. Such a part returns `name_present == 1`
 and an immutable program-owned UTF-8 `name` view, valid until
 `iprop_program_free`. Hosts can join it with a local output name to present
 `hilt.grip.top`; output lookup still takes the owner and the local name.
 
-Files without that section, including every 0.1–0.4 file, store no part name.
+Files without that section store no part name. Only format 0.7 is accepted.
 They return `name_present == 0`, `name.data == NULL` and
 `name.byte_count == 0`, including debug containers that have a named
 associated function. A function name is not a part name; no import alias or
@@ -101,5 +101,5 @@ if (iprop_program_part_count(program, &count, NULL) == IPROP_EX_OK) {
 ```
 
 These queries work with either legacy-loaded or checked-loaded program handles,
-with debug present or stripped, compressed or plain containers, and older
-accepted formats. The six legacy entry points and their layouts remain unchanged.
+with debug present or stripped and compressed or plain format 0.7 containers.
+Checked and untyped entry points use the current API 0.4 layouts.

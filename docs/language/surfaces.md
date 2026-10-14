@@ -42,7 +42,7 @@ off-target pixels; transparent source pixels are skipped by legacy composition.
 come from the existing part mechanism, shared with captured surfaces.
 
 Omitted `alpha` on a layer inherits the active target's composition mode.
-The root always starts in `surface.legacy`, including format 0.6. Select
+The root always starts in `surface.legacy`, in format 0.7. Select
 `layer name(alpha=surface.source_over)` for correct straight RGBA8 alpha,
 or `alpha=surface.legacy` for the frozen compositor. Mode arguments must be
 literal namespace constants; a numeric variable or const alias is rejected.

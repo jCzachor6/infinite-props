@@ -50,9 +50,13 @@ endif()
 install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop
     REGEX "/examples/showcase$" EXCLUDE)
 # The guides keep their source-tree places, so their relative links resolve.
-foreach(backend capi sfml godot)
+foreach(backend capi html5 sfml godot)
     install(FILES backends/${backend}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend})
+endforeach()
+foreach(guide editor website)
+    install(FILES ${guide}/README.md
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/${guide})
 endforeach()
 if(Python3_Interpreter_FOUND)
     # Expanded chapters replace their authored directives in installed SDKs.

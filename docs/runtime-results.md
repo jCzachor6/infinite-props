@@ -50,7 +50,6 @@ empty slots and three destination-table allocations. It observes zero
 allocations for a result with no outputs. C99 conformance also keeps the first
 result alive while generating and freeing a second result and the program.
 
-The [packing measurement](../benchmarks/capi/README.md#packing-comparison-05-m3)
-records actual allocation traffic before and after this adapter change.
-Packing still briefly requires both typed and packed values; peak memory
-was not measured and no claim of a completely copy-free result is made.
+Packing briefly holds both typed and packed values. The source checkout retains
+historical allocation samples in `benchmarks/capi/packing-comparison-macos-arm64.json`;
+those samples measure allocation traffic, rather than retained or peak memory.

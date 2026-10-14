@@ -35,7 +35,7 @@ Severities are `error`, `warning`, `note`. Stages are `lex`, `parse`, `import`,
 JSON protocol is [schema 1](compiler-diagnostics.schema.json). It includes
 independent product and source-language versions, status and a diagnostics
 array. The develop compiler identifies source language 0.7 and emits binary
-format 0.6 when a file needs it; its current product version is separate.
+format 0.7 for every executable; its current product version is separate.
 An I/O failure for the entry has no invented source location. An import load
 failure can point at its importing statement because that snapshot exists.
 Unexpected loader exceptions and allocation failures are internal errors,
@@ -117,12 +117,12 @@ and supplies an exact edit of the type token; out-of-range defaults do not
 receive that edit, because changing the type cannot repair them. The editor
 must verify `source_id` before applying the replacement.
 
-## Current source 0.5 examples
+## Current source examples
 
 Negative floating defaults and source `input i32` are accepted. The registered
 [negative-default](../examples/language/negative-default.ips) and
 [signed-input](../examples/language/signed-input.ips) programs are successful
-current cases; their former 0.4 errors remain in the frozen historical baseline.
+current cases. Historical observations stay in their preserved fixtures.
 The API/product version alone does not determine source acceptance.
 
 These separate rejected examples exercise the current causes through the real

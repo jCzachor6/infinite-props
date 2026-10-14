@@ -54,12 +54,12 @@ Uniform overrides evaluate in the part's input declaration order. Then the
 `seed` and placement expressions evaluate, regardless of the order
 of named arguments in the source. Transform
 arguments are compile-time constants. Each dynamic argument evaluates once.
-See [parts and D4 transforms](../../spec/iprop-v0.3.md#105-part-transforms-v03)
+See [parts and D4 transforms](../../spec/iprop-v0.7.md#105-part-transforms)
 for the exact geometry mapping and rectangle bounds, and
-[part instances](../../spec/iprop-v0.5.md#6-part-instances) for the output
+[part instances](../../spec/iprop-v0.7.md#106-part-instances-section) for the output
 coordinates.
 
-The current example uses named controls in a different written order from
+The current example uses named arguments in a different written order from
 their evaluation order. Omitted overrides use the part's resolved declaration
 defaults, including signed integer and floating constants; no new runtime
 input type is introduced for a signed source declaration.

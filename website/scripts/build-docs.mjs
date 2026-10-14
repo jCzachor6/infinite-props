@@ -50,6 +50,23 @@ export function verifyBundle(bundle, compiler = null) {
     if (verified.status !== 0) throw new Error(verified.stderr || String(verified.error));
 }
 
+// These public trees are generated. Keep the authored navigation script while
+// replacing the payload, so removed chapters and reports cannot survive a sync.
+export function syncDocumentation(bundle, publicDir) {
+    const docsDir = path.join(publicDir, "docs");
+    if (fs.existsSync(docsDir)) {
+        for (const entry of fs.readdirSync(docsDir)) {
+            if (entry !== "nav.js") fs.rmSync(path.join(docsDir, entry), { recursive: true, force: true });
+        }
+    }
+    for (const directory of ["examples", "spec", "reference", "backends", "editor", "website"])
+        fs.rmSync(path.join(publicDir, directory), { recursive: true, force: true });
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"])
+        if (fs.existsSync(path.join(bundle, directory)))
+            fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
+    fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
+}
+
 export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(root, "build/tools", process.platform === "win32" ? "ipc.exe" : "ipc")) {
     const bundle = path.resolve(process.env.IPROP_LANGUAGE_DOCS_DIR || path.join(root, "build/language-docs"));
     const result = spawnSync(process.env.IPROP_PYTHON || "python3", [
@@ -63,12 +80,7 @@ export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(roo
     const book = fs.readFileSync(path.join(bundle, "docs", `language-v${minor}.md`), "utf8");
     const rendered = renderBook(book, info.headings, bundle);
     const publicDir = path.join(root, "website/public");
-    for (const directory of ["docs", "examples", "spec"])
-        fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
-    fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
-    // Offer the same source-language book under the reference download directory.
-    fs.mkdirSync(path.join(publicDir, "reference"), { recursive: true });
-    fs.copyFileSync(path.join(bundle, "docs", `language-v${minor}.md`), path.join(publicDir, "reference", `language-v${minor}.md`));
+    syncDocumentation(bundle, publicDir);
     const template = fs.readFileSync(path.join(root, "website/templates/language.html"), "utf8");
     const html = template.replace("{{CONTENT}}", rendered.html)
         .replaceAll("{{VERSION}}", info.language_version).replaceAll("{{MINOR}}", minor)

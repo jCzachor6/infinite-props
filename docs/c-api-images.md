@@ -1,8 +1,8 @@
 # Borrowed generated image views
 
 `IPROP_CAP_IMAGE_VIEW` (bit 12) advertises `iprop_image_view_ex_init` and
-`iprop_result_query_image`. They extend API 0.3 on ABI line 0.4 without
-changing `iprop_image`, legacy entry points or renderer behavior.
+`iprop_result_query_image`. They use API 0.4 on ABI line 0.5. The sized query borrows the same pixels
+as the current untyped image accessor, without conversion.
 
 ```c
 iprop_image_view_ex image;
@@ -52,7 +52,7 @@ For example, painting RGBA `(200,100,50,128)` on transparent zero storage yields
 RGB can therefore be nonzero where stored alpha is zero. The query returns those
 exact bytes without normalizing or converting them. Hosts must interpret this
 explicit mode when selecting their own rendering or export policy. The normative
-algorithm remains [pixel blending](../spec/iprop-v0.3.md#111-pixelx-y-colour),
+algorithm remains [pixel blending](../spec/iprop-v0.7.md#111-pixelx-y-colour),
 also described by [language drawing](language/drawing.md).
 
 ## Checked failure behavior

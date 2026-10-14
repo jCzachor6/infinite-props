@@ -38,7 +38,7 @@ its RNG effects. Named arguments are `palette` and `t`.
 
 Color interpolation preserves the first selected color's alpha. Exact
 clamping, NaN behavior and lowering are described in
-[the v0.3 ramp contract](../../spec/iprop-v0.3.md#1211-the-curves-and-the-ramps-v03).
+[the ramp contract](../../spec/iprop-v0.7.md#1211-the-curves-and-the-ramps).
 
 <!-- example: ../../examples/language/errors/integer-ramp.ips -->
 

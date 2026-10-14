@@ -123,6 +123,11 @@ def main():
         for name, _ in VERSION_SOURCES.values():
             (copied / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(root / name, copied / name)
+        for resource in docs.resources(root):
+            target = copied / resource.relative_to(root)
+            if not target.exists():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(resource, target)
         source_before = snapshot(root / 'examples/language')
         broken = json.loads(json.dumps(config))
         broken['diagnostic_pairs'][0]['diagnostic_code'] = 'IPS-TYPE-999'

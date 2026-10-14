@@ -39,6 +39,24 @@ class DocumentationTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Missing Markdown anchor"):
             docs.sources(self.root, LANGUAGE)
 
+    def test_unshipped_contract_link_cannot_replace_a_generated_bundle(self):
+        with patch.object(docs, "contracts", return_value=LANGUAGE):
+            docs.build(Path("unused"), self.output, self.root)
+        before = {p.relative_to(self.output): p.read_bytes() for p in self.output.rglob("*") if p.is_file()}
+        (self.root / "docs/contract.md").write_text("# Contract\n\n[missing](../unshipped.md)\n")
+        with patch.object(docs, "contracts", return_value=LANGUAGE), self.assertRaisesRegex(RuntimeError, "Missing offline documentation link"):
+            docs.build(Path("unused"), self.output, self.root)
+        after = {p.relative_to(self.output): p.read_bytes() for p in self.output.rglob("*") if p.is_file()}
+        self.assertEqual(before, after)
+
+    def test_offline_directory_link_requires_shipped_children(self):
+        payload = {"docs/guide.md": b"# Guide\n\n[Examples](../examples/language)\n",
+                   "examples/language/one.ips": b"asset A { size 1x1 draw {} }"}
+        docs.verify_links(payload.__getitem__, payload.keys())
+        del payload["examples/language/one.ips"]
+        with self.assertRaisesRegex(RuntimeError, "Missing offline documentation link"):
+            docs.verify_links(payload.__getitem__, payload.keys())
+
     def test_unregistered_example_is_rejected(self):
         (self.root / "examples/language/extra.ips").write_text("asset A { size 1x1 draw {} }")
         with self.assertRaisesRegex(RuntimeError, "Register every language example"):

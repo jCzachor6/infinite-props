@@ -1,6 +1,6 @@
 # Structured error foundations
 
-`iprop_error_ex` is an additive API 0.3 descriptor. It records a fixed-width
+`iprop_error_ex` is an API 0.4 descriptor. It records a fixed-width
 status, stable cause category, stage and optional location. Initialize it with
 `iprop_error_ex_init(&error, sizeof(error))`: success, reason/stage `NONE`, and
 no location, message buffer or message length. Like other sized initializers, it writes only complete known
@@ -27,7 +27,7 @@ code must be handled using its status/stage, without assuming its text.
 | 1000–1010 | Invalid format fallback, truncated input, bad magic, unsupported version, header, compression, layout, constants, metadata, code, debug |
 | 2000–2002 | Invalid instruction/stack/control validation, signature, part cycle |
 | 3000–3014 | Runtime fallback, fuel, stack underflow/type/limit, call depth, index, control, divide by zero, integer overflow, numeric range, output, missing part output, part render, stream underflow |
-| 4000–4007 | Invalid argument fallback, variant, archetype, canvas size, uniform type, unknown parameter, duplicate parameter, parameters of another program |
+| 4000, 4003–4007 | Invalid argument fallback, canvas size, uniform type, unknown parameter, duplicate parameter, parameters of another program; 4001/4002 are retired |
 | 5000–5001 | Out of memory, unexpected internal failure |
 
 The corresponding `IPROP_REASON_*` constants in `iprop.h` name each category.
@@ -35,7 +35,7 @@ Stages are `NONE=0`, `LOAD=1` (container/decode/payload parsing), `VALIDATE=2`
 (static bytecode/signature/part-graph checks), `ARGUMENTS=3` (host invocation
 checks before execution), and `EXECUTE=4` (VM instruction failure).
 Status is a separate API policy. A legacy VM-construction `Trap`, such as an
-invalid variant, retains `IPROP_E_TRAP` even though its typed stage is
+invalid canvas size, retains `IPROP_E_TRAP` even though its typed stage is
 `ARGUMENTS`. The metadata foundation does not reclassify old calls.
 
 ## New status policy and exception boundary
