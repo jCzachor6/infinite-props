@@ -11,7 +11,7 @@ independent: `ipc --describe-language` reports the versions of the compiler
 being used. The compiler always emits format 0.7; the runtime accepts only 0.7.
 C API 0.4 uses ABI 0.5. There are no implicit variant/archetype controls. The new implemented features are integer bounds overloads
 and vector normalization, typed immutable asset constants, and lists with
-helper transfer and polygon drawing, and captured samplers with scalar/batch picks; later 0.7
+helper transfer and polygon drawing, and captured samplers with scalar/batch picks and deterministic steppers; later 0.7
 stages are not yet available. Weighted literals now provide discrete masses
 with exact integer keys and one bounded draw. Density profiles add continuous
 piecewise linear shapes with clipped integration and a stable inverse. Const samplers and sampling palettes now share
@@ -44,15 +44,16 @@ files; their contents are included in the generated book and tested by CI.
 12. [Palettes](palettes.md)
 13. [Immutable lists](collections.md)
 14. [Captured samplers](samplers.md)
-15. [Imports and part composition](composition.md)
-16. [Captured layers, masks and clipping](surfaces.md)
-17. [Writing idiomatic props](idioms.md)
-18. [Compiler tools and diagnostics](tooling.md)
-19. [Grammar](grammar.md)
-20. [Maintaining this documentation](development.md)
-21. [Migration and implementation contracts for 0.5](migration-v0.5.md)
-22. [Migration and implementation contracts for 0.6](migration-v0.6.md)
-23. [Migration and implementation contracts for 0.7](migration-v0.7.md)
+15. [Deterministic steppers](steppers.md)
+16. [Imports and part composition](composition.md)
+17. [Captured layers, masks and clipping](surfaces.md)
+18. [Writing idiomatic props](idioms.md)
+19. [Compiler tools and diagnostics](tooling.md)
+20. [Grammar](grammar.md)
+21. [Maintaining this documentation](development.md)
+22. [Migration and implementation contracts for 0.5](migration-v0.5.md)
+23. [Migration and implementation contracts for 0.6](migration-v0.6.md)
+24. [Migration and implementation contracts for 0.7](migration-v0.7.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

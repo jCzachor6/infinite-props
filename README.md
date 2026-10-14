@@ -10,7 +10,7 @@ change its appearance; different inputs need not produce different images.
 
 This checkout implements product **0.7.0** / source language **0.7**
 in development: exact integer min/max/clamp, stable vector normalization and
-typed immutable asset constants, lists, weighted/density distributions and captured samplers visible in draw
+typed immutable asset constants, lists, weighted/density distributions, captured samplers and deterministic steppers visible in draw
 and helpers, with explicit single picks, immutable batches, sampling palettes and
 immutable captured layers on the shared part/render-target mechanism, with
 explicit straight RGBA8 source-over and inherited target modes. Newly introduced

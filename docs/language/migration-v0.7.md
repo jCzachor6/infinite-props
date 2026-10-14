@@ -222,7 +222,7 @@ The current reader rejects archived binaries with an older format version.
 ## Reserved keyword source migration
 
 All newly introduced keywords are lexically reserved: `const`, `to`, `with`,
-`distribution`, `sampler`, `weighted`, `density`, `layer`, `mask` and `clip`. This is an
+`distribution`, `sampler`, `stepper`, `weighted`, `density`, `layer`, `mask` and `clip`. This is an
 intentional source break, including names introduced during earlier development
 stages. They cannot name assets, helpers, inputs, outputs, parameters, locals,
 loop counters, import aliases or members. The lexer and language catalog share
@@ -269,3 +269,21 @@ Implicit `v`/`a`, variant/archetype counts and host selectors are removed.
 Declare ordinary inputs for selections and rebuild binaries for format 0.7.
 C clients rebuild for API 0.4 / ABI 0.5. See the
 [migration guide](../variant-archetype-removal.md).
+
+
+## Deterministic steps
+
+`stepper<T>` adds immutable descriptions of i32, f32, color and vec2 ranges.
+`.pick(n)` requires an i32 count in 0–256 and returns deterministic steps or
+truncated distribution quantiles without consuming RNG. It has no scalar
+`.pick()` overload or cursor. Descriptions can be const and stored in lists;
+`.distinct()` compares their original contents and `.sort()` rejects them.
+There are no implicit conversions between steppers and samplers, and palettes
+keep their existing semantics. `stepper` is globally reserved, so rename any
+old declaration with that spelling. See [steppers](steppers.md).
+
+This extension remains in the developing 0.7 line. Format 0.7 appends descriptor
+kind 14, section 11 and instructions 0xD8–0xDC. Existing section IDs and opcode
+numbers, random algorithms and C ABI are unchanged. The language export adds
+`source_rules.steppers`, four batch signatures and the new storable, const and
+list types. Schema 4 remains additive.

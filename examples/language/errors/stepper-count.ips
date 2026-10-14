@@ -1,0 +1,4 @@
+asset invalidSteps {
+  size 1x1
+  draw { values = stepper(0 to 5).pick(257) }
+}

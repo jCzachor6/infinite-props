@@ -108,6 +108,7 @@ std::vector<u8> Assembler::assemble() {
     Writer types;
     Writer collections;
     Writer samplers;
+    Writer steppers;
     Writer distributions;
     if (!plan_.pools.distributionsValue().empty()) {
         distributions.writeU32(static_cast<u32>(plan_.pools.distributionsValue().size()));
@@ -123,7 +124,7 @@ std::vector<u8> Assembler::assemble() {
             const auto found = std::find(descriptors.begin(), descriptors.end(), list.type);
             collections.writeU16(static_cast<u16>(found - descriptors.begin()));
             collections.writeU16(static_cast<u16>(list.data->elements.size()));
-            writeListElements(collections, *list.data, plan_.pools.samplersValue(), plan_.pools.distributionsValue());
+            writeListElements(collections, *list.data, plan_.pools.samplersValue(), plan_.pools.distributionsValue(), plan_.pools.steppersValue());
         }
     }
     if (!plan_.pools.samplersValue().empty()) {
@@ -133,6 +134,15 @@ std::vector<u8> Assembler::assemble() {
             const auto found = std::find(descriptors.begin(), descriptors.end(), sampler.type);
             samplers.writeU16(static_cast<u16>(found - descriptors.begin()));
             writeSamplerData(samplers, *sampler.data, plan_.pools.distributionsValue());
+        }
+    }
+    if (!plan_.pools.steppersValue().empty()) {
+        steppers.writeU32(static_cast<u32>(plan_.pools.steppersValue().size()));
+        for (const auto& stepper : plan_.pools.steppersValue()) {
+            const auto& descriptors = plan_.pools.typesValue();
+            const auto found = std::find(descriptors.begin(), descriptors.end(), stepper.type);
+            steppers.writeU16(static_cast<u16>(found - descriptors.begin()));
+            writeStepperData(steppers, *stepper.data, plan_.pools.distributionsValue());
         }
     }
 
@@ -248,9 +258,9 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& function : plan_.functions)
             exports.writeU32(function.partOwner.value_or(kRootParent));
     }
-    if (types.size() || collections.size() || samplers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
+    if (types.size() || collections.size() || samplers.size() || steppers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
-        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     // ---- file (spec §2) ----
     Writer file;
     for (const u8 magic : kMagic) {
@@ -277,6 +287,7 @@ std::vector<u8> Assembler::assemble() {
     if (samplers.size()) section(static_cast<u32>(SectionId::Samplers), samplers.data());
     if (distributions.size()) section(static_cast<u32>(SectionId::Distributions), distributions.data());
     if (exports.size()) section(static_cast<u32>(SectionId::ResourceExports), exports.data());
+    if (steppers.size()) section(static_cast<u32>(SectionId::Steppers), steppers.data());
     section(static_cast<u32>(SectionId::Debug), debug.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
@@ -287,6 +298,7 @@ std::vector<u8> Assembler::assemble() {
     file.writeBytes(samplers.data());
     file.writeBytes(distributions.data());
     file.writeBytes(exports.data());
+    file.writeBytes(steppers.data());
     file.writeBytes(debug.data());
     return file.data();
 }

@@ -27,14 +27,15 @@ parameters    = parameter, { ",", parameter }, [ "," ] ;
 parameter     = name, ":", value_type ;
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
-list_type     = "list", "<", (scalar_type | sampler_type), ">" ;
-value_type    = scalar_type | list_type | sampler_type | "layer" | "mask" ;
+stepper_type  = "stepper", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
+list_type     = "list", "<", (scalar_type | sampler_type | stepper_type), ">" ;
+value_type    = scalar_type | list_type | sampler_type | stepper_type | "layer" | "mask" ;
 block         = "{", { ";" | statement }, "}" ;
 clip_scope    = "clip", "(", expression, ")", block ;
 statement     = layer_capture | clip_scope | assignment | call_statement | if | while | for
               | "break" | "continue" | return ;
-assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type ], name, "=", expression ;
-call_statement = (name | "mask"), { postfix_suffix } ;  (* must end as a call, capture, pick or list method *)
+assignment    = [ "distribution" | "layer" | "mask" | list_type | sampler_type | stepper_type ], name, "=", expression ;
+call_statement = (name | "mask" | "sampler" | "stepper"), { postfix_suffix } ;  (* must end as a call, capture, pick or list method *)
 if            = "if", "(", expression, ")", block,
                 [ "else", (if | block) ] ;
 while         = "while", "(", expression, ")", block ;
@@ -57,10 +58,12 @@ postfix       = primary, { postfix_suffix } ;
 postfix_suffix = ".", name | "(", [ arguments ], ")"
                | "[", expression, "]" ;
 primary       = literal | name | "mask" | compound | list_literal | point_distribution
-              | sampler_capture | "(", expression, ")" ;
+              | sampler_capture | stepper_capture | "(", expression, ")" ;
 point_distribution = ("weighted" | "density"), "{", [ distribution_points ], "}" ;  (* reserved family names *)
 distribution_points = expression, ":", expression, { ",", expression, ":", expression }, [ "," ] ;
 sampler_capture = "sampler", "(", expression, ")" ;  (* reserved; the outer random_range is captured *)
+stepper_capture = "stepper", "(", expression, ")" ;
+stepper_pick  = postfix, ".pick", "(", [ "n", "=" ], expression, ")" ;
 sampler_pick  = postfix, ".pick", "(", [ [ "n", "=" ], expression ], ")" ;
 list_method   = postfix, (".distinct" | ".sort"), "(", ")" ;  (* ordinary method names, statically typed *)
 list_literal  = "[", [ expressions ], "]" ;

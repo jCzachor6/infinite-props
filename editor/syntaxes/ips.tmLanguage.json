@@ -107,7 +107,7 @@
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\b(distribution|sampler)\\b|\\blist\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle)\\b(?!\\s*=(?!=))"
+      "match": "\\b(distribution|sampler|stepper)\\b|\\blist\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -119,7 +119,7 @@
     },
     "samplerCapture": {
       "name": "support.function.sampler.ips",
-      "match": "\\bsampler\\b"
+      "match": "\\b(?:sampler|stepper)\\b"
     },
     "samplerMethod": {
       "name": "support.function.sampler.pick.ips",

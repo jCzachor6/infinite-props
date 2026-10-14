@@ -263,7 +263,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         out << '\n';
     }
     for (const auto& list : loaded.collections.lists) {
-        Writer data; writeListElements(data, *list.data, loaded.collections.samplers, loaded.collections.distributions);
+        Writer data; writeListElements(data, *list.data, loaded.collections.samplers, loaded.collections.distributions, loaded.collections.steppers);
         out << "collection: " << valueTypeName(list.type) << ' ';
         constexpr char digits[] = "0123456789abcdef";
         if (data.data().empty()) out << '-';
@@ -273,6 +273,13 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     for (const auto& sampler : loaded.collections.samplers) {
         Writer data; writeSamplerData(data, *sampler.data, loaded.collections.distributions);
         out << "sampler: " << valueTypeName(sampler.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
+    }
+    for (const auto& stepper : loaded.collections.steppers) {
+        Writer data; writeStepperData(data, *stepper.data, loaded.collections.distributions);
+        out << "stepper: " << valueTypeName(stepper.type) << ' ';
         constexpr char digits[] = "0123456789abcdef";
         for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
         out << '\n';

@@ -61,6 +61,9 @@ async function main() {
         console.log("native/WASM samplers: PASS (" + native.samplers.comparisons +
             " exact generations; " + native.samplers.traps + " matching traps; " +
             native.samplers.rejections + " malformed/version rejections)");
+        console.log("native/WASM steppers: PASS (" + native.steppers.comparisons +
+            " exact generations; " + native.steppers.pins + " independent pins; " + native.steppers.traps +
+            " matching traps; " + native.steppers.rejections + " malformed/version rejections)");
         console.log("native/WASM list methods: PASS (" + native.listMethods.signatures + " signatures; " +
             native.listMethods.comparisons + " exact generations; " + native.listMethods.pins + " independent pins; " +
             native.listMethods.traps + " matching traps; " + native.listMethods.rejections + " malformed/version rejections)");

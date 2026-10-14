@@ -1,5 +1,11 @@
 {
   "cases": [
+    {"file":"steppers.ips","expect":"pass"},
+    {"file":"errors/stepper-count.ips","expect":"compile-error","message":"stepper result count must be between 0 and 256"},
+    {"file":"errors/stepper-missing-count.ips","expect":"compile-error","message":"requires one i32 count"},
+    {"file":"errors/stepper-const-pick.ips","expect":"compile-error","message":"generation effects"},
+    {"file":"traps/stepper-unassigned.ips","expect":"trap","message":"stepper handle is unassigned"},
+    {"file":"traps/stepper-mass.ips","expect":"trap","message":"no probability"},
     {"file":"list-methods.ips","expect":"pass"},
     {"file":"errors/list-sort-description.ips","expect":"compile-error","message":".sort does not support list<distribution>"},
     {"file":"errors/list-method-arguments.ips","expect":"compile-error","message":".distinct takes no arguments"},

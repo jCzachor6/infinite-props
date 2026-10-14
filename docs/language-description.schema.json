@@ -107,7 +107,15 @@
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
                   "layer",
-                  "mask"
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -139,7 +147,15 @@
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
                   "layer",
-                  "mask"
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -171,7 +187,15 @@
                   "list<sampler<color>>",
                   "list<sampler<vec2>>",
                   "layer",
-                  "mask"
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -338,7 +362,8 @@
                     "description": "Parameterized type constructor name.",
                     "enum": [
                       "list",
-                      "sampler"
+                      "sampler",
+                      "stepper"
                     ]
                   },
                   "element_types": {
@@ -357,7 +382,11 @@
                         "sampler<i32>",
                         "sampler<f32>",
                         "sampler<color>",
-                        "sampler<vec2>"
+                        "sampler<vec2>",
+                        "stepper<i32>",
+                        "stepper<f32>",
+                        "stepper<color>",
+                        "stepper<vec2>"
                       ]
                     }
                   },
@@ -1081,7 +1110,15 @@
                   "list<sampler<i32>>",
                   "list<sampler<f32>>",
                   "list<sampler<color>>",
-                  "list<sampler<vec2>>"
+                  "list<sampler<vec2>>",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "An implemented asset constant type."
               },
@@ -1225,8 +1262,8 @@
             },
             "methods": {
               "type": "array",
-              "minItems": 13,
-              "maxItems": 13,
+              "minItems": 17,
+              "maxItems": 17,
               "uniqueItems": true,
               "description": "Optional supported distinct and sort signatures from the shared frontend registry.",
               "items": {
@@ -1249,7 +1286,11 @@
                       "list<sampler<i32>>",
                       "list<sampler<f32>>",
                       "list<sampler<color>>",
-                      "list<sampler<vec2>>"
+                      "list<sampler<vec2>>",
+                      "list<stepper<i32>>",
+                      "list<stepper<f32>>",
+                      "list<stepper<color>>",
+                      "list<stepper<vec2>>"
                     ],
                     "description": "Statically required immutable list type."
                   },
@@ -1268,7 +1309,11 @@
                       "list<sampler<i32>>",
                       "list<sampler<f32>>",
                       "list<sampler<color>>",
-                      "list<sampler<vec2>>"
+                      "list<sampler<vec2>>",
+                      "list<stepper<i32>>",
+                      "list<stepper<f32>>",
+                      "list<stepper<color>>",
+                      "list<stepper<vec2>>"
                     ],
                     "description": "Same immutable list type as the receiver."
                   },
@@ -2101,6 +2146,7 @@
             "output",
             "return",
             "sampler",
+            "stepper",
             "to",
             "true",
             "weighted",
@@ -2470,6 +2516,225 @@
           ],
           "additionalProperties": false,
           "description": "Internal immutable part exports; host geometry indices remain unchanged."
+        },
+        "steppers": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "stepper(<value> | <lower> to <upper> [with <distribution>])",
+              "description": "Reserved capture syntax for a constant or outer range; operand expressions remain eager."
+            },
+            "capture_evaluation": {
+              "const": "lower_upper_distribution_once",
+              "description": "Capture operand order, each evaluated once before validating and allocating the description."
+            },
+            "intrinsic_capture_rng": {
+              "const": "none",
+              "description": "Capture itself does not advance a stream; operand effects still run."
+            },
+            "bounds_validation": {
+              "const": "capture",
+              "description": "Bounds and distribution parameters are validated when captured."
+            },
+            "probability_mass_validation": {
+              "const": "nonempty_pick",
+              "description": "Only nonempty picks check probability mass using the existing distribution rules."
+            },
+            "method_evaluation": {
+              "const": "receiver_once_before_count_once",
+              "description": "Each method evaluates its receiver once before its required count, also once."
+            },
+            "method_resolution": {
+              "const": "static_receiver_type_and_arity",
+              "description": "Methods use static stepper receiver type and argument arity, without dynamic dispatch."
+            },
+            "minimum_count": {
+              "const": 0,
+              "description": "Smallest supported batch count, including an empty typed list."
+            },
+            "maximum_count": {
+              "const": 256,
+              "description": "Largest supported batch count, matching the immutable list limit."
+            },
+            "count_type": {
+              "const": "i32",
+              "description": "The batch count is i32; floating counts are rejected."
+            },
+            "batch_preflight": {
+              "const": "count_handle_allocation_before_first_step",
+              "description": "Count, initialized handle and complete allocation precede the first generated step."
+            },
+            "unset_empty_batch": {
+              "const": "trap",
+              "description": "Unset descriptions trap even when the batch count is zero."
+            },
+            "asset_constants": {
+              "const": true,
+              "description": "Whether stepper descriptions may be declared as asset constants in this stage."
+            },
+            "range_palettes": {
+              "const": false,
+              "description": "Palettes retain their sampler semantics and do not accept stepper descriptions."
+            },
+            "capture_effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic capture effects excluding operand evaluation and resource failures."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "pick",
+                    "description": "Method name, separate from the global eager selection builtin."
+                  },
+                  "receiver": {
+                    "type": "string",
+                    "enum": [
+                      "stepper<i32>",
+                      "stepper<f32>",
+                      "stepper<color>",
+                      "stepper<vec2>"
+                    ],
+                    "description": "Required stepper receiver descriptor."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "n",
+                          "description": "The only accepted batch count parameter name."
+                        },
+                        "type": {
+                          "const": "i32",
+                          "description": "The required count value type."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "description": "The required named batch count parameter."
+                    },
+                    "description": "One required i32 count, optionally named n.",
+                    "minItems": 1
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>"
+                    ],
+                    "description": "An immutable list of the stepper endpoint type."
+                  },
+                  "opcode": {
+                    "const": "stepper.pick.list",
+                    "description": "The batch-only deterministic stepping instruction."
+                  },
+                  "minimum_format_minor": {
+                    "const": 7,
+                    "description": "The format minor that first defines stepper instructions."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "minimum_format_minor",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "One statically resolved stepper method signature."
+              },
+              "description": "Every current pick signature, generated from the shared receiver-first frontend registry."
+            },
+            "generation_rng": {
+              "const": "none",
+              "description": "Generating steps does not read or advance the current RNG stream."
+            },
+            "unit_positions": {
+              "const": "i_over_n_minus_one",
+              "description": "With at least two results, coefficients are i divided by n minus one, including both endpoints."
+            },
+            "zero_count": {
+              "const": "empty_list",
+              "description": "Zero results create an empty typed list without checking probability mass."
+            },
+            "one_count": {
+              "const": "first_step",
+              "description": "One result is the first step, at quantile zero."
+            },
+            "integer_interpolation": {
+              "const": "binary64_half_away_from_zero",
+              "description": "Integer endpoints remain binary64 through interpolation, with halves rounded away from zero."
+            },
+            "endpoint_support": {
+              "const": "truncated_positive_mass",
+              "description": "The endpoints are the included positive-mass support, excluding zero-weight atoms and zero-area segments."
+            },
+            "distribution_families": {
+              "const": [
+                "gaussian",
+                "triangular",
+                "beta",
+                "weighted",
+                "density"
+              ],
+              "description": "Every currently supported analytic and point distribution family can shape deterministic steps.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "gaussian",
+                  "triangular",
+                  "beta",
+                  "weighted",
+                  "density"
+                ]
+              }
+            }
+          },
+          "required": [
+            "syntax",
+            "capture_evaluation",
+            "intrinsic_capture_rng",
+            "bounds_validation",
+            "probability_mass_validation",
+            "method_evaluation",
+            "method_resolution",
+            "minimum_count",
+            "maximum_count",
+            "count_type",
+            "batch_preflight",
+            "unset_empty_batch",
+            "asset_constants",
+            "range_palettes",
+            "capture_effects",
+            "methods",
+            "generation_rng",
+            "unit_positions",
+            "zero_count",
+            "one_count",
+            "integer_interpolation",
+            "endpoint_support",
+            "distribution_families"
+          ],
+          "additionalProperties": true,
+          "description": "Deterministic captured range descriptions, required batch counts and closed truncated distribution quantiles."
         }
       },
       "required": [
@@ -2803,7 +3068,15 @@
             "list<sampler<color>>",
             "list<sampler<vec2>>",
             "layer",
-            "mask"
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -2854,7 +3127,15 @@
             "list<sampler<color>>",
             "list<sampler<vec2>>",
             "layer",
-            "mask"
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2937,7 +3218,15 @@
             "list<sampler<color>>",
             "list<sampler<vec2>>",
             "layer",
-            "mask"
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -2999,7 +3288,15 @@
               "list<sampler<color>>",
               "list<sampler<vec2>>",
               "layer",
-              "mask"
+              "mask",
+              "stepper<i32>",
+              "stepper<f32>",
+              "stepper<color>",
+              "stepper<vec2>",
+              "list<stepper<i32>>",
+              "list<stepper<f32>>",
+              "list<stepper<color>>",
+              "list<stepper<vec2>>"
             ],
             "description": "Allowed value types for every eager choice."
           },

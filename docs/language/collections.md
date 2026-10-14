@@ -3,7 +3,7 @@
 `list<T>` holds zero to 256 values of one element type: `i32`, `f32`, `color`,
 `vec2` or `distribution`. These are ordinary value types for locals, helper
 parameters, helper returns and asset constants. Lists also accept
-[`sampler<T>` descriptions](samplers.md). Lists of lists and
+[`sampler<T>` descriptions](samplers.md) and [`stepper<T>` descriptions](steppers.md). Lists of lists and
 surface elements are unsupported. A list owns immutable data;
 passing, returning or assigning its handle shares that data.
 
@@ -64,7 +64,7 @@ Use `items = items.distinct()` to replace a local, or chain
 For scalar floats and vector components, signed zeros compare equal, and all
 NaNs form one equal class after positive infinity. Stable sorting and distinct
 retain the original bits of selected elements. `.distinct()` also accepts
-distributions and samplers: it compares their stored descriptions, including
+distributions, samplers and steppers: it compares their stored descriptions, including
 mode/family, bounds, parameter bits and original point types/bits, without
 drawing or comparing handle addresses. `.sort()` rejects those description
 types. Both methods work in pure asset constants and on typed empty lists.

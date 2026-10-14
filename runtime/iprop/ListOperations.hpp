@@ -4,10 +4,12 @@
 #include <array>
 
 namespace iprop {
-inline constexpr std::array<TypeDescriptor, 9> kListElementTypes{
+inline constexpr std::array<TypeDescriptor, 13> kListElementTypes{
     ValueType::I32, ValueType::F32, ValueType::Color, ValueType::Vec2, ValueType::Distribution,
     ValueType::sampler(ValueType::I32), ValueType::sampler(ValueType::F32),
-    ValueType::sampler(ValueType::Color), ValueType::sampler(ValueType::Vec2)};
+    ValueType::sampler(ValueType::Color), ValueType::sampler(ValueType::Vec2),
+    ValueType::stepper(ValueType::I32), ValueType::stepper(ValueType::F32),
+    ValueType::stepper(ValueType::Color), ValueType::stepper(ValueType::Vec2)};
 constexpr bool isSortableList(TypeDescriptor type) {
     return type.isList() && type.isStorable() && type.item().kind <= TypeDescriptor::Kind::Vec2;
 }

@@ -14,10 +14,16 @@ namespace iprop {
 // pinned spec rules when needed.
 struct ListData;
 struct ListBuilderData;
-struct SamplerData;
+struct CapturedRangeData;
+using SamplerData = CapturedRangeData;
+using StepperData = CapturedRangeData;
 struct SamplerValue {
     TypeDescriptor type;
     std::shared_ptr<const SamplerData> data;
+};
+struct StepperValue {
+    TypeDescriptor type;
+    std::shared_ptr<const StepperData> data;
 };
 struct ListValue {
     TypeDescriptor type;
@@ -35,10 +41,12 @@ struct PointDistributionBuilder {
     std::shared_ptr<PointDistributionBuilderData> data;
 };
 using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
-                           PointDistributionBuilder, LayerValue, MaskValue>;
+                           PointDistributionBuilder, LayerValue, MaskValue, StepperValue>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
-struct SamplerData {
+// Both descriptions share storage and validation, but have distinct Value
+// alternatives and type descriptors. Neither owns a cursor or RNG stream.
+struct CapturedRangeData {
     TypeDescriptor type;
     SamplerMode mode = SamplerMode::Constant;
     Value lower, upper;
@@ -54,5 +62,6 @@ struct ListBuilderData {
     std::size_t expected = 0;
 };
 TypeDescriptor valueType(const Value& value);
+const CapturedRangeData* descriptionData(const Value& value);
 
 } // namespace iprop

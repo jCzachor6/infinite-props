@@ -17,6 +17,9 @@ double incompleteBeta(double a, double b, double t, u32& steps);
 
 // Constructor parameter rules (spec v0.5 §4.2).
 bool validDistribution(const Distribution& distribution);
+// A bounded numeric result rounded half away from zero, without binary32
+// conversion. Callers keep the input within the closed i32 range.
+i32 roundRangeInt(double value);
 struct PointDistributionSpec {
     DistributionFamily family;
     std::string_view name;
@@ -51,7 +54,8 @@ TruncatedDraw densityDistributionDraw(const Distribution& distribution, double l
 TruncatedDraw invertDensitySegment(double length, double p, double q, double area);
 
 // A draw from `distribution` truncated to [lo, hi] (finite, lo <= hi) for the
-// unit coefficient u in (0, 1) (spec v0.5 §4.4).
+// unit coefficient u in [0, 1]. Random draws use the original open interval
+// (spec v0.5 §4.4); steppers also use the exact truncated support endpoints.
 TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u);
 
 } // namespace iprop::math

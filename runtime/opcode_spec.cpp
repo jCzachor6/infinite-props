@@ -31,7 +31,10 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::DistributionBegin: case Opcode::DistributionAppend: case Opcode::DistributionEnd:
         return {R::None,false,false,check(C::NumericRange)};
     case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
+    case Opcode::StepperValue: case Opcode::StepperRange: case Opcode::StepperWith:
         return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::StepperPickList:
+        return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::SamplerPick: case Opcode::SamplerPickList:
         return {R::AdvanceCurrent,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
@@ -266,6 +269,11 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::PartGetLayer, "part.get.layer", 6, OperandKind::Index),
     dynamic(Opcode::ListDistinct, "list.distinct", 6, OperandKind::Index),
     dynamic(Opcode::ListSort, "list.sort", 6, OperandKind::Index),
+    dynamic(Opcode::StepperValue, "stepper.value", 7, OperandKind::Index),
+    dynamic(Opcode::StepperRange, "stepper.range", 7, OperandKind::Index),
+    dynamic(Opcode::StepperWith, "stepper.with", 7, OperandKind::Index),
+    dynamic(Opcode::StepperPickList, "stepper.pick.list", 7, OperandKind::Index),
+    dynamic(Opcode::ConstStepper, "const.stepper", 7, OperandKind::Index),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -280,6 +288,7 @@ u16 writtenMinor(u16 minor, Opcode opcode) {
     return spec && spec->minimumMinor > minor ? spec->minimumMinor : minor;
 }
 u16 writtenMinor(u16 minor, ValueType type) {
+    if ((type.isStepper() || (type.isList() && type.item().isStepper())) && minor < 7) return 7;
     return type.needsDescriptor() && minor < 6 ? u16{6} : type == ValueType::Distribution && minor < 5 ? u16{5} : minor;
 }
 const char* rngEffectName(RngEffect effect) {

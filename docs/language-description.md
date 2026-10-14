@@ -54,13 +54,15 @@ identified by `source_type`.
 | `inputs[].binary_type` | Metadata/host override type in the emitted binary; both source integer types use `u32` bit patterns. |
 | `inputs[].value_type` | Type visible to expressions; both integer input types are interpreted as `i32`. |
 | `types.storable` | Types admitted in local slots. |
-| `types.parameterized` | Supported list/sampler constructors, element types and immutable arena ownership. Lists of sampler descriptions are allowed; lists of lists are not. |
+| `types.parameterized` | Supported list/sampler/stepper constructors, element types and immutable arena ownership. Lists of sampler and stepper descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
-| `collections.methods` | Optional thirteen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, minimum minor, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
+| `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, minimum minor, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `collections.transformations` | Optional stable first-occurrence/ascending policies, RGBA/x-y order, float zero/NaN equivalence, structural description equality, preserved element bits and unchanged-buffer sharing. Earlier exports may omit these additive fields. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
 | `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode, minimum minor and effects. They are separate from the global builtin `pick`. |
+| `steppers` | Deterministic capture and quantile rules, required counts, truncated support endpoints, zero/one counts, binary64 integer rounding and RNG effects. |
+| `steppers.methods` | Four batch-only pick signatures from `stepperPickSpec`; receivers are stepper<i32/f32/color/vec2>, counts are i32 named n, results are list<T>, and intrinsic RNG is none. |
 | `palettes` | Compile-time capture/lifting, supported scalar/description types, numeric widening, index evaluation/fallback, first-class list limits and ramp restrictions. |
 | `types.helper_parameters` | Types admitted in helper parameter declarations. |
 | `types.helper_value_returns` | Types admitted as declared helper return values; a helper without a return declaration may return no value. |
@@ -86,7 +88,7 @@ identified by `source_type`.
 | `visibility.palettes` | `all_asset_functions`: asset palettes are constants visible to draw and helpers. |
 | `visibility.constants` | `all_asset_functions`: typed asset constants are visible to draw and helpers of their defining asset. |
 | `asset_constants.keyword`, `.syntax`, `.scope`, `.visibility` | Reserved `const <type> <name> = <expression>` declarations belong to an asset and are visible in all its functions. |
-| `asset_constants.types` | Implemented declaration types, derived from shared type rules, including sampler<T> and list<sampler<T>>. |
+| `asset_constants.types` | Implemented declaration types, derived from shared type rules, including sampler<T>, stepper<T> and their lists. |
 | `asset_constants.read_only` | `true`: assignments, loop counters and parameter shadowing are rejected. |
 | `asset_constants.dependencies`, `.evaluation` | `forward_acyclic`, `compile_time`: forward references are allowed; a cycle is a source error. |
 | `asset_constants.check_all_declarations`, `.check_effects_in_dead_branches` | Both `true`: unused constants and effects in both logical branches are checked. Pure evaluation still short circuits. |

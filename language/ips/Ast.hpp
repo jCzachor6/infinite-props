@@ -124,6 +124,7 @@ struct RandomRange {
 struct SamplerCapture {
     std::unique_ptr<Expr> value;
     SourceLocation location;
+    bool stepper = false; // same eager capture syntax; distinct description type
 };
 struct SamplerPick {
     std::unique_ptr<Expr> receiver;

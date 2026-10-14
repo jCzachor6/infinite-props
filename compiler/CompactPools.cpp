@@ -25,7 +25,7 @@ void compactPools(Plan& plan) {
     }
     Pools pools;
     std::vector<bool> types(old.typesValue().size()), lists(old.listsValue().size()), samplers(old.samplersValue().size());
-    std::vector<bool> distributions(old.distributionsValue().size());
+    std::vector<bool> distributions(old.distributionsValue().size()), steppers(old.steppersValue().size());
     const auto markType = [&](ValueType type) {
         if (!type.needsDescriptor()) return;
         const auto found = std::find(old.typesValue().begin(), old.typesValue().end(), type);
@@ -43,6 +43,10 @@ void compactPools(Plan& plan) {
             if (ins.opcode == Opcode::ConstSampler) {
                 samplers.at(ins.operand) = true; markType(old.samplersValue().at(ins.operand).type);
             }
+            if (ins.opcode == Opcode::ConstStepper) {
+                steppers.at(ins.operand) = true; markType(old.steppersValue().at(ins.operand).type);
+            }
+            if (ins.opcode >= Opcode::StepperValue && ins.opcode <= Opcode::StepperPickList) types.at(ins.operand) = true;
             if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) types.at(ins.operand) = true;
             if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) types.at(ins.operand) = true;
             if (ins.opcode >= Opcode::SamplerValue && ins.opcode <= Opcode::SamplerPickList) types.at(ins.operand) = true;
@@ -66,6 +70,13 @@ void compactPools(Plan& plan) {
                 [&](const auto& s) { return s.data == sampler.data; });
             samplers.at(static_cast<std::size_t>(found - old.samplersValue().begin())) = true;
         }
+    for (std::size_t i = 0; i < lists.size(); ++i) if (lists[i] && old.listsValue()[i].type.item().isStepper())
+        for (const auto& value : old.listsValue()[i].data->elements) {
+            const auto& stepper = std::get<StepperValue>(value);
+            const auto found = std::find_if(old.steppersValue().begin(), old.steppersValue().end(),
+                [&](const auto& s) { return s.data == stepper.data; });
+            steppers.at(static_cast<std::size_t>(found - old.steppersValue().begin())) = true;
+        }
     const auto markDistribution = [&](const Distribution& d) {
         if (!d.points) return;
         const auto found = std::find_if(old.distributionsValue().begin(), old.distributionsValue().end(),
@@ -74,14 +85,18 @@ void compactPools(Plan& plan) {
         distributions.at(static_cast<std::size_t>(found - old.distributionsValue().begin())) = true;
     };
     for (std::size_t i = 0; i < samplers.size(); ++i) if (samplers[i]) markDistribution(old.samplersValue()[i].data->distribution);
+    for (std::size_t i = 0; i < steppers.size(); ++i) if (steppers[i]) markDistribution(old.steppersValue()[i].data->distribution);
     for (std::size_t i = 0; i < lists.size(); ++i) if (lists[i] && old.listsValue()[i].type.item() == ValueType::Distribution)
         for (const auto& value : old.listsValue()[i].data->elements) markDistribution(std::get<Distribution>(value));
     const auto dmap = remap(old.distributionsValue(), distributions, [&](const Distribution& d) { return pools.addDistribution(d); });
     const auto smap = remap(old.samplersValue(), samplers, [&](const SamplerValue& sampler) { return pools.addSampler(sampler); });
+    const auto stmap = remap(old.steppersValue(), steppers, [&](const StepperValue& stepper) { return pools.addStepper(stepper); });
     const auto lmap = remap(old.listsValue(), lists, [&](const ListValue& list) { return pools.addList(list); });
     for (auto& f : plan.functions) for (auto& ins : f.code) {
         if (ins.opcode == Opcode::ConstList) ins.operand = lmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstSampler) ins.operand = smap.at(ins.operand);
+        if (ins.opcode == Opcode::ConstStepper) ins.operand = stmap.at(ins.operand);
+        if (ins.opcode >= Opcode::StepperValue && ins.opcode <= Opcode::StepperPickList) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ConstDistribution) ins.operand = dmap.at(ins.operand);
         if (ins.opcode >= Opcode::ListBegin && ins.opcode <= Opcode::ListLen) ins.operand = tmap.at(ins.operand);
         if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) ins.operand = tmap.at(ins.operand);

@@ -18,8 +18,8 @@ as input values and decide which selections their asset supports.
 ## Asset constants
 
 `const type name = expression` declares an immutable asset value with an
-explicit `i32`, `f32`, `color`, `vec2`, `distribution`, [sampler<T>](samplers.md)
-or [list<T>](collections.md) type. Constants are
+explicit `i32`, `f32`, `color`, `vec2`, `distribution`, [sampler<T>](samplers.md),
+[stepper<T>](steppers.md) or [list<T>](collections.md) type. Constants are
 visible in `draw` and every helper of their defining asset. Imported parts
 resolve their own constants; a parent cannot access a child's constants.
 `i32` initializers may widen to declared `f32`; other types must match.
@@ -54,7 +54,7 @@ cannot be assigned or used as loop counters. `const` is reserved; rename
 existing helpers, locals and inputs with that spelling. Use descriptive names.
 
 <!-- llm: skip -->
-Const samplers capture endpoints and distribution parameters without RNG.
+Const samplers and steppers capture endpoints and distribution parameters without RNG.
 Const lists may contain descriptions and share their immutable data. Sampling
 palettes join this same dependency graph; reading a selected description does
 not draw, while `.pick()` cannot run in a const initializer. See

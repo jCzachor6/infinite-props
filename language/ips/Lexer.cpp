@@ -32,6 +32,7 @@ const std::map<std::string, TokenKind>& keywords() {
         {"to", TokenKind::KeywordTo},
         {"with", TokenKind::KeywordWith},
         {"sampler", TokenKind::KeywordSampler},
+        {"stepper", TokenKind::KeywordStepper},
         {"weighted", TokenKind::KeywordWeighted},
         {"density", TokenKind::KeywordDensity},
         {"layer", TokenKind::KeywordLayer},
@@ -383,6 +384,7 @@ const char* tokenName(TokenKind kind) {
     case TokenKind::KeywordTo: return "to";
     case TokenKind::KeywordWith: return "with";
     case TokenKind::KeywordSampler: return "sampler";
+    case TokenKind::KeywordStepper: return "stepper";
     case TokenKind::KeywordWeighted: return "weighted";
     case TokenKind::KeywordDensity: return "density";
     case TokenKind::KeywordLayer: return "layer";

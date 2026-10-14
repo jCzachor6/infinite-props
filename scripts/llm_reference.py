@@ -27,7 +27,7 @@ def select(value, default, known, label):
 def excerpt(root, chapter, text, heading, paragraphs, skip=0, fences=(), optional=False):
     # Method signatures are already generated in compiler_rules for every
     # selection. Their handbook placeholder is not prose or a second table.
-    text = text.replace('<!-- sampler-methods -->', '')
+    text = text.replace('<!-- sampler-methods -->', '').replace('<!-- stepper-methods -->', '')
     found = headings(text)
     matches = [h for h in found if h['title'] == heading]
     require(len(matches) == 1, 'missing or ambiguous handbook heading: ' + heading)
@@ -151,6 +151,17 @@ def compiler_rules(language):
                   'to constant descriptions; indexing selects without RNG and keeps the last-element fallback. '
                   'Pass them as list<sampler<T>> for checked indexing. Ramp accepts only constant color/f32 palettes.', '', sampler_signatures(language)]
         lines.append('')
+    if 'steppers' in rules:
+        from language_docs import method_signatures
+        lines += ['`stepper<T>` captures the same four endpoint types as a sampler, but `.pick(n)` requires an i32 count '
+                  'in 0-256 and returns deterministic list<T> quantiles without RNG. No cursor or implicit sampler conversion exists. '
+                  'Uniform positions are i/(n-1), with exact endpoints; n=0 is empty and n=1 returns the first step. '
+                  'Integer interpolation uses binary64 and rounds halves away from zero. Gaussian, triangular, beta, weighted and density '
+                  'use the truncated distribution support, with one shared coefficient for all color RGBA channels or vec2 components. '
+                  'Weighted steps may repeat. Captured operands still run eagerly in lower, upper, distribution order. '
+                  'Const descriptions and lists of steppers are supported; picks require generation, distinct compares descriptions, '
+                  'and sort rejects them. Empty picks still validate their handle but do not check probability mass.', '',
+                  method_signatures(rules['steppers']['methods']), '']
     if 'random_range' in rules:
         ranged = rules['random_range']
         lines.append('`lower to upper` evaluates the lower bound, then the upper one, then draws once: ' +

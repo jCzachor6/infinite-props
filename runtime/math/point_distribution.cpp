@@ -84,6 +84,7 @@ TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo,
         const double weight = distributionNumber(point.value);
         if (key >= lo && key <= hi && weight > 0.0) {
             cumulative = cumulative + weight;
+            if (u == 1.0) { result.value = key; selected = true; }
             if (!selected && target < cumulative) { result.value = key; selected = true; }
         }
     }

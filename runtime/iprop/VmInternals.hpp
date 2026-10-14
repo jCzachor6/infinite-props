@@ -188,6 +188,7 @@ bool stepOutputs(Execution& ex, Instruction ins);
 bool stepParts(Execution& ex, Instruction ins);
 bool stepCollections(Execution& ex, Instruction ins);
 bool stepSamplers(Execution& ex, Instruction ins);
+bool stepSteppers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);

@@ -93,6 +93,7 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     case TokenKind::KeywordMask:
     case TokenKind::KeywordClip:
     case TokenKind::KeywordSampler:
+    case TokenKind::KeywordStepper:
     case TokenKind::TypeDistribution:
         return true;
     default:
@@ -403,21 +404,23 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance(); advance();
         if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
         const auto item = parseParamType(true);
-        if (!item.isScalar() && !item.isSampler()) failHere("lists of surfaces are not supported");
+        if (!item.isScalar() && !item.isDescription()) failHere("lists of surfaces are not supported");
         if (listTypeClosed_) listTypeClosed_ = false;
         else expect(TokenKind::Greater, "'>' after list element type");
         return ParamType::list(item);
     }
-    if (kind() == TokenKind::KeywordSampler && kind(1) == TokenKind::Less) {
+    if ((kind() == TokenKind::KeywordSampler || kind() == TokenKind::KeywordStepper) && kind(1) == TokenKind::Less) {
+        const bool stepper = kind() == TokenKind::KeywordStepper;
+        const std::string name = stepper ? "stepper" : "sampler";
         advance(); advance();
-        if (kind() == TokenKind::KeywordList || kind() == TokenKind::KeywordSampler)
-            failHere("sampler<T> supports only i32, f32, color or vec2");
+        if (kind() == TokenKind::KeywordList || kind() == TokenKind::KeywordSampler || kind() == TokenKind::KeywordStepper)
+            failHere(name + "<T> supports only i32, f32, color or vec2");
         const auto item = parseParamType();
         if (!item.isScalar() || item == ParamType::Distribution)
-            failHere("sampler<T> supports only i32, f32, color or vec2");
+            failHere(name + "<T> supports only i32, f32, color or vec2");
         if (insideList && match(TokenKind::Shr)) listTypeClosed_ = true;
-        else expect(TokenKind::Greater, "'>' after sampler element type");
-        return ParamType::sampler(item);
+        else expect(TokenKind::Greater, "'>' after description element type");
+        return stepper ? ParamType::stepper(item) : ParamType::sampler(item);
     }
     switch (kind()) {
     case TokenKind::TypeI32:
@@ -444,7 +447,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance();
         return ParamType::Mask;
     default:
-        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, layer or mask)");
+        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, stepper<T>, layer or mask)");
     }
 }
 
@@ -490,6 +493,7 @@ Stmt ParserImpl::parseStatement() {
     case TokenKind::KeywordMask:
     case TokenKind::TypeDistribution:
     case TokenKind::KeywordSampler:
+    case TokenKind::KeywordStepper:
         return parseIdentifierStatement();
     case TokenKind::KeywordIf:
         return parseIf();
@@ -524,10 +528,10 @@ Stmt ParserImpl::parseIdentifierStatement() {
         return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Mask}};
     }
     if (((kind() == TokenKind::KeywordList) ||
-         kind() == TokenKind::KeywordSampler) && kind(1) == TokenKind::Less &&
+         kind() == TokenKind::KeywordSampler || kind() == TokenKind::KeywordStepper) && kind(1) == TokenKind::Less &&
         (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||
          kind(2) == TokenKind::TypeColor || kind(2) == TokenKind::TypeVec2 ||
-         kind(2) == TokenKind::TypeDistribution || kind(2) == TokenKind::KeywordSampler)) {
+         kind(2) == TokenKind::TypeDistribution || kind(2) == TokenKind::KeywordSampler || kind(2) == TokenKind::KeywordStepper)) {
         const auto type = parseParamType();
         const auto local = expectName("a local list name");
         expect(TokenKind::Assign, "'=' after local list name");
@@ -539,7 +543,7 @@ Stmt ParserImpl::parseIdentifierStatement() {
         expect(TokenKind::Assign, "'=' after local distribution name");
         return Stmt{VarDecl{local.text, parseExpr(), local.location, ParamType::Distribution}};
     }
-    if (kind() == TokenKind::KeywordSampler) {
+    if (kind() == TokenKind::KeywordSampler || kind() == TokenKind::KeywordStepper) {
         const auto at = peek().location;
         return Stmt{ExprStmt{parseExpr(), at}};
     }

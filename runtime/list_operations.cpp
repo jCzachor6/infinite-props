@@ -29,10 +29,10 @@ u64 scalarWidth(TypeDescriptor type) {
 u64 elementWidth(const Value& value, TypeDescriptor expected) {
     if(valueType(value)!=expected) throw std::invalid_argument("list element type mismatch");
     if(expected==ValueType::Distribution) return distributionWidth(std::get<Distribution>(value));
-    if(expected.isSampler()) {
-        const auto& sampler=std::get<SamplerValue>(value);
-        if(!sampler.data) throw std::invalid_argument("sampler handle is unassigned");
-        const auto& data=*sampler.data;
+    if(expected.isDescription()) {
+        const auto* description=descriptionData(value);
+        if(!description) throw std::invalid_argument(expected.isStepper() ? "stepper handle is unassigned" : "sampler handle is unassigned");
+        const auto& data=*description;
         if(data.type!=expected || data.mode>SamplerMode::With || valueType(data.lower)!=expected.item() ||
             (data.mode!=SamplerMode::Constant && valueType(data.upper)!=expected.item()))
             throw std::invalid_argument("invalid sampler description");
@@ -76,7 +76,7 @@ int elementCompare(const Value& a, const Value& b, TypeDescriptor type, bool exa
         return floatCompare(x.y,y.y,exact);
     }
     if(type==ValueType::Distribution) return distributionCompare(std::get<Distribution>(a),std::get<Distribution>(b));
-    const auto& x=*std::get<SamplerValue>(a).data;const auto& y=*std::get<SamplerValue>(b).data;
+    const auto& x=*descriptionData(a);const auto& y=*descriptionData(b);
     if(const auto mode=compare(x.mode,y.mode)) return mode;
     if(const auto lower=elementCompare(x.lower,y.lower,type.item(),true)) return lower;
     if(x.mode!=SamplerMode::Constant)

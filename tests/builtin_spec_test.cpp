@@ -65,7 +65,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
                 const std::string value = type == T::Layer ? "image" : type == T::Mask ? "region" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
-                    type.isList() ? (type.item().isSampler() ?
+                    type.isList() ? (type.item().isStepper() ?
+                    (type.item().item() == T::Color ? "[stepper(#abc)]" : type.item().item() == T::Vec2 ? "[stepper({1,1})]" :
+                     type.item().item() == T::F32 ? "[stepper(1.0)]" : "[stepper(1)]") : type.item().isSampler() ?
                     (type.item().item() == T::Color ? "[sampler(#abc)]" : type.item().item() == T::Vec2 ? "[sampler({1,1})]" :
                      type.item().item() == T::F32 ? "[sampler(1.0)]" : "[sampler(1)]") : type.element == T::Vec2 ? "[{1,1},{6,1},{1,6}]" :
                     type.element == T::Color ? "[#112233]" : type.element == T::Distribution ? "[gaussian(1,1)]" :

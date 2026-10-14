@@ -295,6 +295,14 @@ bool validDistribution(const Distribution& d) {
     return false;
 }
 
+i32 roundRangeInt(double x) {
+    double t = std::trunc(x);
+    const double fraction = x - t;
+    if (fraction >= 0.5) t += 1.0;
+    else if (fraction <= -0.5) t -= 1.0;
+    return static_cast<i32>(t);
+}
+
 TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u) {
     if (distribution.family == DistributionFamily::Weighted || distribution.family == DistributionFamily::Density)
         return pointDistributionDraw(distribution, lo, hi, u);
@@ -321,6 +329,12 @@ TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double 
         else mass = (1.0 - above) - below;
         if (!(mass >= kMinimumMass)) {
             result.status = DrawStatus::NoMass;
+            return result;
+        }
+        // Closed quantiles for deterministic steppers. Existing random draws
+        // always use 0 < u < 1 and retain their exact operation sequence.
+        if (u == 0.0 || u == 1.0) {
+            result.value = u == 0.0 ? lower : upper;
             return result;
         }
         const double p = below + u * mass;

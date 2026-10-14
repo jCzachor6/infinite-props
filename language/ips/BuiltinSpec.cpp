@@ -121,7 +121,11 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"items", V::list(V::sampler(V::I32))}}, Opcode::ListLen},
             {{{"items", V::list(V::sampler(V::F32))}}, Opcode::ListLen},
             {{{"items", V::list(V::sampler(V::Color))}}, Opcode::ListLen},
-            {{{"items", V::list(V::sampler(V::Vec2))}}, Opcode::ListLen}}}},
+            {{{"items", V::list(V::sampler(V::Vec2))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::I32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::F32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::Color))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::Vec2))}}, Opcode::ListLen}}}},
     };
     return table;
 }
@@ -149,6 +153,17 @@ const BuiltinSpec& samplerPickSpec() {
             overloads.push_back({{{"receiver", receiver}}, Opcode::SamplerPick, item});
             overloads.push_back({{{"receiver", receiver}, {"n", ValueType::I32}}, Opcode::SamplerPickList, ValueType::list(item)});
         }
+        return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
+    }();
+    return spec;
+}
+
+const BuiltinSpec& stepperPickSpec() {
+    static const BuiltinSpec spec = [] {
+        std::vector<BuiltinOverload> overloads;
+        for (const auto item : kSamplerElementTypes)
+            overloads.push_back({{{"receiver", ValueType::stepper(item)}, {"n", ValueType::I32}},
+                Opcode::StepperPickList, ValueType::list(item)});
         return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
     }();
     return spec;

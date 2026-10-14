@@ -137,7 +137,10 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
             bound(*range->lower); bound(*range->upper);
             if (range->distribution) emitExpr(*range->distribution);
         } else bound(*capture->value);
-        ins(!range ? Opcode::SamplerValue : range->distribution ? Opcode::SamplerWith : Opcode::SamplerRange,
+        const auto opcode = capture->stepper ?
+            (!range ? Opcode::StepperValue : range->distribution ? Opcode::StepperWith : Opcode::StepperRange) :
+            (!range ? Opcode::SamplerValue : range->distribution ? Opcode::SamplerWith : Opcode::SamplerRange);
+        ins(opcode,
             0, plan_.pools.addType(type));
         return type;
     }
@@ -154,7 +157,8 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         if (pick->count) emitExpr(*pick->count);
         std::vector<ips::ValueType> args{current_->typeOf(*pick->receiver)};
         if (pick->count) args.push_back(current_->typeOf(*pick->count));
-        ins(*ips::builtinOverload(ips::samplerPickSpec(), args)->opcode, 0,
+        const auto& spec = args[0].isStepper() ? ips::stepperPickSpec() : ips::samplerPickSpec();
+        ins(*ips::builtinOverload(spec, args)->opcode, 0,
             plan_.pools.addType(current_->typeOf(*pick->receiver)));
         return current_->typeOf(expr);
     }

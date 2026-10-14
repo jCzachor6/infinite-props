@@ -13,8 +13,10 @@ DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 2
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
-LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | SAMPLER_TYPES)}
-VALUE_TYPES |= LIST_TYPES | SAMPLER_TYPES
+STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
+DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
+LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | DESCRIPTION_TYPES)}
+VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
@@ -145,14 +147,14 @@ def read_language(value):
     if 'reserved_keywords' in rules:
         require(rules['reserved_keywords'] == ['asset', 'break', 'clip', 'const', 'continue', 'density', 'distribution',
             'else', 'false', 'for', 'from', 'if', 'import', 'in', 'input', 'layer', 'mask', 'output', 'return',
-            'sampler', 'to', 'true', 'weighted', 'while', 'with'], 'reserved keywords')
+            'sampler', 'stepper', 'to', 'true', 'weighted', 'while', 'with'], 'reserved keywords')
     constants = rules['asset_constants']
     _strings_and_bools(constants, {'keyword': {'reserved'}, 'scope': {'asset'},
         'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
     constant_types = {'i32', 'f32', 'color', 'vec2', 'distribution'}
-    strings(constants.get('types'), 'constant types', constant_types | LIST_TYPES | SAMPLER_TYPES, True)
+    strings(constants.get('types'), 'constant types', constant_types | LIST_TYPES | DESCRIPTION_TYPES, True)
     require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
             not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
@@ -166,15 +168,15 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | SAMPLER_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
-        require(type(parameters) is list and 1 <= len(parameters) <= 2, 'parameterized type descriptors')
+        require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
         constructors = set()
         for parameter in parameters:
-            _strings_and_bools(parameter, {'constructor': {'list', 'sampler'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
+            _strings_and_bools(parameter, {'constructor': {'list', 'sampler', 'stepper'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
             require(parameter['nested'] is False, 'nested list/sampler types')
-            allowed = {'i32','f32','color','vec2'} if parameter['constructor'] == 'sampler' else {'i32','f32','color','vec2','distribution'} | SAMPLER_TYPES
+            allowed = {'i32','f32','color','vec2'} if parameter['constructor'] in {'sampler', 'stepper'} else {'i32','f32','color','vec2','distribution'} | DESCRIPTION_TYPES
             strings(parameter.get('element_types'), 'element types', allowed, True)
             require(parameter['constructor'] not in constructors, 'duplicate type constructor')
             constructors.add(parameter['constructor'])
@@ -187,7 +189,7 @@ def read_language(value):
             'probability_mass_validation': {'pick'}, 'method_resolution': {'static_receiver_type_and_arity'},
             'batch_preflight': {'count_handle_allocation_before_first_draw'}}, ['asset_constants','range_palettes'], 'sampler rules')
         require(sampler['asset_constants'] is True and sampler['range_palettes'] is True, 'sampler constants and palettes')
-        require(set(constants['types']) == constant_types | LIST_TYPES | SAMPLER_TYPES, 'complete constant types')
+        require(set(constants['types']) == constant_types | LIST_TYPES | DESCRIPTION_TYPES, 'complete constant types')
         palette = obj(rules.get('palettes'), ['element_types'], 'palettes')
         _strings_and_bools(palette, {
             'syntax': {'palette <name> = [<elements>]'}, 'evaluation': {'compile_time_no_rng'},
@@ -224,6 +226,35 @@ def read_language(value):
             require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
             signatures.add((method['receiver'], batch))
         require(len(signatures) == 8, 'unique sampler method signatures')
+    if 'steppers' in rules:
+        stepper = obj(rules['steppers'], ['syntax', 'methods', 'capture_effects'], 'steppers')
+        _strings_and_bools(stepper, {
+            'syntax': {'stepper(<value> | <lower> to <upper> [with <distribution>])'},
+            'capture_evaluation': {'lower_upper_distribution_once'}, 'intrinsic_capture_rng': {'none'},
+            'bounds_validation': {'capture'}, 'probability_mass_validation': {'nonempty_pick'},
+            'method_evaluation': {'receiver_once_before_count_once'}, 'method_resolution': {'static_receiver_type_and_arity'},
+            'batch_preflight': {'count_handle_allocation_before_first_step'}, 'count_type': {'i32'},
+            'unset_empty_batch': {'trap'}, 'generation_rng': {'none'}, 'unit_positions': {'i_over_n_minus_one'},
+            'zero_count': {'empty_list'}, 'one_count': {'first_step'},
+            'integer_interpolation': {'binary64_half_away_from_zero'}, 'endpoint_support': {'truncated_positive_mass'}},
+            ['asset_constants', 'range_palettes'], 'stepper rules')
+        require(stepper['asset_constants'] and not stepper['range_palettes'], 'stepper constants and palettes')
+        require(stepper.get('minimum_count') == 0 and stepper.get('maximum_count') == 256, 'stepper counts')
+        require(stepper.get('distribution_families') == ['gaussian','triangular','beta','weighted','density'], 'stepper distributions')
+        effects(stepper['capture_effects'], 'stepper capture')
+        require(stepper['capture_effects']['rng'] == 'none', 'stepper capture RNG')
+        require(type(stepper['methods']) is list and len(stepper['methods']) == 4, 'stepper method signatures')
+        receivers = set()
+        for method in stepper['methods']:
+            obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor','effects'], 'stepper method')
+            require(method['name'] == 'pick' and method['receiver'] in STEPPER_TYPES, 'stepper receiver')
+            require(method['parameters'] == [{'name':'n','type':'i32'}], 'stepper required count')
+            require(method['result'] == 'list<' + method['receiver'][8:-1] + '>', 'stepper result')
+            require(method['opcode'] == 'stepper.pick.list' and method['minimum_format_minor'] == 7, 'stepper opcode')
+            effects(method['effects'], 'stepper method effects')
+            require(method['effects']['rng'] == 'none', 'stepper method RNG')
+            receivers.add(method['receiver'])
+        require(receivers == STEPPER_TYPES, 'unique stepper signatures')
     if 'surfaces' in rules:
         surface = obj(rules['surfaces'], ['types', 'capture_syntax', 'keyword', 'capture_target',
             'result_binding', 'automatic_paint', 'capture_evaluation', 'helper_transfer', 'buffer_format',
@@ -337,7 +368,7 @@ def read_language(value):
         # Additive method capabilities; earlier schema 3 exports omit these.
         if 'methods' in collection:
             methods = collection['methods']
-            require(type(methods) is list and len(methods) == 13, 'list method signatures')
+            require(type(methods) is list and len(methods) == (17 if 'steppers' in rules else 13), 'list method signatures')
             signatures = set()
             for method in methods:
                 obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor',
@@ -351,7 +382,7 @@ def read_language(value):
                 require(method['effects'] == {'rng':'none','writes_canvas':False,'writes_outputs':False,
                     'summary':'intrinsic','may_trap':['unassigned_handle']}, 'pure list method effects')
                 signatures.add((method['name'],method['receiver']))
-            require(len(signatures) == 13, 'unique list method signatures')
+            require(len(signatures) == len(methods), 'unique list method signatures')
         if 'transformations' in collection:
             _strings_and_bools(collection['transformations'], {
                 'evaluation': {'receiver_once'}, 'result': {'same_type_immutable_list'},

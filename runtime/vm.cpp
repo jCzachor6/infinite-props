@@ -20,6 +20,7 @@ Value zeroValue(ValueType type) {
     case ValueType::Distribution: return Value(Distribution{});
     case ValueType::List: return Value(ListValue{type, {}});
     case ValueType::Sampler: return Value(SamplerValue{type, {}});
+    case ValueType::Stepper: return Value(StepperValue{type, {}});
     case ValueType::Layer: return Value(LayerValue{});
     case ValueType::Mask: return Value(MaskValue{});
     default: break;
@@ -37,6 +38,7 @@ bool dispatch(Execution& ex, Instruction ins) {
     }
     if (stepCollections(ex, ins)) return true;
     if (stepSamplers(ex, ins)) return true;
+    if (stepSteppers(ex, ins)) return true;
     if (stepPointDistributions(ex, ins)) return true;
     if (stepSurfaces(ex, ins)) return true;
     if (stepMasks(ex, ins)) return true;

@@ -11,6 +11,7 @@
 | `distribution` | a [distribution](random.md#distributions) family and its parameters | yes |
 | `list<T>` | zero to 256 immutable values of a current element type | yes |
 | `sampler<T>` | captured value/range for explicit picks; T is i32, f32, color or vec2 | yes |
+| `stepper<T>` | deterministic range steps; T is i32, f32, color or vec2 | yes |
 | `layer` | immutable [captured RGBA8 surface](surfaces.md) | yes; no host input, const or collection |
 | `mask` | immutable [coverage view or A8 result](surfaces.md#masks-from-captured-alpha) | yes; same surface restrictions |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
@@ -32,11 +33,12 @@ The first assignment to a fresh name declares a local and fixes its type.
 distribution value. `list<T> name = value` supplies the element context,
 including for an empty literal. See [collections](collections.md).
 `sampler<T> name = value` declares a [sampling description](samplers.md).
+`stepper<T> name = value` declares a [deterministic step description](steppers.md).
 `layer name { ... }` captures a surface and binds the name after the block.
 `layer copy = image` explicitly types a handle copy. A layer handle whose
 capture did not execute is unset and traps when painted.
-Sampler and list locals whose initializer does not run contain unset handles;
-using them traps, including a sampler's empty batch pick.
+Sampler, stepper and list locals whose initializer does not run contain unset handles;
+using them traps, including a sampler or stepper's empty batch pick.
 Locals belong to the whole function, including those first assigned inside
 a branch or loop; braces do not introduce shadowing scopes. Source is checked
 in traversal order. Initialize a local before branching if it is needed later:

@@ -123,7 +123,7 @@ add_dependencies(capi_golden capi_result_output_fixture)
 
 foreach(source test/language.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
-        ../../examples/language/samplers.ips ../../examples/language/sampling-palettes.ips
+        ../../examples/language/samplers.ips ../../examples/language/steppers.ips ../../examples/language/sampling-palettes.ips
         ../../examples/language/weighted.ips ../../examples/language/point-distributions.ips
         ../../examples/language/captured-panels.ips ../../examples/language/source-over-panels.ips
         ../../examples/language/mask-algebra.ips ../../examples/language/resource-exports.ips)

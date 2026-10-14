@@ -47,6 +47,8 @@ void Emitter::emitConst(const Value& value) {
         ins(Opcode::ConstList, 0, plan_.pools.addList(*list));
     } else if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
         ins(Opcode::ConstSampler, 0, plan_.pools.addSampler(*sampler));
+    } else if (const auto* stepper = std::get_if<StepperValue>(&value)) {
+        ins(Opcode::ConstStepper, 0, plan_.pools.addStepper(*stepper));
     } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
         if (distribution->points) {
             ins(Opcode::ConstDistribution, 0, plan_.pools.addDistribution(*distribution));

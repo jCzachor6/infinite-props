@@ -60,11 +60,12 @@ bool stepCollections(Execution& ex, Instruction ins) {
             const auto retainPoints = [&](const Distribution& d) {
                 if (d.points && !ex.resources.distributionConstants.contains(d.points.get())) points.insert(d.points.get());
             };
-            if (list.type.item().isSampler()) {
+            auto& descriptionConstants = list.type.item().isStepper() ? ex.resources.stepperConstants : ex.resources.samplerConstants;
+            if (list.type.item().isDescription()) {
                 ex.spend(list.data->elements.size());
                 for (const auto& value : list.data->elements) {
-                    const auto* data = std::get<SamplerValue>(value).data.get();
-                    if (!ex.resources.samplerConstants.contains(data)) descriptions.insert(data);
+                    const auto* data = descriptionData(value);
+                    if (!descriptionConstants.contains(data)) descriptions.insert(data);
                     retainPoints(data->distribution);
                 }
                 bytes += descriptions.size() * ResourceArena::samplerBytes();
@@ -77,7 +78,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
                 ex.spend(data->points.size()); bytes += ResourceArena::distributionBytes(data->points.size());
             }
             ex.allocateResource(bytes);
-            ex.resources.samplerConstants.insert(descriptions.begin(), descriptions.end());
+            descriptionConstants.insert(descriptions.begin(), descriptions.end());
             ex.resources.distributionConstants.insert(points.begin(), points.end());
             cached = ex.resources.constants.emplace(ins.operand, list).first;
         }

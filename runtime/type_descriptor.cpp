@@ -2,11 +2,19 @@
 
 namespace iprop {
 const char* valueTypeName(TypeDescriptor type) {
+    if (type.isStepper()) {
+        constexpr const char* names[] = {"stepper<i32>", "stepper<f32>", "stepper<color>", "stepper<vec2>"};
+        return type.isStorable() ? names[static_cast<u8>(type.element)] : "stepper<?>";
+    }
     if (type.isSampler()) {
         constexpr const char* names[] = {"sampler<i32>", "sampler<f32>", "sampler<color>", "sampler<vec2>"};
         return type.isStorable() ? names[static_cast<u8>(type.element)] : "sampler<?>";
     }
     if (type.isList()) {
+        if (type.element == TypeDescriptor::Stepper) {
+            constexpr const char* names[] = {"list<stepper<i32>>", "list<stepper<f32>>", "list<stepper<color>>", "list<stepper<vec2>>"};
+            return type.isStorable() ? names[static_cast<u8>(type.parameter)] : "list<?>";
+        }
         if (type.element == TypeDescriptor::Sampler) {
             constexpr const char* names[] = {"list<sampler<i32>>", "list<sampler<f32>>", "list<sampler<color>>", "list<sampler<vec2>>"};
             return type.isStorable() ? names[static_cast<u8>(type.parameter)] : "list<?>";
@@ -30,6 +38,7 @@ const char* valueTypeName(TypeDescriptor type) {
     case TypeDescriptor::PointBuilder: return "distribution builder";
     case TypeDescriptor::Layer: return "layer";
     case TypeDescriptor::Mask: return "mask";
+    case TypeDescriptor::Stepper: return "stepper<?>";
     }
     return "?";
 }

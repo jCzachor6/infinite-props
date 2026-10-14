@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — deterministic steppers in 0.7
+
+- Add immutable `stepper<i32/f32/color/vec2>` descriptions. Required `.pick(n)`
+  counts in 0–256 produce deterministic lists without RNG, with exact uniform
+  endpoints, binary64 integer interpolation and half-away rounding.
+- Support clipped quantiles of Gaussian, triangular, beta, weighted and density
+  distributions, helper transfers, const descriptions and lists, and structural
+  `.distinct()`. `.sort()` rejects descriptions. `stepper` is globally reserved.
+- Append format-0.7 descriptor kind 14, section 11 and instructions 0xD8–0xDC.
+  Preserve existing instruction numbers, sampler draws and the public C ABI.
+- Extend language metadata, formatting, highlighting, English documentation and
+  native/WASM conformance. See the [stepper reference](docs/language/steppers.md).
+
 ## v0.6.0 — 2026-10-08
 
 Product/editor/website version: 0.6.0. Source language: 0.6. Format: 0.5,

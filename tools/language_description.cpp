@@ -63,11 +63,17 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::I32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Color)),
-    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)),
+    ips::ValueType::stepper(ips::ValueType::I32), ips::ValueType::stepper(ips::ValueType::F32),
+    ips::ValueType::stepper(ips::ValueType::Color), ips::ValueType::stepper(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::I32)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::F32)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
 
-Json samplers() {
+Json descriptionMethods(const ips::BuiltinSpec& spec) {
     Json methods = Json::array();
-    for (const auto& signature : ips::samplerPickSpec().overloads) {
+    for (const auto& signature : spec.overloads) {
         Json parameters = Json::array();
         for (std::size_t i = 1; i < signature.params.size(); ++i)
             parameters.push_back(Json::object({{"name", signature.params[i].name}, {"type", ips::typeName(signature.params[i].type)}}));
@@ -77,6 +83,10 @@ Json samplers() {
             {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
             {"effects", operationEffects(opcode->effects)}}));
     }
+    return methods;
+}
+
+Json samplers() {
     return Json::object({{"syntax", "sampler(<value> | <lower> to <upper> [with <distribution>])"},
         {"capture_evaluation", "lower_upper_distribution_once"}, {"intrinsic_capture_rng", "none"},
         {"bounds_validation", "capture"}, {"probability_mass_validation", "pick"},
@@ -85,7 +95,22 @@ Json samplers() {
         {"batch_preflight", "count_handle_allocation_before_first_draw"},
         {"constant_description_draws", 0}, {"empty_batch_draws", 0}, {"unset_empty_batch", "trap"},
         {"capture_effects", operationEffects(findOpcode(Opcode::SamplerRange)->effects)},
-        {"methods", std::move(methods)}, {"asset_constants", true}, {"range_palettes", true}});
+        {"methods", descriptionMethods(ips::samplerPickSpec())}, {"asset_constants", true}, {"range_palettes", true}});
+}
+
+Json steppers() {
+    return Json::object({{"syntax", "stepper(<value> | <lower> to <upper> [with <distribution>])"},
+        {"capture_evaluation", "lower_upper_distribution_once"}, {"intrinsic_capture_rng", "none"},
+        {"bounds_validation", "capture"}, {"probability_mass_validation", "nonempty_pick"},
+        {"method_evaluation", "receiver_once_before_count_once"}, {"method_resolution", "static_receiver_type_and_arity"},
+        {"minimum_count", 0}, {"maximum_count", kMaxListElements}, {"count_type", "i32"},
+        {"batch_preflight", "count_handle_allocation_before_first_step"}, {"unset_empty_batch", "trap"},
+        {"generation_rng", "none"}, {"unit_positions", "i_over_n_minus_one"},
+        {"zero_count", "empty_list"}, {"one_count", "first_step"},
+        {"integer_interpolation", "binary64_half_away_from_zero"}, {"endpoint_support", "truncated_positive_mass"},
+        {"distribution_families", Json::array({"gaussian", "triangular", "beta", "weighted", "density"})},
+        {"capture_effects", operationEffects(findOpcode(Opcode::StepperRange)->effects)},
+        {"methods", descriptionMethods(ips::stepperPickSpec())}, {"asset_constants", true}, {"range_palettes", false}});
 }
 
 Json listMethods() {
@@ -189,9 +214,11 @@ Json sourceRules() {
             {"minimum_format_minor", minor}});
     };
     typeRules["parameterized"] = Json::array({Json::object({{"constructor", "list"},
-        {"element_types", types([](ips::ValueType type) { return type.isScalar() || type.isSampler(); })},
+        {"element_types", types([](ips::ValueType type) { return type.isScalar() || type.isDescription(); })},
         {"nested", false}, {"representation", "immutable_arena_handle"}}),
         Json::object({{"constructor", "sampler"}, {"element_types", types([](ips::ValueType type) { return type.isScalar() && type != ips::ValueType::Distribution; })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}}),
+        Json::object({{"constructor", "stepper"}, {"element_types", types([](ips::ValueType type) { return type.isScalar() && type != ips::ValueType::Distribution; })},
         {"nested", false}, {"representation", "immutable_arena_handle"}})});
     typeRules["components"] = Json::array({
         components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
@@ -238,6 +265,7 @@ Json sourceRules() {
     for (const auto& name : ips::reservedKeywords()) reserved.push_back(name);
     rules["reserved_keywords"] = std::move(reserved);
     rules["samplers"] = samplers();
+    rules["steppers"] = steppers();
     Json alphaModes = Json::array();
     for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
     rules["surfaces"] = Json::object({

@@ -6,6 +6,7 @@ set(IPROP_RUNTIME_SOURCES
     collection_ops.cpp
     list_operations.cpp
     samplers.cpp
+    steppers.cpp
     point_distributions.cpp
     opcode_name.cpp
     opcode_spec.cpp

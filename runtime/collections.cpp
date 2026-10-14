@@ -23,23 +23,25 @@ void writeSamplerBound(Writer& writer, const Value& value) {
 }
 }
 
-std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
+namespace {
+template<class Handle>
+std::vector<Handle> parseDescriptionPool(std::span<const u8> data, const Section& section,
                                           std::span<const TypeDescriptor> types,
-                                          std::span<const Distribution> distributions) {
+                                          std::span<const Distribution> distributions, TypeDescriptor::Kind kind, const char* name) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries)
-        throw FormatError("too many sampler constants", section.offset, ErrorReason::InvalidConstants);
-    std::vector<SamplerValue> samplers;
+        throw FormatError("too many " + std::string(name) + " constants", section.offset, ErrorReason::InvalidConstants);
+    std::vector<Handle> samplers;
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto index = reader.readU16();
         const auto mode = reader.readU8();
         const auto reserved = reader.readU8();
-        if (index >= types.size() || !types[index].isSampler())
-            throw FormatError("sampler constant type descriptor out of range", at, ErrorReason::InvalidConstants);
+        if (index >= types.size() || types[index].kind != kind)
+            throw FormatError(std::string(name) + " constant type descriptor out of range", at, ErrorReason::InvalidConstants);
         if (mode > static_cast<u8>(SamplerMode::With) || reserved)
-            throw FormatError("invalid sampler constant mode or reserved byte", at + 2, ErrorReason::InvalidConstants);
+            throw FormatError("invalid " + std::string(name) + " constant mode or reserved byte", at + 2, ErrorReason::InvalidConstants);
         auto sampler = std::make_shared<SamplerData>();
         sampler->type = types[index]; sampler->mode = static_cast<SamplerMode>(mode);
         sampler->lower = readSamplerBound(reader, sampler->type.item());
@@ -52,12 +54,12 @@ std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Secti
             throw FormatError(error, at, ErrorReason::InvalidConstants);
         samplers.push_back({sampler->type, std::move(sampler)});
     }
-    if (!reader.empty()) throw FormatError("trailing bytes in sampler constants", reader.position(), ErrorReason::InvalidConstants);
+    if (!reader.empty()) throw FormatError("trailing bytes in " + std::string(name) + " constants", reader.position(), ErrorReason::InvalidConstants);
     return samplers;
 }
 
-void writeSamplerData(Writer& writer, const SamplerData& sampler, std::span<const Distribution> distributions) {
-    if (!sampler.type.isSampler() || samplerBoundsError(sampler.type.item(), sampler.lower, sampler.upper,
+void writeDescriptionData(Writer& writer, const SamplerData& sampler, std::span<const Distribution> distributions) {
+    if (!sampler.type.isDescription() || samplerBoundsError(sampler.type.item(), sampler.lower, sampler.upper,
         sampler.mode != SamplerMode::Constant) || static_cast<u8>(sampler.mode) > static_cast<u8>(SamplerMode::With) ||
         (sampler.mode == SamplerMode::With && !math::validDistribution(sampler.distribution)))
         throw std::logic_error("invalid sampler constant");
@@ -69,11 +71,39 @@ void writeSamplerData(Writer& writer, const SamplerData& sampler, std::span<cons
     }
 }
 
+} // namespace
+
+std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
+                                          std::span<const TypeDescriptor> types,
+                                          std::span<const Distribution> distributions) {
+    return parseDescriptionPool<SamplerValue>(data, section, types, distributions, TypeDescriptor::Sampler, "sampler");
+}
+std::vector<StepperValue> parseStepperPool(std::span<const u8> data, const Section& section,
+                                          std::span<const TypeDescriptor> types,
+                                          std::span<const Distribution> distributions) {
+    return parseDescriptionPool<StepperValue>(data, section, types, distributions, TypeDescriptor::Stepper, "stepper");
+}
+void writeSamplerData(Writer& writer, const SamplerData& data, std::span<const Distribution> distributions) {
+    if (!data.type.isSampler()) throw std::logic_error("invalid sampler constant type");
+    writeDescriptionData(writer, data, distributions);
+}
+void writeStepperData(Writer& writer, const StepperData& data, std::span<const Distribution> distributions) {
+    if (!data.type.isStepper()) throw std::logic_error("invalid stepper constant type");
+    writeDescriptionData(writer, data, distributions);
+}
+
+const CapturedRangeData* descriptionData(const Value& value) {
+    if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->data.get();
+    if (const auto* stepper = std::get_if<StepperValue>(&value)) return stepper->data.get();
+    return nullptr;
+}
+
 TypeDescriptor valueType(const Value& value) {
     if (std::holds_alternative<MaskValue>(value)) return TypeDescriptor::Mask;
     if (std::holds_alternative<LayerValue>(value)) return TypeDescriptor::Layer;
     if (std::holds_alternative<PointDistributionBuilder>(value)) return TypeDescriptor::PointBuilder;
     if (const auto* sampler = std::get_if<SamplerValue>(&value)) return sampler->type;
+    if (const auto* stepper = std::get_if<StepperValue>(&value)) return stepper->type;
     if (const auto* list = std::get_if<ListValue>(&value)) return list->type;
     if (const auto* builder = std::get_if<ListBuilder>(&value))
         return builder->data ? TypeDescriptor::builder(builder->data->list.type) : TypeDescriptor::Builder;
@@ -110,9 +140,9 @@ std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const
         const auto reference = reader.readU16();
         TypeDescriptor type;
         if (kind == static_cast<u8>(TypeDescriptor::List) && element == kDescriptorReference) {
-            // References only point backward to sampler descriptors, so cycles,
+            // References only point backward to description descriptors, so cycles,
             // list nesting and dangling/forward references cannot enter the VM.
-            if (reference >= types.size() || !types[reference].isSampler())
+            if (reference >= types.size() || !types[reference].isDescription())
                 throw FormatError("invalid list element descriptor reference", at, ErrorReason::InvalidCode);
             type = TypeDescriptor::list(types[reference]);
         } else {
@@ -134,7 +164,7 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
         const auto type = types[i];
         if (!type.needsDescriptor() || !type.isStorable()) throw std::logic_error("invalid type descriptor");
         writer.writeU8(static_cast<u8>(type.kind));
-        if (type.isList() && type.item().isSampler()) {
+        if (type.isList() && type.item().isDescription()) {
             const auto found = std::find(types.begin(), types.begin() + i, type.item());
             if (found == types.begin() + i) throw std::logic_error("missing preceding sampler descriptor");
             writer.writeU8(kDescriptorReference);
@@ -148,12 +178,13 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
                                          std::span<const TypeDescriptor> types,
                                          std::span<const SamplerValue> samplers,
-                                         std::span<const Distribution> distributions) {
+                                         std::span<const Distribution> distributions,
+                                         std::span<const StepperValue> steppers) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many collection constants", section.offset, ErrorReason::InvalidConstants);
     std::vector<ListValue> lists;
-    u64 total = samplers.size() * ResourceArena::samplerBytes();
+    u64 total = samplers.size() * ResourceArena::samplerBytes() + steppers.size() * ResourceArena::stepperBytes();
     for (const auto& d : distributions) total += ResourceArena::distributionBytes(d.points->points.size());
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
@@ -183,6 +214,13 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
                 list->elements.emplace_back(samplers[reference]);
                 break;
             }
+            case TypeDescriptor::Stepper: {
+                const auto reference = reader.readU16();
+                if (reference >= steppers.size() || steppers[reference].type != list->type.item())
+                    throw FormatError("collection stepper reference out of range or type mismatch", reader.position() - 2, ErrorReason::InvalidConstants);
+                list->elements.emplace_back(steppers[reference]);
+                break;
+            }
             default: throw FormatError("invalid collection element type", at, ErrorReason::InvalidConstants);
             }
         }
@@ -193,7 +231,7 @@ std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Secti
 }
 
 void writeListElements(Writer& writer, const ListData& list, std::span<const SamplerValue> samplers,
-                       std::span<const Distribution> distributions) {
+                       std::span<const Distribution> distributions, std::span<const StepperValue> steppers) {
     for (const auto& value : list.elements) {
         if (valueType(value) != list.type.item()) throw std::logic_error("collection element type mismatch");
         if (const auto* i = std::get_if<i32>(&value)) writer.writeI32(*i);
@@ -209,6 +247,13 @@ void writeListElements(Writer& writer, const ListData& list, std::span<const Sam
             });
             if (found == samplers.end()) throw std::logic_error("missing collection sampler constant");
             writer.writeU16(static_cast<u16>(found - samplers.begin()));
+        }
+        else if (const auto* s = std::get_if<StepperValue>(&value)) {
+            const auto found = std::find_if(steppers.begin(), steppers.end(), [&](const auto& candidate) {
+                return candidate.type == s->type && candidate.data == s->data;
+            });
+            if (found == steppers.end()) throw std::logic_error("missing collection stepper constant");
+            writer.writeU16(static_cast<u16>(found - steppers.begin()));
         } else throw std::logic_error("unsupported collection element");
     }
 }

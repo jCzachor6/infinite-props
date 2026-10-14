@@ -186,7 +186,8 @@ std::unique_ptr<Plan> Planner::plan() {
                 if (const auto* pick = std::get_if<ips::SamplerPick>(expr); pick && pick->count) {
                     if (const auto count = known(*pick->count); count &&
                         (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
-                        invalid(ips::locationOf(*pick->count), "sampler result count must be between 0 and 256");
+                        invalid(ips::locationOf(*pick->count), function.typeOf(*pick->receiver).isStepper() ?
+                            "stepper result count must be between 0 and 256" : "sampler result count must be between 0 and 256");
                 }
                 if (const auto* capture = std::get_if<ips::SamplerCapture>(expr)) {
                     const auto* range = std::get_if<ips::RandomRange>(capture->value.get());

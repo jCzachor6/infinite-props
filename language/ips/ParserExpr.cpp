@@ -255,12 +255,14 @@ std::unique_ptr<Expr> ParserImpl::parsePrimary() {
     case TokenKind::KeywordWeighted:
     case TokenKind::KeywordDensity:
         return parsePointDistribution();
-    case TokenKind::KeywordSampler: {
+    case TokenKind::KeywordSampler:
+    case TokenKind::KeywordStepper: {
+        const bool stepper = kind() == TokenKind::KeywordStepper;
         const auto at = advance().location;
         auto args = parseArgs();
         if (args.size() != 1 || args[0].name)
-            throw SourceError{at, "sampler capture takes one positional value or range"};
-        auto expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at});
+            throw SourceError{at, std::string(stepper ? "stepper" : "sampler") + " capture takes one positional value or range"};
+        auto expr = std::make_unique<Expr>(SamplerCapture{std::move(args[0].value), at, stepper});
         expr->sourceRange = expr->sourceCoreRange = {start, pos_};
         return expr;
     }

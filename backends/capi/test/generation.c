@@ -9,6 +9,39 @@
 void check_generation(const char* program_dir) {
     char err[512];
 
+    /* Steppers use the existing host ABI and preserve caller RNG for all seeds. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/steppers.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length); iprop_program* program=NULL;
+        CHECK(bytes!=NULL,"cannot read stepper fixture");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"stepper load: %s",err);free(bytes);}
+        if(program){
+            const uint32_t seeds[]={0,26,UINT32_MAX};
+            const float expected[]={0,1,1,2,2,3,3,4,4,5};
+            for(unsigned seed=0;seed<3;++seed){
+                iprop_generate_options options={0};options.seed=seeds[seed];iprop_result* result=NULL;
+                CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"stepper generation: %s",err);
+                if(result){
+                    iprop_image image;iprop_result_image(result,&image);
+                    CHECK(image.width==64 && image.height==32 && image.output_count==2,"stepper metadata");
+                    if(image.output_count==2){
+                        const iprop_output* positions=&image.outputs[0];const iprop_output* unchanged=&image.outputs[1];
+                        CHECK(positions->kind==IPROP_OUTPUT_POINT && positions->is_list && positions->count==10,"stepper positions");
+                        if(positions->count==10){
+                            const float* values=(const float*)positions->values;
+                            for(unsigned i=0;i<10;++i)CHECK(values[2*i+1]==expected[i],"stepper integer rounding at %u",i);
+                            CHECK(values[0]==2 && values[18]==56,"stepper vector endpoints");
+                        }
+                        CHECK(unchanged->kind==IPROP_OUTPUT_POINT && !unchanged->is_list && unchanged->count==1,"stepper state metadata");
+                        if(unchanged->count==1){const float* values=(const float*)unchanged->values;CHECK(values[0]==1 && values[1]==32,"stepper RNG and zero/single counts");}
+                    }
+                    iprop_result_free(result);
+                }
+            }
+            iprop_program_free(program);
+        }
+    }
+
     /* Resource exports use no host slots, including nested geometry ranges. */
     {
         char path[1024];snprintf(path,sizeof(path),"%s/resource-exports.iprop",program_dir);

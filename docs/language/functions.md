@@ -1,7 +1,8 @@
 # User functions and argument evaluation
 
 A helper is an asset-level `name(parameter: type, ...) { ... }` declaration.
-All parameter types are explicit: `i32`, `f32`, `color`, `vec2` or `distribution`.
+All parameter types are explicit and use the [storable types](types.md#value-types-and-conversions),
+including scalars, lists, sampler/stepper descriptions and surface handles.
 A value-returning helper declares `-> type`; omission means a void helper.
 Arguments may be positional, named by the declared parameter, or mixed.
 Every parameter is required, parameter names are unique, and `i32` may widen

@@ -21,7 +21,8 @@ void ResourceArena::clear() {
     if (surfaceLifetime) surfaceLifetime->bytes = nullptr;
     surfaceLifetime.reset();
     surfaces.clear(); lists.clear(); samplers.clear(); constants.clear();
-    samplerConstants.clear(); distributions.clear(); distributionConstants.clear();
+    samplerConstants.clear(); steppers.clear(); stepperConstants.clear();
+    distributions.clear(); distributionConstants.clear();
     bytes = 0; peak = 0;
 }
 

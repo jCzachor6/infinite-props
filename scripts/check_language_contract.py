@@ -29,7 +29,8 @@ def main():
     scalar_types = ['i32', 'f32', 'color', 'vec2', 'distribution']
     constant_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
     sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
-    storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types]
+    stepper_types = ['stepper<' + name + '>' for name in scalar_types[:-1]]
+    storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types] + stepper_types + ['list<' + name + '>' for name in stepper_types]
     constant_types = storable_types.copy()
     storable_types += ['layer', 'mask']
     assert rules['inputs'] == [
@@ -72,16 +73,17 @@ def main():
 
     # These are language acceptance cases, not JSON snapshots alone. Each
     # advertised rule is exercised by a valid source and/or a rejection.
-    assert rules['types']['parameterized'] == [{'constructor': 'list', 'element_types': scalar_types + sampler_types,
+    assert rules['types']['parameterized'] == [{'constructor': 'list', 'element_types': scalar_types + sampler_types + stepper_types,
         'nested': False, 'representation': 'immutable_arena_handle'}, {'constructor': 'sampler',
+        'element_types': scalar_types[:-1], 'nested': False, 'representation': 'immutable_arena_handle'}, {'constructor': 'stepper',
         'element_types': scalar_types[:-1], 'nested': False, 'representation': 'immutable_arena_handle'}]
     assert rules['collections']['index_bounds'] == 'trap'
     assert rules['collections']['maximum_length'] == 256
     assert rules['collections']['generation_data_limit_bytes'] == 67108864
     methods = rules['collections']['methods']
-    assert len(methods) == 13
+    assert len(methods) == 17
     assert {(m['name'],m['receiver']) for m in methods} == (
-        {('distinct','list<' + t + '>') for t in scalar_types + sampler_types} |
+        {('distinct','list<' + t + '>') for t in scalar_types + sampler_types + stepper_types} |
         {('sort','list<' + t + '>') for t in scalar_types[:-1]})
     assert all(m['result'] == m['receiver'] and m['parameters'] == [] and
                m['constant_evaluable'] and m['effects']['rng'] == 'none' for m in methods)

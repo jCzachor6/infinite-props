@@ -80,7 +80,7 @@ public:
 
     u16 addType(TypeDescriptor type) {
         if (!type.needsDescriptor() || !type.isStorable()) throw std::logic_error("expected value descriptor");
-        if (type.isList() && type.item().isSampler()) addType(type.item());
+        if (type.isList() && type.item().isDescription()) addType(type.item());
         const auto found = std::find(types.begin(), types.end(), type);
         if (found != types.end()) return static_cast<u16>(found - types.begin());
         if (types.size() >= kMaxConstPoolEntries) throw PoolLimit("too many type descriptors");
@@ -90,18 +90,19 @@ public:
     u16 addList(const ListValue& list) {
         if (!list.data || list.data->elements.size() > kMaxListElements) throw PoolLimit("invalid collection constant");
         ListValue canonical = list;
-        if (list.type.item().isSampler() || list.type.item() == ValueType::Distribution) {
+        if (list.type.item().isDescription() || list.type.item() == ValueType::Distribution) {
             auto data = std::make_shared<ListData>(*list.data);
             for (auto& value : data->elements) {
                 if (auto* d = std::get_if<Distribution>(&value)) { if (d->points) value = distributions.at(addDistribution(*d)); }
-                else value = samplers.at(addSampler(std::get<SamplerValue>(value)));
+                else if (const auto* sampler = std::get_if<SamplerValue>(&value)) value = samplers.at(addSampler(*sampler));
+                else value = steppers.at(addStepper(std::get<StepperValue>(value)));
             }
             canonical.data = std::move(data);
         }
         Writer encoding;
         encoding.writeU8(static_cast<u8>(list.type.element));
-        if (list.type.item().isSampler()) encoding.writeU8(static_cast<u8>(list.type.parameter));
-        writeListElements(encoding, *canonical.data, samplers, distributions);
+        if (list.type.item().isDescription()) encoding.writeU8(static_cast<u8>(list.type.parameter));
+        writeListElements(encoding, *canonical.data, samplers, distributions, steppers);
         if (const auto found = listIndex.find(encoding.data()); found != listIndex.end()) return found->second;
         if (lists.size() >= kMaxConstPoolEntries) throw PoolLimit("too many collection constants");
         const auto allocation = ResourceArena::listBytes(list.data->elements.size());
@@ -113,24 +114,28 @@ public:
         listIndex.emplace(encoding.data(), index);
         return index;
     }
-    u16 addSampler(const SamplerValue& sampler) {
+    u16 addSampler(const SamplerValue& sampler) { return addDescription(sampler, samplers, samplerIndex); }
+    u16 addStepper(const StepperValue& stepper) { return addDescription(stepper, steppers, stepperIndex); }
+    template<class Handle>
+    u16 addDescription(const Handle& sampler, std::vector<Handle>& descriptions, std::map<std::vector<u8>, u16>& indices) {
         if (!sampler.data || sampler.data->type != sampler.type) throw PoolLimit("invalid sampler constant");
         Writer encoding;
         encoding.writeU8(static_cast<u8>(sampler.type.element));
-        SamplerValue canonical = sampler;
+        Handle canonical = sampler;
         if (sampler.data->distribution.points) {
             auto data = std::make_shared<SamplerData>(*sampler.data);
             data->distribution = distributions.at(addDistribution(data->distribution));
             canonical.data = std::move(data);
         }
-        writeSamplerData(encoding, *canonical.data, distributions);
-        if (const auto found = samplerIndex.find(encoding.data()); found != samplerIndex.end()) return found->second;
-        if (samplers.size() >= kMaxConstPoolEntries) throw PoolLimit("too many sampler constants");
+        if (sampler.type.isStepper()) writeStepperData(encoding, *canonical.data, distributions);
+        else writeSamplerData(encoding, *canonical.data, distributions);
+        if (const auto found = indices.find(encoding.data()); found != indices.end()) return found->second;
+        if (descriptions.size() >= kMaxConstPoolEntries) throw PoolLimit("too many sampler constants");
         if (ResourceArena::samplerBytes() > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
         collectionBytes += ResourceArena::samplerBytes();
         addType(sampler.type);
-        const auto index = static_cast<u16>(samplers.size());
-        samplers.push_back(std::move(canonical)); samplerIndex.emplace(encoding.data(), index);
+        const auto index = static_cast<u16>(descriptions.size());
+        descriptions.push_back(std::move(canonical)); indices.emplace(encoding.data(), index);
         return index;
     }
     u16 addDistribution(const Distribution& d) {
@@ -148,6 +153,7 @@ public:
     const std::vector<TypeDescriptor>& typesValue() const { return types; }
     const std::vector<ListValue>& listsValue() const { return lists; }
     const std::vector<SamplerValue>& samplersValue() const { return samplers; }
+    const std::vector<StepperValue>& steppersValue() const { return steppers; }
     const std::vector<Distribution>& distributionsValue() const { return distributions; }
 
     // The pool contents, in registration order.
@@ -167,6 +173,8 @@ private:
     std::map<std::vector<u8>, u16> listIndex;
     std::vector<SamplerValue> samplers;
     std::map<std::vector<u8>, u16> samplerIndex;
+    std::vector<StepperValue> steppers;
+    std::map<std::vector<u8>, u16> stepperIndex;
     std::vector<Distribution> distributions;
     std::map<std::vector<u8>, u16> distributionIndex;
     std::vector<std::string> strings;

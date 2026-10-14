@@ -11,7 +11,7 @@ whitespace and never implicitly terminates a declaration or expression.
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
 `if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`,
-`true`, `false`) and `const`, `to`, `with`, `distribution`, `sampler`,
+`true`, `false`) and `const`, `to`, `with`, `distribution`, `sampler`, `stepper`,
 `weighted`, `density`, `layer`, `mask` and `clip` are reserved. `draw`, `at`, scalar type names and geometry kind
 names and `list` are soft keywords accepted in name positions; `draw` still selects
 the entry block when used as an asset-level function name. Reserved words cannot

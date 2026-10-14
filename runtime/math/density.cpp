@@ -89,6 +89,7 @@ TruncatedDraw densityDistributionDraw(const Distribution& distribution, double l
         const auto& segment = segments[i];
         if (!(segment.area > 0.0)) continue;
         const double next = cumulative + segment.area;
+        if (u == 1.0) { result.value = segment.upper; selected = true; }
         if (!selected && target < next) {
             const double z = target - cumulative;
             result = invertDensitySegment(segment.upper - segment.lower, segment.p, segment.q, z);

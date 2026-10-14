@@ -254,10 +254,10 @@ private:
         } else inspect(expression, dependencies);
     }
 
-    SamplerValue capture(const Expr& expression) {
+    Value capture(const Expr& expression, bool stepper = false) {
         const auto* range = std::get_if<RandomRange>(&expression);
         auto data = std::make_shared<SamplerData>();
-        data->type = ValueType::sampler(typer_.typeOf(expression));
+        data->type = stepper ? ValueType::stepper(typer_.typeOf(expression)) : ValueType::sampler(typer_.typeOf(expression));
         data->mode = !range ? SamplerMode::Constant : range->distribution ? SamplerMode::With : SamplerMode::Uniform;
         data->lower = evaluate(range ? *range->lower : expression);
         if (range) data->upper = evaluate(*range->upper);
@@ -269,8 +269,10 @@ private:
         if (const auto* message = samplerBoundsError(data->type.item(), data->lower, data->upper, range != nullptr))
             fail(locationOf(expression), message, DiagnosticCode::AssetConstantValue);
         if (data->mode == SamplerMode::With && !math::validDistribution(data->distribution))
-            fail(locationOf(expression), "sampler distribution is not initialized or invalid", DiagnosticCode::AssetConstantValue);
-        return {data->type, std::move(data)};
+            fail(locationOf(expression), std::string(stepper ? "stepper" : "sampler") + " distribution is not initialized or invalid", DiagnosticCode::AssetConstantValue);
+        const auto type = data->type;
+        if (stepper) return StepperValue{type, std::move(data)};
+        return SamplerValue{type, std::move(data)};
     }
 
     ResolvedPalette evaluatePalette(const PaletteDecl& palette) {
@@ -347,7 +349,9 @@ private:
             try { return materializeListSelection(list, selectList(list, method->name == "sort")); }
             catch (const std::invalid_argument& error) { fail(at, error.what(), DiagnosticCode::AssetConstantValue); }
         }
-        if (const auto* description = std::get_if<SamplerCapture>(&expression)) return capture(*description->value);
+        if (const auto* description = std::get_if<SamplerCapture>(&expression)) {
+            return capture(*description->value, description->stepper);
+        }
         if (const auto* literal = std::get_if<PointDistributionLiteral>(&expression)) {
             const auto numeric = [](const Value& value) -> DistributionNumber {
                 if (const auto* i = std::get_if<i32>(&value)) return *i;

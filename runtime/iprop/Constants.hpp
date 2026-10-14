@@ -28,6 +28,7 @@ enum class SectionId : u32 {
     Samplers = 8, // v0.6: immutable sampler constants
     Distributions = 9, // v0.6: immutable point distribution constants
     ResourceExports = 10, // v0.6: internal mask/layer exports and function owners
+    Steppers = 11, // v0.7: immutable stepper constants
 };
 
 // Input (uniform) types (spec §4.1).
@@ -278,6 +279,11 @@ enum class Opcode : u8 {
     PartGetLayer = 0xD5,
     ListDistinct = 0xD6,
     ListSort = 0xD7,
+    StepperValue = 0xD8,
+    StepperRange = 0xD9,
+    StepperWith = 0xDA,
+    StepperPickList = 0xDB,
+    ConstStepper = 0xDC,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

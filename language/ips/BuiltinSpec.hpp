@@ -43,6 +43,7 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs();
 // Receiver-first signatures for the statically resolved sampler method.
 // Kept separate from global builtin pick and shared by typing/docs/lowering.
 const BuiltinSpec& samplerPickSpec();
+const BuiltinSpec& stepperPickSpec();
 const std::map<std::string, BuiltinSpec>& listMethodSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);

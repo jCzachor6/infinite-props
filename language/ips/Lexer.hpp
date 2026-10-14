@@ -40,6 +40,7 @@ enum class TokenKind {
     KeywordTo,
     KeywordWith,
     KeywordSampler,
+    KeywordStepper,
     KeywordWeighted,
     KeywordDensity,
     KeywordLayer,

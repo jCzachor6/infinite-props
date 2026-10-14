@@ -378,6 +378,10 @@ private:
             if (op >= file_.collections.samplers.size()) fail(at, "sampler constant index out of range");
             push(at, file_.collections.samplers[op].type);
             return;
+        case Opcode::ConstStepper:
+            if (op >= file_.collections.steppers.size()) fail(at, "stepper constant index out of range");
+            push(at, file_.collections.steppers[op].type);
+            return;
         case Opcode::ListBegin: case Opcode::ListAppend: case Opcode::ListEnd:
         case Opcode::ListGet: case Opcode::ListLen: case Opcode::ListDistinct: case Opcode::ListSort: {
             if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
@@ -413,6 +417,22 @@ private:
                 if (ins.opcode == Opcode::SamplerWith) expect(at, ValueType::Distribution, "sampler distribution");
                 if (ins.opcode != Opcode::SamplerValue) expect(at, type.item(), "sampler upper bound");
                 expect(at, type.item(), "sampler lower bound"); push(at, type);
+            }
+            return;
+        }
+        case Opcode::StepperValue: case Opcode::StepperRange: case Opcode::StepperWith:
+        case Opcode::StepperPickList: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            if (!type.isStepper()) fail(at, "expected stepper descriptor");
+            if (ins.opcode == Opcode::StepperPickList) {
+                expect(at, ValueType::I32, "stepper result count");
+                expect(at, type, "stepper receiver");
+                push(at, ValueType::list(type.item()));
+            } else {
+                if (ins.opcode == Opcode::StepperWith) expect(at, ValueType::Distribution, "stepper distribution");
+                if (ins.opcode != Opcode::StepperValue) expect(at, type.item(), "stepper upper bound");
+                expect(at, type.item(), "stepper lower bound"); push(at, type);
             }
             return;
         }
@@ -728,9 +748,13 @@ LoadedFile loadFile(std::span<const u8> data) {
         file.collections.distributions = parseDistributionPool(bytes, *distributions);
     if (const auto* samplers = file.layout.find(SectionId::Samplers))
         file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections.types, file.collections.distributions);
+    if (const auto* steppers = file.layout.find(SectionId::Steppers))
+        file.collections.steppers = parseStepperPool(bytes, *steppers, file.collections.types, file.collections.distributions);
     if (const auto* lists = file.layout.find(SectionId::Collections))
-        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers, file.collections.distributions);
-    u64 poolBytes = file.collections.samplers.size() * ResourceArena::samplerBytes();
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers,
+            file.collections.distributions, file.collections.steppers);
+    u64 poolBytes = file.collections.samplers.size() * ResourceArena::samplerBytes() +
+        file.collections.steppers.size() * ResourceArena::stepperBytes();
     for (const auto& d : file.collections.distributions) poolBytes += ResourceArena::distributionBytes(d.points->points.size());
     for (const auto& list : file.collections.lists) poolBytes += ResourceArena::listBytes(list.data->elements.size());
     if (poolBytes > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", 0, ErrorReason::InvalidConstants);

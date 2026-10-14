@@ -132,6 +132,7 @@ function run(iprop, toolsDir) {
     let collectionEvidence = {};
     let listMethodEvidence = {};
     let samplerEvidence = {};
+    let stepperEvidence = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
     const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
@@ -453,6 +454,7 @@ function run(iprop, toolsDir) {
         collectionEvidence = require("./collection-conformance.js").run(iprop, tool, temporary);
         listMethodEvidence = require("./list-method-conformance.js").run(iprop, tool, temporary);
         samplerEvidence = require("./sampler-conformance.js").run(iprop, tool, temporary);
+        stepperEvidence = require("./stepper-conformance.js").run(iprop, tool, temporary);
         samplingPaletteEvidence = require("./sampling-palette-conformance.js").run(iprop, tool, temporary);
         pointDistributionEvidence = require("./point-distribution-conformance.js").run(iprop, tool, temporary);
         densityEvidence = require("./density-conformance.js").run(iprop, tool, temporary);
@@ -465,7 +467,7 @@ function run(iprop, toolsDir) {
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
-        samplers: samplerEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, resourceExports: resourceExportEvidence };
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, resourceExports: resourceExportEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

@@ -321,6 +321,29 @@ test("sampler formatting preserves captures, arbitrary receivers, types and comm
     }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
 });
 
+test("stepper formatting and highlighting preserve deterministic captures and required counts", async () => {
+    const source="asset t{size 1x1 const stepper<i32> fixed=stepper(0 to 5) " +
+        "echo(s:stepper<i32>)->stepper<i32>{return s} " +
+        "draw{list<stepper<i32>> items=[fixed,/* captured */stepper(40)] " +
+        "values=echo(items[0]).pick(n=10);items.distinct()}}";
+    const dir=workspace(source),h=editorHarness(dir,execFile);h.settings.compilerPath=compiler;
+    try{
+        const edits=await format(h);assert.equal(edits.length,1,h.warnings.join("\n"));
+        const formatted=edits[0].newText;
+        assert.ok(formatted.includes("const stepper<i32> fixed"));
+        assert.ok(formatted.includes("list<stepper<i32>> items"));
+        assert.ok(formatted.includes("/* captured */"));
+        assert.ok(formatted.includes("echo(items[0]).pick(10)"));
+        fs.writeFileSync(path.join(dir,"formatted.ips"),formatted);
+        const checked=spawnSync(compiler,[path.join(dir,"formatted.ips"),"--check"],{encoding:"utf8"});
+        assert.equal(checked.status,0,checked.stderr);clean(dir);
+        const grammar=JSON.parse(fs.readFileSync(path.join(root,"editor/syntaxes/ips.tmLanguage.json"),"utf8"));
+        assert.ok(new RegExp(grammar.repository.types.match).test("stepper<i32>"));
+        assert.ok(new RegExp(grammar.repository.samplerCapture.match).test("stepper(0 to 5)"));
+        assert.ok(new RegExp(grammar.repository.samplerMethod.match).test("items[0].pick(10)"));
+    }finally{h.dispose();fs.rmSync(dir,{recursive:true,force:true});}
+});
+
 test("list methods preserve chains comments and ordinary helper names", async () => {
     const source="asset t{size 1x1 const list<i32> none=[].sort().distinct() " +
         "echo(items:list<i32>)->list<i32>{return items} sort(x:i32)->i32{return x} " +

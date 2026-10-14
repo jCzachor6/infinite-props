@@ -59,6 +59,14 @@ def main():
         assert method['effects']['rng'] == 'advance_current'
         assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
         assert method['minimum_format_minor'] == 6
+    steppers = description['source_rules']['steppers']
+    valid(steppers['capture_effects'])
+    assert steppers['capture_effects']['rng'] == 'none'
+    for method in steppers['methods']:
+        valid(method['effects'])
+        assert method['effects']['rng'] == 'none'
+        assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
+        assert method['minimum_format_minor'] == 7
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
     assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']

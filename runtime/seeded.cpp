@@ -269,15 +269,6 @@ f32 distributionFloat(Execution& ex, const Distribution& distribution, f32 lo, f
     return value < lo ? lo : value > hi ? hi : value;
 }
 
-// Round half away from zero (spec v0.5 §4.4); |x| < 2^31 keeps x - t exact.
-i32 roundToInt(double x) {
-    double t = std::trunc(x);
-    const double fraction = x - t;
-    if (fraction >= 0.5) t += 1.0;
-    else if (fraction <= -0.5) t -= 1.0;
-    return static_cast<i32>(t);
-}
-
 Distribution constructed(Execution& ex, DistributionFamily family, std::size_t count, const char* rule) {
     Distribution distribution;
     distribution.family = family;
@@ -304,7 +295,7 @@ Value drawSampler(Execution& ex, const SamplerData& sampler) {
     const bool with = sampler.mode == SamplerMode::With;
     if (item == ValueType::I32) {
         const auto lo = std::get<i32>(sampler.lower), hi = std::get<i32>(sampler.upper);
-        return with ? roundToInt(distributionDraw(ex, sampler.distribution, lo, hi)) : uniformInt(ex, lo, hi);
+        return with ? math::roundRangeInt(distributionDraw(ex, sampler.distribution, lo, hi)) : uniformInt(ex, lo, hi);
     }
     if (item == ValueType::F32) {
         const auto lo = std::get<f32>(sampler.lower), hi = std::get<f32>(sampler.upper);
@@ -412,7 +403,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
         const double value = distributionDraw(ex, distribution, lo, hi);
-        ex.push(Value(roundToInt(value)));
+        ex.push(Value(math::roundRangeInt(value)));
         ++ex.frame().ip;
         return true;
     }
