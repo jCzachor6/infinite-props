@@ -32,7 +32,7 @@ function run(iprop, tool, directory) {
     }
     function fuelLimit(binary, fuel) {
         const assembly = base + ".ipa", result = base + "-fuel.iprop";
-        fs.writeFileSync(assembly, execFileSync(tool("ipdis"), [binary], { encoding: "utf8" }).replace("fuel=2000000", "fuel=" + fuel));
+        fs.writeFileSync(assembly, execFileSync(tool("ipdis"), [binary], { encoding: "utf8" }).replace(/fuel=\d+/, "fuel=" + fuel));
         execFileSync(tool("ipa"), [assembly, "-o", result]); return result;
     }
     // Full image pins come only from the independent rational/disk oracle.

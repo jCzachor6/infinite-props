@@ -81,7 +81,7 @@ Canvas executeBytes(const std::vector<u8>& bytes) {
 } // namespace
 
 TEST_CASE("the disassembly is stable golden output") {
-    const std::string expected = R"(meta: size=8x8 origin=0,0 fuel=2000000
+    const std::string expected = R"(meta: size=8x8 origin=0,0 fuel=5000000
 input: color base = #3355aaff
 output: point p
 fn draw ( color ) -> ( ):

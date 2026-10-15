@@ -172,7 +172,7 @@ costs one plus one per source pixel visited. These costs are reserved before
 allocation or scanning. Drawing inside a layer keeps the primitive's usual
 fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
-generation never publishes a partial image. Default fuel remains 2,000,000.
+generation never publishes a partial image. Default fuel remains 5,000,000.
 
 Layers use the file's type descriptor table. They do not add
 public C input/output enums or host layouts. Host outputs remain points,

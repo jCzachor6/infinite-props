@@ -65,13 +65,13 @@ function run(iprop,tool,directory) {
     fs.writeFileSync(path.join(tree,"root.ips"),wrong);const wrongBinary=path.join(tree,"wrong.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"-o",wrongBinary]);trap(wrongBinary,/last called part/);
     // Repeated replacement is bounded by live handles, rather than arena history.
     const reusable=compile('asset t{size 1024x1024 draw{layer image{}region=mask.from(image)for i in 0..64{region=mask.invert(region)}}}',["--no-opt"]);
-    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace('fuel=2000000','fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large);
+    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large);
     // A real snapshot survives slot replacement and keeps its allocation alive.
     fs.writeFileSync(path.join(tree,"leaf.ips"),'asset t{size 1024x1024 output layer image draw{layer captured{}image=captured}}');
     const many=Array.from({length:16},(_,i)=>`leaf.draw(seed,at={0,0})snapshot${i}=leaf.outputs.image`).join(';');
     fs.writeFileSync(path.join(tree,"root.ips"),'import leaf from "leaf.ips" asset t{size 1x1 draw{'+many+'}}');
     const quota=path.join(tree,"quota.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"--no-opt","--no-compress","-o",quota]);
-    fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[quota],{encoding:"utf8"}).replace('fuel=2000000','fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);trap(large,/generation data exceeds 64 MiB/);
+    fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[quota],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);trap(large,/generation data exceeds 64 MiB/);
     const valid=base+"-example.iprop";execFileSync(tool("ipc"),[path.join(repo,"examples/language/resource-exports.ips"),"--no-opt","--no-compress","-o",valid]);
     const bytes=fs.readFileSync(valid), section={offset:sections(bytes).get(10)};
     function reject(broken) {
