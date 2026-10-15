@@ -330,7 +330,7 @@ Json sourceRules() {
         {"offset", "i32_target_pixels_mapping_view"},
         {"coverage_rounding", "multiply_nearest_half_up_outer_to_inner"},
         {"mask_paint_alpha", "color_times_mask_then_combined_clip"}, {"zero_coverage_write", false},
-        {"helper_clip", "inherit"}, {"layer_clip", "inherit"}, {"part_clip", "parent_applies_to_blit_once"},
+        {"helper_clip", "inherit"}, {"layer_clip", "applies_to_paint_once"}, {"part_clip", "parent_applies_to_blit_once"},
         {"weather_clip", "mix_old_and_proposed_rgba_by_coverage"}, {"geometry_outputs_clipped", false},
         {"clip_evaluation", "mask_once_no_rng"}, {"combined_scope_limit", kMaxSurfaceScopes},
         {"from_opcode", findOpcode(Opcode::MaskFrom)->mnemonic},

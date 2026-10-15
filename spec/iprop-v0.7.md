@@ -2920,10 +2920,13 @@ dynamic bad radii trap with `mask radius must be in 0..64` before scanning.
 
 `clip(mask) { ... }` evaluates its operand once, installs another coverage
 level and consumes no implicit RNG. Helpers inherit clips. A new layer has
-the parent's geometry and inherits clips; scope cleanup restores its saved
-target, mode and clips. A part starts its own canvas with no parent clips.
-Only its return blit receives the restored parent's clip, exactly once.
-Clips created inside the part independently constrain its stored image.
+the parent's geometry but, like a part canvas, starts with no parent clips;
+scope cleanup restores its saved target, mode and clips. A part starts its own
+canvas with no parent clips. Only its return blit receives the restored
+parent's clip, exactly once. A layer receives the clips active where
+`surface.paint` paints it, exactly once, whether or not it was captured inside
+a clip. Clips created inside a part or capture independently constrain its
+stored image.
 Geometric outputs are never clipped. Resource exports follow §32 and do not inherit parent clip coverage.
 
 At each in-target attempted write, start clip coverage at 255 and multiply

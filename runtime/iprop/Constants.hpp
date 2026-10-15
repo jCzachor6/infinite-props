@@ -114,7 +114,7 @@ enum class Opcode : u8 {
     // Colour (§9.5)
     ColorMix = 0x50,
     ColorShade = 0x51,
-    ColorSetA = 0x52, // v0.3: the alpha set; reserved (rejected) before 0.3
+    ColorSetA = 0x52, // v0.3: the alpha set
     F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
     // The math package (§9.4/§12.8)

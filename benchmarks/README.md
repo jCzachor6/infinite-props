@@ -20,6 +20,9 @@ build/tools/ipc benchmarks/bezier.ips -o build/bezier-benchmark.iprop
 build/benchmarks/iprop_render_benchmark build/bezier-benchmark.iprop 80
 ```
 
+`benchmarks/interpreter.ips` measures instruction dispatch and operand-stack
+traffic in the same way; it draws almost nothing.
+
 Output includes milliseconds per generation, fuel and the FNV-1a hash of all
 RGBA bytes. Compilation and validation are outside the timed interval; VM
 construction, execution and hashing are inside. Compare Release builds on the

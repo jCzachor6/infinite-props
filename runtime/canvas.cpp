@@ -229,7 +229,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
 
     case Opcode::PolyList: {
         const auto colour = ex.popColor();
-        const auto list = ex.popList();
+        const auto list = ex.popHandle<ListValue>("list handle");
         if (list.type != ValueType::list(ValueType::Vec2)) ex.trap("poly points must be list<vec2>", ErrorReason::StackType);
         if (list.data->elements.size() < 3) ex.trap("poly requires at least three vertices", ErrorReason::NumericRange);
         std::vector<Vec2> points;

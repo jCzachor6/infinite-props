@@ -61,6 +61,18 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
             append(body,spec.opcode);
             CHECK_NOTHROW(validate(loadFile(fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{})))));
         }
+        if (spec.operand == OperandKind::Zero) {
+            // Unused operands are checked from the opcode table, including
+            // unreachable instructions.
+            auto body=retIns();
+            append(body,spec.opcode,1);
+            if(spec.opcode==Opcode::ClipBegin) append(body,Opcode::End);
+            const auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
+            try { validate(loadFile(bytes)); FAIL("nonzero operand accepted"); }
+            catch (const FormatError& error) {
+                CHECK(std::string(error.what()).find(std::string(spec.mnemonic) + " operand must be zero") != std::string::npos);
+            }
+        }
         if (!spec.stack) continue;
         const auto& sig=*spec.stack;
         for (bool scalar:{false,true}) {

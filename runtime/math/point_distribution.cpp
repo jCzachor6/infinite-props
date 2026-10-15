@@ -13,7 +13,7 @@ const PointDistributionSpec* pointDistributionSpec(std::string_view name) {
 const char* pointDistributionCountError(DistributionFamily family, std::size_t count) {
     const auto* spec = pointDistributionSpec(family);
     if (!spec) return "unknown point distribution family";
-    if (count < spec->minimumPoints || count > 256) return family == DistributionFamily::Density ?
+    if (count < spec->minimumPoints || count > kMaxDistributionPoints) return family == DistributionFamily::Density ?
         "density needs between 2 and 256 points" : "weighted needs between 1 and 256 points";
     return nullptr;
 }
@@ -45,7 +45,7 @@ double pointDistributionIncrement(DistributionFamily family, const DistributionP
 const char* pointDistributionError(const PointDistributionData& data, bool complete) {
     if (!pointDistributionSpec(data.family)) return "unknown point distribution family";
     if (complete) if (const auto* error = pointDistributionCountError(data.family, data.points.size())) return error;
-    if (data.points.size() > 256) return "distribution exceeds 256 points";
+    if (data.points.size() > kMaxDistributionPoints) return "distribution exceeds 256 points";
     double total = 0.0;
     for (std::size_t i = 0; i < data.points.size(); ++i) {
         const auto* previous = i ? &data.points[i - 1] : nullptr;

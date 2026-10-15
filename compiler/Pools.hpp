@@ -105,12 +105,8 @@ public:
         listSources.emplace(list.data, index);
         return index;
     }
-    u16 addSampler(const SamplerValue& sampler) {
-        return addDescription(sampler, samplers, ResourceArena::samplerBytes());
-    }
-    u16 addStepper(const StepperValue& stepper) {
-        return addDescription(stepper, steppers, ResourceArena::stepperBytes());
-    }
+    u16 addSampler(const SamplerValue& sampler) { return addDescription(sampler, samplers); }
+    u16 addStepper(const StepperValue& stepper) { return addDescription(stepper, steppers); }
     u16 addDistribution(const Distribution& d) {
         if (!d.points || d.family != d.points->family) throw std::logic_error("invalid point distribution constant");
         Writer encoding;
@@ -141,21 +137,20 @@ public:
 private:
     // Samplers and steppers share one encoding, each in its own pool.
     template<class Handle>
-    u16 addDescription(const Handle& description, InternedPool<Handle, std::vector<u8>>& pool, u64 bytes) {
+    u16 addDescription(const Handle& description, InternedPool<Handle, std::vector<u8>>& pool) {
         if (!description.data || description.data->type != description.type)
             throw std::logic_error("invalid sampler or stepper constant");
         Writer encoding;
         encoding.writeU8(static_cast<u8>(description.type.element));
         Handle canonical = description;
         if (description.data->distribution.points) {
-            auto data = std::make_shared<SamplerData>(*description.data);
+            auto data = std::make_shared<CapturedRangeData>(*description.data);
             data->distribution = distributions.values().at(addDistribution(data->distribution));
             canonical.data = std::move(data);
         }
-        if (description.type.isStepper()) writeStepperData(encoding, *canonical.data, distributions.values());
-        else writeSamplerData(encoding, *canonical.data, distributions.values());
+        writeDescriptionData(encoding, *canonical.data, distributions.values());
         return static_cast<u16>(pool.add(encoding.data(), std::move(canonical), [&] {
-            charge(bytes);
+            charge(ResourceArena::descriptionBytes());
             addType(description.type);
         }));
     }

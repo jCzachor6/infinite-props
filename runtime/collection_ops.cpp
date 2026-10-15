@@ -8,38 +8,28 @@ void Execution::allocateResource(u64 size) {
     resources.charge(size);
 }
 
-ListValue Execution::popList() {
-    const auto value = pop();
-    const auto* list = std::get_if<ListValue>(&value);
-    if (!list) trap("stack type mismatch: expected list", ErrorReason::StackType);
-    if (!list->data) trap("list handle is unassigned", ErrorReason::RuntimeViolation);
-    return *list;
-}
-
 bool stepCollections(Execution& ex, Instruction ins) {
     const auto type = [&]() {
         if (ins.operand >= ex.file.collections.types.size()) ex.trap("type descriptor index out of range", ErrorReason::IndexRange);
         return ex.file.collections.types[ins.operand];
     };
     const auto builder = [&](TypeDescriptor expected) {
-        auto value = ex.pop();
-        const auto* handle = std::get_if<ListBuilder>(&value);
-        if (!handle || !handle->data || handle->data->list.type != expected)
-            ex.trap("invalid list builder", ErrorReason::StackType);
-        return handle->data;
+        auto handle = ex.popHandle<ListBuilder>("list builder");
+        if (handle.data->list.type != expected) ex.trap("list builder type mismatch", ErrorReason::StackType);
+        return std::move(handle.data);
     };
     switch (ins.opcode) {
     case Opcode::ListDistinct:
     case Opcode::ListSort: {
-        const auto expected=type();const auto source=ex.popList();
+        const auto expected=type();const auto source=ex.popHandle<ListValue>("list handle");
         if(source.type!=expected) ex.trap("list type mismatch",ErrorReason::StackType);
         try {
             const bool sort=ins.opcode==Opcode::ListSort;
             // Inspection itself is prepaid; reserve all bounded comparison/copy
             // work before either algorithm or an output-buffer allocation.
             const auto n=source.data->elements.size();ex.spend(2u*n);
-            const auto work=listSelectionWork(source,sort);ex.spend(work-2u*n);
-            const auto selection=selectList(source,sort);
+            const auto checked=checkListSelection(source,sort);ex.spend(checked.work-2u*n);
+            const auto selection=selectList(checked);
             if(selection.unchanged(source)) ex.push(source);
             else {
                 ex.allocateResource(ResourceArena::listBytes(selection.count));
@@ -55,12 +45,12 @@ bool stepCollections(Execution& ex, Instruction ins) {
         if (cached == ex.resources.constants.end()) {
             const auto& list = ex.file.collections.lists[ins.operand];
             u64 bytes = ResourceArena::listBytes(list.data->elements.size());
-            std::set<const SamplerData*> descriptions;
+            std::set<const CapturedRangeData*> descriptions;
             std::set<const PointDistributionData*> points;
             const auto retainPoints = [&](const Distribution& d) {
                 if (d.points && !ex.resources.distributionConstants.contains(d.points.get())) points.insert(d.points.get());
             };
-            auto& descriptionConstants = list.type.item().isStepper() ? ex.resources.stepperConstants : ex.resources.samplerConstants;
+            auto& descriptionConstants = ex.resources.descriptionConstants;
             if (list.type.item().isDescription()) {
                 ex.spend(list.data->elements.size());
                 for (const auto& value : list.data->elements) {
@@ -68,7 +58,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
                     if (!descriptionConstants.contains(data)) descriptions.insert(data);
                     retainPoints(data->distribution);
                 }
-                bytes += descriptions.size() * ResourceArena::samplerBytes();
+                bytes += descriptions.size() * ResourceArena::descriptionBytes();
             }
             if (list.type.item() == ValueType::Distribution) {
                 for (const auto& value : list.data->elements) retainPoints(std::get<Distribution>(value));
@@ -122,7 +112,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
     case Opcode::ListGet: {
         const auto expected = type();
         const auto index = ex.popI32();
-        const auto list = ex.popList();
+        const auto list = ex.popHandle<ListValue>("list handle");
         if (list.type != expected) ex.trap("list type mismatch", ErrorReason::StackType);
         if (index < 0 || static_cast<std::size_t>(index) >= list.data->elements.size())
             ex.trap("list index out of range", ErrorReason::IndexRange);
@@ -131,7 +121,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
     }
     case Opcode::ListLen: {
         const auto expected = type();
-        const auto list = ex.popList();
+        const auto list = ex.popHandle<ListValue>("list handle");
         if (list.type != expected) ex.trap("list type mismatch", ErrorReason::StackType);
         ex.push(static_cast<i32>(list.data->elements.size()));
         break;

@@ -214,8 +214,9 @@ limits. Each published capability must satisfy its complete contract.
 The compiler catalogue adds fixed `list.len` overloads and the two-argument
 `poly(points, color)` overload. The existing variadic polygon template remains
 separate, with its original minimum arity and evaluation order. Type strings
-are canonical descriptor spellings. Effects include `index_range` and
-`unassigned_handle`; generation memory remains an execution-wide resource trap.
+are canonical descriptor spellings. Effects include `index_range`,
+`unassigned_handle` and `scope_depth` (the 32 combined layer/clip scopes, active
+across the call stack); generation memory remains an execution-wide resource trap.
 
 The export also publishes `sampler<T>` and `list<sampler<T>>` in storable/helper
 sets. `source_rules.samplers.methods` comes from `samplerPickSpec`, the same

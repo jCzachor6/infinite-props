@@ -162,7 +162,7 @@ TEST_CASE("blur keeps raster geometry mapping and zero sigma shares even hidden 
         if (sigma == 0) {
             CHECK(layer.buffer == source); CHECK(mask.buffer == source);
             CHECK(layer.buffer->raster.at(1,2) == Color{200,40,80,0});
-            CHECK(fixture.ex.resources.bytes == 0); CHECK(fixture.ex.resources.peak == 0);
+            CHECK(fixture.ex.resources.bytes == 0);
         } else { CHECK(layer.buffer != source); CHECK(mask.buffer != source); }
     }
 }
@@ -179,7 +179,6 @@ TEST_CASE("blur preflights exact fuel and shared arena and releases its row cach
         Value result = mask ? Value(fixture.run(MaskValue{source,{}},sigma)) : Value(fixture.run(LayerValue{source,{}},sigma));
         CHECK(fixture.ex.fuel == before-cost);
         CHECK(fixture.ex.resources.bytes == resultBytes);
-        CHECK(fixture.ex.resources.peak == resultBytes+cacheBytes);
         result = i32{0}; CHECK(fixture.ex.resources.bytes == 0);
         // Repeated temporary results cannot retain cache charges or images.
         for (int i = 0; i < 100; ++i) {
@@ -201,8 +200,8 @@ TEST_CASE("blur preflights exact fuel and shared arena and releases its row cach
         CHECK(fixture.ex.resources.bytes == occupied); CHECK(fixture.ex.frame().stack.empty());
         fixture.ex.resources.bytes = kMaxGenerationData-resultBytes-cacheBytes;
         fixture.ex.push(handle); fixture.ex.push(sigma);
+        // Exactly enough room for the result and the transient row cache.
         CHECK_NOTHROW(detail::stepBlur(fixture.ex,{op,0,0}));
-        CHECK(fixture.ex.resources.peak == kMaxGenerationData);
         (void)fixture.ex.pop(); CHECK(fixture.ex.resources.bytes == kMaxGenerationData-resultBytes-cacheBytes);
         fixture.ex.resources.bytes = 0;
     }

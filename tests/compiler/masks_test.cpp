@@ -120,12 +120,13 @@ TEST_CASE("mask morphology uses a disk border and normative logical sample fuel"
     for (const i32 radius:{-1,65}) {
         ex.push(source);ex.push(radius);CHECK_THROWS_AS(detail::stepMasks(ex,{Opcode::MaskExpand,0,0}),Trap);
     }
-    const auto allocated=ex.resources.surfaces.size();ex.fuel=53;
+    // Fuel and quota are checked before a result buffer exists.
+    const auto charged=ex.resources.bytes;ex.fuel=53;
     ex.push(source);ex.push(i32{1});CHECK_THROWS_AS(detail::stepMasks(ex,{Opcode::MaskExpand,0,0}),Trap);
-    CHECK(ex.resources.surfaces.size()==allocated);
+    CHECK(ex.resources.bytes==charged);
     ex.fuel=1000;ex.resources.bytes=kMaxGenerationData-136;
     ex.push(source);ex.push(i32{1});CHECK_THROWS_AS(detail::stepMasks(ex,{Opcode::MaskExpand,0,0}),Trap);
-    CHECK(ex.resources.surfaces.size()==allocated);
+    CHECK(ex.resources.bytes==kMaxGenerationData-136);
 }
 
 TEST_CASE("mask use rejects nonfinite mismatched and unrepresentable views before scanning", "[masks]") {
@@ -189,8 +190,37 @@ TEST_CASE("clip cleanup restores callers through nested capture return break and
         const auto result=runMask(maskProgram(source,optimize));
         CHECK(result.image.at(0,0)==Color{});CHECK(result.image.at(1,0)==Color{17,34,51,64});
         CHECK(result.image.at(3,0)==Color{17,34,51,128});CHECK(result.image.at(4,0)==Color{17,34,51,128});
-        CHECK(result.image.at(0,1)==Color{});CHECK(result.image.at(1,1)==Color{255,0,0,128});
+        // A capture ignores the clips around it; this one is painted unclipped.
+        CHECK(result.image.at(0,1)==Color{});CHECK(result.image.at(1,1)==Color{255,0,0,255});
         CHECK(result.outputs[0].points[0].x==5);CHECK(result.outputs[0].points[0].y==2);
+    }
+}
+
+TEST_CASE("content painted from a layer inside a clip is clipped exactly once", "[masks]") {
+    // Coverage 128 on every pixel over an opaque black target. Drawing
+    // directly, through a layer captured and painted in the same clip, or
+    // through a part must agree; a second multiplication would give 64.
+    const std::string region="layer coverageImage(alpha=surface.source_over){rect(0,0,2,1,#ffffff80)}region=mask.from(coverageImage)"
+        "rect(0,0,2,1,#000000)";
+    const std::map<std::string, std::string> sources{
+        {"direct.ips","asset t{size 2x1 draw{"+region+"clip(region){rect(0,0,2,1,#ff0000)}}}"},
+        {"layer.ips","asset t{size 2x1 draw{"+region+"clip(region){layer captured{rect(0,0,2,1,#ff0000)}surface.paint(captured)}}}"},
+        {"outside.ips","asset t{size 2x1 draw{"+region+"clip(region){layer captured{rect(0,0,2,1,#ff0000)}}surface.paint(captured)}}"},
+        {"part.ips","import child from \"child.ips\" asset t{size 2x1 draw{"+region+"clip(region){child.draw(seed,at={0,0})}}}"},
+        {"child.ips","asset t{size 2x1 origin 0,0 draw{rect(0,0,2,1,#ff0000)}}"}};
+    const auto compile=[&](const std::string& root, bool optimize) {
+        SourceCompilationOptions options; options.optimize=optimize; options.compress=false;
+        const auto result=compileSource(root,[&](std::string_view path){return sources.at(std::string(path));},options);
+        REQUIRE(result.succeeded()); return result.bytes;
+    };
+    for (const bool optimize:{false,true}) {
+        const auto direct=runMask(compile("direct.ips",optimize));
+        CHECK(direct.image.at(0,0)==Color{128,0,0,255});CHECK(direct.image.at(1,0)==Color{128,0,0,255});
+        CHECK(runMask(compile("layer.ips",optimize)).image.pixels==direct.image.pixels);
+        CHECK(runMask(compile("part.ips",optimize)).image.pixels==direct.image.pixels);
+        // Captured inside the clip but painted outside it: no clip applies.
+        const auto outside=runMask(compile("outside.ips",optimize));
+        CHECK(outside.image.at(0,0)==Color{255,0,0,255});CHECK(outside.image.at(1,0)==Color{255,0,0,255});
     }
 }
 

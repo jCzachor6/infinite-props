@@ -5,6 +5,7 @@ set(IPROP_RUNTIME_SOURCES
     collections.cpp
     collection_ops.cpp
     list_operations.cpp
+    descriptions.cpp
     samplers.cpp
     steppers.cpp
     point_distributions.cpp

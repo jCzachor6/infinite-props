@@ -237,8 +237,8 @@ f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
     return value < lo ? lo : value > hi ? hi : value;
 }
 
-// A range draw shaped by a distribution (spec v0.5 §4.4): one stream step,
-// the coefficient u = (x + 1/2) / 2^32, and 1 fuel per kernel iteration.
+// A range draw shaped by a distribution (spec v0.5 §4.4): one stream step and
+// the coefficient u = (x + 1/2) / 2^32.
 double distributionDraw(Execution& ex, const Distribution& distribution, double lo, double hi) {
     if (distribution.family == DistributionFamily::None ||
         (math::pointDistributionSpec(distribution.family) && !math::validDistribution(distribution))) {
@@ -247,21 +247,7 @@ double distributionDraw(Execution& ex, const Distribution& distribution, double 
     Frame& frame = ex.frame();
     frame.stream += 0x9e3779b9u;
     const double u = (static_cast<double>(hash32(frame.stream)) + 0.5) * 0x1p-32;
-    ex.spend(math::pointDrawWork(distribution, lo, hi));
-    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
-    switch (draw.status) {
-    case math::DrawStatus::Outside:
-        ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
-    case math::DrawStatus::NoMass:
-        ex.trap("random range has no probability under the distribution", ErrorReason::NumericRange);
-    case math::DrawStatus::NoConvergence:
-        ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
-    case math::DrawStatus::Ok: break;
-    case math::DrawStatus::Numerical:
-        ex.trap("distribution draw has a numerical error", ErrorReason::NumericRange);
-    }
-    ex.spend(draw.steps);
-    return draw.value;
+    return checkedTruncatedDraw(ex, distribution, lo, hi, u);
 }
 
 f32 distributionFloat(Execution& ex, const Distribution& distribution, f32 lo, f32 hi) {
@@ -286,6 +272,25 @@ void advanceAndPushUnit(Execution& ex) {
 }
 
 } // namespace
+
+double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, double lo, double hi, double u) {
+    ex.spend(math::pointDrawWork(distribution, lo, hi));
+    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
+    switch (draw.status) {
+    case math::DrawStatus::Outside:
+        ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoMass:
+        ex.trap("random range has no probability under the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoConvergence:
+        ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
+    case math::DrawStatus::Numerical:
+        ex.trap("distribution draw has a numerical error", ErrorReason::NumericRange);
+    case math::DrawStatus::Ok: break;
+    }
+    // Kernel iterations are charged only after a successful draw.
+    ex.spend(draw.steps);
+    return draw.value;
+}
 
 // Captured ranges call the same pinned kernels as the legacy adapters below.
 // No private RNG state is attached to a description.

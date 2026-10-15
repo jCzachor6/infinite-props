@@ -155,7 +155,8 @@ TEST_CASE("every pool-indexing operand names its pool", "[review]") {
         {Opcode::PartGetMask, K::ResourceExport}, {Opcode::PartGetLayer, K::ResourceExport},
         {Opcode::DistributionBegin, K::Immediate}, {Opcode::DistributionAppend, K::Immediate},
         {Opcode::SurfacePaint, K::Immediate}, {Opcode::SurfacePaintMask, K::Immediate},
-        {Opcode::PolyList, K::None}, {Opcode::LayerBlur, K::None}, {Opcode::MaskBlur, K::None}};
+        // Unused operands of newer instructions must be zero.
+        {Opcode::PolyList, K::Zero}, {Opcode::LayerBlur, K::Zero}, {Opcode::MaskBlur, K::Zero}};
     for (const auto& [opcode, kind] : expected) {
         INFO(opcodeMnemonic(opcode));
         CHECK(operandKind(opcode) == kind);

@@ -2,6 +2,8 @@
 
 #include "iprop/VmInternals.hpp"
 
+#include <array>
+#include <atomic>
 #include <cmath>
 #include <stdexcept>
 #include <type_traits>
@@ -32,43 +34,30 @@ Value zeroValue(ValueType type) {
 
 namespace detail {
 
+namespace {
+using Step = bool (*)(Execution&, Instruction);
+// Each group decides from the opcode alone and returns false before touching
+// any state for opcodes it does not own.
+constexpr Step kSteps[] = {stepCore, stepStack, stepControl, stepArithmetic, stepVector, stepSdf,
+    stepColor, stepCurves, stepSeeded, stepCanvas, stepOutputs, stepParts, stepCollections,
+    stepSamplers, stepSteppers, stepPointDistributions, stepSurfaces, stepMasks, stepBlur,
+    stepResourceExports};
+// The owning group per opcode, found by the first execution and then reused,
+// so every later instruction costs one indexed call. Every thread computes the
+// same immutable pointer; reserved opcodes never get an entry.
+std::array<std::atomic<Step>, 256> handlers{};
+} // namespace
+
 bool dispatch(Execution& ex, Instruction ins) {
-    if (stepCore(ex, ins)) {
-        return true;
+    auto& handler = handlers[static_cast<u8>(ins.opcode)];
+    if (const auto step = handler.load(std::memory_order_relaxed)) return step(ex, ins);
+    for (const auto step : kSteps) {
+        if (step(ex, ins)) {
+            handler.store(step, std::memory_order_relaxed);
+            return true;
+        }
     }
-    if (stepCollections(ex, ins)) return true;
-    if (stepSamplers(ex, ins)) return true;
-    if (stepSteppers(ex, ins)) return true;
-    if (stepPointDistributions(ex, ins)) return true;
-    if (stepSurfaces(ex, ins)) return true;
-    if (stepMasks(ex, ins)) return true;
-    if (stepBlur(ex, ins)) return true;
-    if (stepResourceExports(ex, ins)) return true;
-    if (stepStack(ex, ins)) {
-        return true;
-    }
-    if (stepControl(ex, ins)) {
-        return true;
-    }
-    if (stepArithmetic(ex, ins)) {
-        return true;
-    }
-    if (stepVector(ex, ins) || stepSdf(ex, ins) || stepColor(ex, ins) || stepCurves(ex, ins)) {
-        return true;
-    }
-    if (stepSeeded(ex, ins)) {
-        return true;
-    }
-    if (stepCanvas(ex, ins)) {
-        return true;
-    }
-    if (stepOutputs(ex, ins)) {
-        return true;
-    }
-    if (stepParts(ex, ins)) {
-        return true;
-    }
-    return false; // everything is implemented once parts land (Phase 13)
+    return false;
 }
 
 // Frame-lifecycle instructions: nop, call, return (spec §9.1).
@@ -107,52 +96,25 @@ Value Execution::peek() {
     return frame.stack.back();
 }
 
-i32 Execution::popI32() {
-    const Value value = pop();
-    if (!std::holds_alternative<i32>(value)) {
-        trap("stack type mismatch: expected i32", ErrorReason::StackType);
-    }
-    return std::get<i32>(value);
+namespace {
+// Reads a scalar in place and pops it, without moving the whole Value.
+template<class T> T popScalar(Execution& ex, const char* mismatch) {
+    auto& stack = ex.frames.back().stack;
+    if (stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
+    const auto* value = std::get_if<T>(&stack.back());
+    if (!value) ex.trap(mismatch, ErrorReason::StackType);
+    const T result = *value;
+    stack.pop_back();
+    return result;
 }
+} // namespace
 
-f32 Execution::popF32() {
-    const Value value = pop();
-    if (!std::holds_alternative<f32>(value)) {
-        trap("stack type mismatch: expected f32", ErrorReason::StackType);
-    }
-    return std::get<f32>(value);
-}
-
-Color Execution::popColor() {
-    const Value value = pop();
-    if (!std::holds_alternative<Color>(value)) {
-        trap("stack type mismatch: expected color", ErrorReason::StackType);
-    }
-    return std::get<Color>(value);
-}
-
-Vec2 Execution::popVec2() {
-    const Value value = pop();
-    if (!std::holds_alternative<Vec2>(value)) {
-        trap("stack type mismatch: expected vec2", ErrorReason::StackType);
-    }
-    return std::get<Vec2>(value);
-}
-
+i32 Execution::popI32() { return popScalar<i32>(*this, "stack type mismatch: expected i32"); }
+f32 Execution::popF32() { return popScalar<f32>(*this, "stack type mismatch: expected f32"); }
+Color Execution::popColor() { return popScalar<Color>(*this, "stack type mismatch: expected color"); }
+Vec2 Execution::popVec2() { return popScalar<Vec2>(*this, "stack type mismatch: expected vec2"); }
 Distribution Execution::popDistribution() {
-    const Value value = pop();
-    if (!std::holds_alternative<Distribution>(value)) {
-        trap("stack type mismatch: expected distribution", ErrorReason::StackType);
-    }
-    return std::get<Distribution>(value);
-}
-
-void Execution::push(Value value) {
-    Frame& frame = frames.back();
-    if (frame.stack.size() >= kMaxStackDepth) {
-        trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
-    }
-    frame.stack.push_back(std::move(value));
+    return popScalar<Distribution>(*this, "stack type mismatch: expected distribution");
 }
 
 void Execution::spend(u64 cost) {
@@ -484,12 +446,8 @@ void VM::run() {
         }
     }
     impl_->finished = true;
-    {
-        const auto peak = ex.resources.peak;
-        ex.resourceSlots.clear();
-        ex.resources.clear();
-        ex.resources.peak = peak;
-    }
+    ex.resourceSlots.clear();
+    ex.resources.clear();
     } catch (...) {
         {
             impl_->failed = true;

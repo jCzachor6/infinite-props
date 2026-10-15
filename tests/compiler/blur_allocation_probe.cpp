@@ -41,7 +41,7 @@ int main() {
             if (source->raster.pixels != original) return 2;
             if (succeeded) {
                 if (ex.frame().stack.size()!=1) return 3;
-                if (sigma==0 && (allocations!=0 || ex.resources.bytes!=0 || ex.resources.peak!=0)) return 4;
+                if (sigma==0 && (allocations!=0 || ex.resources.bytes!=0)) return 4;
                 ex.frame().stack.clear();
                 if (ex.resources.bytes!=0) return 5;
                 reachedSuccess=true;

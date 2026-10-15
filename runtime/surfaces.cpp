@@ -20,10 +20,9 @@ ResourceArena::~ResourceArena() { clear(); }
 void ResourceArena::clear() {
     if (surfaceLifetime) surfaceLifetime->bytes = nullptr;
     surfaceLifetime.reset();
-    surfaces.clear(); lists.clear(); samplers.clear(); constants.clear();
-    samplerConstants.clear(); steppers.clear(); stepperConstants.clear();
+    lists.clear(); descriptions.clear(); constants.clear(); descriptionConstants.clear();
     distributions.clear(); distributionConstants.clear();
-    bytes = 0; peak = 0;
+    bytes = 0;
 }
 
 std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
@@ -44,21 +43,16 @@ std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
             if (const auto live = lifetime.lock(); live && live->bytes)
                 *live->bytes -= chargedBytes;
         });
-    std::erase_if(surfaces, [](const auto& item) { return item.expired(); });
-    surfaces.push_back(buffer);
     return buffer;
 }
 
 namespace detail {
 
 LayerValue Execution::popLayer() {
-    auto value = pop();
-    const auto* image = std::get_if<LayerValue>(&value);
-    if (!image) trap("stack type mismatch: expected layer", ErrorReason::StackType);
-    if (!image->buffer) trap("layer is unassigned", ErrorReason::RuntimeViolation);
-    if (image->buffer->format != SurfaceBuffer::Format::RGBA8)
+    auto image = popHandle<LayerValue>("layer");
+    if (image.buffer->format != SurfaceBuffer::Format::RGBA8)
         trap("layer buffer must be RGBA8", ErrorReason::RuntimeViolation);
-    return *image;
+    return image;
 }
 
 // The caller reserves the whole source visit count before entering this loop.
@@ -94,9 +88,10 @@ void Execution::beginLayer(u16 local, u8 mode) {
     const Vec2 scale{canvas().scaleX, canvas().scaleY};
     spend(static_cast<u64>(width) * height);
     allocateResource(surfaceBytes(width, height));
+    // Like a part canvas, a capture starts without the parent's clips: they
+    // apply exactly once, when the snapshot is painted.
     auto next = RenderTarget::create(resources.makeSurface(surfaceBytes(width, height)), width, height, scale,
         resolveComposition(static_cast<CompositionMode>(mode), target.mode));
-    next.clips = target.clips;
     LayerScope scope{frames.size(), frame().labels.size() + 1, local, std::move(target)};
     layerScopes.push_back(std::move(scope));
     target = std::move(next);

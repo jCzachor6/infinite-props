@@ -19,7 +19,7 @@ u64 distributionWidth(const Distribution& value) {
     if(value.family==DistributionFamily::None) throw std::invalid_argument("distribution handle is unassigned");
     if(value.family==DistributionFamily::Weighted || value.family==DistributionFamily::Density) {
         if(!value.points) throw std::invalid_argument("distribution handle is unassigned");
-        if(value.points->points.size()>kMaxListElements) throw std::invalid_argument("distribution exceeds 256 points");
+        if(value.points->points.size()>kMaxDistributionPoints) throw std::invalid_argument("distribution exceeds 256 points");
     }
     return 7u+(value.points?value.points->points.size()*4u:0u);
 }
@@ -90,7 +90,7 @@ bool ListSelection::unchanged(const ListValue& source) const {
     for(std::size_t i=0;i<count;++i) if(indices[i]!=i) return false;
     return true;
 }
-u64 listSelectionWork(const ListValue& source, bool sort) {
+CheckedListSelection checkListSelection(const ListValue& source, bool sort) {
     if(!source.data) throw std::invalid_argument("list handle is unassigned");
     if(!source.type.isList() || !source.type.isStorable() || source.data->type!=source.type)
         throw std::invalid_argument("invalid list descriptor");
@@ -101,10 +101,10 @@ u64 listSelectionWork(const ListValue& source, bool sort) {
     for(const auto& value:source.data->elements) width=std::max(width,elementWidth(value,source.type.item()));
     u64 comparisons=n*(n?n-1u:0u)/2u;
     if(sort) {u64 passes=0;for(std::size_t run=1;run<n;run*=2)++passes;comparisons=n*passes;}
-    return 2u*n+width*comparisons;
+    return {source,sort,2u*n+width*comparisons};
 }
-ListSelection selectList(const ListValue& source, bool sort) {
-    (void)listSelectionWork(source,sort);
+ListSelection selectList(const CheckedListSelection& list) {
+    const auto& source=list.source;const bool sort=list.sort;
     ListSelection result;const auto n=source.data->elements.size();const auto type=source.type.item();
     if(!sort) {
         for(u16 i=0;i<n;++i) {
@@ -133,9 +133,12 @@ ListSelection selectList(const ListValue& source, bool sort) {
     return result;
 }
 ListValue materializeListSelection(const ListValue& source, const ListSelection& selection) {
-    if(selection.unchanged(source)) return source;
     auto data=std::make_shared<ListData>();data->type=source.type;data->elements.reserve(selection.count);
     for(std::size_t i=0;i<selection.count;++i)data->elements.push_back(source.data->elements[selection.indices[i]]);
     return {source.type,std::move(data)};
+}
+ListValue transformList(const ListValue& source, bool sort) {
+    const auto selection=selectList(checkListSelection(source,sort));
+    return selection.unchanged(source)?source:materializeListSelection(source,selection);
 }
 } // namespace iprop

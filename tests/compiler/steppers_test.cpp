@@ -284,13 +284,13 @@ TEST_CASE("stepper descriptions and constant lists share retention and structura
     REQUIRE(detail::stepSteppers(ex, {Opcode::ConstStepper, 0, 0})); const auto description = std::get<StepperValue>(ex.pop());
     REQUIRE(detail::stepCollections(ex, {Opcode::ConstList, 0, 0})); const auto list = std::get<ListValue>(ex.pop());
     CHECK(description.data == std::get<StepperValue>(list.data->elements[0]).data);
-    CHECK(ex.resources.bytes == ResourceArena::stepperBytes() + ResourceArena::listBytes(2) + ResourceArena::distributionBytes(2));
+    CHECK(ex.resources.bytes == ResourceArena::descriptionBytes() + ResourceArena::listBytes(2) + ResourceArena::distributionBytes(2));
     const auto retained = ex.resources.bytes, fuel = ex.fuel;
     REQUIRE(detail::stepSteppers(ex, {Opcode::ConstStepper, 0, 0}));
     REQUIRE(detail::stepCollections(ex, {Opcode::ConstList, 0, 0}));
     CHECK(ex.resources.bytes == retained); CHECK(ex.fuel == fuel);
-    const auto result = selectList(list, false); CHECK(result.count == 1);
-    CHECK_THROWS_AS(selectList(list, true), std::invalid_argument);
+    const auto result = selectList(checkListSelection(list, false)); CHECK(result.count == 1);
+    CHECK_THROWS_AS(checkListSelection(list, true), std::invalid_argument);
     const auto distinct = compileSteps(asset(R"(
       xs=[stepper(1),stepper(1),stepper(1 to 1),stepper(1 to 1 with gaussian(1,1))]
       fs=[stepper(-0.0),stepper(0.0),stepper(-0.0)]
@@ -365,7 +365,7 @@ TEST_CASE("stepper capture rejects dynamic invalid bounds and uninitialized dist
         {ValueType::F32, 0.f, 1.f, analytic(DistributionFamily::Gaussian, {0,0,0,0})}}) {
         Harness h(invalid.type);
         CHECK_THROWS_AS(h.capture(invalid.lo, invalid.hi, invalid.distribution), Trap);
-        CHECK(h.ex.resources.bytes == 0); CHECK(h.ex.resources.steppers.empty()); CHECK(h.ex.frame().stream == 26);
+        CHECK(h.ex.resources.bytes == 0); CHECK(h.ex.resources.descriptions.empty()); CHECK(h.ex.frame().stream == 26);
     }
 }
 
@@ -442,4 +442,48 @@ TEST_CASE("stepper binary descriptors constants instructions and references reje
     for (u16 minor=1;minor<7;++minor) {auto bad=bytes;put16(bad,6,minor);CHECK_THROWS_AS(loadFile(bad),FormatError);}
     CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: sampler<i32>\nfn draw ( ) -> ( ):\nreturn\nstepper.pick.list 0\nendfn\n"),std::exception);
     CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nconst.stepper 0\nendfn\n"),std::exception);
+}
+
+TEST_CASE("stepper quantile failures trap like sampler draws before charging kernel iterations", "[stepper]") {
+    // A far Gaussian tail iterates and then reports no mass. The quantile
+    // must report the sampler's range error even when that iteration count
+    // exceeds the remaining fuel.
+    const auto tail = analytic(DistributionFamily::Gaussian, {0.f, 1.f, 0.f, 0.f});
+    const auto draw = math::truncatedDraw(tail, 40.0, 41.0, 0.0);
+    REQUIRE(draw.status == math::DrawStatus::NoMass);
+    REQUIRE(draw.steps > 0);
+    Harness harness(ValueType::F32);
+    const auto handle = harness.capture(40.f, 41.f, tail);
+    // Base batch fuel for two elements plus one per nonconstant step.
+    harness.ex.fuel = 3;
+    harness.ex.push(handle); harness.ex.push(i32{2});
+    try {
+        detail::stepSteppers(harness.ex, {Opcode::StepperPickList, 0, 0});
+        FAIL("far tail quantile did not trap");
+    } catch (const Trap& trap) {
+        CHECK(trap.reason == ErrorReason::NumericRange);
+        CHECK(std::string(trap.what()).find("random range has no probability under the distribution") != std::string::npos);
+    }
+}
+
+TEST_CASE("description captures reject mistyped endpoints as stack type errors", "[stepper]") {
+    // Unvalidated bytecode may push an f32 bound for an i32 description. That
+    // is a stack type error, as for any other typed pop, not a range error.
+    for (const bool stepper : {false, true}) for (const bool upper : {false, true}) {
+        INFO((stepper ? "stepper" : "sampler") << (upper ? " upper" : " lower"));
+        LoadedFile file;
+        file.collections.types = {stepper ? ValueType::stepper(ValueType::I32) : ValueType::sampler(ValueType::I32)};
+        file.code.functions.emplace_back();
+        detail::Execution ex(file); ex.frames.emplace_back(); ex.fuel = 100;
+        if (upper) { ex.push(i32{1}); ex.push(2.5f); } else { ex.push(2.5f); ex.push(i32{1}); }
+        const auto step = stepper ? detail::stepSteppers : detail::stepSamplers;
+        try {
+            step(ex, {stepper ? Opcode::StepperRange : Opcode::SamplerRange, 0, 0});
+            FAIL("mistyped bound accepted");
+        } catch (const Trap& trap) {
+            CHECK(trap.reason == ErrorReason::StackType);
+            CHECK(std::string(trap.what()).find(stepper ? "stepper bound type mismatch" : "sampler bound type mismatch") != std::string::npos);
+        }
+        CHECK(ex.resources.bytes == 0); CHECK(ex.resources.descriptions.empty());
+    }
 }

@@ -27,12 +27,12 @@ void writePointDistribution(Writer& writer, const PointDistributionData& data) {
     }
 }
 
-std::vector<Distribution> parseDistributionPool(std::span<const u8> bytes, const Section& section) {
+std::vector<Distribution> parseDistributionPool(std::span<const u8> bytes, const Section& section,
+                                                PoolBudget& budget) {
     auto reader = sectionReader(bytes, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many distribution constants", section.offset, ErrorReason::InvalidConstants);
     std::vector<Distribution> result;
-    u64 total = 0;
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto family = static_cast<DistributionFamily>(reader.readU8());
@@ -42,8 +42,7 @@ std::vector<Distribution> parseDistributionPool(std::span<const u8> bytes, const
             throw FormatError("invalid point distribution family or reserved byte", at, ErrorReason::InvalidConstants);
         if (const auto* error = math::pointDistributionCountError(family,size))
             throw FormatError(error, at + 2, ErrorReason::InvalidConstants);
-        total += ResourceArena::distributionBytes(size);
-        if (total > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", at, ErrorReason::InvalidConstants);
+        budget.charge(ResourceArena::distributionBytes(size), at);
         auto data = std::make_shared<PointDistributionData>(); data->family = family;
         data->points.reserve(size);
         for (u16 n = 0; n < size; ++n) {
@@ -86,12 +85,7 @@ void writeDistributionData(Writer& writer, const Distribution& d, std::span<cons
 
 namespace iprop::detail {
 bool stepPointDistributions(Execution& ex, Instruction ins) {
-    const auto builder = [&]() {
-        const auto value = ex.pop();
-        const auto* b = std::get_if<PointDistributionBuilder>(&value);
-        if (!b || !b->data) ex.trap("invalid distribution builder", ErrorReason::StackType);
-        return b->data;
-    };
+    const auto builder = [&] { return ex.popHandle<PointDistributionBuilder>("distribution builder").data; };
     switch (ins.opcode) {
     case Opcode::ConstDistribution: {
         if (ins.operand >= ex.file.collections.distributions.size()) ex.trap("distribution constant index out of range", ErrorReason::IndexRange);
@@ -132,7 +126,6 @@ bool stepPointDistributions(Execution& ex, Instruction ins) {
         ex.push(PointDistributionBuilder{std::move(data)}); break;
     }
     case Opcode::DistributionEnd: {
-        if (ins.operand) ex.trap("distribution.end operand must be zero", ErrorReason::NumericRange);
         auto data = builder();
         if (data->distribution.points.size() != data->expected) ex.trap("incomplete distribution builder", ErrorReason::IndexRange);
         if (!(data->mass > 0.0)) ex.trap(data->distribution.family == DistributionFamily::Density ?

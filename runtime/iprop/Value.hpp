@@ -17,14 +17,15 @@ struct ListBuilderData;
 struct CapturedRangeData;
 using SamplerData = CapturedRangeData;
 using StepperData = CapturedRangeData;
-struct SamplerValue {
+// Samplers and steppers share storage, validation, pools and accounting. The
+// kind keeps them distinct Value alternatives without automatic conversion.
+template<TypeDescriptor::Kind Kind>
+struct DescriptionValue {
     TypeDescriptor type;
-    std::shared_ptr<const SamplerData> data;
+    std::shared_ptr<const CapturedRangeData> data;
 };
-struct StepperValue {
-    TypeDescriptor type;
-    std::shared_ptr<const StepperData> data;
-};
+using SamplerValue = DescriptionValue<TypeDescriptor::Kind::Sampler>;
+using StepperValue = DescriptionValue<TypeDescriptor::Kind::Stepper>;
 struct ListValue {
     TypeDescriptor type;
     std::shared_ptr<const ListData> data;

@@ -73,15 +73,15 @@ FileLayout parseLayout(std::span<const u8> data) {
     }
 
     layout.sections.reserve(count);
-    bool seen[12] = {}; // section ids 1..11
+    bool seen[static_cast<u32>(SectionId::Steppers) + 1] = {};
     for (u32 i = 0; i < count; ++i) {
         const std::size_t entryAt = kHeaderSize + static_cast<std::size_t>(i) * 12;
         const u32 rawId = reader.readU32();
         const u32 offset = reader.readU32();
         const u32 size = reader.readU32();
 
-        // Section 5 (part instances) exists from minor 5 on (spec v0.5 §6).
-        if (rawId < 1 || rawId > 11u) {
+        // Section ids run from Meta to the newest section (spec §2.2).
+        if (rawId < static_cast<u32>(SectionId::Meta) || rawId > static_cast<u32>(SectionId::Steppers)) {
             throw FormatError("unknown section id " + std::to_string(rawId), entryAt, ErrorReason::InvalidLayout);
         }
         if (seen[rawId]) {

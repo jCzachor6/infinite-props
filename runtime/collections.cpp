@@ -2,6 +2,8 @@
 #include "iprop/math/Distribution.hpp"
 #include "iprop/Samplers.hpp"
 #include <algorithm>
+#include <string>
+#include <type_traits>
 
 namespace iprop {
 namespace {
@@ -26,70 +28,72 @@ void writeSamplerBound(Writer& writer, const Value& value) {
 namespace {
 template<class Handle>
 std::vector<Handle> parseDescriptionPool(std::span<const u8> data, const Section& section,
-                                          std::span<const TypeDescriptor> types,
-                                          std::span<const Distribution> distributions, TypeDescriptor::Kind kind, const char* name) {
+                                         const CollectionPool& pools, PoolBudget& budget) {
+    constexpr bool stepper = std::is_same_v<Handle, StepperValue>;
+    const std::string name = stepper ? "stepper" : "sampler";
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries)
-        throw FormatError("too many " + std::string(name) + " constants", section.offset, ErrorReason::InvalidConstants);
-    std::vector<Handle> samplers;
+        throw FormatError("too many " + name + " constants", section.offset, ErrorReason::InvalidConstants);
+    std::vector<Handle> descriptions;
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
+        budget.charge(ResourceArena::descriptionBytes(), at);
         const auto index = reader.readU16();
         const auto mode = reader.readU8();
         const auto reserved = reader.readU8();
-        if (index >= types.size() || types[index].kind != kind)
-            throw FormatError(std::string(name) + " constant type descriptor out of range", at, ErrorReason::InvalidConstants);
+        if (index >= pools.types.size() || pools.types[index].isStepper() != stepper || !pools.types[index].isDescription())
+            throw FormatError(name + " constant type descriptor out of range", at, ErrorReason::InvalidConstants);
         if (mode > static_cast<u8>(SamplerMode::With) || reserved)
-            throw FormatError("invalid " + std::string(name) + " constant mode or reserved byte", at + 2, ErrorReason::InvalidConstants);
-        auto sampler = std::make_shared<SamplerData>();
-        sampler->type = types[index]; sampler->mode = static_cast<SamplerMode>(mode);
-        sampler->lower = readSamplerBound(reader, sampler->type.item());
-        if (sampler->mode != SamplerMode::Constant) sampler->upper = readSamplerBound(reader, sampler->type.item());
-        if (sampler->mode == SamplerMode::With) {
-            sampler->distribution = readDistributionData(reader, distributions);
-        }
-        if (const auto* error = samplerBoundsError(sampler->type.item(), sampler->lower, sampler->upper,
-                                                 sampler->mode != SamplerMode::Constant))
+            throw FormatError("invalid " + name + " constant mode or reserved byte", at + 2, ErrorReason::InvalidConstants);
+        auto description = std::make_shared<CapturedRangeData>();
+        description->type = pools.types[index]; description->mode = static_cast<SamplerMode>(mode);
+        description->lower = readSamplerBound(reader, description->type.item());
+        if (description->mode != SamplerMode::Constant) description->upper = readSamplerBound(reader, description->type.item());
+        if (description->mode == SamplerMode::With) description->distribution = readDistributionData(reader, pools.distributions);
+        if (const auto* error = samplerBoundsError(description->type.item(), description->lower, description->upper,
+                                                 description->mode != SamplerMode::Constant))
             throw FormatError(error, at, ErrorReason::InvalidConstants);
-        samplers.push_back({sampler->type, std::move(sampler)});
+        descriptions.push_back({description->type, std::move(description)});
     }
-    if (!reader.empty()) throw FormatError("trailing bytes in " + std::string(name) + " constants", reader.position(), ErrorReason::InvalidConstants);
-    return samplers;
+    if (!reader.empty()) throw FormatError("trailing bytes in " + name + " constants", reader.position(), ErrorReason::InvalidConstants);
+    return descriptions;
 }
 
-void writeDescriptionData(Writer& writer, const SamplerData& sampler, std::span<const Distribution> distributions) {
-    if (!sampler.type.isDescription() || samplerBoundsError(sampler.type.item(), sampler.lower, sampler.upper,
-        sampler.mode != SamplerMode::Constant) || static_cast<u8>(sampler.mode) > static_cast<u8>(SamplerMode::With) ||
-        (sampler.mode == SamplerMode::With && !math::validDistribution(sampler.distribution)))
-        throw std::logic_error("invalid sampler constant");
-    writer.writeU8(static_cast<u8>(sampler.mode)); writer.writeU8(0);
-    writeSamplerBound(writer, sampler.lower);
-    if (sampler.mode != SamplerMode::Constant) writeSamplerBound(writer, sampler.upper);
-    if (sampler.mode == SamplerMode::With) {
-        writeDistributionData(writer, sampler.distribution, distributions);
-    }
+// The pool index of a description element, found by type and shared data.
+template<class Handle>
+u16 descriptionIndex(std::span<const Handle> pool, const Handle& handle) {
+    const auto found = std::find_if(pool.begin(), pool.end(), [&](const auto& candidate) {
+        return candidate.type == handle.type && candidate.data == handle.data;
+    });
+    if (found == pool.end()) throw std::logic_error("missing collection description constant");
+    return static_cast<u16>(found - pool.begin());
 }
 
 } // namespace
 
+void PoolBudget::charge(u64 size, std::size_t at) {
+    if (size > kMaxGenerationData - bytes) throw FormatError("collection pool exceeds 64 MiB", at, ErrorReason::InvalidConstants);
+    bytes += size;
+}
+
 std::vector<SamplerValue> parseSamplerPool(std::span<const u8> data, const Section& section,
-                                          std::span<const TypeDescriptor> types,
-                                          std::span<const Distribution> distributions) {
-    return parseDescriptionPool<SamplerValue>(data, section, types, distributions, TypeDescriptor::Sampler, "sampler");
+                                          const CollectionPool& pools, PoolBudget& budget) {
+    return parseDescriptionPool<SamplerValue>(data, section, pools, budget);
 }
 std::vector<StepperValue> parseStepperPool(std::span<const u8> data, const Section& section,
-                                          std::span<const TypeDescriptor> types,
-                                          std::span<const Distribution> distributions) {
-    return parseDescriptionPool<StepperValue>(data, section, types, distributions, TypeDescriptor::Stepper, "stepper");
+                                          const CollectionPool& pools, PoolBudget& budget) {
+    return parseDescriptionPool<StepperValue>(data, section, pools, budget);
 }
-void writeSamplerData(Writer& writer, const SamplerData& data, std::span<const Distribution> distributions) {
-    if (!data.type.isSampler()) throw std::logic_error("invalid sampler constant type");
-    writeDescriptionData(writer, data, distributions);
-}
-void writeStepperData(Writer& writer, const StepperData& data, std::span<const Distribution> distributions) {
-    if (!data.type.isStepper()) throw std::logic_error("invalid stepper constant type");
-    writeDescriptionData(writer, data, distributions);
+void writeDescriptionData(Writer& writer, const CapturedRangeData& description, std::span<const Distribution> distributions) {
+    if (!description.type.isDescription() || samplerBoundsError(description.type.item(), description.lower, description.upper,
+        description.mode != SamplerMode::Constant) || static_cast<u8>(description.mode) > static_cast<u8>(SamplerMode::With) ||
+        (description.mode == SamplerMode::With && !math::validDistribution(description.distribution)))
+        throw std::logic_error("invalid description constant");
+    writer.writeU8(static_cast<u8>(description.mode)); writer.writeU8(0);
+    writeSamplerBound(writer, description.lower);
+    if (description.mode != SamplerMode::Constant) writeSamplerBound(writer, description.upper);
+    if (description.mode == SamplerMode::With) writeDistributionData(writer, description.distribution, distributions);
 }
 
 const CapturedRangeData* descriptionData(const Value& value) {
@@ -170,8 +174,9 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
         if (!type.needsDescriptor() || !type.isStorable()) throw std::logic_error("invalid type descriptor");
         writer.writeU8(static_cast<u8>(type.kind));
         if (type.isList() && type.item().isDescription()) {
-            const auto found = std::find(types.begin(), types.begin() + i, type.item());
-            if (found == types.begin() + i) throw std::logic_error("missing preceding sampler descriptor");
+            const auto preceding = types.begin() + static_cast<std::ptrdiff_t>(i);
+            const auto found = std::find(types.begin(), preceding, type.item());
+            if (found == preceding) throw std::logic_error("missing preceding description descriptor");
             writer.writeU8(kDescriptorReference);
             writer.writeU16(static_cast<u16>(found - types.begin()));
         } else {
@@ -181,51 +186,40 @@ void writeTypeDescriptors(Writer& writer, std::span<const TypeDescriptor> types)
 }
 
 std::vector<ListValue> parseCollectionPool(std::span<const u8> data, const Section& section,
-                                         std::span<const TypeDescriptor> types,
-                                         std::span<const SamplerValue> samplers,
-                                         std::span<const Distribution> distributions,
-                                         std::span<const StepperValue> steppers) {
+                                         const CollectionPool& pools, PoolBudget& budget) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
     if (count > kMaxConstPoolEntries) throw FormatError("too many collection constants", section.offset, ErrorReason::InvalidConstants);
     std::vector<ListValue> lists;
-    u64 total = samplers.size() * ResourceArena::samplerBytes() + steppers.size() * ResourceArena::stepperBytes();
-    for (const auto& d : distributions) total += ResourceArena::distributionBytes(d.points->points.size());
+    // A description element is a u16 index into its own pool, with an exact type match.
+    const auto description = [&](const auto& pool, TypeDescriptor type) -> Value {
+        const auto reference = reader.readU16();
+        if (reference >= pool.size() || pool[reference].type != type)
+            throw FormatError(std::string("collection ") + (type.isStepper() ? "stepper" : "sampler") +
+                " reference out of range or type mismatch", reader.position() - 2, ErrorReason::InvalidConstants);
+        return pool[reference];
+    };
     for (u32 i = 0; i < count; ++i) {
         const auto at = reader.position();
         const auto index = reader.readU16();
         const auto length = reader.readU16();
-        if (index >= types.size() || !types[index].isList())
+        if (index >= pools.types.size() || !pools.types[index].isList())
             throw FormatError("collection type descriptor out of range", at, ErrorReason::InvalidConstants);
         if (length > kMaxListElements) throw FormatError("list exceeds 256 elements", at, ErrorReason::InvalidConstants);
-        total += ResourceArena::listBytes(length);
-        if (total > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", at, ErrorReason::InvalidConstants);
+        budget.charge(ResourceArena::listBytes(length), at);
         auto list = std::make_shared<ListData>();
-        list->type = types[index];
+        list->type = pools.types[index];
+        const auto item = list->type.item();
         for (u16 n = 0; n < length; ++n) {
-            switch (list->type.element) {
+            switch (item.kind) {
             case TypeDescriptor::I32: list->elements.emplace_back(reader.readI32()); break;
             case TypeDescriptor::F32: list->elements.emplace_back(reader.readF32()); break;
             case TypeDescriptor::Color: list->elements.emplace_back(reader.readColor()); break;
             case TypeDescriptor::Vec2: list->elements.emplace_back(Vec2{reader.readF32(), reader.readF32()}); break;
-            case TypeDescriptor::Distribution: {
-                list->elements.emplace_back(readDistributionData(reader, distributions));
-                break;
-            }
-            case TypeDescriptor::Sampler: {
-                const auto reference = reader.readU16();
-                if (reference >= samplers.size() || samplers[reference].type != list->type.item())
-                    throw FormatError("collection sampler reference out of range or type mismatch", reader.position() - 2, ErrorReason::InvalidConstants);
-                list->elements.emplace_back(samplers[reference]);
-                break;
-            }
-            case TypeDescriptor::Stepper: {
-                const auto reference = reader.readU16();
-                if (reference >= steppers.size() || steppers[reference].type != list->type.item())
-                    throw FormatError("collection stepper reference out of range or type mismatch", reader.position() - 2, ErrorReason::InvalidConstants);
-                list->elements.emplace_back(steppers[reference]);
-                break;
-            }
+            case TypeDescriptor::Distribution:
+                list->elements.emplace_back(readDistributionData(reader, pools.distributions)); break;
+            case TypeDescriptor::Sampler: list->elements.push_back(description(pools.samplers, item)); break;
+            case TypeDescriptor::Stepper: list->elements.push_back(description(pools.steppers, item)); break;
             default: throw FormatError("invalid collection element type", at, ErrorReason::InvalidConstants);
             }
         }
@@ -243,23 +237,10 @@ void writeListElements(Writer& writer, const ListData& list, std::span<const Sam
         else if (const auto* f = std::get_if<f32>(&value)) writer.writeF32(*f);
         else if (const auto* c = std::get_if<Color>(&value)) writer.writeColor(*c);
         else if (const auto* v = std::get_if<Vec2>(&value)) { writer.writeF32(v->x); writer.writeF32(v->y); }
-        else if (const auto* d = std::get_if<Distribution>(&value)) {
-            writeDistributionData(writer, *d, distributions);
-        }
-        else if (const auto* s = std::get_if<SamplerValue>(&value)) {
-            const auto found = std::find_if(samplers.begin(), samplers.end(), [&](const auto& candidate) {
-                return candidate.type == s->type && candidate.data == s->data;
-            });
-            if (found == samplers.end()) throw std::logic_error("missing collection sampler constant");
-            writer.writeU16(static_cast<u16>(found - samplers.begin()));
-        }
-        else if (const auto* s = std::get_if<StepperValue>(&value)) {
-            const auto found = std::find_if(steppers.begin(), steppers.end(), [&](const auto& candidate) {
-                return candidate.type == s->type && candidate.data == s->data;
-            });
-            if (found == steppers.end()) throw std::logic_error("missing collection stepper constant");
-            writer.writeU16(static_cast<u16>(found - steppers.begin()));
-        } else throw std::logic_error("unsupported collection element");
+        else if (const auto* d = std::get_if<Distribution>(&value)) writeDistributionData(writer, *d, distributions);
+        else if (const auto* s = std::get_if<SamplerValue>(&value)) writer.writeU16(descriptionIndex(samplers, *s));
+        else if (const auto* t = std::get_if<StepperValue>(&value)) writer.writeU16(descriptionIndex(steppers, *t));
+        else throw std::logic_error("unsupported collection element");
     }
 }
 } // namespace iprop

@@ -131,7 +131,13 @@ struct Execution {
     // files never hit these, unvalidated input must still trap, never UB).
     Value pop();
     Value peek();
-    void push(Value value);
+    // Constructs the pushed value in place: scalars never pass through an
+    // intermediate Value.
+    template<class T> void push(T&& value) {
+        auto& stack = frames.back().stack;
+        if (stack.size() >= kMaxStackDepth) trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
+        stack.emplace_back(std::forward<T>(value));
+    }
 
     // Typed pops; trap on an empty stack or a type mismatch.
     i32 popI32();
@@ -139,8 +145,20 @@ struct Execution {
     Color popColor();
     Vec2 popVec2();
     Distribution popDistribution();
-    ListValue popList();
-    SamplerValue popSampler();
+    // Every handle shares one rule: another alternative is a stack type
+    // error, an unassigned handle a runtime violation.
+    template<class H> H popHandle(const char* name) {
+        Value value = pop();
+        auto* handle = std::get_if<H>(&value);
+        if (!handle) trap(std::string("stack type mismatch: expected ") + name, ErrorReason::StackType);
+        bool assigned = false;
+        if constexpr (requires { handle->buffer; }) assigned = static_cast<bool>(handle->buffer);
+        else assigned = static_cast<bool>(handle->data);
+        if (!assigned) trap(std::string(name) + " is unassigned", ErrorReason::RuntimeViolation);
+        return std::move(*handle);
+    }
+    // Surface handles additionally check their storage (and masks their
+    // mapping and raster scale).
     LayerValue popLayer();
     MaskValue popMask(bool matchTarget = true);
     void allocateResource(u64 bytes);
@@ -169,6 +187,11 @@ void compositePixel(Execution& ex, i32 x, i32 y, const Color& src,
 void paintSurface(Execution& ex, const LayerValue& image,
     CompositionMode mode = CompositionMode::Inherited);
 u8 clipCoverage(Execution& ex, i32 x, i32 y);
+// Checks a layer or mask view before use: representable i32 bounds, known
+// storage matching its extent and a finite positive raster scale, which must
+// equal the active target's with matchTarget. Returns the view's bounds.
+MaskBounds validateSurfaceView(Execution& ex, const SurfaceBuffer& buffer, const SurfaceMapping& mapping,
+                               bool matchTarget);
 void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed);
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
@@ -195,6 +218,26 @@ bool stepMasks(Execution& ex, Instruction ins);
 bool stepBlur(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
+
+// Samplers and steppers share their instruction mechanics (descriptions.cpp).
+// The checked description descriptor named by an instruction operand.
+TypeDescriptor descriptionType(Execution& ex, Instruction ins, TypeDescriptor::Kind kind);
+// const.sampler/const.stepper: charges a pooled description and its points
+// once per generation; the caller pushes the shared handle.
+void retainDescriptionConstant(Execution& ex, const CapturedRangeData& description);
+// *.value/*.range/*.with: pops typed endpoints and an optional distribution,
+// validates them once, charges one description and pushes its handle.
+void captureDescription(Execution& ex, TypeDescriptor type, SamplerMode mode);
+// Pops a description handle of exactly `type`.
+std::shared_ptr<const CapturedRangeData> popDescription(Execution& ex, TypeDescriptor type);
+// *.pick.list: checks the count, then the handle, and charges element fuel and
+// the list before generating element `index` of `count`.
+using DescriptionElement = Value (*)(Execution&, const CapturedRangeData&, i32 index, i32 count);
+void pickDescriptionList(Execution& ex, TypeDescriptor type, DescriptionElement element);
+// A truncated distribution draw for the unit coefficient u (spec §19.4), shared
+// by random draws and stepper quantiles: point/segment work is reserved first,
+// failures trap with the sampler rules, then kernel iterations are charged.
+double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, double lo, double hi, double u);
 
 // Compile-time evaluation of one stateless value operation. Uses the same
 // adapters, kernels and traps as generation, without a canvas or RNG stream.

@@ -8,18 +8,22 @@
 
 namespace iprop {
 
-MaskBounds maskBounds(const MaskValue& mask) {
-    if (!mask.buffer) throw std::invalid_argument("mask is unassigned");
-    const auto& raster = mask.buffer->raster;
+MaskBounds surfaceBounds(const SurfaceBuffer& buffer, const SurfaceMapping& mapping) {
+    const auto& raster = buffer.raster;
     if (!raster.width || !raster.height || raster.width > 2147483647u || raster.height > 2147483647u)
-        throw std::invalid_argument("mask extent is not representable");
-    const auto extent = mask.mapping.transform.mapExtent(
+        throw std::invalid_argument("surface extent is not representable");
+    const auto extent = mapping.transform.mapExtent(
         RasterPoint{static_cast<i32>(raster.width), static_cast<i32>(raster.height)});
-    const auto origin = mask.mapping.origin;
+    const auto origin = mapping.origin;
     if (static_cast<i64>(origin.x) + extent.x - 1 > std::numeric_limits<i32>::max() ||
         static_cast<i64>(origin.y) + extent.y - 1 > std::numeric_limits<i32>::max())
-        throw std::invalid_argument("mask mapping is not representable");
+        throw std::invalid_argument("surface mapping is not representable");
     return {origin.x, origin.y, static_cast<u32>(extent.x), static_cast<u32>(extent.y)};
+}
+
+MaskBounds maskBounds(const MaskValue& mask) {
+    if (!mask.buffer) throw std::invalid_argument("mask is unassigned");
+    return surfaceBounds(*mask.buffer, mask.mapping);
 }
 
 u8 maskCoverage(const MaskValue& mask, i64 x, i64 y) {
@@ -37,25 +41,29 @@ u8 maskCoverage(const MaskValue& mask, i64 x, i64 y) {
 }
 
 namespace detail {
-namespace {
 
-void validateMask(Execution& ex, const MaskValue& mask, bool matchTarget = true) {
-    try { (void)maskBounds(mask); }
+MaskBounds validateSurfaceView(Execution& ex, const SurfaceBuffer& buffer, const SurfaceMapping& mapping,
+                               bool matchTarget) {
+    MaskBounds bounds;
+    try { bounds = surfaceBounds(buffer, mapping); }
     catch (const std::invalid_argument& error) { ex.trap(error.what(), ErrorReason::NumericRange); }
-    const auto& source = mask.buffer->raster;
-    if (mask.buffer->format != SurfaceBuffer::Format::A8 && mask.buffer->format != SurfaceBuffer::Format::RGBA8)
-        ex.trap("unknown mask buffer format", ErrorReason::RuntimeViolation);
-    const auto scale = mask.mapping.transform.mapExtent(Vec2{source.scaleX, source.scaleY});
+    const auto& raster = buffer.raster;
+    if (buffer.format != SurfaceBuffer::Format::A8 && buffer.format != SurfaceBuffer::Format::RGBA8)
+        ex.trap("unknown surface buffer format", ErrorReason::RuntimeViolation);
+    const auto scale = mapping.transform.mapExtent(Vec2{raster.scaleX, raster.scaleY});
     if (!std::isfinite(scale.x) || !std::isfinite(scale.y) || scale.x <= 0 || scale.y <= 0)
-        ex.trap("mask raster scale must be finite and positive", ErrorReason::NumericRange);
+        ex.trap("surface raster scale must be finite and positive", ErrorReason::NumericRange);
     if (matchTarget && (!std::isfinite(ex.canvas().scaleX) || !std::isfinite(ex.canvas().scaleY) ||
         scale.x != ex.canvas().scaleX || scale.y != ex.canvas().scaleY))
-        ex.trap("mask raster scale does not match the active target", ErrorReason::NumericRange);
-    const u64 count = static_cast<u64>(source.width) * source.height;
-    if ((mask.buffer->format == SurfaceBuffer::Format::A8 && mask.buffer->coverage.size() != count) ||
-        (mask.buffer->format == SurfaceBuffer::Format::RGBA8 && source.pixels.size() != count))
-        ex.trap("mask buffer size does not match its extent", ErrorReason::RuntimeViolation);
+        ex.trap("surface raster scale does not match the active target", ErrorReason::NumericRange);
+    const u64 count = static_cast<u64>(raster.width) * raster.height;
+    if ((buffer.format == SurfaceBuffer::Format::A8 && buffer.coverage.size() != count) ||
+        (buffer.format == SurfaceBuffer::Format::RGBA8 && raster.pixels.size() != count))
+        ex.trap("surface buffer size does not match its extent", ErrorReason::RuntimeViolation);
+    return bounds;
 }
+
+namespace {
 
 MaskBounds boundsFromEdges(Execution& ex, i64 left, i64 top, i64 right, i64 bottom) {
     if (left < std::numeric_limits<i32>::min() || top < std::numeric_limits<i32>::min() ||
@@ -145,12 +153,9 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
 } // namespace
 
 MaskValue Execution::popMask(bool matchTarget) {
-    auto value = pop();
-    const auto* mask = std::get_if<MaskValue>(&value);
-    if (!mask) trap("stack type mismatch: expected mask", ErrorReason::StackType);
-    if (!mask->buffer) trap("mask is unassigned", ErrorReason::RuntimeViolation);
-    validateMask(*this, *mask, matchTarget);
-    return *mask;
+    auto mask = popHandle<MaskValue>("mask");
+    validateSurfaceView(*this, *mask.buffer, mask.mapping, matchTarget);
+    return mask;
 }
 
 void Execution::beginClip() {
@@ -193,9 +198,8 @@ bool stepMasks(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::MaskFrom: {
         const auto image = ex.popLayer();
-        MaskValue mask{image.buffer, image.mapping};
-        validateMask(ex, mask);
-        ex.push(std::move(mask));
+        validateSurfaceView(ex, *image.buffer, image.mapping, true);
+        ex.push(MaskValue{image.buffer, image.mapping});
         break;
     }
     case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract: {

@@ -374,7 +374,7 @@ private:
         }
         if (const auto* method = std::get_if<ListMethod>(&expression)) {
             const auto list = std::get<ListValue>(evaluate(*method->receiver));
-            try { return materializeListSelection(list, selectList(list, method->name == "sort")); }
+            try { return transformList(list, method->name == "sort"); }
             catch (const std::invalid_argument& error) { fail(at, error.what(), DiagnosticCode::AssetConstantValue); }
         }
         if (const auto* description = std::get_if<SamplerCapture>(&expression)) {

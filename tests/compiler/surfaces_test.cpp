@@ -177,7 +177,7 @@ TEST_CASE("surface buffers share storage and quota and fuel preflight precede wo
     limited.frame().locals={i32{0},i32{0},LayerValue{}};limited.fuel=3;
     CHECK_THROWS_AS(limited.beginLayer(2,0),Trap);CHECK(limited.resources.bytes==0);CHECK(limited.layerScopes.empty());
     limited.fuel=100;limited.resources.bytes=kMaxGenerationData-143;
-    CHECK_THROWS_AS(limited.beginLayer(2,0),Trap);CHECK(limited.resources.surfaces.empty());CHECK(limited.layerScopes.empty());
+    CHECK_THROWS_AS(limited.beginLayer(2,0),Trap);CHECK(limited.resources.bytes==kMaxGenerationData-143);CHECK(limited.layerScopes.empty());
     limited.push(image);limited.fuel=3;
     CHECK_THROWS_AS(detail::stepSurfaces(limited,{Opcode::SurfacePaint,0,0}),Trap);
     CHECK(std::all_of(limited.canvas().pixels.begin(),limited.canvas().pixels.end(),[](Color c){return c==Color{};}));

@@ -28,8 +28,11 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
         return {R::None,true,false,check(C::NumericRange)};
     case Opcode::ListBegin: return {R::None,false,false,check(C::NumericRange)};
-    case Opcode::DistributionBegin: case Opcode::DistributionAppend: case Opcode::DistributionEnd:
-        return {R::None,false,false,check(C::NumericRange)};
+    // A dynamic count can leave a builder over- or under-filled.
+    case Opcode::ListAppend: case Opcode::ListEnd: return {R::None,false,false,check(C::IndexRange)};
+    case Opcode::DistributionBegin: return {R::None,false,false,check(C::NumericRange)};
+    case Opcode::DistributionAppend: case Opcode::DistributionEnd:
+        return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::IndexRange))};
     case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
     case Opcode::StepperValue: case Opcode::StepperRange: case Opcode::StepperWith:
         return {R::None,false,false,check(C::NumericRange)};
@@ -40,11 +43,15 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::ListGet: return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::ListLen: case Opcode::ListDistinct: case Opcode::ListSort:
         return {R::None,false,false,check(C::UnassignedHandle)};
-    case Opcode::LayerBegin: return {R::None,true};
-    case Opcode::SurfacePaint: case Opcode::SurfacePaintMask:
-        return {R::None,true,false,check(C::UnassignedHandle)};
-    case Opcode::MaskFrom: case Opcode::MaskInvert: case Opcode::ClipBegin:
-        return {R::None,false,false,check(C::UnassignedHandle)};
+    // Scopes are limited across the whole call stack, not only lexically.
+    case Opcode::LayerBegin: return {R::None,true,false,check(C::ScopeDepth)};
+    case Opcode::ClipBegin:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)|check(C::ScopeDepth))};
+    case Opcode::SurfacePaint: return {R::None,true,false,check(C::UnassignedHandle)};
+    // Mask views check their mapping and raster scale against the target.
+    case Opcode::SurfacePaintMask:
+        return {R::None,true,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::MaskFrom: case Opcode::MaskInvert:
     case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
     case Opcode::MaskExpand: case Opcode::MaskShrink: case Opcode::MaskOffset:
     case Opcode::LayerBlur: case Opcode::MaskBlur:
@@ -241,7 +248,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::ListEnd, "list.end", OperandKind::TypeDescriptor),
     dynamic(Opcode::ListGet, "list.get", OperandKind::TypeDescriptor),
     dynamic(Opcode::ListLen, "list.len", OperandKind::TypeDescriptor),
-    dynamic(Opcode::PolyList, "poly.list", OperandKind::None),
+    dynamic(Opcode::PolyList, "poly.list", OperandKind::Zero),
     dynamic(Opcode::SamplerValue, "sampler.value", OperandKind::TypeDescriptor),
     dynamic(Opcode::SamplerRange, "sampler.range", OperandKind::TypeDescriptor),
     dynamic(Opcode::SamplerWith, "sampler.with", OperandKind::TypeDescriptor),
@@ -251,19 +258,19 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::ConstDistribution, "const.distribution", OperandKind::DistributionConst),
     dynamic(Opcode::DistributionBegin, "distribution.begin", OperandKind::Immediate),
     dynamic(Opcode::DistributionAppend, "distribution.append", OperandKind::Immediate),
-    dynamic(Opcode::DistributionEnd, "distribution.end", OperandKind::None),
+    dynamic(Opcode::DistributionEnd, "distribution.end", OperandKind::Zero),
     dynamic(Opcode::LayerBegin, "layer.begin", OperandKind::Local, AuxPolicy::SurfaceMode),
     dynamic(Opcode::SurfacePaint, "surface.paint", OperandKind::Immediate),
-    dynamic(Opcode::MaskFrom, "mask.from", OperandKind::None),
-    dynamic(Opcode::MaskUnion, "mask.union", OperandKind::None),
-    dynamic(Opcode::MaskIntersect, "mask.intersect", OperandKind::None),
-    dynamic(Opcode::MaskSubtract, "mask.subtract", OperandKind::None),
-    dynamic(Opcode::MaskInvert, "mask.invert", OperandKind::None),
-    dynamic(Opcode::MaskExpand, "mask.expand", OperandKind::None),
-    dynamic(Opcode::MaskShrink, "mask.shrink", OperandKind::None),
-    dynamic(Opcode::MaskOffset, "mask.offset", OperandKind::None),
+    dynamic(Opcode::MaskFrom, "mask.from", OperandKind::Zero),
+    dynamic(Opcode::MaskUnion, "mask.union", OperandKind::Zero),
+    dynamic(Opcode::MaskIntersect, "mask.intersect", OperandKind::Zero),
+    dynamic(Opcode::MaskSubtract, "mask.subtract", OperandKind::Zero),
+    dynamic(Opcode::MaskInvert, "mask.invert", OperandKind::Zero),
+    dynamic(Opcode::MaskExpand, "mask.expand", OperandKind::Zero),
+    dynamic(Opcode::MaskShrink, "mask.shrink", OperandKind::Zero),
+    dynamic(Opcode::MaskOffset, "mask.offset", OperandKind::Zero),
     dynamic(Opcode::SurfacePaintMask, "surface.paint.mask", OperandKind::Immediate),
-    dynamic(Opcode::ClipBegin, "clip.begin", OperandKind::None),
+    dynamic(Opcode::ClipBegin, "clip.begin", OperandKind::Zero),
     dynamic(Opcode::OutMask, "out.mask", OperandKind::ResourceExport),
     dynamic(Opcode::OutLayer, "out.layer", OperandKind::ResourceExport),
     dynamic(Opcode::PartGetMask, "part.get.mask", OperandKind::ResourceExport),
@@ -275,8 +282,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::StepperWith, "stepper.with", OperandKind::TypeDescriptor),
     dynamic(Opcode::StepperPickList, "stepper.pick.list", OperandKind::TypeDescriptor),
     dynamic(Opcode::ConstStepper, "const.stepper", OperandKind::StepperConst),
-    dynamic(Opcode::LayerBlur, "layer.blur", OperandKind::None),
-    dynamic(Opcode::MaskBlur, "mask.blur", OperandKind::None),
+    dynamic(Opcode::LayerBlur, "layer.blur", OperandKind::Zero),
+    dynamic(Opcode::MaskBlur, "mask.blur", OperandKind::Zero),
 };
 constexpr auto kByOpcode = [] {
     std::array<const OpcodeSpec*,256> index{};
@@ -312,6 +319,7 @@ const char* effectCheckName(EffectCheck check) {
     case EffectCheck::PartOutputContext: return "part_output_context";
     case EffectCheck::IndexRange: return "index_range";
     case EffectCheck::UnassignedHandle: return "unassigned_handle";
+    case EffectCheck::ScopeDepth: return "scope_depth";
     }
     return "unknown";
 }

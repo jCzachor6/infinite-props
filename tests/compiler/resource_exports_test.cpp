@@ -133,9 +133,9 @@ TEST_CASE("export snapshots survive later calls no-write calls and slot replacem
 TEST_CASE("surface storage is freed at the last handle and accounting tokens cannot dangle", "[resource-exports]") {
     ResourceArena arena;arena.charge(152);auto buffer=arena.makeSurface(152);std::weak_ptr<const SurfaceBuffer> weak=buffer;
     LayerValue image{buffer,{}};MaskValue mask{buffer,{}};buffer.reset();
-    CHECK(arena.bytes==152);image={};CHECK_FALSE(weak.expired());mask={};CHECK(weak.expired());CHECK(arena.bytes==0);CHECK(arena.peak==152);
-    for(int i=0;i<1000;++i){arena.charge(128);auto fresh=arena.makeSurface(128);CHECK(arena.surfaces.size()<=1);}
-    CHECK(arena.bytes==0);CHECK(arena.peak==152);
+    CHECK(arena.bytes==152);image={};CHECK_FALSE(weak.expired());mask={};CHECK(weak.expired());CHECK(arena.bytes==0);
+    for(int i=0;i<1000;++i){arena.charge(128);auto fresh=arena.makeSurface(128);CHECK(arena.bytes==128);}
+    CHECK(arena.bytes==0);
     arena.charge(128);auto retained=arena.makeSurface(128);arena.clear();CHECK(arena.bytes==0);
     arena.charge(128);auto next=arena.makeSurface(128);retained.reset();CHECK(arena.bytes==128);next.reset();CHECK(arena.bytes==0);
     LayerValue outside;

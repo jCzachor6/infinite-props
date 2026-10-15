@@ -54,6 +54,9 @@ using DistributionNumber = std::variant<i32, f32>;
 struct DistributionPoint {
     DistributionNumber key, value;
 };
+// Every point distribution, whether pooled, built or constant, holds at most
+// this many points.
+inline constexpr std::size_t kMaxDistributionPoints = 256;
 struct PointDistributionData {
     DistributionFamily family = DistributionFamily::None;
     std::vector<DistributionPoint> points;

@@ -20,7 +20,7 @@ VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle'}
+              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle', 'scope_depth'}
 EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
 STAGES = {'lex', 'parse', 'import', 'typing', 'planning', 'validation', 'io', 'cli', 'internal'}
 HASH = re.compile(r'^[0-9a-f]{64}$')
@@ -347,7 +347,7 @@ def read_language(value):
             'offset': {'i32_target_pixels_mapping_view'},
             'coverage_rounding': {'multiply_nearest_half_up_outer_to_inner'},
             'mask_paint_alpha': {'color_times_mask_then_combined_clip'},
-            'helper_clip': {'inherit'}, 'layer_clip': {'inherit'}, 'part_clip': {'parent_applies_to_blit_once'},
+            'helper_clip': {'inherit'}, 'layer_clip': {'applies_to_paint_once'}, 'part_clip': {'parent_applies_to_blit_once'},
             'weather_clip': {'mix_old_and_proposed_rgba_by_coverage'},
             'clip_evaluation': {'mask_once_no_rng'}, 'from_opcode': {'mask.from'},
             'clip_opcode': {'clip.begin'}, 'paint_opcode': {'surface.paint.mask'},

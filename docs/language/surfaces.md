@@ -244,8 +244,10 @@ outside pixels, while painting only writes within the target.
 ## Clip scopes and painting masks
 
 `clip(region) { ... }` evaluates its mask once and limits writes on the current
-target. Helpers and layers inherit the active clips. A part starts its own
-canvas without the parent's clips; the parent applies them once at the blit.
+target. Helpers inherit the active clips. A layer capture, like a part, starts
+its own canvas without the parent's clips; they apply once where
+`surface.paint` paints the layer, even when it was captured inside the same
+clip. The parent likewise applies its clips once at a part's blit.
 The child's own clips can independently limit its image. Geometric outputs
 remain complete even when the image is clipped.
 

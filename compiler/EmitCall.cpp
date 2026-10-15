@@ -37,6 +37,7 @@ void Emitter::emitOverload(const ips::BuiltinOverload& overload) {
     if (!overload.opcode) return; // an identity conversion
     switch (operandKind(*overload.opcode)) {
     case OperandKind::None:
+    case OperandKind::Zero:
         ins(*overload.opcode);
         return;
     case OperandKind::TypeDescriptor:

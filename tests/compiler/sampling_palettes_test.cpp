@@ -276,7 +276,7 @@ TEST_CASE("constant description loading charges each buffer once and preflights 
         REQUIRE(detail::stepCollections(ex,{Opcode::ConstList,0,0}));
         CHECK(std::get<ListValue>(ex.pop()).data==list.data);
     }
-    CHECK(ex.resources.bytes==ex.resources.peak); CHECK(ex.fuel==97); CHECK(ex.frame().stream==26);
+    CHECK(ex.resources.bytes==256+ResourceArena::listBytes(3)); CHECK(ex.fuel==97); CHECK(ex.frame().stream==26);
     for (const bool quota : {false,true}) {
         detail::Execution fail(file); fail.frames.push_back({}); fail.frame().stream=26; fail.fuel=quota?100:2;
         fail.resources.bytes=quota?kMaxGenerationData-ResourceArena::listBytes(3):0;
@@ -284,7 +284,7 @@ TEST_CASE("constant description loading charges each buffer once and preflights 
         const auto attempt = [&] { return detail::stepCollections(fail,{Opcode::ConstList,0,0}); };
         CHECK_THROWS_AS(attempt(),Trap);
         CHECK(fail.resources.bytes==before); CHECK(fail.resources.constants.empty());
-        CHECK(fail.resources.samplerConstants.empty()); CHECK(fail.frame().stream==26); CHECK(fail.frame().stack.empty());
+        CHECK(fail.resources.descriptionConstants.empty()); CHECK(fail.frame().stream==26); CHECK(fail.frame().stack.empty());
     }
 }
 

@@ -20,7 +20,7 @@ ListValue list(TypeDescriptor item, std::vector<Value> values) {
     auto data=std::make_shared<ListData>(ListData{ValueType::list(item),std::move(values)});
     return {data->type,std::move(data)};
 }
-ListValue transformed(const ListValue& input, bool sort) {return materializeListSelection(input,selectList(input,sort));}
+ListValue transformed(const ListValue& input, bool sort) {return transformList(input,sort);}
 std::vector<u8> compile(const std::string& source, bool optimize=false) {
     auto program=ips::parse(source);ips::checkAsset(program,{});return compileProgram(program,{},optimize);
 }
@@ -106,7 +106,7 @@ TEST_CASE("distinct description snapshots compare contents without draws or buff
 TEST_CASE("list methods share unchanged data and preflight fixed fuel and actual result quota", "[list-methods]") {
     const auto file=loadFile(compile("asset t{size 1x1 draw{items=[3,1,3,2]copy=items.distinct().sort()}}"));
     const auto descriptor=static_cast<u16>(std::find(file.collections.types.begin(),file.collections.types.end(),ValueType::list(ValueType::I32))-file.collections.types.begin());
-    const auto input=list(ValueType::I32,{i32{3},i32{1},i32{3},i32{2}});const auto work=listSelectionWork(input,false);CHECK(work==14);
+    const auto input=list(ValueType::I32,{i32{3},i32{1},i32{3},i32{2}});const auto work=checkListSelection(input,false).work;CHECK(work==14);
     detail::Execution ex(file);ex.frames.emplace_back();ex.fuel=100;ex.frame().stream=26;ex.push(input);
     REQUIRE(detail::stepCollections(ex,{Opcode::ListDistinct,0,descriptor}));const auto result=std::get<ListValue>(ex.pop());
     CHECK(ex.fuel==86);CHECK(ex.resources.bytes==ResourceArena::listBytes(3));CHECK(ex.frame().stream==26);

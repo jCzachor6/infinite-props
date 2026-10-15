@@ -178,14 +178,14 @@ TEST_CASE("sampler arena sharing and batch preflight preserve RNG and publish no
     REQUIRE(detail::stepSamplers(ex,{Opcode::SamplerRange,0,0}));
     const auto handle = std::get<SamplerValue>(ex.pop());
     CHECK(ex.frame().stream == 26);
-    CHECK(ex.resources.bytes == ResourceArena::samplerBytes());
+    CHECK(ex.resources.bytes == ResourceArena::descriptionBytes());
     Function helper; helper.params = {type}; helper.results = {type};
     file.code.functions.push_back(helper);
     ex.push(handle); ex.callFunction(1);
     CHECK(std::get<SamplerValue>(ex.frame().locals[0]).data == handle.data);
     ex.push(ex.frame().locals[0]); ex.leaveFrame();
     CHECK(std::get<SamplerValue>(ex.pop()).data == handle.data);
-    CHECK(ex.resources.bytes == ResourceArena::samplerBytes());
+    CHECK(ex.resources.bytes == ResourceArena::descriptionBytes());
     const auto trapped = [&](detail::Execution& execution, i32 count, SamplerValue receiver, ErrorReason reason) {
         execution.frame().stack.clear(); execution.push(receiver); execution.push(count);
         const auto state = execution.frame().stream;
@@ -205,7 +205,7 @@ TEST_CASE("sampler arena sharing and batch preflight preserve RNG and publish no
     REQUIRE(detail::stepSamplers(ex,{Opcode::SamplerPickList,0,0}));
     CHECK(ex.frame().stream == 26); CHECK(ex.fuel == fuel);
     CHECK(std::get<ListValue>(ex.pop()).data->elements.empty());
-    CHECK(ex.resources.bytes == ResourceArena::samplerBytes() + ResourceArena::listBytes(0));
+    CHECK(ex.resources.bytes == ResourceArena::descriptionBytes() + ResourceArena::listBytes(0));
     ex.resources.bytes = kMaxGenerationData;
     trapped(ex,1,handle,ErrorReason::OutOfMemory);
     ex.resources.bytes = 0; ex.fuel = 2;
@@ -230,7 +230,7 @@ TEST_CASE("sampler captures validate dynamic bounds before allocating or drawing
         detail::Execution ex(file); ex.frames.push_back({}); ex.fuel=100; ex.frame().stream=26;
         for (const auto& value : bad.second) ex.push(value);
         CHECK_THROWS_AS(detail::stepSamplers(ex,{Opcode::SamplerRange,0,bad.first}),Trap);
-        CHECK(ex.frame().stream==26); CHECK(ex.resources.bytes==0); CHECK(ex.resources.samplers.empty());
+        CHECK(ex.frame().stream==26); CHECK(ex.resources.bytes==0); CHECK(ex.resources.descriptions.empty());
     }
     detail::Execution ex(file); ex.frames.push_back({}); ex.fuel=100;
     ex.push(0.f); ex.push(1.f); ex.push(Distribution{});
@@ -323,7 +323,7 @@ TEST_CASE("invalid dynamic sampler batches retain actual receiver and count effe
         CHECK(error.reason==ErrorReason::NumericRange);
         REQUIRE(ex.frames.size()==1);
         CHECK(ex.frame().stream==26u+2u*0x9e3779b9u);
-        CHECK(ex.resources.samplers.size()==1);CHECK(ex.resources.lists.empty());
+        CHECK(ex.resources.descriptions.size()==1);CHECK(ex.resources.lists.empty());
     }
     // The public generation failure releases resources and cannot return or resume.
     VM vm(file,{26, 0, 0, {}});

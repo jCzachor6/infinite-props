@@ -162,9 +162,9 @@ TEST_CASE("point builders support 256 pairs and constants share quota and fuel",
     CHECK(ex.resources.bytes == ResourceArena::distributionBytes(2)); CHECK(ex.fuel == 98);
     REQUIRE(detail::stepPointDistributions(ex,{Opcode::ConstDistribution,0,0})); CHECK(ex.fuel == 98);
     REQUIRE(detail::stepSamplers(ex,{Opcode::ConstSampler,0,0}));
-    CHECK(ex.resources.bytes == ResourceArena::distributionBytes(2)+ResourceArena::samplerBytes());
+    CHECK(ex.resources.bytes == ResourceArena::distributionBytes(2)+ResourceArena::descriptionBytes());
     REQUIRE(detail::stepCollections(ex,{Opcode::ConstList,0,0}));
-    CHECK(ex.resources.bytes == ResourceArena::distributionBytes(2)+ResourceArena::samplerBytes()+ResourceArena::listBytes(2));
+    CHECK(ex.resources.bytes == ResourceArena::distributionBytes(2)+ResourceArena::descriptionBytes()+ResourceArena::listBytes(2));
     CHECK(ex.frame().stream == 26);
     detail::Execution full(file); full.frames.push_back({}); full.fuel=1000; full.resources.charge(kMaxGenerationData-1);
     CHECK_THROWS_AS(detail::stepCollections(full,{Opcode::ConstList,0,0}),Trap);

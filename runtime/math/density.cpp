@@ -71,12 +71,16 @@ TruncatedDraw densityDistributionDraw(const Distribution& distribution, double l
         result.status = DrawStatus::NoMass; return result;
     }
     const auto& points = distribution.points->points;
+    // The segment table is fixed; a larger point list is not a valid density.
+    if (points.size() > kMaxDistributionPoints) {
+        result.status = DrawStatus::Numerical; return result;
+    }
     if (lo == hi) {
         if (lo < distributionNumber(points.front().key) || lo > distributionNumber(points.back().key))
             result.status = DrawStatus::Outside;
         result.value = lo; return result;
     }
-    std::array<Segment, 255> segments;
+    std::array<Segment, kMaxDistributionPoints - 1> segments;
     double total = 0.0;
     for (std::size_t i = 1; i < points.size(); ++i) {
         segments[i - 1] = clip(points[i - 1], points[i], lo, hi);

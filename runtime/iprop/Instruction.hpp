@@ -25,10 +25,11 @@ inline Instruction decodeInstruction(std::span<const u8> bytes) {
 // The spec §9 mnemonic of an opcode, or nullptr for reserved opcodes.
 const char* opcodeMnemonic(Opcode opcode);
 
-// What an instruction's u16 operand means (spec §9). Used by the
-// disassembler, the assembler and the compiler's pool and local remapping.
+// What an instruction's u16 operand means (spec §9). Used by the validator,
+// the disassembler, the assembler and the compiler's pool and local remapping.
 enum class OperandKind {
-    None,
+    None,              // unused and ignored
+    Zero,              // unused and required to be zero
     IntConst,          // const.i32: const-pool index
     FloatConst,        // const.f32: const-pool index
     ColorConst,        // const.color: const-pool index

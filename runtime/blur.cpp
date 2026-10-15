@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <stdexcept>
 
 namespace iprop::detail {
 namespace {
@@ -17,19 +16,6 @@ struct ScratchCharge {
     ScratchCharge(Execution& ex, u64 size) : arena(ex.resources), bytes(size) { ex.allocateResource(size); }
     ~ScratchCharge() { arena.release(bytes); }
 };
-
-void validateRaster(Execution& ex, const LayerValue& image) {
-    try { (void)maskBounds({image.buffer, image.mapping}); }
-    catch (const std::invalid_argument& error) { ex.trap(error.what(), ErrorReason::NumericRange); }
-    const auto& buffer = *image.buffer;
-    const auto& raster = buffer.raster;
-    if (!std::isfinite(raster.scaleX) || !std::isfinite(raster.scaleY) || raster.scaleX <= 0 || raster.scaleY <= 0)
-        ex.trap("blur raster scale must be finite and positive", ErrorReason::NumericRange);
-    const u64 count = static_cast<u64>(raster.width) * raster.height;
-    if ((buffer.format == SurfaceBuffer::Format::A8 && buffer.coverage.size() != count) ||
-        (buffer.format == SurfaceBuffer::Format::RGBA8 && raster.pixels.size() != count))
-        ex.trap("blur buffer size does not match its extent", ErrorReason::RuntimeViolation);
-}
 
 u8 roundedByte(double value) {
     return static_cast<u8>(std::floor(std::clamp(value, 0.0, 255.0) + 0.5));
@@ -120,13 +106,13 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
 
 bool stepBlur(Execution& ex, Instruction ins) {
     if (ins.opcode != Opcode::LayerBlur && ins.opcode != Opcode::MaskBlur) return false;
-    if (ins.aux || ins.operand) ex.trap("blur aux and operand must be zero", ErrorReason::InvalidInstruction);
     const auto sigma = ex.popF32();
     if (!std::isfinite(sigma) || sigma < 0 || sigma > kMaxBlurSigma)
         ex.trap("blur sigma must be finite and in 0..64", ErrorReason::NumericRange);
     if (ins.opcode == Opcode::LayerBlur) {
+        // Sigma is in input raster pixels: the active target's scale is irrelevant.
         auto image = ex.popLayer();
-        validateRaster(ex, image);
+        validateSurfaceView(ex, *image.buffer, image.mapping, false);
         if (sigma != 0) image.buffer = filter<4>(ex, *image.buffer, sigma);
         ex.push(std::move(image));
     } else {

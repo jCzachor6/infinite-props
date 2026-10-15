@@ -35,7 +35,7 @@ enum class RngEffect { None, ReadCurrent, AdvanceCurrent, PushSeededStream,
     RestoreStream, SeededComputation, IsolatedSeededStream, SharedCallee, IsolatedCallee };
 enum class EffectCheck : u16 { NumericRange = 1, StreamStackUnderflow = 2,
     PartRenderArguments = 4, Callee = 8, PartOutputMissing = 16,
-    DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128, IndexRange = 256, UnassignedHandle = 512 };
+    DivideByZero = 32, IntegerOverflow = 64, PartOutputContext = 128, IndexRange = 256, UnassignedHandle = 512, ScopeDepth = 1024 };
 struct OperationEffects {
     RngEffect rng = RngEffect::None;
     bool writesCanvas = false;

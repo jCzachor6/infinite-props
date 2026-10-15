@@ -46,9 +46,8 @@ struct RenderTarget {
 inline constexpr u32 kMaxSurfaceScopes = 32;
 inline constexpr i32 kMaxMaskRadius = 64;
 inline constexpr f32 kMaxBlurSigma = 64.0f;
-// Named captures include their handle/control metadata. Part canvas accounting
-// retains its existing 4 bytes per pixel in format 0.6, and older files remain
-// outside the generation arena.
+// Named captures include their handle/control metadata. Part canvases keep
+// their existing 4 bytes per pixel, without the 128-byte handle charge.
 inline constexpr u64 surfaceBytes(u32 width, u32 height) {
     return 128u + static_cast<u64>(width) * height * 4u;
 }
@@ -65,6 +64,9 @@ struct MaskBounds {
     i32 x = 0, y = 0;
     u32 width = 0, height = 0;
 };
+// The pixel rectangle a layer or mask view covers in target space; throws
+// std::invalid_argument when it is not representable in i32 pixels.
+MaskBounds surfaceBounds(const SurfaceBuffer& buffer, const SurfaceMapping& mapping);
 MaskBounds maskBounds(const MaskValue& mask);
 u8 maskCoverage(const MaskValue& mask, i64 x, i64 y);
 

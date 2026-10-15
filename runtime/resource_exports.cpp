@@ -84,13 +84,10 @@ void validateResourceOwnership(const LoadedFile& file) {
 
 namespace detail {
 namespace {
-SurfaceMapping mapExport(Execution& ex, const std::shared_ptr<const SurfaceBuffer>& buffer,
-                         SurfaceMapping mapping) {
+SurfaceMapping mapExport(Execution& ex, const SurfaceBuffer& buffer, SurfaceMapping mapping) {
     // A write freezes the complete view in its owner's caller coordinates.
     // A later call with no write never revisits this mapping.
-    MaskBounds bounds;
-    try { bounds = maskBounds({buffer, mapping}); }
-    catch (const std::invalid_argument& error) { ex.trap(error.what(), ErrorReason::NumericRange); }
+    const auto bounds = validateSurfaceView(ex, buffer, mapping, false);
     if (ex.partCalls.empty()) return mapping;
     const auto& render = ex.partCalls.back().render;
     const auto a = render.transform.mapPixelWide({bounds.x, bounds.y}, render.sourceExtent);
@@ -134,10 +131,10 @@ bool stepResourceExports(Execution& ex, Instruction ins) {
     } else {
         if (declaration.owner != owner) ex.trap("resource export write by a different asset", ErrorReason::InvalidOutput);
         if (type == ValueType::Mask) {
-            auto value = ex.popMask(); value.mapping = mapExport(ex, value.buffer, value.mapping);
+            auto value = ex.popMask(); value.mapping = mapExport(ex, *value.buffer, value.mapping);
             ex.resourceSlots[ins.operand] = std::move(value);
         } else {
-            auto value = ex.popLayer(); value.mapping = mapExport(ex, value.buffer, value.mapping);
+            auto value = ex.popLayer(); value.mapping = mapExport(ex, *value.buffer, value.mapping);
             ex.resourceSlots[ins.operand] = std::move(value);
         }
     }

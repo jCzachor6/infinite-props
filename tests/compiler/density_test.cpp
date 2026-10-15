@@ -206,3 +206,22 @@ TEST_CASE("distribution literals and ordinary names work before loop bodies", "[
         CHECK(stripDebug(compileDensity(source,optimize))==stripDebug(compileDensity(formatted,optimize)));
     }
 }
+
+TEST_CASE("density kernels reject point lists beyond the shared limit without overrunning segments","[density]") {
+    // The public kernels may receive data that never passed a pool, builder or
+    // constructor check. One point too many is reported, never written past
+    // the fixed segment table.
+    auto data=std::make_shared<PointDistributionData>();data->family=DistributionFamily::Density;
+    for(std::size_t i=0;i<=kMaxDistributionPoints;++i)
+        data->points.push_back({DistributionNumber{static_cast<i32>(i)},DistributionNumber{i32{1}}});
+    CHECK(math::pointDistributionError(*data)!=nullptr);
+    Distribution oversized;oversized.family=data->family;oversized.points=data;
+    for(const double u:{0.0,0.5,1.0}) {
+        CHECK(math::densityDistributionDraw(oversized,0.0,10.0,u).status==math::DrawStatus::Numerical);
+        CHECK(math::truncatedDraw(oversized,0.0,10.0,u).status==math::DrawStatus::Numerical);
+    }
+    data->points.pop_back();
+    REQUIRE(data->points.size()==kMaxDistributionPoints);
+    CHECK(math::pointDistributionError(*data)==nullptr);
+    CHECK(math::densityDistributionDraw(oversized,0.0,10.0,0.5).status==math::DrawStatus::Ok);
+}

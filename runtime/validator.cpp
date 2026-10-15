@@ -72,15 +72,12 @@ public:
             if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
+            if (spec->operand == OperandKind::Zero && ins.operand != 0)
+                fail(i, std::string(spec->mnemonic) + " operand must be zero");
             if (spec->aux == AuxPolicy::PartTransform && !D4Transform::fromKind(ins.aux))
                 fail(i, "unknown part transform kind");
             if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
                 fail(i, "unknown layer alpha mode");
-            if (ins.opcode >= Opcode::MaskFrom && ins.opcode <= Opcode::ClipBegin &&
-                spec->operand == OperandKind::None && ins.operand != 0)
-                fail(i, "mask/clip operand must be zero");
-            if ((ins.opcode == Opcode::LayerBlur || ins.opcode == Opcode::MaskBlur) && ins.operand != 0)
-                fail(i, "blur operand must be zero");
             if (spec->stack) {
                 applyStack(i, *spec);
                 continue;
@@ -359,7 +356,6 @@ private:
             push(at, ValueType::PointBuilder);
             return;
         case Opcode::DistributionEnd:
-            if (op) fail(at, "distribution.end operand must be zero");
             expect(at, ValueType::PointBuilder, "distribution builder");
             push(at, ValueType::Distribution);
             return;
@@ -426,7 +422,6 @@ private:
             return;
         }
         case Opcode::PolyList:
-            if (op != 0) fail(at, "poly.list operand must be zero");
             expect(at, ValueType::Color, "poly colour");
             expect(at, ValueType::list(ValueType::Vec2), "poly points");
             return;
@@ -733,20 +728,16 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
     if (const auto* types = file.layout.find(SectionId::Types))
         file.collections.types = parseTypeDescriptors(bytes, *types);
+    // Later pools reference earlier ones; all of them share one budget.
+    PoolBudget budget;
     if (const auto* distributions = file.layout.find(SectionId::Distributions))
-        file.collections.distributions = parseDistributionPool(bytes, *distributions);
+        file.collections.distributions = parseDistributionPool(bytes, *distributions, budget);
     if (const auto* samplers = file.layout.find(SectionId::Samplers))
-        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections.types, file.collections.distributions);
+        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections, budget);
     if (const auto* steppers = file.layout.find(SectionId::Steppers))
-        file.collections.steppers = parseStepperPool(bytes, *steppers, file.collections.types, file.collections.distributions);
+        file.collections.steppers = parseStepperPool(bytes, *steppers, file.collections, budget);
     if (const auto* lists = file.layout.find(SectionId::Collections))
-        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections.types, file.collections.samplers,
-            file.collections.distributions, file.collections.steppers);
-    u64 poolBytes = file.collections.samplers.size() * ResourceArena::samplerBytes() +
-        file.collections.steppers.size() * ResourceArena::stepperBytes();
-    for (const auto& d : file.collections.distributions) poolBytes += ResourceArena::distributionBytes(d.points->points.size());
-    for (const auto& list : file.collections.lists) poolBytes += ResourceArena::listBytes(list.data->elements.size());
-    if (poolBytes > kMaxGenerationData) throw FormatError("collection pool exceeds 64 MiB", 0, ErrorReason::InvalidConstants);
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections, budget);
     file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);

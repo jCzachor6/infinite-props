@@ -103,6 +103,7 @@ std::string instructionText(const Function& function,
     }
     switch (operandKind(ins.opcode)) {
     case OperandKind::None:
+    case OperandKind::Zero:
         return mnemonic;
     case OperandKind::IntConst:
         return std::string(mnemonic) + " " +
@@ -278,14 +279,14 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         out << '\n';
     }
     for (const auto& sampler : loaded.collections.samplers) {
-        Writer data; writeSamplerData(data, *sampler.data, loaded.collections.distributions);
+        Writer data; writeDescriptionData(data, *sampler.data, loaded.collections.distributions);
         out << "sampler: " << valueTypeName(sampler.type) << ' ';
         constexpr char digits[] = "0123456789abcdef";
         for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
         out << '\n';
     }
     for (const auto& stepper : loaded.collections.steppers) {
-        Writer data; writeStepperData(data, *stepper.data, loaded.collections.distributions);
+        Writer data; writeDescriptionData(data, *stepper.data, loaded.collections.distributions);
         out << "stepper: " << valueTypeName(stepper.type) << ' ';
         constexpr char digits[] = "0123456789abcdef";
         for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];

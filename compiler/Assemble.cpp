@@ -132,14 +132,14 @@ std::vector<u8> Assembler::assemble() {
         samplers.writeU32(static_cast<u32>(plan_.pools.samplersValue().size()));
         for (const auto& sampler : plan_.pools.samplersValue()) {
             samplers.writeU16(plan_.pools.typeIndexOf(sampler.type));
-            writeSamplerData(samplers, *sampler.data, plan_.pools.distributionsValue());
+            writeDescriptionData(samplers, *sampler.data, plan_.pools.distributionsValue());
         }
     }
     if (!plan_.pools.steppersValue().empty()) {
         steppers.writeU32(static_cast<u32>(plan_.pools.steppersValue().size()));
         for (const auto& stepper : plan_.pools.steppersValue()) {
             steppers.writeU16(plan_.pools.typeIndexOf(stepper.type));
-            writeStepperData(steppers, *stepper.data, plan_.pools.distributionsValue());
+            writeDescriptionData(steppers, *stepper.data, plan_.pools.distributionsValue());
         }
     }
 

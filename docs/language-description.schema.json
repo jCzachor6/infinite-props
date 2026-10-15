@@ -2455,7 +2455,7 @@
             },
             "layer_clip": {
               "type": "string",
-              "const": "inherit",
+              "const": "applies_to_paint_once",
               "description": "Layer clip."
             },
             "part_clip": {
@@ -3203,7 +3203,8 @@
               "part_render_arguments",
               "stream_stack_underflow",
               "index_range",
-              "unassigned_handle"
+              "unassigned_handle",
+              "scope_depth"
             ],
             "description": "Call-specific checks; resource-wide traps are separate."
           },

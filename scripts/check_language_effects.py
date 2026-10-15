@@ -15,7 +15,7 @@ def main():
     rng = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
            'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
     checks = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context', 'index_range', 'unassigned_handle'}
+              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context', 'index_range', 'unassigned_handle', 'scope_depth'}
 
     def valid(effects):
         assert set(effects) == {'rng', 'writes_canvas', 'writes_outputs', 'summary', 'may_trap'}, effects

@@ -629,7 +629,7 @@ std::vector<u8> assemble(const std::string& source) {
             instruction.aux = static_cast<u8>(mode);
             words.pop_back();
         }
-        if (def->operand != OperandKind::None) {
+        if (def->operand != OperandKind::None && def->operand != OperandKind::Zero) {
             if (words.size() != 2) {
                 throw error("instruction '" + words[0] + "' expects one operand");
             }
@@ -818,7 +818,8 @@ std::vector<u8> assemble(const std::string& source) {
     std::map<std::string, u32> functionIndex; // populated once `ordered` exists
     const auto resolve = [&](const AsmInstruction& instruction) -> u16 {
         switch (instruction.operand) {
-        case OperandKind::None: return 0;
+        case OperandKind::None:
+        case OperandKind::Zero: return 0;
         case OperandKind::IntConst: {
             u32 bits = 0;
             if (!parseIntBits(instruction.operandText, bits)) {

@@ -1,9 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <bit>
+#include <map>
 #include <string>
 
 #include "Compiler.hpp"
+#include "SourceCompilation.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Parser.hpp"
@@ -33,11 +35,11 @@ std::string arguments(const ips::BuiltinOverload& overload, bool invalid = false
     }
     return result;
 }
-void expectTrap(const std::vector<u8>& bytes, ErrorReason reason) {
+void expectTrap(const std::vector<u8>& bytes, ErrorReason reason, const GenerationInputs& inputs = {}) {
     const auto file = loadFile(bytes);
     REQUIRE_NOTHROW(validate(file));
     try {
-        VM vm(file, {});
+        VM vm(file, inputs);
         vm.run();
         FAIL("advertised runtime check did not trap");
     } catch (const Trap& trap) {
@@ -45,6 +47,22 @@ void expectTrap(const std::vector<u8>& bytes, ErrorReason reason) {
         CHECK(trap.stage == ErrorStage::Execute);
         CHECK((trap.location.flags & ErrorLocation::PC) != 0);
     }
+}
+// An export retained from an earlier call keeps its raster scale. Once the
+// reading part is redrawn rotated under a non-uniform host scale, using that
+// view in `use` traps against the new active target.
+std::vector<u8> staleExportScale(const std::string& use, bool optimize) {
+    const std::map<std::string, std::string> sources{
+        {"root.ips", "import middle from \"middle.ips\" asset t{size 4x4 draw{"
+            "middle.draw(1,at={0,0}) middle.draw(2,at={0,0},rot=90)}}"},
+        {"middle.ips", "import leaf from \"leaf.ips\" asset t{size 2x2 draw{leaf.draw(seed,at={0,0})"
+            "image=leaf.outputs.image region=leaf.outputs.region " + use + "}}"},
+        {"leaf.ips", "asset t{size 2x2 output layer image output mask region draw{"
+            "if(seed==1){layer captured{pixel(0,0,#ffffff)}image=captured region=mask.from(captured)}}}"}};
+    SourceCompilationOptions options; options.optimize = optimize; options.compress = false;
+    const auto result = compileSource("root.ips", [&](std::string_view path) { return sources.at(std::string(path)); }, options);
+    REQUIRE(result.succeeded());
+    return result.bytes;
 }
 }
 
@@ -131,6 +149,14 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
     for (const auto& [name,spec] : ips::builtinSpecs()) for (const auto& overload : spec.overloads) {
         if ((ips::builtinEffects(spec, &overload).checks & static_cast<u8>(EffectCheck::NumericRange)) == 0) continue;
         INFO(name << " arity " << overload.params.size());
+        if (name == "mask.from" || name == "mask.invert" || name == "surface.paint") {
+            const std::string use = name == "mask.from" ? "mask.from(image)" : name == "mask.invert" ?
+                "mask.invert(region)" : overload.params.size() == 2 ? "surface.paint(region,#ffffff)" :
+                "surface.paint(region,#ffffff,surface.legacy)";
+            for (const bool optimize : {false,true})
+                expectTrap(staleExportScale(use, optimize), ErrorReason::NumericRange, {0, 8, 4, {}});
+            continue;
+        }
         std::string setup, args=arguments(overload,true);
         if (name.starts_with("mask.")) {
             setup="layer image{}region=mask.from(image) ";
