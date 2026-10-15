@@ -17,6 +17,7 @@
 // the same link shows the same pixels to everyone.
 
 import "./site";
+import "./butterfly";
 
 interface Output {
     name: string;

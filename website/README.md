@@ -29,6 +29,19 @@ getting-started guide with the documentation, and the source page.
   idle time; with reduced motion the strip is skipped. The share link
   `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
   the seed alone.
+  Below the legendary roll, **Butterfly benchmark** composes a 256×256
+  butterfly from three compiled programs: forewing, hindwing and body.
+  Each wing is generated once and mirrored; five canvas layers animate
+  independently on the page. A dedicated worker keeps WASM generation off
+  the animation thread. The button releases the preview, then generates and
+  releases 50 fresh seeds in sequence, showing the completed count, mean
+  generation time and mean VM fuel for each part. Preview generation,
+  downloads and flight time are excluded from the averages. Reduced motion
+  replaces flight and flapping with a short fade.
+  The files and their byte sizes/hashes are in
+  `examples/showcase/butterfly-benchmark.json`; `prepare.sh` copies them with
+  the existing showcase assets. The WASM build exports its actual VM fuel
+  counters and supports web workers.
 - **Get started** (`docs/getting-started.html`) with the documentation
   pages beside it: the `.ips` language reference, the binary format, the
   backends and the FAQ. A client-side section search sits in the docs
@@ -97,6 +110,8 @@ this complete pipeline in its WASM job.
 | `templates/partials/` | the header, footer and docs sidebar |
 | `templates/language.html` | the presentation shell for the generated handbook |
 | `src/home.ts` | the live examples, the outputs card and the game slots |
+| `src/butterfly.ts` | benchmark controls, live averages and canvas-part flight animation |
+| `public/butterfly-worker.js` | three-part WASM generation and measured fuel/time |
 | `src/site.ts` | the header and the mobile menu |
 | `src/styles/site.css` | every style of the site |
 | `scripts/build-docs.mjs` | Markdown rendering and generated search anchors |

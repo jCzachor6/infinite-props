@@ -191,6 +191,11 @@ emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 sizeX, u32
                          emscripten::val(emscripten::typed_memory_view(
                              g_rgba.size(), g_rgba.data())));
         resultObject.set("outputs", outputs);
+        emscripten::val fuel = emscripten::val::object();
+        fuel.set("budget", static_cast<double>(vm.fuelBudget()));
+        fuel.set("remaining", static_cast<double>(vm.fuel()));
+        fuel.set("used", static_cast<double>(vm.fuelBudget() - vm.fuel()));
+        resultObject.set("fuel", fuel);
         return resultObject;
     } catch (const iprop::FormatError& error) {
         throwJs(std::string("iprop: ") + error.what());

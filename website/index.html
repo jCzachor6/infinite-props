@@ -216,6 +216,76 @@
     </div>
   </section>
 
+  <section class="section section--band butterfly-benchmark" id="butterfly-benchmark" aria-labelledby="butterfly-title" data-butterfly-benchmark>
+    <div class="container">
+      <div class="section-head butterfly-benchmark__heading">
+        <div>
+          <p class="butterfly-benchmark__eyebrow">A little code. A lot of butterflies.</p>
+          <h2 class="section-title" id="butterfly-title">Butterfly benchmark</h2>
+          <p class="section-sub">Three procedural parts become one butterfly. Release fifty and see what your browser can do.</p>
+        </div>
+        <span class="butterfly-benchmark__size"><strong data-butterfly-total-size>…</strong><span>for the whole model</span><span class="butterfly-benchmark__resolution">256 × 256 px</span></span>
+      </div>
+
+      <div class="butterfly-benchmark__layout">
+        <div class="butterfly-benchmark__model">
+          <div class="butterfly-stage" data-butterfly-stage aria-label="Procedural butterfly preview and flight area">
+            <div class="butterfly-stage__topline"><span><i aria-hidden="true"></i> Generated, not stored</span><code data-butterfly-seed>seed —</code></div>
+            <span class="butterfly-stage__loading" data-butterfly-loading>Preparing the wings…</span>
+            <div class="butterfly-stage__perch" aria-hidden="true"></div>
+            <div class="butterfly-stage__flock" data-butterfly-flock></div>
+            <div class="butterfly-stage__caption"><span>256 × 256</span><span>5 visible layers · 3 files</span></div>
+          </div>
+          <div class="butterfly-parts" aria-label="The three model parts">
+            <a class="butterfly-part" href="showcase/butterfly-forewing.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--fore" aria-hidden="true">01</span>
+              <span><strong>Forewings <small>× 2</small></strong><span>Front wings &amp; antennae</span></span>
+              <code data-butterfly-size="forewing">…</code>
+            </a>
+            <a class="butterfly-part" href="showcase/butterfly-hindwing.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--hind" aria-hidden="true">02</span>
+              <span><strong>Hindwings <small>× 2</small></strong><span>Rear wings &amp; pattern</span></span>
+              <code data-butterfly-size="hindwing">…</code>
+            </a>
+            <a class="butterfly-part" href="showcase/butterfly-body.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--body" aria-hidden="true">03</span>
+              <span><strong>Body <small>× 1</small></strong><span>Fur, head &amp; abdomen</span></span>
+              <code data-butterfly-size="body">…</code>
+            </a>
+          </div>
+          <p class="butterfly-benchmark__explanation">Each wing part generates one side, then the browser mirrors it. The body sits on top. Wings flap independently around the body as every new butterfly takes flight. Each seed draws a fresh combination of shapes, colours and patterns from the same three files. The body takes its proportions and colour cues from the wings, so the parts fit together. Mirroring reuses the generated wing images, keeping both the download and the amount of generation work small. Benchmark 50x creates fifty fresh butterflies and reports their average generation time alongside the average fuel used by each part.</p>
+        </div>
+
+        <aside class="butterfly-results" aria-label="Live benchmark results">
+          <div class="butterfly-results__header"><span>Live benchmark</span><span class="butterfly-results__state" data-butterfly-state>Loading</span></div>
+          <div class="butterfly-results__count"><output data-butterfly-count>0</output><span>/ 50</span></div>
+          <p class="butterfly-results__label">butterflies generated</p>
+          <div class="butterfly-results__progress" role="progressbar" aria-label="Butterflies generated" aria-valuemin="0" aria-valuemax="50" aria-valuenow="0" data-butterfly-progress><span></span></div>
+          <div class="butterfly-results__time"><span>Avg generation</span><strong><output data-butterfly-average>—</output> <small>ms / butterfly</small></strong></div>
+          <table class="butterfly-fuel">
+            <thead><tr><th scope="col">Part</th><th scope="col">Avg fuel</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--fore" aria-hidden="true"></i>Forewing</th><td><output data-butterfly-fuel="forewing">—</output></td></tr>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--hind" aria-hidden="true"></i>Hindwing</th><td><output data-butterfly-fuel="hindwing">—</output></td></tr>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--body" aria-hidden="true"></i>Body</th><td><output data-butterfly-fuel="body">—</output></td></tr>
+            </tbody>
+          </table>
+          <div class="butterfly-results__actions" data-butterfly-actions>
+            <button class="btn btn--legendary butterfly-results__button" type="button" data-butterfly-run disabled>
+              <span data-butterfly-run-label>Benchmark 50x</span><span class="butterfly-results__run-icon" aria-hidden="true">↗</span>
+            </button>
+            <button class="btn btn--legendary butterfly-results__button butterfly-results__auto" type="button" data-butterfly-auto aria-pressed="false" title="Start automatic benchmarks" hidden>
+              <span class="butterfly-results__auto-dot" aria-hidden="true"></span><span>Auto roll</span>
+            </button>
+          </div>
+          <p class="butterfly-results__status" role="status" data-butterfly-status>Loading three parts and the interpreter…</p>
+          <p class="butterfly-results__note"><strong>This benchmark runs in your browser via WebAssembly (WASM).</strong> Native builds can generate the same model significantly faster, depending on hardware and build settings. Times cover generation of all three parts. The preview, download and flight animation are excluded. Fuel is measured per part, before mirroring.</p>
+        </aside>
+      </div>
+      <noscript><p>Enable JavaScript to generate the butterfly and run the benchmark.</p></noscript>
+    </div>
+  </section>
+
   <section class="section" id="features">
     <div class="container">
       <div class="section-head">
