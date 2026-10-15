@@ -4,24 +4,26 @@ Source must be valid UTF-8. Whitespace separates tokens; newlines do not end
 statements. `//` comments extend to the next newline and `/* ... */` comments
 end at the first closing delimiter (they do not nest). Semicolons are optional
 separators inside function blocks. One optional semicolon may follow each
-import, `size`, `origin`, `variants`, `archetypes`, `input`, `output` or
-`palette` declaration. Forms without semicolons remain valid; newline is
+import, `size`, `origin`, `input`, `output` or
+`palette` or `const` declaration. Forms without semicolons remain valid; newline is
 whitespace and never implicitly terminates a declaration or expression.
 
 Ordinary identifiers match `[A-Za-z_][A-Za-z0-9_]*` and are case-sensitive.
 Control/declaration keywords (`asset`, `input`, `output`, `import`, `from`,
-`if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`, `list`,
-`true`, `false`) are reserved. `draw`, `at`, type names and geometry kind
-names are soft keywords accepted in name positions; `draw` still selects
-the entry block when used as an asset-level function name. `to`, `with`
-and `distribution` are ordinary names that also spell the
-[random range](random.md#random-ranges-with-to) operator, its
-[distribution](random.md#distributions) and the typed declaration. Asset names and
+`if`, `else`, `while`, `for`, `in`, `break`, `continue`, `return`,
+`true`, `false`) and `const`, `to`, `with`, `distribution`, `sampler`, `stepper`,
+`weighted`, `density`, `layer`, `mask` and `clip` are reserved. `draw`, `at`, scalar type names and geometry kind
+names and `list` are soft keywords accepted in name positions; `draw` still selects
+the entry block when used as an asset-level function name. Reserved words cannot
+name assets, inputs, outputs, locals, helpers, parameters, aliases or members.
+Newly introduced keywords have no contextual compatibility aliases. Asset names and
 `for` counter names require an ordinary identifier. Asset-level `size`,
-`origin`, `variants`, `archetypes` and `palette` introduce metadata.
+`origin` and `palette` introduce metadata.
+`const type name = expression` introduces an [asset constant](assets.md#asset-constants)
+only in declaration position. The reserved word cannot be used as a name elsewhere.
 
 Use descriptive names distinct from builtin functions and the namespaces
-`color`, `vec2`, `dist`, `noise` and `cell`. Builtin call resolution takes
+`color`, `vec2`, `dist`, `noise`, `cell`, `surface`, `mask` and `list.len`. Builtin call resolution takes
 precedence over user helpers with the same name.
 
 ## Literals
@@ -49,5 +51,5 @@ integer semantics.
 <!-- example: ../../examples/language/syntax.ips -->
 
 Trailing commas are accepted in call arguments, helper parameters, palette
-elements and compound literals. Syntax is ASCII: Unicode text may appear only
+elements, list literals and compound literals. Syntax is ASCII: Unicode text may appear only
 in comments and string literals.

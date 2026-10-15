@@ -1,9 +1,12 @@
 #include "iprop/Validator.hpp"
 #include "iprop/Compression.hpp"
+#include "iprop/Compositor.hpp"
+#include "iprop/ListOperations.hpp"
 
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/D4Transform.hpp"
+#include "iprop/math/Distribution.hpp"
 
 #include <algorithm>
 #include <string>
@@ -13,16 +16,7 @@
 namespace iprop {
 namespace {
 
-const char* typeName(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return "i32";
-    case ValueType::F32: return "f32";
-    case ValueType::Color: return "color";
-    case ValueType::Vec2: return "vec2";
-    case ValueType::Distribution: return "distribution";
-    }
-    return "?";
-}
+const char* typeName(ValueType type) { return valueTypeName(type); }
 
 // Uniform params travel in i32 slots for u32 values (spec §3/§6.1).
 ValueType typeOf(const InputDecl& decl) {
@@ -61,19 +55,14 @@ public:
         : file_(file), fn_(function), slots_(slots), functionIndex_(functionIndex) {}
 
     void run() {
-        const auto hasVec2 = [](const std::vector<ValueType>& types) {
-            return std::find(types.begin(), types.end(), ValueType::Vec2) != types.end();
-        };
-        if (file_.layout.header.versionMinor < 3 &&
-            (hasVec2(fn_.params) || hasVec2(fn_.results) || hasVec2(fn_.locals))) {
-            fail(0, "vec2 types require format 0.3");
-        }
-        const auto hasDistribution = [](const std::vector<ValueType>& types) {
-            return std::find(types.begin(), types.end(), ValueType::Distribution) != types.end();
-        };
-        if (file_.layout.header.versionMinor < 5 &&
-            (hasDistribution(fn_.params) || hasDistribution(fn_.results) || hasDistribution(fn_.locals))) {
-            fail(0, "distribution types require format 0.5");
+        // The loader admits only the current format version, so every
+        // opcode and value type of the table is available here.
+        for (const auto* slots : {&fn_.params, &fn_.results, &fn_.locals}) {
+            for (const auto type : *slots) {
+                if (!type.isStorable()) fail(0, "invalid declared value type");
+                if (type.needsDescriptor() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
+                    fail(0, "missing declared type descriptor");
+            }
         }
         const auto count = fn_.code.size() / 4;
         for (std::size_t i = 0; i < count; ++i) {
@@ -83,15 +72,12 @@ public:
             if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
-            if (spec->aux == AuxPolicy::PartTransform) {
-                if (!D4Transform::fromKind(ins.aux)) fail(i, "unknown part transform kind");
-                if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
-                    fail(i, "part transforms require format 0.3");
-            }
-            if (file_.layout.header.versionMinor < spec->minimumMinor) {
-                fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
-                        std::to_string(spec->minimumMinor));
-            }
+            if (spec->operand == OperandKind::Zero && ins.operand != 0)
+                fail(i, std::string(spec->mnemonic) + " operand must be zero");
+            if (spec->aux == AuxPolicy::PartTransform && !D4Transform::fromKind(ins.aux))
+                fail(i, "unknown part transform kind");
+            if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
+                fail(i, "unknown layer alpha mode");
             if (spec->stack) {
                 applyStack(i, *spec);
                 continue;
@@ -195,6 +181,57 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
+        case Opcode::LayerBegin:
+        case Opcode::ClipBegin:
+            if (ins.opcode == Opcode::ClipBegin) expect(at, ValueType::Mask, "clip mask");
+            else if (op < fn_.params.size() || op >= localCount() || localType(op) != ValueType::Layer)
+                fail(at, "layer destination must be a layer local");
+            if (static_cast<std::size_t>(std::count_if(labels_.begin(), labels_.end(), [](const auto& label) {
+                return label.kind == Opcode::LayerBegin || label.kind == Opcode::ClipBegin;
+            })) >= kMaxSurfaceScopes) fail(at, "surface scope depth exceeds 32");
+            labels_.push_back({ins.opcode, stack_, reachable_});
+            return;
+        case Opcode::SurfacePaint:
+            if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
+            expect(at, ValueType::Layer, "surface.paint image");
+            return;
+        case Opcode::SurfacePaintMask:
+            if (!validCompositionMode(op)) fail(at, "unknown surface blend mode");
+            expect(at, ValueType::Color, "surface.paint mask color");
+            expect(at, ValueType::Mask, "surface.paint mask");
+            return;
+        case Opcode::LayerBlur: case Opcode::MaskBlur: {
+            expect(at, ValueType::F32, "blur sigma");
+            const auto type = ins.opcode == Opcode::LayerBlur ? ValueType::Layer : ValueType::Mask;
+            expect(at, type, "blur receiver");
+            push(at, type);
+            return;
+        }
+        case Opcode::MaskFrom:
+            expect(at, ValueType::Layer, "mask.from image");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskUnion: case Opcode::MaskIntersect: case Opcode::MaskSubtract:
+            expect(at, ValueType::Mask, "mask right operand");
+            expect(at, ValueType::Mask, "mask left operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskInvert:
+            expect(at, ValueType::Mask, "mask.invert operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskExpand: case Opcode::MaskShrink:
+            expect(at, ValueType::I32, "mask radius");
+            expect(at, ValueType::Mask, "mask morphology operand");
+            push(at, ValueType::Mask);
+            return;
+        case Opcode::MaskOffset:
+            expect(at, ValueType::I32, "mask offset dy");
+            expect(at, ValueType::I32, "mask offset dx");
+            expect(at, ValueType::Mask, "mask.offset operand");
+            push(at, ValueType::Mask);
+            return;
+
         case Opcode::Block:
         case Opcode::Loop:
             labels_.push_back({ins.opcode, stack_, reachable_});
@@ -292,9 +329,102 @@ private:
         case Opcode::Dup: {
             if (!reachable_) return;
             if (stack_.empty()) fail(at, "stack underflow (dup)");
+            if (stack_.back().kind == ValueType::Builder) fail(at, "list builder cannot be duplicated");
+            if (stack_.back() == ValueType::PointBuilder) fail(at, "distribution builder cannot be duplicated");
             push(at, stack_.back());
             return;
         }
+
+        case Opcode::ConstList:
+            if (op >= file_.collections.lists.size()) fail(at, "collection constant index out of range");
+            push(at, file_.collections.lists[op].type);
+            return;
+        case Opcode::ConstDistribution:
+            if (op >= file_.collections.distributions.size()) fail(at, "distribution constant index out of range");
+            push(at, ValueType::Distribution);
+            return;
+        case Opcode::DistributionBegin:
+            if (op > 255 || !math::pointDistributionSpec(static_cast<DistributionFamily>(op))) fail(at, "unknown point distribution family");
+            expect(at, ValueType::I32, "distribution point count");
+            push(at, ValueType::PointBuilder);
+            return;
+        case Opcode::DistributionAppend:
+            if (op > 3) fail(at, "invalid distribution point types");
+            expect(at, (op & 2) ? ValueType::F32 : ValueType::I32, "distribution point value");
+            expect(at, (op & 1) ? ValueType::F32 : ValueType::I32, "distribution point key");
+            expect(at, ValueType::PointBuilder, "distribution builder");
+            push(at, ValueType::PointBuilder);
+            return;
+        case Opcode::DistributionEnd:
+            expect(at, ValueType::PointBuilder, "distribution builder");
+            push(at, ValueType::Distribution);
+            return;
+        case Opcode::ConstSampler:
+            if (op >= file_.collections.samplers.size()) fail(at, "sampler constant index out of range");
+            push(at, file_.collections.samplers[op].type);
+            return;
+        case Opcode::ConstStepper:
+            if (op >= file_.collections.steppers.size()) fail(at, "stepper constant index out of range");
+            push(at, file_.collections.steppers[op].type);
+            return;
+        case Opcode::ListBegin: case Opcode::ListAppend: case Opcode::ListEnd:
+        case Opcode::ListGet: case Opcode::ListLen: case Opcode::ListDistinct: case Opcode::ListSort: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            if (!type.isList()) fail(at, "expected list descriptor");
+            if (ins.opcode == Opcode::ListSort && !isSortableList(type)) fail(at, "list.sort does not support this element type");
+            const auto builder = ValueType::builder(type);
+            if (ins.opcode == Opcode::ListBegin) {
+                expect(at, ValueType::I32, "list size"); push(at, builder);
+            } else if (ins.opcode == Opcode::ListAppend) {
+                expect(at, type.item(), "list element"); expect(at, builder, "list builder"); push(at, builder);
+            } else if (ins.opcode == Opcode::ListEnd) {
+                expect(at, builder, "list builder"); push(at, type);
+            } else if (ins.opcode == Opcode::ListGet) {
+                expect(at, ValueType::I32, "list index"); expect(at, type, "list handle"); push(at, type.item());
+            } else if (ins.opcode == Opcode::ListDistinct || ins.opcode == Opcode::ListSort) {
+                expect(at, type, "list handle"); push(at, type);
+            } else {
+                expect(at, type, "list handle"); push(at, ValueType::I32);
+            }
+            return;
+        }
+        case Opcode::SamplerValue: case Opcode::SamplerRange: case Opcode::SamplerWith:
+        case Opcode::SamplerPick: case Opcode::SamplerPickList: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            if (!type.isSampler()) fail(at, "expected sampler descriptor");
+            if (ins.opcode == Opcode::SamplerPick || ins.opcode == Opcode::SamplerPickList) {
+                if (ins.opcode == Opcode::SamplerPickList) expect(at, ValueType::I32, "sampler result count");
+                expect(at, type, "sampler receiver");
+                push(at, ins.opcode == Opcode::SamplerPick ? type.item() : ValueType::list(type.item()));
+            } else {
+                if (ins.opcode == Opcode::SamplerWith) expect(at, ValueType::Distribution, "sampler distribution");
+                if (ins.opcode != Opcode::SamplerValue) expect(at, type.item(), "sampler upper bound");
+                expect(at, type.item(), "sampler lower bound"); push(at, type);
+            }
+            return;
+        }
+        case Opcode::StepperValue: case Opcode::StepperRange: case Opcode::StepperWith:
+        case Opcode::StepperPickList: {
+            if (op >= file_.collections.types.size()) fail(at, "type descriptor index out of range");
+            const auto type = file_.collections.types[op];
+            if (!type.isStepper()) fail(at, "expected stepper descriptor");
+            if (ins.opcode == Opcode::StepperPickList) {
+                expect(at, ValueType::I32, "stepper result count");
+                expect(at, type, "stepper receiver");
+                push(at, ValueType::list(type.item()));
+            } else {
+                if (ins.opcode == Opcode::StepperWith) expect(at, ValueType::Distribution, "stepper distribution");
+                if (ins.opcode != Opcode::StepperValue) expect(at, type.item(), "stepper upper bound");
+                expect(at, type.item(), "stepper lower bound"); push(at, type);
+            }
+            return;
+        }
+        case Opcode::PolyList:
+            expect(at, ValueType::Color, "poly colour");
+            expect(at, ValueType::list(ValueType::Vec2), "poly points");
+            return;
 
         case Opcode::Poly: {
             if (op > kMaxStackDepth) fail(at, "poly vertex count exceeds limit");
@@ -306,6 +436,20 @@ private:
         }
 
         // Structured outputs (§9.9).
+        case Opcode::OutMask:
+        case Opcode::OutLayer:
+        case Opcode::PartGetMask:
+        case Opcode::PartGetLayer: {
+            if (op >= file_.resourceExports.size()) fail(at, "resource export slot index out of range");
+            const auto type = ins.opcode == Opcode::OutMask || ins.opcode == Opcode::PartGetMask
+                ? ValueType::Mask : ValueType::Layer;
+            if (file_.resourceExports[op].type != type) fail(at, "resource export type mismatch");
+            const bool get = ins.opcode == Opcode::PartGetMask || ins.opcode == Opcode::PartGetLayer;
+            if (get && file_.resourceExports[op].owner == kRootParent)
+                fail(at, "part.get reads a root-owned resource export");
+            if (get) push(at, type); else expect(at, type, "resource export");
+            return;
+        }
         case Opcode::OutPoint:
             checkSlot(at, op, OutputKind::Point, false, false);
             expect(at, ValueType::F32, "point y");
@@ -354,8 +498,6 @@ private:
             const auto& part = file_.code.parts[op];
             expect(at, ValueType::F32, "part offset y");
             expect(at, ValueType::F32, "part offset x");
-            expect(at, ValueType::I32, "part archetype");
-            expect(at, ValueType::I32, "part variant");
             expect(at, ValueType::I32, "part seed");
             for (std::size_t p = part.inputs.size(); p > 0; --p) {
                 expect(at, typeOf(part.inputs[p - 1]), "part uniform");
@@ -423,13 +565,13 @@ void checkEntry(const LoadedFile& file) {
         throw FormatError("entry function must be named 'draw'", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
-    const std::size_t expected = 2 + file.meta.inputs.size();
+    const std::size_t expected = file.meta.inputs.size();
     if (entry.params.size() != expected) {
         throw FormatError("draw signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
             functionLocation(file, entry));
     }
     for (std::size_t i = 0; i < expected; ++i) {
-        const ValueType want = i < 2 ? ValueType::I32 : typeOf(file.meta.inputs[i - 2]);
+        const ValueType want = typeOf(file.meta.inputs[i]);
         if (entry.params[i] != want) {
             throw FormatError("draw signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
                 functionLocation(file, entry));
@@ -444,13 +586,13 @@ void checkEntry(const LoadedFile& file) {
 void checkPartSignatures(const LoadedFile& file) {
     for (const auto& part : file.code.parts) {
         const auto& fn = file.code.functions[part.functionIndex];
-        const std::size_t expected = 2 + part.inputs.size();
+        const std::size_t expected = part.inputs.size();
         if (fn.params.size() != expected) {
             throw FormatError("part function signature mismatch: parameter count", ErrorReason::InvalidSignature, ErrorStage::Validate,
                 functionLocation(file, fn));
         }
         for (std::size_t i = 0; i < expected; ++i) {
-            const ValueType want = i < 2 ? ValueType::I32 : typeOf(part.inputs[i - 2]);
+            const ValueType want = typeOf(part.inputs[i]);
             if (fn.params[i] != want) {
                 throw FormatError("part function signature mismatch: parameter type", ErrorReason::InvalidSignature, ErrorStage::Validate,
                     functionLocation(file, fn));
@@ -584,10 +726,24 @@ LoadedFile loadFile(std::span<const u8> data) {
     file.layout = parseLayout(bytes);
     file.pool = parseConsts(bytes, *file.layout.find(SectionId::Const));
     file.meta = parseMeta(bytes, *file.layout.find(SectionId::Meta), file.pool);
-    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool);
+    if (const auto* types = file.layout.find(SectionId::Types))
+        file.collections.types = parseTypeDescriptors(bytes, *types);
+    // Later pools reference earlier ones; all of them share one budget.
+    PoolBudget budget;
+    if (const auto* distributions = file.layout.find(SectionId::Distributions))
+        file.collections.distributions = parseDistributionPool(bytes, *distributions, budget);
+    if (const auto* samplers = file.layout.find(SectionId::Samplers))
+        file.collections.samplers = parseSamplerPool(bytes, *samplers, file.collections, budget);
+    if (const auto* steppers = file.layout.find(SectionId::Steppers))
+        file.collections.steppers = parseStepperPool(bytes, *steppers, file.collections, budget);
+    if (const auto* lists = file.layout.find(SectionId::Collections))
+        file.collections.lists = parseCollectionPool(bytes, *lists, file.collections, budget);
+    file.code = parseCode(bytes, *file.layout.find(SectionId::Code), file.pool, file.collections.types);
     if (const auto* parts = file.layout.find(SectionId::Parts)) {
         parsePartInstances(bytes, *parts, file.pool, file.code);
     }
+    if (const auto* exports = file.layout.find(SectionId::ResourceExports))
+        parseResourceExports(bytes, *exports, file);
     return file;
 }
 
@@ -600,6 +756,7 @@ void validate(const LoadedFile& file) {
     }
     checkPartAcyclicity(file);
     checkPartHierarchy(file, slots);
+    validateResourceOwnership(file);
 }
 
 } // namespace iprop

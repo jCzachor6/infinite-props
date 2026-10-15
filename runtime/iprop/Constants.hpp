@@ -4,13 +4,9 @@
 
 namespace iprop {
 
-// File header (spec §2.1).
+// File header (spec §2.1). The format is unversioned: the four bytes after
+// the magic are reserved and must be zero.
 inline constexpr u8 kMagic[4] = {0x49, 0x50, 0x52, 0x50}; // "IPRP"
-inline constexpr u16 kVersionMajor = 0;
-inline constexpr u16 kVersionMinor = 5;
-// Writers emit the oldest minor that holds every instruction (spec v0.5 §1),
-// never older than the 0.4 files written before format 0.5 existed.
-inline constexpr u16 kOldestWrittenMinor = 4;
 inline constexpr u32 kHeaderSize = 20;
 inline constexpr u32 kFlagDebug = 1u << 0; // debug section present
 inline constexpr u32 kFlagCompressed = 1u << 1; // v0.4 zlib envelope
@@ -23,6 +19,12 @@ enum class SectionId : u32 {
     Code = 3,
     Debug = 4,
     Parts = 5, // v0.5: part instance names and parents (spec v0.5 §6)
+    Types = 6, // v0.6: parameterized type descriptors
+    Collections = 7, // v0.6: immutable collection constants
+    Samplers = 8, // v0.6: immutable sampler constants
+    Distributions = 9, // v0.6: immutable point distribution constants
+    ResourceExports = 10, // v0.6: internal mask/layer exports and function owners
+    Steppers = 11, // v0.7: immutable stepper constants
 };
 
 // Input (uniform) types (spec §4.1).
@@ -112,7 +114,7 @@ enum class Opcode : u8 {
     // Colour (§9.5)
     ColorMix = 0x50,
     ColorShade = 0x51,
-    ColorSetA = 0x52, // v0.3: the alpha set; reserved (rejected) before 0.3
+    ColorSetA = 0x52, // v0.3: the alpha set
     F32Cos = 0x53,    // trigonometry, placed in the post-colour gap (§9.4)
 
     // The math package (§9.4/§12.8)
@@ -232,6 +234,54 @@ enum class Opcode : u8 {
     // Gradients and segments (spec v0.5 §5; added in v0.5)
     ColorMixRgba = 0xAF,
     Vec2Mix = 0xB0,
+
+    // Exact integer bounds and stable normalization (spec v0.6 §2–3).
+    I32Min = 0xB1,
+    I32Max = 0xB2,
+    I32Clamp = 0xB3,
+    Vec2Normalize = 0xB4,
+    ConstList = 0xB5,
+    ListBegin = 0xB6,
+    ListAppend = 0xB7,
+    ListEnd = 0xB8,
+    ListGet = 0xB9,
+    ListLen = 0xBA,
+    PolyList = 0xBB,
+    SamplerValue = 0xBC,
+    SamplerRange = 0xBD,
+    SamplerWith = 0xBE,
+    SamplerPick = 0xBF,
+    SamplerPickList = 0xC0,
+    ConstSampler = 0xC1,
+    ConstDistribution = 0xC2,
+    DistributionBegin = 0xC3,
+    DistributionAppend = 0xC4,
+    DistributionEnd = 0xC5,
+    LayerBegin = 0xC6,
+    SurfacePaint = 0xC7,
+    MaskFrom = 0xC8,
+    MaskUnion = 0xC9,
+    MaskIntersect = 0xCA,
+    MaskSubtract = 0xCB,
+    MaskInvert = 0xCC,
+    MaskExpand = 0xCD,
+    MaskShrink = 0xCE,
+    MaskOffset = 0xCF,
+    SurfacePaintMask = 0xD0,
+    ClipBegin = 0xD1,
+    OutMask = 0xD2,
+    OutLayer = 0xD3,
+    PartGetMask = 0xD4,
+    PartGetLayer = 0xD5,
+    ListDistinct = 0xD6,
+    ListSort = 0xD7,
+    StepperValue = 0xD8,
+    StepperRange = 0xD9,
+    StepperWith = 0xDA,
+    StepperPickList = 0xDB,
+    ConstStepper = 0xDC,
+    LayerBlur = 0xDD,
+    MaskBlur = 0xDE,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

@@ -1,6 +1,6 @@
 # Retained root parameters
 
-API 0.3 advertises `IPROP_CAP_PARAMETERS` for the generic operations below.
+API 0.4 advertises `IPROP_CAP_PARAMETERS` for the generic operations below.
 Typed setters have the separate `IPROP_CAP_PARAMETERS_TYPED` capability and
 strict override lists `IPROP_CAP_PARAMETER_OVERRIDES`. `IPROP_CAP_GENERATE_EX`
 advertises checked generation from a parameter set.
@@ -169,7 +169,7 @@ its data, so later parameter changes never alter it.
 
 A parameter set is a single-user builder, not a synchronized object. Never call
 functions on one set from two threads at the same time, and never mutate it
-while another thread reads, clones or generates with it. In 0.5, a program and
+while another thread reads, clones or generates with it. A program and
 the sets and clones created from it share loaded data and form one handle
 group: hosts serialize calls within a group and use separately loaded programs
 for concurrent workers. Sharing one program across concurrent workers is not

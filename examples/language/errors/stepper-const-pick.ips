@@ -1,0 +1,5 @@
+asset generatedConstant {
+  size 1x1
+  const list<i32> values = stepper(0 to 5).pick(10)
+  draw {}
+}

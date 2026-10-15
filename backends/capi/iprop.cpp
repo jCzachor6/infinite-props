@@ -58,7 +58,7 @@ iprop_status_ex iprop_program_query(const iprop_program* program, iprop_program_
         const auto info = iprop::capi::programInfo(*program);
 #define WRITE(field) iprop::capi::writeField(out, size, offsetof(iprop_program_info_ex, field), info.field)
         WRITE(size_x); WRITE(size_y); WRITE(origin_x); WRITE(origin_y);
-        WRITE(variants); WRITE(archetypes); WRITE(fuel);
+        WRITE(fuel);
         WRITE(has_emission); WRITE(emission_color);
         WRITE(emission_offset_x); WRITE(emission_offset_y); WRITE(emission_radius);
         WRITE(format_major); WRITE(format_minor); WRITE(container_flags);
@@ -107,8 +107,6 @@ iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_gene
         if (!checked.succeeded) return checked;
         iprop::GenerationInputs inputs;
         inputs.seed = request.seed;
-        inputs.variant = request.variant;
-        inputs.archetype = request.archetype;
         inputs.sizeX = request.sizeX;
         inputs.sizeY = request.sizeY;
         result = std::make_unique<iprop_result>();

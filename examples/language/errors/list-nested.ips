@@ -1,0 +1,4 @@
+asset list_nested {
+  size 1 1
+  draw { items = [[1]] }
+}

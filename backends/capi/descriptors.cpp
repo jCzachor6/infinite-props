@@ -92,7 +92,7 @@ iprop_status_ex iprop_program_info_ex_init(iprop_program_info_ex* out, uint32_t 
     const iprop_program_info_ex defaults{};
 #define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_program_info_ex, field), defaults.field)
     ZERO(size_x); ZERO(size_y); ZERO(origin_x); ZERO(origin_y);
-    ZERO(variants); ZERO(archetypes); ZERO(fuel);
+    ZERO(fuel);
     ZERO(has_emission); ZERO(emission_color);
     ZERO(emission_offset_x); ZERO(emission_offset_y); ZERO(emission_radius);
     ZERO(format_major); ZERO(format_minor); ZERO(container_flags);
@@ -129,7 +129,7 @@ iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_ex* out, u
     if (out == nullptr || capacity < sizeof(uint32_t)) return IPROP_EX_E_ARGUMENT;
     const uint32_t zero = 0;
 #define ZERO(field) iprop::capi::writeField(out, capacity, offsetof(iprop_generate_options_ex, field), zero)
-    ZERO(flags); ZERO(seed); ZERO(variant); ZERO(archetype); ZERO(size_x); ZERO(size_y);
+    ZERO(flags); ZERO(seed); ZERO(size_x); ZERO(size_y);
 #undef ZERO
     iprop::capi::writeField(out, capacity, 0, capacity);
     return IPROP_EX_OK;

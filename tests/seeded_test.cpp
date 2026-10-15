@@ -350,7 +350,7 @@ TEST_CASE("call frames share the caller's stream like a reference (spec §8.2)")
         {0, {0, 0}, {}, {}, drawBody},
         {kAnonymousName, {}, {1}, {}, helperBody}, // result: f32
     };
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
+    const auto meta = metaSection(8, 8, 0, 0, 100000, false, {}, 0, 0, 0, {}, {});
     const auto pool = constSection({"draw"}, {1}, {0.f}, {{0, 0, 0, 255}});
     const auto bytes = fullFile(meta, pool, codeSection(funcs, {}));
 

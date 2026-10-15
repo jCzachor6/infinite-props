@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "ips/Printer.hpp"
 #include "ips/BuiltinArguments.hpp"
 #include "ips/CallPlan.hpp"
@@ -303,13 +304,32 @@ class SourcePrinter {
                 expression(*node.upper);
                 if (node.distribution) { out_ << " with "; expression(*node.distribution); }
                 if (!groups) out_ << ')';
-            } else if constexpr (std::is_same_v<T, VectorLit>) {
-                out_ << '{';
+            } else if constexpr (std::is_same_v<T, SamplerCapture>) {
+                out_ << (node.stepper ? "stepper(" : "sampler("); expression(*node.value); out_ << ')';
+            } else if constexpr (std::is_same_v<T, SamplerPick>) {
+                expression(*node.receiver); out_ << ".pick(";
+                if (node.count) expression(*node.count);
+                out_ << ')';
+            } else if constexpr (std::is_same_v<T, SurfaceBlur>) {
+                expression(*node.receiver); out_ << ".blur(";
+                if (node.sigma.name) out_ << "sigma = ";
+                expression(*node.sigma.value); out_ << ')';
+            } else if constexpr (std::is_same_v<T, ListMethod>) {
+                expression(*node.receiver); out_ << '.' << node.name << "()";
+            } else if constexpr (std::is_same_v<T, PointDistributionLiteral>) {
+                out_ << std::string(math::pointDistributionSpec(node.family)->name) << " {";
+                for (std::size_t i = 0; i < node.points.size(); ++i) {
+                    if (i) out_ << ", ";
+                    expression(*node.points[i].key); out_ << ": "; expression(*node.points[i].value);
+                }
+                out_ << '}';
+            } else if constexpr ((std::is_same_v<T, VectorLit> || std::is_same_v<T, ListLit>)) {
+                out_ << (std::is_same_v<T, ListLit> ? '[' : '{');
                 for (std::size_t i = 0; i < node.elements.size(); ++i) {
                     if (i) out_ << ", ";
                     expression(*node.elements[i]);
                 }
-                out_ << '}';
+                out_ << (std::is_same_v<T, ListLit> ? ']' : '}');
             } else if constexpr (std::is_same_v<T, Call>) {
                 expression(*node.callee); out_ << '(';
                 std::vector<PrintedArgument> args;
@@ -347,7 +367,7 @@ class SourcePrinter {
         std::visit([&](const auto& node) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, VarDecl>) {
-                if (node.declaredType) out_ << "distribution ";
+                if (node.declaredType) out_ << typeName(*node.declaredType) << ' ';
                 out_ << node.name << " = "; expression(*node.value);
             }
             else if constexpr (std::is_same_v<T, ExprStmt>) expression(*node.expr);
@@ -370,6 +390,13 @@ class SourcePrinter {
                         block(node.elseBranch, level, out_.sourceStarts(TokenKind::KeywordIf));
                     }
                 }
+            } else if constexpr (std::is_same_v<T, LayerStmt>) {
+                out_ << "layer " << node.name;
+                if (const auto* mode = compositionSpec(node.alpha)) out_ << "(alpha = surface." << mode->name << ')';
+                block(node.body, level);
+            } else if constexpr (std::is_same_v<T, ClipStmt>) {
+                out_ << "clip("; expression(*node.mask); out_ << ')';
+                block(node.body, level);
             }
         }, stmt);
         out_.finishRange(); out_ << '\n'; range.close();
@@ -421,14 +448,6 @@ public:
             indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Origin), false);
             out_ << "  origin "; expression(*asset.originX); out_ << ", "; expression(*asset.originY); out_.finishRange(); out_ << '\n'; range.close();
         }
-        if (asset.variants) {
-            indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Variants), false);
-            out_ << "variants " << *asset.variants; out_.finishRange(); out_ << '\n'; range.close();
-        }
-        if (asset.archetypes) {
-            indent(1); SourceOutput::Scope range(out_, metadata(program, MetadataSyntax::Kind::Archetypes), false);
-            out_ << "archetypes " << *asset.archetypes; out_.finishRange(); out_ << '\n'; range.close();
-        }
         for (const auto& input : asset.inputs) {
             indent(1); SourceOutput::Scope range(out_, input.sourceRange, false);
             out_ << "  input " << (input.type == InputType::U32 ? "u32" : typeName(valueTypeOf(input.type)))
@@ -436,11 +455,16 @@ public:
         }
         for (const auto& output : asset.outputs) {
             indent(1); SourceOutput::Scope range(out_, output.sourceRange, false);
-            const char* kinds[] = {"point", "rect", "circle"};
-            if (static_cast<unsigned>(output.kind) >= 3)
+            const char* kinds[] = {"point", "rect", "circle", "mask", "layer"};
+            if (static_cast<unsigned>(output.kind) >= 5)
                 throw SourceError{output.location, "invalid output kind in source printer"};
             out_ << "  output " << (output.isList ? "list " : "")
                  << kinds[static_cast<unsigned>(output.kind)] << ' ' << output.name; out_.finishRange(); out_ << '\n'; range.close();
+        }
+        for (const auto& constant : asset.constants) {
+            indent(1); SourceOutput::Scope range(out_, constant.sourceRange, false);
+            out_ << "  const " << typeName(valueTypeOf(constant.type)) << ' ' << constant.name << " = ";
+            expression(*constant.value); out_.finishRange(); out_ << '\n'; range.close();
         }
         for (const auto& palette : asset.palettes) {
             indent(1); SourceOutput::Scope range(out_, palette.sourceRange, false);

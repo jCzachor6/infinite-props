@@ -3,7 +3,7 @@
  *
  * The C API is the shared foundation every native host (SFML, Godot,
  * tools) links against. It loads a validated `.iprop` binary, generates
- * one (seed, variant, archetype, size, uniforms) tuple and hands back the
+ * one (seed, size, uniforms) tuple and hands back the
  * RGBA8 pixels plus the named structured outputs. Everything the host
  * receives is owned by an opaque handle and valid until that handle is
  * freed; the host never allocates on the library's behalf.
@@ -36,13 +36,13 @@ extern "C" {
 #endif
 
 /* Header API feature version, independent of the product/file versions.
- * API 0.2 is frozen on ABI line 0.4: its declarations, enum values,
+ * API 0.4 uses ABI line 0.5. Its declarations, enum values,
  * layouts and ownership cannot change in an additive API release.
  * Later APIs add symbols and separate sized descriptors; they do not
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 3
+#define IPROP_API_VERSION_MINOR 4
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
@@ -76,8 +76,6 @@ typedef struct {
 
 typedef struct {
     uint32_t seed;
-    uint32_t variant;
-    uint32_t archetype;
     uint32_t size_x; /* 0 = the asset's meta size */
     uint32_t size_y; /* 0 = the asset's meta size */
     const iprop_uniform* uniforms;
@@ -90,8 +88,6 @@ typedef struct {
     uint32_t size_y;
     float origin_x; /* asset units, y grows downward */
     float origin_y;
-    uint32_t variants;
-    uint32_t archetypes;
     uint64_t fuel;
 } iprop_meta;
 
@@ -159,7 +155,7 @@ IPROP_API void iprop_result_free(iprop_result* result);
 /* Copies the result's image view (width/height/pixels/outputs). */
 IPROP_API void iprop_result_image(const iprop_result* result, iprop_image* out);
 
-/* Additive API 0.3. Fixed-width statuses leave the legacy enum unchanged. */
+/* Checked API 0.4. Fixed-width statuses leave the legacy enum unchanged. */
 typedef uint32_t iprop_status_ex;
 #define IPROP_EX_OK UINT32_C(0)
 #define IPROP_EX_E_OOM UINT32_C(1)
@@ -210,8 +206,9 @@ typedef struct {
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
  * within that capacity are written; unknown tail bytes are untouched.
  * Numbers describe the loaded library, independently of this header.
- * Formats are the inclusive [format_minor_min, format_minor_max] range
- * under format_major. Capability bits advertise implemented behavior only. */
+ * The file format is unversioned: format_major, format_minor_min and
+ * format_minor_max are reserved and always zero. Capability bits advertise
+ * implemented behavior only. */
 typedef struct {
     uint32_t struct_size;
     uint32_t product_major, product_minor, product_patch;
@@ -239,14 +236,14 @@ IPROP_API iprop_status_ex iprop_library_info_ex_init(iprop_library_info_ex* out,
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
-    uint32_t seed, variant, archetype;
+    uint32_t seed;
     uint32_t size_x, size_y;
 } iprop_generate_options_ex;
 
 IPROP_API iprop_status_ex iprop_generate_options_ex_init(iprop_generate_options_ex* out,
                                                        uint32_t capacity);
 
-/* Structured errors, reported by every API 0.3 operation that takes an
+/* Structured errors, reported by every checked operation that takes an
  * iprop_error_ex*. Codes identify stable cause categories; they never depend
  * on message wording.
  * Fields are output-only except struct_size and the message buffer/capacity. */
@@ -255,7 +252,7 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_INVALID_FORMAT UINT32_C(1000)
 #define IPROP_REASON_TRUNCATED_INPUT UINT32_C(1001)
 #define IPROP_REASON_BAD_MAGIC UINT32_C(1002)
-#define IPROP_REASON_UNSUPPORTED_VERSION UINT32_C(1003)
+#define IPROP_REASON_UNSUPPORTED_VERSION UINT32_C(1003) /* retired: never reported */
 #define IPROP_REASON_INVALID_HEADER UINT32_C(1004)
 #define IPROP_REASON_COMPRESSION UINT32_C(1005)
 #define IPROP_REASON_INVALID_LAYOUT UINT32_C(1006)
@@ -282,8 +279,6 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_INVALID_PART UINT32_C(3013)
 #define IPROP_REASON_STREAM_UNDERFLOW UINT32_C(3014)
 #define IPROP_REASON_INVALID_ARGUMENT UINT32_C(4000)
-#define IPROP_REASON_VARIANT_RANGE UINT32_C(4001)
-#define IPROP_REASON_ARCHETYPE_RANGE UINT32_C(4002)
 #define IPROP_REASON_CANVAS_SIZE UINT32_C(4003)
 #define IPROP_REASON_UNIFORM_TYPE UINT32_C(4004)
 #define IPROP_REASON_UNKNOWN_PARAMETER UINT32_C(4005)
@@ -347,7 +342,7 @@ typedef struct {
  * padding and incomplete fields are untouched, like the other initializers. */
 IPROP_API iprop_status_ex iprop_error_ex_init(iprop_error_ex* out, uint32_t capacity);
 
-/* Checked API 0.3 operations share the structured status/message policy.
+/* Checked API 0.4 operations share the structured status/message policy.
  * Optional error output is initialized on every completed call, including
  * success. Its descriptor/message storage must not overlap out_program or a
  * query output, or its own message buffer overlap its descriptor. Overlap is
@@ -374,14 +369,14 @@ typedef struct {
  * leaves the output untouched. Fields through fuel retain their old offsets.
  * METADATA_EXTENDED advertises the appended emission/physical format fields.
  * has_emission is 0 or 1; when zero all emission fields are zero, otherwise
- * channels and binary32 bits are exact. Format major/minor/flags describe the
- * actual loaded physical container, including compression/debug bits; they
- * are not the library's accepted format range. No flags are query inputs. */
+ * channels and binary32 bits are exact. container_flags describe the actual
+ * loaded physical container, including compression/debug bits; format_major
+ * and format_minor are reserved and always zero, as the format is
+ * unversioned. No flags are query inputs. */
 typedef struct {
     uint32_t struct_size;
     uint32_t size_x, size_y;
     float origin_x, origin_y;
-    uint32_t variants, archetypes;
     uint64_t fuel;
     uint32_t has_emission;
     iprop_color_rgba8 emission_color;
@@ -602,7 +597,9 @@ IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program
 
 /* Stored part table. part_index N maps to owner N+1, including empty parts.
  * input_count describes the part's own input signature; output_begin/count
- * select its contiguous global output range for program_output_get, and
+ * select its contiguous geometry output range for program_output_get, and
+ * exclude internal format-0.6 mask/layer resource exports. All output_count
+ * fields and output indices count point/rect/circle geometry only.
  * program_output_find uses this owner. An empty part may have the same
  * output_begin as the following part while keeping its own owner.
  * Files with a v0.5 parts section store each part's instance name, its alias
@@ -783,7 +780,7 @@ IPROP_API iprop_status_ex iprop_result_output_circle(const iprop_result* result,
  * otherwise, even for identical bytes). options follow
  * iprop_generate_options_ex: a four-byte prefix suffices, absent fields are
  * zero and nonzero complete flags are rejected. Before any VM setup, invalid
- * options, foreign parameters and VARIANT_RANGE/ARCHETYPE_RANGE/CANVAS_SIZE
+ * options, foreign parameters and CANVAS_SIZE
  * fail as E_ARGUMENT at ARGUMENTS stage. Parameter IDs, names, types and
  * duplicates were enforced when the values were set; generation only reads
  * the set, passing values by root-input ID without another name lookup. A VM

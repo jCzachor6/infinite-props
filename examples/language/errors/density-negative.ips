@@ -1,0 +1,4 @@
+asset invalid_density_height {
+  size 1x1
+  draw { unused = density { 0: -1, 1: 2 } }
+}

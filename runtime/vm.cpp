@@ -2,6 +2,8 @@
 
 #include "iprop/VmInternals.hpp"
 
+#include <array>
+#include <atomic>
 #include <cmath>
 #include <stdexcept>
 #include <type_traits>
@@ -12,12 +14,18 @@ namespace {
 
 // Every frame starts each declared local with the same typed zero value.
 Value zeroValue(ValueType type) {
-    switch (type) {
+    switch (type.kind) {
     case ValueType::I32: return Value(i32{0});
     case ValueType::F32: return Value(f32{0.f});
     case ValueType::Color: return Value(Color{});
     case ValueType::Vec2: return Value(Vec2{});
     case ValueType::Distribution: return Value(Distribution{});
+    case ValueType::List: return Value(ListValue{type, {}});
+    case ValueType::Sampler: return Value(SamplerValue{type, {}});
+    case ValueType::Stepper: return Value(StepperValue{type, {}});
+    case ValueType::Layer: return Value(LayerValue{});
+    case ValueType::Mask: return Value(MaskValue{});
+    default: break;
     }
     return Value(i32{0});
 }
@@ -26,35 +34,30 @@ Value zeroValue(ValueType type) {
 
 namespace detail {
 
+namespace {
+using Step = bool (*)(Execution&, Instruction);
+// Each group decides from the opcode alone and returns false before touching
+// any state for opcodes it does not own.
+constexpr Step kSteps[] = {stepCore, stepStack, stepControl, stepArithmetic, stepVector, stepSdf,
+    stepColor, stepCurves, stepSeeded, stepCanvas, stepOutputs, stepParts, stepCollections,
+    stepSamplers, stepSteppers, stepPointDistributions, stepSurfaces, stepMasks, stepBlur,
+    stepResourceExports};
+// The owning group per opcode, found by the first execution and then reused,
+// so every later instruction costs one indexed call. Every thread computes the
+// same immutable pointer; reserved opcodes never get an entry.
+std::array<std::atomic<Step>, 256> handlers{};
+} // namespace
+
 bool dispatch(Execution& ex, Instruction ins) {
-    if (stepCore(ex, ins)) {
-        return true;
+    auto& handler = handlers[static_cast<u8>(ins.opcode)];
+    if (const auto step = handler.load(std::memory_order_relaxed)) return step(ex, ins);
+    for (const auto step : kSteps) {
+        if (step(ex, ins)) {
+            handler.store(step, std::memory_order_relaxed);
+            return true;
+        }
     }
-    if (stepStack(ex, ins)) {
-        return true;
-    }
-    if (stepControl(ex, ins)) {
-        return true;
-    }
-    if (stepArithmetic(ex, ins)) {
-        return true;
-    }
-    if (stepVector(ex, ins) || stepSdf(ex, ins) || stepColor(ex, ins) || stepCurves(ex, ins)) {
-        return true;
-    }
-    if (stepSeeded(ex, ins)) {
-        return true;
-    }
-    if (stepCanvas(ex, ins)) {
-        return true;
-    }
-    if (stepOutputs(ex, ins)) {
-        return true;
-    }
-    if (stepParts(ex, ins)) {
-        return true;
-    }
-    return false; // everything is implemented once parts land (Phase 13)
+    return false;
 }
 
 // Frame-lifecycle instructions: nop, call, return (spec §9.1).
@@ -93,52 +96,25 @@ Value Execution::peek() {
     return frame.stack.back();
 }
 
-i32 Execution::popI32() {
-    const Value value = pop();
-    if (!std::holds_alternative<i32>(value)) {
-        trap("stack type mismatch: expected i32", ErrorReason::StackType);
-    }
-    return std::get<i32>(value);
+namespace {
+// Reads a scalar in place and pops it, without moving the whole Value.
+template<class T> T popScalar(Execution& ex, const char* mismatch) {
+    auto& stack = ex.frames.back().stack;
+    if (stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
+    const auto* value = std::get_if<T>(&stack.back());
+    if (!value) ex.trap(mismatch, ErrorReason::StackType);
+    const T result = *value;
+    stack.pop_back();
+    return result;
 }
+} // namespace
 
-f32 Execution::popF32() {
-    const Value value = pop();
-    if (!std::holds_alternative<f32>(value)) {
-        trap("stack type mismatch: expected f32", ErrorReason::StackType);
-    }
-    return std::get<f32>(value);
-}
-
-Color Execution::popColor() {
-    const Value value = pop();
-    if (!std::holds_alternative<Color>(value)) {
-        trap("stack type mismatch: expected color", ErrorReason::StackType);
-    }
-    return std::get<Color>(value);
-}
-
-Vec2 Execution::popVec2() {
-    const Value value = pop();
-    if (!std::holds_alternative<Vec2>(value)) {
-        trap("stack type mismatch: expected vec2", ErrorReason::StackType);
-    }
-    return std::get<Vec2>(value);
-}
-
+i32 Execution::popI32() { return popScalar<i32>(*this, "stack type mismatch: expected i32"); }
+f32 Execution::popF32() { return popScalar<f32>(*this, "stack type mismatch: expected f32"); }
+Color Execution::popColor() { return popScalar<Color>(*this, "stack type mismatch: expected color"); }
+Vec2 Execution::popVec2() { return popScalar<Vec2>(*this, "stack type mismatch: expected vec2"); }
 Distribution Execution::popDistribution() {
-    const Value value = pop();
-    if (!std::holds_alternative<Distribution>(value)) {
-        trap("stack type mismatch: expected distribution", ErrorReason::StackType);
-    }
-    return std::get<Distribution>(value);
-}
-
-void Execution::push(Value value) {
-    Frame& frame = frames.back();
-    if (frame.stack.size() >= kMaxStackDepth) {
-        trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
-    }
-    frame.stack.push_back(std::move(value));
+    return popScalar<Distribution>(*this, "stack type mismatch: expected distribution");
 }
 
 void Execution::spend(u64 cost) {
@@ -181,20 +157,15 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     }
     const auto& part = file.code.parts[partIndex];
 
-    // Stack order (spec §9.10): uniforms…, seed, variant, archetype, atX,
+    // Stack order (spec §9.10): uniforms…, seed, atX,
     // atY — the top is popped first.
     const f32 atY = popF32();
     const f32 atX = popF32();
-    const i32 archetype = popI32();
-    const i32 variant = popI32();
     const u32 seed = static_cast<u32>(popI32());
     const auto& fn = file.code.functions[part.functionIndex];
-    // The part's params are (i32 variant, i32 archetype) + uniforms; the
-    // variant/archetype come from the part.draw arguments.
+    // A part frame receives only its declared uniforms.
     std::vector<Value> args(fn.params.size());
-    args[0] = Value(variant);
-    args[1] = Value(archetype);
-    for (std::size_t p = fn.params.size(); p > 2; --p) {
+    for (std::size_t p = fn.params.size(); p > 0; --p) {
         args[p - 1] = pop();
     }
 
@@ -202,20 +173,23 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     if (!d4) trap("invalid part transform", ErrorReason::InvalidPart);
     PartRenderPlan render;
     try {
-        render = PartRenderPlan::create(part, {canvas.scaleX, canvas.scaleY}, {atX, atY}, *d4);
+        render = PartRenderPlan::create(part, {canvas().scaleX, canvas().scaleY}, {atX, atY}, *d4);
     } catch (const std::invalid_argument& error) {
         trap(error.what(), ErrorReason::InvalidPart);
     }
     spend(render.blitCost);
+    const auto partBytes = static_cast<u64>(render.sourceExtent.x) * static_cast<u64>(render.sourceExtent.y) * sizeof(Color);
+    allocateResource(partBytes);
     PartCallState state;
     state.partIndex = partIndex;
     state.render = render;
-    state.savedCanvas = std::move(canvas);
+    auto nextTarget = RenderTarget::create(resources.makeSurface(partBytes),
+        static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y),
+        render.sourceScale, target.mode);
+    state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 
-    canvas.resize(static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y));
-    canvas.scaleX = render.sourceScale.x;
-    canvas.scaleY = render.sourceScale.y;
+    target = std::move(nextTarget);
 
     Frame next;
     // parseCode bounds the index by kMaxFunctions (1024).
@@ -231,6 +205,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
 }
 
 void Execution::leaveFrame() {
+    closeLayers(0);
     Frame finished = std::move(frames.back());
     frames.pop_back();
     if (frames.empty()) {
@@ -250,23 +225,9 @@ void Execution::leaveFrame() {
         // Restore the caller's canvas and blit the sub-canvas (spec §10.5).
         PartCallState state = std::move(partCalls.back());
         partCalls.pop_back();
-        Canvas sub = std::move(canvas);
-        canvas = std::move(state.savedCanvas);
-        for (u32 sy = 0; sy < sub.height; ++sy) {
-            for (u32 sx = 0; sx < sub.width; ++sx) {
-                const Color& src = sub.pixels[static_cast<std::size_t>(sy) * sub.width + sx];
-                if (src.a == 0) {
-                    continue; // transparent sub-pixels are not blitted
-                }
-                const auto pixel = state.render.transform.mapPixel(
-                    {static_cast<i32>(sx), static_cast<i32>(sy)}, state.render.sourceExtent);
-                const i64 x = static_cast<i64>(state.render.targetOrigin.x) + pixel.x;
-                const i64 y = static_cast<i64>(state.render.targetOrigin.y) + pixel.y;
-                if (x >= 0 && y >= 0 && x < canvas.width && y < canvas.height) {
-                    compositePixel(*this, static_cast<i32>(x), static_cast<i32>(y), src);
-                }
-            }
-        }
+        const auto sub = target.view({state.render.transform, state.render.targetOrigin});
+        target = std::move(state.savedTarget);
+        paintSurface(*this, sub);
         caller.lastPart = state.partIndex; // the part-output register
     } else if (finished.shareStream) {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
@@ -292,6 +253,8 @@ void Execution::ensureControl(u16 functionIndex) {
         const auto ins = decodeInstruction(fn.code.subspan(i * 4, 4));
         switch (ins.opcode) {
         case Opcode::Block:
+        case Opcode::LayerBegin:
+        case Opcode::ClipBegin:
         case Opcode::Loop:
         case Opcode::If:
             open.push_back(i);
@@ -334,15 +297,13 @@ void Execution::ensureControl(u16 functionIndex) {
 struct VM::Impl {
     detail::Execution ex;
     bool finished = false;
+    bool failed = false;
     bool taken = false;
 
     explicit Impl(const LoadedFile& file) : ex(file) {}
 };
 
-ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 variant, u32 archetype,
-                                     u32 sizeX, u32 sizeY) noexcept {
-    if (variant >= meta.variants) return ErrorReason::VariantRange;
-    if (archetype >= meta.archetypes) return ErrorReason::ArchetypeRange;
+ErrorReason checkGenerationArguments(const AssetMeta& meta, u32 sizeX, u32 sizeY) noexcept {
     // The size cap is a runtime defense: a corrupt meta or host request must
     // not trigger a multi-gigabyte allocation.
     const u32 targetW = sizeX != 0 ? sizeX : meta.sizeX;
@@ -366,12 +327,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     impl_->ex.budget = file.meta.fuel;
     impl_->ex.fuel = file.meta.fuel;
 
-    switch (checkGenerationArguments(file.meta, inputs.variant, inputs.archetype,
-                                     inputs.sizeX, inputs.sizeY)) {
-    case ErrorReason::VariantRange:
-        throw Trap("variant index out of range", ErrorReason::VariantRange, ErrorStage::Arguments);
-    case ErrorReason::ArchetypeRange:
-        throw Trap("archetype index out of range", ErrorReason::ArchetypeRange, ErrorStage::Arguments);
+    switch (checkGenerationArguments(file.meta, inputs.sizeX, inputs.sizeY)) {
     case ErrorReason::CanvasSize:
         throw Trap("canvas too large", ErrorReason::CanvasSize, ErrorStage::Arguments);
     default: break;
@@ -383,17 +339,21 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     if (rootValues != nullptr && (!inputs.uniforms.empty() || rootValues->size() != file.meta.inputs.size())) {
         throw std::logic_error("resolved root values do not match the root declarations");
     }
-    impl_->ex.canvas.resize(targetW, targetH);
-    impl_->ex.canvas.scaleX = static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX);
-    impl_->ex.canvas.scaleY = static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY);
+    impl_->ex.target = RenderTarget::create(targetW, targetH,
+        {static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX),
+         static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY)});
+    impl_->ex.rootTarget = impl_->ex.target;
+    if (!file.resourceExports.empty()) {
+        impl_->ex.allocateResource(static_cast<u64>(file.resourceExports.size()) * 64u);
+        for (const auto& output : file.resourceExports)
+            impl_->ex.resourceSlots.push_back(zeroValue(output.type));
+    }
 
-    // Root frame: (i32 variant, i32 archetype), then root uniforms (§6.1).
+    // Root frame: declared root uniforms only.
     detail::Frame root;
     root.functionIndex = 0;
     const auto& entry = file.code.entry();
     root.locals.reserve(entry.params.size() + entry.locals.size());
-    root.locals.push_back(Value(static_cast<i32>(inputs.variant)));
-    root.locals.push_back(Value(static_cast<i32>(inputs.archetype)));
     for (std::size_t index = 0; index < file.meta.inputs.size(); ++index) {
         const auto& decl = file.meta.inputs[index];
         const UniformValue* value = nullptr;
@@ -463,7 +423,9 @@ VM& VM::operator=(VM&&) noexcept = default;
 
 void VM::run() {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
+    if (impl_->failed) throw std::logic_error("VM generation failed");
     detail::Execution& ex = impl_->ex;
+    try {
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
         const auto& fn = ex.file.code.functions[frame.functionIndex];
@@ -484,20 +446,33 @@ void VM::run() {
         }
     }
     impl_->finished = true;
+    ex.resourceSlots.clear();
+    ex.resources.clear();
+    } catch (...) {
+        {
+            impl_->failed = true;
+            ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
+            ex.target = ex.rootTarget;
+            ex.resourceSlots.clear();
+            ex.resources.clear();
+        }
+        throw;
+    }
 }
 
 const Canvas& VM::canvas() const {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
-    return impl_->ex.canvas;
+    return impl_->ex.canvas();
 }
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
 const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
 
 GenerationResult VM::result() const {
+    if (impl_->failed) throw std::logic_error("VM generation failed");
     if (impl_->taken) throw std::logic_error("VM result already consumed");
     GenerationResult result;
-    result.image = impl_->ex.canvas;
+    result.image = impl_->ex.canvas();
     const auto& slots = impl_->ex.outputSlots;
     result.outputs.reserve(slots.size());
     for (std::size_t i = 0; i < slots.size(); ++i) {
@@ -526,8 +501,9 @@ GenerationResult VM::takeResult() {
     // The only allocation happens before any ownership is transferred.
     // Everything after resize is nonthrowing, including returning the result.
     result.outputs.resize(ex.outputSlots.size());
-    result.image = std::move(ex.canvas);
-    ex.canvas = Canvas{};
+    result.image = std::move(ex.canvas());
+    ex.target = {};
+    ex.rootTarget = {};
     for (std::size_t i = 0; i < ex.outputSlots.size(); ++i) {
         auto& output = result.outputs[i];
         auto& slot = ex.outputSlots[i];

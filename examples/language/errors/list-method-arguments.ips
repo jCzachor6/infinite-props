@@ -1,0 +1,6 @@
+asset invalidArguments {
+  size 1x1
+  draw {
+    invalid = [3, 1, 2].distinct(1)
+  }
+}

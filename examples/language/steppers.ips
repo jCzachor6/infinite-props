@@ -1,0 +1,31 @@
+asset steppedSwatches {
+  size 64x32
+  output list point positions
+  output point unchanged
+
+  const distribution shape = gaussian(mean=0.5, sigma=0.15)
+  const stepper<color> gradient = stepper(#20385840 to #efb85fff)
+  const list<stepper<i32>> widths = [stepper(2 to 6), stepper(4)]
+
+  echo(spec: stepper<color>) -> stepper<color> {
+    return spec
+  }
+
+  draw {
+    before = seed
+    colors = echo(gradient).pick(n=10)
+    points = stepper({2.0, 2.0} to {56.0, 20.0}).pick(10)
+    shaped = stepper(0.0 to 1.0 with shape).pick(10)
+    integers = stepper(0 to 5).pick(10)
+    sizes = widths[0].pick(10)
+    empty = gradient.pick(0)
+    first = gradient.pick(1)
+
+    for i in 0..list.len(colors) {
+      point = points[i]
+      rect(point.x, point.y, sizes[i], 2.0 + shaped[i] * 6.0, colors[i])
+      positions = {point.x, float(integers[i])}
+    }
+    unchanged = {seed == before, list.len(empty) + first[0].r}
+  }
+}

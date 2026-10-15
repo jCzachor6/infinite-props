@@ -150,7 +150,7 @@ TEST_CASE("large dynamic ramps retain helper drawing RNG and traps exactly once"
         CHECK(vm.canvas().at(0,0).r == 128);
         CHECK(std::bit_cast<u32>(vm.result().outputs[0].points[0].y) ==
               std::bit_cast<u32>(expected.result().outputs[0].points[0].y));
-        const auto trapBytes = compile("asset t { size 1x1 " + palette(count) +
+        const auto trapBytes = compile("asset t { input i32 v=0 size 1x1 " + palette(count) +
             "draw { ramp(levels,1/v) } }");
         const auto trapFile = loadFile(trapBytes);
         VM trapped(trapFile,{});

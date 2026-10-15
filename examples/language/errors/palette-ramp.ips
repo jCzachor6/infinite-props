@@ -1,0 +1,7 @@
+asset invalidRamp {
+  size 1x1
+  palette tints = [#343a42 to #d8dce2, #929ca8]
+  draw {
+    tint = ramp(tints, 0.5)
+  }
+}

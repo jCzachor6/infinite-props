@@ -1,16 +1,17 @@
 # Emission and physical container metadata
 
-`IPROP_CAP_METADATA_EXTENDED` advertises eight fields appended after `fuel` in
-the existing `iprop_program_info_ex`. The existing `iprop_program_query` and
-`iprop_program_info_ex_init` handle them; no second metadata descriptor or new
-query function is introduced. Frozen `iprop_meta` is unchanged.
+`IPROP_CAP_METADATA_EXTENDED` advertises the emission and physical format
+fields in API 0.4's `iprop_program_info_ex` on ABI line 0.5.
+`iprop_program_query` and `iprop_program_info_ex_init` handle them. Clients
+must use the current header and rebuilt layouts; `iprop_meta` is the separate
+untyped metadata record.
 
 | Fields | Meaning |
 | --- | --- |
 | `has_emission` | Fixed-width presence, exactly zero or one |
 | `emission_color` | Exact stored RGBA8 channels |
 | `emission_offset_x`, `emission_offset_y`, `emission_radius` | Exact stored binary32 bits |
-| `format_major`, `format_minor` | Version of the actual loaded physical container |
+| `format_major`, `format_minor` | Reserved, always zero: the file format is unversioned |
 | `container_flags` | Flags of that physical container, including debug/compression |
 
 When `has_emission` is zero all inactive emission fields are zero, including
@@ -24,14 +25,13 @@ before expanding a compressed container. Consequently a compressed debug
 container reports flags 3 even when the expanded execution layout has the
 compression bit cleared. Flags zero, debug flag 1 and compression flag 2
 retain their binary meaning. These are output metadata, not query options.
-Program format version is distinct from the library query's accepted format
-range and API/product version. An accepted format 0.1 file reports minor 1;
-a 0.2 file reports minor 2.
+The file format carries no version, so both format fields of every accepted
+container are zero, like the library query's reserved format fields.
 
-Every original field through `fuel` keeps its offset, and the extension begins
-after the previous descriptor size. A client compiled with the older header
-and allocating exactly its former `sizeof` receives only that bounded prefix.
-New clients negotiate the capability before interpreting appended fields.
+Use the offsets of the current API 0.4 descriptor. Smaller allocations on
+this ABI receive only complete fields in their prefix; this does not promise
+compatibility with ABI 0.4 headers. Negotiate the capability before reading
+the emission and physical format fields.
 The initializer clears only complete known fields; query preserves size,
 padding, partial fields and unknown tail bytes. Only `struct_size` is an input,
 with the existing four-byte minimum. Color is one frozen four-byte leaf record

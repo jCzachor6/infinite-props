@@ -1,6 +1,5 @@
-asset segmentErrors {
+asset segmentErrors { input i32 v = 0
   size 1x1
-  variants 2
   output point p
   draw {
     zero = 0.0

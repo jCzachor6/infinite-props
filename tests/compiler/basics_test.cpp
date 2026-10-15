@@ -24,8 +24,6 @@ const std::string kRockSource = R"(
 asset rock {
   size 192x192
   origin 96,170
-  variants 5
-  archetypes 4
   input  color palette = #808d74
   output rect collider
 
@@ -66,61 +64,61 @@ asset t {
 
 // The hand-assembled .ipa equivalent of kFixture.
 const std::string kFixtureIpa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 input: color base = #3355aa
 output: point p
-fn draw ( i32, i32, color ) -> ( ):
+fn draw ( color ) -> ( ):
   locals: i32 i32 i32
   const.i32 14
-  local.set 3
-  local.get 3
+  local.set 1
+  local.get 1
   const.i32 6
   i32.sub
-  local.set 4
+  local.set 2
   const.i32 0
   i32.to.f32
   const.i32 0
-  i32.to.f32
-  local.get 4
-  i32.to.f32
-  local.get 4
   i32.to.f32
   local.get 2
-  rect
-  local.get 3
   i32.to.f32
-  local.get 4
+  local.get 2
+  i32.to.f32
+  local.get 0
+  rect
+  local.get 1
+  i32.to.f32
+  local.get 2
   i32.to.f32
   out.point p
-  local.get 3
+  local.get 1
   const.i32 14
   i32.eq
   if
   const.i32 0
   const.i32 0
-  local.get 2
+  local.get 0
   const.i32 10
   color.shade
   pixel
   end
   const.i32 0
-  local.set 5
+  local.set 3
   block
   loop
-  local.get 5
+  local.get 3
   const.i32 2
   i32.lt_s
   const.i32 0
   i32.eq
   br_if 1
-  local.get 5
+  local.get 3
   const.i32 1
   const.color #ffffff
   pixel
-  local.get 5
+  local.get 3
   const.i32 1
   i32.add
-  local.set 5
+  local.set 3
   br 0
   end
   end
@@ -136,7 +134,7 @@ TEST_CASE("compiled rock validates and runs") {
 
     // Executes without trapping (RNG draws differ per seed, but the canvas
     // must be produced).
-    VM vm(loaded, GenerationInputs{7, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{7, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     REQUIRE(vm.canvas().width == 192);
     REQUIRE(vm.canvas().height == 192);

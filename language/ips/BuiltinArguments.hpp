@@ -30,9 +30,14 @@ std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::siz
                                               const SourceLocation& at, std::string_view function);
 std::span<const std::string> rampParameterNames();
 
-// Part controls use the existing seed/v/a names. Placement, transforms and
-// uniform overrides are named-only; transforms/uniforms are optional.
-// Result indices: seed,v,a,at,rot,mirror_x,mirror_y, then declared uniforms.
+// Part controls: the seed, then the named-only placement, transforms and
+// uniform overrides; transforms and uniforms are optional. The slots of
+// partParameters, shared by binding, typing and lowering:
+inline constexpr std::size_t kPartSeedSlot = 0;
+inline constexpr std::size_t kPartAtSlot = 1;
+inline constexpr std::size_t kPartTransformBegin = 2; // rot, mirror_x, mirror_y
+inline constexpr std::size_t kPartTransformEnd = 5;
+inline constexpr std::size_t kPartFirstInput = kPartTransformEnd; // declared uniforms follow
 std::vector<ArgumentParameter> partParameters(std::span<const std::string> uniforms);
 std::vector<const Arg*> partArguments(const Call& call,
     std::span<const std::string> uniforms, std::string_view function);

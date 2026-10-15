@@ -2,7 +2,7 @@
   "name": "iprop-studio",
   "displayName": "iprop studio",
   "description": "The .ips authoring tools: syntax highlighting and inline diagnostics from the compiler. Edit files, run CLI agents in the integrated terminal.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "iprop",
   "engines": {
     "vscode": "^1.85.0"
@@ -66,7 +66,7 @@
       },
       {
         "command": "iprop.exportSheet",
-        "title": "iprop: Export Variant Sheet"
+        "title": "iprop: Export Seed Sheet"
       },
       {
         "command": "iprop.openImport",

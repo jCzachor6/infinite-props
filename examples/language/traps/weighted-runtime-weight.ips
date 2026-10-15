@@ -1,0 +1,4 @@
+asset invalid_runtime_weight { input i32 v = 0
+  size 1x1
+  draw { unused = weighted { 1: v - 1, 2: 2 } }
+}

@@ -3,17 +3,14 @@
 This is the complete authoring reference for the current compiler. `.ips`
 programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
-seed, variant, archetype and optional input uniforms.
+seed and optional declared input uniforms.
 
-This checkout implements source language **0.6**, released with product
-0.6.0. Product, source language, binary format, C API and ABI versions are
-independent: `ipc --describe-language` reports the versions of the compiler
-being used. Language 0.6 emits binary format 0.5 when a file needs it,
-otherwise 0.4; the ABI remains 0.4.
-Development documentation describes the checkout being built; a release ships
-documentation from its exact tag. The generated book identifies its product
-version, status and source commit. Historical 0.4 contracts and rejected
-examples remain frozen in their baseline and Git tag.
+Source language **0.7** is released with product **0.7.0**.
+Product, source, C API and ABI versions are independent, and the binary format
+is unversioned: `ipc --describe-language` reports the compiler's contracts.
+C API 0.4 uses ABI 0.5.
+The generated book identifies its product, development/release status and source
+commit. Earlier documentation is available in Git history.
 
 Read the chapters in order to learn the language, or use the function index
 in the generated book to look up a builtin. Each chapter links actual `.ips`
@@ -31,12 +28,16 @@ files; their contents are included in the generated book and tested by CI.
 10. [Vectors and distance fields](geometry.md)
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
-13. [Imports and part composition](composition.md)
-14. [Compiler tools and diagnostics](tooling.md)
-15. [Grammar](grammar.md)
-16. [Maintaining this documentation](development.md)
-17. [Migration and implementation contracts for 0.5](migration-v0.5.md)
-18. [Migration and implementation contracts for 0.6](migration-v0.6.md)
+13. [Immutable lists](collections.md)
+14. [Captured samplers](samplers.md)
+15. [Deterministic steppers](steppers.md)
+16. [Imports and part composition](composition.md)
+17. [Captured layers, masks and clipping](surfaces.md)
+18. [Writing idiomatic props](idioms.md)
+19. [Compiler tools and diagnostics](tooling.md)
+20. [Grammar](grammar.md)
+21. [Maintaining this documentation](development.md)
+22. [Migrating from 0.6 to 0.7](migration-v0.7.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

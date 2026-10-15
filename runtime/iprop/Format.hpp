@@ -12,8 +12,6 @@ namespace iprop {
 
 // Parsed file header (spec §2.1).
 struct Header {
-    u16 versionMajor = 0;
-    u16 versionMinor = 0;
     u32 flags = 0;
     u32 sectionCount = 0;
 

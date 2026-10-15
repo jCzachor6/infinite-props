@@ -108,9 +108,6 @@ size_t check_golden(const char* program_dir, const char* png_dir) {
                 CHECK(meta.origin_x == 32.f && meta.origin_y == 60.f,
                       "meta origin (%.9g, %.9g)", meta.origin_x,
                       meta.origin_y);
-                CHECK(meta.variants == 8, "meta variants %u", meta.variants);
-                CHECK(meta.archetypes == 1, "meta archetypes %u",
-                      meta.archetypes);
                 CHECK(meta.fuel == 2000000, "meta fuel %llu",
                       (unsigned long long)meta.fuel);
                 iprop_program_free(program);

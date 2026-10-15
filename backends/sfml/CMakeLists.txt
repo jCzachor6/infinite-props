@@ -40,7 +40,7 @@ if(SFML_FOUND)
         add_test(NAME sfml_render COMMAND sfml_render)
         add_test(NAME sfml_errors COMMAND ${CMAKE_COMMAND}
             -DHOST=$<TARGET_FILE:iprop_sfml>
-            -DPROGRAM=${CMAKE_SOURCE_DIR}/examples/portrait.iprop
+            -DPROGRAM=${CMAKE_BINARY_DIR}/capi-golden/portrait.iprop
             -DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/error-test.png
             -P ${CMAKE_CURRENT_SOURCE_DIR}/test/errors.cmake)
         # 7.2: the headless conformance over the corpus assembled by the

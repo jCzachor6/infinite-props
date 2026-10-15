@@ -13,16 +13,7 @@
 
 namespace iprop::ips {
 
-enum class ValueType {
-    I32,
-    F32,
-    Color,
-    Vec2,
-    Distribution,
-    Rect,
-    Circle,
-    Void, // no value (canvas operations, part calls)
-};
+using ValueType = iprop::TypeDescriptor;
 
 const char* typeName(ValueType type);
 
@@ -42,6 +33,10 @@ bool argFits(ValueType param, ValueType arg);
 
 // The channel read by `c.r`, `c.g`, `c.b` or `c.a`: 0-3 in RGBA order.
 std::optional<unsigned> colorChannel(std::string_view member);
+
+// Mode arguments accept only literal surface namespace constants, never
+// runtime integers. The registry also preserves their scalar constant values.
+const CompositionSpec* surfaceMode(const Expr& expression);
 
 // The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
 ValueType valueTypeOf(ParamType type);

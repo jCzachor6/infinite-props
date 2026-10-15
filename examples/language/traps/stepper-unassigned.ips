@@ -1,0 +1,7 @@
+asset unsetSteps {
+  size 1x1
+  draw {
+    if (false) { spec = stepper(0 to 5) }
+    values = spec.pick(0)
+  }
+}

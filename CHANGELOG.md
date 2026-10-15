@@ -1,323 +1,70 @@
 # Changelog
 
+## v0.7.0 — 2026-10-15
+
+Product/editor/website version: 0.7.0. Source language: 0.7. The binary format
+is unversioned and specified by the frozen [0.7 specification](spec/iprop-v0.7.md).
+C API: 0.4, on ABI line / SONAME 0.5. Migration:
+[from 0.6](docs/language/migration-v0.7.md).
+
+- Exact integer bounds, stable vector normalization and typed asset constants.
+- Immutable lists with distinct/sort, captured samplers, sampling palettes,
+  weighted/density distributions and deterministic steppers.
+- Captured layers, explicit source-over, masks, clipping, morphology, internal
+  resource exports and Gaussian blur.
+- Unversioned binary format: the former header version bytes are reserved
+  zeros, so earlier binaries need recompiling; implicit variant/archetype
+  controls removed. C API 0.4 uses ABI 0.5; language-description schema 4
+  describes explicit asset inputs; documentation manifest schema 3 drops
+  `format_version`.
+- Reserved source keywords require renaming before recompilation. See
+  [migration from 0.6](docs/language/migration-v0.7.md).
+- Compiler: statically known invalid values are reported by the checker in
+  source order with `IPS-CONST-003`; pure traps in unreached code stay runtime
+  traps; nesting past 32 surface scopes and unstorable slots are located
+  errors. Constant folding runs the VM's own operations.
+- Runtime: opcode-indexed dispatch, one checked truncated draw for samplers and
+  stepper quantiles, and layer captures that no longer inherit clips, so a
+  painted layer is clipped exactly once.
+
 ## v0.6.0 — 2026-10-08
 
-Product/editor/website version: 0.6.0. Source language: 0.6. Format: 0.5,
-for files that use its instructions or have parts; other files stay 0.4. C
-API: 0.3, unchanged, on ABI line / SONAME 0.4. Migration and packaging
-instructions: [release notes](docs/release-v0.6.md).
-
-- Language: `c.r`, `c.g`, `c.b` and `c.a` read the channels of any color
-  value as `i32` in 0–255. The base is evaluated once; channels of constant
-  colors fold. Channels stay read-only: `c.r = 100` gets its own diagnostic,
-  and member errors name the required type or list the available channels.
-- Language: `lo to hi` draws a uniform number from the current stream, both
-  bounds included: `i32` for integer bounds, otherwise `f32`. It binds
-  between shifts and comparisons and cannot be chained; bounds evaluate once,
-  lower first. `to` stays an ordinary name, and existing locals, helpers and
-  parts called `to` keep their meaning.
-- Language: the `distribution` type with the constructors `gaussian`,
-  `triangular` and `beta`, typed `distribution d = ...` declarations and
-  helper parameters and results. `lower to upper with d` draws from `d`
-  restricted to the range, never clamping; `i32` ranges round half away from
-  zero. Parameters are checked when the constructor runs; helpers named like
-  the constructors keep their calls.
-- Language: `to` between two colors draws one position on the RGBA gradient
-  and between two `vec2` values one point of the segment; all channels or
-  components share that position, and `with` steers it on 0 to 1.
-  `color.mix()` keeps its first-alpha rule.
-- Format 0.5 ([spec](spec/iprop-v0.5.md)): `color.r`, `color.g`,
-  `color.b` and `color.a` (0xA4–0xA7); `rng.int` (rejection sampling over
-  full u32 draws, at most 31 draws in practice) and `rng.float` (0xA8–0xA9),
-  which trap on reversed or non-finite bounds; type code 4 `distribution`,
-  `distribution.gaussian`, `.triangular`, `.beta` and `rng.int.with`,
-  `rng.float.with` (0xAA–0xAE) with pinned binary64 kernels (AS241,
-  Lanczos, incomplete beta, a bounded quantile solver), inverse-CDF
-  truncation and fuel per kernel iteration; `color.mix.rgba` and `vec2.mix`
-  (0xAF–0xB0) for gradients and segments. The compiler and assembler
-  write 0.5 only when a file uses these instructions; other files stay 0.4.
-  Frozen 0.1–0.4 files load and run unchanged, and compressed files keep their
-  0.4 envelope.
-- Language: nested parts. An imported asset may import parts of its own;
-  import paths resolve beside the importing file (`ipc` follows the file
-  system, embedding hosts pass their own resolver to `compileSource`). Each
-  alias path, such as `hilt.grip`, is a separate instance with its own inputs,
-  outputs and RNG stream, even for a file shared by two branches, up to 256
-  instances; cycles are reported with the whole chain. An asset draws and
-  reads only its direct children.
-- Changed: part outputs are in the caller's coordinates. A parent reads
-  `alias.outputs.name` with the child's transform and placement applied, and
-  hosts receive part outputs in root asset coordinates, each enclosing call
-  applied once at write time. Recompiled sources that added the placement by
-  hand must drop it (see the [migration notes](docs/language/migration-v0.6.md)).
-- Format 0.5: the parts section (id 5) names each part instance by its alias
-  path and records its parent; the validator restricts `part.draw` and
-  `part.get` to an asset's own children, and its presence selects the new
-  output coordinates (spec §6). The compiler writes it, and therefore format
-  0.5, for every file with parts; frozen files keep local outputs. The C API
-  part descriptor reports the name with `name_present == 1`. The assembler
-  declares instances as `part NAME instance [PARENT]:`, and a part slot
-  shadowed by a root output name is written `part.output`.
-- Examples: `examples/colony`, three levels of nested parts with a firefly at
-  every reported cap peak, and `examples/previews` for metal gradients,
-  distribution-shaped widths of the same seeds and `vec2` segments. Native
-  and WASM render them bit for bit.
-- Runtime matrix: registered released sources whose meaning changes on
-  purpose (the two that read placed part outputs) are recorded result by
-  result; the [0.6 matrix](docs/optimization-acceptance-v0.6.md) runs the
-  frozen 0.4 binaries, released and current sources in all eight modes.
-- Build: Windows executables reserve an 8 MiB stack, like Linux and macOS
-  main threads, so compiling a helper chain as deep as the call limit no
-  longer overflows MSVC's 1 MiB default.
-- Language export: `source_rules.types.components` lists the readable
-  members of `vec2` and `color` with their result types and instructions;
-  `source_rules.random_range` describes the `to` operator and, under
-  `with`, its distribution form and, under `ends`, color and vec2 ends;
-  `distribution` joins the type lists.
+- Color channel reads, inclusive random ranges, analytic distributions and
+  shared-coefficient color/vector gradients; binary format 0.5.
+- Nested part instances with names/parents and caller/root-coordinate outputs.
+- Extended language exports and Windows tool stack reservation.
 
 ## v0.5.0 — 2026-10-08
 
-Product/editor/website version: 0.5.0. Source language: 0.5. Format: 0.4,
-unchanged. C API: 0.3, additive over the frozen 0.2 layouts on ABI line /
-SONAME 0.4. Migration and packaging instructions:
-[release notes](docs/release-v0.5.md).
-
-- Language (A): comparisons parse shifts on both sides; defaults and palette
-  elements accept one numeric unary minus; mixed numeric palettes widen to
-  `f32`; `input i32` checks its signed default and stores U32 bits; one
-  optional semicolon may follow imports and declarations.
-- Checking and diagnostics (B): `ipc --check` runs the full pipeline in
-  memory. Text and JSON diagnostics share stable codes, byte and codepoint
-  ranges, bounded recovery and distinct exit codes. The editor consumes the
-  JSON protocol with guarded quick fixes. Member access on a color or number
-  names the value type instead of reporting a missing part.
-- Fuel: compiled assets get a default fuel budget of 2,000,000 instead of
-  1,000,000; files compiled earlier keep their stored budget.
-- Calls (C): one binder and call plan serve builtins, helpers and parts.
-  Helpers and part controls accept named arguments; evaluation order follows
-  the declaration and is exported with each signature.
-- Formatting (F): comments survive formatting; `--format-only` publishes
-  canonical source atomically without an executable. The editor and recipe
-  gallery format through the same printer.
-- Language export (G): `--describe-language` reports independent versions,
-  source rules, operation effects and trap summaries; the generated
-  `LLM_REFERENCE.md` joins the handbook. Export contracts are versioned and
-  validated in every consumer.
-- C API 0.3 (V/R/P/X/O/M): loaded library versions and capabilities; sized
-  descriptors; checked load and metadata queries; root input, output and part
-  reflection; retained parameter sets with typed setters, strict override
-  lists and `iprop_generate_ex`; structured errors with stable reasons, stages
-  and VM locations; image views, typed output reads and result statistics.
-  The adapter moves completed VM buffers instead of copying them.
-- Hosts and packaging (J): SFML (`--set name=value`) and Godot (`inputs`,
-  `set_input`, `reset_inputs`) load and generate through the checked API. New
-  C99 examples: the reflection panel and `render_inputs`. Release metadata
-  names product, language, format, C API and SOVERSION separately; SDK, WASM
-  and website ship one documentation package.
-- Removed: the 0.4 lexer emoji aliases (language description schema 2), the
-  historical-0.4 contract reader profile, the editor fallback to 0.4 text
-  diagnostics, the LLM benchmark harness and the vendored stb and
-  nlohmann/json libraries, replaced by a small zlib PNG module and an ordered
-  JSON writer.
+- Signed defaults, input i32, mixed palettes, declaration semicolons and
+  consistent positional/named argument binding and evaluation.
+- Full in-memory checking, structured diagnostics and comment-preserving
+  atomic source formatting; lexer emoji aliases removed.
+- C API 0.3 reflection, checked operations, retained parameters, typed outputs,
+  image views and statistics on ABI 0.4.
+- Compiler-backed LLM reference, export schemas and shared SDK/web documentation.
 
 ## v0.4.0 — 2026-10-05
 
-Product/editor/website version: 0.4.0. Format: 0.4 with frozen 0.1–0.3
-reader compatibility. C API: 0.2, with unchanged layouts. Migration and
-packaging instructions: [release notes](docs/release-v0.4.md).
-
-- A.1: Replaced explicit draw parameters with `draw { ... }` and implicit
-  read-only `v`/`a` builtins. Helpers retain typed parameters. Migrated
-  corpus sources while preserving the generated bytecode and frozen images.
-- A.2: Moved color mixing and shading to `color.mix` and `color.shade`;
-  removed the bare builtin spellings and migrated sources and documentation
-  without changing generated artifacts.
-- A.3: Added numeric `int`/`float` aliases, integer-channel `rgb`/`rgba`
-  constructors and color/f32 `lerp` overloads. Overload results and matching
-  now belong to individual signatures; all lower to existing VM operations.
-- A.4: Added `pick(n)`, eager typed `pick(a, b, ...)` choices and `chance(p)`.
-  Selection uses scoped locals and balanced branches; RNG state and
-  argument evaluation retain the existing stream semantics.
-- A.5: Added shared named-argument binding for every builtin and canvas
-  operation, including variadic choices, polygons and palette ramps. Names
-  live with typed signatures and preserve canonical evaluation order.
-  Added the parameter reference and short `#RGB`/`#RGBA` color literals.
-- A.6: Added seed-direct `roll` and typed `choose`, including named
-  arguments and nesting. Arguments execute before stream isolation;
-  existing stream instructions draw once and restore the outer state.
-- B.1: Added bounded typo/transposition hints for canonical keywords,
-  builtins, parameters and scoped names. UTF-8 source columns now count
-  codepoints; malformed source encodings have located errors. Editor
-  diagnostics convert these columns to VS Code's UTF-16 positions.
-- B.2: Added a parseable canonical source printer and `ipc --format <out.ips>`
-  during compilation. Literal spelling, declaration layout and named calls
-  normalize deterministically; roundtrips preserve executable bytecode.
-- B.3: Added 24 standalone 32x32 recipe sources covering language patterns,
-  procedural geometry, colors, RNG, helpers, uniforms and structured outputs.
-  Gallery compilation, rendered variety and canonical roundtrips run in
-  CTest; every recipe joins the native/WASM image and output comparisons.
-
-- B.4: Added the exact 18 single-codepoint emoji aliases in the lexer;
-  retained canonical word ASTs, diagnostics and formatting. Selectors,
-  joiners and emoji member names are rejected; native/WASM coverage pins
-  the normalized executable behavior.
-
-- C.1: Added control-flow liveness for dead local writes, conservative removal
-  of discarded pure expressions, and local/name/constant pool compaction.
-  RNG draws, helper effects and runtime traps remain observable. Full debug
-  and stripped artifacts are cost-checked against the reference lowering;
-  `ipc --no-opt` and the compiler's optimization switch retain that lowering.
-
-- C.2: Added straight-line constant propagation, peephole local tees and
-  constant color/vector kernel evaluation with exact typed values. Integer
-  traps and historical scalar non-finite arithmetic retain runtime lowering;
-  every pass keeps the best complete artifact in debug and stripped modes.
-
-- C.3: Added common-expression reuse within straight-line regions, using
-  versioned existing locals or typed memoization for repeated inline trees.
-  Only contiguous non-trapping pure trees are reused; obsolete child caches
-  and mutable storage are invalidated. Full artifact cost and bounded key
-  tables keep the pass deterministic and conservative.
-
-- C.4: Added cost-checked unrolling for small constant for-ranges, retaining
-  final counters and side effects. Integer multiplication by two becomes
-  duplicate/add; division uses shifts only with a nonnegative range proof.
-  Plan copies retain immutable palette ownership, and full literal pools
-  fall back safely instead of wrapping u16 indices during optimization.
-
-- C.5: Registered full corpus optimization acceptance in CTest: both artifact
-  modes never grow, rendered pixels and raw structured outputs stay exact,
-  and runtime trap reasons match. Recorded baseline totals, backend pins,
-  sanitizer results and u16 pool-limit fallback evidence.
-
-- D.1: Specified and implemented v0.4 zlib/DEFLATE envelopes containing the
-  complete original file. Loading preserves historical bytes and opcode
-  version gates; strict checks reject checksum, length, trailing, nested,
-  dictionary and resource-limit violations. Native/WASM/C/SFML/Godot and
-  source-map tooling accept packed files; ipc packs automatically when smaller.
-
-- D.2: Made stripped production output the ipc default, with explicit
-  `--debug` source maps and last-flag precedence for `--debug`/`--strip`.
-  The editor inspector requests debug data while binary exports stay stripped;
-  the compiler API retains debug data for tooling. CLI acceptance checks
-  expanded/packed byte equality, source maps and identical rendered outputs.
-
-- Added the complete language handbook, with compiler-exported signatures,
-  lexer aliases and executable examples covering successful programs,
-  expected compile errors and runtime traps. The website, downloadable book
-  and SDK/WASM documentation share versioned sources and file digests.
-- Expanded CI reports and release packaging for Linux, macOS, Windows,
-  WASM and the website. Tagged releases rebuild the exact source commit,
-  verify relocated/extracted packages and documentation, and publish all
-  13 assets only after draft upload and SHA256 readback succeed.
+- Simplified draw syntax, named builtins, numeric/color constructors and
+  seed-isolated selection helpers.
+- Compiler optimizations, bounded lossless zlib containers and production
+  debug stripping, with explicit inspection flags.
+- Language handbook, canonical formatter, 24 recipes and release packaging.
 
 ## v0.3.0 — 2026-10-02
 
-- Added vec2 values and arithmetic, vector metrics/rotation, distance fields,
-  quadratic/cubic Bezier queries and strokes, procedural noise, color and
-  curve utilities, palette ramps, and D4 part transforms. New opcodes are
-  gated by format 0.3; readers retain format 0.1/0.2 compatibility. Product
-  version is 0.3.0; the C API remains 0.2.
-- Fixed typed control-flow joins and branch reachability in validation,
-  defensive vector type errors and exception containment at the C API.
-- Canonicalized new vector NaNs across native/WASM, defined color mixing
-  for nonfinite inputs, prevented shade overflow and corrected round at
-  half-integer and saturation boundaries. Positive vector/polar angles now
-  agree with counterclockwise part rotations in the downward-y plane.
-- Aligned D4 raster scaling with output geometry, including unequal axis
-  scales. Added shared transforms/render plans and early located diagnostics
-  for imported sources and part transform arguments.
-- Introduced shared opcode/builtin contracts, typed expression and call
-  plans, resolved palettes, scoped temporary locals, pure math modules and
-  a common native/WASM runtime source list. Part uniform arguments widen
-  consistently and reject duplicate names.
-- Prepared Bezier kernels once per stroke without changing numerical or
-  fuel results. Folded pure constant ramps and replaced dynamic palette
-  ladders with balanced selection; the new compiler expansion changes fuel
-  as documented in spec 0.3 §12.11. RNG/drawing/trap effects remain intact.
-- Fixed install/release version checks and added regressions for raw float
-  boundaries, control-flow types, resource limits, geometry and evaluation
-  order. Frozen specifications and historical golden files are unchanged.
-- Split large compiler, language, math, validator and C API test suites by
-  responsibility; removed duplicate assets and completed planning reports.
-  The website includes the format 0.3 specification.
-- Godot packages include only the declared demo assets, excluding stale
-  copies from the build directory.
+- Vectors, distance fields, Bézier strokes, procedural noise, color/curve
+  utilities, palette ramps and D4 part transforms.
+- Typed control-flow validation, numeric boundary fixes and native/WASM parity.
 
 ## v0.2.0 — prepared for release, 2026-09-30
 
-- Added typed function parameters and return values, constant palettes,
-  `while`/`for` loops, `break`/`continue`, and pinned trig/math builtins.
-- Format 0.2 gates the new math opcodes. Readers also accept frozen format
-  0.1 files; new writers emit format 0.2. Product, format and C API versions
-  are tracked separately.
-- Added the C99 shared/static API, SFML host and Godot 4.5.2 GDExtension.
-  API 0.2 includes output owners; adding that field changes struct layout,
-  so clients must rebuild. Godot exposes root outputs, outputs by part
-  owner and the complete ordered slot list.
-- Fixed function-local loop checks, typed temporary allocation, dynamic
-  numeric/bool palette selection and helper lookup in imported parts,
-  including repeated imports of the same source.
-- Fixed `pow` with infinite exponents, `atan2` for steep directions,
-  canonical NaNs and signed zero in `min`/`max`. Added independent edge
-  vectors and varied numeric samples; native/WASM compares raw output bits.
-- Fixed SFML texture rectangles, screenshot rendering, viewport fitting
-  and controlled errors for invalid CLI inputs. Godot reloads are
-  transactional; sprites refresh on asset changes and clear stale textures.
-- Fixed PIC for shared-library linking, Windows DLL exports and static
-  library naming, GCC header/warning issues, required backend configuration,
-  and Godot manifests/export presets for platform, architecture and flavor.
-- Added desktop CI, required native backend checks, sanitizers and expanded
-  conformance. Updated language documentation and editor highlighting.
-- Added relocatable CMake installs/exports, minor-version shared-library
-  names, native packages with enabled backends and release checks from a
-  moved prefix, including external shared/static C API consumers.
-
-- Corrected the portrait example's inverse CDF to sample ages 18–40,
-  rather than repeatedly overwriting the result with age 39. Regenerated
-  the recipe binary and checked all portrait golden images and browser
-  hash pins. Age is currently sampled but unused by the renderer, so the
-  images and hash pins remain unchanged. VM 0.1 semantics are unchanged.
-
-This entry describes the local release candidate. Merge, tagging and
-publication are separate actions.
+- Typed helpers, palettes, loops and pinned trigonometry/math.
+- C API, SFML and Godot integrations; relocatable native SDKs and conformance.
 
 ## v0.1.0 — 2026-09-29
 
-The first public release: a portable binary format and toolchain for
-seed-based procedural 2D assets.
-
-**The format and the VM** (frozen semantics, guarded by the golden corpus):
-
-- The `.iprop` binary: header, section table, `meta`/`const`/`code` sections
-  and the optional `debug` section (source maps and symbol names, spec §7).
-- A validated bytecode VM: the full instruction set (spec §9), the pinned
-  seeded primitives, the canvas raster operations, structured outputs and
-  parts — every algorithm specified bit-exactly (§11–§12) and executed
-  under a fuel budget.
-- The validator (`ipval`), the disassembler (`ipdis`), the renderer
-  (`ipgen`), the sheet tool (`ipsheet`) and the golden corpus that freezes
-  the semantics.
-
-**The language and the compiler**:
-
-- `.ips`: assets, inputs/outputs, statements, expressions, ~20 builtins,
-  parts and composition; a compiler (`ipc`) emitting deterministic,
-  validated binaries with the debug section.
-- Example ports: the QuantSpace character portrait (composed from the hair
-  and eyes parts) and the interior potted plant (pot + flower parts, a
-  sunflower species, six pot shapes).
-
-**Backends, editor and website**:
-
-- The HTML5/WASM backend: the reference interpreter in the browser, with a
-  conformance runner pinned to the desktop output.
-- The VS Code extension: syntax highlighting, compiler diagnostics, the live
-  preview with seed controls, the atlas, the bytecode inspector and
-  one-click exports.
-- The website: the playground with shareable links and the documentation.
-
-**Deferred (documented in `spec/README.md`)**:
-
-- The native hosts (SFML, OpenGL, Vulkan — Part D of the plan).
-- The public gallery (a separate project).
+- Initial binary format, validated VM, seeded primitives, raster operations,
+  structured outputs and linked parts.
+- Source compiler, inspection/render tools, HTML5/WASM, editor and website.

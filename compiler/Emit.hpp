@@ -76,6 +76,12 @@ private:
     ips::ValueType emitUnary(const ips::Unary& un);
     ips::ValueType emitCall(const ips::Call& call);
     void emitArg(const PlannedArgument& arg);
+    // The instruction of a resolved overload whose arguments are already
+    // on the stack; a type-descriptor operand names its first parameter.
+    void emitOverload(const ips::BuiltinOverload& overload);
+    // A method expression (blur, list method, pick) lowered through the
+    // overload the Typer selected.
+    ips::ValueType emitMethod(const ips::Expr& expr);
     ips::ValueType emitBuiltin(const BuiltinCall& call);
     ips::ValueType emitSelection(const SelectionCall& call);
     void emitPartCall(const PartCall& call);

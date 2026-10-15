@@ -1,4 +1,4 @@
-# Generating a compact .ips reference
+# Generating the .ips LLM reference
 
 The normal documentation build generates `LLM_REFERENCE.md` beside the full
 handbook. Native SDK installation copies it into `share/iprop/`, where its
@@ -7,42 +7,62 @@ source-language, binary-format, C API and ABI versions separately, together
 with the source commit and dirty/release status. It is generated content;
 edit its source selection in `docs/llm-reference.json`.
 
-The default document has a **12,288-byte UTF-8 budget**, with a maximum allowed
-budget of **16,384 bytes**. Generation fails before replacing output if the
-selected content exceeds that budget. No section, signature or example is
-silently truncated. Reduce the selection when more detail would exceed it.
+The reference teaches the whole language and pushes one style. It opens with
+the idioms chapter ([Writing idiomatic props](language/idioms.md)) and its
+examples, then before/after pairs that each fix one broken rule, then the
+compiler rules in plain sentences. The handbook follows: assets, syntax,
+types, control flow, helpers, randomness, colors, palettes, parts, execution
+limits and the grammar. Every builtin is listed, and checked repairs close the
+document. The default document has a **102,400-byte UTF-8 budget (100 KiB)**, with a
+maximum allowed budget of **102,400 bytes**, fixed through the 0.7 release.
+Generation fails before replacing
+output if the selected content exceeds that budget. No section, signature or
+example is silently truncated. Reduce the selection when more detail would
+exceed it.
 
 ```sh
 python3 scripts/language_docs.py build --compiler build/tools/ipc
 python3 scripts/language_docs.py build --compiler build/tools/ipc \
   --output-dir build/language-docs-small \
-  --llm-sections asset,types,helper,symbols --llm-symbols pixel,int,unit \
-  --llm-max-bytes 8192
+  --llm-sections idioms,style,types,symbols --llm-symbols pixel,int,unit \
+  --llm-max-bytes 24576
 python3 scripts/language_docs.py check --compiler build/tools/ipc \
   --report-dir build/ci-reports/language
 ```
 
-Available section ids are `asset`, `types`, `helper`, `part`, `palette`,
-`output`, `symbols` and `diagnostics`. Selection preserves the supplied order;
-unknown or repeated ids/names are rejected. An empty selection is explicit,
-for example `--llm-symbols ''`. Compiler rules, version identity and links to
-the full handbook/catalog remain in every selected document. `--llm-symbols`
-accepts current builtin names from the compiler export, including dotted names
-and variadic signatures. It matters when the `symbols` section is selected.
+Configured section ids are `idioms`, `asset`, `assets`, `syntax`, `types`,
+`control`, `helper`, `random`, `colors`, `palette`, `collections`, `samplers`, `part`, `limits` and
+`grammar`; `style`, `builtins`, `symbols` and `diagnostics` are generated.
+The compiler rules follow `idioms` and `style` and appear in every document,
+even with an empty selection. Each configured section names a handbook chapter
+and either `"parts": "chapter"` (its introduction and every subsection with
+prose) or a list of parts, each a heading with optional `paragraphs` (default:
+all), `skip` and `fences` (fenced block languages kept verbatim, such as the
+EBNF grammar). A paragraph marked `<!-- llm: skip -->` in the handbook is left
+out. `examples` are shown as models of the style; `demos` are labelled API
+demos that show a section's calls on a tiny canvas, not the style of a prop.
 
-The default includes complete registered asset, helper, part/composition,
-palette and structured-output programs. Authored explanations are selected
-whole paragraphs from named handbook headings. Signatures, types, evaluation
-orders and intrinsic effects come directly from `--describe-language`; there
-is no separately maintained LLM signature catalogue.
+`style` renders the `style_pairs`: registered passing examples that break one
+idiom, each with an explanation and a corrected form produced by exact
+replacements. `builtins` lists every builtin in handbook order with its
+exported signatures, a `Style:` line from `hints` where one is configured and
+the first paragraph of its description. `symbols` gives the full effect
+summary of the builtins named by `--llm-symbols`. Selection preserves the
+supplied order; unknown or repeated ids/names are rejected. An empty selection
+is explicit, for example `--llm-symbols ''`.
+
+Prose and examples come from the handbook and the registered examples; there
+is no separately maintained LLM text or signature catalogue apart from the
+short `hints`. Signatures, types, evaluation orders, intrinsic effects and the
+compiler rules come directly from `--describe-language`.
 
 Three default repair pairs start from registered rejected examples: a local
 type mismatch, direct uniform access from a helper and an unknown named
 argument. Their correction recipes apply only when the selected text occurs
 exactly once. Generation checks each rejection's stable diagnostic code and
 registered message through real `--check --diagnostics=json`, then checks,
-compiles and renders the corrected program. The selected valid examples are
-also checked, compiled and rendered with seed 7 from temporary owning copies
+compiles and renders the corrected program. Both sides of every style pair, and the
+selected examples and demos, are also checked, compiled and rendered with seed 7 from temporary owning copies
 of the registered example tree. No executable is written beside its source.
 
 The generated file, selection configuration and source explanations/examples

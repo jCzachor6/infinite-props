@@ -3,9 +3,14 @@
 `IPROP_CAP_RESULT_OUTPUTS` (bit 16) advertises result output count/get/find and
 the sized `iprop_result_output_view_ex` initializer. `IPROP_CAP_TYPED_OUTPUTS`
 (bit 17) independently advertises point/rect/circle copies. These additive
-API 0.3 operations preserve ABI line 0.4, legacy structs and packed floats.
+API 0.4 operations use ABI line 0.5 and preserve the packed geometry fields
+returned by the current untyped accessors.
 
 ## Slots and names
+
+`output_count` and these accessors count geometry only. Internal mask/layer
+exports never appear in the result table; point/rect/circle indices and part
+output ranges retain their existing geometry-table meaning.
 
 `iprop_result_output_count` counts every declared slot, not only assigned
 values. `iprop_result_output_get(result, output_index, &view, error)` reads one
@@ -29,9 +34,10 @@ can be non-NULL otherwise, including a pointer to the end of that buffer. The
 new view preserves that legacy pointer exactly. Nonempty values use the frozen
 component order x/y, x/y/w/h, or x/y/radius. These are the generated values;
 helpers and part D4 transformations have already applied their effects. In a
-file with a parts section (format 0.5) part values are in root asset
-coordinates, with every enclosing placement and transform applied once; in
-older files they stay local to the part after its D4 transform. The accessors
+file with a parts section, part values are in root asset
+coordinates, with every enclosing placement and transform applied once.
+Without an instance section, values retain the D4-only local mapping specified
+in [part output coordinates](../spec/iprop-v0.7.md#107-output-coordinates). The accessors
 neither repeat transforms nor reinterpret owner-relative geometry.
 
 `iprop_result_output_find(result, owner, name, &output_index, error)` matches

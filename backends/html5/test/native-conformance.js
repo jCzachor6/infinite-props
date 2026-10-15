@@ -20,6 +20,9 @@ const sources = [
     ["plant", "examples/plant.ips"],
     ["language", "backends/capi/test/language.ips"],
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
+    ["math-bounds", "examples/language/math-bounds.ips"],
+    ["asset-constants", "examples/language/asset-constants.ips"],
+    ["collections", "examples/language/collections.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
     ["bezier", "backends/html5/test/fixtures/bezier.ips"],
@@ -123,15 +126,25 @@ function run(iprop, toolsDir) {
     let trapComparisons = 0;
     let vectorComparisons = 0;
     let colorComparisons = 0;
+    let mathComparisons = 0;
+    let constantComparisons = 0;
+    let constantOverloads = 0;
+    let collectionEvidence = {};
+    let listMethodEvidence = {};
+    let samplerEvidence = {};
+    let stepperEvidence = {};
+    let blurEvidence = {};
+    let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
+    const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
     function compare(file, seed, golden, options = {}) {
         const label = path.basename(file) + " seed " + seed + " " + JSON.stringify(options);
         try {
             const png = path.join(temporary, "native.png");
             const args = [file, "--seed", String(seed), "--float-bits", "-o", png];
-            if (options.variant !== undefined) args.push("--variant", String(options.variant));
-            if (options.archetype !== undefined) args.push("--archetype", String(options.archetype));
             if (options.sizeX !== undefined) args.push("--size", options.sizeX + "x" + options.sizeY);
+            for (const [name, value] of Object.entries(options.uniforms || {}))
+                args.push("--uniform", name + "=" + value);
             const result = JSON.parse(execFileSync(tool("ipgen"), args, { encoding: "utf8" }));
             const native = decodePng(fs.readFileSync(png));
             const wasm = iprop.generate(new Uint8Array(fs.readFileSync(file)), { seed, ...options });
@@ -221,7 +234,7 @@ function run(iprop, toolsDir) {
                                  expected, label + ": curve toolkit NaN and signed-zero pins");
             }
             if (path.basename(file) === "part-transforms.iprop") {
-                const kind = options.variant || 0;
+                const kind = options.uniforms?.v || 0;
                 const points = [[1,.5], [.5,3], [3,1.5], [1.5,1], [3,.5], [1,1.5], [.5,1], [1.5,3]];
                 const rects = [[.5,.25,2,1], [.25,1.5,1,2], [1.5,.75,2,1], [.75,.5,1,2],
                                [1.5,.25,2,1], [.5,.75,2,1], [.25,.5,1,2], [.75,1.5,1,2]];
@@ -284,9 +297,26 @@ function run(iprop, toolsDir) {
                 assert.equal(wasm.outputs[2].points[0].x, 1, label);
                 assert.ok(Math.abs(wasm.outputs[2].points[0].y - Math.PI/2) < 1e-6, label);
             }
+            if (path.basename(file) === "math-bounds.iprop") {
+                assert.deepEqual(result.outputs.map(slot => slot.values[0]), [
+                    {x: 0x3f800000, y: 0x3f800000},
+                    {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0},
+                    {x: 0x40000000, y: 0x40000000},
+                ], label + ": exact integers, normalized direction, zero and mixed overloads");
+            }
+            if (path.basename(file) === "asset-constants.iprop") {
+                assert.deepEqual(result.outputs.slice(0, 3).map(slot => slot.values[0]), [
+                    {x: 0x3f800000, y: 0x3f800000}, {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0}
+                ], label + ": constant exact integers and normalization pins");
+                const baseline = JSON.parse(fs.readFileSync(path.join(repo,
+                    "tests/fixtures/frozen-format-v0.6-stage1.json"), "utf8")).cases[1];
+                const expected = baseline.generations.find(g => g.seed === seed);
+                if (expected) assert.deepEqual(result.outputs, expected.outputs,
+                    label + ": preserved runtime constructor outputs and RNG state");
+            }
             if (path.basename(file) === "language.iprop") {
                 assert.equal(result.outputs[3].values.length, 0, label + ": empty output list");
-                const v = options.variant || 0, a = options.archetype || 0;
+                const v = options.uniforms?.v || 0, a = options.uniforms?.a || 0;
                 assert.deepEqual(wasm.outputs[0].points, [{x: v + 1, y: a + 0.25}], label + ": typed helper/palette");
                 assert.deepEqual(wasm.outputs[2].points, [{x: 0, y: a}, {x: 2, y: a}], label + ": loop control");
             }
@@ -299,7 +329,7 @@ function run(iprop, toolsDir) {
         const label = path.basename(file) + " variant " + variant;
         try {
             const native = spawnSync(tool("ipgen"),
-                [file, "--variant", String(variant), "-o", path.join(temporary, "error.png")],
+                [file, "--uniform", "v="+variant, "-o", path.join(temporary, "error.png")],
                 { encoding: "utf8" });
             if (native.error) throw native.error;
             assert.equal(native.status, 1, label + ": native runtime failure");
@@ -307,7 +337,7 @@ function run(iprop, toolsDir) {
             const message = new RegExp(expectedMessage);
             assert.match(native.stderr, message, label + ": native trap reason");
             const bytes = new Uint8Array(fs.readFileSync(file));
-            assert.throws(() => iprop.generate(bytes, { variant }), message,
+            assert.throws(() => iprop.generate(bytes, { uniforms: {v:variant} }), message,
                           label + ": WASM trap reason");
             ++trapComparisons;
         } catch (error) {
@@ -325,20 +355,20 @@ function run(iprop, toolsDir) {
             for (const seed of seeds) compare(file, seed);
             if (name === "nested-parts") {
                 for (let variant = 0; variant < 8; ++variant) {
-                    compare(file, 26, null, {variant});
-                    compare(file, 26, null, {variant, sizeX: 40, sizeY: 30});
+                    compare(file, 26, null, {uniforms:{v:variant}});
+                    compare(file, 26, null, {uniforms:{v:variant}, sizeX: 40, sizeY: 30});
                 }
             }
             if (name === "part-transforms") {
                 for (let variant = 0; variant < 8; ++variant) {
-                    if (variant !== 0) compare(file, 26, null, {variant});
-                    compare(file, 26, null, {variant, sizeX: 24, sizeY: 24});
+                    if (variant !== 0) compare(file, 26, null, {uniforms:{v:variant}});
+                    compare(file, 26, null, {uniforms:{v:variant}, sizeX: 24, sizeY: 24});
                 }
             }
             if (name === "language") {
                 for (let variant = 0; variant < 3; ++variant) {
                     for (let archetype = 0; archetype < 2; ++archetype) {
-                        compare(file, 26, null, {variant, archetype, sizeX: 16, sizeY: 24});
+                        compare(file, 26, null, {uniforms:{v:variant,a:archetype}, sizeX: 16, sizeY: 24});
                     }
                 }
             }
@@ -389,15 +419,57 @@ function run(iprop, toolsDir) {
         for (let variant = 0; variant < 2; ++variant) {
             compareTrap(segmentErrors, variant, "vec2 segment ends must be finite");
         }
+        // Host uniforms of every input type, and the showcase weapons' emission
+        // layers that the website composites as bloom.
+        const emblem = path.join(temporary, "recipe-24-uniform-emblem.ips.iprop");
+        for (const uniforms of [{accent: "#ff3366", scale: 1.5, dotCount: 3},
+                                {accent: "#20c08080", scale: 0.75, dotCount: 12}, {dotCount: 0}])
+            compare(emblem, 7, null, {uniforms});
+        for (const weapon of ["sword", "staff"]) {
+            const file = path.join(repo, "examples/showcase", weapon + ".iprop");
+            for (const layer of [0, 1])
+                compare(file, 26, null, {uniforms: {v:2,quality: 2, glowStrength: 4, renderLayer:layer}});
+        }
+        for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
+                                           [{accent: "#12345"}, /'accent' must be a #RRGGBB/],
+                                           [{dotCount: -1}, /'dotCount' must be an unsigned 32-bit integer/],
+                                           [{dotCount: 1.5}, /'dotCount' must be an unsigned 32-bit integer/],
+                                           [{scale: "2"}, /'scale' must be a number/]]) {
+            const label = "uniform-emblem " + JSON.stringify(uniforms);
+            try {
+                assert.throws(() => iprop.generate(new Uint8Array(fs.readFileSync(emblem)), {uniforms}), message, label);
+                ++trapComparisons;
+            } catch (error) {
+                failures.push(label + ": " + error.message);
+            }
+        }
         // Catching a runtime trap must leave the module usable for generation.
         compare(path.join(temporary, "colors.iprop"), 7);
         compare(path.join(temporary, "noise-v2.iprop"), 7);
         vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
         colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
+        mathComparisons = require("./math-conformance.js").run(iprop, tool, temporary);
+        const constants = require("./constant-conformance.js").run(iprop, tool, temporary);
+        constantComparisons = constants.comparisons;
+        constantOverloads = constants.overloads;
+        collectionEvidence = require("./collection-conformance.js").run(iprop, tool, temporary);
+        listMethodEvidence = require("./list-method-conformance.js").run(iprop, tool, temporary);
+        samplerEvidence = require("./sampler-conformance.js").run(iprop, tool, temporary);
+        stepperEvidence = require("./stepper-conformance.js").run(iprop, tool, temporary);
+        samplingPaletteEvidence = require("./sampling-palette-conformance.js").run(iprop, tool, temporary);
+        pointDistributionEvidence = require("./point-distribution-conformance.js").run(iprop, tool, temporary);
+        densityEvidence = require("./density-conformance.js").run(iprop, tool, temporary);
+        surfaceEvidence = require("./surface-conformance.js").run(iprop, tool, temporary);
+        sourceOverEvidence = require("./source-over-conformance.js").run(iprop, tool, temporary);
+        maskEvidence = require("./mask-conformance.js").run(iprop, tool, temporary);
+        blurEvidence = require("./blur-conformance.js").run(iprop, tool, temporary);
+        resourceExportEvidence = require("./resource-export-conformance.js").run(iprop, tool, temporary);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
-    return { passed: failures.length === 0, failures, comparisons, trapComparisons, vectorComparisons, colorComparisons };
+    return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
+        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

@@ -20,13 +20,12 @@ def run(*args, capture=False):
 
 # Independent release versions, each read from the source that defines it. The
 # C ABI line names the runtime library's SOVERSION; it is configured separately
-# and is neither the product, the C API nor the format version.
+# and is neither the product nor the C API version. The file format itself is
+# unversioned.
 VERSION_SOURCES = {
     "product_version": ("CMakeLists.txt", (r"\bVERSION\s+(\d+\.\d+\.\d+)",)),
     "language_version": ("language/ips/Version.hpp", (r"\bkLanguageVersionMajor\s*=\s*(\d+)\s*;",
                                                       r"\bkLanguageVersionMinor\s*=\s*(\d+)\s*;")),
-    "format_version": ("runtime/iprop/Constants.hpp", (r"\bkVersionMajor\s*=\s*(\d+)\s*;",
-                                                       r"\bkVersionMinor\s*=\s*(\d+)\s*;")),
     "c_api_version": ("backends/capi/iprop.h", (r"^#define IPROP_API_VERSION_MAJOR\s+(\d+)\b",
                                                 r"^#define IPROP_API_VERSION_MINOR\s+(\d+)\b")),
     "c_abi_soversion": ("cmake/CAbi.cmake", (r"^set\(IPROP_C_ABI_VERSION_MAJOR\s+(\d+)\)",
@@ -90,7 +89,7 @@ def described_versions(language):
     if "c_abi_soversion" in language and (type(language['c_abi_soversion']) is not str or language['c_abi_soversion'] != abi):
         raise RuntimeError("C ABI alias differs from abi_version")
     return read_version_matrix({"product_version": language.get("product_version"), "language_version": pair("language_version"),
-            "format_version": pair("format_version"), "c_api_version": pair("c_api_version"),
+            "c_api_version": pair("c_api_version"),
             "c_abi_soversion": abi})
 
 

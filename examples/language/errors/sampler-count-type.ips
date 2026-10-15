@@ -1,0 +1,4 @@
+asset invalidCountType {
+  size 1x1
+  draw { values = sampler(10 to 15).pick(1.0) }
+}

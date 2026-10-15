@@ -133,8 +133,6 @@ CallOutcome legacyInputs(const iprop_generate_options& options, GenerationInputs
     if (options.uniform_count != 0 && options.uniforms == nullptr)
         return CallOutcome::argument("uniforms is null with nonzero count");
     inputs.seed = options.seed;
-    inputs.variant = options.variant;
-    inputs.archetype = options.archetype;
     inputs.sizeX = options.size_x;
     inputs.sizeY = options.size_y;
     for (uint32_t i = 0; i < options.uniform_count; ++i) {
@@ -171,12 +169,7 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
     }
     if (parameters != nullptr && !parametersCompatible(program, *parameters))
         return CallOutcome::argument("parameters belong to another program load", ErrorReason::ForeignParameters);
-    switch (checkGenerationArguments(program.data->meta, request.variant, request.archetype,
-                                     request.sizeX, request.sizeY)) {
-    case ErrorReason::VariantRange:
-        return CallOutcome::argument("variant index out of range", ErrorReason::VariantRange);
-    case ErrorReason::ArchetypeRange:
-        return CallOutcome::argument("archetype index out of range", ErrorReason::ArchetypeRange);
+    switch (checkGenerationArguments(program.data->meta, request.sizeX, request.sizeY)) {
     case ErrorReason::CanvasSize: return CallOutcome::argument("canvas too large", ErrorReason::CanvasSize);
     default: break;
     }
@@ -204,8 +197,6 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
     out.size_y = meta.sizeY;
     out.origin_x = meta.origin.x;
     out.origin_y = meta.origin.y;
-    out.variants = meta.variants;
-    out.archetypes = meta.archetypes;
     out.fuel = meta.fuel;
     out.has_emission = meta.hasEmission ? 1 : 0;
     if (meta.hasEmission) {
@@ -217,8 +208,7 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
         std::memcpy(&out.emission_radius, &meta.emission.radius, sizeof(float));
     }
     const auto& header = program.data->containerHeader;
-    out.format_major = header.versionMajor;
-    out.format_minor = header.versionMinor;
+    out.format_major = out.format_minor = 0; // reserved: the format is unversioned
     out.container_flags = header.flags;
     return out;
 }
@@ -226,7 +216,7 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
 iprop_meta legacyMeta(const iprop_program& program) noexcept {
     const auto info = programInfo(program);
     return {info.size_x, info.size_y, info.origin_x, info.origin_y,
-            info.variants, info.archetypes, info.fuel};
+            info.fuel};
 }
 
 iprop_image resultImage(const iprop_result& result) noexcept {

@@ -19,9 +19,8 @@ iprop::capi::CallOutcome queryLibrary(iprop_library_info_ex* out) noexcept {
     info.api_minor = IPROP_API_VERSION_MINOR;
     info.abi_major = iprop::capi::abiMajor;
     info.abi_minor = iprop::capi::abiMinor;
-    info.format_major = iprop::kVersionMajor;
-    info.format_minor_min = 1;
-    info.format_minor_max = iprop::kVersionMinor;
+    // The format is unversioned; its former range fields stay zero.
+    info.format_major = info.format_minor_min = info.format_minor_max = 0;
     info.capabilities = IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS |
         IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
         IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX |

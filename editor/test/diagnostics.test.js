@@ -34,7 +34,7 @@ test("real compiler errors retain source ownership through imports and lowering"
     };
     try {
         run({"entry.ips":'import tile from "tile.ips"\nasset t { size 8x8 draw {\n' +
-            'tile.draw(1,2,3,at={0,0},rot=45)\n} }', "tile.ips":asset},"entry.ips",/rot transform/);
+            'tile.draw(1,at={0,0},rot=45)\n} }', "tile.ips":asset},"entry.ips",/rot transform/);
         run({"entry.ips":'import tile from "tile.ips"\n'+asset, "tile.ips":"asset bad {\n @ }"},
             "tile.ips",/unexpected/);
         run({"tile.ips":'import missing from "missing.ips"\n'+asset},"tile.ips",/cannot load/);
@@ -58,7 +58,7 @@ test("compiler exports canonical source with identical executable roundtrips", (
     const source = 'import tile from ' + JSON.stringify(part) + '\n' +
         'asset example { size 8x8 draw {\n' +
         '  // author comment\n  rect(color=#fff,h=4,w=4,y=0,x=0)\n' +
-        '  tile.draw(seed,v,a,at={0,0})\n} }';
+        '  tile.draw(seed,at={0,0})\n} }';
     const run = args => spawnSync(ipc,args,{cwd:dir,encoding:"utf8"});
     try {
         fs.mkdirSync(path.dirname(path.join(dir,part)),{recursive:true});

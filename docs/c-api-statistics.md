@@ -1,9 +1,9 @@
 # Completed result statistics
 
 `IPROP_CAP_RESULT_STATISTICS` advertises `iprop_result_stats_ex_init` and
-`iprop_result_query_stats(result, &stats, error)`. They use API 0.3's sized
+`iprop_result_query_stats(result, &stats, error)`. They use API 0.4's sized
 descriptor and checked error rules. Legacy generation creates results with
-these statistics too; checked generation is introduced separately.
+these statistics too; checked generation uses the same completed-result data.
 
 | Output | Meaning |
 | --- | --- |

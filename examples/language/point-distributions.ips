@@ -1,0 +1,25 @@
+asset density_columns {
+  size 32x32
+  output point material
+  output point heights
+  output point state
+
+  const distribution finishes = weighted { 1: 50, 2: 20, 3: 20, 4: 10 }
+  const distribution profile = density { 14.0: 0.0, 18.0: 1.0, 22.0: 0.6, 26.0: 0.0 }
+  const sampler<f32> columnHeight = sampler(14.0 to 26.0 with profile)
+  palette tones = [#8c969f, #8e9c70, #ad7750, #524640]
+
+  pickHeights(spec: sampler<f32>) -> list<f32> { return spec.pick(3) }
+
+  draw {
+    style = 1 to 4 with finishes
+    values = pickHeights(columnHeight)
+    tint = tones[style - 1]
+    for i in 0..3 {
+      rect(2 + i * 10, 28.0 - values[i], 8, values[i], tint)
+    }
+    material = {style, style}
+    heights = {values[0], values[2]}
+    state = {seed & 65535, seed >> 16}
+  }
+}

@@ -8,6 +8,10 @@
 
 #include "Host.hpp"
 #include "Render.hpp"
+#include "../../capi/test/source_over_reference.h"
+#include "../../capi/test/mask_reference.h"
+#include "../../capi/test/resource_export_reference.h"
+#include "../../capi/test/blur_reference.h"
 
 #include <SFML/Graphics.hpp>
 
@@ -112,7 +116,7 @@ int main(int argc, char** argv) {
         iprop_program* program = iprop::sfml_host::loadProgram(bytes);
         const iprop_program_info_ex meta = iprop::sfml_host::queryProgram(program);
         iprop_result* result =
-            iprop::sfml_host::generate(program, entry.seed, 0, 0);
+            iprop::sfml_host::generate(program, entry.seed);
         const auto image = iprop::sfml_host::queryImage(result);
         checkOutputs(result);
         CHECK(image.width == meta.size_x && image.height == meta.size_y,
@@ -159,10 +163,13 @@ int main(int argc, char** argv) {
         sf::Sprite sprite(texture);
         sf::RenderTexture target({8, 8});
         const sf::Color colors[] = {{0x11,0x22,0x33}, {0x44,0x55,0x66}, {0x77,0x88,0x99}};
+        auto parameters = iprop::sfml_host::createParameters(program.get());
         for (std::uint32_t v = 0; v < 3; ++v) {
+            iprop::sfml_host::setParameter(parameters.get(), "v", std::to_string(v));
             for (std::uint32_t a = 0; a < 2; ++a) {
+                iprop::sfml_host::setParameter(parameters.get(), "a", std::to_string(a));
                 iprop::sfml_host::Result result(
-                    iprop::sfml_host::generate(program.get(), 26, v, a), &iprop_result_free);
+                    iprop::sfml_host::generate(program.get(), 26, parameters.get()), &iprop_result_free);
                 const auto image = iprop::sfml_host::queryImage(result.get());
                 const auto outputs = checkOutputs(result.get());
                 iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
@@ -181,10 +188,222 @@ int main(int argc, char** argv) {
         iprop::sfml_host::Program plant(
             iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/plant.iprop")),
             &iprop_program_free);
-        iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26, 0, 0), &iprop_result_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(plant.get(), 26), &iprop_result_free);
         const auto image = iprop::sfml_host::queryImage(result.get());
         iprop::sfml_host::uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);
         CHECK(sprite.getLocalBounds().size == sf::Vector2f(64, 64), "compiled plant texture rect");
+    }
+
+    // Gaussian RGBA and coverage pins survive the SFML texture upload/readback.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir+"/gaussian-blur.iprop")),&iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26),&iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==7 && image.height==2 && slots.empty(),"blur SFML metadata");
+        if(image.width==7 && image.height==2){
+            sf::Texture texture;sf::Sprite sprite(texture);iprop::sfml_host::uploadTexture(texture,sprite,{image.width,image.height},image.pixels);
+            const auto uploaded=texture.copyToImage();
+            for(unsigned y=0;y<2;++y)for(unsigned x=0;x<7;++x){std::uint8_t color[4];gaussian_blur_pixel(x,y,color);
+                CHECK(uploaded.getPixel({x,y})==sf::Color(color[0],color[1],color[2],color[3]),"blur SFML pixel %u,%u",x,y);}
+        }
+    }
+
+    // Internal resource exports leave the SFML output table and texture bytes intact.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir+"/resource-exports.iprop")),&iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26),&iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==16 && image.height==12 && slots.size()==4,"export SFML geometry count");
+        for(std::size_t i=0;i<slots.size() && i<4;++i){
+            CHECK(slots[i].owner==(i<2?0u:static_cast<std::uint32_t>(i-1)) && !slots[i].isList && slots[i].values.size()==2,"export SFML output metadata");
+            if(slots[i].values.size()==2){std::uint32_t value[2];std::memcpy(value,slots[i].values.data(),sizeof(value));
+                CHECK(value[0]==(i==1?0x41d00000u:0x41000000u) && value[1]==(i==1?0u:0x40c00000u),"export SFML output bits");}
+        }
+        if(image.width==16 && image.height==12){
+            sf::Texture texture;sf::Sprite sprite(texture);iprop::sfml_host::uploadTexture(texture,sprite,{image.width,image.height},image.pixels);
+            const auto uploaded=texture.copyToImage();
+            for(unsigned y=0;y<12;++y)for(unsigned x=0;x<16;++x){std::uint8_t color[4];resource_export_pixel(x,y,color);
+                CHECK(uploaded.getPixel({x,y})==sf::Color(color[0],color[1],color[2],color[3]),"export SFML texture pixel %u,%u",x,y);}
+        }
+    }
+
+    // Independent mask pins and geometry through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/mask-algebra.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        CHECK(image.width==8 && image.height==4 && slots.size()==2,"mask metadata");
+        if(slots.size()==2){
+            CHECK(slots[0].values.size()==2 && slots[1].values.size()==4,"mask output sizes");
+            if(slots[0].values.size()==2 && slots[1].values.size()==4){std::uint32_t point[2],rect[4];
+                std::memcpy(point,slots[0].values.data(),sizeof(point));std::memcpy(rect,slots[1].values.data(),sizeof(rect));
+                CHECK(point[0]==0x41d00000 && point[1]==0 && rect[0]==0 && rect[1]==0 &&
+                    rect[2]==0x40a00000 && rect[3]==0x40800000,"mask unclipped output bits");}
+            CHECK(slots[0].owner==0 && slots[1].owner==0 && !slots[0].isList && !slots[1].isList,"mask output owners");
+        }
+        if(image.width==8 && image.height==4)for(unsigned y=0;y<4;++y)for(unsigned x=0;x<8;++x){
+            std::uint8_t color[4];mask_algebra_pixel(x,color);
+            CHECK(std::memcmp(image.pixels+(y*8+x)*4,color,4)==0,"mask pixel %u,%u",x,y);
+        }
+    }
+
+    // Exact rational RGBA8 pins through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/source-over-panels.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x41f00000,0x41a00000,0x41d00000,0,0x41f00000,0x41a00000};
+        CHECK(image.width==32 && image.height==24 && slots.size()==3,"source-over metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==(i==2 ? 1u : 0u) && !slots[i].isList,"source-over output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"source-over output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4];source_over_panel_pixel(x,y,color);
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"source-over pixel %u,%u",x,y);
+        }
+    }
+
+    // Preserved stage-7 direct-render oracle through the unchanged SFML adapter.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/captured-panels.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x41e00000,0x41900000,0x46f3a600,0x471e3700};
+        CHECK(image.width==32 && image.height==24 && slots.size()==2,"captured panel metadata");
+        for(std::size_t i=0;i<slots.size() && i<2;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"captured panel output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"captured panel output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={36,50,66,255};
+            if(x>=2 && x<30 && y>=3 && y<21){color[0]=52;color[1]=58;color[2]=66;}
+            if(x>=4 && x<28 && y>=5 && y<19){color[0]=146;color[1]=156;color[2]=168;}
+            if((x==4 && y==5)||(x==27 && y==18)){color[0]=192;color[1]=144;color[2]=96;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"captured panel pixel %u,%u",x,y);
+        }
+    }
+
+    // Independent raw-RNG / binary64 density pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/point-distributions.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40000000,0x40000000,0x41a085d5,0x41b6b498,0x4766fe00,0x46f1ba00};
+        CHECK(image.width==32 && image.height==32 && slots.size()==3,"density image metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"density output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"density output bits");}
+        }
+        if(image.width==32 && image.height==32)for(unsigned y=0;y<32;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(((x>=2 && x<10)||(x>=12 && x<20)) && y>=8 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            if(x>=22 && x<30 && y>=5 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"density pixel %u,%u",x,y);
+        }
+    }
+
+    // Independent raw-RNG weighted pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/weighted.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40000000,0x40000000,0x3f800000,0x3f800000,0x47738c00,0x4671b800};
+        CHECK(image.width==32 && image.height==24 && slots.size()==3,"weighted image metadata");
+        for(std::size_t i=0;i<slots.size() && i<3;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"weighted output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"weighted output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && x<30 && y>=2 && y<22){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+            if(x>=4 && x<8 && y>=6 && y<18){color[0]=52;color[1]=42;color[2]=34;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"weighted pixel %u,%u",x,y);
+        }
+    }
+
+    // Preserved stage-4 runtime pins through the unchanged host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/sampling-palettes.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get()); const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40400000,0x42200000,0x41aa69ec,0x40000000,
+            0x41200000,0x41600000,0x3f2ac48e,0,0x475a7000,0x47354c00};
+        CHECK(image.width==32 && image.height==24 && slots.size()==5,"palette image metadata");
+        for(std::size_t i=0;i<slots.size() && i<5;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"palette output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"palette output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && ((y>=2 && y<6 && x<12)||(y>=8 && y<12 && x<13)||(y>=14 && y<18 && x<16))){
+                color[0]=168;color[1]=173;color[2]=179;color[3]=255;}
+            CHECK(std::memcmp(image.pixels+(y*32+x)*4,color,4)==0,"palette pixel %u,%u",x,y);
+        }
+    }
+
+    // Independent stage-3 ordinary-range pins through the existing host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/samplers.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image=iprop::sfml_host::queryImage(result.get());const auto slots=checkOutputs(result.get());
+        const std::uint32_t expected[]={0x40400000,0x42200000,0x416ef976,0x401a259f,
+            0x41500000,0x41500000,0x46c16e00,0x45b8a800};
+        CHECK(image.width==32 && image.height==24 && slots.size()==4,"sampler image metadata");
+        for(std::size_t i=0;i<slots.size() && i<4;++i){
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"sampler output metadata");
+            if(slots[i].values.size()==2){std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"sampler output bits");}
+        }
+        if(image.width==32 && image.height==24)for(unsigned y=0;y<24;++y)for(unsigned x=0;x<32;++x){
+            const std::uint8_t* actual=image.pixels+(y*32+x)*4;std::uint8_t color[4]={0,0,0,0};
+            if(x>=2 && x<15 && ((y>=2 && y<6)||(y>=8 && y<12)||(y>=14 && y<18))){
+                color[0]=134;color[1]=144;color[2]=156;color[3]=255;}
+            CHECK(std::memcmp(actual,color,4)==0,"sampler pixel %u,%u",x,y);
+        }
+    }
+
+    // Independent stage-2 polygon/RNG pins through the existing host layouts.
+    {
+        iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
+            iprop::sfml_host::readFile(programDir + "/collections.iprop")), &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(),26), &iprop_result_free);
+        const auto image = iprop::sfml_host::queryImage(result.get());
+        const auto slots = checkOutputs(result.get());
+        const std::uint32_t expected[] = {0x40800000,0x41980000,0x41900000,0x40000000,
+            0x41200000,0x41f00000,0x46da8a00,0x475aa600};
+        const std::uint32_t rows[] = {0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
+            0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
+            0xfff80,0xff80,0x1f00,0x300,0,0,0,0};
+        CHECK(image.width==32 && image.height==24 && slots.size()==4,"collection image metadata");
+        for(std::size_t i=0;i<slots.size() && i<4;++i) {
+            CHECK(slots[i].values.size()==2 && slots[i].owner==0 && !slots[i].isList,"collection output metadata");
+            if(slots[i].values.size()==2) {
+                std::uint32_t bits[2];std::memcpy(bits,slots[i].values.data(),sizeof(bits));
+                CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"collection output bits");
+            }
+        }
+        if(image.width==32 && image.height==24) for(unsigned y=0;y<24;++y) for(unsigned x=0;x<32;++x) {
+            const std::uint8_t* actual=image.pixels+(y*32+x)*4;
+            std::uint8_t color[4]={0,0,0,0};
+            if((rows[y]>>x)&1) {color[0]=146;color[1]=156;color[2]=168;color[3]=255;}
+            if(x==3 && y==4) {color[0]=52;color[1]=58;color[2]=66;color[3]=255;}
+            CHECK(std::memcmp(actual,color,4)==0,"collection polygon pixel %u,%u",x,y);
+        }
     }
 
     // Existing root/helper/part fixture: all D4 transforms, owner 2 has no
@@ -194,8 +413,10 @@ int main(int argc, char** argv) {
             iprop::sfml_host::readFile(programDir + "/output-values.iprop")), &iprop_program_free);
         const float points[8][2] = {{1,2},{2,7},{7,6},{6,1},{7,2},{1,6},{2,1},{6,7}};
         const unsigned transforms[] = {0,1,2,3,4,7,5,6};
+        auto parameters = iprop::sfml_host::createParameters(program.get());
         for (uint32_t v = 0; v < 8; ++v) {
-            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, v, 0), &iprop_result_free);
+            iprop::sfml_host::setParameter(parameters.get(), "v", std::to_string(v));
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26, parameters.get()), &iprop_result_free);
             const auto slots = checkOutputs(result.get());
             CHECK(slots.size() == 18, "all root and part output slots");
             for (std::size_t i = 0; i < slots.size(); ++i) {
@@ -213,7 +434,7 @@ int main(int argc, char** argv) {
                   "D4 output must already be transformed exactly once");
             if (v == 7) {
                 const auto before = iprop::sfml_host::queryImage(result.get());
-                iprop::sfml_host::Result later(iprop::sfml_host::generate(program.get(), 7, 0, 0), &iprop_result_free);
+                iprop::sfml_host::Result later(iprop::sfml_host::generate(program.get(), 7), &iprop_result_free);
                 program.reset();
                 const auto after = iprop::sfml_host::queryImage(result.get());
                 CHECK(before.pixels == after.pixels && before.byte_count == after.byte_count,
@@ -234,7 +455,7 @@ int main(int argc, char** argv) {
         for (const char* fixture : {"backend-raw-values.iprop", "backend-empty-values.iprop"}) {
             iprop::sfml_host::Program program(iprop::sfml_host::loadProgram(
                 iprop::sfml_host::readFile(programDir + "/" + fixture)), &iprop_program_free);
-            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 0, 0, 0), &iprop_result_free);
+            iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 0), &iprop_result_free);
             program.reset();
             auto slots = checkOutputs(result.get());
             CHECK(slots.size() == 6 && slots[0].name == std::string(name, sizeof(name) - 1) &&
@@ -267,7 +488,7 @@ int main(int argc, char** argv) {
         iprop::sfml_host::setParameter(parameters.get(), "fx", "5.5");
         iprop::sfml_host::setParameter(parameters.get(), "ux", "3");
         const iprop::sfml_host::Result checked(
-            iprop::sfml_host::generate(program.get(), 0, 0, 0, parameters.get()), &iprop_result_free);
+            iprop::sfml_host::generate(program.get(), 0, parameters.get()), &iprop_result_free);
         iprop_uniform uniforms[3] = {};
         uniforms[0].name = "base"; uniforms[0].type = IPROP_UNIFORM_COLOR;
         uniforms[0].r = 255; uniforms[0].a = 128;
@@ -293,6 +514,59 @@ int main(int argc, char** argv) {
                 CHECK(false, "accepted %s=%s", name, value);
             } catch (const std::runtime_error&) {}
         }
+    }
+
+    {
+        iprop::sfml_host::Program program(
+            iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/math-bounds.iprop")),
+            &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26), &iprop_result_free);
+        const auto image = iprop::sfml_host::queryImage(result.get());
+        const auto slots = checkOutputs(result.get());
+        const std::uint32_t expected[] = {0x3f800000, 0x3f800000, 0x3f19999a, 0x3f4ccccd,
+                                        0, 0, 0x40000000, 0x40000000};
+        CHECK(slots.size() == 4, "format 0.6 output slots");
+        for (std::size_t i = 0; i < slots.size(); ++i) {
+            CHECK(slots[i].values.size() == 2 && slots[i].owner == 0 && !slots[i].isList,
+                  "format 0.6 output metadata");
+            if (i < 4 && slots[i].values.size() == 2) {
+                std::uint32_t bits[2];
+                std::memcpy(bits, slots[i].values.data(), sizeof(bits));
+                CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                      "format 0.6 math output bits");
+            }
+        }
+        sf::Image rendered;
+        rendered.resize({image.width, image.height}, image.pixels);
+        CHECK(rendered.getPixel({0, 0}) == sf::Color(0x20, 0xc0, 0x80), "format 0.6 math pixel");
+    }
+
+    {
+        iprop::sfml_host::Program program(
+            iprop::sfml_host::loadProgram(iprop::sfml_host::readFile(programDir + "/asset-constants.iprop")),
+            &iprop_program_free);
+        iprop::sfml_host::Result result(iprop::sfml_host::generate(program.get(), 26), &iprop_result_free);
+        const auto image = iprop::sfml_host::queryImage(result.get());
+        const auto slots = checkOutputs(result.get());
+        // Preserved stage-1 constructor pins, including the final RNG state.
+        const std::uint32_t expected[] = {0x3f800000, 0x3f800000, 0x3f19999a, 0x3f4ccccd,
+            0, 0, 0x3f116e13, 0x3ee83a45, 0, 0x3efbda76, 0x4766fe00, 0x46f1ba00};
+        CHECK(slots.size() == 6, "asset constant output slots");
+        for (std::size_t i = 0; i < slots.size(); ++i) {
+            CHECK(slots[i].values.size() == 2 && slots[i].owner == 0 && !slots[i].isList,
+                  "asset constant output metadata");
+            if (i < 6 && slots[i].values.size() == 2) {
+                std::uint32_t bits[2];
+                std::memcpy(bits, slots[i].values.data(), sizeof(bits));
+                CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                      "asset constant output bits");
+            }
+        }
+        sf::Image rendered;
+        rendered.resize({image.width, image.height}, image.pixels);
+        CHECK(rendered.getSize() == sf::Vector2u(2, 2), "asset constant dimensions");
+        CHECK(rendered.getPixel({0, 0}) == sf::Color(146,156,168), "asset constant base color");
+        CHECK(rendered.getPixel({1, 0}) == sf::Color(139,149,161), "asset constant helper color");
     }
 
     if (failures != 0) {

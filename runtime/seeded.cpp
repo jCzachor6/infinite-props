@@ -1,6 +1,8 @@
 #include "iprop/VmInternals.hpp"
 #include "iprop/math/Curves.hpp"
 #include "iprop/math/Distribution.hpp"
+#include "iprop/math/Color.hpp"
+#include "iprop/math/Vector.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -235,36 +237,22 @@ f32 uniformFloat(Execution& ex, f32 lo, f32 hi) {
     return value < lo ? lo : value > hi ? hi : value;
 }
 
-// A range draw shaped by a distribution (spec v0.5 §4.4): one stream step,
-// the coefficient u = (x + 1/2) / 2^32, and 1 fuel per kernel iteration.
+// A range draw shaped by a distribution (spec v0.5 §4.4): one stream step and
+// the coefficient u = (x + 1/2) / 2^32.
 double distributionDraw(Execution& ex, const Distribution& distribution, double lo, double hi) {
-    if (distribution.family == DistributionFamily::None) {
+    if (distribution.family == DistributionFamily::None ||
+        (math::pointDistributionSpec(distribution.family) && !math::validDistribution(distribution))) {
         ex.trap("distribution is not initialized", ErrorReason::NumericRange);
     }
     Frame& frame = ex.frame();
     frame.stream += 0x9e3779b9u;
     const double u = (static_cast<double>(hash32(frame.stream)) + 0.5) * 0x1p-32;
-    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
-    switch (draw.status) {
-    case math::DrawStatus::Outside:
-        ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
-    case math::DrawStatus::NoMass:
-        ex.trap("random range has no probability under the distribution", ErrorReason::NumericRange);
-    case math::DrawStatus::NoConvergence:
-        ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
-    case math::DrawStatus::Ok: break;
-    }
-    ex.spend(draw.steps);
-    return draw.value;
+    return checkedTruncatedDraw(ex, distribution, lo, hi, u);
 }
 
-// Round half away from zero (spec v0.5 §4.4); |x| < 2^31 keeps x - t exact.
-i32 roundToInt(double x) {
-    double t = std::trunc(x);
-    const double fraction = x - t;
-    if (fraction >= 0.5) t += 1.0;
-    else if (fraction <= -0.5) t -= 1.0;
-    return static_cast<i32>(t);
+f32 distributionFloat(Execution& ex, const Distribution& distribution, f32 lo, f32 hi) {
+    const auto value = static_cast<f32>(distributionDraw(ex, distribution, lo, hi));
+    return value < lo ? lo : value > hi ? hi : value;
 }
 
 Distribution constructed(Execution& ex, DistributionFamily family, std::size_t count, const char* rule) {
@@ -284,6 +272,47 @@ void advanceAndPushUnit(Execution& ex) {
 }
 
 } // namespace
+
+double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, double lo, double hi, double u) {
+    ex.spend(math::pointDrawWork(distribution, lo, hi));
+    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
+    switch (draw.status) {
+    case math::DrawStatus::Outside:
+        ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoMass:
+        ex.trap("random range has no probability under the distribution", ErrorReason::NumericRange);
+    case math::DrawStatus::NoConvergence:
+        ex.trap("distribution draw did not converge", ErrorReason::NumericRange);
+    case math::DrawStatus::Numerical:
+        ex.trap("distribution draw has a numerical error", ErrorReason::NumericRange);
+    case math::DrawStatus::Ok: break;
+    }
+    // Kernel iterations are charged only after a successful draw.
+    ex.spend(draw.steps);
+    return draw.value;
+}
+
+// Captured ranges call the same pinned kernels as the legacy adapters below.
+// No private RNG state is attached to a description.
+Value drawSampler(Execution& ex, const SamplerData& sampler) {
+    if (sampler.mode == SamplerMode::Constant) return sampler.lower;
+    const auto item = sampler.type.item();
+    const bool with = sampler.mode == SamplerMode::With;
+    if (item == ValueType::I32) {
+        const auto lo = std::get<i32>(sampler.lower), hi = std::get<i32>(sampler.upper);
+        return with ? math::roundRangeInt(distributionDraw(ex, sampler.distribution, lo, hi)) : uniformInt(ex, lo, hi);
+    }
+    if (item == ValueType::F32) {
+        const auto lo = std::get<f32>(sampler.lower), hi = std::get<f32>(sampler.upper);
+        if (!with) return uniformFloat(ex, lo, hi);
+        return distributionFloat(ex, sampler.distribution, lo, hi);
+    }
+    const auto t = with ? distributionFloat(ex, sampler.distribution, 0.f, 1.f) : uniformFloat(ex, 0.f, 1.f);
+    ex.spend(1); // The existing color/vec2 interpolation instruction.
+    if (item == ValueType::Color) return math::colorMixRgba(std::get<Color>(sampler.lower), std::get<Color>(sampler.upper), t);
+    if (item == ValueType::Vec2) return math::vec2Mix(std::get<Vec2>(sampler.lower), std::get<Vec2>(sampler.upper), t);
+    ex.trap("unsupported sampler element type", ErrorReason::StackType);
+}
 
 // Seeded primitives (spec §9.6/§9.7, exact algorithms §12).
 bool stepSeeded(Execution& ex, Instruction ins) {
@@ -379,7 +408,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
         const double value = distributionDraw(ex, distribution, lo, hi);
-        ex.push(Value(roundToInt(value)));
+        ex.push(Value(math::roundRangeInt(value)));
         ++ex.frame().ip;
         return true;
     }
@@ -393,8 +422,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         if (lo > hi) {
             ex.trap("random range lower bound exceeds the upper bound", ErrorReason::NumericRange);
         }
-        const f32 value = static_cast<f32>(distributionDraw(ex, distribution, lo, hi));
-        ex.push(Value(value < lo ? lo : value > hi ? hi : value));
+        ex.push(Value(distributionFloat(ex, distribution, lo, hi)));
         ++ex.frame().ip;
         return true;
     }

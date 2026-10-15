@@ -1,6 +1,7 @@
 #include "ips/Semantics.hpp"
 #include "ips/Palette.hpp"
 #include "ips/DeclarationConstants.hpp"
+#include "ips/AssetConstants.hpp"
 
 #include <algorithm>
 #include <optional>
@@ -8,6 +9,7 @@
 #include <utility>
 
 #include "ips/Typing.hpp"
+#include "iprop/Surface.hpp"
 
 namespace iprop::ips {
 namespace {
@@ -17,6 +19,8 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Point: return ValueType::Vec2;
     case OutputKind::Rect: return ValueType::Rect;
     case OutputKind::Circle: return ValueType::Circle;
+    case OutputKind::Mask: return ValueType::Mask;
+    case OutputKind::Layer: return ValueType::Layer;
     }
     return ValueType::Vec2;
 }
@@ -67,10 +71,16 @@ private:
     // Per-function state.
     const Function* current_ = nullptr;
     std::uint32_t loopDepth_ = 0;
+    std::uint32_t surfaceDepth_ = 0; // open layer/clip blocks
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
         throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError,
                           DiagnosticStage::Typing};
+    }
+
+    void enterSurfaceScope(const SourceLocation& at) {
+        checkSurfaceScope(surfaceDepth_, at, DiagnosticStage::Typing);
+        ++surfaceDepth_;
     }
 
     bool atLimit() const { return diagnostics_.size() >= limit_; }
@@ -85,8 +95,10 @@ private:
 
     void checkRecoveringStmt(const Stmt& stmt) {
         const auto savedDepth = loopDepth_;
+        const auto savedSurfaceDepth = surfaceDepth_;
         if (recover([&] { checkStmt(stmt); })) return;
         loopDepth_ = savedDepth;
+        surfaceDepth_ = savedSurfaceDepth;
         markInvalidBindings(stmt);
     }
 
@@ -95,8 +107,8 @@ private:
         // output, parameter or local. A later valid assignment can establish
         // the type of a recovery-only invalid local.
         if (!findInput(name) && !findOutput(name) && !findPalette(name) &&
-            !isParam(name) && name != "seed" &&
-            !(current_->name == "draw" && (name == "v" || name == "a")))
+            !findAssetConstant(program_, name) &&
+            !isParam(name) && name != "seed")
             typer_.declareInvalidLocal(name);
     }
 
@@ -110,6 +122,11 @@ private:
         } else if (const auto* forLoop = std::get_if<ForStmt>(&stmt)) {
             markInvalidLocal(forLoop->variable);
             for (const auto& child : forLoop->body) markInvalidBindings(child);
+        } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+            markInvalidLocal(capture->name);
+            for (const auto& child : capture->body) markInvalidBindings(child);
+        } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+            for (const auto& child : clip->body) markInvalidBindings(child);
         }
     }
 
@@ -118,6 +135,8 @@ private:
     void checkImports() {
         std::set<std::string> seen;
         for (const auto& import : program_.imports) {
+            if (import.alias == "surface")
+                error(import.location, "import alias 'surface' conflicts with the surface namespace; rename the alias");
             if (!seen.insert(import.alias).second) {
                 error(import.location,
                       "duplicate import alias '" + import.alias + "'");
@@ -141,7 +160,7 @@ private:
             if (atLimit()) return false;
             const bool valid = recover([&] {
                 if (input.name == "seed" || input.name == "at" ||
-                    input.name == "v" || input.name == "a" || input.name == "rot" ||
+                    input.name == "rot" ||
                     input.name == "mirror_x" || input.name == "mirror_y") {
                     error(input.location, "'" + input.name + "' is a reserved name");
                 }
@@ -157,8 +176,6 @@ private:
         for (const auto& output : program_.asset.outputs) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
-                if (output.name == "v" || output.name == "a")
-                    error(output.location, "'" + output.name + "' is a reserved name");
                 if (!outputNames.insert(output.name).second) {
                     error(output.location, "duplicate output '" + output.name + "'");
                 }
@@ -187,6 +204,7 @@ private:
         }
 
         std::set<std::string> paletteNames;
+        bool paletteDeclarationsValid = true;
         for (const auto& palette : program_.asset.palettes) {
             if (atLimit()) return false;
             const bool valid = recover([&] {
@@ -206,9 +224,13 @@ private:
                 }
             });
             namespaceValid = valid && namespaceValid;
-            if (valid) recover([&] { checkPaletteDecl(palette); });
+            if (valid) paletteDeclarationsValid = recover([&] { checkPaletteDecl(palette); }) && paletteDeclarationsValid;
         }
-        return namespaceValid;
+        // Do not report the same invalid legacy palette again when resolving
+        // the shared declaration graph. Recovery already recorded its error.
+        return paletteDeclarationsValid && recover([&] {
+            typer_.registerAssetDeclarations(program_, resolveAssetDeclarations(program_));
+        }) && namespaceValid;
     }
 
     void checkInputDefault(const InputDecl& input) {
@@ -216,11 +238,10 @@ private:
     }
 
     void checkPaletteDecl(const PaletteDecl& palette) {
-        if (palette.name == "seed" || palette.name == "at" ||
-            palette.name == "v" || palette.name == "a") {
+        if (palette.name == "seed" || palette.name == "at") {
             error(palette.location, "'" + palette.name + "' is a reserved name");
         }
-        (void)resolvePalette(palette);
+        if (!extendedPalette(palette)) (void)resolvePalette(palette);
     }
 
     // ---- functions ----------------------------------------------------------
@@ -260,6 +281,7 @@ private:
         const Function* savedCurrent = current_;
         Typer::Scope savedScope = typer_.saveScope();
         const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
+        const std::uint32_t savedSurfaceDepth = std::exchange(surfaceDepth_, 0);
 
         current_ = &function;
         try {
@@ -275,12 +297,14 @@ private:
         } catch (...) {
             current_ = savedCurrent;
             loopDepth_ = savedLoopDepth;
+            surfaceDepth_ = savedSurfaceDepth;
             typer_.restoreScope(std::move(savedScope));
             throw;
         }
 
         current_ = savedCurrent;
         loopDepth_ = savedLoopDepth;
+        surfaceDepth_ = savedSurfaceDepth;
         typer_.restoreScope(std::move(savedScope));
     }
 
@@ -311,6 +335,30 @@ private:
             --loopDepth_;
         } else if (const auto* forStmt = std::get_if<ForStmt>(&stmt)) {
             checkFor(*forStmt);
+        } else if (const auto* capture = std::get_if<LayerStmt>(&stmt)) {
+            if (findOutput(capture->name) || findInput(capture->name) || findPalette(capture->name) ||
+                findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed")
+                error(capture->location, "layer result '" + capture->name + "' must be a writable local");
+            enterSurfaceScope(capture->location);
+            for (const auto& child : capture->body) {
+                if (atLimit()) break;
+                checkRecoveringStmt(child);
+            }
+            --surfaceDepth_;
+            const auto existing = typer_.locals().find(capture->name);
+            if (existing != typer_.locals().end() && existing->second != ValueType::Layer)
+                error(capture->location, "layer result '" + capture->name + "' conflicts with a local of type " + typeName(existing->second));
+            typer_.declareLocal(capture->name, ValueType::Layer);
+        } else if (const auto* clip = std::get_if<ClipStmt>(&stmt)) {
+            const auto type = typer_.typeOf(*clip->mask);
+            if (type != ValueType::Mask)
+                error(locationOf(*clip->mask), "clip requires mask, got " + std::string(typeName(type)));
+            enterSurfaceScope(clip->location);
+            for (const auto& child : clip->body) {
+                if (atLimit()) break;
+                checkRecoveringStmt(child);
+            }
+            --surfaceDepth_;
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             checkReturn(*ret);
         } else if (const auto* brk = std::get_if<BreakStmt>(&stmt)) {
@@ -333,9 +381,9 @@ private:
                           std::string(typeName(type)));
             }
         }
-        if (forStmt.variable == "seed" ||
-            (current_->name == "draw" &&
-             (forStmt.variable == "v" || forStmt.variable == "a"))) {
+        if (findAssetConstant(program_, forStmt.variable))
+            error(forStmt.location, "cannot use const '" + forStmt.variable + "' as a loop counter");
+        if (forStmt.variable == "seed") {
             error(forStmt.location, "'" + forStmt.variable + "' is a reserved name");
         }
         if (findOutput(forStmt.variable) != nullptr) {
@@ -387,7 +435,7 @@ private:
         if (current_->name == "draw") {
             error(ret.location, "'draw' cannot return a value");
         }
-        const ValueType type = typer_.typeOf(*ret.value);
+        const ValueType type = typer_.typeOf(*ret.value, current_->returnType);
         if (!isStorable(type)) {
             error(ret.location,
                   "cannot return " + std::string(typeName(type)) +
@@ -429,16 +477,17 @@ private:
             error(decl.location,
                   "cannot assign to palette '" + decl.name + "'");
         }
-        if (current_->name == "draw" && (decl.name == "v" || decl.name == "a")) {
-            error(decl.location, "cannot assign to builtin '" + decl.name + "'");
-        }
+        if (findAssetConstant(program_, decl.name))
+            error(decl.location, "cannot assign to const '" + decl.name + "'");
         if (isParam(decl.name)) {
             error(decl.location, "cannot assign to parameter '" + decl.name + "'");
         }
         if (decl.name == "seed") {
             error(decl.location, "'seed' is a reserved name");
         }
-        const ValueType type = typer_.typeOf(*decl.value);
+        std::optional<ValueType> context = decl.declaredType;
+        if (const auto found = typer_.locals().find(decl.name); found != typer_.locals().end()) context = found->second;
+        const ValueType type = typer_.typeOf(*decl.value, context);
         if (decl.declaredType && type != valueTypeOf(*decl.declaredType)) {
             const auto* declared = typeName(valueTypeOf(*decl.declaredType));
             SourceError diagnostic{locationOf(*decl.value), std::string(declared) + " '" + decl.name +
@@ -524,6 +573,12 @@ private:
 } // namespace
 
 // ---- public API -------------------------------------------------------------
+
+void checkSurfaceScope(std::size_t open, const SourceLocation& at, DiagnosticStage stage) {
+    if (open >= kMaxSurfaceScopes)
+        throw SourceError{at, "layer and clip blocks nest deeper than " + std::to_string(kMaxSurfaceScopes) +
+            " surface scopes", {}, DiagnosticCode::ResourceLimit, stage};
+}
 
 PartInfo partInfoOf(const Asset& asset) {
     PartInfo info;

@@ -19,9 +19,9 @@ namespace {
 // the generation result.
 GenerationResult runOutputs(const Prog& prog, const std::vector<OutputSpec>& outputs,
                             const std::vector<std::string>& names) {
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, outputs);
+    const auto meta = metaSection(8, 8, 0, 0, 100000, false, {}, 0, 0, 0, {}, outputs);
     const auto pool = constSection(names, prog.ints, prog.floats, prog.colors);
-    const auto bytes = fullFile(meta, pool, codeSection({{0, {0, 0}, {}, {}, prog.body}}, {}));
+    const auto bytes = fullFile(meta, pool, codeSection({{0, {}, {}, {}, prog.body}}, {}));
     auto loaded = loadFile(bytes);
     VM vm(loaded, {});
     vm.run();
@@ -109,10 +109,10 @@ TEST_CASE("unvalidated wrong-slot writes trap") {
     // Slot 0 is declared as a rect; out.point targets it without validation.
     Prog prog;
     prog.F(0.f).F(0.f).emit(0x90, 0); // out.point 0
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {},
+    const auto meta = metaSection(8, 8, 0, 0, 100000, false, {}, 0, 0, 0, {},
                                   {{1, 0, 1}}); // rect "collider"
     const auto pool = constSection({"draw", "collider"}, prog.ints, prog.floats, prog.colors);
-    const auto bytes = fullFile(meta, pool, codeSection({{0, {0, 0}, {}, {}, prog.body}}, {}));
+    const auto bytes = fullFile(meta, pool, codeSection({{0, {}, {}, {}, prog.body}}, {}));
     auto loaded = loadFile(bytes);
     bool threw = false;
     try {

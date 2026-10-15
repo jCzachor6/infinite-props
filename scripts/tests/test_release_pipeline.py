@@ -121,7 +121,7 @@ class ReleaseGatesTest(unittest.TestCase):
             inputs(source, root, commit)
             path = source / REPORTS[0] / 'summary.json'
             original = json.loads(path.read_text())
-            for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+            for key in ('language_version','c_api_version','c_abi_soversion'):
                 for case in ('missing','type','mismatch'):
                     value = copy.deepcopy(original)
                     if case == 'missing': del value[key]
@@ -164,7 +164,7 @@ class ReleaseGatesTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, message):
                     metadata(root, "v0.4.0", publishing=True)
 
-    def test_release_checks_the_emitted_frozen_format_not_the_product_number(self):
+    def test_release_freezes_the_specification_of_its_product_line(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "repo"
             repository(root)
@@ -178,11 +178,18 @@ class ReleaseGatesTest(unittest.TestCase):
                 "backends/capi/iprop.h": "#define IPROP_API_VERSION_MAJOR 0\n#define IPROP_API_VERSION_MINOR 3\n",
             }.items():
                 (root / file).write_text(text, encoding="utf-8")
-            self.assertFalse((root / "spec/iprop-v0.5.md").exists())
+            # The format is unversioned: the specification follows the product line.
+            with self.assertRaisesRegex(RuntimeError, "Missing the format specification spec/iprop-v0.5.md"):
+                metadata(root, "v0.5.0", publishing=True)
+            (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.4"), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "does not specify product line 0.5"):
+                metadata(root, "v0.5.0", publishing=True)
+            (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
             release = metadata(root, "v0.5.0", publishing=True)
-            self.assertEqual({key: release[key] for key in ("product_version", "language_version", "format_version",
+            self.assertNotIn("format_version", release)
+            self.assertEqual({key: release[key] for key in ("product_version", "language_version",
                                                             "c_api_version", "c_abi_soversion", "tag")},
-                             {"product_version": "0.5.0", "language_version": "0.5", "format_version": "0.4",
+                             {"product_version": "0.5.0", "language_version": "0.5",
                               "c_api_version": "0.3", "c_abi_soversion": "0.4", "tag": "v0.5.0"})
             # The collector identity path accepts independently versioned
             # artifacts; it must not infer any field from the product minor.
@@ -191,22 +198,9 @@ class ReleaseGatesTest(unittest.TestCase):
                            "test_reports": [{"tests": 1, "failures": 0, "skipped": 0}]}
                     for name in REPORTS}
             verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
-            jobs[REPORTS[0]]["format_version"] = "0.5"
+            jobs[REPORTS[0]]["language_version"] = "0.6"
             with self.assertRaisesRegex(RuntimeError, "Version matrix differs"):
                 verify_jobs(jobs, "0.5.0", "a" * 40, root=root)
-            # A frozen-looking specification named after the product cannot
-            # stand in for the format the release actually emits.
-            (root / "spec/iprop-v0.5.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
-            (root / "spec/iprop-v0.4.md").unlink()
-            with self.assertRaisesRegex(RuntimeError, "Missing the emitted format specification spec/iprop-v0.4.md"):
-                metadata(root, "v0.5.0", publishing=True)
-            (root / "spec/iprop-v0.4.md").write_text(FROZEN_SPEC.format("0.5"), encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "does not specify format 0.4"):
-                metadata(root, "v0.5.0", publishing=True)
-            # A new emitted format requires its own frozen specification.
-            (root / "runtime/iprop/Constants.hpp").write_text(
-                VERSION_FILES["runtime/iprop/Constants.hpp"].replace("Minor = 4", "Minor = 5"), encoding="utf-8")
-            self.assertEqual(metadata(root, "v0.5.0", publishing=True)["format_version"], "0.5")
 
     def test_unreadable_version_source_is_a_release_error(self):
         for file, text in (("cmake/CAbi.cmake", "set(IPROP_C_ABI_SOVERSION 0.4)\n"),

@@ -13,7 +13,8 @@ namespace iprop {
 enum class ErrorReason : std::uint32_t {
     None = 0,
     InvalidFormat = 1000, TruncatedInput = 1001, BadMagic = 1002,
-    UnsupportedVersion = 1003, InvalidHeader = 1004, Compression = 1005,
+    // 1003 was the unsupported format version; the format is unversioned.
+    InvalidHeader = 1004, Compression = 1005,
     InvalidLayout = 1006, InvalidConstants = 1007, InvalidMetadata = 1008,
     InvalidCode = 1009, InvalidDebug = 1010,
     InvalidInstruction = 2000, InvalidSignature = 2001, PartCycle = 2002,
@@ -22,7 +23,7 @@ enum class ErrorReason : std::uint32_t {
     InvalidControl = 3007, DivideByZero = 3008, IntegerOverflow = 3009,
     NumericRange = 3010, InvalidOutput = 3011, PartOutputMissing = 3012,
     InvalidPart = 3013, StreamUnderflow = 3014,
-    InvalidArgument = 4000, VariantRange = 4001, ArchetypeRange = 4002,
+    InvalidArgument = 4000,
     CanvasSize = 4003, UniformType = 4004, UnknownParameter = 4005,
     DuplicateParameter = 4006, ForeignParameters = 4007,
     OutOfMemory = 5000, Internal = 5001,

@@ -2,162 +2,362 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — the procedural asset format</title>
-<style>
-  :root {
-    --bg: #10161d;
-    --panel: #17212b;
-    --line: #2b3a46;
-    --text: #dce4ea;
-    --dim: #8aa4ae;
-    --accent: #90c5b9;
-    --warn: #e0a14a;
-  }
-  * { box-sizing: border-box; }
-  body {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    background: var(--bg);
-    color: var(--text);
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-  header {
-    display: flex;
-    align-items: baseline;
-    gap: 1rem;
-    padding: 1.4rem 2rem 0;
-    max-width: 68rem;
-    width: 100%;
-    margin: 0 auto;
-  }
-  h1 { font-size: 1.1rem; margin: 0; }
-  h1 .dim { color: var(--accent); }
-  .sub { color: var(--dim); font-size: 0.75rem; }
-  .docs-link { color: var(--accent); font-size: 0.8rem; }
-  .spacer { flex: 1; }
-  main {
-    flex: 1;
-    display: flex;
-    gap: 1.6rem;
-    padding: 1.4rem 2rem 2.5rem;
-    max-width: 68rem;
-    width: 100%;
-    margin: 0 auto;
-    align-items: flex-start;
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 1.2rem 1.4rem;
-    flex: 1;
-  }
-  .card.side { flex: 0 0 17rem; }
-  h2 { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.8rem; }
-  #canvas-wrap { display: flex; justify-content: center; }
-  canvas {
-    image-rendering: pixelated;
-    background: #0a0f14;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    max-width: 100%;
-    width: 448px;
-    height: 448px;
-  }
-  .asset-tabs { display: flex; gap: 0.4rem; margin-bottom: 1rem; flex-wrap: wrap; }
-  .asset-tab {
-    font: inherit;
-    font-size: 0.78rem;
-    background: #141d26;
-    color: var(--dim);
-    border: 1px solid var(--line);
-    border-radius: 5px;
-    padding: 0.4rem 0.8rem;
-    cursor: pointer;
-  }
-  .asset-tab.active { color: var(--text); background: #22343f; border-color: var(--accent); }
-  .row { display: flex; align-items: center; gap: 0.6rem; margin: 0.65rem 0; font-size: 0.82rem; }
-  .row label { width: 4.6rem; color: var(--dim); }
-  input[type=range] { flex: 1; accent-color: var(--accent); }
-  input[type=number] {
-    width: 6rem;
-    background: #141d26;
-    color: var(--text);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 0.25rem;
-    font: inherit;
-  }
-  button {
-    font: inherit;
-    font-size: 0.8rem;
-    color: #0c1218;
-    background: var(--accent);
-    border: none;
-    border-radius: 5px;
-    padding: 0.45rem 0.9rem;
-    cursor: pointer;
-  }
-  button:hover { filter: brightness(1.12); }
-  #status { color: var(--dim); font-size: 0.75rem; margin-top: 0.9rem; min-height: 1.1em; }
-  #status.error { color: var(--warn); }
-  .about { color: var(--dim); font-size: 0.75rem; line-height: 1.6; }
-  .about code { color: var(--text); }
-  footer {
-    border-top: 1px solid var(--line);
-    padding: 1rem 2rem;
-    color: var(--dim);
-    font-size: 0.72rem;
-    text-align: center;
-  }
-  @media (max-width: 48rem) {
-    main { flex-direction: column; }
-    .card, .card.side { flex: 1 1 auto; width: 100%; }
-    canvas { width: 100%; height: auto; }
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Infinite Props: seed-based procedural 2D assets</title>
+<meta name="description" content="A portable binary format and open-source toolchain for seed-based procedural 2D assets: one small file, endless props, the same pixels on every platform.">
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <h1>iprop <span class="dim">·</span> playground</h1>
-  <div class="sub">a portable binary format and toolchain for seed-based procedural 2D assets —
-    this page runs the reference interpreter in your browser</div>
-  <div class="spacer"></div>
-  <a class="docs-link" href="docs/getting-started.html">docs</a>
-  <button id="share">Copy share link</button>
-</header>
+<!-- @header home -->
 
-<main>
-  <div class="card">
-    <div class="asset-tabs" id="assets"></div>
-    <div id="canvas-wrap"><canvas id="canvas" width="64" height="64"></canvas></div>
-    <div id="status">loading…</div>
-  </div>
-  <div class="card side">
-    <h2>controls</h2>
-    <div class="row"><label>seed</label>
-      <input type="range" id="seed-slider" min="0" max="4095" value="0">
-      <input type="number" id="seed-value" min="0" value="0"></div>
-    <div class="row"><label>variant</label>
-      <input type="range" id="variant-slider" min="0" max="7" value="0">
-      <input type="number" id="variant-value" min="0" max="7" value="0"></div>
-    <div class="row"><label>archetype</label>
-      <input type="range" id="archetype-slider" min="0" max="0" value="0">
-      <input type="number" id="archetype-value" min="0" max="0" value="0"></div>
-    <div class="about">
-      every frame is <code>generate(file, seed, variant, archetype)</code> —
-      deterministic: the same link always shows the same pixels. the assets
-      are compiled from the <code>.ips</code> sources in the repository.
+<main id="content">
+  <section class="hero">
+    <div>
+      <svg class="hero__mark" viewBox="0 0 17 7" aria-hidden="true"><path d="M2 0h4v1h-4zM11 0h4v1h-4zM1 1h2v1h-2zM5 1h2v1h-2zM10 1h2v1h-2zM14 1h2v1h-2zM0 2h2v1h-2zM6 2h2v1h-2zM9 2h2v1h-2zM15 2h2v1h-2zM0 3h2v1h-2zM7 3h3v1h-3zM15 3h2v1h-2zM0 4h2v1h-2zM6 4h2v1h-2zM9 4h2v1h-2zM15 4h2v1h-2zM1 5h2v1h-2zM5 5h2v1h-2zM10 5h2v1h-2zM14 5h2v1h-2zM2 6h4v1h-4zM11 6h4v1h-4z"/></svg>
+      <h1 class="hero__title">Infinite <b>Props</b></h1>
+      <p class="hero__tagline">Seed-based procedural 2D assets. One small file, endless props, the same pixels on every platform.</p>
+      <p class="hero__meta">v{{PRODUCT_VERSION}} · language {{LANGUAGE_VERSION}}</p>
     </div>
-  </div>
+    <a class="hero__down" href="#what" aria-label="Scroll to: What is Infinite Props?">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </a>
+  </section>
+
+  <section class="stats" aria-label="Infinite Props in numbers">
+    <div class="container stats__grid">
+      <div class="stat"><span class="stat__value" data-stat-size>9.0 KB</span><span class="stat__label">a whole sword pack in one <code>.iprop</code> file</span></div>
+      <div class="stat"><span class="stat__value">2³²</span><span class="stat__label">seeds, with additional authored inputs</span></div>
+      <div class="stat"><span class="stat__value">≈ 5 TB</span><span class="stat__label">if you exported every one of them as a PNG</span></div>
+      <div class="stat"><span class="stat__value">0</span><span class="stat__label">bitmaps: every pixel is computed from the seed</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="what">
+    <div class="container intro">
+      <h2 class="section-title">What is <b>Infinite Props</b>?</h2>
+      <p><strong>Infinite Props</strong> is a portable binary format and an open-source toolchain for
+        <strong>seed-based procedural 2D assets</strong>. You describe a prop once in the small
+        <code>.ips</code> language, compile it to a self-contained <code>.iprop</code> file, and a tiny
+        sandboxed virtual machine turns any seed into pixels, bit for bit the same in the browser,
+        in your engine and on every operating system.</p>
+      <p>One file is not one image. It is a recipe for endless variations, and every result comes with
+        the data your game needs: colliders, anchor points and colours.</p>
+      <div class="buttons">
+        <a class="btn btn--primary" href="docs/getting-started.html">Get started</a>
+        <a class="btn" href="source.html">Source</a>
+        <a class="btn" href="#">Asset store <span class="pill">soon</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--band" id="examples">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Live examples</p>
+          <h2 class="section-title">Rolled right here, right now</h2>
+          <p class="lead">Every tile is a real <code>.iprop</code> file executed in your browser by the WebAssembly
+            interpreter. The seeds tick up on their own, or take over with <span class="nowrap"><kbd>‹</kbd> <kbd>›</kbd></span>.</p>
+        </div>
+      </div>
+
+      <div class="showcase">
+        <div>
+          <h3 class="showcase__title">Weapons <small>4 packs · 96×96</small></h3>
+          <div class="grid-2x2">
+            <figure class="tile" data-asset="sword" data-label="A procedural sword" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>sword.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="96" height="96" role="img" aria-label="A procedural sword"></canvas>
+                <canvas class="glow" aria-hidden="true" hidden></canvas>
+                <span class="marker" data-marker="tip" data-label="tip" hidden></span>
+                <span class="marker" data-marker="grip" data-label="grip" hidden></span>
+                <span class="rarity" data-rarity hidden></span>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Sword</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <figure class="tile" data-asset="axe" data-label="A procedural axe" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>axe.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="96" height="96" role="img" aria-label="A procedural axe"></canvas>
+                <canvas class="glow" aria-hidden="true" hidden></canvas>
+                <span class="marker" data-marker="tip" data-label="tip" hidden></span>
+                <span class="marker" data-marker="grip" data-label="grip" hidden></span>
+                <span class="rarity" data-rarity hidden></span>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Axe</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <figure class="tile" data-asset="spear" data-label="A procedural spear" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>spear.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="96" height="96" role="img" aria-label="A procedural spear"></canvas>
+                <canvas class="glow" aria-hidden="true" hidden></canvas>
+                <span class="marker" data-marker="tip" data-label="tip" hidden></span>
+                <span class="marker" data-marker="grip" data-label="grip" hidden></span>
+                <span class="rarity" data-rarity hidden></span>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Spear</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <figure class="tile" data-asset="staff" data-label="A procedural mage's staff" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>staff.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="96" height="96" role="img" aria-label="A procedural mage's staff"></canvas>
+                <canvas class="glow" aria-hidden="true" hidden></canvas>
+                <span class="marker" data-marker="tip" data-label="tip" hidden></span>
+                <span class="marker" data-marker="grip" data-label="grip" hidden></span>
+                <span class="rarity" data-rarity hidden></span>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Staff</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="showcase__title">Portraits <small>3 packs · 64×64</small></h3>
+          <div class="grid-2x2">
+            <figure class="tile" data-asset="portraits_rpg" data-label="A procedural fantasy portrait" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>portraits_rpg.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="64" height="64" role="img" aria-label="A procedural fantasy portrait"></canvas>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Fantasy</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <figure class="tile" data-asset="portraits_scifi" data-label="A procedural sci-fi portrait" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>portraits_scifi.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="64" height="64" role="img" aria-label="A procedural sci-fi portrait"></canvas>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Sci-fi</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <figure class="tile" data-asset="portraits_civilian" data-label="A procedural civilian portrait" tabindex="0">
+              <div class="tile__stage"><div class="tile__file"><span>portraits_civilian.iprop</span><span data-size></span></div><div class="tile__canvas">
+                <canvas width="64" height="64" role="img" aria-label="A procedural civilian portrait"></canvas>
+              </div></div>
+              <figcaption class="tile__bar">
+                <span class="tile__name">Civilian</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Previous seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+                  <output aria-live="off">…</output>
+                  <button type="button" data-step="1" aria-label="Next seed" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+                </span>
+              </figcaption>
+            </figure>
+            <div class="tile tile--outputs" data-outputs>
+              <div>
+                <h4 class="outputs__title">Structured outputs</h4>
+                <code class="outputs__source" data-outputs-source>waiting for a roll…</code>
+              </div>
+              <ul class="outputs__list">
+                <li data-output="skinColor"><span class="swatch swatch--none"></span><code>skinColor</code><span>…</span></li>
+                <li data-output="clothesColor"><span class="swatch swatch--none"></span><code>clothesColor</code><span>…</span></li>
+                <li data-output="hatColor"><span class="swatch swatch--none"></span><code>hatColor</code><span>…</span></li>
+                <li data-output="eyes"><span class="swatch swatch--point"></span><code>eyes</code><span>…</span></li>
+                <li data-output="mouth"><span class="swatch swatch--point"></span><code>mouth</code><span>…</span></li>
+              </ul>
+              <p class="outputs__note">Returned with the pixels of the same call: tint the UI, match the hat, anchor the speech bubble.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="showcase__roll" data-roll-box hidden>
+        <p>Feeling lucky? Every case ends on a <strong>legendary</strong>.</p>
+        <button class="btn btn--legendary" type="button" data-roll>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
+          Roll a legendary
+        </button>
+      </div>
+      <div class="showcase__footer">
+        <button class="autoroll" type="button" aria-pressed="true" data-autoroll>
+          <span class="autoroll__dot" aria-hidden="true"></span><span data-autoroll-label>Auto-roll on</span>
+        </button>
+        <span class="showcase__divider" aria-hidden="true"></span>
+        <p class="showcase__more">Looking for more? <strong>Whole packs are coming to the asset store.</strong></p>
+        <a class="btn btn--primary" href="#">Visit the asset store <span class="pill">soon</span></a>
+        <p class="showcase__status" data-showcase-status role="status">Starting the interpreter…</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-head">
+        <h2 class="section-title">Main features</h2>
+      </div>
+      <div class="features">
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect class="s" x="3.5" y="3.5" width="17" height="17" rx="4"/><rect class="p" x="3.5" y="3.5" width="17" height="17" rx="4"/><circle class="f" cx="8.5" cy="8.5" r="1.4"/><circle class="f" cx="15.5" cy="8.5" r="1.4"/><circle class="f" cx="12" cy="12" r="1.4"/><circle class="f" cx="8.5" cy="15.5" r="1.4"/><circle class="f" cx="15.5" cy="15.5" r="1.4"/></svg></div>
+          <h3>Bit-exact determinism</h3>
+          <p>The same seed renders the same pixels and outputs on every platform and backend. A committed golden corpus guards every release.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 12c-1.6-2.1-3.1-3.8-5-3.8a3.8 3.8 0 1 0 0 7.6c1.9 0 3.4-1.7 5-3.8zm0 0c1.6 2.1 3.1 3.8 5 3.8a3.8 3.8 0 1 0 0-7.6c-1.9 0-3.4 1.7-5 3.8z"/><path class="p" d="M12 12c-1.6-2.1-3.1-3.8-5-3.8a3.8 3.8 0 1 0 0 7.6c1.9 0 3.4-1.7 5-3.8zm0 0c1.6 2.1 3.1 3.8 5 3.8a3.8 3.8 0 1 0 0-7.6c-1.9 0-3.4 1.7-5 3.8z"/></svg></div>
+          <h3>One file, endless props</h3>
+          <p>An <code>.iprop</code> file is a recipe, not an image. Seed and authored inputs unlock a practically unlimited, reproducible family of sprites.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 3 4.5 5.8v5.7c0 4.6 3.1 8.1 7.5 9.5 4.4-1.4 7.5-4.9 7.5-9.5V5.8z"/><path class="p" d="M12 3 4.5 5.8v5.7c0 4.6 3.1 8.1 7.5 9.5 4.4-1.4 7.5-4.9 7.5-9.5V5.8z"/><path class="p" d="m8.8 12.2 2.3 2.3 4.3-4.6"/></svg></div>
+          <h3>Safe to run anywhere</h3>
+          <p>Validated bytecode, structured control flow only and a hard fuel budget: even an untrusted file cannot hang or escape its host.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect class="s" x="9.5" y="9.5" width="5" height="5" rx="1"/><path class="p" d="M8.5 4.5c-2 0-2.5 1-2.5 2.5v2c0 1.3-.7 2.5-2 3 1.3.5 2 1.7 2 3v2c0 1.5.5 2.5 2.5 2.5M15.5 4.5c2 0 2.5 1 2.5 2.5v2c0 1.3.7 2.5 2 3-1.3.5-2 1.7-2 3v2c0 1.5-.5 2.5-2.5 2.5"/><rect class="p" x="9.5" y="9.5" width="5" height="5" rx="1"/></svg></div>
+          <h3>A language for pixels</h3>
+          <p><code>.ips</code> speaks sprites: palettes, rects, distance helpers, <code>lo to hi</code> ranges and colour gradients, compiled with precise diagnostics.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M2.5 18.5c3.4 0 4.1-1.6 5.6-5.6S10.2 5.5 12 5.5s2.4 3.4 3.9 7.4 2.2 5.6 5.6 5.6z"/><path class="p" d="M2.5 18.5c3.4 0 4.1-1.6 5.6-5.6S10.2 5.5 12 5.5s2.4 3.4 3.9 7.4 2.2 5.6 5.6 5.6M2.5 20.5h19"/></svg></div>
+          <h3>Shaped randomness</h3>
+          <p>Gaussian, triangular and beta distributions steer every roll, so proportions look designed rather than noisy.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 3.5 3 8l9 4.5L21 8z"/><path class="p" d="M12 3.5 3 8l9 4.5L21 8z"/><path class="p" d="m3 12 9 4.5 9-4.5M3 16l9 4.5 9-4.5"/></svg></div>
+          <h3>Composable parts</h3>
+          <p>Import a blade, a hilt, a face. Parts link into one self-contained binary, paint in call order and report outputs in the caller's coordinates.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="s" cx="12" cy="12" r="7.5"/><circle class="p" cx="12" cy="12" r="7.5"/><path class="p" d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/><circle class="f" cx="12" cy="12" r="1.8"/></svg></div>
+          <h3>Structured outputs</h3>
+          <p>Colliders, anchors and colours come back with the pixels: the tip of a sword, the eyes of a portrait, the colour of a hat.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M12 3 4 7.2l8 4.3 8-4.3z"/><path class="p" d="M12 3 4 7.2v9.6L12 21l8-4.2V7.2z"/><path class="p" d="m4 7.2 8 4.3 8-4.3M12 11.5V21"/></svg></div>
+          <h3>Tiny binaries</h3>
+          <p>Each weapon pack on this page compiles to 7 to 11&nbsp;KB. Files are zlib-packed whenever that is smaller and never need external resources.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle class="s" cx="12" cy="12" r="9"/><circle class="p" cx="12" cy="12" r="9"/><path class="p" d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg></div>
+          <h3>Runs everywhere</h3>
+          <p>One reference interpreter for Linux, macOS, Windows and WebAssembly. The tiles above are running it in this page.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0z"/><path class="p" d="M6.5 8h11v3.5a5.5 5.5 0 0 1-11 0zM9.5 8V3.5M14.5 8V3.5M12 17v4"/></svg></div>
+          <h3>C API and engines</h3>
+          <p>A C99 interface on a versioned ABI (C API {{C_API_VERSION}}, SONAME {{C_ABI_SOVERSION}}), with SFML and Godot GDExtension integrations built on top.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect class="s" x="2.5" y="4" width="19" height="16" rx="3"/><rect class="p" x="2.5" y="4" width="19" height="16" rx="3"/><path class="p" d="m7 9.5 3 2.5-3 2.5M12.5 15H17"/></svg></div>
+          <h3>Authoring toolchain</h3>
+          <p><code>ipc</code>, <code>ipgen</code>, <code>ipsheet</code>, <code>ipdis</code>, <code>ipval</code> and a VS Code extension with live preview, atlas and bytecode inspector.</p>
+        </article>
+        <article class="feature">
+          <div class="feature__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path class="s" d="m10 3.5 1.8 4.9 4.9 1.8-4.9 1.8-1.8 4.9-1.8-4.9-4.9-1.8 4.9-1.8z"/><path class="p" d="m10 3.5 1.8 4.9 4.9 1.8-4.9 1.8-1.8 4.9-1.8-4.9-4.9-1.8 4.9-1.8zM18 14.5v6M15 17.5h6"/></svg></div>
+          <h3>Ready for coding agents</h3>
+          <p>A compact, machine-checked LLM reference ships with every release, so an agent can write props in <code>.ips</code> alongside you.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--band" id="games">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Made with Infinite Props</p>
+        <h2 class="section-title">Games showcase</h2>
+        <p class="lead">Three slots, zero games. For now. They are saved for the most creative, craziest things anyone builds on a seed. The wilder the idea, the better its chances.</p>
+      </div>
+      <div class="games">
+        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
+          <span class="pill game-slot__tag">Slot 01 · open</span>
+          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="axe" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
+          <h3>Your game here</h3>
+          <p>An armoury of legendary axes, and not one of them drawn by hand.</p>
+        </article>
+        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
+          <span class="pill game-slot__tag">Slot 02 · open</span>
+          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="sword" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
+          <h3>Your game here</h3>
+          <p>A roguelike where no two swords have ever looked alike.</p>
+        </article>
+        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
+          <span class="pill game-slot__tag">Slot 03 · open</span>
+          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="staff" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
+          <h3>Your game here</h3>
+          <p>The legendary staff nobody has rolled yet is somewhere in your seed range.</p>
+        </article>
+      </div>
+      <div class="games-cta">
+        <p><strong>The showcase is waiting for your game.</strong> Build something wild with Infinite Props and send a link. The boldest ideas land on this wall.</p>
+        <a class="btn btn--primary" href="https://github.com/jCzachor6/infinite-props/issues/new?title=Showcase%3A%20" rel="noopener external">Submit your game</a>
+      </div>
+    </div>
+  </section>
+  <dialog class="drop" data-drop aria-labelledby="drop-title" tabindex="-1">
+    <div class="case" data-case>
+      <p class="case__title">Weapon case <span class="pill">guaranteed legendary</span></p>
+      <div class="reel">
+        <div class="reel__track" data-reel></div>
+        <span class="reel__marker" aria-hidden="true"></span>
+      </div>
+      <p class="case__odds">common · rare · epic · and one item at the end that is always <strong>legendary</strong></p>
+    </div>
+    <div class="win">
+      <div class="drop__art">
+        <span class="drop__rays" aria-hidden="true"></span>
+        <span class="drop__sparks" aria-hidden="true" data-sparks></span>
+        <div class="drop__sprite">
+          <canvas width="96" height="96" role="img" aria-label="The rolled weapon" data-drop-canvas></canvas>
+          <canvas class="glow" aria-hidden="true" hidden></canvas>
+        </div>
+      </div>
+      <div class="drop__body">
+        <span class="rarity rarity--big" data-drop-rarity></span>
+        <h2 class="drop__title" id="drop-title" data-drop-title>Legendary drop</h2>
+        <p class="drop__lead">Same link, same pixels: everyone who opens it gets exactly this one.</p>
+        <dl class="drop__data" data-drop-data></dl>
+        <div class="buttons">
+          <button class="btn btn--primary" type="button" data-drop-copy>Copy link</button>
+          <button class="btn" type="button" data-drop-again>Open another</button>
+        </div>
+        <p class="drop__status" data-drop-status role="status"></p>
+      </div>
+    </div>
+    <button class="drop__close" type="button" aria-label="Close" data-drop-close>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </dialog>
 </main>
 
-<footer>iprop — format spec and toolchain · reference interpreter: WebAssembly</footer>
+<!-- @footer -->
 
 <script src="/iprop.js"></script>
-<script type="module" src="/src/main.ts"></script>
+<script type="module" src="/src/home.ts"></script>
 </body>
 </html>

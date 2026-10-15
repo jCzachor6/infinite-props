@@ -2,49 +2,77 @@
   "language": [
     {
       "id": "earlier schema 2 without components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "delete": true,
       "accept": true,
       "schema": true
     },
     {
       "id": "earlier schema 2 without random range",
-      "path": ["source_rules", "random_range"],
+      "path": [
+        "source_rules",
+        "random_range"
+      ],
       "delete": true,
       "accept": true,
       "schema": true
     },
     {
       "id": "null optional components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "value": null,
       "accept": false,
       "schema": false
     },
     {
       "id": "empty optional components",
-      "path": ["source_rules", "types", "components"],
+      "path": [
+        "source_rules",
+        "types",
+        "components"
+      ],
       "value": [],
       "accept": false,
       "schema": false
     },
     {
       "id": "component missing result",
-      "path": ["source_rules", "types", "components", 0, "result"],
+      "path": [
+        "source_rules",
+        "types",
+        "components",
+        0,
+        "result"
+      ],
       "delete": true,
       "accept": false,
       "schema": false
     },
     {
       "id": "null optional random range",
-      "path": ["source_rules", "random_range"],
+      "path": [
+        "source_rules",
+        "random_range"
+      ],
       "value": null,
       "accept": false,
       "schema": false
     },
     {
       "id": "random range missing effects",
-      "path": ["source_rules", "random_range", "effects"],
+      "path": [
+        "source_rules",
+        "random_range",
+        "effects"
+      ],
       "delete": true,
       "accept": false,
       "schema": false
@@ -54,7 +82,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 2.0,
+      "value": 4.0,
       "accept": true,
       "schema": true
     },
@@ -88,7 +116,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 3,
+      "value": 5,
       "accept": false,
       "schema": false
     },
@@ -152,7 +180,7 @@
       "path": [
         "c_abi_soversion"
       ],
-      "value": "0.5",
+      "value": "0.6",
       "accept": false,
       "schema": true
     },
@@ -257,10 +285,11 @@
       "path": [
         "source_rules",
         "visibility",
-        "draw_controls",
-        "type"
+        "draw_controls"
       ],
-      "value": "f32",
+      "value": {
+        "type": "f32"
+      },
       "accept": false,
       "schema": false
     },
@@ -269,12 +298,13 @@
       "path": [
         "source_rules",
         "visibility",
-        "draw_controls",
-        "names"
+        "draw_controls"
       ],
-      "value": [
-        "x"
-      ],
+      "value": {
+        "names": [
+          "x"
+        ]
+      },
       "accept": false,
       "schema": false
     },
@@ -288,6 +318,1134 @@
         "from"
       ],
       "value": "color",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "previous language schema",
+      "path": [
+        "schema_version"
+      ],
+      "value": 2,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "effectful constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "generation_state"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "mutable constant policy",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "read_only"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unsupported constant type",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "types",
+        0
+      ],
+      "value": "layer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "constant eligibility is boolean",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "constant_evaluable"
+      ],
+      "value": "false",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing constant eligibility",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "constant_evaluable"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "nested list descriptor rejected",
+      "path": [
+        "source_rules",
+        "types",
+        "parameterized",
+        0,
+        "nested"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown list element rejected",
+      "path": [
+        "source_rules",
+        "types",
+        "parameterized",
+        0,
+        "element_types"
+      ],
+      "value": [
+        "list<i32>"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "negative list limit rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "maximum_length"
+      ],
+      "value": -1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "mutable list policy rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "mutable"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unchecked index policy rejected",
+      "path": [
+        "source_rules",
+        "collections",
+        "index_bounds"
+      ],
+      "value": "last_element_fallback",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "list type signature accepted",
+      "path": [
+        "builtins",
+        0,
+        "overloads",
+        0,
+        "parameters",
+        0,
+        "type"
+      ],
+      "value": "list<vec2>",
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "earlier schema 3 without sampler capability",
+      "path": [
+        "source_rules",
+        "samplers"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "null sampler capability",
+      "path": [
+        "source_rules",
+        "samplers"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "boolean sampler count",
+      "path": [
+        "source_rules",
+        "samplers",
+        "minimum_count"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "oversized sampler count",
+      "path": [
+        "source_rules",
+        "samplers",
+        "maximum_count"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong sampler count type",
+      "path": [
+        "source_rules",
+        "samplers",
+        "count_type"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "missing sampler preflight rule",
+      "path": [
+        "source_rules",
+        "samplers",
+        "batch_preflight"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "empty sampler methods",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "scalar sampler receiver",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "sampler receiver result mismatch",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "result"
+      ],
+      "value": "f32",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "sampler method wrong count name",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        1,
+        "parameters",
+        0,
+        "name"
+      ],
+      "value": "count",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "sampler method no RNG effect",
+      "path": [
+        "source_rules",
+        "samplers",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "value": "none",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "sampler capture has intrinsic RNG",
+      "path": [
+        "source_rules",
+        "samplers",
+        "capture_effects",
+        "rng"
+      ],
+      "value": "advance_current",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "sampler constants disabled",
+      "path": [
+        "source_rules",
+        "samplers",
+        "asset_constants"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "incomplete sampler constant types",
+      "path": [
+        "source_rules",
+        "asset_constants",
+        "types"
+      ],
+      "value": [
+        "list<sampler<i32>>"
+      ],
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "palette evaluation draws",
+      "path": [
+        "source_rules",
+        "palettes",
+        "evaluation"
+      ],
+      "value": "runtime_draws",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette indexing draws",
+      "path": [
+        "source_rules",
+        "palettes",
+        "index_evaluation"
+      ],
+      "value": "draw_once",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette bounds trap",
+      "path": [
+        "source_rules",
+        "palettes",
+        "index_bounds"
+      ],
+      "value": "trap",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette scalar lifting disabled",
+      "path": [
+        "source_rules",
+        "palettes",
+        "constant_entries"
+      ],
+      "value": "keep_scalar",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "ramp implicitly samples",
+      "path": [
+        "source_rules",
+        "palettes",
+        "ramp"
+      ],
+      "value": "sample_descriptions",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette sampling limit raised",
+      "path": [
+        "source_rules",
+        "palettes",
+        "sampling_maximum_length"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette sampling limit boolean",
+      "path": [
+        "source_rules",
+        "palettes",
+        "sampling_maximum_length"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette list fallback",
+      "path": [
+        "source_rules",
+        "palettes",
+        "first_class_value"
+      ],
+      "value": "list_with_fallback",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "palette generation distribution",
+      "path": [
+        "source_rules",
+        "palettes",
+        "element_types"
+      ],
+      "value": [
+        "distribution"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "range palette disabled",
+      "path": [
+        "source_rules",
+        "samplers",
+        "range_palettes"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "null point distributions",
+      "path": [
+        "source_rules",
+        "point_distributions"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted invalid point limit",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        0,
+        "maximum_points"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted wrong snapshot representation",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "storage"
+      ],
+      "value": "f32_keys",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "weighted unknown family",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        0,
+        "name"
+      ],
+      "value": "unimplemented",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "density invalid minimum",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "minimum_points"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "density wrong value meaning",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "value"
+      ],
+      "value": "discrete_mass",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "density wrong equal bound rule",
+      "path": [
+        "source_rules",
+        "point_distributions",
+        "families",
+        1,
+        "equal_bounds"
+      ],
+      "value": "positive_mass_at_point",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "earlier export without surfaces",
+      "path": [
+        "source_rules",
+        "surfaces"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "invalid surface maximum_active_scopes 33",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "maximum_active_scopes"
+      ],
+      "value": 33,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface maximum_active_scopes True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "maximum_active_scopes"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface generation_data_limit_bytes 1",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "generation_data_limit_bytes"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface automatic_paint True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "automatic_paint"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface host_inputs True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "host_inputs"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface asset_constants True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface surface_collections True",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "surface_collections"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface alpha_modes ['surface.source_over']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "alpha_modes"
+      ],
+      "value": [
+        "surface.source_over"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface buffer_format A8",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "buffer_format"
+      ],
+      "value": "A8",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface scope_cleanup ['end']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "scope_cleanup"
+      ],
+      "value": [
+        "end"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface types ['mask']",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "types"
+      ],
+      "value": [
+        "mask"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface keyword",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "keyword"
+      ],
+      "value": "contextual",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface mode_inheritance",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "mode_inheritance"
+      ],
+      "value": "source_capture_mode",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface paint_default_mode",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "paint_default_mode"
+      ],
+      "value": "source_capture_mode",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface source_over_kernel",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "source_over_kernel"
+      ],
+      "value": "linear_light_float",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid surface rounding_boundary",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "rounding_boundary"
+      ],
+      "value": "once_after_all_layers",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "new reserved keyword omitted",
+      "path": [
+        "source_rules",
+        "reserved_keywords"
+      ],
+      "value": [
+        "layer"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask maximum_radius",
+      "path": [
+        "source_rules",
+        "masks",
+        "maximum_radius"
+      ],
+      "value": 65,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask minimum_radius",
+      "path": [
+        "source_rules",
+        "masks",
+        "minimum_radius"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask outside_coverage",
+      "path": [
+        "source_rules",
+        "masks",
+        "outside_coverage"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask part_clip",
+      "path": [
+        "source_rules",
+        "masks",
+        "part_clip"
+      ],
+      "value": "inherit",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask mask_paint_alpha",
+      "path": [
+        "source_rules",
+        "masks",
+        "mask_paint_alpha"
+      ],
+      "value": "unrounded",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask zero_coverage_write",
+      "path": [
+        "source_rules",
+        "masks",
+        "zero_coverage_write"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask combined_scope_limit",
+      "path": [
+        "source_rules",
+        "masks",
+        "combined_scope_limit"
+      ],
+      "value": 33,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask morphology_fuel",
+      "path": [
+        "source_rules",
+        "masks",
+        "morphology_fuel"
+      ],
+      "value": "visited_samples_only",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask offset",
+      "path": [
+        "source_rules",
+        "masks",
+        "offset"
+      ],
+      "value": "copy_buffer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask from_storage",
+      "path": [
+        "source_rules",
+        "masks",
+        "from_storage"
+      ],
+      "value": "allocated_rgba",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "earlier schema 3 without list methods",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "earlier schema 3 without list transformations",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "null list methods",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "list method arguments",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "parameters"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": [
+        {
+          "name": "n",
+          "type": "i32"
+        }
+      ]
+    },
+    {
+      "id": "list method nonlist receiver",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "i32"
+    },
+    {
+      "id": "list method false constant flag",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "constant_evaluable"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": false
+    },
+    {
+      "id": "list method wrong result type",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "result"
+      ],
+      "accept": false,
+      "schema": true,
+      "value": "list<f32>"
+    },
+    {
+      "id": "list method unexpected RNG",
+      "path": [
+        "source_rules",
+        "collections",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "accept": false,
+      "schema": true,
+      "value": "advance_current"
+    },
+    {
+      "id": "null list transformations",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "list sort unstable policy",
+      "path": [
+        "source_rules",
+        "collections",
+        "transformations",
+        "sort"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "unstable"
+    },
+    {
+      "id": "blur requires policy",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur requires methods",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur empty signatures",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur receiver type",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "receiver"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur sigma name",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "parameters",
+        0,
+        "name"
+      ],
+      "value": "radius",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur sigma type",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "parameters",
+        0,
+        "type"
+      ],
+      "value": "i32",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur mask result",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        1,
+        "result"
+      ],
+      "value": "layer",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur opcode",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "opcode"
+      ],
+      "value": "mask.blur",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur intrinsic RNG",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "methods",
+        0,
+        "effects",
+        "rng"
+      ],
+      "value": "advance_current",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "blur sigma bound",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "maximum_sigma"
+      ],
+      "value": 65,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur clip timing",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "clip"
+      ],
+      "value": "filter",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur scratch channels",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "scratch_channels"
+      ],
+      "value": {
+        "layer": 1,
+        "mask": 1
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "blur missing mask channel",
+      "path": [
+        "source_rules",
+        "surfaces",
+        "blur",
+        "scratch_channels",
+        "mask"
+      ],
+      "delete": true,
       "accept": false,
       "schema": false
     }
@@ -433,7 +1591,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 2.0,
+      "value": 3.0,
       "accept": true,
       "schema": true
     },
@@ -451,7 +1609,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 3,
+      "value": 4,
       "accept": false,
       "schema": false
     },
@@ -552,27 +1710,6 @@
       "id": "wrong type language_version",
       "path": [
         "language_version"
-      ],
-      "value": {
-        "major": 0,
-        "minor": 4
-      },
-      "accept": false,
-      "schema": false
-    },
-    {
-      "id": "missing format_version",
-      "path": [
-        "format_version"
-      ],
-      "delete": true,
-      "accept": false,
-      "schema": false
-    },
-    {
-      "id": "wrong type format_version",
-      "path": [
-        "format_version"
       ],
       "value": {
         "major": 0,

@@ -1,33 +1,62 @@
-# iprop — website
+# Infinite Props website
 
-A static site with the playground: the reference interpreter compiled to
-WebAssembly, running the example assets entirely in the browser.
+A static site: the home page with live examples (real `.iprop` files rendered
+in the browser by the reference interpreter compiled to WebAssembly), the
+getting-started guide with the documentation, and the source page.
 
-## Docs
+## Pages
 
-Documentation under `docs/` (multi-page Vite build): getting started
-(with a verifiable first-asset walkthrough), the `.ips` language reference,
-the format summary, the per-backend installation guides and the FAQ. A
-client-side section search lives in the header; the canonical spec is
-copied into the site (`public/spec/iprop-v0.4.md`, alongside the frozen
-0.1–0.3 specifications). The complete language page is generated from
+- **Home** (`index.html`): the hero, "What is Infinite Props?", the live
+  examples, the main features and the games showcase. The examples are the
+  four weapons and three portrait packs under
+  `examples/showcase/`, compiled binaries whose
+  sources are not public; `prepare.sh` copies them in.
+  Every tile shows its file and size and keeps its own seed: auto-roll steps
+  it up by one at random moments, and ‹ › (or the arrow keys on a focused
+  tile) step it by hand. Weapon tiles mark their `tip`/`grip` outputs on
+  hover; the fourth portrait cell lists the latest portrait's structured
+  outputs. Weapons lean on their enchanted, ornate looks (chosen per seed
+  through the declared `quality` and `v` inputs) and glow like in a game: the
+  page renders the emission map (`renderLayer` input 1), blurs it by the `glow`
+  output's sigma and adds it back in passes that follow the gain. The game slots show only ornate, enchanted weapons
+  at full power, as silhouettes until hovered or tapped.
+  Every weapon tile carries its loot rarity: common (plain), rare (soldier),
+  epic (ornate) or legendary (ornate, enchanted and at glow power 4).
+  "Roll a legendary" in the hero opens a weapon case: a strip of 40 real
+  rolled weapons (fillers 45% common, 33% rare, 22% epic) runs under a
+  marker for 6.5 s and stops on a legendary one, then the win shows it big
+  with golden rays, its inputs, glow and tip. The next case is prepared in
+  idle time; with reduced motion the strip is skipped. The share link
+  `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
+  the seed alone.
+- **Get started** (`docs/getting-started.html`) with the documentation
+  pages beside it: the `.ips` language reference, the binary format, the
+  backends and the FAQ. A client-side section search sits in the docs
+  sidebar (press `/`).
+- **Source** (`source.html`): the repository, the build and the layout.
+- **Asset store**: an empty link for now.
+
+The complete language page is generated from
 [`../docs/language/`](../docs/language/index.md), compiler-exported signatures
 and the actual executable examples. Edit those sources and
 `templates/language.html`; `docs/language.html` is generated and ignored.
 Its downloadable Markdown, chapter files, catalog and version/source manifest
 live under `public/docs/`, with linked examples under `public/examples/`.
-The search index is generated from the same headings. Previous download URLs
-under `public/reference/` and the 24 recipes under `public/recipes/` remain
-available.
+The search index is generated from the same headings. The specifications
+(`public/spec/`) and the 24 recipes (`public/recipes/`) are copied in as well.
+The handbook download uses the canonical file in `public/docs/`; there is no
+second copy under `reference/`.
 
-## Playground
+## Shared chrome
 
-- pick an asset (portrait / plant / noise) — every frame is
-  `generate(file, seed, variant, archetype)`, pixel-identical to the desktop
-  tools;
-- seed/variant/archetype controls, clamped to the asset's declared ranges;
-- **shareable links**: the URL hash (`#portrait/1234/3/1`) reproduces the
-  exact view — the same link always shows the same pixels.
+The header, the footer and the docs sidebar live in `templates/partials/`.
+A small Vite plugin (`vite.config.ts`) expands markers such as
+`<!-- @header home -->` at build time, marks the current page in the
+navigation and fills `{{BASE}}` and the version placeholders
+(`{{PRODUCT_VERSION}}` from `package.json`, the rest from
+`public/docs/language-manifest.json`), so the navigation works without JS.
+All styles are in `src/styles/site.css`; `src/site.ts` makes the header
+opaque past the home hero and opens the mobile menu.
 
 ## Build
 
@@ -52,19 +81,23 @@ Set `IPROP_LANGUAGE_DOCS_DIR` to an absolute directory outside cloud
 synchronization to generate the handbook there; the default is
 `build/language-docs`. CMake exposes the same directory setting as a cache
 option for native builds and SDK installation.
-`prepare.sh` reads the requested WASM build directly and compiles the noise
-asset with the current compiler, preventing stale demo modules from entering
-the website. The release smoke check resolves every local page resource/link
-and compares the site's own WASM/assets to native pixels, including packed 0.4
-noise. CI runs this complete pipeline in its WASM job.
+`prepare.sh` reads the requested WASM build directly, preventing stale
+modules from entering the website. The release smoke check resolves every
+local page resource/link, checks that each showcase binary is the one in
+`examples/showcase`, and compares the site's own WASM renders to native
+pixels. CI runs
+this complete pipeline in its WASM job.
 
 ## Layout
 
 | Path | What |
 | ---- | ---- |
-| `index.html` | the page shell |
-| `src/main.ts` | the playground: the asset picker, the controls, the hash sync |
-| `docs/` | the documentation pages |
+| `index.html`, `source.html` | the home and source pages |
+| `docs/` | the guide and documentation pages |
+| `templates/partials/` | the header, footer and docs sidebar |
 | `templates/language.html` | the presentation shell for the generated handbook |
+| `src/home.ts` | the live examples, the outputs card and the game slots |
+| `src/site.ts` | the header and the mobile menu |
+| `src/styles/site.css` | every style of the site |
 | `scripts/build-docs.mjs` | Markdown rendering and generated search anchors |
-| `public/` | the WASM module, the example binaries, the spec copy and the docs assets (synced by `prepare.sh`) |
+| `public/` | the WASM module, the showcase binaries, the specs and the docs assets (synced by `prepare.sh` and `npm run docs`) |

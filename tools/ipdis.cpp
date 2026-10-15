@@ -8,6 +8,7 @@
 #include "iprop/Validator.hpp"
 
 #include <cstdio>
+#include <bit>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -19,19 +20,18 @@
 namespace iprop {
 namespace {
 
-const char* typeName(ValueType type) {
-    switch (type) {
-    case ValueType::I32: return "i32";
-    case ValueType::F32: return "f32";
-    case ValueType::Color: return "color";
-    case ValueType::Vec2: return "vec2";
-    case ValueType::Distribution: return "distribution";
-    }
-    return "?";
-}
+const char* typeName(ValueType type) { return valueTypeName(type); }
 
 std::string floatText(f32 value) {
     char buffer[32];
+    const u32 bits = std::bit_cast<u32>(value);
+    const u32 exponent = bits & 0x7f800000u;
+    if (exponent == 0x7f800000u || (exponent == 0 && (bits & 0x7fffffu) != 0)) {
+        // Decimal text cannot retain NaN payloads; source literal parsing
+        // also rejects subnormals. Assembly is a lossless binary transport.
+        std::snprintf(buffer, sizeof(buffer), "bits:0x%08x", bits);
+        return buffer;
+    }
     std::snprintf(buffer, sizeof(buffer), "%.9g", value);
     return buffer;
 }
@@ -103,6 +103,7 @@ std::string instructionText(const Function& function,
     }
     switch (operandKind(ins.opcode)) {
     case OperandKind::None:
+    case OperandKind::Zero:
         return mnemonic;
     case OperandKind::IntConst:
         return std::string(mnemonic) + " " +
@@ -114,10 +115,18 @@ std::string instructionText(const Function& function,
     case OperandKind::ColorConst:
         return std::string(mnemonic) + " " +
                colorText(names.pool->colors.at(ins.operand));
-    case OperandKind::Index:
+    case OperandKind::Local:
+    case OperandKind::TypeDescriptor:
+    case OperandKind::ListConst:
+    case OperandKind::SamplerConst:
+    case OperandKind::StepperConst:
+    case OperandKind::DistributionConst:
+    case OperandKind::ResourceExport:
+    case OperandKind::Immediate:
     case OperandKind::Depth:
     case OperandKind::Count:
-        return std::string(mnemonic) + " " + std::to_string(ins.operand);
+        return std::string(mnemonic) + " " + std::to_string(ins.operand) +
+            (ins.opcode == Opcode::LayerBegin && ins.aux ? " " + std::to_string(ins.aux) : "");
     case OperandKind::Name:
         if (ins.opcode == Opcode::Call) {
             return std::string(mnemonic) + " " + names.functions.at(ins.operand);
@@ -235,13 +244,53 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
     std::ostringstream out;
     out << "meta: size=" << meta.sizeX << "x" << meta.sizeY
         << " origin=" << floatText(meta.origin.x) << "," << floatText(meta.origin.y)
-        << " variants=" << meta.variants << " archetypes=" << meta.archetypes
         << " fuel=" << meta.fuel << "\n";
     for (const auto& input : meta.inputs) {
         out << inputEntryText(input, pool) << "\n";
     }
     for (const auto& output : meta.outputs) {
         out << outputEntryText(output, pool) << "\n";
+    }
+    const auto ownerText = [](u32 owner) { return owner == kRootParent ? std::string("root") : std::to_string(owner); };
+    for (const auto& output : loaded.resourceExports)
+        out << "export: " << valueTypeName(output.type) << ' ' << pool.strings.at(output.nameIndex)
+            << ' ' << ownerText(output.owner) << '\n';
+    for (u32 f = 0; f < loaded.functionOwners.size(); ++f)
+        out << "owner: " << names.functions[f] << ' ' << ownerText(loaded.functionOwners[f]) << '\n';
+
+    if (!loaded.collections.types.empty()) {
+        out << "types:";
+        for (const auto type : loaded.collections.types) out << ' ' << valueTypeName(type);
+        out << '\n';
+    }
+    for (const auto& d : loaded.collections.distributions) {
+        Writer data; writePointDistribution(data, *d.points);
+        out << "distribution: ";
+        constexpr char digits[] = "0123456789abcdef";
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
+    }
+    for (const auto& list : loaded.collections.lists) {
+        Writer data; writeListElements(data, *list.data, loaded.collections.samplers, loaded.collections.distributions, loaded.collections.steppers);
+        out << "collection: " << valueTypeName(list.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
+        if (data.data().empty()) out << '-';
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
+    }
+    for (const auto& sampler : loaded.collections.samplers) {
+        Writer data; writeDescriptionData(data, *sampler.data, loaded.collections.distributions);
+        out << "sampler: " << valueTypeName(sampler.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
+    }
+    for (const auto& stepper : loaded.collections.steppers) {
+        Writer data; writeDescriptionData(data, *stepper.data, loaded.collections.distributions);
+        out << "stepper: " << valueTypeName(stepper.type) << ' ';
+        constexpr char digits[] = "0123456789abcdef";
+        for (const auto byte : data.data()) out << digits[byte >> 4] << digits[byte & 15];
+        out << '\n';
     }
 
     // The debug source map, when requested (one entry per function).
@@ -277,7 +326,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         for (const auto& output : part.outputs) {
             out << "  " << outputEntryText(output, pool) << "\n";
         }
-        appendFunction(out, "draw", code.functions[functionIndex], names, true,
+        appendFunction(out, loaded.resourceExports.empty() ? "draw" : names.functions[functionIndex], code.functions[functionIndex], names, true,
                        debug);
         out << "endpart\n";
     }

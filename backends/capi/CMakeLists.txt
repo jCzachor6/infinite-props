@@ -121,13 +121,19 @@ add_custom_command(OUTPUT ${result_output_fixture}
 add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
 add_dependencies(capi_golden capi_result_output_fixture)
 
-foreach(source test/language.ips ../../examples/plant.ips)
+foreach(source test/language.ips test/gaussian-blur.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
+        ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
+        ../../examples/language/samplers.ips ../../examples/language/steppers.ips ../../examples/language/sampling-palettes.ips
+        ../../examples/language/weighted.ips ../../examples/language/point-distributions.ips
+        ../../examples/language/captured-panels.ips ../../examples/language/source-over-panels.ips
+        ../../examples/language/mask-algebra.ips ../../examples/language/resource-exports.ips)
     get_filename_component(name ${source} NAME_WE)
     set(out ${golden}/${name}.iprop)
     file(GLOB source_parts CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/examples/*.ips)
     add_custom_command(OUTPUT ${out}
         COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/${source} -o ${out}
-        DEPENDS ipc ${source} ${source_parts})
+        DEPENDS ipc ${source} ${source_parts} ../../examples/language/parts/translucent-panel.ips
+            ../../examples/language/parts/exported-frame.ips ../../examples/language/parts/exported-patch.ips)
     add_custom_target(capi_${name} DEPENDS ${out})
     add_dependencies(capi_golden capi_${name})
 endforeach()
@@ -257,4 +263,9 @@ iprop_capi_test(capi_conformance
     test/png_reader.cpp
     ARGS ${golden} ${CMAKE_SOURCE_DIR}/tests/golden)
 target_link_libraries(capi_conformance PRIVATE iprop_png)
+endif()
+
+# Distinct loader identity for the intentionally incompatible C ABI.
+if(WIN32)
+    set_target_properties(iprop_capi PROPERTIES OUTPUT_NAME "ipropc-${IPROP_C_ABI_SOVERSION}")
 endif()

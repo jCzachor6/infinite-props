@@ -18,9 +18,23 @@ come from `ipc --describe-language`, including variadic forms. Adding a builtin
 requires an explanation and executable example; missing/duplicate descriptions
 fail documentation checks.
 
-The schema 2 language export also supplies `evaluation_order` on every
+`LLM_REFERENCE.md` quotes whole chapters for coding agents. Put
+`<!-- llm: skip -->` on the line directly above a paragraph that only matters
+to the documentation itself, implementations or other hosts, such as a note
+about an example the reference does not show; the paragraph stays in the book
+and the reference leaves it out.
+
+The schema 4 language export also supplies `source_rules.samplers.methods`
+from the same receiver-first registry used for typing and lowering. Sampler
+method signatures are separate from global `pick`; their receiver/count order
+and intrinsic effects must be propagated to docs, LLM reference and consumers.
+`source_rules.palettes` records capture/lifting, pure declaration evaluation,
+direct fallback versus first-class checked indexing and ramp restrictions.
+Const sampler types and their list-length overloads use the same resolver and
+catalogue as scalar constants; no parallel signature table is maintained.
+The language export supplies `evaluation_order` on every
 overload and variadic signature. Its entries name signature slots, including
-compile-time palette and transform slots; `poly` lists coordinates before
+compile-time palette and transform slots; legacy `poly` lists coordinates before
 color. `call_rules.helper_evaluation_order` is `declaration`. The part rule
 uses `$uniform` as a template expanded once per imported input, in declaration
 order. Each part parameter records `required`, `positional`, and an optional
@@ -37,10 +51,9 @@ signature/effect list. A callee or argument may have effects beyond an outer
 operation's intrinsic summary. The language-description contract explains
 the fields and links executable acceptance checks.
 
-Keep current cases consistent with source language 0.5. `negative-default.ips`
-and `signed-input.ips` are successful examples now; their old errors remain
-only in the immutable 0.4 baseline. Add restricted-constant or signed-range
-failures under separate filenames rather than relabeling those valid programs.
+Keep current cases consistent with the implemented language contract.
+Historical snapshots remain unchanged; give new expected failures separate
+fixtures instead of changing a successful case into a rejection.
 
 ```sh
 python3 scripts/language_docs.py check --compiler build/tools/ipc
@@ -67,3 +80,24 @@ Release documentation is built from the exact release tag. Development builds
 are labeled as development/candidate documentation and identify their source
 commit. Historical versions remain in their Git tags, rather than copies
 updated accidentally alongside the current chapters.
+
+Parameterized list types and collection rules are emitted from the shared type
+descriptors. Keep schema-4 readers, editor highlighting, fixed list overloads
+and the legacy polygon variadic template aligned when extending collections.
+
+Point distribution capabilities are emitted as `source_rules.point_distributions`,
+separate from global callable signatures. Update their schema, strict readers,
+real compiler acceptance cases, literal formatting/highlighting and executable
+examples together when a family is added.
+
+`source_rules.reserved_keywords` comes from the lexer.
+`source_rules.surfaces` describes reserved capture, alpha modes, inheritance,
+integer rounding, immutable helper transfer,
+mode constants, cleanup, resource accounting and paint effects. Its limits and
+opcodes come from runtime constants and the opcode registry. The LLM reference
+default and maximum are fixed at 100 KiB through the 0.7 release.
+
+`source_rules.masks` adds coverage views, A8 results, bounds, radius and disk
+rules, clip inheritance and normative logical sample costs. Keep the schema,
+strict reader, editor, overload argument names and real compiler probes aligned.
+The mask/clip opcodes and limits come from the same runtime registries.

@@ -1,0 +1,27 @@
+asset captured_panels {
+  size 32x24
+  output point panelSize
+  output point state
+
+  draw {
+    layer panel(alpha=surface.legacy) {
+      width = 24 to 28
+      frame(width)
+      panelSize = {width, 18}
+    }
+    rect(0, 0, 32, 24, #243242)
+    surface.paint(reuse(panel))
+    pixel(16, 12, #ffffff)
+    surface.paint(panel, blend=surface.legacy)
+    state = {seed & 65535, seed >> 16}
+  }
+
+  reuse(image: layer) -> layer { return image }
+
+  frame(width: i32) {
+    rect(2, 3, width, 18, #343a42)
+    rect(4, 5, width - 4, 14, #929ca8)
+    pixel(4, 5, #c09060)
+    pixel(width - 1, 18, #c09060)
+  }
+}

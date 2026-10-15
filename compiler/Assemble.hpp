@@ -28,6 +28,7 @@ private:
 
     f32 foldOrigin(const ips::Expr& expr);
     void writeInputEntry(Writer& out, const ips::InputDecl& input);
+    void writeSlots(Writer& out, const std::vector<SlotInfo>& slots);
 };
 
 } // namespace iprop::compiler

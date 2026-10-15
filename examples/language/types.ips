@@ -10,12 +10,12 @@ asset ValueTypes {
     q = -p + {4, 4}
     q = q * {1, 2} / {1, 2}
     q = 2 * q / 2
-    mask = ((1 << count) | 1) ^ 2
-    mask = (mask & 7) >> 1
-    if (mask < (1 << 4) && selected) {
+    bitMask = ((1 << count) | 1) ^ 2
+    bitMask = (bitMask & 7) >> 1
+    if (bitMask < (1 << 4) && selected) {
       pixel(int(q.x), int(q.y), #9dc)
     }
-    notMask = ~mask
+    notMask = ~bitMask
     remainder = count % 2
   }
 }

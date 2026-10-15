@@ -68,7 +68,7 @@ TEST_CASE("compiled files carry the debug flag, source map and local names") {
                 loaded.code.functions[0].locals.size());
 
     // The local names resolve through the pool: v, a, base, x, w, i.
-    const std::vector<std::string> expected = {"v", "a", "base", "x", "w", "i"};
+    const std::vector<std::string> expected = {"base", "x", "w", "i"};
     REQUIRE(draw.localNames.size() == expected.size());
     for (std::size_t i = 0; i < expected.size(); ++i) {
         REQUIRE(loaded.pool.strings.at(draw.localNames[i]) == expected[i]);
@@ -118,8 +118,8 @@ TEST_CASE("stripping removes the debug section with identical execution") {
 
     // Execution is identical.
     for (const u32 seed : {0u, 7u, 42u}) {
-        VM before(originalLoaded, GenerationInputs{seed, 0, 0, 0, 0, {}});
-        VM after(loaded, GenerationInputs{seed, 0, 0, 0, 0, {}});
+        VM before(originalLoaded, GenerationInputs{seed, 0, 0, {}});
+        VM after(loaded, GenerationInputs{seed, 0, 0, {}});
         before.run();
         after.run();
         REQUIRE(before.canvas().pixels == after.canvas().pixels);

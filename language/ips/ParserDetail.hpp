@@ -42,28 +42,6 @@ inline bool isDigits(std::string_view text) {
     return true;
 }
 
-// "Soft" keywords may appear wherever a name is expected: `hair.draw(...)`,
-// `at = {32, 4}`, `input color color = #33291f`. Hard keywords (control
-// flow and declaration introducers) stay reserved.
-inline bool isNameKind(TokenKind tokenKind) {
-    switch (tokenKind) {
-    case TokenKind::Identifier:
-    case TokenKind::KeywordDraw:
-    case TokenKind::KeywordAt:
-    case TokenKind::TypeColor:
-    case TokenKind::TypeF32:
-    case TokenKind::TypeU32:
-    case TokenKind::TypeI32:
-    case TokenKind::TypeVec2:
-    case TokenKind::KindPoint:
-    case TokenKind::KindRect:
-    case TokenKind::KindCircle:
-        return true;
-    default:
-        return false;
-    }
-}
-
 class ParserImpl {
 public:
     explicit ParserImpl(std::vector<Token> tokens) : tokens_(std::move(tokens)) {}
@@ -139,10 +117,11 @@ public:
     PaletteDecl parsePalette();
     Function parseFunction();
     Function parseFunctionAfterName(const Token& name);
-    ParamType parseParamType();
+    ParamType parseParamType(bool insideList = false);
     std::vector<Stmt> parseBlock();
     Stmt parseStatement();
     Stmt parseIdentifierStatement();
+    Stmt parseLayer();
     Stmt parseIf();
     Stmt parseWhile();
     Stmt parseFor();
@@ -159,7 +138,6 @@ public:
     std::unique_ptr<Expr> parseEquality();
     std::unique_ptr<Expr> parseComparison();
     std::unique_ptr<Expr> parseRandomRange();
-    bool atContextualOperator(std::string_view word, bool helper) const;
     std::unique_ptr<Expr> parseShift();
     std::unique_ptr<Expr> parseAdditive();
     std::unique_ptr<Expr> parseMultiplicative();
@@ -169,6 +147,8 @@ public:
     std::unique_ptr<Expr> parsePrimary();
     std::unique_ptr<Expr> parseLiteral();
     std::unique_ptr<Expr> parseVector();
+    std::unique_ptr<Expr> parseList();
+    std::unique_ptr<Expr> parsePointDistribution();
     std::vector<Arg> parseArgs();
 
 private:
@@ -178,22 +158,9 @@ private:
     void synchronize(std::size_t start, RecoveryScope scope);
     bool recoveryStart(RecoveryScope scope) const;
 
-    // Saves a parser flag for one nested construct and restores it.
-    struct FlagScope {
-        bool& flag;
-        bool saved;
-        FlagScope(bool& target, bool value) : flag(target), saved(target) { flag = value; }
-        ~FlagScope() { flag = saved; }
-    };
-
     std::vector<Token> tokens_;
     std::size_t pos_ = 0;
-    // The expression being parsed may be followed by the next statement or
-    // declaration, so a `to` there may start it instead of a random range.
-    bool statementTail_ = false;
-    // The asset declares a helper named `to` or `with`; its call keeps that meaning.
-    bool toHelper_ = false;
-    bool withHelper_ = false;
+    bool listTypeClosed_ = false;
     ParseResult* recovery_ = nullptr;
     std::size_t diagnosticLimit_ = kMaxParseDiagnostics;
 };

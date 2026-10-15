@@ -1,0 +1,5 @@
+asset ReservedSamplerName {
+  size 1x1
+  sampler(x: i32) -> i32 { return x }
+  draw {}
+}

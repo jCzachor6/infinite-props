@@ -3,7 +3,7 @@
 
 typedef char output_kind_is_fixed_width[(sizeof(iprop_output_kind_ex) == 4) ? 1 : -1];
 
-/* Independent plain format-0.1 binary with a root singular point and one
+/* Independent plain format-0.7 binary with a root singular point and one
  * uncalled part's empty rect list sharing the exact supplied name. */
 typedef struct { uint8_t bytes[256]; uint32_t size; } buffer;
 static void put8(buffer* out, uint8_t value) { out->bytes[out->size++] = value; }
@@ -13,11 +13,11 @@ static void append(buffer* out, const void* data, uint32_t length) {
     if (length != 0) memcpy(out->bytes + out->size, data, length);
     out->size += length;
 }
-static buffer format01(const char* name, uint32_t name_length) {
+static buffer raw_fixture(const char* name, uint32_t name_length) {
     buffer meta = {{0}, 0}, pool = {{0}, 0}, code = {{0}, 0}, file = {{0}, 0};
     uint32_t i, offset = 56;
     put32(&meta, 1); put32(&meta, 1); put32(&meta, 0); put32(&meta, 0);
-    put32(&meta, 1); put32(&meta, 1); put32(&meta, 1); put32(&meta, 0);
+    put32(&meta, 1); put32(&meta, 0);
     put32(&meta, 0); put32(&meta, 0); put16(&meta, 0); put16(&meta, 1);
     put8(&meta, 0); put8(&meta, 0); put16(&meta, 0); put32(&meta, 1);
     put32(&pool, 2); put32(&pool, 4); append(&pool, "draw", 4);
@@ -26,12 +26,12 @@ static buffer format01(const char* name, uint32_t name_length) {
     put32(&code, 2);
     for (i = 0; i < 2; ++i) {
         put32(&code, i == 0 ? 0 : UINT32_MAX); put32(&code, 0); put32(&code, 0);
-        put16(&code, 2); put16(&code, 0); put16(&code, 0); put16(&code, 0);
+        put16(&code, 0); put16(&code, 0); put16(&code, 0);
     }
     put32(&code, 1); put32(&code, 1); put32(&code, 1); put32(&code, 1);
     put32(&code, 0); put32(&code, 0); put16(&code, 0); put16(&code, 1);
     put8(&code, 1); put8(&code, 1); put16(&code, 0); put32(&code, 1);
-    append(&file, "IPRP", 4); put16(&file, 0); put16(&file, 1);
+    append(&file, "IPRP", 4); put32(&file, 0); /* reserved */
     put32(&file, 0); put32(&file, 3); put32(&file, 0);
     put32(&file, 1); put32(&file, offset); put32(&file, meta.size); offset += meta.size;
     put32(&file, 2); put32(&file, offset); put32(&file, pool.size); offset += pool.size;
@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
     /* The old binary format has all required declaration metadata, including
      * duplicate cross-owner names, empty declarations and valid empty names. */
     for (variant = 0; variant < 2; ++variant) {
-        const buffer old = format01(variant == 0 ? "same" : NULL, variant == 0 ? 4 : 0);
+        const buffer old = raw_fixture(variant == 0 ? "same" : NULL, variant == 0 ? 4 : 0);
         iprop_program* original = NULL;
         CHECK(iprop_program_load_ex(old.bytes, old.size, &original, &error) == IPROP_EX_OK);
         CHECK(iprop_program_output_count(original, &count, &error) == IPROP_EX_OK && count == 2);
@@ -180,7 +180,7 @@ int main(int argc, char** argv) {
             iprop_program_info_ex metadata;
             CHECK(iprop_program_info_ex_init(&metadata, sizeof(metadata)) == IPROP_EX_OK);
             CHECK(iprop_program_query(original, &metadata, &error) == IPROP_EX_OK);
-            CHECK(metadata.format_major == 0 && metadata.format_minor == 1 && metadata.container_flags == 0);
+            CHECK(metadata.format_major == 0 && metadata.format_minor == 0 && metadata.container_flags == 0);
             CHECK(metadata.has_emission == 0 && metadata.emission_color.r == 0 && metadata.emission_color.g == 0 &&
                   metadata.emission_color.b == 0 && metadata.emission_color.a == 0 &&
                   metadata.emission_offset_x == 0.f && metadata.emission_offset_y == 0.f && metadata.emission_radius == 0.f);

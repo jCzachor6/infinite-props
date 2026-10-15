@@ -1,0 +1,15 @@
+asset blurBackend {
+    size 7x2
+    draw {
+        layer image(alpha = surface.source_over) {
+            pixel(3, 0, #ff502880)
+            pixel(3, 1, #ff502880)
+        }
+        layer upper { rect(0, 0, 7, 1, #ffffff) }
+        top = mask.from(upper)
+        clip(top) { surface.paint(image.blur(1), blend = surface.source_over) }
+        clip(mask.invert(top)) {
+            surface.paint(mask.from(image).blur(sigma = 1), #ffffff, blend = surface.source_over)
+        }
+    }
+}

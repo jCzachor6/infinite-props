@@ -1,0 +1,8 @@
+asset invalidRadius {
+    size 1x1
+    draw {
+        layer image {}
+        region = mask.from(image)
+        wide = mask.expand(region, 65)
+    }
+}

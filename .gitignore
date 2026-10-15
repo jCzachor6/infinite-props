@@ -53,10 +53,14 @@ dist/
 website/public/iprop.js
 website/public/iprop.wasm
 website/public/*.iprop
+website/public/showcase/
 website/public/spec/
 website/public/reference/
 website/public/recipes/
 website/public/examples/
+website/public/backends/
+website/public/editor/
+website/public/website/
 website/public/docs/
 website/public/LLM_REFERENCE.md
 website/docs/language.html

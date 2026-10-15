@@ -7,8 +7,6 @@
 asset hair {
   size 64x64
   origin 0,0
-  variants 8
-
   input u32   style = 0
   input color color = #221e22
   input color accent = #90c5b9

@@ -1,4 +1,6 @@
 #include "ips/BuiltinSpec.hpp"
+#include "iprop/Samplers.hpp"
+#include "iprop/ListOperations.hpp"
 #include <stdexcept>
 
 namespace iprop::ips {
@@ -25,8 +27,12 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"abs", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Abs}}}},
         {"floor", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Floor}}}},
         {"ceil", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Ceil}}}},
-        {"min", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Min}}}},
-        {"max", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Max}}}},
+        {"min", {L::Opcode, {
+            {{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Min, V::F32},
+            {{{"x", V::I32}, {"y", V::I32}}, Opcode::I32Min, V::I32}}}},
+        {"max", {L::Opcode, {
+            {{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Max, V::F32},
+            {{{"x", V::I32}, {"y", V::I32}}, Opcode::I32Max, V::I32}}}},
         {"pow", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}}, Opcode::F32Pow}}}},
         {"exp", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Exp}}}},
         {"atan2", {V::F32, L::Opcode, {{{{"y", V::F32}, {"x", V::F32}}, Opcode::F32Atan2}}}},
@@ -54,11 +60,14 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
         {"fold", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}, {"n", V::I32}}, Opcode::Vec2Fold}}}},
         {"polar", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Polar}}}},
         {"vec2.len", {V::F32, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Len}}}},
+        {"vec2.normalize", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}}, Opcode::Vec2Normalize}}}},
         {"vec2.dot", {V::F32, L::Opcode, {{{{"a", V::Vec2}, {"b", V::Vec2}}, Opcode::Vec2Dot}}}},
         {"vec2.rot", {V::Vec2, L::Opcode, {{{{"v", V::Vec2}, {"a", V::F32}}, Opcode::Vec2Rot}}}},
         {"smoothstep", {V::F32, L::Opcode, {{{{"a", V::F32}, {"b", V::F32}, {"t", V::F32}}, Opcode::Smoothstep}}}},
         {"remap", {V::F32, L::Opcode, {{{{"t", V::F32}, {"a", V::F32}, {"b", V::F32}, {"c", V::F32}, {"d", V::F32}}, Opcode::Remap}}}},
-        {"clamp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::Clamp}}}},
+        {"clamp", {L::Opcode, {
+            {{{"x", V::F32}, {"min", V::F32}, {"max", V::F32}}, Opcode::Clamp, V::F32},
+            {{{"x", V::I32}, {"min", V::I32}, {"max", V::I32}}, Opcode::I32Clamp, V::I32}}}},
         {"i32trunc", {V::I32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32ToI32}}}},
         {"int", {V::I32, L::Opcode, {
             {{{"x", V::I32}}, std::nullopt}, {{{"x", V::F32}}, Opcode::F32ToI32}}}},
@@ -88,9 +97,86 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"a", V::Vec2}, {"b", V::Vec2}, {"c", V::Vec2}, {"d", V::Vec2}, {"thickness", V::F32}, {"color", V::Color}}, Opcode::CurveCubic}}}},
         {"oval", {V::Void, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"rx", V::F32}, {"ry", V::F32}, {"color", V::Color}}, Opcode::Oval}}}},
         {"weather", {V::Void, L::Opcode, {{{{"seed", V::I32}, {"amount", V::I32}}, Opcode::Weather}}}},
-        {"poly", {V::Void, L::Polygon, {}}},
+        {"poly", {V::Void, L::Polygon, {
+            {{{"points", V::list(V::Vec2)}, {"color", V::Color}}, Opcode::PolyList}}}},
+        {"surface.paint", {V::Void, L::SurfacePaint, {
+            {{{"image", V::Layer}}, Opcode::SurfacePaint},
+            {{{"image", V::Layer}, {"blend", V::I32}}, Opcode::SurfacePaint},
+            {{{"image", V::Mask}, {"color", V::Color}}, Opcode::SurfacePaintMask},
+            {{{"image", V::Mask}, {"color", V::Color}, {"blend", V::I32}}, Opcode::SurfacePaintMask}}}},
+        {"mask.from", {V::Mask, L::Opcode, {{{{"image", V::Layer}}, Opcode::MaskFrom}}}},
+        {"mask.union", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskUnion}}}},
+        {"mask.intersect", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskIntersect}}}},
+        {"mask.subtract", {V::Mask, L::Opcode, {{{{"a", V::Mask}, {"b", V::Mask}}, Opcode::MaskSubtract}}}},
+        {"mask.invert", {V::Mask, L::Opcode, {{{{"source", V::Mask}}, Opcode::MaskInvert}}}},
+        {"mask.expand", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"radius", V::I32}}, Opcode::MaskExpand}}}},
+        {"mask.shrink", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"radius", V::I32}}, Opcode::MaskShrink}}}},
+        {"mask.offset", {V::Mask, L::Opcode, {{{{"source", V::Mask}, {"dx", V::I32}, {"dy", V::I32}}, Opcode::MaskOffset}}}},
+        {"list.len", {V::I32, L::ListLength, {
+            {{{"items", V::list(V::I32)}}, Opcode::ListLen},
+            {{{"items", V::list(V::F32)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Color)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Vec2)}}, Opcode::ListLen},
+            {{{"items", V::list(V::Distribution)}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::I32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::F32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::Color))}}, Opcode::ListLen},
+            {{{"items", V::list(V::sampler(V::Vec2))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::I32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::F32))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::Color))}}, Opcode::ListLen},
+            {{{"items", V::list(V::stepper(V::Vec2))}}, Opcode::ListLen}}}},
     };
     return table;
+}
+
+const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {
+    using V = ValueType;
+    static const std::map<std::string, BuiltinSpec> methods{
+        {"blur", {BuiltinLowering::Opcode, {
+            {{{"receiver", V::Layer}, {"sigma", V::F32}}, Opcode::LayerBlur, V::Layer},
+            {{{"receiver", V::Mask}, {"sigma", V::F32}}, Opcode::MaskBlur, V::Mask}}}}
+    };
+    return methods;
+}
+
+const std::map<std::string, BuiltinSpec>& listMethodSpecs() {
+    static const auto specs = [] {
+        std::vector<BuiltinOverload> distinct, sort;
+        for (const auto item : kListElementTypes) {
+            const auto type = ValueType::list(item);
+            distinct.push_back({{{"receiver", type}}, Opcode::ListDistinct, type});
+            if (isSortableList(type)) sort.push_back({{{"receiver", type}}, Opcode::ListSort, type});
+        }
+        return std::map<std::string, BuiltinSpec>{
+            {"distinct", {BuiltinLowering::Opcode, std::move(distinct)}},
+            {"sort", {BuiltinLowering::Opcode, std::move(sort)}}};
+    }();
+    return specs;
+}
+
+const BuiltinSpec& samplerPickSpec() {
+    static const BuiltinSpec spec = [] {
+        std::vector<BuiltinOverload> overloads;
+        for (const auto item : kSamplerElementTypes) {
+            const auto receiver = ValueType::sampler(item);
+            overloads.push_back({{{"receiver", receiver}}, Opcode::SamplerPick, item});
+            overloads.push_back({{{"receiver", receiver}, {"n", ValueType::I32}}, Opcode::SamplerPickList, ValueType::list(item)});
+        }
+        return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
+    }();
+    return spec;
+}
+
+const BuiltinSpec& stepperPickSpec() {
+    static const BuiltinSpec spec = [] {
+        std::vector<BuiltinOverload> overloads;
+        for (const auto item : kSamplerElementTypes)
+            overloads.push_back({{{"receiver", ValueType::stepper(item)}, {"n", ValueType::I32}},
+                Opcode::StepperPickList, ValueType::list(item)});
+        return BuiltinSpec(BuiltinLowering::Opcode, std::move(overloads));
+    }();
+    return spec;
 }
 
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity) {
@@ -118,6 +204,10 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
         }
     }
     return best;
+}
+
+bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity) {
+    return spec.lowering == BuiltinLowering::Polygon && !builtinOverload(spec, arity);
 }
 
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
@@ -149,6 +239,8 @@ OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* 
     case BuiltinLowering::Opcode:
         if (!overload) throw std::logic_error("fixed builtin effects require an overload");
         return {};
+    case BuiltinLowering::ListLength: return findOpcode(Opcode::ListLen)->effects;
+    case BuiltinLowering::SurfacePaint: return findOpcode(Opcode::SurfacePaint)->effects;
     case BuiltinLowering::Round:
     case BuiltinLowering::ColorConstructor: return {};
     case BuiltinLowering::Beta: return findOpcode(Opcode::DistributionBeta)->effects;

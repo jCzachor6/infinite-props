@@ -32,12 +32,12 @@ asset wing {
 })";
     const std::string composite = R"(
 import wing from "wing.ips"
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 8x8
   output point p
   draw {
-    wing.draw(1, v, a, at = {0, 0})
-    wing.draw(2, v, a, at = {4, 0}, mirror_x = true)
+    wing.draw(1, at = {0, 0})
+    wing.draw(2, at = {4, 0}, mirror_x = true)
     p = wing.outputs.tip
   }
 })";
@@ -48,7 +48,7 @@ asset t {
     const auto bytes = compileProgram(compositeProgram, {{"wing", &wingProgram}});
     const auto loaded = loadFile(bytes);
     CHECK_NOTHROW(validate(loaded));
-    VM vm(loaded, GenerationInputs{5, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{5, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
     // The identity blit paints (0,0) and (1,1).
@@ -78,10 +78,10 @@ asset wing {
     // rot 180 with both mirrors is the identity: the pixel stays at (0,0).
     const std::string composite = R"(
 import wing from "wing.ips"
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 4x4
   draw {
-    wing.draw(1, v, a, at = {0, 0}, rot = 180, mirror_x = true, mirror_y = true)
+    wing.draw(1, at = {0, 0}, rot = 180, mirror_x = true, mirror_y = true)
   }
 })";
     const ips::Program wingProgram = ips::parse(wing);
@@ -91,7 +91,7 @@ asset t {
     const auto bytes = compileProgram(compositeProgram, {{"wing", &wingProgram}});
     const auto loaded = loadFile(bytes);
     CHECK_NOTHROW(validate(loaded));
-    VM vm(loaded, GenerationInputs{5, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{5, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     REQUIRE(vm.result().image.at(0, 0) == Color{255, 0, 0, 255});
 
@@ -99,10 +99,10 @@ asset t {
     // (sy, w-1-sx) mapping (spec §10.5, y grows downward).
     const std::string rotated = R"(
 import wing from "wing.ips"
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 4x4
   draw {
-    wing.draw(1, v, a, at = {0, 0}, rot = 90)
+    wing.draw(1, at = {0, 0}, rot = 90)
   }
 })";
     const ips::Program rotatedProgram = ips::parse(rotated);
@@ -111,7 +111,7 @@ asset t {
         compileProgram(rotatedProgram, {{"wing", &wingProgram}});
     const auto rotatedLoaded = loadFile(rotatedBytes);
     CHECK_NOTHROW(validate(rotatedLoaded));
-    VM rotatedVm(rotatedLoaded, GenerationInputs{5, 0, 0, 0, 0, {}});
+    VM rotatedVm(rotatedLoaded, GenerationInputs{5, 0, 0, {}});
     CHECK_NOTHROW(rotatedVm.run());
     REQUIRE(rotatedVm.result().image.at(0, 3) == Color{255, 0, 0, 255});
 }
@@ -140,27 +140,22 @@ asset wing {
         REQUIRE(threw);
     };
     compileComposite(
-        "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw { wing.draw(1, v, a, at = {0, 0}, rot = 45) } }",
+        "import wing from \"wing.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 4x4 draw { wing.draw(1, at = {0, 0}, rot = 45) } }",
         "the rot transform must be 0, 90, 180 or 270");
     compileComposite(
-        "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw { wing.draw(1, v, a, at = {0, 0}, mirror_x = 2) } }",
+        "import wing from \"wing.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 4x4 draw { wing.draw(1, at = {0, 0}, mirror_x = 2) } }",
         "the mirror_x transform must be 0 or 1");
     compileComposite(
-        "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw { wing.draw(1, v, a, at = {0, 0}, mirror_x = 1.5) } }",
+        "import wing from \"wing.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 4x4 draw { wing.draw(1, at = {0, 0}, mirror_x = 1.5) } }",
         "must be an integer");
     for (const std::string name : {"rot", "mirror_x", "mirror_y"}) {
         compileComposite(
-            "import wing from \"wing.ips\"\nasset t { size 4x4 "
-            "draw { wing.draw(1, v, a, at = {0, 0}, " +
+            "import wing from \"wing.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 4x4 draw { wing.draw(1, at = {0, 0}, " +
                 name + " = 0, " + name + " = 0) } }",
             "duplicate");
     }
     compileComposite(
-        "import wing from \"wing.ips\"\nasset t { size 4x4 "
-        "draw { wing.draw(1, v, a, at = {0, 0}, rot = v) } }",
+        "import wing from \"wing.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 4x4 draw { wing.draw(1, at = {0, 0}, rot = v) } }",
         "constant integers");
 }
 
@@ -207,8 +202,7 @@ asset tile {
                 const u8 kind = kinds[rot][mx][my];
                 INFO("rot=" << rot * 90 << " mirror_x=" << mx << " mirror_y=" << my);
                 const auto root = ips::parse(
-                    "import tile from \"tile.ips\"\nasset t { size 8x8 output point p "
-                    "draw { tile.draw(1, v, a, at = {0,0}, rot = " +
+                    "import tile from \"tile.ips\"\nasset t { input i32 a = 0 input i32 v = 0  size 8x8 output point p draw { tile.draw(1, at = {0,0}, rot = " +
                     std::to_string(rot * 90) + ", mirror_x = " + std::to_string(mx) +
                     ", mirror_y = " + std::to_string(my) + ") p = tile.outputs.anchor } }");
                 ips::checkAsset(root, {{"tile", partInfoOf(part.asset)}});
@@ -259,10 +253,10 @@ asset tile {
 })");
     const auto root = ips::parse(R"(
 import tile from "tile.ips"
-asset t {
+asset t { input i32 a = 0 input i32 v = 0
   size 8x8
   draw {
-    tile.draw(1, v, a, at = {0,0}, rot = 90, mirror_y = true)
+    tile.draw(1, at = {0,0}, rot = 90, mirror_y = true)
   }
 })");
     ips::checkAsset(part, {});

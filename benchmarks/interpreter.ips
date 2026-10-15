@@ -1,0 +1,17 @@
+// Interpreter hot path: locals, integer/float arithmetic and branches only,
+// close to the default 2,000,000 fuel budget.
+asset loop {
+  size 16x16
+  draw {
+    acc = 0
+    f = 0.0
+    i = 0
+    while (i < 60000) {
+      acc = acc + i * 3 - (acc / 7)
+      f = f * 0.5 + 1.25
+      i = i + 1
+    }
+    pixel(acc % 16, 1, #ff0000)
+    rect(f, 2.0, 1.0, 1.0, #00ff00)
+  }
+}

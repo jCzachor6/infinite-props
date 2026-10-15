@@ -52,7 +52,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
             return {call.location, std::move(result)};
         }
         BuiltinCall result{&spec, ips::builtinOverload(spec, types), {}};
-        if (spec.lowering == ips::BuiltinLowering::Polygon) {
+        if (ips::variadicPolygon(spec, args.size())) {
             for (const auto i : bound.signature.evaluationOrder)
                 result.arguments.push_back(argument(*args[i]->value, i == 0 ? T::Color : T::F32));
         } else {
@@ -81,11 +81,12 @@ PartCall CallResolver::part(const ips::Call& call, const std::string& path) cons
     const auto& inputs = plan_.parts[result.part]->asset.inputs;
     const auto& args = bound.arguments;
     for (const auto slot : bound.signature.evaluationOrder) {
-        if (slot >= 4 && slot < 7) continue; // compile-time transforms
-        if (slot == 3) {
+        if (slot >= ips::kPartTransformBegin && slot < ips::kPartTransformEnd) continue; // compile-time transforms
+        if (slot == ips::kPartAtSlot) {
             result.arguments.emplace_back(PartCall::Placement{args[slot]->value.get()});
         } else if (const auto* supplied = args[slot]) {
-            const auto expected = slot < 3 ? ips::ValueType::I32 : ips::valueTypeOf(inputs[slot-7].type);
+            const auto expected = slot == ips::kPartSeedSlot ? ips::ValueType::I32 :
+                ips::valueTypeOf(inputs[slot - ips::kPartFirstInput].type);
             result.arguments.emplace_back(argument(*supplied->value, expected));
         } else {
             const auto* declaration = std::get<const ips::InputDecl*>(bound.signature.defaults[slot]);

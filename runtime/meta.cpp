@@ -79,12 +79,6 @@ AssetMeta parseMeta(std::span<const u8> data, const Section& section, const Cons
 
     meta.origin = {reader.readF32(), reader.readF32()};
 
-    meta.variants = reader.readU32();
-    meta.archetypes = reader.readU32();
-    if (meta.variants == 0 || meta.archetypes == 0) {
-        throw FormatError("variants and archetypes must be at least 1", reader.position() - 8, ErrorReason::InvalidMetadata);
-    }
-
     meta.fuel = reader.readU64();
     if (meta.fuel == 0) {
         throw FormatError("fuel budget must be at least 1", reader.position() - 8, ErrorReason::InvalidMetadata);

@@ -2,6 +2,7 @@
 
 #include "iprop/Consts.hpp"
 #include "iprop/Meta.hpp"
+#include "iprop/TypeDescriptor.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -12,13 +13,6 @@ namespace iprop {
 
 // Stack value types (spec §6.1 type codes: 0 = i32, 1 = f32, 2 = colour,
 // 3 = vec2).
-enum class ValueType : u8 {
-    I32 = 0,
-    F32 = 1,
-    Color = 2,
-    Vec2 = 3,
-    Distribution = 4, // v0.5
-};
 
 // One function declaration plus its instruction stream (spec §6.1/§6.2).
 // `code` is a view into the file buffer passed to parseCode; it stays valid
@@ -65,7 +59,7 @@ struct CodeSection {
 // trailing bytes. Semantic checks (draw signature, acyclicity, opcode
 // validity) belong to the Phase 6 validator.
 CodeSection parseCode(std::span<const u8> data, const Section& section,
-                      const ConstPool& pool);
+                      const ConstPool& pool, std::span<const TypeDescriptor> types = {});
 
 // Parses the v0.5 `parts` section (spec v0.5 §6) into the parsed part table:
 // one name and parent per part, names in the pool and unique, every parent a

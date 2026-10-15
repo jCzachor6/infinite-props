@@ -13,15 +13,15 @@ from release_common import described_versions, read_version_matrix
 
 class ContractReaderTest(unittest.TestCase):
     def test_manifest_requires_schema_2_and_its_version_matrix(self):
-        current = {'schema_version':2,'product_version':'0.4.0','language_version':'0.5','format_version':'0.4',
+        current = {'schema_version':3,'product_version':'0.4.0','language_version':'0.5',
                    'c_api_version':'0.3','c_abi_soversion':'0.4','source_commit':None,'working_tree_dirty':False,
                    'status':'development / release candidate','tag':None,'builtin_count':1,'example_count':1,
                    'headings':[{'title':'Book','anchor':'book','level':1}],
                    'source_files':{'docs/language/index.md':'a'*64},'files':{'docs/language.json':'b'*64}}
         self.assertIs(read_manifest(current),current)
         with self.assertRaisesRegex(RuntimeError,'manifest schema version'):
-            read_manifest({**current,'schema_version':1})
-        for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+            read_manifest({**current,'schema_version':2})
+        for key in ('language_version','c_api_version','c_abi_soversion'):
             for value in (None,False,4,{'major':0,'minor':4},'0.4.0'):
                 with self.subTest(key=key,value=value), self.assertRaises(RuntimeError):
                     read_manifest({**current,key:value})
@@ -31,10 +31,10 @@ class ContractReaderTest(unittest.TestCase):
 
     def test_existing_abi_pair_normalizes_without_optional_alias(self):
         catalog = {'product_version':'0.5.0','language_version':{'major':0,'minor':5},
-                   'format_version':{'major':0,'minor':4},'c_api_version':{'major':0,'minor':3},
+                   'c_api_version':{'major':0,'minor':3},
                    'abi_version':{'major':0,'minor':4}}
         self.assertEqual(described_versions(catalog),{'product_version':'0.5.0','language_version':'0.5',
-                         'format_version':'0.4','c_api_version':'0.3','c_abi_soversion':'0.4'})
+                         'c_api_version':'0.3','c_abi_soversion':'0.4'})
         with self.assertRaises(RuntimeError): described_versions({**catalog,'c_abi_soversion':'0.5'})
         for value in (True,0.5,None):
             with self.assertRaises(RuntimeError): described_versions({**catalog,'abi_version':{'major':0,'minor':value}})
@@ -43,6 +43,8 @@ class ContractReaderTest(unittest.TestCase):
         self.assertIs(read_language(LANGUAGE),LANGUAGE)
         with self.assertRaisesRegex(RuntimeError,'language schema version'):
             read_language({**LANGUAGE,'schema_version':1})
+        with self.assertRaisesRegex(RuntimeError,'language schema version'):
+            read_language({**LANGUAGE,'schema_version':2})
         for key in ('source_rules','effect_rules','call_rules','language_version'):
             missing = dict(LANGUAGE); del missing[key]
             with self.subTest(key=key), self.assertRaisesRegex(RuntimeError,'language required fields'):
@@ -55,7 +57,7 @@ class ContractReaderTest(unittest.TestCase):
                     with self.assertRaises(RuntimeError):
                         reader(value)
 
-    def test_schema_2_accepts_earlier_exports_without_new_capabilities(self):
+    def test_schema_3_accepts_exports_without_optional_capabilities(self):
         for components, ranges in ((False, False), (True, False), (False, True), (True, True)):
             with self.subTest(components=components, random_range=ranges):
                 earlier = copy.deepcopy(LANGUAGE)
@@ -103,8 +105,8 @@ class ContractReaderTest(unittest.TestCase):
             read_diagnostics(report,0)
 
     def test_manifest_paths_and_known_types_do_not_accept_json_coercion(self):
-        value={'schema_version':2,'product_version':'0.4.0','source_commit':None,
-               'language_version':'0.5','format_version':'0.4','c_api_version':'0.3','c_abi_soversion':'0.4',
+        value={'schema_version':3,'product_version':'0.4.0','source_commit':None,
+               'language_version':'0.5','c_api_version':'0.3','c_abi_soversion':'0.4',
                'working_tree_dirty':False,'status':'development / release candidate','tag':None,
                'builtin_count':1,'example_count':1,'headings':[{'level':1,'title':'Book','anchor':'book'}],
                'source_files':{'docs/book.md':'a'*64},'files':{'docs/book.md':'a'*64}}

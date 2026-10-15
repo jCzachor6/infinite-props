@@ -1,0 +1,8 @@
+asset badDynamicBlur {
+    size 1x1
+    input f32 sigma = -1.0
+    draw {
+        layer image {}
+        mask.from(image).blur(sigma)
+    }
+}

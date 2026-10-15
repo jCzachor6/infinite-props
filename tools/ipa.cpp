@@ -31,7 +31,7 @@ namespace {
 // .ipa text format:
 //
 //   ; comments
-//   meta: size=64x64 origin=32,60 variants=8 archetypes=1 fuel=1000000
+//   meta: size=64x64 origin=32,60 fuel=1000000
 //   input: color skin = #d9b58c          (type: color|f32|u32)
 //   output: point pupilCenter            (kind: point|rect|circle, opt. "list")
 //   output: list rect colliders
@@ -103,12 +103,20 @@ struct AsmPart {
 struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
-    u32 variants = 1, archetypes = 1;
     u64 fuel = 2000000;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;
     std::vector<AsmPart> parts;
+    std::vector<TypeDescriptor> types;
+    struct Collection { TypeDescriptor type; std::vector<u8> bytes; u16 count; };
+    std::vector<Collection> collections;
+    std::vector<Collection> samplers;
+    std::vector<Collection> steppers;
+    std::vector<std::vector<u8>> distributions;
+    struct Export { TypeDescriptor type; std::string name; u32 owner; };
+    std::vector<Export> resourceExports;
+    std::map<std::string, u32> functionOwners;
 };
 
 std::vector<std::string> tokens(const std::string& line) {
@@ -134,6 +142,26 @@ std::string clean(const std::string& token) {
 }
 
 bool parseValueType(const std::string& text, ValueType& out) {
+    if (text == "layer") { out = ValueType::Layer; return true; }
+    if (text == "mask") { out = ValueType::Mask; return true; }
+    if (text.starts_with("list<") && text.ends_with(">")) {
+        ValueType item;
+        if (!parseValueType(text.substr(5, text.size() - 6), item) || (!item.isScalar() && !item.isDescription())) return false;
+        out = ValueType::list(item);
+        return true;
+    }
+    if (text.starts_with("sampler<") && text.ends_with(">")) {
+        ValueType item;
+        if (!parseValueType(text.substr(8, text.size() - 9), item) || !item.isScalar() || item == ValueType::Distribution) return false;
+        out = ValueType::sampler(item);
+        return true;
+    }
+    if (text.starts_with("stepper<") && text.ends_with(">")) {
+        ValueType item;
+        if (!parseValueType(text.substr(8, text.size() - 9), item) || !item.isScalar() || item == ValueType::Distribution) return false;
+        out = ValueType::stepper(item);
+        return true;
+    }
     if (text == "i32") {
         out = ValueType::I32;
         return true;
@@ -232,9 +260,21 @@ bool parseIntBits(const std::string& text, u32& bits) {
     }
 }
 
-// Same acceptance as ips::parseFloatBits: the rounded result's class, not the
-// C library's ERANGE convention, decides whether a value is accepted.
+// Decimal literals retain ips::parseFloatBits acceptance. Assembly additionally
+// admits exact raw encodings; their bits are already the binary32 value.
 bool parseFloatBits(const std::string& text, u32& bits) {
+    if (text.starts_with("bits:0x")) {
+        if (text.size() != 15) return false;
+        u32 result = 0;
+        for (const char c : std::string_view(text).substr(7)) {
+            const int digit = c >= '0' && c <= '9' ? c - '0' :
+                c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+            if (digit < 0) return false;
+            result = (result << 4) | static_cast<u32>(digit);
+        }
+        bits = result;
+        return true;
+    }
     char* end = nullptr;
     const f32 value = std::strtof(text.c_str(), &end);
     if (end == text.c_str() || end != text.c_str() + text.size()) {
@@ -256,6 +296,17 @@ bool parseFloatBits(const std::string& text, u32& bits) {
     }
     std::memcpy(&bits, &value, sizeof(bits));
     return true;
+}
+
+// Preserve the legacy decimal-origin parser while accepting the lossless
+// raw-bit spelling emitted for subnormal/nonfinite binary coordinates.
+f32 parseOriginFloat(const std::string& text) {
+    if (!text.starts_with("bits:")) return std::stof(text);
+    u32 bits = 0;
+    if (!parseFloatBits(text, bits)) throw std::invalid_argument("bad raw float bits");
+    f32 value;
+    std::memcpy(&value, &bits, sizeof(value));
+    return value;
 }
 
 bool parseColor(const std::string& text, Color& out) {
@@ -327,23 +378,18 @@ std::vector<u8> assemble(const std::string& source) {
                             throw error("bad origin");
                         }
                         try {
-                            program.originX = std::stof(value.substr(0, comma));
-                            program.originY = std::stof(value.substr(comma + 1));
+                            program.originX = parseOriginFloat(value.substr(0, comma));
+                            program.originY = parseOriginFloat(value.substr(comma + 1));
                         } catch (...) {
                             throw error("bad origin");
                         }
-                    } else if (key == "variants" && !parseU32Text(value, program.variants)) {
-                        throw error("bad variants");
-                    } else if (key == "archetypes" && !parseU32Text(value, program.archetypes)) {
-                        throw error("bad archetypes");
                     } else if (key == "fuel") {
                         try {
                             program.fuel = std::stoull(value);
                         } catch (...) {
                             throw error("bad fuel");
                         }
-                    } else if (key != "size" && key != "origin" && key != "variants" &&
-                               key != "archetypes" && key != "fuel") {
+                    } else if (key != "size" && key != "origin" && key != "fuel") {
                         throw error("unknown meta key '" + key + "'");
                     }
                 } else {
@@ -357,8 +403,8 @@ std::vector<u8> assemble(const std::string& source) {
                             throw error("bad origin");
                         }
                         try {
-                            currentPart->originX = std::stof(value.substr(0, comma));
-                            currentPart->originY = std::stof(value.substr(comma + 1));
+                            currentPart->originX = parseOriginFloat(value.substr(0, comma));
+                            currentPart->originY = parseOriginFloat(value.substr(comma + 1));
                         } catch (...) {
                             throw error("bad origin");
                         }
@@ -381,6 +427,70 @@ std::vector<u8> assemble(const std::string& source) {
             input.name = words[2];
             input.defaultValue = words[4];
             (currentPart != nullptr ? currentPart->inputs : program.inputs).push_back(input);
+            continue;
+        }
+
+        if (words[0] == "types:") {
+            if (function || currentPart || words.size() < 2) throw error("bad type descriptor declaration");
+            for (std::size_t i = 1; i < words.size(); ++i) {
+                ValueType type;
+                if (!parseValueType(words[i], type) || !type.needsDescriptor()) throw error("bad value descriptor");
+                if (std::find(program.types.begin(), program.types.end(), type) != program.types.end()) throw error("duplicate type descriptor");
+                program.types.push_back(type);
+            }
+            continue;
+        }
+        if (words[0] == "collection:" || words[0] == "sampler:" || words[0] == "stepper:" || words[0] == "distribution:") {
+            const bool stepper = words[0] == "stepper:", sampler = words[0] == "sampler:";
+            const bool description = sampler || stepper, points = words[0] == "distribution:";
+            ValueType type;
+            if (function || currentPart || (points ? words.size() != 2 :
+                (words.size() != 3 || !parseValueType(words[1], type) || (description ? (stepper ? !type.isStepper() : !type.isSampler()) : !type.isList()))))
+                throw error("bad resource constant declaration");
+            const auto& text = words[points ? 1 : 2];
+            const bool variable = !points && !description && type.element == ValueType::Distribution;
+            const auto stride = (description || points || variable) ? 1u : type.item().isDescription() ? 2u :
+                type.element == ValueType::Vec2 ? 8u : 4u;
+            if (text != "-" && (text.size() % (2 * stride) || (!description && !points && !variable && text.size() / (2 * stride) > kMaxListElements)))
+                throw error("bad collection size");
+            std::vector<u8> bytes;
+            if (text != "-") for (std::size_t i = 0; i < text.size(); i += 2) {
+                const auto digit = [](char c) -> int {
+                    if (c >= '0' && c <= '9') return c - '0';
+                    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+                    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+                    return -1;
+                };
+                const auto hi = digit(text[i]), lo = digit(text[i + 1]);
+                if (hi < 0 || lo < 0) throw error("bad collection hex data");
+                bytes.push_back(static_cast<u8>(hi * 16 + lo));
+            }
+            if (points) { program.distributions.push_back(std::move(bytes)); continue; }
+            u16 count = description ? u16{0} : static_cast<u16>(bytes.size() / stride);
+            if (variable) {
+                count = 0;
+                for (std::size_t at = 0; at < bytes.size();) {
+                    const auto length = (bytes[at] == static_cast<u8>(DistributionFamily::Weighted) || bytes[at] == static_cast<u8>(DistributionFamily::Density)) ? 3u : 17u;
+                    if (length > bytes.size() - at || count == kMaxListElements) throw error("bad distribution collection size");
+                    ++count; at += length;
+                }
+            }
+            (description ? (stepper ? program.steppers : program.samplers) : program.collections).push_back({type, std::move(bytes), count});
+            continue;
+        }
+
+        if (words[0] == "export:" || words[0] == "owner:") {
+            if (function || currentPart) throw error("resource ownership declarations must be global");
+            const bool output = words[0] == "export:";
+            if (words.size() != (output ? 4u : 3u)) throw error("bad resource ownership declaration");
+            u32 owner = kRootParent;
+            if (words.back() != "root" && !parseU32Text(words.back(), owner)) throw error("bad resource owner");
+            if (output) {
+                ValueType type;
+                if (!parseValueType(words[1], type) || (type != ValueType::Mask && type != ValueType::Layer))
+                    throw error("resource exports must be mask or layer");
+                program.resourceExports.push_back({type, words[2], owner});
+            } else if (!program.functionOwners.emplace(words[1], owner).second) throw error("duplicate function owner");
             continue;
         }
 
@@ -512,7 +622,14 @@ std::vector<u8> assemble(const std::string& source) {
             instruction.aux = static_cast<u8>(kind);
             words.pop_back();
         }
-        if (def->operand != OperandKind::None) {
+        if (instruction.opcode == Opcode::LayerBegin && words.size() == 3) {
+            u32 mode = 0;
+            if (!parseU32Text(words[2], mode) || mode > 2)
+                throw error("layer alpha mode must be 0 (inherited), 1 (legacy) or 2 (source_over)");
+            instruction.aux = static_cast<u8>(mode);
+            words.pop_back();
+        }
+        if (def->operand != OperandKind::None && def->operand != OperandKind::Zero) {
             if (words.size() != 2) {
                 throw error("instruction '" + words[0] + "' expects one operand");
             }
@@ -624,6 +741,7 @@ std::vector<u8> assemble(const std::string& source) {
         }
     }
     for (const auto& name : ambiguous) slotIndex.erase(name);
+    for (const auto& output : program.resourceExports) addString(output.name);
     // Named instances (v0.5 parts section): all or none, parents first.
     const bool instances = !program.parts.empty() && program.parts.front().instance;
     std::map<std::string, u32> instanceIndex;
@@ -651,8 +769,6 @@ std::vector<u8> assemble(const std::string& source) {
     meta.writeU32(program.sizeY);
     meta.writeF32(program.originX);
     meta.writeF32(program.originY);
-    meta.writeU32(program.variants);
-    meta.writeU32(program.archetypes);
     meta.writeU64(program.fuel);
     meta.writeU16(0); // no emission in the assembler v1
     for (int i = 0; i < 6; ++i) {
@@ -702,7 +818,8 @@ std::vector<u8> assemble(const std::string& source) {
     std::map<std::string, u32> functionIndex; // populated once `ordered` exists
     const auto resolve = [&](const AsmInstruction& instruction) -> u16 {
         switch (instruction.operand) {
-        case OperandKind::None: return 0;
+        case OperandKind::None:
+        case OperandKind::Zero: return 0;
         case OperandKind::IntConst: {
             u32 bits = 0;
             if (!parseIntBits(instruction.operandText, bits)) {
@@ -724,11 +841,18 @@ std::vector<u8> assemble(const std::string& source) {
             }
             return static_cast<u16>(addColor(color));
         }
-        case OperandKind::Index:
+        case OperandKind::Local:
+        case OperandKind::TypeDescriptor:
+        case OperandKind::ListConst:
+        case OperandKind::SamplerConst:
+        case OperandKind::StepperConst:
+        case OperandKind::DistributionConst:
+        case OperandKind::ResourceExport:
+        case OperandKind::Immediate:
         case OperandKind::Depth:
         case OperandKind::Count: {
             u32 value = 0;
-            if (!parseU32Text(instruction.operandText, value)) {
+            if (!parseU32Text(instruction.operandText, value) || value > 65535) {
                 throw SourceError(instruction.line, "bad index operand");
             }
             return static_cast<u16>(value);
@@ -779,6 +903,57 @@ std::vector<u8> assemble(const std::string& source) {
         functionIndex[ordered[i]->name] = static_cast<u32>(i);
     }
 
+    const auto addType = [&](ValueType type) {
+        if (!type.needsDescriptor()) return;
+        if (type.isList() && type.item().isDescription() &&
+            std::find(program.types.begin(), program.types.end(), type.item()) == program.types.end()) program.types.push_back(type.item());
+        if (std::find(program.types.begin(), program.types.end(), type) == program.types.end()) program.types.push_back(type);
+    };
+    for (const auto* fn : ordered) for (const auto* slots : {&fn->params, &fn->results, &fn->locals})
+        for (const auto type : *slots) addType(type);
+    for (const auto& collection : program.collections) addType(collection.type);
+    for (const auto& sampler : program.samplers) addType(sampler.type);
+    for (const auto& stepper : program.steppers) addType(stepper.type);
+    for (const auto& output : program.resourceExports) addType(output.type);
+    Writer descriptors;
+    if (!program.types.empty()) {
+        writeTypeDescriptors(descriptors, program.types);
+    }
+    Writer collections;
+    Writer samplers;
+    Writer steppers;
+    Writer distributions;
+    if (!program.distributions.empty()) {
+        if (program.distributions.size() > kMaxConstPoolEntries) throw SourceError(0, "too many distribution constants");
+        distributions.writeU32(static_cast<u32>(program.distributions.size()));
+        for (const auto& bytes : program.distributions) distributions.writeBytes(bytes);
+    }
+    if (!program.collections.empty()) {
+        if (program.collections.size() > kMaxConstPoolEntries) throw SourceError(0, "too many collections");
+        collections.writeU32(static_cast<u32>(program.collections.size()));
+        for (const auto& collection : program.collections) {
+            const auto found = std::find(program.types.begin(), program.types.end(), collection.type);
+            collections.writeU16(static_cast<u16>(found - program.types.begin()));
+            collections.writeU16(collection.count); collections.writeBytes(collection.bytes);
+        }
+    }
+    if (!program.samplers.empty()) {
+        if (program.samplers.size() > kMaxConstPoolEntries) throw SourceError(0, "too many sampler constants");
+        samplers.writeU32(static_cast<u32>(program.samplers.size()));
+        for (const auto& sampler : program.samplers) {
+            const auto found = std::find(program.types.begin(), program.types.end(), sampler.type);
+            samplers.writeU16(static_cast<u16>(found - program.types.begin())); samplers.writeBytes(sampler.bytes);
+        }
+    }
+    if (!program.steppers.empty()) {
+        if (program.steppers.size() > kMaxConstPoolEntries) throw SourceError(0, "too many stepper constants");
+        steppers.writeU32(static_cast<u32>(program.steppers.size()));
+        for (const auto& stepper : program.steppers) {
+            const auto found = std::find(program.types.begin(), program.types.end(), stepper.type);
+            steppers.writeU16(static_cast<u16>(found - program.types.begin())); steppers.writeBytes(stepper.bytes);
+        }
+    }
+
     // Resolve every operand first: the const pools must be complete when
     // the const section is written.
     std::vector<std::vector<u16>> operands(ordered.size());
@@ -811,7 +986,6 @@ std::vector<u8> assemble(const std::string& source) {
     // Function table + streams.
     Writer table;
     Writer streams;
-    u16 minor = kOldestWrittenMinor;
     const u32 functionCount = static_cast<u32>(ordered.size());
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         const AsmFunction& fn = *ordered[i];
@@ -825,21 +999,17 @@ std::vector<u8> assemble(const std::string& source) {
         table.writeU32(static_cast<u32>(fn.instructions.size()) * 4);
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {
-            minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.results.size()));
         for (const ValueType type : fn.results) {
-            minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.locals.size()));
         for (const ValueType type : fn.locals) {
-            minor = writtenMinor(minor, type);
-            table.writeU8(static_cast<u8>(type));
+            writeTypeReference(table, type, program.types);
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
-            minor = writtenMinor(minor, fn.instructions[j].opcode);
             streams.writeU8(static_cast<u8>(fn.instructions[j].opcode));
             streams.writeU8(fn.instructions[j].aux);
             streams.writeU16(operands[i][j]);
@@ -904,7 +1074,6 @@ std::vector<u8> assemble(const std::string& source) {
 
     Writer partInstances;
     if (instances) {
-        minor = std::max<u16>(minor, 5);
         partInstances.writeU32(static_cast<u32>(program.parts.size()));
         for (const auto& part : program.parts) {
             partInstances.writeU32(stringIndex[part.name]);
@@ -912,14 +1081,37 @@ std::vector<u8> assemble(const std::string& source) {
         }
     }
 
+    Writer exports;
+    if (!program.resourceExports.empty()) {
+        if (program.resourceExports.size() > kMaxConstPoolEntries) throw SourceError(0, "too many resource exports");
+        exports.writeU32(static_cast<u32>(program.resourceExports.size()));
+        for (const auto& output : program.resourceExports) {
+            exports.writeU32(output.owner); exports.writeU32(stringIndex.at(output.name));
+            const auto type = std::find(program.types.begin(), program.types.end(), output.type);
+            exports.writeU16(static_cast<u16>(type - program.types.begin())); exports.writeU16(0);
+        }
+        for (const auto& [name, owner] : program.functionOwners) {
+            (void)owner;
+            if (!functionIndex.contains(name)) throw SourceError(0, "unknown function owner declaration");
+        }
+        exports.writeU32(static_cast<u32>(ordered.size()));
+        for (const auto* fn : ordered) {
+            u32 owner = kRootParent;
+            for (u32 p = 0; p < program.parts.size(); ++p)
+                if (fn == &program.parts[p].function) owner = p;
+            if (const auto found = program.functionOwners.find(fn->name); found != program.functionOwners.end()) owner = found->second;
+            exports.writeU32(owner);
+        }
+    } else if (!program.functionOwners.empty()) throw SourceError(0, "function owners require resource exports");
+
     // ---- Assemble the file ----
     Writer file;
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    const u32 sections = instances ? 4 : 3;
-    file.writeU16(kVersionMajor);
-    file.writeU16(minor);
+    const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
+        (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
+    file.writeU32(0); // reserved
     file.writeU32(0);
     file.writeU32(sections);
     file.writeU32(0);
@@ -934,10 +1126,18 @@ std::vector<u8> assemble(const std::string& source) {
     section(2, consts.data());
     section(3, code.data());
     if (instances) section(5, partInstances.data());
+    if (descriptors.size()) section(6, descriptors.data());
+    if (collections.size()) section(7, collections.data());
+    if (samplers.size()) section(8, samplers.data());
+    if (distributions.size()) section(9, distributions.data());
+    if (exports.size()) section(10, exports.data());
+    if (steppers.size()) section(11, steppers.data());
     file.writeBytes(meta.data());
     file.writeBytes(consts.data());
     file.writeBytes(code.data());
     if (instances) file.writeBytes(partInstances.data());
+    file.writeBytes(descriptors.data()); file.writeBytes(collections.data()); file.writeBytes(samplers.data()); file.writeBytes(distributions.data());
+    file.writeBytes(exports.data()); file.writeBytes(steppers.data());
 
     const auto bytes = file.data();
 

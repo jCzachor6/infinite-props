@@ -1,0 +1,5 @@
+asset invalid_weighted_order {
+  size 1x1
+  const distribution shape = weighted { 2: 1, 1: 2 }
+  draw { }
+}

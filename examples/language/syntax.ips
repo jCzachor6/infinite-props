@@ -2,8 +2,8 @@
 asset SourceSyntax {
   size 8x8;
   origin 0, 0;
-  variants 1;
-  archetypes 1;
+
+
   input i32 offset = -(0);
   output point anchor;
   palette colors = [#abc, #1234, #abcdef, #abcdef80,];

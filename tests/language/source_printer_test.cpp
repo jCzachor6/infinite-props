@@ -16,7 +16,7 @@
 using namespace iprop;
 
 TEST_CASE("canonical source formatting normalizes literals names and typed functions") {
-    const auto program = ips::parse(R"(asset t { size 8X8 variants 0x2
+    const auto program = ips::parse(R"(asset t { size 8X8
       input color c=#AbcD output list point trace palette p=[0X1,0x2]
       draw { rect(color=c,h=4,w=4,y=0,x=0) x=0.10 }
       helper(n:i32)->i32 { return n+0x1 }
@@ -24,7 +24,6 @@ TEST_CASE("canonical source formatting normalizes literals names and typed funct
     })");
     const std::string expected = R"(asset t {
   size 8x8
-  variants 2
   input color c = #aabbccdd
   output list point trace
   palette p = [1, 2]
@@ -55,7 +54,7 @@ TEST_CASE("canonical source formatting normalizes literals names and typed funct
 
 TEST_CASE("canonical grouping and signed literals preserve exact executable values", "[format-style]") {
     const auto original = ips::parse(R"(asset canonical { size 8X8; origin (0),(0);
-      variants 0X2; archetypes 0x1;
+
       input i32 low=(-2147483648); input u32 high=0xFFFFFFFF;
       input f32 zero=(-0.0); input f32 tiny=1.17549435e-38;
       output list point trace;
@@ -97,7 +96,7 @@ TEST_CASE("canonical grouping and signed literals preserve exact executable valu
 }
 
 TEST_CASE("formatting keeps legacy assignment placement and contextual name bindings", "[format-legacy]") {
-    const auto original = ips::parse(R"(asset legacy {size 8x8 variants 2 output list point trace
+    const auto original = ips::parse(R"(asset legacy { input i32 v = 0 size 8x8 output list point trace
       draw {
         if (v==1) {let=index(7); f=unit(); tint=#f00; position={2,3};}
         else {other=fn(x=4);}
@@ -125,18 +124,23 @@ TEST_CASE("formatting keeps legacy assignment placement and contextual name bind
     CHECK(ips::formatProgram(formatted) == text);
     ips::checkAsset(original, {});
     ips::checkAsset(formatted, {});
-    const auto reference = compiler_test::compileChecked(R"(asset expected {size 8x8 variants 2
-      output list point trace
+    const auto reference = compiler_test::compileChecked(R"(asset expected { input i32 v = 0 size 8x8 output list point trace
       draw {
         if(v==1) {trace={index(7),unit()}; trace={2,3}; trace={0,0}; pixel(0,0,#f00);}
         else {trace={0,0}; trace={0,0}; trace={5,0};}
         trace={0,5}; trace={unit(),unit()};
       }
     })");
-    const auto run = [](const std::vector<u8>& bytes, u32 seed, u32 variant) {
+    const auto run = [](const std::vector<u8>& bytes, u32 seed, u32 v) {
         const auto file = loadFile(bytes);
         validate(file);
-        VM vm(file, GenerationInputs{seed, variant, 0, 0, 0, {}});
+        GenerationInputs inputs;
+        inputs.seed = seed;
+        UniformValue value;
+        value.type = InputType::U32;
+        value.u = v;
+        inputs.uniforms.emplace("v", value);
+        VM vm(file, inputs);
         vm.run();
         return vm.result();
     };
@@ -163,8 +167,7 @@ TEST_CASE("formatting keeps legacy assignment placement and contextual name bind
 
 TEST_CASE("source formatting preserves every control and expression branch") {
     const auto source = R"(import tile from "dir\\tile\"ż.ips"
-      asset all { size 16x16 origin 1,2 variants 3 archetypes 4
-        input u32 offset=0x10 input f32 opacity=0.5
+      asset all { input i32 v = 0  size 16x16 origin 1,2 input u32 offset=0x10 input f32 opacity=0.5
         output rect r output circle c output list point trace
         palette colors=[#f00,#0f0]
         draw {
@@ -175,7 +178,7 @@ TEST_CASE("source formatting preserves every control and expression branch") {
           x=((1+2)*3-4)/5 y=(6%3)^(7&3)|(8<<1)>>(~2)
           x=-sqrt(x) flag=!false
           pixel(0,0,colors[v])
-          tile.draw(seed,v,a, color=#fff,at=q,rot=1)
+          tile.draw(seed, color=#fff,at=q,rot=1)
           return;
         }
         helper(p:vec2,c:color) -> vec2 { return p*2.0 }
@@ -370,8 +373,7 @@ TEST_CASE("formatter preserves delimiter multiline and empty block trivia idempo
 }
 
 TEST_CASE("comments at every grammar token boundary preserve formatting and executable code") {
-    const std::string source = R"(asset t { size 8x8 origin (0), (0) variants 2 archetypes 3
-      input color c=(#Abc) output point p palette colors=[#fff,#000,]
+    const std::string source = R"(asset t { size 8x8 origin (0), (0) input color c=(#Abc) output point p palette colors=[#fff,#000,]
       draw {
         x=(1+2)*3 q={0,0} p=q
         pixel(color=c,y=0,x=0)
@@ -413,8 +415,8 @@ TEST_CASE("independent review corpus preserves exact trivia ownership and contex
         {"empty_else_block", "asset t { size 8x8 draw { if(true) {} else { /* else body */ } } }"},
         {"duplicate_size", "asset t { size 4x4 /* first size */ size 8x8 /* final size */ draw {} }"},
         {"duplicate_origin", "asset t { size 8x8 origin 1,1 /* first origin */ origin 0,0 /* final origin */ draw {} }"},
-        {"duplicate_variants", "asset t { size 8x8 variants 1 /* first variants */ variants 2 /* final variants */ draw {} }"},
-        {"duplicate_archetypes", "asset t { size 8x8 archetypes 1 /* first archetypes */ archetypes 2 /* final archetypes */ draw {} }"}
+        {"duplicate_variants", "asset t { size 8x8 /* first variants */ /* final variants */ draw {} }"},
+        {"duplicate_archetypes", "asset t { size 8x8 /* first archetypes */ /* final archetypes */ draw {} }"}
     };
     using Attachment = std::tuple<std::string, ips::TokenKind, std::string, bool, std::size_t>;
     const auto attachments = [](const ips::Program& program) {
@@ -444,8 +446,6 @@ TEST_CASE("independent review corpus preserves exact trivia ownership and contex
             CHECK(formatted.find("/* first") < formatted.find("/* final"));
             CHECK(formatted.find("/* final") < formatted.rfind('}'));
             CHECK(original.asset.sizeX == roundtrip.asset.sizeX);
-            CHECK(original.asset.variants == roundtrip.asset.variants);
-            CHECK(original.asset.archetypes == roundtrip.asset.archetypes);
         }
     }
 }
@@ -457,7 +457,7 @@ TEST_CASE("combined delimiter and metadata trivia remains stable after repeated 
         "asset t { size 8x8 draw { x=1;\n// M\n; /* spare separator */ } }",
         "asset t { size 8x8 draw { if(true) {} else { /* inline\nbody */\n// closing body\n} /* after else */ } }",
         "asset t { size 4x4; // first size\n origin {1,2}, 3 /* superseded */ size 8x8; /* final */ origin 0,0 draw {} }",
-        "asset t { size 8x8 origin \"discarded string\", 0 /* superseded */ origin 0,0 variants 1; /* old variants */ variants 3 draw {} }"
+        "asset t { size 8x8 origin \"discarded string\", 0 /* superseded */ origin 0,0  /* old variants */ draw {} }"
     };
     for (const auto& source : corpus) {
         INFO(source);

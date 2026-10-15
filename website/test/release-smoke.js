@@ -1,4 +1,4 @@
-// Check the actual built website assets and WASM, including packed 0.4 files.
+// Check the actual built website assets, current documentation and WASM.
 "use strict";
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -36,9 +36,11 @@ function checkLinks(directory) {
 
 async function main() {
     const pages = checkLinks(site);
-    assert.equal(pages, 6);
-    for (const minor of [1, 2, 3, 4]) {
-        const spec = `iprop-v0.${minor}.md`;
+    assert.equal(pages, 7);
+    const specs = fs.readdirSync(path.join(root, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort();
+    assert.deepEqual(specs, ["iprop-v0.7.md"]);
+    assert.deepEqual(fs.readdirSync(path.join(site, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort(), specs);
+    for (const spec of specs) {
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));
     }
     const recipes = fs.readdirSync(path.join(site, "recipes")).filter(name => name.endsWith(".ips"));
@@ -49,13 +51,16 @@ async function main() {
     }
     const nav = vm.runInNewContext(fs.readFileSync(path.join(site, "docs/language-index.js"), "utf8") +
         "\n" + fs.readFileSync(path.join(site, "docs/nav.js"), "utf8") +
-        "\n({ PAGES, SECTIONS })", { document: { addEventListener() {} } });
+        "\n({ SECTIONS })", { document: { addEventListener() {} } });
     for (const section of nav.SECTIONS) {
         const html = fs.readFileSync(path.join(site, "docs", section.p), "utf8");
         assert.ok(html.includes(`id="${section.a}"`), `missing search anchor: ${section.t}`);
     }
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
-    assert.equal(docs.schema_version, 2);
+    assert.equal(docs.schema_version, 3);
+    const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
+    assert.equal(catalogue.schema_version, 4);
+    assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
     const commit = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" });
@@ -76,34 +81,49 @@ async function main() {
     assert.equal(described.status, 0, described.stderr);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8")), JSON.parse(described.stdout));
     const book = fs.readFileSync(path.join(site, "docs", `language-v${docs.language_version}.md`));
-    assert.deepEqual(book, fs.readFileSync(path.join(site, "reference", `language-v${docs.language_version}.md`)));
+    assert.ok(book.length > 0);
+    // A correct manifest must not mask stale files left by a previous build.
+    const inventory = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
+        entry.isDirectory() ? inventory(path.join(directory, entry.name)) : [path.relative(site, path.join(directory, entry.name)).replaceAll(path.sep, "/")]);
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"]) {
+        const expected = Object.keys(docs.files).filter(file => file.startsWith(directory + "/"));
+        if (directory === "docs") expected.push("docs/language-manifest.json", "docs/nav.js", "docs/language-index.js");
+        assert.deepEqual(inventory(path.join(site, directory)).filter(file => !file.endsWith(".html")).sort(), expected.sort());
+    }
+    assert.ok(!fs.existsSync(path.join(site, "reference")), "stale duplicate reference tree");
+    // The home page showcase: every asset a tile or a game slot renders, the
+    // binaries from examples/showcase (their sources are not public).
+    const home = fs.readFileSync(path.join(site, "index.html"), "utf8");
+    const showcase = [...new Set([...home.matchAll(/data-(?:asset|silhouette)="([\w-]+)"/g)].map(match => match[1]))];
+    assert.equal(showcase.length, 7);
     const Module = await require(path.join(site, "iprop.js"))({ locateFile: () => path.join(site, "iprop.wasm") });
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-website-"));
     let comparisons = 0;
     try {
-        for (const [asset, variants] of [["portrait", [0, 7]], ["plant", [0]], ["noise", [0]]]) {
-            const file = path.join(site, asset + ".iprop");
+        for (const asset of showcase) {
+            const file = path.join(site, "showcase", asset + ".iprop");
             const bytes = fs.readFileSync(file);
-            if (asset === "noise") {
-                assert.equal(bytes.readUInt16LE(6), 4);
-                assert.equal(bytes.readUInt32LE(8) & 1, 0);
-                assert.equal(bytes.readUInt32LE(8) & 2, 2);
-            }
-            for (const seed of [0, 7, 26]) for (const variant of variants) {
-                const rendered = Module.generate(bytes, seed, variant, 0, 0, 0);
+            assert.deepEqual(bytes, fs.readFileSync(path.join(root, "examples/showcase", asset + ".iprop")),
+                             `stale showcase asset: ${asset}`);
+            // The former version bytes are reserved zeros.
+            assert.equal(bytes.readUInt32LE(4), 0);
+            assert.equal(bytes.readUInt32LE(8) & 1, 0);
+            assert.equal(bytes.readUInt32LE(8) & 2, 2);
+            for (const seed of [0, 7, 26]) for (const choice of [0, 2]) {
+                const rendered = Module.generate(bytes, seed, 0, 0, {v: choice});
                 const png = path.join(temporary, "native.png");
-                const native = spawnSync(generator, [file, "--seed", String(seed), "--variant", String(variant), "-o", png],
+                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", "v=" + choice, "-o", png],
                                         { encoding: "utf8" });
                 assert.equal(native.status, 0, native.stderr || String(native.error));
                 const decoded = decodePng(fs.readFileSync(png));
                 assert.equal(rendered.width, decoded.width);
                 assert.equal(rendered.height, decoded.height);
-                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} variant ${variant}`);
+                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input v ${choice}`);
                 comparisons++;
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, 4 specs, 24 recipes, ${comparisons} exact native/WASM images)`);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

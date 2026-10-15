@@ -43,6 +43,9 @@ std::string_view diagnosticCodeName(DiagnosticCode code) noexcept {
     case DiagnosticCode::DeclarationConstant: return "IPS-TYPE-002";
     case DiagnosticCode::SignedDefaultRange: return "IPS-TYPE-003";
     case DiagnosticCode::UnsignedDefaultNegative: return "IPS-TYPE-004";
+    case DiagnosticCode::AssetConstantCycle: return "IPS-CONST-001";
+    case DiagnosticCode::AssetConstantEffect: return "IPS-CONST-002";
+    case DiagnosticCode::AssetConstantValue: return "IPS-CONST-003";
     case DiagnosticCode::PlanError: return "IPS-PLAN-001";
     case DiagnosticCode::ResourceLimit: return "IPS-LIMIT-001";
     case DiagnosticCode::CompiledValidation: return "IPS-VALIDATE-001";

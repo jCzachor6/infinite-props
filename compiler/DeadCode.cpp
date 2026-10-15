@@ -15,6 +15,7 @@ std::optional<std::size_t> discardableInputs(Opcode op) {
     case Opcode::I32And: case Opcode::I32Or: case Opcode::I32Xor:
     case Opcode::I32Shl: case Opcode::I32ShrS: case Opcode::I32ShrU:
     case Opcode::I32Neg: case Opcode::I32Not:
+    case Opcode::I32Min: case Opcode::I32Max: case Opcode::I32Clamp:
     case Opcode::I32Eq: case Opcode::I32Ne: case Opcode::I32LtS: case Opcode::I32LtU:
     case Opcode::I32LeS: case Opcode::I32GtS: case Opcode::I32GeS:
     case Opcode::F32Add: case Opcode::F32Sub: case Opcode::F32Mul: case Opcode::F32Div:
@@ -53,7 +54,8 @@ std::vector<std::vector<std::size_t>> successors(const std::vector<Instruction>&
     std::vector<std::size_t> ends(n, n), alternatives(n, n), targets(n, n), stack;
     for (std::size_t i = 0; i < n; ++i) {
         switch (code[i].opcode) {
-        case Opcode::Block: case Opcode::Loop: case Opcode::If: stack.push_back(i); break;
+        case Opcode::Block: case Opcode::Loop: case Opcode::If: case Opcode::LayerBegin: case Opcode::ClipBegin:
+            stack.push_back(i); break;
         case Opcode::Else: alternatives[stack.back()] = i; targets[i] = stack.back(); break;
         case Opcode::End: ends[stack.back()] = i; stack.pop_back(); break;
         case Opcode::Br: case Opcode::BrIf: targets[i] = stack.at(stack.size() - 1 - code[i].operand); break;
@@ -95,6 +97,9 @@ bool deadStores(PlannedFunction& f) {
         const auto ins = f.code[i];
         if (ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee) after.reset(ins.operand);
         if (ins.opcode == Opcode::LocalGet) after.set(ins.operand);
+        // A capture writes on every scope exit, including branch/return
+        // cleanup. Keep its destination live across those implicit writes.
+        if (ins.opcode == Opcode::LayerBegin) after.set(ins.operand);
         if (after == live[i]) continue;
         live[i] = after;
         for (const auto j : previous[i]) if (!queued[j]) { work.push_back(j); queued[j] = true; }
@@ -138,12 +143,13 @@ bool droppedValues(PlannedFunction& f) {
     return true;
 }
 
+bool localOperand(Opcode opcode) { return operandKind(opcode) == OperandKind::Local; }
+
 void compactLocals(PlannedFunction& f) {
     const auto params = f.params.size();
     std::vector<bool> used(params + f.locals.size());
     for (const auto ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee)
-            used.at(ins.operand) = true;
+        if (localOperand(ins.opcode)) used.at(ins.operand) = true;
     std::vector<u16> remap(used.size());
     std::vector<ValueType> locals;
     for (std::size_t i = 0; i < used.size(); ++i) {
@@ -153,8 +159,7 @@ void compactLocals(PlannedFunction& f) {
         }
     }
     for (auto& ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee)
-            ins.operand = remap.at(ins.operand);
+        if (localOperand(ins.opcode)) ins.operand = remap.at(ins.operand);
     for (auto it = f.slots.begin(); it != f.slots.end();) {
         if (it->second >= params && !used.at(it->second)) { f.langTypes.erase(it->first); it = f.slots.erase(it); }
         else { it->second = remap.at(it->second); ++it; }

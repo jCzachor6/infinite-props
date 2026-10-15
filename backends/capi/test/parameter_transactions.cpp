@@ -234,7 +234,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_generate_options_ex_init(&options, sizeof(options)) == IPROP_EX_OK);
     iprop::capi::GenerateOptions request;
     for (const uint32_t variant : {0u, 1u}) {
-        options.variant = variant;
+        options.size_x = variant == 0 ? 0 : 16385;
         for (const auto* candidate : {static_cast<const iprop_parameters*>(configurations[0]),
                                       static_cast<const iprop_parameters*>(foreign)}) {
             const auto values = rawValues(*candidate);

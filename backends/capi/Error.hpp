@@ -12,7 +12,6 @@ static_assert(static_cast<uint32_t>(ErrorReason::None) == IPROP_REASON_NONE);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidFormat) == IPROP_REASON_INVALID_FORMAT);
 static_assert(static_cast<uint32_t>(ErrorReason::TruncatedInput) == IPROP_REASON_TRUNCATED_INPUT);
 static_assert(static_cast<uint32_t>(ErrorReason::BadMagic) == IPROP_REASON_BAD_MAGIC);
-static_assert(static_cast<uint32_t>(ErrorReason::UnsupportedVersion) == IPROP_REASON_UNSUPPORTED_VERSION);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidHeader) == IPROP_REASON_INVALID_HEADER);
 static_assert(static_cast<uint32_t>(ErrorReason::Compression) == IPROP_REASON_COMPRESSION);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidLayout) == IPROP_REASON_INVALID_LAYOUT);
@@ -39,8 +38,6 @@ static_assert(static_cast<uint32_t>(ErrorReason::PartOutputMissing) == IPROP_REA
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidPart) == IPROP_REASON_INVALID_PART);
 static_assert(static_cast<uint32_t>(ErrorReason::StreamUnderflow) == IPROP_REASON_STREAM_UNDERFLOW);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidArgument) == IPROP_REASON_INVALID_ARGUMENT);
-static_assert(static_cast<uint32_t>(ErrorReason::VariantRange) == IPROP_REASON_VARIANT_RANGE);
-static_assert(static_cast<uint32_t>(ErrorReason::ArchetypeRange) == IPROP_REASON_ARCHETYPE_RANGE);
 static_assert(static_cast<uint32_t>(ErrorReason::CanvasSize) == IPROP_REASON_CANVAS_SIZE);
 static_assert(static_cast<uint32_t>(ErrorReason::UniformType) == IPROP_REASON_UNIFORM_TYPE);
 static_assert(static_cast<uint32_t>(ErrorReason::UnknownParameter) == IPROP_REASON_UNKNOWN_PARAMETER);

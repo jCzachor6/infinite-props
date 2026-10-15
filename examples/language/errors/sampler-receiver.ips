@@ -1,0 +1,4 @@
+asset invalidReceiver {
+  size 1x1
+  draw { width = 10; value = width.pick() }
+}

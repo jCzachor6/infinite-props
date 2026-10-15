@@ -15,7 +15,7 @@ def main():
     rng = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
            'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
     checks = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context'}
+              'part_output_missing', 'divide_by_zero', 'integer_overflow', 'part_output_context', 'index_range', 'unassigned_handle', 'scope_depth'}
 
     def valid(effects):
         assert set(effects) == {'rng', 'writes_canvas', 'writes_outputs', 'summary', 'may_trap'}, effects
@@ -51,9 +51,23 @@ def main():
             assert builtin['variadic']['effects']['rng'] in {'advance_current', 'isolated_seeded_stream'}, builtin
 
     rules = description['effect_rules']
+    samplers = description['source_rules']['samplers']
+    valid(samplers['capture_effects'])
+    assert samplers['capture_effects']['rng'] == 'none'
+    for method in samplers['methods']:
+        valid(method['effects'])
+        assert method['effects']['rng'] == 'advance_current'
+        assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
+    steppers = description['source_rules']['steppers']
+    valid(steppers['capture_effects'])
+    assert steppers['capture_effects']['rng'] == 'none'
+    for method in steppers['methods']:
+        valid(method['effects'])
+        assert method['effects']['rng'] == 'none'
+        assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
-    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit']
+    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']
     assert rules['validation_limits'] == ['operand_stack_limit']
     assert rules['allocation_failure'] is True
     assert rules['output_write_policy'] == {'singular': 'replace', 'list': 'append'}
@@ -84,6 +98,13 @@ def main():
     assert by_name['weather']['overloads'][0]['effects']['writes_canvas']
     assert by_name['abs']['overloads'][0]['effects']['may_trap'] == []
     assert by_name['round']['overloads'][0]['effects']['may_trap'] == []
+    for name in ('min', 'max', 'clamp'):
+        assert {entry['result'] for entry in by_name[name]['overloads']} == {'i32', 'f32'}
+        for entry in by_name[name]['overloads']:
+            assert entry['effects']['rng'] == 'none' and not entry['effects']['may_trap']
+    normalize = by_name['vec2.normalize']['overloads'][0]
+    assert normalize['result'] == 'vec2'
+    assert normalize['effects']['rng'] == 'none' and normalize['effects']['may_trap'] == ['numeric_range']
     assert by_name['stream_pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
     print(f'Language effects: {len(by_name)} builtins, {signatures} signatures and shared effect rules passed')
 

@@ -44,7 +44,7 @@ std::vector<u8> compileSource(const std::string& source, bool optimize) {
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run();
     return vm.result();
 }
@@ -286,10 +286,9 @@ TEST_CASE("integer draws round the continuous draw half away from zero") {
 }
 
 TEST_CASE("distributions are copied values with runtime parameters") {
-    const std::string source = R"(asset t {
+    const std::string source = R"(asset t { input i32 a = 0 input i32 v = 0
   size 1x1
   input f32 spread = 0.8
-  variants 3
   output list point p
   make(level: f32) -> distribution { return gaussian(mean=level, sigma=spread_of(level)) }
   spread_of(level: f32) -> f32 { return 0.1 + level * 0.0 }
@@ -309,7 +308,7 @@ TEST_CASE("distributions are copied values with runtime parameters") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 0);
         for (u32 variant = 0; variant < 3; ++variant) {
             const auto result = generate(bytes, 9, variant);
             const auto& points = result.outputs[0].points;
@@ -358,10 +357,8 @@ TEST_CASE("bounds and then the distribution evaluate once before one draw") {
 }
 
 TEST_CASE("invalid dynamic parameters and unassigned distributions trap, even unused") {
-    const std::string unused = "asset t { size 1x1 variants 2 draw { dead = gaussian(mean=0.0, sigma=float(v) - 0.5) } }";
-    const std::string unset = "asset t { size 1x1 variants 2 output point p draw {\n"
-                              "  if (v == 1) { distribution d = gaussian(mean=0.0, sigma=1.0) }\n"
-                              "  p = {0 to 5 with d, 0} } }";
+    const std::string unused = "asset t { input i32 v = 0  size 1x1 draw { dead = gaussian(mean=0.0, sigma=float(v) - 0.5) } }";
+    const std::string unset = "asset t { input i32 v = 0  size 1x1 output point p draw {\n  if (v == 1) { distribution d = gaussian(mean=0.0, sigma=1.0) }\n  p = {0 to 5 with d, 0} } }";
     for (const bool optimize : {false, true}) {
         CHECK_THROWS_AS(generate(compileSource(unused, optimize), 0, 0), Trap);
         CHECK_NOTHROW(generate(compileSource(unused, optimize), 0, 1) );
@@ -391,7 +388,7 @@ TEST_CASE("distribution types are checked in source") {
     CHECK(sourceError("asset t { size 1x1 input distribution d = 1 draw { } }").find("input type") != std::string::npos);
 }
 
-TEST_CASE("'with' parses after a range, formats inside it and keeps old names") {
+TEST_CASE("'with' parses after a range and formats alongside ordinary constructor helpers") {
     CHECK(format("asset t { size 1x1 draw { d = gaussian(mean=0.0, sigma=1.0) x = 1 + 2 to 9 with d < 5 } }")
               .find("x = (((1 + 2) to 9 with d) < 5)") != std::string::npos);
     const auto typed = format("asset t { size 1x1 draw { distribution d=gaussian(sigma=2.0,mean=0.0) x=-5 to 5 with d } }");
@@ -400,16 +397,16 @@ TEST_CASE("'with' parses after a range, formats inside it and keeps old names") 
     CHECK(format(typed) == typed);
     const auto helper = format("asset t { size 1x1 f(d: distribution) -> distribution { return d } draw { } }");
     CHECK(helper.find("f(d: distribution) -> distribution {") != std::string::npos);
-    // Locals named `with` and `distribution`, and helpers named like the
-    // constructors, keep their existing meaning.
+    // Constructor builtins remain ordinary callable names; range/type keywords
+    // cannot name locals or helpers.
     const std::string old = R"(asset t { size 4x1 output list point p
       gaussian(a: i32, b: i32) -> i32 { return a * 10 + b }
       beta(x: f32) -> f32 { return x * 2.0 }
-      with(x: i32) { pixel(x, 0, #fff) }
+      mark(x: i32) { pixel(x, 0, #fff) }
       draw {
-        distribution = 3 with = 4
-        p = {distribution, with}
-        x = 1 with(2)
+        shapeCount = 3 markCount = 4
+        p = {shapeCount, markCount}
+        x = 1 mark(2)
         p = {gaussian(1, 2), beta(0.25)}
         y = (1 to 3 with triangular(min=1.0, peak=2.0, max=3.0)) p = {x, y}
       } })";
@@ -431,7 +428,11 @@ TEST_CASE("'with' parses after a range, formats inside it and keeps old names") 
     CHECK(stripDebug(compileSource(formatted, false)) == stripDebug(compileSource(old, false)));
 }
 
-TEST_CASE("files with distributions are format 0.5, including unused helper slots") {
-    CHECK(compileSource("asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }", false)[6] == 5);
-    CHECK(compileSource("asset t { size 1x1 draw { pixel(0, 0, #fff) } }", false)[6] == 4);
+TEST_CASE("files with distribution slots load like any other file") {
+    for (const auto* source : {"asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }",
+                               "asset t { size 1x1 draw { pixel(0, 0, #fff) } }"}) {
+        const auto bytes = compileSource(source, false);
+        CHECK(bytes[6] == 0);
+        CHECK_NOTHROW(validate(loadFile(bytes)));
+    }
 }

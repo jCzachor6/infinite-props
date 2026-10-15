@@ -8,14 +8,19 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 2
+LANGUAGE_SCHEMA_VERSION = 4
 DIAGNOSTICS_SCHEMA_VERSION = 1
-DOCUMENTATION_SCHEMA_VERSION = 2
-VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>'}
+DOCUMENTATION_SCHEMA_VERSION = 3
+VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
+SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
+STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
+DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
+LIST_TYPES = {'list<' + item + '>' for item in ({'i32', 'f32', 'color', 'vec2', 'distribution'} | DESCRIPTION_TYPES)}
+VALUE_TYPES |= LIST_TYPES | DESCRIPTION_TYPES
 RNG_EFFECTS = {'none', 'read_current', 'advance_current', 'push_seeded_stream', 'restore_stream',
                'seeded_computation', 'isolated_seeded_stream', 'shared_callee_stream', 'isolated_callee_stream'}
 TRAP_CHECKS = {'numeric_range', 'stream_stack_underflow', 'part_render_arguments', 'callee',
-              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow'}
+              'part_output_missing', 'part_output_context', 'divide_by_zero', 'integer_overflow', 'index_range', 'unassigned_handle', 'scope_depth'}
 EXITS = {'ok': 0, 'invalid_source': 1, 'cli_error': 2, 'internal_error': 3}
 STAGES = {'lex', 'parse', 'import', 'typing', 'planning', 'validation', 'io', 'cli', 'internal'}
 HASH = re.compile(r'^[0-9a-f]{64}$')
@@ -105,11 +110,11 @@ def ordered_signature(value, path, typed=True):
 
 
 def read_language(value):
-    obj(value, ['schema_version', 'product_version', 'builtins', 'language_version', 'format_version',
+    obj(value, ['schema_version', 'product_version', 'builtins', 'language_version',
                 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'language')
     require(type(value['schema_version']) in {int, float} and value['schema_version'] == LANGUAGE_SCHEMA_VERSION, 'language schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
-    for key in ['language_version', 'format_version', 'c_api_version', 'abi_version']:
+    for key in ['language_version', 'c_api_version', 'abi_version']:
         version(value[key], key)
     if 'c_abi_soversion' in value:
         require(SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
@@ -123,12 +128,13 @@ def read_language(value):
         require(type(builtin['overloads']) is list and (builtin['overloads'] or 'variadic' in builtin), 'builtin.overloads')
         for signature in builtin['overloads']:
             ordered_signature(signature, 'overload')
-            if 'opcode' in signature or 'minimum_format_minor' in signature:
+            boolean(signature.get('constant_evaluable'), 'constant_evaluable')
+            if 'opcode' in signature:
                 text(signature.get('opcode'), 'opcode', True)
-                integer(signature.get('minimum_format_minor'), 'minimum_format_minor', maximum=255)
         if 'variadic' in builtin:
             signature = builtin['variadic']
             ordered_signature(signature, 'variadic')
+            require(signature.get('constant_evaluable') is False, 'variadic constant_evaluable')
             integer(signature.get('minimum_arguments'), 'minimum_arguments', 1)
             require(signature['minimum_arguments'] == len(signature['parameters']), 'variadic minimum template arity')
             require(type(signature.get('repeat')) is str and signature['repeat'] in {'choices', 'coordinate_pairs'}, 'variadic repeat')
@@ -136,7 +142,20 @@ def read_language(value):
                 strings(signature.get('choice_types'), 'choice_types', VALUE_TYPES, True)
                 require(signature.get('choice_evaluation') == 'eager_once_before_selection_rng', 'choice_evaluation')
     require(len(names) == len(set(names)), 'unique builtin names')
-    rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    rules = obj(value['source_rules'], ['inputs', 'types', 'locals', 'visibility', 'asset_constants', 'named_calls', 'restrictions', 'effect_order'], 'source_rules')
+    if 'reserved_keywords' in rules:
+        require(rules['reserved_keywords'] == ['asset', 'break', 'clip', 'const', 'continue', 'density', 'distribution',
+            'else', 'false', 'for', 'from', 'if', 'import', 'in', 'input', 'layer', 'mask', 'output', 'return',
+            'sampler', 'stepper', 'to', 'true', 'weighted', 'while', 'with'], 'reserved keywords')
+    constants = rules['asset_constants']
+    _strings_and_bools(constants, {'keyword': {'reserved'}, 'scope': {'asset'},
+        'syntax': {'const <type> <name> = <expression>'}, 'visibility': {'all_asset_functions'},
+        'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
+        ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
+    constant_types = {'i32', 'f32', 'color', 'vec2', 'distribution'}
+    strings(constants.get('types'), 'constant types', constant_types | LIST_TYPES | DESCRIPTION_TYPES, True)
+    require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
+            not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')
     require(type(rules['inputs']) is list and bool(rules['inputs']), 'source inputs')
     source_types = []
     for item in rules['inputs']:
@@ -148,7 +167,256 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else {'i32', 'f32', 'color', 'vec2', 'distribution'}, True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES), True)
+    if 'parameterized' in types:
+        parameters = types['parameterized']
+        require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
+        constructors = set()
+        for parameter in parameters:
+            _strings_and_bools(parameter, {'constructor': {'list', 'sampler', 'stepper'}, 'representation': {'immutable_arena_handle'}}, ['nested'], 'parameterized type')
+            require(parameter['nested'] is False, 'nested list/sampler types')
+            allowed = {'i32','f32','color','vec2'} if parameter['constructor'] in {'sampler', 'stepper'} else {'i32','f32','color','vec2','distribution'} | DESCRIPTION_TYPES
+            strings(parameter.get('element_types'), 'element types', allowed, True)
+            require(parameter['constructor'] not in constructors, 'duplicate type constructor')
+            constructors.add(parameter['constructor'])
+        require('list' in constructors, 'list type constructor')
+    if 'samplers' in rules:
+        sampler = obj(rules['samplers'], ['syntax', 'capture_evaluation', 'method_evaluation', 'methods', 'capture_effects'], 'samplers')
+        _strings_and_bools(sampler, {
+            'syntax': {'sampler(<value> | <lower> to <upper> [with <distribution>])'},
+            'intrinsic_capture_rng': {'none'}, 'bounds_validation': {'capture'},
+            'probability_mass_validation': {'pick'}, 'method_resolution': {'static_receiver_type_and_arity'},
+            'batch_preflight': {'count_handle_allocation_before_first_draw'}}, ['asset_constants','range_palettes'], 'sampler rules')
+        require(sampler['asset_constants'] is True and sampler['range_palettes'] is True, 'sampler constants and palettes')
+        require(set(constants['types']) == constant_types | LIST_TYPES | DESCRIPTION_TYPES, 'complete constant types')
+        palette = obj(rules.get('palettes'), ['element_types'], 'palettes')
+        _strings_and_bools(palette, {
+            'syntax': {'palette <name> = [<elements>]'}, 'evaluation': {'compile_time_no_rng'},
+            'sampling_trigger': {'outer_range_or_sampler'},
+            'constant_entries': {'lift_to_constant_descriptions_in_sampling_palette'},
+            'numeric_elements': {'i32_to_f32_widening'}, 'index_type': {'i32'}, 'index_evaluation': {'once'},
+            'index_bounds': {'last_element_fallback'}, 'first_class_value': {'immutable_list_with_checked_index'},
+            'legacy_length_limit': {'unchanged'}, 'ramp': {'constant_color_or_f32_only'}}, [], 'palette policy')
+        palette_types = {'i32','f32','color','vec2'} | SAMPLER_TYPES
+        strings(palette['element_types'], 'palette element types', palette_types, True)
+        require(set(palette['element_types']) == palette_types, 'complete palette types')
+        for key, expected in [('minimum_length',1),('sampling_maximum_length',256),('first_class_maximum_length',256)]:
+            integer(palette.get(key), 'palette.' + key)
+            require(palette[key] == expected, 'palette.' + key)
+        require(sampler['capture_evaluation'] == 'lower_upper_distribution_once' and sampler['method_evaluation'] == 'receiver_once_before_count_once', 'sampler evaluation order')
+        effects(sampler['capture_effects'], 'sampler capture')
+        require(sampler['capture_effects']['rng'] == 'none', 'sampler capture intrinsic RNG')
+        require(sampler.get('minimum_count') == 0 and sampler.get('maximum_count') == 256 and sampler.get('count_type') == 'i32', 'sampler count')
+        require(sampler.get('constant_description_draws') == 0 and sampler.get('empty_batch_draws') == 0 and sampler.get('unset_empty_batch') == 'trap', 'sampler zero draws')
+        for field in ['minimum_count','maximum_count','constant_description_draws','empty_batch_draws']:
+            integer(sampler.get(field), 'samplers.' + field)
+        require(type(sampler['methods']) is list and len(sampler['methods']) == 8, 'sampler method signatures')
+        signatures = set()
+        for method in sampler['methods']:
+            obj(method, ['name','receiver','parameters','result','opcode','effects'], 'sampler method')
+            require(method['name'] == 'pick' and method['receiver'] in SAMPLER_TYPES, 'sampler receiver')
+            require(type(method['parameters']) is list and len(method['parameters']) <= 1, 'sampler parameters')
+            item = method['receiver'][8:-1]
+            batch = bool(method['parameters'])
+            require(method['parameters'] == ([{'name':'n','type':'i32'}] if batch else []), 'sampler count signature')
+            require(method['result'] == ('list<' + item + '>' if batch else item), 'sampler result')
+            require(method['opcode'] == ('sampler.pick.list' if batch else 'sampler.pick'), 'sampler opcode')
+            effects(method['effects'], 'sampler method effects')
+            require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
+            signatures.add((method['receiver'], batch))
+        require(len(signatures) == 8, 'unique sampler method signatures')
+    if 'steppers' in rules:
+        stepper = obj(rules['steppers'], ['syntax', 'methods', 'capture_effects'], 'steppers')
+        _strings_and_bools(stepper, {
+            'syntax': {'stepper(<value> | <lower> to <upper> [with <distribution>])'},
+            'capture_evaluation': {'lower_upper_distribution_once'}, 'intrinsic_capture_rng': {'none'},
+            'bounds_validation': {'capture'}, 'probability_mass_validation': {'nonempty_pick'},
+            'method_evaluation': {'receiver_once_before_count_once'}, 'method_resolution': {'static_receiver_type_and_arity'},
+            'batch_preflight': {'count_handle_allocation_before_first_step'}, 'count_type': {'i32'},
+            'unset_empty_batch': {'trap'}, 'generation_rng': {'none'}, 'unit_positions': {'i_over_n_minus_one'},
+            'zero_count': {'empty_list'}, 'one_count': {'first_step'},
+            'integer_interpolation': {'binary64_half_away_from_zero'}, 'endpoint_support': {'truncated_positive_mass'}},
+            ['asset_constants', 'range_palettes'], 'stepper rules')
+        require(stepper['asset_constants'] and not stepper['range_palettes'], 'stepper constants and palettes')
+        require(stepper.get('minimum_count') == 0 and stepper.get('maximum_count') == 256, 'stepper counts')
+        require(stepper.get('distribution_families') == ['gaussian','triangular','beta','weighted','density'], 'stepper distributions')
+        effects(stepper['capture_effects'], 'stepper capture')
+        require(stepper['capture_effects']['rng'] == 'none', 'stepper capture RNG')
+        require(type(stepper['methods']) is list and len(stepper['methods']) == 4, 'stepper method signatures')
+        receivers = set()
+        for method in stepper['methods']:
+            obj(method, ['name','receiver','parameters','result','opcode','effects'], 'stepper method')
+            require(method['name'] == 'pick' and method['receiver'] in STEPPER_TYPES, 'stepper receiver')
+            require(method['parameters'] == [{'name':'n','type':'i32'}], 'stepper required count')
+            require(method['result'] == 'list<' + method['receiver'][8:-1] + '>', 'stepper result')
+            require(method['opcode'] == 'stepper.pick.list', 'stepper opcode')
+            effects(method['effects'], 'stepper method effects')
+            require(method['effects']['rng'] == 'none', 'stepper method RNG')
+            receivers.add(method['receiver'])
+        require(receivers == STEPPER_TYPES, 'unique stepper signatures')
+    if 'surfaces' in rules:
+        surface = obj(rules['surfaces'], ['types', 'capture_syntax', 'keyword', 'capture_target',
+            'result_binding', 'automatic_paint', 'capture_evaluation', 'helper_transfer', 'buffer_format',
+            'mapping', 'alpha_modes', 'default_mode', 'mode_arguments', 'paint_evaluation', 'paint_opcode',
+            'mode_inheritance', 'paint_default_mode', 'source_over_kernel', 'rounding_boundary',
+            'capture_opcode', 'scope_cleanup', 'maximum_active_scopes', 'generation_data_limit_bytes',
+            'capture_bytes', 'capture_fuel', 'paint_fuel', 'unset_handle', 'host_inputs', 'asset_constants',
+            'surface_collections'], 'surfaces')
+        strings(surface['types'], 'surface types', {'layer', 'mask'}, True)
+        require(surface['types'] == ['layer', 'mask'] and
+            all(t in types['storable'] for t in surface['types']), 'surface type declaration')
+        _strings_and_bools(surface, {'capture_syntax': {'layer <name> [(alpha=surface.<mode>)] { <statements> }'},
+            'keyword': {'reserved'}, 'capture_target': {'empty_current_geometry_and_scale'},
+            'result_binding': {'after_scope_exit'}, 'capture_evaluation': {'once_in_current_stream'},
+            'helper_transfer': {'share_immutable_buffer'}, 'buffer_format': {'RGBA8'},
+            'mapping': {'placement_and_D4_view_without_pixel_copy'}, 'default_mode': {'legacy'},
+            'mode_arguments': {'compile_time_namespace_constants'}, 'paint_evaluation': {'image_once_no_rng'},
+            'mode_inheritance': {'active_target_helpers_and_part_canvases_and_blits'},
+            'paint_default_mode': {'active_destination_target'},
+            'source_over_kernel': {'straight_rgba8_u64_nearest_half_up'},
+            'rounding_boundary': {'every_primitive_blit_and_paint'},
+            'paint_opcode': {'surface.paint'}, 'capture_opcode': {'layer.begin'},
+            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'one_plus_target_pixels'},
+            'paint_fuel': {'one_plus_source_pixels'}, 'unset_handle': {'trap'}},
+            ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections'], 'surface policy')
+        require(not any(surface[k] for k in ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections']), 'surface restrictions')
+        require(surface['alpha_modes'] == ['surface.legacy', 'surface.source_over'], 'surface alpha modes')
+        require(surface['scope_cleanup'] == ['end', 'return', 'break', 'continue'], 'surface cleanup')
+        integer(surface['maximum_active_scopes'], 'surface scope limit')
+        require(surface['maximum_active_scopes'] == 32, 'surface scope limit')
+        integer(surface['generation_data_limit_bytes'], 'surface arena limit')
+        require(surface['generation_data_limit_bytes'] == 67108864, 'surface arena limit')
+        if 'methods' in surface or 'blur' in surface:
+            obj(surface, ['methods', 'blur'], 'surface blur capability')
+            require(len(surface['methods']) == 2, 'surface blur signatures')
+            receivers = set()
+            for method in surface['methods']:
+                obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode',
+                    'constant_evaluable', 'effects'], 'surface method')
+                require(method['name'] == 'blur' and method['receiver'] in {'layer', 'mask'}, 'surface blur receiver')
+                require(method['parameters'] == [{'name': 'sigma', 'type': 'f32'}] and
+                    method['result'] == method['receiver'], 'surface blur signature')
+                require(method['opcode'] == method['receiver'] + '.blur' and
+                    method['constant_evaluable'] is False, 'surface blur lowering')
+                effects(method['effects'], 'surface blur effects')
+                e = method['effects']
+                require(e['rng'] == 'none' and not e['writes_canvas'] and not e['writes_outputs'] and
+                    set(e['may_trap']) == {'numeric_range', 'unassigned_handle'}, 'surface blur effects')
+                receivers.add(method['receiver'])
+            require(receivers == {'layer', 'mask'}, 'unique surface blur signatures')
+            expected = {'sigma_type': 'f32', 'minimum_sigma': 0, 'maximum_sigma': 64,
+                'sigma_units': 'input_raster_pixels', 'evaluation': 'receiver_then_sigma_once',
+                'kernel_radius': 'ceil_3_sigma', 'maximum_radius': 192, 'border': 'nearest_edge',
+                'passes': 'horizontal_then_vertical_binary64', 'weights': 'normalized_pinned_exp_increasing_offset',
+                'color': 'premultiplied_stored_channels_unpremultiply_after_both_passes',
+                'rounding': 'nearest_half_up_zero_alpha_zero_rgb', 'mask_result': 'A8_alpha_equivalent',
+                'geometry': 'preserve_dimensions_scale_placement_D4', 'zero_sigma': 'validate_then_share_no_allocation',
+                'clip': 'paint_only', 'positive_sigma_fuel': 'one_plus_K_plus_W_H_times_1_plus_2_K',
+                'scratch_bytes': '8_times_W_min_H_K_channels', 'scratch_channels': {'layer': 4, 'mask': 1},
+                'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter'}
+            blur = obj(surface['blur'], list(expected), 'surface blur policy')
+            require(all(blur[key] == expected[key] for key in expected), 'surface blur policy')
+        paint = next((b for b in value['builtins'] if b['name'] == 'surface.paint'), None)
+        require(paint is not None and all(o['effects']['rng'] == 'none' and o['effects']['writes_canvas'] and
+            'unassigned_handle' in o['effects']['may_trap'] and not o['constant_evaluable'] for o in paint['overloads']), 'surface paint effects')
+    if 'resource_exports' in rules:
+        exports = rules['resource_exports']
+        _strings_and_bools(exports, {
+            'table': {'separate_from_host_geometry'}, 'syntax': {'output <mask|layer> <name>'},
+            'read': {'direct_child_last_called_part'}, 'unset_slot': {'trap'},
+            'write': {'immutable_snapshot_in_owner_caller_coordinates'},
+            'no_write_call': {'retain_previous_snapshot_and_placement'},
+            'propagation': {'one_placement_scale_and_D4_per_export_level'},
+            'buffer_transfer': {'shared_without_copy'}, 'buffer_release': {'last_handle'},
+            'generation_cleanup': {'success_and_trap'}},
+            ['automatic_paint', 'host_handles', 'list_exports'], 'resource exports')
+        require(exports.get('types') == ['mask', 'layer'], 'resource export types')
+        require(not any(exports[k] for k in ['automatic_paint', 'host_handles', 'list_exports']), 'resource export restrictions')
+        for key, expected in [('maximum_slots',65536),('slot_bytes',64),('write_read_fuel',1),('section_id',10)]:
+            integer(exports.get(key), 'resource_exports.' + key)
+            require(exports[key] == expected, 'resource_exports.' + key)
+    if 'masks' in rules:
+        masks = rules['masks']
+        _strings_and_bools(masks, {
+            'from_syntax': {'mask.from(image)'}, 'clip_syntax': {'clip(mask) { <statements> }'},
+            'keyword': {'reserved'}, 'from_storage': {'shared_rgba8_alpha_view'}, 'result_format': {'A8'},
+            'algebra_bounds': {'union_of_input_rectangles'}, 'raster_scale': {'active_target'},
+            'mapping': {'current_asset_placement_and_exact_D4'}, 'invert_bounds': {'input_rectangle'},
+            'radius_type': {'i32'}, 'morphology_neighborhood': {'dx_squared_plus_dy_squared_le_radius_squared'},
+            'expand_bounds': {'input_rectangle_plus_radius_border'}, 'shrink_outside': {'zero'},
+            'offset': {'i32_target_pixels_mapping_view'},
+            'coverage_rounding': {'multiply_nearest_half_up_outer_to_inner'},
+            'mask_paint_alpha': {'color_times_mask_then_combined_clip'},
+            'helper_clip': {'inherit'}, 'layer_clip': {'applies_to_paint_once'}, 'part_clip': {'parent_applies_to_blit_once'},
+            'weather_clip': {'mix_old_and_proposed_rgba_by_coverage'},
+            'clip_evaluation': {'mask_once_no_rng'}, 'from_opcode': {'mask.from'},
+            'clip_opcode': {'clip.begin'}, 'paint_opcode': {'surface.paint.mask'},
+            'result_bytes': {'128_plus_1_per_pixel'}, 'view_fuel': {'one_no_scan'},
+            'algebra_fuel': {'one_plus_zeroed_pixels_plus_result_pixels'},
+            'morphology_fuel': {'one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
+            'clip_write_fuel': {'one_per_active_level'}},
+            ['zero_coverage_write', 'geometry_outputs_clipped'], 'mask policy')
+        require(not masks['zero_coverage_write'] and not masks['geometry_outputs_clipped'], 'mask write policy')
+        for key, expected in [('outside_coverage', 0), ('minimum_radius', 0), ('maximum_radius', 64),
+                              ('combined_scope_limit', 32)]:
+            integer(masks.get(key), 'masks.' + key)
+            require(masks[key] == expected, 'masks.' + key)
+        operators = [b for b in value['builtins'] if b['name'].startswith('mask.')]
+        require(len(operators) == 8 and all(o['result'] == 'mask' and
+            o['effects']['rng'] == 'none' and 'unassigned_handle' in o['effects']['may_trap'] and
+            not o['constant_evaluable'] for b in operators for o in b['overloads']), 'mask operator effects')
+    if 'point_distributions' in rules:
+        points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
+        _strings_and_bools(points, {
+            'syntax': {'<family> { <key>: <value>, ... }'}, 'result': {'distribution'},
+            'names': {'reserved'}, 'evaluation': {'key_value_pairs_left_to_right_once'},
+            'storage': {'immutable_snapshot_original_numeric_types'}, 'intrinsic_rng': {'none'},
+            'key_order': {'strictly_increasing'}, 'values': {'finite_nonnegative_positive_total_mass'},
+            'bounded_draw': {'one_stream_step_then_truncate_and_select'}, 'numeric_kernel': {'binary64_no_fma'},
+            'integer_rounding': {'nearest_half_away_from_zero'}, 'missing_mass': {'trap_after_stream_step'}}, [], 'point distribution policy')
+        require(points['operand_types'] == ['i32','f32'], 'point distribution operand types')
+        require(points['families'] == [{'name':'weighted','minimum_points':1,'maximum_points':256,
+                'value':'discrete_mass','equal_bounds':'positive_mass_at_point'},
+                {'name':'density','minimum_points':2,'maximum_points':256,'value':'piecewise_linear_density',
+                 'equal_bounds':'closed_natural_support'}], 'point distribution families')
+        integer(points.get('generation_data_limit_bytes'), 'point distribution data limit')
+        require(points['generation_data_limit_bytes'] == 67108864, 'point distribution data limit')
+    if 'collections' in rules:
+        collection = rules['collections']
+        _strings_and_bools(collection, {
+            'literal': {'[<elements>]'}, 'empty_literal': {'known_list_type_required'},
+            'element_evaluation': {'left_to_right_once'}, 'numeric_elements': {'i32_to_f32_widening'},
+            'index_type': {'i32'}, 'index_bounds': {'trap'}, 'helper_transfer': {'share_immutable_data'},
+            'legacy_palette_index': {'last_element_fallback'}, 'legacy_palette_length_limit': {'unchanged'}}, ['mutable'], 'collections')
+        require(collection['mutable'] is False, 'immutable collections')
+        for field, expected in [('minimum_length',0),('maximum_length',256),('palette_as_list_maximum',256),('generation_data_limit_bytes',67108864)]:
+            integer(collection.get(field), 'collections.' + field)
+            require(collection[field] == expected, 'collections.' + field)
+        # Additive method capabilities; earlier schema 3 exports omit these.
+        if 'methods' in collection:
+            methods = collection['methods']
+            require(type(methods) is list and len(methods) == (17 if 'steppers' in rules else 13), 'list method signatures')
+            signatures = set()
+            for method in methods:
+                obj(method, ['name','receiver','parameters','result','opcode',
+                    'constant_evaluable','effects'], 'list method')
+                require(method['name'] in {'distinct','sort'} and method['receiver'] in LIST_TYPES, 'list method receiver')
+                require(method['name'] != 'sort' or method['receiver'] in {'list<i32>','list<f32>','list<color>','list<vec2>'}, 'sortable list types')
+                require(method['parameters'] == [] and method['result'] == method['receiver'], 'list method signature')
+                require(method['opcode'] == 'list.' + method['name'], 'list method opcode')
+                require(method['constant_evaluable'] is True, 'constant list method')
+                effects(method['effects'], 'list method effects')
+                require(method['effects'] == {'rng':'none','writes_canvas':False,'writes_outputs':False,
+                    'summary':'intrinsic','may_trap':['unassigned_handle']}, 'pure list method effects')
+                signatures.add((method['name'],method['receiver']))
+            require(len(signatures) == len(methods), 'unique list method signatures')
+        if 'transformations' in collection:
+            _strings_and_bools(collection['transformations'], {
+                'evaluation': {'receiver_once'}, 'result': {'same_type_immutable_list'},
+                'distinct': {'stable_first_occurrence'}, 'sort': {'stable_ascending_numeric_or_lexicographic'},
+                'color_order': {'rgba'}, 'vec2_order': {'xy'}, 'float_zero': {'signed_zeros_equal'},
+                'float_nan': {'one_equivalence_class_last'}, 'description_equality': {'structural_original_types_and_bits'},
+                'element_bits': {'preserved'}, 'unchanged_storage': {'shared'}}, [], 'list transformations')
     require(not set(types['storable']) & set(types['output_only_geometry']), 'storable/output-only overlap')
     require(set(types['helper_parameters']) <= set(types['storable']) and set(types['helper_value_returns']) <= set(types['storable']), 'helper types must be storable')
     require(types['point_value_type'] == 'vec2' and 'vec2' in types['storable'], 'point value type')
@@ -158,27 +426,23 @@ def read_language(value):
     if 'components' in types:
         require(type(types['components']) is list and bool(types['components']), 'components')
     for item in types.get('components', []):
-        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes', 'minimum_format_minor'], 'components')
+        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes'], 'components')
         require(item['type'] in VALUE_TYPES and item['result'] in VALUE_TYPES and item['assignable'] is False, 'component types')
         strings(item['names'], 'component names', None, True)
         require(type(item['opcodes']) is list and len(item['opcodes']) == len(item['names']) and all(type(op) is str for op in item['opcodes']), 'component opcodes')
-        integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
     require(type(types['implicit_widening']) is list, 'implicit widening')
     conversions = []
     for item in types['implicit_widening']:
         obj(item, ['from', 'to', 'contexts'], 'widening')
         require(item['from'] == 'i32' and item['to'] == 'f32' and
                 item['from'] in types['storable'] and item['to'] in types['storable'], 'widening types')
-        strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns'}, True)
+        strings(item['contexts'], 'widening contexts', {'numeric_operands', 'call_arguments', 'helper_returns', 'asset_constants'}, True)
         conversions.append((item['from'], item['to']))
     require(len(conversions) == len(set(conversions)), 'unique widening rules')
     _strings_and_bools(rules['locals'], {'declaration': {'first_assignment'}, 'scope': {'function'}, 'type_inference_order': {'source_traversal'}, 'unexecuted_initializer': {'typed_zero'}}, ['definite_assignment_analysis', 'read_requires_prior_assignment'], 'locals')
     visibility = rules['visibility']
-    _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
-    controls = obj(visibility.get('draw_controls'), ['names', 'type', 'read_only'], 'draw controls')
-    strings(controls['names'], 'draw control names', {'v', 'a'}, nonempty=True)
-    require(controls['type'] == 'i32', 'draw control type')
-    boolean(controls['read_only'], 'draw controls read_only')
+    require('draw_controls' not in visibility, 'retired draw controls')
+    _strings_and_bools(visibility, {'uniforms': {'draw_only'}, 'seed': {'current_rng_state_in_all_functions'}, 'palettes': {'all_asset_functions'}, 'constants': {'all_asset_functions'}}, ['uniforms_read_only', 'helper_parameters_read_only'], 'visibility')
     named = rules['named_calls']
     _strings_and_bools(named, {'positional_binding': {'positional_parameter_ordinal'}}, ['mixed_positional_and_named', 'named_arguments_advance_positional_ordinal', 'duplicate_arguments', 'unknown_arguments'], 'named_calls')
     strings(named.get('targets'), 'named call targets', {'builtin', 'helper', 'part'}, True)
@@ -186,15 +450,14 @@ def read_language(value):
     _strings_and_bools(rules['effect_order'], {'binary_operands': {'left_to_right'}, 'logical_operators': {'short_circuit_left_to_right'}, 'call_arguments': {'signature_evaluation_order'}, 'part_parent_rng': {'restored_after_child'}}, ['named_arguments_change_evaluation_order'], 'effect_order')
     if 'random_range' in rules:
         ranges = obj(rules['random_range'], ['operator', 'keyword', 'precedence', 'chaining', 'evaluation_order', 'overloads', 'mixed_numeric_bounds', 'traps', 'equal_bounds', 'effects'], 'random_range')
-        require(ranges['operator'] == 'to' and ranges['keyword'] == 'contextual' and type(ranges['chaining']) is bool, 'random range operator')
+        require(ranges['operator'] == 'to' and ranges['keyword'] == 'reserved' and type(ranges['chaining']) is bool, 'random range operator')
         precedence = obj(ranges['precedence'], ['tighter_than', 'looser_than'], 'random range precedence')
         require(all(type(precedence[key]) is str and precedence[key] for key in precedence), 'random range precedence')
         require(ranges['evaluation_order'] == ['lower', 'upper'], 'random range evaluation order')
         require(type(ranges['overloads']) is list and bool(ranges['overloads']), 'random range overloads')
         for item in ranges['overloads']:
-            obj(item, ['lower', 'upper', 'result', 'opcode', 'minimum_format_minor', 'bounds', 'draws'], 'random range overload')
+            obj(item, ['lower', 'upper', 'result', 'opcode', 'bounds', 'draws'], 'random range overload')
             require(all(item[key] in VALUE_TYPES for key in ['lower', 'upper', 'result']) and type(item['opcode']) is str and item['bounds'] == 'inclusive', 'random range overload types')
-            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
             draws = obj(item['draws'], ['minimum', 'maximum'], 'random range draws')
             integer(draws['minimum'], 'random range draws', 1)
             integer(draws['maximum'], 'random range draws', draws['minimum'])
@@ -203,10 +466,9 @@ def read_language(value):
         effects(ranges['effects'], 'random range effects')
         # Gradient ends came after the first 0.6 exports; validate when present.
         for item in ranges.get('ends', []):
-            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'minimum_format_minor', 'effects'], 'random range ends')
+            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'effects'], 'random range ends')
             require(item['type'] in {'color', 'vec2'} and item['result'] == item['type'] and item['coefficient'] == 'shared_unit_interval' and type(item['opcode']) is str, 'random range ends')
             strings(item['mixed'], 'random range mixed', None, True)
-            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
             effects(item['effects'], 'random range ends effects')
         # Distributions came after the first 0.6 exports; validate when present.
         if 'with' in ranges:
@@ -221,7 +483,7 @@ def read_language(value):
     ordered_signature(call['part'], 'part', typed=False)
     effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
     require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
-    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit'})
+    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit'})
     strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
     boolean(effect['allocation_failure'], 'allocation failure')
     for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:

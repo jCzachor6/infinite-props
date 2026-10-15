@@ -1,0 +1,62 @@
+asset Crystal { input i32 v = 0
+  size 32x32
+  origin 16,30
+  // Variant 0 rolls 1 or 2 from the seed; 1 is plain, 2 has a glint.
+  // Transparent means "roll a colour from the seed".
+  input color tint = #00000000
+  output rect collider
+  palette stone = [#3b3f4a, #565b69, #767c8c]
+  palette hues = [#6fd3ff, #c38bff, #7dffb0, #ff8fa3]
+  palette glints = [#ffffff, #fff3b0, #ffd166]
+
+  draw {
+    // Hash the seed instead of drawing, so a rolled variant renders
+    // exactly like the same variant chosen explicitly.
+    look = v
+    if (v == 0) { look = 1 + (hash(seed ^ 0x2f6b9a13) & 1) }
+
+    // The shape draws from its own stream, so every variant keeps the
+    // same silhouette and only the colours change.
+    stream_push(hash(seed ^ 0x51ed2701))
+    distribution typical = gaussian(mean=0.5, sigma=0.18)
+    height = lerp(14.0, 26.0, 0.0 to 1.0 with typical)
+    width = lerp(7.0, 12.0, 0.0 to 1.0 with typical)
+    lean = -2.0 to 2.0 with gaussian(mean=0.0, sigma=0.8)
+    facets = pick(2, 3, 4)
+    stream_pop()
+
+    // Colours are drawn, not computed: a gradient between two ends,
+    // skewed towards the bright end.
+    base = tint
+    if (tint.a == 0) { base = hues[index(4)] }
+    body = color.shade(base, -6) to base with beta(alpha=4.0, beta=2.0)
+    glint = glints[index(3)]
+    if (look == 2) { body = color.mix(body, glint, 0.35) }
+
+    // Paint whole rows with rect(), never pixel by pixel.
+    top = 30.0 - height
+    rows = int(height)
+    for r in 0..rows {
+      t = float(r) / float(rows)
+      half = width * 0.5 * smoothstep(0.0, 0.4, t)
+      x = 16.0 + lean * (1.0 - t) - half
+      rect(x, top + float(r), half, 1.0, color.shade(body, 2))
+      rect(x + half, top + float(r), half, 1.0, color.shade(body, -3))
+    }
+    for f in 1..facets {
+      fx = 16.0 + lean * 0.5 + (-3.0 to 3.0)
+      line(fx, top + 4.0, 16.0, 29.0, 1, color.shade(body, 5))
+    }
+    pedestal(28.0)
+    if (chance(0.6)) { pixel(int(16.0 + lean), int(top) + 2, glint) }
+    collider = {16.0 - width * 0.5, top, width, height}
+  }
+
+  // Palettes are visible in helpers; inputs and v/a are not, so pass them.
+  pedestal(y: f32) {
+    for i in 0..3 {
+      w = 18.0 - float(i) * 4.0 + (-1.0 to 1.0)
+      rect(16.0 - w * 0.5, y - float(i), w, 2.0, stone[i])
+    }
+  }
+}

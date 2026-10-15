@@ -42,7 +42,7 @@ asset t {
     REQUIRE(fromIps.canvas.at(8, 8) == Color{255, 0, 0, 255});
 
     const std::string ipa = R"(
-meta: size=16x16 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=16x16 origin=0,0 fuel=1000000
 output: point p
 fn cover ( vec2 ) -> ( f32 ):
   local.get 0
@@ -55,20 +55,20 @@ fn cover ( vec2 ) -> ( f32 ):
   fill
   return
 endfn
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: f32 f32
   const.f32 8.0
   const.f32 8.0
   vec2.make
   call cover
-  local.set 2
+  local.set 0
   const.f32 12.0
   const.f32 8.0
   vec2.make
   call cover
-  local.set 3
-  local.get 2
-  local.get 3
+  local.set 1
+  local.get 0
+  local.get 1
   out.point p
   const.i32 8
   const.i32 8
@@ -108,30 +108,30 @@ asset t {
     REQUIRE(bits(fromIps.outputs[0].points[0].y) == 0x40820079u);
 
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: f32 vec2 f32
   const.f32 1.5
   const.f32 2.5
   const.i32 7
   noise.grad
-  local.set 2
+  local.set 0
   const.i32 3
   const.i32 4
   const.i32 7
   cell.jitter
-  local.set 3
+  local.set 1
   const.f32 0.5
   const.f32 0.5
   const.i32 4
   const.i32 7
   noise.ridge
-  local.set 4
+  local.set 2
+  local.get 0
   local.get 2
-  local.get 4
   f32.add
-  local.get 3
+  local.get 1
   vec2.y
   out.point p
 endfn
@@ -164,34 +164,34 @@ asset t {
     REQUIRE(fromIps.canvas.at(2, 0) == Color{0x40, 0x40, 0x40, 0xff});
 
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
-fn draw ( i32, i32 ) -> ( ):
+meta: size=8x8 origin=0,0 fuel=1000000
+fn draw (  ) -> ( ):
   locals: color color color
   const.color #ff0000ff
   const.f32 0.16666667
   const.f32 1.0
   const.f32 1.0
   color.hsv
-  local.set 2
+  local.set 0
   const.color #ff8040ff
   const.color #4080ffff
   color.mul
-  local.set 3
-  local.get 3
+  local.set 1
+  local.get 1
   const.i32 255
   color.set.a
-  local.set 4
+  local.set 2
   const.i32 0
   const.i32 0
-  local.get 2
+  local.get 0
   pixel
   const.i32 1
   const.i32 0
-  local.get 3
+  local.get 1
   pixel
   const.i32 2
   const.i32 0
-  local.get 4
+  local.get 2
   pixel
 endfn
 )";
@@ -222,34 +222,34 @@ asset t {
     REQUIRE(fromIps.outputs[0].points[0].y == 6.f);  // q.x + d = 5 + 1
 
     const std::string ipa = R"(
-meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=1000000
+meta: size=8x8 origin=0,0 fuel=1000000
 output: point p
-fn draw ( i32, i32 ) -> ( ):
+fn draw (  ) -> ( ):
   locals: vec2 vec2 f32
   const.f32 -3.0
   const.f32 4.0
   vec2.make
   const.i32 2
   vec2.fold
-  local.set 2
+  local.set 0
   const.f32 3.0
   const.f32 4.0
   vec2.make
   vec2.polar
-  local.set 3
+  local.set 1
   const.f32 0.7
   const.i32 1
   const.i32 0
   dither
-  local.set 4
-  local.get 2
+  local.set 2
+  local.get 0
   vec2.x
-  local.get 2
+  local.get 0
   vec2.y
   f32.add
-  local.get 3
+  local.get 1
   vec2.x
-  local.get 4
+  local.get 2
   f32.add
   out.point p
 endfn
@@ -280,11 +280,20 @@ asset t {
     curve({1,7}, {3,7}, {5,7}, 1, #00ff00)
   }
 })";
-    const auto bytes = compileChecked(source);
+    // The reference lowering keeps the constant queries, which the
+    // optimizer folds with the VM's own kernels to the same bits.
+    const ips::Program program = ips::parse(source);
+    ips::checkAsset(program, {});
+    const auto bytes = compileProgram(program, {}, false);
     const auto text = disassemble(bytes);
     REQUIRE(text.find("dist.bezier.cubic") != std::string::npos);
     REQUIRE(text.find("curve.cubic") != std::string::npos);
+    const auto folded = execute(compileChecked(source));
     const auto original = execute(bytes);
+    for (std::size_t i = 0; i < original.outputs.size(); ++i) {
+        CHECK(std::bit_cast<u32>(folded.outputs[i].points[0].x) == std::bit_cast<u32>(original.outputs[i].points[0].x));
+        CHECK(std::bit_cast<u32>(folded.outputs[i].points[0].y) == std::bit_cast<u32>(original.outputs[i].points[0].y));
+    }
     const auto roundTrip = execute(assemble(text));
     REQUIRE(original.outputs[0].points[0].x == 1.f);
     REQUIRE(original.outputs[0].points[0].y == 5.f);

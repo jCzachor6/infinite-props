@@ -6,7 +6,7 @@
 namespace iprop::capi {
 
 struct GenerateOptions {
-    uint32_t seed = 0, variant = 0, archetype = 0;
+    uint32_t seed = 0;
     uint32_t sizeX = 0, sizeY = 0;
 };
 
@@ -24,8 +24,6 @@ inline OptionIssue readGenerateOptions(const iprop_generate_options_ex* descript
     if (READ(flags) != 0) return OptionIssue::UnknownFlags;
     GenerateOptions value;
     value.seed = READ(seed);
-    value.variant = READ(variant);
-    value.archetype = READ(archetype);
     value.sizeX = READ(size_x);
     value.sizeY = READ(size_y);
 #undef READ

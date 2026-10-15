@@ -1,0 +1,9 @@
+asset Banner {
+  size 16x16
+  input u32 pattern = 1
+  draw {
+    rect(0, 0, 16, 16, #203040)
+    if (pattern == 1) { rect(0, 6, 16, 4, #e0c060) }
+    else { rect(6, 0, 4, 16, #e0c060) }
+  }
+}

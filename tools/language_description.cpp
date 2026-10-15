@@ -1,3 +1,4 @@
+#include "iprop/math/Distribution.hpp"
 #include "language_description.hpp"
 #include "json.hpp"
 #include "ips/BuiltinArguments.hpp"
@@ -5,7 +6,10 @@
 #include "ips/Typing.hpp"
 #include "ips/Version.hpp"
 #include "ips/ExportSchema.hpp"
+#include "ips/AssetConstants.hpp"
 #include "iprop/OpcodeSpec.hpp"
+#include "iprop/Collections.hpp"
+#include "iprop/Samplers.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -23,8 +27,8 @@ Json operationEffects(const OperationEffects& effects) {
     Json mayTrap = Json::array();
     for (const auto check : {EffectCheck::NumericRange, EffectCheck::StreamStackUnderflow,
         EffectCheck::PartRenderArguments, EffectCheck::Callee, EffectCheck::PartOutputMissing,
-        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext}) {
-        if ((effects.checks & static_cast<u8>(check)) != 0) mayTrap.push_back(effectCheckName(check));
+        EffectCheck::DivideByZero, EffectCheck::IntegerOverflow, EffectCheck::PartOutputContext, EffectCheck::IndexRange, EffectCheck::UnassignedHandle}) {
+        if ((effects.checks & static_cast<u16>(check)) != 0) mayTrap.push_back(effectCheckName(check));
     }
     return Json::object({{"rng", rngEffectName(effects.rng)}, {"writes_canvas", effects.writesCanvas},
                          {"writes_outputs", effects.writesOutputs},
@@ -35,7 +39,7 @@ Json operationEffects(const OperationEffects& effects) {
 Json effectRules() {
     auto rules = Json::object({{"intrinsic_scope", "operation_excluding_arguments_and_resources"},
         {"argument_effects", "evaluated_before_operation_in_caller_stream"},
-        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit"})},
+        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit"})},
         {"validation_limits", Json::array({"operand_stack_limit"})}, {"allocation_failure", true}});
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
@@ -50,7 +54,90 @@ Json effectRules() {
 
 constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::Color, ips::ValueType::Vec2, ips::ValueType::Distribution, ips::ValueType::Circle,
-    ips::ValueType::Rect};
+    ips::ValueType::Rect,
+    ips::ValueType::list(ips::ValueType::I32), ips::ValueType::list(ips::ValueType::F32),
+    ips::ValueType::list(ips::ValueType::Color), ips::ValueType::list(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::Distribution),
+    ips::ValueType::sampler(ips::ValueType::I32), ips::ValueType::sampler(ips::ValueType::F32),
+    ips::ValueType::sampler(ips::ValueType::Color), ips::ValueType::sampler(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::I32)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::F32)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Color)),
+    ips::ValueType::list(ips::ValueType::sampler(ips::ValueType::Vec2)),
+    ips::ValueType::stepper(ips::ValueType::I32), ips::ValueType::stepper(ips::ValueType::F32),
+    ips::ValueType::stepper(ips::ValueType::Color), ips::ValueType::stepper(ips::ValueType::Vec2),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::I32)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::F32)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
+
+Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signature) {
+    Json parameters = Json::array();
+    for (std::size_t i = 1; i < signature.params.size(); ++i)
+        parameters.push_back(Json::object({{"name", signature.params[i].name}, {"type", ips::typeName(signature.params[i].type)}}));
+    const auto* opcode = findOpcode(*signature.opcode);
+    return Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
+        {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
+        {"opcode", opcode->mnemonic},
+        {"effects", operationEffects(opcode->effects)}});
+}
+
+Json descriptionMethods(const ips::BuiltinSpec& spec) {
+    Json methods = Json::array();
+    for (const auto& signature : spec.overloads) methods.push_back(receiverMethod("pick", signature));
+    return methods;
+}
+
+Json surfaceMethods() {
+    Json methods = Json::array();
+    for (const auto& [name, spec] : ips::surfaceMethodSpecs()) for (const auto& signature : spec.overloads) {
+        auto method = receiverMethod(name, signature);
+        method["constant_evaluable"] = false;
+        methods.push_back(std::move(method));
+    }
+    return methods;
+}
+
+Json samplers() {
+    return Json::object({{"syntax", "sampler(<value> | <lower> to <upper> [with <distribution>])"},
+        {"capture_evaluation", "lower_upper_distribution_once"}, {"intrinsic_capture_rng", "none"},
+        {"bounds_validation", "capture"}, {"probability_mass_validation", "pick"},
+        {"method_evaluation", "receiver_once_before_count_once"}, {"method_resolution", "static_receiver_type_and_arity"},
+        {"minimum_count", 0}, {"maximum_count", kMaxListElements}, {"count_type", "i32"},
+        {"batch_preflight", "count_handle_allocation_before_first_draw"},
+        {"constant_description_draws", 0}, {"empty_batch_draws", 0}, {"unset_empty_batch", "trap"},
+        {"capture_effects", operationEffects(findOpcode(Opcode::SamplerRange)->effects)},
+        {"methods", descriptionMethods(ips::samplerPickSpec())}, {"asset_constants", true}, {"range_palettes", true}});
+}
+
+Json steppers() {
+    return Json::object({{"syntax", "stepper(<value> | <lower> to <upper> [with <distribution>])"},
+        {"capture_evaluation", "lower_upper_distribution_once"}, {"intrinsic_capture_rng", "none"},
+        {"bounds_validation", "capture"}, {"probability_mass_validation", "nonempty_pick"},
+        {"method_evaluation", "receiver_once_before_count_once"}, {"method_resolution", "static_receiver_type_and_arity"},
+        {"minimum_count", 0}, {"maximum_count", kMaxListElements}, {"count_type", "i32"},
+        {"batch_preflight", "count_handle_allocation_before_first_step"}, {"unset_empty_batch", "trap"},
+        {"generation_rng", "none"}, {"unit_positions", "i_over_n_minus_one"},
+        {"zero_count", "empty_list"}, {"one_count", "first_step"},
+        {"integer_interpolation", "binary64_half_away_from_zero"}, {"endpoint_support", "truncated_positive_mass"},
+        {"distribution_families", Json::array({"gaussian", "triangular", "beta", "weighted", "density"})},
+        {"capture_effects", operationEffects(findOpcode(Opcode::StepperRange)->effects)},
+        {"methods", descriptionMethods(ips::stepperPickSpec())}, {"asset_constants", true}, {"range_palettes", false}});
+}
+
+Json listMethods() {
+    Json methods = Json::array();
+    for (const auto& [name, spec] : ips::listMethodSpecs()) {
+        for (const auto& signature : spec.overloads) {
+            const auto* opcode = findOpcode(*signature.opcode);
+            methods.push_back(Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
+                {"parameters", Json::array()}, {"result", ips::typeName(signature.result)},
+                {"opcode", opcode->mnemonic},
+                {"constant_evaluable", true}, {"effects", operationEffects(opcode->effects)}}));
+        }
+    }
+    return methods;
+}
 
 template<class Predicate>
 Json types(Predicate include) {
@@ -66,7 +153,7 @@ Json randomRange() {
     const auto overload = [](const char* type, Opcode opcode, u32 maximumDraws) {
         const auto* spec = findOpcode(opcode);
         return Json::object({{"lower", type}, {"upper", type}, {"result", type},
-            {"opcode", spec->mnemonic}, {"minimum_format_minor", spec->minimumMinor},
+            {"opcode", spec->mnemonic},
             {"bounds", "inclusive"}, {"draws", Json::object({{"minimum", 1}, {"maximum", maximumDraws}})}});
     };
     // Colors and vec2 values: one shared coefficient 0.0 to 1.0 [with d],
@@ -77,9 +164,9 @@ Json randomRange() {
         for (const char* part : parts) names.push_back(part);
         return Json::object({{"type", ips::typeName(type)}, {"result", ips::typeName(type)},
             {"coefficient", "shared_unit_interval"}, {"mixed", std::move(names)}, {"opcode", spec->mnemonic},
-            {"minimum_format_minor", spec->minimumMinor}, {"effects", operationEffects(spec->effects)}});
+            {"effects", operationEffects(spec->effects)}});
     };
-    return Json::object({{"operator", "to"}, {"keyword", "contextual"},
+    return Json::object({{"operator", "to"}, {"keyword", "reserved"},
         {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
         {"chaining", false}, {"evaluation_order", Json::array({"lower", "upper"})},
         {"overloads", Json::array({overload("i32", Opcode::RngInt, kRangeDraws),
@@ -114,16 +201,11 @@ Json sourceRules() {
     for (const auto from : valueTypes) for (const auto to : valueTypes) {
         if (from == to || !ips::argFits(to, from)) continue;
         widening.push_back(Json::object({{"from", ips::typeName(from)}, {"to", ips::typeName(to)},
-            {"contexts", Json::array({"numeric_operands", "call_arguments", "helper_returns"})}}));
+            {"contexts", Json::array({"numeric_operands", "call_arguments", "helper_returns", "asset_constants"})}}));
     }
     Json typeRules = Json::object();
     typeRules["storable"] = types(ips::isStorable);
-    typeRules["helper_parameters"] = types([](ips::ValueType value) {
-        for (const auto type : {ips::ParamType::I32, ips::ParamType::F32,
-                               ips::ParamType::Color, ips::ParamType::Vec2, ips::ParamType::Distribution})
-            if (ips::valueTypeOf(type) == value) return true;
-        return false;
-    });
+    typeRules["helper_parameters"] = types(ips::isStorable);
     typeRules["helper_value_returns"] = types(ips::isStorable);
     typeRules["output_only_geometry"] = types([](ips::ValueType value) { return !ips::isStorable(value); });
     typeRules["point_value_type"] = ips::typeName(ips::ValueType::Vec2);
@@ -133,16 +215,20 @@ Json sourceRules() {
     const auto components = [](ips::ValueType type, ips::ValueType result,
                                std::initializer_list<std::pair<const char*, Opcode>> names) {
         Json members = Json::array(), opcodes = Json::array();
-        u16 minor = 0;
         for (const auto& [name, opcode] : names) {
             members.push_back(name);
             opcodes.push_back(findOpcode(opcode)->mnemonic);
-            minor = std::max(minor, findOpcode(opcode)->minimumMinor);
         }
         return Json::object({{"type", ips::typeName(type)}, {"names", std::move(members)},
-            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)},
-            {"minimum_format_minor", minor}});
+            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)}});
     };
+    typeRules["parameterized"] = Json::array({Json::object({{"constructor", "list"},
+        {"element_types", types([](ips::ValueType type) { return type.isScalar() || type.isDescription(); })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}}),
+        Json::object({{"constructor", "sampler"}, {"element_types", types([](ips::ValueType type) { return type.isScalar() && type != ips::ValueType::Distribution; })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}}),
+        Json::object({{"constructor", "stepper"}, {"element_types", types([](ips::ValueType type) { return type.isScalar() && type != ips::ValueType::Distribution; })},
+        {"nested", false}, {"representation", "immutable_arena_handle"}})});
     typeRules["components"] = Json::array({
         components(ips::ValueType::Vec2, ips::ValueType::F32, {{"x", Opcode::Vec2X}, {"y", Opcode::Vec2Y}}),
         components(ips::ValueType::Color, ips::ValueType::I32,
@@ -154,8 +240,15 @@ Json sourceRules() {
         {"unexecuted_initializer", "typed_zero"}, {"read_requires_prior_assignment", true}});
     rules["visibility"] = Json::object({{"uniforms", "draw_only"}, {"uniforms_read_only", true},
         {"helper_parameters_read_only", true},
-        {"draw_controls", Json::object({{"names", Json::array({"v", "a"})}, {"type", "i32"}, {"read_only", true}})},
-        {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"}});
+        {"seed", "current_rng_state_in_all_functions"}, {"palettes", "all_asset_functions"},
+        {"constants", "all_asset_functions"}});
+    rules["asset_constants"] = Json::object({{"keyword", "reserved"},
+        {"syntax", "const <type> <name> = <expression>"}, {"types", types([](ips::ValueType type) { return type.isStorable() && !type.isResource(); })},
+        {"scope", "asset"}, {"visibility", "all_asset_functions"}, {"read_only", true},
+        {"dependencies", "forward_acyclic"}, {"evaluation", "compile_time"},
+        {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
+        {"user_helper_calls", false}, {"generation_state", false},
+        {"distribution_validation", "compile_time"}});
     rules["named_calls"] = Json::object({{"targets", Json::array({"builtin", "helper", "part"})},
         {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
         {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},
@@ -165,7 +258,113 @@ Json sourceRules() {
     rules["effect_order"] = Json::object({{"binary_operands", "left_to_right"},
         {"logical_operators", "short_circuit_left_to_right"}, {"call_arguments", "signature_evaluation_order"},
         {"named_arguments_change_evaluation_order", false}, {"part_parent_rng", "restored_after_child"}});
+    rules["collections"] = Json::object({{"literal", "[<elements>]"}, {"minimum_length", 0}, {"maximum_length", kMaxListElements},
+        {"empty_literal", "known_list_type_required"}, {"element_evaluation", "left_to_right_once"},
+        {"numeric_elements", "i32_to_f32_widening"}, {"index_type", "i32"}, {"index_bounds", "trap"},
+        {"mutable", false}, {"helper_transfer", "share_immutable_data"},
+        {"legacy_palette_index", "last_element_fallback"}, {"legacy_palette_length_limit", "unchanged"},
+        {"palette_as_list_maximum", kMaxListElements}, {"generation_data_limit_bytes", kMaxGenerationData},
+        {"methods", listMethods()},
+        {"transformations", Json::object({{"evaluation", "receiver_once"}, {"result", "same_type_immutable_list"},
+            {"distinct", "stable_first_occurrence"}, {"sort", "stable_ascending_numeric_or_lexicographic"},
+            {"color_order", "rgba"}, {"vec2_order", "xy"}, {"float_zero", "signed_zeros_equal"},
+            {"float_nan", "one_equivalence_class_last"}, {"description_equality", "structural_original_types_and_bits"},
+            {"element_bits", "preserved"}, {"unchanged_storage", "shared"}})}});
+    Json reserved = Json::array();
+    for (const auto& name : ips::reservedKeywords()) reserved.push_back(name);
+    rules["reserved_keywords"] = std::move(reserved);
+    rules["samplers"] = samplers();
+    rules["steppers"] = steppers();
+    Json alphaModes = Json::array();
+    for (const auto& spec : kCompositionSpecs) alphaModes.push_back("surface." + std::string(spec.name));
+    rules["surfaces"] = Json::object({
+        {"methods", surfaceMethods()},
+        {"blur", Json::object({{"sigma_type", "f32"}, {"minimum_sigma", 0}, {"maximum_sigma", static_cast<u32>(kMaxBlurSigma)},
+            {"sigma_units", "input_raster_pixels"}, {"evaluation", "receiver_then_sigma_once"},
+            {"kernel_radius", "ceil_3_sigma"}, {"maximum_radius", 192}, {"border", "nearest_edge"},
+            {"passes", "horizontal_then_vertical_binary64"}, {"weights", "normalized_pinned_exp_increasing_offset"},
+            {"color", "premultiplied_stored_channels_unpremultiply_after_both_passes"},
+            {"rounding", "nearest_half_up_zero_alpha_zero_rgb"}, {"mask_result", "A8_alpha_equivalent"},
+            {"geometry", "preserve_dimensions_scale_placement_D4"}, {"zero_sigma", "validate_then_share_no_allocation"},
+            {"clip", "paint_only"}, {"positive_sigma_fuel", "one_plus_K_plus_W_H_times_1_plus_2_K"},
+            {"scratch_bytes", "8_times_W_min_H_K_channels"}, {"scratch_channels", Json::object({{"layer", 4}, {"mask", 1}})},
+            {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"}})},
+        {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
+        {"capture_syntax", "layer <name> [(alpha=surface.<mode>)] { <statements> }"},
+        {"keyword", "reserved"}, {"capture_target", "empty_current_geometry_and_scale"},
+        {"result_binding", "after_scope_exit"}, {"automatic_paint", false},
+        {"capture_evaluation", "once_in_current_stream"}, {"helper_transfer", "share_immutable_buffer"},
+        {"buffer_format", "RGBA8"}, {"mapping", "placement_and_D4_view_without_pixel_copy"},
+        {"alpha_modes", std::move(alphaModes)}, {"default_mode", "legacy"},
+        {"mode_arguments", "compile_time_namespace_constants"}, {"paint_evaluation", "image_once_no_rng"},
+        {"mode_inheritance", "active_target_helpers_and_part_canvases_and_blits"},
+        {"paint_default_mode", "active_destination_target"},
+        {"source_over_kernel", "straight_rgba8_u64_nearest_half_up"},
+        {"rounding_boundary", "every_primitive_blit_and_paint"},
+        {"paint_opcode", findOpcode(Opcode::SurfacePaint)->mnemonic},
+        {"capture_opcode", findOpcode(Opcode::LayerBegin)->mnemonic},
+        {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
+        {"maximum_active_scopes", kMaxSurfaceScopes}, {"generation_data_limit_bytes", kMaxGenerationData},
+        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
+        {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
+        {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
+    rules["resource_exports"] = Json::object({
+        {"types", Json::array({"mask", "layer"})}, {"table", "separate_from_host_geometry"},
+        {"syntax", "output <mask|layer> <name>"}, {"read", "direct_child_last_called_part"},
+        {"unset_slot", "trap"}, {"write", "immutable_snapshot_in_owner_caller_coordinates"},
+        {"no_write_call", "retain_previous_snapshot_and_placement"},
+        {"propagation", "one_placement_scale_and_D4_per_export_level"}, {"automatic_paint", false},
+        {"buffer_transfer", "shared_without_copy"}, {"buffer_release", "last_handle"},
+        {"generation_cleanup", "success_and_trap"}, {"host_handles", false}, {"list_exports", false},
+        {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
+        {"section_id", static_cast<u32>(SectionId::ResourceExports)}});
+    rules["masks"] = Json::object({
+        {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
+        {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},
+        {"result_format", "A8"}, {"algebra_bounds", "union_of_input_rectangles"},
+        {"raster_scale", "active_target"}, {"mapping", "current_asset_placement_and_exact_D4"},
+        {"outside_coverage", 0}, {"invert_bounds", "input_rectangle"},
+        {"radius_type", "i32"}, {"minimum_radius", 0}, {"maximum_radius", kMaxMaskRadius},
+        {"morphology_neighborhood", "dx_squared_plus_dy_squared_le_radius_squared"},
+        {"expand_bounds", "input_rectangle_plus_radius_border"}, {"shrink_outside", "zero"},
+        {"offset", "i32_target_pixels_mapping_view"},
+        {"coverage_rounding", "multiply_nearest_half_up_outer_to_inner"},
+        {"mask_paint_alpha", "color_times_mask_then_combined_clip"}, {"zero_coverage_write", false},
+        {"helper_clip", "inherit"}, {"layer_clip", "applies_to_paint_once"}, {"part_clip", "parent_applies_to_blit_once"},
+        {"weather_clip", "mix_old_and_proposed_rgba_by_coverage"}, {"geometry_outputs_clipped", false},
+        {"clip_evaluation", "mask_once_no_rng"}, {"combined_scope_limit", kMaxSurfaceScopes},
+        {"from_opcode", findOpcode(Opcode::MaskFrom)->mnemonic},
+        {"clip_opcode", findOpcode(Opcode::ClipBegin)->mnemonic},
+        {"paint_opcode", findOpcode(Opcode::SurfacePaintMask)->mnemonic},
+        {"result_bytes", "128_plus_1_per_pixel"}, {"view_fuel", "one_no_scan"},
+        {"algebra_fuel", "one_plus_zeroed_pixels_plus_result_pixels"},
+        {"morphology_fuel", "one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
+        {"clip_write_fuel", "one_per_active_level"}});
+    rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
+        {"element_types", types([](ips::ValueType type) { return type.isSampler() ||
+            (type.isScalar() && type != ips::ValueType::Distribution); })},
+        {"evaluation", "compile_time_no_rng"}, {"sampling_trigger", "outer_range_or_sampler"},
+        {"constant_entries", "lift_to_constant_descriptions_in_sampling_palette"},
+        {"numeric_elements", "i32_to_f32_widening"}, {"index_type", "i32"},
+        {"index_evaluation", "once"}, {"index_bounds", "last_element_fallback"},
+        {"first_class_value", "immutable_list_with_checked_index"},
+        {"minimum_length", 1}, {"sampling_maximum_length", kMaxListElements},
+        {"first_class_maximum_length", kMaxListElements}, {"legacy_length_limit", "unchanged"},
+        {"ramp", "constant_color_or_f32_only"}});
     rules["random_range"] = randomRange();
+    Json families = Json::array();
+    for (const auto& spec : math::kPointDistributionSpecs) families.push_back(Json::object({
+        {"name",std::string(spec.name)}, {"minimum_points",spec.minimumPoints}, {"maximum_points",256},
+        {"value",std::string(spec.valueMeaning)}, {"equal_bounds",std::string(spec.equalBounds)}}));
+    rules["point_distributions"] = Json::object({{"syntax", "<family> { <key>: <value>, ... }"},
+        {"families", std::move(families)},
+        {"result", "distribution"}, {"names", "reserved"},
+        {"operand_types", Json::array({"i32", "f32"})}, {"evaluation", "key_value_pairs_left_to_right_once"},
+        {"storage", "immutable_snapshot_original_numeric_types"}, {"intrinsic_rng", "none"},
+        {"key_order", "strictly_increasing"}, {"values", "finite_nonnegative_positive_total_mass"},
+        {"bounded_draw", "one_stream_step_then_truncate_and_select"}, {"numeric_kernel", "binary64_no_fma"},
+        {"integer_rounding", "nearest_half_away_from_zero"}, {"missing_mass", "trap_after_stream_step"},
+        {"generation_data_limit_bytes", kMaxGenerationData}});
     return rules;
 }
 
@@ -182,7 +381,7 @@ Json evaluationOrder(const ips::CallSignature& signature) {
 Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
     using L = ips::BuiltinLowering;
     // Query the actual binder, rather than maintaining another name/arity table.
-    std::size_t minimum = spec.lowering == L::Pick ? 2 : 0;
+    std::size_t minimum = spec.lowering == L::Polygon ? 7 : spec.lowering == L::Pick ? 2 : 0;
     ips::CallSignature signature;
     for (; minimum < 16; ++minimum) {
         try {
@@ -203,7 +402,7 @@ Json variadic(const std::string& name, const ips::BuiltinSpec& spec) {
         {"parameters", std::move(parameters)}, {"evaluation_order", evaluationOrder(signature)},
         {"effects", operationEffects(signature.effects)}});
     if (!polygon) {
-        out["choice_types"] = Json::array({"i32", "f32", "color", "vec2", "distribution"});
+        out["choice_types"] = types(ips::isStorable);
         out["choice_evaluation"] = "eager_once_before_selection_rng";
     }
     return out;
@@ -214,24 +413,28 @@ Json builtins() {
     for (const auto& [name, spec] : ips::builtinSpecs()) {
         Json overloads = Json::array();
         for (const auto& overload : spec.overloads) {
-            const auto signature = ips::builtinCallSignature(spec, overload.params.size(), {1,1}, name);
+            const ips::BuiltinSpec concrete{spec.lowering, {overload}};
+            const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             Json parameters = Json::array();
             for (std::size_t i = 0; i < overload.params.size(); ++i)
                 parameters.push_back(parameter(signature.parameters[i].name, ips::typeName(overload.params[i].type)));
             auto entry = Json::object({{"parameters", std::move(parameters)},
                 {"result", ips::typeName(overload.result)}, {"evaluation_order", evaluationOrder(signature)},
-                {"effects", operationEffects(ips::builtinEffects(spec, &overload))}});
+                {"effects", operationEffects(ips::builtinEffects(spec, &overload))},
+                {"constant_evaluable", ips::constantBuiltin(spec, overload)}});
             if (overload.opcode) {
                 const auto* opcode = findOpcode(*overload.opcode);
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
                 entry["opcode"] = opcode->mnemonic;
-                entry["minimum_format_minor"] = opcode->minimumMinor;
             }
             overloads.push_back(std::move(entry));
         }
         auto builtin = Json::object({{"name", name}, {"overloads", std::move(overloads)}});
         if (spec.lowering == ips::BuiltinLowering::Pick || spec.lowering == ips::BuiltinLowering::Choose ||
-            spec.lowering == ips::BuiltinLowering::Polygon) builtin["variadic"] = variadic(name, spec);
+            spec.lowering == ips::BuiltinLowering::Polygon) {
+            builtin["variadic"] = variadic(name, spec);
+            builtin["variadic"]["constant_evaluable"] = false;
+        }
         list.push_back(std::move(builtin));
     }
     // ramp's palette parameter is a language construct, not a VM stack value.
@@ -242,7 +445,7 @@ Json builtins() {
             {"parameters", Json::array({parameter(ramp.parameters[0].name, "palette<" + std::string(ips::typeName(type)) + ">"),
                                         parameter(ramp.parameters[1].name, "f32")})},
             {"result", ips::typeName(type)}, {"evaluation_order", evaluationOrder(ramp)},
-            {"effects", operationEffects(ramp.effects)}}));
+            {"effects", operationEffects(ramp.effects)}, {"constant_evaluable", true}}));
     }
     list.push_back(Json::object({{"name", "ramp"}, {"overloads", std::move(rampOverloads)}}));
     return list;
@@ -278,7 +481,6 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["c_api_version"] = version(IPROP_API_VERSION_MAJOR, IPROP_API_VERSION_MINOR);
     document["abi_version"] = version(IPROP_C_ABI_VERSION_MAJOR, IPROP_C_ABI_VERSION_MINOR);
     document["c_abi_soversion"] = IPROP_C_ABI_SOVERSION;
-    document["format_version"] = version(kVersionMajor, kVersionMinor);
     document["builtins"] = builtins();
     document["call_rules"] = callRules();
     document["source_rules"] = sourceRules();

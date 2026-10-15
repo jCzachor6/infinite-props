@@ -53,7 +53,7 @@ std::vector<const Arg*> bindArguments(const Call& call,
 std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::size_t arity,
                                               const SourceLocation& at, std::string_view function) {
     std::vector<std::string> names;
-    if (spec.lowering == BuiltinLowering::Polygon) {
+    if (variadicPolygon(spec, arity)) {
         if (arity < 7 || arity % 2 == 0)
             throw SourceError{at, "poly expects a colour and at least three (x, y) vertex pairs"};
         names.push_back("color");
@@ -92,7 +92,7 @@ std::span<const std::string> rampParameterNames() {
 
 std::vector<ArgumentParameter> partParameters(std::span<const std::string> uniforms) {
     std::vector<ArgumentParameter> result{
-        {"seed"}, {"v"}, {"a"}, {"at",true,false},
+        {"seed"}, {"at",true,false},
         {"rot",false,false}, {"mirror_x",false,false}, {"mirror_y",false,false}
     };
     for (const auto& name : uniforms) result.push_back({name,false,false});

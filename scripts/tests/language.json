@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 4,
   "product_version": "0.4.0",
   "language_version": {
     "major": 0,
@@ -14,10 +14,6 @@
     "minor": 4
   },
   "c_abi_soversion": "0.4",
-  "format_version": {
-    "major": 0,
-    "minor": 4
-  },
   "builtins": [
     {
       "name": "unit",
@@ -34,7 +30,7 @@
             "may_trap": []
           },
           "opcode": "rng.unit",
-          "minimum_format_minor": 1
+          "constant_evaluable": false
         }
       ]
     }
@@ -128,19 +124,37 @@
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "helper_parameters": [
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "helper_value_returns": [
         "i32",
         "f32",
         "color",
-        "vec2"
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
       ],
       "output_only_geometry": [
         "circle",
@@ -154,7 +168,8 @@
           "contexts": [
             "numeric_operands",
             "call_arguments",
-            "helper_returns"
+            "helper_returns",
+            "asset_constants"
           ]
         }
       ],
@@ -162,11 +177,30 @@
       "components": [
         {
           "type": "vec2",
-          "names": ["x", "y"],
+          "names": [
+            "x",
+            "y"
+          ],
           "result": "f32",
           "assignable": false,
-          "opcodes": ["vec2.x", "vec2.y"],
-          "minimum_format_minor": 3
+          "opcodes": [
+            "vec2.x",
+            "vec2.y"
+          ]
+        }
+      ],
+      "parameterized": [
+        {
+          "constructor": "list",
+          "element_types": [
+            "i32",
+            "f32",
+            "color",
+            "vec2",
+            "distribution"
+          ],
+          "nested": false,
+          "representation": "immutable_arena_handle"
         }
       ]
     },
@@ -182,16 +216,9 @@
       "uniforms": "draw_only",
       "uniforms_read_only": true,
       "helper_parameters_read_only": true,
-      "draw_controls": {
-        "names": [
-          "v",
-          "a"
-        ],
-        "type": "i32",
-        "read_only": true
-      },
       "seed": "current_rng_state_in_all_functions",
-      "palettes": "all_asset_functions"
+      "palettes": "all_asset_functions",
+      "constants": "all_asset_functions"
     },
     "named_calls": {
       "targets": [
@@ -221,42 +248,122 @@
     },
     "random_range": {
       "operator": "to",
-      "keyword": "contextual",
-      "precedence": {"tighter_than": "<", "looser_than": "<<"},
+      "keyword": "reserved",
+      "precedence": {
+        "tighter_than": "<",
+        "looser_than": "<<"
+      },
       "chaining": false,
-      "evaluation_order": ["lower", "upper"],
+      "evaluation_order": [
+        "lower",
+        "upper"
+      ],
       "overloads": [
         {
           "lower": "i32",
           "upper": "i32",
           "result": "i32",
           "opcode": "rng.int",
-          "minimum_format_minor": 5,
           "bounds": "inclusive",
-          "draws": {"minimum": 1, "maximum": 32}
+          "draws": {
+            "minimum": 1,
+            "maximum": 32
+          }
         }
       ],
       "mixed_numeric_bounds": "widen_to_f32",
-      "traps": ["lower_greater_than_upper"],
+      "traps": [
+        "lower_greater_than_upper"
+      ],
       "equal_bounds": "bound_after_one_draw",
       "effects": {
         "rng": "advance_current",
         "writes_canvas": false,
         "writes_outputs": false,
         "summary": "intrinsic",
-        "may_trap": ["numeric_range"]
+        "may_trap": [
+          "numeric_range"
+        ]
       },
       "with": {
         "keyword": "with",
         "type": "distribution",
-        "evaluation_order": ["lower", "upper", "distribution"],
-        "overloads": [{"lower": "i32", "upper": "i32", "result": "i32", "opcode": "rng.int.with", "minimum_format_minor": 5, "bounds": "inclusive", "draws": {"minimum": 1, "maximum": 1}}],
+        "evaluation_order": [
+          "lower",
+          "upper",
+          "distribution"
+        ],
+        "overloads": [
+          {
+            "lower": "i32",
+            "upper": "i32",
+            "result": "i32",
+            "opcode": "rng.int.with",
+            "bounds": "inclusive",
+            "draws": {
+              "minimum": 1,
+              "maximum": 1
+            }
+          }
+        ],
         "truncation": "conditioned_on_range",
         "integer_rounding": "nearest_half_away_from_zero",
         "fuel": "one_plus_kernel_iterations",
-        "traps": ["no_probability_in_range"],
-        "effects": {"rng": "advance_current", "writes_canvas": false, "writes_outputs": false, "summary": "intrinsic", "may_trap": ["numeric_range"]}
+        "traps": [
+          "no_probability_in_range"
+        ],
+        "effects": {
+          "rng": "advance_current",
+          "writes_canvas": false,
+          "writes_outputs": false,
+          "summary": "intrinsic",
+          "may_trap": [
+            "numeric_range"
+          ]
+        }
       }
+    },
+    "asset_constants": {
+      "keyword": "reserved",
+      "syntax": "const <type> <name> = <expression>",
+      "scope": "asset",
+      "visibility": "all_asset_functions",
+      "dependencies": "forward_acyclic",
+      "evaluation": "compile_time",
+      "distribution_validation": "compile_time",
+      "read_only": true,
+      "check_all_declarations": true,
+      "check_effects_in_dead_branches": true,
+      "user_helper_calls": false,
+      "generation_state": false,
+      "types": [
+        "i32",
+        "f32",
+        "color",
+        "vec2",
+        "distribution",
+        "list<i32>",
+        "list<f32>",
+        "list<color>",
+        "list<vec2>",
+        "list<distribution>"
+      ]
+    },
+    "collections": {
+      "literal": "[<elements>]",
+      "minimum_length": 0,
+      "maximum_length": 256,
+      "empty_literal": "known_list_type_required",
+      "element_evaluation": "left_to_right_once",
+      "numeric_elements": "i32_to_f32_widening",
+      "index_type": "i32",
+      "index_bounds": "trap",
+      "mutable": false,
+      "helper_transfer": "share_immutable_data",
+      "legacy_palette_index": "last_element_fallback",
+      "legacy_palette_length_limit": "unchanged",
+      "palette_as_list_maximum": 256,
+      "generation_data_limit_bytes": 67108864
     }
   },
   "effect_rules": {

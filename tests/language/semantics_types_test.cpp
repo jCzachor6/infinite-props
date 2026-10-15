@@ -31,7 +31,7 @@ asset t {
 
     // i32 and f32 palettes work too.
     CHECK_NOTHROW(checkAsset(parse(R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
   palette weights = [3, 1, 2]
   palette levels = [0.5, 1.0]
@@ -69,7 +69,7 @@ asset t {
 
 TEST_CASE("palette indexing is type checked") {
     CHECK_NOTHROW(checkAsset(parse(R"(
-asset t {
+asset t { input i32 v = 0
   size 8x8
   palette leafDark = [#365c38, #4c603e, #264a46]
   draw {
@@ -81,11 +81,10 @@ asset t {
     expectCheckError(R"(
 asset t { size 8x8 palette p = [#111111] draw { c = p[0.5] } })",
         "palette index must be i32");
-    expectCheckError(wrap("c = missing[0]"), "'missing' is not a palette");
-    expectCheckError(R"(
-asset t { size 8x8 palette p = [#111111] draw { c = p } })",
-        "must be indexed");
-    expectCheckError(wrap("c = 5[0]"), "only palettes can be indexed");
+    expectCheckError(wrap("c = missing[0]"), "undefined name");
+    CHECK_NOTHROW(checkAsset(parse(R"(
+asset t { size 8x8 palette p = [#111111] draw { c = p } })"), {}));
+    expectCheckError(wrap("c = 5[0]"), "only lists and palettes can be indexed");
     // A local cannot shadow a palette.
     expectCheckError(R"(
 asset t { size 8x8 palette p = [1, 2] draw { p = 3 } })",
@@ -135,7 +134,7 @@ TEST_CASE("undefined names and functions are rejected with locations") {
     REQUIRE(threw);
 
     expectCheckError(wrap("x = missing_fn(1)"), "undefined function");
-    expectCheckError(wrap("v = 5"), "cannot assign to builtin");
+    CHECK_NOTHROW(checkAsset(parse(wrap("v = 5")), {}));
     expectCheckError(wrap("seed = 5"), "reserved");
 }
 

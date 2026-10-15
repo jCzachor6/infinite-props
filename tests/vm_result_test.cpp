@@ -90,7 +90,7 @@ TEST_CASE("VM consuming and copying result paths preserve all slots and RNG", "[
         draw { rect(0,0,8,8,#1238); anchor = {-0.0, unit()}; bounds = {1,2,3,4};
           area = {2,3,4}; for i in 0..3 { points = {i, helper()};
             rectangles = {i,-0.0,unit(),2}; circles = {unit(),i,1}; }
-          child.draw(seed = index(n = 99), v = 0, a = 0, at = {4,4}, rot = 90, mirror_x = true);
+          child.draw(seed = index(n = 99),   at = {4,4}, rot = 90, mirror_x = true);
           points = {unit(), unit()}; }
         helper() -> f32 { return unit(); } })");
     ips::checkAsset(child, {});
@@ -117,7 +117,7 @@ TEST_CASE("VM result consumption requires successful completion", "[vm-result]")
     file.meta.fuel = 1;
     VM trapped(file, {});
     CHECK_THROWS_AS(trapped.run(), Trap);
-    const auto partial = trapped.result();
+    CHECK_THROWS_AS(trapped.result(), std::logic_error);
     CHECK_THROWS_AS(trapped.takeResult(), std::logic_error);
-    sameResult(trapped.result(), partial);
+    CHECK_THROWS_AS(trapped.run(), std::logic_error);
 }

@@ -5,12 +5,11 @@
 typedef struct {
     uint32_t struct_size, size_x, size_y;
     float origin_x, origin_y;
-    uint32_t variants, archetypes;
     uint64_t fuel;
 } old_program_info;
 #define SAME_OFFSET(field) typedef char old_offset_##field[(offsetof(old_program_info, field) == offsetof(iprop_program_info_ex, field)) ? 1 : -1]
 SAME_OFFSET(struct_size); SAME_OFFSET(size_x); SAME_OFFSET(size_y); SAME_OFFSET(origin_x);
-SAME_OFFSET(origin_y); SAME_OFFSET(variants); SAME_OFFSET(archetypes); SAME_OFFSET(fuel);
+SAME_OFFSET(origin_y); SAME_OFFSET(fuel);
 #undef SAME_OFFSET
 typedef char extension_begins_after_old_size[(offsetof(iprop_program_info_ex, has_emission) == sizeof(old_program_info)) ? 1 : -1];
 
@@ -18,13 +17,12 @@ static int exact_prefixes(iprop_program* program, const iprop_program_info_ex* e
     uint32_t capacity;
     const size_t starts[] = {offsetof(iprop_program_info_ex, size_x), offsetof(iprop_program_info_ex, size_y),
         offsetof(iprop_program_info_ex, origin_x), offsetof(iprop_program_info_ex, origin_y),
-        offsetof(iprop_program_info_ex, variants), offsetof(iprop_program_info_ex, archetypes),
         offsetof(iprop_program_info_ex, fuel), offsetof(iprop_program_info_ex, has_emission),
         offsetof(iprop_program_info_ex, emission_color), offsetof(iprop_program_info_ex, emission_offset_x),
         offsetof(iprop_program_info_ex, emission_offset_y), offsetof(iprop_program_info_ex, emission_radius),
         offsetof(iprop_program_info_ex, format_major), offsetof(iprop_program_info_ex, format_minor),
         offsetof(iprop_program_info_ex, container_flags)};
-    const size_t widths[] = {4,4,4,4,4,4,8,4,4,4,4,4,4,4,4};
+    const size_t widths[] = {4,4,4,4,8,4,4,4,4,4,4,4,4};
     for (capacity = 0; capacity <= sizeof(*expected) + 16; ++capacity) {
         const size_t allocation = capacity < 4 ? 4 : capacity;
         unsigned char* storage = (unsigned char*)malloc(allocation);
@@ -58,7 +56,7 @@ static int exact_prefixes(iprop_program* program, const iprop_program_info_ex* e
 int main(int argc, char** argv) {
     uint8_t *bytes, *plain = NULL;
     size_t size, plain_size = 0;
-    uint32_t variant, section, meta_entry = 0, meta_at = 0, physical_major, physical_minor;
+    uint32_t variant, section, meta_entry = 0, meta_at = 0;
     iprop_program *program = NULL, *emissive = NULL;
     iprop_program_info_ex info, before;
     iprop_error_ex error;
@@ -75,8 +73,8 @@ int main(int argc, char** argv) {
         CHECK(iprop_program_load_ex(bytes, size, &program, &error) == IPROP_EX_OK);
         CHECK(iprop_program_info_ex_init(&info, sizeof(info)) == IPROP_EX_OK);
         CHECK(iprop_program_query(program, &info, &error) == IPROP_EX_OK);
-        CHECK(info.format_major == ((uint32_t)bytes[4] | (uint32_t)bytes[5] << 8));
-        CHECK(info.format_minor == ((uint32_t)bytes[6] | (uint32_t)bytes[7] << 8));
+        /* Reserved: the header bytes that once held a version are zero. */
+        CHECK(read_u32(bytes + 4) == 0 && info.format_major == 0 && info.format_minor == 0);
         CHECK(info.container_flags == read_u32(bytes + 8));
         CHECK(info.has_emission == 0 && info.emission_color.r == 0 && info.emission_color.g == 0 && info.emission_color.b == 0 && info.emission_color.a == 0);
         CHECK(float_bits(&info.emission_offset_x) == 0 && float_bits(&info.emission_offset_y) == 0 && float_bits(&info.emission_radius) == 0);
@@ -87,23 +85,21 @@ int main(int argc, char** argv) {
     /* Add a real emission block to a stripped physical container. Rebase only
      * later section offsets; no debug addresses or source metadata are involved. */
     CHECK(plain != NULL);
-    physical_major = (uint32_t)plain[4] | (uint32_t)plain[5] << 8;
-    physical_minor = (uint32_t)plain[6] | (uint32_t)plain[7] << 8;
     for (section = 0; section < read_u32(plain + 12); ++section)
         if (read_u32(plain + 20 + section * 12) == 1) { meta_entry = 20 + section * 12; meta_at = read_u32(plain + meta_entry + 4); }
-    CHECK(meta_entry != 0 && meta_at + 40 <= plain_size && plain[meta_at + 32] == 0);
+    CHECK(meta_entry != 0 && meta_at + 32 <= plain_size && plain[meta_at + 24] == 0);
     bytes = (uint8_t*)malloc(plain_size + 16); CHECK(bytes != NULL);
-    memcpy(bytes, plain, meta_at + 40);
-    memcpy(bytes + meta_at + 56, plain + meta_at + 40, plain_size - meta_at - 40);
-    bytes[meta_at + 32] = 1;
-    bytes[meta_at + 40] = 0x12; bytes[meta_at + 41] = 0x34; bytes[meta_at + 42] = 0x56; bytes[meta_at + 43] = 0x78;
-    write_u32(bytes + meta_at + 44, UINT32_C(0x80000000));
-    write_u32(bytes + meta_at + 48, UINT32_C(0x00000001));
-    write_u32(bytes + meta_at + 52, UINT32_C(0x7fc12345));
+    memcpy(bytes, plain, meta_at + 32);
+    memcpy(bytes + meta_at + 48, plain + meta_at + 32, plain_size - meta_at - 32);
+    bytes[meta_at + 24] = 1;
+    bytes[meta_at + 32] = 0x12; bytes[meta_at + 33] = 0x34; bytes[meta_at + 34] = 0x56; bytes[meta_at + 35] = 0x78;
+    write_u32(bytes + meta_at + 36, UINT32_C(0x80000000));
+    write_u32(bytes + meta_at + 40, UINT32_C(0x00000001));
+    write_u32(bytes + meta_at + 44, UINT32_C(0x7fc12345));
     write_u32(bytes + meta_entry + 8, read_u32(bytes + meta_entry + 8) + 16);
     for (section = 0; section < read_u32(bytes + 12); ++section) {
         const size_t entry = 20 + section * 12;
-        if (read_u32(bytes + entry + 4) >= meta_at + 40) write_u32(bytes + entry + 4, read_u32(bytes + entry + 4) + 16);
+        if (read_u32(bytes + entry + 4) >= meta_at + 32) write_u32(bytes + entry + 4, read_u32(bytes + entry + 4) + 16);
     }
     CHECK(iprop_program_load_ex(bytes, plain_size + 16, &emissive, &error) == IPROP_EX_OK);
     memset(bytes, 0, plain_size + 16); free(bytes); free(plain);
@@ -111,7 +107,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_query(emissive, &info, &error) == IPROP_EX_OK);
     CHECK(info.has_emission == 1 && info.emission_color.r == 0x12 && info.emission_color.g == 0x34 && info.emission_color.b == 0x56 && info.emission_color.a == 0x78);
     CHECK(float_bits(&info.emission_offset_x) == UINT32_C(0x80000000) && float_bits(&info.emission_offset_y) == 1 && float_bits(&info.emission_radius) == UINT32_C(0x7fc12345));
-    CHECK(info.format_major == physical_major && info.format_minor == physical_minor && info.container_flags == 0);
+    CHECK(info.format_major == 0 && info.format_minor == 0 && info.container_flags == 0);
     CHECK(exact_prefixes(emissive, &info, &error) == 0);
     memcpy(&before, &info, sizeof(info));
     error.message_buffer = (char*)&info.emission_color; error.message_capacity = 1;

@@ -91,16 +91,16 @@ TEST_CASE("all D4 images match output bounds with asymmetric scale origin and pl
         std::vector<u8> part;
         append(part,Opcode::Call,2); append(part,Opcode::Return);
         std::vector<u8> draw;
-        for (int i=0;i<3;++i) append(draw,Opcode::ConstI32);
+        for (int i=0;i<1;++i) append(draw,Opcode::ConstI32);
         append(draw,Opcode::ConstF32,3); append(draw,Opcode::ConstF32,4);
         append(draw,Opcode::PartDraw,0,kind);
         append(draw,Opcode::PartGetRect,2); append(draw,Opcode::OutRect,0);
         append(draw,Opcode::PartGetPoint,3); append(draw,Opcode::OutPoint,1);
         append(draw,Opcode::Return);
         const auto bytes = fullFile(
-            metaSection(16,16,0,0,1,1,1000000,false,{},0,0,0,{},{{1,0,1},{0,0,3}}),
+            metaSection(16,16,0,0,1000000,false,{},0,0,0,{},{{1,0,1},{0,0,3}}),
             constSection({"draw","root","part","anchor"},{0},{0.f,1.f,3.f,8.f,5.f,2.5f,1.5f},{{255,0,0,255}}),
-            codeSection({drawSpec(draw), {kAnonymousName,{0,0},{},{},part},
+            codeSection({drawSpec(draw), {kAnonymousName,{},{},{},part},
                          {kAnonymousName,{},{},{},helper}},
                         {{1,6,4,1,1,{},{{1,0,2},{0,0,3}}}}));
         auto file = loadFile(bytes);
@@ -142,7 +142,7 @@ TEST_CASE("nested axis swaps preserve image output alignment and restore helper 
         body.insert(body.end(),bytes.begin(),bytes.end());
     };
     const auto callPart = [&](std::vector<u8>& body, u16 index, u8 kind, u16 x, u16 y) {
-        for (int i=0;i<3;++i) append(body,Opcode::ConstI32);
+        for (int i=0;i<1;++i) append(body,Opcode::ConstI32);
         append(body,Opcode::ConstF32,x); append(body,Opcode::ConstF32,y);
         append(body,Opcode::PartDraw,index,kind);
     };
@@ -167,10 +167,10 @@ TEST_CASE("nested axis swaps preserve image output alignment and restore helper 
     append(draw,Opcode::PartGetRect,2); append(draw,Opcode::OutRect,0);
     append(draw,Opcode::Return);
     const auto bytes = fullFile(
-        metaSection(16,16,0,0,1,1,1000000,false,{},0,0,0,{},{{1,0,1}}),
+        metaSection(16,16,0,0,1000000,false,{},0,0,0,{},{{1,0,1}}),
         constSection({"draw","root","a","b"},{0},{0,1,2,3,8,5},{{255,0,0,255}}),
-        codeSection({drawSpec(draw),{kAnonymousName,{0,0},{},{},a},
-                     {kAnonymousName,{0,0},{},{},b},
+        codeSection({drawSpec(draw),{kAnonymousName,{},{},{},a},
+                     {kAnonymousName,{},{},{},b},
                      {kAnonymousName,{},{},{1,1,1,1},helper}},
                     {{1,6,4,1,1,{},{{1,0,2}}},{2,8,8,1,1,{},{{1,0,3}}}}));
     auto file = loadFile(bytes);

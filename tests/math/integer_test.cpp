@@ -19,6 +19,35 @@ using namespace iprop;
 using namespace test_support;
 using namespace math_test;
 
+TEST_CASE("i32 bounds keep signed values beyond binary32 precision") {
+    struct Pair { i32 a, b, low, high; };
+    const Pair pairs[] = {
+        {kMin, kMax, kMin, kMax}, {kMax, kMin, kMin, kMax},
+        {kMax - 1, kMax, kMax - 1, kMax}, {kMin + 1, kMin, kMin, kMin + 1},
+        {16777217, 16777218, 16777217, 16777218},
+        {-16777217, -16777218, -16777218, -16777217},
+        {-1, 0, -1, 0}, {0, -1, -1, 0}, {42, 42, 42, 42},
+    };
+    for (const auto& p : pairs) {
+        INFO(p.a << ", " << p.b);
+        CHECK(evalProgI32(Prog{}.I(p.a).I(p.b).emit(0xB1)) == p.low);
+        CHECK(evalProgI32(Prog{}.I(p.a).I(p.b).emit(0xB2)) == p.high);
+    }
+    struct Clamp { i32 x, a, b, expected; };
+    const Clamp clamps[] = {
+        {0, kMin, kMax, 0}, {kMin, kMax, kMin, kMin}, {kMax, kMax, kMin, kMax},
+        {16777217, 16777216, 16777218, 16777217},
+        {kMax, 16777218, 16777217, 16777218},
+        {kMin, -16777217, -16777218, -16777218},
+        {kMin, kMax, kMax, kMax}, {kMax, kMin, kMin, kMin},
+        {5, 10, -10, 5}, {-20, 10, -10, -10}, {20, 10, -10, 10},
+    };
+    for (const auto& p : clamps) {
+        INFO(p.x << ", " << p.a << ", " << p.b);
+        CHECK(evalProgI32(Prog{}.I(p.x).I(p.a).I(p.b).emit(0xB3)) == p.expected);
+    }
+}
+
 TEST_CASE("i32 add/sub/mul wrap in two's complement") {
     REQUIRE(evalProgI32(Prog{}.I(1).I(2).emit(0x20)) == 3);
     REQUIRE(evalProgI32(Prog{}.I(kMax).I(1).emit(0x20)) == kMin);   // wraps

@@ -19,6 +19,45 @@ using namespace iprop;
 using namespace test_support;
 using namespace math_test;
 
+TEST_CASE("vec2 normalize pins zero axes extremes and subnormal bits") {
+    struct Case { u32 x, y, nx, ny; };
+    const Case cases[] = {
+        {0, 0, 0, 0}, {0x80000000, 0, 0, 0}, {0, 0x80000000, 0, 0},
+        {0x80000000, 0x80000000, 0, 0},
+        {0x40400000, 0x40800000, 0x3f19999a, 0x3f4ccccd}, // {3,4}
+        {0xc0400000, 0xc0800000, 0xbf19999a, 0xbf4ccccd},
+        {0x7f7fffff, 0, 0x3f800000, 0},
+        {0, 0xff7fffff, 0, 0xbf800000},
+        {0x3f800000, 0x80000000, 0x3f800000, 0x80000000},
+        {0x7f7fffff, 0x7f7fffff, 0x3f3504f3, 0x3f3504f3},
+        {0xff7fffff, 0x7f7fffff, 0xbf3504f3, 0x3f3504f3},
+        {0x00800000, 0x00800000, 0x3f3504f3, 0x3f3504f3},
+        {1, 1, 0x3f3504f3, 0x3f3504f3},
+        {1, 2, 0x3ee4f92e, 0x3f64f92e},
+        {0x80000001, 0, 0xbf800000, 0},
+        {0, 1, 0, 0x3f800000},
+        {0x3f800000, 1, 0x3f800000, 1}, // output remains subnormal
+        {0x7f7fffff, 0x00800000, 0x3f800000, 0},
+    };
+    for (const auto& p : cases) {
+        INFO(std::hex << p.x << ", " << p.y);
+        const auto result = std::get<Vec2>(evalProg(Prog{}.F(f32FromBits(p.x)).F(f32FromBits(p.y))
+            .emit(0x5B).emit(0xB4))[0]);
+        CHECK(bitsOf(result.x) == p.nx);
+        CHECK(bitsOf(result.y) == p.ny);
+    }
+}
+
+TEST_CASE("vec2 normalize traps on each nonfinite component") {
+    for (const u32 bits : {0x7f800000u, 0xff800000u, 0x7fc00001u, 0xffc12345u, 0x7fa00001u}) {
+        const f32 invalid = f32FromBits(bits);
+        for (const bool first : {false, true}) {
+            expectProgTrap(Prog{}.F(first ? invalid : 1.f).F(first ? 1.f : invalid)
+                .emit(0x5B).emit(0xB4), "vec2.normalize components must be finite");
+        }
+    }
+}
+
 TEST_CASE("vec2 make/add/sub are component-wise IEEE") {
     const auto stack = evalProg(Prog{}.F(1.5f).F(2.5f).emit(0x5B));
     REQUIRE(stack.size() == 1);

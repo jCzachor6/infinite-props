@@ -1,0 +1,8 @@
+asset absentMass {
+  size 1x1
+  draw {
+    spec = stepper(10.0 to 20.0 with weighted {0: 1, 1: 2})
+    empty = spec.pick(0)
+    values = spec.pick(1)
+  }
+}

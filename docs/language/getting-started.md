@@ -18,7 +18,7 @@ the asset's downward-y plane: x increases rightward, y downward.
 
 Running the same executable with the same invocation reproduces the same
 pixels and structured outputs across conforming native and WASM hosts.
-Change a seed to vary random draws; change a variant/archetype to select
+Change a seed to vary random draws; change a declared input to select
 an authored variation. A program with no random operations ignores the seed.
 
 For a repository build, configure with `cmake -B build -DCMAKE_BUILD_TYPE=Release`

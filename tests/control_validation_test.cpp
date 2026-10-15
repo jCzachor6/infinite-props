@@ -110,7 +110,7 @@ TEST_CASE("heterogeneous helper results retain their declared stack order") {
     helper.F(1.f).I(2); helper.op(Opcode::Return);
     const auto bytes = fullFile(minimalMeta(),
         constSection({"draw"}, helper.ints, helper.floats, {}),
-        codeSection({drawSpec(draw.body),
+        codeSection({{0, {}, {}, {0}, draw.body},
                      {kAnonymousName, {}, {1, 0}, {}, helper.body}}, {}));
     const auto loaded = loadFile(bytes);
     REQUIRE_NOTHROW(validate(loaded));

@@ -2,25 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — the .ips language {{VERSION}}</title>
-<link rel="stylesheet" href="docs.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Language reference {{VERSION}} · Infinite Props</title>
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <a class="logo" href="../">iprop</a>
-  <nav aria-label="Documentation"></nav>
-  <div id="search-wrap">
-    <input id="search" aria-label="Search documentation" placeholder="search the docs…">
-    <div id="results"></div>
+<!-- @header get-started -->
+<main id="content">
+  <div class="page-head">
+    <div class="container">
+      <h1>The <code>.ips</code> language {{VERSION}}</h1>
+      <p class="versions">Product {{PRODUCT_VERSION}} · source language {{VERSION}} · C API {{C_API_VERSION}} · C ABI {{C_ABI_SOVERSION}}</p>
+      <p><a class="btn" href="language-v{{MINOR}}.md">Download the handbook</a></p>
+    </div>
   </div>
-</header>
-<main class="language-book">
-<p>Product {{PRODUCT_VERSION}} · Source language {{VERSION}} · Binary format {{FORMAT_VERSION}} · C API {{C_API_VERSION}} · C ABI {{C_ABI_SOVERSION}}</p>
-<p><a href="language-v{{MINOR}}.md">Download the handbook</a></p>
-<article>{{CONTENT}}</article>
+  <div class="container docs">
+    <!-- @docs-nav language -->
+    <article class="prose handbook">{{CONTENT}}</article>
+  </div>
 </main>
-<footer>iprop — language reference {{VERSION}}</footer>
+<!-- @footer -->
+<script type="module" src="/src/site.ts"></script>
 <script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>

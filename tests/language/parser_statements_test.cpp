@@ -86,7 +86,7 @@ asset expr {
 
 TEST_CASE("expression precedence and forms") {
     const std::string source = R"(
-asset expr {
+asset expr { input i32 a = 0
   draw {
     x = a + b * c - -d / !e % ~f
     y = 1 + 2 * 3 == 7 && 1 < 2 || 0 > 1
@@ -265,7 +265,7 @@ asset semi {
 
 TEST_CASE("else-if chains and nested blocks parse") {
     const std::string source = R"(
-asset nested {
+asset nested { input i32 a = 0
   draw {
     if (a) {
       x = 1

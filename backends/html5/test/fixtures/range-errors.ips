@@ -1,6 +1,5 @@
-asset rangeErrors {
+asset rangeErrors { input i32 v = 0
   size 1x1
-  variants 4
   output point p
   draw {
     zero = 0.0

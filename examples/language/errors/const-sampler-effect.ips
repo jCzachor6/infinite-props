@@ -1,0 +1,6 @@
+asset invalidConstantDraw {
+  size 1x1
+  const sampler<i32> width = sampler(10 to 15)
+  const i32 result = width.pick()
+  draw {}
+}

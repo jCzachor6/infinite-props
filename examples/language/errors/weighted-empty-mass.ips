@@ -1,0 +1,5 @@
+asset invalid_weighted_mass {
+  size 1x1
+  const distribution shape = weighted { 1: 0 }
+  draw { }
+}

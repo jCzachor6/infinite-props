@@ -1,6 +1,7 @@
 #!/bin/sh
-# Syncs the playground assets from the repository:
-#   the WASM module (the html5 backend build) and the example .iprop files.
+# Syncs the website assets from the repository: the WASM module (the html5
+# backend build), the home page showcase binaries from examples/showcase, the
+# specifications and the recipes.
 # Run from the repository root: sh website/prepare.sh [wasm-build] [tools]
 set -eu
 cd "$(dirname "$0")/.."
@@ -19,13 +20,14 @@ done
 mkdir -p website/public
 
 cp "$wasm_dir/iprop.js" "$wasm_dir/iprop.wasm" website/public/
-cp examples/portrait.iprop website/public/portrait.iprop
-cp examples/plant.iprop website/public/plant.iprop
-"$tools_dir/ipc" backends/html5/demo/assets/noise.ips -o website/public/noise.iprop
+mkdir -p website/public/showcase
+cp examples/showcase/*.iprop examples/showcase/LICENSE.md website/public/showcase/
 mkdir -p website/public/spec
-cp spec/iprop-v0.1.md spec/iprop-v0.2.md spec/iprop-v0.3.md spec/iprop-v0.4.md website/public/spec/
-mkdir -p website/public/reference website/public/recipes
-cp docs/optimizations-v0.4.md docs/optimization-acceptance-v0.4.md website/public/reference/
+for old in website/public/spec/iprop-v*.md website/public/reference/optimizations*.md website/public/reference/optimization-acceptance*.md; do
+  if [ -f "$old" ]; then rm -f "$old"; fi
+done
+cp spec/iprop-v0.7.md website/public/spec/
+mkdir -p website/public/recipes
 cp examples/recipes/*.ips examples/recipes/README.md website/public/recipes/
 
-echo "playground assets synced"
+echo "website assets synced"

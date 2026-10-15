@@ -14,13 +14,7 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto& constant = current_->expression(expr).constant; constant) {
         const auto& folded = *constant;
         emitConst(folded);
-        if (std::holds_alternative<i32>(folded)) {
-            return ips::ValueType::I32;
-        }
-        if (std::holds_alternative<f32>(folded)) {
-            return ips::ValueType::F32;
-        }
-        return ips::ValueType::Color;
+        return current_->typeOf(expr);
     }
     if (const auto* id = std::get_if<ips::Identifier>(&expr)) {
         if (id->name == "seed") {
@@ -30,6 +24,31 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         const u32 slot = current_->slots.at(id->name);
         ins(Opcode::LocalGet, 0, static_cast<u16>(slot));
         return current_->langTypes.at(id->name);
+    }
+    if (const auto* list = std::get_if<ips::ListLit>(&expr)) {
+        const auto type = current_->typeOf(expr);
+        const auto descriptor = plan_.pools.addType(type);
+        emitConst(static_cast<i32>(list->elements.size()));
+        ins(Opcode::ListBegin, 0, descriptor);
+        for (const auto& element : list->elements) {
+            emitExpr(*element);
+            if (type.element == ips::ValueType::F32 && current_->typeOf(*element) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+            ins(Opcode::ListAppend, 0, descriptor);
+        }
+        ins(Opcode::ListEnd, 0, descriptor);
+        return type;
+    }
+    if (const auto* d = std::get_if<ips::PointDistributionLiteral>(&expr)) {
+        emitConst(static_cast<i32>(d->points.size()));
+        ins(Opcode::DistributionBegin, 0, static_cast<u16>(d->family));
+        for (const auto& point : d->points) {
+            emitExpr(*point.key); emitExpr(*point.value);
+            const u16 types = (current_->typeOf(*point.key) == ips::ValueType::F32 ? 1 : 0) |
+                              (current_->typeOf(*point.value) == ips::ValueType::F32 ? 2 : 0);
+            ins(Opcode::DistributionAppend, 0, types);
+        }
+        ins(Opcode::DistributionEnd);
+        return ips::ValueType::Distribution;
     }
     if (const auto* vector = std::get_if<ips::VectorLit>(&expr)) {
         // A {x, y} literal in a value context becomes the vec2; the
@@ -70,7 +89,11 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         return emitCall(*call);
     }
     if (const auto* index = std::get_if<ips::Index>(&expr)) {
-        return PaletteLowerer(*this, *current_->expression(expr).palette).index(*index->index);
+        if (const auto* palette = current_->expression(expr).palette) return PaletteLowerer(*this, *palette).index(*index->index);
+        emitExpr(*index->object);
+        emitExpr(*index->index);
+        ins(Opcode::ListGet, 0, plan_.pools.addType(current_->typeOf(*index->object)));
+        return current_->typeOf(expr);
     }
     if (const auto* bin = std::get_if<ips::Binary>(&expr)) {
         return emitBinary(*bin);
@@ -101,6 +124,40 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
         }
         if (ends) ins(type == ips::ValueType::Color ? Opcode::ColorMixRgba : Opcode::Vec2Mix);
         return type;
+    }
+    if (const auto* capture = std::get_if<ips::SamplerCapture>(&expr)) {
+        const auto type = current_->typeOf(expr);
+        const auto item = type.item();
+        const auto* range = std::get_if<ips::RandomRange>(capture->value.get());
+        const auto bound = [&](const ips::Expr& value) {
+            emitExpr(value);
+            if (item == ips::ValueType::F32 && current_->typeOf(value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        };
+        if (range) {
+            bound(*range->lower); bound(*range->upper);
+            if (range->distribution) emitExpr(*range->distribution);
+        } else bound(*capture->value);
+        const auto opcode = capture->stepper ?
+            (!range ? Opcode::StepperValue : range->distribution ? Opcode::StepperWith : Opcode::StepperRange) :
+            (!range ? Opcode::SamplerValue : range->distribution ? Opcode::SamplerWith : Opcode::SamplerRange);
+        ins(opcode,
+            0, plan_.pools.addType(type));
+        return type;
+    }
+    if (const auto* blur = std::get_if<ips::SurfaceBlur>(&expr)) {
+        emitExpr(*blur->receiver);
+        emitExpr(*blur->sigma.value);
+        if (current_->typeOf(*blur->sigma.value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        return emitMethod(expr);
+    }
+    if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
+        emitExpr(*method->receiver);
+        return emitMethod(expr);
+    }
+    if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
+        emitExpr(*pick->receiver);
+        if (pick->count) emitExpr(*pick->count);
+        return emitMethod(expr);
     }
     error(ips::locationOf(expr), "unsupported expression");
 }
@@ -174,17 +231,26 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
 
 ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const PartRead read = partReadInfo(expr);
-    const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
+    const u32 part = plan_.partIndex.at(read.alias);
+    // Geometric outputs are slots; masks and layers are resource exports.
+    const auto slot = [&] { return static_cast<u16>(plan_.partSlot(part, read.output->name)); };
+    const auto resource = [&] { return plan_.resourceSlotIndex.at({part, read.output->name}); };
     switch (read.kind) {
+    case ips::OutputKind::Mask:
+        ins(Opcode::PartGetMask, 0, resource());
+        return ips::ValueType::Mask;
+    case ips::OutputKind::Layer:
+        ins(Opcode::PartGetLayer, 0, resource());
+        return ips::ValueType::Layer;
     case ips::OutputKind::Point:
-        ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetPoint, 0, slot());
         ins(Opcode::Vec2Make);
         return ips::ValueType::Vec2;
     case ips::OutputKind::Rect:
-        ins(Opcode::PartGetRect, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetRect, 0, slot());
         return ips::ValueType::Rect;
     case ips::OutputKind::Circle:
-        ins(Opcode::PartGetCircle, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetCircle, 0, slot());
         return ips::ValueType::Circle;
     }
     error(ips::locationOf(expr), "unsupported part read");

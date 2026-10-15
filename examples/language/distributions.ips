@@ -1,4 +1,4 @@
-asset Distributions {
+asset Distributions { input i32 v = 0
   size 16x8
   input f32 spread = 1.5
   output list point wear

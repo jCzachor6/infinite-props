@@ -18,6 +18,7 @@
 #include "ips/BuiltinSpec.hpp"
 #include "ips/Palette.hpp"
 #include "ips/CallPlan.hpp"
+#include "ips/AssetConstants.hpp"
 
 namespace iprop::ips {
 
@@ -62,6 +63,13 @@ struct UnresolvedType {};
 class Typer {
 public:
     using ExpressionTypes = std::unordered_map<const Expr*, ValueType>;
+    // What typing decided about an expression beyond its type, so that later
+    // stages never re-derive it.
+    struct Resolution {
+        const PaletteDecl* palette = nullptr;      // a bare palette list or legacy palette index
+        const BuiltinOverload* overload = nullptr; // the overload of a method expression
+    };
+    using ExpressionResolutions = std::unordered_map<const Expr*, Resolution>;
     explicit Typer(const std::map<std::string, PartInfo>& parts);
 
     // ---- scope ------------------------------------------------------------
@@ -82,6 +90,7 @@ public:
         ExpressionTypes expressions;
         std::set<std::string> invalidLocals{};
         CallPlans calls{};
+        ExpressionResolutions resolutions{};
     };
 
     void enterFunction(const Program& owner, const Function& function,
@@ -106,17 +115,34 @@ public:
     // ---- typing -----------------------------------------------------------
 
     // The type of an expression, validating it along the way.
-    ValueType typeOf(const Expr& expr);
+    ValueType typeOf(const Expr& expr, std::optional<ValueType> context = {});
+    ValueType paletteElementType(const PaletteDecl& declaration);
+    void registerPaletteType(const PaletteDecl& declaration, ValueType type);
+    // Registers the resolved declarations of `owner`: its palette types and
+    // the one constant probe that rejects statically known invalid values in
+    // its runtime expressions. Expressions of other owners are not probed.
+    void registerAssetDeclarations(const Program& owner, const AssetDeclarations& declarations);
     const ExpressionTypes& expressions() const { return expressions_; }
     const CallPlans& calls() const { return calls_; }
+    const ExpressionResolutions& resolutions() const { return resolutions_; }
+    // The palette a typed expression reads by name or legacy index, if any.
+    const PaletteDecl* paletteRead(const Expr& expr) const;
 
 private:
     ExpressionTypes expressions_;
     CallPlans calls_;
+    ExpressionResolutions resolutions_;
+    std::map<const Program*, std::shared_ptr<ConstantProbe>> probes_;
+    std::optional<Value> known(const Expr& expr);
+    std::optional<std::string> rejection(const Expr& call);
+    [[noreturn]] void valueError(const SourceLocation& at, std::string message) const;
+    void checkKnownPoints(const PointDistributionLiteral& literal);
+    void checkKnownBounds(const SamplerCapture& capture, ValueType item);
     // Return a stable value: typing a nested helper may save/replace Scope.
     BoundCallPlan bind(const Call& call, CallSignature signature, std::string_view name);
     ValueType infer(const Expr& expr);
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+    std::set<const PaletteDecl*> activePalettes_;
     const ResolvedPalette& palette(const Identifier& name);
     // Parts are keyed by alias path; the current namespace prefixes a
     // source alias, so each asset sees only its direct imports.
@@ -133,7 +159,7 @@ private:
     [[noreturn]] void error(const SourceLocation& at, std::string message) const;
 
     ValueType typeLiteral(const Literal& literal);
-    ValueType typeIdentifier(const Identifier& identifier);
+    ValueType typeIdentifier(const Expr& expr, const Identifier& identifier);
     ValueType typePartRead(const Expr& expr);
     ValueType typeCall(const Call& call);
     ValueType typeBuiltinCall(const Identifier& name, const Call& call,
@@ -141,7 +167,8 @@ private:
     ValueType typeUserCall(const Identifier& name, const Call& call);
     ValueType typePartCall(const Call& call);
     ValueType typeVector(const VectorLit& vector);
-    ValueType typeIndex(const Index& index);
+    ValueType typeList(const ListLit& list, std::optional<ValueType> context);
+    ValueType typeIndex(const Expr& expr, const Index& index);
     ValueType typeRamp(const Identifier& name, const Call& call);
     ValueType typeBinary(const Binary& binary);
     ValueType typeUnary(const Unary& unary);

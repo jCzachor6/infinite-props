@@ -51,8 +51,8 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
         return;
     }
     for (std::size_t i = 0; i < count; ++i) {
-        points[i].x *= ex.canvas.scaleX;
-        points[i].y *= ex.canvas.scaleY;
+        points[i].x *= ex.canvas().scaleX;
+        points[i].y *= ex.canvas().scaleY;
         if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) {
             ex.trap("coordinate out of range (curve control)", ErrorReason::NumericRange);
         }
@@ -73,8 +73,8 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     const auto kernel = count == 3
         ? math::BezierKernel::quadratic(points[0], points[1], points[2])
         : math::BezierKernel::cubic(points[0], points[1], points[2], points[3]);
-    const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas.width) - 1);
-    const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas.height) - 1);
+    const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas().width) - 1);
+    const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas().height) - 1);
     for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
         for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
@@ -131,29 +131,27 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
 
 } // namespace
 
-// §11.1 compositing, shared with the part blit (declared in VmInternals.hpp).
-void compositePixel(Execution& ex, i32 x, i32 y, const Color& src) {
-    Canvas& canvas = ex.canvas;
+void compositePixel(Execution& ex, i32 x, i32 y, const Color& src, CompositionMode mode) {
+    Canvas& canvas = ex.canvas();
     if (!canvas.contains(x, y)) {
         return;
     }
     Color& dst = canvas.at(static_cast<u32>(x), static_cast<u32>(y));
-    if (src.a == 255) {
-        dst = src;
+    if (ex.target.clips.empty()) {
+        dst = composePixel(dst, src, resolveComposition(mode, ex.target.mode));
         return;
     }
-    const u32 a = src.a;
-    const u32 b = 255u - a;
-    dst = {static_cast<u8>((static_cast<u32>(src.r) * a + static_cast<u32>(dst.r) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.g) * a + static_cast<u32>(dst.g) * b) / 255u),
-           static_cast<u8>((static_cast<u32>(src.b) * a + static_cast<u32>(dst.b) * b) / 255u),
-           dst.a}; // destination alpha preserved
+    const auto coverage = clipCoverage(ex, x, y);
+    if (!coverage) return;
+    auto source = src;
+    source.a = multiplyCoverage(source.a, coverage);
+    dst = composePixel(dst, source, resolveComposition(mode, ex.target.mode));
 }
 
 // Canvas operations (spec §9.8, exact rasterization §11).
 bool stepCanvas(Execution& ex, Instruction ins) {
-    const f32 sX = ex.canvas.scaleX;
-    const f32 sY = ex.canvas.scaleY;
+    const f32 sX = ex.canvas().scaleX;
+    const f32 sY = ex.canvas().scaleY;
     switch (ins.opcode) {
     case Opcode::Pixel: {
         const Color colour = ex.popColor();
@@ -229,6 +227,22 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         return true;
     }
 
+    case Opcode::PolyList: {
+        const auto colour = ex.popColor();
+        const auto list = ex.popHandle<ListValue>("list handle");
+        if (list.type != ValueType::list(ValueType::Vec2)) ex.trap("poly points must be list<vec2>", ErrorReason::StackType);
+        if (list.data->elements.size() < 3) ex.trap("poly requires at least three vertices", ErrorReason::NumericRange);
+        std::vector<Vec2> points;
+        points.reserve(list.data->elements.size());
+        for (const auto& value : list.data->elements) {
+            const auto point = std::get<Vec2>(value);
+            points.push_back({point.x * sX, point.y * sY});
+        }
+        fillPolygon(ex, points, colour);
+        ++ex.frame().ip;
+        return true;
+    }
+
     case Opcode::Oval: {
         const Color colour = ex.popColor();
         const f32 ry = ex.popF32() * sY;
@@ -256,12 +270,12 @@ bool stepCanvas(Execution& ex, Instruction ins) {
     case Opcode::Weather: {
         const i32 amount = ex.popI32();
         const u32 seed = static_cast<u32>(ex.popI32());
-        const u32 w = ex.canvas.width;
-        const u32 h = ex.canvas.height;
+        const u32 w = ex.canvas().width;
+        const u32 h = ex.canvas().height;
         ex.spend(static_cast<u64>(w) * h);
         for (u32 y = 0; y < h; ++y) {
             for (u32 x = 0; x < w; ++x) {
-                Color& c = ex.canvas.at(x, y);
+                Color& c = ex.canvas().at(x, y);
                 if (c.a == 0 || (c.r > 230 && c.g < 180)) {
                     continue;
                 }
@@ -280,7 +294,8 @@ bool stepCanvas(Execution& ex, Instruction ins) {
                 const auto tone = [delta](u8 v) {
                     return static_cast<u8>(std::clamp(static_cast<i32>(v) + delta, 0, 255));
                 };
-                c = {tone(c.r), tone(c.g), tone(c.b), c.a};
+                weatherPixel(ex, static_cast<i32>(x), static_cast<i32>(y),
+                    {tone(c.r), tone(c.g), tone(c.b), c.a});
             }
         }
         ++ex.frame().ip;

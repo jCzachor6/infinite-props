@@ -1,12 +1,17 @@
 // The HTML5/WASM binding: exposes the reference interpreter to JavaScript
-// through one entry point — `generate(fileBytes, inputs) -> {width, height,
-// data, outputs}`. The returned `data` is a Uint8Array view into the module
-// heap; it stays valid until the next generate() call.
+// through one entry point, `generate(fileBytes, seed,
+// sizeX, sizeY[, uniforms]) -> {width, height, data, outputs}`. `uniforms`
+// maps declared input names to values: numbers for u32/f32 inputs and
+// "#RRGGBB" or "#RRGGBBAA" strings for colours, as `ipgen --uniform` takes
+// them. The returned `data` is a Uint8Array view into the module heap; it
+// stays valid until the next generate() call.
 
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
 #include <cstring>
+#include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -27,10 +32,65 @@ std::vector<u8> g_rgba;
         .throw_();
 }
 
+bool hexDigit(char c, u8& out) {
+    if (c >= '0' && c <= '9') { out = static_cast<u8>(c - '0'); return true; }
+    if (c >= 'a' && c <= 'f') { out = static_cast<u8>(c - 'a' + 10); return true; }
+    if (c >= 'A' && c <= 'F') { out = static_cast<u8>(c - 'A' + 10); return true; }
+    return false;
+}
+
+// #RRGGBB (opaque) or #RRGGBBAA, as ipgen parses --uniform colours.
+bool parseColor(const std::string& text, Color& color) {
+    if ((text.size() != 7 && text.size() != 9) || text[0] != '#') return false;
+    u8* channels[4] = {&color.r, &color.g, &color.b, &color.a};
+    color.a = 255;
+    for (std::size_t i = 0; i < (text.size() - 1) / 2; ++i) {
+        u8 hi = 0, lo = 0;
+        if (!hexDigit(text[1 + i * 2], hi) || !hexDigit(text[2 + i * 2], lo)) return false;
+        *channels[i] = static_cast<u8>(hi * 16u + lo);
+    }
+    return true;
+}
+
+// Reads the uniforms object against the file's declared root inputs. Throws
+// std::invalid_argument, which generate() turns into a JS Error.
+std::map<std::string, UniformValue> readUniforms(const LoadedFile& loaded, emscripten::val uniforms) {
+    std::map<std::string, UniformValue> values;
+    if (uniforms.isUndefined() || uniforms.isNull()) return values;
+    const auto names = emscripten::vecFromJSArray<std::string>(
+        emscripten::val::global("Object").call<emscripten::val>("keys", uniforms));
+    for (const auto& name : names) {
+        const InputDecl* decl = loaded.meta.findInput(name, loaded.pool);
+        if (decl == nullptr) throw std::invalid_argument("unknown uniform '" + name + "'");
+        const emscripten::val value = uniforms[name];
+        UniformValue uniform;
+        uniform.type = decl->type;
+        switch (decl->type) {
+        case InputType::Color:
+            if (!value.isString() || !parseColor(value.as<std::string>(), uniform.color))
+                throw std::invalid_argument("uniform '" + name + "' must be a #RRGGBB or #RRGGBBAA colour");
+            break;
+        case InputType::F32:
+            if (!value.isNumber()) throw std::invalid_argument("uniform '" + name + "' must be a number");
+            uniform.f = static_cast<f32>(value.as<double>());
+            break;
+        case InputType::U32: {
+            const double number = value.isNumber() ? value.as<double>() : -1.0;
+            if (!(number >= 0.0 && number <= 4294967295.0) || number != static_cast<double>(static_cast<u32>(number)))
+                throw std::invalid_argument("uniform '" + name + "' must be an unsigned 32-bit integer");
+            uniform.u = static_cast<u32>(number);
+            break;
+        }
+        }
+        values[name] = uniform;
+    }
+    return values;
+}
+
 } // namespace
 
-emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 variant,
-                         u32 archetype, u32 sizeX, u32 sizeY) {
+emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY,
+                             emscripten::val uniforms) {
     // Copy the input bytes out of the JS array view into our own buffer.
     const std::size_t length = fileBytes["byteLength"].as<std::size_t>();
     std::vector<iprop::u8> bytes(length);
@@ -40,7 +100,7 @@ emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 variant,
     try {
         const auto loaded = iprop::loadFile(bytes);
         iprop::validate(loaded);
-        iprop::VM vm(loaded, {seed, variant, archetype, sizeX, sizeY, {}});
+        iprop::VM vm(loaded, {seed, sizeX, sizeY, readUniforms(loaded, uniforms)});
         vm.run();
 
         const iprop::Canvas& canvas = vm.canvas();
@@ -134,9 +194,17 @@ emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 variant,
         return resultObject;
     } catch (const iprop::FormatError& error) {
         throwJs(std::string("iprop: ") + error.what());
+    } catch (const std::invalid_argument& error) {
+        throwJs(std::string("iprop: ") + error.what());
     }
+}
+
+emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
+    return generateWith(fileBytes, seed, sizeX, sizeY,
+                        emscripten::val::undefined());
 }
 
 EMSCRIPTEN_BINDINGS(iprop) {
     emscripten::function("generate", &generate);
+    emscripten::function("generate", &generateWith);
 }

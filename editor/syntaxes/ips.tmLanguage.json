@@ -4,6 +4,21 @@
   "scopeName": "source.ips",
   "patterns": [
     {
+      "include": "#maskType"
+    },
+    {
+      "include": "#clipScope"
+    },
+    {
+      "include": "#layerCapture"
+    },
+    {
+      "include": "#surfaceMode"
+    },
+    {
+      "include": "#pointDistribution"
+    },
+    {
       "include": "#comments"
     },
     {
@@ -14,6 +29,9 @@
     },
     {
       "include": "#numbers"
+    },
+    {
+      "include": "#assetConstant"
     },
     {
       "include": "#keywords"
@@ -28,10 +46,27 @@
       "include": "#types"
     },
     {
+      "include": "#samplerCapture"
+    },
+    {
+      "include": "#samplerMethod"
+    },
+    {
+      "include": "#listMethod"
+    },
+    {
+      "include": "#surfaceMethod"
+    },
+    {
       "include": "#operators"
     }
   ],
   "repository": {
+    "assetConstant": {
+      "comment": "Reserved asset constant introducer.",
+      "name": "storage.modifier.const.ips",
+      "match": "\\bconst\\b"
+    },
     "comments": {
       "patterns": [
         {
@@ -66,16 +101,16 @@
     },
     "keywords": {
       "name": "keyword.control.ips",
-      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|list|palette|size|origin|variants|archetypes)\\b"
+      "match": "\\b(asset|input|output|import|from|draw|at|if|else|while|for|in|break|continue|return|true|false|palette|size|origin)\\b"
     },
     "rangeOperator": {
-      "comment": "Contextual: 'to' stays a name before '=', '.' or '('.",
+      "comment": "Reserved range and distribution operators.",
       "name": "keyword.operator.word.range.ips",
-      "match": "\\b(to|with)\\b(?!\\s*(=(?!=)|\\.|\\())"
+      "match": "\\b(to|with)\\b"
     },
     "types": {
       "name": "storage.type.ips",
-      "match": "\\b(color|f32|u32|i32|vec2|point|rect|circle|distribution)\\b(?!\\s*=(?!=))"
+      "match": "\\b(distribution|sampler|stepper)\\b|\\blist\\b(?=\\s*<)|\\b(color|f32|u32|i32|vec2|point|rect|circle)\\b(?!\\s*=(?!=))"
     },
     "operators": {
       "name": "keyword.operator.ips",
@@ -83,7 +118,46 @@
     },
     "builtins": {
       "name": "support.function.builtin.ips",
-      "match": "\\b(vec2\\.(len|dot|rot)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+      "match": "\\b(surface\\.paint|mask\\.(from|union|intersect|subtract|invert|expand|shrink|offset)|list\\.len|vec2\\.(len|dot|rot|normalize)|unit|stream_push|stream_pop|range|index|pick|chance|roll|choose|hash|noise|fault|smooth|sqrt|sin|cos|abs|floor|ceil|min|max|pow|exp|atan2|i32trunc|int|float|rgb|rgba|round|lerp|gaussian|triangular|beta|color\\.(mix|shade|mul|scale|hsv|set\\.a)|pixel|rect|line|oval|weather|poly)\\b(?=\\s*\\()"
+    },
+    "samplerCapture": {
+      "name": "support.function.sampler.ips",
+      "match": "\\b(?:sampler|stepper)\\b"
+    },
+    "samplerMethod": {
+      "name": "support.function.sampler.pick.ips",
+      "match": "(?<=\\.)pick\\b(?=\\s*\\()"
+    },
+    "listMethod": {
+      "name": "support.function.list.ips",
+      "match": "(?<=\\.)(distinct|sort)\\b(?=\\s*\\()"
+    },
+    "surfaceMethod": {
+      "name": "support.function.surface.ips",
+      "match": "(?<=\\.)blur\\b(?=\\s*\\()"
+    },
+    "pointDistribution": {
+      "name": "support.function.distribution.ips",
+      "match": "\\b(weighted|density)\\b"
+    },
+    "layerCapture": {
+      "comment": "Reserved layer capture and value type.",
+      "name": "keyword.control.layer.ips",
+      "match": "\\blayer\\b"
+    },
+    "surfaceMode": {
+      "name": "constant.language.surface-mode.ips",
+      "match": "\\bsurface\\.(legacy|source_over)\\b"
+    },
+    "maskType": {
+      "comment": "Reserved mask type and namespace.",
+      "name": "storage.type.mask.ips",
+      "match": "\\bmask\\b(?!\\s*\\.)"
+    },
+    "clipScope": {
+      "comment": "Reserved clip scope.",
+      "name": "keyword.control.clip.ips",
+      "match": "\\bclip\\b"
     }
   }
 }

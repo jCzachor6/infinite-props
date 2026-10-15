@@ -2,6 +2,7 @@
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
 #include "ips/PartTransform.hpp"
+#include "ips/AssetConstants.hpp"
 #include <algorithm>
 
 namespace iprop::ips {
@@ -35,7 +36,8 @@ ValueType Typer::typeCall(const Call& call) {
                 full += "." + segment;
             }
             const bool reserved = path.base == "dist" || path.base == "noise" ||
-                path.base == "cell" || path.base == "color" || path.base == "vec2";
+                path.base == "cell" || path.base == "color" || path.base == "vec2" ||
+                path.base == "surface" || path.base == "mask" || full == "list.len";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};
@@ -51,9 +53,25 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    const auto bound = bind(call,
-        builtinCallSignature(signature, call.args.size(), call.location, name.name), name.name);
+    auto callSignature = builtinCallSignature(signature, call.args.size(), call.location, name.name);
+    if (signature.lowering == BuiltinLowering::SurfacePaint) {
+        const Arg* image = nullptr;
+        for (const auto& arg : call.args) if (arg.name && *arg.name == "image") { image = &arg; break; }
+        if (!image) for (const auto& arg : call.args) if (!arg.name) { image = &arg; break; }
+        if (image) {
+            const auto type = typeOf(*image->value);
+            if (type != ValueType::Layer && type != ValueType::Mask)
+                error(locationOf(*image->value), "surface.paint image must be layer or mask, got " + std::string(typeName(type)));
+            callSignature = surfacePaintCallSignature(call, type);
+        }
+    }
+    const auto bound = bind(call, std::move(callSignature), name.name);
     const auto& args = bound.arguments;
+    if (signature.lowering == BuiltinLowering::SurfacePaint &&
+        bound.signature.parameters.back().name == "blend") {
+        if (!surfaceMode(*args.back()->value))
+            error(locationOf(*args.back()->value), "surface.paint blend must be surface.legacy or surface.source_over");
+    }
     if ((signature.lowering == BuiltinLowering::Pick && args.size() >= 2) ||
         signature.lowering == BuiltinLowering::Choose) {
         const std::size_t first = signature.lowering == BuiltinLowering::Choose ? 1 : 0;
@@ -65,7 +83,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
         return *result;
     }
-    if (signature.lowering == BuiltinLowering::Polygon) {
+    if (variadicPolygon(signature, call.args.size())) {
         for (std::size_t i = 0; i < args.size(); ++i) {
             const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
             const auto got = typeOf(*args[i]->value);
@@ -76,9 +94,23 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         return ValueType::Void;
     }
     std::vector<ValueType> types;
-    for (const auto* arg : args) types.push_back(typeOf(*arg->value));
+    const auto* contextual = builtinOverload(signature, args.size());
+    if (contextual) for (const auto& candidate : signature.overloads)
+        if (contextual && candidate.params.size() == args.size()) for (std::size_t i = 0; i < args.size(); ++i)
+            if (candidate.params[i].type != contextual->params[i].type) { contextual = nullptr; break; }
+    for (std::size_t i = 0; i < args.size(); ++i) {
+        const auto expected = contextual ? std::optional<ValueType>(contextual->params[i].type) : std::nullopt;
+        types.push_back(typeOf(*args[i]->value, expected));
+    }
     const auto* overload = builtinOverload(signature, types);
-    if (overload) return overload->result;
+    if (overload) {
+        if (name.name == "mask.expand" || name.name == "mask.shrink") {
+            const auto radius = known(*args[1]->value);
+            if (radius && (std::get<i32>(*radius) < 0 || std::get<i32>(*radius) > kMaxMaskRadius))
+                valueError(locationOf(*args[1]->value), "mask radius must be in 0..64");
+        }
+        return overload->result;
+    }
     const auto* arityMatch = builtinOverload(signature, args.size());
     for (std::size_t i = 0; i < args.size(); ++i) {
         const auto expected = arityMatch->params[i].type;
@@ -113,7 +145,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     const auto& args = bound.arguments;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const Arg& arg = *args[i];
-        const ValueType got = typeOf(*arg.value);
+        const ValueType got = typeOf(*arg.value, surface->params[i]);
         if (!argFits(surface->params[i], got)) {
             error(locationOf(*arg.value),
                   "argument " + std::to_string(i + 1) + " of '" + name.name +
@@ -124,7 +156,7 @@ ValueType Typer::typeUserCall(const Identifier& name, const Call& call) {
     return surface->result.value_or(ValueType::Void);
 }
 
-// `part.draw(seed = seed, v = v, a = a, at = {x, y}, uniforms...)`
+// `part.draw(seed = seed, at = {x, y}, uniforms...)`
 ValueType Typer::typePartCall(const Call& call) {
     const Path path = flatten(*call.callee);
     if (path.base.empty() || path.segments.size() != 1 ||
@@ -138,17 +170,15 @@ ValueType Typer::typePartCall(const Call& call) {
 
     const auto bound = bind(call, partCallSignature(part->inputs), path.base + ".draw");
     const auto& args = bound.arguments;
-    for (std::size_t i=0;i<3;++i) {
-        const auto got = typeOf(*args[i]->value);
-        if (got != ValueType::I32)
-            error(locationOf(*args[i]->value), "part call argument must be an integer, got " +
-                  std::string(typeName(got)));
-    }
-    const auto placement = typeOf(*args[3]->value);
+    const auto seed = typeOf(*args[kPartSeedSlot]->value);
+    if (seed != ValueType::I32)
+        error(locationOf(*args[kPartSeedSlot]->value), "part call argument must be an integer, got " +
+              std::string(typeName(seed)));
+    const auto placement = typeOf(*args[kPartAtSlot]->value);
     if (placement != ValueType::Vec2)
-        error(locationOf(*args[3]->value), "'at' must be a vec2 {x, y}, got " +
+        error(locationOf(*args[kPartAtSlot]->value), "'at' must be a vec2 {x, y}, got " +
               std::string(typeName(placement)));
-    for (std::size_t i=4;i<7;++i) {
+    for (std::size_t i = kPartTransformBegin; i < kPartTransformEnd; ++i) {
         if (!args[i]) continue;
         const auto got = typeOf(*args[i]->value);
         if (got != ValueType::I32)
@@ -156,7 +186,7 @@ ValueType Typer::typePartCall(const Call& call) {
                   "' must be an integer, got " + std::string(typeName(got)));
     }
     for (std::size_t i=0;i<part->inputs.size();++i) {
-        const auto* arg = args[7+i];
+        const auto* arg = args[kPartFirstInput + i];
         if (!arg) continue;
         const auto& input = part->inputs[i];
         const auto got = typeOf(*arg->value);

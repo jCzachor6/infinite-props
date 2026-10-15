@@ -106,8 +106,7 @@ std::vector<u8> stripDebug(std::span<const u8> data) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    file.writeU16(layout.header.versionMajor);
-    file.writeU16(layout.header.versionMinor);
+    file.writeU32(0); // reserved
     file.writeU32(0); // flags: debug cleared
     file.writeU32(static_cast<u32>(layout.sections.size() - 1));
     file.writeU32(0); // reserved

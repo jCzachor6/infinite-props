@@ -2,91 +2,111 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — getting started</title>
-<link rel="stylesheet" href="docs.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Get started · Infinite Props</title>
+<meta name="description" content="Download the Infinite Props SDK, compile your first .ips asset and render it from a seed.">
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <a class="logo" href="../">iprop</a>
-  <nav></nav>
-  <div id="search-wrap">
-    <input id="search" placeholder="search the docs…">
-    <div id="results"></div>
+<!-- @header get-started -->
+<main id="content">
+  <div class="page-head">
+    <div class="container">
+      <h1>Get started</h1>
+      <p>Download the toolchain, write a prop in a few lines of <code>.ips</code> and render it from any seed.</p>
+    </div>
   </div>
-</header>
-<main>
-<h1>Getting started</h1>
-<p>iprop is a portable binary format and toolchain for <strong>seed-based
-procedural 2D assets</strong>: you author an asset in the <code>.ips</code>
-language, compile it to a self-contained <code>.iprop</code> binary, and any
-backend renders it — deterministically — from a seed.</p>
+  <div class="container docs">
+    <!-- @docs-nav getting-started -->
+    <article class="prose">
+<p>Infinite Props is a portable binary format and toolchain for <strong>seed-based procedural
+2D assets</strong>. You author an asset in the <code>.ips</code> language, compile it to a
+self-contained <code>.iprop</code> binary, and any backend renders it deterministically from a
+seed and declared input values.</p>
 
-<h2 id="install">Install the toolchain</h2>
-<p>The toolchain is C++20 with CMake and zlib ≥ 1.2.9 (Linux:
-<code>zlib1g-dev</code>; macOS: platform SDK; Windows: vcpkg). Clone and build:</p>
-<pre><code>git clone &lt;repository-url&gt; iprop
-cd iprop
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel</code></pre>
-<p>This produces the tools under <code>build/tools/</code>:</p>
+<h2 id="download">Download the SDK</h2>
+<p>Tagged releases ship SDKs with command-line tools (<code>bin/</code>), the C header
+and libraries (<code>include/</code>, <code>lib/</code>) and documentation/examples
+(<code>share/iprop/</code>). Choose a published version and its checksums on the
+<a href="https://github.com/jCzachor6/infinite-props/releases" rel="noopener external">releases page</a>.</p>
+<p>This documentation describes product <strong>{{PRODUCT_VERSION}}</strong>.
+Build the current source using <a href="../source.html">Source</a> to use the
+current format and the features in this handbook. Earlier SDKs follow their own tagged documentation.</p>
+
+<h2 id="tools">The tools</h2>
 <table>
 <tr><th>tool</th><th>what it does</th></tr>
-<tr><td><code>ipa</code></td><td>assemble <code>.ipa</code> → <code>.iprop</code></td></tr>
 <tr><td><code>ipc</code></td><td>compile <code>.ips</code> → <code>.iprop</code></td></tr>
-<tr><td><code>ipgen</code></td><td>render a <code>.iprop</code> to a PNG + result JSON</td></tr>
-<tr><td><code>ipsheet</code></td><td>render a variant × seed grid</td></tr>
-<tr><td><code>ipdis</code></td><td>disassemble a binary (optionally with source lines)</td></tr>
+<tr><td><code>ipgen</code></td><td>render a <code>.iprop</code> to a PNG and print the result JSON (outputs and fuel)</td></tr>
+<tr><td><code>ipsheet</code></td><td>render a consecutive seed grid</td></tr>
+<tr><td><code>ipdis</code></td><td>disassemble a binary, optionally with source lines</td></tr>
 <tr><td><code>ipval</code></td><td>validate a binary</td></tr>
+<tr><td><code>ipa</code></td><td>assemble <code>.ipa</code> → <code>.iprop</code></td></tr>
 </table>
+<p>Every tool prints its exact options with <code>-h</code> / <code>--help</code>.</p>
 
 <h2 id="first-asset">Your first asset</h2>
 <p>Write <code>rock.ips</code>:</p>
 <pre><code>asset rock {
-  size 192x192
-  origin 96,170
-  variants 5
-  archetypes 4
-  input  color palette = #808d74
+  size 64x64
+  origin 32,56
+  input  color tint = #808d74
   output rect  collider
 
   draw {
-    w = range(21, 31)
-    h = range(35, 49)
-    collider = {96 - 20, 170 - 23, 40, 23}
-    rect(-w * 0.10, 0, w * 0.87, h, palette)
+    w = 20 to 30
+    h = 14 to 24
+    rect(32 - w / 2, 56 - h, w, h, tint)
+    rect(32 - w / 2, 56 - h, w, 3, color.shade(tint, 3))
     if (index(3) == 0) {
-      rect(-w * 0.67, 2, w * 0.39, h * 0.43,
-           color.shade(palette, -4))
+      rect(32 + w / 2 - 6, 56 - h - 4, 8, 6, color.shade(tint, -4))
     }
+    collider = {32 - w / 2, 56 - h, w, h}
   }
 }</code></pre>
 <p>Compile it, then render a seed:</p>
-<pre><code>./build/tools/ipc rock.ips -o rock.iprop
-./build/tools/ipgen rock.iprop --seed 7 -o rock.png</code></pre>
-<p>The compiler writes stripped production files and compresses only when
-smaller. Add <code>--debug</code> for source maps and symbols, or
-<code>--no-compress</code> for expanded inspection.</p>
-<p><code>ipgen</code> prints the result JSON (the structured outputs and the
-fuel readout). The same seed always renders the same pixels — on every
-platform and backend.</p>
+<pre><code>ipc rock.ips -o rock.iprop
+ipgen rock.iprop --seed 7 -o rock.png</code></pre>
+<p><code>ipgen</code> writes the image and prints the result: the structured outputs your game reads
+next to the pixels, and the fuel the run spent.</p>
+<pre><code>"fuel": {"budget": 2000000, "spent": 868},
+"outputs": [
+  {"name": "collider", "kind": "rect", "list": false,
+   "values": [{"x": 18, "y": 36, "w": 28, "h": 20}]}
+]</code></pre>
+<p>The same seed always renders the same pixels, on every platform and backend. The compiler writes
+stripped, packed production files by default; add <code>--debug</code> for source maps and symbols or
+<code>--no-compress</code> for an expanded file to inspect.</p>
+
+<h2 id="seeds">Seeds and declared inputs</h2>
+<p>The seed initializes the root random stream. Authors declare any controls they need with
+<code>input</code>, including colors, dimensions or selection indices. Hosts can override these
+values by name; omitted inputs keep their defaults. There are no implicit variant/archetype
+controls. <code>v</code> and <code>a</code> are ordinary names.</p>
 
 <h2 id="editor">The editor</h2>
-<p>For an authoring experience, use the VS Code extension (<code>editor/</code>
-in the repository):</p>
+<p>The VS Code extension (<code>editor/</code> in the repository) adds syntax highlighting, inline
+compiler diagnostics, a live preview with seed controls, an atlas browser, a bytecode inspector and
+one-click exports:</p>
 <pre><code>cd editor
 sh install.sh</code></pre>
-<p>Reload VS Code and open any <code>.ips</code> file: syntax highlighting,
-inline diagnostics from the compiler, a live preview with seed controls, an
-atlas browser, a bytecode inspector and one-click exports. The integrated
-terminal is your console for CLI agents (opencode, codex) — they edit the
-files and the extension recompiles.</p>
+<p>Reload VS Code and open any <code>.ips</code> file. The integrated terminal doubles as a console for
+coding agents: they edit the sources and the extension recompiles.</p>
 
-<div class="note">The compiled tools are expected at <code>&lt;workspace&gt;/build/tools</code>;
-every tool accepts a <code>-h</code>/<code>--help</code> flag with the exact
-options.</div>
+<h2 id="next">Next steps</h2>
+<ul>
+<li><a href="language.html">The language reference</a>: every statement, type and builtin, with tested examples.</li>
+<li><a href="format.html">The binary format</a>: what is inside an <code>.iprop</code> file.</li>
+<li><a href="backends.html">Backends</a>: the CLI, WebAssembly, the C API, SFML and Godot.</li>
+<li><a href="../recipes/README.md">24 recipes</a>: small, focused <code>.ips</code> techniques.</li>
+</ul>
+    </article>
+  </div>
 </main>
-<footer>iprop — format spec and toolchain</footer>
+<!-- @footer -->
+<script type="module" src="/src/site.ts"></script>
 <script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>

@@ -71,7 +71,7 @@ std::vector<u8> compileSource(const std::string& source, bool optimize) {
 std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run();
     std::vector<u32> bits;
     for (const auto& output : vm.result().outputs)
@@ -225,11 +225,11 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 0);
         CHECK(usesOpcode(bytes, Opcode::RngInt));
         CHECK(usesOpcode(bytes, Opcode::RngFloat));
         const auto loaded = loadFile(bytes);
-        VM vm(loaded, GenerationInputs{9, 0, 0, 0, 0, {}});
+        VM vm(loaded, GenerationInputs{9, 0, 0, {}});
         vm.run();
         const auto points = vm.result().outputs[0].points;
         REQUIRE(points.size() == 3 * 64);
@@ -282,7 +282,7 @@ TEST_CASE("bounds evaluate once, lower first, before the draw") {
 }
 
 TEST_CASE("runtime traps keep their reason through compiled ranges") {
-    const std::string reversed = "asset t { size 1x1 variants 2 output point p draw { p = {v to 0, 0} } }";
+    const std::string reversed = "asset t { input i32 v = 0  size 1x1 output point p draw { p = {v to 0, 0} } }";
     const std::string nonfinite = "asset t { size 1x1 output point p draw { z = 0.0 p = {z / z to 1.0, 0} } }";
     for (const bool optimize : {false, true}) {
         CHECK(pointBits(compileSource(reversed, optimize), 0, 0) == std::vector<u32>{0, 0});
@@ -312,55 +312,5 @@ TEST_CASE("'to' binds between shifts and comparisons and cannot be chained") {
         CHECK(error.message == "'to' cannot be chained; parenthesize the range used as a bound, for example "
                                "(a to b) to c");
         CHECK(error.location.column == 38); // the second 'to'
-    }
-}
-
-TEST_CASE("existing names 'to' keep their meaning next to the operator") {
-    // A local named `to`, read as a bound and assigned after a statement.
-    const std::string local = R"(asset t { size 1x1 output list point p
-      draw { to = 3 x = to + 1 p = {x, to} y = 1 to = 5 p = {y, to} z = to to to + 2 p = {z, 0} } })";
-    const auto localBits = pointBits(compileSource(local, false), 4);
-    REQUIRE(localBits.size() == 6);
-    CHECK(localBits[0] == std::bit_cast<u32>(4.f));
-    CHECK(localBits[2] == std::bit_cast<u32>(1.f));
-    CHECK(localBits[3] == std::bit_cast<u32>(5.f));
-    // A helper named `to`: without a separator its call is the next statement;
-    // inside parentheses or arguments, `to` is the operator.
-    const std::string helper = R"(asset t { size 8x1 output list point p
-      to(x: i32) -> i32 { pixel(x, 0, #fff) return x }
-      draw {
-        x = 1 to(2) p = {x, 0}
-        y = (1 to (5)) p = {y, 0}
-        p = {to(6), 3 to (3)}
-        for i in 0..to(1) { p = {i, 0} }
-      } })";
-    for (const bool optimize : {false, true}) {
-        const auto bytes = compileSource(helper, optimize);
-        const auto loaded = loadFile(bytes);
-        VM vm(loaded, GenerationInputs{0, 0, 0, 0, 0, {}});
-        vm.run();
-        const auto result = vm.result();
-        const auto& points = result.outputs[0].points;
-        REQUIRE(points.size() == 4);
-        CHECK(points[0].x == 1.f);
-        CHECK(points[1].x >= 1.f);
-        CHECK(points[1].x <= 5.f);
-        CHECK(points[2].x == 6.f);
-        CHECK(points[2].y == 3.f);
-        CHECK(points[3].x == 0.f);
-        for (const u32 x : {2u, 6u, 1u}) CHECK(result.image.at(x, 0) == Color{255, 255, 255, 255});
-        CHECK(result.image.at(0, 0).a == 0);
-    }
-    // A part alias `to` starts its draw statement after an assignment.
-    const auto program = ips::parse(R"(import to from "leaf.ips"
-      asset t { size 1x1 draw { x = 1 to.draw(seed, 0, 0, at = {0, 0}) } })");
-    const auto& body = program.asset.functions.at(0).body;
-    REQUIRE(body.size() == 2);
-    CHECK(std::holds_alternative<ips::Literal>(*std::get<ips::VarDecl>(body[0]).value));
-    CHECK(std::holds_alternative<ips::ExprStmt>(body[1]));
-    for (const auto& source : {local, helper}) {
-        const auto formatted = format(source);
-        CHECK(format(formatted) == formatted);
-        CHECK(stripDebug(compileSource(formatted, false)) == stripDebug(compileSource(source, false)));
     }
 }

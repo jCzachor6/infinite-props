@@ -68,6 +68,15 @@ bool stepVector(Execution& ex, Instruction ins) {
         ++ex.frame().ip;
         return true;
     }
+    case Opcode::Vec2Normalize: {
+        const Vec2 v = ex.popVec2();
+        if (!std::isfinite(v.x) || !std::isfinite(v.y)) {
+            ex.trap("vec2.normalize components must be finite", ErrorReason::NumericRange);
+        }
+        ex.push(Value(math::vec2Normalize(v)));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::Vec2Dot: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();

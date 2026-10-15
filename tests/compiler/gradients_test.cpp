@@ -36,7 +36,7 @@ std::vector<u8> compileSource(const std::string& source, bool optimize) {
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
     vm.run();
     return vm.result();
 }
@@ -137,7 +137,7 @@ TEST_CASE("a color gradient shares one position across all channels") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 5);
+        CHECK(bytes[6] == 0);
         const auto result = generate(bytes, 13);
         for (const auto& point : result.outputs[0].points) {
             CHECK(point.x == 0.f);
@@ -235,8 +235,7 @@ TEST_CASE("gradient and segment types are checked and traps keep their reason") 
     CHECK(sourceError(wrap("x = 0.5 to #fff")) ==
           "'to' needs two numbers, two colors or two vec2 values, got f32 and color");
     CHECK(sourceError(wrap("x = #000 to #fff with 0.5")) == "'with' needs a distribution, got f32");
-    const std::string infinite = "asset t { size 1x1 variants 2 output point p draw {\n"
-                                 "  z = 0.0 p = {0.0, 0.0} to {1.0 / (z + float(1 - v)), 1.0} } }";
+    const std::string infinite = "asset t { input i32 v = 0  size 1x1 output point p draw {\n  z = 0.0 p = {0.0, 0.0} to {1.0 / (z + float(1 - v)), 1.0} } }";
     for (const bool optimize : {false, true}) {
         CHECK_NOTHROW(generate(compileSource(infinite, optimize), 0, 0));
         CHECK_THROWS_AS(generate(compileSource(infinite, optimize), 0, 1), Trap);

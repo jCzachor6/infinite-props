@@ -1,12 +1,11 @@
 // The Godot GDExtension over the C API (tasks 8.1/8.2).
 //
 // IpropAsset (Resource): loads a .iprop file through the ipropc library,
-// keeps one parameter set for its root inputs, generates one (seed, variant,
-// archetype) tuple into a Godot Image and exposes the meta and the structured
+// keeps one parameter set for its root inputs, generates one (seed) tuple into a Godot Image and exposes the meta and the structured
 // outputs as properties.
 //
 // IpropSprite2D (Sprite2D): a convenience node holding an IpropAsset and a
-// seed/variant/archetype; refresh() regenerates the texture.
+// seed and inputs; refresh() regenerates the texture.
 
 #pragma once
 
@@ -35,8 +34,6 @@ class IpropAsset : public godot::Resource {
     iprop_parameters* parameters_ = nullptr; // created with each load
     godot::Vector2i size_{};
     godot::Vector2 origin_{};
-    int64_t variants_ = 0;
-    int64_t archetypes_ = 0;
     int64_t fuel_ = 0;
     godot::Dictionary outputs_{};
     godot::Dictionary part_outputs_{};
@@ -71,13 +68,10 @@ public:
     // Generates one tuple; returns the RGBA8 image. The structured outputs
     // are copied and exposed through get_outputs(). A failure preserves the
     // previously completed generation's maps; returned Images own their bytes.
-    godot::Ref<godot::Image> generate(int64_t seed, int64_t variant,
-                                      int64_t archetype);
+    godot::Ref<godot::Image> generate(int64_t seed);
 
     godot::Vector2i get_size() const { return size_; }
     godot::Vector2 get_origin() const { return origin_; }
-    int64_t get_variants() const { return variants_; }
-    int64_t get_archetypes() const { return archetypes_; }
     int64_t get_fuel() const { return fuel_; }
     godot::Dictionary get_outputs() const { return outputs_; }
     godot::Dictionary get_part_outputs() const { return part_outputs_; }
@@ -89,8 +83,6 @@ class IpropSprite2D : public godot::Sprite2D {
 
     godot::Ref<IpropAsset> asset_;
     int64_t seed_ = 0;
-    int64_t variant_ = 0;
-    int64_t archetype_ = 0;
 
 protected:
     static void _bind_methods();
@@ -110,10 +102,6 @@ public:
     godot::Ref<IpropAsset> get_asset() const { return asset_; }
     void set_seed(int64_t seed);
     int64_t get_seed() const { return seed_; }
-    void set_variant(int64_t variant);
-    int64_t get_variant() const { return variant_; }
-    void set_archetype(int64_t archetype);
-    int64_t get_archetype() const { return archetype_; }
 };
 
 } // namespace iprop_godot

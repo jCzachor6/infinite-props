@@ -14,7 +14,7 @@
 
 namespace iprop::ips {
 
-enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta };
+enum class BuiltinLowering { Opcode, Round, Polygon, ColorConstructor, Pick, Chance, Roll, Choose, Beta, ListLength, SurfacePaint };
 struct BuiltinParameter {
     std::string name;
     ValueType type;
@@ -40,8 +40,17 @@ struct BuiltinSpec {
 // Language contracts are distinct from VM stack contracts: coercions, overloads
 // and special lowerings belong here, without duplicating them in the emitter.
 const std::map<std::string, BuiltinSpec>& builtinSpecs();
+// Receiver-first signatures for the statically resolved sampler method.
+// Kept separate from global builtin pick and shared by typing/docs/lowering.
+const BuiltinSpec& samplerPickSpec();
+const BuiltinSpec& stepperPickSpec();
+const std::map<std::string, BuiltinSpec>& listMethodSpecs();
+const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs();
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::size_t arity);
 const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const ValueType> arguments);
+// A polygon call without a fixed overload of its arity: poly(color, x0, y0, ...)
+// is variadic, while poly(points, color) lowers through its overload.
+bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity);
 // The distribution constructors arrived after helpers could take their
 // names, so a helper declared with one of these names keeps its calls.
 bool builtinYieldsToHelper(std::string_view name);

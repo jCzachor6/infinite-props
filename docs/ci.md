@@ -47,17 +47,6 @@ be created by tools outside the packaging scripts. Archive extraction requires
 a new or empty directory and refuses to merge a package into an existing
 source checkout or previously extracted SDK.
 
-If numbered copies return without packaging being run, inspect the checkout's
-sync provider before attributing them to the release scripts. In the macOS
-checkout used during 0.5 development, scoped File Provider logs matched all
-four returning files by item ID and inode: iCloud Drive created them locally
-with `why:itemChangedRemotely`. This establishes remote synchronization as
-the cause of that recurrence, but does not identify which device or tool
-originally created the numbered remote items. Removing a local copy cannot
-guarantee that a later remote change will not restore it. Preserve and compare
-its contents, remove only confirmed duplicates, and keep the packaging guard
-enabled; changing cloud settings is a separate checkout-management decision.
-
 The generated handbook directory is configurable independently of the native
 build directory. In a synchronized checkout, set
 `-DIPROP_LANGUAGE_DOCS_DIR=/absolute/path/outside/cloud/language-docs` when
@@ -81,7 +70,7 @@ Every SDK ships the book under `share/iprop/docs/`; WASM and website archives
 use `docs/` at their root. Schema-2 `language-manifest.json` records separate
 product, source-language, format, C API and C ABI versions, source commit,
 development/release status, compiler catalog and file digests. The current
-book is `language-v0.6.md`; the collector checks all five version fields
+book is `language-v0.7.md`; the collector checks all five version fields
 against their source constants in every archive and validation/CI report.
 Installed SDK checks compare it with the installed compiler. Archive collection
 also requires the complete documentation payload, unchanged authored inputs,
@@ -127,12 +116,13 @@ without further writes. Concurrent publication for one tag is serialized.
 To release after the reviewed changes are merged and the metadata is final:
 
 ```sh
-git tag -a v0.4.0 -m "Release 0.4.0"
-git push origin v0.4.0
+git tag -a vX.Y.Z -m "Release X.Y.Z"
+git push origin vX.Y.Z
 ```
 
-Before creating a release tag, finalize the changelog date and freeze the
-matching specification. A manual CI run on `develop` retains and validates
+Replace X.Y.Z with the finalized release version. Product 0.7.0 has a dated
+changelog and a frozen 0.7 specification; later releases finalize the changelog
+date and freeze the matching specification before creating a release tag. A manual CI run on `develop` retains and validates
 candidate packages without publishing a GitHub Release.
 
 Local diagnostic commands:

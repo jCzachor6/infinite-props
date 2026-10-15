@@ -1,0 +1,7 @@
+asset Pillar {
+  size 16x32
+  draw {
+    h = 14.0 to 26.0
+    rect(4, 30.0 - h, 8, h, #9aa3ad)
+  }
+}

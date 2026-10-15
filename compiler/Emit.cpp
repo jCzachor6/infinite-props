@@ -19,7 +19,7 @@ void Emitter::ins(Opcode opcode, u8 aux, u16 operand) {
     // the branch depth to the enclosing while's labels. Every label-pushing
     // opcode has a matching End in the validated output, so the vector is
     // balanced and empty at every function boundary.
-    if (opcode == Opcode::If || opcode == Opcode::Block) {
+    if (opcode == Opcode::If || opcode == Opcode::Block || opcode == Opcode::LayerBegin || opcode == Opcode::ClipBegin) {
         labelKinds_.push_back(0);
     } else if (opcode == Opcode::Loop) {
         labelKinds_.push_back(1);
@@ -40,26 +40,43 @@ void Emitter::emitConst(const Value& value) {
         ins(Opcode::ConstF32, 0, static_cast<u16>(plan_.pools.addFloat(bits)));
     } else if (const auto* c = std::get_if<Color>(&value)) {
         ins(Opcode::ConstColor, 0, static_cast<u16>(plan_.pools.addColor(*c)));
+    } else if (const auto* vector = std::get_if<Vec2>(&value)) {
+        emitConst(vector->x); emitConst(vector->y);
+        ins(Opcode::Vec2Make);
+    } else if (const auto* list = std::get_if<ListValue>(&value)) {
+        ins(Opcode::ConstList, 0, plan_.pools.addList(*list));
+    } else if (const auto* sampler = std::get_if<SamplerValue>(&value)) {
+        ins(Opcode::ConstSampler, 0, plan_.pools.addSampler(*sampler));
+    } else if (const auto* stepper = std::get_if<StepperValue>(&value)) {
+        ins(Opcode::ConstStepper, 0, plan_.pools.addStepper(*stepper));
+    } else if (const auto* distribution = std::get_if<Distribution>(&value)) {
+        if (distribution->points) {
+            ins(Opcode::ConstDistribution, 0, plan_.pools.addDistribution(*distribution));
+            return;
+        }
+        const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
+            distribution->family == DistributionFamily::Triangular ? 3u : 4u;
+        for (std::size_t parameter = 0; parameter < count; ++parameter) emitConst(distribution->parameters[parameter]);
+        ins(distribution->family == DistributionFamily::Gaussian ? Opcode::DistributionGaussian :
+            distribution->family == DistributionFamily::Triangular ? Opcode::DistributionTriangular : Opcode::DistributionBeta);
     }
 }
 
 TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
+    // Pool exhaustion stays a PoolLimit; only the local table is located here.
+    if (type.needsDescriptor()) plan_.pools.addType(type);
+    else if (type != ips::ValueType::I32 && type != ips::ValueType::F32 && type != ips::ValueType::Vec2 &&
+             type != ips::ValueType::Color && type != ips::ValueType::Distribution)
+        throw std::logic_error("temporary requires a value type");
     try {
-        switch (type) {
-        case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
-        case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
-        case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
-        case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
-        case ips::ValueType::Distribution: return temporaries_.acquire(ValueType::Distribution);
-        default: throw std::logic_error("temporary requires a value type");
-        }
-    } catch (const std::length_error& exception) {
-        error({currentLine_, 1}, exception.what());
+        return temporaries_.acquire(type);
+    } catch (const LocalLimit& exception) {
+        throw ips::SourceError{{currentLine_, 1}, exception.what(), {}, ips::DiagnosticCode::ResourceLimit,
+                               ips::DiagnosticStage::Planning};
     }
 }
 
 bool Emitter::isParam(const std::string& name) const {
-    if (current_->drawLike && (name == "v" || name == "a")) return true;
     for (const auto& param : current_->ast->params) {
         if (param.name == name) {
             return true;
@@ -70,6 +87,8 @@ bool Emitter::isParam(const std::string& name) const {
 
 void Emitter::emitFunction(PlannedFunction& function) {
     current_ = &function;
+    for (const auto* slots : {&function.params, &function.results, &function.locals})
+        for (const auto type : *slots) if (type.needsDescriptor()) plan_.pools.addType(type);
     code_.clear();
     lines_.clear();
     currentLine_ = 0;
@@ -129,6 +148,16 @@ void Emitter::emitStmt(const ips::Stmt& stmt) {
                 emitStmt(s);
             }
         }
+        ins(Opcode::End);
+    } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
+        ins(Opcode::LayerBegin, static_cast<u8>(capture->alpha),
+            static_cast<u16>(current_->slots.at(capture->name)));
+        for (const auto& child : capture->body) emitStmt(child);
+        ins(Opcode::End);
+    } else if (const auto* clip = std::get_if<ips::ClipStmt>(&stmt)) {
+        emitExpr(*clip->mask);
+        ins(Opcode::ClipBegin);
+        for (const auto& child : clip->body) emitStmt(child);
         ins(Opcode::End);
     } else if (const auto* whileStmt = std::get_if<ips::WhileStmt>(&stmt)) {
         ins(Opcode::Block);
@@ -227,36 +256,45 @@ u32 Emitter::slotForOutput(const ips::Program* owner,
 void Emitter::emitOutputWrite(const ips::Program* owner,
                               const ips::OutputDecl& output,
                               const ips::Expr& value) {
-    const u32 slot = slotForOutput(owner, output);
-    if (output.kind == ips::OutputKind::Point) {
+    // Rects and circles take a literal or a part read of the right shape.
+    const auto compound = [&] {
+        if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
+            for (const auto& element : vector->elements) {
+                emitExpr(*element);
+                if (current_->typeOf(*element) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+            }
+        } else {
+            emitExpr(value); // part.get.* pushes the right shape
+        }
+    };
+    // Geometric outputs are slots; masks and layers are resource exports.
+    const auto slot = [&] { return static_cast<u16>(slotForOutput(owner, output)); };
+    const auto resource = [&] {
+        return plan_.resourceSlotIndex.at({current_->partOwner.value_or(kRootParent), output.name});
+    };
+    switch (output.kind) {
+    case ips::OutputKind::Mask:
+        emitExpr(value);
+        ins(Opcode::OutMask, 0, resource());
+        return;
+    case ips::OutputKind::Layer:
+        emitExpr(value);
+        ins(Opcode::OutLayer, 0, resource());
+        return;
+    case ips::OutputKind::Point:
         // Points take the vec2 shape: a literal pair, a bare part read or
         // an unpacked vec2 value (see emitPointValue).
         emitPointValue(value);
-        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
-            static_cast<u16>(slot));
+        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0, slot());
         return;
-    }
-    if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
-        for (const auto& element : vector->elements) {
-            emitExpr(*element);
-            if (current_->typeOf(*element) == ips::ValueType::I32) {
-                ins(Opcode::I32ToF32);
-            }
-        }
-    } else {
-        emitExpr(value); // part.get.* pushes the right shape
-    }
-    switch (output.kind) {
-    case ips::OutputKind::Point:
-        break; // handled above
     case ips::OutputKind::Rect:
-        ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0,
-            static_cast<u16>(slot));
-        break;
+        compound();
+        ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0, slot());
+        return;
     case ips::OutputKind::Circle:
-        ins(output.isList ? Opcode::OutListCircle : Opcode::OutCircle, 0,
-            static_cast<u16>(slot));
-        break;
+        compound();
+        ins(output.isList ? Opcode::OutListCircle : Opcode::OutCircle, 0, slot());
+        return;
     }
 }
 

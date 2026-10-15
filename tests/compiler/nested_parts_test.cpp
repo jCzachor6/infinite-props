@@ -47,7 +47,7 @@ std::vector<u8> build(const Sources& sources, const std::string& entry, SourceCo
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed = 7, u32 variant = 0) {
     const auto file = loadFile(bytes);
     validate(file);
-    VM vm(file, GenerationInputs{seed, variant, 0, 0, 0, {}});
+    VM vm(file, GenerationInputs{seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});
     vm.run();
     return vm.result();
 }
@@ -84,7 +84,7 @@ asset sword {
 
   draw {
     rect(31, 8, 2, 40, #c8c8c8)
-    hilt.draw(seed=seed, v=0, a=0, at={32, 62})
+    hilt.draw(seed=seed,   at={32, 62})
     bladeJoin = hilt.outputs.bladeJoin
   }
 })"},
@@ -97,10 +97,10 @@ asset hilt {
   output point bladeJoin
 
   draw {
-    grip.draw(seed=hash(seed ^ 101), v=0, a=0, at={8, 20})
+    grip.draw(seed=hash(seed ^ 101),   at={8, 20})
     bladeJoin = grip.outputs.top
     rect(2, 5, 12, 2, #a0a0a0)
-    pommel.draw(seed=hash(seed ^ 202), v=0, a=0, at={8, 20})
+    pommel.draw(seed=hash(seed ^ 202),   at={8, 20})
   }
 })"},
     {"weapons/parts/hilt/grip.ips", R"(asset grip {
@@ -155,7 +155,7 @@ TEST_CASE("three nested levels compile from relative imports and publish root co
         CHECK(parts[1].parent == 0);
         CHECK(parts[2].name == "hilt.pommel");
         CHECK(parts[2].parent == 0);
-        CHECK(result.bytes[6] == 5);
+        CHECK(result.bytes[6] == 0);
 
         // grip.top = {3, 0} reads as {8, 6} in the hilt, which the sword
         // reads as {32, 46}; the host receives every copy in root space.
@@ -185,9 +185,9 @@ asset colony {
   output point leftTop
   output point rightTop
   draw {
-    left.draw(seed, v, a, at = {4, 15}, tint = #ff0000)
+    left.draw(seed, at = {4, 15}, tint = #ff0000)
     leftTop = left.outputs.top
-    right.draw(seed, v, a, at = {12, 15}, tint = #0000ff, mirror_x = true)
+    right.draw(seed, at = {12, 15}, tint = #0000ff, mirror_x = true)
     rightTop = right.outputs.top
   }
 })"},
@@ -199,8 +199,8 @@ asset mushroom {
   input color tint = #ffffff
   output point top
   draw {
-    stem.draw(seed, v, a, at = {4, 8})
-    cap.draw(seed, v, a, at = {4, 5}, tint = tint)
+    stem.draw(seed, at = {4, 8})
+    cap.draw(seed, at = {4, 5}, tint = tint)
     top = cap.outputs.top
   }
 })"},
@@ -255,10 +255,10 @@ TEST_CASE("nested D4 transforms map outputs to the root exactly once") {
             const Sources sources{
                 {"root.ips", R"(import mid from "mid.ips"
 asset root { size 16x16 output point mark
-  draw { mid.draw(seed, v, a, at = {5, 4})" + outer + R"() mark = mid.outputs.mark } })"},
+  draw { mid.draw(seed, at = {5, 4})" + outer + R"() mark = mid.outputs.mark } })"},
                 {"mid.ips", R"(import leaf from "leaf.ips"
 asset mid { size 6x6 output point mark
-  draw { leaf.draw(seed, v, a, at = {1, 2})" + inner + R"() mark = leaf.outputs.mark } })"},
+  draw { leaf.draw(seed, at = {1, 2})" + inner + R"() mark = leaf.outputs.mark } })"},
                 {"leaf.ips", R"(asset leaf { size 4x3 output point mark
   draw { pixel(1, 0, #ff0000) mark = {1.5, 0.5} } })"},
             };
@@ -282,21 +282,20 @@ TEST_CASE("nested rects circles lists and helper writes keep one transform per c
         {"root.ips", R"(import mid from "mid.ips"
 asset root { size 32x32 output rect box output circle zone
   draw {
-    mid.draw(seed, v, a, at = {0, 0})
-    mid.draw(seed, v, a, at = {16, 8})
+    mid.draw(seed, at = {0, 0})
+    mid.draw(seed, at = {16, 8})
     box = mid.outputs.box
     zone = mid.outputs.zone
   } })"},
         {"mid.ips", R"(import leaf from "leaf.ips"
-asset mid { size 8x8 output rect box output circle zone
+asset mid { input i32 a = 0  size 8x8 output rect box output circle zone
   draw {
-    leaf.draw(seed, 0, a, at = {0, 0})
-    leaf.draw(seed, 1, a, at = {4, 4})
+    leaf.draw(seed, v=0, at = {0, 0})
+    leaf.draw(seed, v=1, at = {4, 4})
     box = leaf.outputs.box
     zone = leaf.outputs.zone
   } })"},
-        {"leaf.ips", R"(asset leaf { size 4x4 variants 2
-  output rect box
+        {"leaf.ips", R"(asset leaf { input i32 v = 0  size 4x4 output rect box
   output circle zone
   output list point marks
   draw {
@@ -342,17 +341,17 @@ asset mid { size 8x8 output rect box output circle zone
 TEST_CASE("nested parts keep isolated RNG streams at every level") {
     const std::string leaf = R"(asset leaf { size 4x4 draw { x = 0 to 3 pixel(x, 0 to 3, #ffffff) } })";
     const std::string mid = R"(import leaf from "leaf.ips"
-asset mid { size 8x8 output point drawn
+asset mid { input i32 a = 0 input i32 v = 0  size 8x8 output point drawn
   draw {
-    leaf.draw(seed ^ 5, v, a, at = {0, 0})
+    leaf.draw(seed ^ 5, at = {0, 0})
     drawn = {unit(), unit()}
-    leaf.draw(seed ^ 9, v, a, at = {4, 4})
+    leaf.draw(seed ^ 9, at = {4, 4})
   } })";
     const auto root = [](const std::string& body) {
         return "import mid from \"mid.ips\"\nasset root { size 16x16 output point after output point inner\n"
                "draw { " + body + " after = {unit(), unit()} } }";
     };
-    const auto nested = build({{"root.ips", root("mid.draw(seed, v, a, at = {0, 0}) inner = mid.outputs.drawn")},
+    const auto nested = build({{"root.ips", root("mid.draw(seed, at = {0, 0}) inner = mid.outputs.drawn")},
                                {"mid.ips", mid}, {"leaf.ips", leaf}}, "root.ips");
     const auto bare = build({{"root.ips", root("")}, {"mid.ips", mid}, {"leaf.ips", leaf}}, "root.ips");
     const auto alone = build({{"mid.ips", R"(asset mid { size 8x8 output point drawn
@@ -414,7 +413,7 @@ TEST_CASE("the part limit counts expanded instances before planning them") {
                 for (int i = 0; i < extra; ++i)
                     source += "import x" + std::to_string(i) + " from \"l" + std::to_string(depth) + ".ips\"\n";
             source += "asset l" + std::to_string(level) +
-                      " { size 2x2 draw { a.draw(seed, v, a, at = {0, 0}) b.draw(seed, v, a, at = {0, 0}) } }";
+                      " { size 2x2 draw { a.draw(seed, at = {0, 0}) b.draw(seed, at = {0, 0}) } }";
             sources.emplace("l" + std::to_string(level) + ".ips", source);
         }
         sources.emplace("l" + std::to_string(depth) + ".ips", "asset leaf { size 1x1 draw { pixel(0, 0, #fff) } }");

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(iprop_c_examples LANGUAGES C CXX)
-find_package(iprop 0.4 CONFIG REQUIRED)
+find_package(iprop 0.7 CONFIG REQUIRED)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)

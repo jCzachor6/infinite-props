@@ -1,6 +1,7 @@
 #include "Plan.hpp"
 #include "ips/Fold.hpp"
 #include "ips/Imports.hpp"
+#include "ips/Semantics.hpp"
 
 #include <set>
 #include <utility>
@@ -8,15 +9,12 @@
 namespace iprop::compiler {
 namespace {
 
-ValueType runtimeType(ips::ValueType type) {
-    switch (type) {
-    case ips::ValueType::I32: return ValueType::I32;
-    case ips::ValueType::F32: return ValueType::F32;
-    case ips::ValueType::Color: return ValueType::Color;
-    case ips::ValueType::Vec2: return ValueType::Vec2;
-    case ips::ValueType::Distribution: return ValueType::Distribution;
-    default: return ValueType::I32; // compounds never enter the tables
-    }
+// The geometric outputs of an asset in declaration order: its output slots.
+std::vector<SlotInfo> geometrySlots(const ips::Asset& asset) {
+    std::vector<SlotInfo> slots;
+    for (const auto& output : asset.outputs)
+        if (!ips::isResourceOutput(output.kind)) slots.push_back({output.kind, output.isList, output.name});
+    return slots;
 }
 
 } // namespace
@@ -24,16 +22,6 @@ ValueType runtimeType(ips::ValueType type) {
 std::string functionNamespace(const std::string& functionName) {
     const auto dot = functionName.rfind('.');
     return dot == std::string::npos ? std::string() : functionName.substr(0, dot + 1);
-}
-
-u32 Plan::partSlot(u32 part, const std::string& output) const {
-    u32 slot = static_cast<u32>(rootSlots.size());
-    for (u32 i = 0; i < part; ++i) slot += static_cast<u32>(parts[i]->asset.outputs.size());
-    for (const auto& candidate : parts[part]->asset.outputs) {
-        if (candidate.name == output) break;
-        ++slot;
-    }
-    return slot;
 }
 
 std::optional<u32> Plan::functionId(const std::string& name,
@@ -72,6 +60,12 @@ std::string Plan::sourcePath(const ips::Program* owner) const {
                           ips::DiagnosticStage::Planning};
 }
 
+ValueType Planner::storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot) {
+    if (!type.isStorable())
+        error(at, "cannot store " + std::string(ips::typeName(type)) + " in " + slot + " (only scalars can be stored)");
+    return type;
+}
+
 const ips::InputDecl* Planner::ownerInput(const ips::Program* owner,
                                           const std::string& name) const {
     for (const auto& input : owner->asset.inputs) {
@@ -94,6 +88,32 @@ const ips::OutputDecl* Planner::ownerOutput(const ips::Program* owner,
 
 std::unique_ptr<Plan> Planner::plan() {
     planParts();
+    // Calls prepare callees lazily while their result types are inferred.
+    // Surfaces are keyed by alias path; the Typer prefixes its namespace.
+    for (std::size_t i = 0; i < plan_->parts.size(); ++i)
+        surfaces_.emplace(plan_->instances[i].path, ips::partInfoOf(plan_->parts[i]->asset));
+    typer_ = std::make_unique<ips::Typer>(surfaces_);
+    typer_->resolveFunction = [this](const std::string& name,
+                                     const ips::SourceLocation& at,
+                                     const std::string& ns) {
+        return resolveFunction(name, at, ns);
+    };
+    // Each program's declarations are resolved once, for the plan and for
+    // the Typer's probe of statically known runtime values.
+    const auto prepareConstants = [&](const ips::Program& owner) {
+        if (plan_->assetConstants.contains(&owner)) return;
+        try {
+            auto declarations = ips::resolveAssetDeclarations(owner);
+            typer_->registerAssetDeclarations(owner, declarations);
+            plan_->assetConstants.emplace(&owner, std::move(declarations.constants));
+            for (auto& [palette, value] : declarations.palettes)
+                plan_->palettes.emplace(palette, std::make_shared<const ips::ResolvedPalette>(std::move(value)));
+            plan_->paletteLists.merge(declarations.paletteLists);
+        }
+        catch (ips::SourceError& error) { error.path = plan_->sourcePath(&owner); throw; }
+    };
+    prepareConstants(entry_);
+    for (const auto* part : plan_->parts) prepareConstants(*part);
     const auto prepareDefaults = [&](const ips::Program& owner) {
         for (const auto& input : owner.asset.inputs) {
             if (plan_->inputDefaults.contains(&input)) continue;
@@ -103,36 +123,8 @@ std::unique_ptr<Plan> Planner::plan() {
     };
     prepareDefaults(entry_);
     for (const auto* part : plan_->parts) prepareDefaults(*part);
-    const auto preparePalettes = [&](const ips::Program& owner) {
-        for (const auto& palette : owner.asset.palettes) {
-            if (plan_->palettes.contains(&palette)) continue;
-            try { plan_->palettes.emplace(&palette,std::make_shared<const ips::ResolvedPalette>(ips::resolvePalette(palette))); }
-            catch (ips::SourceError& error) { error.path=plan_->sourcePath(&owner); throw; }
-        }
-    };
-    preparePalettes(entry_);
-    for (const auto* part : plan_->parts) preparePalettes(*part);
     planFunctions();
     registerNames();
-
-    // Calls prepare callees lazily while their result types are inferred.
-    // Surfaces are keyed by alias path; the Typer prefixes its namespace.
-    for (std::size_t i = 0; i < plan_->parts.size(); ++i) {
-        ips::PartInfo info;
-        for (const auto& input : plan_->parts[i]->asset.inputs) {
-            info.inputs.push_back({input.type, input.name, &input});
-        }
-        for (const auto& output : plan_->parts[i]->asset.outputs) {
-            info.outputs.push_back({output.kind, output.isList, output.name});
-        }
-        surfaces_.emplace(plan_->instances[i].path, std::move(info));
-    }
-    typer_ = std::make_unique<ips::Typer>(surfaces_);
-    typer_->resolveFunction = [this](const std::string& name,
-                                           const ips::SourceLocation& at,
-                                           const std::string& ns) {
-        return resolveFunction(name, at, ns);
-    };
 
     for (const auto& function : plan_->functions) {
         prepareFunction(function.name);
@@ -141,12 +133,8 @@ std::unique_ptr<Plan> Planner::plan() {
     for (auto& function : plan_->functions) {
         const CallResolver resolver(*plan_, function);
         try {
-            for (auto& [expr, annotation] : function.expressions) {
-                if (const auto* call = std::get_if<ips::Call>(expr))
-                    function.calls.emplace(call, resolver.resolve(*call));
-                if (const auto* index = std::get_if<ips::Index>(expr))
-                    annotation.palette = &plan_->palette(*function.owner, *index->object);
-            }
+            for (const auto& entry : function.boundCalls)
+                function.calls.emplace(entry.first, resolver.resolve(*entry.first));
         } catch (ips::SourceError& error) {
             if (error.path.empty()) error.path = plan_->sourcePath(function.owner);
             throw;
@@ -189,11 +177,9 @@ std::optional<ips::FunctionSurface> Planner::resolveFunction(
 }
 
 void Planner::planParts() {
-    for (const auto& output : entry_.asset.outputs) {
-        plan_->rootSlots.push_back({output.kind, output.isList});
-        plan_->rootSlotIndex.emplace(output.name,
-                                    static_cast<u32>(plan_->rootSlots.size() - 1));
-    }
+    plan_->rootSlots = geometrySlots(entry_.asset);
+    for (u32 slot = 0; slot < plan_->rootSlots.size(); ++slot)
+        plan_->rootSlotIndex.emplace(plan_->rootSlots[slot].name, slot);
 
     // Instances in preorder of import order: a flat source keeps its import
     // order, and each child directly follows its parent's earlier children.
@@ -223,6 +209,14 @@ void Planner::planParts() {
         }
     };
     expand(expand, entry_, "", kRootParent, "");
+
+    // Part slots follow the root slots, in instance order.
+    auto slot = static_cast<u32>(plan_->rootSlots.size());
+    for (u32 part = 0; part < plan_->parts.size(); ++part) {
+        plan_->partSlots.push_back(geometrySlots(plan_->parts[part]->asset));
+        for (const auto& output : plan_->partSlots.back())
+            plan_->partSlotIndex.emplace(std::pair{part, output.name}, slot++);
+    }
 }
 
 void Planner::planFunctions() {
@@ -260,6 +254,21 @@ void Planner::planFunctions() {
 }
 
 void Planner::registerNames() {
+    const auto exports = [&](const ips::Program& program, u32 owner) {
+        for (const auto& output : program.asset.outputs) {
+            if (!ips::isResourceOutput(output.kind)) continue;
+            if (plan_->resourceExports.size() >= kMaxConstPoolEntries)
+                error(output.location, "too many resource exports");
+            const auto type = output.kind == ips::OutputKind::Mask
+                ? ips::ValueType::Mask : ips::ValueType::Layer;
+            plan_->pools.addType(type);
+            plan_->resourceSlotIndex.emplace(std::pair{owner, output.name},
+                static_cast<u16>(plan_->resourceExports.size()));
+            plan_->resourceExports.push_back({owner, output.name, type});
+        }
+    };
+    exports(entry_, kRootParent);
+    for (u32 p = 0; p < plan_->parts.size(); ++p) exports(*plan_->parts[p], p);
     // Deterministic order: function names, then slot names (root first, then
     // parts), then input names, then part instance names.
     for (const auto& function : plan_->functions) {
@@ -330,16 +339,10 @@ void Planner::prepareFunctionBody(const std::string& name) {
     if (drawLike) {
         if (!ast->params.empty())
             error(ast->location, "'draw' takes no declared parameters; use 'draw { ... }'");
-        info.params = {ValueType::I32, ValueType::I32}; // variant, archetype
-        for (const std::string pname : {"v", "a"}) {
-            info.slots.emplace(pname, slot);
-            info.langTypes.emplace(pname, ips::ValueType::I32);
-            ++slot;
-        }
         for (const auto& input : owner->asset.inputs) {
             info.slots.emplace(input.name, slot);
             info.langTypes.emplace(input.name, ips::valueTypeOf(input.type));
-            info.params.push_back(runtimeType(ips::valueTypeOf(input.type)));
+            info.params.push_back(storedType(ips::valueTypeOf(input.type), input.location, "input '" + input.name + "'"));
             ++slot;
         }
     } else {
@@ -347,7 +350,7 @@ void Planner::prepareFunctionBody(const std::string& name) {
             const ips::ValueType type = ips::valueTypeOf(param.type);
             info.slots.emplace(param.name, slot);
             info.langTypes.emplace(param.name, type);
-            info.params.push_back(runtimeType(type));
+            info.params.push_back(storedType(type, param.location, "parameter '" + param.name + "'"));
             ++slot;
         }
     }
@@ -355,11 +358,19 @@ void Planner::prepareFunctionBody(const std::string& name) {
     ips::Typer::Scope savedScope = typer_->saveScope();
     typer_->enterFunction(*owner, *ast, drawLike, ns);
     std::optional<ips::ValueType> returnType;
+    std::size_t surfaceScopes = 0; // open layer/clip blocks
+    const auto enterSurfaceScope = [&](const ips::SourceLocation& at) {
+        ips::checkSurfaceScope(surfaceScopes++, at, ips::DiagnosticStage::Planning);
+    };
 
     const auto walk = [&](auto&& self, const std::vector<ips::Stmt>& body) -> void {
         for (const auto& stmt : body) {
             if (const auto* decl = std::get_if<ips::VarDecl>(&stmt)) {
-                const ips::ValueType type = typer_->typeOf(*decl->value);
+                if (ips::findAssetConstant(*owner, decl->name))
+                    error(decl->location, "cannot assign to const '" + decl->name + "'");
+                std::optional<ips::ValueType> context = decl->declaredType;
+                if (const auto found = info.langTypes.find(decl->name); found != info.langTypes.end()) context = found->second;
+                const ips::ValueType type = typer_->typeOf(*decl->value, context);
                 if (ownerOutput(owner, decl->name) != nullptr ||
                     ownerInput(owner, decl->name) != nullptr ||
                     info.slots.count(decl->name) != 0) {
@@ -368,14 +379,14 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 info.slots.emplace(decl->name, slot);
                 info.langTypes.emplace(decl->name, type);
                 typer_->declareLocal(decl->name, type);
-                info.locals.push_back(runtimeType(type));
+                info.locals.push_back(storedType(type, decl->location, "local '" + decl->name + "'"));
                 ++slot;
             } else if (const auto* expression = std::get_if<ips::ExprStmt>(&stmt)) {
                 typer_->typeOf(*expression->expr);
             } else if (const auto* ret = std::get_if<ips::ReturnStmt>(&stmt)) {
                 if (ret->value) {
                     const ips::ValueType type =
-                        typer_->typeOf(*ret->value);
+                        typer_->typeOf(*ret->value, ast->returnType);
                     if (ast->returnType.has_value()) {
                         const ips::ValueType declared =
                             ips::valueTypeOf(*ast->returnType);
@@ -399,6 +410,8 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 self(self, whileStmt->body);
             } else if (const auto* forStmt =
                            std::get_if<ips::ForStmt>(&stmt)) {
+                if (ips::findAssetConstant(*owner, forStmt->variable))
+                    error(forStmt->location, "cannot use const '" + forStmt->variable + "' as a loop counter");
                 typer_->typeOf(*forStmt->from);
                 typer_->typeOf(*forStmt->to);
                 // The loop counter is a real local (the body reads it); the
@@ -420,16 +433,46 @@ void Planner::prepareFunctionBody(const std::string& name) {
                 info.locals.push_back(ValueType::I32);
                 ++slot;
                 self(self, forStmt->body);
+            } else if (const auto* capture = std::get_if<ips::LayerStmt>(&stmt)) {
+                enterSurfaceScope(capture->location);
+                self(self, capture->body);
+                --surfaceScopes;
+                if (!info.slots.contains(capture->name)) {
+                    info.slots.emplace(capture->name, slot++);
+                    info.langTypes.emplace(capture->name, ips::ValueType::Layer);
+                    info.locals.push_back(ValueType::Layer);
+                }
+                typer_->declareLocal(capture->name, ips::ValueType::Layer);
+            } else if (const auto* clip = std::get_if<ips::ClipStmt>(&stmt)) {
+                typer_->typeOf(*clip->mask);
+                enterSurfaceScope(clip->location);
+                self(self, clip->body);
+                --surfaceScopes;
             }
         }
     };
     walk(walk, ast->body);
 
     ips::ConstantFolder constants;
+    const auto& assetConstants = plan_->assetConstants.at(owner);
+    const auto& resolutions = typer_->resolutions();
     for (const auto& [expr, type] : typer_->expressions()) {
-        Value value;
-        const auto constant = constants.fold(*expr, value) ? std::optional<Value>(value) : std::nullopt;
-        info.expressions.emplace(expr, PlannedExpression{type, constant});
+        PlannedExpression planned{type, std::nullopt};
+        // Constant point literals are still emitted through their builder in
+        // runtime code, preserving operand effects, construction fuel and traps.
+        if (Value value; constants.fold(*expr, value)) planned.constant = value;
+        if (const auto* id = std::get_if<ips::Identifier>(expr))
+            if (const auto found = assetConstants.find(id->name); found != assetConstants.end()) planned.constant = found->second;
+        // The Typer decided which names read a palette: a bare name reads its
+        // shared list constant, an index lowers through the palette.
+        if (const auto found = resolutions.find(expr); found != resolutions.end()) {
+            planned.overload = found->second.overload;
+            if (const auto* palette = found->second.palette) {
+                if (std::holds_alternative<ips::Identifier>(*expr)) planned.constant = plan_->paletteLists.at(palette);
+                else planned.palette = plan_->palettes.at(palette).get();
+            }
+        }
+        info.expressions.emplace(expr, std::move(planned));
     }
     info.boundCalls = typer_->calls();
     typer_->restoreScope(std::move(savedScope));
@@ -437,12 +480,12 @@ void Planner::prepareFunctionBody(const std::string& name) {
     if (ast->returnType.has_value()) {
         const ips::ValueType declared = ips::valueTypeOf(*ast->returnType);
         info.langResult = declared;
-        info.results.push_back(runtimeType(declared));
+        info.results.push_back(storedType(declared, ast->location, "the result of '" + name + "'"));
     } else if (returnType.has_value()) {
         // The checker rejects a missing declaration; keep the inference as a
         // fallback for programs planned without a prior checkAsset.
         info.langResult = returnType;
-        info.results.push_back(runtimeType(*returnType));
+        info.results.push_back(storedType(*returnType, ast->location, "the result of '" + name + "'"));
     }
     if (name == "draw" && ast->returnType.has_value()) {
         error(ast->location, "'draw' cannot return a value");

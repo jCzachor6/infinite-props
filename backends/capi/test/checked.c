@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     iprop_program_meta(program, &old);
     CHECK(info.size_x == old.size_x && info.size_y == old.size_y);
     CHECK(info.origin_x == old.origin_x && info.origin_y == old.origin_y);
-    CHECK(info.variants == old.variants && info.archetypes == old.archetypes && info.fuel == old.fuel);
+    CHECK(info.fuel == old.fuel);
     CHECK(iprop_library_info_ex_init(&library, sizeof(library)) == IPROP_EX_OK);
     CHECK(iprop_library_query_ex(&library, &error) == IPROP_EX_OK);
     CHECK((library.capabilities & (IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
@@ -47,13 +47,12 @@ int main(int argc, char** argv) {
         size_t byte, field;
         const size_t starts[] = {offsetof(iprop_program_info_ex, size_x), offsetof(iprop_program_info_ex, size_y),
             offsetof(iprop_program_info_ex, origin_x), offsetof(iprop_program_info_ex, origin_y),
-            offsetof(iprop_program_info_ex, variants), offsetof(iprop_program_info_ex, archetypes),
             offsetof(iprop_program_info_ex, fuel), offsetof(iprop_program_info_ex, has_emission),
             offsetof(iprop_program_info_ex, emission_color), offsetof(iprop_program_info_ex, emission_offset_x),
             offsetof(iprop_program_info_ex, emission_offset_y), offsetof(iprop_program_info_ex, emission_radius),
             offsetof(iprop_program_info_ex, format_major), offsetof(iprop_program_info_ex, format_minor),
             offsetof(iprop_program_info_ex, container_flags)};
-        const size_t widths[] = {4, 4, 4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 4};
+        const size_t widths[] = {4, 4, 4, 4, 8, 4, 4, 4, 4, 4, 4, 4, 4};
         CHECK(storage != NULL);
         memset(storage, 0xa5, allocation);
         memcpy(storage, &capacity, 4);

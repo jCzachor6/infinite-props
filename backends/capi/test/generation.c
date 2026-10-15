@@ -1,10 +1,440 @@
 #include "test_support.h"
+#include "source_over_reference.h"
+#include "mask_reference.h"
+#include "resource_export_reference.h"
+#include "blur_reference.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 void check_generation(const char* program_dir) {
     char err[512];
+
+    /* Both blur instructions retain straight color and alpha via the C ABI. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/gaussian-blur.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length); iprop_program* program=NULL;
+        CHECK(bytes!=NULL,"cannot read blur fixture");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"blur load: %s",err);free(bytes);}
+        if(program){
+            iprop_generate_options options={0}; options.seed=26; iprop_result* result=NULL;
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"blur generation: %s",err);
+            if(result){
+                iprop_image image; iprop_result_image(result,&image);
+                CHECK(image.width==7 && image.height==2 && image.output_count==0,"blur image metadata");
+                if(image.width==7 && image.height==2)for(uint32_t y=0;y<2;++y)for(uint32_t x=0;x<7;++x){
+                    uint8_t color[4];gaussian_blur_pixel(x,y,color);
+                    CHECK(memcmp(image.pixels+(y*7+x)*4,color,4)==0,"blur pixel %u,%u",x,y);
+                }
+                iprop_result_free(result);
+            }
+            iprop_program_free(program);
+        }
+    }
+
+    /* Steppers use the existing host ABI and preserve caller RNG for all seeds. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/steppers.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length); iprop_program* program=NULL;
+        CHECK(bytes!=NULL,"cannot read stepper fixture");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"stepper load: %s",err);free(bytes);}
+        if(program){
+            const uint32_t seeds[]={0,26,UINT32_MAX};
+            const float expected[]={0,1,1,2,2,3,3,4,4,5};
+            for(unsigned seed=0;seed<3;++seed){
+                iprop_generate_options options={0};options.seed=seeds[seed];iprop_result* result=NULL;
+                CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"stepper generation: %s",err);
+                if(result){
+                    iprop_image image;iprop_result_image(result,&image);
+                    CHECK(image.width==64 && image.height==32 && image.output_count==2,"stepper metadata");
+                    if(image.output_count==2){
+                        const iprop_output* positions=&image.outputs[0];const iprop_output* unchanged=&image.outputs[1];
+                        CHECK(positions->kind==IPROP_OUTPUT_POINT && positions->is_list && positions->count==10,"stepper positions");
+                        if(positions->count==10){
+                            const float* values=(const float*)positions->values;
+                            for(unsigned i=0;i<10;++i)CHECK(values[2*i+1]==expected[i],"stepper integer rounding at %u",i);
+                            CHECK(values[0]==2 && values[18]==56,"stepper vector endpoints");
+                        }
+                        CHECK(unchanged->kind==IPROP_OUTPUT_POINT && !unchanged->is_list && unchanged->count==1,"stepper state metadata");
+                        if(unchanged->count==1){const float* values=(const float*)unchanged->values;CHECK(values[0]==1 && values[1]==32,"stepper RNG and zero/single counts");}
+                    }
+                    iprop_result_free(result);
+                }
+            }
+            iprop_program_free(program);
+        }
+    }
+
+    /* Resource exports use no host slots, including nested geometry ranges. */
+    {
+        char path[1024];snprintf(path,sizeof(path),"%s/resource-exports.iprop",program_dir);
+        size_t length=0;uint8_t* bytes=read_file(path,&length);iprop_program* program=NULL;iprop_result* result=NULL;
+        iprop_generate_options options={0};options.seed=26;
+        CHECK(bytes!=NULL,"cannot read resource exports");
+        if(bytes){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"export load: %s",err);free(bytes);}
+        if(program){
+            uint32_t count=0;CHECK(iprop_program_output_count(program,&count,NULL)==IPROP_OK && count==4,"export geometry declaration count");
+            for(uint32_t p=0;p<2;++p){iprop_part_info_ex info;iprop_part_info_ex_init(&info,sizeof(info));
+                CHECK(iprop_program_part_get(program,p,&info,NULL)==IPROP_OK,"export part reflection");
+                CHECK(info.output_count==1 && info.output_begin==p+2,"export geometry part range");}
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"export generate: %s",err);iprop_program_free(program);
+        }
+        if(result){iprop_image image;iprop_result_image(result,&image);CHECK(image.width==16 && image.height==12 && image.output_count==4,"export host image/slots");
+            for(uint32_t i=0;i<image.output_count && i<4;++i){const iprop_output* slot=&image.outputs[i];
+                CHECK(slot->kind==IPROP_OUTPUT_POINT && slot->count==1 && !slot->is_list && slot->owner==(i<2?0:i-1),"export geometry tags/owners");
+                if(slot->count==1){uint32_t value[2];memcpy(value,slot->values,sizeof(value));
+                    CHECK(value[0]==(i==1?0x41d00000u:0x41000000u) && value[1]==(i==1?0u:0x40c00000u),"export geometry bits");}}
+            if(image.width==16 && image.height==12)for(uint32_t y=0;y<12;++y)for(uint32_t x=0;x<16;++x){uint8_t color[4];resource_export_pixel(x,y,color);
+                CHECK(memcmp(image.pixels+(y*16+x)*4,color,4)==0,"export pixel %u,%u",x,y);}
+            iprop_result_free(result);
+        }
+    }
+
+    /* Coverage algebra and clipping preserve the existing host output layout. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/mask-algebra.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        CHECK(bytes!=NULL,"cannot read mask fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"mask load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"mask generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==8 && image.height==4 && image.output_count==2,"mask image/output metadata");
+            if(image.output_count==2){
+                const iprop_output* stream=&image.outputs[0];const iprop_output* extent=&image.outputs[1];
+                CHECK(stream->kind==IPROP_OUTPUT_POINT && extent->kind==IPROP_OUTPUT_RECT &&
+                    stream->owner==0 && extent->owner==0 && !stream->is_list && !extent->is_list &&
+                    stream->count==1 && extent->count==1,"mask output kinds/owners");
+                if(stream->count==1 && extent->count==1){uint32_t point[2],rect[4];
+                    memcpy(point,stream->values,sizeof(point));memcpy(rect,extent->values,sizeof(rect));
+                    CHECK(point[0]==0x41d00000 && point[1]==0 && rect[0]==0 && rect[1]==0 &&
+                        rect[2]==0x40a00000 && rect[3]==0x40800000,"mask unclipped output bits");}
+            }
+            if(image.width==8 && image.height==4)for(uint32_t y=0;y<4;++y)for(uint32_t x=0;x<8;++x){
+                uint8_t color[4];mask_algebra_pixel(x,color);
+                CHECK(memcmp(image.pixels+(y*8+x)*4,color,4)==0,"mask pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Straight RGBA8 part inheritance through the unchanged C host layout. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/source-over-panels.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x41f00000,0x41a00000,0x41d00000,0,0x41f00000,0x41a00000};
+        CHECK(bytes!=NULL,"cannot read source-over fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"source-over load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"source-over generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==3,"source-over image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==(i==2 ? 1u : 0u) && !output->is_list && output->count==1,"source-over output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"source-over output bits");}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4];source_over_panel_pixel(x,y,color);
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"source-over pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Preserved stage-7 direct-render oracle for the captured panel. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/captured-panels.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x41e00000,0x41900000,0x46f3a600,0x471e3700};
+        CHECK(bytes!=NULL,"cannot read captured panel fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"captured panel load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"captured panel generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==2,"captured panel image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<2;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"captured panel output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"captured panel bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={36,50,66,255};
+                if(x>=2 && x<30 && y>=3 && y<21){color[0]=52;color[1]=58;color[2]=66;}
+                if(x>=4 && x<28 && y>=5 && y<19){color[0]=146;color[1]=156;color[2]=168;}
+                if((x==4 && y==5)||(x==27 && y==18)){color[0]=192;color[1]=144;color[2]=96;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"captured panel pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Independent raw-RNG and binary64 integral pins for density columns. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/point-distributions.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40000000,0x40000000,0x41a085d5,0x41b6b498,0x4766fe00,0x46f1ba00};
+        CHECK(bytes!=NULL,"cannot read density fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"density load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"density generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==32 && image.output_count==3,"density image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"density output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"density bits at %u",i);}
+            }
+            if(image.width==32 && image.height==32)for(uint32_t y=0;y<32;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(((x>=2 && x<10)||(x>=12 && x<20)) && y>=8 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                if(x>=22 && x<30 && y>=5 && y<28){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"density pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Independent raw-RNG thresholds select material 2 and one rust layer. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/weighted.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40000000,0x40000000,0x3f800000,0x3f800000,0x47738c00,0x4671b800};
+        CHECK(bytes!=NULL,"cannot read weighted fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"weighted load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"weighted generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==3,"weighted image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<3;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"weighted output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"weighted bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(x>=2 && x<30 && y>=2 && y<22){color[0]=142;color[1]=156;color[2]=112;color[3]=255;}
+                if(x>=4 && x<8 && y>=6 && y<18){color[0]=52;color[1]=42;color[2]=34;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"weighted pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Preserved stage-4 runtime pins for constant samplers and palettes. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/sampling-palettes.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0}; options.seed=26;
+        const uint32_t expected[]={0x40400000,0x42200000,0x41aa69ec,0x40000000,
+            0x41200000,0x41600000,0x3f2ac48e,0,0x475a7000,0x47354c00};
+        CHECK(bytes!=NULL,"cannot read sampling palette fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"palette load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"palette generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==5,"palette image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<5;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"palette output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"palette bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                uint8_t color[4]={0,0,0,0};
+                if(x>=2 && ((y>=2 && y<6 && x<12)||(y>=8 && y<12 && x<13)||(y>=14 && y<18 && x<16))){
+                    color[0]=168;color[1]=173;color[2]=179;color[3]=255;}
+                CHECK(memcmp(image.pixels+(y*32+x)*4,color,4)==0,"palette pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Independent stage-3 ordinary-range pins, before sampler support. */
+    {
+        char path[1024]; snprintf(path,sizeof(path),"%s/samplers.iprop",program_dir);
+        size_t length=0; uint8_t* bytes=read_file(path,&length);
+        iprop_program* program=NULL; iprop_result* result=NULL;
+        iprop_generate_options options={0};options.seed=26;
+        const uint32_t expected[]={0x40400000,0x42200000,0x416ef976,0x401a259f,
+            0x41500000,0x41500000,0x46c16e00,0x45b8a800};
+        CHECK(bytes!=NULL,"cannot read sampler fixture");
+        if(bytes!=NULL){CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err))==IPROP_OK,"sampler load: %s",err);free(bytes);}
+        if(program!=NULL){CHECK(iprop_generate(program,&options,&result,err,sizeof(err))==IPROP_OK,"sampler generation: %s",err);iprop_program_free(program);}
+        if(result!=NULL){
+            iprop_image image;iprop_result_image(result,&image);
+            CHECK(image.width==32 && image.height==24 && image.output_count==4,"sampler image/output metadata");
+            for(uint32_t i=0;i<image.output_count && i<4;++i){
+                const iprop_output* output=&image.outputs[i];
+                CHECK(output->kind==IPROP_OUTPUT_POINT && output->owner==0 && !output->is_list && output->count==1,"sampler output metadata");
+                if(output->count==1){uint32_t bits[2];memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0]==expected[i*2] && bits[1]==expected[i*2+1],"sampler bits at %u",i);}
+            }
+            if(image.width==32 && image.height==24)for(uint32_t y=0;y<24;++y)for(uint32_t x=0;x<32;++x){
+                const uint8_t* actual=image.pixels+(y*32+x)*4;
+                uint8_t color[4]={0,0,0,0};
+                if(x>=2 && x<15 && ((y>=2 && y<6)||(y>=8 && y<12)||(y>=14 && y<18))){
+                    color[0]=134;color[1]=144;color[2]=156;color[3]=255;}
+                CHECK(memcmp(actual,color,4)==0,"sampler pixel %u,%u",x,y);
+            }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Independent stage-2 ordinary polygon/RNG pins, before list support. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/collections.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0}; options.seed = 26;
+        const uint32_t expected[] = {0x40800000,0x41980000,0x41900000,0x40000000,
+            0x41200000,0x41f00000,0x46da8a00,0x475aa600};
+        const uint32_t rows[] = {0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
+            0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
+            0xfff80,0xff80,0x1f00,0x300,0,0,0,0};
+        CHECK(bytes != NULL, "cannot read collection fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes,length,&program,err,sizeof(err)) == IPROP_OK,
+                  "collection load: %s",err); free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program,&options,&result,err,sizeof(err)) == IPROP_OK,
+                  "collection generation: %s",err); iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image; iprop_result_image(result,&image);
+            CHECK(image.width == 32 && image.height == 24 && image.output_count == 4,
+                  "collection image/output metadata");
+            for (uint32_t i = 0; i < image.output_count && i < 4; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1,"collection output metadata");
+                if (output->count == 1) {
+                    uint32_t bits[2]; memcpy(bits,output->values,sizeof(bits));
+                    CHECK(bits[0] == expected[i*2] && bits[1] == expected[i*2+1],"collection bits at %u",i);
+                }
+            }
+            if (image.width == 32 && image.height == 24) for (uint32_t y = 0; y < 24; ++y)
+                for (uint32_t x = 0; x < 32; ++x) {
+                    const uint8_t* actual = image.pixels + (y*32+x)*4;
+                    uint8_t color[4] = {0,0,0,0};
+                    if ((rows[y] >> x) & 1) { color[0]=146; color[1]=156; color[2]=168; color[3]=255; }
+                    if (x == 3 && y == 4) { color[0]=52; color[1]=58; color[2]=66; color[3]=255; }
+                    CHECK(memcmp(actual,color,4) == 0,"collection polygon pixel %u,%u",x,y);
+                }
+            iprop_result_free(result);
+        }
+    }
+
+    /* Pins from the preserved stage-1 runtime, using ordinary constructors. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/asset-constants.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        options.seed = 26;
+        const uint32_t expected[] = {UINT32_C(0x3f800000), UINT32_C(0x3f800000),
+            UINT32_C(0x3f19999a), UINT32_C(0x3f4ccccd), 0, 0,
+            UINT32_C(0x3f116e13), UINT32_C(0x3ee83a45), 0, UINT32_C(0x3efbda76),
+            UINT32_C(0x4766fe00), UINT32_C(0x46f1ba00)};
+        CHECK(bytes != NULL, "cannot read asset constant fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "asset constant load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "asset constant generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.width == 2 && image.height == 2 && image.output_count == 6,
+                  "asset constant image/output metadata");
+            for (uint32_t i = 0; i < image.output_count; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1, "asset constant output metadata");
+                if (i < 6 && output->count == 1) {
+                    uint32_t bits[2];
+                    memcpy(bits, output->values, sizeof(bits));
+                    CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                          "asset constant output bits at slot %u", i);
+                }
+            }
+            const uint8_t pixels[] = {146,156,168,255,139,149,161,255,0,0,0,0,0,0,0,0};
+            CHECK(memcmp(image.pixels, pixels, sizeof(pixels)) == 0, "asset constant pixels");
+            iprop_result_free(result);
+        }
+    }
+
+    /* Format 0.6 math still uses the frozen host geometry and input layouts. */
+    {
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/math-bounds.iprop", program_dir);
+        size_t length = 0;
+        uint8_t* bytes = read_file(path, &length);
+        iprop_program* program = NULL;
+        iprop_result* result = NULL;
+        iprop_generate_options options = {0};
+        options.seed = 26;
+        const uint32_t expected[] = {UINT32_C(0x3f800000), UINT32_C(0x3f800000),
+            UINT32_C(0x3f19999a), UINT32_C(0x3f4ccccd), 0, 0,
+            UINT32_C(0x40000000), UINT32_C(0x40000000)};
+        CHECK(bytes != NULL, "cannot read format 0.6 math fixture");
+        if (bytes != NULL) {
+            CHECK(iprop_program_load(bytes, length, &program, err, sizeof(err)) == IPROP_OK,
+                  "format 0.6 math load: %s", err);
+            free(bytes);
+        }
+        if (program != NULL) {
+            CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
+                  "format 0.6 math generation: %s", err);
+            iprop_program_free(program);
+        }
+        if (result != NULL) {
+            iprop_image image;
+            iprop_result_image(result, &image);
+            CHECK(image.output_count == 4, "format 0.6 host output count");
+            for (uint32_t i = 0; i < image.output_count; ++i) {
+                const iprop_output* output = &image.outputs[i];
+                CHECK(output->kind == IPROP_OUTPUT_POINT && output->owner == 0 &&
+                      !output->is_list && output->count == 1, "format 0.6 host output metadata");
+                if (i < 4 && output->count == 1) {
+                    uint32_t bits[2];
+                    memcpy(bits, output->values, sizeof(bits));
+                    CHECK(bits[0] == expected[i * 2] && bits[1] == expected[i * 2 + 1],
+                          "format 0.6 math output bits at slot %u", i);
+                }
+            }
+            CHECK(image.pixels[0] == 0x20 && image.pixels[1] == 0xc0 && image.pixels[2] == 0x80,
+                  "format 0.6 math pixel");
+            iprop_result_free(result);
+        }
+    }
 
     /* The uniform overrides: the fixture's three inputs drive three
        diagonal pixels — the defaults, all three overrides, an unknown
@@ -174,7 +604,7 @@ void check_generation(const char* program_dir) {
     }
 
     /* Compiled 0.2 source: palettes, typed helpers, loop control, math,
-       empty lists, variants/archetypes, size and uniform overrides. */
+       empty lists, ordinary v/a inputs, size and uniform overrides. */
     {
         char path[1024];
         snprintf(path, sizeof(path), "%s/language.iprop", program_dir);
@@ -193,8 +623,6 @@ void check_generation(const char* program_dir) {
                 for (uint32_t a = 0; a < 2; ++a) {
                     iprop_generate_options options = {0};
                     options.seed = 26;
-                    options.variant = v;
-                    options.archetype = a;
                     /* A non-square size scales raster coordinates (2x, 3x)
                        while structured outputs remain in asset units. */
                     options.size_x = 16;
@@ -206,8 +634,11 @@ void check_generation(const char* program_dir) {
                     base.g = 0xdd;
                     base.b = 0xcc;
                     base.a = 0xff;
-                    options.uniforms = &base;
-                    options.uniform_count = 1;
+                    iprop_uniform named[3] = {base, {0}, {0}};
+                    named[1].name = "v"; named[1].type = IPROP_UNIFORM_U32; named[1].u = v;
+                    named[2].name = "a"; named[2].type = IPROP_UNIFORM_U32; named[2].u = a;
+                    options.uniforms = named;
+                    options.uniform_count = 3;
                     iprop_result* result = NULL;
                     CHECK(iprop_generate(program, &options, &result, err, sizeof(err)) == IPROP_OK,
                           "language generation v%u a%u: %s", v, a, err);

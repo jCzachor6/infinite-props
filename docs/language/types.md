@@ -9,6 +9,11 @@
 | `color` | RGBA8 channels, read as `i32` through `.r`, `.g`, `.b`, `.a` | yes |
 | `vec2` | two `f32` components | yes |
 | `distribution` | a [distribution](random.md#distributions) family and its parameters | yes |
+| `list<T>` | zero to 256 immutable values of a current element type | yes |
+| `sampler<T>` | captured value/range for explicit picks; T is i32, f32, color or vec2 | yes |
+| `stepper<T>` | deterministic range steps; T is i32, f32, color or vec2 | yes |
+| `layer` | immutable [captured RGBA8 surface](surfaces.md) | yes; no host input, const or collection |
+| `mask` | immutable [coverage view or A8 result](surfaces.md#masks-from-captured-alpha) | yes; same surface restrictions |
 | `circle`, `rect` | three/four numeric components for outputs | output writes only |
 | `void` | absence of a result | call statements only |
 
@@ -25,7 +30,15 @@ is performed. Integer-to-float conversion can lose precision.
 
 The first assignment to a fresh name declares a local and fixes its type.
 `distribution name = value` also states the type and requires a
-distribution value; no other type is written in a declaration.
+distribution value. `list<T> name = value` supplies the element context,
+including for an empty literal. See [collections](collections.md).
+`sampler<T> name = value` declares a [sampling description](samplers.md).
+`stepper<T> name = value` declares a [deterministic step description](steppers.md).
+`layer name { ... }` captures a surface and binds the name after the block.
+`layer copy = image` explicitly types a handle copy. A layer handle whose
+capture did not execute is unset and traps when painted.
+Sampler, stepper and list locals whose initializer does not run contain unset handles;
+using them traps, including a sampler or stepper's empty batch pick.
 Locals belong to the whole function, including those first assigned inside
 a branch or loop; braces do not introduce shadowing scopes. Source is checked
 in traversal order. Initialize a local before branching if it is needed later:
@@ -33,9 +46,12 @@ the language does not perform definite-assignment analysis, and untouched
 runtime local slots have the default value of their type.
 
 Helpers have their own locals. Parameters are read-only. `draw` also has
-read-only `v`, `a` and inputs; helpers receive these values through parameters.
+read-only inputs; helpers receive their values through parameters.
 `seed` reads the current RNG state in either kind of function and cannot be
 assigned. Palettes are asset-level constants visible to draw and helpers.
+Typed [asset constants](assets.md#asset-constants) are also visible in both
+contexts. Their initializer type must match the declaration, allowing only
+the ordinary i32-to-f32 widening; later assignment or shadowing is rejected.
 
 <!-- example: ../../examples/language/types.ips -->
 
@@ -90,5 +106,6 @@ a color and a number; build a new color with `rgb()`/`rgba()` and use
 
 <!-- example: ../../examples/language/errors/local-type.ips -->
 
+<!-- llm: skip -->
 This example is intentionally rejected: a local fixed as `i32` cannot be
 reassigned an `f32`. CI checks the expected diagnostic.

@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <zlib.h>
 
@@ -12,13 +13,14 @@ using namespace iprop;
 
 namespace {
 std::vector<u8> original() {
-    return compiler_test::compileChecked("asset t { size 8x8 variants 2 output point p draw { pixel(v,0,#abcdef) p={v,a} } }");
+    return compiler_test::compileChecked("asset t { input i32 v=0 input i32 a=0 size 8x8 output point p draw { pixel(v,0,#abcdef) p={v,a} } }");
 }
 void word(std::vector<u8>& bytes, std::size_t offset, u32 value) {
     for (unsigned i=0;i<4;++i) bytes.at(offset+i)=static_cast<u8>(value>>(8*i));
 }
 std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) {
-    const auto header = parseHeader(inner);
+    auto header = parseHeader(original());
+    header.flags = static_cast<u32>(inner[8]);
     REQUIRE(inner.size() <= std::numeric_limits<uInt>::max());
     z_stream stream{};
     REQUIRE(deflateInit(&stream, Z_BEST_COMPRESSION) == Z_OK);
@@ -33,15 +35,15 @@ std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) 
     REQUIRE(deflateEnd(&stream) == Z_OK);
     Writer out;
     for (const auto magic : kMagic) out.writeU8(magic);
-    out.writeU16(0); out.writeU16(4); out.writeU32(header.flags|kFlagCompressed);
+    out.writeU32(0); out.writeU32(header.flags|kFlagCompressed);
     out.writeU32(header.sectionCount); out.writeU32(0); out.writeU32(static_cast<u32>(inner.size())); out.writeBytes(compressed);
     return out.data();
 }
 }
 
-TEST_CASE("compression preserves entire historical files and source maps exactly") {
-    for (u16 minor : {u16{1},u16{2},u16{3},u16{4},u16{5}}) {
-        auto plain=original(); plain[6]=static_cast<u8>(minor);
+TEST_CASE("compression preserves current files and source maps exactly") {
+    {
+        auto plain=original();
         const auto packed=compressFile(plain);
         REQUIRE(parseHeader(packed).hasCompression());
         CHECK(packed.size()<plain.size());
@@ -50,8 +52,7 @@ TEST_CASE("compression preserves entire historical files and source maps exactly
         CHECK(decompressFile(packed)==plain);
         auto loaded=loadFile(packed);
         validate(loaded);
-        CHECK(loaded.layout.header.versionMinor==minor);
-        CHECK(loaded.containerHeader.versionMinor==4);
+        CHECK(std::all_of(packed.begin() + 4, packed.begin() + 8, [](u8 byte) { return byte == 0; }));
         CHECK(loaded.containerHeader.hasCompression());
         CHECK(std::vector<u8>(loaded.bytes().begin(),loaded.bytes().end())==plain);
         CHECK(disassembleWithSource(packed)==disassembleWithSource(plain));
@@ -63,7 +64,7 @@ TEST_CASE("compression preserves entire historical files and source maps exactly
         CHECK(stripDebug(stripDebug(packed))==stripDebug(packed));
         auto moved=std::move(loaded);
         plain.assign(plain.size(),0);
-        VM vm(moved,GenerationInputs{7,1,0,0,0,{}});
+        VM vm(moved,GenerationInputs{42,0,0, {{"v", {InputType::U32, {}, 0.f, 1}}}});
         vm.run();
         CHECK(vm.canvas().pixels==b.canvas.pixels);
     }
@@ -112,9 +113,16 @@ TEST_CASE("uncompressed files retain identity and malformed inner layouts are re
     }
 }
 
-TEST_CASE("compression cannot bypass inner opcode version requirements") {
-    auto inner=compiler_test::compileChecked("asset t { size 8x8 draw { q={v,a} pixel(int(q.x),0,#fff) } }");
-    inner[6]=2;
-    const auto loaded=loadFile(envelope(inner));
-    CHECK_THROWS_AS(validate(loaded),FormatError);
+TEST_CASE("compression rejects retired versions in both envelope and payload") {
+    const auto plain=original();
+    // Binaries from before the unversioned format carry 0.x in reserved bytes.
+    for (u16 minor=1;minor<=7;++minor) {
+        auto old=plain; old[6]=static_cast<u8>(minor);
+        CHECK_THROWS_AS(compressFile(old),FormatError);
+        auto outer=envelope(plain); outer[6]=static_cast<u8>(minor);
+        CHECK_THROWS_AS(loadFile(outer),FormatError);
+        // Construct the stream directly: a current envelope cannot conceal
+        // a retired payload, even when its zlib checksum is valid.
+        CHECK_THROWS_AS(loadFile(envelope(old)),FormatError);
+    }
 }

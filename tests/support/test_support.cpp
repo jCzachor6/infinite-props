@@ -11,13 +11,12 @@
 namespace test_support {
 
 std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>& defs,
-                           u32 flags, u16 minor) {
+                           u32 flags) {
     iprop::Writer w;
     for (const u8 magic : iprop::kMagic) {
         w.writeU8(magic);
     }
-    w.writeU16(iprop::kVersionMajor);
-    w.writeU16(minor);
+    w.writeU32(0); // reserved
     w.writeU32(flags);
     w.writeU32(static_cast<u32>(defs.size()));
     w.writeU32(0); // reserved
@@ -38,14 +37,13 @@ std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>&
     return w.data();
 }
 
-std::vector<u8> rawLayout(u16 major, u16 minor, u32 flags, u32 count, u32 reserved,
+std::vector<u8> rawLayout(u32 former, u32 flags, u32 count, u32 reserved,
                           std::initializer_list<std::array<u32, 3>> entries) {
     iprop::Writer w;
     for (const u8 magic : iprop::kMagic) {
         w.writeU8(magic);
     }
-    w.writeU16(major);
-    w.writeU16(minor);
+    w.writeU32(former);
     w.writeU32(flags);
     w.writeU32(count);
     w.writeU32(reserved);
@@ -149,11 +147,10 @@ std::vector<u8> codeSection(const std::vector<FuncSpec>& funcs,
 }
 
 std::vector<u8> minimalMeta() {
-    return metaSection(8, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0, {}, {});
+    return metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0, {}, {});
 }
 
-std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u32 variants,
-                            u32 archetypes, u64 fuel, bool emission, Color emColor,
+std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u64 fuel, bool emission, Color emColor,
                             f32 emX, f32 emY, f32 emR,
                             const std::vector<InputSpec>& inputs,
                             const std::vector<OutputSpec>& outputs,
@@ -163,8 +160,6 @@ std::vector<u8> metaSection(u32 sizeX, u32 sizeY, f32 ox, f32 oy, u32 variants,
     w.writeU32(sizeY);
     w.writeF32(ox);
     w.writeF32(oy);
-    w.writeU32(variants);
-    w.writeU32(archetypes);
     w.writeU64(fuel);
     w.writeU16(static_cast<u16>((emission ? 1u : 0u) | extraFlags));
     for (int i = 0; i < 6; ++i) {
@@ -205,8 +200,7 @@ std::vector<u8> fullFile(const std::vector<u8>& meta, const std::vector<u8>& poo
     for (const u8 m : iprop::kMagic) {
         w.writeU8(m);
     }
-    w.writeU16(iprop::kVersionMajor);
-    w.writeU16(iprop::kVersionMinor);
+    w.writeU32(0); // reserved
     w.writeU32(0);
     w.writeU32(3);
     w.writeU32(0);
@@ -289,9 +283,9 @@ foundColor:
 
 std::vector<u8> buildProgFile(const Prog& prog, u32 sizeX, u32 sizeY) {
     const auto meta =
-        metaSection(sizeX, sizeY, 0, 0, 1, 1, 100000, false, {}, 0, 0, 0, {}, {});
+        metaSection(sizeX, sizeY, 0, 0, 100000, false, {}, 0, 0, 0, {}, {});
     const auto pool = constSection({"draw"}, prog.ints, prog.floats, prog.colors);
-    return fullFile(meta, pool, codeSection({{0, {0, 0}, {}, {}, prog.body}}, {}));
+    return fullFile(meta, pool, codeSection({{0, {}, {}, {}, prog.body}}, {}));
 }
 
 std::vector<iprop::Value> evalProg(const Prog& prog) {
@@ -343,7 +337,7 @@ iprop::Canvas runProgCanvas(const Prog& prog, u32 sizeX, u32 sizeY) {
     // applies (spec §8.1).
     const auto bytes = buildProgFile(prog); // must outlive the spans
     auto loaded = iprop::loadFile(bytes);
-    iprop::VM vm(loaded, {0, 0, 0, sizeX, sizeY, {}});
+    iprop::VM vm(loaded, {0, sizeX, sizeY, {}});
     vm.run();
     return vm.canvas();
 }

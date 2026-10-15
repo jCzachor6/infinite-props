@@ -20,6 +20,8 @@
 #include <vector>
 
 #include "ips/Lexer.hpp"
+#include "iprop/TypeDescriptor.hpp"
+#include "iprop/Compositor.hpp"
 
 namespace iprop::ips {
 
@@ -73,6 +75,11 @@ struct VectorLit {
     SourceLocation location;
 };
 
+struct ListLit {
+    std::vector<std::unique_ptr<Expr>> elements;
+    SourceLocation location;
+};
+
 // An index into an asset-level palette: `palette[i]`.
 struct Index {
     std::unique_ptr<Expr> object;
@@ -112,11 +119,44 @@ struct RandomRange {
     SourceLocation withLocation{};
 };
 
+// Capture changes only the outer range into a description. Nested ranges in
+// bounds remain eager expressions; this is neither a lambda nor a lazy call.
+struct SamplerCapture {
+    std::unique_ptr<Expr> value;
+    SourceLocation location;
+    bool stepper = false; // same eager capture syntax; distinct description type
+};
+struct SamplerPick {
+    std::unique_ptr<Expr> receiver;
+    std::unique_ptr<Expr> count; // null: one scalar result; otherwise list<T>
+    SourceLocation location;
+};
+struct ListMethod {
+    std::unique_ptr<Expr> receiver;
+    std::string name; // distinct or sort; never a global keyword
+    SourceLocation location;
+};
+struct SurfaceBlur {
+    std::unique_ptr<Expr> receiver;
+    Arg sigma;
+    SourceLocation location;
+};
+
+struct PointDistributionLiteral {
+    struct Point {
+        std::unique_ptr<Expr> key, value;
+        SourceLocation location;
+    };
+    DistributionFamily family = DistributionFamily::Weighted;
+    std::vector<Point> points;
+    SourceLocation location;
+};
+
 struct Expr
-    : std::variant<Literal, Identifier, Member, Call, VectorLit, Index, Binary,
-                   Unary, RandomRange> {
-    using std::variant<Literal, Identifier, Member, Call, VectorLit, Index,
-                       Binary, Unary, RandomRange>::variant;
+    : std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index, Binary,
+                   Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral> {
+    using std::variant<Literal, Identifier, Member, Call, VectorLit, ListLit, Index,
+                       Binary, Unary, RandomRange, SamplerCapture, SamplerPick, ListMethod, SurfaceBlur, PointDistributionLiteral>::variant;
     TokenRange sourceRange{};
     TokenRange sourceCoreRange{}; // excludes redundant outer parentheses
 };
@@ -126,7 +166,7 @@ struct Expr
 // The declared type of a function parameter or return value: the scalar
 // and vec2 types the VM can store in locals (spec §3/§9). Unlike `input`,
 // there is no u32 — parameters are always locals.
-enum class ParamType { I32, F32, Color, Vec2, Distribution };
+using ParamType = iprop::TypeDescriptor;
 
 struct Stmt;
 
@@ -187,11 +227,25 @@ struct ForStmt {
     SourceLocation location;
 };
 
+// A capture statement. Its result binds only after the body exits;
+// the body executes on a fresh target without automatically painting its parent.
+struct LayerStmt {
+    std::string name;
+    CompositionMode alpha = CompositionMode::Inherited;
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
+struct ClipStmt {
+    std::unique_ptr<Expr> mask;
+    std::vector<Stmt> body;
+    SourceLocation location;
+};
+
 struct Stmt
     : std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                   BreakStmt, ContinueStmt, ForStmt> {
+                   BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt> {
     using std::variant<VarDecl, ExprStmt, IfStmt, WhileStmt, ReturnStmt,
-                       BreakStmt, ContinueStmt, ForStmt>::variant;
+                       BreakStmt, ContinueStmt, ForStmt, LayerStmt, ClipStmt>::variant;
     TokenRange sourceRange{};
 };
 
@@ -199,7 +253,11 @@ struct Stmt
 
 enum class InputType { Color, F32, U32, I32 };
 
-enum class OutputKind { Point, Rect, Circle };
+// Resource exports are source-level outputs, separate from the frozen host enum.
+enum class OutputKind { Point, Rect, Circle, Mask, Layer };
+constexpr bool isResourceOutput(OutputKind kind) {
+    return kind == OutputKind::Mask || kind == OutputKind::Layer;
+}
 
 // `input color palette = #808d74`
 struct InputDecl {
@@ -269,12 +327,18 @@ struct Asset {
     std::optional<std::uint32_t> sizeY;
     std::unique_ptr<Expr> originX;
     std::unique_ptr<Expr> originY;
-    std::optional<std::uint32_t> variants;
-    std::optional<std::uint32_t> archetypes;
 
     std::vector<InputDecl> inputs;
     std::vector<OutputDecl> outputs;
     std::vector<PaletteDecl> palettes;
+    struct Constant {
+        ParamType type;
+        std::string name;
+        std::unique_ptr<Expr> value;
+        SourceLocation location;
+        TokenRange sourceRange{};
+    };
+    std::vector<Constant> constants;
     std::vector<Function> functions;
 
     TokenRange sourceRange{};

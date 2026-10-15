@@ -1,6 +1,5 @@
-asset colorErrors {
+asset colorErrors { input i32 v = 0
   size 8x8
-  variants 4
   draw {
     if (v == 0) {
       pixel(0, 0, color.hsv(#ff8000, exp(100), 1, 1))

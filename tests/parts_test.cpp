@@ -17,11 +17,8 @@ namespace {
 
 // Appends a full part.draw call to a body: seed, variant, archetype, atX,
 // atY (spec §9.10 stack order), using const-pool indices from the program.
-void pushPartCall(std::vector<u8>& body, u16 partIndex, u16 seedIdx = 0, u16 variantIdx = 0,
-                  u16 archetypeIdx = 0, u16 atXIdx = 0, u16 atYIdx = 0, u8 transform = 0) {
+void pushPartCall(std::vector<u8>& body, u16 partIndex, u16 seedIdx = 0, u16 atXIdx = 0, u16 atYIdx = 0, u8 transform = 0) {
     for (const auto b : ins(0x10, 0, seedIdx)) body.push_back(b);
-    for (const auto b : ins(0x10, 0, variantIdx)) body.push_back(b);
-    for (const auto b : ins(0x10, 0, archetypeIdx)) body.push_back(b);
     for (const auto b : ins(0x11, 0, atXIdx)) body.push_back(b);
     for (const auto b : ins(0x11, 0, atYIdx)) body.push_back(b);
     for (const auto b : ins(0xA0, transform, partIndex)) body.push_back(b);
@@ -37,9 +34,9 @@ GenerationResult runParts(const std::vector<u8>& drawBody,
                           const std::vector<i32>& ints, const std::vector<f32>& floats,
                           const std::vector<Color>& colors, u32 sizeX = 8, u32 sizeY = 8) {
     std::vector<FuncSpec> funcs;
-    funcs.push_back({0, {0, 0}, {}, {}, drawBody});
+    funcs.push_back({0, {}, {}, {}, drawBody});
     funcs.insert(funcs.end(), partFunctions.begin(), partFunctions.end());
-    const auto meta = metaSection(sizeX, sizeY, 0, 0, 1, 1, 1000000, false, {}, 0, 0, 0, {},
+    const auto meta = metaSection(sizeX, sizeY, 0, 0, 1000000, false, {}, 0, 0, 0, {},
                                   rootOutputs);
     const auto pool = constSection(names, ints, floats, colors);
     const auto bytes = fullFile(meta, pool, codeSection(funcs, parts));
@@ -65,7 +62,7 @@ TEST_CASE("a part draws onto its sub-canvas and blits to the pinned origin") {
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const Color c{9, 8, 7, 255};
-    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+    const auto result = runParts(drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
                                  {{1, 8, 8, 0, 0, {}, {}}}, {}, {"draw"},
                                  {2, 3, 0}, {0.f}, {c});
     REQUIRE(result.image.at(2, 3) == c);
@@ -83,11 +80,11 @@ TEST_CASE("the blit respects the part origin") {
 
     std::vector<u8> drawBody;
     // at (10, 10): the part's (0,0) lands at (8, 9). Pool floats need 10.0.
-    pushPartCall(drawBody, 0, 0, 0, 0, 0, 0);
+    pushPartCall(drawBody, 0, 0, 0, 0);
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const Color c{1, 2, 3, 255};
-    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+    const auto result = runParts(drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
                                  {{1, 16, 16, 2.f, 1.f, {}, {}}}, {}, {"draw"},
                                  {0}, {10.f}, {c}, 16, 16);
     REQUIRE(result.image.at(8, 9) == c);
@@ -116,7 +113,7 @@ TEST_CASE("parts clip to their own sub-canvas") {
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const Color c{4, 5, 6, 255};
-    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+    const auto result = runParts(drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
                                  {{1, 4, 4, 0, 0, {}, {}}}, {}, {"draw"},
                                  {0, 10, 1}, {0.f}, {c});
     REQUIRE(result.image.at(0, 0) == c);
@@ -139,7 +136,7 @@ TEST_CASE("a parent reads the part's outputs and propagates them (the portrait c
     for (const auto b : ins(0x90, 0, 0)) drawBody.push_back(b); // out.point 0
     for (const auto b : retIns()) drawBody.push_back(b);
 
-    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+    const auto result = runParts(drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
                                  {{1, 8, 8, 0, 0, {}, {{0, 0, 2}}}},
                                  {{0, 0, 1}},                     // root: point "pupilCenter"
                                  {"draw", "pupilCenter", "pupil"},
@@ -168,17 +165,17 @@ TEST_CASE("nested parts compose offsets") {
     for (const auto b : ins(0x10, 0, 0)) bodyB.push_back(b); // y = 0
     for (const auto b : ins(0x12, 0, 0)) bodyB.push_back(b);
     for (const auto b : ins(0x80, 0, 0)) bodyB.push_back(b);
-    pushPartCall(bodyB, 0, 0, 0, 0, 1, 1); // A at (2, 2): floats idx 1 = 2.0
+    pushPartCall(bodyB, 0, 0, 1, 1); // A at (2, 2): floats idx 1 = 2.0
     for (const auto b : retIns()) bodyB.push_back(b);
 
     std::vector<u8> drawBody;
-    pushPartCall(drawBody, 1, 0, 0, 0, 1, 1); // B at (2, 2)
+    pushPartCall(drawBody, 1, 0, 1, 1); // B at (2, 2)
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const Color c{2, 3, 4, 255};
     const auto result = runParts(
         drawBody,
-        {{kAnonymousName, {0, 0}, {}, {}, bodyA}, {kAnonymousName, {0, 0}, {}, {}, bodyB}},
+        {{kAnonymousName, {}, {}, {}, bodyA}, {kAnonymousName, {}, {}, {}, bodyB}},
         {{1, 8, 8, 0, 0, {}, {}}, {2, 8, 8, 0, 0, {}, {}}}, {}, {"draw"},
         {0, 1}, {0.f, 2.f}, {c});
     // B's (0,0) lands at (2,2); A at (2,2) inside B shifts its raster by
@@ -200,7 +197,7 @@ TEST_CASE("nested transforms restore the parent context and respect output owner
     // B (8x8) invokes a helper that draws A. After A returns, writing B's
     // slot must use B's mirror, even though this is an ordinary call frame.
     std::vector<u8> helper;
-    pushPartCall(helper, 0, 0, 0, 0, 2, 2, 1);
+    pushPartCall(helper, 0, 0, 2, 2, 1);
     append(helper, 0x96, 2); append(helper, 0x90, 3);
     append(helper, static_cast<u8>(Opcode::Return));
     std::vector<u8> bodyB;
@@ -209,12 +206,12 @@ TEST_CASE("nested transforms restore the parent context and respect output owner
     append(bodyB, 0x11, 1); append(bodyB, 0x11, 2); append(bodyB, 0x90, 1);
     append(bodyB, static_cast<u8>(Opcode::Return));
     std::vector<u8> drawBody;
-    pushPartCall(drawBody, 1, 0, 0, 0, 0, 0, 4);
+    pushPartCall(drawBody, 1, 0, 0, 0, 4);
     append(drawBody, 0x96, 3); append(drawBody, 0x90, 0);
     append(drawBody, static_cast<u8>(Opcode::Return));
     const auto result = runParts(
         drawBody,
-        {{kAnonymousName, {0,0}, {}, {}, bodyA}, {kAnonymousName, {0,0}, {}, {}, bodyB},
+        {{kAnonymousName, {}, {}, {}, bodyA}, {kAnonymousName, {}, {}, {}, bodyB},
          {kAnonymousName, {}, {}, {}, helper}},
         {{1, 2, 3, 0, 0, {}, {{0,0,3}}}, {2, 8, 8, 0, 0, {}, {{0,0,4}}}},
         {{0,0,1}, {0,0,2}}, {"draw", "anchor", "foreign", "a", "b"},
@@ -253,7 +250,7 @@ TEST_CASE("call order is paint order") {
     const Color blue{0, 0, 255, 255};
     const auto result = runParts(
         drawBody,
-        {{kAnonymousName, {0, 0}, {}, {}, bodyA}, {kAnonymousName, {0, 0}, {}, {}, bodyB}},
+        {{kAnonymousName, {}, {}, {}, bodyA}, {kAnonymousName, {}, {}, {}, bodyB}},
         {{1, 8, 8, 0, 0, {}, {}}, {2, 8, 8, 0, 0, {}, {}}}, {}, {"draw"},
         {0, 5}, {0.f}, {red, blue});
     REQUIRE(result.image.at(5, 5) == blue);
@@ -272,7 +269,7 @@ TEST_CASE("parts get their own stream; the caller's stream is untouched") {
     std::vector<u8> drawBody;
     for (const auto b : ins(0x10, 0, 2)) drawBody.push_back(b); // const.i32 5 (idx 2)
     for (const auto b : ins(0x60, 0, 0)) drawBody.push_back(b); // stream.push
-    pushPartCall(drawBody, 0, 1, 0, 0, 0, 0); // seed = 1 (int idx 1)
+    pushPartCall(drawBody, 0, 1, 0, 0); // seed = 1 (int idx 1)
     for (const auto b : ins(0x96, 0, 2)) drawBody.push_back(b); // part.get.point 2
     for (const auto b : ins(0x90, 0, 0)) drawBody.push_back(b); // out.point 0 (propagated)
     for (const auto b : ins(0x62, 0, 0)) drawBody.push_back(b); // unit (caller stream 5)
@@ -281,7 +278,7 @@ TEST_CASE("parts get their own stream; the caller's stream is untouched") {
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const auto result = runParts(
-        drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+        drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
         {{1, 8, 8, 0, 0, {}, {{0, 0, 2}}}},
         {{0, 0, 1}, {0, 0, 3}}, // root: "pupil", "after"
         {"draw", "pupil", "partPupil", "after"},
@@ -300,7 +297,7 @@ TEST_CASE("parts get their own stream; the caller's stream is untouched") {
     REQUIRE(bitsOf(result.outputs[1].points[0].x) == bitsOf(reference));
 }
 
-TEST_CASE("parts receive uniforms and variant/archetype as params") {
+TEST_CASE("parts receive only declared uniforms as params") {
     // Part with a colour uniform "tint": it echoes variant/archetype and the
     // tint's red channel through its outputs.
     std::vector<u8> partBody;
@@ -315,10 +312,10 @@ TEST_CASE("parts receive uniforms and variant/archetype as params") {
     // Stack order (spec §9.10): uniforms first (deepest), then seed,
     // variant, archetype, atX, atY.
     std::vector<u8> drawBody;
-    for (const auto b : ins(0x12, 0, 0)) drawBody.push_back(b); // tint (uniform)
-    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // seed 0
     for (const auto b : ins(0x10, 0, 1)) drawBody.push_back(b); // variant 3 (idx 1)
     for (const auto b : ins(0x10, 0, 2)) drawBody.push_back(b); // archetype 4 (idx 2)
+    for (const auto b : ins(0x12, 0, 0)) drawBody.push_back(b); // tint (uniform)
+    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // seed 0
     for (const auto b : ins(0x11, 0, 0)) drawBody.push_back(b); // atX 0
     for (const auto b : ins(0x11, 0, 0)) drawBody.push_back(b); // atY 0
     for (const auto b : ins(0xA0, 0, 0)) drawBody.push_back(b); // part.draw 0
@@ -326,8 +323,8 @@ TEST_CASE("parts receive uniforms and variant/archetype as params") {
 
     const auto result = runParts(
         drawBody, {{kAnonymousName, {0, 0, 2}, {}, {}, partBody}},
-        {{1, 8, 8, 0, 0, {{0, 2, {200, 5, 5, 255}, 0, 0}}, {{0, 0, 3}}}},
-        {}, {"draw", "pupil", "tint", "echo"}, {0, 3, 4}, {0.f}, {{0, 0, 0, 255}});
+        {{1, 8, 8, 0, 0, {{2, 4, {}, 0, 0}, {2, 5, {}, 0, 0}, {0, 2, {200, 5, 5, 255}, 0, 0}}, {{0, 0, 3}}}},
+        {}, {"draw", "pupil", "tint", "echo", "v", "a"}, {0, 3, 4}, {0.f}, {{0, 0, 0, 255}});
     // The part's echo output carries (variant, archetype) = (3, 4).
     REQUIRE(result.outputs.size() == 1);
     REQUIRE(result.outputs[0].name == "echo");
@@ -357,7 +354,7 @@ TEST_CASE("translucent part strokes are dropped by the blit (spec §11.1)") {
 
     const Color background{30, 40, 50, 255};
     const Color translucent{255, 0, 0, 128};
-    const auto result = runParts(drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+    const auto result = runParts(drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
                                  {{1, 8, 8, 0, 0, {}, {}}}, {}, {"draw"},
                                  {0}, {0.f}, {translucent, background});
     REQUIRE(result.image.at(0, 0) == background); // untouched by the part
@@ -386,7 +383,7 @@ TEST_CASE("part.get.rect and part.get.circle read their shapes") {
     for (const auto b : retIns()) drawBody.push_back(b);
 
     const auto result = runParts(
-        drawBody, {{kAnonymousName, {0, 0}, {}, {}, partBody}},
+        drawBody, {{kAnonymousName, {}, {}, {}, partBody}},
         {{1, 8, 8, 0, 0, {}, {{1, 0, 1}, {2, 0, 2}}}},
         {{1, 0, 1}, {2, 0, 2}},
         {"draw", "box", "zone", "prect", "pcircle"},
@@ -403,11 +400,11 @@ TEST_CASE("part.get without a part call traps") {
     for (const auto b : ins(0x96, 0, 0)) drawBody.push_back(b);
     for (const auto b : retIns()) drawBody.push_back(b);
 
-    const auto meta = metaSection(8, 8, 0, 0, 1, 1, 1000000, false, {}, 0, 0, 0, {}, {});
+    const auto meta = metaSection(8, 8, 0, 0, 1000000, false, {}, 0, 0, 0, {}, {});
     const auto pool = constSection({"draw", "pupil"}, {0}, {0.f}, {{0, 0, 0, 255}});
     const auto bytes = fullFile(meta, pool,
-                                codeSection({{0, {0, 0}, {}, {}, drawBody},
-                                             {kAnonymousName, {0, 0}, {}, {}, retIns()}},
+                                codeSection({{0, {}, {}, {}, drawBody},
+                                             {kAnonymousName, {}, {}, {}, retIns()}},
                                             {{1, 8, 8, 0, 0, {}, {{0, 0, 1}}}}));
     auto loaded = loadFile(bytes);
     bool threw = false;

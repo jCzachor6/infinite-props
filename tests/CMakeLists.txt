@@ -20,6 +20,7 @@ add_executable(iprop_tests
     language/color_namespace_test.cpp
     language/aliases_test.cpp
     language/random_sugar_test.cpp
+    language/reserved_keywords_test.cpp
     language/named_arguments_test.cpp
     language/direct_seed_test.cpp
     language/diagnostic_hints_test.cpp
@@ -31,7 +32,17 @@ add_executable(iprop_tests
     compiler/basics_test.cpp
     compiler/optimizer_test.cpp
     compiler/scalar_test.cpp
+    compiler/math_bounds_test.cpp
+    compiler/asset_constants_test.cpp
+    compiler/collections_test.cpp
+    compiler/list_methods_test.cpp
+    compiler/samplers_test.cpp
+    compiler/static_values_test.cpp
+    compiler/review_regressions_test.cpp
+    compiler/steppers_test.cpp
+    compiler/sampling_palettes_test.cpp
     compiler/defaults_test.cpp
+    compiler/declared_inputs_test.cpp
     compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
@@ -40,6 +51,13 @@ add_executable(iprop_tests
     compiler/color_channels_test.cpp
     compiler/random_ranges_test.cpp
     compiler/distributions_test.cpp
+    compiler/point_distributions_test.cpp
+    compiler/density_test.cpp
+    compiler/surfaces_test.cpp
+    compiler/source_over_test.cpp
+    compiler/masks_test.cpp
+    compiler/blur_test.cpp
+    compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
     compiler/part_transforms_test.cpp
     compiler/parts_test.cpp
@@ -121,6 +139,11 @@ target_link_libraries(vm_result_allocation_probe PRIVATE iprop_compiler)
 iprop_warnings(vm_result_allocation_probe)
 add_test(NAME vm_result_allocations COMMAND vm_result_allocation_probe)
 
+add_executable(blur_allocation_probe compiler/blur_allocation_probe.cpp)
+target_link_libraries(blur_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(blur_allocation_probe)
+add_test(NAME blur_allocation_failures COMMAND blur_allocation_probe)
+
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
@@ -146,6 +169,14 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
+    add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_source_over_reference.py")
+    add_test(NAME retired_format_rejection COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_frozen_math.py" "$<TARGET_FILE:ipgen>")
+    add_test(NAME resource_export_reference COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_resource_export_reference.py")
     add_test(NAME compiler_diagnostic_failures COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_diagnostic_failures.py" "$<TARGET_FILE:compiler_diagnostic_failure_probe>")
     add_test(NAME compiler_check_cli COMMAND ${Python3_EXECUTABLE}

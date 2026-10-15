@@ -38,7 +38,7 @@ PartRenderPlan PartRenderPlan::create(const Part& part, Vec2 callerScale,
     plan.targetExtent = transform.mapExtent(plan.sourceExtent);
     plan.targetOrigin = {coordinate(placement.x - part.origin.x * callerScale.x),
                          coordinate(placement.y - part.origin.y * callerScale.y)};
-    plan.blitCost = static_cast<u64>(plan.sourceExtent.x) * plan.sourceExtent.y;
+    plan.blitCost = static_cast<u64>(plan.sourceExtent.x) * static_cast<u64>(plan.sourceExtent.y);
     plan.callerOffset = {static_cast<f32>(plan.targetOrigin.x) / callerScale.x,
                          static_cast<f32>(plan.targetOrigin.y) / callerScale.y};
     return plan;

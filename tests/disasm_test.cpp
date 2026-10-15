@@ -50,8 +50,6 @@ const std::string kRock = R"(
 asset rock {
   size 192x192
   origin 96,170
-  variants 5
-  archetypes 4
   input  color palette = #808d74
   output rect collider
 
@@ -75,7 +73,7 @@ std::vector<u8> compileChecked(const std::string& source) {
 Canvas executeBytes(const std::vector<u8>& bytes) {
     const auto loaded = loadFile(bytes);
     validate(loaded);
-    VM vm(loaded, GenerationInputs{7, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{7, 0, 0, {}});
     vm.run();
     return vm.result().image;
 }
@@ -83,61 +81,61 @@ Canvas executeBytes(const std::vector<u8>& bytes) {
 } // namespace
 
 TEST_CASE("the disassembly is stable golden output") {
-    const std::string expected = R"(meta: size=8x8 origin=0,0 variants=1 archetypes=1 fuel=2000000
+    const std::string expected = R"(meta: size=8x8 origin=0,0 fuel=2000000
 input: color base = #3355aaff
 output: point p
-fn draw ( i32, i32, color ) -> ( ):
+fn draw ( color ) -> ( ):
   locals: i32 i32 i32
   const.i32 14
-  local.set 3
-  local.get 3
+  local.set 1
+  local.get 1
   const.i32 6
   i32.sub
-  local.set 4
+  local.set 2
   const.i32 0
   i32.to.f32
   const.i32 0
-  i32.to.f32
-  local.get 4
-  i32.to.f32
-  local.get 4
   i32.to.f32
   local.get 2
-  rect
-  local.get 3
   i32.to.f32
-  local.get 4
+  local.get 2
+  i32.to.f32
+  local.get 0
+  rect
+  local.get 1
+  i32.to.f32
+  local.get 2
   i32.to.f32
   out.point p
-  local.get 3
+  local.get 1
   const.i32 14
   i32.eq
   if
   const.i32 0
   const.i32 0
-  local.get 2
+  local.get 0
   const.i32 10
   color.shade
   pixel
   end
   const.i32 0
-  local.set 5
+  local.set 3
   block
   loop
-  local.get 5
+  local.get 3
   const.i32 2
   i32.lt_s
   const.i32 0
   i32.eq
   br_if 1
-  local.get 5
+  local.get 3
   const.i32 1
   const.color #ffffffff
   pixel
-  local.get 5
+  local.get 3
   const.i32 1
   i32.add
-  local.set 5
+  local.set 3
   br 0
   end
   end
@@ -175,12 +173,12 @@ asset hair {
     const std::string portrait = R"(
 import hair from "hair.ips"
 
-asset portrait {
+asset portrait { input i32 a = 0 input i32 v = 0
   size 64x64
   output point anchor
 
   draw {
-    hair.draw(seed ^ 7, v, a, at = {32, 4})
+    hair.draw(seed ^ 7, at = {32, 4})
     anchor = hair.outputs.top
   }
 })";
@@ -198,7 +196,7 @@ asset portrait {
     const auto roundTrip = assemble(text);
     const auto loaded = loadFile(roundTrip);
     CHECK_NOTHROW(validate(loaded));
-    VM vm(loaded, GenerationInputs{3, 0, 0, 0, 0, {}});
+    VM vm(loaded, GenerationInputs{3, 0, 0, {}});
     CHECK_NOTHROW(vm.run());
     const GenerationResult result = vm.result();
     const NamedOutput* anchor = result.find("anchor");

@@ -1,7 +1,7 @@
 # Drawing and colors
 
 Raster calls paint the current canvas in call order. Pixel centers and edge
-coverage are fixed by [canvas algorithms](../../spec/iprop-v0.3.md#11-canvas-operations--exact-algorithms).
+coverage are fixed by [canvas algorithms](../../spec/iprop-v0.7.md#11-canvas-operations--exact-algorithms).
 Out-of-canvas coverage is clipped. Geometry arguments must be finite and
 within the operation's representable domain; invalid geometry can trap.
 The generated signatures distinguish integer pixels/thickness from floating
@@ -11,11 +11,14 @@ The frozen compositor interpolates RGB for translucent sources while retaining
 the destination alpha. An opaque source replaces all RGBA bytes. A translucent
 source over initially transparent storage can leave nonzero RGB with alpha zero;
 this is neither standard straight-alpha nor premultiplied-alpha blending.
-Start with an opaque background for translucent glaze examples. The C API
+Start with an opaque background for translucent glaze examples.
+
+<!-- llm: skip -->
+The C API
 [image view](../c-api-images.md) identifies this mode as
 `IPROP_IMAGE_ALPHA_LEGACY_DESTINATION` and returns the exact stored bytes.
 Exact blending, alpha endpoints and rounding are specified in
-[pixel blending](../../spec/iprop-v0.3.md#111-pixelx-y-colour).
+[pixel blending](../../spec/iprop-v0.7.md#111-pixelx-y-colour).
 
 <!-- example: ../../examples/language/drawing.ips -->
 
@@ -55,6 +58,8 @@ contract. Use valid positive radii for ordinary ellipses.
 
 Paints a filled polygon with at least three `(x, y)` pairs. Positional color
 comes first. Named coordinates are `x0`, `y0`, `x1`, `y1`, etc., with `color`.
+`poly(points, color)` also accepts an immutable `list<vec2>` of at least
+three vertices. Its named argument is `points`; points evaluate before color.
 Coordinates evaluate first in vertex order, then color, even for reordered
 named arguments. The point-in-polygon rule is specified in the canvas contract.
 
@@ -78,9 +83,11 @@ A random color between two ends is `#705845ff to #c8c8c8ff`; see
 value as `i32` in 0–255; alpha is read as stored. The base is evaluated
 exactly once per read, so `makeColor().r` calls the helper once, while
 `makeColor().r` and `makeColor().g` are two calls. Store the color first to
-read the channels of one result. Channel reads of a constant color fold at
-compile time; otherwise they lower to the format 0.5 `color.r`–`color.a`
-instructions, and only such files are written as format 0.5.
+read the channels of one result.
+
+<!-- llm: skip -->
+Channel reads of a constant color fold at
+compile time; otherwise they lower to `color.r`–`color.a` instructions.
 
 Channels are read-only. Build a modified color with `rgb()` or `rgba()`,
 which clamp their channels, so `rgba(c.r + 5, c.g - 3, c.b, c.a)` needs no
@@ -126,7 +133,7 @@ Replaces alpha with a clamped integer channel while retaining RGB.
 <!-- builtin: color.mul -->
 
 Multiplies color channels using the pinned integer conversion. See
-[color utilities](../../spec/iprop-v0.3.md#1212-the-colours-v03) for alpha and rounding.
+[color utilities](../../spec/iprop-v0.7.md#1212-the-colours) for alpha and rounding.
 
 ### color.scale
 <!-- builtin: color.scale -->

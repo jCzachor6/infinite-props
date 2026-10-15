@@ -4,17 +4,16 @@
 import stem from "stem.ips"
 import cap from "cap.ips"
 
-asset mushroom {
-  size 16x22
+asset mushroom { size 16x22
   origin 8, 22
   input color tint = #c8463c
   input i32 height = 8
   output point peak
 
   draw {
-    stem.draw(seed, v, a, at = {8, 22}, height = height)
+    stem.draw(seed, at = {8, 22}, height = height)
     top = stem.outputs.top
-    cap.draw(hash(seed ^ 7), v, a, at = {top.x, top.y + 1}, tint = tint)
+    cap.draw(hash(seed ^ 7), at = {top.x, top.y + 1}, tint = tint)
     peak = cap.outputs.peak
   }
 }

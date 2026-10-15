@@ -25,17 +25,25 @@ inline Instruction decodeInstruction(std::span<const u8> bytes) {
 // The spec §9 mnemonic of an opcode, or nullptr for reserved opcodes.
 const char* opcodeMnemonic(Opcode opcode);
 
-// What an instruction's u16 operand means (spec §9). Used by the
-// disassembler and the assembler.
+// What an instruction's u16 operand means (spec §9). Used by the validator,
+// the disassembler, the assembler and the compiler's pool and local remapping.
 enum class OperandKind {
-    None,
-    IntConst,   // const.i32: const-pool index
-    FloatConst, // const.f32: const-pool index
-    ColorConst, // const.color: const-pool index
-    Index,      // local.get/set/tee: local index
-    Name,       // call/part.draw/out.*/part.get.*: resolved at assembly
-    Depth,      // br/br_if: branch depth
-    Count,      // poly: vertex count
+    None,              // unused and ignored
+    Zero,              // unused and required to be zero
+    IntConst,          // const.i32: const-pool index
+    FloatConst,        // const.f32: const-pool index
+    ColorConst,        // const.color: const-pool index
+    Local,             // local.get/set/tee, layer.begin: local index
+    TypeDescriptor,    // list/sampler/stepper operations: type descriptor index
+    ListConst,         // const.list: collection constant index
+    SamplerConst,      // const.sampler: sampler constant index
+    StepperConst,      // const.stepper: stepper constant index
+    DistributionConst, // const.distribution: distribution constant index
+    ResourceExport,    // out.mask/layer, part.get.mask/layer: resource export index
+    Immediate,         // distribution.begin/append, surface.paint*: an encoded value
+    Name,              // call/part.draw/out.*/part.get.*: resolved at assembly
+    Depth,             // br/br_if: branch depth
+    Count,             // poly: vertex count
 };
 
 OperandKind operandKind(Opcode opcode);

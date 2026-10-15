@@ -36,7 +36,7 @@ upper one traps, as does a NaN or infinite `f32` bound; bounds are never
 swapped. Integer draws discard the few raw values that would favour some
 results, so every integer of the range is equally likely for any width, and
 the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
-are in [random ranges](../../spec/iprop-v0.5.md#3-uniform-random-ranges).
+are in [random ranges](../../spec/iprop-v0.7.md#18-uniform-random-ranges).
 Floating results never leave the bounds, even after rounding.
 
 `to` binds more loosely than arithmetic and shifts and more tightly than
@@ -46,6 +46,7 @@ an expression. Ranges cannot be chained: `a to b to c` is rejected; use
 `(1 to 3) to (5 to 8)` to draw the bounds themselves. The formatter writes
 every range in parentheses.
 
+<!-- llm: skip -->
 `to` stays a valid name. Where a statement may end, a following `to = ...`,
 `to.draw(...)` or a call of a declared helper `to(...)` starts the next
 statement, as before; inside parentheses or arguments `to` is always the
@@ -87,6 +88,7 @@ This example is intentionally rejected: write `(a to b) to c` to draw a bound.
 
 <!-- example: ../../examples/language/traps/reversed-range.ips -->
 
+<!-- llm: skip -->
 This program is valid source, but its range is reversed for the default
 input and traps during generation.
 
@@ -107,7 +109,7 @@ rust = 0.0 to 1.0 with mostlyClean          // mostly below 0.3
 A `distribution` is a value: store it, copy it, pass it to a helper and
 return it from one. `distribution d = ...` declares it explicitly; a plain
 first assignment infers the type as usual. Its parameters are evaluated
-once, when the constructor runs, and may come from inputs, `v`/`a`, earlier
+once, when the constructor runs, and may come from inputs, earlier
 computations or draws; changing those variables later does not change the
 description. Constructing a distribution draws nothing; every `with` draw
 takes its own value from the current stream, so two ranges using one
@@ -128,7 +130,7 @@ one stream step. Parameters are checked when the constructor runs: invalid
 values trap there, even when the description is never used, and an
 unassigned `distribution` local traps when drawn. Draws cost 1 fuel plus 1 per
 iteration of the pinned numerical kernels, typically 20-150; the
-[specification](../../spec/iprop-v0.5.md#4-distributions) gives the exact
+[specification](../../spec/iprop-v0.7.md#19-analytic-distributions) gives the exact
 algorithms. A helper named `gaussian`, `triangular` or `beta` takes
 precedence over the constructor of the same name.
 
@@ -140,8 +142,109 @@ This example is intentionally rejected: `with` needs a distribution.
 
 <!-- example: ../../examples/language/traps/negative-sigma.ips -->
 
+<!-- llm: skip -->
 This program is valid source, but its sigma is negative for the default
 input and the constructor traps during generation.
+
+### Weighted point distributions
+
+`weighted { key: weight, ... }` constructs a `distribution` from 1–256 numeric
+atoms. Keys keep their original i32/f32 types, increase strictly and are finite.
+Weights are finite and nonnegative, with positive total mass. Pairs evaluate
+key then weight, once in written order, and snapshot without an intrinsic draw.
+Use `lower to upper with d`, or capture it in a sampler; color/vec2 keys denote
+positions on 0–1. Copies, helpers and lists share the immutable snapshot.
+
+```ips
+distribution finish = weighted { 1: 50, 2: 20, 3: 20, 4: 10 }
+style = 1 to 4 with finish
+```
+
+An i32 key remains exact above 2^24; mixed key types convert exactly to binary64
+for comparisons, without first widening integer keys to f32. The weights are
+relative masses, so 50/20/20/10 and 75/20/5 describe proportions. Zero weights
+cannot be selected. The finite RNG grid does not promise exact counts for any
+particular set of seeds. F32 bounds give f32 results; i32 results round the
+selected atom to the nearest integer, halves away from zero.
+
+Bounds and the initialized description are checked before one stream step.
+The draw then filters keys to the inclusive bounds, sums their weights in
+binary64 in source order, and selects the first cumulative mass strictly above
+its target. A tie belongs to the next positive interval. Missing bounded mass
+traps after the step, including equal bounds without a positive atom there.
+There are no redraws. Construction pays base instruction fuel plus one per
+point; sampling pays its base draw plus two per point for the two full scans.
+Buffers share the generation's 64 MiB data quota and are charged once.
+
+Asset `const distribution` and const samplers may use pure weighted literals,
+including forward numeric const references. Invalid static descriptions reject
+before an artifact is written; invalid runtime operands trap at construction,
+even if unused. Only `weighted` followed by `{` starts the literal; a helper
+`weighted(...)` and locals named `weighted` keep their existing meaning.
+See the [format and numerical contract](../../spec/iprop-v0.7.md#27-point-distributions-and-weighted-draws).
+
+<!-- example: ../../examples/language/weighted.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-order.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-negative.ips -->
+
+<!-- example: ../../examples/language/errors/weighted-empty-mass.ips -->
+
+<!-- example: ../../examples/language/traps/weighted-mass.ips -->
+
+<!-- example: ../../examples/language/traps/weighted-runtime-weight.ips -->
+
+### Density point distributions
+
+`density { key: height, ... }` constructs a `distribution` from 2–256 strictly
+increasing finite numeric keys and finite nonnegative heights. Heights describe
+a continuous, piecewise linear density, with positive total trapezoidal area;
+they are not atom weights. Density is zero outside the first/last key. Numeric
+pairs evaluate once in written order and snapshot their original i32/f32 types
+without an intrinsic draw. Consts, copies, lists, helpers and sampler captures
+use the same immutable point buffers as weighted descriptions.
+
+```ips
+distribution heightShape = density { 14.0: 0.0, 18.0: 1.0, 22.0: 0.6, 26.0: 0.0 }
+height = 14.0 to 26.0 with heightShape
+```
+
+A bounded draw clips every intersected segment, interpolates its boundary
+heights and computes its trapezoidal area. One stream step selects a positive
+area interval, then a stable binary64 inverse integral gives the position.
+Zero-area segments are skipped. This preserves the conditional shape without
+redraws or a pile-up caused by clamping rejected samples to the range ends.
+An interval of positive length requires positive bounded area; otherwise it
+traps after its stream step. Equal bounds return that point after one step if
+it lies in the closed natural support, even at zero-height endpoints or gaps;
+equal bounds outside it trap. I32 draws round halves away from zero, while
+f32 and color/vec2 coefficients round once to binary32.
+
+Construction pays base instruction fuel plus one per point; an ordinary draw
+adds two per original segment for clipping/selection, reserved before work.
+Equal-bound support checks use no segment scan. The shared 64 MiB quota counts
+each retained point buffer once. Invalid static data reject before artifacts;
+invalid runtime snapshots trap when constructed, even unused. `density(...)`
+helpers and locals named `density` keep their meaning; the literal starts only
+before `{`. Existing family and weighted kernels stay frozen. See the
+[pinned density contract](../../spec/iprop-v0.7.md#28-density-distributions-and-pinned-integration).
+
+<!-- example: ../../examples/language/point-distributions.ips -->
+
+<!-- example: ../../examples/language/errors/density-size.ips -->
+
+<!-- example: ../../examples/language/errors/density-area.ips -->
+
+<!-- example: ../../examples/language/errors/density-order.ips -->
+
+<!-- example: ../../examples/language/errors/density-negative.ips -->
+
+<!-- example: ../../examples/language/traps/density-mass.ips -->
+
+<!-- example: ../../examples/language/traps/density-support.ips -->
+
+<!-- example: ../../examples/language/traps/density-runtime-height.ips -->
 
 ### gaussian
 <!-- builtin: gaussian -->
@@ -169,7 +272,7 @@ equal values above 1 the middle, and values below 1 both ends.
 <!-- builtin: unit -->
 
 Consumes one stream draw and returns an `f32` in `[0, 1)`. The frozen stream
-advance and conversion are specified in [RNG](../../spec/iprop-v0.3.md#122-stream-advance-rngunit).
+advance and conversion are specified in [RNG](../../spec/iprop-v0.7.md#122-stream-advance-rngunit).
 
 ## range
 <!-- builtin: range -->

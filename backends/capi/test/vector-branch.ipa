@@ -1,7 +1,7 @@
 ; Valid control-flow fixture. The C test replaces the scalar before `if`
 ; with an i32 constant to reproduce review R1 at the public load boundary.
-meta: size=1x1 origin=0,0 variants=1 archetypes=1 fuel=1000
-fn draw ( i32, i32 ) -> ( ):
+meta: size=1x1 origin=0,0 fuel=1000
+fn draw (  ) -> ( ):
   const.f32 1
   const.f32 2
   vec2.make

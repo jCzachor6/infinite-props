@@ -1,11 +1,11 @@
 # Checked load and metadata queries
 
-These API 0.3 operations are implemented on the frozen ABI line 0.4:
+These API 0.4 operations use ABI line 0.5:
 
 | Symbol | Behavior |
 | --- | --- |
 | `iprop_program_load_ex` | Loads and validates once; returns structured status/error |
-| `iprop_program_query` | Copies size, origin, variant/archetype counts, fuel and advertised extended metadata |
+| `iprop_program_query` | Copies size, origin, fuel and advertised extended metadata |
 | `iprop_program_info_ex_init` | Initializes the sized program metadata output with the caller's capacity |
 | `iprop_library_query_ex` | Existing library-version/capability query with optional structured error output |
 | `iprop_result_query_stats` | Copies completed VM fuel, pixel bytes and output element counts |
@@ -69,7 +69,7 @@ if (iprop_program_load_ex(bytes, byte_count, &program, &error) == IPROP_EX_OK) {
     iprop_program_info_ex info;
     iprop_program_info_ex_init(&info, sizeof(info));
     if (iprop_program_query(program, &info, &error) == IPROP_EX_OK) {
-        /* info.size_x, size_y, origin_x, origin_y, variants, archetypes, fuel */
+        /* info.size_x, size_y, origin_x, origin_y, fuel */
     }
     iprop_program_free(program);
 }
@@ -83,7 +83,7 @@ no new memory and retains no global last error.
 
 ## Sized query outputs and error storage
 
-`iprop_program_info_ex` is separate from frozen `iprop_meta`. It requires four
+`iprop_program_info_ex` is separate from the untyped `iprop_meta`. It requires four
 readable bytes for `struct_size` and accepts every valid shorter prefix or
 larger future allocation. Queries preserve that size and write only complete
 known fields. Partial fields, padding and unknown tail bytes are untouched.
@@ -91,10 +91,10 @@ The initializer follows the same bounds and sets complete fields to zero.
 The four-byte prefix succeeds without returning absent metadata values. NULL
 or a declared size below four is an argument error with no query-output write.
 
-Fields through `fuel` copy the legacy metadata subset and retain their original
-offsets and prefix size. Emission and physical format fields are appended to
-this same descriptor/accessor under `IPROP_CAP_METADATA_EXTENDED`; older caller
-allocations still receive their complete known prefix. There are no result
+The descriptor contains dimensions, origin and fuel, followed by emission
+and physical format fields advertised by `IPROP_CAP_METADATA_EXTENDED`.
+Use API 0.4 field offsets: there are no variant/archetype fields or padding.
+Shorter allocations using this ABI receive only complete fields in their prefix. There are no result
 views in this query. `iprop_library_query_ex` uses the existing library descriptor
 and the same bounded writer as `iprop_library_query`.
 
@@ -123,9 +123,9 @@ provide one load/validate core, one VM-generation core and the existing result
 marshaller. `CheckedBoundary.hpp` validates output storage and invokes the
 shared structured boundary. `LegacyBoundary.hpp` preserves the old status and
 byte-prefix message policy. Neither adapter repeats the decoder, validator or
-VM. The six legacy declarations/layouts remain unchanged; their nullability,
-unknown/duplicate uniform policy, setup traps, and untouched success/argument/
-OOM text retain their previous behavior.
+VM. Untyped calls use the current API 0.4 layouts. Their nullability,
+unknown/duplicate uniform policy, setup traps and byte-prefix messages are
+described in the [C API guide](../backends/capi/README.md).
 
 ## Checked generation (`generate_ex`)
 

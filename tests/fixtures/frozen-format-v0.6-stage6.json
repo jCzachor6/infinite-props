@@ -1,0 +1,576 @@
+{
+  "baseline_commit": "31207511cf24943a9098e548576f395b43e8ae82",
+  "product_version": "0.7.0",
+  "language_version": "0.7",
+  "note": "Captured with unmodified stage-6 tools before density changes. Execute these weighted binaries without regeneration.",
+  "tools": {
+    "ipc": "9bba83eb71a075d0371f610dc5a2dcf3be917dc639f5731db10e2ccfa24feec6",
+    "ipgen": "19ca3a59ebb846aeb11efdaf2ee9eff3f461e935eea6f8979f1843f44e75b44f"
+  },
+  "cases": [
+    {
+      "source": "examples/language/weighted.ips",
+      "source_sha256": "0425445f4025890538f3424e0ebbfa89b1f177941d7e2db7303e57e592c67355",
+      "format_minor": 4,
+      "binary_base64": "SVBSUAAABAACAAAABgAAAAAAAABiAwAAeNp1Us1KA0EMzuzOdquntVbwJFoEQTyU6gO0IIJIofTswUVbKFQrbbX2VsGjSE8eRNAX6DP48yTePPoI65dM2q4HB75NviSTTLI5rNVrRBni475EBjgG9gEPeAUmgA9U4XwyLvYbziw5/EBfhlzgOwg8gVwHVml+jGJ0t0Z/jz/zk9acWhcBC5x14wHXOY/7jW4rbnP9djxsdHsBtF4fZlY2m51ukfPEzE47Vxd9Zi0XNGw3mF1ntZifKma1kSQhiubDKBN9VTAC4B36CChXONv940vy8HyZTAa1pH5QTva2C4lJtXRjprk1k/eBzxuQh50rRHjDJzARm09LkA4G8DBOF7cBrCBLBL6rr14WTjOekxyhdJHDfdYD7crFmlSsl4r1Z7GBxIZ0K29juwVnGci0PPGzLaCSxhQhQ3iNcCv+CP6C/v6q9MO9WSBAPSv5A80VaRzXyqjd+Ty5O5Vj0X21+Woz1JS6GdrSWo6HtKN8rP/A6CoZXTCjs7GuLSvEuUupLcynNjGfWhS3lfOtPfrnDrfyCzxLOw8=",
+      "binary_sha256": "b7200b3b96cb2a4e8da90b97e572e66ce1fae7641b8562b1854c18d765091f27",
+      "generations": [
+        {
+          "seed": 0,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 782
+          },
+          "rgba_sha256": "ee1121e68acabf82a44f0840bd5c2a75abdc043da070fda3fe08017bf2ae5118",
+          "outputs_sha256": "a07adf4830f7a0484f7bb655627fd412e417c033b5d02dcaf36dfb8244adbe79",
+          "outputs": [
+            {
+              "name": "material",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "layers",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1198748160,
+                  "y": 1181857792
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 781
+          },
+          "rgba_sha256": "02db9fb849e8be5e524b6cc5df04663cac625af4d84abbd3f0c9c38c4800b749",
+          "outputs_sha256": "5b828cf969616d79f59304aaf1c0fae62a1b70ab489fd8df1239c4c1245e0b49",
+          "outputs": [
+            {
+              "name": "material",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1073741824
+                }
+              ]
+            },
+            {
+              "name": "layers",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1198748416,
+                  "y": 1181857792
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 7,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 782
+          },
+          "rgba_sha256": "ee1121e68acabf82a44f0840bd5c2a75abdc043da070fda3fe08017bf2ae5118",
+          "outputs_sha256": "73a88f1800ab28ab026e7015bbda66a4c6349aa523fbe155f541576046f97fb7",
+          "outputs": [
+            {
+              "name": "material",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "layers",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1198749952,
+                  "y": 1181857792
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 26,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 781
+          },
+          "rgba_sha256": "02db9fb849e8be5e524b6cc5df04663cac625af4d84abbd3f0c9c38c4800b749",
+          "outputs_sha256": "ab52ae1f48f3b4fe621130b5de4f2a1dd528895fdbb01a471d717d02daae06f3",
+          "outputs": [
+            {
+              "name": "material",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1073741824
+                }
+              ]
+            },
+            {
+              "name": "layers",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1198754816,
+                  "y": 1181857792
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 4294967295,
+          "size": {
+            "x": 32,
+            "y": 24
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 781
+          },
+          "rgba_sha256": "02db9fb849e8be5e524b6cc5df04663cac625af4d84abbd3f0c9c38c4800b749",
+          "outputs_sha256": "d25256740b65f5988f6ba0eba771aebc4aca4fefa794d80ddf62bc94b591a045",
+          "outputs": [
+            {
+              "name": "material",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1073741824
+                }
+              ]
+            },
+            {
+              "name": "layers",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1065353216
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1198747904,
+                  "y": 1181857792
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "inline:weighted-runtime-snapshot",
+      "source_sha256": "2973e89a55a8b1d9ea43abd507056d71517caf034dda21cc83a25a5f3d18fe6a",
+      "format_minor": 4,
+      "binary_base64": "SVBSUAAABAACAAAABwAAAAAAAAAJAwAAeNpdUjsvBFEUPvfOnX1FMV6hEp2GRhQqdktBslFIRDXWYBO7ZHew263ED6DT6IiKKChoRND4DfwV6zvn3hnLnfnmvJ9zF8orZaIM8cmSPQrYAZYADdwDV4AHrME4q2zEGYx9Lu4C/BRoDvgAPwiaB77AT4IGZH2ppwajczJGf49J7eTqk6udWAuObjbCIx80aoWVmBVxtR5zM81ouxbVY7Y14zCOOFnIDpW9/TZ3WIOyUQ13eYr6QW0jarDLYd4VgqCmQYesrLjFbtcOodzAijqLtqXOPD5FvCVQYLzUOwCfUZUMYvBoxXlewQXwCmB5g9wvS/LAs45tvujfpQ/tfA0Wq+kGumH4BvgNE+CXiRfOclaWzfIp8AI8S7xBfs+BeR/+ho4lztBlmsPQdRqv4GexLv1lBJZnvaYH6TlHj5Bvwd8BI0BbavrUkpw+cmnaEt/ffq3c26+X/vACPr5JLomX7FIWndwCzy29mNiUCx+YWW19fz6du3iTXp3fSwf3Of1P9wOVqD2o",
+      "binary_sha256": "be50ed6d0c8d4bf4775dda6d93369a83e0998163a595b983a9b78821c57b9a41",
+      "generations": [
+        {
+          "seed": 0,
+          "size": {
+            "x": 16,
+            "y": 12
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 212
+          },
+          "rgba_sha256": "3f7a9d424bb9157c2df61be498f3d37ad8d1106f04039b1451a055eb070b3acd",
+          "outputs_sha256": "91c473a1f28fed52a501133fbc0770c16b8fb2a1bacdb113c435da29a0f506d7",
+          "outputs": [
+            {
+              "name": "exact",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1132462080
+                }
+              ]
+            },
+            {
+              "name": "tint",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1099956224,
+                  "y": 1123024896
+                }
+              ]
+            },
+            {
+              "name": "segment",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1188713984,
+                  "y": 1197123072
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 1,
+          "size": {
+            "x": 16,
+            "y": 12
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 212
+          },
+          "rgba_sha256": "2f0c994821e96330e32f71a6337657390b28afbc5d57f60006c333c47444d20a",
+          "outputs_sha256": "4573cf1d251e2f1cb276e7fb6968e38f4de84ebfd079f730b9605ea1c49e0816",
+          "outputs": [
+            {
+              "name": "exact",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1132462080
+                }
+              ]
+            },
+            {
+              "name": "tint",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1117388800,
+                  "y": 1124073472
+                }
+              ]
+            },
+            {
+              "name": "segment",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1092616192,
+                  "y": 1092616192
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1188714496,
+                  "y": 1197123072
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 7,
+          "size": {
+            "x": 16,
+            "y": 12
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 212
+          },
+          "rgba_sha256": "2f0c994821e96330e32f71a6337657390b28afbc5d57f60006c333c47444d20a",
+          "outputs_sha256": "db346336b5198af260f58c98e71c6cb80be67900c666c38d710d751379fa0865",
+          "outputs": [
+            {
+              "name": "exact",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1065353216,
+                  "y": 1132462080
+                }
+              ]
+            },
+            {
+              "name": "tint",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1117388800,
+                  "y": 1124073472
+                }
+              ]
+            },
+            {
+              "name": "segment",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 0,
+                  "y": 0
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1188717568,
+                  "y": 1197123072
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 26,
+          "size": {
+            "x": 16,
+            "y": 12
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 212
+          },
+          "rgba_sha256": "2f0c994821e96330e32f71a6337657390b28afbc5d57f60006c333c47444d20a",
+          "outputs_sha256": "dd56c26f527b7cef25745bfef1391c2a0e3082ecd0f17dfe6ee6a47ba2ffaddf",
+          "outputs": [
+            {
+              "name": "exact",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1132462080
+                }
+              ]
+            },
+            {
+              "name": "tint",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1117388800,
+                  "y": 1124073472
+                }
+              ]
+            },
+            {
+              "name": "segment",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1075838976,
+                  "y": 1075838976
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1188727296,
+                  "y": 1197123072
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "seed": 4294967295,
+          "size": {
+            "x": 16,
+            "y": 12
+          },
+          "inputs": [],
+          "fuel": {
+            "budget": 2000000,
+            "spent": 212
+          },
+          "rgba_sha256": "3f7a9d424bb9157c2df61be498f3d37ad8d1106f04039b1451a055eb070b3acd",
+          "outputs_sha256": "a85ce79ddd05f5043cb9ce18e611ebf297643ed7e1605a1cf84ed48b09e67d57",
+          "outputs": [
+            {
+              "name": "exact",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1073741824,
+                  "y": 1132462080
+                }
+              ]
+            },
+            {
+              "name": "tint",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1099956224,
+                  "y": 1123024896
+                }
+              ]
+            },
+            {
+              "name": "segment",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1075838976,
+                  "y": 1075838976
+                }
+              ]
+            },
+            {
+              "name": "state",
+              "kind": "point",
+              "list": false,
+              "values": [
+                {
+                  "x": 1188713472,
+                  "y": 1197123072
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "source_text": "asset weighted_snapshot {size 16x12 output point exact output point tint output point segment output point state const distribution atoms=weighted{0:1,0.25:2,1:1} const list<distribution> descriptions=[gaussian(0,1),atoms,beta(2,3)] const sampler<color> colorSpec=sampler(#12345678 to #fedcba98 with atoms) draw{runtime=weighted{16777217:50,16777218.0:20,16777219:30} copy=runtime number=16777217 to 16777219 with copy exact={number&65535,number>>16} material=colorSpec.pick() rect(2,2,12,8,material) tint={material.r,material.a} segment={0,0} to {10,10} with descriptions[1] state={seed&65535,seed>>16}}}"
+    }
+  ]
+}

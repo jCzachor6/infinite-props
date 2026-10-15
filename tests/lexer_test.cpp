@@ -16,8 +16,6 @@ namespace {
 const std::string kRockSketch = R"(asset rock {
   size 192x192
   origin 96,170
-  variants 5
-  archetypes 4
   input  color palette = #808d74
   output rect  collider
 
@@ -40,7 +38,6 @@ import eyes from "eyes.ips"
 
 asset portrait {
   size 64x64
-  variants 8
   input  color skin = #d9b58c
   input  color hairColor = #33291f
   output point pupilCenter

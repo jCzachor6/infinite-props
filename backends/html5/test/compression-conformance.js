@@ -10,8 +10,7 @@ const {decodePng} = require("./png.js");
 
 function envelope(inner, options = {}) {
     const header = Buffer.alloc(24);
-    inner.copy(header, 0, 0, 20);
-    header.writeUInt16LE(4, 6);
+    inner.copy(header, 0, 0, 20); // the reserved bytes stay zero
     header.writeUInt32LE(inner.readUInt32LE(8) | 2, 8);
     header.writeUInt32LE(inner.length, 20);
     return Buffer.concat([header, zlib.deflateSync(inner, {level: 9, ...options})]);
@@ -43,7 +42,7 @@ function run(iprop, toolsDir) {
         changed("checksum", /invalid compressed stream/, b => {b[b.length-1] ^= 1;});
         changed("declared size", /decoded size/, b => b.writeUInt32LE(inner.length+1,20));
         changed("size bound", /size out of range/, b => b.writeUInt32LE(67108865,20));
-        changed("old version flag", /unknown header flag/, b => b.writeUInt16LE(3,6));
+        changed("old version flag", /reserved header field must be zero/, b => b.writeUInt16LE(3,6));
         changed("unknown flag", /unknown header flag/, b => b.writeUInt32LE(6,8));
         changed("reserved", /reserved header/, b => b.writeUInt32LE(1,16));
         changed("debug mismatch", /does not match inner/, b => b.writeUInt32LE(b.readUInt32LE(8)^1,8));

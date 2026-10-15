@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 2,
+      "const": 4,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -14,10 +14,6 @@
     "language_version": {
       "$ref": "#/$defs/version",
       "description": "Source-language acceptance version."
-    },
-    "format_version": {
-      "$ref": "#/$defs/version",
-      "description": "Emitted binary format version."
     },
     "c_api_version": {
       "$ref": "#/$defs/version",
@@ -92,7 +88,30 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>",
+                  "layer",
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -109,7 +128,30 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>",
+                  "layer",
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -126,7 +168,30 @@
                   "distribution",
                   "f32",
                   "i32",
-                  "vec2"
+                  "vec2",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>",
+                  "layer",
+                  "mask",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -181,7 +246,8 @@
                       "enum": [
                         "call_arguments",
                         "helper_returns",
-                        "numeric_operands"
+                        "numeric_operands",
+                        "asset_constants"
                       ],
                       "description": "Language contexts that permit this conversion."
                     },
@@ -252,12 +318,6 @@
                     },
                     "description": "Instruction mnemonics, one per name; reads of constant values may fold.",
                     "minItems": 1
-                  },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing these instructions."
                   }
                 },
                 "required": [
@@ -265,14 +325,72 @@
                   "names",
                   "result",
                   "assignable",
-                  "opcodes",
-                  "minimum_format_minor"
+                  "opcodes"
                 ],
                 "additionalProperties": true,
                 "description": "Read-only member access of one value type; the base evaluates once and draws no randomness."
               },
               "description": "Optional capability list added in source language 0.6. Earlier schema-2 exports omit it; absence does not mean member access is unsupported.",
               "minItems": 1
+            },
+            "parameterized": {
+              "type": "array",
+              "description": "Supported parameterized type constructors and immutable runtime representation.",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "required": [
+                  "constructor",
+                  "element_types",
+                  "nested",
+                  "representation"
+                ],
+                "properties": {
+                  "constructor": {
+                    "type": "string",
+                    "description": "Parameterized type constructor name.",
+                    "enum": [
+                      "list",
+                      "sampler",
+                      "stepper"
+                    ]
+                  },
+                  "element_types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "description": "Supported homogeneous element types for this stage.",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "i32",
+                        "f32",
+                        "color",
+                        "vec2",
+                        "distribution",
+                        "sampler<i32>",
+                        "sampler<f32>",
+                        "sampler<color>",
+                        "sampler<vec2>",
+                        "stepper<i32>",
+                        "stepper<f32>",
+                        "stepper<color>",
+                        "stepper<vec2>"
+                      ]
+                    }
+                  },
+                  "nested": {
+                    "type": "boolean",
+                    "const": false,
+                    "description": "Whether this stage supports nested collection elements."
+                  },
+                  "representation": {
+                    "type": "string",
+                    "const": "immutable_arena_handle",
+                    "description": "Internal value ownership and transfer representation."
+                  }
+                }
+              }
             }
           },
           "required": [
@@ -356,43 +474,6 @@
               "type": "boolean",
               "description": "Helper parameters cannot be reassigned."
             },
-            "draw_controls": {
-              "type": "object",
-              "properties": {
-                "names": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "enum": [
-                      "a",
-                      "v"
-                    ],
-                    "description": "Visible control names."
-                  },
-                  "description": "Visible control names.",
-                  "uniqueItems": true,
-                  "minItems": 1
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "i32"
-                  ],
-                  "description": "Control value type."
-                },
-                "read_only": {
-                  "type": "boolean",
-                  "description": "Controls cannot be reassigned."
-                }
-              },
-              "required": [
-                "names",
-                "type",
-                "read_only"
-              ],
-              "additionalProperties": true,
-              "description": "Draw-only implicit control values."
-            },
             "seed": {
               "type": "string",
               "enum": [
@@ -406,18 +487,30 @@
                 "all_asset_functions"
               ],
               "description": "Asset function contexts where palettes are visible."
+            },
+            "constants": {
+              "type": "string",
+              "enum": [
+                "all_asset_functions"
+              ],
+              "description": "Asset constants are visible in draw and helpers of their defining asset."
             }
           },
           "required": [
             "uniforms",
             "uniforms_read_only",
             "helper_parameters_read_only",
-            "draw_controls",
             "seed",
-            "palettes"
+            "palettes",
+            "constants"
           ],
           "additionalProperties": true,
-          "description": "Function contexts that expose uniforms and read-only values."
+          "description": "Function contexts that expose uniforms and read-only values.",
+          "not": {
+            "required": [
+              "draw_controls"
+            ]
+          }
         },
         "named_calls": {
           "type": "object",
@@ -563,9 +656,9 @@
             "keyword": {
               "type": "string",
               "enum": [
-                "contextual"
+                "reserved"
               ],
-              "description": "The spelling stays a valid name; existing locals, helpers and parts named 'to' keep their meaning."
+              "description": "The range operator is lexically reserved, including helper/local/alias name positions."
             },
             "precedence": {
               "type": "object",
@@ -624,12 +717,6 @@
                     "type": "string",
                     "description": "Instruction mnemonic of the draw."
                   },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing the instruction."
-                  },
                   "bounds": {
                     "type": "string",
                     "enum": [
@@ -664,7 +751,6 @@
                   "upper",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "bounds",
                   "draws"
                 ],
@@ -749,12 +835,6 @@
                         "type": "string",
                         "description": "Instruction mnemonic of the draw."
                       },
-                      "minimum_format_minor": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 255,
-                        "description": "Oldest binary format minor containing the instruction."
-                      },
                       "bounds": {
                         "type": "string",
                         "enum": [
@@ -789,7 +869,6 @@
                       "upper",
                       "result",
                       "opcode",
-                      "minimum_format_minor",
                       "bounds",
                       "draws"
                     ],
@@ -890,12 +969,6 @@
                     "type": "string",
                     "description": "Instruction mnemonic of the mix."
                   },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing the mix."
-                  },
                   "effects": {
                     "$ref": "#/$defs/effects",
                     "description": "Intrinsic effects of the mix, excluding the coefficient draw."
@@ -907,7 +980,6 @@
                   "coefficient",
                   "mixed",
                   "opcode",
-                  "minimum_format_minor",
                   "effects"
                 ],
                 "additionalProperties": true,
@@ -931,6 +1003,1928 @@
           ],
           "additionalProperties": true,
           "description": "Optional description of the random range operator 'lower to upper', added in source language 0.6. Earlier schema-2 exports omit it."
+        },
+        "asset_constants": {
+          "type": "object",
+          "properties": {
+            "keyword": {
+              "type": "string",
+              "enum": [
+                "reserved"
+              ],
+              "description": "The constant declaration introducer is lexically reserved."
+            },
+            "syntax": {
+              "type": "string",
+              "enum": [
+                "const <type> <name> = <expression>"
+              ],
+              "description": "Asset declaration syntax with an explicit value type."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "asset"
+              ],
+              "description": "Constants belong to their defining asset, including each imported part."
+            },
+            "visibility": {
+              "type": "string",
+              "enum": [
+                "all_asset_functions"
+              ],
+              "description": "Constants are readable in draw and helpers of the defining asset."
+            },
+            "dependencies": {
+              "type": "string",
+              "enum": [
+                "forward_acyclic"
+              ],
+              "description": "Forward references are allowed; cycles are rejected before generation."
+            },
+            "evaluation": {
+              "type": "string",
+              "enum": [
+                "compile_time"
+              ],
+              "description": "Initializers are evaluated during compilation with runtime value kernels."
+            },
+            "distribution_validation": {
+              "type": "string",
+              "enum": [
+                "compile_time"
+              ],
+              "description": "Constant distribution parameters are validated during compilation."
+            },
+            "types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "i32",
+                  "f32",
+                  "color",
+                  "vec2",
+                  "distribution",
+                  "list<i32>",
+                  "list<f32>",
+                  "list<color>",
+                  "list<vec2>",
+                  "list<distribution>",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>",
+                  "list<sampler<i32>>",
+                  "list<sampler<f32>>",
+                  "list<sampler<color>>",
+                  "list<sampler<vec2>>",
+                  "stepper<i32>",
+                  "stepper<f32>",
+                  "stepper<color>",
+                  "stepper<vec2>",
+                  "list<stepper<i32>>",
+                  "list<stepper<f32>>",
+                  "list<stepper<color>>",
+                  "list<stepper<vec2>>"
+                ],
+                "description": "An implemented asset constant type."
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Value types accepted after the reserved const introducer."
+            },
+            "read_only": {
+              "type": "boolean",
+              "const": true,
+              "description": "Assignments, loop counters and parameter shadowing cannot modify constants."
+            },
+            "check_all_declarations": {
+              "type": "boolean",
+              "const": true,
+              "description": "Unused declarations are still type checked and evaluated."
+            },
+            "check_effects_in_dead_branches": {
+              "type": "boolean",
+              "const": true,
+              "description": "RNG and generation dependencies are rejected even in short-circuited expressions."
+            },
+            "user_helper_calls": {
+              "type": "boolean",
+              "const": false,
+              "description": "Helpers and parts are not executed during constant evaluation."
+            },
+            "generation_state": {
+              "type": "boolean",
+              "const": false,
+              "description": "Inputs, controls, seed and generation outputs cannot be read in initializers."
+            }
+          },
+          "required": [
+            "keyword",
+            "syntax",
+            "scope",
+            "visibility",
+            "dependencies",
+            "evaluation",
+            "distribution_validation",
+            "types",
+            "read_only",
+            "check_all_declarations",
+            "check_effects_in_dead_branches",
+            "user_helper_calls",
+            "generation_state"
+          ],
+          "additionalProperties": true,
+          "description": "Typed, immutable asset declarations and their compile-time acceptance policy."
+        },
+        "collections": {
+          "type": "object",
+          "description": "Immutable list semantics, legacy palette compatibility and generation resource limits.",
+          "required": [
+            "literal",
+            "minimum_length",
+            "maximum_length",
+            "empty_literal",
+            "element_evaluation",
+            "numeric_elements",
+            "index_type",
+            "index_bounds",
+            "mutable",
+            "helper_transfer",
+            "legacy_palette_index",
+            "legacy_palette_length_limit",
+            "palette_as_list_maximum",
+            "generation_data_limit_bytes"
+          ],
+          "properties": {
+            "literal": {
+              "type": "string",
+              "const": "[<elements>]",
+              "description": "List literal syntax."
+            },
+            "minimum_length": {
+              "type": "integer",
+              "const": 0,
+              "description": "Minimum ordinary list length."
+            },
+            "maximum_length": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum ordinary list length."
+            },
+            "empty_literal": {
+              "type": "string",
+              "const": "known_list_type_required",
+              "description": "Element context required for an empty literal."
+            },
+            "element_evaluation": {
+              "type": "string",
+              "const": "left_to_right_once",
+              "description": "Evaluation order and multiplicity of literal elements."
+            },
+            "numeric_elements": {
+              "type": "string",
+              "const": "i32_to_f32_widening",
+              "description": "Allowed numeric element promotion and contextual literal widening."
+            },
+            "index_type": {
+              "type": "string",
+              "const": "i32",
+              "description": "Required expression type for an index."
+            },
+            "index_bounds": {
+              "type": "string",
+              "const": "trap",
+              "description": "Behavior for negative or out-of-range ordinary list indices."
+            },
+            "mutable": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether element mutation or dynamic growth is supported."
+            },
+            "helper_transfer": {
+              "type": "string",
+              "const": "share_immutable_data",
+              "description": "Storage sharing when passing or returning a list."
+            },
+            "legacy_palette_index": {
+              "type": "string",
+              "const": "last_element_fallback",
+              "description": "Compatibility behavior of direct legacy palette indexing."
+            },
+            "legacy_palette_length_limit": {
+              "type": "string",
+              "const": "unchanged",
+              "description": "Compatibility behavior of existing indexed palette and ramp limits."
+            },
+            "palette_as_list_maximum": {
+              "type": "integer",
+              "const": 256,
+              "description": "Size limit of a palette used as a first-class list."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Maximum additional list and part canvas data charged per generation."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 17,
+              "maxItems": 17,
+              "uniqueItems": true,
+              "description": "Optional supported distinct and sort signatures from the shared frontend registry.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "distinct",
+                      "sort"
+                    ],
+                    "description": "Ordinary receiver method name, separate from global builtins."
+                  },
+                  "receiver": {
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>",
+                      "list<distribution>",
+                      "list<sampler<i32>>",
+                      "list<sampler<f32>>",
+                      "list<sampler<color>>",
+                      "list<sampler<vec2>>",
+                      "list<stepper<i32>>",
+                      "list<stepper<f32>>",
+                      "list<stepper<color>>",
+                      "list<stepper<vec2>>"
+                    ],
+                    "description": "Statically required immutable list type."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "description": "Both methods accept no arguments."
+                  },
+                  "result": {
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>",
+                      "list<distribution>",
+                      "list<sampler<i32>>",
+                      "list<sampler<f32>>",
+                      "list<sampler<color>>",
+                      "list<sampler<vec2>>",
+                      "list<stepper<i32>>",
+                      "list<stepper<f32>>",
+                      "list<stepper<color>>",
+                      "list<stepper<vec2>>"
+                    ],
+                    "description": "Same immutable list type as the receiver."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "list.distinct",
+                      "list.sort"
+                    ],
+                    "description": "Descriptor-indexed runtime instruction."
+                  },
+                  "constant_evaluable": {
+                    "const": true,
+                    "description": "Allowed in pure asset constant initializers."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects, excluding receiver effects and resource traps."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "constant_evaluable",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "Receiver-first immutable list transformation signature.",
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "name": {
+                          "const": "sort"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "receiver": {
+                          "enum": [
+                            "list<i32>",
+                            "list<f32>",
+                            "list<color>",
+                            "list<vec2>"
+                          ]
+                        },
+                        "opcode": {
+                          "const": "list.sort"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "opcode": {
+                          "const": "list.distinct"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "transformations": {
+              "type": "object",
+              "description": "Optional immutable list method comparison, evaluation and sharing policies.",
+              "properties": {
+                "evaluation": {
+                  "const": "receiver_once",
+                  "description": "The receiver is evaluated once before method execution."
+                },
+                "result": {
+                  "const": "same_type_immutable_list",
+                  "description": "The returned list has the receiver type and never mutates the source."
+                },
+                "distinct": {
+                  "const": "stable_first_occurrence",
+                  "description": "Distinct retains the first occurrence of each equal value in original order."
+                },
+                "sort": {
+                  "const": "stable_ascending_numeric_or_lexicographic",
+                  "description": "Sort is ascending and stable for equal elements."
+                },
+                "color_order": {
+                  "const": "rgba",
+                  "description": "Colors compare lexicographically by unsigned RGBA bytes."
+                },
+                "vec2_order": {
+                  "const": "xy",
+                  "description": "Vectors compare lexicographically by x then y."
+                },
+                "float_zero": {
+                  "const": "signed_zeros_equal",
+                  "description": "Numeric positive and negative zero form one equal class."
+                },
+                "float_nan": {
+                  "const": "one_equivalence_class_last",
+                  "description": "All numeric NaNs compare equal and sort after positive infinity."
+                },
+                "description_equality": {
+                  "const": "structural_original_types_and_bits",
+                  "description": "Descriptions compare stored modes, families, original numeric types and bits rather than handle addresses."
+                },
+                "element_bits": {
+                  "const": "preserved",
+                  "description": "Selected elements retain their original stored bits."
+                },
+                "unchanged_storage": {
+                  "const": "shared",
+                  "description": "A transformation that leaves the sequence unchanged shares its data buffer."
+                }
+              },
+              "required": [
+                "evaluation",
+                "result",
+                "distinct",
+                "sort",
+                "color_order",
+                "vec2_order",
+                "float_zero",
+                "float_nan",
+                "description_equality",
+                "element_bits",
+                "unchanged_storage"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "samplers": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "sampler(<value> | <lower> to <upper> [with <distribution>])",
+              "description": "Contextual capture syntax; the outer range is captured and other value expressions remain eager."
+            },
+            "capture_evaluation": {
+              "const": "lower_upper_distribution_once",
+              "description": "Capture operand order, each evaluated once before validating and allocating the description."
+            },
+            "intrinsic_capture_rng": {
+              "const": "none",
+              "description": "Capture itself does not advance a stream; operand effects still run."
+            },
+            "bounds_validation": {
+              "const": "capture",
+              "description": "Bounds and distribution parameters are validated when captured."
+            },
+            "probability_mass_validation": {
+              "const": "pick",
+              "description": "Support and probability mass are checked only when drawing."
+            },
+            "method_evaluation": {
+              "const": "receiver_once_before_count_once",
+              "description": "Each method evaluates its receiver once before its optional count, also once."
+            },
+            "method_resolution": {
+              "const": "static_receiver_type_and_arity",
+              "description": "Methods use static sampler receiver type and argument arity, without dynamic dispatch."
+            },
+            "minimum_count": {
+              "const": 0,
+              "description": "Smallest supported batch count, including an empty typed list."
+            },
+            "maximum_count": {
+              "const": 256,
+              "description": "Largest supported batch count, matching the immutable list limit."
+            },
+            "count_type": {
+              "const": "i32",
+              "description": "The batch count is i32; floating counts are rejected."
+            },
+            "batch_preflight": {
+              "const": "count_handle_allocation_before_first_draw",
+              "description": "Count, handle and complete result allocation are checked before the first result draw."
+            },
+            "constant_description_draws": {
+              "const": 0,
+              "description": "Constant descriptions return stored values without RNG steps."
+            },
+            "empty_batch_draws": {
+              "const": 0,
+              "description": "Empty batches do not execute a draw or probability mass check."
+            },
+            "unset_empty_batch": {
+              "const": "trap",
+              "description": "Unset descriptions trap even when the batch count is zero."
+            },
+            "asset_constants": {
+              "const": true,
+              "description": "Whether sampler descriptions may be declared as asset constants in this stage."
+            },
+            "range_palettes": {
+              "const": true,
+              "description": "Whether palette ranges become sampler descriptions in this stage."
+            },
+            "capture_effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic capture effects excluding operand evaluation and resource failures."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 8,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "pick",
+                    "description": "Method name, separate from the global eager selection builtin."
+                  },
+                  "receiver": {
+                    "type": "string",
+                    "enum": [
+                      "sampler<i32>",
+                      "sampler<f32>",
+                      "sampler<color>",
+                      "sampler<vec2>"
+                    ],
+                    "description": "Required sampler receiver descriptor."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "n",
+                          "description": "The only accepted batch count parameter name."
+                        },
+                        "type": {
+                          "const": "i32",
+                          "description": "The required count value type."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "description": "The optional named batch count parameter."
+                    },
+                    "description": "Optional i32 result count; the receiver is not a positional method argument."
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "i32",
+                      "f32",
+                      "color",
+                      "vec2",
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>"
+                    ],
+                    "description": "Single sampled type or immutable list result type."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "sampler.pick",
+                      "sampler.pick.list"
+                    ],
+                    "description": "Descriptor-indexed runtime instruction implementing this signature."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "One statically resolved sampler method signature."
+              },
+              "description": "Every current pick signature, generated from the shared receiver-first frontend registry."
+            }
+          },
+          "required": [
+            "syntax",
+            "capture_evaluation",
+            "intrinsic_capture_rng",
+            "bounds_validation",
+            "probability_mass_validation",
+            "method_evaluation",
+            "method_resolution",
+            "minimum_count",
+            "maximum_count",
+            "count_type",
+            "batch_preflight",
+            "constant_description_draws",
+            "empty_batch_draws",
+            "unset_empty_batch",
+            "asset_constants",
+            "range_palettes",
+            "capture_effects",
+            "methods"
+          ],
+          "additionalProperties": true,
+          "description": "Captured descriptions and statically resolved method signatures from the shared frontend registry."
+        },
+        "palettes": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "palette <name> = [<elements>]",
+              "description": "Asset palette declaration syntax."
+            },
+            "evaluation": {
+              "const": "compile_time_no_rng",
+              "description": "Palette elements resolve without generation state or RNG."
+            },
+            "sampling_trigger": {
+              "const": "outer_range_or_sampler",
+              "description": "An outer range or sampler element selects a palette of descriptions."
+            },
+            "constant_entries": {
+              "const": "lift_to_constant_descriptions_in_sampling_palette",
+              "description": "Scalar entries of a sampling palette return constants without drawing."
+            },
+            "numeric_elements": {
+              "const": "i32_to_f32_widening",
+              "description": "Mixed numeric elements use f32, including captured endpoints."
+            },
+            "index_type": {
+              "const": "i32",
+              "description": "Palette indexing requires i32."
+            },
+            "index_evaluation": {
+              "const": "once",
+              "description": "The index expression executes exactly once."
+            },
+            "index_bounds": {
+              "const": "last_element_fallback",
+              "description": "Negative and oversized direct palette indices select the last element."
+            },
+            "first_class_value": {
+              "const": "immutable_list_with_checked_index",
+              "description": "A palette passed or copied as a list uses checked list indexing."
+            },
+            "legacy_length_limit": {
+              "const": "unchanged",
+              "description": "Existing constant palette indexing and ramp retain their original limits."
+            },
+            "ramp": {
+              "const": "constant_color_or_f32_only",
+              "description": "Ramp rejects descriptions and vec2 palettes, without implicit sampling."
+            },
+            "element_types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "i32",
+                  "f32",
+                  "color",
+                  "vec2",
+                  "sampler<i32>",
+                  "sampler<f32>",
+                  "sampler<color>",
+                  "sampler<vec2>"
+                ],
+                "description": "Supported palette element type."
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Homogeneous scalar or description elements with numeric widening."
+            },
+            "minimum_length": {
+              "const": 1,
+              "description": "Palettes cannot be empty."
+            },
+            "sampling_maximum_length": {
+              "const": 256,
+              "description": "Maximum descriptions in a sampling palette."
+            },
+            "first_class_maximum_length": {
+              "const": 256,
+              "description": "Maximum elements when a palette is used as a list."
+            }
+          },
+          "required": [
+            "syntax",
+            "evaluation",
+            "sampling_trigger",
+            "constant_entries",
+            "numeric_elements",
+            "index_type",
+            "index_evaluation",
+            "index_bounds",
+            "first_class_value",
+            "legacy_length_limit",
+            "ramp",
+            "element_types",
+            "minimum_length",
+            "sampling_maximum_length",
+            "first_class_maximum_length"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable constant and sampling palette semantics."
+        },
+        "point_distributions": {
+          "type": "object",
+          "description": "Contextual literals constructing immutable point distributions.",
+          "properties": {
+            "syntax": {
+              "type": "string",
+              "const": "<family> { <key>: <value>, ... }",
+              "description": "Syntax."
+            },
+            "result": {
+              "type": "string",
+              "const": "distribution",
+              "description": "Result."
+            },
+            "names": {
+              "type": "string",
+              "const": "reserved",
+              "description": "Weighted and density are lexically reserved family names."
+            },
+            "evaluation": {
+              "type": "string",
+              "const": "key_value_pairs_left_to_right_once",
+              "description": "Evaluation."
+            },
+            "storage": {
+              "type": "string",
+              "const": "immutable_snapshot_original_numeric_types",
+              "description": "Storage."
+            },
+            "intrinsic_rng": {
+              "type": "string",
+              "const": "none",
+              "description": "Intrinsic rng."
+            },
+            "key_order": {
+              "type": "string",
+              "const": "strictly_increasing",
+              "description": "Key order."
+            },
+            "values": {
+              "type": "string",
+              "const": "finite_nonnegative_positive_total_mass",
+              "description": "Values."
+            },
+            "bounded_draw": {
+              "type": "string",
+              "const": "one_stream_step_then_truncate_and_select",
+              "description": "Bounded draw."
+            },
+            "numeric_kernel": {
+              "type": "string",
+              "const": "binary64_no_fma",
+              "description": "Numeric kernel."
+            },
+            "integer_rounding": {
+              "type": "string",
+              "const": "nearest_half_away_from_zero",
+              "description": "Integer rounding."
+            },
+            "missing_mass": {
+              "type": "string",
+              "const": "trap_after_stream_step",
+              "description": "Missing mass."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Shared generation data quota in bytes."
+            },
+            "operand_types": {
+              "type": "array",
+              "const": [
+                "i32",
+                "f32"
+              ],
+              "items": {
+                "type": "string"
+              },
+              "description": "Original numeric operand types preserved in each snapshot."
+            },
+            "families": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "description": "Implemented point distribution families.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Contextual family name.",
+                    "enum": [
+                      "weighted",
+                      "density"
+                    ]
+                  },
+                  "minimum_points": {
+                    "type": "integer",
+                    "description": "Minimum point count.",
+                    "enum": [
+                      1,
+                      2
+                    ]
+                  },
+                  "maximum_points": {
+                    "type": "integer",
+                    "const": 256,
+                    "description": "Maximum point count."
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Meaning of each point value.",
+                    "enum": [
+                      "discrete_mass",
+                      "piecewise_linear_density"
+                    ]
+                  },
+                  "equal_bounds": {
+                    "type": "string",
+                    "description": "Equal-bound probability rule.",
+                    "enum": [
+                      "positive_mass_at_point",
+                      "closed_natural_support"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "minimum_points",
+                  "maximum_points",
+                  "value",
+                  "equal_bounds"
+                ],
+                "additionalProperties": true
+              },
+              "const": [
+                {
+                  "name": "weighted",
+                  "minimum_points": 1,
+                  "maximum_points": 256,
+                  "value": "discrete_mass",
+                  "equal_bounds": "positive_mass_at_point"
+                },
+                {
+                  "name": "density",
+                  "minimum_points": 2,
+                  "maximum_points": 256,
+                  "value": "piecewise_linear_density",
+                  "equal_bounds": "closed_natural_support"
+                }
+              ]
+            }
+          },
+          "required": [
+            "syntax",
+            "result",
+            "names",
+            "evaluation",
+            "storage",
+            "intrinsic_rng",
+            "key_order",
+            "values",
+            "bounded_draw",
+            "numeric_kernel",
+            "integer_rounding",
+            "missing_mass",
+            "generation_data_limit_bytes",
+            "operand_types",
+            "families"
+          ],
+          "additionalProperties": true
+        },
+        "surfaces": {
+          "type": "object",
+          "properties": {
+            "capture_syntax": {
+              "type": "string",
+              "const": "layer <name> [(alpha=surface.<mode>)] { <statements> }",
+              "description": "Capture syntax."
+            },
+            "keyword": {
+              "type": "string",
+              "const": "reserved",
+              "description": "Layer is reserved for capture and its value type; legacy identifiers must be renamed."
+            },
+            "capture_target": {
+              "type": "string",
+              "const": "empty_current_geometry_and_scale",
+              "description": "Capture target."
+            },
+            "result_binding": {
+              "type": "string",
+              "const": "after_scope_exit",
+              "description": "Result binding."
+            },
+            "capture_evaluation": {
+              "type": "string",
+              "const": "once_in_current_stream",
+              "description": "Capture evaluation."
+            },
+            "helper_transfer": {
+              "type": "string",
+              "const": "share_immutable_buffer",
+              "description": "Helper transfer."
+            },
+            "buffer_format": {
+              "type": "string",
+              "const": "RGBA8",
+              "description": "Buffer format."
+            },
+            "mapping": {
+              "type": "string",
+              "const": "placement_and_D4_view_without_pixel_copy",
+              "description": "Mapping."
+            },
+            "default_mode": {
+              "type": "string",
+              "const": "legacy",
+              "description": "Default mode."
+            },
+            "mode_arguments": {
+              "type": "string",
+              "const": "compile_time_namespace_constants",
+              "description": "Mode arguments."
+            },
+            "paint_evaluation": {
+              "type": "string",
+              "const": "image_once_no_rng",
+              "description": "Paint evaluation."
+            },
+            "paint_opcode": {
+              "type": "string",
+              "const": "surface.paint",
+              "description": "Paint opcode."
+            },
+            "capture_opcode": {
+              "type": "string",
+              "const": "layer.begin",
+              "description": "Capture opcode."
+            },
+            "capture_bytes": {
+              "type": "string",
+              "const": "128_plus_4_per_pixel",
+              "description": "Capture bytes."
+            },
+            "capture_fuel": {
+              "type": "string",
+              "const": "one_plus_target_pixels",
+              "description": "Capture fuel."
+            },
+            "paint_fuel": {
+              "type": "string",
+              "const": "one_plus_source_pixels",
+              "description": "Paint fuel."
+            },
+            "unset_handle": {
+              "type": "string",
+              "const": "trap",
+              "description": "Unset handle."
+            },
+            "automatic_paint": {
+              "type": "boolean",
+              "const": false,
+              "description": "Automatic paint."
+            },
+            "host_inputs": {
+              "type": "boolean",
+              "const": false,
+              "description": "Host inputs."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Asset constants."
+            },
+            "surface_collections": {
+              "type": "boolean",
+              "const": false,
+              "description": "Surface collections."
+            },
+            "maximum_active_scopes": {
+              "type": "integer",
+              "const": 32,
+              "description": "Maximum active scopes."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Generation data limit bytes."
+            },
+            "types": {
+              "type": "array",
+              "const": [
+                "layer",
+                "mask"
+              ],
+              "description": "Types.",
+              "items": {
+                "type": "string",
+                "description": "One types entry."
+              }
+            },
+            "alpha_modes": {
+              "type": "array",
+              "const": [
+                "surface.legacy",
+                "surface.source_over"
+              ],
+              "description": "Alpha modes.",
+              "items": {
+                "type": "string",
+                "description": "One alpha modes entry."
+              }
+            },
+            "scope_cleanup": {
+              "type": "array",
+              "const": [
+                "end",
+                "return",
+                "break",
+                "continue"
+              ],
+              "description": "Scope cleanup.",
+              "items": {
+                "type": "string",
+                "description": "One scope cleanup entry."
+              }
+            },
+            "mode_inheritance": {
+              "type": "string",
+              "const": "active_target_helpers_and_part_canvases_and_blits",
+              "description": "Helpers share the active target mode; part canvases and their blits inherit it."
+            },
+            "paint_default_mode": {
+              "type": "string",
+              "const": "active_destination_target",
+              "description": "Omitted blend uses the active destination target, irrespective of the captured image mode."
+            },
+            "source_over_kernel": {
+              "type": "string",
+              "const": "straight_rgba8_u64_nearest_half_up",
+              "description": "Source-over uses the normative straight RGBA8 u64 kernel in stored channel space, with nearest ties up."
+            },
+            "rounding_boundary": {
+              "type": "string",
+              "const": "every_primitive_blit_and_paint",
+              "description": "Store a rounded RGBA8 result after each primitive, blit or paint without fusion or reordering."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "uniqueItems": true,
+              "description": "Optional ordinary layer/mask methods, exported from the shared receiver-first registry.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "blur",
+                    "description": "Ordinary receiver method name, separate from global builtins."
+                  },
+                  "receiver": {
+                    "enum": [
+                      "layer",
+                      "mask"
+                    ],
+                    "description": "Statically required surface type."
+                  },
+                  "parameters": {
+                    "const": [
+                      {
+                        "name": "sigma",
+                        "type": "f32"
+                      }
+                    ],
+                    "description": "One required sigma argument, optionally named; i32 widens to f32.",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "sigma",
+                          "description": "Argument name used by named call syntax."
+                        },
+                        "type": {
+                          "const": "f32",
+                          "description": "Required type after implicit i32 widening."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "additionalProperties": true
+                    }
+                  },
+                  "result": {
+                    "enum": [
+                      "layer",
+                      "mask"
+                    ],
+                    "description": "Same immutable surface type as the receiver."
+                  },
+                  "opcode": {
+                    "enum": [
+                      "layer.blur",
+                      "mask.blur"
+                    ],
+                    "description": "Zero-operand Gaussian filter instruction."
+                  },
+                  "constant_evaluable": {
+                    "const": false,
+                    "description": "Blur requires generation and cannot initialize an asset constant."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic effects, excluding receiver and sigma evaluation and resource traps."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "constant_evaluable",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "receiver": {
+                          "const": "layer"
+                        }
+                      }
+                    },
+                    "then": {
+                      "properties": {
+                        "result": {
+                          "const": "layer"
+                        },
+                        "opcode": {
+                          "const": "layer.blur"
+                        }
+                      }
+                    },
+                    "else": {
+                      "properties": {
+                        "result": {
+                          "const": "mask"
+                        },
+                        "opcode": {
+                          "const": "mask.blur"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "blur": {
+              "type": "object",
+              "description": "Optional Gaussian blur kernel, geometry, alpha and resource policies.",
+              "properties": {
+                "sigma_type": {
+                  "const": "f32",
+                  "description": "Gaussian blur sigma type."
+                },
+                "minimum_sigma": {
+                  "const": 0,
+                  "description": "Gaussian blur minimum sigma."
+                },
+                "maximum_sigma": {
+                  "const": 64,
+                  "description": "Gaussian blur maximum sigma."
+                },
+                "sigma_units": {
+                  "const": "input_raster_pixels",
+                  "description": "Gaussian blur sigma units."
+                },
+                "evaluation": {
+                  "const": "receiver_then_sigma_once",
+                  "description": "Gaussian blur evaluation."
+                },
+                "kernel_radius": {
+                  "const": "ceil_3_sigma",
+                  "description": "Gaussian blur kernel radius."
+                },
+                "maximum_radius": {
+                  "const": 192,
+                  "description": "Gaussian blur maximum radius."
+                },
+                "border": {
+                  "const": "nearest_edge",
+                  "description": "Gaussian blur border."
+                },
+                "passes": {
+                  "const": "horizontal_then_vertical_binary64",
+                  "description": "Gaussian blur passes."
+                },
+                "weights": {
+                  "const": "normalized_pinned_exp_increasing_offset",
+                  "description": "Gaussian blur weights."
+                },
+                "color": {
+                  "const": "premultiplied_stored_channels_unpremultiply_after_both_passes",
+                  "description": "Gaussian blur color."
+                },
+                "rounding": {
+                  "const": "nearest_half_up_zero_alpha_zero_rgb",
+                  "description": "Gaussian blur rounding."
+                },
+                "mask_result": {
+                  "const": "A8_alpha_equivalent",
+                  "description": "Gaussian blur mask result."
+                },
+                "geometry": {
+                  "const": "preserve_dimensions_scale_placement_D4",
+                  "description": "Gaussian blur geometry."
+                },
+                "zero_sigma": {
+                  "const": "validate_then_share_no_allocation",
+                  "description": "Gaussian blur zero sigma."
+                },
+                "clip": {
+                  "const": "paint_only",
+                  "description": "Gaussian blur clip."
+                },
+                "positive_sigma_fuel": {
+                  "const": "one_plus_K_plus_W_H_times_1_plus_2_K",
+                  "description": "Gaussian blur positive sigma fuel."
+                },
+                "scratch_bytes": {
+                  "const": "8_times_W_min_H_K_channels",
+                  "description": "Gaussian blur scratch bytes."
+                },
+                "scratch_channels": {
+                  "const": {
+                    "layer": 4,
+                    "mask": 1
+                  },
+                  "description": "Gaussian blur scratch channels.",
+                  "type": "object",
+                  "properties": {
+                    "layer": {
+                      "const": 4,
+                      "description": "Four premultiplied RGBA binary64 channels per cached pixel."
+                    },
+                    "mask": {
+                      "const": 1,
+                      "description": "One binary64 coverage channel per cached pixel."
+                    }
+                  },
+                  "required": [
+                    "layer",
+                    "mask"
+                  ],
+                  "additionalProperties": true
+                },
+                "scratch_release": {
+                  "const": "success_and_error",
+                  "description": "Gaussian blur scratch release."
+                },
+                "preflight": {
+                  "const": "fuel_and_shared_arena_before_filter",
+                  "description": "Gaussian blur preflight."
+                }
+              },
+              "required": [
+                "sigma_type",
+                "minimum_sigma",
+                "maximum_sigma",
+                "sigma_units",
+                "evaluation",
+                "kernel_radius",
+                "maximum_radius",
+                "border",
+                "passes",
+                "weights",
+                "color",
+                "rounding",
+                "mask_result",
+                "geometry",
+                "zero_sigma",
+                "clip",
+                "positive_sigma_fuel",
+                "scratch_bytes",
+                "scratch_channels",
+                "scratch_release",
+                "preflight"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "capture_syntax",
+            "keyword",
+            "capture_target",
+            "result_binding",
+            "capture_evaluation",
+            "helper_transfer",
+            "buffer_format",
+            "mapping",
+            "default_mode",
+            "mode_arguments",
+            "paint_evaluation",
+            "paint_opcode",
+            "capture_opcode",
+            "capture_bytes",
+            "capture_fuel",
+            "paint_fuel",
+            "unset_handle",
+            "automatic_paint",
+            "host_inputs",
+            "asset_constants",
+            "surface_collections",
+            "maximum_active_scopes",
+            "generation_data_limit_bytes",
+            "types",
+            "alpha_modes",
+            "scope_cleanup",
+            "mode_inheritance",
+            "paint_default_mode",
+            "source_over_kernel",
+            "rounding_boundary"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable generation-local captures on the shared part/canvas mechanism.",
+          "dependentRequired": {
+            "methods": [
+              "blur"
+            ],
+            "blur": [
+              "methods"
+            ]
+          }
+        },
+        "reserved_keywords": {
+          "type": "array",
+          "const": [
+            "asset",
+            "break",
+            "clip",
+            "const",
+            "continue",
+            "density",
+            "distribution",
+            "else",
+            "false",
+            "for",
+            "from",
+            "if",
+            "import",
+            "in",
+            "input",
+            "layer",
+            "mask",
+            "output",
+            "return",
+            "sampler",
+            "stepper",
+            "to",
+            "true",
+            "weighted",
+            "while",
+            "with"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Lexically reserved names from the compiler lexer. Newly introduced words have no contextual compatibility aliases."
+        },
+        "masks": {
+          "type": "object",
+          "properties": {
+            "from_syntax": {
+              "type": "string",
+              "const": "mask.from(image)",
+              "description": "From syntax."
+            },
+            "clip_syntax": {
+              "type": "string",
+              "const": "clip(mask) { <statements> }",
+              "description": "Clip syntax."
+            },
+            "keyword": {
+              "type": "string",
+              "const": "reserved",
+              "description": "Keyword."
+            },
+            "from_storage": {
+              "type": "string",
+              "const": "shared_rgba8_alpha_view",
+              "description": "From storage."
+            },
+            "result_format": {
+              "type": "string",
+              "const": "A8",
+              "description": "Result format."
+            },
+            "algebra_bounds": {
+              "type": "string",
+              "const": "union_of_input_rectangles",
+              "description": "Algebra bounds."
+            },
+            "raster_scale": {
+              "type": "string",
+              "const": "active_target",
+              "description": "Raster scale."
+            },
+            "mapping": {
+              "type": "string",
+              "const": "current_asset_placement_and_exact_D4",
+              "description": "Mapping."
+            },
+            "invert_bounds": {
+              "type": "string",
+              "const": "input_rectangle",
+              "description": "Invert bounds."
+            },
+            "radius_type": {
+              "type": "string",
+              "const": "i32",
+              "description": "Radius type."
+            },
+            "morphology_neighborhood": {
+              "type": "string",
+              "const": "dx_squared_plus_dy_squared_le_radius_squared",
+              "description": "Morphology neighborhood."
+            },
+            "expand_bounds": {
+              "type": "string",
+              "const": "input_rectangle_plus_radius_border",
+              "description": "Expand bounds."
+            },
+            "shrink_outside": {
+              "type": "string",
+              "const": "zero",
+              "description": "Shrink outside."
+            },
+            "offset": {
+              "type": "string",
+              "const": "i32_target_pixels_mapping_view",
+              "description": "Offset."
+            },
+            "coverage_rounding": {
+              "type": "string",
+              "const": "multiply_nearest_half_up_outer_to_inner",
+              "description": "Coverage rounding."
+            },
+            "mask_paint_alpha": {
+              "type": "string",
+              "const": "color_times_mask_then_combined_clip",
+              "description": "Mask paint alpha."
+            },
+            "helper_clip": {
+              "type": "string",
+              "const": "inherit",
+              "description": "Helper clip."
+            },
+            "layer_clip": {
+              "type": "string",
+              "const": "applies_to_paint_once",
+              "description": "Layer clip."
+            },
+            "part_clip": {
+              "type": "string",
+              "const": "parent_applies_to_blit_once",
+              "description": "Part clip."
+            },
+            "weather_clip": {
+              "type": "string",
+              "const": "mix_old_and_proposed_rgba_by_coverage",
+              "description": "Weather clip."
+            },
+            "clip_evaluation": {
+              "type": "string",
+              "const": "mask_once_no_rng",
+              "description": "Clip evaluation."
+            },
+            "from_opcode": {
+              "type": "string",
+              "const": "mask.from",
+              "description": "From opcode."
+            },
+            "clip_opcode": {
+              "type": "string",
+              "const": "clip.begin",
+              "description": "Clip opcode."
+            },
+            "paint_opcode": {
+              "type": "string",
+              "const": "surface.paint.mask",
+              "description": "Paint opcode."
+            },
+            "result_bytes": {
+              "type": "string",
+              "const": "128_plus_1_per_pixel",
+              "description": "Result bytes."
+            },
+            "view_fuel": {
+              "type": "string",
+              "const": "one_no_scan",
+              "description": "View fuel."
+            },
+            "algebra_fuel": {
+              "type": "string",
+              "const": "one_plus_zeroed_pixels_plus_result_pixels",
+              "description": "Algebra fuel."
+            },
+            "morphology_fuel": {
+              "type": "string",
+              "const": "one_plus_zeroed_pixels_plus_all_logical_disk_samples",
+              "description": "Morphology fuel."
+            },
+            "clip_write_fuel": {
+              "type": "string",
+              "const": "one_per_active_level",
+              "description": "Clip write fuel."
+            },
+            "outside_coverage": {
+              "type": "integer",
+              "const": 0,
+              "description": "Outside coverage."
+            },
+            "minimum_radius": {
+              "type": "integer",
+              "const": 0,
+              "description": "Minimum radius."
+            },
+            "maximum_radius": {
+              "type": "integer",
+              "const": 64,
+              "description": "Maximum radius."
+            },
+            "combined_scope_limit": {
+              "type": "integer",
+              "const": 32,
+              "description": "Combined scope limit."
+            },
+            "zero_coverage_write": {
+              "type": "boolean",
+              "const": false,
+              "description": "Zero coverage write."
+            },
+            "geometry_outputs_clipped": {
+              "type": "boolean",
+              "const": false,
+              "description": "Geometry outputs clipped."
+            }
+          },
+          "required": [
+            "from_syntax",
+            "clip_syntax",
+            "keyword",
+            "from_storage",
+            "result_format",
+            "algebra_bounds",
+            "raster_scale",
+            "mapping",
+            "invert_bounds",
+            "radius_type",
+            "morphology_neighborhood",
+            "expand_bounds",
+            "shrink_outside",
+            "offset",
+            "coverage_rounding",
+            "mask_paint_alpha",
+            "helper_clip",
+            "layer_clip",
+            "part_clip",
+            "weather_clip",
+            "clip_evaluation",
+            "from_opcode",
+            "clip_opcode",
+            "paint_opcode",
+            "result_bytes",
+            "view_fuel",
+            "algebra_fuel",
+            "morphology_fuel",
+            "clip_write_fuel",
+            "outside_coverage",
+            "minimum_radius",
+            "maximum_radius",
+            "combined_scope_limit",
+            "zero_coverage_write",
+            "geometry_outputs_clipped"
+          ],
+          "additionalProperties": true,
+          "description": "Immutable coverage views and A8 results, exact disk morphology and scoped pixel clipping."
+        },
+        "resource_exports": {
+          "type": "object",
+          "properties": {
+            "types": {
+              "type": "array",
+              "const": [
+                "mask",
+                "layer"
+              ],
+              "description": "Declared internal export types, in canonical order.",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "mask",
+                  "layer"
+                ],
+                "description": "One internal immutable surface type."
+              }
+            },
+            "table": {
+              "type": "string",
+              "const": "separate_from_host_geometry",
+              "description": "Resource slots are separate from all host geometry indices."
+            },
+            "syntax": {
+              "type": "string",
+              "const": "output <mask|layer> <name>",
+              "description": "Source declaration syntax for a singular resource export."
+            },
+            "read": {
+              "type": "string",
+              "const": "direct_child_last_called_part",
+              "description": "Reads require a direct child and this frame's last-called part."
+            },
+            "unset_slot": {
+              "type": "string",
+              "const": "trap",
+              "description": "Reading an unwritten slot traps."
+            },
+            "write": {
+              "type": "string",
+              "const": "immutable_snapshot_in_owner_caller_coordinates",
+              "description": "Writes freeze immutable views in the owner's caller coordinates."
+            },
+            "no_write_call": {
+              "type": "string",
+              "const": "retain_previous_snapshot_and_placement",
+              "description": "A call with no write keeps the previous snapshot and placement."
+            },
+            "propagation": {
+              "type": "string",
+              "const": "one_placement_scale_and_D4_per_export_level",
+              "description": "Each export level applies its existing placement, scale and D4 once."
+            },
+            "automatic_paint": {
+              "type": "boolean",
+              "const": false,
+              "description": "Exporting does not paint the image."
+            },
+            "buffer_transfer": {
+              "type": "string",
+              "const": "shared_without_copy",
+              "description": "Copies share the immutable buffer without copying pixels."
+            },
+            "buffer_release": {
+              "type": "string",
+              "const": "last_handle",
+              "description": "The last handle frees its buffer and releases the quota."
+            },
+            "generation_cleanup": {
+              "type": "string",
+              "const": "success_and_trap",
+              "description": "Successful and failed generations clear remaining resources."
+            },
+            "host_handles": {
+              "type": "boolean",
+              "const": false,
+              "description": "No resource handle is exposed through the public host API."
+            },
+            "list_exports": {
+              "type": "boolean",
+              "const": false,
+              "description": "Resource exports cannot be lists."
+            },
+            "maximum_slots": {
+              "type": "integer",
+              "const": 65536,
+              "description": "Maximum u16-addressable resource slots."
+            },
+            "slot_bytes": {
+              "type": "integer",
+              "const": 64,
+              "description": "Fixed generation-data quota charged per export slot."
+            },
+            "write_read_fuel": {
+              "type": "integer",
+              "const": 1,
+              "description": "Base instruction fuel for each write or read, without scanning."
+            },
+            "section_id": {
+              "type": "integer",
+              "const": 10,
+              "description": "Format section containing resource exports and function owners."
+            }
+          },
+          "required": [
+            "types",
+            "table",
+            "syntax",
+            "read",
+            "unset_slot",
+            "write",
+            "no_write_call",
+            "propagation",
+            "automatic_paint",
+            "buffer_transfer",
+            "buffer_release",
+            "generation_cleanup",
+            "host_handles",
+            "list_exports",
+            "maximum_slots",
+            "slot_bytes",
+            "write_read_fuel",
+            "section_id"
+          ],
+          "additionalProperties": false,
+          "description": "Internal immutable part exports; host geometry indices remain unchanged."
+        },
+        "steppers": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "const": "stepper(<value> | <lower> to <upper> [with <distribution>])",
+              "description": "Reserved capture syntax for a constant or outer range; operand expressions remain eager."
+            },
+            "capture_evaluation": {
+              "const": "lower_upper_distribution_once",
+              "description": "Capture operand order, each evaluated once before validating and allocating the description."
+            },
+            "intrinsic_capture_rng": {
+              "const": "none",
+              "description": "Capture itself does not advance a stream; operand effects still run."
+            },
+            "bounds_validation": {
+              "const": "capture",
+              "description": "Bounds and distribution parameters are validated when captured."
+            },
+            "probability_mass_validation": {
+              "const": "nonempty_pick",
+              "description": "Only nonempty picks check probability mass using the existing distribution rules."
+            },
+            "method_evaluation": {
+              "const": "receiver_once_before_count_once",
+              "description": "Each method evaluates its receiver once before its required count, also once."
+            },
+            "method_resolution": {
+              "const": "static_receiver_type_and_arity",
+              "description": "Methods use static stepper receiver type and argument arity, without dynamic dispatch."
+            },
+            "minimum_count": {
+              "const": 0,
+              "description": "Smallest supported batch count, including an empty typed list."
+            },
+            "maximum_count": {
+              "const": 256,
+              "description": "Largest supported batch count, matching the immutable list limit."
+            },
+            "count_type": {
+              "const": "i32",
+              "description": "The batch count is i32; floating counts are rejected."
+            },
+            "batch_preflight": {
+              "const": "count_handle_allocation_before_first_step",
+              "description": "Count, initialized handle and complete allocation precede the first generated step."
+            },
+            "unset_empty_batch": {
+              "const": "trap",
+              "description": "Unset descriptions trap even when the batch count is zero."
+            },
+            "asset_constants": {
+              "const": true,
+              "description": "Whether stepper descriptions may be declared as asset constants in this stage."
+            },
+            "range_palettes": {
+              "const": false,
+              "description": "Palettes retain their sampler semantics and do not accept stepper descriptions."
+            },
+            "capture_effects": {
+              "$ref": "#/$defs/effects",
+              "description": "Intrinsic capture effects excluding operand evaluation and resource failures."
+            },
+            "methods": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "const": "pick",
+                    "description": "Method name, separate from the global eager selection builtin."
+                  },
+                  "receiver": {
+                    "type": "string",
+                    "enum": [
+                      "stepper<i32>",
+                      "stepper<f32>",
+                      "stepper<color>",
+                      "stepper<vec2>"
+                    ],
+                    "description": "Required stepper receiver descriptor."
+                  },
+                  "parameters": {
+                    "type": "array",
+                    "maxItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "const": "n",
+                          "description": "The only accepted batch count parameter name."
+                        },
+                        "type": {
+                          "const": "i32",
+                          "description": "The required count value type."
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "type"
+                      ],
+                      "description": "The required named batch count parameter."
+                    },
+                    "description": "One required i32 count, optionally named n.",
+                    "minItems": 1
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "list<i32>",
+                      "list<f32>",
+                      "list<color>",
+                      "list<vec2>"
+                    ],
+                    "description": "An immutable list of the stepper endpoint type."
+                  },
+                  "opcode": {
+                    "const": "stepper.pick.list",
+                    "description": "The batch-only deterministic stepping instruction."
+                  },
+                  "effects": {
+                    "$ref": "#/$defs/effects",
+                    "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
+                  }
+                },
+                "required": [
+                  "name",
+                  "receiver",
+                  "parameters",
+                  "result",
+                  "opcode",
+                  "effects"
+                ],
+                "additionalProperties": true,
+                "description": "One statically resolved stepper method signature."
+              },
+              "description": "Every current pick signature, generated from the shared receiver-first frontend registry."
+            },
+            "generation_rng": {
+              "const": "none",
+              "description": "Generating steps does not read or advance the current RNG stream."
+            },
+            "unit_positions": {
+              "const": "i_over_n_minus_one",
+              "description": "With at least two results, coefficients are i divided by n minus one, including both endpoints."
+            },
+            "zero_count": {
+              "const": "empty_list",
+              "description": "Zero results create an empty typed list without checking probability mass."
+            },
+            "one_count": {
+              "const": "first_step",
+              "description": "One result is the first step, at quantile zero."
+            },
+            "integer_interpolation": {
+              "const": "binary64_half_away_from_zero",
+              "description": "Integer endpoints remain binary64 through interpolation, with halves rounded away from zero."
+            },
+            "endpoint_support": {
+              "const": "truncated_positive_mass",
+              "description": "The endpoints are the included positive-mass support, excluding zero-weight atoms and zero-area segments."
+            },
+            "distribution_families": {
+              "const": [
+                "gaussian",
+                "triangular",
+                "beta",
+                "weighted",
+                "density"
+              ],
+              "description": "Every currently supported analytic and point distribution family can shape deterministic steps.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "gaussian",
+                  "triangular",
+                  "beta",
+                  "weighted",
+                  "density"
+                ]
+              }
+            }
+          },
+          "required": [
+            "syntax",
+            "capture_evaluation",
+            "intrinsic_capture_rng",
+            "bounds_validation",
+            "probability_mass_validation",
+            "method_evaluation",
+            "method_resolution",
+            "minimum_count",
+            "maximum_count",
+            "count_type",
+            "batch_preflight",
+            "unset_empty_batch",
+            "asset_constants",
+            "range_palettes",
+            "capture_effects",
+            "methods",
+            "generation_rng",
+            "unit_positions",
+            "zero_count",
+            "one_count",
+            "integer_interpolation",
+            "endpoint_support",
+            "distribution_families"
+          ],
+          "additionalProperties": true,
+          "description": "Deterministic captured range descriptions, required batch counts and closed truncated distribution quantiles."
         }
       },
       "required": [
@@ -940,7 +2934,8 @@
         "visibility",
         "named_calls",
         "restrictions",
-        "effect_order"
+        "effect_order",
+        "asset_constants"
       ],
       "additionalProperties": true,
       "description": "Source, binary storage and expression type mappings. Accepted source value categories and conversions."
@@ -968,7 +2963,8 @@
             "type": "string",
             "enum": [
               "call_depth_limit",
-              "fuel_exhausted"
+              "fuel_exhausted",
+              "generation_data_limit"
             ],
             "description": "Program-wide execution resource limits."
           },
@@ -1124,7 +3120,6 @@
     "schema_version",
     "product_version",
     "language_version",
-    "format_version",
     "c_api_version",
     "abi_version",
     "source_rules",
@@ -1133,7 +3128,7 @@
     "builtins"
   ],
   "additionalProperties": true,
-  "description": "Compiler language description.",
+  "description": "Language export schema 3: typed asset constants and intrinsic constant-evaluation eligibility, with independently versioned source, product, format and ABI contracts.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "infinite-props language-description schema 2",
   "$defs": {
@@ -1206,7 +3201,10 @@
               "part_output_context",
               "part_output_missing",
               "part_render_arguments",
-              "stream_stack_underflow"
+              "stream_stack_underflow",
+              "index_range",
+              "unassigned_handle",
+              "scope_depth"
             ],
             "description": "Call-specific checks; resource-wide traps are separate."
           },
@@ -1245,7 +3243,30 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>",
+            "layer",
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -1281,7 +3302,30 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>",
+            "layer",
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1304,18 +3348,17 @@
           "description": "Lowered opcode registry identifier.",
           "minLength": 1
         },
-        "minimum_format_minor": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255,
-          "description": "Earliest binary-format minor supporting the opcode."
+        "constant_evaluable": {
+          "type": "boolean",
+          "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant."
         }
       },
       "required": [
         "parameters",
         "result",
         "evaluation_order",
-        "effects"
+        "effects",
+        "constant_evaluable"
       ],
       "additionalProperties": true,
       "description": "An overload from the shared signature registry."
@@ -1344,7 +3387,30 @@
             "palette<f32>",
             "rect",
             "vec2",
-            "void"
+            "void",
+            "list<i32>",
+            "list<f32>",
+            "list<color>",
+            "list<vec2>",
+            "list<distribution>",
+            "sampler<i32>",
+            "sampler<f32>",
+            "sampler<color>",
+            "sampler<vec2>",
+            "list<sampler<i32>>",
+            "list<sampler<f32>>",
+            "list<sampler<color>>",
+            "list<sampler<vec2>>",
+            "layer",
+            "mask",
+            "stepper<i32>",
+            "stepper<f32>",
+            "stepper<color>",
+            "stepper<vec2>",
+            "list<stepper<i32>>",
+            "list<stepper<f32>>",
+            "list<stepper<color>>",
+            "list<stepper<vec2>>"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -1391,7 +3457,30 @@
               "palette<f32>",
               "rect",
               "vec2",
-              "void"
+              "void",
+              "list<i32>",
+              "list<f32>",
+              "list<color>",
+              "list<vec2>",
+              "list<distribution>",
+              "sampler<i32>",
+              "sampler<f32>",
+              "sampler<color>",
+              "sampler<vec2>",
+              "list<sampler<i32>>",
+              "list<sampler<f32>>",
+              "list<sampler<color>>",
+              "list<sampler<vec2>>",
+              "layer",
+              "mask",
+              "stepper<i32>",
+              "stepper<f32>",
+              "stepper<color>",
+              "stepper<vec2>",
+              "list<stepper<i32>>",
+              "list<stepper<f32>>",
+              "list<stepper<color>>",
+              "list<stepper<vec2>>"
             ],
             "description": "Allowed value types for every eager choice."
           },
@@ -1405,6 +3494,11 @@
             "eager_once_before_selection_rng"
           ],
           "description": "All choices evaluate once before selection consumes RNG."
+        },
+        "constant_evaluable": {
+          "type": "boolean",
+          "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant.",
+          "const": false
         }
       },
       "required": [
@@ -1413,7 +3507,8 @@
         "evaluation_order",
         "effects",
         "minimum_arguments",
-        "repeat"
+        "repeat",
+        "constant_evaluable"
       ],
       "additionalProperties": true,
       "description": "Variadic template from the shared binder registry.",

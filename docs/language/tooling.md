@@ -9,15 +9,21 @@ when compression saves space. `--debug` retains source maps/symbols;
 an expanded file; `--no-opt` disables compiler optimization for inspection.
 `ipval` validates a binary, `ipdis` disassembles it and `ipgen` generates
 pixels/outputs. The `.ipa` assembly language is the VM-level tool format.
+For exact binary32 transport, assembly accepts `bits:0xXXXXXXXX` with eight
+hexadecimal digits wherever it accepts f32 constants/defaults/origins. `ipdis`
+uses this spelling for subnormals and nonfinite values, preserving NaN payloads
+and signs. This assembly spelling is not an `.ips` literal; ordinary source
+arithmetic and constant evaluation can produce those values.
 
 `ipc --describe-language` exports the implemented source rules, restrictions,
 shared call signatures and independent product/language/format/C API/ABI
 versions. See the [language-description contract](../language-description.md)
 for field meanings and executable acceptance cases.
 
-The documentation build also generates a bounded `LLM_REFERENCE.md` from
-selected handbook sections, compiler symbols and checked registered examples.
-See [reference generation](../llm-reference.md) for budgets, selection and
+The documentation build also generates `LLM_REFERENCE.md`, the complete
+language for coding agents: the idioms chapter first, then the handbook's
+language chapters, every builtin and checked registered examples. See
+[reference generation](../llm-reference.md) for its budget, selection and
 validated rejection/repair pairs.
 
 `ipc entry.ips --check --diagnostics=json` runs the same import, parsing,
@@ -44,7 +50,7 @@ The output uses two-space indentation, explicit expression grouping, word
 keywords and normalized literals. Calls use the compiler's shared binding and
 evaluation plan: ordinary builtins and helpers follow parameter order, `poly`
 puts vertex coordinates before its colour, and a known part puts uniforms in
-declaration order before seed/v/a/at and transforms. Unknown imports retain
+declaration order before seed/at and transforms. Unknown imports retain
 written order until their declarations are available. Helpers keep their
 existing `helper(parameters) -> type` syntax.
 It must differ from the input and binary output. Comments keep their exact
@@ -100,8 +106,10 @@ syntax tokens.
 
 The C++ compilation API retains debug information so callers can select an
 artifact policy. The editor requests it for inspection; binary exports use
-production defaults. [Optimization behavior](../optimizations-v0.4.md) describes
-the passes and their preservation contract.
+production defaults. Optimization folds eligible constants, removes unused
+pure computations and compacts pools/locals while preserving image/output bits,
+RNG order, drawing effects and runtime traps. `--no-opt` exposes the reference
+lowering; emitted instruction counts and total fuel may differ.
 
 ## Diagnostics
 
@@ -128,9 +136,9 @@ Canvas dimensions are limited to 16384 per side in the reference runtime.
 Hosts may impose smaller limits on dimensions or total pixel counts.
 Binary pools/indices, function nesting, stream stacks
 and structured outputs also have bounds; see
-[validation and resource limits](../../spec/iprop-v0.3.md#14-validation).
-Compressed v0.4 files bound both encoded and decoded size to 64 MiB.
-Host-specific limits and invalid variant/archetype indices can reject an
+[validation and resource limits](../../spec/iprop-v0.7.md#14-validation-and-limits).
+Compressed v0.7 files bound both encoded and decoded size to 64 MiB.
+Host-specific limits and invalid input values can reject an
 invocation before draw starts.
 
 Integer division/remainder by zero traps; float division follows IEEE-754.
@@ -138,6 +146,7 @@ Noise coordinate checks, nonfinite HSV hue, invalid geometry, unset part
 output reads and unbalanced stream pops can also trap. Traps must be handled
 by the host; a partial image is not a successful generation result.
 
+<!-- llm: skip -->
 `--describe-language` separates each signature's intrinsic checks from its
 argument expressions and from `effect_rules.resource_traps`. Fuel exhaustion
 and the runtime call-depth limit can affect otherwise valid programs.

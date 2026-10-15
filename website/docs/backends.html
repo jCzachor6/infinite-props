@@ -2,75 +2,86 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>iprop — backends</title>
-<link rel="stylesheet" href="docs.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Backends · Infinite Props</title>
+<meta name="theme-color" content="#13161a">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/src/styles/site.css">
 </head>
 <body>
-<header>
-  <a class="logo" href="../">iprop</a>
-  <nav></nav>
-  <div id="search-wrap">
-    <input id="search" placeholder="search the docs…">
-    <div id="results"></div>
+<!-- @header get-started -->
+<main id="content">
+  <div class="page-head">
+    <div class="container">
+      <h1>Backends</h1>
+      <p>The same validated bytecode on the command line, in the browser and inside your engine.</p>
+    </div>
   </div>
-</header>
-<main>
-<h1>Backends and installation</h1>
-<p>All backends execute the same validated bytecode; the reference CPU
-interpreter is authoritative for correctness, and the conformance suite
-checks every backend against the golden corpus.</p>
+  <div class="container docs">
+    <!-- @docs-nav backends -->
+    <article class="prose">
+<p>Every backend executes the same file with the same reference interpreter semantics; the
+interpreter is authoritative, and the conformance suite checks each backend against the golden
+corpus: pixels and structured outputs, bit for bit.</p>
 
 <h2 id="cli">The CLI toolchain</h2>
+<p>The prebuilt SDKs on the <a href="getting-started.html#download">download list</a> contain the
+tools; to build them yourself:</p>
 <pre><code>cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel</code></pre>
-<p>Tools under <code>build/tools/</code>: <code>ipc</code> (compile),
-<code>ipgen</code> (render), <code>ipsheet</code> (grids), <code>ipdis</code>
-(disassemble), <code>ipval</code> (validate), <code>ipa</code> (assemble). Each prints
-<code>--help</code>.</p>
+<p>The tools land in <code>build/tools/</code>: <code>ipc</code> (compile), <code>ipgen</code> (render),
+<code>ipsheet</code> (grids), <code>ipdis</code> (disassemble), <code>ipval</code> (validate) and
+<code>ipa</code> (assemble). Each prints <code>--help</code>.</p>
 
 <h2 id="html5">HTML5 / WASM</h2>
-<p>The reference interpreter compiled to WebAssembly — powers this
-playground and the IDE preview. Requires Emscripten.</p>
-<pre><code>mkdir -p build/wasm && cd build/wasm
-emcmake cmake ../../backends/html5 -DCMAKE_BUILD_TYPE=Release
-emmake make -j4
-cd ../.. && sh backends/html5/prepare.sh
-sh website/prepare.sh build/wasm build/tools</code></pre>
-<p>The demo page (<code>backends/html5/demo/</code>) renders example sheets;
-the conformance suite (<code>node backends/html5/test/run-tests.js
-build/wasm</code>) checks the golden seeds. Details in
-<code>backends/html5/README.md</code>.</p>
+<p>The reference interpreter compiled to WebAssembly. It runs the live examples on the home page and
+the editor preview. Building it requires Emscripten:</p>
+<pre><code>emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
+cmake --build build/wasm --parallel</code></pre>
+<p>One call renders a file: <code>generate(fileBytes, seed, sizeX, sizeY[, uniforms])</code>
+returns <code>{ width, height, data, outputs }</code> with RGBA pixels and the structured outputs.
+<code>uniforms</code> sets declared inputs by name, as <code>ipgen --uniform</code> does: numbers for
+<code>u32</code>/<code>f32</code> inputs and <code>"#RRGGBB"</code> strings for colours. The weapons on the
+home page use it to render their emission maps for the bloom.
+<code>backends/html5/js/api.js</code> wraps it for pages and Node, and
+<code>node backends/html5/test/run-tests.js build/wasm</code> checks the golden seeds.</p>
 
-<h2 id="vscode">VS Code</h2>
-<pre><code>cd editor
-sh install.sh</code></pre>
-<p>Reload VS Code: syntax highlighting, compiler diagnostics, the live
-preview with seed controls, the atlas, the bytecode inspector and exports.
-The integrated terminal is the console for CLI agents.</p>
+<h2 id="capi">The C API</h2>
+<p>A C99 interface (<code>backends/capi/iprop.h</code>, C API {{C_API_VERSION}} on ABI line {{C_ABI_SOVERSION}})
+ships as shared and static libraries. It owns program and result handles, returns RGBA images and
+structured outputs, and reflects the declared inputs, outputs and parts, so a host can build a
+parameter panel without knowing the asset in advance. Every native integration links it, and so can
+yours: anything that can call C can render props.</p>
 
-<h2 id="native">C API, SFML and Godot</h2>
-<p>The native integrations are implemented in 0.2. The C99 interface
-(<code>backends/capi/iprop.h</code>) ships shared and static libraries,
-with owned program/result handles, RGBA pixels and structured output owners.</p>
+<h2 id="engines">SFML and Godot</h2>
 <pre><code>cmake -B build -DCMAKE_BUILD_TYPE=Release \
   -DIPROP_SFML=ON -DIPROP_SFML_PREFIX=/path/to/sfml \
   -DIPROP_GODOT=ON -DIPROP_GODOTCPP_DIR=/path/to/godot-cpp \
   -DIPROP_GODOT_BINARY=/path/to/godot
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure</code></pre>
-<p>SFML 3.1 provides the desktop sprite/atlas host, PNG exports and actual
-sprite render tests. Its source build requires CMake 3.28 or later. Godot
-4.5.2 with <code>godot-cpp</code> at <code>godot-4.5-stable</code> provides
-<code>IpropAsset</code> and <code>IpropSprite2D</code>; the generated demo
-project is under <code>build/godot-project/</code>. Output names remain
-separate between the root and each part.</p>
-<p><code>IPROP_SFML</code>/<code>IPROP_GODOT</code> accept <code>AUTO</code>
-(skip missing dependencies), <code>ON</code> (require them) or <code>OFF</code>.
-See the backend READMEs for exact library, export and ownership contracts.
-OpenGL, Vulkan, Bevy and Unity integrations remain future work.</p>
+<ul>
+<li><strong>SFML 3.1</strong>: a desktop sprite and atlas host with PNG exports and real sprite render
+tests (CMake 3.28 or later).</li>
+<li><strong>Godot 4.5.2</strong>: a GDExtension (<code>godot-cpp</code> at <code>godot-4.5-stable</code>) with
+<code>IpropAsset</code> and <code>IpropSprite2D</code>; the build assembles a demo project under
+<code>build/godot-project/</code>.</li>
+</ul>
+<p><code>IPROP_SFML</code> and <code>IPROP_GODOT</code> accept <code>AUTO</code> (skip missing dependencies),
+<code>ON</code> (require them) or <code>OFF</code>. The backend READMEs list the exact library, export and
+ownership contracts.</p>
+
+<h2 id="vscode">VS Code</h2>
+<pre><code>cd editor
+sh install.sh</code></pre>
+<p>Reload VS Code for syntax highlighting, compiler diagnostics, the live preview with seed controls,
+the atlas, the bytecode inspector and exports. The integrated terminal is the console for coding
+agents.</p>
+    </article>
+  </div>
 </main>
-<footer>iprop — format spec and toolchain</footer>
+<!-- @footer -->
+<script type="module" src="/src/site.ts"></script>
 <script src="language-index.js"></script>
 <script src="nav.js"></script>
 </body>

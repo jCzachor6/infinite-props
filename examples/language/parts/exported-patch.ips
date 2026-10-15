@@ -1,0 +1,20 @@
+asset exportedPatch {
+  size 3x2
+  origin 1, 0
+  input i32 writeExport = 1
+  output layer image
+  output point anchor
+  output mask region
+
+  draw {
+    if (writeExport != 0) {
+      layer captured(alpha=surface.source_over) {
+        rect(0, 0, 3, 2, #11223380)
+        pixel(2, 1, #556677)
+      }
+      image = captured
+      region = mask.from(captured)
+    }
+    anchor = {1, 0}
+  }
+}

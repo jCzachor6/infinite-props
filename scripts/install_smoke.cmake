@@ -60,7 +60,7 @@ foreach(asset portrait plant)
     endif()
 endforeach()
 run("${PREFIX}/bin/ipa${suffix}" "${PREFIX}/share/iprop/examples/portrait.ipa" -o "${WORK}/assembled.iprop")
-run("${PREFIX}/bin/ipsheet${suffix}" "${WORK}/portrait.iprop" --variants 2 --seeds 2 -o "${WORK}/sheet.png")
+run("${PREFIX}/bin/ipsheet${suffix}" "${WORK}/portrait.iprop" --seeds 4 --columns 2 -o "${WORK}/sheet.png")
 foreach(mode shared static)
     set(use_static OFF)
     if(mode STREQUAL "static")
@@ -88,7 +88,7 @@ run("${PREFIX}/bin/ipc${suffix}" "${PREFIX}/share/iprop/examples/recipes/24-unif
 set(panel_expected "program_freed=1\ninputs=3\n"
     "input=0 type=color name_bytes=6 name_hex=616363656e74 default_rgba=55bbffff\n"
     "input=1 type=f32 name_bytes=5 name_hex=7363616c65 default_bits=3f800000\n"
-    "input=2 type=u32 name_bytes=7 name_hex=64656e73697479 default_bits=00000008 default_u32=8\n")
+    "input=2 type=u32 name_bytes=8 name_hex=646f74436f756e74 default_bits=00000008 default_u32=8\n")
 string(JOIN "" panel_expected ${panel_expected})
 foreach(mode shared static)
     set(panel "${WORK}/parameter-panel/parameter_panel_${mode}${suffix}")
@@ -102,7 +102,7 @@ foreach(mode shared static)
     endif()
     string(REPLACE "parameter_panel_" "render_inputs_" render "${panel}")
     run("${render}" "${WORK}/parameter-panel.iprop" "${WORK}/render-${mode}.pam"
-        "accent=#ff8800" scale=1.5 density=3)
+        "accent=#ff8800" scale=1.5 dotCount=3)
     file(READ "${WORK}/render-${mode}.pam" pam_header LIMIT 64)
     if(NOT LAST_STDOUT MATCHES "^image=32x32 fuel_used=[1-9]" OR NOT pam_header MATCHES "^P7\nWIDTH 32\nHEIGHT 32")
         message(FATAL_ERROR "Installed C99 render ${mode}: wrong image:\n${LAST_STDOUT}")

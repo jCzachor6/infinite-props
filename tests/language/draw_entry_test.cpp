@@ -9,11 +9,9 @@
 
 using namespace iprop;
 
-TEST_CASE("draw entry blocks have implicit runtime indices and typed helper parameters") {
-    const std::string source = R"(asset context {
+TEST_CASE("draw entry blocks have declared inputs and typed helper parameters") {
+    const std::string source = R"(asset context { input i32 a = 0 input i32 v = 0
       size 8x8
-      variants 3
-      archetypes 4
       input u32 offset = 7
       output point context
       draw {
@@ -56,15 +54,15 @@ TEST_CASE("legacy draw signatures and return annotations are rejected") {
     CHECK_THROWS_AS(compileProgram(program, {}), ips::SourceError);
 }
 
-TEST_CASE("draw context indices cannot be overwritten or shadowed") {
+TEST_CASE("retired control names are ordinary identifiers") {
     for (const std::string name : {"v", "a"}) {
         INFO(name);
-        semantic_test::expectCheckError(semantic_test::wrap(name + " = 5"), "cannot assign to builtin");
-        semantic_test::expectCheckError(semantic_test::wrap("for " + name + " in 0..2 { }"), "reserved name");
-        semantic_test::expectCheckError("asset t { size 8x8 output point " + name + " draw { } }", "reserved name");
-        semantic_test::expectCheckError("asset t { size 8x8 input u32 " + name + " = 1 draw { } }", "reserved name");
-        semantic_test::expectCheckError("asset t { size 8x8 palette " + name + " = [1] draw { } }", "reserved name");
+        CHECK_NOTHROW(compileProgram(ips::parse(semantic_test::wrap(name + " = 5")), {}));
+        CHECK_NOTHROW(compileProgram(ips::parse(semantic_test::wrap("for " + name + " in 0..2 { }")), {}));
+        CHECK_NOTHROW(compileProgram(ips::parse("asset t { size 8x8 output point " + name + " draw { } }"), {}));
+        CHECK_NOTHROW(compileProgram(ips::parse("asset t { size 8x8 input u32 " + name + " = 1 draw { } }"), {}));
+        CHECK_NOTHROW(compileProgram(ips::parse("asset t { size 8x8 palette " + name + " = [1] draw { } }"), {}));
     }
     semantic_test::expectCheckError(semantic_test::wrap("draw()"), "entry block");
-    semantic_test::expectCheckError("asset t { size 8x8 draw { helper(v) } helper(n) { } }", "parameter type");
+    semantic_test::expectCheckError("asset t { size 8x8 draw { helper(1) } helper(n) { } }", "parameter type");
 }

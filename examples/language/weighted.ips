@@ -1,0 +1,25 @@
+asset weighted_materials {
+  size 32x24
+  output point material
+  output point layers
+  output point state
+
+  const i32 Plain = 1
+  const i32 Mild = 2
+  const i32 Bold = 3
+  const i32 Skin = 4
+  const distribution finishes = weighted { Plain: 50, Mild: 20, Bold: 20, Skin: 10 }
+  const distribution rust = weighted { 1: 75, 2: 20, 3: 5 }
+  const sampler<i32> finish = sampler(Plain to Skin with finishes)
+  palette tones = [#8c969f, #8e9c70, #ad7750, #524640]
+
+  draw {
+    style = finish.pick()
+    count = 1 to 3 with rust
+    rect(2, 2, 28, 20, tones[style - 1])
+    for i in 0..count { rect(4 + i * 8, 6, 4, 12, #342a22) }
+    material = {style, style}
+    layers = {count, count}
+    state = {seed & 65535, seed >> 16}
+  }
+}

@@ -27,11 +27,11 @@ TEST_CASE("optional metadata semicolons retain imported-program bytes and execut
         input i32 n=-7; output point p; palette colors=[#abc,#fff];
         draw { p={n,unit()}; pixel(1,1,colors[index(2)]); } })");
     const auto legacyRoot = ips::parse(R"(import child from "child.ips"
-        asset t { size 8x8 variants 2 archetypes 2 input f32 f=0.5 output point p
-        draw { child.draw(seed,v,a,at={1,1}) p={f,unit()} } })");
+        asset t { size 8x8 input f32 f=0.5 output point p
+        draw { child.draw(seed,at={1,1}) p={f,unit()} } })");
     const auto semiRoot = ips::parse(R"(import child from "child.ips";
-        asset t { size 8x8; variants 2; archetypes 2; input f32 f=0.5; output point p;
-        draw { child.draw(seed,v,a,at={1,1}); p={f,unit()}; } })");
+        asset t { size 8x8;   input f32 f=0.5; output point p;
+        draw { child.draw(seed,at={1,1}); p={f,unit()}; } })");
     for (const bool optimize : {false,true}) {
         const auto expected = compileProgram(legacyRoot, {{"child",&legacyPart}}, optimize);
         const auto actual = compileProgram(semiRoot, {{"child",&semiPart}}, optimize);
@@ -68,7 +68,7 @@ TEST_CASE("signed input defaults check mathematical range in checker and planner
             "default of input i32 'n' must be in [-2147483648, 2147483647] before wrapping");
         CHECK_THROWS_AS(compileProgram(program, {}), ips::SourceError);
         const auto parent = ips::parse(R"(import child from "child.ips"
-            asset parent { size 8x8 draw { child.draw(seed,v,a,at={0,0}) } })");
+            asset parent { size 8x8 draw { child.draw(seed,at={0,0}) } })");
         CHECK_THROWS_AS(compileProgram(parent, {{"child", &program}}), ips::SourceError);
     }
     for (const std::string text : {"1.0", "true", "#fff"}) {
@@ -106,7 +106,7 @@ TEST_CASE("signed inputs use frozen U32 metadata and host bit pattern overrides"
         CHECK(defaults.outputs[0].points[0].y == 2147483648.f); // i32 max rounds to f32
         CHECK(defaults.outputs[1].points[0].x == -7.f);
         for (const u32 bits : {0u, 0xffffffffu, 0x80000000u, 0x7fffffffu}) {
-            GenerationInputs inputs{42,0,0,0,0,{}};
+            GenerationInputs inputs{42, 0, 0, {}};
             inputs.uniforms["n"] = UniformValue{iprop::InputType::U32,{},0.f,bits};
             VM vm(loaded, inputs);
             vm.run();
@@ -115,7 +115,7 @@ TEST_CASE("signed inputs use frozen U32 metadata and host bit pattern overrides"
             CHECK(std::bit_cast<u32>(result.outputs[1].points[0].y) ==
                   std::bit_cast<u32>(defaults.outputs[1].points[0].y));
         }
-        GenerationInputs wrong{42,0,0,0,0,{}};
+        GenerationInputs wrong{42, 0, 0, {}};
         wrong.uniforms["n"] = UniformValue{iprop::InputType::F32,{},-1.f,0};
         CHECK_THROWS_AS(VM(loaded, wrong), Trap);
     }
@@ -127,7 +127,7 @@ TEST_CASE("signed part defaults and overrides retain i32 function parameters") {
     })");
     const auto parent = ips::parse(R"(import first from "child.ips"
         import second from "child.ips" asset parent { size 8x8 input i32 host=-9
-        draw { first.draw(seed,v,a,at={0,0}) second.draw(seed,v,a,n=host,at={0,0}) }
+        draw { first.draw(seed,at={0,0}) second.draw(seed,n=host,at={0,0}) }
     })");
     ips::checkAsset(part, {});
     ips::checkAsset(parent, {{"first",ips::partInfoOf(part.asset)},
@@ -144,14 +144,14 @@ TEST_CASE("signed part defaults and overrides retain i32 function parameters") {
         REQUIRE(defaults.outputs.size() == 2);
         CHECK(defaults.outputs[0].points[0].x == -7.f);
         CHECK(defaults.outputs[1].points[0].x == -9.f);
-        GenerationInputs inputs{42,0,0,0,0,{}};
+        GenerationInputs inputs{42, 0, 0, {}};
         inputs.uniforms["host"] = UniformValue{iprop::InputType::U32,{},0.f,0xffffffffu};
         VM vm(loaded, inputs);
         vm.run();
         CHECK(vm.result().outputs[0].points[0].x == -7.f);
         CHECK(vm.result().outputs[1].points[0].x == -1.f);
         const auto invalid = ips::parse(R"(import child from "child.ips"
-            asset t { size 8x8 draw { child.draw(seed,v,a,n=0.5,at={0,0}) } })");
+            asset t { size 8x8 draw { child.draw(seed,n=0.5,at={0,0}) } })");
         CHECK_THROWS_AS(ips::checkAsset(invalid, {{"child",ips::partInfoOf(part.asset)}}), ips::SourceError);
     }
 }
@@ -253,8 +253,8 @@ TEST_CASE("signed part defaults use the same resolved values as root metadata") 
     const auto root = ips::parse(R"(import first from "child.ips"
         import second from "child.ips"
         asset parent { size 8x8 draw {
-          first.draw(seed,v,a,at={0,0})
-          second.draw(seed,v,a,amount=-0.75,integer=-3,tint=#f00,at={0,0})
+          first.draw(seed,at={0,0})
+          second.draw(seed,amount=-0.75,integer=-3,tint=#f00,at={0,0})
         } }
     )");
     ips::checkAsset(part, {});
@@ -315,7 +315,7 @@ TEST_CASE("integer-spelled f32 defaults preserve released conversions in roots a
         const auto part = ips::parse("asset child { size 8x8 input f32 value = " + literal +
             " output point p draw { p = {value,0} } }");
         const auto root = ips::parse("import child from \"child.ips\" asset root { size 8x8 "
-            "input f32 value = " + literal + " output point p draw { p={value,0} child.draw(seed,v,a,at={0,0}) } }");
+            "input f32 value = " + literal + " output point p draw { p={value,0} child.draw(seed,at={0,0}) } }");
         ips::checkAsset(part, {});
         ips::checkAsset(root, {{"child", ips::partInfoOf(part.asset)}});
         for (const bool optimize : {false, true}) {
@@ -332,8 +332,7 @@ TEST_CASE("integer-spelled f32 defaults preserve released conversions in roots a
 }
 
 TEST_CASE("signed palettes preserve integer wrapping negative zero and dynamic selection") {
-    const auto program = ips::parse(R"(asset palettes { size 8x8 variants 4
-        palette integers = [-(2), -1, -0xffffffff]
+    const auto program = ips::parse(R"(asset palettes { input i32 v = 0  size 8x8 palette integers = [-(2), -1, -0xffffffff]
         palette floats = [-0.5, (-0.0), 1.0]
         palette flags = [true, false]
         output point values output point flag

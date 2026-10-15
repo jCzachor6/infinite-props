@@ -6,8 +6,8 @@ asset parts {
   input u32 base = 123
   output point anchor
   draw {
-    first.draw(seed, v, a, at = {0, 0})
-    empty.draw(seed, v, a, at = {0, 0})
-    second.draw(seed, v, a, at = {0, 0})
+    first.draw(seed, at = {0, 0})
+    empty.draw(seed, at = {0, 0})
+    second.draw(seed, at = {0, 0})
   }
 }

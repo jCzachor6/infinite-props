@@ -1,6 +1,14 @@
 # Shared by the native product and the independently configured WASM build.
 set(IPROP_RUNTIME_SOURCES
     version.cpp
+    type_descriptor.cpp
+    collections.cpp
+    collection_ops.cpp
+    list_operations.cpp
+    descriptions.cpp
+    samplers.cpp
+    steppers.cpp
+    point_distributions.cpp
     opcode_name.cpp
     opcode_spec.cpp
     debug.cpp
@@ -11,6 +19,7 @@ set(IPROP_RUNTIME_SOURCES
     code.cpp
     validator.cpp
     vm.cpp
+    constant_evaluation.cpp
     stack.cpp
     control.cpp
     arithmetic.cpp
@@ -24,9 +33,16 @@ set(IPROP_RUNTIME_SOURCES
     math/bezier.cpp
     math/curves.cpp
     math/distribution.cpp
+    math/point_distribution.cpp
+    math/density.cpp
     math/color.cpp
     seeded.cpp
     canvas.cpp
+    compositor.cpp
+    surfaces.cpp
+    blur.cpp
+    resource_exports.cpp
+    masks.cpp
     outputs.cpp
     parts.cpp
     part_render_plan.cpp

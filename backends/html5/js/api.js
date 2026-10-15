@@ -3,8 +3,12 @@
 //   const iprop = await Iprop.create("iprop.wasm");
 //   const bytes = await (await fetch("portrait.iprop")).arrayBuffer();
 //   const result = iprop.generate(new Uint8Array(bytes), { seed: 7 });
+//   const glow = iprop.generate(bytes, { seed: 7, uniforms: { renderLayer: 1, magic: "#33ccff" } });
 //   iprop.drawToCanvas(canvas, result);
 //
+// `uniforms` maps declared input names to numbers (u32, f32) or "#RRGGBB" /
+// "#RRGGBBAA" colour strings, like `ipgen --uniform`; omitted inputs keep
+// their declared defaults.
 // generate() returns { width, height, data (Uint8Array RGBA), outputs }.
 // `data` is a copy, so results stay valid across calls.
 
@@ -22,13 +26,17 @@
             .then(function (Module) {
                 function generate(fileBytes, inputs) {
                     inputs = inputs || {};
-                    const result = Module.generate(
+                    const allowed = new Set(["seed", "sizeX", "sizeY", "uniforms"]);
+                    for (const name of Object.keys(inputs)) {
+                        if (!allowed.has(name)) throw new Error("unknown generation option '" + name + "'");
+                    }
+                    const args = [
                         fileBytes,
                         inputs.seed >>> 0 || 0,
-                        inputs.variant >>> 0 || 0,
-                        inputs.archetype >>> 0 || 0,
                         inputs.sizeX >>> 0 || 0,
-                        inputs.sizeY >>> 0 || 0);
+                        inputs.sizeY >>> 0 || 0];
+                    if (inputs.uniforms) args.push(inputs.uniforms);
+                    const result = Module.generate.apply(Module, args);
                     return {
                         width: result.width,
                         height: result.height,

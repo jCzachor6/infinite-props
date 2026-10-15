@@ -1,0 +1,4 @@
+asset invalid_weighted_mass {
+  size 1x1
+  draw { shape = weighted { 1: -1, 2: 2 } }
+}

@@ -1,6 +1,6 @@
 # Output declarations before generation
 
-API 0.3 exposes the loaded program's output schema through checked count/get/find
+API 0.4 exposes the loaded program's output schema through checked count/get/find
 calls. `IPROP_CAP_OUTPUT_DECLARATIONS` advertises these implemented operations.
 They need no generation result and do not execute the VM. This capability does
 not provide parameters or new generated-value accessors. The separately
@@ -15,6 +15,11 @@ range and owner for use with these same declaration accessors.
 | `iprop_output_info_ex_init` | Bounded declaration initialization |
 
 ## Slots and owners
+
+All C API output counts, indices and part output ranges count point/rect/circle
+geometry only. Mask/layer exports use a separate internal table and
+add no host slot, public kind tag or handle accessor. A part containing only
+resource exports has a geometry output count of zero.
 
 The global `output_index` begins with all stored root declarations, followed by
 all declarations of part 0, part 1, and so on. Declaration order within each
@@ -84,7 +89,6 @@ if (iprop_program_output_count(program, &count, NULL) == IPROP_EX_OK) {
 }
 ```
 
-Declarations are stored executable metadata. They remain available in older
-accepted binary formats, with debug stripped or present, and in compressed or
-plain containers. Reflection works on both legacy-loaded and checked-loaded
+Declarations are stored executable metadata. They remain available in format
+0.7 with debug stripped or present and in compressed or plain containers. Reflection works on both legacy-loaded and checked-loaded
 program handles. No metadata is reconstructed from debug/source information.

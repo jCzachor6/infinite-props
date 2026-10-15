@@ -1,0 +1,30 @@
+asset maskAlgebra {
+    size 8x4
+    output point stream
+    output rect extent
+
+    echo(region: mask) -> mask {
+        return region
+    }
+
+    draw {
+        layer left(alpha = surface.source_over) {
+            rect(0, 0, 3, 4, #ffffff80)
+        }
+        layer right {
+            rect(2, 0, 3, 4, #ffffff)
+        }
+        mask leftRegion = echo(mask.from(left))
+        rightRegion = mask.from(right)
+        combined = mask.union(leftRegion, rightRegion)
+        overlap = mask.intersect(leftRegion, rightRegion)
+        cut = mask.subtract(combined, overlap)
+        complement = mask.invert(combined)
+        surface.paint(cut, color = #5eacdf, blend = surface.source_over)
+        clip(complement) {
+            rect(0, 0, 8, 4, #efba68)
+        }
+        stream = {seed & 65535, seed >> 16}
+        extent = {0, 0, 5, 4}
+    }
+}

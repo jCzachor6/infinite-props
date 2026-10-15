@@ -10,6 +10,7 @@ void branch(Execution& ex, Frame& frame, u16 depth) {
         ex.trap("branch depth out of range", ErrorReason::InvalidControl);
     }
     const Label target = frame.labels[frame.labels.size() - 1 - depth];
+    ex.closeLayers(frame.labels.size() - depth);
     frame.labels.resize(frame.labels.size() - depth);
     frame.stack.resize(target.stackHeight);
     frame.ip = target.kind == 1 ? target.cont : target.end;
@@ -22,11 +23,16 @@ bool stepControl(Execution& ex, Instruction ins) {
     Frame& frame = ex.frames.back();
     switch (ins.opcode) {
     case Opcode::Block:
-    case Opcode::Loop: {
+    case Opcode::Loop:
+    case Opcode::LayerBegin:
+    case Opcode::ClipBegin: {
         ex.ensureControl(frame.functionIndex);
         const auto& info = ex.control[frame.functionIndex][frame.ip];
         Label label;
-        label.kind = ins.opcode == Opcode::Loop ? 1u : 0u;
+        if (ins.opcode == Opcode::LayerBegin) ex.beginLayer(ins.operand, ins.aux);
+        if (ins.opcode == Opcode::ClipBegin) ex.beginClip();
+        label.kind = ins.opcode == Opcode::Loop ? 1u : ins.opcode == Opcode::LayerBegin ? 3u :
+            ins.opcode == Opcode::ClipBegin ? 4u : 0u;
         label.cont = ins.opcode == Opcode::Loop ? frame.ip + 1 : info.endIndex;
         label.end = info.endIndex;
         label.stackHeight = frame.stack.size();
@@ -73,6 +79,7 @@ bool stepControl(Execution& ex, Instruction ins) {
         }
         const Label label = frame.labels.back();
         frame.labels.pop_back();
+        ex.closeLayers(frame.labels.size());
         frame.stack.resize(label.stackHeight);
         ++frame.ip;
         return true;

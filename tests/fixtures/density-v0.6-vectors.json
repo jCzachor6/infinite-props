@@ -1,0 +1,2046 @@
+{
+  "note": "Independent Python binary64 reference of spec 0.6 density integration; cross-checked against independent 90-digit Decimal integrals/CDFs within 2^-42 times max(1,abs(coordinate)/span), accounting for binary64 coordinate quantization; operation-order and ideal-real f32 bits are recorded separately. No expected values come from the C++/WASM runtime.",
+  "maximum_cdf_error": "8.1490725278854370117187500000000000000000000000E-10",
+  "cases": [
+    {
+      "name": "uniform",
+      "expression": "0.0 to 1.0 with density {0:1,1:1}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1006531241,
+          "mathematical_value_bits": 1006531241,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1048536751,
+          "mathematical_value_bits": 1048536751,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1059450830,
+          "mathematical_value_bits": 1059450830,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 788529152,
+          "mathematical_value_bits": 788529152,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 801112064,
+          "mathematical_value_bits": 801112064,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1048576000,
+          "mathematical_value_bits": 1048576000,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1048576000,
+          "mathematical_value_bits": 1048576000,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1061158912,
+          "mathematical_value_bits": 1061158912,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1061158912,
+          "mathematical_value_bits": 1061158912,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ascending",
+      "expression": "0.0 to 1.0 with density {0:0,1:2}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1035237442,
+          "mathematical_value_bits": 1035237442,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1056944972,
+          "mathematical_value_bits": 1056944972,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1062083382,
+          "mathematical_value_bits": 1062083382,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 926221555,
+          "mathematical_value_bits": 926221555,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 933020785,
+          "mathematical_value_bits": 933020785,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1060439283,
+          "mathematical_value_bits": 1060439283,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1060439283,
+          "mathematical_value_bits": 1060439283,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1063105495,
+          "mathematical_value_bits": 1063105495,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1063105495,
+          "mathematical_value_bits": 1063105495,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "descending",
+      "expression": "0.0 to 1.0 with density {0:2,1:0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 998175131,
+          "mathematical_value_bits": 998175131,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1040767011,
+          "mathematical_value_bits": 1040767011,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1053839502,
+          "mathematical_value_bits": 1053839502,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 780140544,
+          "mathematical_value_bits": 780140544,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 792723456,
+          "mathematical_value_bits": 792723456,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1040789667,
+          "mathematical_value_bits": 1040789667,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1040789667,
+          "mathematical_value_bits": 1040789667,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1050015258,
+          "mathematical_value_bits": 1050015258,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1050015258,
+          "mathematical_value_bits": 1050015258,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1065352902,
+          "mathematical_value_bits": 1065352902,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1065353035,
+          "mathematical_value_bits": 1065353035,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "clipped-rise",
+      "expression": "1.0 to 3.0 with density {0:0,4:2}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1065609845,
+          "mathematical_value_bits": 1065609845,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1071482769,
+          "mathematical_value_bits": 1071482769,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1075784749,
+          "mathematical_value_bits": 1075784749,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1071494103,
+          "mathematical_value_bits": 1071494103,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1071494103,
+          "mathematical_value_bits": 1071494103,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1074731965,
+          "mathematical_value_bits": 1074731965,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1074731965,
+          "mathematical_value_bits": 1074731965,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1076450301,
+          "mathematical_value_bits": 1076450301,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1076450301,
+          "mathematical_value_bits": 1076450301,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1077936128,
+          "mathematical_value_bits": 1077936128,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1077936128,
+          "mathematical_value_bits": 1077936128,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "clipped-fall",
+      "expression": "1.0 to 3.0 with density {0:2,4:0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1065440218,
+          "mathematical_value_bits": 1065440218,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1068317453,
+          "mathematical_value_bits": 1068317453,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1073938668,
+          "mathematical_value_bits": 1073938668,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1068324869,
+          "mathematical_value_bits": 1068324869,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1068324869,
+          "mathematical_value_bits": 1068324869,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1071761542,
+          "mathematical_value_bits": 1071761542,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1071761542,
+          "mathematical_value_bits": 1071761542,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1074865684,
+          "mathematical_value_bits": 1074865684,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1074865684,
+          "mathematical_value_bits": 1074865684,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1077936128,
+          "mathematical_value_bits": 1077936128,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1077936128,
+          "mathematical_value_bits": 1077936128,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "plateau",
+      "expression": "0.0 to 4.0 with density {0:0,1:1,3:1,4:0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1046284167,
+          "mathematical_value_bits": 1046284167,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1067435650,
+          "mathematical_value_bits": 1067435650,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1075606490,
+          "mathematical_value_bits": 1075606490,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 937276375,
+          "mathematical_value_bits": 937276375,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 943718400,
+          "mathematical_value_bits": 943718400,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1067450368,
+          "mathematical_value_bits": 1067450368,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1067450368,
+          "mathematical_value_bits": 1067450368,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1073741824,
+          "mathematical_value_bits": 1073741824,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1073741824,
+          "mathematical_value_bits": 1073741824,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1076887552,
+          "mathematical_value_bits": 1076887552,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1076887552,
+          "mathematical_value_bits": 1076887552,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1082130240,
+          "mathematical_value_bits": 1082130240,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1082130321,
+          "mathematical_value_bits": 1082130321,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "zeros",
+      "expression": "0.0 to 4.0 with density {0:0,1:0,2:1,3:0,4:0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1066398608,
+          "mathematical_value_bits": 1066398608,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1071277915,
+          "mathematical_value_bits": 1071277915,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1074417861,
+          "mathematical_value_bits": 1074417861,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1065353344,
+          "mathematical_value_bits": 1065353344,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1065353438,
+          "mathematical_value_bits": 1065353438,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1071284858,
+          "mathematical_value_bits": 1071284858,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1071284858,
+          "mathematical_value_bits": 1071284858,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1073741824,
+          "mathematical_value_bits": 1073741824,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1073741824,
+          "mathematical_value_bits": 1073741824,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1074970307,
+          "mathematical_value_bits": 1074970307,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1074970307,
+          "mathematical_value_bits": 1074970307,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1077936017,
+          "mathematical_value_bits": 1077936017,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1077936064,
+          "mathematical_value_bits": 1077936064,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tiny-width",
+      "expression": "0.0 to (1.1754943508222875e-38 * 1.1920928955078125e-7) with density {0.0:1.0,(1.1754943508222875e-38 * 1.1920928955078125e-7):1.0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tiny-area",
+      "expression": "0.0 to (1.1754943508222875e-38 * 1.1920928955078125e-7) with density {0.0:(1.1754943508222875e-38 * 1.1920928955078125e-7),(1.1754943508222875e-38 * 1.1920928955078125e-7):(1.1754943508222875e-38 * 1.1920928955078125e-7)}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tiny-triangle",
+      "expression": "0.0 to (1.1754943508222875e-38 * 1.1920928955078125e-7) with density {0.0:0.0,(1.1754943508222875e-38 * 1.1920928955078125e-7):(1.1754943508222875e-38 * 1.1920928955078125e-7)}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 0,
+          "mathematical_value_bits": 0,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1,
+          "mathematical_value_bits": 1,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "near-flat",
+      "expression": "0.0 to 1.0 with density {0.0:1.0000000031710769e-30,1.0:1.0000000972106250e-30}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1006531242,
+          "mathematical_value_bits": 1006531242,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1048536752,
+          "mathematical_value_bits": 1048536752,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1059450830,
+          "mathematical_value_bits": 1059450830,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 788529152,
+          "mathematical_value_bits": 788529152,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 801112065,
+          "mathematical_value_bits": 801112065,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1048576000,
+          "mathematical_value_bits": 1048576000,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1048576000,
+          "mathematical_value_bits": 1048576000,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1061158912,
+          "mathematical_value_bits": 1061158912,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1061158912,
+          "mathematical_value_bits": 1061158912,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1065353216,
+          "mathematical_value_bits": 1065353216,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "extreme-flat",
+      "expression": "-3.4028234663852886e38 to 3.4028234663852886e38 with density {-3.4028234663852886e38:3.4028234663852886e38,3.4028234663852886e38:3.4028234663852886e38}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 4286318132,
+          "mathematical_value_bits": 4286318132,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 4278209704,
+          "mathematical_value_bits": 4278209704,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 2123874103,
+          "mathematical_value_bits": 2123874103,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 4286578687,
+          "mathematical_value_bits": 4286578687,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 4286578687,
+          "mathematical_value_bits": 4286578687,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 4278190079,
+          "mathematical_value_bits": 4278190079,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 4278190079,
+          "mathematical_value_bits": 4278190079,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 4018143232,
+          "mathematical_value_bits": 4018143231,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1870659584,
+          "mathematical_value_bits": 1870659583,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 2130706431,
+          "mathematical_value_bits": 2130706431,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 2130706431,
+          "mathematical_value_bits": 2130706431,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 2139095039,
+          "mathematical_value_bits": 2139095039,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 2139095039,
+          "mathematical_value_bits": 2139095039,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mixed-exact-keys",
+      "expression": "16777216.0 to 16777220.0 with density {16777217:1,16777218.0:1,16777219:1}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1266679808,
+          "mathematical_value_bits": 1266679808,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1266679808,
+          "mathematical_value_bits": 1266679808,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1266679809,
+          "mathematical_value_bits": 1266679809,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1266679810,
+          "mathematical_value_bits": 1266679810,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1266679810,
+          "mathematical_value_bits": 1266679810,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "example-height",
+      "expression": "14.0 to 26.0 with density {14.0:0.0,18.0:1.0,22.0:0.6,26.0:0.0}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1097471660,
+          "mathematical_value_bits": 1097471660,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1099732626,
+          "mathematical_value_bits": 1099732626,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1101239718,
+          "mathematical_value_bits": 1101239718,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1096810577,
+          "mathematical_value_bits": 1096810577,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1096810636,
+          "mathematical_value_bits": 1096810636,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1099734822,
+          "mathematical_value_bits": 1099734822,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1099734822,
+          "mathematical_value_bits": 1099734822,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1100628467,
+          "mathematical_value_bits": 1100628467,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1100628467,
+          "mathematical_value_bits": 1100628467,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1101721371,
+          "mathematical_value_bits": 1101721371,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1101721371,
+          "mathematical_value_bits": 1101721371,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1104150437,
+          "mathematical_value_bits": 1104150437,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1104150476,
+          "mathematical_value_bits": 1104150476,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    },
+    {
+      "name": "equal-zero-support",
+      "expression": "0.5 to 0.5 with density {0:0,1:0,2:1}",
+      "rows": [
+        {
+          "seed": 0,
+          "raw_hash": 33350994,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190359552,
+            1193162496
+          ]
+        },
+        {
+          "seed": 7,
+          "raw_hash": 1071229915,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190363136,
+            1193162496
+          ]
+        },
+        {
+          "seed": 26,
+          "raw_hash": 2783956434,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190372864,
+            1193162496
+          ]
+        },
+        {
+          "seed": 1640531527,
+          "raw_hash": 0,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            0,
+            0
+          ]
+        },
+        {
+          "seed": 679000085,
+          "raw_hash": 1,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1179072512,
+            1195814912
+          ]
+        },
+        {
+          "seed": 3488367116,
+          "raw_hash": 1073741823,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1195099392,
+            1188840960
+          ]
+        },
+        {
+          "seed": 1199409068,
+          "raw_hash": 1073741824,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1135771648,
+            1197847808
+          ]
+        },
+        {
+          "seed": 1041235410,
+          "raw_hash": 2147483647,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1190073856,
+            1197229824
+          ]
+        },
+        {
+          "seed": 1251855063,
+          "raw_hash": 2147483648,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1183391744,
+            1198052608
+          ]
+        },
+        {
+          "seed": 2888129432,
+          "raw_hash": 3221225471,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1196773632,
+            1184151552
+          ]
+        },
+        {
+          "seed": 2294172749,
+          "raw_hash": 3221225472,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1195771392,
+            1176228864
+          ]
+        },
+        {
+          "seed": 2506150128,
+          "raw_hash": 4294967294,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1184190976,
+            1179541504
+          ]
+        },
+        {
+          "seed": 935491083,
+          "raw_hash": 4294967295,
+          "value_bits": 1056964608,
+          "mathematical_value_bits": 1056964608,
+          "state_bits": [
+            1198507008,
+            1196816640
+          ]
+        }
+      ]
+    }
+  ]
+}

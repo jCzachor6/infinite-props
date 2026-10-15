@@ -36,9 +36,10 @@ bool parseU32(const std::string& text, u32& out) {
 int ipsheetMain(int argc, char* argv[]) {
     std::string input;
     std::string output = "sheet.png";
-    u32 variants = 0; // 0 = all declared variants
     u32 seeds = 4;
-    u32 columns = 0; // 0 = variants count
+    u32 columns = 0; // 0 = seed count
+    u32 firstSeed = 0;
+    std::vector<std::pair<std::string, std::string>> overrides;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -50,18 +51,27 @@ int ipsheetMain(int argc, char* argv[]) {
             return argv[++i];
         };
         if (arg == "-h" || arg == "--help") {
-            std::cout << "ipsheet - render a variant × seed grid PNG\n\n"
+            std::cout << "ipsheet - render a seed grid PNG\n\n"
                       << "Usage: ipsheet <file.iprop> [options]\n"
-                      << "  --variants N   variant count (default: all declared)\n"
-                      << "  --seeds N      seeds per variant (default 4)\n"
+                      << "  --seed N       first seed (default 0)\n"
+                      << "  --seeds N      seed count (default 4)\n"
                       << "  --columns N    grid columns (default: the seed count)\n"
+                      << "  --uniform NAME=VALUE  fixed input override (repeatable)\n"
                       << "  -o PATH        output PNG (default: sheet.png)\n";
             return 0;
-        } else if (arg == "--variants") {
-            if (!parseU32(next("--variants"), variants)) {
-                std::cerr << "ipsheet: bad --variants\n";
+        } else if (arg == "--seed") {
+            if (!parseU32(next("--seed"), firstSeed)) {
+                std::cerr << "ipsheet: bad --seed\n";
                 return 1;
             }
+        } else if (arg == "--uniform") {
+            const std::string pair = next("--uniform");
+            const auto equal = pair.find('=');
+            if (equal == std::string::npos || equal == 0 || equal + 1 == pair.size()) {
+                std::cerr << "ipsheet: bad --uniform (expected name=value)\n";
+                return 1;
+            }
+            overrides.emplace_back(pair.substr(0, equal), pair.substr(equal + 1));
         } else if (arg == "--seeds") {
             if (!parseU32(next("--seeds"), seeds) || seeds == 0) {
                 std::cerr << "ipsheet: bad --seeds\n";
@@ -105,45 +115,65 @@ int ipsheetMain(int argc, char* argv[]) {
         return 1;
     }
 
-    if (variants == 0) {
-        variants = loaded.meta.variants;
-    }
     if (columns == 0) {
         columns = seeds;
     }
     const u32 cellW = loaded.meta.sizeX;
     const u32 cellH = loaded.meta.sizeY;
-    // Layout: row-major over (variant, seed) pairs — each variant gets a
-    // row of its seeds, wrapped to the requested column count.
-    const u32 cells = variants * seeds;
+    GenerationInputs inputs;
+    try {
+        for (const auto& [name, text] : overrides) {
+            const auto* declaration = loaded.meta.findInput(name, loaded.pool);
+            if (!declaration) throw std::invalid_argument("unknown uniform '" + name + "'");
+            UniformValue value;
+            value.type = declaration->type;
+            std::size_t end = 0;
+            if (value.type == InputType::Color) {
+                if ((text.size() != 7 && text.size() != 9) || text[0] != '#')
+                    throw std::invalid_argument("colour must be #RRGGBB or #RRGGBBAA");
+                const auto number = std::stoull(text.substr(1), &end, 16);
+                if (end != text.size() - 1) throw std::invalid_argument("invalid colour");
+                const u32 rgba = static_cast<u32>(text.size() == 7 ? number << 8 | 255u : number);
+                value.color = {static_cast<u8>(rgba >> 24), static_cast<u8>(rgba >> 16),
+                               static_cast<u8>(rgba >> 8), static_cast<u8>(rgba)};
+            } else if (value.type == InputType::F32) {
+                value.f = std::stof(text, &end);
+                if (end != text.size()) throw std::invalid_argument("invalid f32");
+            } else if (!parseU32(text, value.u)) {
+                throw std::invalid_argument("invalid u32");
+            }
+            inputs.uniforms[name] = value;
+        }
+    } catch (const std::exception& error) {
+        std::cerr << "ipsheet: " << error.what() << "\n";
+        return 1;
+    }
+    // Consecutive seeds in row-major order, with fixed declared inputs.
+    const u32 cells = seeds;
     const u32 rows = (cells + columns - 1) / columns;
     std::vector<u8> rgba(
         static_cast<std::size_t>(columns) * cellW * rows * cellH * 4, 0);
 
     try {
-        for (u32 v = 0; v < variants; ++v) {
-            for (u32 s = 0; s < seeds; ++s) {
-                GenerationInputs inputs;
-                inputs.seed = s;
-                inputs.variant = v;
-                VM vm(loaded, inputs);
-                vm.run();
-                const Canvas& canvas = vm.canvas();
-                const u32 cell = v * seeds + s;
-                const u32 cellX = cell % columns;
-                const u32 cellY = cell / columns;
-                for (u32 y = 0; y < canvas.height; ++y) {
-                    for (u32 x = 0; x < canvas.width; ++x) {
-                        const Color& pixel = canvas.at(x, y);
-                        const std::size_t at =
-                            ((static_cast<std::size_t>(cellY) * cellH + y) * columns * cellW +
-                             static_cast<std::size_t>(cellX) * cellW + x) *
-                            4;
-                        rgba[at] = pixel.r;
-                        rgba[at + 1] = pixel.g;
-                        rgba[at + 2] = pixel.b;
-                        rgba[at + 3] = pixel.a;
-                    }
+        for (u32 s = 0; s < seeds; ++s) {
+            inputs.seed = firstSeed + s;
+            VM vm(loaded, inputs);
+            vm.run();
+            const Canvas& canvas = vm.canvas();
+            const u32 cell = s;
+            const u32 cellX = cell % columns;
+            const u32 cellY = cell / columns;
+            for (u32 y = 0; y < canvas.height; ++y) {
+                for (u32 x = 0; x < canvas.width; ++x) {
+                    const Color& pixel = canvas.at(x, y);
+                    const std::size_t at =
+                        ((static_cast<std::size_t>(cellY) * cellH + y) * columns * cellW +
+                         static_cast<std::size_t>(cellX) * cellW + x) *
+                        4;
+                    rgba[at] = pixel.r;
+                    rgba[at + 1] = pixel.g;
+                    rgba[at + 2] = pixel.b;
+                    rgba[at + 3] = pixel.a;
                 }
             }
         }
@@ -157,7 +187,7 @@ int ipsheetMain(int argc, char* argv[]) {
         std::cerr << "ipsheet: cannot write '" << output << "'\n";
         return 1;
     }
-    std::cout << "wrote " << output << " (" << variants << " variants × " << seeds
+    std::cout << "wrote " << output << " (" << seeds
               << " seeds, " << columns * cellW << "×" << rows * cellH << ")\n";
     return 0;
 }

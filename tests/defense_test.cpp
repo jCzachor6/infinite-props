@@ -66,7 +66,7 @@ TEST_CASE("non-finite or huge coordinates trap instead of UB") {
 
 TEST_CASE("an oversized canvas traps at construction") {
     // meta sizeX above kMaxCanvasSide: the VM must refuse, not allocate.
-    const auto meta = metaSection(20000, 8, 0, 0, 1, 1, 1000, false, {}, 0, 0, 0, {}, {});
+    const auto meta = metaSection(20000, 8, 0, 0, 1000, false, {}, 0, 0, 0, {}, {});
     const auto pool = richPool({"draw"});
     const auto bytes = fullFile(meta, pool, codeSection({drawSpec(retIns())}, {}));
     auto loaded = loadFile(bytes);

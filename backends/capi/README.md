@@ -15,29 +15,19 @@ cmake --build build --parallel
 cmake --install build --prefix /path/to/iprop
 ```
 
-An external CMake project uses `find_package(iprop 0.4 CONFIG REQUIRED)`
+An external CMake project uses `find_package(iprop 0.7 CONFIG REQUIRED)`
 with that prefix in `CMAKE_PREFIX_PATH`, then links `iprop::capi` (shared)
 or `iprop::capi_static`. The shared target can be consumed by a C-only
 project. Static consumers enable C and C++ in `project(... LANGUAGES C CXX)`
 and use the C++ linker (`LINKER_LANGUAGE CXX`) for the C++ runtime.
 The installed DLL/import library and static archive have distinct names.
-The shared library uses ABI line / SONAME `0.4`, first released with 0.4.0.
-That historical loader identity is independent of the C API feature version;
-additive API releases must retain it. `cmake/CAbi.cmake` independently defines
-that line and the earliest compatible product (`0.4.0`). The build and runtime
-library query consume the same configuration. Physical filenames and macOS
-current-version metadata may follow the product, while ELF SONAME / macOS
-install-name remain `0.4`; Windows keeps `ipropc.dll` and its C exports.
-See the [frozen ABI contract](../../docs/c-api-abi.md).
-
-Installed CMake packages expose `iprop_C_ABI_SOVERSION` and its major/minor
-components. `find_package(iprop 0.4 CONFIG REQUIRED)` remains compatible with
-later additive products on that ABI line, including 0.5/0.6. A requested
-minimum older than product 0.4 is rejected; a version newer than the installed
-product and a nonmatching `EXACT` request are rejected by the normal CMake
-version checks. Version ranges keep their usual inclusive/exclusive bounds.
-The compatibility promise applies to the C API; exported C++ runtime headers
-and targets remain implementation details.
+The shared library uses ABI line / SONAME `0.5`, with product compatibility
+floor `0.7.0`. This is an intentional break: generate options and metadata no
+longer contain variant/archetype fields. Rebuild every C client with the current
+header. Windows uses `ipropc-0.5.dll`; ELF and macOS use the 0.5 loader identity.
+Product, source, file, API and ABI versions are independent. Requests below
+product 0.7 are rejected by the installed CMake package. See the
+[ABI contract](../../docs/c-api-abi.md).
 
 The prefix includes all six CLI tools, examples, specifications, language/
 optimization/release documentation and the
@@ -48,14 +38,15 @@ set them locally before exporting, following its README.
 
 Current documentation uses manifest schema 2 with separate product, source
 language, emitted format, C API and C ABI versions. The generated handbook is
-`share/iprop/docs/language-v0.6.md`, named after the source language. See
-[export contracts and the schema-1 migration](../../docs/export-contracts.md).
+`share/iprop/docs/language-v0.7.md`, named after the source language. See
+[current export contracts](../../docs/export-contracts.md).
 
-The runtime accepts frozen 0.1–0.4 files, v0.4 compressed containers and the
-format 0.5 emitted by the 0.6 compiler.
-Loading expands and validates the complete file before generation; the
-program owns the expanded bytes. The six legacy C API 0.2 entry points and
-their struct layouts are unchanged by additive API 0.3. CMake consumers
+The file format is unversioned, in plain or compressed form: the header bytes
+after the magic are reserved zeros in the compressed envelope and in the
+expanded payload, so files from before product 0.7 must be recompiled. Loading validates
+the complete file before generation and the program owns the expanded bytes.
+The existing untyped and checked entry points use the new API 0.4 layouts;
+there is no adapter for earlier ABI layouts. CMake consumers
 also need zlib 1.2.9 or newer; Windows CI
 links static zlib with the shared MSVC runtime (`x64-windows-static-md`).
 When using this vcpkg triplet, set `ZLIB_USE_STATIC_LIBS=ON` and include its
@@ -101,7 +92,7 @@ directory in `PATH`. The static target propagates `IPROP_CAPI_STATIC` and its
 runtime dependencies. The panel reflects declarations without generating an
 image or constructing parameter handles.
 
-The standalone project uses `find_package(iprop 0.4 CONFIG REQUIRED)` and
+The standalone project uses `find_package(iprop 0.7 CONFIG REQUIRED)` and
 links `iprop::capi` / `iprop::capi_static`; the static executable selects the
 C++ linker, while its source is still compiled as C99.
 
@@ -113,9 +104,9 @@ C++ linker, while its source is still compiled as C99.
   validates an `.iprop` binary. The program handle owns its buffer; it is
   reusable across generations.
 - `iprop_program_meta(program, &meta)` — the declared size, origin,
-  variants, archetypes and fuel budget.
+  fuel budget and declared inputs.
 - `iprop_generate(program, &options, &result, err, err_size)` — one
-  (seed, variant, archetype, size, uniforms) tuple → RGBA8 pixels plus the
+  (seed, size, uniforms) tuple → RGBA8 pixels plus the
   named structured outputs.
 - `iprop_result_image(result, &image)` — a borrowed view: width/height,
   the row-major RGBA8 pixels and the output slots (name, kind, list flag,
@@ -146,27 +137,23 @@ message.
    guarantees; the C++ runtime, compiler and tools are implementation
    details and may change freely.
 2. **Independent versions.** `IPROP_API_VERSION_MAJOR`/`_MINOR` describe
-   the header's API feature set, currently `0.3`. Product, source language,
-   binary format and ABI loader identity are separate contracts. API `0.3`
-   extends API `0.2` on ABI line `0.4`; an ABI break needs
-   an explicit new ABI line and migration, including before version 1.0.
+   the header's API feature set, currently `0.4`. Product, source language,
+   binary format and ABI loader identity are separate contracts. API `0.4` uses ABI line `0.5`; its migration intentionally removes
+   variant/archetype fields and requires clients to rebuild.
 3. **Opaque handles.** `iprop_program`/`iprop_result` are incomplete
    types to consumers; their layout is private.
 4. **Borrowed, not owned.** Pointers delivered to the host are valid
    until the owning handle's `_free`; handles are not shared between
    threads (no global state, so independent handles may run concurrently).
-5. **Frozen legacy layouts.** The six API `0.2` symbols, public structs,
-   enum values, calling convention and ownership are frozen. Adding even a
-   trailing field changes the ABI, including array strides. API `0.2` added
-   the output owner before this freeze; the `0.1` layout is not part of the
-   current ABI guarantee. API `0.3` uses new sized descriptors and new
-   entry points, leaving every existing declaration intact.
+5. **Current layouts.** API 0.4 layouts belong to ABI 0.5. Field offsets and
+   array strides are checked by C99 clients against shared and static libraries.
+   Older public layouts remain archived and are outside this ABI contract.
 6. **Ownership is explicit.** Success hands exactly one handle to the
    caller to free; failure hands none.
 
-The [ABI contract](../../docs/c-api-abi.md) records the released baseline,
-supported layouts, legacy behavior and rules for sized descriptors, UTF-8
-views, collection strides and safe initialization. It specifies the API `0.3`
+The [ABI contract](../../docs/c-api-abi.md) records the current loader line,
+supported layouts, generation behavior and rules for sized descriptors, UTF-8
+views, collection strides and safe initialization. It specifies the API `0.4`
 conventions; the capability query identifies the loaded library's functions.
 
 ## The loaded library
@@ -179,7 +166,7 @@ iprop_library_info_ex info = {0};
 info.struct_size = sizeof(info);
 if (iprop_library_query(&info) == IPROP_EX_OK) {
     /* product_major/minor/patch, api_major/minor, abi_major/minor,
-       format_major + inclusive format_minor_min/max, capabilities */
+       capabilities; the format_* fields are reserved zeros */
 }
 ```
 
@@ -193,7 +180,7 @@ The initializer also writes only complete known fields in that allocation.
 
 `iprop_generate_options_ex` is separate from the old generation options.
 Use `iprop_generate_options_ex_init(&options, sizeof(options))` to initialize
-seed, variant, archetype and dimensions to zero (source dimensions), with
+seed and dimensions to zero (source dimensions), with
 no requested flags. The common options reader supplies these defaults for
 absent fields and rejects all nonzero flags currently. It snapshots values
 before passing them to execution; failed validation publishes no partial
@@ -255,10 +242,10 @@ rejected with stable reasons before any value changes.
 parameters. Typed output value accessors receive capabilities only when
 implemented.
 Cancellation, host memory limits and shared-handle concurrency are not
-advertised by this release. A larger API minor number alone does not imply
+advertised by this API. A larger API minor number alone does not imply
 those capabilities.
 
-## The conformance (task 6.2)
+## The conformance
 
 `test/conformance.c` runs C-only suites in `test/golden.c`, `test/errors.c`
 and `test/generation.c`; common assertions and fixtures live in
@@ -269,6 +256,6 @@ the committed golden PNGs and the pinned structured outputs, and the
 error paths are exercised (junk bytes → `IPROP_E_FORMAT` with a message;
 null arguments → `IPROP_E_ARGUMENT`). Current `.ips` sources also cover
 typed helpers, palettes, loop control, pinned math bits, empty lists,
-output owners, plant composition, variant/archetype combinations and
+output owners, plant composition, authored input combinations and
 size/uniform overrides. It runs under `ctest` as
 `capi_conformance`.

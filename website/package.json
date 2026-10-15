@@ -1,8 +1,8 @@
 {
   "name": "iprop-website",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
-  "description": "The iprop website: a static playground running the WASM interpreter in the browser, with shareable links.",
+  "description": "The Infinite Props website: live examples rendered by the WASM interpreter in the browser, the guide and the documentation.",
   "scripts": {
     "docs": "node scripts/build-docs.mjs",
     "test:docs": "node --test test/docs.test.mjs",

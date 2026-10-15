@@ -52,8 +52,6 @@ struct AssetMeta {
     u32 sizeX = 0;
     u32 sizeY = 0;
     Vec2 origin{};
-    u32 variants = 0;
-    u32 archetypes = 0;
     u64 fuel = 0;
     bool hasEmission = false;
     Emission emission{};
@@ -66,7 +64,7 @@ struct AssetMeta {
 
 // Parses the `meta` section (spec §4), validating name indices against
 // `pool`. Throws located FormatError on any violation (positive sizes,
-// counts >= 1, fuel >= 1, reserved bytes zero, known types/kinds, unique
+// fuel >= 1, reserved bytes zero, known types/kinds, unique
 // names, no trailing bytes).
 AssetMeta parseMeta(std::span<const u8> data, const Section& section,
                     const ConstPool& pool);

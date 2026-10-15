@@ -1,0 +1,10 @@
+asset softGlow {
+    size 16x16
+    draw {
+        layer image(alpha = surface.source_over) { rect(5, 5, 6, 6, #ff804080) }
+        softImage = image.blur(1.5).blur(0)
+        softMask = mask.from(image).blur(sigma = 2)
+        surface.paint(softMask, #40b0ff, blend = surface.source_over)
+        surface.paint(softImage, blend = surface.source_over)
+    }
+}

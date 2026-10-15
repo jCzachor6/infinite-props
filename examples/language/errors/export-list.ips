@@ -1,0 +1,5 @@
+asset exportList {
+  size 1x1
+  output list layer images
+  draw {}
+}

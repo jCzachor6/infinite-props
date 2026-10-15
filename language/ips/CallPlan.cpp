@@ -33,7 +33,7 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
     result.effects = builtinEffects(spec, builtinOverload(spec, arity));
-    if (spec.lowering == BuiltinLowering::Polygon) {
+    if (variadicPolygon(spec, arity)) {
         result.evaluationOrder.erase(result.evaluationOrder.begin());
         result.evaluationOrder.push_back(0);
     }
@@ -44,6 +44,13 @@ CallSignature rampCallSignature() {
     result.effects = {};
     return result;
 }
+CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType) {
+    auto spec = builtinSpecs().at("surface.paint");
+    std::erase_if(spec.overloads, [imageType](const auto& overload) {
+        return overload.params.front().type != imageType;
+    });
+    return builtinCallSignature(spec, call.args.size(), call.location, "surface.paint");
+}
 CallSignature partCallSignature(std::span<const PartInput> inputs) {
     std::vector<std::string> names;
     for (const auto& input : inputs) names.push_back(input.name);
@@ -51,11 +58,11 @@ CallSignature partCallSignature(std::span<const PartInput> inputs) {
     result.effects = findOpcode(Opcode::PartDraw)->effects;
     result.evaluationOrder.clear();
     for (std::size_t i = 0; i < inputs.size(); ++i) {
-        result.evaluationOrder.push_back(7 + i);
-        result.defaults[7 + i] = inputs[i].declaration;
+        result.evaluationOrder.push_back(kPartFirstInput + i);
+        result.defaults[kPartFirstInput + i] = inputs[i].declaration;
     }
-    for (std::size_t i = 0; i < 7; ++i) result.evaluationOrder.push_back(i);
-    for (std::size_t i = 4; i < 7; ++i) result.defaults[i] = i32{0};
+    for (std::size_t i = 0; i < kPartFirstInput; ++i) result.evaluationOrder.push_back(i);
+    for (std::size_t i = kPartTransformBegin; i < kPartTransformEnd; ++i) result.defaults[i] = i32{0};
     return result;
 }
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function) {
@@ -71,6 +78,17 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
             if (function.name == name) return true;
         return false;
     };
+    if (name == "surface.paint") {
+        // Without imported types, try the layer overloads first: after the
+        // image they accept only a static blend mode. Mask painting takes a
+        // color there instead.
+        try {
+            auto layer = bindCall(call, surfacePaintCallSignature(call, ValueType::Layer), name);
+            const Arg* blend = layer.arguments.size() > 1 ? layer.arguments[1] : nullptr;
+            if (!blend || blend->name || surfaceMode(*blend->value)) return layer;
+        } catch (const SourceError&) { /* no layer overload binds these arguments */ }
+        return bindCall(call, surfacePaintCallSignature(call, ValueType::Mask), name);
+    }
     if (const auto found = builtinSpecs().find(name);
         found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))
         return bindCall(call, builtinCallSignature(found->second, call.args.size(), call.location, name), name);

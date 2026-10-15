@@ -65,6 +65,10 @@ bool ConstantFolder::evaluate(const ips::Expr& expr, Value& out) {
         }
     }
     if (const auto* member = std::get_if<Member>(&expr)) {
+        if (const auto* mode = surfaceMode(expr)) {
+            out = mode->sourceConstant;
+            return true;
+        }
         Value object;
         const auto channel = colorChannel(member->name);
         if (!channel || !fold(*member->object, object) || !std::holds_alternative<Color>(object)) {

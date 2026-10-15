@@ -24,7 +24,7 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
     const bool increasing = spec.stack && spec.stack->result == ValueType::Distribution;
     u16 nextFloat = 0;
     for (const auto type:arguments) {
-        switch (type) {
+        switch (type.kind) {
         case ValueType::I32: append(helper,Opcode::ConstI32); break;
         case ValueType::F32: append(helper,Opcode::ConstF32,increasing ? nextFloat++ : 0); break;
         case ValueType::Color: append(helper,Opcode::ConstColor); break;
@@ -34,6 +34,7 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
         case ValueType::Distribution:
             append(helper,Opcode::ConstF32); append(helper,Opcode::ConstF32);
             append(helper,Opcode::DistributionGaussian); break;
+        default: throw std::logic_error("test requires a scalar opcode");
         }
     }
     append(helper,spec.opcode,0,aux); append(helper,Opcode::Return);
@@ -54,13 +55,23 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
         REQUIRE(names.insert(spec.mnemonic).second);
         CHECK(findOpcode(spec.opcode) == &spec);
         CHECK(findOpcode(spec.mnemonic) == &spec);
-        if (spec.minimumMinor > 1) {
+        if (spec.stack) {
+            // An unreachable fixed-signature instruction validates like a reachable one.
             auto body=retIns();
-            append(body,spec.opcode); // version gates must also cover unreachable instructions
-            auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
-            REQUIRE_NOTHROW(validate(loadFile(bytes)));
-            bytes[6]=static_cast<u8>(spec.minimumMinor-1);
-            CHECK_THROWS_AS(validate(loadFile(bytes)),FormatError);
+            append(body,spec.opcode);
+            CHECK_NOTHROW(validate(loadFile(fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{})))));
+        }
+        if (spec.operand == OperandKind::Zero) {
+            // Unused operands are checked from the opcode table, including
+            // unreachable instructions.
+            auto body=retIns();
+            append(body,spec.opcode,1);
+            if(spec.opcode==Opcode::ClipBegin) append(body,Opcode::End);
+            const auto bytes=fullFile(minimalMeta(),richPool({"draw"}),codeSection({drawSpec(body)},{}));
+            try { validate(loadFile(bytes)); FAIL("nonzero operand accepted"); }
+            catch (const FormatError& error) {
+                CHECK(std::string(error.what()).find(std::string(spec.mnemonic) + " operand must be zero") != std::string::npos);
+            }
         }
         if (!spec.stack) continue;
         const auto& sig=*spec.stack;
@@ -96,5 +107,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 147);
+    CHECK(names.size() == 193);
 }

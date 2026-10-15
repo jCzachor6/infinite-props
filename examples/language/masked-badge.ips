@@ -1,0 +1,39 @@
+asset maskedBadge {
+    size 32x24
+    output rect panel
+    output point stream
+
+    stripes(region: mask) {
+        clip(region) {
+            for x in 4..29 {
+                if (x % 5 == 0) {
+                    line(x, 2, x - 6, 21, 1, #ffffff80)
+                }
+            }
+        }
+    }
+
+    draw {
+        width = 18 to 23
+        layer shape {
+            poly(#ffffff, 5, 4, width + 5, 4, width + 2, 19, 8, 19)
+            panel = {5, 4, width, 15}
+        }
+        region = mask.from(shape)
+        rim = mask.subtract(mask.expand(region, 1), region)
+        inset = mask.shrink(region, 1)
+        shadow = mask.offset(region, 2, 2)
+
+        surface.paint(shadow, color = #17253980, blend = surface.source_over)
+        surface.paint(rim, color = #b9dded, blend = surface.source_over)
+        surface.paint(region, color = #397ea9, blend = surface.source_over)
+        layer finish(alpha = surface.source_over) {
+            stripes(inset)
+            clip(region) {
+                weather(7, 12)
+            }
+        }
+        surface.paint(finish, blend = surface.source_over)
+        stream = {seed & 65535, seed >> 16}
+    }
+}

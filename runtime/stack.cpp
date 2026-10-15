@@ -35,16 +35,20 @@ bool stepStack(Execution& ex, Instruction ins) {
         if (ins.operand >= frame.locals.size()) {
             ex.trap("local index out of range", ErrorReason::IndexRange);
         }
-        frame.locals[ins.operand] = ex.pop();
+        if (frame.stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
+        frame.locals[ins.operand] = std::move(frame.stack.back());
+        frame.stack.pop_back();
         break;
     case Opcode::LocalTee:
         if (ins.operand >= frame.locals.size()) {
             ex.trap("local index out of range", ErrorReason::IndexRange);
         }
-        frame.locals[ins.operand] = ex.peek();
+        if (frame.stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
+        frame.locals[ins.operand] = frame.stack.back();
         break;
     case Opcode::Drop:
-        (void)ex.pop();
+        if (frame.stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
+        frame.stack.pop_back();
         break;
     case Opcode::Dup:
         ex.push(ex.peek());

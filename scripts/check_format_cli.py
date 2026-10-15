@@ -24,8 +24,8 @@ def main():
                   'import second from /* second path */ "część.ips";\n'
                   'asset t {size 8x8 draw {\n'
                   '// named call comment\n'
-                  'first.draw(a=a,/* before seed */seed=seed,v=v,at={0,0});\n'
-                  'second.draw(seed,v,a,at={1,1});}}')
+                  'first.draw(/* before seed */seed=seed,at={0,0});\n'
+                  'second.draw(seed,at={1,1});}}')
         entry.write_text(source, encoding='utf-8')
         destination = output_dir / 'canonical.ips'
 
@@ -142,7 +142,7 @@ def main():
                 (parts / 'tile.ips').write_text('asset decoy {size 8x8 draw{pixel(0,0,#00f);}}')
                 (real / 'tile.ips').write_text('asset real {size 8x8 draw{pixel(0,0,#f00);}}')
                 entry.write_text('import tile from "parts/link/../tile.ips"; '
-                                 'asset t {size 8x8 draw{tile.draw(seed,v,a,at={0,0});}}')
+                                 'asset t {size 8x8 draw{tile.draw(seed,at={0,0});}}')
                 invoke([entry, '-o', root / 'symlink-before.iprop', '--no-compress'])
                 invoke([entry, '--format', destination, '--format-only'])
                 invoke([destination, '-o', root / 'symlink-after.iprop', '--no-compress'])
