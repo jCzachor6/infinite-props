@@ -26,12 +26,12 @@ desktop tools, so every frame is byte-identical to the desktop output.
 ## Build
 
 Requirements: Emscripten (tested with 6.0.10), CMake, Node.js with `node:test`,
-and the desktop tools (`ipa`, `ipc`, `ipgen`).
+and the desktop tools (`ipa`, `ipc`, `ipdis`, `ipgen`, `ipval`).
 
 ```sh
 # From the repository root:
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --parallel --target ipa ipc ipgen
+cmake --build build --parallel --target ipa ipc ipdis ipgen ipval
 
 # 1. Build the WASM module:
 emcmake cmake -S backends/html5 -B build/wasm -DCMAKE_BUILD_TYPE=Release
