@@ -1,7 +1,6 @@
 # `.iprop` Format and Virtual Machine — Specification v0.7
 
-**Status:** Development contract for product 0.7.0. This specification is not
-a frozen release.
+**Status:** Frozen v0.7 contract, released with product 0.7.0 (2026-10-15).
 **Scope:** The complete binary format and virtual machine contract, including
 containers, instruction encodings, numeric/RNG/raster kernels, collections,
 samplers, steppers, captured layers, masks and blur. Source syntax is defined

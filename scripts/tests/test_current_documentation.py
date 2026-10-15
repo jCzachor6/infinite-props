@@ -45,7 +45,9 @@ class CurrentDocumentationTest(unittest.TestCase):
                 self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", self.spec)
 
     def test_specification_is_self_contained_and_numbered_references_resolve(self):
-        self.assertIn("**Status:** Development", self.spec)
+        # The released product line freezes its specification (release preflight).
+        self.assertRegex(self.spec, r"(?m)^\*\*Status:\*\* Frozen v0\.7 contract, released with product 0\.7\.0")
+        self.assertNotRegex(self.spec, r"(?im)^\*\*Status:\*\*.*(draft|candidate)")
         self.assertNotRegex(self.spec, r"iprop-v0\.[1-6]\.md")
         defined = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)*)[. ]", self.spec, re.M))
         self.assertLessEqual(set(re.findall(r"§(\d+(?:\.\d+)*)", self.spec)), defined)

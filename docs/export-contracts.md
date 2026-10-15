@@ -43,7 +43,7 @@ matrix. Valid checksums cannot override version mismatches.
 
 Current handbooks use the source-language filename `language-v0.7.md`, not
 the product version. The emitted, unversioned format is specified by the
-development [self-contained 0.7 contract](../spec/iprop-v0.7.md), named after
+frozen [self-contained 0.7 contract](../spec/iprop-v0.7.md), named after
 the product line. Product release tags, source language, C API features and the
 ABI loader line are never inferred from one another.
 

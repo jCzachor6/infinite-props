@@ -5,7 +5,7 @@ A portable binary format and open-source toolchain for **seed-based procedural
 file, then generate reproducible RGBA images and named geometry from a seed
 and declared inputs.
 
-Product **0.7.0** and source language **0.7** are under development. The compiler
+Product **0.7.0** and source language **0.7** are released. The compiler
 and runtime use an **unversioned** file format; C API **0.4** uses ABI / SONAME **0.5**.
 See the [language handbook](docs/language/index.md) and
 [migration from 0.6](docs/language/migration-v0.7.md).

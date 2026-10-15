@@ -15,7 +15,7 @@
     <div class="container">
       <h1>The <code>.iprop</code> format</h1>
       <p>One self-contained binary: metadata, constants and bytecode, with no external resources.</p>
-      <p class="versions">Specification {{SPEC_VERSION}} · product {{PRODUCT_VERSION}} development</p>
+      <p class="versions">Specification {{SPEC_VERSION}} · product {{PRODUCT_VERSION}}</p>
     </div>
   </div>
   <div class="container docs">
@@ -23,7 +23,7 @@
     <article class="prose">
 <p>This page summarises the format. The canonical contract is the specification:
 <a href="../spec/iprop-v{{SPEC_VERSION}}.md">iprop-v{{SPEC_VERSION}}.md</a>.
-It contains the complete development contract. Earlier versions remain in Git history.</p>
+It contains the complete frozen contract. Earlier versions remain in Git history.</p>
 
 <h2 id="versions">Versions</h2>
 <p>The format is unversioned: the four header bytes after the magic are reserved and must be
@@ -32,7 +32,7 @@ product 0.7 are rejected and need recompiling. The contract is the
 <a href="../spec/iprop-v0.7.md">0.7 specification</a>. Numerical, drawing, RNG and collection
 algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
 are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.4 /
-ABI 0.5. Product 0.7.0 remains under development.</p>
+ABI 0.5. The 0.7 specification is frozen with product 0.7.0.</p>
 
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", reserved, flags, section count

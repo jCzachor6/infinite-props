@@ -1,6 +1,6 @@
 # Migrating from 0.6 to 0.7
 
-Product 0.7.0 is under development. Update source declarations and host clients,
+Product 0.7.0 is released. Update source declarations and host clients,
 then rebuild every asset with the current compiler. The
 [binary format](../../spec/iprop-v0.7.md) is unversioned: the header bytes that
 held a version are reserved zeros in plain files, compressed envelopes and

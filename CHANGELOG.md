@@ -1,6 +1,11 @@
 # Changelog
 
-## v0.7.0 — development
+## v0.7.0 — 2026-10-15
+
+Product/editor/website version: 0.7.0. Source language: 0.7. The binary format
+is unversioned and specified by the frozen [0.7 specification](spec/iprop-v0.7.md).
+C API: 0.4, on ABI line / SONAME 0.5. Migration:
+[from 0.6](docs/language/migration-v0.7.md).
 
 - Exact integer bounds, stable vector normalization and typed asset constants.
 - Immutable lists with distinct/sort, captured samplers, sampling palettes,
@@ -14,6 +19,13 @@
   `format_version`.
 - Reserved source keywords require renaming before recompilation. See
   [migration from 0.6](docs/language/migration-v0.7.md).
+- Compiler: statically known invalid values are reported by the checker in
+  source order with `IPS-CONST-003`; pure traps in unreached code stay runtime
+  traps; nesting past 32 surface scopes and unstorable slots are located
+  errors. Constant folding runs the VM's own operations.
+- Runtime: opcode-indexed dispatch, one checked truncated draw for samplers and
+  stepper quantiles, and layer captures that no longer inherit clips, so a
+  painted layer is clipped exactly once.
 
 ## v0.6.0 — 2026-10-08
 

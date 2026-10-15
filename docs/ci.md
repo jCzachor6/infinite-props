@@ -120,9 +120,9 @@ git tag -a vX.Y.Z -m "Release X.Y.Z"
 git push origin vX.Y.Z
 ```
 
-Replace X.Y.Z with the finalized release version. Product 0.7.0 remains in
-development. Before creating a release tag, finalize the changelog date and freeze the
-matching specification. A manual CI run on `develop` retains and validates
+Replace X.Y.Z with the finalized release version. Product 0.7.0 has a dated
+changelog and a frozen 0.7 specification; later releases finalize the changelog
+date and freeze the matching specification before creating a release tag. A manual CI run on `develop` retains and validates
 candidate packages without publishing a GitHub Release.
 
 Local diagnostic commands:
