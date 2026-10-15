@@ -1,6 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "Compiler.hpp"
 #include "Pools.hpp"
+#include "ips/BuiltinArguments.hpp"
+#include "iprop/Collections.hpp"
+#include "iprop/Instruction.hpp"
 #include "SourceCompilation.hpp"
 #include "iprop/Debug.hpp"
 #include "iprop/VM.hpp"
@@ -122,4 +125,68 @@ TEST_CASE("part output slots skip resource outputs wherever they are declared", 
         CHECK(outcome.outputs[1].rects.at(0).w == 5.f);
         CHECK(outcome.outputs[2].circles.at(0).r == 9.f);
     }
+}
+
+TEST_CASE("missing type descriptors are compiler bugs at every writer", "[review]") {
+    const std::vector<TypeDescriptor> types{ValueType::list(ValueType::I32)};
+    Writer writer;
+    CHECK(typeDescriptorIndex(ValueType::list(ValueType::I32), types) == 0);
+    CHECK_THROWS_AS(typeDescriptorIndex(ValueType::sampler(ValueType::I32), types), std::logic_error);
+    CHECK_THROWS_AS(writeTypeReference(writer, ValueType::list(ValueType::F32), types), std::logic_error);
+    compiler::Pools pools;
+    CHECK_THROWS_AS(pools.typeIndexOf(ValueType::list(ValueType::Vec2)), std::logic_error);
+}
+
+TEST_CASE("every pool-indexing operand names its pool", "[review]") {
+    using K = OperandKind;
+    const std::vector<std::pair<Opcode, K>> expected{
+        {Opcode::LocalGet, K::Local}, {Opcode::LocalSet, K::Local}, {Opcode::LocalTee, K::Local}, {Opcode::LayerBegin, K::Local},
+        {Opcode::ConstI32, K::IntConst}, {Opcode::ConstF32, K::FloatConst}, {Opcode::ConstColor, K::ColorConst},
+        {Opcode::ConstList, K::ListConst}, {Opcode::ConstSampler, K::SamplerConst},
+        {Opcode::ConstStepper, K::StepperConst}, {Opcode::ConstDistribution, K::DistributionConst},
+        {Opcode::ListBegin, K::TypeDescriptor}, {Opcode::ListAppend, K::TypeDescriptor}, {Opcode::ListEnd, K::TypeDescriptor},
+        {Opcode::ListGet, K::TypeDescriptor}, {Opcode::ListLen, K::TypeDescriptor},
+        {Opcode::ListDistinct, K::TypeDescriptor}, {Opcode::ListSort, K::TypeDescriptor},
+        {Opcode::SamplerValue, K::TypeDescriptor}, {Opcode::SamplerRange, K::TypeDescriptor}, {Opcode::SamplerWith, K::TypeDescriptor},
+        {Opcode::SamplerPick, K::TypeDescriptor}, {Opcode::SamplerPickList, K::TypeDescriptor},
+        {Opcode::StepperValue, K::TypeDescriptor}, {Opcode::StepperRange, K::TypeDescriptor}, {Opcode::StepperWith, K::TypeDescriptor},
+        {Opcode::StepperPickList, K::TypeDescriptor},
+        {Opcode::OutMask, K::ResourceExport}, {Opcode::OutLayer, K::ResourceExport},
+        {Opcode::PartGetMask, K::ResourceExport}, {Opcode::PartGetLayer, K::ResourceExport},
+        {Opcode::DistributionBegin, K::Immediate}, {Opcode::DistributionAppend, K::Immediate},
+        {Opcode::SurfacePaint, K::Immediate}, {Opcode::SurfacePaintMask, K::Immediate},
+        {Opcode::PolyList, K::None}, {Opcode::LayerBlur, K::None}, {Opcode::MaskBlur, K::None}};
+    for (const auto& [opcode, kind] : expected) {
+        INFO(opcodeMnemonic(opcode));
+        CHECK(operandKind(opcode) == kind);
+    }
+}
+
+TEST_CASE("list polygons and variadic polygons lower through their own instruction", "[review]") {
+    const auto text = disassemble(compileRoot({{"root.ips", "asset t { size 8x8 draw { "
+        "poly([{0, 0}, {4, 0}, {0, 4}], #ffffff) poly(#ff0000, 0, 0, 4, 0, 0, 4) } }"}}, false));
+    CHECK(text.find("poly.list\n") != std::string::npos);
+    CHECK(text.find("poly 3\n") != std::string::npos);
+}
+
+TEST_CASE("every read of a palette shares one collection constant", "[review]") {
+    const auto bytes = compileRoot({{"root.ips", "asset t { size 1x1 output point p palette values = [3, 1, 2] "
+        "draw { a = list.len(values) b = values.sort() p = {a + list.len(b), values[0] + b[0]} } }"}}, false);
+    const auto file = loadFile(bytes);
+    CHECK(file.collections.lists.size() == 1);
+    const auto outcome = execute(bytes, 0);
+    CHECK(outcome.outputs[0].points.at(0).x == 6.f);
+    CHECK(outcome.outputs[0].points.at(0).y == 4.f);
+}
+
+TEST_CASE("named part call slots match the part parameter list", "[review]") {
+    const std::vector<std::string> uniforms{"tint", "size"};
+    const auto parameters = ips::partParameters(uniforms);
+    CHECK(parameters[ips::kPartSeedSlot].name == "seed");
+    CHECK(parameters[ips::kPartAtSlot].name == "at");
+    CHECK(parameters[ips::kPartTransformBegin].name == "rot");
+    CHECK(parameters[ips::kPartTransformBegin + 1].name == "mirror_x");
+    CHECK(parameters[ips::kPartTransformEnd - 1].name == "mirror_y");
+    CHECK(parameters[ips::kPartFirstInput].name == "tint");
+    CHECK(parameters.size() == ips::kPartFirstInput + uniforms.size());
 }
