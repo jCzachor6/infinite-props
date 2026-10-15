@@ -221,7 +221,7 @@ def frozen_runtime(manifest, frozen, generator, work, timeout):
         binary = directory / f'{index}.iprop'
         binary.write_bytes(data)
         outcomes = generate(generator, binary, directory / str(index), [0], timeout)
-        if any(row['status'] != 1 or 'unsupported format minor version' not in row['stderr'] for row in outcomes):
+        if any(row['status'] != 1 or 'reserved header field must be zero' not in row['stderr'] for row in outcomes):
             errors.append(case['source'] + ': retired binary was not rejected at load')
         records.append({'source': case['source'], 'binary': file_record(binary), 'generations': outcomes})
     return {'passed': not errors, 'errors': errors, 'records': records,
