@@ -17,7 +17,7 @@ range and owner for use with these same declaration accessors.
 ## Slots and owners
 
 All C API output counts, indices and part output ranges count point/rect/circle
-geometry only. Format 0.7 mask/layer exports use a separate internal table and
+geometry only. Mask/layer exports use a separate internal table and
 add no host slot, public kind tag or handle accessor. A part containing only
 resource exports has a geometry output count of zero.
 

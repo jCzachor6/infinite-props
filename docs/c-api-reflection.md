@@ -100,4 +100,5 @@ if (iprop_library_query(&library) == IPROP_EX_OK &&
 
 Both legacy and checked loads produce the same program representation, so
 reflection is available for either successfully loaded handle. Both use API
-0.4 layouts and accept only format 0.7. See the [ABI policy](c-api-abi.md).
+0.4 layouts and accept only files whose reserved header bytes are zero. See the
+[ABI policy](c-api-abi.md).

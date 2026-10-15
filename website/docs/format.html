@@ -15,32 +15,33 @@
     <div class="container">
       <h1>The <code>.iprop</code> format</h1>
       <p>One self-contained binary: metadata, constants and bytecode, with no external resources.</p>
-      <p class="versions">Format {{FORMAT_VERSION}} · product {{PRODUCT_VERSION}} development</p>
+      <p class="versions">Specification {{SPEC_VERSION}} · product {{PRODUCT_VERSION}} development</p>
     </div>
   </div>
   <div class="container docs">
     <!-- @docs-nav format -->
     <article class="prose">
 <p>This page summarises the format. The canonical contract is the specification:
-<a href="../spec/iprop-v{{FORMAT_VERSION}}.md">iprop-v{{FORMAT_VERSION}}.md</a>.
+<a href="../spec/iprop-v{{SPEC_VERSION}}.md">iprop-v{{SPEC_VERSION}}.md</a>.
 It contains the complete development contract. Earlier versions remain in Git history.</p>
 
 <h2 id="versions">Versions</h2>
-<p>The current format is <a href="../spec/iprop-v0.7.md">0.7</a>. Compiler and assembler
-always write 0.7; the runtime rejects every earlier or future version. A compressed envelope
-and its expanded payload must both carry version 0.7. Numerical, drawing, RNG and collection
+<p>The format is unversioned: the four header bytes after the magic are reserved and must be
+zero in a file, in a compressed envelope and in its expanded payload, so files written before
+product 0.7 are rejected and need recompiling. The contract is the
+<a href="../spec/iprop-v0.7.md">0.7 specification</a>. Numerical, drawing, RNG and collection
 algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
 are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.4 /
 ABI 0.5. Product 0.7.0 remains under development.</p>
 
 <h2 id="layout">The file layout</h2>
-<pre><code>header (20 bytes)              magic "IPRP", version, flags, section count
+<pre><code>header (20 bytes)              magic "IPRP", reserved, flags, section count
 section table (12 bytes × N)   id, offset, size
 sections                       meta · const · code · optional debug, parts and resource pools</code></pre>
 <ul>
 <li>All multi-byte values are little-endian; canonical sections are 4-byte aligned.</li>
 <li>Header flag bit 0 marks the debug section; the validator rejects a flag/section mismatch.</li>
-<li>Header flag bit 1 marks a packed format 0.7 file. After the 20-byte header come the
+<li>Header flag bit 1 marks a packed file. After the 20-byte header come the
 expanded size (u32) and one zlib stream holding the complete original file. Encoded and expanded
 files are bounded to 64 MiB; the checksum, exact length, trailing data, dictionaries and nesting are
 checked before execution.</li>

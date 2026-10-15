@@ -63,18 +63,16 @@ void Emitter::emitConst(const Value& value) {
 }
 
 TemporaryLocals::Lease Emitter::temporary(ips::ValueType type) {
+    // Pool exhaustion stays a PoolLimit; only the local table is located here.
+    if (type.needsDescriptor()) plan_.pools.addType(type);
+    else if (type != ips::ValueType::I32 && type != ips::ValueType::F32 && type != ips::ValueType::Vec2 &&
+             type != ips::ValueType::Color && type != ips::ValueType::Distribution)
+        throw std::logic_error("temporary requires a value type");
     try {
-        if (type.needsDescriptor()) { plan_.pools.addType(type); return temporaries_.acquire(type); }
-        switch (type.kind) {
-        case ips::ValueType::I32: return temporaries_.acquire(ValueType::I32);
-        case ips::ValueType::F32: return temporaries_.acquire(ValueType::F32);
-        case ips::ValueType::Vec2: return temporaries_.acquire(ValueType::Vec2);
-        case ips::ValueType::Color: return temporaries_.acquire(ValueType::Color);
-        case ips::ValueType::Distribution: return temporaries_.acquire(ValueType::Distribution);
-        default: throw std::logic_error("temporary requires a value type");
-        }
-    } catch (const std::length_error& exception) {
-        error({currentLine_, 1}, exception.what());
+        return temporaries_.acquire(type);
+    } catch (const LocalLimit& exception) {
+        throw ips::SourceError{{currentLine_, 1}, exception.what(), {}, ips::DiagnosticCode::ResourceLimit,
+                               ips::DiagnosticStage::Planning};
     }
 }
 
@@ -258,46 +256,45 @@ u32 Emitter::slotForOutput(const ips::Program* owner,
 void Emitter::emitOutputWrite(const ips::Program* owner,
                               const ips::OutputDecl& output,
                               const ips::Expr& value) {
-    if (ips::isResourceOutput(output.kind)) {
-        const u32 asset = current_->partOwner.value_or(kRootParent);
+    // Rects and circles take a literal or a part read of the right shape.
+    const auto compound = [&] {
+        if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
+            for (const auto& element : vector->elements) {
+                emitExpr(*element);
+                if (current_->typeOf(*element) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+            }
+        } else {
+            emitExpr(value); // part.get.* pushes the right shape
+        }
+    };
+    // Geometric outputs are slots; masks and layers are resource exports.
+    const auto slot = [&] { return static_cast<u16>(slotForOutput(owner, output)); };
+    const auto resource = [&] {
+        return plan_.resourceSlotIndex.at({current_->partOwner.value_or(kRootParent), output.name});
+    };
+    switch (output.kind) {
+    case ips::OutputKind::Mask:
         emitExpr(value);
-        ins(output.kind == ips::OutputKind::Mask ? Opcode::OutMask : Opcode::OutLayer,
-            0, plan_.resourceSlotIndex.at({asset, output.name}));
+        ins(Opcode::OutMask, 0, resource());
         return;
-    }
-    const u32 slot = slotForOutput(owner, output);
-    if (output.kind == ips::OutputKind::Point) {
+    case ips::OutputKind::Layer:
+        emitExpr(value);
+        ins(Opcode::OutLayer, 0, resource());
+        return;
+    case ips::OutputKind::Point:
         // Points take the vec2 shape: a literal pair, a bare part read or
         // an unpacked vec2 value (see emitPointValue).
         emitPointValue(value);
-        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0,
-            static_cast<u16>(slot));
+        ins(output.isList ? Opcode::OutListPoint : Opcode::OutPoint, 0, slot());
         return;
-    }
-    if (const auto* vector = std::get_if<ips::VectorLit>(&value)) {
-        for (const auto& element : vector->elements) {
-            emitExpr(*element);
-            if (current_->typeOf(*element) == ips::ValueType::I32) {
-                ins(Opcode::I32ToF32);
-            }
-        }
-    } else {
-        emitExpr(value); // part.get.* pushes the right shape
-    }
-    switch (output.kind) {
-    case ips::OutputKind::Mask:
-    case ips::OutputKind::Layer:
-        break; // handled above
-    case ips::OutputKind::Point:
-        break; // handled above
     case ips::OutputKind::Rect:
-        ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0,
-            static_cast<u16>(slot));
-        break;
+        compound();
+        ins(output.isList ? Opcode::OutListRect : Opcode::OutRect, 0, slot());
+        return;
     case ips::OutputKind::Circle:
-        ins(output.isList ? Opcode::OutListCircle : Opcode::OutCircle, 0,
-            static_cast<u16>(slot));
-        break;
+        compound();
+        ins(output.isList ? Opcode::OutListCircle : Opcode::OutCircle, 0, slot());
+        return;
     }
 }
 

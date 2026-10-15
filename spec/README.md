@@ -2,8 +2,8 @@
 
 [Format and VM 0.7](iprop-v0.7.md) is the self-contained **development** contract
 for this checkout. It covers the file/container layout, all instructions, exact
-algorithms, validation and resource limits. The reader and writers use version
-0.7 only. Older specifications and releases remain available in Git history.
+algorithms, validation and resource limits. The file format itself is
+unversioned. Older specifications and releases remain available in Git history.
 
 The [language handbook](../docs/language/index.md) defines `.ips` authoring.
 The [0.6 → 0.7 migration](../docs/language/migration-v0.7.md) explains source

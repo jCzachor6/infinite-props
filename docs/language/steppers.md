@@ -90,7 +90,7 @@ Picking costs the instruction base plus one fuel per stored element. Each
 nonconstant step costs one additional fuel, and color/vec2 interpolation
 costs one more. Distribution work uses the existing kernel iteration and
 point/segment costs. A fuel, memory or quantile error publishes no partial
-list or successful generation result. See [format 0.7](../../spec/iprop-v0.7.md).
+list or successful generation result. See [the format contract](../../spec/iprop-v0.7.md).
 
 ## Executable examples
 

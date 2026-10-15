@@ -51,7 +51,7 @@ def fixture(write_values):
     for tag, section in enumerate([meta, pool, code], start=1):
         table += u32(tag, offset, len(section))
         offset += len(section)
-    return b"IPRP" + u16(0, 7) + u32(0, 3, 0) + table + meta + pool + code
+    return b"IPRP" + u32(0, 0, 3, 0) + table + meta + pool + code  # reserved, flags, count, reserved
 
 
 if __name__ == "__main__":

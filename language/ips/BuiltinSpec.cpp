@@ -206,6 +206,10 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec,
     return best;
 }
 
+bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity) {
+    return spec.lowering == BuiltinLowering::Polygon && !builtinOverload(spec, arity);
+}
+
 std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
     if (arguments.empty() || !isStorable(arguments[0])) return std::nullopt;
     auto result = arguments[0];

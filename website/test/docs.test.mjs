@@ -81,15 +81,15 @@ test("website rejects a rehashed catalog missing current protocol fields before 
             fs.mkdirSync(path.dirname(target), { recursive: true });
             fs.writeFileSync(target, data);
         }
-        const info = { schema_version: 2, product_version: "0.4.0", source_commit: null,
-            language_version: "0.5", format_version: "0.4", c_api_version: "0.3", c_abi_soversion: "0.4",
+        const info = { schema_version: 3, product_version: "0.4.0", source_commit: null,
+            language_version: "0.5", c_api_version: "0.3", c_abi_soversion: "0.4",
             working_tree_dirty: false, status: "development / release candidate", tag: null,
             builtin_count: 1, example_count: 1, headings: [{ title: "Book", anchor: "book", level: 1 }],
             source_files: { "docs/language/index.md": hash(payload["docs/language/index.md"]) },
             files: Object.fromEntries(Object.entries(payload).map(([name, data]) => [name, hash(data)])) };
         fs.writeFileSync(path.join(directory, "docs/language-manifest.json"), JSON.stringify(info));
         assert.throws(() => verifyBundle(directory), /language required fields/);
-        info.schema_version = 3;
+        info.schema_version = 4;
         fs.writeFileSync(path.join(directory, "docs/language-manifest.json"), JSON.stringify(info));
         assert.throws(() => verifyBundle(directory), /manifest schema version/);
         assert.ok(!fs.existsSync(path.join(directory, "language.html")));

@@ -7,9 +7,10 @@ containers, instruction encodings, numeric/RNG/raster kernels, collections,
 samplers, steppers, captured layers, masks and blur. Source syntax is defined
 by the [language handbook](../docs/language/index.md).
 
-The reader and writers accept and emit **major 0, minor 7 only**, for both plain
-files and compressed envelopes. Older binaries must be rebuilt from source;
-there is no reader adapter. Product, source, C API and ABI versions are
+The format is **unversioned**: the four header bytes after the magic are
+reserved and MUST be zero, in plain files and compressed envelopes alike.
+Binaries written before product 0.7 carry a version there and must be rebuilt
+from source; there is no reader adapter. Product, source, C API and ABI versions are
 independently 0.7.0, 0.7, 0.4 and 0.5. Earlier specifications remain in Git history.
 
 ## Contents
@@ -99,14 +100,14 @@ Fixed 20 bytes:
 | Offset | Size | Field | Value |
 | ------ | ---- | ----- | ----- |
 | 0x00 | 4 | magic | `0x49 0x50 0x52 0x50` ("IPRP") |
-| 0x04 | 2 | version major | `0` |
-| 0x06 | 2 | version minor | `7` |
+| 0x04 | 4 | reserved | MUST be 0 |
 | 0x08 | 4 | flags | bit 0: debug; bit 1: compressed envelope (§16); other bits MUST be 0 |
 | 0x0C | 4 | section count | number of section table entries (1–255) |
 | 0x10 | 4 | reserved | MUST be 0 |
 
-Both the envelope and its expanded file MUST use version 0.7. The compiler
-and assembler never select an earlier minor, including for simple assets.
+Both reserved fields MUST be 0 in the envelope and in its expanded file. The
+format carries no version: readers never select rules by version, and every
+instruction, section and type of this specification is always available.
 
 ### 2.2 Section table
 
@@ -875,8 +876,7 @@ before it. Root outputs are not mapped. The mappings cost no fuel.
 
 A file without section 5 retains D4-only local output mapping and unnamed part
 entries. The current compiler writes section 5 for every file containing parts;
-the assembler can express a part without an instance declaration. The absence
-of section 5 never permits loading an older format version.
+the assembler can express a part without an instance declaration.
 
 ## 11. Canvas operations — exact algorithms
 
@@ -1850,8 +1850,8 @@ For a compressed container, bytes after the 20-byte header are:
 
 The stream contains the **complete original uncompressed `.iprop` file**,
 including its header and section table. Thus decompression is byte-exact,
-including version 0.7, flags, padding and debug data. The
-inner file MUST have a supported uncompressed version (0.7); compressed
+including its reserved bytes, flags, padding and debug data. The
+inner file MUST be an uncompressed file whose reserved bytes are zero; compressed
 inner files and preset zlib dictionaries are forbidden.
 
 The envelope's debug bit and section count MUST match the inner header.
@@ -1917,7 +1917,7 @@ or advance the RNG stream, and do not touch the canvas or outputs. Each
 costs the ordinary 1 fuel unit of §8.3.
 
 The `aux` byte MUST be zero; the operand is unused, as for the other
-operand-less instructions. These instructions use format 0.7, including in unreachable code.
+operand-less instructions, including in unreachable code.
 
 ## 18. Uniform random ranges
 
@@ -2496,8 +2496,8 @@ buffers; writers deduplicate descriptions by exact type, mode and payload bits.
 | 0xC1 | const.sampler c | `[] -> [sampler<T>]` |
 
 `const.sampler` has aux zero and a u16 sampler pool index.
-Its stack is `[] -> [sampler<T>]`; it requires format 0.7. Invalid aux/index and
-version gates are checked in unreachable code too. It costs base 1
+Its stack is `[] -> [sampler<T>]`. Invalid aux/index are checked in
+unreachable code too. It costs base 1
 fuel, retains the immutable description and makes no draw. Its first load
 charges 256 bytes to the generation arena; later reads share the same handle
 without another charge. No new public host type or ABI layout is introduced.
@@ -2555,7 +2555,7 @@ constructors validate even if their results are unused.
 
 ### Pool and wire references
 
-Optional section **9 (Distributions)** requires minor 7. Its payload is:
+Optional section **9 (Distributions)** has this payload:
 
 ```text
 u32 count                         // <= 65536
@@ -2590,7 +2590,7 @@ IPDIS emits their exact bytes. No public C enums, layouts or API are added.
 
 ### Builder instructions, ownership and fuel
 
-All instructions require minor 7, aux zero, and validation in dead code:
+All instructions require aux zero, and validation in dead code:
 
 | Opcode | Mnemonic / operand | Stack, deepest first |
 | --- | --- | --- |
@@ -2795,7 +2795,7 @@ Mode 0 resolves against the active destination target. Source spelling accepts
 `surface.legacy` and `surface.source_over`; it cannot obtain a runtime mode from
 an integer variable or const alias. Their ordinary scalar values are 0 and 1,
 respectively; wire mode encodings remain 1 and 2.
-The root remains legacy in format 0.7. Destination alpha, hidden RGB and the
+The root remains legacy. Destination alpha, hidden RGB and the
 old channel division order remain frozen. Legacy surface paint and part blits skip
 zero-alpha source pixels. Paint visits the full source in y/x order, applies
 D4's pixel-index mapping followed by integer origin, checks bounds in i64, then
@@ -2822,12 +2822,12 @@ releases frames, captures, saved targets and all generation resources.
 
 IPA names `layer` in `types`, locals, parameters and results. Layer begin's
 optional third token records nonzero aux (`layer.begin 2 1`); disassembly and
-reassembly preserve it. Compression and stripping keep version 0.7. No
+reassembly preserve it. No
 public C enum, structure layout, reflection field or host output API changes.
 
 ## 30. Source-over and target mode inheritance
 
-The root always starts in legacy, including format 0.7. A named layer with no
+The root always starts in legacy. A named layer with no
 alpha mode inherits its active target. Helpers share that target and mode;
 part canvases and their return blits inherit the caller's active mode. An
 explicit nested layer may override it. Scope cleanup on end/return/break/continue
@@ -2954,7 +2954,7 @@ At most 32 combined scopes can be active across the helper/part call stack.
 
 ### 31.3. Wire instructions and accounting
 
-All instructions below require format 0.7, including unreachable code.
+All instructions below are validated in unreachable code too.
 Their aux/operand are zero except the mask paint mode operand. They have no
 implicit RNG, outputs or changes to old instruction numbers.
 
@@ -2972,10 +2972,9 @@ implicit RNG, outputs or changes to old instruction numbers.
 | 0xD1 | clip.begin | pops mask, pushes a result-free clip label closed by existing end |
 
 Validation checks stack types, combined lexical scope depth, unused operands,
-descriptor shape, version and balanced labels even in dead code. Runtime adds
+descriptor shape and balanced labels even in dead code. Runtime adds
 unassigned-handle, mapping, dynamic radius and combined call-depth checks.
-IPA/IPDIS share these mnemonics and the `mask` type spelling. Compression,
-debug/strip and type compaction preserve version 0.7.
+IPA/IPDIS share these mnemonics and the `mask` type spelling.
 
 An A8 result charges `128 + width*height` bytes to the existing 64 MiB generation
 arena. Its fixed metadata/buffer accounting is identical on native and WASM.
@@ -3002,7 +3001,7 @@ slots. They do not extend frozen geometry enums, meta/code geometry outputs,
 the Parts section, C API 0.4 or ABI line 0.5. Host `output_count`, part output
 ranges and every existing output index still refer only to geometry.
 
-Optional section **10 (ResourceExports)** requires format 0.7, even if all
+Optional section **10 (ResourceExports)** may be present even if all
 exports are unused. Its exact little-endian layout is:
 
 ```text
@@ -3052,7 +3051,7 @@ hold their snapshot after slot replacement. Exporting never paints implicitly.
 Slots charge 64 bytes each once per generation. Buffers charge their existing
 RGBA8/A8 allocation once, shared by layers, masks, helpers and export slots.
 Destroying the last handle frees storage immediately and releases its quota.
-Part canvases still charge 4 bytes per pixel in format 0.7, the root is excluded,
+Part canvases still charge 4 bytes per pixel, the root is excluded,
 and root canvas storage is excluded. Success and traps clear remaining
 generation handles, with no cross-generation resources or seed-dependent cache.
 The 64 MiB data cap, combined 32 scope limit and default fuel stay unchanged.
@@ -3078,12 +3077,12 @@ while retaining receiver effects and runtime checks.
 | 0xD7 | list.sort descriptor | `[list<T>] -> [list<T>]` |
 
 Each operand indexes the section-6 descriptor table; `aux` is zero.
-Both require format minor 7. Distinct admits all thirteen storable list element
+Distinct admits all thirteen storable list element
 types. Sort admits only `i32`, `f32`, `color` and `vec2`. Invalid indices,
 non-list descriptors, unsupported sort types and nonzero aux are rejected,
-including in unreachable instructions. The current reader rejects every older minor.
+including in unreachable instructions.
 Pool compaction remaps these descriptor operands. No existing wire value,
-section, host enum, C API/ABI layout or product/source/format version changes.
+section, host enum, C API/ABI layout or product/source version changes.
 
 Distinct retains the first occurrence of each equal element, in input order.
 Sort retains duplicates and is stable ascending. i32 uses signed integer
@@ -3146,7 +3145,7 @@ u16 index into section 11, requiring an exact type match. Sampler list elements
 continue to reference section 8. All collection, description and distribution
 pools share their existing combined 64 MiB accounted-size limit.
 
-All new instructions require minor 7 and zero aux bytes:
+All new instructions require zero aux bytes:
 
 | Opcode | Mnemonic | Stack |
 | --- | --- | --- |
@@ -3232,7 +3231,7 @@ filtering and applies normally when the result is painted.
 | 0xDD | `layer.blur` | `[layer, f32 sigma] -> [layer]` |
 | 0xDE | `mask.blur` | `[mask, f32 sigma] -> [mask]` |
 
-Both require minor 7 and zero operand and aux, including in unreachable code.
+Both require zero operand and aux, including in unreachable code.
 The validator checks the exact receiver and f32 sigma types. No existing
 encoding or public C ABI changes. Known nonfinite or out-of-range sigmas are
 source errors. Dynamic negative, nonfinite or greater-than-64 sigmas trap
@@ -3283,7 +3282,7 @@ memory failure publishes no partial result.
 C API 0.4 uses ABI line 0.5 with earliest compatible product 0.7.0. Generation
 options and metadata descriptors contain no variant/archetype fields. Clients
 must rebuild against the new header; there is no ABI 0.4 replacement promise.
-The library reports supported format range 0.7–0.7. CLI, WASM/JS, SFML,
+The library's format fields are reserved zeros, as the format is unversioned. CLI, WASM/JS, SFML,
 Godot and the editor expose seed and ordinary inputs. Atlases enumerate seeds
 with fixed input values rather than implicit control axes.
 

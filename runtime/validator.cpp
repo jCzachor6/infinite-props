@@ -55,24 +55,11 @@ public:
         : file_(file), fn_(function), slots_(slots), functionIndex_(functionIndex) {}
 
     void run() {
-        const auto hasVec2 = [](const std::vector<ValueType>& types) {
-            return std::find(types.begin(), types.end(), ValueType::Vec2) != types.end();
-        };
-        if (file_.layout.header.versionMinor < 3 &&
-            (hasVec2(fn_.params) || hasVec2(fn_.results) || hasVec2(fn_.locals))) {
-            fail(0, "vec2 types require format 0.3");
-        }
-        const auto hasDistribution = [](const std::vector<ValueType>& types) {
-            return std::find(types.begin(), types.end(), ValueType::Distribution) != types.end();
-        };
-        if (file_.layout.header.versionMinor < 5 &&
-            (hasDistribution(fn_.params) || hasDistribution(fn_.results) || hasDistribution(fn_.locals))) {
-            fail(0, "distribution types require format 0.5");
-        }
+        // The loader admits only the current format version, so every
+        // opcode and value type of the table is available here.
         for (const auto* slots : {&fn_.params, &fn_.results, &fn_.locals}) {
             for (const auto type : *slots) {
                 if (!type.isStorable()) fail(0, "invalid declared value type");
-                if (type.needsDescriptor() && file_.layout.header.versionMinor < 6) fail(0, "descriptor types require format 0.6");
                 if (type.needsDescriptor() && std::find(file_.collections.types.begin(), file_.collections.types.end(), type) == file_.collections.types.end())
                     fail(0, "missing declared type descriptor");
             }
@@ -85,11 +72,8 @@ public:
             if (spec->aux == AuxPolicy::Zero && ins.aux != 0) {
                 fail(i, "aux byte must be zero");
             }
-            if (spec->aux == AuxPolicy::PartTransform) {
-                if (!D4Transform::fromKind(ins.aux)) fail(i, "unknown part transform kind");
-                if (ins.aux != 0 && file_.layout.header.versionMinor < 3)
-                    fail(i, "part transforms require format 0.3");
-            }
+            if (spec->aux == AuxPolicy::PartTransform && !D4Transform::fromKind(ins.aux))
+                fail(i, "unknown part transform kind");
             if (spec->aux == AuxPolicy::SurfaceMode && !validCompositionMode(ins.aux))
                 fail(i, "unknown layer alpha mode");
             if (ins.opcode >= Opcode::MaskFrom && ins.opcode <= Opcode::ClipBegin &&
@@ -97,10 +81,6 @@ public:
                 fail(i, "mask/clip operand must be zero");
             if ((ins.opcode == Opcode::LayerBlur || ins.opcode == Opcode::MaskBlur) && ins.operand != 0)
                 fail(i, "blur operand must be zero");
-            if (file_.layout.header.versionMinor < spec->minimumMinor) {
-                fail(i, std::string(spec->mnemonic) + " opcodes require format 0." +
-                        std::to_string(spec->minimumMinor));
-            }
             if (spec->stack) {
                 applyStack(i, *spec);
                 continue;

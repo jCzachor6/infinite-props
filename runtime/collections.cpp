@@ -120,12 +120,17 @@ TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor>
     return types[index];
 }
 
-void writeTypeReference(Writer& writer, TypeDescriptor type, std::span<const TypeDescriptor> types) {
-    if (type.isScalar()) { writer.writeU8(static_cast<u8>(type)); return; }
+u16 typeDescriptorIndex(TypeDescriptor type, std::span<const TypeDescriptor> types) {
     const auto found = std::find(types.begin(), types.end(), type);
     if (found == types.end()) throw std::logic_error("missing type descriptor");
+    return static_cast<u16>(found - types.begin());
+}
+
+void writeTypeReference(Writer& writer, TypeDescriptor type, std::span<const TypeDescriptor> types) {
+    if (type.isScalar()) { writer.writeU8(static_cast<u8>(type)); return; }
+    const auto index = typeDescriptorIndex(type, types);
     writer.writeU8(kDescriptorReference);
-    writer.writeU16(static_cast<u16>(found - types.begin()));
+    writer.writeU16(index);
 }
 
 std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section) {

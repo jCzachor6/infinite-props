@@ -149,7 +149,7 @@ function run(iprop,tool,directory) {
     const dead=assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nlayer.blur\nmask.blur\nendfn\n");
     for(const at of instructions(dead))if(dead[at]===0xdd||dead[at]===0xde)
         for(const relative of [1,2]) {const bad=Buffer.from(dead);bad[at+relative]=1;reject(bad);}
-    for(let minor=0;minor<7;++minor) {const bad=Buffer.from(dead);bad.writeUInt16LE(minor,6);reject(bad);}
+    for(let minor=1;minor<=7;++minor) {const bad=Buffer.from(dead);bad.writeUInt16LE(minor,6);reject(bad);}
     // The module must still generate after traps and malformed files.
     generate(compile(authored(impulse,7,1,1,false)),oracle);
     return {comparisons,pins,traps,rejections};

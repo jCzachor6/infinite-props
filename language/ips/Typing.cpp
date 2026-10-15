@@ -1,6 +1,7 @@
 #include "iprop/math/Distribution.hpp"
 #include "ips/Typing.hpp"
 #include "iprop/Collections.hpp"
+#include "iprop/Samplers.hpp"
 #include <algorithm>
 #include "ips/BuiltinArguments.hpp"
 #include "ips/Suggestions.hpp"
@@ -63,6 +64,7 @@ void Typer::enterFunction(const Program& owner, const Function& function,
     invalidLocals_.clear();
     expressions_.clear();
     calls_.clear();
+    resolutions_.clear();
     for (const auto& param : function.params) {
         if (!locals_.emplace(param.name, valueTypeOf(param.type)).second)
             error(param.location, "duplicate parameter '" + param.name + "'");
@@ -79,7 +81,7 @@ void Typer::declareInvalidLocal(const std::string& name) {
 }
 
 Typer::Scope Typer::saveScope() const {
-    return Scope{owner_, isDraw_, ns_, locals_, expressions_, invalidLocals_, calls_};
+    return Scope{owner_, isDraw_, ns_, locals_, expressions_, invalidLocals_, calls_, resolutions_};
 }
 
 void Typer::restoreScope(Scope scope) {
@@ -90,6 +92,76 @@ void Typer::restoreScope(Scope scope) {
     expressions_ = std::move(scope.expressions);
     invalidLocals_ = std::move(scope.invalidLocals);
     calls_ = std::move(scope.calls);
+    resolutions_ = std::move(scope.resolutions);
+}
+
+void Typer::registerAssetDeclarations(const Program& owner, const AssetDeclarations& declarations) {
+    for (const auto& [palette, value] : declarations.palettes) registerPaletteType(*palette, value.type);
+    probes_.insert_or_assign(&owner, std::make_shared<ConstantProbe>(owner, declarations));
+}
+
+const PaletteDecl* Typer::paletteRead(const Expr& expr) const {
+    const auto found = resolutions_.find(&expr);
+    return found == resolutions_.end() ? nullptr : found->second.palette;
+}
+
+// ---- statically known values ---------------------------------------------------
+
+std::optional<Value> Typer::known(const Expr& expr) {
+    const auto probe = probes_.find(owner_);
+    return probe == probes_.end() ? std::nullopt : probe->second->known(expr, locals_);
+}
+
+std::optional<std::string> Typer::rejection(const Expr& call) {
+    const auto probe = probes_.find(owner_);
+    return probe == probes_.end() ? std::nullopt : probe->second->rejection(call, locals_);
+}
+
+// The same rules the VM traps on, reported where the value is already known.
+[[noreturn]] void Typer::valueError(const SourceLocation& at, std::string message) const {
+    throw SourceError{at, std::move(message), {}, DiagnosticCode::AssetConstantValue, DiagnosticStage::Typing};
+}
+
+void Typer::checkKnownPoints(const PointDistributionLiteral& literal) {
+    const auto numeric = [](const Value& value) -> DistributionNumber {
+        if (const auto* i = std::get_if<i32>(&value)) return *i;
+        return std::get<f32>(value);
+    };
+    std::optional<DistributionPoint> previous;
+    bool allWeights = true;
+    double mass = 0.0;
+    for (const auto& point : literal.points) {
+        const auto key = known(*point.key), value = known(*point.value);
+        const DistributionPoint checked{key ? numeric(*key) : DistributionNumber(i32{0}),
+                                        value ? numeric(*value) : DistributionNumber(i32{0})};
+        if (const auto* message = math::pointDistributionEntryError(checked, key && previous ? &*previous : nullptr, literal.family))
+            valueError(point.location, message);
+        previous = key ? std::optional<DistributionPoint>(checked) : std::nullopt;
+        if (value) mass = mass + math::distributionNumber(checked.value);
+        else allWeights = false;
+    }
+    if (allWeights && !(mass > 0.0)) valueError(literal.location, literal.family == DistributionFamily::Density ?
+        "density needs positive total area" : "weighted needs positive total mass");
+}
+
+void Typer::checkKnownBounds(const SamplerCapture& capture, ValueType item) {
+    const auto* range = std::get_if<RandomRange>(capture.value.get());
+    auto lower = known(range ? *range->lower : *capture.value);
+    auto upper = range ? known(*range->upper) : std::optional<Value>(Value{});
+    if (item == ValueType::F32) {
+        for (auto* bound : {&lower, &upper})
+            if (*bound && std::holds_alternative<i32>(**bound)) *bound = static_cast<f32>(std::get<i32>(**bound));
+    }
+    if (lower) if (const auto* message = samplerBoundsError(item, *lower, Value{}, false))
+        valueError(capture.location, message);
+    if (range && upper) if (const auto* message = samplerBoundsError(item, *upper, Value{}, false))
+        valueError(capture.location, message);
+    if (lower && upper) if (const auto* message = samplerBoundsError(item, *lower, *upper, range != nullptr))
+        valueError(capture.location, message);
+    // A description snapshots its distribution: a constructor that rejects
+    // its known parameters can never produce one.
+    if (range && range->distribution) if (const auto message = rejection(*range->distribution))
+        valueError(locationOf(*range->distribution), *message);
 }
 
 // ---- member chains ----------------------------------------------------------
@@ -166,8 +238,10 @@ ValueType Typer::typeOf(const Expr& expr, std::optional<ValueType> context) {
             if (!receiver.isList()) error(method->location, "." + method->name + " needs a list<T> receiver, got " + std::string(typeName(receiver)));
             const auto found = listMethodSpecs().find(method->name);
             const std::array arguments{receiver};
-            if (found == listMethodSpecs().end() || !builtinOverload(found->second, arguments))
+            const auto* overload = found == listMethodSpecs().end() ? nullptr : builtinOverload(found->second, arguments);
+            if (!overload)
                 error(method->location, "." + method->name + " does not support " + std::string(typeName(receiver)));
+            resolutions_[&expr].overload = overload;
             return receiver;
         }
         return infer(expr);
@@ -186,18 +260,19 @@ ValueType Typer::infer(const Expr& expr) {
         const auto* overload = builtinOverload(surfaceMethodSpecs().at("blur"), arguments);
         if (!overload)
             error(locationOf(*blur->sigma.value), ".blur sigma must be f32, got " + std::string(typeName(sigma)));
-        if (const auto known = knownAssetExpression(*owner_, *blur->sigma.value, resolveAssetConstants(*owner_))) {
-            const auto value = std::holds_alternative<i32>(*known) ? static_cast<f32>(std::get<i32>(*known)) : std::get<f32>(*known);
-            if (!std::isfinite(value) || value < 0 || value > kMaxBlurSigma)
-                error(locationOf(*blur->sigma.value), "blur sigma must be finite and in 0..64");
+        if (const auto value = known(*blur->sigma.value)) {
+            const auto number = std::holds_alternative<i32>(*value) ? static_cast<f32>(std::get<i32>(*value)) : std::get<f32>(*value);
+            if (!std::isfinite(number) || number < 0 || number > kMaxBlurSigma)
+                valueError(locationOf(*blur->sigma.value), "blur sigma must be finite and in 0..64");
         }
+        resolutions_[&expr].overload = overload;
         return overload->result;
     }
     if (const auto* lit = std::get_if<Literal>(&expr)) {
         return typeLiteral(*lit);
     }
     if (const auto* id = std::get_if<Identifier>(&expr)) {
-        return typeIdentifier(*id);
+        return typeIdentifier(expr, *id);
     }
     if (std::holds_alternative<Member>(expr)) {
         const auto& member = std::get<Member>(expr);
@@ -250,13 +325,14 @@ ValueType Typer::infer(const Expr& expr) {
                 if (!isNumeric(type)) error(locationOf(*operand), "distribution points must be numeric, got " + std::string(typeName(type)));
             }
         }
+        checkKnownPoints(*d);
         return ValueType::Distribution;
     }
     if (const auto* vector = std::get_if<VectorLit>(&expr)) {
         return typeVector(*vector);
     }
     if (const auto* index = std::get_if<Index>(&expr)) {
-        return typeIndex(*index);
+        return typeIndex(expr, *index);
     }
     if (const auto* bin = std::get_if<Binary>(&expr)) {
         return typeBinary(*bin);
@@ -273,16 +349,22 @@ ValueType Typer::infer(const Expr& expr) {
         const auto type = capture->stepper ? ValueType::stepper(item) : ValueType::sampler(item);
         if (!type.isStorable()) error(capture->location, std::string(capture->stepper ? "stepper" : "sampler") +
             " capture needs i32, f32, color or vec2, got " + typeName(item));
+        checkKnownBounds(*capture, item);
         return type;
     }
     if (const auto* pick = std::get_if<SamplerPick>(&expr)) {
         const auto type = typeOf(*pick->receiver);
         if (!type.isDescription()) error(pick->location, ".pick needs a sampler<T> receiver or stepper<T> receiver, got " + std::string(typeName(type)));
+        const std::string kind = type.isStepper() ? "stepper" : "sampler";
         if (type.isStepper() && !pick->count) error(pick->location, "stepper .pick requires one i32 count named 'n'");
         std::vector<ValueType> args{type};
         if (pick->count) args.push_back(typeOf(*pick->count));
         const auto* signature = builtinOverload(type.isStepper() ? stepperPickSpec() : samplerPickSpec(), args);
-        if (!signature) error(locationOf(*pick->count), std::string(type.isStepper() ? "stepper" : "sampler") + " result count must be i32");
+        if (!signature) error(locationOf(*pick->count), kind + " result count must be i32");
+        if (pick->count) if (const auto count = known(*pick->count);
+            count && (std::get<i32>(*count) < 0 || std::get<i32>(*count) > kMaxListElements))
+            valueError(locationOf(*pick->count), kind + " result count must be between 0 and 256");
+        resolutions_[&expr].overload = signature;
         return signature->result;
     }
     error(locationOf(expr), "unsupported expression");
@@ -305,7 +387,7 @@ ValueType Typer::typeLiteral(const Literal& lit) {
     error(lit.location, "unknown literal kind");
 }
 
-ValueType Typer::typeIdentifier(const Identifier& id) {
+ValueType Typer::typeIdentifier(const Expr& expr, const Identifier& id) {
     if (invalidLocals_.contains(id.name)) throw UnresolvedType{};
     const auto local = locals_.find(id.name);
     if (local != locals_.end()) {
@@ -336,6 +418,7 @@ ValueType Typer::typeIdentifier(const Identifier& id) {
             const auto& resolved = this->palette(id);
             if (palette.elements.size() > kMaxListElements)
                 error(id.location, "palette '" + id.name + "' exceeds 256 elements when used as a list");
+            resolutions_[&expr].palette = &palette;
             return ValueType::list(resolved.type);
         }
     }
@@ -424,7 +507,7 @@ ValueType Typer::typeList(const ListLit& list, std::optional<ValueType> context)
     return ValueType::list(*element);
 }
 
-ValueType Typer::typeIndex(const Index& index) {
+ValueType Typer::typeIndex(const Expr& expr, const Index& index) {
     if (const auto* name = std::get_if<Identifier>(index.object.get())) {
         const auto declared = std::find_if(owner_->asset.palettes.begin(), owner_->asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
         const auto local = locals_.find(name->name);
@@ -434,6 +517,7 @@ ValueType Typer::typeIndex(const Index& index) {
             (local == locals_.end() || !local->second.isParameterized())) {
             const auto& resolved = palette(*name);
             if (typeOf(*index.index) != ValueType::I32) error(locationOf(*index.index), "palette index must be i32, got " + std::string(typeName(typeOf(*index.index))));
+            resolutions_[&expr].palette = &*declared;
             return resolved.type;
         }
     }

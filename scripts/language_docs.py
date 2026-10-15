@@ -75,7 +75,7 @@ def contracts(compiler, root=ROOT):
     require(type(value) is dict and value.get("product_version") == product_version(root),
             "Compiler language description belongs to another product version")
     language = read_language(value)
-    # Language, format, C API and SOVERSION change independently of the product.
+    # Language, C API and SOVERSION change independently of the product.
     described, expected = described_versions(language), versions(root)
     require(described == expected, "Compiler language description differs from the source versions: " +
             ", ".join(f"{key} {described[key]} != {expected[key]}" for key in expected if described[key] != expected[key]))
@@ -107,15 +107,14 @@ def identity(root, version):
 
 
 def signatures(builtin):
-    lines = ["| Signature | VM instruction | Minimum VM format |", "| --- | --- | --- |"]
+    lines = ["| Signature | VM instruction |", "| --- | --- |"]
     for overload in builtin["overloads"]:
         params = ", ".join(p["name"] + ": " + p["type"] for p in overload["parameters"])
         signature = builtin["name"] + "(" + params + ") -> " + overload["result"]
-        minor = overload.get("minimum_format_minor")
-        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} | {'0.' + str(int(minor)) if minor is not None else 'any'} |")
+        lines.append(f"| `{signature}` | {overload.get('opcode', 'compiler lowering')} |")
     if variadic := builtin.get("variadic"):
         params = ", ".join(p["name"] + ": " + p["type"] for p in variadic["parameters"])
-        lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering | any |")
+        lines.append(f"| `{builtin['name']}({params}, ...) -> {variadic['result']}` | compiler lowering |")
         lines += ["", f"The variadic form requires at least {int(variadic['minimum_arguments'])} arguments."]
         if variadic["repeat"] == "choices":
             lines.append("`T` is a shared storable type; mixed numeric choices widen to `f32`.")
@@ -272,8 +271,7 @@ def build(compiler, destination, root=ROOT, llm_sections=None, llm_symbols=None,
     combined = "\n\n".join(flatten(p, expanded[p]) for p in chapters) + "\n"
     first, rest = combined.split("\n", 1)
     matrix_text = (f"Product: **{version}** · Source language: **{info['language_version']}** · "
-                   f"Binary format: **{info['format_version']}** · C API: **{info['c_api_version']}** · "
-                   f"C ABI: **{info['c_abi_soversion']}**")
+                   f"C API: **{info['c_api_version']}** · C ABI: **{info['c_abi_soversion']}**")
     combined = first + "\n\n" + matrix_text + f" · Status: **{info['status']}** · Source: `{info['source_commit'] or 'source archive'}`\n" + rest
     output[f"docs/language-v{minor}.md"] = combined
     output["docs/language.json"] = json.dumps(language, ensure_ascii=False, indent=2) + "\n"

@@ -66,7 +66,7 @@ declaring a constant does not expand those grammar rules. Scalar constants intro
 no new opcode, type code, section, host enum or ABI layout. Scalar/vector
 values lower through scalar pools and instructions. Unused declarations add
 no executable instructions; used list constants share immutable collection
-data. Every executable uses format 0.7, including folded scalar results.
+data, including for folded scalar results.
 
 <!-- example: ../../examples/language/errors/const-cycle.ips -->
 <!-- example: ../../examples/language/errors/const-rng.ips -->

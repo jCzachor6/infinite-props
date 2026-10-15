@@ -42,7 +42,7 @@ off-target pixels; transparent source pixels are skipped by legacy composition.
 come from the existing part mechanism, shared with captured surfaces.
 
 Omitted `alpha` on a layer inherits the active target's composition mode.
-The root always starts in `surface.legacy`, in format 0.7. Select
+The root always starts in `surface.legacy`. Select
 `layer name(alpha=surface.source_over)` for correct straight RGBA8 alpha,
 or `alpha=surface.legacy` for the frozen compositor. Mode arguments must be
 literal namespace constants; a numeric variable or const alias is rejected.
@@ -174,7 +174,7 @@ fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
 generation never publishes a partial image. Default fuel remains 2,000,000.
 
-Layers use the format 0.7 type descriptor table. They do not add
+Layers use the file's type descriptor table. They do not add
 public C input/output enums or host layouts. Host outputs remain points,
 rectangles and circles; resource exports use their own internal table.
 

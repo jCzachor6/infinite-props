@@ -15,7 +15,8 @@ and complete-field reads/writes under their new layouts.
 The shared library uses SOVERSION/install identity 0.5. Windows uses the DLL
 name `ipropc-0.5.dll`; imported CMake targets resolve the current artifact.
 Package version selection rejects product requests before 0.7.0. Runtime
-queries report API 0.4, ABI 0.5 and format range 0.7–0.7 independently.
+queries report API 0.4 and ABI 0.5 independently; the file format is
+unversioned, so the library's format fields are reserved zeros.
 
 Conformance checks the new sizes and every field offset, shared/static clients,
 descriptor boundaries, ownership, error paths and relocated SDK packages.

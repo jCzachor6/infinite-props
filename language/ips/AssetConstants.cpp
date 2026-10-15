@@ -45,23 +45,46 @@ class Resolver {
 public:
     explicit Resolver(const Program& program) : program_(program), typer_(parts_) {}
 
-    std::optional<Value> known(const Expr& expression, const AssetConstants& constants) {
-        values_ = constants;
+    // A probe of runtime expressions over an already resolved graph.
+    Resolver(const Program& program, AssetDeclarations declarations) : Resolver(program) {
         registerDeclarations();
-        Asset::Constant context;
-        context.name = "sampler argument";
-        current_ = &context;
-        std::set<std::size_t> dependencies;
-        try { inspect(expression, dependencies); }
-        catch (const SourceError&) { return std::nullopt; }
-        if (std::any_of(dependencies.begin(), dependencies.end(), [&](auto i) { return i >= program_.asset.constants.size(); })) {
-            palettes_ = Resolver(program_).resolve().palettes;
-            for (const auto& [palette, value] : palettes_) typer_.registerPaletteType(*palette, value.type);
-        }
-        Function function;
-        typer_.enterFunction(program_, function, false);
-        (void)typer_.typeOf(expression);
-        return evaluate(expression);
+        values_ = std::move(declarations.constants);
+        for (auto& [palette, list] : declarations.paletteLists) values_.emplace(palette->name, std::move(list));
+        palettes_ = std::move(declarations.palettes);
+        for (const auto& [palette, value] : palettes_) typer_.registerPaletteType(*palette, value.type);
+        current_ = &probeContext_;
+        typer_.enterFunction(program_, probeFunction_, false);
+    }
+
+    std::optional<Value> known(const Expr& expression, const std::map<std::string, ValueType>& locals) {
+        locals_ = &locals;
+        std::optional<Value> value;
+        try {
+            std::set<std::size_t> dependencies;
+            inspect(expression, dependencies);
+            (void)typer_.typeOf(expression);
+            value = evaluate(expression);
+        } catch (const SourceError&) { /* not a known value */ }
+        locals_ = nullptr;
+        return value;
+    }
+
+    std::optional<std::string> rejection(const Expr& expression, const std::map<std::string, ValueType>& locals) {
+        const auto* call = std::get_if<Call>(&expression);
+        if (!call) return std::nullopt;
+        locals_ = &locals;
+        std::optional<std::string> message;
+        try {
+            std::set<std::size_t> dependencies;
+            inspect(expression, dependencies);
+            (void)typer_.typeOf(expression);
+            for (const auto* argument : typer_.calls().at(call).arguments)
+                if (argument) (void)evaluate(*argument->value);
+            try { (void)evaluate(expression); }
+            catch (const SourceError& error) { message = error.message; }
+        } catch (const SourceError&) { /* an unknown or failing argument */ }
+        locals_ = nullptr;
+        return message;
     }
 
     AssetDeclarations resolve() {
@@ -138,6 +161,8 @@ public:
         }
         AssetDeclarations result;
         for (const auto& constant : program_.asset.constants) result.constants.emplace(constant.name, values_.at(constant.name));
+        for (const auto& palette : program_.asset.palettes)
+            result.paletteLists.emplace(&palette, std::get<ListValue>(values_.at(palette.name)));
         result.palettes = std::move(palettes_);
         return result;
     }
@@ -151,6 +176,10 @@ private:
     const Asset::Constant* current_ = nullptr;
     const PaletteDecl* currentPalette_ = nullptr;
     std::map<const PaletteDecl*, ResolvedPalette> palettes_;
+    // Probe state: the anonymous context and the names shadowing declarations.
+    Asset::Constant probeContext_{};
+    Function probeFunction_{};
+    const std::map<std::string, ValueType>* locals_ = nullptr;
 
     void registerDeclarations() {
         for (std::size_t i = 0; i < program_.asset.constants.size(); ++i)
@@ -168,10 +197,12 @@ private:
             program_.asset.palettes[index - program_.asset.constants.size()].name;
     }
 
+    // Declaration diagnostics name their declaration; probes have none.
     [[noreturn]] void fail(const SourceLocation& at, std::string message,
                           DiagnosticCode code = DiagnosticCode::AssetConstantEffect) const {
-        const auto prefix = currentPalette_ ? "palette '" + currentPalette_->name : "const '" + current_->name;
-        throw SourceError{at, prefix + "': " + std::move(message), {}, code, DiagnosticStage::Typing};
+        if (currentPalette_) message = "palette '" + currentPalette_->name + "': " + message;
+        else if (current_ != &probeContext_) message = "const '" + current_->name + "': " + message;
+        throw SourceError{at, std::move(message), {}, code, DiagnosticStage::Typing};
     }
 
     void validateNames() {
@@ -197,7 +228,8 @@ private:
     void inspect(const Expr& expression, std::set<std::size_t>& dependencies) {
         if (const auto* id = std::get_if<Identifier>(&expression)) {
             const auto found = declarations_.find(id->name);
-            if (found != declarations_.end()) { dependencies.insert(found->second); return; }
+            const bool shadowed = locals_ && locals_->contains(id->name);
+            if (found != declarations_.end() && !shadowed) { dependencies.insert(found->second); return; }
             std::vector<std::string> names;
             for (const auto& [name, index] : declarations_) { (void)index; names.push_back(name); }
             fail(id->location, "cannot read '" + id->name + "'; only asset constants are allowed" + didYouMean(id->name, names));
@@ -303,15 +335,9 @@ private:
         return result;
     }
 
+    // Topological evaluation and probes both see every dependency resolved.
     const ResolvedPalette& resolvedPalette(const Identifier& name) {
-        const auto& declaration = findPalette(program_, name);
-        if (!palettes_.contains(&declaration)) {
-            // A known runtime expression is probed with resolved const values.
-            // Resolve its palette graph once; normal topological evaluation
-            // already has every dependency in this cache.
-            palettes_ = Resolver(program_).resolve().palettes;
-        }
-        return palettes_.at(&declaration);
+        return palettes_.at(&findPalette(program_, name));
     }
 
     Value operation(Opcode opcode, std::vector<Value> args, const SourceLocation& at) const {
@@ -375,12 +401,11 @@ private:
         if (const auto* vector = std::get_if<VectorLit>(&expression))
             return Vec2{number(evaluate(*vector->elements[0])), number(evaluate(*vector->elements[1]))};
         if (const auto* index = std::get_if<Index>(&expression)) {
-            const auto* name = std::get_if<Identifier>(index->object.get());
-            const bool legacy = name && std::any_of(program_.asset.palettes.begin(), program_.asset.palettes.end(), [&](const auto& p) { return p.name == name->name; });
+            const auto* legacy = typer_.paletteRead(expression);
             const auto object = legacy ? Value{} : evaluate(*index->object);
             const auto i = std::get<i32>(evaluate(*index->index));
             if (legacy) {
-                const auto& palette = resolvedPalette(*name);
+                const auto& palette = palettes_.at(legacy);
                 return palette.elements[i >= 0 && static_cast<std::size_t>(i) < palette.elements.size() ?
                     static_cast<std::size_t>(i) : palette.elements.size() - 1];
             }
@@ -470,9 +495,23 @@ private:
 
 AssetDeclarations resolveAssetDeclarations(const Program& program) { return Resolver(program).resolve(); }
 AssetConstants resolveAssetConstants(const Program& program) { return resolveAssetDeclarations(program).constants; }
-std::optional<Value> knownAssetExpression(const Program& program, const Expr& expression,
-                                         const AssetConstants& constants) {
-    return Resolver(program).known(expression, constants);
+
+// The resolver's Typer refers to its own members: construct it in place.
+struct ConstantProbe::State {
+    Resolver resolver;
+    State(const Program& program, AssetDeclarations declarations)
+        : resolver(program, std::move(declarations)) {}
+};
+ConstantProbe::ConstantProbe(const Program& program, AssetDeclarations declarations)
+    : state_(std::make_unique<State>(program, std::move(declarations))) {}
+ConstantProbe::~ConstantProbe() = default;
+std::optional<Value> ConstantProbe::known(const Expr& expression,
+                                          const std::map<std::string, ValueType>& locals) {
+    return state_->resolver.known(expression, locals);
+}
+std::optional<std::string> ConstantProbe::rejection(const Expr& call,
+                                                    const std::map<std::string, ValueType>& locals) {
+    return state_->resolver.rejection(call, locals);
 }
 
 } // namespace iprop::ips

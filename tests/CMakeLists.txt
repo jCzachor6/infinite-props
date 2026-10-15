@@ -37,6 +37,8 @@ add_executable(iprop_tests
     compiler/collections_test.cpp
     compiler/list_methods_test.cpp
     compiler/samplers_test.cpp
+    compiler/static_values_test.cpp
+    compiler/review_regressions_test.cpp
     compiler/steppers_test.cpp
     compiler/sampling_palettes_test.cpp
     compiler/defaults_test.cpp

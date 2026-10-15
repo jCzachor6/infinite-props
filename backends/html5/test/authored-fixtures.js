@@ -2,7 +2,7 @@
 
 // These archived source snapshots accompany independent image/output pins.
 // Re-author their pure selectors for the current language before compiling;
-// the runtime itself accepts only format 0.7 and has no migration adapter.
+// the runtime rejects their versioned binaries and has no migration adapter.
 function renderSource(source) {
     return source.replace(/\bvariants\s+\d+/g, "input i32 v=0")
         .replace(/\barchetypes\s+\d+/g, "")

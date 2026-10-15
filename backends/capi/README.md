@@ -41,8 +41,9 @@ language, emitted format, C API and C ABI versions. The generated handbook is
 `share/iprop/docs/language-v0.7.md`, named after the source language. See
 [current export contracts](../../docs/export-contracts.md).
 
-The runtime accepts only format 0.7, in plain or compressed form. Both the
-compressed envelope and expanded payload carry version 0.7. Loading validates
+The file format is unversioned, in plain or compressed form: the header bytes
+after the magic are reserved zeros in the compressed envelope and in the
+expanded payload, so files from before product 0.7 must be recompiled. Loading validates
 the complete file before generation and the program owns the expanded bytes.
 The existing untyped and checked entry points use the new API 0.4 layouts;
 there is no adapter for earlier ABI layouts. CMake consumers
@@ -165,7 +166,7 @@ iprop_library_info_ex info = {0};
 info.struct_size = sizeof(info);
 if (iprop_library_query(&info) == IPROP_EX_OK) {
     /* product_major/minor/patch, api_major/minor, abi_major/minor,
-       format_major + inclusive format_minor_min/max, capabilities */
+       capabilities; the format_* fields are reserved zeros */
 }
 ```
 

@@ -1,6 +1,5 @@
 #include "Assemble.hpp"
 
-#include <algorithm>
 #include <utility>
 
 #include "iprop/Binary.hpp"
@@ -29,6 +28,18 @@ f32 Assembler::foldOrigin(const ips::Expr& expr) {
         return *f;
     }
     error(ips::locationOf(expr), "origin must be a numeric constant");
+}
+
+// The output slot table of one asset (spec §4.3).
+void Assembler::writeSlots(Writer& out, const std::vector<SlotInfo>& slots) {
+    out.writeU16(static_cast<u16>(slots.size()));
+    for (const auto& slot : slots) {
+        out.writeU8(static_cast<u8>(slot.kind));
+        out.writeU8(slot.isList ? 1 : 0);
+        out.writeU8(0);
+        out.writeU8(0);
+        out.writeU32(plan_.pools.indexOf(slot.name));
+    }
 }
 
 void Assembler::writeInputEntry(Writer& out, const ips::InputDecl& input) {
@@ -74,15 +85,7 @@ std::vector<u8> Assembler::assemble() {
     for (const auto& input : asset.inputs) {
         writeInputEntry(meta, input);
     }
-    meta.writeU16(static_cast<u16>(plan_.rootSlots.size()));
-    for (const auto& output : asset.outputs) {
-        if (ips::isResourceOutput(output.kind)) continue;
-        meta.writeU8(static_cast<u8>(output.kind));
-        meta.writeU8(output.isList ? 1 : 0);
-        meta.writeU8(0);
-        meta.writeU8(0);
-        meta.writeU32(plan_.pools.indexOf(output.name));
-    }
+    writeSlots(meta, plan_.rootSlots);
 
     // ---- const section (spec §5) ----
     Writer consts;
@@ -120,9 +123,7 @@ std::vector<u8> Assembler::assemble() {
     if (!plan_.pools.listsValue().empty()) {
         collections.writeU32(static_cast<u32>(plan_.pools.listsValue().size()));
         for (const auto& list : plan_.pools.listsValue()) {
-            const auto& descriptors = plan_.pools.typesValue();
-            const auto found = std::find(descriptors.begin(), descriptors.end(), list.type);
-            collections.writeU16(static_cast<u16>(found - descriptors.begin()));
+            collections.writeU16(plan_.pools.typeIndexOf(list.type));
             collections.writeU16(static_cast<u16>(list.data->elements.size()));
             writeListElements(collections, *list.data, plan_.pools.samplersValue(), plan_.pools.distributionsValue(), plan_.pools.steppersValue());
         }
@@ -130,18 +131,14 @@ std::vector<u8> Assembler::assemble() {
     if (!plan_.pools.samplersValue().empty()) {
         samplers.writeU32(static_cast<u32>(plan_.pools.samplersValue().size()));
         for (const auto& sampler : plan_.pools.samplersValue()) {
-            const auto& descriptors = plan_.pools.typesValue();
-            const auto found = std::find(descriptors.begin(), descriptors.end(), sampler.type);
-            samplers.writeU16(static_cast<u16>(found - descriptors.begin()));
+            samplers.writeU16(plan_.pools.typeIndexOf(sampler.type));
             writeSamplerData(samplers, *sampler.data, plan_.pools.distributionsValue());
         }
     }
     if (!plan_.pools.steppersValue().empty()) {
         steppers.writeU32(static_cast<u32>(plan_.pools.steppersValue().size()));
         for (const auto& stepper : plan_.pools.steppersValue()) {
-            const auto& descriptors = plan_.pools.typesValue();
-            const auto found = std::find(descriptors.begin(), descriptors.end(), stepper.type);
-            steppers.writeU16(static_cast<u16>(found - descriptors.begin()));
+            steppers.writeU16(plan_.pools.typeIndexOf(stepper.type));
             writeStepperData(steppers, *stepper.data, plan_.pools.distributionsValue());
         }
     }
@@ -149,7 +146,6 @@ std::vector<u8> Assembler::assemble() {
     // ---- code section (spec §6) ----
     Writer table;
     Writer streams;
-    u16 minor = kOldestWrittenMinor;
     // The table and the instruction streams are written interleaved: each
     // function's offset is the running size of the streams writer.
     for (const auto& function : plan_.functions) {
@@ -158,21 +154,17 @@ std::vector<u8> Assembler::assemble() {
         table.writeU32(static_cast<u32>(function.code.size() * 4));
         table.writeU16(static_cast<u16>(function.params.size()));
         for (const ValueType type : function.params) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, plan_.pools.typesValue());
         }
         table.writeU16(static_cast<u16>(function.results.size()));
         for (const ValueType type : function.results) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, plan_.pools.typesValue());
         }
         table.writeU16(static_cast<u16>(function.locals.size()));
         for (const ValueType type : function.locals) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, plan_.pools.typesValue());
         }
         for (const Instruction& ins : function.code) {
-            minor = writtenMinor(minor, ins.opcode);
             streams.writeU8(static_cast<u8>(ins.opcode));
             streams.writeU8(ins.aux);
             streams.writeU16(ins.operand);
@@ -196,17 +188,7 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& input : part->asset.inputs) {
             writeInputEntry(code, input);
         }
-        const auto geometryCount = std::count_if(part->asset.outputs.begin(), part->asset.outputs.end(),
-            [](const auto& output) { return !ips::isResourceOutput(output.kind); });
-        code.writeU16(static_cast<u16>(geometryCount));
-        for (const auto& output : part->asset.outputs) {
-            if (ips::isResourceOutput(output.kind)) continue;
-            code.writeU8(static_cast<u8>(output.kind));
-            code.writeU8(output.isList ? 1 : 0);
-            code.writeU8(0);
-            code.writeU8(0);
-            code.writeU32(plan_.pools.indexOf(output.name));
-        }
+        writeSlots(code, plan_.partSlots[i]);
     }
 
     // ---- parts section (spec v0.5 §6): instance alias paths and parents.
@@ -214,7 +196,6 @@ std::vector<u8> Assembler::assemble() {
     //      its coordinates and the host receives root coordinates. ----
     Writer instances;
     if (!plan_.parts.empty()) {
-        minor = std::max<u16>(minor, 5);
         instances.writeU32(static_cast<u32>(plan_.instances.size()));
         for (const auto& instance : plan_.instances) {
             instances.writeU32(plan_.pools.indexOf(instance.path));
@@ -249,16 +230,13 @@ std::vector<u8> Assembler::assemble() {
         for (const auto& output : plan_.resourceExports) {
             exports.writeU32(output.owner);
             exports.writeU32(plan_.pools.indexOf(output.name));
-            const auto& descriptors = plan_.pools.typesValue();
-            const auto type = std::find(descriptors.begin(), descriptors.end(), output.type);
-            exports.writeU16(static_cast<u16>(type - descriptors.begin()));
+            exports.writeU16(plan_.pools.typeIndexOf(output.type));
             exports.writeU16(0);
         }
         exports.writeU32(static_cast<u32>(plan_.functions.size()));
         for (const auto& function : plan_.functions)
             exports.writeU32(function.partOwner.value_or(kRootParent));
     }
-    if (types.size() || collections.size() || samplers.size() || steppers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
     const u32 sectionCount = 4 + (plan_.parts.empty() ? 0u : 1u) + (types.size() ? 1u : 0u) +
         (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
     // ---- file (spec §2) ----
@@ -266,8 +244,7 @@ std::vector<u8> Assembler::assemble() {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    file.writeU16(kVersionMajor);
-    file.writeU16(minor);
+    file.writeU32(0);          // reserved
     file.writeU32(kFlagDebug); // flags: debug section present
     file.writeU32(sectionCount); // section count
     file.writeU32(0);          // reserved

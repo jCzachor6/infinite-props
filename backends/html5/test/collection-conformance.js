@@ -112,7 +112,7 @@ function run(iprop, tool, directory) {
         assert.equal(native.status,1);assert.equal(native.signal,null);
         assert.throws(()=>iprop.generate(new Uint8Array(bad),{}));++rejections;
     }
-    // Earlier format minors reject each new opcode in section-free dead code.
+    // Files carrying a former version are rejected, whatever their code.
     fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     execFileSync(tool("ipa"),[base+"-gate.ipa","-o",base+"-gate.iprop"]);
     const gate=fs.readFileSync(base+"-gate.iprop");
@@ -125,8 +125,8 @@ function run(iprop, tool, directory) {
         const bad=Buffer.from(gate);bad[dead]=opcode;bad.writeUInt16LE(minor,6);
         fs.writeFileSync(base+"-gate-bad.iprop",bad);
         const native=spawnSync(tool("ipgen"),[base+"-gate-bad.iprop","-o",base+"-bad.png"],{encoding:"utf8"});
-        assert.equal(native.status,1);assert.equal(native.signal,null);assert.match(native.stderr,/unsupported format minor version/);
-        assert.throws(()=>iprop.generate(new Uint8Array(bad),{}),/unsupported format minor version/);++rejections;
+        assert.equal(native.status,1);assert.equal(native.signal,null);assert.match(native.stderr,/reserved header field must be zero/);
+        assert.throws(()=>iprop.generate(new Uint8Array(bad),{}),/reserved header field must be zero/);++rejections;
     }
     // The module stays usable after resource and handle traps.
     generate(base+".iprop",26);

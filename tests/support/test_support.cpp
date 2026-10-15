@@ -11,13 +11,12 @@
 namespace test_support {
 
 std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>& defs,
-                           u32 flags, u16 minor) {
+                           u32 flags) {
     iprop::Writer w;
     for (const u8 magic : iprop::kMagic) {
         w.writeU8(magic);
     }
-    w.writeU16(iprop::kVersionMajor);
-    w.writeU16(minor);
+    w.writeU32(0); // reserved
     w.writeU32(flags);
     w.writeU32(static_cast<u32>(defs.size()));
     w.writeU32(0); // reserved
@@ -38,14 +37,13 @@ std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>&
     return w.data();
 }
 
-std::vector<u8> rawLayout(u16 major, u16 minor, u32 flags, u32 count, u32 reserved,
+std::vector<u8> rawLayout(u32 former, u32 flags, u32 count, u32 reserved,
                           std::initializer_list<std::array<u32, 3>> entries) {
     iprop::Writer w;
     for (const u8 magic : iprop::kMagic) {
         w.writeU8(magic);
     }
-    w.writeU16(major);
-    w.writeU16(minor);
+    w.writeU32(former);
     w.writeU32(flags);
     w.writeU32(count);
     w.writeU32(reserved);
@@ -202,8 +200,7 @@ std::vector<u8> fullFile(const std::vector<u8>& meta, const std::vector<u8>& poo
     for (const u8 m : iprop::kMagic) {
         w.writeU8(m);
     }
-    w.writeU16(iprop::kVersionMajor);
-    w.writeU16(iprop::kVersionMinor);
+    w.writeU32(0); // reserved
     w.writeU32(0);
     w.writeU32(3);
     w.writeU32(0);

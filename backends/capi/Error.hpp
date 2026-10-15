@@ -12,7 +12,6 @@ static_assert(static_cast<uint32_t>(ErrorReason::None) == IPROP_REASON_NONE);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidFormat) == IPROP_REASON_INVALID_FORMAT);
 static_assert(static_cast<uint32_t>(ErrorReason::TruncatedInput) == IPROP_REASON_TRUNCATED_INPUT);
 static_assert(static_cast<uint32_t>(ErrorReason::BadMagic) == IPROP_REASON_BAD_MAGIC);
-static_assert(static_cast<uint32_t>(ErrorReason::UnsupportedVersion) == IPROP_REASON_UNSUPPORTED_VERSION);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidHeader) == IPROP_REASON_INVALID_HEADER);
 static_assert(static_cast<uint32_t>(ErrorReason::Compression) == IPROP_REASON_COMPRESSION);
 static_assert(static_cast<uint32_t>(ErrorReason::InvalidLayout) == IPROP_REASON_INVALID_LAYOUT);

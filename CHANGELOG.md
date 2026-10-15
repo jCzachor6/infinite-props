@@ -7,8 +7,11 @@
   weighted/density distributions and deterministic steppers.
 - Captured layers, explicit source-over, masks, clipping, morphology, internal
   resource exports and Gaussian blur.
-- Format 0.7 only; implicit variant/archetype controls removed. C API 0.4 uses
-  ABI 0.5; language-description schema 4 describes explicit asset inputs.
+- Unversioned binary format: the former header version bytes are reserved
+  zeros, so earlier binaries need recompiling; implicit variant/archetype
+  controls removed. C API 0.4 uses ABI 0.5; language-description schema 4
+  describes explicit asset inputs; documentation manifest schema 3 drops
+  `format_version`.
 - Reserved source keywords require renaming before recompilation. See
   [migration from 0.6](docs/language/migration-v0.7.md).
 

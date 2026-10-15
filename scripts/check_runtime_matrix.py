@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Check current source determinism in eight compiler configurations.
 
-Immutable historical binaries must be rejected by the format 0.7 reader.
+Immutable historical binaries carry a version in bytes the current reader
+reserves, so it must reject them.
 """
 import base64
 import argparse

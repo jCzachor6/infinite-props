@@ -52,7 +52,7 @@ function run(iprop, tool, directory) {
     fs.writeFileSync(base + ".ipa", source);
     execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
     const bytes = fs.readFileSync(base + ".iprop");
-    assert.equal(bytes.readUInt16LE(6), 7);
+    assert.equal(bytes.readUInt32LE(4), 0);
     replaceFloatConstants(bytes, encodings);
     fs.writeFileSync(base + ".iprop", bytes);
     const native = JSON.parse(execFileSync(tool("ipgen"),
@@ -89,11 +89,11 @@ function run(iprop, tool, directory) {
         fs.writeFileSync(base + ".ipa", "meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\n" + opcode + "\nendfn\n");
         execFileSync(tool("ipa"), [base + ".ipa", "-o", base + ".iprop"]);
         const gated = fs.readFileSync(base + ".iprop");
-        assert.equal(gated.readUInt16LE(6), 7);
+        assert.equal(gated.readUInt32LE(4), 0);
         iprop.generate(new Uint8Array(gated), {});
         for (let minor = 1; minor <= 5; ++minor) {
             gated.writeUInt16LE(minor, 6);
-            assert.throws(() => iprop.generate(new Uint8Array(gated), {}), /unsupported format minor version/);
+            assert.throws(() => iprop.generate(new Uint8Array(gated), {}), /reserved header field must be zero/);
             ++comparisons;
         }
     }
@@ -104,7 +104,7 @@ function run(iprop, tool, directory) {
     for (const fixture of frozen) {
         const binary = Buffer.from(fixture.binary_base64, "base64");
         assert.equal(sha(binary), fixture.binary_sha256);
-        assert.throws(() => iprop.generate(new Uint8Array(binary), {}), /unsupported format minor version/);
+        assert.throws(() => iprop.generate(new Uint8Array(binary), {}), /reserved header field must be zero/);
         ++comparisons;
     }
     return comparisons;

@@ -280,11 +280,20 @@ asset t {
     curve({1,7}, {3,7}, {5,7}, 1, #00ff00)
   }
 })";
-    const auto bytes = compileChecked(source);
+    // The reference lowering keeps the constant queries, which the
+    // optimizer folds with the VM's own kernels to the same bits.
+    const ips::Program program = ips::parse(source);
+    ips::checkAsset(program, {});
+    const auto bytes = compileProgram(program, {}, false);
     const auto text = disassemble(bytes);
     REQUIRE(text.find("dist.bezier.cubic") != std::string::npos);
     REQUIRE(text.find("curve.cubic") != std::string::npos);
+    const auto folded = execute(compileChecked(source));
     const auto original = execute(bytes);
+    for (std::size_t i = 0; i < original.outputs.size(); ++i) {
+        CHECK(std::bit_cast<u32>(folded.outputs[i].points[0].x) == std::bit_cast<u32>(original.outputs[i].points[0].x));
+        CHECK(std::bit_cast<u32>(folded.outputs[i].points[0].y) == std::bit_cast<u32>(original.outputs[i].points[0].y));
+    }
     const auto roundTrip = execute(assemble(text));
     REQUIRE(original.outputs[0].points[0].x == 1.f);
     REQUIRE(original.outputs[0].points[0].y == 5.f);

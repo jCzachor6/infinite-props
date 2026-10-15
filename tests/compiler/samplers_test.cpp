@@ -264,7 +264,6 @@ TEST_CASE("sampler descriptors preserve full nested item identity and reject mal
     for (const auto& signature:ips::samplerPickSpec().overloads) {
         CHECK(signature.params[0].type.isSampler());
         CHECK(findOpcode(*signature.opcode)->effects.rng==RngEffect::AdvanceCurrent);
-        CHECK(findOpcode(*signature.opcode)->minimumMinor==6);
         CHECK(signature.result==(signature.params.size()==1?signature.params[0].type.item():ValueType::list(signature.params[0].type.item())));
     }
 }

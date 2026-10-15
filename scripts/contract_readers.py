@@ -10,7 +10,7 @@ from pathlib import PurePosixPath
 
 LANGUAGE_SCHEMA_VERSION = 4
 DIAGNOSTICS_SCHEMA_VERSION = 1
-DOCUMENTATION_SCHEMA_VERSION = 2
+DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
@@ -110,11 +110,11 @@ def ordered_signature(value, path, typed=True):
 
 
 def read_language(value):
-    obj(value, ['schema_version', 'product_version', 'builtins', 'language_version', 'format_version',
+    obj(value, ['schema_version', 'product_version', 'builtins', 'language_version',
                 'c_api_version', 'abi_version', 'source_rules', 'effect_rules', 'call_rules'], 'language')
     require(type(value['schema_version']) in {int, float} and value['schema_version'] == LANGUAGE_SCHEMA_VERSION, 'language schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
-    for key in ['language_version', 'format_version', 'c_api_version', 'abi_version']:
+    for key in ['language_version', 'c_api_version', 'abi_version']:
         version(value[key], key)
     if 'c_abi_soversion' in value:
         require(SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
@@ -129,9 +129,8 @@ def read_language(value):
         for signature in builtin['overloads']:
             ordered_signature(signature, 'overload')
             boolean(signature.get('constant_evaluable'), 'constant_evaluable')
-            if 'opcode' in signature or 'minimum_format_minor' in signature:
+            if 'opcode' in signature:
                 text(signature.get('opcode'), 'opcode', True)
-                integer(signature.get('minimum_format_minor'), 'minimum_format_minor', maximum=255)
         if 'variadic' in builtin:
             signature = builtin['variadic']
             ordered_signature(signature, 'variadic')
@@ -214,14 +213,14 @@ def read_language(value):
         require(type(sampler['methods']) is list and len(sampler['methods']) == 8, 'sampler method signatures')
         signatures = set()
         for method in sampler['methods']:
-            obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor','effects'], 'sampler method')
+            obj(method, ['name','receiver','parameters','result','opcode','effects'], 'sampler method')
             require(method['name'] == 'pick' and method['receiver'] in SAMPLER_TYPES, 'sampler receiver')
             require(type(method['parameters']) is list and len(method['parameters']) <= 1, 'sampler parameters')
             item = method['receiver'][8:-1]
             batch = bool(method['parameters'])
             require(method['parameters'] == ([{'name':'n','type':'i32'}] if batch else []), 'sampler count signature')
             require(method['result'] == ('list<' + item + '>' if batch else item), 'sampler result')
-            require(method['opcode'] == ('sampler.pick.list' if batch else 'sampler.pick') and method['minimum_format_minor'] == 6, 'sampler opcode')
+            require(method['opcode'] == ('sampler.pick.list' if batch else 'sampler.pick'), 'sampler opcode')
             effects(method['effects'], 'sampler method effects')
             require(method['effects']['rng'] == 'advance_current', 'sampler method RNG')
             signatures.add((method['receiver'], batch))
@@ -246,11 +245,11 @@ def read_language(value):
         require(type(stepper['methods']) is list and len(stepper['methods']) == 4, 'stepper method signatures')
         receivers = set()
         for method in stepper['methods']:
-            obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor','effects'], 'stepper method')
+            obj(method, ['name','receiver','parameters','result','opcode','effects'], 'stepper method')
             require(method['name'] == 'pick' and method['receiver'] in STEPPER_TYPES, 'stepper receiver')
             require(method['parameters'] == [{'name':'n','type':'i32'}], 'stepper required count')
             require(method['result'] == 'list<' + method['receiver'][8:-1] + '>', 'stepper result')
-            require(method['opcode'] == 'stepper.pick.list' and method['minimum_format_minor'] == 7, 'stepper opcode')
+            require(method['opcode'] == 'stepper.pick.list', 'stepper opcode')
             effects(method['effects'], 'stepper method effects')
             require(method['effects']['rng'] == 'none', 'stepper method RNG')
             receivers.add(method['receiver'])
@@ -262,7 +261,7 @@ def read_language(value):
             'mode_inheritance', 'paint_default_mode', 'source_over_kernel', 'rounding_boundary',
             'capture_opcode', 'scope_cleanup', 'maximum_active_scopes', 'generation_data_limit_bytes',
             'capture_bytes', 'capture_fuel', 'paint_fuel', 'unset_handle', 'host_inputs', 'asset_constants',
-            'surface_collections', 'minimum_format_minor'], 'surfaces')
+            'surface_collections'], 'surfaces')
         strings(surface['types'], 'surface types', {'layer', 'mask'}, True)
         require(surface['types'] == ['layer', 'mask'] and
             all(t in types['storable'] for t in surface['types']), 'surface type declaration')
@@ -287,19 +286,17 @@ def read_language(value):
         require(surface['maximum_active_scopes'] == 32, 'surface scope limit')
         integer(surface['generation_data_limit_bytes'], 'surface arena limit')
         require(surface['generation_data_limit_bytes'] == 67108864, 'surface arena limit')
-        integer(surface['minimum_format_minor'], 'surface format')
-        require(surface['minimum_format_minor'] == 6, 'surface format')
         if 'methods' in surface or 'blur' in surface:
             obj(surface, ['methods', 'blur'], 'surface blur capability')
             require(len(surface['methods']) == 2, 'surface blur signatures')
             receivers = set()
             for method in surface['methods']:
-                obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode', 'minimum_format_minor',
+                obj(method, ['name', 'receiver', 'parameters', 'result', 'opcode',
                     'constant_evaluable', 'effects'], 'surface method')
                 require(method['name'] == 'blur' and method['receiver'] in {'layer', 'mask'}, 'surface blur receiver')
                 require(method['parameters'] == [{'name': 'sigma', 'type': 'f32'}] and
                     method['result'] == method['receiver'], 'surface blur signature')
-                require(method['opcode'] == method['receiver'] + '.blur' and method['minimum_format_minor'] == 7 and
+                require(method['opcode'] == method['receiver'] + '.blur' and
                     method['constant_evaluable'] is False, 'surface blur lowering')
                 effects(method['effects'], 'surface blur effects')
                 e = method['effects']
@@ -335,7 +332,7 @@ def read_language(value):
             ['automatic_paint', 'host_handles', 'list_exports'], 'resource exports')
         require(exports.get('types') == ['mask', 'layer'], 'resource export types')
         require(not any(exports[k] for k in ['automatic_paint', 'host_handles', 'list_exports']), 'resource export restrictions')
-        for key, expected in [('maximum_slots',65536),('slot_bytes',64),('write_read_fuel',1),('section_id',10),('minimum_format_minor',6)]:
+        for key, expected in [('maximum_slots',65536),('slot_bytes',64),('write_read_fuel',1),('section_id',10)]:
             integer(exports.get(key), 'resource_exports.' + key)
             require(exports[key] == expected, 'resource_exports.' + key)
     if 'masks' in rules:
@@ -361,7 +358,7 @@ def read_language(value):
             ['zero_coverage_write', 'geometry_outputs_clipped'], 'mask policy')
         require(not masks['zero_coverage_write'] and not masks['geometry_outputs_clipped'], 'mask write policy')
         for key, expected in [('outside_coverage', 0), ('minimum_radius', 0), ('maximum_radius', 64),
-                              ('combined_scope_limit', 32), ('minimum_format_minor', 6)]:
+                              ('combined_scope_limit', 32)]:
             integer(masks.get(key), 'masks.' + key)
             require(masks[key] == expected, 'masks.' + key)
         operators = [b for b in value['builtins'] if b['name'].startswith('mask.')]
@@ -401,12 +398,12 @@ def read_language(value):
             require(type(methods) is list and len(methods) == (17 if 'steppers' in rules else 13), 'list method signatures')
             signatures = set()
             for method in methods:
-                obj(method, ['name','receiver','parameters','result','opcode','minimum_format_minor',
+                obj(method, ['name','receiver','parameters','result','opcode',
                     'constant_evaluable','effects'], 'list method')
                 require(method['name'] in {'distinct','sort'} and method['receiver'] in LIST_TYPES, 'list method receiver')
                 require(method['name'] != 'sort' or method['receiver'] in {'list<i32>','list<f32>','list<color>','list<vec2>'}, 'sortable list types')
                 require(method['parameters'] == [] and method['result'] == method['receiver'], 'list method signature')
-                require(method['opcode'] == 'list.' + method['name'] and method['minimum_format_minor'] == 6, 'list method opcode')
+                require(method['opcode'] == 'list.' + method['name'], 'list method opcode')
                 require(method['constant_evaluable'] is True, 'constant list method')
                 effects(method['effects'], 'list method effects')
                 require(method['effects'] == {'rng':'none','writes_canvas':False,'writes_outputs':False,
@@ -429,11 +426,10 @@ def read_language(value):
     if 'components' in types:
         require(type(types['components']) is list and bool(types['components']), 'components')
     for item in types.get('components', []):
-        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes', 'minimum_format_minor'], 'components')
+        obj(item, ['type', 'names', 'result', 'assignable', 'opcodes'], 'components')
         require(item['type'] in VALUE_TYPES and item['result'] in VALUE_TYPES and item['assignable'] is False, 'component types')
         strings(item['names'], 'component names', None, True)
         require(type(item['opcodes']) is list and len(item['opcodes']) == len(item['names']) and all(type(op) is str for op in item['opcodes']), 'component opcodes')
-        integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
     require(type(types['implicit_widening']) is list, 'implicit widening')
     conversions = []
     for item in types['implicit_widening']:
@@ -460,9 +456,8 @@ def read_language(value):
         require(ranges['evaluation_order'] == ['lower', 'upper'], 'random range evaluation order')
         require(type(ranges['overloads']) is list and bool(ranges['overloads']), 'random range overloads')
         for item in ranges['overloads']:
-            obj(item, ['lower', 'upper', 'result', 'opcode', 'minimum_format_minor', 'bounds', 'draws'], 'random range overload')
+            obj(item, ['lower', 'upper', 'result', 'opcode', 'bounds', 'draws'], 'random range overload')
             require(all(item[key] in VALUE_TYPES for key in ['lower', 'upper', 'result']) and type(item['opcode']) is str and item['bounds'] == 'inclusive', 'random range overload types')
-            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
             draws = obj(item['draws'], ['minimum', 'maximum'], 'random range draws')
             integer(draws['minimum'], 'random range draws', 1)
             integer(draws['maximum'], 'random range draws', draws['minimum'])
@@ -471,10 +466,9 @@ def read_language(value):
         effects(ranges['effects'], 'random range effects')
         # Gradient ends came after the first 0.6 exports; validate when present.
         for item in ranges.get('ends', []):
-            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'minimum_format_minor', 'effects'], 'random range ends')
+            obj(item, ['type', 'result', 'coefficient', 'mixed', 'opcode', 'effects'], 'random range ends')
             require(item['type'] in {'color', 'vec2'} and item['result'] == item['type'] and item['coefficient'] == 'shared_unit_interval' and type(item['opcode']) is str, 'random range ends')
             strings(item['mixed'], 'random range mixed', None, True)
-            integer(item['minimum_format_minor'], 'minimum_format_minor', maximum=255)
             effects(item['effects'], 'random range ends effects')
         # Distributions came after the first 0.6 exports; validate when present.
         if 'with' in ranges:

@@ -83,7 +83,7 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
         if (!result) error(call.location, name.name + " choices must have matching storable types or be numeric");
         return *result;
     }
-    if (signature.lowering == BuiltinLowering::Polygon && call.args.size() != 2) {
+    if (variadicPolygon(signature, call.args.size())) {
         for (std::size_t i = 0; i < args.size(); ++i) {
             const auto expected = i == 0 ? ValueType::Color : ValueType::F32;
             const auto got = typeOf(*args[i]->value);
@@ -105,9 +105,9 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     const auto* overload = builtinOverload(signature, types);
     if (overload) {
         if (name.name == "mask.expand" || name.name == "mask.shrink") {
-            const auto radius = knownAssetExpression(*owner_, *args[1]->value, resolveAssetConstants(*owner_));
+            const auto radius = known(*args[1]->value);
             if (radius && (std::get<i32>(*radius) < 0 || std::get<i32>(*radius) > kMaxMaskRadius))
-                error(locationOf(*args[1]->value), "mask radius must be in 0..64");
+                valueError(locationOf(*args[1]->value), "mask radius must be in 0..64");
         }
         return overload->result;
     }
@@ -170,17 +170,15 @@ ValueType Typer::typePartCall(const Call& call) {
 
     const auto bound = bind(call, partCallSignature(part->inputs), path.base + ".draw");
     const auto& args = bound.arguments;
-    for (std::size_t i=0;i<1;++i) {
-        const auto got = typeOf(*args[i]->value);
-        if (got != ValueType::I32)
-            error(locationOf(*args[i]->value), "part call argument must be an integer, got " +
-                  std::string(typeName(got)));
-    }
-    const auto placement = typeOf(*args[1]->value);
+    const auto seed = typeOf(*args[kPartSeedSlot]->value);
+    if (seed != ValueType::I32)
+        error(locationOf(*args[kPartSeedSlot]->value), "part call argument must be an integer, got " +
+              std::string(typeName(seed)));
+    const auto placement = typeOf(*args[kPartAtSlot]->value);
     if (placement != ValueType::Vec2)
-        error(locationOf(*args[1]->value), "'at' must be a vec2 {x, y}, got " +
+        error(locationOf(*args[kPartAtSlot]->value), "'at' must be a vec2 {x, y}, got " +
               std::string(typeName(placement)));
-    for (std::size_t i=2;i<5;++i) {
+    for (std::size_t i = kPartTransformBegin; i < kPartTransformEnd; ++i) {
         if (!args[i]) continue;
         const auto got = typeOf(*args[i]->value);
         if (got != ValueType::I32)
@@ -188,7 +186,7 @@ ValueType Typer::typePartCall(const Call& call) {
                   "' must be an integer, got " + std::string(typeName(got)));
     }
     for (std::size_t i=0;i<part->inputs.size();++i) {
-        const auto* arg = args[5+i];
+        const auto* arg = args[kPartFirstInput + i];
         if (!arg) continue;
         const auto& input = part->inputs[i];
         const auto got = typeOf(*arg->value);

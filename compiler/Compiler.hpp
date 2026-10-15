@@ -20,7 +20,9 @@ namespace iprop {
 //
 // Throws ips::SourceError with a located message for problems the semantic
 // checker does not cover: non-constant origin expressions, more than 256 part
-// instances, and a `draw` that returns a value.
+// instances, and a `draw` that returns a value. A program compiled without
+// checkAsset also gets located errors for unstorable slots and for layer/clip
+// blocks nested past the runtime scope stack.
 std::vector<u8> compileProgram(
     const ips::Program& entry,
     const std::map<std::string, const ips::Program*>& parts,

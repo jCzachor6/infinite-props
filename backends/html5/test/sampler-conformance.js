@@ -147,7 +147,7 @@ function run(iprop,tool,directory){
         bad=Buffer.from(typed);bad.writeUInt16LE(65535,offset+2);reject(bad);
         bad=Buffer.from(typed);bad.writeUInt16LE(1,offset+2);reject(bad);
     }
-    // Every sampler opcode is rejected in section-free dead code on minors 1–5.
+    // Files carrying a former version (minors 1–5) are rejected, whatever their code.
     fs.writeFileSync(base+"-gate.ipa","meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     execFileSync(tool("ipa"),[base+"-gate.ipa","-o",base+"-gate.iprop"]);
     const gate=fs.readFileSync(base+"-gate.iprop"),dead=instructions(gate)[1];assert.equal(gate[dead],0);

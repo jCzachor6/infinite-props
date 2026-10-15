@@ -11,7 +11,7 @@ untyped metadata record.
 | `has_emission` | Fixed-width presence, exactly zero or one |
 | `emission_color` | Exact stored RGBA8 channels |
 | `emission_offset_x`, `emission_offset_y`, `emission_radius` | Exact stored binary32 bits |
-| `format_major`, `format_minor` | Version of the actual loaded physical container |
+| `format_major`, `format_minor` | Reserved, always zero: the file format is unversioned |
 | `container_flags` | Flags of that physical container, including debug/compression |
 
 When `has_emission` is zero all inactive emission fields are zero, including
@@ -25,9 +25,8 @@ before expanding a compressed container. Consequently a compressed debug
 container reports flags 3 even when the expanded execution layout has the
 compression bit cleared. Flags zero, debug flag 1 and compression flag 2
 retain their binary meaning. These are output metadata, not query options.
-Program format version is distinct from the library query's accepted format
-range and API/product version. Every accepted physical container reports
-major 0, minor 7.
+The file format carries no version, so both format fields of every accepted
+container are zero, like the library query's reserved format fields.
 
 Use the offsets of the current API 0.4 descriptor. Smaller allocations on
 this ABI receive only complete fields in their prefix; this does not promise

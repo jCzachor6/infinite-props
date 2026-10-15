@@ -225,7 +225,7 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 7);
+        CHECK(bytes[6] == 0);
         CHECK(usesOpcode(bytes, Opcode::RngInt));
         CHECK(usesOpcode(bytes, Opcode::RngFloat));
         const auto loaded = loadFile(bytes);

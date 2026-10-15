@@ -50,7 +50,6 @@ const char* effectCheckName(EffectCheck check);
 struct OpcodeSpec {
     Opcode opcode;
     const char* mnemonic;
-    u16 minimumMinor;
     OperandKind operand = OperandKind::None;
     AuxPolicy aux = AuxPolicy::Zero;
     // Absent for control flow, metadata-dependent or polymorphic stack ops.
@@ -59,10 +58,6 @@ struct OpcodeSpec {
 };
 
 std::span<const OpcodeSpec> opcodeSpecs();
-// The format minor a writer needs once `opcode` or a function slot of `type`
-// is in the file.
-u16 writtenMinor(u16 minor, Opcode opcode);
-u16 writtenMinor(u16 minor, ValueType type);
 const OpcodeSpec* findOpcode(Opcode opcode);
 const OpcodeSpec* findOpcode(std::string_view mnemonic);
 

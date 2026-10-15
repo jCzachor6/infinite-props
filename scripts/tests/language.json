@@ -14,10 +14,6 @@
     "minor": 4
   },
   "c_abi_soversion": "0.4",
-  "format_version": {
-    "major": 0,
-    "minor": 4
-  },
   "builtins": [
     {
       "name": "unit",
@@ -34,7 +30,6 @@
             "may_trap": []
           },
           "opcode": "rng.unit",
-          "minimum_format_minor": 1,
           "constant_evaluable": false
         }
       ]
@@ -191,8 +186,7 @@
           "opcodes": [
             "vec2.x",
             "vec2.y"
-          ],
-          "minimum_format_minor": 3
+          ]
         }
       ],
       "parameterized": [
@@ -270,7 +264,6 @@
           "upper": "i32",
           "result": "i32",
           "opcode": "rng.int",
-          "minimum_format_minor": 5,
           "bounds": "inclusive",
           "draws": {
             "minimum": 1,
@@ -306,7 +299,6 @@
             "upper": "i32",
             "result": "i32",
             "opcode": "rng.int.with",
-            "minimum_format_minor": 5,
             "bounds": "inclusive",
             "draws": {
               "minimum": 1,

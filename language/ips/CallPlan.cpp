@@ -33,7 +33,7 @@ CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function) {
     auto result = helperCallSignature(builtinParameterNames(spec, arity, at, function));
     result.effects = builtinEffects(spec, builtinOverload(spec, arity));
-    if (spec.lowering == BuiltinLowering::Polygon && arity != 2) {
+    if (variadicPolygon(spec, arity)) {
         result.evaluationOrder.erase(result.evaluationOrder.begin());
         result.evaluationOrder.push_back(0);
     }
@@ -58,11 +58,11 @@ CallSignature partCallSignature(std::span<const PartInput> inputs) {
     result.effects = findOpcode(Opcode::PartDraw)->effects;
     result.evaluationOrder.clear();
     for (std::size_t i = 0; i < inputs.size(); ++i) {
-        result.evaluationOrder.push_back(5 + i);
-        result.defaults[5 + i] = inputs[i].declaration;
+        result.evaluationOrder.push_back(kPartFirstInput + i);
+        result.defaults[kPartFirstInput + i] = inputs[i].declaration;
     }
-    for (std::size_t i = 0; i < 5; ++i) result.evaluationOrder.push_back(i);
-    for (std::size_t i = 2; i < 5; ++i) result.defaults[i] = i32{0};
+    for (std::size_t i = 0; i < kPartFirstInput; ++i) result.evaluationOrder.push_back(i);
+    for (std::size_t i = kPartTransformBegin; i < kPartTransformEnd; ++i) result.defaults[i] = i32{0};
     return result;
 }
 BoundCallPlan bindCall(const Call& call, CallSignature signature, std::string_view function) {
@@ -79,12 +79,15 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
         return false;
     };
     if (name == "surface.paint") {
-        // Accepted layer overrides always spell a static surface mode. Mask
-        // painting requires a color; this also works without imported types.
-        bool mask = call.args.size() == 3;
-        for (const auto& arg : call.args) if (arg.name && *arg.name == "color") mask = true;
-        if (call.args.size() == 2 && !call.args[1].name && !surfaceMode(*call.args[1].value)) mask = true;
-        return bindCall(call, surfacePaintCallSignature(call, mask ? ValueType::Mask : ValueType::Layer), name);
+        // Without imported types, try the layer overloads first: after the
+        // image they accept only a static blend mode. Mask painting takes a
+        // color there instead.
+        try {
+            auto layer = bindCall(call, surfacePaintCallSignature(call, ValueType::Layer), name);
+            const Arg* blend = layer.arguments.size() > 1 ? layer.arguments[1] : nullptr;
+            if (!blend || blend->name || surfaceMode(*blend->value)) return layer;
+        } catch (const SourceError&) { /* no layer overload binds these arguments */ }
+        return bindCall(call, surfacePaintCallSignature(call, ValueType::Mask), name);
     }
     if (const auto found = builtinSpecs().find(name);
         found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))

@@ -33,7 +33,7 @@ def main():
             result = subprocess.run([str(generator), str(binary), '-o', str(png)],
                                     capture_output=True, text=True, timeout=30)
             assert result.returncode == 1, (case['source'], result.stderr)
-            assert 'unsupported format minor version' in result.stderr, (case['source'], result.stderr)
+            assert 'reserved header field must be zero' in result.stderr, (case['source'], result.stderr)
             assert not result.stdout and not png.exists(), case['source']
             count += 1
     print(f'Retired formats: {count} immutable binaries rejected before generation')

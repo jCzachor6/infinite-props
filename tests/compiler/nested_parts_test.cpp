@@ -155,7 +155,7 @@ TEST_CASE("three nested levels compile from relative imports and publish root co
         CHECK(parts[1].parent == 0);
         CHECK(parts[2].name == "hilt.pommel");
         CHECK(parts[2].parent == 0);
-        CHECK(result.bytes[6] == 7);
+        CHECK(result.bytes[6] == 0);
 
         // grip.top = {3, 0} reads as {8, 6} in the hilt, which the sword
         // reads as {32, 46}; the host receives every copy in root space.

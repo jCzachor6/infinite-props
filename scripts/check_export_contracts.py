@@ -155,15 +155,15 @@ def main():
         except RuntimeError as error:
             assert 'requires docs/llm-reference.json' in str(error), error
         assert not (temp/'missing-config-output').exists()
-        # The real export cannot describe a checkout whose emitted format differs.
-        constants = shadow/'runtime/iprop/Constants.hpp'
-        constants.write_text(re.sub(r'(\bkVersionMinor\s*=\s*)(\d+)', lambda m: m[1]+str(int(m[2])+1),
+        # The real export cannot describe a checkout whose source language differs.
+        constants = shadow/'language/ips/Version.hpp'
+        constants.write_text(re.sub(r'(\bkLanguageVersionMinor\s*=\s*)(\d+)', lambda m: m[1]+str(int(m[2])+1),
                                     constants.read_text(encoding='utf-8'), count=1), encoding='utf-8')
         try:
             language_docs.contracts(compiler,shadow)
-            raise AssertionError('A compiler emitting another format was accepted')
+            raise AssertionError('A compiler describing another language was accepted')
         except RuntimeError as error:
-            assert 'differs from the source versions: format_version' in str(error), error
+            assert 'differs from the source versions: language_version' in str(error), error
         bundle = temp/'bundle'
         language_docs.build(compiler,bundle)
         manifest = read_manifest(parse_json((bundle/'docs/language-manifest.json').read_bytes()))
@@ -191,7 +191,7 @@ def main():
             tar.add(bundle,arcname='bundle')
         language_docs.verify_archive(valid_archive,'bundle',manifest['product_version'],None,root=None)
         # Correct file hashes cannot override a conflicting version matrix.
-        for key in ('language_version','format_version','c_api_version','c_abi_soversion'):
+        for key in ('language_version','c_api_version','c_abi_soversion'):
             changed = {**manifest, key:'9.9'}
             (bundle/'docs/language-manifest.json').write_text(json.dumps(changed),encoding='utf-8')
             assert not accepts(lambda _:language_docs.verify(bundle),None), key
@@ -203,9 +203,9 @@ def main():
         catalog_path = bundle/'docs/language.json'
         original = catalog_path.read_bytes()
         wrong = copy.deepcopy(language)
-        wrong['format_version']['minor'] += 1
+        wrong['language_version']['minor'] += 1
         catalog_path.write_text(json.dumps(wrong),encoding='utf-8')
-        changed = {**manifest, 'format_version': '0.'+str(wrong['format_version']['minor']),
+        changed = {**manifest, 'language_version': '0.'+str(wrong['language_version']['minor']),
                    'files':{**manifest['files'], 'docs/language.json':hashlib.sha256(catalog_path.read_bytes()).hexdigest()}}
         (bundle/'docs/language-manifest.json').write_text(json.dumps(changed),encoding='utf-8')
         assert not accepts(lambda _:language_docs.verify(bundle,root=ROOT),None)

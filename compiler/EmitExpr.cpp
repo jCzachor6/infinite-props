@@ -147,29 +147,17 @@ ips::ValueType Emitter::emitExpr(const ips::Expr& expr) {
     if (const auto* blur = std::get_if<ips::SurfaceBlur>(&expr)) {
         emitExpr(*blur->receiver);
         emitExpr(*blur->sigma.value);
-        const auto sigma = current_->typeOf(*blur->sigma.value);
-        if (sigma == ips::ValueType::I32) ins(Opcode::I32ToF32);
-        const std::array arguments{current_->typeOf(*blur->receiver), sigma};
-        ins(*ips::builtinOverload(ips::surfaceMethodSpecs().at("blur"), arguments)->opcode);
-        return current_->typeOf(expr);
+        if (current_->typeOf(*blur->sigma.value) == ips::ValueType::I32) ins(Opcode::I32ToF32);
+        return emitMethod(expr);
     }
     if (const auto* method = std::get_if<ips::ListMethod>(&expr)) {
         emitExpr(*method->receiver);
-        const auto type = current_->typeOf(*method->receiver);
-        const std::array args{type};
-        ins(*ips::builtinOverload(ips::listMethodSpecs().at(method->name), args)->opcode,
-            0, plan_.pools.addType(type));
-        return type;
+        return emitMethod(expr);
     }
     if (const auto* pick = std::get_if<ips::SamplerPick>(&expr)) {
         emitExpr(*pick->receiver);
         if (pick->count) emitExpr(*pick->count);
-        std::vector<ips::ValueType> args{current_->typeOf(*pick->receiver)};
-        if (pick->count) args.push_back(current_->typeOf(*pick->count));
-        const auto& spec = args[0].isStepper() ? ips::stepperPickSpec() : ips::samplerPickSpec();
-        ins(*ips::builtinOverload(spec, args)->opcode, 0,
-            plan_.pools.addType(current_->typeOf(*pick->receiver)));
-        return current_->typeOf(expr);
+        return emitMethod(expr);
     }
     error(ips::locationOf(expr), "unsupported expression");
 }
@@ -243,25 +231,26 @@ Emitter::PartRead Emitter::partReadInfo(const ips::Expr& expr) const {
 
 ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const PartRead read = partReadInfo(expr);
-    if (ips::isResourceOutput(read.kind)) {
-        const auto slot = plan_.resourceSlotIndex.at({plan_.partIndex.at(read.alias), read.output->name});
-        ins(read.kind == ips::OutputKind::Mask ? Opcode::PartGetMask : Opcode::PartGetLayer, 0, slot);
-        return read.kind == ips::OutputKind::Mask ? ips::ValueType::Mask : ips::ValueType::Layer;
-    }
-    const u32 slot = plan_.partSlot(plan_.partIndex.at(read.alias), read.output->name);
+    const u32 part = plan_.partIndex.at(read.alias);
+    // Geometric outputs are slots; masks and layers are resource exports.
+    const auto slot = [&] { return static_cast<u16>(plan_.partSlot(part, read.output->name)); };
+    const auto resource = [&] { return plan_.resourceSlotIndex.at({part, read.output->name}); };
     switch (read.kind) {
     case ips::OutputKind::Mask:
+        ins(Opcode::PartGetMask, 0, resource());
+        return ips::ValueType::Mask;
     case ips::OutputKind::Layer:
-        break; // handled above
+        ins(Opcode::PartGetLayer, 0, resource());
+        return ips::ValueType::Layer;
     case ips::OutputKind::Point:
-        ins(Opcode::PartGetPoint, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetPoint, 0, slot());
         ins(Opcode::Vec2Make);
         return ips::ValueType::Vec2;
     case ips::OutputKind::Rect:
-        ins(Opcode::PartGetRect, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetRect, 0, slot());
         return ips::ValueType::Rect;
     case ips::OutputKind::Circle:
-        ins(Opcode::PartGetCircle, 0, static_cast<u16>(slot));
+        ins(Opcode::PartGetCircle, 0, slot());
         return ips::ValueType::Circle;
     }
     error(ips::locationOf(expr), "unsupported part read");

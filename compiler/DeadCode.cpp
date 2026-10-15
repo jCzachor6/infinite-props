@@ -143,12 +143,13 @@ bool droppedValues(PlannedFunction& f) {
     return true;
 }
 
+bool localOperand(Opcode opcode) { return operandKind(opcode) == OperandKind::Local; }
+
 void compactLocals(PlannedFunction& f) {
     const auto params = f.params.size();
     std::vector<bool> used(params + f.locals.size());
     for (const auto ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee || ins.opcode == Opcode::LayerBegin)
-            used.at(ins.operand) = true;
+        if (localOperand(ins.opcode)) used.at(ins.operand) = true;
     std::vector<u16> remap(used.size());
     std::vector<ValueType> locals;
     for (std::size_t i = 0; i < used.size(); ++i) {
@@ -158,8 +159,7 @@ void compactLocals(PlannedFunction& f) {
         }
     }
     for (auto& ins : f.code)
-        if (ins.opcode == Opcode::LocalGet || ins.opcode == Opcode::LocalSet || ins.opcode == Opcode::LocalTee || ins.opcode == Opcode::LayerBegin)
-            ins.operand = remap.at(ins.operand);
+        if (localOperand(ins.opcode)) ins.operand = remap.at(ins.operand);
     for (auto it = f.slots.begin(); it != f.slots.end();) {
         if (it->second >= params && !used.at(it->second)) { f.langTypes.erase(it->first); it = f.slots.erase(it); }
         else { it->second = remap.at(it->second); ++it; }

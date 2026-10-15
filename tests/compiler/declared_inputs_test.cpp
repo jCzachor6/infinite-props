@@ -10,7 +10,6 @@ using namespace iprop;
 TEST_CASE("draw slots contain only authored inputs in declaration order") {
     const auto empty = compiler_test::compileChecked("asset t { size 1x1 draw {} }");
     const auto plain = loadFile(empty);
-    CHECK(plain.layout.header.versionMinor == 7);
     CHECK(plain.meta.inputs.empty());
     CHECK(plain.code.entry().params.empty());
     const auto child = ips::parse(R"(asset child { size 1x1
@@ -28,7 +27,6 @@ TEST_CASE("draw slots contain only authored inputs in declaration order") {
     VM vm(file, {}); vm.run();
     CHECK(vm.result().outputs[0].points[0].x == 41.f);
     CHECK(vm.result().outputs[0].points[0].y == 17.f);
-    CHECK(file.containerHeader.versionMinor == 7);
 }
 
 TEST_CASE("retired names have no implicit binding or count declaration syntax") {

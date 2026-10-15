@@ -8,6 +8,12 @@
 
 namespace iprop::compiler {
 
+// A function needs more locals than the format allows.
+class LocalLimit : public std::length_error {
+public:
+    using std::length_error::length_error;
+};
+
 // A slot is retained only while the emitter needs its value. Slots can be
 // reused across sequential expressions, but never across overlapping lives.
 class TemporaryLocals {
@@ -45,7 +51,7 @@ public:
             }
         }
         const auto index = params_ + locals_->size();
-        if (index >= kMaxLocals) throw std::length_error("too many locals");
+        if (index >= kMaxLocals) throw LocalLimit("too many locals");
         locals_->push_back(type);
         slots_.push_back({static_cast<u16>(index), type, true});
         return Lease(*this, slots_.size() - 1);

@@ -9,7 +9,7 @@ and documentation-manifest schema **2**.
 | --- | --- | --- |
 | `ipc --describe-language` | [Language description](language-description.schema.json) | Documentation and LLM generators, catalog checks |
 | `ipc --check --diagnostics=json` | [Compiler diagnostics](compiler-diagnostics.schema.json) | Editor and executable example checks |
-| Generated `docs/language-manifest.json` (schema 2) | [Documentation manifest](documentation-manifest.schema.json) | SDK/archive verification and website rendering |
+| Generated `docs/language-manifest.json` (schema 3) | [Documentation manifest](documentation-manifest.schema.json) | SDK/archive verification and website rendering |
 
 The schema documents every emitted field. Builtin names, overloads, parameter
 binding and effects come from the compiler's shared registries; schemas contain
@@ -29,10 +29,12 @@ samplers/steppers, point distributions and surfaces, with signatures and effects
 from shared compiler/runtime registries. Older schema versions are rejected.
 Diagnostic and documentation-manifest schemas retain their independent versions.
 
-Documentation manifest schema 2 replaces schema 1. It
-requires five independent flat strings: `product_version` (major.minor.patch),
-`language_version`, `format_version`, `c_api_version` and `c_abi_soversion`
-(major.minor). Current values are `0.7.0`, `0.7`, `0.7`, `0.4` and `0.5`.
+Documentation manifest schema 3 replaces schema 2, which also required
+`format_version` before the file format became unversioned. It requires four
+independent flat strings: `product_version` (major.minor.patch),
+`language_version`, `c_api_version` and `c_abi_soversion` (major.minor).
+Current values are `0.7.0`, `0.7`, `0.4` and `0.5`. The file format is
+unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
 The language export's version pairs and `abi_version` retain their existing
 types; `c_abi_soversion` is an optional alias checked against that ABI pair.
@@ -40,9 +42,10 @@ Verification compares source constants, compiler exports and every artifact
 matrix. Valid checksums cannot override version mismatches.
 
 Current handbooks use the source-language filename `language-v0.7.md`, not
-the product version. The emitted format is specified by the development
-[self-contained format 0.7 contract](../spec/iprop-v0.7.md). Product release tags, source language, emitted format,
-C API features and the ABI loader line are never inferred from one another.
+the product version. The emitted, unversioned format is specified by the
+development [self-contained 0.7 contract](../spec/iprop-v0.7.md), named after
+the product line. Product release tags, source language, C API features and the
+ABI loader line are never inferred from one another.
 
 Formal schemas check structure. Small protocol readers additionally check
 unique names, evaluation-order permutations, source/binary input mappings,
@@ -60,7 +63,7 @@ columns counting Unicode codepoints. Protocol integers fit JavaScript's exact
 integer range.
 
 Readers accept only these current schemas. A schema 1/2/3 language export or
-a schema 1 documentation manifest is rejected; no reader falls back to an older
+a schema 1 or 2 documentation manifest is rejected; no reader falls back to an older
 shape.
 
 `compiler_export_contracts` checks actual registry exports, every registered

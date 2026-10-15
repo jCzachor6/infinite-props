@@ -33,16 +33,17 @@ def metadata(root, tag=None, publishing=False):
         if not date:
             raise RuntimeError("Date the changelog as '## v" + version + " — YYYY-MM-DD' before tagging")
         datetime.date.fromisoformat(date.group(1))
-        # The release emits format_version, which need not change with the
-        # product or language; its existing specification must be frozen.
-        name = "spec/iprop-v" + release["format_version"] + ".md"
+        # The format is unversioned; each product line freezes the
+        # specification of the format it ships.
+        line = ".".join(release["product_version"].split(".")[:2])
+        name = "spec/iprop-v" + line + ".md"
         try:
             spec = (root / name).read_text(encoding="utf-8")
         except FileNotFoundError:
-            raise RuntimeError("Missing the emitted format specification " + name) from None
+            raise RuntimeError("Missing the format specification " + name) from None
         title = re.search(r"^# .*\bSpecification v(\d+\.\d+)\s*$", spec, re.M)
-        if not title or title.group(1) != release["format_version"]:
-            raise RuntimeError(name + " does not specify format " + release["format_version"])
+        if not title or title.group(1) != line:
+            raise RuntimeError(name + " does not specify product line " + line)
         status = re.search(r"^\*\*Status:\*\*\s*(.+)$", spec, re.M)
         if not status or "frozen" not in status.group(1).lower() or re.search(r"candidate|draft", status.group(1), re.I):
             raise RuntimeError("Freeze the format specification status before tagging: " + name)
@@ -77,7 +78,7 @@ def main():
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write(f"version={result['product_version']}\ncommit={result['source_commit']}\n")
     print(f"Release preflight: PASS {args.tag} at {result['source_commit']} (language {result['language_version']}, "
-          f"format {result['format_version']}, C API {result['c_api_version']}, SOVERSION {result['c_abi_soversion']})")
+          f"C API {result['c_api_version']}, SOVERSION {result['c_abi_soversion']})")
 
 
 if __name__ == "__main__":

@@ -30,6 +30,7 @@ struct PlannedExpression {
     ips::ValueType type;
     std::optional<Value> constant;
     const ips::ResolvedPalette* palette = nullptr; // indexed palette, if any
+    const ips::BuiltinOverload* overload = nullptr; // a method's resolved overload
 };
 
 // One planned function: its signature, local layout and (after emission)
@@ -64,10 +65,12 @@ struct PlannedFunction {
 };
 
 // One global output slot (spec §4.3: root outputs first, then part outputs
-// in part order).
+// in part order). Only geometric outputs have slots; mask and layer outputs
+// are resource exports.
 struct SlotInfo {
     ips::OutputKind kind;
     bool isList = false;
+    std::string name;
 };
 
 struct PlannedResourceExport {
@@ -100,6 +103,10 @@ struct Plan {
 
     std::vector<SlotInfo> rootSlots;
     std::map<std::string, u32> rootSlotIndex;
+    // The geometric output slots of each part instance (parallel to parts)
+    // and the global slot of each (instance, output name).
+    std::vector<std::vector<SlotInfo>> partSlots;
+    std::map<std::pair<u32, std::string>, u32> partSlotIndex;
     std::vector<PlannedResourceExport> resourceExports;
     std::map<std::pair<u32, std::string>, u16> resourceSlotIndex;
 
@@ -112,13 +119,14 @@ struct Plan {
 
     // Palette annotations are immutable and retain stable addresses in plan copies.
     std::map<const ips::PaletteDecl*, std::shared_ptr<const ips::ResolvedPalette>> palettes;
+    std::map<const ips::PaletteDecl*, ListValue> paletteLists; // each bare palette name's list
     std::map<const ips::InputDecl*, ips::ResolvedConstant> inputDefaults;
     std::map<const ips::Program*, ips::AssetConstants> assetConstants;
     std::optional<u32> functionId(const std::string& name,
                                   const std::string& ownerNamespace) const;
     std::string sourcePath(const ips::Program* owner) const;
-    // The global slot of `output` in the part instance `part`.
-    u32 partSlot(u32 part, const std::string& output) const;
+    // The global slot of the geometric `output` of the part instance `part`.
+    u32 partSlot(u32 part, const std::string& output) const { return partSlotIndex.at({part, output}); }
     const ips::ResolvedPalette& palette(const ips::Program& owner, const ips::Expr& name) const;
 };
 
@@ -126,7 +134,7 @@ struct Plan {
 // path ("hilt", "hilt.grip"), into a Plan. partSources names each part's file
 // for diagnostics (else its import path, resolved lexically). Throws ips::SourceError with a located message
 // for problems the semantic checker does not cover (the instance limit,
-// i32 uniforms).
+// i32 uniforms), and for unstorable slots of programs planned unchecked.
 //
 // Type inference belongs to planning; the returned plan owns its complete
 // annotations and does not retain callbacks into the Planner or Typer.
@@ -152,6 +160,8 @@ private:
     std::set<std::string> prepared_;
 
     [[noreturn]] void error(const ips::SourceLocation& at, std::string message);
+    // The runtime type of a function slot; compound values have no slot.
+    ValueType storedType(ips::ValueType type, const ips::SourceLocation& at, const std::string& slot);
 
     void planParts();
     void planFunctions();

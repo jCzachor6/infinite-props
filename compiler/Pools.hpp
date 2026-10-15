@@ -1,81 +1,74 @@
 #pragma once
 
 // The constant pools of a compiled file (spec §5): strings, i32 bit
-// patterns, f32 bit patterns and colours, deduplicated in insertion order
-// so identical inputs produce byte-identical outputs.
+// patterns, f32 bit patterns and colours, plus the type descriptors and
+// collection constants, deduplicated in insertion order so identical inputs
+// produce byte-identical outputs.
 
+#include <algorithm>
 #include <cstdint>
 #include <map>
-#include <string>
+#include <memory>
 #include <stdexcept>
-#include "iprop/Constants.hpp"
+#include <string>
 #include <vector>
 
-#include "iprop/Types.hpp"
 #include "iprop/Collections.hpp"
-#include <algorithm>
+#include "iprop/Constants.hpp"
+#include "iprop/Types.hpp"
 
 namespace iprop::compiler {
 
+// The program needs more pool space than a file format holds. Inconsistent
+// pool input is a compiler bug instead and throws std::logic_error.
 class PoolLimit : public std::length_error {
 public:
-    explicit PoolLimit(const char* message) : std::length_error(message) {}
+    explicit PoolLimit(const std::string& message) : std::length_error(message) {}
+};
+
+// One deduplicated pool: values in first-insertion order, keyed by their
+// encoding and bounded by the u16 index space of the format.
+template<class T, class Key>
+class InternedPool {
+public:
+    explicit InternedPool(const char* kind) : kind_(kind) {}
+
+    // The index of `key`, storing `value` on its first use. `admit` runs
+    // only for a new entry, before it is stored, and may throw PoolLimit.
+    template<class Admit>
+    u32 add(const Key& key, T value, Admit admit) {
+        if (const auto found = index_.find(key); found != index_.end()) return found->second;
+        if (values_.size() >= kMaxConstPoolEntries) throw PoolLimit(std::string("too many ") + kind_ + " constants");
+        admit();
+        const auto index = static_cast<u32>(values_.size());
+        values_.push_back(std::move(value));
+        index_.emplace(key, index);
+        return index;
+    }
+    u32 add(const Key& key, T value) { return add(key, std::move(value), [] {}); }
+
+    const std::vector<T>& values() const { return values_; }
+    u32 indexOf(const Key& key) const { return index_.at(key); }
+
+private:
+    const char* kind_;
+    std::vector<T> values_;
+    std::map<Key, u32> index_;
 };
 
 class Pools {
 public:
     // Registers a name/literal, returning its pool index. Repeated values
     // return the first index.
-    u32 addString(const std::string& text) {
-        const auto found = stringIndex.find(text);
-        if (found != stringIndex.end()) {
-            return found->second;
-        }
-        if (strings.size() >= kMaxConstPoolEntries) throw PoolLimit("too many string constants");
-        const u32 index = static_cast<u32>(strings.size());
-        strings.push_back(text);
-        stringIndex.emplace(text, index);
-        return index;
-    }
-
-    u32 addInt(u32 bits) {
-        const auto found = intIndex.find(bits);
-        if (found != intIndex.end()) {
-            return found->second;
-        }
-        if (ints.size() >= kMaxConstPoolEntries) throw PoolLimit("too many integer constants");
-        const u32 index = static_cast<u32>(ints.size());
-        ints.push_back(bits);
-        intIndex.emplace(bits, index);
-        return index;
-    }
-
-    u32 addFloat(u32 bits) {
-        const auto found = floatIndex.find(bits);
-        if (found != floatIndex.end()) {
-            return found->second;
-        }
-        if (floats.size() >= kMaxConstPoolEntries) throw PoolLimit("too many float constants");
-        const u32 index = static_cast<u32>(floats.size());
-        floats.push_back(bits);
-        floatIndex.emplace(bits, index);
-        return index;
-    }
-
+    u32 addString(const std::string& text) { return strings.add(text, text); }
+    u32 addInt(u32 bits) { return ints.add(bits, bits); }
+    u32 addFloat(u32 bits) { return floats.add(bits, bits); }
     u32 addColor(Color color) {
         const u32 key = static_cast<u32>(color.r) |
                         (static_cast<u32>(color.g) << 8) |
                         (static_cast<u32>(color.b) << 16) |
                         (static_cast<u32>(color.a) << 24);
-        const auto found = colorIndex.find(key);
-        if (found != colorIndex.end()) {
-            return found->second;
-        }
-        if (colors.size() >= kMaxConstPoolEntries) throw PoolLimit("too many color constants");
-        const u32 index = static_cast<u32>(colors.size());
-        colors.push_back(color);
-        colorIndex.emplace(key, index);
-        return index;
+        return colors.add(key, color);
     }
 
     u16 addType(TypeDescriptor type) {
@@ -88,103 +81,101 @@ public:
         return static_cast<u16>(types.size() - 1);
     }
     u16 addList(const ListValue& list) {
-        if (!list.data || list.data->elements.size() > kMaxListElements) throw PoolLimit("invalid collection constant");
+        if (!list.data || list.data->elements.size() > kMaxListElements) throw std::logic_error("invalid collection constant");
+        // Repeated reads of one shared list (a palette name) skip re-encoding.
+        if (const auto found = listSources.find(list.data); found != listSources.end()) return found->second;
         ListValue canonical = list;
         if (list.type.item().isDescription() || list.type.item() == ValueType::Distribution) {
             auto data = std::make_shared<ListData>(*list.data);
             for (auto& value : data->elements) {
-                if (auto* d = std::get_if<Distribution>(&value)) { if (d->points) value = distributions.at(addDistribution(*d)); }
-                else if (const auto* sampler = std::get_if<SamplerValue>(&value)) value = samplers.at(addSampler(*sampler));
-                else value = steppers.at(addStepper(std::get<StepperValue>(value)));
+                if (auto* d = std::get_if<Distribution>(&value)) { if (d->points) value = distributions.values().at(addDistribution(*d)); }
+                else if (const auto* sampler = std::get_if<SamplerValue>(&value)) value = samplers.values().at(addSampler(*sampler));
+                else value = steppers.values().at(addStepper(std::get<StepperValue>(value)));
             }
             canonical.data = std::move(data);
         }
         Writer encoding;
         encoding.writeU8(static_cast<u8>(list.type.element));
         if (list.type.item().isDescription()) encoding.writeU8(static_cast<u8>(list.type.parameter));
-        writeListElements(encoding, *canonical.data, samplers, distributions, steppers);
-        if (const auto found = listIndex.find(encoding.data()); found != listIndex.end()) return found->second;
-        if (lists.size() >= kMaxConstPoolEntries) throw PoolLimit("too many collection constants");
-        const auto allocation = ResourceArena::listBytes(list.data->elements.size());
-        if (allocation > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
-        collectionBytes += allocation;
-        addType(list.type);
-        const auto index = static_cast<u16>(lists.size());
-        lists.push_back(std::move(canonical));
-        listIndex.emplace(encoding.data(), index);
+        writeListElements(encoding, *canonical.data, samplers.values(), distributions.values(), steppers.values());
+        const auto index = static_cast<u16>(lists.add(encoding.data(), std::move(canonical), [&] {
+            charge(ResourceArena::listBytes(list.data->elements.size()));
+            addType(list.type);
+        }));
+        listSources.emplace(list.data, index);
         return index;
     }
-    u16 addSampler(const SamplerValue& sampler) { return addDescription(sampler, samplers, samplerIndex); }
-    u16 addStepper(const StepperValue& stepper) { return addDescription(stepper, steppers, stepperIndex); }
-    template<class Handle>
-    u16 addDescription(const Handle& sampler, std::vector<Handle>& descriptions, std::map<std::vector<u8>, u16>& indices) {
-        if (!sampler.data || sampler.data->type != sampler.type) throw PoolLimit("invalid sampler constant");
-        Writer encoding;
-        encoding.writeU8(static_cast<u8>(sampler.type.element));
-        Handle canonical = sampler;
-        if (sampler.data->distribution.points) {
-            auto data = std::make_shared<SamplerData>(*sampler.data);
-            data->distribution = distributions.at(addDistribution(data->distribution));
-            canonical.data = std::move(data);
-        }
-        if (sampler.type.isStepper()) writeStepperData(encoding, *canonical.data, distributions);
-        else writeSamplerData(encoding, *canonical.data, distributions);
-        if (const auto found = indices.find(encoding.data()); found != indices.end()) return found->second;
-        if (descriptions.size() >= kMaxConstPoolEntries) throw PoolLimit("too many sampler constants");
-        if (ResourceArena::samplerBytes() > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
-        collectionBytes += ResourceArena::samplerBytes();
-        addType(sampler.type);
-        const auto index = static_cast<u16>(descriptions.size());
-        descriptions.push_back(std::move(canonical)); indices.emplace(encoding.data(), index);
-        return index;
+    u16 addSampler(const SamplerValue& sampler) {
+        return addDescription(sampler, samplers, ResourceArena::samplerBytes());
+    }
+    u16 addStepper(const StepperValue& stepper) {
+        return addDescription(stepper, steppers, ResourceArena::stepperBytes());
     }
     u16 addDistribution(const Distribution& d) {
-        if (!d.points || d.family != d.points->family) throw PoolLimit("invalid point distribution constant");
-        Writer encoding; writePointDistribution(encoding, *d.points);
-        if (const auto found = distributionIndex.find(encoding.data()); found != distributionIndex.end()) return found->second;
-        if (distributions.size() >= kMaxConstPoolEntries) throw PoolLimit("too many distribution constants");
-        const auto bytes = ResourceArena::distributionBytes(d.points->points.size());
-        if (bytes > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
-        collectionBytes += bytes;
-        const auto index = static_cast<u16>(distributions.size());
-        distributions.push_back(d); distributionIndex.emplace(encoding.data(), index);
-        return index;
+        if (!d.points || d.family != d.points->family) throw std::logic_error("invalid point distribution constant");
+        Writer encoding;
+        writePointDistribution(encoding, *d.points);
+        return static_cast<u16>(distributions.add(encoding.data(), d, [&] {
+            charge(ResourceArena::distributionBytes(d.points->points.size()));
+        }));
     }
+
     const std::vector<TypeDescriptor>& typesValue() const { return types; }
-    const std::vector<ListValue>& listsValue() const { return lists; }
-    const std::vector<SamplerValue>& samplersValue() const { return samplers; }
-    const std::vector<StepperValue>& steppersValue() const { return steppers; }
-    const std::vector<Distribution>& distributionsValue() const { return distributions; }
+    const std::vector<ListValue>& listsValue() const { return lists.values(); }
+    const std::vector<SamplerValue>& samplersValue() const { return samplers.values(); }
+    const std::vector<StepperValue>& steppersValue() const { return steppers.values(); }
+    const std::vector<Distribution>& distributionsValue() const { return distributions.values(); }
 
     // The pool contents, in registration order.
-    const std::vector<std::string>& stringsValue() const { return strings; }
-    const std::vector<u32>& intsValue() const { return ints; }
-    const std::vector<u32>& floatsValue() const { return floats; }
-    const std::vector<Color>& colorsValue() const { return colors; }
+    const std::vector<std::string>& stringsValue() const { return strings.values(); }
+    const std::vector<u32>& intsValue() const { return ints.values(); }
+    const std::vector<u32>& floatsValue() const { return floats.values(); }
+    const std::vector<Color>& colorsValue() const { return colors.values(); }
 
     // The registered index of a previously added string (names are
     // registered during planning, before emission).
-    u32 indexOf(const std::string& text) const { return stringIndex.at(text); }
+    u32 indexOf(const std::string& text) const { return strings.indexOf(text); }
+    // The index of a registered type descriptor.
+    u16 typeIndexOf(TypeDescriptor type) const { return typeDescriptorIndex(type, types); }
 
 private:
+    // Samplers and steppers share one encoding, each in its own pool.
+    template<class Handle>
+    u16 addDescription(const Handle& description, InternedPool<Handle, std::vector<u8>>& pool, u64 bytes) {
+        if (!description.data || description.data->type != description.type)
+            throw std::logic_error("invalid sampler or stepper constant");
+        Writer encoding;
+        encoding.writeU8(static_cast<u8>(description.type.element));
+        Handle canonical = description;
+        if (description.data->distribution.points) {
+            auto data = std::make_shared<SamplerData>(*description.data);
+            data->distribution = distributions.values().at(addDistribution(data->distribution));
+            canonical.data = std::move(data);
+        }
+        if (description.type.isStepper()) writeStepperData(encoding, *canonical.data, distributions.values());
+        else writeSamplerData(encoding, *canonical.data, distributions.values());
+        return static_cast<u16>(pool.add(encoding.data(), std::move(canonical), [&] {
+            charge(bytes);
+            addType(description.type);
+        }));
+    }
+    // Collection constants share the runtime's generation data budget.
+    void charge(u64 bytes) {
+        if (bytes > kMaxGenerationData - collectionBytes) throw PoolLimit("collection pool exceeds 64 MiB");
+        collectionBytes += bytes;
+    }
+
     u64 collectionBytes = 0;
     std::vector<TypeDescriptor> types;
-    std::vector<ListValue> lists;
-    std::map<std::vector<u8>, u16> listIndex;
-    std::vector<SamplerValue> samplers;
-    std::map<std::vector<u8>, u16> samplerIndex;
-    std::vector<StepperValue> steppers;
-    std::map<std::vector<u8>, u16> stepperIndex;
-    std::vector<Distribution> distributions;
-    std::map<std::vector<u8>, u16> distributionIndex;
-    std::vector<std::string> strings;
-    std::map<std::string, u32> stringIndex;
-    std::vector<u32> ints;
-    std::map<u32, u32> intIndex;
-    std::vector<u32> floats;
-    std::map<u32, u32> floatIndex;
-    std::vector<Color> colors;
-    std::map<u32, u32> colorIndex;
+    InternedPool<ListValue, std::vector<u8>> lists{"collection"};
+    std::map<std::shared_ptr<const ListData>, u16> listSources;
+    InternedPool<SamplerValue, std::vector<u8>> samplers{"sampler"};
+    InternedPool<StepperValue, std::vector<u8>> steppers{"stepper"};
+    InternedPool<Distribution, std::vector<u8>> distributions{"distribution"};
+    InternedPool<std::string, std::string> strings{"string"};
+    InternedPool<u32, u32> ints{"integer"};
+    InternedPool<u32, u32> floats{"float"};
+    InternedPool<Color, u32> colors{"color"};
 };
 
 } // namespace iprop::compiler

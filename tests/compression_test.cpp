@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <zlib.h>
 
@@ -34,15 +35,15 @@ std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) 
     REQUIRE(deflateEnd(&stream) == Z_OK);
     Writer out;
     for (const auto magic : kMagic) out.writeU8(magic);
-    out.writeU16(0); out.writeU16(kVersionMinor); out.writeU32(header.flags|kFlagCompressed);
+    out.writeU32(0); out.writeU32(header.flags|kFlagCompressed);
     out.writeU32(header.sectionCount); out.writeU32(0); out.writeU32(static_cast<u32>(inner.size())); out.writeBytes(compressed);
     return out.data();
 }
 }
 
 TEST_CASE("compression preserves current files and source maps exactly") {
-    for (u16 minor : {u16{7}}) {
-        auto plain=original(); plain[6]=static_cast<u8>(minor);
+    {
+        auto plain=original();
         const auto packed=compressFile(plain);
         REQUIRE(parseHeader(packed).hasCompression());
         CHECK(packed.size()<plain.size());
@@ -51,8 +52,7 @@ TEST_CASE("compression preserves current files and source maps exactly") {
         CHECK(decompressFile(packed)==plain);
         auto loaded=loadFile(packed);
         validate(loaded);
-        CHECK(loaded.layout.header.versionMinor==minor);
-        CHECK(loaded.containerHeader.versionMinor==7);
+        CHECK(std::all_of(packed.begin() + 4, packed.begin() + 8, [](u8 byte) { return byte == 0; }));
         CHECK(loaded.containerHeader.hasCompression());
         CHECK(std::vector<u8>(loaded.bytes().begin(),loaded.bytes().end())==plain);
         CHECK(disassembleWithSource(packed)==disassembleWithSource(plain));
@@ -115,7 +115,8 @@ TEST_CASE("uncompressed files retain identity and malformed inner layouts are re
 
 TEST_CASE("compression rejects retired versions in both envelope and payload") {
     const auto plain=original();
-    for (u16 minor=0;minor<kVersionMinor;++minor) {
+    // Binaries from before the unversioned format carry 0.x in reserved bytes.
+    for (u16 minor=1;minor<=7;++minor) {
         auto old=plain; old[6]=static_cast<u8>(minor);
         CHECK_THROWS_AS(compressFile(old),FormatError);
         auto outer=envelope(plain); outer[6]=static_cast<u8>(minor);

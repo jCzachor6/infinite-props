@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "ips/Typing.hpp"
+#include "iprop/Surface.hpp"
 
 namespace iprop::ips {
 namespace {
@@ -70,10 +71,16 @@ private:
     // Per-function state.
     const Function* current_ = nullptr;
     std::uint32_t loopDepth_ = 0;
+    std::uint32_t surfaceDepth_ = 0; // open layer/clip blocks
 
     [[noreturn]] void error(const SourceLocation& at, std::string message) {
         throw SourceError{at, std::move(message), {}, DiagnosticCode::TypeError,
                           DiagnosticStage::Typing};
+    }
+
+    void enterSurfaceScope(const SourceLocation& at) {
+        checkSurfaceScope(surfaceDepth_, at, DiagnosticStage::Typing);
+        ++surfaceDepth_;
     }
 
     bool atLimit() const { return diagnostics_.size() >= limit_; }
@@ -88,8 +95,10 @@ private:
 
     void checkRecoveringStmt(const Stmt& stmt) {
         const auto savedDepth = loopDepth_;
+        const auto savedSurfaceDepth = surfaceDepth_;
         if (recover([&] { checkStmt(stmt); })) return;
         loopDepth_ = savedDepth;
+        surfaceDepth_ = savedSurfaceDepth;
         markInvalidBindings(stmt);
     }
 
@@ -220,8 +229,7 @@ private:
         // Do not report the same invalid legacy palette again when resolving
         // the shared declaration graph. Recovery already recorded its error.
         return paletteDeclarationsValid && recover([&] {
-            const auto declarations = resolveAssetDeclarations(program_);
-            for (const auto& [palette, value] : declarations.palettes) typer_.registerPaletteType(*palette, value.type);
+            typer_.registerAssetDeclarations(program_, resolveAssetDeclarations(program_));
         }) && namespaceValid;
     }
 
@@ -273,6 +281,7 @@ private:
         const Function* savedCurrent = current_;
         Typer::Scope savedScope = typer_.saveScope();
         const std::uint32_t savedLoopDepth = std::exchange(loopDepth_, 0);
+        const std::uint32_t savedSurfaceDepth = std::exchange(surfaceDepth_, 0);
 
         current_ = &function;
         try {
@@ -288,12 +297,14 @@ private:
         } catch (...) {
             current_ = savedCurrent;
             loopDepth_ = savedLoopDepth;
+            surfaceDepth_ = savedSurfaceDepth;
             typer_.restoreScope(std::move(savedScope));
             throw;
         }
 
         current_ = savedCurrent;
         loopDepth_ = savedLoopDepth;
+        surfaceDepth_ = savedSurfaceDepth;
         typer_.restoreScope(std::move(savedScope));
     }
 
@@ -328,10 +339,12 @@ private:
             if (findOutput(capture->name) || findInput(capture->name) || findPalette(capture->name) ||
                 findAssetConstant(program_, capture->name) || isParam(capture->name) || capture->name == "seed")
                 error(capture->location, "layer result '" + capture->name + "' must be a writable local");
+            enterSurfaceScope(capture->location);
             for (const auto& child : capture->body) {
                 if (atLimit()) break;
                 checkRecoveringStmt(child);
             }
+            --surfaceDepth_;
             const auto existing = typer_.locals().find(capture->name);
             if (existing != typer_.locals().end() && existing->second != ValueType::Layer)
                 error(capture->location, "layer result '" + capture->name + "' conflicts with a local of type " + typeName(existing->second));
@@ -340,10 +353,12 @@ private:
             const auto type = typer_.typeOf(*clip->mask);
             if (type != ValueType::Mask)
                 error(locationOf(*clip->mask), "clip requires mask, got " + std::string(typeName(type)));
+            enterSurfaceScope(clip->location);
             for (const auto& child : clip->body) {
                 if (atLimit()) break;
                 checkRecoveringStmt(child);
             }
+            --surfaceDepth_;
         } else if (const auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             checkReturn(*ret);
         } else if (const auto* brk = std::get_if<BreakStmt>(&stmt)) {
@@ -558,6 +573,12 @@ private:
 } // namespace
 
 // ---- public API -------------------------------------------------------------
+
+void checkSurfaceScope(std::size_t open, const SourceLocation& at, DiagnosticStage stage) {
+    if (open >= kMaxSurfaceScopes)
+        throw SourceError{at, "layer and clip blocks nest deeper than " + std::to_string(kMaxSurfaceScopes) +
+            " surface scopes", {}, DiagnosticCode::ResourceLimit, stage};
+}
 
 PartInfo partInfoOf(const Asset& asset) {
     PartInfo info;

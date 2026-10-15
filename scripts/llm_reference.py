@@ -274,7 +274,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         'Write .ips the way the first section shows: draw values with `lower to upper`, shape them with '
         '`with` and a distribution, draw colors as gradients (`dark to light with d`), name fixed sets in '
         'palettes, and make every seed alone a different prop. The later sections cover the whole language.', '',
-        f"Product {language['product_version']} · source language {version('language_version')} · format {version('format_version')} · C API {version('c_api_version')} · ABI {version('abi_version')}",
+        f"Product {language['product_version']} · source language {version('language_version')} · C API {version('c_api_version')} · ABI {version('abi_version')}",
         f"Commit: `{identity['source_commit'] or 'source archive'}` · {identity['status']} · dirty: {str(identity['working_tree_dirty']).lower()}",
         f"Budget: {budget} UTF-8 bytes (no truncation). Sections: {', '.join(sections) or 'none'}. Symbols: {', '.join(symbols) if 'symbols' in sections and symbols else 'none'}.", '',
         f'[Full handbook](docs/language-v{minor}.md) · [Compiler catalog](docs/language.json)', '']

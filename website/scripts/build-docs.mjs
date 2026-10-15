@@ -85,7 +85,6 @@ export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(roo
     const html = template.replace("{{CONTENT}}", rendered.html)
         .replaceAll("{{VERSION}}", info.language_version).replaceAll("{{MINOR}}", minor)
         .replaceAll("{{PRODUCT_VERSION}}", info.product_version)
-        .replaceAll("{{FORMAT_VERSION}}", info.format_version)
         .replaceAll("{{C_API_VERSION}}", info.c_api_version)
         .replaceAll("{{C_ABI_SOVERSION}}", info.c_abi_soversion);
     fs.writeFileSync(path.join(root, "website/docs/language.html"), html);

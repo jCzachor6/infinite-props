@@ -34,7 +34,7 @@ can be non-NULL otherwise, including a pointer to the end of that buffer. The
 new view preserves that legacy pointer exactly. Nonempty values use the frozen
 component order x/y, x/y/w/h, or x/y/radius. These are the generated values;
 helpers and part D4 transformations have already applied their effects. In a
-format 0.7 file with a parts section, part values are in root asset
+file with a parts section, part values are in root asset
 coordinates, with every enclosing placement and transform applied once.
 Without an instance section, values retain the D4-only local mapping specified
 in [part output coordinates](../spec/iprop-v0.7.md#107-output-coordinates). The accessors

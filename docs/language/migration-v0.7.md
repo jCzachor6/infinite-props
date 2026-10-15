@@ -1,9 +1,11 @@
 # Migrating from 0.6 to 0.7
 
 Product 0.7.0 is under development. Update source declarations and host clients,
-then rebuild every asset with the current compiler. The reader accepts only
-[format 0.7](../../spec/iprop-v0.7.md); compressed envelopes and payloads both
-use 0.7. There is no automatic binary or control-input migration.
+then rebuild every asset with the current compiler. The
+[binary format](../../spec/iprop-v0.7.md) is unversioned: the header bytes that
+held a version are reserved zeros in plain files, compressed envelopes and
+payloads, so the reader rejects every earlier binary. There is no automatic
+binary or control-input migration.
 
 ## Independent versions
 
@@ -11,7 +13,7 @@ use 0.7. There is no automatic binary or control-input migration.
 | --- | --- | --- |
 | Product | 0.6.0 | 0.7.0 |
 | Source language | 0.6 | 0.7 |
-| Binary format | 0.4 or 0.5, in a 0.4 compressed envelope | 0.7 only |
+| Binary format | 0.4 or 0.5, in a 0.4 compressed envelope | unversioned (reserved zero header bytes) |
 | C API | 0.3 | 0.4 |
 | ABI / SONAME | 0.4 | 0.5 |
 | Language-description schema | 2 | 4 |

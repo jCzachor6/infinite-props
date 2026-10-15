@@ -111,7 +111,7 @@ releases unfinished builders and prevents publishing a partial result.
 
 Each generation owns an arena. Immutable allocations are charged once even
 when many handles share them. The 64 MiB arena limit also includes additional
-part canvases. The reader accepts only format 0.7.
+part canvases.
 Accounting uses fixed conservative 128-byte headers and 64-byte element slots
 on both native and WASM, and four bytes per part pixel. Memory and fuel are
 checked before allocation or rasterization.
@@ -125,7 +125,7 @@ and `W` bounds the element comparison width. Scalar numbers use 1, colors 4,
 vectors 2; description widths are specified in [the format contract](../../spec/iprop-v0.7.md#33-list-transformations).
 Repeated transformations remain subject to the generation arena and fuel caps.
 
-The compiler always emits format 0.7. A list used only to compute a scalar
+A list used only to compute a scalar
 asset constant introduces no runtime collection. Lists do not add public C
 input/output enums;
 lists are internal values, not new host uniforms or geometric outputs.

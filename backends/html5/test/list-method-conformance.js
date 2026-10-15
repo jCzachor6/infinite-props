@@ -146,7 +146,7 @@ function run(iprop, tool, directory) {
     assemble("meta: size=1x1\nfn draw (  ) -> ( ):\nreturn\nnop\nendfn\n");
     const old=fs.readFileSync(base+".iprop"),unreachable=sections(old).get(3)+26;
     assert.equal(old[unreachable],0);
-    for(const opcode of [0xd6,0xd7]) for(let minor=0;minor<7;++minor){const bad=Buffer.from(old);bad[unreachable]=opcode;bad.writeUInt16LE(minor,6);reject(bad,/unsupported format minor version/);}
+    for(const opcode of [0xd6,0xd7]) for(let minor=1;minor<=7;++minor){const bad=Buffer.from(old);bad[unreachable]=opcode;bad.writeUInt16LE(minor,6);reject(bad,/reserved header field must be zero/);}
     // Failed generations do not poison later list operations.
     generate(compile("asset t{size 1x1 output point p draw{xs=[3,1,3].distinct().sort();p={xs[0],xs[1]}}}"),26,points([[1,3]]));
     return {comparisons,pins,traps,rejections,signatures:13};

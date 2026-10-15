@@ -308,7 +308,7 @@ TEST_CASE("distributions are copied values with runtime parameters") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 7);
+        CHECK(bytes[6] == 0);
         for (u32 variant = 0; variant < 3; ++variant) {
             const auto result = generate(bytes, 9, variant);
             const auto& points = result.outputs[0].points;
@@ -428,7 +428,11 @@ TEST_CASE("'with' parses after a range and formats alongside ordinary constructo
     CHECK(stripDebug(compileSource(formatted, false)) == stripDebug(compileSource(old, false)));
 }
 
-TEST_CASE("files with distributions are format 0.5, including unused helper slots") {
-    CHECK(compileSource("asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }", false)[6] == 7);
-    CHECK(compileSource("asset t { size 1x1 draw { pixel(0, 0, #fff) } }", false)[6] == 7);
+TEST_CASE("files with distribution slots load like any other file") {
+    for (const auto* source : {"asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }",
+                               "asset t { size 1x1 draw { pixel(0, 0, #fff) } }"}) {
+        const auto bytes = compileSource(source, false);
+        CHECK(bytes[6] == 0);
+        CHECK_NOTHROW(validate(loadFile(bytes)));
+    }
 }

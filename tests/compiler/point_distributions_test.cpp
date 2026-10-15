@@ -77,7 +77,6 @@ TEST_CASE("weighted draws match independent raw RNG thresholds and rounded atoms
     const std::string source = assetPoints("", "d=weighted{1:50,2:20,3:20,4:10} for i in 0..64{x=1 to 4 with d p={x,0}}");
     for (const bool optimize : {false,true}) {
         const auto bytes = compilePoints(source,optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         for (u32 seed : {0u,1u,7u,26u,42u,0xffffffffu}) {
             const auto result = generatePoints(bytes,seed);
             u32 stream = seed;

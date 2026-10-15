@@ -88,7 +88,6 @@ read the channels of one result.
 <!-- llm: skip -->
 Channel reads of a constant color fold at
 compile time; otherwise they lower to `color.r`–`color.a` instructions.
-The compiler always writes format 0.7.
 
 Channels are read-only. Build a modified color with `rgb()` or `rgba()`,
 which clamp their channels, so `rgba(c.r + 5, c.g - 3, c.b, c.a)` needs no

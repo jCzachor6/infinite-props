@@ -33,39 +33,54 @@ void Emitter::emitArg(const PlannedArgument& arg) {
     if (arg.widen) ins(Opcode::I32ToF32);
 }
 
+void Emitter::emitOverload(const ips::BuiltinOverload& overload) {
+    if (!overload.opcode) return; // an identity conversion
+    switch (operandKind(*overload.opcode)) {
+    case OperandKind::None:
+        ins(*overload.opcode);
+        return;
+    case OperandKind::TypeDescriptor:
+        ins(*overload.opcode, 0, plan_.pools.addType(overload.params.front().type));
+        return;
+    default:
+        throw std::logic_error("builtin overload operand requires its own lowering");
+    }
+}
+
+ips::ValueType Emitter::emitMethod(const ips::Expr& expr) {
+    const auto* overload = current_->expression(expr).overload;
+    if (!overload) throw std::logic_error("method expression without a resolved overload");
+    emitOverload(*overload);
+    return overload->result;
+}
+
 ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     using VT = ips::ValueType;
     const auto& spec = *call.spec;
     if (spec.lowering == ips::BuiltinLowering::SurfacePaint) {
-        emitArg(call.arguments[0]);
-        const bool mask = call.arguments[0].expected == VT::Mask;
-        if (mask) emitArg(call.arguments[1]);
-        const auto mode = call.arguments.size() == (mask ? 3u : 2u) ?
-            ips::surfaceMode(*call.arguments.back().expression)->mode : CompositionMode::Inherited;
-        ins(mask ? Opcode::SurfacePaintMask : Opcode::SurfacePaint, 0, static_cast<u16>(mode));
+        // The overload's blend parameter is the static mode operand; the other
+        // parameters are stack values, in their (unchanged) parameter order.
+        const auto& params = call.overload->params;
+        if (params.size() != call.arguments.size()) throw std::logic_error("surface.paint arguments differ from their overload");
+        auto mode = CompositionMode::Inherited;
+        for (std::size_t i = 0; i < params.size(); ++i) {
+            if (params[i].name == "blend") mode = ips::surfaceMode(*call.arguments[i].expression)->mode;
+            else emitArg(call.arguments[i]);
+        }
+        ins(*call.overload->opcode, 0, static_cast<u16>(mode));
         return VT::Void;
     }
-    if (spec.lowering == ips::BuiltinLowering::Opcode || spec.lowering == ips::BuiltinLowering::Pick) {
+    // An overload with an instruction (or an identity conversion) lowers
+    // generically; the special lowerings below expand to several.
+    if (call.overload && (call.overload->opcode || spec.lowering == ips::BuiltinLowering::Opcode)) {
         for (const auto& arg : call.arguments) emitArg(arg);
-        if (call.overload->opcode) ins(*call.overload->opcode);
+        emitOverload(*call.overload);
         return call.overload->result;
-    }
-    if (spec.lowering == ips::BuiltinLowering::ListLength) {
-        emitArg(call.arguments[0]);
-        ins(Opcode::ListLen, 0, plan_.pools.addType(call.arguments[0].expected));
-        return VT::I32;
-    }
-    if (spec.lowering == ips::BuiltinLowering::Polygon && call.arguments.size() == 2) {
-        for (const auto& argument : call.arguments) emitArg(argument);
-        ins(Opcode::PolyList);
-        return VT::Void;
     }
     if (spec.lowering == ips::BuiltinLowering::Beta) {
         for (const auto& arg : call.arguments) emitArg(arg);
-        if (call.arguments.size() == 2) {
-            emitConst(0.0f); // the default natural range 0-1
-            emitConst(1.0f);
-        }
+        emitConst(0.0f); // the default natural range 0-1
+        emitConst(1.0f);
         ins(Opcode::DistributionBeta);
         return VT::Distribution;
     }
@@ -145,6 +160,7 @@ ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
         ins(Opcode::F32ToI32);
         return VT::I32;
     }
+    // The variadic polygon: vertex pairs, then the colour.
     for (const auto& arg : call.arguments) emitArg(arg);
     const u16 vertices = static_cast<u16>((call.arguments.size() - 1) / 2);
     ins(Opcode::Poly, 0, vertices);

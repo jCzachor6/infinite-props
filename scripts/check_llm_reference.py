@@ -37,7 +37,7 @@ def main():
         reference_bytes = len(reference.encode('utf-8'))
         require(reference_bytes <= config['defaults']['max_bytes'], 'default reference exceeds its budget')
         require('Commit: `' + info['source_commit'] + '`' in reference, 'reference lost its source identity')
-        for key, label in [('language_version', 'source language'), ('format_version', 'format'),
+        for key, label in [('language_version', 'source language'),
                            ('c_api_version', 'C API'), ('abi_version', 'ABI')]:
             version = language[key]
             require(f"{label} {version['major']}.{version['minor']}" in reference, 'independent version missing: ' + key)

@@ -48,7 +48,6 @@ TEST_CASE("integer bounds select exact overloads in helpers and named calls") {
     })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileMath(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         const auto result = execute(bytes);
         CHECK(result.outputs[0].points[0].x == 1.f);
         CHECK(result.outputs[0].points[0].y == 1.f);
@@ -84,7 +83,6 @@ TEST_CASE("normalize folds finite values and retains unused nonfinite traps") {
     })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileMath(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         const auto result = execute(bytes);
         CHECK(std::bit_cast<u32>(result.outputs[0].points[0].x) == 0x3f19999a);
         CHECK(std::bit_cast<u32>(result.outputs[0].points[0].y) == 0x3f4ccccd);
@@ -108,8 +106,6 @@ TEST_CASE("folded integer bounds retain the oldest written format") {
     for (const std::string expression : {"min(16777217,16777218)", "max(-2147483648,2147483647)",
                                         "clamp(16777217,16777218,16777216)"}) {
         const std::string source = "asset t { size 1x1 output point p draw { p={" + expression + ",0} } }";
-        CHECK(loadFile(compileMath(source, false)).layout.header.versionMinor == 7);
-        CHECK(loadFile(compileMath(source, true)).layout.header.versionMinor == 7);
     }
 }
 
@@ -130,7 +126,6 @@ TEST_CASE("normalization constant folding retains extreme and subnormal encoding
             std::string(test.vector) + ")}}";
         for (const bool optimize : {false, true}) {
             const auto bytes = compileMath(source, optimize);
-            CHECK(loadFile(bytes).layout.header.versionMinor == 7);
             const auto result = execute(bytes);
             CHECK(std::bit_cast<u32>(result.outputs[0].points[0].x) == test.x);
             CHECK(std::bit_cast<u32>(result.outputs[0].points[0].y) == test.y);
@@ -183,8 +178,6 @@ TEST_CASE("new math instructions roundtrip through formatter assembler and compr
         const auto restored = assemble(text);
         CHECK(disassemble(restored) == text);
         const auto packed = compressFile(bytes);
-        CHECK(parseHeader(packed).versionMinor == 7);
-        CHECK(loadFile(packed).layout.header.versionMinor == 7);
         CHECK(decompressFile(stripDebug(packed)) == bytes);
         for (const auto& candidate : {restored, packed}) {
             const auto result = execute(candidate), original = execute(bytes);

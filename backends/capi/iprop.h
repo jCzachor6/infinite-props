@@ -206,8 +206,9 @@ typedef struct {
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
  * within that capacity are written; unknown tail bytes are untouched.
  * Numbers describe the loaded library, independently of this header.
- * Formats are the inclusive [format_minor_min, format_minor_max] range
- * under format_major. Capability bits advertise implemented behavior only. */
+ * The file format is unversioned: format_major, format_minor_min and
+ * format_minor_max are reserved and always zero. Capability bits advertise
+ * implemented behavior only. */
 typedef struct {
     uint32_t struct_size;
     uint32_t product_major, product_minor, product_patch;
@@ -251,7 +252,7 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_INVALID_FORMAT UINT32_C(1000)
 #define IPROP_REASON_TRUNCATED_INPUT UINT32_C(1001)
 #define IPROP_REASON_BAD_MAGIC UINT32_C(1002)
-#define IPROP_REASON_UNSUPPORTED_VERSION UINT32_C(1003)
+#define IPROP_REASON_UNSUPPORTED_VERSION UINT32_C(1003) /* retired: never reported */
 #define IPROP_REASON_INVALID_HEADER UINT32_C(1004)
 #define IPROP_REASON_COMPRESSION UINT32_C(1005)
 #define IPROP_REASON_INVALID_LAYOUT UINT32_C(1006)
@@ -368,9 +369,10 @@ typedef struct {
  * leaves the output untouched. Fields through fuel retain their old offsets.
  * METADATA_EXTENDED advertises the appended emission/physical format fields.
  * has_emission is 0 or 1; when zero all emission fields are zero, otherwise
- * channels and binary32 bits are exact. Format major/minor/flags describe the
- * actual loaded physical container, including compression/debug bits; they
- * are not the library's accepted format range. No flags are query inputs. */
+ * channels and binary32 bits are exact. container_flags describe the actual
+ * loaded physical container, including compression/debug bits; format_major
+ * and format_minor are reserved and always zero, as the format is
+ * unversioned. No flags are query inputs. */
 typedef struct {
     uint32_t struct_size;
     uint32_t size_x, size_y;

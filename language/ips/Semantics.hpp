@@ -18,6 +18,11 @@ namespace iprop::ips {
 // Builds a part surface from an asset's declarations.
 PartInfo partInfoOf(const Asset& asset);
 
+// Layer and clip blocks each open a runtime surface scope, and the validator
+// bounds how deeply one function nests them. Throws at the block that would
+// open one scope too many while `open` scopes enclose it.
+void checkSurfaceScope(std::size_t open, const SourceLocation& at, DiagnosticStage stage);
+
 // Checks one asset: duplicate declarations, name resolution, type checking,
 // integer-only conditions, part-call arity and slot kinds, input default
 // types. `parts` maps import aliases to the declared surfaces of the

@@ -39,14 +39,14 @@ retained. Geometry or a declaration does not predict generated values.
 
 ## Names and input signatures
 
-A format 0.7 file with a parts section, which the compiler writes for every
+A file with a parts section, which the compiler writes for every
 file with parts, names each part instance by its alias path from the root
 asset, such as `hilt` or `hilt.grip`. Such a part returns `name_present == 1`
 and an immutable program-owned UTF-8 `name` view, valid until
 `iprop_program_free`. Hosts can join it with a local output name to present
 `hilt.grip.top`; output lookup still takes the owner and the local name.
 
-Files without that section store no part name. Only format 0.7 is accepted.
+Files without that section store no part name.
 They return `name_present == 0`, `name.data == NULL` and
 `name.byte_count == 0`, including debug containers that have a named
 associated function. A function name is not a part name; no import alias or
@@ -101,5 +101,5 @@ if (iprop_program_part_count(program, &count, NULL) == IPROP_EX_OK) {
 ```
 
 These queries work with either legacy-loaded or checked-loaded program handles,
-with debug present or stripped and compressed or plain format 0.7 containers.
+with debug present or stripped and compressed or plain containers.
 Checked and untyped entry points use the current API 0.4 layouts.

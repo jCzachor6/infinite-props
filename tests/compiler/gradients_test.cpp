@@ -137,7 +137,7 @@ TEST_CASE("a color gradient shares one position across all channels") {
 })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileSource(source, optimize);
-        CHECK(bytes[6] == 7);
+        CHECK(bytes[6] == 0);
         const auto result = generate(bytes, 13);
         for (const auto& point : result.outputs[0].points) {
             CHECK(point.x == 0.f);

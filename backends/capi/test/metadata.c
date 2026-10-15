@@ -56,7 +56,7 @@ static int exact_prefixes(iprop_program* program, const iprop_program_info_ex* e
 int main(int argc, char** argv) {
     uint8_t *bytes, *plain = NULL;
     size_t size, plain_size = 0;
-    uint32_t variant, section, meta_entry = 0, meta_at = 0, physical_major, physical_minor;
+    uint32_t variant, section, meta_entry = 0, meta_at = 0;
     iprop_program *program = NULL, *emissive = NULL;
     iprop_program_info_ex info, before;
     iprop_error_ex error;
@@ -73,8 +73,8 @@ int main(int argc, char** argv) {
         CHECK(iprop_program_load_ex(bytes, size, &program, &error) == IPROP_EX_OK);
         CHECK(iprop_program_info_ex_init(&info, sizeof(info)) == IPROP_EX_OK);
         CHECK(iprop_program_query(program, &info, &error) == IPROP_EX_OK);
-        CHECK(info.format_major == ((uint32_t)bytes[4] | (uint32_t)bytes[5] << 8));
-        CHECK(info.format_minor == ((uint32_t)bytes[6] | (uint32_t)bytes[7] << 8));
+        /* Reserved: the header bytes that once held a version are zero. */
+        CHECK(read_u32(bytes + 4) == 0 && info.format_major == 0 && info.format_minor == 0);
         CHECK(info.container_flags == read_u32(bytes + 8));
         CHECK(info.has_emission == 0 && info.emission_color.r == 0 && info.emission_color.g == 0 && info.emission_color.b == 0 && info.emission_color.a == 0);
         CHECK(float_bits(&info.emission_offset_x) == 0 && float_bits(&info.emission_offset_y) == 0 && float_bits(&info.emission_radius) == 0);
@@ -85,8 +85,6 @@ int main(int argc, char** argv) {
     /* Add a real emission block to a stripped physical container. Rebase only
      * later section offsets; no debug addresses or source metadata are involved. */
     CHECK(plain != NULL);
-    physical_major = (uint32_t)plain[4] | (uint32_t)plain[5] << 8;
-    physical_minor = (uint32_t)plain[6] | (uint32_t)plain[7] << 8;
     for (section = 0; section < read_u32(plain + 12); ++section)
         if (read_u32(plain + 20 + section * 12) == 1) { meta_entry = 20 + section * 12; meta_at = read_u32(plain + meta_entry + 4); }
     CHECK(meta_entry != 0 && meta_at + 32 <= plain_size && plain[meta_at + 24] == 0);
@@ -109,7 +107,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_query(emissive, &info, &error) == IPROP_EX_OK);
     CHECK(info.has_emission == 1 && info.emission_color.r == 0x12 && info.emission_color.g == 0x34 && info.emission_color.b == 0x56 && info.emission_color.a == 0x78);
     CHECK(float_bits(&info.emission_offset_x) == UINT32_C(0x80000000) && float_bits(&info.emission_offset_y) == 1 && float_bits(&info.emission_radius) == UINT32_C(0x7fc12345));
-    CHECK(info.format_major == physical_major && info.format_minor == physical_minor && info.container_flags == 0);
+    CHECK(info.format_major == 0 && info.format_minor == 0 && info.container_flags == 0);
     CHECK(exact_prefixes(emissive, &info, &error) == 0);
     memcpy(&before, &info, sizeof(info));
     error.message_buffer = (char*)&info.emission_color; error.message_capacity = 1;

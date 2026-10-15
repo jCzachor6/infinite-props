@@ -6,9 +6,9 @@ compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed and optional declared input uniforms.
 
 Source language **0.7** and product **0.7.0** are under development.
-Product, source, format, C API and ABI versions are independent:
-`ipc --describe-language` reports the compiler's contracts. The compiler emits
-format 0.7 and the reader accepts only 0.7; C API 0.4 uses ABI 0.5.
+Product, source, C API and ABI versions are independent, and the binary format
+is unversioned: `ipc --describe-language` reports the compiler's contracts.
+C API 0.4 uses ABI 0.5.
 The generated book identifies its product, development/release status and source
 commit. Earlier documentation is available in Git history.
 

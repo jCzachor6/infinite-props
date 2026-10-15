@@ -78,7 +78,7 @@ Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signatu
     const auto* opcode = findOpcode(*signature.opcode);
     return Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
         {"parameters", std::move(parameters)}, {"result", ips::typeName(signature.result)},
-        {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
+        {"opcode", opcode->mnemonic},
         {"effects", operationEffects(opcode->effects)}});
 }
 
@@ -132,7 +132,7 @@ Json listMethods() {
             const auto* opcode = findOpcode(*signature.opcode);
             methods.push_back(Json::object({{"name", name}, {"receiver", ips::typeName(signature.params[0].type)},
                 {"parameters", Json::array()}, {"result", ips::typeName(signature.result)},
-                {"opcode", opcode->mnemonic}, {"minimum_format_minor", opcode->minimumMinor},
+                {"opcode", opcode->mnemonic},
                 {"constant_evaluable", true}, {"effects", operationEffects(opcode->effects)}}));
         }
     }
@@ -153,7 +153,7 @@ Json randomRange() {
     const auto overload = [](const char* type, Opcode opcode, u32 maximumDraws) {
         const auto* spec = findOpcode(opcode);
         return Json::object({{"lower", type}, {"upper", type}, {"result", type},
-            {"opcode", spec->mnemonic}, {"minimum_format_minor", spec->minimumMinor},
+            {"opcode", spec->mnemonic},
             {"bounds", "inclusive"}, {"draws", Json::object({{"minimum", 1}, {"maximum", maximumDraws}})}});
     };
     // Colors and vec2 values: one shared coefficient 0.0 to 1.0 [with d],
@@ -164,7 +164,7 @@ Json randomRange() {
         for (const char* part : parts) names.push_back(part);
         return Json::object({{"type", ips::typeName(type)}, {"result", ips::typeName(type)},
             {"coefficient", "shared_unit_interval"}, {"mixed", std::move(names)}, {"opcode", spec->mnemonic},
-            {"minimum_format_minor", spec->minimumMinor}, {"effects", operationEffects(spec->effects)}});
+            {"effects", operationEffects(spec->effects)}});
     };
     return Json::object({{"operator", "to"}, {"keyword", "reserved"},
         {"precedence", Json::object({{"tighter_than", "<"}, {"looser_than", "<<"}})},
@@ -215,15 +215,12 @@ Json sourceRules() {
     const auto components = [](ips::ValueType type, ips::ValueType result,
                                std::initializer_list<std::pair<const char*, Opcode>> names) {
         Json members = Json::array(), opcodes = Json::array();
-        u16 minor = 0;
         for (const auto& [name, opcode] : names) {
             members.push_back(name);
             opcodes.push_back(findOpcode(opcode)->mnemonic);
-            minor = std::max(minor, findOpcode(opcode)->minimumMinor);
         }
         return Json::object({{"type", ips::typeName(type)}, {"names", std::move(members)},
-            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)},
-            {"minimum_format_minor", minor}});
+            {"result", ips::typeName(result)}, {"assignable", false}, {"opcodes", std::move(opcodes)}});
     };
     typeRules["parameterized"] = Json::array({Json::object({{"constructor", "list"},
         {"element_types", types([](ips::ValueType type) { return type.isScalar() || type.isDescription(); })},
@@ -310,8 +307,7 @@ Json sourceRules() {
         {"maximum_active_scopes", kMaxSurfaceScopes}, {"generation_data_limit_bytes", kMaxGenerationData},
         {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
         {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
-        {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false},
-        {"minimum_format_minor", findOpcode(Opcode::LayerBegin)->minimumMinor}});
+        {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
     rules["resource_exports"] = Json::object({
         {"types", Json::array({"mask", "layer"})}, {"table", "separate_from_host_geometry"},
         {"syntax", "output <mask|layer> <name>"}, {"read", "direct_child_last_called_part"},
@@ -321,7 +317,7 @@ Json sourceRules() {
         {"buffer_transfer", "shared_without_copy"}, {"buffer_release", "last_handle"},
         {"generation_cleanup", "success_and_trap"}, {"host_handles", false}, {"list_exports", false},
         {"maximum_slots", kMaxConstPoolEntries}, {"slot_bytes", 64}, {"write_read_fuel", 1},
-        {"section_id", static_cast<u32>(SectionId::ResourceExports)}, {"minimum_format_minor", 6}});
+        {"section_id", static_cast<u32>(SectionId::ResourceExports)}});
     rules["masks"] = Json::object({
         {"from_syntax", "mask.from(image)"}, {"clip_syntax", "clip(mask) { <statements> }"},
         {"keyword", "reserved"}, {"from_storage", "shared_rgba8_alpha_view"},
@@ -343,8 +339,7 @@ Json sourceRules() {
         {"result_bytes", "128_plus_1_per_pixel"}, {"view_fuel", "one_no_scan"},
         {"algebra_fuel", "one_plus_zeroed_pixels_plus_result_pixels"},
         {"morphology_fuel", "one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
-        {"clip_write_fuel", "one_per_active_level"},
-        {"minimum_format_minor", findOpcode(Opcode::MaskFrom)->minimumMinor}});
+        {"clip_write_fuel", "one_per_active_level"}});
     rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
         {"element_types", types([](ips::ValueType type) { return type.isSampler() ||
             (type.isScalar() && type != ips::ValueType::Distribution); })},
@@ -431,7 +426,6 @@ Json builtins() {
                 const auto* opcode = findOpcode(*overload.opcode);
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
                 entry["opcode"] = opcode->mnemonic;
-                entry["minimum_format_minor"] = opcode->minimumMinor;
             }
             overloads.push_back(std::move(entry));
         }
@@ -487,7 +481,6 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["c_api_version"] = version(IPROP_API_VERSION_MAJOR, IPROP_API_VERSION_MINOR);
     document["abi_version"] = version(IPROP_C_ABI_VERSION_MAJOR, IPROP_C_ABI_VERSION_MINOR);
     document["c_abi_soversion"] = IPROP_C_ABI_SOVERSION;
-    document["format_version"] = version(kVersionMajor, kVersionMinor);
     document["builtins"] = builtins();
     document["call_rules"] = callRules();
     document["source_rules"] = sourceRules();

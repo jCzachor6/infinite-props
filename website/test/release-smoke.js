@@ -57,7 +57,7 @@ async function main() {
         assert.ok(html.includes(`id="${section.a}"`), `missing search anchor: ${section.t}`);
     }
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
-    assert.equal(docs.schema_version, 2);
+    assert.equal(docs.schema_version, 3);
     const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
     assert.equal(catalogue.schema_version, 4);
     assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
@@ -105,8 +105,8 @@ async function main() {
             const bytes = fs.readFileSync(file);
             assert.deepEqual(bytes, fs.readFileSync(path.join(root, "examples/showcase", asset + ".iprop")),
                              `stale showcase asset: ${asset}`);
-            // Envelope and payload use the current format.
-            assert.equal(bytes.readUInt16LE(6), 7);
+            // The former version bytes are reserved zeros.
+            assert.equal(bytes.readUInt32LE(4), 0);
             assert.equal(bytes.readUInt32LE(8) & 1, 0);
             assert.equal(bytes.readUInt32LE(8) & 2, 2);
             for (const seed of [0, 7, 26]) for (const choice of [0, 2]) {

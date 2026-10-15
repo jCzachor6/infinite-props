@@ -301,7 +301,7 @@ static buffer binary_fixture(int write_values) {
         put16(&code, 0); put16(&code, i == 0 ? 0 : 3);
         if (i) for (kind = 0; kind < 3; ++kind) decl(&code, (uint8_t)kind, kind + 1);
     }
-    append(&file, "IPRP", 4); put16(&file, 0); put16(&file, 7);
+    append(&file, "IPRP", 4); put32(&file, 0); /* reserved */
     put32(&file, 0); put32(&file, 3); put32(&file, 0);
     put32(&file, 1); put32(&file, offset); put32(&file, meta.size); offset += meta.size;
     put32(&file, 2); put32(&file, offset); put32(&file, pool.size); offset += pool.size;

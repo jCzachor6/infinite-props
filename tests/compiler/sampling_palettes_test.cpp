@@ -329,7 +329,6 @@ TEST_CASE("sampling palette and constant list limits preserve large legacy palet
     rejectPalette("const list<sampler<i32>> specs="+repeated(257,"sampler(1)")+" draw{}","exceeds 256");
     const auto large="palette values="+repeated(257,"1.0");
     const auto legacy=compilePalettes("asset t{size 1x1 "+large+" output point p draw{p={values[-1],ramp(values,0.5)}}}");
-    CHECK(loadFile(legacy).layout.header.versionMinor==7);
     CHECK(execute(legacy).outputs[0].points[0].x==1.f);
     rejectPalette(large+" draw{items=values}","exceeds 256 elements when used as a list");
 }

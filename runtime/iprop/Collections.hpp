@@ -20,6 +20,9 @@ struct CollectionPool {
 };
 
 TypeDescriptor readTypeReference(Reader& reader, std::span<const TypeDescriptor> types);
+// The index of a parameterized type in a descriptor table; a writer that
+// lost the descriptor has a bug, so a missing type throws std::logic_error.
+u16 typeDescriptorIndex(TypeDescriptor type, std::span<const TypeDescriptor> types);
 void writeTypeReference(Writer& writer, TypeDescriptor type,
                         std::span<const TypeDescriptor> types);
 std::vector<TypeDescriptor> parseTypeDescriptors(std::span<const u8> data, const Section& section);

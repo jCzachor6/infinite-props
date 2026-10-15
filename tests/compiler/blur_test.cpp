@@ -281,7 +281,6 @@ TEST_CASE("blur compiler formatter tools and format reject malformed instruction
     const auto expected=generateBlur(compileBlur(source,false)).image.pixels;
     for (const bool optimize : {false,true}) {
         const auto bytes=compileBlur(source,optimize); const auto file=loadFile(bytes);
-        CHECK(file.layout.header.versionMinor==7);
         CHECK(stripDebug(bytes)==stripDebug(compileBlur(formatted,optimize)));
         const auto text=disassemble(bytes); CHECK(text.find("layer.blur")!=std::string::npos); CHECK(text.find("mask.blur")!=std::string::npos);
         for (const auto& candidate : {bytes,stripDebug(bytes),compressFile(bytes),assemble(text)})
@@ -305,7 +304,7 @@ TEST_CASE("blur compiler formatter tools and format reject malformed instruction
         auto bad=dead; bad.at(loaded.code.functions[0].fileOffset+offset+relative)=1;
         CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
     }
-    for (u16 minor=0;minor<7;++minor) { auto old=dead; old.at(6)=static_cast<u8>(minor); CHECK_THROWS_AS(loadFile(old),FormatError); }
+    for (u16 minor=1;minor<=7;++minor) { auto old=dead; old.at(6)=static_cast<u8>(minor); CHECK_THROWS_AS(loadFile(old),FormatError); }
     CHECK(ips::surfaceMethodSpecs().at("blur").overloads.size()==2);
     for (const auto body : {"layer image{}image.blur()","layer image{}image.blur(1,2)",
         "layer image{}image.blur(radius=1)","layer image{}image.blur(sigma=1,sigma=2)"})

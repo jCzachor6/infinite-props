@@ -96,7 +96,7 @@ def main():
     assert len(surface_methods) == 2 and {m['receiver'] for m in surface_methods} == {'layer','mask'}
     assert all(m['name'] == 'blur' and m['parameters'] == [{'name':'sigma','type':'f32'}] and
         m['result'] == m['receiver'] and m['opcode'] == m['receiver'] + '.blur' and
-        m['minimum_format_minor'] == 7 and not m['constant_evaluable'] and
+        not m['constant_evaluable'] and
         m['effects']['rng'] == 'none' and not m['effects']['writes_canvas'] for m in surface_methods)
     assert rules['surfaces']['blur']['maximum_sigma'] == 64
     assert rules['surfaces']['blur']['clip'] == 'paint_only'

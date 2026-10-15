@@ -63,7 +63,6 @@ TEST_CASE("asset constants resolve forward dependencies and all five declared ty
     })";
     for (const bool optimize : {false, true}) {
         const auto bytes = compileConstants(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         const auto result = execute(bytes);
         CHECK(result.outputs[0].points[0].x == 1.f);
         CHECK(result.outputs[0].points[0].y == 1.f);
@@ -251,12 +250,10 @@ TEST_CASE("const formatter comments assembly debug stripping and oldest formats 
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     for (const bool optimize : {false, true}) {
         const auto bytes = compileConstants(source, optimize);
-        CHECK(loadFile(bytes).layout.header.versionMinor == 7);
         CHECK(stripDebug(bytes) == stripDebug(compileConstants(formatted, optimize)));
         const auto restored = assemble(disassemble(bytes));
         CHECK(disassemble(restored) == disassemble(bytes));
         const auto packed = compressFile(bytes);
-        CHECK(loadFile(packed).layout.header.versionMinor == 7);
         sameGeneration(packed, bytes, 42); sameGeneration(restored, bytes, 42);
     }
 }

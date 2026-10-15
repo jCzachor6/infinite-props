@@ -211,7 +211,7 @@ TEST_CASE("surface scope and shared arena limits fail without publishing an imag
 
 TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed wire data", "[surfaces]") {
     const auto bytes=surfaceProgram("asset t{size 2x2 draw{layer image(alpha=surface.legacy){pixel(1,1,#fff)}surface.paint(image,blend=surface.legacy)}}",false);
-    const auto file=loadFile(bytes);REQUIRE(file.layout.header.versionMinor==7);
+    const auto file=loadFile(bytes);
     REQUIRE(file.collections.types==std::vector<ValueType>{ValueType::Layer});
     const auto restored=assemble(disassemble(bytes));CHECK(surfaceResult(restored).image.pixels==surfaceResult(bytes).image.pixels);
     CHECK(disassemble(restored).find("layer.begin 0 1")!=std::string::npos);

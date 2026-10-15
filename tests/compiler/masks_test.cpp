@@ -287,7 +287,6 @@ TEST_CASE("mask source types diagnostics and format gates reject invalid uses", 
         CHECK_FALSE(result.succeeded());CHECK(result.bytes.empty());
     }
     const auto valid=maskProgram("asset t{size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false);
-    CHECK(loadFile(valid).layout.header.versionMinor==7);
     const auto file=loadFile(valid);
     for(const auto& fn:file.code.functions)for(std::size_t pc=0;pc<fn.code.size()/4;++pc){
         const auto ins=decodeInstruction(fn.code.subspan(pc*4,4));

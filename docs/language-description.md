@@ -8,8 +8,7 @@ schema 1 emoji aliases. Consumers require the supported schema version and
 ignore unknown additive fields within it, while rejecting retired draw-control metadata.
 This is a capability description, not a promise of planned syntax.
 
-Per-operation minimum minors record the instruction's original format definition.
-They do not describe accepted file versions: the complete current file must be 0.7.
+The binary format is unversioned, so operations carry no minimum format version.
 
 ## Independent versions
 
@@ -17,29 +16,28 @@ They do not describe accepted file versions: the complete current file must be 0
 | --- | --- |
 | `product_version` | Toolchain release string from `PROJECT_VERSION`. |
 | `language_version.major`, `.minor` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. |
-| `format_version.major`, `.minor` | Newest binary format emitted by this compiler, from runtime constants. Every emitted file uses 0.7. This is not a range of formats accepted by a loaded library. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
 The current development values are product `0.7.0`, source language `0.7`,
-emitted format `0.7`, C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
+C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
-query a loaded library with `iprop_library_query` for its actual capabilities
-and supported format range. See [the ABI policy](c-api-abi.md).
+query a loaded library with `iprop_library_query` for its actual capabilities.
+See [the ABI policy](c-api-abi.md).
 
 Schema 4 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
 See [0.7 migration](language/migration-v0.7.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
-strings: `product_version`, `language_version`, `format_version`,
-`c_api_version` and `c_abi_soversion`. Packaging and documentation builds
-reject a compiler whose export differs from the versions in the source tree.
-A release requires the frozen specification of its `format_version`, never one
-named after the product. The current format-0.7 specification remains in
-development; it cannot serve as a frozen release contract.
+strings: `product_version`, `language_version`, `c_api_version` and
+`c_abi_soversion`. Packaging and documentation builds reject a compiler whose
+export differs from the versions in the source tree. A release requires the
+frozen format specification of its product line (`spec/iprop-v0.7.md` for
+0.7.x). The current specification remains in development; it cannot serve as a
+frozen release contract.
 
 ## Source rules
 
@@ -56,12 +54,12 @@ identified by `source_type`.
 | `types.parameterized` | Supported list/sampler/stepper constructors, element types and immutable arena ownership. Lists of sampler and stepper descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
-| `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, minimum minor, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
+| `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `surfaces.methods` | Optional receiver-first `.blur(sigma: f32)` signatures for layer and mask, from `surfaceMethodSpecs`. Each records its same-surface result, opcode, minor 7, false `constant_evaluable` and intrinsic effects. The method name is separate from global builtins and reserved keywords. |
 | `surfaces.blur` | Optional Gaussian kernel, sigma range/units, evaluation order, premultiplied alpha, edge extension, preserved mapping, zero identity, fuel, scratch memory and preflight policies. Appears with `surfaces.methods`; both satisfy the complete contract when present. |
 | `collections.transformations` | Optional stable first-occurrence/ascending policies, RGBA/x-y order, float zero/NaN equivalence, structural description equality, preserved element bits and unchanged-buffer sharing. Earlier exports may omit these additive fields. |
 | `samplers` | Capture syntax, bounds/mass validation, receiver/count order, batch preflight, zero-draw behavior and currently supported const/palette capabilities. |
-| `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode, minimum minor and effects. They are separate from the global builtin `pick`. |
+| `samplers.methods` | Eight statically resolved pick signatures from the shared frontend registry: receiver, count parameter if present, result, opcode and effects. They are separate from the global builtin `pick`. |
 | `steppers` | Deterministic capture and quantile rules, required counts, truncated support endpoints, zero/one counts, binary64 integer rounding and RNG effects. |
 | `steppers.methods` | Four batch-only pick signatures from `stepperPickSpec`; receivers are stepper<i32/f32/color/vec2>, counts are i32 named n, results are list<T>, and intrinsic RNG is none. |
 | `palettes` | Compile-time capture/lifting, supported scalar/description types, numeric widening, index evaluation/fallback, first-class list limits and ramp restrictions. |
@@ -72,7 +70,7 @@ identified by `source_type`.
 | `types.implicit_widening[].from`, `.to` | Nonidentity implicit type conversion, derived from the type checker's `argFits`. |
 | `types.implicit_widening[].contexts` | `numeric_operands`, `call_arguments`, `helper_returns` and `asset_constants` permit the advertised `i32` to `f32` conversion. |
 | `types.local_reassignment` | `exact_type`: later assignment must match the first assignment's type, including when `i32` could otherwise widen to `f32`. |
-| `types.components` | Optional list of readable members, added in source language 0.6 within schema 2. Earlier exports omit it; absence means the export does not describe member access. When present, names correspond to opcodes and share a result type and minimum format minor. |
+| `types.components` | Optional list of readable members, added in source language 0.6 within schema 2. Earlier exports omit it; absence means the export does not describe member access. When present, names correspond to opcodes and share a result type. |
 | `random_range` | Optional description of random range syntax, overloads and effects, added in source language 0.6 within schema 2. Earlier exports omit it. |
 | `random_range.ends` | Optional list of non-numeric range ends (`color`, `vec2`): one shared 0-1 coefficient, the mixed channels or components and the mix instruction, added with gradients within schema 2. |
 | `random_range.with` | Optional description of `lower to upper with d`: evaluation order, overloads, truncation, integer rounding, fuel, traps and effects, added with distributions within schema 2. Earlier exports omit it. |

@@ -114,7 +114,14 @@ std::string instructionText(const Function& function,
     case OperandKind::ColorConst:
         return std::string(mnemonic) + " " +
                colorText(names.pool->colors.at(ins.operand));
-    case OperandKind::Index:
+    case OperandKind::Local:
+    case OperandKind::TypeDescriptor:
+    case OperandKind::ListConst:
+    case OperandKind::SamplerConst:
+    case OperandKind::StepperConst:
+    case OperandKind::DistributionConst:
+    case OperandKind::ResourceExport:
+    case OperandKind::Immediate:
     case OperandKind::Depth:
     case OperandKind::Count:
         return std::string(mnemonic) + " " + std::to_string(ins.operand) +

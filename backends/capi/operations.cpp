@@ -208,8 +208,7 @@ iprop_program_info_ex programInfo(const iprop_program& program) noexcept {
         std::memcpy(&out.emission_radius, &meta.emission.radius, sizeof(float));
     }
     const auto& header = program.data->containerHeader;
-    out.format_major = header.versionMajor;
-    out.format_minor = header.versionMinor;
+    out.format_major = out.format_minor = 0; // reserved: the format is unversioned
     out.container_flags = header.flags;
     return out;
 }

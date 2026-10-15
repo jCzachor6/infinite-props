@@ -37,7 +37,8 @@ int main(void) {
     CHECK(info.product_patch == IPROP_TEST_PRODUCT_PATCH);
     CHECK(info.api_major == 0 && info.api_minor == 4);
     CHECK(info.abi_major == 0 && info.abi_minor == 5);
-    CHECK(info.format_major == 0 && info.format_minor_min == 7 && info.format_minor_max == 7);
+    /* The file format is unversioned: these fields are reserved zeros. */
+    CHECK(info.format_major == 0 && info.format_minor_min == 0 && info.format_minor_max == 0);
     CHECK(info.capabilities == (IPROP_CAP_LIBRARY_QUERY | IPROP_CAP_SIZED_DESCRIPTORS |
           IPROP_CAP_PROGRAM_LOAD_EX | IPROP_CAP_PROGRAM_QUERY |
           IPROP_CAP_STRUCTURED_ERRORS | IPROP_CAP_LIBRARY_QUERY_EX |

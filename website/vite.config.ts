@@ -16,13 +16,14 @@ const PAGES = {
 
 // The versions the pages quote: the product from package.json, the rest
 // from the compiler-backed documentation manifest written by `npm run docs`.
+// The file format is unversioned; its specification follows the product line.
 function versions() {
     const product = JSON.parse(fs.readFileSync(resolve(__dirname, "package.json"), "utf8")).version;
     const manifest = JSON.parse(fs.readFileSync(resolve(__dirname, "public/docs/language-manifest.json"), "utf8"));
     return {
         PRODUCT_VERSION: product,
+        SPEC_VERSION: product.split(".").slice(0, 2).join("."),
         LANGUAGE_VERSION: manifest.language_version,
-        FORMAT_VERSION: manifest.format_version,
         C_API_VERSION: manifest.c_api_version,
         C_ABI_SOVERSION: manifest.c_abi_soversion,
     };

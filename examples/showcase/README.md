@@ -5,7 +5,7 @@ packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64).
 
 Only the binaries live here; their `.ips` sources are kept outside this
-repository. They are compiled with format 0.7 from private sources migrated from props
+repository. They are compiled by product 0.7, in the unversioned format, from private sources migrated from props
 commit `30a7dd6`. Selection is implemented by ordinary inputs: `v` selects
 authored styles and `a` selects an authored class where declared; default 0
 rolls from the seed. Weapons use `renderLayer` for color/emission selection.

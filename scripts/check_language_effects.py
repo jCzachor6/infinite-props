@@ -58,7 +58,6 @@ def main():
         valid(method['effects'])
         assert method['effects']['rng'] == 'advance_current'
         assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
-        assert method['minimum_format_minor'] == 6
     steppers = description['source_rules']['steppers']
     valid(steppers['capture_effects'])
     assert steppers['capture_effects']['rng'] == 'none'
@@ -66,7 +65,6 @@ def main():
         valid(method['effects'])
         assert method['effects']['rng'] == 'none'
         assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
-        assert method['minimum_format_minor'] == 7
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
     assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']
@@ -105,7 +103,7 @@ def main():
         for entry in by_name[name]['overloads']:
             assert entry['effects']['rng'] == 'none' and not entry['effects']['may_trap']
     normalize = by_name['vec2.normalize']['overloads'][0]
-    assert normalize['minimum_format_minor'] == 6 and normalize['result'] == 'vec2'
+    assert normalize['result'] == 'vec2'
     assert normalize['effects']['rng'] == 'none' and normalize['effects']['may_trap'] == ['numeric_range']
     assert by_name['stream_pop']['overloads'][0]['effects']['may_trap'] == ['stream_stack_underflow']
     print(f'Language effects: {len(by_name)} builtins, {signatures} signatures and shared effect rules passed')

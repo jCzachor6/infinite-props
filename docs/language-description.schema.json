@@ -15,10 +15,6 @@
       "$ref": "#/$defs/version",
       "description": "Source-language acceptance version."
     },
-    "format_version": {
-      "$ref": "#/$defs/version",
-      "description": "Emitted binary format version."
-    },
     "c_api_version": {
       "$ref": "#/$defs/version",
       "description": "Public C API version."
@@ -322,12 +318,6 @@
                     },
                     "description": "Instruction mnemonics, one per name; reads of constant values may fold.",
                     "minItems": 1
-                  },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing these instructions."
                   }
                 },
                 "required": [
@@ -335,8 +325,7 @@
                   "names",
                   "result",
                   "assignable",
-                  "opcodes",
-                  "minimum_format_minor"
+                  "opcodes"
                 ],
                 "additionalProperties": true,
                 "description": "Read-only member access of one value type; the base evaluates once and draws no randomness."
@@ -728,12 +717,6 @@
                     "type": "string",
                     "description": "Instruction mnemonic of the draw."
                   },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing the instruction."
-                  },
                   "bounds": {
                     "type": "string",
                     "enum": [
@@ -768,7 +751,6 @@
                   "upper",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "bounds",
                   "draws"
                 ],
@@ -853,12 +835,6 @@
                         "type": "string",
                         "description": "Instruction mnemonic of the draw."
                       },
-                      "minimum_format_minor": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 255,
-                        "description": "Oldest binary format minor containing the instruction."
-                      },
                       "bounds": {
                         "type": "string",
                         "enum": [
@@ -893,7 +869,6 @@
                       "upper",
                       "result",
                       "opcode",
-                      "minimum_format_minor",
                       "bounds",
                       "draws"
                     ],
@@ -994,12 +969,6 @@
                     "type": "string",
                     "description": "Instruction mnemonic of the mix."
                   },
-                  "minimum_format_minor": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 255,
-                    "description": "Oldest binary format minor containing the mix."
-                  },
                   "effects": {
                     "$ref": "#/$defs/effects",
                     "description": "Intrinsic effects of the mix, excluding the coefficient draw."
@@ -1011,7 +980,6 @@
                   "coefficient",
                   "mixed",
                   "opcode",
-                  "minimum_format_minor",
                   "effects"
                 ],
                 "additionalProperties": true,
@@ -1324,10 +1292,6 @@
                     ],
                     "description": "Descriptor-indexed runtime instruction."
                   },
-                  "minimum_format_minor": {
-                    "const": 6,
-                    "description": "Oldest format accepting the method instruction."
-                  },
                   "constant_evaluable": {
                     "const": true,
                     "description": "Allowed in pure asset constant initializers."
@@ -1343,7 +1307,6 @@
                   "parameters",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "constant_evaluable",
                   "effects"
                 ],
@@ -1586,10 +1549,6 @@
                     ],
                     "description": "Descriptor-indexed runtime instruction implementing this signature."
                   },
-                  "minimum_format_minor": {
-                    "const": 6,
-                    "description": "Oldest format accepting the method instruction and sampler descriptor."
-                  },
                   "effects": {
                     "$ref": "#/$defs/effects",
                     "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
@@ -1601,7 +1560,6 @@
                   "parameters",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "effects"
                 ],
                 "additionalProperties": true,
@@ -2023,11 +1981,6 @@
               "const": 67108864,
               "description": "Generation data limit bytes."
             },
-            "minimum_format_minor": {
-              "type": "integer",
-              "const": 6,
-              "description": "Minimum format minor."
-            },
             "types": {
               "type": "array",
               "const": [
@@ -2148,10 +2101,6 @@
                     ],
                     "description": "Zero-operand Gaussian filter instruction."
                   },
-                  "minimum_format_minor": {
-                    "const": 7,
-                    "description": "Oldest format accepting the filter instruction."
-                  },
                   "constant_evaluable": {
                     "const": false,
                     "description": "Blur requires generation and cannot initialize an asset constant."
@@ -2167,7 +2116,6 @@
                   "parameters",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "constant_evaluable",
                   "effects"
                 ],
@@ -2363,7 +2311,6 @@
             "surface_collections",
             "maximum_active_scopes",
             "generation_data_limit_bytes",
-            "minimum_format_minor",
             "types",
             "alpha_modes",
             "scope_cleanup",
@@ -2586,11 +2533,6 @@
               "const": 32,
               "description": "Combined scope limit."
             },
-            "minimum_format_minor": {
-              "type": "integer",
-              "const": 6,
-              "description": "Minimum format minor."
-            },
             "zero_coverage_write": {
               "type": "boolean",
               "const": false,
@@ -2636,7 +2578,6 @@
             "minimum_radius",
             "maximum_radius",
             "combined_scope_limit",
-            "minimum_format_minor",
             "zero_coverage_write",
             "geometry_outputs_clipped"
           ],
@@ -2746,11 +2687,6 @@
               "type": "integer",
               "const": 10,
               "description": "Format section containing resource exports and function owners."
-            },
-            "minimum_format_minor": {
-              "type": "integer",
-              "const": 6,
-              "description": "Oldest binary format admitting resource exports."
             }
           },
           "required": [
@@ -2771,8 +2707,7 @@
             "maximum_slots",
             "slot_bytes",
             "write_read_fuel",
-            "section_id",
-            "minimum_format_minor"
+            "section_id"
           ],
           "additionalProperties": false,
           "description": "Internal immutable part exports; host geometry indices remain unchanged."
@@ -2899,10 +2834,6 @@
                     "const": "stepper.pick.list",
                     "description": "The batch-only deterministic stepping instruction."
                   },
-                  "minimum_format_minor": {
-                    "const": 7,
-                    "description": "The format minor that first defines stepper instructions."
-                  },
                   "effects": {
                     "$ref": "#/$defs/effects",
                     "description": "Intrinsic method effects; constant descriptions and empty batches make no draw."
@@ -2914,7 +2845,6 @@
                   "parameters",
                   "result",
                   "opcode",
-                  "minimum_format_minor",
                   "effects"
                 ],
                 "additionalProperties": true,
@@ -3190,7 +3120,6 @@
     "schema_version",
     "product_version",
     "language_version",
-    "format_version",
     "c_api_version",
     "abi_version",
     "source_rules",
@@ -3417,12 +3346,6 @@
           "type": "string",
           "description": "Lowered opcode registry identifier.",
           "minLength": 1
-        },
-        "minimum_format_minor": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 255,
-          "description": "Earliest binary-format minor supporting the opcode."
         },
         "constant_evaluable": {
           "type": "boolean",

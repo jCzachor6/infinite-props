@@ -123,8 +123,7 @@ class DocumentationTest(unittest.TestCase):
                 return docs.contracts(Path("unused"), self.root)
 
         self.assertEqual(describe()["c_abi_soversion"], "0.4")
-        for key, changed, message in (("format_version", {"major": 0, "minor": 5}, "format_version 0.5 != 0.4"),
-                                      ("language_version", {"major": 0, "minor": 6}, "language_version 0.6 != 0.5"),
+        for key, changed, message in (("language_version", {"major": 0, "minor": 6}, "language_version 0.6 != 0.5"),
                                       ("c_api_version", {"major": 0, "minor": 2}, "c_api_version 0.2 != 0.3")):
             with self.subTest(key=key), self.assertRaisesRegex(RuntimeError, "differs from the source versions: " + message):
                 describe(**{key: changed})

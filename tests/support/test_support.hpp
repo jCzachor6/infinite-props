@@ -29,10 +29,11 @@ using iprop::u8;
 
 // A valid file: header + table + payload bytes (payload sizes may be zero).
 std::vector<u8> makeLayout(const std::vector<std::pair<SectionId, std::size_t>>& defs,
-                           u32 flags = 0, u16 minor = iprop::kVersionMinor);
+                           u32 flags = 0);
 
 // A raw header + table with caller-controlled fields; no payload bytes.
-std::vector<u8> rawLayout(u16 major, u16 minor, u32 flags, u32 count, u32 reserved,
+// `former` fills the reserved bytes that once held the format version.
+std::vector<u8> rawLayout(u32 former, u32 flags, u32 count, u32 reserved,
                           std::initializer_list<std::array<u32, 3>> entries);
 
 void appendZeros(std::vector<u8>& bytes, std::size_t n);

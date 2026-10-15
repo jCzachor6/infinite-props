@@ -840,7 +840,14 @@ std::vector<u8> assemble(const std::string& source) {
             }
             return static_cast<u16>(addColor(color));
         }
-        case OperandKind::Index:
+        case OperandKind::Local:
+        case OperandKind::TypeDescriptor:
+        case OperandKind::ListConst:
+        case OperandKind::SamplerConst:
+        case OperandKind::StepperConst:
+        case OperandKind::DistributionConst:
+        case OperandKind::ResourceExport:
+        case OperandKind::Immediate:
         case OperandKind::Depth:
         case OperandKind::Count: {
             u32 value = 0;
@@ -978,7 +985,6 @@ std::vector<u8> assemble(const std::string& source) {
     // Function table + streams.
     Writer table;
     Writer streams;
-    u16 minor = kOldestWrittenMinor;
     const u32 functionCount = static_cast<u32>(ordered.size());
     for (std::size_t i = 0; i < ordered.size(); ++i) {
         const AsmFunction& fn = *ordered[i];
@@ -992,21 +998,17 @@ std::vector<u8> assemble(const std::string& source) {
         table.writeU32(static_cast<u32>(fn.instructions.size()) * 4);
         table.writeU16(static_cast<u16>(fn.params.size()));
         for (const ValueType type : fn.params) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.results.size()));
         for (const ValueType type : fn.results) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, program.types);
         }
         table.writeU16(static_cast<u16>(fn.locals.size()));
         for (const ValueType type : fn.locals) {
-            minor = writtenMinor(minor, type);
             writeTypeReference(table, type, program.types);
         }
         for (std::size_t j = 0; j < fn.instructions.size(); ++j) {
-            minor = writtenMinor(minor, fn.instructions[j].opcode);
             streams.writeU8(static_cast<u8>(fn.instructions[j].opcode));
             streams.writeU8(fn.instructions[j].aux);
             streams.writeU16(operands[i][j]);
@@ -1071,7 +1073,6 @@ std::vector<u8> assemble(const std::string& source) {
 
     Writer partInstances;
     if (instances) {
-        minor = std::max<u16>(minor, 5);
         partInstances.writeU32(static_cast<u32>(program.parts.size()));
         for (const auto& part : program.parts) {
             partInstances.writeU32(stringIndex[part.name]);
@@ -1107,11 +1108,9 @@ std::vector<u8> assemble(const std::string& source) {
     for (const u8 magic : kMagic) {
         file.writeU8(magic);
     }
-    if (descriptors.size() || collections.size() || samplers.size() || steppers.size() || distributions.size() || exports.size()) minor = kVersionMinor;
     const u32 sections = (instances ? 4u : 3u) + (descriptors.size() ? 1u : 0u) +
         (collections.size() ? 1u : 0u) + (samplers.size() ? 1u : 0u) + (steppers.size() ? 1u : 0u) + (distributions.size() ? 1u : 0u) + (exports.size() ? 1u : 0u);
-    file.writeU16(kVersionMajor);
-    file.writeU16(minor);
+    file.writeU32(0); // reserved
     file.writeU32(0);
     file.writeU32(sections);
     file.writeU32(0);

@@ -53,7 +53,7 @@ std::vector<const Arg*> bindArguments(const Call& call,
 std::vector<std::string> builtinParameterNames(const BuiltinSpec& spec, std::size_t arity,
                                               const SourceLocation& at, std::string_view function) {
     std::vector<std::string> names;
-    if (spec.lowering == BuiltinLowering::Polygon && arity != 2) {
+    if (variadicPolygon(spec, arity)) {
         if (arity < 7 || arity % 2 == 0)
             throw SourceError{at, "poly expects a colour and at least three (x, y) vertex pairs"};
         names.push_back("color");
