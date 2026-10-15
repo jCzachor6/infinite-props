@@ -253,7 +253,7 @@ TEST_CASE("sampler descriptors preserve full nested item identity and reject mal
     CHECK(loaded.collections.types.size()==2);
     const auto section=loaded.layout.find(SectionId::Types)->offset;
     const auto bad16=[](std::vector<u8>& data,std::size_t at,u16 value){data.at(at)=static_cast<u8>(value);data.at(at+1)=static_cast<u8>(value>>8);};
-    for(const auto [at,value]:std::vector<std::pair<std::size_t,u16>>{
+    for(const auto& [at,value]:std::vector<std::pair<std::size_t,u16>>{
         {section+6,1}, {section+10,1}, {section+10,65535}}) {
         auto bad=bytes;bad16(bad,at,value);CHECK_THROWS_AS(loadFile(bad),FormatError);
     }

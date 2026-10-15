@@ -163,10 +163,10 @@ TEST_CASE("resource export validation rejects invalid table fields and dead-code
         {"root.ips","import child from \"child.ips\" asset t{size 2x1 output layer image unused(){return;layer captured{}image=captured}draw{child.draw(seed,at={0,0})surface.paint(child.outputs.image)}}"},
         {"child.ips","asset t{size 1x1 output layer image draw{layer captured{}image=captured}}"}};
     const auto bytes=compileExports(sources);const auto file=loadFile(bytes);const auto section=*file.layout.find(SectionId::ResourceExports);
-    for(const auto [offset,value]:{std::pair{0u,65537u},{4u,1000u},{8u,100000u},{28u,100000u}}){
+    for(const auto& [offset,value]:{std::pair{0u,65537u},{4u,1000u},{8u,100000u},{28u,100000u}}){
         auto broken=bytes;set32(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
-    for(const auto [offset,value]:{std::pair{12u,u16{65535}},{14u,u16{1}}}){
+    for(const auto& [offset,value]:{std::pair{12u,u16{65535}},{14u,u16{1}}}){
         auto broken=bytes;set16(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
     for(const auto opcode:{Opcode::OutLayer,Opcode::PartGetLayer}){

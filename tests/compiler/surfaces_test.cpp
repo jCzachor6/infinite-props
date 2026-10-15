@@ -217,13 +217,13 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
     CHECK(disassemble(restored).find("layer.begin 0 1")!=std::string::npos);
     CHECK(stripDebug(decompressFile(compressFile(bytes)))==stripDebug(bytes));
     const auto descriptor=file.layout.find(SectionId::Types)->offset+4;
-    for(const auto [relative,value]:std::vector<std::pair<std::size_t,u8>>{{0,255},{1,0},{2,1},{3,1}}){
+    for(const auto& [relative,value]:std::vector<std::pair<std::size_t,u8>>{{0,255},{1,0},{2,1},{3,1}}){
         auto bad=bytes;bad.at(descriptor+relative)=value;CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
     for(std::size_t i=0;i<file.code.functions[0].code.size()/4;++i){
         const auto at=file.code.functions[0].fileOffset+i*4;const auto ins=decodeInstruction(file.code.functions[0].code.subspan(i*4,4));
         if(ins.opcode==Opcode::LayerBegin){
-            for(const u16 destination:{1u,2u,65535u}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
+            for(const u16 destination:{u16{1},u16{2},u16{65535}}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
             auto bad=bytes;bad.at(at+1)=3;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
         if(ins.opcode==Opcode::SurfacePaint){

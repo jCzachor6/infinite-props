@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "iprop/Collections.hpp"
@@ -27,7 +28,8 @@ public:
 };
 
 // One deduplicated pool: values in first-insertion order, keyed by their
-// encoding and bounded by the u16 index space of the format.
+// encoding and bounded by the u16 index space of the format. The index only
+// answers lookups, so its unordered layout never affects pool order.
 template<class T, class Key>
 class InternedPool {
 public:
@@ -53,7 +55,7 @@ public:
 private:
     const char* kind_;
     std::vector<T> values_;
-    std::map<Key, u32> index_;
+    std::unordered_map<Key, u32> index_;
 };
 
 class Pools {
@@ -98,7 +100,7 @@ public:
         encoding.writeU8(static_cast<u8>(list.type.element));
         if (list.type.item().isDescription()) encoding.writeU8(static_cast<u8>(list.type.parameter));
         writeListElements(encoding, *canonical.data, samplers.values(), distributions.values(), steppers.values());
-        const auto index = static_cast<u16>(lists.add(encoding.data(), std::move(canonical), [&] {
+        const auto index = static_cast<u16>(lists.add(bytes(encoding), std::move(canonical), [&] {
             charge(ResourceArena::listBytes(list.data->elements.size()));
             addType(list.type);
         }));
@@ -111,7 +113,7 @@ public:
         if (!d.points || d.family != d.points->family) throw std::logic_error("invalid point distribution constant");
         Writer encoding;
         writePointDistribution(encoding, *d.points);
-        return static_cast<u16>(distributions.add(encoding.data(), d, [&] {
+        return static_cast<u16>(distributions.add(bytes(encoding), d, [&] {
             charge(ResourceArena::distributionBytes(d.points->points.size()));
         }));
     }
@@ -135,9 +137,14 @@ public:
     u16 typeIndexOf(TypeDescriptor type) const { return typeDescriptorIndex(type, types); }
 
 private:
+    // A wire encoding as an interning key.
+    static std::string bytes(const Writer& encoding) {
+        const auto& data = encoding.data();
+        return {data.begin(), data.end()};
+    }
     // Samplers and steppers share one encoding, each in its own pool.
     template<class Handle>
-    u16 addDescription(const Handle& description, InternedPool<Handle, std::vector<u8>>& pool) {
+    u16 addDescription(const Handle& description, InternedPool<Handle, std::string>& pool) {
         if (!description.data || description.data->type != description.type)
             throw std::logic_error("invalid sampler or stepper constant");
         Writer encoding;
@@ -149,7 +156,7 @@ private:
             canonical.data = std::move(data);
         }
         writeDescriptionData(encoding, *canonical.data, distributions.values());
-        return static_cast<u16>(pool.add(encoding.data(), std::move(canonical), [&] {
+        return static_cast<u16>(pool.add(bytes(encoding), std::move(canonical), [&] {
             charge(ResourceArena::descriptionBytes());
             addType(description.type);
         }));
@@ -162,11 +169,11 @@ private:
 
     u64 collectionBytes = 0;
     std::vector<TypeDescriptor> types;
-    InternedPool<ListValue, std::vector<u8>> lists{"collection"};
+    InternedPool<ListValue, std::string> lists{"collection"};
     std::map<std::shared_ptr<const ListData>, u16> listSources;
-    InternedPool<SamplerValue, std::vector<u8>> samplers{"sampler"};
-    InternedPool<StepperValue, std::vector<u8>> steppers{"stepper"};
-    InternedPool<Distribution, std::vector<u8>> distributions{"distribution"};
+    InternedPool<SamplerValue, std::string> samplers{"sampler"};
+    InternedPool<StepperValue, std::string> steppers{"stepper"};
+    InternedPool<Distribution, std::string> distributions{"distribution"};
     InternedPool<std::string, std::string> strings{"string"};
     InternedPool<u32, u32> ints{"integer"};
     InternedPool<u32, u32> floats{"float"};

@@ -56,7 +56,7 @@ void Emitter::emitConst(const Value& value) {
         }
         const auto count = distribution->family == DistributionFamily::Gaussian ? 2u :
             distribution->family == DistributionFamily::Triangular ? 3u : 4u;
-        for (std::size_t i = 0; i < count; ++i) emitConst(distribution->parameters[i]);
+        for (std::size_t parameter = 0; parameter < count; ++parameter) emitConst(distribution->parameters[parameter]);
         ins(distribution->family == DistributionFamily::Gaussian ? Opcode::DistributionGaussian :
             distribution->family == DistributionFamily::Triangular ? Opcode::DistributionTriangular : Opcode::DistributionBeta);
     }

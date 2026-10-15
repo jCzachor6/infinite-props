@@ -426,11 +426,11 @@ TEST_CASE("stepper binary descriptors constants instructions and references reje
         zs=stepper(0.0 to 1.0 with gaussian(0.5,0.2)).pick(2)}})", false));
     const auto file = loadFile(bytes); const auto pool = file.layout.find(SectionId::Steppers)->offset;
     const auto lists = file.layout.find(SectionId::Collections)->offset, types = file.layout.find(SectionId::Types)->offset;
-    for (const auto [at, value] : std::vector<std::pair<std::size_t, u8>>{{pool+6,3},{pool+7,1},{pool+16,0},{types+5,4}}) {
+    for (const auto& [at, value] : std::vector<std::pair<std::size_t, u8>>{{pool+6,3},{pool+7,1},{pool+16,0},{types+5,4}}) {
         auto bad=bytes;bad.at(at)=value;CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
     for (const auto at : {pool+4,lists+8}) {auto bad=bytes;put16(bad,at,65535);CHECK_THROWS_AS(loadFile(bad),FormatError);}
-    for (const auto [at,value] : std::vector<std::pair<std::size_t,u32>>{{pool,65537},{pool+8,0x7f800000},{pool+8,0x40000000},{pool+17,0}}) {
+    for (const auto& [at,value] : std::vector<std::pair<std::size_t,u32>>{{pool,65537},{pool+8,0x7f800000},{pool+8,0x40000000},{pool+17,0}}) {
         auto bad=bytes;put32(bad,at,value);CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
     for (const auto& fn : file.code.functions) for (std::size_t i=0;i<fn.code.size();i+=4) {

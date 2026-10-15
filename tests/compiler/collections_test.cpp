@@ -221,7 +221,7 @@ TEST_CASE("collection serialization preserves raw values and rejects malformed d
     CHECK(a.data()==b.data());
     const auto typeSection=file.layout.find(SectionId::Types)->offset;
     const auto listSection=file.layout.find(SectionId::Collections)->offset;
-    for(const auto [at,value]:std::vector<std::pair<std::size_t,u8>>{
+    for(const auto& [at,value]:std::vector<std::pair<std::size_t,u8>>{
         {typeSection+4,255},{typeSection+5,5},{typeSection+6,1}}){
         auto bad=bytes;bad.at(at)=value;CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
@@ -293,7 +293,8 @@ TEST_CASE("list polygon raster fuel and part canvas quota use the shared resourc
     file.code.parts.push_back(declaration);
     detail::Execution ex(file);ex.frames.push_back({});ex.target=RenderTarget::create(1,1,{1,1});ex.fuel=10000000;
     ex.resources.bytes=kMaxGenerationData-1024u*1024u*4u+1u;
-    for(const auto value:{0,0,0})ex.push(i32{value});ex.push(0.f);ex.push(0.f);
+    for(const auto value:{0,0,0}) ex.push(i32{value});
+    ex.push(0.f);ex.push(0.f);
     try{ex.callPart(0,0);FAIL("part canvas bypassed the arena quota");}
     catch(const Trap& error){CHECK(error.reason==ErrorReason::OutOfMemory);}
     CHECK(ex.partCalls.empty());CHECK(ex.frames.size()==1);CHECK(ex.canvas().width==1);

@@ -293,7 +293,7 @@ TEST_CASE("sampler pools reject malformed constants references aux and older for
     const auto file=loadFile(bytes);
     const auto pool=file.layout.find(SectionId::Samplers)->offset;
     const auto lists=file.layout.find(SectionId::Collections)->offset;
-    for (const auto [at,value] : std::vector<std::pair<std::size_t,u8>>{{pool+6,3},{pool+7,1},{pool+16,0}}) {
+    for (const auto& [at,value] : std::vector<std::pair<std::size_t,u8>>{{pool+6,3},{pool+7,1},{pool+16,0}}) {
         auto bad=bytes; bad.at(at)=value; CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
     for (const auto at : {pool+4,lists+8}) {auto bad=bytes;put16(bad,at,65535);CHECK_THROWS_AS(loadFile(bad),FormatError);}
