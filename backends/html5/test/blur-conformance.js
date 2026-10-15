@@ -129,7 +129,7 @@ function run(iprop,tool,directory) {
             ["input f32 zero=0","zero/zero"],["input f32 zero=0","1.0/zero"],["input f32 zero=0","-1.0/zero"]])
             trap(compile(`asset t{size 1x1 ${decl} draw{layer image{}x=${receiver}.blur(${value})}}`,opt?[]:["--no-opt"]),/blur sigma must be finite and in 0..64/);
         trap(compile(`asset t{size 1x1 draw{if(false){layer image{}${mask?"m=mask.from(image)":""}}${mask?"m":"image"}.blur(0)}}`,opt?[]:["--no-opt"]),/is unassigned/);
-        trap(compile(`asset t{size 64x64 draw{layer image{}${receiver}.blur(64)}}`,opt?[]:["--no-opt"]),/fuel exhausted/);
+        trap(compile(`asset t{size 128x128 draw{layer image{}${receiver}.blur(64)}}`,opt?[]:["--no-opt"]),/fuel exhausted/);
         const dimensions=mask?"16384x512":"8192x385";
         const quota=compile(`asset t{size ${dimensions} draw{layer image{}${receiver}.blur(64)}}`,opt?[]:["--no-opt"]);
         quota.writeBigUInt64LE(20000000000n,sections(quota).get(1)+16);

@@ -91,7 +91,7 @@ function run(iprop,tool,directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
     for(const opt of [false,true])for(const source of ["asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",
-        "asset t{input i32 v=0 size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 1024x1024 draw{layer image{}surface.paint(image)}}"])
+        "asset t{input i32 v=0 size 1x1 draw{layer image{x=1/(v-v)}}}","asset t{size 2048x2048 draw{layer image{}surface.paint(image)}}"])
         trap(compile(source,opt),/layer is unassigned|divide by zero|fuel exhausted/);
     function assembly(text) {fs.writeFileSync(base+".ipa",text);execFileSync(tool("ipa"),[base+".ipa","-o",base+"-asm.iprop"]);return base+"-asm.iprop";}
     trap(assembly("meta: size=1x1\ntypes: layer\nfn draw (  ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n"),/surface scope depth exceeds 32/);

@@ -1,5 +1,5 @@
 // Interpreter hot path: locals, integer/float arithmetic and branches only,
-// close to the default 2,000,000 fuel budget.
+// spending close to 2,000,000 fuel (the default budget is 5,000,000).
 asset loop {
   size 16x16
   draw {

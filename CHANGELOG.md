@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.7.1 — 2026-10-15
+
+Product/editor/website version: 0.7.1. Source language 0.7, the frozen
+[0.7 specification](spec/iprop-v0.7.md), C API 0.4 and ABI line 0.5 are
+unchanged.
+
+- The compiler and assembler default fuel budget rises from 2,000,000 to
+  5,000,000. Recompiled assets record the new budget in `meta.fuel`; existing
+  binaries keep the budget they were built with. Instruction costs, images,
+  outputs and RNG are unchanged.
+
 ## v0.7.0 — 2026-10-15
 
 Product/editor/website version: 0.7.0. Source language: 0.7. The binary format

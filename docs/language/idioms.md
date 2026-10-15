@@ -95,7 +95,7 @@ becomes `f32` later.
 
 ## Paint runs, not pixels
 
-Every executed instruction spends fuel from the asset's budget (2,000,000 by
+Every executed instruction spends fuel from the asset's budget (5,000,000 by
 default). Filling a 64×64 area costs about 4,200 fuel as one `rect`, 9,600 as
 one `rect` per row, 71,000 as a `pixel` loop and 84,000 with a helper call per
 pixel. Compute each row's extent once and paint it with `rect`; draw outlines

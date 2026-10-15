@@ -103,7 +103,7 @@ struct AsmPart {
 struct Program {
     u32 sizeX = 0, sizeY = 0;
     f32 originX = 0.f, originY = 0.f;
-    u64 fuel = 2000000;
+    u64 fuel = 5000000;
     std::vector<AsmInput> inputs;
     std::vector<AsmOutput> outputs;
     std::vector<AsmFunction> functions;

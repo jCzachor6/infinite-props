@@ -1,5 +1,5 @@
 asset layer_fuel {
-  size 1024x1024
+  size 2048x2048
   draw {
     layer image {}
     surface.paint(image)

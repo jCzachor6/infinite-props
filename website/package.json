@@ -1,6 +1,6 @@
 {
   "name": "iprop-website",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "The Infinite Props website: live examples rendered by the WASM interpreter in the browser, the guide and the documentation.",
   "scripts": {

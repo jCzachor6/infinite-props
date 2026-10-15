@@ -42,7 +42,7 @@ function run(iprop,tool,directory) {
     }
     // All 65,536 alpha pairs, calculated separately with Python Fraction.
     const grid=compile("asset t{size 256x256 draw{layer image(alpha=surface.source_over){for y in 0..256{for x in 0..256{pixel(x,y,rgba(201,4,172,y))pixel(x,y,rgba(17,213,88,x))}}}surface.paint(image,blend=surface.source_over)}}",false,"-grid");
-    fs.writeFileSync(base+".ipa",execFileSync(tool("ipdis"),[grid],{encoding:"utf8"}).replace("fuel=2000000","fuel=10000000"));
+    fs.writeFileSync(base+".ipa",execFileSync(tool("ipdis"),[grid],{encoding:"utf8"}).replace(/fuel=\d+/,"fuel=10000000"));
     execFileSync(tool("ipa"),[base+".ipa","-o",base+"-grid-full.iprop"]);
     assert.deepEqual(generate(base+"-grid-full.iprop").data,fs.readFileSync(path.join(repo,"tests/fixtures/source-over-v0.6.rgba")));++pins;
 
@@ -92,7 +92,7 @@ function run(iprop,tool,directory) {
         assert.throws(()=>iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message);++traps;
     }
     for(const opt of [false,true])for(const source of ["asset t{input i32 v=0 size 1x1 draw{layer image(alpha=surface.source_over){x=1/(v-v)}}}",
-        "asset t{size 1024x1024 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}"])
+        "asset t{size 2048x2048 draw{layer image(alpha=surface.source_over){}surface.paint(image,blend=surface.source_over)}}"])
         trap(compile(source,opt),/divide by zero|fuel exhausted/);
     function reject(data) {
         const binary=base+"-bad.iprop";fs.writeFileSync(binary,data);const native=spawnSync(tool("ipval"),[binary],{encoding:"utf8"});

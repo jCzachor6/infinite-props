@@ -1,6 +1,7 @@
 # `.iprop` Format and Virtual Machine — Specification v0.7
 
-**Status:** Frozen v0.7 contract, released with product 0.7.0 (2026-10-15).
+**Status:** Frozen v0.7 contract, released with product 0.7.0 (2026-10-15);
+product 0.7.1 changes only the compiler's default fuel budget (§4).
 **Scope:** The complete binary format and virtual machine contract, including
 containers, instruction encodings, numeric/RNG/raster kernels, collections,
 samplers, steppers, captured layers, masks and blur. Source syntax is defined
@@ -10,7 +11,7 @@ The format is **unversioned**: the four header bytes after the magic are
 reserved and MUST be zero, in plain files and compressed envelopes alike.
 Binaries written before product 0.7 carry a version there and must be rebuilt
 from source; there is no reader adapter. Product, source, C API and ABI versions are
-independently 0.7.0, 0.7, 0.4 and 0.5. Earlier specifications remain in Git history.
+independently 0.7.1, 0.7, 0.4 and 0.5. Earlier specifications remain in Git history.
 
 ## Contents
 
@@ -199,7 +200,7 @@ signature. Layout (offsets relative to the section start):
 There are no variant/archetype fields or replacement padding. Selection values
 are ordinary declared inputs. Source `i32` inputs use binary U32 tags and
 defaults; a host sees the stored tag and bit pattern, not the source spelling.
-The compiler supplies a default fuel budget of 2,000,000; source syntax has no
+The compiler supplies a default fuel budget of 5,000,000; source syntax has no
 fuel or fixed-emission declaration. Internal resource exports use §32.
 
 ### 4.1 Input entries (uniforms)
@@ -1822,7 +1823,7 @@ The reference implementation applies these bounds before allocation/execution:
 | Mask morphology radius | i32, 0–64 target pixels |
 | Blur sigma | Finite f32, 0–64 input raster pixels |
 
-Metadata fuel MUST be positive; the compiler default is 2,000,000. Root canvas
+Metadata fuel MUST be positive; the compiler default is 5,000,000. Root canvas
 storage is outside the additional generation-data arena. Pool and scope rules,
 logical fuel preflight and fixed accounting are detailed in §23–§35. Hosts may
 impose smaller limits and reject an invocation before execution. Fuel, memory,
@@ -2815,7 +2816,7 @@ Layer begin costs base 1 plus N target pixels cleared, reserved before
 allocation. Paint costs base 1 plus N source pixels visited, reserved before
 scanning, even when pixels are transparent/off-target. Primitive and existing
 part call fuel remain unchanged, including the existing upfront part blit
-reservation. Default fuel remains 2,000,000. Exceeding fuel, arena or active
+reservation. Default fuel remains 5,000,000. Exceeding fuel, arena or active
 scope limits traps without publishing a successful partial image. Trap cleanup
 releases frames, captures, saved targets and all generation resources.
 
@@ -2992,7 +2993,7 @@ Sharing a buffer does not charge it again. Instructions cost one fuel, plus:
 
 View construction and offset have no per-pixel cost. Reserve zeroing and all
 logical scan work before allocation/scanning, with checked u64 counts. Existing
-part/capture costs and the 2,000,000 default fuel stay unchanged. Resources
+part/capture costs and the 5,000,000 default fuel stay unchanged. Resources
 release when the last handle is destroyed and at generation completion/trap;
 a failed run does not return an image.
 
