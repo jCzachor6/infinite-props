@@ -195,6 +195,14 @@ class ButterflyBenchmark {
         context.drawImage(source, 20, 0, source.width - 20, source.height, 128, y, source.width - 20, source.height);
         snapshotContext.drawImage(body, 0, 0);
         rig.append(this.colorGlow(body), body);
+        if (centered) {
+            // A wider halo remains visible beyond the opaque resting wings.
+            const halo = document.createElement("canvas");
+            halo.width = halo.height = 256;
+            halo.className = "butterfly-bird__idle-glow";
+            halo.getContext("2d")!.drawImage(snapshot, 0, 0);
+            butterfly.append(halo);
+        }
         butterfly.append(rig);
         this.snapshots.set(butterfly, snapshot);
         this.flock.append(butterfly);
