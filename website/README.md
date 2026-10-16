@@ -10,15 +10,18 @@ getting-started guide with the documentation, and the source page.
   examples, the main features and the games showcase. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
-  sources are not public; `prepare.sh` copies them in.
+  sources are not public; `prepare.sh` copies them in. Their source commit,
+  binary sizes/hashes and imported-source hashes are recorded in
+  `examples/showcase/showcase-manifest.json`.
   Every tile shows its file and size and keeps its own seed: auto-roll steps
   it up by one at random moments, and ‹ › (or the arrow keys on a focused
   tile) step it by hand. Weapon tiles mark their `tip`/`grip` outputs on
   hover; the fourth portrait cell lists the latest portrait's structured
   outputs. Weapons lean on their enchanted, ornate looks (chosen per seed
   through the declared `quality` and `v` inputs) and glow like in a game: the
-  page renders the emission map (`renderLayer` input 1), blurs it by the `glow`
-  output's sigma and adds it back in passes that follow the gain. The game slots show only ornate, enchanted weapons
+  page requests the crisp sprite (`bloom=0`), renders the emission map
+  (`renderPass=1`), blurs it by the `glow` output's sigma and adds it back in
+  passes that follow the gain. The game slots show only ornate, enchanted weapons
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
   epic (ornate) or legendary (ornate, enchanted and at glow power 4).

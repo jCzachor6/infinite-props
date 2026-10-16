@@ -22,7 +22,7 @@ mkdir -p website/public
 cp "$wasm_dir/iprop.js" "$wasm_dir/iprop.wasm" website/public/
 mkdir -p website/public/showcase
 cp examples/showcase/*.iprop examples/showcase/LICENSE.md website/public/showcase/
-cp examples/showcase/butterfly-benchmark.json website/public/showcase/
+cp examples/showcase/butterfly-benchmark.json examples/showcase/showcase-manifest.json website/public/showcase/
 mkdir -p website/public/spec
 for old in website/public/spec/iprop-v*.md website/public/reference/optimizations*.md website/public/reference/optimization-acceptance*.md; do
   if [ -f "$old" ]; then rm -f "$old"; fi

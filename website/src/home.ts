@@ -6,7 +6,7 @@
 // enchanted ornate weapon each, as a silhouette until hovered.
 //
 // Weapons glow the way a game host would make them: the pack renders its
-// emission map (input `renderLayer` 1) and reports the bloom in its `glow` output
+// emission map (input `renderPass` 1) and reports the bloom in its `glow` output
 // {palette, power, sigma, gain}; the page blurs the map by sigma and adds it
 // over the sprite.
 //
@@ -46,6 +46,7 @@ declare global {
 
 const SEED_LIMIT = 0xffffffff;
 const files = new Map<string, Uint8Array>();
+const WEAPON_ASSETS = new Set(["sword", "axe", "spear", "staff"]);
 let iprop: IpropModule | null = null;
 
 function randomSeed() {
@@ -54,7 +55,9 @@ function randomSeed() {
 
 // Renders one asset; the RGBA view into the module heap is copied at once.
 function render(asset: string, seed: number, uniforms: Uniforms = {}) {
-    const result = iprop!.generate(files.get(asset)!, seed >>> 0, 0, 0, uniforms);
+    // The browser composites weapon bloom from a separate emission pass.
+    const inputs = WEAPON_ASSETS.has(asset) ? { bloom: 0, ...uniforms } : uniforms;
+    const result = iprop!.generate(files.get(asset)!, seed >>> 0, 0, 0, inputs);
     const image = new ImageData(new Uint8ClampedArray(result.data), result.width, result.height);
     return { image, outputs: result.outputs };
 }
@@ -107,7 +110,7 @@ function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
     const glow = glowOf(outputs);
     canvas.hidden = !glow || glow.y <= 0;
     if (!glow || canvas.hidden) return;
-    paint(emission, render(asset, seed, { ...uniforms, renderLayer: 1 }).image);
+    paint(emission, render(asset, seed, { ...uniforms, renderPass: 1 }).image);
     canvas.width = emission.width + 2 * GLOW_PAD;
     canvas.height = emission.height + 2 * GLOW_PAD;
     const context = canvas.getContext("2d")!;
