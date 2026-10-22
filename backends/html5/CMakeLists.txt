@@ -38,12 +38,12 @@ target_link_libraries(iprop_html5 PRIVATE iprop_runtime embind)
 
 set_target_properties(iprop_html5 PROPERTIES
     OUTPUT_NAME "iprop"
-    LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createIpropModule -sENVIRONMENT=web,node")
+    LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createIpropModule -sENVIRONMENT=web,worker,node")
 
 target_link_options(iprop_html5 PRIVATE
     "-fexceptions"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=createIpropModule"
-    "-sENVIRONMENT=web,node"
+    "-sENVIRONMENT=web,worker,node"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sNO_EXIT_RUNTIME=1")

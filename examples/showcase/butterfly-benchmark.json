@@ -1,0 +1,34 @@
+{
+  "name": "Butterfly benchmark",
+  "product_version": "0.7.1",
+  "width": 256,
+  "height": 256,
+  "parts": [
+    {
+      "id": "forewing",
+      "file": "butterfly-forewing.iprop",
+      "bytes": 20186,
+      "sha256": "a0ec6313d5cb7e0fc7885b17098752bfb532c6bd1ed467f8eb5707c5589fefd5"
+    },
+    {
+      "id": "hindwing",
+      "file": "butterfly-hindwing.iprop",
+      "bytes": 20186,
+      "sha256": "3b79b71daf3bef496539529daa038d5a465c08095139f42f01b6c9071beea5b6"
+    },
+    {
+      "id": "body",
+      "file": "butterfly-body.iprop",
+      "bytes": 3119,
+      "sha256": "6776856a337184b513517612d4bf52ed7f8b30b12b0f95f57be4d12f8f6d04e6"
+    }
+  ],
+  "source_sha256": {
+    "body.ips": "bd59fb535a95a1e5210581191018775f866a75e8012c70d9a841e95145179f80",
+    "butterfly.ips": "0a77e4700b2d83a52f8e9975a5bd847e7c7e7490eab964478bb4b5d4d5f19461",
+    "forewing.ips": "1086357db6e40656684f691ef1fedf4e2cbc6fb7d594b1c6413e88148455727f",
+    "hindwing.ips": "57419fb6b984068ea2b14f1ad3d2c0b3d1b71e0d72bf696e4f98ef7c1874698d",
+    "scales.ips": "7db15fb13b19a61d7ce6be1647ced43b79078f8339a49dcc0ac3b0d4b67e8970",
+    "wing.ips": "6146c674b62c2e7555be025780c4de44969fca5be4e6cf7968b2def9ef945440"
+  }
+}

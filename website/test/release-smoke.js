@@ -8,6 +8,7 @@ const vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
 const crypto = require("node:crypto");
 const { decodePng } = require("../../backends/html5/test/png");
+const checkButterflyWorker = require("./butterfly-worker");
 
 const root = path.resolve(__dirname, "../..");
 const site = path.resolve(process.argv[2] || path.join(root, "website/dist"));
@@ -123,7 +124,8 @@ async function main() {
             }
         }
     } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
-    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images)`);
+    const butterflies = await checkButterflyWorker(site);
+    console.log(`website release smoke: PASS (${pages} pages, local links/search anchors, ${docs.builtin_count} documented builtins, ${docs.example_count} language examples, ${specs.length} spec, 24 recipes, ${showcase.length} showcase assets, ${comparisons} exact native/WASM images, ${butterflies} HTTP/HTTPS butterflies with asset integrity checks)`);
 }
 
 main().catch(error => { console.error(error); process.exit(1); });

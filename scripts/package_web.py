@@ -46,6 +46,7 @@ def main():
                 shutil.copytree(documentation, prefix, dirs_exist_ok=True)
             verify_documentation(prefix, version, commit, root=ROOT, compiler=compiler, clean=True)
             shutil.copy2(ROOT / "LICENSE", prefix / "LICENSE")
+            shutil.copytree(ROOT / "licenses", prefix / "licenses", dirs_exist_ok=True)
             (prefix / "licenses").mkdir(exist_ok=True)
             shutil.copy2(ROOT / "third_party/zlib-LICENSE.txt", prefix / "licenses/zlib-LICENSE.txt")
             write_json(prefix / "release.json", {**manifest, "kind": kind})

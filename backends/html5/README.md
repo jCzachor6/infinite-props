@@ -2,7 +2,7 @@
 
 The reference CPU interpreter compiled to WebAssembly, with a small
 JavaScript API: `generate(fileBytes, inputs) -> {width, height, data,
-outputs}`. The browser executes the exact same validated bytecode as the
+outputs, fuel}`. The browser executes the exact same validated bytecode as the
 desktop tools, so every frame is byte-identical to the desktop output.
 
 ## Layout
@@ -92,6 +92,10 @@ const glow = iprop.generate(bytes, { seed: 26, uniforms: { v: 2, renderLayer: 1,
 `GenerationResult` (points/rects/circles per named slot). The raw module
 function is `generate(fileBytes, seed, sizeX, sizeY[,
 uniforms])`.
+
+`fuel` contains the successful invocation's `budget`, `used` and `remaining`
+instruction counts, read directly from the VM. Wall-clock time is measured
+by the host and is independent of these deterministic counts.
 
 ## Notes
 

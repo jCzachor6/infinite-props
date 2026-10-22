@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Infinite Props: seed-based procedural 2D assets</title>
-<meta name="description" content="A portable binary format and open-source toolchain for seed-based procedural 2D assets: one small file, endless props, the same pixels on every platform.">
+<meta name="description" content="A portable binary format, open runtime and toolchain for seed-based procedural 2D assets: one small file, endless props, the same pixels on every platform.">
 <meta name="theme-color" content="#13161a">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/src/styles/site.css">
@@ -37,7 +37,18 @@
   <section class="section" id="what">
     <div class="container intro">
       <h2 class="section-title">What is <b>Infinite Props</b>?</h2>
-      <p><strong>Infinite Props</strong> is a portable binary format and an open-source toolchain for
+      <ol class="pipeline pipeline--wide" aria-label="From source to pixels">
+        <li><b>.ips</b> source</li>
+        <li><b>ipc</b> compiler</li>
+        <li><b>.iprop</b> binary</li>
+        <li class="pipeline__runtime"><a href="docs/backends.html" aria-label="Runtimes: WebAssembly in the browser, the C API, Godot, SFML and the CLI">
+          <span class="ticker" aria-hidden="true"><span class="ticker__track">
+            <span><b>WASM</b> runtime</span><span><b>C API</b> · C99</span><span><b>Godot</b> extension</span><span><b>SFML</b> host</span><span><b>ipgen</b> CLI</span><span><b>WASM</b> runtime</span>
+          </span></span>
+        </a></li>
+        <li class="pipeline__out"><b>∞</b> assets</li>
+      </ol>
+      <p><strong>Infinite Props</strong> is a portable binary format, an open runtime and a toolchain for
         <strong>seed-based procedural 2D assets</strong>. You describe a prop once in the small
         <code>.ips</code> language, compile it to a self-contained <code>.iprop</code> file, and a tiny
         sandboxed virtual machine turns any seed into pixels, bit for bit the same in the browser,
@@ -49,6 +60,218 @@
         <a class="btn" href="source.html">Source</a>
         <a class="btn" href="#">Asset store <span class="pill">soon</span></a>
       </div>
+    </div>
+  </section>
+
+  <section class="section first-prop" id="first-prop" aria-labelledby="first-prop-title">
+    <div class="container first-prop__grid">
+      <div class="first-prop__text">
+        <p class="eyebrow">The simplest example</p>
+        <h2 class="section-title" id="first-prop-title">One program, <b>a whole top&#8209;down forest</b></h2>
+        <p class="lead">A program does not describe one picture. It describes a <em>kind</em> of thing, and a seed picks one. This tree is two small files: <code>tree.ips</code> lays rings of leaf clumps from the rim to the top, and <code>clump.ips</code>, a part of its own, draws one clump lit from the upper left in a five-tone ramp, over its own shadow. Leaves draw from seven colour ranges: deep, olive, lime and blue-green most of the time, now and then autumn reds, oranges and golds.</p>
+        <div class="code-tabs" data-code-tabs>
+          <div class="code-tabs__bar">
+            <div role="tablist" aria-label="The tree's source files">
+            <button class="code-tabs__tab" type="button" role="tab" id="code-tab-tree" aria-controls="code-panel-tree" aria-selected="true" data-file="intro/tree.ips">tree.ips</button>
+            <button class="code-tabs__tab" type="button" role="tab" id="code-tab-clump" aria-controls="code-panel-clump" aria-selected="false" tabindex="-1" data-file="intro/clump.ips">clump.ips <small>part</small></button>
+            </div>
+            <a class="code-tabs__download" href="intro/tree.ips" download data-code-download>Download</a>
+          </div>
+          <pre class="code-sample" role="tabpanel" id="code-panel-tree" aria-labelledby="code-tab-tree" tabindex="0"><code><span class="tok-k">import</span> clump <span class="tok-k">from</span> <span class="tok-q">"clump.ips"</span>
+<span class="tok-c">// A tree from above: rings of leaf clumps, the rim first and the</span>
+<span class="tok-c">// top last.</span>
+<span class="tok-k">asset</span> Tree {
+  <span class="tok-k">size</span> <span class="tok-n">176x176</span>
+  <span class="tok-k">origin</span> <span class="tok-n">88</span>,<span class="tok-n">88</span>
+  <span class="tok-c">// Mostly greens (deep, olive, lime, blue-green), now and then</span>
+  <span class="tok-c">// autumn reds, oranges and golds.</span>
+  <span class="tok-k">palette</span> leaves = [<span class="tok-s" style="--swatch:#1f5a3a">#1f5a3a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#3f8a4c">#3f8a4c</span>, <span class="tok-s" style="--swatch:#4a6a24">#4a6a24</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#8aa03a">#8aa03a</span>,
+                    <span class="tok-s" style="--swatch:#5a9a2a">#5a9a2a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#a8c840">#a8c840</span>, <span class="tok-s" style="--swatch:#2a6a6a">#2a6a6a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#5a9a7a">#5a9a7a</span>,
+                    <span class="tok-s" style="--swatch:#8a2a24">#8a2a24</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#c8402a">#c8402a</span>, <span class="tok-s" style="--swatch:#c0581e">#c0581e</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#e8902a">#e8902a</span>,
+                    <span class="tok-s" style="--swatch:#c89a20">#c89a20</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#f0d050">#f0d050</span>]
+  <span class="tok-k">const</span> <span class="tok-k">distribution</span> kinds = <span class="tok-k">weighted</span> {<span class="tok-n">0</span>: <span class="tok-n">22</span>, <span class="tok-n">1</span>: <span class="tok-n">18</span>, <span class="tok-n">2</span>: <span class="tok-n">18</span>,
+    <span class="tok-n">3</span>: <span class="tok-n">14</span>, <span class="tok-n">4</span>: <span class="tok-n">9</span>, <span class="tok-n">5</span>: <span class="tok-n">10</span>, <span class="tok-n">6</span>: <span class="tok-n">9</span>}
+
+  <span class="tok-k">draw</span> {
+    R = <span class="tok-n">34.0</span> <span class="tok-k">to</span> <span class="tok-n">58.0</span> <span class="tok-k">with</span> gaussian(mean=<span class="tok-n">46.0</span>, sigma=<span class="tok-n">5.0</span>)
+    leaf = leaves[<span class="tok-n">0</span> <span class="tok-k">to</span> <span class="tok-n">6</span> <span class="tok-k">with</span> kinds].pick()
+    <span class="tok-k">for</span> ring <span class="tok-k">in</span> <span class="tok-n">0</span>..<span class="tok-n">3</span> {
+      n = max(<span class="tok-n">1</span>, (<span class="tok-n">6</span> <span class="tok-k">to</span> <span class="tok-n">8</span>) - ring * <span class="tok-n">3</span>)
+      turn = <span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">6.2832</span>
+      <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..n {
+        a = turn + float(i) * <span class="tok-n">6.2832</span> / float(n)
+        a = a + (-<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>)
+        d = R * (<span class="tok-n">0.6</span> - float(ring) * <span class="tok-n">0.3</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
+        r = R * (<span class="tok-n">0.44</span> - float(ring) * <span class="tok-n">0.06</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
+        clump.draw(hash(seed ^ (ring * <span class="tok-n">16</span> + i)),
+                   at={<span class="tok-n">88.0</span> + cos(a) * d, <span class="tok-n">88.0</span> + sin(a) * d},
+                   r=r, lift=-(cos(a) + sin(a)) * <span class="tok-n">0.2</span> * d / R,
+                   leaf=<span class="tok-t">color</span>.shade(leaf, -<span class="tok-n">8</span> <span class="tok-k">to</span> <span class="tok-n">8</span>))
+      }
+    }
+  }
+}</code></pre>
+          <pre class="code-sample" role="tabpanel" id="code-panel-clump" aria-labelledby="code-tab-clump" tabindex="0" hidden><code><span class="tok-c">// One clump of leaves from above, lit from the upper left: lobes</span>
+<span class="tok-c">// and leaves in a five-tone ramp, over their own shadow.</span>
+<span class="tok-k">asset</span> Clump {
+  <span class="tok-k">size</span> <span class="tok-n">64x64</span>
+  <span class="tok-k">origin</span> <span class="tok-n">32</span>,<span class="tok-n">32</span>
+  <span class="tok-k">input</span> <span class="tok-t">f32</span> r = <span class="tok-n">12.0</span>
+  <span class="tok-k">input</span> <span class="tok-t">f32</span> lift = <span class="tok-n">0.0</span>
+  <span class="tok-k">input</span> <span class="tok-t">color</span> leaf = <span class="tok-s" style="--swatch:#4a8a3a">#4a8a3a</span>
+
+  <span class="tok-k">draw</span> {
+    <span class="tok-c">// Five tones from a cool shadow to a warm light.</span>
+    tones = <span class="tok-k">stepper</span>(<span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#0c2238">#0c2238</span>, <span class="tok-n">0.5</span>) <span class="tok-k">to</span>
+                    <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#fff6b0">#fff6b0</span>, <span class="tok-n">0.4</span>)).pick(<span class="tok-n">5</span>)
+    <span class="tok-k">layer</span> lobes(alpha=surface.source_over) {
+      body = r * <span class="tok-n">0.72</span>
+      oval(<span class="tok-n">32.0</span>, <span class="tok-n">32.0</span>, body, body, tone(tones, <span class="tok-n">0.3</span> + lift))
+      <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..<span class="tok-n">9</span> {
+        a = float(i) * <span class="tok-n">0.7</span> + (-<span class="tok-n">0.3</span> <span class="tok-k">to</span> <span class="tok-n">0.3</span>)
+        x = <span class="tok-n">32.0</span> + cos(a) * r * <span class="tok-n">0.66</span>
+        y = <span class="tok-n">32.0</span> + sin(a) * r * <span class="tok-n">0.66</span>
+        lr = r * (<span class="tok-n">0.28</span> <span class="tok-k">to</span> <span class="tok-n">0.4</span>)
+        lit = lift + <span class="tok-n">0.35</span> - (x + y - <span class="tok-n">64.0</span>) / r * <span class="tok-n">0.1</span>
+        oval(x, y, lr, lr, tone(tones, lit))
+      }
+      <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..int(r * r * <span class="tok-n">0.2</span>) {
+        a = <span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">6.2832</span>
+        d = sqrt(<span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">1.0</span>) * r * <span class="tok-n">0.85</span>
+        x = <span class="tok-n">32.0</span> + cos(a) * d
+        y = <span class="tok-n">32.0</span> + sin(a) * d
+        lit = lift + <span class="tok-n">0.4</span> - (x + y - <span class="tok-n">64.0</span>) / r * <span class="tok-n">0.4</span>
+        s = <span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.8</span>
+        j = -<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>
+        oval(x, y, s, s * <span class="tok-n">0.8</span>, tone(tones, lit + j))
+      }
+    }
+    rim = <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#040a10">#040a10</span>, <span class="tok-n">0.75</span>)
+    surface.paint(mask.offset(mask.from(lobes), <span class="tok-n">1</span>, <span class="tok-n">2</span>), rim)
+    surface.paint(lobes)
+  }
+
+  <span class="tok-c">// The nearest of the five tones.</span>
+  tone(tones: <span class="tok-t">list</span>&lt;<span class="tok-t">color</span>&gt;, t: <span class="tok-t">f32</span>) -&gt; <span class="tok-t">color</span> {
+    <span class="tok-k">return</span> tones[int(clamp(t, <span class="tok-n">0.0</span>, <span class="tok-n">1.0</span>) * <span class="tok-n">4.0</span> + <span class="tok-n">0.5</span>)]
+  }
+}</code></pre>
+        </div>
+      </div>
+      <div class="first-prop__live">
+        <div class="forest" data-forest>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+          <figure class="forest__tree"><canvas width="144" height="144" aria-hidden="true"></canvas><figcaption>seed …</figcaption></figure>
+        </div>
+        <div class="forest__foot">
+          <p class="forest__note">Compiled into one <span data-forest-size>1.1 KB</span> <code>.iprop</code>, rendered right here: every tree is one seed.</p>
+          <button class="btn" type="button" data-forest-roll disabled>Roll new trees</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--band butterfly-benchmark" id="butterfly-benchmark" aria-labelledby="butterfly-title" data-butterfly-benchmark>
+    <div class="container">
+      <div class="section-head butterfly-benchmark__heading">
+        <div>
+          <p class="butterfly-benchmark__eyebrow">A little code. A lot of butterflies.</p>
+          <h2 class="section-title" id="butterfly-title">Butterfly benchmark</h2>
+          <p class="section-sub">Three procedural parts become one butterfly. Release fifty and see what your browser can do.</p>
+        </div>
+        <span class="butterfly-benchmark__size"><strong data-butterfly-total-size>…</strong><span>for the whole model</span><span class="butterfly-benchmark__resolution">256 × 256 px</span></span>
+      </div>
+
+      <div class="butterfly-benchmark__layout">
+        <div class="butterfly-benchmark__model">
+          <div class="butterfly-stage" data-butterfly-stage aria-label="Procedural butterfly preview and flight area">
+            <div class="butterfly-stage__topline"><span><i aria-hidden="true"></i> Generated, not stored</span><code data-butterfly-seed>seed —</code></div>
+            <span class="butterfly-stage__loading" data-butterfly-loading>Preparing the wings…</span>
+            <div class="butterfly-stage__perch" aria-hidden="true"></div>
+            <div class="butterfly-stage__flock" data-butterfly-flock></div>
+            <div class="butterfly-stage__caption"><span>256 × 256</span><span>5 visible layers · 3 files</span></div>
+          </div>
+          <div class="butterfly-parts" aria-label="The three model parts">
+            <a class="butterfly-part" href="showcase/butterfly-forewing.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--fore" aria-hidden="true">01</span>
+              <span><strong>Forewings <small>× 2</small></strong><span>Front wings &amp; antennae</span></span>
+              <code data-butterfly-size="forewing">…</code>
+            </a>
+            <a class="butterfly-part" href="showcase/butterfly-hindwing.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--hind" aria-hidden="true">02</span>
+              <span><strong>Hindwings <small>× 2</small></strong><span>Rear wings &amp; pattern</span></span>
+              <code data-butterfly-size="hindwing">…</code>
+            </a>
+            <a class="butterfly-part" href="showcase/butterfly-body.iprop" download>
+              <span class="butterfly-part__mark butterfly-part__mark--body" aria-hidden="true">03</span>
+              <span><strong>Body <small>× 1</small></strong><span>Fur, head &amp; abdomen</span></span>
+              <code data-butterfly-size="body">…</code>
+            </a>
+          </div>
+          <p class="butterfly-benchmark__explanation">Each wing part generates one side, then the browser mirrors it. The body sits on top. Wings flap independently around the body as every new butterfly takes flight. Each seed draws a fresh combination of shapes, colours and patterns from the same three files. The body takes its proportions and colour cues from the wings, so the parts fit together. Mirroring reuses the generated wing images, keeping both the download and the amount of generation work small. Benchmark 50x creates fifty fresh butterflies and reports their average generation time alongside the average fuel used by each part.</p>
+        </div>
+
+        <aside class="butterfly-results" aria-label="Live benchmark results">
+          <div class="butterfly-results__header"><span>Live benchmark</span><span class="butterfly-results__state" data-butterfly-state>Loading</span></div>
+          <div class="butterfly-results__count"><output data-butterfly-count>0</output><span>/ 50</span></div>
+          <p class="butterfly-results__label">butterflies generated</p>
+          <div class="butterfly-results__progress" role="progressbar" aria-label="Butterflies generated" aria-valuemin="0" aria-valuemax="50" aria-valuenow="0" data-butterfly-progress><span></span></div>
+          <div class="butterfly-results__time"><span>Avg generation</span><strong><output data-butterfly-average>—</output> <small>ms / butterfly</small></strong></div>
+          <table class="butterfly-fuel">
+            <thead><tr><th scope="col">Part</th><th scope="col">Avg fuel</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--fore" aria-hidden="true"></i>Forewing</th><td><output data-butterfly-fuel="forewing">—</output></td></tr>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--hind" aria-hidden="true"></i>Hindwing</th><td><output data-butterfly-fuel="hindwing">—</output></td></tr>
+              <tr><th scope="row"><i class="butterfly-dot butterfly-dot--body" aria-hidden="true"></i>Body</th><td><output data-butterfly-fuel="body">—</output></td></tr>
+            </tbody>
+          </table>
+          <div class="butterfly-results__actions" data-butterfly-actions>
+            <button class="btn btn--legendary butterfly-results__button" type="button" data-butterfly-run disabled>
+              <span data-butterfly-run-label>Benchmark 50x</span><span class="butterfly-results__run-icon" aria-hidden="true">↗</span>
+            </button>
+            <button class="btn btn--legendary butterfly-results__button butterfly-results__auto" type="button" data-butterfly-auto aria-pressed="false" title="Start automatic benchmarks" hidden>
+              <span class="butterfly-results__auto-dot" aria-hidden="true"></span><span>Auto roll</span>
+            </button>
+          </div>
+          <p class="butterfly-results__status" role="status" data-butterfly-status>Loading three parts and the interpreter…</p>
+          <p class="butterfly-results__note"><strong>This benchmark runs in your browser via WebAssembly (WASM).</strong> Native builds can generate the same model significantly faster, depending on hardware and build settings. Times cover generation of all three parts. The preview, download and flight animation are excluded. Fuel is measured per part, before mirroring.</p>
+        </aside>
+      </div>
+      <noscript><p>Enable JavaScript to generate the butterfly and run the benchmark.</p></noscript>
     </div>
   </section>
 
@@ -216,6 +439,41 @@
     </div>
   </section>
 
+  <section class="section section--band" id="games">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Made with Infinite Props</p>
+        <h2 class="section-title">Games showcase</h2>
+        <p class="lead">Three slots, one game. The other two are saved for the most creative, craziest things anyone builds on a seed. The wilder the idea, the better its chances.</p>
+      </div>
+      <div class="games">
+        <a class="game-card" href="https://infinite-props.itch.io/infinite-formula-one" rel="noopener external">
+          <span class="pill game-slot__tag">Showcase #1</span>
+          <div class="game-slot__art"><img src="games/infinite-formula-one.webp" width="1280" height="800" alt="Infinite Formula One: three Formula One cars on a night grid in the rain, under the game's title" loading="lazy" decoding="async"></div>
+          <h3>Infinite Formula One</h3>
+          <p>A top-down Formula One race where every car, circuit, driver, crowd and explosion is generated from a seed in your browser: 41 programs, not one image file.</p>
+          <span class="game-card__play">Play on itch.io <span aria-hidden="true">→</span></span>
+        </a>
+        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
+          <span class="pill game-slot__tag">Slot 02 · open</span>
+          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="sword" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
+          <h3>Your game here</h3>
+          <p>A roguelike where no two swords have ever looked alike.</p>
+        </article>
+        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
+          <span class="pill game-slot__tag">Slot 03 · open</span>
+          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="staff" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
+          <h3>Your game here</h3>
+          <p>The legendary staff nobody has rolled yet is somewhere in your seed range.</p>
+        </article>
+      </div>
+      <div class="games-cta">
+        <p><strong>The showcase is waiting for your game.</strong> Build something wild with Infinite Props and send a link. The boldest ideas land on this wall.</p>
+        <a class="btn btn--primary" href="https://github.com/jCzachor6/infinite-props/issues/new?title=Showcase%3A%20" rel="noopener external">Submit your game</a>
+      </div>
+    </div>
+  </section>
+
   <section class="section" id="features">
     <div class="container">
       <div class="section-head">
@@ -286,39 +544,6 @@
     </div>
   </section>
 
-  <section class="section section--band" id="games">
-    <div class="container">
-      <div class="section-head">
-        <p class="eyebrow">Made with Infinite Props</p>
-        <h2 class="section-title">Games showcase</h2>
-        <p class="lead">Three slots, zero games. For now. They are saved for the most creative, craziest things anyone builds on a seed. The wilder the idea, the better its chances.</p>
-      </div>
-      <div class="games">
-        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
-          <span class="pill game-slot__tag">Slot 01 · open</span>
-          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="axe" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
-          <h3>Your game here</h3>
-          <p>An armoury of legendary axes, and not one of them drawn by hand.</p>
-        </article>
-        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
-          <span class="pill game-slot__tag">Slot 02 · open</span>
-          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="sword" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
-          <h3>Your game here</h3>
-          <p>A roguelike where no two swords have ever looked alike.</p>
-        </article>
-        <article class="game-slot" tabindex="0" aria-label="Open slot: reveal the legendary weapon">
-          <span class="pill game-slot__tag">Slot 03 · open</span>
-          <div class="game-slot__art"><div class="game-slot__sprite"><canvas data-silhouette="staff" width="96" height="96" aria-hidden="true"></canvas><canvas class="glow" aria-hidden="true" hidden></canvas></div><span class="game-slot__q" aria-hidden="true">?</span></div>
-          <h3>Your game here</h3>
-          <p>The legendary staff nobody has rolled yet is somewhere in your seed range.</p>
-        </article>
-      </div>
-      <div class="games-cta">
-        <p><strong>The showcase is waiting for your game.</strong> Build something wild with Infinite Props and send a link. The boldest ideas land on this wall.</p>
-        <a class="btn btn--primary" href="https://github.com/jCzachor6/infinite-props/issues/new?title=Showcase%3A%20" rel="noopener external">Submit your game</a>
-      </div>
-    </div>
-  </section>
   <dialog class="drop" data-drop aria-labelledby="drop-title" tabindex="-1">
     <div class="case" data-case>
       <p class="case__title">Weapon case <span class="pill">guaranteed legendary</span></p>

@@ -5,10 +5,14 @@ packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64).
 
 Only the binaries live here; their `.ips` sources are kept outside this
-repository. They are compiled by product 0.7, in the unversioned format, from private sources migrated from props
-commit `30a7dd6`. Selection is implemented by ordinary inputs: `v` selects
+repository. They are compiled by product 0.7.1, in the unversioned format,
+from props commit `6697876`. The compiler's default fuel budget is
+5,000,000. `showcase-manifest.json` records the full source commit, every
+binary's byte size and SHA-256, and the hashes of all imported sources. Selection is implemented by ordinary inputs: `v` selects
 authored styles and `a` selects an authored class where declared; default 0
-rolls from the seed. Weapons use `renderLayer` for color/emission selection.
+rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
+native glow. The website uses `bloom=0` and adds its own blurred emission
+pass (`renderPass=1`).
 The runtime provides no variant/archetype counts or selectors.
 
 ```sh

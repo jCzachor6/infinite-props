@@ -9,7 +9,7 @@
 // `uniforms` maps declared input names to numbers (u32, f32) or "#RRGGBB" /
 // "#RRGGBBAA" colour strings, like `ipgen --uniform`; omitted inputs keep
 // their declared defaults.
-// generate() returns { width, height, data (Uint8Array RGBA), outputs }.
+// generate() returns { width, height, data (Uint8Array RGBA), outputs, fuel }.
 // `data` is a copy, so results stay valid across calls.
 
 (function (root, factory) {
@@ -42,6 +42,7 @@
                         height: result.height,
                         data: new Uint8Array(result.data),
                         outputs: result.outputs,
+                        fuel: result.fuel,
                     };
                 }
 

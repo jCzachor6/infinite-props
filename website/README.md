@@ -7,18 +7,28 @@ getting-started guide with the documentation, and the source page.
 ## Pages
 
 - **Home** (`index.html`): the hero, "What is Infinite Props?", the live
-  examples, the main features and the games showcase. The examples are the
+  examples (opening with the simplest one: a tree of two files,
+  `public/intro/tree.ips` and its part `clump.ips`, shown and downloadable
+  beside a forest of 36 seeds (18 on a phone) with a re-roll button; recompile
+  `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop` after editing
+  them, and paste the new source into the tabs in `index.html`), the games
+  showcase and the main features. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
-  sources are not public; `prepare.sh` copies them in.
+  sources are not public; `prepare.sh` copies them in. Their source commit,
+  binary sizes/hashes and imported-source hashes are recorded in
+  `examples/showcase/showcase-manifest.json`.
   Every tile shows its file and size and keeps its own seed: auto-roll steps
   it up by one at random moments, and ‹ › (or the arrow keys on a focused
   tile) step it by hand. Weapon tiles mark their `tip`/`grip` outputs on
   hover; the fourth portrait cell lists the latest portrait's structured
   outputs. Weapons lean on their enchanted, ornate looks (chosen per seed
   through the declared `quality` and `v` inputs) and glow like in a game: the
-  page renders the emission map (`renderLayer` input 1), blurs it by the `glow`
-  output's sigma and adds it back in passes that follow the gain. The game slots show only ornate, enchanted weapons
+  page requests the crisp sprite (`bloom=0`), renders the emission map
+  (`renderPass=1`), blurs it by the `glow` output's sigma and adds it back in
+  passes that follow the gain. The games showcase's first slot is taken by
+  Infinite Formula One (`public/games/infinite-formula-one.webp`, linking to
+  its itch.io page); the open slots show only ornate, enchanted weapons
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
   epic (ornate) or legendary (ornate, enchanted and at glow power 4).
@@ -29,6 +39,21 @@ getting-started guide with the documentation, and the source page.
   idle time; with reduced motion the strip is skipped. The share link
   `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
   the seed alone.
+  Second, between the tree example and the live examples, **Butterfly
+  benchmark** (its live results on the left of the model; below it on a
+  phone) composes a 256×256
+  butterfly from three compiled programs: forewing, hindwing and body.
+  Each wing is generated once and mirrored; five canvas layers animate
+  independently on the page. A dedicated worker keeps WASM generation off
+  the animation thread. The button releases the preview, then generates and
+  releases 50 fresh seeds in sequence, showing the completed count, mean
+  generation time and mean VM fuel for each part. Preview generation,
+  downloads and flight time are excluded from the averages. Reduced motion
+  replaces flight and flapping with a short fade.
+  The files and their byte sizes/hashes are in
+  `examples/showcase/butterfly-benchmark.json`; `prepare.sh` copies them with
+  the existing showcase assets. The WASM build exports its actual VM fuel
+  counters and supports web workers.
 - **Get started** (`docs/getting-started.html`) with the documentation
   pages beside it: the `.ips` language reference, the binary format, the
   backends and the FAQ. A client-side section search sits in the docs
@@ -97,6 +122,8 @@ this complete pipeline in its WASM job.
 | `templates/partials/` | the header, footer and docs sidebar |
 | `templates/language.html` | the presentation shell for the generated handbook |
 | `src/home.ts` | the live examples, the outputs card and the game slots |
+| `src/butterfly.ts` | benchmark controls, live averages and canvas-part flight animation |
+| `public/butterfly-worker.js` | three-part WASM generation and measured fuel/time |
 | `src/site.ts` | the header and the mobile menu |
 | `src/styles/site.css` | every style of the site |
 | `scripts/build-docs.mjs` | Markdown rendering and generated search anchors |
