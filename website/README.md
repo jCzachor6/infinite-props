@@ -7,7 +7,12 @@ getting-started guide with the documentation, and the source page.
 ## Pages
 
 - **Home** (`index.html`): the hero, "What is Infinite Props?", the live
-  examples, the main features and the games showcase. The examples are the
+  examples (opening with the simplest one: a tree of two files,
+  `public/intro/tree.ips` and its part `clump.ips`, shown and downloadable
+  beside a forest of 36 seeds (18 on a phone) with a re-roll button; recompile
+  `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop` after editing
+  them, and paste the new source into the tabs in `index.html`), the games
+  showcase and the main features. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
   sources are not public; `prepare.sh` copies them in. Their source commit,
@@ -34,7 +39,9 @@ getting-started guide with the documentation, and the source page.
   idle time; with reduced motion the strip is skipped. The share link
   `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
   the seed alone.
-  Below the legendary roll, **Butterfly benchmark** composes a 256×256
+  Second, between the tree example and the live examples, **Butterfly
+  benchmark** (its live results on the left of the model; below it on a
+  phone) composes a 256×256
   butterfly from three compiled programs: forewing, hindwing and body.
   Each wing is generated once and mirrored; five canvas layers animate
   independently on the page. A dedicated worker keeps WASM generation off

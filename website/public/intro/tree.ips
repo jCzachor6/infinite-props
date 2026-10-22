@@ -1,0 +1,35 @@
+import clump from "clump.ips"
+// A tree from above: rings of leaf clumps, the rim first and the
+// top last, under a long soft shadow.
+asset Tree {
+  size 176x176
+  origin 88,88
+  output rect collider
+  palette leaves = [#4f9a3a, #3d8a40, #6aa83a, #2f7a4a,
+                    #5a9a2c, #d0652a, #e0a52a, #f0a0c0]
+
+  draw {
+    R = 34.0 to 58.0 with gaussian(mean=46.0, sigma=5.0)
+    leaf = leaves[index(8)]
+    layer crown(alpha=surface.source_over) {
+      for ring in 0..3 {
+        n = max(1, (6 to 8) - ring * 3)
+        turn = 0.0 to 6.2832
+        for i in 0..n {
+          a = turn + float(i) * 6.2832 / float(n)
+          a = a + (-0.25 to 0.25)
+          d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15)
+          r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
+          clump.draw(hash(seed ^ (ring * 16 + i)),
+                     at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
+                     r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
+                     leaf=color.shade(leaf, -8 to 8))
+        }
+      }
+    }
+    shadow = mask.offset(mask.from(crown), 10, 14).blur(4.0)
+    surface.paint(shadow, #0000004d)
+    surface.paint(crown)
+    collider = {82.0, 82.0, 12.0, 12.0}
+  }
+}

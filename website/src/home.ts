@@ -466,6 +466,78 @@ for (const slot of Array.from(document.querySelectorAll<HTMLElement>(".game-slot
     });
 }
 
+// ---- the simplest example: one program, a forest --------------------------------------
+
+// A tree (intro/tree.iprop, from tree.ips and its part clump.ips), drawn for
+// a fresh seed per cell.
+const forest = document.querySelector<HTMLElement>("[data-forest]");
+const forestRoll = document.querySelector<HTMLButtonElement>("[data-forest-roll]");
+
+// Only the cells shown are drawn: 36 on a wide screen, 18 on a phone.
+const wideForest = window.matchMedia("(min-width: 48rem)");
+
+function drawForest() {
+    if (!forest || !files.has("tree")) return;
+    const cells = Array.from(forest.querySelectorAll<HTMLElement>(".forest__tree"))
+        .filter((cell) => cell.offsetParent !== null);
+    if (forestRoll) forestRoll.textContent = `Roll ${cells.length} new trees`;
+    for (const cell of cells) {
+        const seed = (Math.random() * SEED_LIMIT) >>> 0;
+        // The crown and its shadow fill the middle 144 of the 176 canvas.
+        const canvas = cell.querySelector("canvas")!;
+        canvas.width = canvas.height = 144;
+        canvas.getContext("2d")!.putImageData(render("tree", seed).image, -16, -16);
+        cell.querySelector("figcaption")!.textContent = `seed ${seed.toString(16).padStart(8, "0")}`;
+    }
+}
+
+async function startForest() {
+    if (!forest) return;
+    try {
+        const response = await fetch("intro/tree.iprop");
+        if (!response.ok) throw new Error(`intro/tree.iprop: HTTP ${response.status}`);
+        files.set("tree", new Uint8Array(await response.arrayBuffer()));
+        for (const size of Array.from(document.querySelectorAll("[data-forest-size]"))) {
+            size.textContent = formatSize(files.get("tree")!.byteLength);
+        }
+        drawForest();
+        if (forestRoll) {
+            forestRoll.disabled = false;
+            forestRoll.addEventListener("click", drawForest);
+        }
+        wideForest.addEventListener("change", drawForest);
+    } catch {
+        // The forest stays empty; the rest of the page does not depend on it.
+    }
+}
+
+// The tree's source files as tabs: a click or the arrow keys pick one; the
+// download link follows the open file.
+for (const box of Array.from(document.querySelectorAll<HTMLElement>("[data-code-tabs]"))) {
+    const tabs = Array.from(box.querySelectorAll<HTMLButtonElement>("[role=tab]"));
+    const download = box.querySelector<HTMLAnchorElement>("[data-code-download]");
+    const open = (tab: HTMLButtonElement) => {
+        for (const other of tabs) {
+            const on = other === tab;
+            other.setAttribute("aria-selected", String(on));
+            other.tabIndex = on ? 0 : -1;
+            document.getElementById(other.getAttribute("aria-controls")!)!.hidden = !on;
+        }
+        if (download) download.href = tab.dataset.file!;
+    };
+    tabs.forEach((tab, k) => {
+        tab.addEventListener("click", () => open(tab));
+        tab.addEventListener("keydown", (event) => {
+            const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+            if (!step) return;
+            event.preventDefault();
+            const next = tabs[(k + step + tabs.length) % tabs.length];
+            open(next);
+            next.focus();
+        });
+    });
+}
+
 // ---- start -----------------------------------------------------------------------------------
 
 async function main() {
@@ -490,6 +562,7 @@ async function main() {
         const swordSize = document.querySelector("[data-stat-size]");
         if (swordSize) swordSize.textContent = formatSize(files.get("sword")!.byteLength);
         if (status) status.textContent = "";
+        void startForest();
     } catch (error) {
         if (status) {
             status.textContent = "The interpreter could not start in this browser: " + (error as Error).message;
