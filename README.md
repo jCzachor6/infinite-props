@@ -1,6 +1,6 @@
 # Infinite Props
 
-A portable binary format and open-source toolchain for **seed-based procedural
+A portable binary format, open runtime and toolchain for **seed-based procedural
 2D assets**. Write a recipe in `.ips`, compile it into a self-contained `.iprop`
 file, then generate reproducible RGBA images and named geometry from a seed
 and declared inputs.
@@ -75,7 +75,23 @@ produce deterministic batches without consuming RNG.
 
 ## License
 
-Code is [Apache-2.0](LICENSE). Open examples and gallery assets are CC-BY-4.0,
-except the compiled props in `examples/showcase/` and images rendered from them,
-which are all rights reserved. Their license is `examples/showcase/LICENSE.md`
-in the source repository. Showcase files are excluded from the native SDK.
+Infinite Props is licensed in parts; [LICENSE](LICENSE) maps every directory
+to its license and [licenses/](licenses/) holds the full texts.
+
+- **Runtime** (`runtime/`, `backends/`: the C API, HTML5/WASM, Godot and
+  SFML): [MPL-2.0](licenses/MPL-2.0.txt). Embed it in any game or engine,
+  commercial or closed; changes to these files stay open when distributed.
+- **Toolchain** (`compiler/`, `language/`, `tools/`, `editor/`, `scripts/`,
+  `tests/`, `benchmarks/`, `website/`): [FSL-1.1-ALv2](licenses/FSL-1.1-ALv2.md).
+  Use it for anything, including commercial games, except offering it or a
+  substitute to others as a competing product or service. Each version
+  becomes Apache-2.0 two years after its release.
+- **Documentation and open examples** (`docs/`, `spec/`, `examples/`):
+  [CC-BY-4.0](licenses/CC-BY-4.0.txt).
+- **Showcase props** (`examples/showcase/`) and images rendered from them:
+  all rights reserved, see `examples/showcase/LICENSE.md`. They are excluded
+  from the native SDK.
+
+The `.ips` programs you write, the `.iprop` files compiled from them and
+everything they generate are yours. "Infinite Props" and its logo are
+trademarks; the licenses grant no right to use them.

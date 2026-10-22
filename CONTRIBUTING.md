@@ -80,5 +80,14 @@ platform. Determinism bugs are the highest priority.
 
 ## Code of conduct
 
-Be kind, be constructive, stay on topic. Contributions are licensed under
-Apache-2.0 (code) and CC-BY-4.0 (examples and gallery assets).
+Be kind, be constructive, stay on topic.
+
+## Licensing of contributions
+
+A contribution is licensed under the license of the directory it lands in
+(see [LICENSE](LICENSE)): MPL-2.0 for the runtime, FSL-1.1-ALv2 for the
+toolchain and CC-BY-4.0 for documentation and open examples. Sign off every
+commit (`git commit -s`) to certify the
+[Developer Certificate of Origin](https://developercertificate.org/), and
+grant the maintainer the right to relicense your contribution together with
+the project.

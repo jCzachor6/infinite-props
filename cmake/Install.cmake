@@ -63,6 +63,7 @@ if(Python3_Interpreter_FOUND)
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+install(DIRECTORY licenses/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 

@@ -3,8 +3,9 @@
 Copyright 2026 jakubczachor. All rights reserved.
 
 The files in this directory, the compiled `.iprop` props, are not covered by
-the Apache License 2.0 that applies to the code in this repository, nor by
-the CC-BY-4.0 terms for its other examples and gallery assets. The same
+the licenses of the runtime and toolchain in this repository (MPL-2.0 and
+FSL-1.1-ALv2), nor by the CC-BY-4.0 terms for its other examples and gallery
+assets. The same
 applies to their copies on the Infinite Props website and in its archives,
 and to every image rendered from them.
 
