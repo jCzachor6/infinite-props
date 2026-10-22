@@ -21,7 +21,9 @@ getting-started guide with the documentation, and the source page.
   through the declared `quality` and `v` inputs) and glow like in a game: the
   page requests the crisp sprite (`bloom=0`), renders the emission map
   (`renderPass=1`), blurs it by the `glow` output's sigma and adds it back in
-  passes that follow the gain. The game slots show only ornate, enchanted weapons
+  passes that follow the gain. The games showcase's first slot is taken by
+  Infinite Formula One (`public/games/infinite-formula-one.webp`, linking to
+  its itch.io page); the open slots show only ornate, enchanted weapons
   at full power, as silhouettes until hovered or tapped.
   Every weapon tile carries its loot rarity: common (plain), rare (soldier),
   epic (ornate) or legendary (ornate, enchanted and at glow power 4).

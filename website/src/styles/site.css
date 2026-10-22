@@ -996,8 +996,32 @@ canvas.glow[hidden] { display: none; }
   text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
 }
 .game-slot__tag { position: absolute; top: 1.45rem; left: 1.45rem; z-index: 1; background: rgba(19, 22, 26, 0.75); }
-.game-slot h3 { margin: 0 0.4rem 0.35rem; font-size: 1.1rem; font-weight: 600; }
-.game-slot p { margin: 0 0.4rem; color: var(--text-dim); font-size: 0.92rem; line-height: 1.6; }
+.game-slot h3, .game-card h3 { margin: 0 0.4rem 0.35rem; font-size: 1.1rem; font-weight: 600; }
+.game-slot p, .game-card p { margin: 0 0.4rem; color: var(--text-dim); font-size: 0.92rem; line-height: 1.6; }
+
+/* A taken slot: the game's card, a link to play it. */
+.game-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0.9rem 0.9rem 1.3rem;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--accent-soft), transparent 55%);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.game-card:is(:hover, :focus-visible) { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(245, 217, 10, 0.16); }
+.game-card .game-slot__tag { background: var(--accent); color: var(--accent-ink); }
+.game-card .game-slot__art img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.45s ease; }
+.game-card:is(:hover, :focus-visible) .game-slot__art img { transform: scale(1.04); }
+.game-card__play { margin: auto 0.4rem 0; padding-top: 0.9rem; color: var(--accent); font-weight: 600; font-size: 0.95rem; }
+.game-card__play span { display: inline-block; transition: transform 0.25s ease; }
+.game-card:is(:hover, :focus-visible) .game-card__play span { transform: translateX(4px); }
+@media (prefers-reduced-motion: reduce) {
+  .game-card, .game-card .game-slot__art img, .game-card__play span { transition: none; }
+}
 
 .games-cta {
   display: flex;
