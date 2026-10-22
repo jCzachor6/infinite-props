@@ -92,7 +92,11 @@ class ButterflyBenchmark {
 
     initialise() {
         this.worker?.terminate();
-        this.worker = new Worker(new URL("butterfly-worker.js", document.baseURI));
+        const workerUrl = new URL("butterfly-worker.js", document.baseURI);
+        // Public scripts may be cached separately by the host. Refresh the
+        // worker together with the hashed application bundle after deployment.
+        workerUrl.searchParams.set("v", import.meta.url.split("/").pop()!);
+        this.worker = new Worker(workerUrl);
         this.initialised = new Promise<void>((resolve, reject) => {
             this.readyResolve = resolve;
             this.readyReject = reject;
