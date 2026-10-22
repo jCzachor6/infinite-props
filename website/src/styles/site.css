@@ -1083,6 +1083,21 @@ canvas.glow[hidden] { display: none; }
 .pipeline li:not(:last-child) { border-right-color: var(--line); }
 .pipeline__out { border-color: var(--accent) !important; color: var(--accent) !important; }
 .pipeline__out b { color: var(--accent) !important; }
+/* The runtime step rolls through the backends, one line at a time. */
+.pipeline__runtime a { color: inherit; text-decoration: none; }
+.pipeline__runtime a:hover b { color: var(--accent); }
+.ticker { display: inline-block; height: 1.4em; overflow: hidden; vertical-align: bottom; }
+.ticker__track { display: flex; flex-direction: column; animation: ticker 11s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+.ticker__track > span { height: 1.4em; line-height: 1.4em; white-space: nowrap; }
+@keyframes ticker {
+  0%, 16% { transform: translateY(0); }
+  20%, 36% { transform: translateY(-1.4em); }
+  40%, 56% { transform: translateY(-2.8em); }
+  60%, 76% { transform: translateY(-4.2em); }
+  80%, 96% { transform: translateY(-5.6em); }
+  100% { transform: translateY(-7em); }
+}
+@media (prefers-reduced-motion: reduce) { .ticker__track { animation: none; } }
 /* Across the intro: five equal steps. */
 .pipeline--wide { margin: 1.25rem 0 1.75rem; }
 @media (min-width: 48rem) {
