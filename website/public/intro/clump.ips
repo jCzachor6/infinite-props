@@ -8,18 +8,19 @@ asset Clump {
   input color leaf = #4a8a3a
 
   draw {
-    dark = color.mix(leaf, #0c2238, 0.55)
-    light = color.mix(leaf, #fff6b0, 0.55)
+    // Five tones from a cool shadow to a warm light.
+    tones = stepper(color.mix(leaf, #0c2238, 0.5) to
+                    color.mix(leaf, #fff6b0, 0.4)).pick(5)
     layer lobes(alpha=surface.source_over) {
       body = r * 0.72
-      oval(32.0, 32.0, body, body, tone(dark, light, 0.3 + lift))
+      oval(32.0, 32.0, body, body, tone(tones, 0.3 + lift))
       for i in 0..9 {
         a = float(i) * 0.7 + (-0.3 to 0.3)
         x = 32.0 + cos(a) * r * 0.66
         y = 32.0 + sin(a) * r * 0.66
         lr = r * (0.28 to 0.4)
         lit = lift + 0.35 - (x + y - 64.0) / r * 0.1
-        oval(x, y, lr, lr, tone(dark, light, lit))
+        oval(x, y, lr, lr, tone(tones, lit))
       }
       for i in 0..int(r * r * 0.2) {
         a = 0.0 to 6.2832
@@ -29,7 +30,7 @@ asset Clump {
         lit = lift + 0.4 - (x + y - 64.0) / r * 0.4
         s = 0.8 to 1.8
         j = -0.25 to 0.25
-        oval(x, y, s, s * 0.8, tone(dark, light, lit + j))
+        oval(x, y, s, s * 0.8, tone(tones, lit + j))
       }
     }
     rim = color.mix(leaf, #040a10, 0.75)
@@ -37,9 +38,8 @@ asset Clump {
     surface.paint(lobes)
   }
 
-  // A five-step ramp, as a pixel artist picks one.
-  tone(dark: color, light: color, t: f32) -> color {
-    step = float(int(clamp(t, 0.0, 1.0) * 4.0 + 0.5))
-    return lerp(dark, light, step / 4.0)
+  // The nearest of the five tones.
+  tone(tones: list<color>, t: f32) -> color {
+    return tones[int(clamp(t, 0.0, 1.0) * 4.0 + 0.5)]
   }
 }

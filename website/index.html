@@ -40,7 +40,7 @@
       <ol class="pipeline pipeline--wide" aria-label="From source to pixels">
         <li><b>.ips</b> source</li>
         <li><b>ipc</b> compiler</li>
-        <li><b>.iprop</b> · <span data-forest-size>1.1 KB</span></li>
+        <li><b>.iprop</b> binary</li>
         <li class="pipeline__runtime"><a href="docs/backends.html" aria-label="Runtimes: WebAssembly in the browser, the C API, Godot, SFML and the CLI">
           <span class="ticker" aria-hidden="true"><span class="ticker__track">
             <span><b>WASM</b> runtime</span><span><b>C API</b> · C99</span><span><b>Godot</b> extension</span><span><b>SFML</b> host</span><span><b>ipgen</b> CLI</span><span><b>WASM</b> runtime</span>
@@ -68,7 +68,7 @@
       <div class="first-prop__text">
         <p class="eyebrow">The simplest example</p>
         <h2 class="section-title" id="first-prop-title">One program, <b>a whole top&#8209;down forest</b></h2>
-        <p class="lead">A program does not describe one picture. It describes a <em>kind</em> of thing, and a seed picks one. This tree is two small files: <code>tree.ips</code> lays rings of leaf clumps from the rim to the top and casts a soft shadow, and <code>clump.ips</code>, a part of its own, draws one clump lit from the upper left in a five-tone ramp, over its own shadow. Greens most of the time, now and then autumn or blossom.</p>
+        <p class="lead">A program does not describe one picture. It describes a <em>kind</em> of thing, and a seed picks one. This tree is two small files: <code>tree.ips</code> lays rings of leaf clumps from the rim to the top, and <code>clump.ips</code>, a part of its own, draws one clump lit from the upper left in a five-tone ramp, over its own shadow. Leaves draw from seven colour ranges: deep, olive, lime and blue-green most of the time, now and then autumn reds, oranges and golds.</p>
         <div class="code-tabs" data-code-tabs>
           <div class="code-tabs__bar">
             <div role="tablist" aria-label="The tree's source files">
@@ -79,37 +79,36 @@
           </div>
           <pre class="code-sample" role="tabpanel" id="code-panel-tree" aria-labelledby="code-tab-tree" tabindex="0"><code><span class="tok-k">import</span> clump <span class="tok-k">from</span> <span class="tok-q">"clump.ips"</span>
 <span class="tok-c">// A tree from above: rings of leaf clumps, the rim first and the</span>
-<span class="tok-c">// top last, under a long soft shadow.</span>
+<span class="tok-c">// top last.</span>
 <span class="tok-k">asset</span> Tree {
   <span class="tok-k">size</span> <span class="tok-n">176x176</span>
   <span class="tok-k">origin</span> <span class="tok-n">88</span>,<span class="tok-n">88</span>
-  <span class="tok-k">output</span> <span class="tok-t">rect</span> collider
-  <span class="tok-k">palette</span> leaves = [<span class="tok-s" style="--swatch:#4f9a3a">#4f9a3a</span>, <span class="tok-s" style="--swatch:#3d8a40">#3d8a40</span>, <span class="tok-s" style="--swatch:#6aa83a">#6aa83a</span>, <span class="tok-s" style="--swatch:#2f7a4a">#2f7a4a</span>,
-                    <span class="tok-s" style="--swatch:#5a9a2c">#5a9a2c</span>, <span class="tok-s" style="--swatch:#d0652a">#d0652a</span>, <span class="tok-s" style="--swatch:#e0a52a">#e0a52a</span>, <span class="tok-s" style="--swatch:#f0a0c0">#f0a0c0</span>]
+  <span class="tok-c">// Mostly greens (deep, olive, lime, blue-green), now and then</span>
+  <span class="tok-c">// autumn reds, oranges and golds.</span>
+  <span class="tok-k">palette</span> leaves = [<span class="tok-s" style="--swatch:#1f5a3a">#1f5a3a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#3f8a4c">#3f8a4c</span>, <span class="tok-s" style="--swatch:#4a6a24">#4a6a24</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#8aa03a">#8aa03a</span>,
+                    <span class="tok-s" style="--swatch:#5a9a2a">#5a9a2a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#a8c840">#a8c840</span>, <span class="tok-s" style="--swatch:#2a6a6a">#2a6a6a</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#5a9a7a">#5a9a7a</span>,
+                    <span class="tok-s" style="--swatch:#8a2a24">#8a2a24</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#c8402a">#c8402a</span>, <span class="tok-s" style="--swatch:#c0581e">#c0581e</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#e8902a">#e8902a</span>,
+                    <span class="tok-s" style="--swatch:#c89a20">#c89a20</span> <span class="tok-k">to</span> <span class="tok-s" style="--swatch:#f0d050">#f0d050</span>]
+  <span class="tok-k">const</span> <span class="tok-k">distribution</span> kinds = <span class="tok-k">weighted</span> {<span class="tok-n">0</span>: <span class="tok-n">22</span>, <span class="tok-n">1</span>: <span class="tok-n">18</span>, <span class="tok-n">2</span>: <span class="tok-n">18</span>,
+    <span class="tok-n">3</span>: <span class="tok-n">14</span>, <span class="tok-n">4</span>: <span class="tok-n">9</span>, <span class="tok-n">5</span>: <span class="tok-n">10</span>, <span class="tok-n">6</span>: <span class="tok-n">9</span>}
 
   <span class="tok-k">draw</span> {
     R = <span class="tok-n">34.0</span> <span class="tok-k">to</span> <span class="tok-n">58.0</span> <span class="tok-k">with</span> gaussian(mean=<span class="tok-n">46.0</span>, sigma=<span class="tok-n">5.0</span>)
-    leaf = leaves[index(<span class="tok-n">8</span>)]
-    <span class="tok-k">layer</span> crown(alpha=surface.source_over) {
-      <span class="tok-k">for</span> ring <span class="tok-k">in</span> <span class="tok-n">0</span>..<span class="tok-n">3</span> {
-        n = max(<span class="tok-n">1</span>, (<span class="tok-n">6</span> <span class="tok-k">to</span> <span class="tok-n">8</span>) - ring * <span class="tok-n">3</span>)
-        turn = <span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">6.2832</span>
-        <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..n {
-          a = turn + float(i) * <span class="tok-n">6.2832</span> / float(n)
-          a = a + (-<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>)
-          d = R * (<span class="tok-n">0.6</span> - float(ring) * <span class="tok-n">0.3</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
-          r = R * (<span class="tok-n">0.44</span> - float(ring) * <span class="tok-n">0.06</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
-          clump.draw(hash(seed ^ (ring * <span class="tok-n">16</span> + i)),
-                     at={<span class="tok-n">88.0</span> + cos(a) * d, <span class="tok-n">88.0</span> + sin(a) * d},
-                     r=r, lift=-(cos(a) + sin(a)) * <span class="tok-n">0.2</span> * d / R,
-                     leaf=<span class="tok-t">color</span>.shade(leaf, -<span class="tok-n">8</span> <span class="tok-k">to</span> <span class="tok-n">8</span>))
-        }
+    leaf = leaves[<span class="tok-n">0</span> <span class="tok-k">to</span> <span class="tok-n">6</span> <span class="tok-k">with</span> kinds].pick()
+    <span class="tok-k">for</span> ring <span class="tok-k">in</span> <span class="tok-n">0</span>..<span class="tok-n">3</span> {
+      n = max(<span class="tok-n">1</span>, (<span class="tok-n">6</span> <span class="tok-k">to</span> <span class="tok-n">8</span>) - ring * <span class="tok-n">3</span>)
+      turn = <span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">6.2832</span>
+      <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..n {
+        a = turn + float(i) * <span class="tok-n">6.2832</span> / float(n)
+        a = a + (-<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>)
+        d = R * (<span class="tok-n">0.6</span> - float(ring) * <span class="tok-n">0.3</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
+        r = R * (<span class="tok-n">0.44</span> - float(ring) * <span class="tok-n">0.06</span>) * (<span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.15</span>)
+        clump.draw(hash(seed ^ (ring * <span class="tok-n">16</span> + i)),
+                   at={<span class="tok-n">88.0</span> + cos(a) * d, <span class="tok-n">88.0</span> + sin(a) * d},
+                   r=r, lift=-(cos(a) + sin(a)) * <span class="tok-n">0.2</span> * d / R,
+                   leaf=<span class="tok-t">color</span>.shade(leaf, -<span class="tok-n">8</span> <span class="tok-k">to</span> <span class="tok-n">8</span>))
       }
     }
-    shadow = mask.offset(mask.from(crown), <span class="tok-n">10</span>, <span class="tok-n">14</span>).blur(<span class="tok-n">4.0</span>)
-    surface.paint(shadow, <span class="tok-s" style="--swatch:#0000004d">#0000004d</span>)
-    surface.paint(crown)
-    collider = {<span class="tok-n">82.0</span>, <span class="tok-n">82.0</span>, <span class="tok-n">12.0</span>, <span class="tok-n">12.0</span>}
   }
 }</code></pre>
           <pre class="code-sample" role="tabpanel" id="code-panel-clump" aria-labelledby="code-tab-clump" tabindex="0" hidden><code><span class="tok-c">// One clump of leaves from above, lit from the upper left: lobes</span>
@@ -122,18 +121,19 @@
   <span class="tok-k">input</span> <span class="tok-t">color</span> leaf = <span class="tok-s" style="--swatch:#4a8a3a">#4a8a3a</span>
 
   <span class="tok-k">draw</span> {
-    dark = <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#0c2238">#0c2238</span>, <span class="tok-n">0.55</span>)
-    light = <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#fff6b0">#fff6b0</span>, <span class="tok-n">0.55</span>)
+    <span class="tok-c">// Five tones from a cool shadow to a warm light.</span>
+    tones = <span class="tok-k">stepper</span>(<span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#0c2238">#0c2238</span>, <span class="tok-n">0.5</span>) <span class="tok-k">to</span>
+                    <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#fff6b0">#fff6b0</span>, <span class="tok-n">0.4</span>)).pick(<span class="tok-n">5</span>)
     <span class="tok-k">layer</span> lobes(alpha=surface.source_over) {
       body = r * <span class="tok-n">0.72</span>
-      oval(<span class="tok-n">32.0</span>, <span class="tok-n">32.0</span>, body, body, tone(dark, light, <span class="tok-n">0.3</span> + lift))
+      oval(<span class="tok-n">32.0</span>, <span class="tok-n">32.0</span>, body, body, tone(tones, <span class="tok-n">0.3</span> + lift))
       <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..<span class="tok-n">9</span> {
         a = float(i) * <span class="tok-n">0.7</span> + (-<span class="tok-n">0.3</span> <span class="tok-k">to</span> <span class="tok-n">0.3</span>)
         x = <span class="tok-n">32.0</span> + cos(a) * r * <span class="tok-n">0.66</span>
         y = <span class="tok-n">32.0</span> + sin(a) * r * <span class="tok-n">0.66</span>
         lr = r * (<span class="tok-n">0.28</span> <span class="tok-k">to</span> <span class="tok-n">0.4</span>)
         lit = lift + <span class="tok-n">0.35</span> - (x + y - <span class="tok-n">64.0</span>) / r * <span class="tok-n">0.1</span>
-        oval(x, y, lr, lr, tone(dark, light, lit))
+        oval(x, y, lr, lr, tone(tones, lit))
       }
       <span class="tok-k">for</span> i <span class="tok-k">in</span> <span class="tok-n">0</span>..int(r * r * <span class="tok-n">0.2</span>) {
         a = <span class="tok-n">0.0</span> <span class="tok-k">to</span> <span class="tok-n">6.2832</span>
@@ -143,7 +143,7 @@
         lit = lift + <span class="tok-n">0.4</span> - (x + y - <span class="tok-n">64.0</span>) / r * <span class="tok-n">0.4</span>
         s = <span class="tok-n">0.8</span> <span class="tok-k">to</span> <span class="tok-n">1.8</span>
         j = -<span class="tok-n">0.25</span> <span class="tok-k">to</span> <span class="tok-n">0.25</span>
-        oval(x, y, s, s * <span class="tok-n">0.8</span>, tone(dark, light, lit + j))
+        oval(x, y, s, s * <span class="tok-n">0.8</span>, tone(tones, lit + j))
       }
     }
     rim = <span class="tok-t">color</span>.mix(leaf, <span class="tok-s" style="--swatch:#040a10">#040a10</span>, <span class="tok-n">0.75</span>)
@@ -151,10 +151,9 @@
     surface.paint(lobes)
   }
 
-  <span class="tok-c">// A five-step ramp, as a pixel artist picks one.</span>
-  tone(dark: <span class="tok-t">color</span>, light: <span class="tok-t">color</span>, t: <span class="tok-t">f32</span>) -&gt; <span class="tok-t">color</span> {
-    step = float(int(clamp(t, <span class="tok-n">0.0</span>, <span class="tok-n">1.0</span>) * <span class="tok-n">4.0</span> + <span class="tok-n">0.5</span>))
-    <span class="tok-k">return</span> lerp(dark, light, step / <span class="tok-n">4.0</span>)
+  <span class="tok-c">// The nearest of the five tones.</span>
+  tone(tones: <span class="tok-t">list</span>&lt;<span class="tok-t">color</span>&gt;, t: <span class="tok-t">f32</span>) -&gt; <span class="tok-t">color</span> {
+    <span class="tok-k">return</span> tones[int(clamp(t, <span class="tok-n">0.0</span>, <span class="tok-n">1.0</span>) * <span class="tok-n">4.0</span> + <span class="tok-n">0.5</span>)]
   }
 }</code></pre>
         </div>

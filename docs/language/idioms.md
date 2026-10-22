@@ -101,33 +101,62 @@ one `rect` per row, 71,000 as a `pixel` loop and 84,000 with a helper call per
 pixel. Compute each row's extent once and paint it with `rect`; draw outlines
 with `line`, `oval` and `poly`. Reserve per-pixel loops for small details.
 
+## Make it look good
+
+Judge the pixels, not the code: render twenty or more seeds side by side,
+zoom single props 3× and look at them in place, at their real size.
+
+- Paint a material in 4 or 5 tones, `stepper(dark to light).pick(5)`,
+  with `dark` shifted towards a cool blue and `light` towards a warm
+  yellow. Paint on asphalt takes a fifth of its grey.
+- Break silhouettes with lobes along an edge and jittered angles and
+  sizes. Perfect circles read as bubbles.
+- Build texture from small marks in the ramp (1–2 px leaves, chips).
+  Per-pixel noise reads as static.
+- Wear in layers: subtract a mask of rubbed-off patches, then add grit to
+  what is left.
+- Split a prop into parts: one draws one unit well (a clump, a wheel); the
+  root places them.
+- Give a look a range, not a list of shades: `[#2a6a44 to #7ab23c]`;
+  keep rare looks rare with `weighted` (1 seed in 16, or in 100).
+- Keep pixels crisp: one world scale, integer zoom, turns of 90° only.
+- Measure fuel with `ipgen` on the heaviest seeds; a level of dozens of
+  props multiplies it.
+- Return colliders, anchors, masses and mount points with the pixels.
+
 ## Before and after
 
+<!-- llm: skip -->
 Each program below compiles and runs, but breaks one rule. The correction
 follows each one.
 
 <!-- example: ../../examples/language/style/unit-arithmetic.ips -->
 
+<!-- llm: skip -->
 Write `w = 20 to 30`: one readable draw with both ends included.
 
 <!-- example: ../../examples/language/style/uniform-proportion.ips -->
 
+<!-- llm: skip -->
 A uniform height makes every second pillar look extreme. Write
 `h = lerp(14.0, 26.0, 0.0 to 1.0 with gaussian(mean=0.5, sigma=0.18))`.
 
 <!-- example: ../../examples/language/style/channel-draws.ips -->
 
+<!-- llm: skip -->
 Three independent channel draws produce colors outside the intended family.
 Draw the color as one gradient: `c = #2878b4 to #5ac8ff`.
 
 <!-- example: ../../examples/language/style/pixel-loop.ips -->
 
+<!-- llm: skip -->
 The per-pixel loop spends about 43,000 fuel. Painting one `rect` per row from
 the row's extent, `half = sqrt(r * r - dy * dy)`, draws the same disc for
 about 2,200.
 
 <!-- example: ../../examples/language/style/input-variety.ips -->
 
+<!-- llm: skip -->
 With only a seed this banner never changes. Make the default `0` mean "roll
 it": `input u32 pattern = 0`, then
 `kind = pattern; if (pattern == 0) { kind = 1 + (hash(seed ^ 0x6d2b79f5) & 1) }`
