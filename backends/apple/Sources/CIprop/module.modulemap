@@ -1,0 +1,5 @@
+module CIprop [system] {
+    header "shim.h"
+    link "ipropc"
+    export *
+}

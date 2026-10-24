@@ -169,6 +169,9 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME binding_python COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/backends/test/check-python.py
+        $<TARGET_FILE_DIR:ipc> $<TARGET_FILE:iprop_capi> ${CMAKE_BINARY_DIR}/binding-fixtures)
     add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}

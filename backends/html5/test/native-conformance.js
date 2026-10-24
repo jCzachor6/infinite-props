@@ -428,7 +428,7 @@ function run(iprop, toolsDir) {
         for (const weapon of ["sword", "staff"]) {
             const file = path.join(repo, "examples/showcase", weapon + ".iprop");
             for (const layer of [0, 1])
-                compare(file, 26, null, {uniforms: {v:2,quality: 2, glowStrength: 4, renderLayer:layer}});
+                compare(file, 26, null, {uniforms: {v:2,quality: 2, glowStrength: 4, renderPass:layer}});
         }
         for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
                                            [{accent: "#12345"}, /'accent' must be a #RRGGBB/],

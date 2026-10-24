@@ -31,7 +31,7 @@ if(Python3_Interpreter_FOUND)
         --version "${product_version}" --against-source)
 endif()
 # The installed header refers to the C API guide; every guide's local links resolve.
-foreach(backend capi sfml godot)
+foreach(backend capi sfml godot apple unity android python)
     set(guide "${PREFIX}/share/iprop/backends/${backend}/README.md")
     if(NOT EXISTS "${guide}")
         message(FATAL_ERROR "Installed SDK lacks ${guide}")

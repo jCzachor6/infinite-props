@@ -1,0 +1,10 @@
+asset bindingUnicode {
+  size 1x1
+  // The fixture generator replaces this ASCII identifier in the binary name
+  // pool with byte-counted UTF-8 containing U+0000 (not IPS source syntax).
+  input color tint = #112233
+  input f32 first = 0.0
+  input f32 second = 0.0
+  output point anchor
+  draw { pixel(0, 0, tint) anchor = {first, second} }
+}

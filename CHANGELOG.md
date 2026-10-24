@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Apple Swift package and multiplatform XCFramework builder, with CGImage,
+  SpriteKit and Metal adapters independent of game code.
+- Unity UPM package with native C# bindings, `.iprop` import previews,
+  Texture2D/Sprite helpers and per-platform plugin builds.
+- Android Kotlin/JNI AAR with a Bitmap adapter and host/device conformance.
+- Python package with typed inputs, exact output bits, Pillow export and CLI.
+- Shared native binding contracts, SDK source-package installation and
+  runtime-only CMake builds for mobile and plugin cross-compilation.
+- Strict zlib decoding through baseline inflate APIs for Android API 23
+  compatibility, preserving decoded-size, checksum and trailing-byte checks.
+
 ## v0.7.1 — 2026-10-15
 
 Product/editor/website version: 0.7.1. Source language 0.7, the frozen

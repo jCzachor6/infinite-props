@@ -5,6 +5,11 @@ install(TARGETS iprop_runtime iprop_capi iprop_capi_static EXPORT ipropTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/capi)
+if(NOT WIN32)
+    configure_file(cmake/ipropc.pc.in ${CMAKE_CURRENT_BINARY_DIR}/ipropc.pc @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropc.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
 # Header-only result reads shared by the engine adapters; includes only iprop.h.
 install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iprop/backend)
 # Required by the static target's runtime dependency. C++ headers are
@@ -54,6 +59,24 @@ foreach(backend capi html5 sfml godot)
     install(FILES backends/${backend}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend})
 endforeach()
+# Binding source packages are usable independently from the source checkout.
+# Mobile native builds additionally need --source/IPROP_SOURCE for the runtime.
+set(iprop_binding_patterns)
+foreach(extension swift h cpp py toml cs csproj asmdef meta json kts kt properties xml pro txt md modulemap)
+    list(APPEND iprop_binding_patterns PATTERN "*.${extension}")
+endforeach()
+foreach(backend apple unity android python)
+    install(DIRECTORY backends/${backend}/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend}
+        FILES_MATCHING ${iprop_binding_patterns} PATTERN "LICENSE"
+        PATTERN ".build" EXCLUDE PATTERN ".swiftpm" EXCLUDE PATTERN "Artifacts" EXCLUDE
+        PATTERN ".gradle" EXCLUDE PATTERN ".kotlin" EXCLUDE PATTERN ".cxx" EXCLUDE PATTERN "build" EXCLUDE
+        PATTERN "bin" EXCLUDE PATTERN "obj" EXCLUDE PATTERN "Plugins" EXCLUDE
+        PATTERN "__pycache__" EXCLUDE PATTERN "*.egg-info" EXCLUDE
+        PATTERN "dist" EXCLUDE PATTERN "local.properties" EXCLUDE)
+endforeach()
+install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips
+    backends/test/prepare-bindings.py backends/test/result_fixture.py backends/test/check-python.py backends/test/check-csharp.py
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/test)
 foreach(guide editor website)
     install(FILES ${guide}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/${guide})

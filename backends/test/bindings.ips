@@ -1,0 +1,21 @@
+asset bindings {
+  size 8x4
+  origin 2, 3
+  input color tint = #aabbcc
+  input f32 amount = 0.5
+  input i32 offset = 3
+  output point anchor
+  output rect box
+  output circle zone
+  output list point marks
+  output point unset
+  draw {
+    rect(0, 0, 8, 4, tint)
+    pixel(seed % 8, 3, #ffffff)
+    anchor = {amount, float(offset)}
+    box = {1, 2, 3, 4}
+    zone = {2, 1, 0.5}
+    marks = {3, 4}
+    marks = {5, 6}
+  }
+}

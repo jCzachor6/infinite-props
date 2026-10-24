@@ -18,10 +18,21 @@ std::vector<u8> decompressFile(std::span<const u8> data) {
     if (reader.empty()) throw FormatError("compressed stream is missing", reader.position(), ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     const auto stream = reader.readBytes(reader.remaining());
     std::vector<u8> expanded(size);
-    uLongf outputSize = size;
-    uLong inputSize = static_cast<uLong>(stream.size());
-    const int result = uncompress2(expanded.data(), &outputSize, stream.data(), &inputSize);
-    if (result != Z_OK || outputSize != size)
+    // Both buffers are bounded to 64 MiB, below zlib's uInt limit. Use the
+    // baseline inflate API: Android exposes uncompress2 only from API 28.
+    // Retain exact decoded-size and consumed-input checks on every platform.
+    z_stream decoder{};
+    decoder.next_in = const_cast<Bytef*>(stream.data());
+    decoder.avail_in = static_cast<uInt>(stream.size());
+    decoder.next_out = expanded.data();
+    decoder.avail_out = static_cast<uInt>(expanded.size());
+    if (inflateInit(&decoder) != Z_OK)
+        throw FormatError("cannot initialize decompressor", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
+    const int result = inflate(&decoder, Z_FINISH);
+    const auto outputSize = decoder.total_out;
+    const auto inputSize = decoder.total_in;
+    inflateEnd(&decoder);
+    if (result != Z_STREAM_END || outputSize != size)
         throw FormatError("invalid compressed stream or decoded size", kHeaderSize + 4, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);
     if (inputSize != stream.size())
         throw FormatError("trailing bytes after compressed stream", kHeaderSize + 4 + inputSize, ErrorReason::Compression, ErrorStage::Load, OffsetSpace::Container);

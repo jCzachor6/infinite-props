@@ -52,6 +52,25 @@ jobs:
           python scripts/ci_report.py run test
           ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
 
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install and test the Python image package
+        run: |
+          python scripts/ci_report.py run python-package python -m pip install "./backends/python[images]"
+          python scripts/ci_report.py run python-images python backends/test/check-python.py build/tools build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures
+      - name: Test the Unity C# native binding
+        run: >-
+          python scripts/ci_report.py run unity-csharp
+          python backends/test/check-csharp.py build/backends/capi/${{ runner.os == 'Windows' && 'ipropc-0.5.dll' || runner.os == 'macOS' && 'libipropc.dylib' || 'libipropc.so' }} build/binding-fixtures
+      - name: Build and test the Apple package
+        if: runner.os == 'macOS'
+        env:
+          IPROP_FIXTURES: ${{ github.workspace }}/build/binding-fixtures
+        run: |
+          python scripts/ci_report.py run apple-xcframework python backends/apple/build-xcframework.py
+          python scripts/ci_report.py run apple-swift swift test --package-path backends/apple --scratch-path "${{ runner.temp }}/iprop-swift"
+
       - name: Validate export schemas against actual compiler and consumers
         run: >-
           python scripts/ci_report.py run export-contracts
@@ -270,8 +289,55 @@ jobs:
           retention-days: 14
           overwrite: true
 
+  android-bindings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.4.1'
+      - name: Prepare native reference fixtures
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_BUILD_TESTS=OFF -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
+          cmake --build build --target ipc ipgen --parallel 4
+          python backends/test/prepare-bindings.py build/tools build/binding-fixtures
+      - name: Install pinned native SDK components
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+      - name: Build and inspect the Android package
+        run: |
+          gradle -p backends/android :iprop:assembleRelease :iprop:assembleDebugAndroidTest --no-daemon
+          python backends/android/tests/check-aar.py backends/android/iprop/build/outputs/aar/iprop-release.aar
+      - name: Enable hardware virtualization
+        run: sudo chmod 666 /dev/kvm
+      - name: Test the packaged native runtime and Bitmap adapter
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: gradle -p backends/android :iprop:connectedDebugAndroidTest --no-daemon
+      - name: Retain Android packages and diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-android
+          path: |
+            backends/android/iprop/build/outputs/aar/
+            backends/android/iprop/build/reports/
+            backends/android/iprop/build/outputs/androidTest-results/
+          if-no-files-found: error
+          retention-days: 14
+
   release-assets:
-    needs: [build-test, wasm, native-backends, sanitizers]
+    needs: [build-test, wasm, native-backends, sanitizers, android-bindings]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

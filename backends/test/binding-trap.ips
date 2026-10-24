@@ -1,0 +1,8 @@
+asset bindingTrap {
+  size 1x1
+  input i32 divisor = 0
+  output point value
+  draw {
+    value = {float(1 / divisor), 0}
+  }
+}

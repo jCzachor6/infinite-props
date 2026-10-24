@@ -17,6 +17,11 @@ accept `AUTO` (build when dependencies are available), `ON` (require them) or
 `OFF` (exclude them). See [SFML](../backends/sfml/README.md) and
 [Godot](../backends/godot/README.md) for their dependency/build settings.
 
+`IPROP_RUNTIME_ONLY=ON` builds only the native runtime and C ABI, excluding
+host tools, tests, engine dependencies and SDK installation. Mobile/plugin
+builders use this mode. The [native binding guide](native-bindings.md) links
+Apple, Unity, Android and Python build/package instructions.
+
 ## Generated documentation
 
 With Python available, full native builds refresh the compiler-backed handbook.

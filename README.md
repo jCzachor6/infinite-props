@@ -69,6 +69,9 @@ produce deterministic batches without consuming RNG.
 - [C API](backends/capi/README.md), [ABI policy](docs/c-api-abi.md),
   [HTML5/WASM](backends/html5/README.md), [SFML](backends/sfml/README.md)
   and [Godot](backends/godot/README.md).
+- [Apple / Swift](backends/apple/README.md), [Unity / C#](backends/unity/README.md),
+  [Android / Kotlin](backends/android/README.md) and [Python](backends/python/README.md):
+  [shared native binding contract](docs/native-bindings.md).
 - [VS Code editor](editor/README.md) and [website build](website/README.md).
 - [Export contracts](docs/export-contracts.md), [CI and publication](docs/ci.md)
   and [changelog](CHANGELOG.md).
@@ -78,8 +81,8 @@ produce deterministic batches without consuming RNG.
 Infinite Props is licensed in parts; [LICENSE](LICENSE) maps every directory
 to its license and [licenses/](licenses/) holds the full texts.
 
-- **Runtime** (`runtime/`, `backends/`: the C API, HTML5/WASM, Godot and
-  SFML): [MPL-2.0](licenses/MPL-2.0.txt). Embed it in any game or engine,
+- **Runtime** (`runtime/` and `backends/`, including all language and engine
+  integrations): [MPL-2.0](licenses/MPL-2.0.txt). Embed it in any game or engine,
   commercial or closed; changes to these files stay open when distributed.
 - **Toolchain** (`compiler/`, `language/`, `tools/`, `editor/`, `scripts/`,
   `tests/`, `benchmarks/`, `website/`): [FSL-1.1-ALv2](licenses/FSL-1.1-ALv2.md).
