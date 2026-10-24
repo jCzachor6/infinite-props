@@ -59,7 +59,8 @@ getting-started guide with the documentation, and the source page.
   backends and the FAQ. A client-side section search sits in the docs
   sidebar (press `/`).
 - **Source** (`source.html`): the repository, the build and the layout.
-- **Asset store**: an empty link for now.
+- **Asset store**: available at [iprop.store](https://iprop.store/), linked from
+  the navigation, footer and home-page buttons.
 
 The complete language page is generated from
 [`../docs/language/`](../docs/language/index.md), compiler-exported signatures
