@@ -173,6 +173,23 @@ if(Python3_Interpreter_FOUND)
     add_test(NAME binding_python COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_SOURCE_DIR}/backends/test/check-python.py
         $<TARGET_FILE_DIR:ipc> $<TARGET_FILE:iprop_capi> ${CMAKE_BINARY_DIR}/binding-fixtures)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+            AND CMAKE_CXX_FLAGS MATCHES "-fsanitize=[^ ]*address")
+        execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libasan.so
+            RESULT_VARIABLE iprop_asan_status OUTPUT_VARIABLE iprop_asan_runtime
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        execute_process(COMMAND "${CMAKE_CXX_COMPILER}" -print-file-name=libstdc++.so
+            RESULT_VARIABLE iprop_cxx_status OUTPUT_VARIABLE iprop_cxx_runtime
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if(NOT iprop_asan_status EQUAL 0 OR NOT EXISTS "${iprop_asan_runtime}"
+                OR NOT iprop_cxx_status EQUAL 0 OR NOT EXISTS "${iprop_cxx_runtime}")
+            message(FATAL_ERROR "Python binding sanitizer tests require the GCC ASan and C++ runtimes")
+        endif()
+        add_library(python_sanitizer_probe SHARED python_sanitizer_probe.cpp)
+        set_property(TEST binding_python APPEND PROPERTY ENVIRONMENT
+            "IPROP_SANITIZER_PRELOAD=${iprop_asan_runtime}:${iprop_cxx_runtime}"
+            "IPROP_SANITIZER_PROBE=$<TARGET_FILE:python_sanitizer_probe>")
+    endif()
     add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}

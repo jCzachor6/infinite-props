@@ -78,6 +78,7 @@ foreach(backend apple unity android python)
 endforeach()
 install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips
     backends/test/prepare-bindings.py backends/test/result_fixture.py backends/test/check-python.py backends/test/check-csharp.py
+    backends/test/python-asan.supp
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/test)
 foreach(guide editor website)
     install(FILES ${guide}/README.md

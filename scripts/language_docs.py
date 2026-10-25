@@ -197,7 +197,7 @@ def resources(root):
                   and not any(part.endswith(".egg-info") for part in p.parts)
                   and p.name != "local.properties"
                   and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
-    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py")
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp")
               if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))

@@ -1,0 +1,5 @@
+# Stock CPython retains interpreter allocations at shutdown, even for -c pass.
+# Match its allocator frames only; never suppress libpython/ctypes wholesale,
+# which would also hide leaks allocated by the native library below them.
+leak:PyMem_RawMalloc
+leak:PyObject_Malloc
