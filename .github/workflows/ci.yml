@@ -298,7 +298,7 @@ jobs:
       - name: Build and test all compiler, VM and shared/static C API regressions
         run: |
           python scripts/ci_report.py run build cmake --build build --parallel 4
-          python scripts/ci_report.py run test ctest --test-dir build --output-on-failure --output-junit ci-reports/ctest.xml
+          python scripts/ci_report.py run test ctest --test-dir build --stop-on-failure --output-on-failure --output-junit ci-reports/ctest.xml
 
       - name: Summarize the checks
         if: ${{ !cancelled() }}

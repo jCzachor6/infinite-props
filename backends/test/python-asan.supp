@@ -3,3 +3,4 @@
 # which would also hide leaks allocated by the native library below them.
 leak:PyMem_RawMalloc
 leak:PyObject_Malloc
+leak:PyUnicode_New
