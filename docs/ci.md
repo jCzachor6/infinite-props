@@ -44,6 +44,13 @@ require an installed, licensed Editor; see the
 CI license configuration is tracked in the repository's `TODO.md`. The standalone
 C# native binding and all other pixel-corpus checks remain enabled.
 
+On Linux/GCC sanitizer builds, the Python binding test preloads ASan and the
+C++ exception runtime before loading the native library. Only the host
+interpreter's own allocator frames are filtered from LSan shutdown reports;
+native allocations retain leak detection. Separate native overflow and leak
+probes must both be diagnosed in Python subprocesses before the binding tests
+run. The standalone native ASan/UBSan suite keeps its full leak checks.
+
 Packaging scripts unpack their completed archives into a separate directory
 and rerun installed SDK consumers, included native integrations and web/WASM
 smoke tests there. `*-validation.json` binds those results to the source commit
