@@ -2,9 +2,43 @@
 
 ## Unreleased
 
-- Twenty `vec2` overloads for drawing, noise, integer coordinate helpers,
-  `mask.offset`, `lerp` and `atan2`, including mixed rectangle/ellipse forms.
-  Existing scalar operations, pixel results, C API and binary format are unchanged.
+### Language: vector overloads
+
+Added **20 `vec2` overloads across 16 existing functions**. The complete list of
+new signatures follows; all existing scalar and color overloads remain available.
+
+| Area | Added overload |
+| --- | --- |
+| Drawing | `pixel(p: vec2, color: color) -> void` |
+| Drawing | `rect(position: vec2, size: vec2, color: color) -> void` |
+| Drawing | `rect(position: vec2, w: f32, h: f32, color: color) -> void` |
+| Drawing | `rect(x: f32, y: f32, size: vec2, color: color) -> void` |
+| Drawing | `line(a: vec2, b: vec2, thickness: i32, color: color) -> void` |
+| Drawing | `oval(center: vec2, radii: vec2, color: color) -> void` |
+| Drawing | `oval(center: vec2, rx: f32, ry: f32, color: color) -> void` |
+| Drawing | `oval(x: f32, y: f32, radii: vec2, color: color) -> void` |
+| Noise and procedural utilities | `noise(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `fault(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.grad(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.fbm(p: vec2, octaves: i32, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.cell(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.ridge(p: vec2, octaves: i32, seed: i32) -> f32` |
+| Noise and procedural utilities | `warp(p: vec2, amount: f32, seed: i32) -> f32` |
+| Noise and procedural utilities | `cell.jitter(cell: vec2, seed: i32) -> vec2` |
+| Noise and procedural utilities | `dither(t: f32, p: vec2) -> f32` |
+| Masks | `mask.offset(source: mask, offset: vec2) -> mask` |
+| Math | `lerp(a: vec2, b: vec2, t: f32) -> vec2` |
+| Math | `atan2(v: vec2) -> f32` |
+
+Arguments evaluate once in signature order, including named and mixed calls.
+`pixel`, `cell.jitter`, `dither` and `mask.offset` convert vector coordinates
+exactly as `int()`: truncate toward zero, saturate to i32 and map NaN to zero.
+`atan2(v)` is `atan2(v.y, v.x)`; vector `lerp` applies the existing clamped
+scalar interpolation independently to x and y. Existing pixel results, C API
+and binary format are unchanged.
+
+### Native integrations
+
 - Apple Swift package and multiplatform XCFramework builder, with CGImage,
   SpriteKit and Metal adapters independent of game code.
 - Unity UPM package with native C# bindings, `.iprop` import previews,
