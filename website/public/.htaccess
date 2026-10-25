@@ -1,7 +1,22 @@
 AddType application/wasm .wasm
+AddType application/octet-stream .iprop
 
 RewriteEngine On
 RewriteCond %{HTTP_HOST} ^(www\.)?infiniteprops\.dev$ [NC]
 RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+
+# Pages, the WASM runtime, its worker and the showcase binaries keep their
+# names across releases. Browsers must revalidate them, or a cached iprop.js
+# meets a new iprop.wasm (or an old page asks for deleted hashed assets) and
+# nothing renders. Hashed files under assets/ keep the host's caching.
+<FilesMatch "(\.html|^iprop\.(js|wasm)|^butterfly-worker\.js|\.iprop)$">
+  <IfModule mod_expires.c>
+    ExpiresActive Off
+  </IfModule>
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+    Header unset Expires
+  </IfModule>
+</FilesMatch>
