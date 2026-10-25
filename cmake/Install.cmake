@@ -5,6 +5,11 @@ install(TARGETS iprop_runtime iprop_capi iprop_capi_static EXPORT ipropTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES backends/capi/iprop.h DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/capi)
+if(NOT WIN32)
+    configure_file(cmake/ipropc.pc.in ${CMAKE_CURRENT_BINARY_DIR}/ipropc.pc @ONLY)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/ipropc.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+endif()
 # Header-only result reads shared by the engine adapters; includes only iprop.h.
 install(FILES backends/ResultQueries.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/iprop/backend)
 # Required by the static target's runtime dependency. C++ headers are
@@ -45,15 +50,35 @@ if(TARGET iprop_sfml)
     endif()
 endif()
 
-# examples/showcase holds the website's prop binaries, which are not part of
-# the SDK.
+# Keep the website's compiled showcase programs out of the SDK. Only the
+# README preview and its reserved-rights notice are included below.
 install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop
     REGEX "/examples/showcase$" EXCLUDE)
+install(FILES examples/showcase/readme-collection.png examples/showcase/LICENSE.md
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/examples/showcase)
 # The guides keep their source-tree places, so their relative links resolve.
 foreach(backend capi html5 sfml godot)
     install(FILES backends/${backend}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend})
 endforeach()
+# Binding source packages are usable independently from the source checkout.
+# Mobile native builds additionally need --source/IPROP_SOURCE for the runtime.
+set(iprop_binding_patterns)
+foreach(extension swift h cpp py toml cs csproj shader asmdef meta json kts kt properties xml pro txt md modulemap)
+    list(APPEND iprop_binding_patterns PATTERN "*.${extension}")
+endforeach()
+foreach(backend apple unity android python)
+    install(DIRECTORY backends/${backend}/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/${backend}
+        FILES_MATCHING ${iprop_binding_patterns} PATTERN "LICENSE"
+        PATTERN ".build" EXCLUDE PATTERN ".swiftpm" EXCLUDE PATTERN "Artifacts" EXCLUDE
+        PATTERN ".gradle" EXCLUDE PATTERN ".kotlin" EXCLUDE PATTERN ".cxx" EXCLUDE PATTERN "build" EXCLUDE
+        PATTERN "bin" EXCLUDE PATTERN "obj" EXCLUDE PATTERN "Plugins" EXCLUDE
+        PATTERN "__pycache__" EXCLUDE PATTERN "*.egg-info" EXCLUDE
+        PATTERN "dist" EXCLUDE PATTERN "local.properties" EXCLUDE)
+endforeach()
+install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips
+    backends/test/prepare-bindings.py backends/test/result_fixture.py backends/test/check-python.py backends/test/check-csharp.py
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/backends/test)
 foreach(guide editor website)
     install(FILES ${guide}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/${guide})
@@ -63,6 +88,7 @@ if(Python3_Interpreter_FOUND)
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+install(FILES website/public/favicon.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/website/public)
 install(DIRECTORY licenses/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)

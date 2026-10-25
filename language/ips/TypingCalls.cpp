@@ -53,7 +53,7 @@ ValueType Typer::typeCall(const Call& call) {
 
 ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
                                  const BuiltinSpec& signature) {
-    auto callSignature = builtinCallSignature(signature, call.args.size(), call.location, name.name);
+    auto callSignature = builtinCallSignature(signature, call, name.name);
     if (signature.lowering == BuiltinLowering::SurfacePaint) {
         const Arg* image = nullptr;
         for (const auto& arg : call.args) if (arg.name && *arg.name == "image") { image = &arg; break; }
@@ -104,6 +104,8 @@ ValueType Typer::typeBuiltinCall(const Identifier& name, const Call& call,
     }
     const auto* overload = builtinOverload(signature, types);
     if (overload) {
+        const BuiltinSpec concrete{signature.lowering, {*overload}};
+        (void)bind(call, builtinCallSignature(concrete, call.args.size(), call.location, name.name), name.name);
         if (name.name == "mask.expand" || name.name == "mask.shrink") {
             const auto radius = known(*args[1]->value);
             if (radius && (std::get<i32>(*radius) < 0 || std::get<i32>(*radius) > kMaxMaskRadius))

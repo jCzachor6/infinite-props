@@ -15,12 +15,12 @@ The binary format is unversioned, so operations carry no minimum format version.
 | Field | Meaning and source |
 | --- | --- |
 | `product_version` | Toolchain release string from `PROJECT_VERSION`. |
-| `language_version.major`, `.minor` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. |
+| `language_version.major`, `.minor`, `.patch` | Accepted source contract, from `ips/Version.hpp`; matches JSON diagnostics. Patch is an optional additive field emitted since language 0.7.2. |
 | `c_api_version.major`, `.minor` | Feature version of the bundled C header, from its public macros. |
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `0.7.1`, source language `0.7`,
+The current values are product `0.7.2`, source language `0.7.2`,
 C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
@@ -116,6 +116,14 @@ declaration order before controls and placement; `$uniform` in the exported
 template denotes all uniform slots, not a literal source parameter name.
 
 ## Executable evidence
+
+Adapted vector overloads optionally export `expansion`, an ordered stack
+program of `{"argument":"name"}` reads and `{"opcode":"mnemonic"}` operations.
+Evaluate each source argument once in `evaluation_order`, then let argument
+steps read that saved value. The top-level `opcode` identifies the existing
+kernel; the expansion describes the complete lowering, including component
+reads, `f32.to.i32` conversions and the two scalar lerps used for a vector.
+These are source overloads only; they add no VM instructions or binary fields.
 
 Every builtin overload and variadic signature also exports `effects` from
 the shared opcode/lowering contracts. `CallSignature.effects` carries this

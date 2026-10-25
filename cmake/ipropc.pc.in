@@ -1,0 +1,9 @@
+prefix=${pcfiledir}/../..
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: ipropc
+Description: Infinite Props C API 0.4 (ABI 0.5)
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lipropc
+Cflags: -I${includedir}

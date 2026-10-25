@@ -39,7 +39,14 @@ def _source_version(root, key):
     parts = [re.search(pattern, text, re.M) for pattern in patterns]
     if not all(parts):
         raise RuntimeError("Cannot read " + key + " from " + file)
-    return ".".join(part.group(1) for part in parts)
+    numbers = [part.group(1) for part in parts]
+    if key == "language_version":
+        patch = re.search(r"\bkLanguageVersionPatch\s*=\s*(\d+)\s*;", text)
+        if patch:
+            numbers.append(patch.group(1))
+        elif "kLanguageVersionPatch" in text:
+            raise RuntimeError("Cannot read " + key + " patch from " + file)
+    return ".".join(numbers)
 
 
 def product_version(root=ROOT):
@@ -60,7 +67,8 @@ def read_version_matrix(value):
         raise RuntimeError("Invalid version matrix: expected an object")
     result = {}
     for key in VERSION_SOURCES:
-        pattern = r"[0-9]+\.[0-9]+\.[0-9]+" if key == "product_version" else r"[0-9]+\.[0-9]+"
+        pattern = (r"[0-9]+\.[0-9]+\.[0-9]+" if key == "product_version" else
+                   r"[0-9]+\.[0-9]+(?:\.[0-9]+)?" if key == "language_version" else r"[0-9]+\.[0-9]+")
         if type(value.get(key)) is not str or not re.fullmatch(pattern, value[key]):
             raise RuntimeError("Invalid version matrix: missing or malformed " + key)
         result[key] = value[key]
@@ -80,11 +88,12 @@ def described_versions(language):
         raise RuntimeError("Invalid compiled version matrix: expected an object")
     def pair(key):
         value = language.get(key)
+        components = ("major", "minor", "patch") if key == "language_version" and type(value) is dict and "patch" in value else ("major", "minor")
         if type(value) is not dict or any(type(value.get(part)) not in {int, float} or
                 not 0 <= value[part] <= 9007199254740991 or int(value[part]) != value[part]
-                for part in ("major", "minor")):
+                for part in components):
             raise RuntimeError("Invalid version pair: " + key)
-        return f"{int(value['major'])}.{int(value['minor'])}"
+        return ".".join(str(int(value[part])) for part in components)
     abi = pair("abi_version")
     if "c_abi_soversion" in language and (type(language['c_abi_soversion']) is not str or language['c_abi_soversion'] != abi):
         raise RuntimeError("C ABI alias differs from abi_version")

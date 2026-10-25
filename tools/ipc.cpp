@@ -268,14 +268,15 @@ int reportEntryFailure(bool json, bool invalidUtf16 = false) noexcept {
     const char* stage = invalidUtf16 ? "cli" : "internal";
     const char* message = invalidUtf16 ? "CLI arguments must be valid UTF-16" : "unexpected compiler failure";
     if (json) std::fprintf(stdout, "{\"schema_version\":%u,\"product_version\":\"" IPROP_PRODUCT_VERSION
-        "\",\"language_version\":{\"major\":%u,\"minor\":%u},\"status\":\"%s\","
+        "\",\"language_version\":{\"major\":%u,\"minor\":%u,\"patch\":%u},\"status\":\"%s\","
         "\"diagnostics\":[{\"code\":\"%s\",\"stage\":\"%s\",\"severity\":\"error\","
         "\"message\":\"%s\",\"file\":null,\"location\":null,\"range\":null,"
         "\"source_id\":null,\"expected_type\":null,\"actual_type\":null,\"suggestions\":[],"
         "\"related_locations\":[],\"fix_its\":[]}]}\n",
         iprop::ips::kSourceDiagnosticsSchemaVersion,
         static_cast<unsigned>(iprop::ips::kLanguageVersionMajor),
-        static_cast<unsigned>(iprop::ips::kLanguageVersionMinor), status, code, stage, message);
+        static_cast<unsigned>(iprop::ips::kLanguageVersionMinor),
+        static_cast<unsigned>(iprop::ips::kLanguageVersionPatch), status, code, stage, message);
     else std::fprintf(stderr, "ipc: %s\n", message);
     return invalidUtf16 ? 2 : 3;
 }

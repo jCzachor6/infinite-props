@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Backends · Infinite Props</title>
+<title>Unity, Godot, Web &amp; Native Integrations · Infinite Props</title>
+<meta name="description" content="Generate procedural 2D assets with Unity, Godot, WebAssembly, C/C++, Swift, Kotlin and Python. Explore Infinite Props integrations and pixel-exact output.">
 <meta name="theme-color" content="#13161a">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/src/styles/site.css">
@@ -70,6 +71,26 @@ tests (CMake 3.28 or later).</li>
 <p><code>IPROP_SFML</code> and <code>IPROP_GODOT</code> accept <code>AUTO</code> (skip missing dependencies),
 <code>ON</code> (require them) or <code>OFF</code>. The backend READMEs list the exact library, export and
 ownership contracts.</p>
+
+<h2 id="native-bindings">Apple, Unity, Android and Python</h2>
+<p>These source packages call the same C API and expose typed inputs, metadata,
+owned RGBA images, named geometry and structured errors. Each generation starts
+from declared defaults. Output owners, empty slots, UTF-8 names and binary32
+values are preserved.</p>
+<ul>
+<li><a href="../backends/apple/README.md">Apple / Swift</a>: SwiftPM and an XCFramework
+builder for macOS and iOS, with CGImage, SpriteKit and Metal helpers.</li>
+<li><a href="../backends/unity/README.md">Unity / C#</a>: a UPM package, native plugins,
+<code>.iprop</code> import previews and Texture2D/Sprite helpers.</li>
+<li><a href="../backends/android/README.md">Android / Kotlin</a>: a JNI-backed AAR and
+Bitmap adapter for API 23+, including ARM and x86_64 native libraries.</li>
+<li><a href="../backends/python/README.md">Python</a>: a ctypes package, optional Pillow
+conversion and a rendering CLI.</li>
+</ul>
+<p>See the <a href="native-bindings.md">shared native binding contract</a> for ownership,
+threading, pixel/alpha interpretation and verification. Raw pixels keep the runtime's
+legacy destination alpha; display helpers document their interpretation separately.
+These additions are available in source; existing released SDK downloads predate them.</p>
 
 <h2 id="vscode">VS Code</h2>
 <pre><code>cd editor

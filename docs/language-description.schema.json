@@ -12,7 +12,7 @@
       "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
     "language_version": {
-      "$ref": "#/$defs/version",
+      "$ref": "#/$defs/sourceVersion",
       "description": "Source-language acceptance version."
     },
     "c_api_version": {
@@ -3128,9 +3128,9 @@
     "builtins"
   ],
   "additionalProperties": true,
-  "description": "Language export schema 3: typed asset constants and intrinsic constant-evaluation eligibility, with independently versioned source, product, format and ABI contracts.",
+  "description": "Language export schema 4: explicit asset inputs, typed constants, immutable collections and independent product, source-language, C API and ABI contracts.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "infinite-props language-description schema 2",
+  "title": "infinite-props language-description schema 4",
   "$defs": {
     "version": {
       "type": "object",
@@ -3351,6 +3351,29 @@
         "constant_evaluable": {
           "type": "boolean",
           "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant."
+        },
+        "expansion": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Optional stack program for a source overload adapted to existing VM instructions. Arguments are evaluated once in evaluation_order; argument steps read those saved values.",
+          "items": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "properties": {
+              "argument": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Read the previously evaluated value of this signature parameter."
+              },
+              "opcode": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Execute this existing VM opcode on the expansion stack."
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "required": [
@@ -3633,6 +3656,35 @@
           ]
         }
       ]
+    },
+    "sourceVersion": {
+      "type": "object",
+      "properties": {
+        "major": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Major version component."
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Minor version component."
+        },
+        "patch": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Optional source-language patch component, emitted since language 0.7.2."
+        }
+      },
+      "required": [
+        "major",
+        "minor"
+      ],
+      "additionalProperties": true,
+      "description": "Source-language version; current exports include major, minor and patch. Earlier exports of this schema may omit patch."
     }
   }
 }

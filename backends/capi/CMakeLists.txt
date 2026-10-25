@@ -49,6 +49,7 @@ set(capi_shared iprop_capi)
 set(capi_static iprop_capi_static)
 
 # Real C99 host examples, built against both forms of the installed C ABI.
+if(NOT IPROP_RUNTIME_ONLY)
 foreach(example parameter_panel render_inputs)
     foreach(linkage shared static)
         add_executable(${example}_${linkage} ${CMAKE_SOURCE_DIR}/examples/c/${example}.c)
@@ -56,6 +57,7 @@ foreach(example parameter_panel render_inputs)
         iprop_warnings(${example}_${linkage})
     endforeach()
 endforeach()
+endif()
 
 # The conformance (task 6.2): the golden corpus, assembled to .iprop at
 # build time by the ipa tool, then driven through the C entry point by a

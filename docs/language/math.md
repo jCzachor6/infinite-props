@@ -101,8 +101,9 @@ defined by the same math contract.
 ## atan2
 <!-- builtin: atan2 -->
 
-Returns the pinned angle in radians. The argument order is `y, x`; signed
-zero and quadrant handling follow the math specification.
+Returns the pinned angle in radians. Scalar argument order is `y, x`;
+`atan2(v)` evaluates its vector once and computes `atan2(v.y, v.x)`.
+Signed zero and quadrant handling follow the math specification.
 
 ## smooth
 <!-- builtin: smooth -->
@@ -113,9 +114,11 @@ the frozen operation order.
 ## lerp
 <!-- builtin: lerp -->
 
-Interpolates numbers or colors with clamped `t`. Numeric inputs widen to
-`f32`. Color interpolation has the same behavior as `color.mix`, including
-preservation of the first color's alpha.
+Interpolates numbers, colors or two `vec2` values with clamped `t`. Numeric
+inputs widen to `f32`. Vectors evaluate `a`, `b`, `t` once in that order,
+then apply scalar `lerp` separately to x and y, preserving its exact rounding
+and nonfinite behavior. Color interpolation preserves the first alpha, as
+`color.mix` does. No overload draws randomness except through its arguments.
 
 ## gain
 <!-- builtin: gain -->

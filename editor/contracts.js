@@ -26,6 +26,7 @@ function validateRange(value) {
 function readDiagnostics(result, exitCode) {
     requireField(result && result.schema_version === DIAGNOSTICS_SCHEMA_VERSION && typeof result.product_version === "string" &&
         result.language_version && integer(result.language_version.major) && integer(result.language_version.minor) &&
+        (!Object.hasOwn(result.language_version, "patch") || integer(result.language_version.patch)) &&
         Object.hasOwn(exits, result.status) && exits[result.status] === exitCode && Array.isArray(result.diagnostics));
     for (const d of result.diagnostics) {
         requireField(d && typeof d.code === "string" && diagnosticCodePattern.test(d.code) && stages.has(d.stage) && typeof d.message === "string" &&

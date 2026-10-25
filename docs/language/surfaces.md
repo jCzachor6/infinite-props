@@ -236,6 +236,8 @@ compilation; dynamic bad radii trap before scanning.
 <!-- builtin: mask.offset -->
 
 Moves the mapping by `dx`, `dy` integer target pixels without copying the buffer.
+The overload `mask.offset(source, offset: vec2)` evaluates each argument once
+and converts x/y with `int()` (truncate, saturate, NaN to zero).
 Offsets may move the whole mask off-canvas. Algebra and morphology retain those
 outside pixels, while painting only writes within the target.
 

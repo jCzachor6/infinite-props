@@ -28,6 +28,8 @@ async function main() {
     const api = require(path.join(root, "js", "api.js"))(() => Promise.resolve(Module));
 
     const iprop = await api.create(path.join(buildDir, "iprop.wasm"));
+    const publishCorpus = process.env.IPROP_PIXEL_CORPUS_DIR
+        ? require("./pixel-corpus.js").record(iprop, process.env.IPROP_PIXEL_CORPUS_DIR) : null;
     const conformance = require(path.join(__dirname, "conformance.js"));
 
     const fetchBytes = async function (name) {
@@ -48,6 +50,8 @@ async function main() {
                     " matching trap reasons)");
         console.log("native/WASM vector boundaries: PASS (" + native.vectorComparisons +
                     " bit-exact results)");
+        console.log("native/WASM vector overloads: PASS (" + native.vectorOverloads.signatures + " signatures; " +
+            native.vectorOverloads.comparisons + " exact generations; " + native.vectorOverloads.traps + " matching traps)");
         console.log("native/WASM color boundaries: PASS (" + native.colorComparisons +
                     " exact RGBA results)");
         console.log("native/WASM 0.7 math: PASS (" + native.mathComparisons +
@@ -90,6 +94,7 @@ async function main() {
             native.resourceExports.traps + " matching traps; " + native.resourceExports.rejections + " malformed/version rejections)");
         console.log("native/WASM blur: PASS (" + native.blur.comparisons + " exact generations; " + native.blur.pins +
             " independent 2D pins; " + native.blur.traps + " matching traps; " + native.blur.rejections + " malformed/version rejections)");
+        if (publishCorpus) publishCorpus();
         process.exit(0);
     }
     for (const failure of result.failures.concat(native.failures)) {

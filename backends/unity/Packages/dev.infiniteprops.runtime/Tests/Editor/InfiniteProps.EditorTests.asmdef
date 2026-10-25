@@ -1,0 +1,7 @@
+{
+  "name": "InfiniteProps.EditorTests",
+  "references": ["InfiniteProps.Runtime", "InfiniteProps.Editor"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"]
+}

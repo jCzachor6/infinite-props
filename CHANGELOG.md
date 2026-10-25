@@ -1,5 +1,82 @@
 # Changelog
 
+## Unreleased
+
+## v0.7.2 — 2026-10-25
+
+Product, editor, website and native binding packages: **0.7.2**. Source language:
+**0.7.2**, including the vector overloads below. C API **0.4**, ABI / SONAME
+**0.5** and the unversioned format remain unchanged. Language exports and
+JSON diagnostics now include the source-version patch component.
+
+### Language: vector overloads
+
+Added **20 `vec2` overloads across 16 existing functions**. The complete list of
+new signatures follows; all existing scalar and color overloads remain available.
+
+| Area | Added overload |
+| --- | --- |
+| Drawing | `pixel(p: vec2, color: color) -> void` |
+| Drawing | `rect(position: vec2, size: vec2, color: color) -> void` |
+| Drawing | `rect(position: vec2, w: f32, h: f32, color: color) -> void` |
+| Drawing | `rect(x: f32, y: f32, size: vec2, color: color) -> void` |
+| Drawing | `line(a: vec2, b: vec2, thickness: i32, color: color) -> void` |
+| Drawing | `oval(center: vec2, radii: vec2, color: color) -> void` |
+| Drawing | `oval(center: vec2, rx: f32, ry: f32, color: color) -> void` |
+| Drawing | `oval(x: f32, y: f32, radii: vec2, color: color) -> void` |
+| Noise and procedural utilities | `noise(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `fault(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.grad(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.fbm(p: vec2, octaves: i32, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.cell(p: vec2, seed: i32) -> f32` |
+| Noise and procedural utilities | `noise.ridge(p: vec2, octaves: i32, seed: i32) -> f32` |
+| Noise and procedural utilities | `warp(p: vec2, amount: f32, seed: i32) -> f32` |
+| Noise and procedural utilities | `cell.jitter(cell: vec2, seed: i32) -> vec2` |
+| Noise and procedural utilities | `dither(t: f32, p: vec2) -> f32` |
+| Masks | `mask.offset(source: mask, offset: vec2) -> mask` |
+| Math | `lerp(a: vec2, b: vec2, t: f32) -> vec2` |
+| Math | `atan2(v: vec2) -> f32` |
+
+Arguments evaluate once in signature order, including named and mixed calls.
+`pixel`, `cell.jitter`, `dither` and `mask.offset` convert vector coordinates
+exactly as `int()`: truncate toward zero, saturate to i32 and map NaN to zero.
+`atan2(v)` is `atan2(v.y, v.x)`; vector `lerp` applies the existing clamped
+scalar interpolation independently to x and y. Existing pixel results, C API
+and binary format are unchanged.
+
+### Native integrations
+
+- Every backend consumes the shared Native/WASM pixel corpus, comparing all
+  RGBA bytes and structured output bits. Unity Editor Gamma/Linear GPU checks
+  remain local; standalone C# binding checks run in CI.
+- Android `toBitmap()` preserves raw unpremultiplied RGBA. Use the explicit
+  `toPremultipliedBitmap()` helper for Android Canvas/View drawing.
+- Apple Swift package and multiplatform XCFramework builder, with CGImage,
+  SpriteKit and Metal adapters independent of game code.
+- Unity UPM package with native C# bindings, `.iprop` import previews,
+  Texture2D/Sprite helpers and per-platform plugin builds.
+- Android Kotlin/JNI AAR with a Bitmap adapter and host/device conformance.
+- Python package with typed inputs, exact output bits, Pillow export and CLI.
+- Shared native binding contracts, SDK source-package installation and
+  runtime-only CMake builds for mobile and plugin cross-compilation.
+- Strict zlib decoding through baseline inflate APIs for Android API 23
+  compatibility, preserving decoded-size, checksum and trailing-byte checks.
+
+### Website
+
+- Asset Store links point to [iprop.store](https://iprop.store/) and show that
+  the store is available.
+- All seven pages ship unique descriptions, canonical URLs, Open Graph and
+  X/Twitter cards, and structured data in static HTML. The build generates
+  `robots.txt` and the sitemap from its page inventory.
+- A shared link-preview image features the generated butterfly collection.
+
+### Documentation
+
+- Redesigned README with centered branding, a 4×4 collector display of the
+  website's generated butterflies, and clearer integration and documentation
+  navigation. The installed SDK includes its preview assets and license notice.
+
 ## v0.7.1 — 2026-10-15
 
 Product/editor/website version: 0.7.1. Source language 0.7, the frozen

@@ -34,7 +34,8 @@ void writeSourceDiagnosticsJson(std::ostream& destination, std::string_view prod
     auto& out=buffer;
     out << "{\"schema_version\":" << ips::kSourceDiagnosticsSchemaVersion << ",\"product_version\":\"" << jsonEscape(productVersion)
         << "\",\"language_version\":{\"major\":" << ips::kLanguageVersionMajor
-        << ",\"minor\":" << ips::kLanguageVersionMinor << "},\"status\":\"" << ips::diagnosticStatusName(status)
+        << ",\"minor\":" << ips::kLanguageVersionMinor << ",\"patch\":" << ips::kLanguageVersionPatch
+        << "},\"status\":\"" << ips::diagnosticStatusName(status)
         << "\",\"diagnostics\":[";
     bool first = true;
     for (const auto& diagnostic : diagnostics) {

@@ -5,7 +5,7 @@ Infinite Props is licensed in parts. Each part is under the license named
 below; the full texts are in licenses/.
 
   Runtime: MPL-2.0 (licenses/MPL-2.0.txt)
-    runtime/, backends/ (the C API, HTML5/WASM, Godot and SFML backends),
+    runtime/, backends/ (all language and engine integrations),
     cmake/ and the top-level CMakeLists.txt.
     This is what a game embeds. Use it in any game or engine, commercial or
     closed. Changes you make to these files must stay available under the

@@ -1448,6 +1448,161 @@
       "delete": true,
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "empty vector expansion",
+      "path": [
+        "builtins",
+        1,
+        "overloads",
+        1,
+        "expansion"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown vector expansion argument",
+      "path": [
+        "builtins",
+        1,
+        "overloads",
+        1,
+        "expansion",
+        0,
+        "argument"
+      ],
+      "value": "missing",
+      "accept": false,
+      "schema": true
+    },
+    {
+      "id": "nonstring vector expansion argument",
+      "path": [
+        "builtins",
+        1,
+        "overloads",
+        1,
+        "expansion",
+        0,
+        "argument"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "ambiguous vector expansion step",
+      "path": [
+        "builtins",
+        1,
+        "overloads",
+        1,
+        "expansion",
+        0
+      ],
+      "value": {
+        "argument": "v",
+        "opcode": "vec2.x"
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "nonstring vector expansion opcode",
+      "path": [
+        "builtins",
+        1,
+        "overloads",
+        1,
+        "expansion",
+        1,
+        "opcode"
+      ],
+      "value": 1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch True",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch -1",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": -1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch 1.5",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": 1.5,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch None",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch '2'",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": "2",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch []",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch {}",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": {},
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "valid source patch",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": 2,
+      "accept": true,
+      "schema": true
     }
   ],
   "diagnostics": [
@@ -1582,6 +1737,86 @@
       ],
       "value": 9007199254740991,
       "accept": false,
+      "schema": true
+    },
+    {
+      "id": "invalid source patch True",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch -1",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": -1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch 1.5",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": 1.5,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch None",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch '2'",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": "2",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch []",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": [],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid source patch {}",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": {},
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "valid source patch",
+      "path": [
+        "language_version",
+        "patch"
+      ],
+      "value": 2,
+      "accept": true,
       "schema": true
     }
   ],
@@ -1759,6 +1994,15 @@
       },
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "full source language version",
+      "path": [
+        "language_version"
+      ],
+      "value": "0.7.2",
+      "accept": true,
+      "schema": true
     }
   ]
 }

@@ -44,6 +44,26 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                              (overload.result.isResource() && std::any_of(overload.params.begin(),overload.params.end(),
                                 [](const auto& parameter){return parameter.type.isResource();}))));
                     CHECK((effects.checks & static_cast<u16>(EffectCheck::UnassignedHandle)) != 0);
+                } else if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
+                    std::vector<ValueType> stack;
+                    for (const auto& step : ips::builtinExpansion(overload)) {
+                        if (const auto* argument = std::get_if<std::size_t>(&step))
+                            stack.push_back(runtimeType(overload.params[*argument].type));
+                        else {
+                            const auto& contract = *findOpcode(std::get<Opcode>(step))->stack;
+                            REQUIRE(stack.size() >= contract.inputCount);
+                            const auto base = stack.size() - contract.inputCount;
+                            for (std::size_t i = 0; i < contract.inputCount; ++i)
+                                CHECK(accepts(contract.inputs[i], stack[base + i]));
+                            stack.resize(base);
+                            if (contract.result) stack.push_back(*contract.result);
+                        }
+                    }
+                    if (overload.result == T::Void) CHECK(stack.empty());
+                    else {
+                        REQUIRE(stack.size() == 1);
+                        CHECK(stack.back() == runtimeType(overload.result));
+                    }
                 } else {
                 CHECK(opcode->stack->inputCount == overload.params.size());
                 for (std::size_t i=0;i<overload.params.size();++i)

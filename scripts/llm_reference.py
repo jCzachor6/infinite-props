@@ -126,41 +126,47 @@ def phrase(value, phrases):
     return phrases.get(value, str(value).replace('_', ' '))
 
 
-def compiler_rules(language):
+def compiler_rules(language, covered=()):
     """The compiler's source rules in plain sentences, from --describe-language."""
     rules = language['source_rules']
     types = rules['types']
+    helper_types = ('the same types' if types['helper_parameters'] == types['storable']
+                    else ', '.join(types['helper_parameters']))
     lines = ['## Compiler rules', '',
-        f"Values you can store, pass and return: {', '.join(types['storable'])}. Helper parameters take "
-        f"{', '.join(types['helper_parameters'])}. {' and '.join('`' + kind + '`' for kind in types['output_only_geometry'])} exist only as output kinds."]
+        f"Values you can store, pass and return: {', '.join(types['storable'])}. Helpers take {helper_types}. "
+        f"{' and '.join('`' + kind + '`' for kind in types['output_only_geometry'])} exist only as output kinds."]
     widening = ', '.join(item['from'] + ' to ' + item['to'] for item in types['implicit_widening']) or 'nothing'
-    lines.append(f"Only {widening} converts implicitly; {phrase(types['local_reassignment'], {'exact_type': 'a local keeps the exact type of its first assignment'})}.")
+    if 'types' not in covered:
+        lines.append(f"Only {widening} converts implicitly; {phrase(types['local_reassignment'], {'exact_type': 'a local keeps the exact type of its first assignment'})}.")
     if 'collections' in rules:
         collection = rules['collections']
-        lines.append(f"`list<T>` is immutable and holds {collection['minimum_length']} to {collection['maximum_length']} elements; "
-                     "empty literals need a known element type. Elements evaluate once left to right; list indices are i32 and trap "
-                     "outside the length. Helpers share immutable data. `list.len` gives i32; `poly` "
-                     "accepts list<vec2> and color, evaluating points first. Direct legacy palette indexing keeps its "
-                     "last-element fallback; a palette passed as a list uses checked indexing and the 256-element limit.")
+        if 'collections' in covered:
+            lines.append('Empty list literals need an element type from context.')
+        else:
+            lines.append(f"`list<T>` is immutable and holds {collection['minimum_length']} to {collection['maximum_length']} elements; "
+                         "empty literals need a known element type. Elements evaluate once left to right; list indices are i32 and trap "
+                         "outside the length. Helpers share immutable data. `list.len` gives i32; `poly` "
+                         "accepts list<vec2> and color, evaluating points first. Direct legacy palette indexing keeps its "
+                         "last-element fallback; a palette passed as a list uses checked indexing and the 256-element limit.")
     if 'samplers' in rules:
         from language_docs import sampler_signatures
-        lines += ['Captured samplers evaluate lower, upper and optional distribution once, without an intrinsic draw. '
+        capture = '' if 'samplers' in covered else (
+                  'Captured samplers evaluate lower, upper and optional distribution once, without an intrinsic draw. '
                   'Copies/helpers share the immutable description. Receivers evaluate once before the count; '
-                  'batch pick checks count, handle and allocation before results. Constants and empty batches consume no RNG. '
-                  'Const samplers and range palettes store compile-time descriptions. Range palettes lift scalar entries '
+                  'batch pick checks count, handle and allocation before results. Constants and empty batches consume no RNG. ')
+        lines += [capture + 'Const samplers and range palettes store compile-time descriptions. Range palettes lift scalar entries '
                   'to constant descriptions; indexing selects without RNG and keeps the last-element fallback. '
                   'Pass them as list<sampler<T>> for checked indexing. Ramp accepts only constant color/f32 palettes.', '', sampler_signatures(language)]
         lines.append('')
     if 'steppers' in rules:
         from language_docs import method_signatures
-        lines += ['`stepper<T>` captures the same four endpoint types as a sampler, but `.pick(n)` requires an i32 count '
-                  'in 0-256 and returns deterministic list<T> quantiles without RNG. No cursor or implicit sampler conversion exists. '
-                  'Uniform positions are i/(n-1), with exact endpoints; n=0 is empty and n=1 returns the first step. '
-                  'Integer interpolation uses binary64 and rounds halves away from zero. Gaussian, triangular, beta, weighted and density '
-                  'use the truncated distribution support, with one shared coefficient for all color RGBA channels or vec2 components. '
-                  'Weighted steps may repeat. Captured operands still run eagerly in lower, upper, distribution order. '
-                  'Const descriptions and lists of steppers are supported; picks require generation, distinct compares descriptions, '
-                  'and sort rejects them. Empty picks still validate their handle but do not check probability mass.', '',
+        lines += ['`stepper<T>` captures i32/f32/color/vec2 endpoints. `.pick(n: i32)` returns deterministic list<T> '
+                  'quantiles for n in 0-256, without RNG, a cursor or implicit sampler conversion. '
+                  'Uniform positions: i/(n-1), exact endpoints; n=0 is empty, n=1 returns the first step. '
+                  'Integer interpolation uses binary64, rounding halves away from zero. Gaussian/triangular/beta/weighted/density '
+                  'use truncated support and one coefficient for all RGBA channels or vec2 components; weighted steps may repeat. '
+                  'Capture eagerly evaluates lower, upper, distribution in order. Const/list descriptions work; picks require generation, '
+                  'distinct compares descriptions, sort rejects them. Empty picks validate the handle, not probability mass.', '',
                   method_signatures(rules['steppers']['methods']), '']
     if 'methods' in rules.get('surfaces', {}):
         from language_docs import method_signatures
@@ -173,7 +179,7 @@ def compiler_rules(language):
                   'Fuel 1+K+W*H*(1+2*K); output and 8*W*min(H,K)*C scratch share 64 MiB (C=4 layer,1 mask). '
                   'Always release scratch; failures publish nothing.', '',
                   method_signatures(rules['surfaces']['methods']), '']
-    if 'random_range' in rules:
+    if 'random_range' in rules and 'random' not in covered:
         ranged = rules['random_range']
         lines.append('`lower to upper` evaluates the lower bound, then the upper one, then draws once: ' +
             '; '.join(f"{item['lower']} bounds give {item['result']}" for item in ranged['overloads']) +
@@ -199,20 +205,22 @@ def compiler_rules(language):
             'and missing mass traps. Density values are heights interpolated linearly, zero outside their support; '
             'draws integrate clipped trapezoids and invert the selected integral. Equal density bounds need only lie in the closed support. '
             'Color/vec2 use positions on 0–1.')
-    if 'components' in types:
+    if 'components' in types and 'types' not in covered:
         lines.append('Read-only members: ' + '; '.join(item['type'] + ' ' + ', '.join('.' + name for name in item['names']) +
                      ' give ' + item['result'] for item in types['components']) + '.')
-    local = rules['locals']
-    lines.append(f"A local is declared by its {phrase(local['declaration'], {'first_assignment': 'first assignment'})} and is visible in the whole "
-                 f"{local['scope']}; if that assignment never runs, it reads as "
-                 f"{phrase(local['unexecuted_initializer'], {'typed_zero': 'zero of its type'})}" +
-                 ('.' if local['definite_assignment_analysis'] else ' (there is no definite-assignment check).'))
-    visibility = rules['visibility']
-    lines.append(f"Inputs are visible {phrase(visibility['uniforms'], {'draw_only': 'only in `draw`'})}" +
-                 (' and are read-only' if visibility['uniforms_read_only'] else '') + '; pass them to helpers as parameters.')
-    named = rules['effect_order']['named_arguments_change_evaluation_order']
-    lines.append(f"Helper arguments evaluate in {phrase(language['call_rules']['helper_evaluation_order'], {'declaration': 'parameter declaration order'})}" +
-                 ('; naming them can change that order.' if named else '; naming them does not change that order.'))
+    if 'types' not in covered:
+        local = rules['locals']
+        lines.append(f"A local is declared by its {phrase(local['declaration'], {'first_assignment': 'first assignment'})} and is visible in the whole "
+                     f"{local['scope']}; if that assignment never runs, it reads as "
+                     f"{phrase(local['unexecuted_initializer'], {'typed_zero': 'zero of its type'})}" +
+                     ('.' if local['definite_assignment_analysis'] else ' (there is no definite-assignment check).'))
+    if 'helper' not in covered:
+        visibility = rules['visibility']
+        lines.append(f"Inputs are visible {phrase(visibility['uniforms'], {'draw_only': 'only in `draw`'})}" +
+                     (' and are read-only' if visibility['uniforms_read_only'] else '') + '; pass them to helpers as parameters.')
+        named = rules['effect_order']['named_arguments_change_evaluation_order']
+        lines.append(f"Helper arguments evaluate in {phrase(language['call_rules']['helper_evaluation_order'], {'declaration': 'parameter declaration order'})}" +
+                     ('; naming them can change that order.' if named else '; naming them does not change that order.'))
     unavailable = ', '.join(key.replace('_', ' ') for key, allowed in rules['restrictions'].items() if not allowed)
     lines += ['Not available: ' + (unavailable or 'nothing') + '.', '']
     return lines
@@ -267,7 +275,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
 
     def version(key):
         value = language[key]
-        return str(int(value['major'])) + '.' + str(int(value['minor']))
+        return '.'.join(str(int(value[part])) for part in ('major', 'minor', 'patch') if part in value)
 
     lines = ['# .ips LLM reference', '',
         'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '',
@@ -278,7 +286,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         f"Commit: `{identity['source_commit'] or 'source archive'}` · {identity['status']} · dirty: {str(identity['working_tree_dirty']).lower()}",
         f"Budget: {budget} UTF-8 bytes (no truncation). Sections: {', '.join(sections) or 'none'}. Symbols: {', '.join(symbols) if 'symbols' in sections and symbols else 'none'}.", '',
         f'[Full handbook](docs/language-v{minor}.md) · [Compiler catalog](docs/language.json)', '']
-    rules_lines = compiler_rules(language)
+    rules_lines = compiler_rules(language, sections)
     example_paths, repairs = [], []
 
     style = []

@@ -35,9 +35,4 @@ window.matchMedia("(min-width: 48rem)").addEventListener("change", (query) => {
     if (query.matches) setMenu(false);
 });
 
-// The asset store does not exist yet: its links stay put.
-for (const link of Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href="#"]'))) {
-    link.addEventListener("click", (event) => event.preventDefault());
-}
-
 export {};

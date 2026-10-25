@@ -34,6 +34,8 @@ bin/
 *.png
 !tests/golden/*.png
 !examples/portrait-sheet.png
+!examples/showcase/readme-collection.png
+!website/public/social-preview.png
 
 # Editor / website
 editor/node_modules/
@@ -65,3 +67,18 @@ website/public/docs/
 website/public/LLM_REFERENCE.md
 website/docs/language.html
 backends/html5/demo/*.iprop
+
+# Host-binding build products
+backends/apple/.build/
+backends/apple/.swiftpm/
+backends/apple/Artifacts/
+backends/android/.gradle/
+backends/android/.kotlin/
+backends/android/local.properties
+backends/android/**/.cxx/
+backends/android/**/build/
+backends/unity/**/bin/
+backends/unity/**/obj/
+backends/unity/Packages/dev.infiniteprops.runtime/Plugins/
+backends/python/**/*.egg-info/
+backends/python/dist/

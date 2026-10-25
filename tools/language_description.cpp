@@ -427,6 +427,15 @@ Json builtins() {
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
                 entry["opcode"] = opcode->mnemonic;
             }
+            if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
+                Json expansion = Json::array();
+                for (const auto& step : ips::builtinExpansion(overload)) {
+                    if (const auto* argument = std::get_if<std::size_t>(&step))
+                        expansion.push_back(Json::object({{"argument", overload.params[*argument].name}}));
+                    else expansion.push_back(Json::object({{"opcode", findOpcode(std::get<Opcode>(step))->mnemonic}}));
+                }
+                entry["expansion"] = std::move(expansion);
+            }
             overloads.push_back(std::move(entry));
         }
         auto builtin = Json::object({{"name", name}, {"overloads", std::move(overloads)}});
@@ -478,6 +487,7 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["schema_version"] = ips::kLanguageDescriptionSchemaVersion;
     document["product_version"] = std::string(productVersion);
     document["language_version"] = version(ips::kLanguageVersionMajor, ips::kLanguageVersionMinor);
+    document["language_version"]["patch"] = ips::kLanguageVersionPatch;
     document["c_api_version"] = version(IPROP_API_VERSION_MAJOR, IPROP_API_VERSION_MINOR);
     document["abi_version"] = version(IPROP_C_ABI_VERSION_MAJOR, IPROP_C_ABI_VERSION_MINOR);
     document["c_abi_soversion"] = IPROP_C_ABI_SOVERSION;

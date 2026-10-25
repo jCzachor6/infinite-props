@@ -44,6 +44,19 @@ CallSignature rampCallSignature() {
     result.effects = {};
     return result;
 }
+CallSignature builtinCallSignature(const BuiltinSpec& spec, const Call& call,
+    std::string_view function) {
+    for (const auto& overload : spec.overloads) {
+        if (overload.params.size() != call.args.size()) continue;
+        const BuiltinSpec concrete{spec.lowering, {overload}};
+        auto signature = builtinCallSignature(concrete, call.args.size(), call.location, function);
+        try {
+            (void)bindArguments(call, signature.parameters, function);
+            return signature;
+        } catch (const SourceError&) { /* try the other parameter-name layout */ }
+    }
+    return builtinCallSignature(spec, call.args.size(), call.location, function);
+}
 CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType) {
     auto spec = builtinSpecs().at("surface.paint");
     std::erase_if(spec.overloads, [imageType](const auto& overload) {
@@ -91,7 +104,7 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
     }
     if (const auto found = builtinSpecs().find(name);
         found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))
-        return bindCall(call, builtinCallSignature(found->second, call.args.size(), call.location, name), name);
+        return bindCall(call, builtinCallSignature(found->second, call, name), name);
     if (name == "ramp") return bindCall(call, rampCallSignature(), name);
     for (const auto& function : program.asset.functions) {
         if (name == function.name && name != "draw")

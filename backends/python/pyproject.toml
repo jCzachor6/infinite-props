@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "infinite-props"
+version = "0.7.2"
+description = "Python bindings for the Infinite Props native runtime"
+requires-python = ">=3.10"
+license = "MPL-2.0"
+license-files = ["LICENSE"]
+
+[project.optional-dependencies]
+images = ["Pillow>=10"]
+
+[project.scripts]
+iprop-python = "infinite_props.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

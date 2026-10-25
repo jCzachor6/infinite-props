@@ -1,5 +1,6 @@
 {
   "cases": [
+    {"file":"vector-overloads.ips","expect":"pass"},
     {"file":"blur.ips","expect":"pass"},
     {"file":"blurred-layer.ips","expect":"pass"},
     {"file":"soft-mask.ips","expect":"pass"},

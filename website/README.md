@@ -59,7 +59,8 @@ getting-started guide with the documentation, and the source page.
   backends and the FAQ. A client-side section search sits in the docs
   sidebar (press `/`).
 - **Source** (`source.html`): the repository, the build and the layout.
-- **Asset store**: an empty link for now.
+- **Asset store**: available at [iprop.store](https://iprop.store/), linked from
+  the navigation, footer and home-page buttons.
 
 The complete language page is generated from
 [`../docs/language/`](../docs/language/index.md), compiler-exported signatures
@@ -82,6 +83,25 @@ navigation and fills `{{BASE}}` and the version placeholders
 `public/docs/language-manifest.json`), so the navigation works without JS.
 All styles are in `src/styles/site.css`; `src/site.ts` makes the header
 opaque past the home hero and opens the mobile menu.
+
+## Search and link previews
+
+Each page owns its title and meta description in its HTML source; the generated
+language page uses `templates/language.html`. The metadata plugin in
+`vite.config.ts` adds canonical URLs on `https://infiniteprops.dev/`, Open Graph,
+X/Twitter cards, crawl directives and JSON-LD to the static HTML. The home page
+identifies the website and software; documentation pages describe their content
+as technical articles. No client-side JavaScript is needed to read these tags.
+
+The production build also emits `robots.txt` and `sitemap.xml`. Sitemap entries
+come from the same `PAGES` inventory as the Vite build; the home page uses `/`
+as its canonical URL. No synthetic modification dates are published.
+
+The shared 1200×630 card is `public/social-preview.png`. Its vector template is
+`templates/social-preview.svg`; regenerate it together with the README
+collector display using `scripts/render_readme_collection.cjs --png` from the
+repository root, as described in `examples/showcase/README.md`. Its generated
+butterflies retain the reserved rights in `examples/showcase/LICENSE.md`.
 
 ## Build
 

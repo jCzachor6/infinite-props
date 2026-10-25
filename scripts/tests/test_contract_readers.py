@@ -22,7 +22,7 @@ class ContractReaderTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'manifest schema version'):
             read_manifest({**current,'schema_version':2})
         for key in ('language_version','c_api_version','c_abi_soversion'):
-            for value in (None,False,4,{'major':0,'minor':4},'0.4.0'):
+            for value in (None,False,4,{'major':0,'minor':4},'0.4.0.1'):
                 with self.subTest(key=key,value=value), self.assertRaises(RuntimeError):
                     read_manifest({**current,key:value})
             missing = dict(current); del missing[key]
@@ -38,6 +38,23 @@ class ContractReaderTest(unittest.TestCase):
         with self.assertRaises(RuntimeError): described_versions({**catalog,'c_abi_soversion':'0.5'})
         for value in (True,0.5,None):
             with self.assertRaises(RuntimeError): described_versions({**catalog,'abi_version':{'major':0,'minor':value}})
+
+    def test_source_patch_is_preserved_without_changing_api_or_abi_pairs(self):
+        catalog = copy.deepcopy(LANGUAGE)
+        catalog['language_version']['patch'] = 2
+        self.assertIs(read_language(catalog), catalog)
+        self.assertEqual(described_versions(catalog)['language_version'], '0.5.2')
+        matrix = described_versions(catalog)
+        self.assertEqual(read_version_matrix(matrix), matrix)
+        for value in (True, -1, 1.5, None, '2', [], {}):
+            broken = copy.deepcopy(catalog)
+            broken['language_version']['patch'] = value
+            with self.subTest(patch=value):
+                with self.assertRaises(RuntimeError): read_language(broken)
+                with self.assertRaises(RuntimeError): described_versions(broken)
+        for key in ('c_api_version', 'c_abi_soversion'):
+            with self.assertRaises(RuntimeError):
+                read_version_matrix({**matrix, key: '0.5.2'})
 
     def test_language_requires_the_current_schema_and_rules(self):
         self.assertIs(read_language(LANGUAGE),LANGUAGE)

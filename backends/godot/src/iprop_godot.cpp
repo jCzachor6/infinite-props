@@ -100,8 +100,8 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_inputs"), &IpropAsset::get_inputs);
     ClassDB::bind_method(D_METHOD("set_input", "name", "value"), &IpropAsset::set_input);
     ClassDB::bind_method(D_METHOD("reset_inputs"), &IpropAsset::reset_inputs);
-    ClassDB::bind_method(D_METHOD("generate", "seed"),
-                         &IpropAsset::generate);
+    ClassDB::bind_method(D_METHOD("generate", "seed", "width", "height"),
+                         &IpropAsset::generate, DEFVAL(0), DEFVAL(0));
     ClassDB::bind_method(D_METHOD("get_size"), &IpropAsset::get_size);
     ClassDB::bind_method(D_METHOD("get_origin"), &IpropAsset::get_origin);
     ClassDB::bind_method(D_METHOD("get_fuel"), &IpropAsset::get_fuel);
@@ -264,7 +264,11 @@ Error IpropAsset::reset_inputs() {
     return OK;
 }
 
-Ref<Image> IpropAsset::generate(int64_t seed) {
+Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
+    if (width < 0 || height < 0 || width > UINT32_MAX || height > UINT32_MAX) {
+        UtilityFunctions::printerr("iprop: width/height must be in 0..4294967295");
+        return {};
+    }
     const auto validU32 = [](int64_t value) {
         return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
     };
@@ -279,6 +283,8 @@ Ref<Image> IpropAsset::generate(int64_t seed) {
     iprop_generate_options_ex options;
     iprop_generate_options_ex_init(&options, sizeof(options));
     options.seed = static_cast<uint32_t>(seed);
+    options.size_x = static_cast<uint32_t>(width);
+    options.size_y = static_cast<uint32_t>(height);
     Failure failure;
     iprop_result* result = nullptr;
     if (iprop_generate_ex(program_, &options, parameters_, &result, failure.get()) != IPROP_EX_OK) {

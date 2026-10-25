@@ -67,10 +67,12 @@ def strings(value, path, choices=None, nonempty=False):
     return value
 
 
-def version(value, path):
+def version(value, path, patch=False):
     obj(value, ['major', 'minor'], path)
     integer(value['major'], path + '.major')
     integer(value['minor'], path + '.minor')
+    if patch and 'patch' in value:
+        integer(value['patch'], path + '.patch')
 
 
 def effects(value, path):
@@ -115,7 +117,7 @@ def read_language(value):
     require(type(value['schema_version']) in {int, float} and value['schema_version'] == LANGUAGE_SCHEMA_VERSION, 'language schema version')
     require(PRODUCT.fullmatch(text(value['product_version'], 'product_version')), 'product_version')
     for key in ['language_version', 'c_api_version', 'abi_version']:
-        version(value[key], key)
+        version(value[key], key, patch=key == 'language_version')
     if 'c_abi_soversion' in value:
         require(SOVERSION.fullmatch(text(value['c_abi_soversion'], 'c_abi_soversion')) and
                 value['c_abi_soversion'] == f"{int(value['abi_version']['major'])}.{int(value['abi_version']['minor'])}",
@@ -131,6 +133,16 @@ def read_language(value):
             boolean(signature.get('constant_evaluable'), 'constant_evaluable')
             if 'opcode' in signature:
                 text(signature.get('opcode'), 'opcode', True)
+            if 'expansion' in signature:
+                steps = signature['expansion']
+                require(type(steps) is list and bool(steps), 'overload.expansion')
+                parameters = {p['name'] for p in signature['parameters']}
+                for step in steps:
+                    require(type(step) is dict and set(step) in ({'argument'}, {'opcode'}), 'expansion step')
+                    if 'argument' in step:
+                        require(text(step['argument'], 'expansion argument', True) in parameters, 'expansion argument')
+                    else:
+                        text(step['opcode'], 'expansion opcode', True)
         if 'variadic' in builtin:
             signature = builtin['variadic']
             ordered_signature(signature, 'variadic')
@@ -517,7 +529,7 @@ def read_diagnostics(value, exit_code=None):
     obj(value, ['schema_version', 'product_version', 'language_version', 'status', 'diagnostics'], 'diagnostics')
     require(type(value['schema_version']) in {int, float} and value['schema_version'] == DIAGNOSTICS_SCHEMA_VERSION, 'diagnostic schema version')
     text(value['product_version'], 'product version')
-    version(value['language_version'], 'language version')
+    version(value['language_version'], 'language version', patch=True)
     require(type(value['status']) is str and value['status'] in EXITS and (exit_code is None or EXITS[value['status']] == exit_code), 'diagnostic status/exit')
     require(type(value['diagnostics']) is list, 'diagnostic array')
     for item in value['diagnostics']:

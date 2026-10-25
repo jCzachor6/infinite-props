@@ -184,6 +184,21 @@ def resources(root):
     # Integration guides link the same contracts in standalone docs, websites
     # and installed SDKs. Include their linked C examples for offline use.
     files += list((root / "backends").glob("*/README.md"))
+    if (root / "backends/capi/iprop.h").is_file():
+        files.append(root / "backends/capi/iprop.h")
+    # Ship the binding source packages with their linked guides. Never absorb
+    # local native binaries, SDK downloads, compiler caches or build products.
+    excluded = {".build", ".swiftpm", "Artifacts", ".gradle", ".kotlin", ".cxx", "build", "bin", "obj", "Plugins", "__pycache__", "dist"}
+    suffixes = {".swift", ".h", ".cpp", ".py", ".toml", ".cs", ".csproj", ".shader", ".asmdef", ".meta", ".json", ".kts", ".kt", ".properties", ".xml", ".pro", ".txt", ".md", ".modulemap"}
+    for backend in ("apple", "unity", "android", "python"):
+        directory = root / "backends" / backend
+        files += [p for p in directory.rglob("*") if p.is_file()
+                  and not (set(p.relative_to(directory).parts) & excluded)
+                  and not any(part.endswith(".egg-info") for part in p.parts)
+                  and p.name != "local.properties"
+                  and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py")
+              if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))
     if (root / "examples/c/CMakeLists.txt").is_file():

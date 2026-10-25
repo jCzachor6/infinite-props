@@ -46,6 +46,7 @@ add_executable(iprop_tests
     compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
+    compiler/vector_overloads_test.cpp
     compiler/palettes_test.cpp
     compiler/drawing_test.cpp
     compiler/color_channels_test.cpp
@@ -169,6 +170,9 @@ if(IPROP_NODE_EXECUTABLE)
 endif()
 
 if(Python3_Interpreter_FOUND)
+    add_test(NAME binding_python COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_SOURCE_DIR}/backends/test/check-python.py
+        $<TARGET_FILE_DIR:ipc> $<TARGET_FILE:iprop_capi> ${CMAKE_BINARY_DIR}/binding-fixtures)
     add_test(NAME mask_rational_reference COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_mask_reference.py")
     add_test(NAME source_over_rational_reference COMMAND ${Python3_EXECUTABLE}

@@ -1,11 +1,11 @@
 # CI artifacts and reports
 
-CI runs the native matrix, native/WASM conformance, SFML/Godot integration
-checks and sanitizers on demand: start it from Actions -> CI -> Run workflow
+CI runs the native matrix, language bindings, native/WASM conformance,
+SFML/Godot integration checks and sanitizers on demand: start it from Actions -> CI -> Run workflow
 for the chosen branch. Pushes and pull requests do not start it. The release
 workflow calls the same workflow for every pushed release tag.
 
-Each job retains a `reports-*` artifact for 14 days, including on failure:
+Native/WASM/sanitizer jobs retain a `reports-*` artifact for 14 days, including on failure:
 
 - `environment.json`: exact source commit, product version, platform,
   Python/Node/CMake versions and GitHub run identifiers.
@@ -31,6 +31,18 @@ Successful jobs also retain downloadable builds for 14 days:
   produces the single source archive used for the release.
 - `web-build`: separate WASM and website archives, containing their manifests
   and licenses, plus extraction-validation results and SHA256 checksums.
+- `bindings-android`: the Android AAR, emulator test results and diagnostics.
+  The Android job cross-compiles all three ABI slices, checks ELF alignment
+  and runs the production JNI/Bitmap paths on an API 35 emulator.
+
+The native matrix installs/tests the Python image package and exercises the
+production Unity C# binding against the built C library. macOS additionally
+builds the Apple XCFramework and runs Swift/CGImage/SpriteKit/Metal tests.
+Unity Editor does not run in CI. Its local Gamma/Linear texture and GPU checks
+require an installed, licensed Editor; see the
+[Unity guide](../backends/unity/README.md#verify). Restoring that automation after
+CI license configuration is tracked in the repository's `TODO.md`. The standalone
+C# native binding and all other pixel-corpus checks remain enabled.
 
 Packaging scripts unpack their completed archives into a separate directory
 and rerun installed SDK consumers, included native integrations and web/WASM
@@ -67,10 +79,10 @@ Broken chapter/example links, missing or duplicate builtin explanations,
 incorrect signatures, failed examples and invalid search anchors fail CI.
 
 Every SDK ships the book under `share/iprop/docs/`; WASM and website archives
-use `docs/` at their root. Schema-2 `language-manifest.json` records separate
-product, source-language, format, C API and C ABI versions, source commit,
+use `docs/` at their root. Schema-3 `language-manifest.json` records separate
+product, source-language, C API and C ABI versions, source commit,
 development/release status, compiler catalog and file digests. The current
-book is `language-v0.7.md`; the collector checks all five version fields
+book is `language-v0.7.2.md`; the collector checks all four version fields
 against their source constants in every archive and validation/CI report.
 Installed SDK checks compare it with the installed compiler. Archive collection
 also requires the complete documentation payload, unchanged authored inputs,
@@ -80,10 +92,13 @@ Historical release documentation stays tied to its original Git tag and archives
 These are build artifacts for the recorded commit; uploading them does not
 create a GitHub Release or release tag. Caches are not used as release inputs.
 
-The `release-assets` job waits for all six check jobs, downloads only this
+The `release-assets` job waits for the six native/WASM/sanitizer check jobs
+and the Android binding job, downloads only this
 run's artifacts, verifies every tracked source file against Git, verifies
 platform/archive manifests and extraction reports, and requires successful
-JUnit results from every check job. Its artifact contains 13 files: the source,
+JUnit results from the six canonical job reports. Android package/device
+validation additionally gates collection through its job status. The release
+artifact contains 13 files: the source,
 three native SDKs, WASM and website archives, four extraction reports, combined
 CI validation, a release manifest and one complete SHA256 checksum list.
 All archive/report identities must match the checkout's product version and
@@ -94,7 +109,7 @@ commit. Every manual CI run exercises this collection gate as well.
 `.github/workflows/release.yml` runs on a pushed `vX.Y.Z` tag. It first requires:
 
 - An existing tag identifying the checked-out commit, present in `main` history.
-- Matching product, editor, website and lockfile versions.
+- Matching product, editor, website, lockfile, Unity package and Python package versions.
 - A dated changelog heading: `## vX.Y.Z — YYYY-MM-DD`.
 - A format specification whose status is frozen rather than a draft/candidate.
 
