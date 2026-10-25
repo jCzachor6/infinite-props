@@ -10,6 +10,7 @@ import tempfile
 
 def main():
     compiler = Path(sys.argv[1]).resolve()
+    language = json.loads(subprocess.check_output([str(compiler), '--describe-language']))
     with tempfile.TemporaryDirectory(prefix='iprop-check-') as directory:
         root = Path(directory)
         entry = root / 'entry.ips'
@@ -28,7 +29,7 @@ def main():
             report = json.loads(process.stdout)
             assert report['status'] == expected_status, report
             assert report['schema_version'] == 1, report
-            assert report['language_version'] == {'major': 0, 'minor': 7}, report
+            assert report['language_version'] == language['language_version'], report
             assert isinstance(report['product_version'], str), report
             assert isinstance(report['diagnostics'], list), report
             for diagnostic in report['diagnostics']:

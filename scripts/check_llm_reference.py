@@ -40,7 +40,8 @@ def main():
         for key, label in [('language_version', 'source language'),
                            ('c_api_version', 'C API'), ('abi_version', 'ABI')]:
             version = language[key]
-            require(f"{label} {version['major']}.{version['minor']}" in reference, 'independent version missing: ' + key)
+            number = '.'.join(str(version[part]) for part in ('major', 'minor', 'patch') if part in version)
+            require(f"{label} {number}" in reference, 'independent version missing: ' + key)
         require('Product ' + language['product_version'] in reference, 'product version missing')
         checks = info['llm_reference_checks']
         examples = {name for entry in config['sections'] if entry['id'] in config['defaults']['sections']

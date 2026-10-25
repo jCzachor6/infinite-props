@@ -487,6 +487,7 @@ void writeLanguageDescription(std::ostream& out, std::string_view productVersion
     document["schema_version"] = ips::kLanguageDescriptionSchemaVersion;
     document["product_version"] = std::string(productVersion);
     document["language_version"] = version(ips::kLanguageVersionMajor, ips::kLanguageVersionMinor);
+    document["language_version"]["patch"] = ips::kLanguageVersionPatch;
     document["c_api_version"] = version(IPROP_API_VERSION_MAJOR, IPROP_API_VERSION_MINOR);
     document["abi_version"] = version(IPROP_C_ABI_VERSION_MAJOR, IPROP_C_ABI_VERSION_MINOR);
     document["c_abi_soversion"] = IPROP_C_ABI_SOVERSION;

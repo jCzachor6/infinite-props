@@ -79,10 +79,10 @@ Broken chapter/example links, missing or duplicate builtin explanations,
 incorrect signatures, failed examples and invalid search anchors fail CI.
 
 Every SDK ships the book under `share/iprop/docs/`; WASM and website archives
-use `docs/` at their root. Schema-2 `language-manifest.json` records separate
-product, source-language, format, C API and C ABI versions, source commit,
+use `docs/` at their root. Schema-3 `language-manifest.json` records separate
+product, source-language, C API and C ABI versions, source commit,
 development/release status, compiler catalog and file digests. The current
-book is `language-v0.7.md`; the collector checks all five version fields
+book is `language-v0.7.2.md`; the collector checks all four version fields
 against their source constants in every archive and validation/CI report.
 Installed SDK checks compare it with the installed compiler. Archive collection
 also requires the complete documentation payload, unchanged authored inputs,
@@ -109,7 +109,7 @@ commit. Every manual CI run exercises this collection gate as well.
 `.github/workflows/release.yml` runs on a pushed `vX.Y.Z` tag. It first requires:
 
 - An existing tag identifying the checked-out commit, present in `main` history.
-- Matching product, editor, website and lockfile versions.
+- Matching product, editor, website, lockfile, Unity package and Python package versions.
 - A dated changelog heading: `## vX.Y.Z — YYYY-MM-DD`.
 - A format specification whose status is frozen rather than a draft/candidate.
 

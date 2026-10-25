@@ -275,7 +275,7 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
 
     def version(key):
         value = language[key]
-        return str(int(value['major'])) + '.' + str(int(value['minor']))
+        return '.'.join(str(int(value[part])) for part in ('major', 'minor', 'patch') if part in value)
 
     lines = ['# .ips LLM reference', '',
         'Generated from the handbook, compiler export and registered examples. Do not edit this artifact.', '',

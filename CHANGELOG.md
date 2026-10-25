@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.7.2 — 2026-10-25
+
+Product, editor, website and native binding packages: **0.7.2**. Source language:
+**0.7.2**, including the vector overloads below. C API **0.4**, ABI / SONAME
+**0.5** and the unversioned format remain unchanged. Language exports and
+JSON diagnostics now include the source-version patch component.
+
 ### Language: vector overloads
 
 Added **20 `vec2` overloads across 16 existing functions**. The complete list of
@@ -39,6 +46,11 @@ and binary format are unchanged.
 
 ### Native integrations
 
+- Every backend consumes the shared Native/WASM pixel corpus, comparing all
+  RGBA bytes and structured output bits. Unity Editor Gamma/Linear GPU checks
+  remain local; standalone C# binding checks run in CI.
+- Android `toBitmap()` preserves raw unpremultiplied RGBA. Use the explicit
+  `toPremultipliedBitmap()` helper for Android Canvas/View drawing.
 - Apple Swift package and multiplatform XCFramework builder, with CGImage,
   SpriteKit and Metal adapters independent of game code.
 - Unity UPM package with native C# bindings, `.iprop` import previews,
@@ -49,6 +61,21 @@ and binary format are unchanged.
   runtime-only CMake builds for mobile and plugin cross-compilation.
 - Strict zlib decoding through baseline inflate APIs for Android API 23
   compatibility, preserving decoded-size, checksum and trailing-byte checks.
+
+### Website
+
+- Asset Store links point to [iprop.store](https://iprop.store/) and show that
+  the store is available.
+- All seven pages ship unique descriptions, canonical URLs, Open Graph and
+  X/Twitter cards, and structured data in static HTML. The build generates
+  `robots.txt` and the sitemap from its page inventory.
+- A shared link-preview image features the generated butterfly collection.
+
+### Documentation
+
+- Redesigned README with centered branding, a 4×4 collector display of the
+  website's generated butterflies, and clearer integration and documentation
+  navigation. The installed SDK includes its preview assets and license notice.
 
 ## v0.7.1 — 2026-10-15
 

@@ -109,8 +109,8 @@
     },
     "language_version": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+$",
-      "description": "Source-language acceptance version."
+      "pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?$",
+      "description": "Source-language acceptance version; major.minor.patch since language 0.7.2, with earlier major.minor values accepted."
     },
     "c_api_version": {
       "type": "string",

@@ -37,7 +37,7 @@ python3 scripts/language_docs.py build --compiler build/tools/ipc --output-dir b
 python3 scripts/language_docs.py verify --output-dir build/language-docs --against-source --compiler build/tools/ipc
 ```
 
-The generated package contains expanded chapters, `docs/language-v0.7.md`,
+The generated package contains expanded chapters, `docs/language-v0.7.2.md`,
 `LLM_REFERENCE.md`, compiler catalog, schemas, examples and the current format
 specification. Its manifest records independent versions, source identity and
 file hashes. See [maintaining documentation](language/development.md).

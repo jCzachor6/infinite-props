@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Infinite Props — Procedural 2D assets</title>
+  <desc id="description">Infinite Props branding beside sixteen generated butterflies in a collector display.</desc>
+  <defs>
+    <linearGradient id="backdrop" x2="1" y2="1"><stop stop-color="#1e2828"/><stop offset="1" stop-color="#101418"/></linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#backdrop)"/>
+  <rect x="1" y="1" width="1198" height="628" fill="none" stroke="#b5a875" stroke-opacity=".25"/>
+  <image href="{{LOGO}}" x="64" y="62" width="74" height="74"/>
+  <g font-family="Arial,Helvetica,sans-serif">
+    <text x="160" y="115" font-size="52" font-weight="700" letter-spacing="-2" fill="#f4f4eb">Infinite <tspan fill="#f5d90a">Props</tspan></text>
+    <path d="M66 180h48" stroke="#f5d90a" stroke-width="4"/>
+    <text x="66" y="228" font-size="19" letter-spacing="2" fill="#b8c3bd">SEED-BASED PROCEDURAL 2D ASSETS</text>
+    <text x="64" y="320" font-size="60" font-weight="700" letter-spacing="-2" fill="#f4f4eb">One small file.</text>
+    <text x="64" y="391" font-size="60" font-weight="700" letter-spacing="-2" fill="#f5d90a">Endless props.</text>
+    <text x="66" y="443" font-size="23" fill="#b8c3bd">Reproducible sprites + geometry.</text>
+    <text x="66" y="551" font-size="23" font-weight="700" fill="#e2d790">infiniteprops.dev ↗</text>
+  </g>
+  <image href="{{COLLECTION}}" x="716" y="54" width="464" height="522"/>
+  <metadata>Copyright 2026 jakubczachor. All rights reserved. See examples/showcase/LICENSE.md.</metadata>
+</svg>

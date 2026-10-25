@@ -9,8 +9,8 @@
 TEST_CASE("runtime version matches the project version") {
     REQUIRE(iprop::versionMajor == 0);
     REQUIRE(iprop::versionMinor == 7);
-    REQUIRE(iprop::versionPatch == 0);
-    REQUIRE(std::string(iprop::versionString()) == "0.7.1");
+    REQUIRE(iprop::versionPatch == 2);
+    REQUIRE(std::string(iprop::versionString()) == "0.7.2");
 }
 
 TEST_CASE("catch2 is wired up") {

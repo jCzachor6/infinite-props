@@ -16,12 +16,18 @@ def metadata(root, tag=None, publishing=False):
     version = release["product_version"]
     if tag is not None and tag != "v" + version:
         raise RuntimeError("Tag must match the product version: v" + version)
-    for file in ("editor/package.json", "website/package.json", "website/package-lock.json"):
+    for file in ("editor/package.json", "website/package.json", "website/package-lock.json",
+                 "backends/unity/Packages/dev.infiniteprops.runtime/package.json"):
         package = json.loads((root / file).read_text(encoding="utf-8"))
         if package.get("version") != version:
             raise RuntimeError(file + " version differs from CMake")
         if "packages" in package and package["packages"].get("", {}).get("version") != version:
             raise RuntimeError(file + " root package version differs from CMake")
+    file = "backends/python/pyproject.toml"
+    project = re.search(r"(?ms)^\[project\]\s*\n(.*?)(?=^\[|\Z)", (root / file).read_text(encoding="utf-8"))
+    package = re.search(r'''(?m)^version\s*=\s*["']([^"']+)["']\s*$''', project.group(1)) if project else None
+    if not package or package.group(1) != version:
+        raise RuntimeError(file + " version differs from CMake")
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     match = re.search(r"^## v" + re.escape(version) + r"\s+[^\n]+\n(.*?)(?=^## |\Z)", changelog, re.M | re.S)
     if not match:

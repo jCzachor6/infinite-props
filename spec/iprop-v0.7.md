@@ -1,7 +1,8 @@
 # `.iprop` Format and Virtual Machine — Specification v0.7
 
 **Status:** Frozen v0.7 contract, released with product 0.7.0 (2026-10-15);
-product 0.7.1 changes only the compiler's default fuel budget (§4).
+product 0.7.1 changed the compiler's default fuel budget (§4). Product 0.7.2
+adds source overloads and host bindings without changing this format/VM contract.
 **Scope:** The complete binary format and virtual machine contract, including
 containers, instruction encodings, numeric/RNG/raster kernels, collections,
 samplers, steppers, captured layers, masks and blur. Source syntax is defined
@@ -11,7 +12,7 @@ The format is **unversioned**: the four header bytes after the magic are
 reserved and MUST be zero, in plain files and compressed envelopes alike.
 Binaries written before product 0.7 carry a version there and must be rebuilt
 from source; there is no reader adapter. Product, source, C API and ABI versions are
-independently 0.7.1, 0.7, 0.4 and 0.5. Earlier specifications remain in Git history.
+independently 0.7.2, 0.7.2, 0.4 and 0.5. Earlier specifications remain in Git history.
 
 ## Contents
 

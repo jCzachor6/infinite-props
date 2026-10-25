@@ -34,6 +34,8 @@ bin/
 *.png
 !tests/golden/*.png
 !examples/portrait-sheet.png
+!examples/showcase/readme-collection.png
+!website/public/social-preview.png
 
 # Editor / website
 editor/node_modules/

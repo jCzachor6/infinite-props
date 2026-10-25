@@ -42,6 +42,8 @@ def repository(root):
     for file, text in {
         "CMakeLists.txt": "project(iprop VERSION 0.4.0)\n",
         "editor/package.json": '{"version":"0.4.0"}',
+        "backends/unity/Packages/dev.infiniteprops.runtime/package.json": '{"version":"0.4.0"}',
+        "backends/python/pyproject.toml": '[project]\nversion = "0.4.0"\n',
         "website/package.json": '{"version":"0.4.0"}',
         "website/package-lock.json": '{"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}',
         "CHANGELOG.md": "# Changelog\n\n## v0.4.0 — 2026-01-01\n\nRelease notes.\n",
@@ -153,6 +155,18 @@ class ReleaseGatesTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "root package version"):
                 metadata(root, "v0.4.0", publishing=True)
 
+    def test_native_binding_package_versions_must_match_the_product(self):
+        for file, text in (
+            ('backends/unity/Packages/dev.infiniteprops.runtime/package.json', '{"version":"9.9.9"}'),
+            ('backends/python/pyproject.toml', '[project]\nversion = "9.9.9"\n'),
+        ):
+            with self.subTest(file=file), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary) / 'repo'
+                repository(root)
+                (root / file).write_text(text)
+                with self.assertRaisesRegex(RuntimeError, 'version differs from CMake'):
+                    metadata(root)
+
     def test_candidate_changelog_or_specification_cannot_be_published(self):
         for file, text, message in (("CHANGELOG.md", "## v0.4.0 — release candidate\n\nNotes.\n", "Date the changelog"),
                                     ("spec/iprop-v0.4.md", FROZEN_SPEC.format("0.4").replace("Frozen v0.4 contract", "release candidate; semantics frozen"),
@@ -171,6 +185,8 @@ class ReleaseGatesTest(unittest.TestCase):
             for file, text in {
                 "CMakeLists.txt": "project(iprop VERSION 0.5.0)\n",
                 "editor/package.json": '{"version":"0.5.0"}',
+                "backends/unity/Packages/dev.infiniteprops.runtime/package.json": '{"version":"0.5.0"}',
+                "backends/python/pyproject.toml": '[project]\nversion = "0.5.0"\n',
                 "website/package.json": '{"version":"0.5.0"}',
                 "website/package-lock.json": '{"version":"0.5.0","packages":{"":{"version":"0.5.0"}}}',
                 "CHANGELOG.md": "# Changelog\n\n## v0.5.0 — 2026-10-06\n\nRelease notes.\n",

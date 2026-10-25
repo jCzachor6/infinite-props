@@ -50,10 +50,12 @@ if(TARGET iprop_sfml)
     endif()
 endif()
 
-# examples/showcase holds the website's prop binaries, which are not part of
-# the SDK.
+# Keep the website's compiled showcase programs out of the SDK. Only the
+# README preview and its reserved-rights notice are included below.
 install(DIRECTORY examples spec docs DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop
     REGEX "/examples/showcase$" EXCLUDE)
+install(FILES examples/showcase/readme-collection.png examples/showcase/LICENSE.md
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/examples/showcase)
 # The guides keep their source-tree places, so their relative links resolve.
 foreach(backend capi html5 sfml godot)
     install(FILES backends/${backend}/README.md
@@ -86,6 +88,7 @@ if(Python3_Interpreter_FOUND)
     install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+install(FILES website/public/favicon.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/website/public)
 install(DIRECTORY licenses/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
