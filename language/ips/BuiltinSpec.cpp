@@ -164,32 +164,34 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
 
 std::vector<BuiltinStep> builtinExpansion(const BuiltinOverload& overload) {
     std::vector<BuiltinStep> steps;
+    // Construct the variant before insertion so GCC 13 can track its lifetime
+    // across vector growth without a false stringop-overflow diagnostic.
     const auto component = [&](std::size_t argument, Opcode projection) {
-        steps.emplace_back(argument);
-        steps.emplace_back(projection);
+        steps.push_back(argument);
+        steps.push_back(projection);
         if (overload.adaptation == BuiltinAdaptation::IntegerCoordinates)
-            steps.emplace_back(Opcode::F32ToI32);
+            steps.push_back(Opcode::F32ToI32);
     };
     if (overload.adaptation == BuiltinAdaptation::VectorLerp) {
         for (const auto projection : {Opcode::Vec2X, Opcode::Vec2Y}) {
             component(0, projection);
             component(1, projection);
-            steps.emplace_back(std::size_t{2});
-            steps.emplace_back(Opcode::Lerp);
+            steps.push_back(std::size_t{2});
+            steps.push_back(Opcode::Lerp);
         }
-        steps.emplace_back(Opcode::Vec2Make);
+        steps.push_back(Opcode::Vec2Make);
     } else if (overload.adaptation == BuiltinAdaptation::VectorAngle) {
         component(0, Opcode::Vec2Y);
         component(0, Opcode::Vec2X);
-        steps.emplace_back(*overload.opcode);
+        steps.push_back(*overload.opcode);
     } else {
         for (std::size_t i = 0; i < overload.params.size(); ++i) {
             if (overload.adaptation != BuiltinAdaptation::Direct && overload.params[i].type == ValueType::Vec2) {
                 component(i, Opcode::Vec2X);
                 component(i, Opcode::Vec2Y);
-            } else steps.emplace_back(i);
+            } else steps.push_back(i);
         }
-        if (overload.opcode) steps.emplace_back(*overload.opcode);
+        if (overload.opcode) steps.push_back(*overload.opcode);
     }
     return steps;
 }
