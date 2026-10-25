@@ -145,3 +145,15 @@ The output-values fixture adds all eight D4 transformations, owner gaps and
 empty singular/list slots. Binary fixtures pin UTF-8/embedded-NUL/empty names
 and raw bits for each geometry kind; retained engine images/output arrays are
 checked after program reload and later generation.
+
+`asset.generate(seed, width = 0, height = 0)` also supports the runtime's uint32
+size overrides; zero selects the declared dimension. To replay the complete
+[shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate)
+through Image and GPU texture readback:
+
+```sh
+godot --rendering-method gl_compatibility --path build/godot-project \
+  --script res://pixel-corpus.gd -- "$PWD/build/pixel-corpus"
+```
+
+Use a graphics display (Xvfb on Linux CI), not the headless dummy renderer.

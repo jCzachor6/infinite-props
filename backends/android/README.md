@@ -45,12 +45,14 @@ val collider = image.output("collider", owner = 0u)
 Use `InputValue.F32`, `.U32`, or `.I32` for numeric inputs. Program calls and
 close serialize; independent programs can execute concurrently. `use` closes
 the native handle; results own their arrays. The caller owns returned Bitmaps.
-Bitmap presentation interprets stored RGBA as straight channels and lets
-Android premultiply them. Raw `rgba` retains the runtime's legacy alpha tag.
+`toBitmap()` preserves all RGBA bytes without premultiplication, including RGB
+under zero alpha. For drawing through Android Canvas/View use the explicit
+`toPremultipliedBitmap()` conversion; its alpha conversion is lossy. Raw `rgba`
+retains the runtime's legacy alpha tag.
 
 ## Verify
 
-Prepare shared fixtures, then run the real JNI bridge on a host JVM:
+Prepare shared fixtures and the complete [pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate), then run the real JNI bridge on a host JVM:
 
 ```sh
 python3 backends/android/tests/run-host.py --kotlinc /path/to/kotlinc --java-home /path/to/jdk
@@ -58,7 +60,8 @@ python3 backends/android/tests/run-host.py --kotlinc /path/to/kotlinc --java-hom
 
 This enables CheckJNI and tests actual native calls, float bits, names,
 outputs, errors, ownership and concurrency. Device/emulator tests additionally
-exercise the packaged Android libraries and Bitmap adapter:
+exercise every corpus case through the packaged Android libraries and compare
+the complete Bitmap buffer byte-for-byte:
 
 ```sh
 gradle -p backends/android :iprop:connectedDebugAndroidTest

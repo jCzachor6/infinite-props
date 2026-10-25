@@ -62,7 +62,7 @@ explains this distinction.
 Prepare fixtures using the shared guide, then:
 
 ```sh
-IPROP_FIXTURES="$PWD/build/binding-fixtures" swift test --package-path backends/apple
+IPROP_FIXTURES="$PWD/build/binding-fixtures" IPROP_PIXEL_CORPUS_DIR="$PWD/build/pixel-corpus" swift test --package-path backends/apple
 ```
 
 Use a scratch directory outside iCloud when codesigning test bundles, e.g.
@@ -70,3 +70,5 @@ Use a scratch directory outside iCloud when codesigning test bundles, e.g.
 CGImage ownership and Metal upload/readback when a GPU device is available.
 Native archive cross-compilation covers the device/simulator slices; actual
 app deployment remains an application-level check.
+
+Generate the complete [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate) before testing. The suite requires it and compares every image, CGImage provider and available Metal texture readback byte-for-byte.

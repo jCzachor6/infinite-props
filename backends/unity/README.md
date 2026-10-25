@@ -67,7 +67,7 @@ With .NET SDK 8 and the shared fixtures prepared, put the built native
 library on the OS loader path and run:
 
 ```sh
-dotnet run --project backends/unity/tests/Conformance.csproj -- build/binding-fixtures
+dotnet run --project backends/unity/tests/Conformance.csproj -- build/binding-fixtures build/pixel-corpus
 ```
 
 On macOS set `DYLD_LIBRARY_PATH` to the plugin directory; on Linux use
@@ -78,3 +78,27 @@ for those paths.
 Add `dev.infiniteprops.runtime` to the project's `testables` list and launch
 Unity with `IPROP_FIXTURES` pointing to the prepared fixtures. Run the package's
 EditMode tests through Test Runner or Unity's `-runTests -testPlatform EditMode`.
+
+Generate the complete [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate)
+first. Prepare an isolated Editor test project after building the native plugin:
+
+```sh
+python3 backends/unity/tests/prepare-editor.py /path/to/isolated-project
+/path/to/Unity -batchmode -projectPath /path/to/isolated-project \
+  -runTests -testPlatform EditMode -testResults /path/to/results.xml
+```
+
+A real graphics device is required; omit `-nographics`. The Editor suite compares
+every generated image, texture upload and unblended GPU render/readback with the
+same corpus. Run the Editor suite locally in Gamma and Linear color spaces,
+using `-ipropColorSpace Gamma` or `-ipropColorSpace Linear` to assert the active
+mode. Unity Editor is currently excluded from CI; adding it after CI license
+configuration is tracked in the repository's `TODO.md`. The standalone production
+C# binding continues to run against the full corpus in CI.
+
+To repeat locally in Linear after the first Editor run, select the mode and
+restart Unity with `-ipropColorSpace Linear` added to the test command:
+
+```sh
+python3 backends/unity/tests/prepare-editor.py /path/to/isolated-project --color-space Linear
+```

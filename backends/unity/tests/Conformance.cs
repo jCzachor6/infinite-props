@@ -11,6 +11,7 @@ static class Conformance
     static void Main(string[] args)
     {
         string path = args[0];
+        if (args.Length > 1) InfiniteProps.Tests.PixelCorpus.Run(args[1]);
         var program = new Program(File.ReadAllBytes(Path.Combine(path, "bindings.iprop")));
         Require(program.Metadata.Width == 8 && program.Metadata.Height == 4 && program.Metadata.OriginX == 2, "metadata");
         Require(program.Inputs.Select(x => x.Name).SequenceEqual(new[] { "tint", "amount", "offset" }), "reflection");

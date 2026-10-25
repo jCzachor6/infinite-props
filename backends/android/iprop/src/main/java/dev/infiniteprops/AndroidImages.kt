@@ -1,10 +1,23 @@
 package dev.infiniteprops
 
 import android.graphics.Bitmap
+import java.nio.ByteBuffer
 
-/** Presentation interprets stored channels as straight RGBA; Bitmap performs
- * its own premultiplication. The raw rgba bytes and alphaMode stay unchanged. */
+/** Exact top-down RGBA storage, including RGB under zero alpha. Suitable for
+ * lossless export and texture upload. Android Canvas requires premultiplied
+ * data: use toPremultipliedBitmap() when drawing through the view system. */
 fun GeneratedImage.toBitmap(): Bitmap {
+    val bitmap = Bitmap.createBitmap(width.toInt(), height.toInt(), Bitmap.Config.ARGB_8888)
+    try {
+        bitmap.setPremultiplied(false)
+        bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(rgba))
+        return bitmap
+    } catch (error: Throwable) { bitmap.recycle(); throw error }
+}
+
+/** Explicit Android presentation conversion. Premultiplication is lossy for
+ * translucent pixels; it must never be used as the generator's RGBA oracle. */
+fun GeneratedImage.toPremultipliedBitmap(): Bitmap {
     val colors = IntArray((width.toLong() * height.toLong()).toInt())
     for (i in colors.indices) {
         val at = i * 4

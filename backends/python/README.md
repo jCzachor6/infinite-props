@@ -64,3 +64,10 @@ Choose the corresponding library name on Windows/Linux. Tests use the
 actual library, including Unicode/NUL names, raw f32 bits, ownership, errors,
 size overrides and concurrent calls. With Pillow installed, verify image
 conversion and CLI exports as well.
+
+Replay the complete [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate)
+through Python and Pillow after generating it:
+
+```sh
+python3 backends/test/check-pixel-corpus.py build/backends/capi/libipropc.dylib build/pixel-corpus
+```

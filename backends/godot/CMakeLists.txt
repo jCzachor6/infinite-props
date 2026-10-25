@@ -75,7 +75,7 @@ set_target_properties(iprop_godot PROPERTIES
 # library), ready for the Godot editor or the headless runs.
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
-foreach(file project.godot demo.tscn demo.gd conformance.gd)
+foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()

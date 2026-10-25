@@ -96,3 +96,11 @@ or Xvfb for rendering. Headless PNG export needs no window.
 
 Note: window titles stay ASCII — SFML's `String(std::string)` conversion
 is locale-dependent and non-ASCII literals can crash the macOS backend.
+
+The required [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate)
+also runs through the production SFML host, texture upload and a 1:1 render with
+`sf::BlendNone`:
+
+```sh
+build/backends/sfml/sfml_pixel_corpus build/pixel-corpus/pixel-corpus.bin
+```

@@ -38,8 +38,11 @@ Successful jobs also retain downloadable builds for 14 days:
 The native matrix installs/tests the Python image package and exercises the
 production Unity C# binding against the built C library. macOS additionally
 builds the Apple XCFramework and runs Swift/CGImage/SpriteKit/Metal tests.
-Unity editor tests remain a separate step requiring an installed Unity editor;
-see the [Unity guide](../backends/unity/README.md#verify).
+Unity Editor does not run in CI. Its local Gamma/Linear texture and GPU checks
+require an installed, licensed Editor; see the
+[Unity guide](../backends/unity/README.md#verify). Restoring that automation after
+CI license configuration is tracked in the repository's `TODO.md`. The standalone
+C# native binding and all other pixel-corpus checks remain enabled.
 
 Packaging scripts unpack their completed archives into a separate directory
 and rerun installed SDK consumers, included native integrations and web/WASM

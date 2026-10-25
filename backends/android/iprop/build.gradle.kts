@@ -19,9 +19,24 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 }
 
+abstract class BindingTestAssets : DefaultTask() {
+    @get:InputDirectory abstract val fixtures: DirectoryProperty
+    @get:InputDirectory abstract val corpus: DirectoryProperty
+    @get:OutputDirectory abstract val output: DirectoryProperty
+    @get:javax.inject.Inject abstract val files: org.gradle.api.file.FileSystemOperations
+    @TaskAction fun prepare() {
+        files.sync { from(fixtures); from(corpus); into(output) }
+    }
+}
+val bindingTestAssets = tasks.register<BindingTestAssets>("prepareBindingTestAssets") {
+    fixtures.set(layout.projectDirectory.dir("../../../build/binding-fixtures"))
+    corpus.set(layout.projectDirectory.dir("../../../build/pixel-corpus"))
+    output.set(layout.buildDirectory.dir("generated/binding-test-assets"))
+}
+
 androidComponents {
     onVariants(selector().all()) { variant ->
-        variant.androidTest?.sources?.assets?.addStaticSourceDirectory("../../../build/binding-fixtures")
+        variant.androidTest?.sources?.assets?.addGeneratedSourceDirectory(bindingTestAssets) { it.output }
         variant.androidTest?.sources?.java?.addStaticSourceDirectory("../tests/shared")
     }
 }

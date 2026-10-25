@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--java-home", default=os.environ.get("JAVA_HOME"))
     parser.add_argument("--build", type=Path, default=root / "build/android-host")
     parser.add_argument("--fixtures", type=Path, default=root / "build/binding-fixtures")
+    parser.add_argument("--corpus", type=Path, default=root / "build/pixel-corpus")
     args = parser.parse_args()
     if not args.kotlinc or not args.java_home:
         parser.error("Provide --kotlinc and --java-home (or JAVA_HOME)")
@@ -25,10 +26,10 @@ def main():
     run("cmake", "-S", source / "cpp", "-B", build, "-DCMAKE_BUILD_TYPE=Release")
     run("cmake", "--build", build, "--target", "iprop_jni", "--parallel", "4")
     run(args.kotlinc, source / "java/dev/infiniteprops/Program.kt",
-        root / "backends/android/tests/shared/Conformance.kt", root / "backends/android/tests/Main.kt",
+        root / "backends/android/tests/shared/Conformance.kt", root / "backends/android/tests/shared/PixelCorpus.kt", root / "backends/android/tests/Main.kt",
         "-jvm-target", "17", "-include-runtime", "-d", build / "conformance.jar")
     run(Path(args.java_home) / "bin/java", "-Xcheck:jni", f"-Djava.library.path={build}",
-        "-jar", build / "conformance.jar", args.fixtures.resolve())
+        "-jar", build / "conformance.jar", args.fixtures.resolve(), args.corpus.resolve())
 
 
 if __name__ == "__main__":

@@ -68,7 +68,7 @@ public:
     // Generates one tuple; returns the RGBA8 image. The structured outputs
     // are copied and exposed through get_outputs(). A failure preserves the
     // previously completed generation's maps; returned Images own their bytes.
-    godot::Ref<godot::Image> generate(int64_t seed);
+    godot::Ref<godot::Image> generate(int64_t seed, int64_t width = 0, int64_t height = 0);
 
     godot::Vector2i get_size() const { return size_; }
     godot::Vector2 get_origin() const { return origin_; }

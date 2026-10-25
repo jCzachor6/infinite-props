@@ -202,11 +202,13 @@ inline void setParameter(iprop_parameters* parameters, std::string_view name, st
 // or the stored defaults when none are given; throws on failure. The
 // returned handle must be freed by the caller.
 inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
-                              const iprop_parameters* parameters = nullptr) {
+                              const iprop_parameters* parameters = nullptr,
+                              std::uint32_t width = 0, std::uint32_t height = 0) {
     Error error;
     iprop_generate_options_ex options;
     error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
     options.seed = seed;
+    options.size_x = width; options.size_y = height;
     iprop_result* result = nullptr;
     error.check(iprop_generate_ex(program, &options, parameters, &result, error.get()), "iprop_generate_ex");
     return result;

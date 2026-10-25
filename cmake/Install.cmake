@@ -62,7 +62,7 @@ endforeach()
 # Binding source packages are usable independently from the source checkout.
 # Mobile native builds additionally need --source/IPROP_SOURCE for the runtime.
 set(iprop_binding_patterns)
-foreach(extension swift h cpp py toml cs csproj asmdef meta json kts kt properties xml pro txt md modulemap)
+foreach(extension swift h cpp py toml cs csproj shader asmdef meta json kts kt properties xml pro txt md modulemap)
     list(APPEND iprop_binding_patterns PATTERN "*.${extension}")
 endforeach()
 foreach(backend apple unity android python)

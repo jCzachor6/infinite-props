@@ -189,7 +189,7 @@ def resources(root):
     # Ship the binding source packages with their linked guides. Never absorb
     # local native binaries, SDK downloads, compiler caches or build products.
     excluded = {".build", ".swiftpm", "Artifacts", ".gradle", ".kotlin", ".cxx", "build", "bin", "obj", "Plugins", "__pycache__", "dist"}
-    suffixes = {".swift", ".h", ".cpp", ".py", ".toml", ".cs", ".csproj", ".asmdef", ".meta", ".json", ".kts", ".kt", ".properties", ".xml", ".pro", ".txt", ".md", ".modulemap"}
+    suffixes = {".swift", ".h", ".cpp", ".py", ".toml", ".cs", ".csproj", ".shader", ".asmdef", ".meta", ".json", ".kts", ".kt", ".properties", ".xml", ".pro", ".txt", ".md", ".modulemap"}
     for backend in ("apple", "unity", "android", "python"):
         directory = root / "backends" / backend
         files += [p for p in directory.rglob("*") if p.is_file()
