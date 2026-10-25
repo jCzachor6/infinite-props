@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <variant>
 
 namespace iprop::ips {
 
@@ -19,11 +20,17 @@ struct BuiltinParameter {
     std::string name;
     ValueType type;
 };
+enum class BuiltinAdaptation { Direct, Coordinates, IntegerCoordinates, VectorAngle, VectorLerp };
 struct BuiltinOverload {
     std::vector<BuiltinParameter> params;
     std::optional<Opcode> opcode;
     ValueType result = ValueType::Void;
+    BuiltinAdaptation adaptation = BuiltinAdaptation::Direct;
 };
+// Argument reads refer to already evaluated values. Code emission and asset
+// constants share this expansion into existing VM operations.
+using BuiltinStep = std::variant<std::size_t, Opcode>;
+std::vector<BuiltinStep> builtinExpansion(const BuiltinOverload& overload);
 struct BuiltinSpec {
     BuiltinLowering lowering;
     std::vector<BuiltinOverload> overloads;

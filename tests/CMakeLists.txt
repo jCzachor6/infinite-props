@@ -46,6 +46,7 @@ add_executable(iprop_tests
     compiler/source_compilation_test.cpp
     compiler/control_flow_test.cpp
     compiler/vectors_test.cpp
+    compiler/vector_overloads_test.cpp
     compiler/palettes_test.cpp
     compiler/drawing_test.cpp
     compiler/color_channels_test.cpp

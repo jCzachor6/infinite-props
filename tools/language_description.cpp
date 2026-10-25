@@ -427,6 +427,15 @@ Json builtins() {
                 if (!opcode) throw std::logic_error("builtin has an unknown opcode");
                 entry["opcode"] = opcode->mnemonic;
             }
+            if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
+                Json expansion = Json::array();
+                for (const auto& step : ips::builtinExpansion(overload)) {
+                    if (const auto* argument = std::get_if<std::size_t>(&step))
+                        expansion.push_back(Json::object({{"argument", overload.params[*argument].name}}));
+                    else expansion.push_back(Json::object({{"opcode", findOpcode(std::get<Opcode>(step))->mnemonic}}));
+                }
+                entry["expansion"] = std::move(expansion);
+            }
             overloads.push_back(std::move(entry));
         }
         auto builtin = Json::object({{"name", name}, {"overloads", std::move(overloads)}});

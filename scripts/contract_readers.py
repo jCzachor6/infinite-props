@@ -131,6 +131,16 @@ def read_language(value):
             boolean(signature.get('constant_evaluable'), 'constant_evaluable')
             if 'opcode' in signature:
                 text(signature.get('opcode'), 'opcode', True)
+            if 'expansion' in signature:
+                steps = signature['expansion']
+                require(type(steps) is list and bool(steps), 'overload.expansion')
+                parameters = {p['name'] for p in signature['parameters']}
+                for step in steps:
+                    require(type(step) is dict and set(step) in ({'argument'}, {'opcode'}), 'expansion step')
+                    if 'argument' in step:
+                        require(text(step['argument'], 'expansion argument', True) in parameters, 'expansion argument')
+                    else:
+                        text(step['opcode'], 'expansion opcode', True)
         if 'variadic' in builtin:
             signature = builtin['variadic']
             ordered_signature(signature, 'variadic')

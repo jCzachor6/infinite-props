@@ -429,6 +429,20 @@ private:
             }
             if (spec.lowering == BuiltinLowering::ListLength)
                 return static_cast<i32>(std::get<ListValue>(args[0]).data->elements.size());
+            if (overload.adaptation != BuiltinAdaptation::Direct) {
+                std::vector<Value> stack;
+                for (const auto& step : builtinExpansion(overload)) {
+                    if (const auto* argument = std::get_if<std::size_t>(&step)) stack.push_back(args[*argument]);
+                    else {
+                        const auto opcode = std::get<Opcode>(step);
+                        const auto count = findOpcode(opcode)->stack->inputCount;
+                        std::vector<Value> operands(stack.end() - count, stack.end());
+                        stack.resize(stack.size() - count);
+                        stack.push_back(operation(opcode, std::move(operands), at));
+                    }
+                }
+                return stack.at(0);
+            }
             if (overload.opcode) return operation(*overload.opcode, std::move(args), at);
             if (spec.lowering == BuiltinLowering::Opcode) return args[0]; // identity int/float
             if (spec.lowering == BuiltinLowering::Beta) {

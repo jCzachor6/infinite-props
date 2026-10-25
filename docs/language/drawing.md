@@ -7,6 +7,15 @@ within the operation's representable domain; invalid geometry can trap.
 The generated signatures distinguish integer pixels/thickness from floating
 geometry.
 
+Coordinate overloads accept `rect(position, size, color)`,
+`line(a, b, thickness, color)` and `oval(center, radii, color)` with `vec2`
+pairs. Rectangles also accept `(position, w, h, color)` or `(x, y, size, color)`;
+ellipses accept `(center, rx, ry, color)` or `(x, y, radii, color)`.
+Arguments evaluate once in signature order, including named calls, and use
+the same scalar raster operations.
+
+<!-- example: ../../examples/language/vector-overloads.ips -->
+
 The frozen compositor interpolates RGB for translucent sources while retaining
 the destination alpha. An opaque source replaces all RGBA bytes. A translucent
 source over initially transparent storage can leave nonzero RGB with alpha zero;
@@ -26,6 +35,8 @@ Exact blending, alpha endpoints and rounding are specified in
 <!-- builtin: pixel -->
 
 Paints one integer pixel with a color, subject to clipping and blending.
+`pixel(p, color)` converts each `vec2` component exactly as `int()` does:
+truncate toward zero, saturate to i32, and map NaN to zero.
 
 ## rect
 <!-- builtin: rect -->

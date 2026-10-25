@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Twenty `vec2` overloads for drawing, noise, integer coordinate helpers,
+  `mask.offset`, `lerp` and `atan2`, including mixed rectangle/ellipse forms.
+  Existing scalar operations, pixel results, C API and binary format are unchanged.
 - Apple Swift package and multiplatform XCFramework builder, with CGImage,
   SpriteKit and Metal adapters independent of game code.
 - Unity UPM package with native C# bindings, `.iprop` import previews,

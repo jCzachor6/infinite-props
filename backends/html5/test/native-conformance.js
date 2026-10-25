@@ -39,6 +39,7 @@ const sources = [
     ["direct-seed", "backends/html5/test/fixtures/direct-seed.ips"],
     ["fold", "backends/html5/test/fixtures/fold.ips"],
     ["vec2-api", "backends/html5/test/fixtures/vec2-api.ips"],
+    ["vector-overloads", "examples/language/vector-overloads.ips"],
     ["parts", "tests/golden/parts.ipa"],
     ["part-transforms", "backends/html5/test/fixtures/part-transforms.ips"],
     ["nested-parts", "backends/html5/test/fixtures/nested-parts.ips"],
@@ -125,6 +126,7 @@ function run(iprop, toolsDir) {
     let comparisons = 0;
     let trapComparisons = 0;
     let vectorComparisons = 0;
+    let vectorOverloads = {};
     let colorComparisons = 0;
     let mathComparisons = 0;
     let constantComparisons = 0;
@@ -447,6 +449,7 @@ function run(iprop, toolsDir) {
         compare(path.join(temporary, "colors.iprop"), 7);
         compare(path.join(temporary, "noise-v2.iprop"), 7);
         vectorComparisons = require("./vector-conformance.js").run(iprop, tool, temporary);
+        vectorOverloads = require("./vector-overload-conformance.js").run(iprop, tool, temporary);
         colorComparisons = require("./color-conformance.js").run(iprop, tool, temporary);
         mathComparisons = require("./math-conformance.js").run(iprop, tool, temporary);
         const constants = require("./constant-conformance.js").run(iprop, tool, temporary);
@@ -468,7 +471,7 @@ function run(iprop, toolsDir) {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
-        colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
+        vectorOverloads, colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
         samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence };
 }
 

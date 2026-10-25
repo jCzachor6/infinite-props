@@ -28,6 +28,10 @@ using CallPlans = std::unordered_map<const Call*, BoundCallPlan>;
 
 CallSignature builtinCallSignature(const BuiltinSpec& spec, std::size_t arity,
     const SourceLocation& at, std::string_view function);
+// Same-arity overloads may use different parameter names (rect(position,w,h)
+// versus rect(x,y,size)). Select a bindable name layout before type checking.
+CallSignature builtinCallSignature(const BuiltinSpec& spec, const Call& call,
+    std::string_view function);
 CallSignature surfacePaintCallSignature(const Call& call, ValueType imageType);
 CallSignature helperCallSignature(std::span<const std::string> names);
 CallSignature rampCallSignature();

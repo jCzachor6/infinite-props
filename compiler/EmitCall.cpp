@@ -58,6 +58,29 @@ ips::ValueType Emitter::emitMethod(const ips::Expr& expr) {
 ips::ValueType Emitter::emitBuiltin(const BuiltinCall& call) {
     using VT = ips::ValueType;
     const auto& spec = *call.spec;
+    if (call.overload && call.overload->adaptation != ips::BuiltinAdaptation::Direct) {
+        const auto steps = ips::builtinExpansion(*call.overload);
+        std::vector<std::size_t> reads(call.arguments.size());
+        for (const auto& step : steps)
+            if (const auto* argument = std::get_if<std::size_t>(&step)) ++reads[*argument];
+        std::vector<std::optional<TemporaryLocals::Lease>> values(call.arguments.size());
+        for (const auto& step : steps) {
+            if (const auto* index = std::get_if<std::size_t>(&step)) {
+                auto& saved = values[*index];
+                if (saved) ins(Opcode::LocalGet, 0, saved->index());
+                else {
+                    const auto& argument = call.arguments[*index];
+                    emitArg(argument);
+                    if (reads[*index] > 1) {
+                        saved.emplace(temporary(argument.expected));
+                        ins(Opcode::LocalSet, 0, saved->index());
+                        ins(Opcode::LocalGet, 0, saved->index());
+                    }
+                }
+            } else ins(std::get<Opcode>(step));
+        }
+        return call.overload->result;
+    }
     if (spec.lowering == ips::BuiltinLowering::SurfacePaint) {
         // The overload's blend parameter is the static mode operand; the other
         // parameters are stack values, in their (unchanged) parameter order.

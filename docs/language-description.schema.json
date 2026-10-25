@@ -3351,6 +3351,29 @@
         "constant_evaluable": {
           "type": "boolean",
           "description": "Whether the intrinsic operation is allowed in const; all arguments must independently be constant."
+        },
+        "expansion": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Optional stack program for a source overload adapted to existing VM instructions. Arguments are evaluated once in evaluation_order; argument steps read those saved values.",
+          "items": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 1,
+            "properties": {
+              "argument": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Read the previously evaluated value of this signature parameter."
+              },
+              "opcode": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Execute this existing VM opcode on the expansion stack."
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "required": [

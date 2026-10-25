@@ -5,6 +5,14 @@ Keep coordinates modest unless testing the documented domains. All derived
 coordinates are checked too; a finite starting coordinate can leave a valid
 domain after octave scaling or warping.
 
+`noise`, `fault`, `noise.grad`, `noise.fbm`, `noise.cell`, `noise.ridge` and
+`warp` also accept one `p: vec2` instead of `x, y`. The point evaluates once,
+before the remaining arguments, and uses the same coordinate checks and bits.
+`cell.jitter(cell, seed)` and `dither(t, p)` convert vector components with
+`int()` (truncation toward zero, saturation, NaN to zero); their scalar
+signatures still require i32 coordinates. Keep scalar cell indices when exact
+integers beyond f32 precision are needed.
+
 <!-- example: ../../examples/language/noise.ips -->
 
 ## noise
@@ -54,6 +62,7 @@ be finite; all offset and warped samples must meet the gradient domains.
 <!-- builtin: cell.jitter -->
 
 Returns an absolute point inside `[cx, cx+1) × [cy, cy+1)`. Integer cell
+coordinates from `cell: vec2` convert with `int()` first. Cell
 origins must be exactly representable as binary32. All integers within
 ±16777216 qualify; larger ones must also be representable. A rejected origin
 traps with `cell index is not representable as f32`.
@@ -62,6 +71,7 @@ traps with `cell index is not representable as f32`.
 <!-- builtin: dither -->
 
 Applies the pinned ordered Bayer threshold to `t` at integer pixel x/y.
+The vector form converts `p.x`, `p.y` with `int()` first.
 It returns floating coverage. Matrix indexing and threshold comparisons are
 specified in [dither](../../spec/iprop-v0.7.md#1213-the-dither-the-fold-and-the-polar).
 

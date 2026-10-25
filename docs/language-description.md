@@ -117,6 +117,14 @@ template denotes all uniform slots, not a literal source parameter name.
 
 ## Executable evidence
 
+Adapted vector overloads optionally export `expansion`, an ordered stack
+program of `{"argument":"name"}` reads and `{"opcode":"mnemonic"}` operations.
+Evaluate each source argument once in `evaluation_order`, then let argument
+steps read that saved value. The top-level `opcode` identifies the existing
+kernel; the expansion describes the complete lowering, including component
+reads, `f32.to.i32` conversions and the two scalar lerps used for a vector.
+These are source overloads only; they add no VM instructions or binary fields.
+
 Every builtin overload and variadic signature also exports `effects` from
 the shared opcode/lowering contracts. `CallSignature.effects` carries this
 metadata through binding, typing and planning; no parallel public signature

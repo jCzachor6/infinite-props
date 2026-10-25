@@ -50,6 +50,8 @@ async function main() {
                     " matching trap reasons)");
         console.log("native/WASM vector boundaries: PASS (" + native.vectorComparisons +
                     " bit-exact results)");
+        console.log("native/WASM vector overloads: PASS (" + native.vectorOverloads.signatures + " signatures; " +
+            native.vectorOverloads.comparisons + " exact generations; " + native.vectorOverloads.traps + " matching traps)");
         console.log("native/WASM color boundaries: PASS (" + native.colorComparisons +
                     " exact RGBA results)");
         console.log("native/WASM 0.7 math: PASS (" + native.mathComparisons +

@@ -4,10 +4,11 @@
 #include <stdexcept>
 
 namespace iprop::ips {
-const std::map<std::string, BuiltinSpec>& builtinSpecs() {
+namespace {
+std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
     using V = ValueType;
     using L = BuiltinLowering;
-    static const std::map<std::string, BuiltinSpec> table = {
+    std::map<std::string, BuiltinSpec> table = {
         {"unit", {V::F32, L::Opcode, {{{}, Opcode::RngUnit}}}},
         {"stream_push", {V::Void, L::Opcode, {{{{"seed", V::I32}}, Opcode::StreamPush}}}},
         {"stream_pop", {V::Void, L::Opcode, {{{}, Opcode::StreamPop}}}},
@@ -127,7 +128,70 @@ const std::map<std::string, BuiltinSpec>& builtinSpecs() {
             {{{"items", V::list(V::stepper(V::Color))}}, Opcode::ListLen},
             {{{"items", V::list(V::stepper(V::Vec2))}}, Opcode::ListLen}}}},
     };
+    const auto add = [&](const std::string& name, std::vector<BuiltinParameter> params,
+                         BuiltinAdaptation adaptation = BuiltinAdaptation::Coordinates) {
+        auto& spec = table.at(name);
+        const auto& scalar = spec.overloads.front();
+        spec.overloads.push_back({std::move(params), scalar.opcode,
+            adaptation == BuiltinAdaptation::VectorLerp ? V::Vec2 : scalar.result, adaptation});
+    };
+    for (const auto* name : {"noise", "fault", "noise.grad", "noise.cell"})
+        add(name, {{"p", V::Vec2}, {"seed", V::I32}});
+    for (const auto* name : {"noise.fbm", "noise.ridge"})
+        add(name, {{"p", V::Vec2}, {"octaves", V::I32}, {"seed", V::I32}});
+    add("warp", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+    add("rect", {{"position", V::Vec2}, {"size", V::Vec2}, {"color", V::Color}});
+    add("rect", {{"position", V::Vec2}, {"w", V::F32}, {"h", V::F32}, {"color", V::Color}});
+    add("rect", {{"x", V::F32}, {"y", V::F32}, {"size", V::Vec2}, {"color", V::Color}});
+    add("line", {{"a", V::Vec2}, {"b", V::Vec2}, {"thickness", V::I32}, {"color", V::Color}});
+    add("oval", {{"center", V::Vec2}, {"radii", V::Vec2}, {"color", V::Color}});
+    add("oval", {{"center", V::Vec2}, {"rx", V::F32}, {"ry", V::F32}, {"color", V::Color}});
+    add("oval", {{"x", V::F32}, {"y", V::F32}, {"radii", V::Vec2}, {"color", V::Color}});
+    add("pixel", {{"p", V::Vec2}, {"color", V::Color}}, BuiltinAdaptation::IntegerCoordinates);
+    add("cell.jitter", {{"cell", V::Vec2}, {"seed", V::I32}}, BuiltinAdaptation::IntegerCoordinates);
+    add("dither", {{"t", V::F32}, {"p", V::Vec2}}, BuiltinAdaptation::IntegerCoordinates);
+    add("mask.offset", {{"source", V::Mask}, {"offset", V::Vec2}}, BuiltinAdaptation::IntegerCoordinates);
+    add("atan2", {{"v", V::Vec2}}, BuiltinAdaptation::VectorAngle);
+    add("lerp", {{"a", V::Vec2}, {"b", V::Vec2}, {"t", V::F32}}, BuiltinAdaptation::VectorLerp);
     return table;
+}
+}
+
+const std::map<std::string, BuiltinSpec>& builtinSpecs() {
+    static const auto table = makeBuiltinSpecs();
+    return table;
+}
+
+std::vector<BuiltinStep> builtinExpansion(const BuiltinOverload& overload) {
+    std::vector<BuiltinStep> steps;
+    const auto component = [&](std::size_t argument, Opcode projection) {
+        steps.emplace_back(argument);
+        steps.emplace_back(projection);
+        if (overload.adaptation == BuiltinAdaptation::IntegerCoordinates)
+            steps.emplace_back(Opcode::F32ToI32);
+    };
+    if (overload.adaptation == BuiltinAdaptation::VectorLerp) {
+        for (const auto projection : {Opcode::Vec2X, Opcode::Vec2Y}) {
+            component(0, projection);
+            component(1, projection);
+            steps.emplace_back(std::size_t{2});
+            steps.emplace_back(Opcode::Lerp);
+        }
+        steps.emplace_back(Opcode::Vec2Make);
+    } else if (overload.adaptation == BuiltinAdaptation::VectorAngle) {
+        component(0, Opcode::Vec2Y);
+        component(0, Opcode::Vec2X);
+        steps.emplace_back(*overload.opcode);
+    } else {
+        for (std::size_t i = 0; i < overload.params.size(); ++i) {
+            if (overload.adaptation != BuiltinAdaptation::Direct && overload.params[i].type == ValueType::Vec2) {
+                component(i, Opcode::Vec2X);
+                component(i, Opcode::Vec2Y);
+            } else steps.emplace_back(i);
+        }
+        if (overload.opcode) steps.emplace_back(*overload.opcode);
+    }
+    return steps;
 }
 
 const std::map<std::string, BuiltinSpec>& surfaceMethodSpecs() {

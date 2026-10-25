@@ -1,0 +1,35 @@
+// API example: vector forms use the same operations as their scalar equivalents.
+asset vector_overloads {
+  size 32x32
+  output point midpoint
+  output list point samples
+  const vec2 first = {2, 3}
+  const vec2 last = {26, 23}
+  const vec2 middle = lerp(first, last, 0.5)
+  const f32 angle = atan2(last - first)
+
+  draw {
+    p = {3, 4}
+    extent = {8, 6}
+    rect(p, extent, #343a42)
+    rect({14, 4}, 8, 6, #929ca8)
+    rect(3, 14, extent, #7dffb0)
+    oval({18, 18}, {4, 3}, #6fd3ff)
+    oval({25, 18}, 3, 2, #c38bff)
+    oval(24, 26, {3, 2}, #ff8fa3)
+    line(first, last, 1, #fff)
+    pixel(middle, #ffd166)
+
+    samples = {noise(p, seed), fault(p, seed)}
+    samples = {noise.grad(p, seed), noise.cell(p, seed)}
+    samples = {noise.fbm(p, 4, seed), noise.ridge(p, 4, seed)}
+    samples = {warp(p, 0.5, seed), dither(0.5, p)}
+    samples = cell.jitter(p, seed)
+    samples = {angle, atan2(last - first)}
+    midpoint = lerp(first, last, 0.5)
+
+    layer shape(alpha=surface.source_over) { rect({1, 1}, {5, 4}, #fff) }
+    moved = mask.offset(mask.from(shape), {12, 24})
+    surface.paint(moved, #ffd166, blend=surface.source_over)
+  }
+}
