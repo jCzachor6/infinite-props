@@ -5,6 +5,9 @@ for this checkout. It covers the file/container layout, all instructions, exact
 algorithms, validation and resource limits. The file format itself is
 unversioned. Older specifications and releases remain available in Git history.
 
+[Materials 0.8 (draft)](materials-0.8.md) records the material language
+contract planned for the 0.8 release line.
+
 The [language handbook](../docs/language/index.md) defines `.ips` authoring.
 The [0.6 → 0.7 migration](../docs/language/migration-v0.7.md) explains source
 and host changes. Product, language, format, C API and ABI versions are independent.

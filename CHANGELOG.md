@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+Target: **0.8** (breaking changes allowed; see the migration note at release).
+
+### Language: materials
+
+- New `material Name { ... }` definitions in material files (files with no
+  asset), imported with the ordinary `import` syntax. `base` is required;
+  `edge` defaults to `base`, `taper` to `1.0` and `edge_width` to `0`. Other
+  fields are author-named `color`/`i32`/`f32`/`vec2` constants or ranges.
+- `m = Name()` creates an instance, rolling each field once in definition
+  order. Each definition is a distinct helper parameter type (`m: Name`);
+  instances are immutable and cannot be host inputs. See the
+  [materials handbook chapter](docs/language/materials.md) and the
+  [0.8 materials contract](spec/materials-0.8.md).
+
 ## v0.7.2 — 2026-10-25
 
 Product, editor, website and native binding packages: **0.7.2**. Source language:

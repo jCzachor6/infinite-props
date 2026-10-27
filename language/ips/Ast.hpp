@@ -297,6 +297,8 @@ struct Param {
     std::string name;
     ParamType type;
     SourceLocation location;
+    // Set when the declared type is a material definition name (e.g. Bark).
+    std::optional<std::string> materialType{};
 };
 
 // A function. The draw entry has no declared parameters; its v/a runtime
@@ -314,6 +316,22 @@ struct Function {
 struct Import {
     std::string alias;
     std::string path;
+    SourceLocation location;
+    TokenRange sourceRange{};
+};
+
+// One named field of a material definition: `shadow = #2a1a10 to #3a2618`.
+struct MaterialField {
+    std::string name;
+    std::unique_ptr<Expr> value;
+    SourceLocation location;
+};
+
+// `material Bark { base = ...; taper = ... }` — defined only in a material
+// file (a file with no asset). Each definition is a distinct language type.
+struct MaterialDef {
+    std::string name;
+    std::vector<MaterialField> fields;
     SourceLocation location;
     TokenRange sourceRange{};
 };
@@ -340,6 +358,8 @@ struct Asset {
     };
     std::vector<Constant> constants;
     std::vector<Function> functions;
+    // Material definitions merged from imported material files.
+    std::vector<MaterialDef> materials;
 
     TokenRange sourceRange{};
     std::vector<MetadataSyntax> metadataSyntax{};
@@ -348,6 +368,13 @@ struct Asset {
 struct Program {
     std::vector<Import> imports;
     Asset asset;
+    // Material-file contents: definitions plus their file-local declarations.
+    std::vector<MaterialDef> materials;
+    std::vector<PaletteDecl> materialPalettes;
+    std::vector<Asset::Constant> materialConstants;
+    bool isMaterialFile = false;
+    // Import aliases that resolve to material files (not parts).
+    std::vector<std::string> materialImportAliases;
     // Owning token/trivia snapshot; compiler and debug printers ignore it.
     std::vector<Token> sourceTokens{};
 };

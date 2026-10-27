@@ -19,10 +19,27 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
         while (kind() != TokenKind::End) {
             const auto start = pos_;
             try {
-                if (kind() == TokenKind::KeywordImport && !hasAsset) {
+                if (kind() == TokenKind::KeywordImport && !hasAsset && program.materials.empty()) {
                     auto import = parseImport();
                     result.imports.push_back(import);
                     program.imports.push_back(std::move(import));
+                } else if (kind() == TokenKind::Identifier && peek().text == "material" &&
+                           kind(1) == TokenKind::Identifier && kind(2) == TokenKind::LBrace) {
+                    program.materials.push_back(parseMaterialDef());
+                } else if (kind() == TokenKind::Identifier && peek().text == "palette" &&
+                           !hasAsset && kind(1) == TokenKind::Identifier) {
+                    advance(); // 'palette'
+                    program.materialPalettes.push_back(parsePalette());
+                } else if (kind() == TokenKind::KeywordConst && !hasAsset) {
+                    const auto constStart = pos_;
+                    advance();
+                    const auto type = parseParamType();
+                    const Token name = expectName("a constant name");
+                    expect(TokenKind::Assign, "'=' and a constant expression");
+                    auto value = parseExpr();
+                    match(TokenKind::Semi);
+                    program.materialConstants.push_back(
+                        {type, name.text, std::move(value), name.location, {constStart, pos_}});
                 } else if (kind() == TokenKind::KeywordAsset && !hasAsset) {
                     program.asset = parseAsset();
                     hasAsset = true;
@@ -40,9 +57,14 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
         }
         // A failed declaration/header already explains an incomplete file.
         // Do not add an expected-asset cascade after synchronizing to EOF.
-        if (!hasAsset && result.diagnostics.empty()) {
+        if (hasAsset && !program.materials.empty() && result.diagnostics.empty()) {
+            throw SourceError{program.materials.front().location,
+                              "material definitions must be in a separate file without an asset"};
+        }
+        if (!hasAsset && program.materials.empty() && result.diagnostics.empty()) {
             failExpected("an 'asset' block");
         }
+        program.isMaterialFile = !hasAsset && !program.materials.empty();
         if (result.diagnostics.empty()) {
             program.sourceTokens = std::move(tokens_);
             result.program = std::move(program);
@@ -161,6 +183,28 @@ Import ParserImpl::parseImport() {
     const Token path = expect(TokenKind::String, "a quoted file path");
     match(TokenKind::Semi);
     return Import{alias.text, path.text, at, {start, pos_}};
+}
+
+MaterialDef ParserImpl::parseMaterialDef() {
+    const auto start = pos_;
+    const SourceLocation at = advance().location; // 'material'
+    const Token name = expect(TokenKind::Identifier, "a material name");
+    expect(TokenKind::LBrace, "'{'");
+    MaterialDef def;
+    def.name = name.text;
+    def.location = at;
+    while (kind() != TokenKind::RBrace) {
+        if (kind() == TokenKind::End) failHere("unterminated material block (missing '}')");
+        if (match(TokenKind::Semi)) continue;
+        const Token field = expectName("a material field name");
+        expect(TokenKind::Assign, "'=' and a field value");
+        auto value = parseExpr();
+        match(TokenKind::Semi);
+        def.fields.push_back(MaterialField{field.text, std::move(value), field.location});
+    }
+    advance(); // '}'
+    def.sourceRange = {start, pos_};
+    return def;
 }
 
 Asset ParserImpl::parseAsset() {
@@ -384,8 +428,14 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     while (kind() != TokenKind::RParen) {
         const Token paramName = expectName("a parameter name");
         expect(TokenKind::Colon, "':' and a parameter type");
-        const ParamType type = parseParamType();
-        params.push_back(Param{paramName.text, type, paramName.location});
+        if (kind() == TokenKind::Identifier && !peek().text.empty() &&
+            peek().text.front() >= 'A' && peek().text.front() <= 'Z') {
+            const Token material = advance();
+            params.push_back(Param{paramName.text, ParamType::I32, paramName.location, material.text});
+        } else {
+            const ParamType type = parseParamType();
+            params.push_back(Param{paramName.text, type, paramName.location});
+        }
         if (!match(TokenKind::Comma)) {
             break;
         }
@@ -393,6 +443,8 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     expect(TokenKind::RParen, "')'");
     std::optional<ParamType> returnType;
     if (match(TokenKind::Arrow)) {
+        if (kind() == TokenKind::Identifier)
+            failHere("returning a material is not supported; return a field such as m.base");
         returnType = parseParamType();
     }
     return Function{name.text, std::move(params), returnType, parseBlock(),

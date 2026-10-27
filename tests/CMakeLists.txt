@@ -48,6 +48,7 @@ add_executable(iprop_tests
     compiler/vectors_test.cpp
     compiler/vector_overloads_test.cpp
     compiler/palettes_test.cpp
+    compiler/materials_test.cpp
     compiler/drawing_test.cpp
     compiler/color_channels_test.cpp
     compiler/random_ranges_test.cpp

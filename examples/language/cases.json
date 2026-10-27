@@ -91,6 +91,8 @@
     {"file": "nested-import.ips", "expect": "pass"},
     {"file": "idioms.ips", "expect": "pass"},
     {"file": "minimal-prop.ips", "expect": "pass"},
+    {"file": "material-tree.ips", "expect": "pass"},
+    {"file": "materials/forest.ips", "expect": "compile-error", "message": "a material file has no asset to compile"},
     {"file": "style/unit-arithmetic.ips", "expect": "pass"},
     {"file": "style/uniform-proportion.ips", "expect": "pass"},
     {"file": "style/channel-draws.ips", "expect": "pass"},

@@ -107,6 +107,7 @@ public:
     // ---- program, declarations, statements (Parser.cpp) --------------------
 
     Import parseImport();
+    MaterialDef parseMaterialDef();
     Asset parseAsset();
     void parseDeclaration(Asset& asset);
     void parseSize(Asset& asset);
