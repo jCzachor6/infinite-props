@@ -1,21 +1,14 @@
 import clump from "clump.ips"
+import foliage from "foliage.ips"
 // A tree from above: rings of leaf clumps, the rim first and the
 // top last.
 asset Tree {
   size 176x176
   origin 88,88
-  // Mostly greens (deep, olive, lime, blue-green), now and then
-  // autumn reds, oranges and golds.
-  palette leaves = [#1f5a3a to #3f8a4c, #4a6a24 to #8aa03a,
-                    #5a9a2a to #a8c840, #2a6a6a to #5a9a7a,
-                    #8a2a24 to #c8402a, #c0581e to #e8902a,
-                    #c89a20 to #f0d050]
-  const distribution kinds = weighted {0: 22, 1: 18, 2: 18,
-    3: 14, 4: 9, 5: 10, 6: 9}
 
   draw {
     R = 34.0 to 58.0 with gaussian(mean=46.0, sigma=5.0)
-    leaf = leaves[0 to 6 with kinds].pick()
+    leaf = foliage.Leaf()
     for ring in 0..3 {
       n = max(1, (6 to 8) - ring * 3)
       turn = 0.0 to 6.2832
@@ -27,7 +20,7 @@ asset Tree {
         clump.draw(hash(seed ^ (ring * 16 + i)),
                    at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
                    r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
-                   leaf=color.shade(leaf, -8 to 8))
+                   leaf=color.shade(leaf.base, -8 to 8))
       }
     }
   }

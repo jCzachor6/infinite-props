@@ -39,7 +39,9 @@ async function main() {
     const pages = checkLinks(site);
     assert.equal(pages, 7);
     const specs = fs.readdirSync(path.join(root, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort();
-    assert.deepEqual(specs, ["iprop-v0.7.md"]);
+    const productLine = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8"))
+        .version.split(".").slice(0, 2).join(".");
+    assert.ok(specs.includes("iprop-v" + productLine + ".md"), "missing current product-line specification");
     assert.deepEqual(fs.readdirSync(path.join(site, "spec")).filter(name => /^iprop-v.*\.md$/.test(name)).sort(), specs);
     for (const spec of specs) {
         assert.deepEqual(fs.readFileSync(path.join(site, "spec", spec)), fs.readFileSync(path.join(root, "spec", spec)));

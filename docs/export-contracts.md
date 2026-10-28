@@ -1,7 +1,7 @@
 # Export contracts
 
-The development compiler exports source language **0.7.2** with product
-**0.7.2**, an unversioned format, C API **0.4** and ABI **0.5**. JSON protocol versions
+The development compiler exports source language **0.8.0** with product
+**0.8.0**, an unversioned format, C API **0.4** and ABI **0.5**. JSON protocol versions
 are independent: language-description schema **4**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
@@ -28,13 +28,16 @@ implicit draw controls. It includes typed constants, parameterized lists,
 samplers/steppers, point distributions and surfaces, with signatures and effects
 from shared compiler/runtime registries. Older schema versions are rejected.
 Diagnostic and documentation-manifest schemas retain their independent versions.
+Source language 0.8 adds optional `source_rules.materials` in schema 4.
+It describes the source-only capability separately from VM storable types;
+readers validate it when present and continue to accept earlier exports without it.
 
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`
 (major.minor.patch), plus `c_api_version` and `c_abi_soversion` (major.minor).
 Earlier schema-3 bundles may use major.minor for `language_version`.
-Current values are `0.7.2`, `0.7.2`, `0.4` and `0.5`. The file format is
+Current values are `0.8.0`, `0.8.0`, `0.4` and `0.5`. The file format is
 unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
 The language export and diagnostics add an optional integer `patch` to
@@ -44,9 +47,9 @@ major/minor pairs; `c_abi_soversion` is checked against the ABI pair.
 Verification compares source constants, compiler exports and every artifact
 matrix. Valid checksums cannot override version mismatches.
 
-Current handbooks use the source-language filename `language-v0.7.2.md`, not
+Current handbooks use the source-language filename `language-v0.8.0.md`, not
 the product version. The emitted, unversioned format is specified by the
-frozen [self-contained 0.7 contract](../spec/iprop-v0.7.md), named after
+frozen [self-contained 0.8 contract](../spec/iprop-v0.8.md), named after
 the product line. Product release tags, source language, C API features and the
 ABI loader line are never inferred from one another.
 

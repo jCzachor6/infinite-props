@@ -48,6 +48,7 @@ add_executable(iprop_tests
     compiler/vectors_test.cpp
     compiler/vector_overloads_test.cpp
     compiler/palettes_test.cpp
+    compiler/materials_test.cpp
     compiler/drawing_test.cpp
     compiler/color_channels_test.cpp
     compiler/random_ranges_test.cpp
@@ -204,6 +205,8 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_format_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_format_cli.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME compiler_materials_cli COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_materials_cli.py" "$<TARGET_FILE:ipc>" "$<TARGET_FILE:ipgen>")
     add_test(NAME recipe_format_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_recipe_format.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_export_contracts COMMAND ${Python3_EXECUTABLE}

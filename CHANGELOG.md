@@ -2,6 +2,58 @@
 
 ## Unreleased
 
+## v0.8.0 — 2026-10-28
+
+Product, editor, website, Unity and Python packages: **0.8.0**. Source
+language: **0.8.0**. The unversioned binary format, C API **0.4** and
+ABI / SONAME **0.5** remain unchanged. Existing 0.7 binaries do not need
+recompilation. See the [0.7 to 0.8 migration guide](docs/language/migration-v0.8.md)
+and [release preparation guide](docs/release-v0.8.md).
+
+### Language: materials
+
+- New `material Name { ... }` definitions in material files (files with no
+  asset), imported with the ordinary `import` syntax and named by the import
+  alias (`forest.Bark`). `base` is the only required field; other fields are
+  author-named `color`/`i32`/`f32`/`vec2` constants or ranges and may read
+  the fields before them. The file's own `palette`/`const` stay private.
+- `m = forest.Bark()` creates an instance, rolling each field once in the
+  order written; `forest.Bark(base = #2a1a10)` overrides fields by name.
+  Each definition is a distinct helper parameter type (`m: forest.Bark`);
+  instances are immutable and cannot be host inputs. See the
+  [materials handbook chapter](docs/language/materials.md) and the
+  [0.8 materials contract](spec/materials-0.8.md).
+- Material replacement preserves the old value while evaluating overrides;
+  lowering retains nominal types and read-only bindings, keeps generated
+  names private, and preserves the library's builtin resolution. Material
+  files support standalone checks and source-only formatting in the CLI
+  and editor.
+
+### Authoring and documentation
+
+- `ipc --describe-language` exposes the optional `source_rules.materials`
+  capability in schema 4, with matching formal schema and reader validation.
+- Frozen 0.8 format/VM and material contracts, a 0.7-to-0.8 migration guide,
+  updated grammar, and offline release notes in the generated documentation.
+- The complete coding-agent reference includes material libraries and their
+  importing assets, with an explicit 128 KiB budget and executable checks.
+- Optimization acceptance validates source-only material libraries separately
+  from assets while retaining exact rejection, image and output comparisons.
+- SDK installation retains the verified, LF-normalized documentation on
+  Windows instead of overwriting it with CRLF source files.
+
+### Website
+
+- The home-page forest example uses an imported foliage material to keep
+  each tree's base, shadow, light and rim colors together.
+- The butterfly benchmark precedes the forest, shows mobile results above
+  the animation and restores a fresh preview after a run. Butterflies keep
+  flying along their final heading for two more seconds before fading.
+- Browsers revalidate stable paths outside Vite's hashed `assets/`, including
+  WASM/runtime files, showcase manifests and documentation data.
+- The built website includes the 0.8 specification and retains the frozen 0.7
+  contract for historical migration links. Release notes remain readable offline.
+
 ## v0.7.2 — 2026-10-25
 
 Product, editor, website and native binding packages: **0.7.2**. Source language:

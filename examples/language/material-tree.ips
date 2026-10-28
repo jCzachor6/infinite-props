@@ -1,0 +1,48 @@
+import forest from "materials/forest.ips";
+
+asset MaterialTree {
+  size 64x64
+  output rect collider
+
+  draw {
+    bark = forest.Bark()
+    leaves = forest.Leaves()
+    // The crown's top cluster catches more light than the material default.
+    crown = forest.Leaves(highlight = #c8f098)
+
+    // Trunk: thick at the ground, drawn with the bark base and edge.
+    line(32, 62, 32, 34, 5, bark.base)
+    line(32, 62, 32, 34, 1, bark.shadow)
+
+    // Each branch gets its own angle, length and thickness from the seed;
+    // the material gives every branch the same bark, edge and taper.
+    for i in 0..4 {
+      y = 52.0 - float(i) * 5.0
+      len = 10.0 to 16.0
+      w = 3.0 - float(i) * 0.5
+      branch(32.0, y, 0 - len, w, bark)
+      branch(32.0, y, len, w, bark)
+    }
+
+    // Leaf clusters at two branch heights, in the leaves material.
+    oval(18, 22, 9, 6, leaves.base)
+    oval(46, 22, 9, 6, leaves.base)
+    oval(32, 14, 11, 7, leaves.base)
+    oval(30, 12, 5, 3, crown.highlight)
+    oval(44, 20, 4, 2, leaves.highlight)
+
+    collider = {20.0, 30.0, 24.0, 32.0}
+  }
+
+  // One tapered branch: a thick base segment in edge color, a thinner
+  // mid segment, and a tip scaled by the material taper. The joint end
+  // gets no edge line, so the branch grows out of the trunk.
+  branch(x: f32, y: f32, dx: f32, w: f32, m: forest.Bark) {
+    tip = w * m.taper
+    line(x, y, x + dx * 0.5, y - 6.0, int(w) + m.edge_width, m.edge)
+    line(x, y, x + dx * 0.5, y - 6.0, int(w), m.base)
+    line(x + dx * 0.5, y - 6.0, x + dx, y - 11.0, int(tip) + m.edge_width, m.edge)
+    line(x + dx * 0.5, y - 6.0, x + dx, y - 11.0, int(tip), m.shadow)
+    pixel(int(x + dx), int(y - 11.0), m.highlight)
+  }
+}

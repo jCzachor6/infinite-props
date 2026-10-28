@@ -1,3 +1,4 @@
+import foliage from "foliage.ips"
 // One clump of leaves from above, lit from the upper left: lobes
 // and leaves in a five-tone ramp, over their own shadow.
 asset Clump {
@@ -8,9 +9,11 @@ asset Clump {
   input color leaf = #4a8a3a
 
   draw {
-    // Five tones from a cool shadow to a warm light.
-    tones = stepper(color.mix(leaf, #0c2238, 0.5) to
-                    color.mix(leaf, #fff6b0, 0.4)).pick(5)
+    // A part takes colours, not materials: the leaf material is made
+    // here from the colour the tree passes in.
+    m = foliage.Leaf(base = leaf)
+    // Five tones from the shadow to the light.
+    tones = stepper(m.shadow to m.light).pick(5)
     layer lobes(alpha=surface.source_over) {
       body = r * 0.72
       oval(32.0, 32.0, body, body, tone(tones, 0.3 + lift))
@@ -33,8 +36,7 @@ asset Clump {
         oval(x, y, s, s * 0.8, tone(tones, lit + j))
       }
     }
-    rim = color.mix(leaf, #040a10, 0.75)
-    surface.paint(mask.offset(mask.from(lobes), 1, 2), rim)
+    surface.paint(mask.offset(mask.from(lobes), 1, 2), m.rim)
     surface.paint(lobes)
   }
 

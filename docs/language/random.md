@@ -36,7 +36,7 @@ upper one traps, as does a NaN or infinite `f32` bound; bounds are never
 swapped. Integer draws discard the few raw values that would favour some
 results, so every integer of the range is equally likely for any width, and
 the full `i32` range is allowed. Redraws cost 1 fuel each; the exact algorithms
-are in [random ranges](../../spec/iprop-v0.7.md#18-uniform-random-ranges).
+are in [random ranges](../../spec/iprop-v0.8.md#18-uniform-random-ranges).
 Floating results never leave the bounds, even after rounding.
 
 `to` binds more loosely than arithmetic and shifts and more tightly than
@@ -130,7 +130,7 @@ one stream step. Parameters are checked when the constructor runs: invalid
 values trap there, even when the description is never used, and an
 unassigned `distribution` local traps when drawn. Draws cost 1 fuel plus 1 per
 iteration of the pinned numerical kernels, typically 20-150; the
-[specification](../../spec/iprop-v0.7.md#19-analytic-distributions) gives the exact
+[specification](../../spec/iprop-v0.8.md#19-analytic-distributions) gives the exact
 algorithms. A helper named `gaussian`, `triangular` or `beta` takes
 precedence over the constructor of the same name.
 
@@ -181,7 +181,7 @@ including forward numeric const references. Invalid static descriptions reject
 before an artifact is written; invalid runtime operands trap at construction,
 even if unused. Only `weighted` followed by `{` starts the literal; a helper
 `weighted(...)` and locals named `weighted` keep their existing meaning.
-See the [format and numerical contract](../../spec/iprop-v0.7.md#27-point-distributions-and-weighted-draws).
+See the [format and numerical contract](../../spec/iprop-v0.8.md#27-point-distributions-and-weighted-draws).
 
 <!-- example: ../../examples/language/weighted.ips -->
 
@@ -228,7 +228,7 @@ each retained point buffer once. Invalid static data reject before artifacts;
 invalid runtime snapshots trap when constructed, even unused. `density(...)`
 helpers and locals named `density` keep their meaning; the literal starts only
 before `{`. Existing family and weighted kernels stay frozen. See the
-[pinned density contract](../../spec/iprop-v0.7.md#28-density-distributions-and-pinned-integration).
+[pinned density contract](../../spec/iprop-v0.8.md#28-density-distributions-and-pinned-integration).
 
 <!-- example: ../../examples/language/point-distributions.ips -->
 
@@ -272,7 +272,7 @@ equal values above 1 the middle, and values below 1 both ends.
 <!-- builtin: unit -->
 
 Consumes one stream draw and returns an `f32` in `[0, 1)`. The frozen stream
-advance and conversion are specified in [RNG](../../spec/iprop-v0.7.md#122-stream-advance-rngunit).
+advance and conversion are specified in [RNG](../../spec/iprop-v0.8.md#122-stream-advance-rngunit).
 
 ## range
 <!-- builtin: range -->

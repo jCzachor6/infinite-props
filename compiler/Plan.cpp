@@ -186,6 +186,9 @@ void Planner::planParts() {
     const auto expand = [&](auto&& self, const ips::Program& owner, const std::string& prefix,
                             u32 parent, const std::string& ownerSource) -> void {
         for (const auto& import : owner.imports) {
+            if (std::find(owner.materialImportAliases.begin(), owner.materialImportAliases.end(),
+                          import.alias) != owner.materialImportAliases.end())
+                continue;
             // Stop expanding before the plan grows past the format limit.
             if (plan_->parts.size() >= kMaxParts) {
                 throw ips::SourceError{import.location, "too many part instances (limit " +

@@ -32,7 +32,7 @@ as the `f32` overload of `int`.
 Returns an `i32`, rounding to the nearest integer with halfway values away
 from zero, then applying saturated truncation. NaN becomes zero; infinities
 saturate. An i32 argument widens to f32 before rounding. See the
-[rounding contract](../../spec/iprop-v0.7.md#94-float).
+[rounding contract](../../spec/iprop-v0.8.md#94-float).
 
 ## sqrt
 <!-- builtin: sqrt -->
@@ -45,7 +45,7 @@ preserved according to the floating contract.
 
 Pinned sine approximation, with angle in radians. Exact range reduction,
 nonfinite behavior and polynomial evaluation are specified in
-[trigonometry](../../spec/iprop-v0.7.md#127-trigonometry).
+[trigonometry](../../spec/iprop-v0.8.md#127-trigonometry).
 
 ## cos
 <!-- builtin: cos -->
@@ -90,7 +90,7 @@ zero succeeds negative zero.
 
 Pinned floating exponentiation. Zero, negative bases, integer/noninteger
 exponents, NaN and infinity cases follow
-[the math contract](../../spec/iprop-v0.7.md#128-the-math-package).
+[the math contract](../../spec/iprop-v0.8.md#128-the-math-package).
 
 ## exp
 <!-- builtin: exp -->
@@ -137,7 +137,7 @@ Clamped quintic smootherstep, also used by gradient noise's fade function.
 
 Maps `t` between two edges through clamped smooth interpolation. Exact
 equal-edge and reversed-edge behavior follows
-[the curve toolkit](../../spec/iprop-v0.7.md#1214-the-curve-toolkit).
+[the curve toolkit](../../spec/iprop-v0.8.md#1214-the-curve-toolkit).
 
 ## remap
 <!-- builtin: remap -->

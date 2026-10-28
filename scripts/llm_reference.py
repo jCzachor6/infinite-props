@@ -292,9 +292,13 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
     style = []
 
     def example(path, demo=False):
-        require(path in cases and cases[path]['expect'] == 'pass', 'selected example must be registered as pass: ' + str(path))
+        library = path in cases and cases[path]['expect'] == 'compile-error' and cases[path].get('check_expect') == 'pass'
+        require(path in cases and (cases[path]['expect'] == 'pass' or library),
+                'selected example must be registered as pass or a checked material library: ' + str(path))
+        require(not (library and demo), 'a material library is not an executable API demo')
         example_paths.append(path)
-        caption = (', an API demo executed with seed 7: it shows the calls of this section on a tiny canvas, '
+        caption = (', a material library validated with --check; compiled through its importing asset.' if library else
+                   ', an API demo executed with seed 7: it shows the calls of this section on a tiny canvas, '
                    'not the style of a prop.' if demo else ', executed with seed 7.')
         return ['[' + path.name + '](' + path.relative_to(root).as_posix() + ')' + caption, '',
                 '```ips', path.read_text(encoding='utf-8').rstrip(), '```', '']
@@ -399,8 +403,11 @@ def render(root, language, authored, cases, identity, compiler, sections=None, s
         for number, path in enumerate(dict.fromkeys(example_paths)):
             owning_copy = directory / path.relative_to(root)
             check_program(compiler, owning_copy, True)
-            execute(compiler, owning_copy, directory, 'example-' + str(number))
-            evidence.append({'file': path.relative_to(root).as_posix(), 'check': 'pass', 'execution': 'pass'})
+            library = cases[path]['expect'] == 'compile-error' and cases[path].get('check_expect') == 'pass'
+            if not library:
+                execute(compiler, owning_copy, directory, 'example-' + str(number))
+            evidence.append({'file': path.relative_to(root).as_posix(), 'check': 'pass',
+                             'execution': 'material_library' if library else 'pass'})
         for number, (pair, path, fixed) in enumerate(repairs):
             owning_copy = directory / path.relative_to(root)
             report = check_program(compiler, owning_copy, False)

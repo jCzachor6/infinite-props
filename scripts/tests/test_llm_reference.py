@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -12,6 +13,34 @@ from language_fixture import LANGUAGE
 
 
 class ReferenceSourceTest(unittest.TestCase):
+    def test_material_library_is_checked_and_its_importing_example_is_executed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            chapter = root / 'docs/language/materials.md'
+            chapter.parent.mkdir(parents=True)
+            chapter.write_text('# Materials\n\nLibrary rules.\n')
+            config = root / llm.CONFIG
+            config.write_text(json.dumps({'maximum_bytes': 10000, 'defaults': {
+                'max_bytes': 10000, 'sections': ['materials'], 'symbols': []}, 'sections': [{
+                'id': 'materials', 'title': 'Materials', 'chapter': 'materials.md', 'parts': 'chapter',
+                'examples': ['library.ips', 'entry.ips']}]}))
+            examples = root / 'examples/language'
+            examples.mkdir(parents=True)
+            library, entry = examples / 'library.ips', examples / 'entry.ips'
+            library.write_text('material Bark {base=#fff}')
+            entry.write_text('import m from "library.ips";asset t{size 1x1 draw{x=m.Bark();pixel(0,0,x.base)}}')
+            cases = {library: {'expect': 'compile-error', 'check_expect': 'pass'}, entry: {'expect': 'pass'}}
+            identity = {'source_commit': None, 'status': 'development / release candidate', 'working_tree_dirty': False}
+            with patch.object(llm, 'check_program') as check, patch.object(llm, 'execute') as execute:
+                result, evidence = llm.render(root, LANGUAGE, {chapter: chapter.read_text()}, cases, identity, Path('unused'))
+            self.assertIn('material Bark {base=#fff}', result)
+            self.assertIn('material library validated with --check', result)
+            self.assertEqual(check.call_count, 2)
+            self.assertEqual(execute.call_count, 1)
+            self.assertEqual(execute.call_args.args[1].name, 'entry.ips')
+            self.assertEqual(evidence[0]['execution'], 'material_library')
+            self.assertEqual(evidence[1]['execution'], 'pass')
+
     def test_capability_summaries_are_optional_for_earlier_schema_2_exports(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()

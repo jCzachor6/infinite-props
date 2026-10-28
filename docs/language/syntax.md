@@ -22,6 +22,10 @@ Newly introduced keywords have no contextual compatibility aliases. Asset names 
 `const type name = expression` introduces an [asset constant](assets.md#asset-constants)
 only in declaration position. The reserved word cannot be used as a name elsewhere.
 
+`material` is contextual at file scope in `material Name { ... }`. It remains
+an ordinary identifier elsewhere. Material type names use their import alias,
+such as `forest.Bark`, and occupy a separate namespace from unqualified helpers.
+
 Use descriptive names distinct from builtin functions and the namespaces
 `color`, `vec2`, `dist`, `noise`, `cell`, `surface`, `mask` and `list.len`. Builtin call resolution takes
 precedence over user helpers with the same name.

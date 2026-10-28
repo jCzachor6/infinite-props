@@ -22,6 +22,7 @@ add_library(ips_lang STATIC
     ips/AssetConstants.cpp
     ips/PartTransform.cpp
     ips/Palette.cpp
+    ips/Materials.cpp
     ips/Imports.cpp
     ips/Semantics.cpp)
 

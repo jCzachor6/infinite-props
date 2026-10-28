@@ -28,7 +28,7 @@ Returns a unit direction from a finite vector. Zero, including signed zero,
 returns `{+0, +0}`. NaN or infinity in either component traps. The scaled
 binary64 algorithm handles maximum and subnormal f32 components without
 overflowing the length; it draws no randomness. See the
-[normalization contract](../../spec/iprop-v0.7.md#22-stable-vector-normalization).
+[normalization contract](../../spec/iprop-v0.8.md#22-stable-vector-normalization).
 
 <!-- example: ../../examples/language/errors/normalize-nonfinite.ips -->
 
@@ -62,7 +62,7 @@ corner radius. Supply dimensions/radius suitable for the shape being authored.
 <!-- builtin: dist.line -->
 
 Distance to a finite segment. Degenerate segments and nonfinite inputs follow
-the exact [distance-field contract](../../spec/iprop-v0.7.md#129-signed-distance-fields).
+the exact [distance-field contract](../../spec/iprop-v0.8.md#129-signed-distance-fields).
 
 ## dist.bezier
 <!-- builtin: dist.bezier -->
@@ -82,7 +82,7 @@ The exact zero/nonpositive width and NaN rules are in the distance-field spec.
 
 Folds a vector into an n-sector kaleidoscope domain, returning a `vec2`.
 The sector count is an integer. Valid counts and angular folding follow
-[fold and polar](../../spec/iprop-v0.7.md#1213-the-dither-the-fold-and-the-polar).
+[fold and polar](../../spec/iprop-v0.8.md#1213-the-dither-the-fold-and-the-polar).
 
 ## polar
 <!-- builtin: polar -->

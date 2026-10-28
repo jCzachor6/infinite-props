@@ -421,6 +421,56 @@ class SourcePrinter {
         for (std::size_t i = 0; i + 1 < ranges.size(); ++i) sourceSyntax(program, ranges[i]);
         return ranges.empty() ? TokenRange{} : ranges.back();
     }
+
+    void materialFile(const Program& program) {
+        struct Declaration {
+            enum Kind { Constant, Palette, Material } kind;
+            std::size_t index;
+            TokenRange range;
+        };
+        std::vector<Declaration> declarations;
+        for (std::size_t i = 0; i < program.materialConstants.size(); ++i)
+            declarations.push_back({Declaration::Constant, i, program.materialConstants[i].sourceRange});
+        for (std::size_t i = 0; i < program.materialPalettes.size(); ++i)
+            declarations.push_back({Declaration::Palette, i, program.materialPalettes[i].sourceRange});
+        for (std::size_t i = 0; i < program.materials.size(); ++i)
+            declarations.push_back({Declaration::Material, i, program.materials[i].sourceRange});
+        // Keep declaration order and comment ownership, including constants
+        // and palettes interleaved with material definitions.
+        std::stable_sort(declarations.begin(), declarations.end(), [](const auto& a, const auto& b) {
+            return a.range.begin < b.range.begin;
+        });
+        for (const auto& declaration : declarations) {
+            indent(0);
+            SourceOutput::Scope range(out_, declaration.range, false);
+            if (declaration.kind == Declaration::Constant) {
+                const auto& constant = program.materialConstants[declaration.index];
+                out_ << "const " << typeName(valueTypeOf(constant.type)) << ' ' << constant.name << " = ";
+                expression(*constant.value);
+            } else if (declaration.kind == Declaration::Palette) {
+                const auto& palette = program.materialPalettes[declaration.index];
+                out_ << "palette " << palette.name << " = [";
+                for (std::size_t i = 0; i < palette.elements.size(); ++i) {
+                    if (i) out_ << ", ";
+                    expression(*palette.elements[i]);
+                }
+                out_ << ']';
+            } else {
+                const auto& material = program.materials[declaration.index];
+                out_ << "material " << material.name << " {\n";
+                for (const auto& field : material.fields) {
+                    indent(1);
+                    SourceOutput::Scope fieldRange(out_, field.sourceRange, true);
+                    out_ << field.name << " = ";
+                    expression(*field.value);
+                    out_.finishRange(); out_ << '\n'; fieldRange.close();
+                }
+                indent(1); out_.prepare(TokenKind::RBrace);
+                indent(0); out_ << '}';
+            }
+            out_.finishRange(); out_ << '\n'; range.close();
+        }
+    }
 public:
     explicit SourcePrinter(const std::map<std::string, const Program*>& parts) : parts_(parts) {}
     std::string print(const Program& program) {
@@ -431,6 +481,10 @@ public:
             out_ << "import " << import.alias << " from " << quoteSource(import.path); out_.finishRange(); out_ << '\n'; range.close();
         }
         if (!program.imports.empty()) out_ << '\n';
+        if (program.isMaterialFile) {
+            materialFile(program);
+            return out_.str();
+        }
         const auto& asset = program.asset;
         if (asset.sizeX.has_value() != asset.sizeY.has_value())
             throw SourceError{asset.location, "size requires both width and height"};
@@ -485,7 +539,10 @@ public:
                 out_ << '(';
                 for (std::size_t i = 0; i < function.params.size(); ++i) {
                     if (i) out_ << ", ";
-                    out_ << function.params[i].name << ": " << typeName(valueTypeOf(function.params[i].type));
+                    const auto& param = function.params[i];
+                    out_ << param.name << ": ";
+                    if (param.materialType) out_ << *param.materialType;
+                    else out_ << typeName(valueTypeOf(param.type));
                 }
                 out_ << ')';
                 if (function.returnType) out_ << " -> " << typeName(valueTypeOf(*function.returnType));

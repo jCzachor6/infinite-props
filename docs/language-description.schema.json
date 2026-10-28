@@ -2925,6 +2925,205 @@
           ],
           "additionalProperties": true,
           "description": "Deterministic captured range descriptions, required batch counts and closed truncated distribution quantiles."
+        },
+        "materials": {
+          "type": "object",
+          "description": "Optional source-only material capability, emitted since source language 0.8.0. Earlier schema-4 exports may omit it.",
+          "properties": {
+            "keyword": {
+              "description": "The introducer is contextual; material remains an ordinary identifier elsewhere.",
+              "type": "string",
+              "enum": [
+                "contextual"
+              ]
+            },
+            "definition_scope": {
+              "description": "A library contains material definitions and private declarations, with no asset.",
+              "type": "string",
+              "enum": [
+                "separate_file_without_asset"
+              ]
+            },
+            "qualification": {
+              "description": "Types and constructors use the import alias and material name.",
+              "type": "string",
+              "enum": [
+                "import_alias"
+              ]
+            },
+            "private_declarations": {
+              "description": "Palettes and constants are private to their material file.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "palette",
+                  "const"
+                ]
+              },
+              "uniqueItems": true,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "required_field": {
+              "description": "Every definition must declare this field.",
+              "type": "string",
+              "enum": [
+                "base"
+              ]
+            },
+            "required_field_type": {
+              "description": "The required base field is color.",
+              "type": "string",
+              "enum": [
+                "color"
+              ]
+            },
+            "field_types": {
+              "description": "The complete set of supported material field value types.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "color",
+                  "i32",
+                  "f32",
+                  "vec2"
+                ]
+              },
+              "uniqueItems": true,
+              "minItems": 4,
+              "maxItems": 4
+            },
+            "field_dependencies": {
+              "description": "A field expression may read fields written before it.",
+              "type": "string",
+              "enum": [
+                "earlier_fields"
+              ]
+            },
+            "construction": {
+              "description": "Constructors are supported as assignment right hand sides.",
+              "type": "string",
+              "enum": [
+                "assignment_only"
+              ]
+            },
+            "overrides": {
+              "description": "Overrides are named, unique, and keep the declared field type.",
+              "type": "string",
+              "enum": [
+                "named_exact_type"
+              ]
+            },
+            "evaluation_order": {
+              "description": "Fields evaluate once in definition order; an override occupies its field position.",
+              "type": "string",
+              "enum": [
+                "definition_order"
+              ]
+            },
+            "replacement": {
+              "description": "Evaluate the entire new instance before replacing the target; overrides read the old target.",
+              "type": "string",
+              "enum": [
+                "evaluate_then_commit"
+              ]
+            },
+            "helper_parameters": {
+              "description": "Each imported material is a nominal helper parameter type passed by scalar value.",
+              "type": "string",
+              "enum": [
+                "nominal_by_value"
+              ]
+            },
+            "copy_rng": {
+              "description": "Copying a material consumes no RNG draws.",
+              "type": "string",
+              "enum": [
+                "none"
+              ]
+            },
+            "mutable_fields": {
+              "description": "Individual field assignment is unsupported.",
+              "type": "boolean",
+              "const": false
+            },
+            "host_inputs": {
+              "description": "Materials cannot be host inputs.",
+              "type": "boolean",
+              "const": false
+            },
+            "helper_returns": {
+              "description": "Returning a material from a helper is unsupported.",
+              "type": "boolean",
+              "const": false
+            },
+            "collections": {
+              "description": "Material lists, samplers and steppers are unsupported.",
+              "type": "boolean",
+              "const": false
+            },
+            "asset_constants": {
+              "description": "Material instances cannot be asset constants.",
+              "type": "boolean",
+              "const": false
+            },
+            "part_arguments": {
+              "description": "Materials cannot be passed directly into parts.",
+              "type": "boolean",
+              "const": false
+            },
+            "standalone_check": {
+              "description": "Material libraries support standalone semantic checks without producing a binary.",
+              "type": "boolean",
+              "const": true
+            },
+            "standalone_format": {
+              "description": "Material libraries support source-only comment-preserving formatting.",
+              "type": "boolean",
+              "const": true
+            },
+            "lowering": {
+              "description": "Materials expand to scalar fields before code generation.",
+              "type": "string",
+              "enum": [
+                "scalar_fields"
+              ]
+            },
+            "format_change": {
+              "description": "The source feature adds no wire type, instruction or format change.",
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "required": [
+            "keyword",
+            "definition_scope",
+            "qualification",
+            "private_declarations",
+            "required_field",
+            "required_field_type",
+            "field_types",
+            "field_dependencies",
+            "construction",
+            "overrides",
+            "evaluation_order",
+            "replacement",
+            "helper_parameters",
+            "copy_rng",
+            "mutable_fields",
+            "host_inputs",
+            "helper_returns",
+            "collections",
+            "asset_constants",
+            "part_arguments",
+            "standalone_check",
+            "standalone_format",
+            "lowering",
+            "format_change"
+          ],
+          "additionalProperties": true
         }
       },
       "required": [

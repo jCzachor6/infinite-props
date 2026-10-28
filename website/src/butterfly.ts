@@ -23,6 +23,8 @@ type WorkerReply = ButterflyFrame | { type: "ready"; parts: { id: PartName; byte
     | { type: "error"; id?: number; message: string };
 const PARTS: PartName[] = ["forewing", "hindwing", "body"];
 const RUN_LENGTH = 50;
+// How long a butterfly keeps cruising past the end of its curve.
+const EXTRA_FLIGHT_SECONDS = 2;
 const number = new Intl.NumberFormat("en-US");
 const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const kilobytes = (bytes: number) => `${(bytes / 1024).toFixed(1)} KB`;
@@ -304,11 +306,21 @@ class ButterflyBenchmark {
             distance += Math.hypot(x - previous.x, y - previous.y);
             points.push({ x, y, distance });
         }
+        // Past the curve the butterfly cruises straight on along its last
+        // heading, at the same speed, before it fades.
+        const curve = distance;
+        const heading = Math.hypot(dx * 0.52, dy * 0.45);
+        const extra = EXTRA_FLIGHT_SECONDS * maxSpeed;
+        for (let i = 1; i <= 48; ++i) {
+            const along = extra * i / 48;
+            points.push({ x: dx + dx * 0.52 / heading * along, y: dy + dy * 0.45 / heading * along, distance: curve + along });
+        }
+        distance += extra;
         const seconds = timeAt(distance);
         const frames = points.map((point, index) => {
-            const progress = point.distance / distance;
+            const progress = Math.min(1, point.distance / curve);
             return { transform: transform(point.x, point.y, turn * Math.min(1, progress * 4), 1 - progress * 0.34),
-                opacity: progress < 0.86 ? 1 : (1 - progress) / 0.14,
+                opacity: Math.min(1, (distance - point.distance) / (curve * 0.14)),
                 offset: index === points.length - 1 ? 1 : timeAt(point.distance) / seconds };
         });
         const animation = butterfly.animate(motion.matches ? [{ opacity: 1 }, { opacity: 0 }] : frames,
@@ -388,7 +400,16 @@ class ButterflyBenchmark {
             const finished = this.completed === RUN_LENGTH;
             // Automatic batches continue as soon as their last butterfly is
             // rendered; existing flights stay alive across the batch boundary.
-            if (!this.autoRolling) await Promise.all(this.flights);
+            if (!this.autoRolling) {
+                await Promise.all(this.flights);
+                if (this.disposed) return;
+                // Like at the start, one fresh butterfly waits on the stage
+                // for the next run; it is not part of the averages.
+                const frame = await this.generate();
+                if (this.disposed) return;
+                this.preview = this.makeButterfly(frame, true);
+                if (!motion.matches) this.preview.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: "ease-out" });
+            }
             if (this.disposed) return;
             if (finished) {
                 this.hasCompleted = true;

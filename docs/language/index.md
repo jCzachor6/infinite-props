@@ -5,7 +5,7 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed and optional declared input uniforms.
 
-This handbook describes source language **0.7.2** and product **0.7.2**.
+This handbook describes source language **0.8.0** and product **0.8.0**.
 Product, source, C API and ABI versions are independent, and the binary format
 is unversioned: `ipc --describe-language` reports the compiler's contracts.
 C API 0.4 uses ABI 0.5.
@@ -28,16 +28,18 @@ files; their contents are included in the generated book and tested by CI.
 10. [Vectors and distance fields](geometry.md)
 11. [Noise and procedural utilities](noise.md)
 12. [Palettes](palettes.md)
-13. [Immutable lists](collections.md)
-14. [Captured samplers](samplers.md)
-15. [Deterministic steppers](steppers.md)
-16. [Imports and part composition](composition.md)
-17. [Captured layers, masks and clipping](surfaces.md)
-18. [Writing idiomatic props](idioms.md)
-19. [Compiler tools and diagnostics](tooling.md)
-20. [Grammar](grammar.md)
-21. [Maintaining this documentation](development.md)
-22. [Migrating from 0.6 to 0.7](migration-v0.7.md)
+13. [Materials](materials.md)
+14. [Immutable lists](collections.md)
+15. [Captured samplers](samplers.md)
+16. [Deterministic steppers](steppers.md)
+17. [Imports and part composition](composition.md)
+18. [Captured layers, masks and clipping](surfaces.md)
+19. [Writing idiomatic props](idioms.md)
+20. [Compiler tools and diagnostics](tooling.md)
+21. [Grammar](grammar.md)
+22. [Maintaining this documentation](development.md)
+23. [Migrating from 0.6 to 0.7](migration-v0.7.md)
+24. [Migrating from 0.7 to 0.8](migration-v0.8.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

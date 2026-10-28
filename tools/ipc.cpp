@@ -126,8 +126,9 @@ int runCompiler(int argc, char* argv[]) {
                 << "       ipc <file.ips> --check [--diagnostics=json|text]\n"
                 << "       ipc <file.ips> --format <out.ips> --format-only\n"
                 << "       ipc --describe-language  (JSON language contracts)\n"
-                << "Imports resolve relative to the importing file. Both modes run the full\n"
-                << "compiler and validate the final executable in memory. --check writes\n"
+                << "Imports resolve relative to the importing file. Asset modes run the full\n"
+                << "compiler and validate the final executable in memory. Material files\n"
+                << "support --check and --format-only without an executable. --check writes\n"
                 << "no files and rejects --output/--format. Debug is stripped by default;\n"
                 << "--debug retains source maps; the last --strip/--debug flag wins.\n"
                 << "Compression is automatic when smaller; --no-compress disables it.\n"
@@ -156,6 +157,7 @@ int runCompiler(int argc, char* argv[]) {
         return fail("--check cannot be combined with --output, --format or --format-only");
     if (formatOnly && (formattedOutput.empty() || outputRequested))
         return fail("--format-only requires --format and cannot be combined with --output");
+    options.allowMaterialEntry = check || formatOnly;
     if (output.empty() && !check && !formatOnly) {
         const auto dot = input.rfind('.');
         output = (dot == std::string::npos ? input : input.substr(0,dot)) + ".iprop";

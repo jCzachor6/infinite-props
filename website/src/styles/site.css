@@ -1039,7 +1039,6 @@ canvas.glow[hidden] { display: none; }
 
 /* ---- the simplest example: one program, a forest -------------------------------------- */
 
-.first-prop { padding-top: 0; }
 .first-prop__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(2rem, 4vw, 3rem); }
 @media (min-width: 64rem) { .first-prop__grid { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); align-items: start; } }
 .first-prop__text .lead { margin-bottom: 1.5rem; }
@@ -1426,7 +1425,7 @@ canvas.glow[hidden] { display: none; }
 .butterfly-benchmark__size strong { color: var(--text); font: 600 clamp(3.4rem, 6vw, 5rem)/1.05 var(--font-mono); letter-spacing: -.06em; white-space: nowrap; }
 .butterfly-benchmark__resolution { color: var(--text-dim); font-family: var(--font-mono); }
 .butterfly-benchmark__layout { display: grid; grid-template-columns: minmax(18rem, 1fr) minmax(0, 1.9fr); gap: 1.25rem; align-items: start; }
-/* The live results stand left of the model; on a phone they follow it. */
+/* The live results stand left of the model; on a phone, above it. */
 .butterfly-benchmark__layout .butterfly-results { order: -1; }
 .butterfly-stage { height: 24rem; position: relative; z-index: 2; isolation: isolate; overflow: visible; border: 1px solid var(--line); border-radius: var(--radius); background: radial-gradient(ellipse at 50% 68%, rgba(68,105,122,.22), transparent 62%), radial-gradient(ellipse at 50% 0%, #223346, #171d26 72%); }
 .butterfly-stage::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .16; background-image: linear-gradient(#829aaa22 1px, transparent 1px),linear-gradient(90deg,#829aaa22 1px,transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse, black, transparent 82%); }
@@ -1511,7 +1510,6 @@ canvas.glow[hidden] { display: none; }
   .butterfly-benchmark__size strong { font-size: clamp(2.8rem, 12vw, 3.6rem); }
   .butterfly-benchmark__size > span { font-size: .85rem; }
   .butterfly-benchmark__layout { grid-template-columns: minmax(0,1fr); }
-  .butterfly-benchmark__layout .butterfly-results { order: 0; }
   .butterfly-stage { height: 22rem; }
   .butterfly-stage__topline { flex-wrap: wrap; }
   .butterfly-results { padding: 1.2rem; }

@@ -51,9 +51,23 @@ def main():
                     file.unlink(missing_ok=True)
                 results = [run([compiler, root / source, "-o", files[0], "--no-opt", *unpacked, *flags]),
                            run([compiler, root / source, "-o", files[1], *unpacked, *flags])]
+                library_message = "a material file has no asset to compile; import it from an asset"
+                # Tracked fixtures can now be source-only libraries. Identify
+                # them by the precise compilation rejection, then require a
+                # successful semantic check; never skip arbitrary failures.
+                if not expected and all(result.returncode == 1 and library_message in result.stderr
+                                        for result in results):
+                    expected = {"expect": "compile-error", "message": library_message, "check_expect": "pass"}
+                if expected.get("check_expect") == "pass":
+                    checked = run([compiler, root / source, "--check", "--diagnostics=json", *flags])
+                    require(checked, source + " standalone library check")
+                    diagnostic = json.loads(checked.stdout)
+                    if diagnostic["status"] != "ok" or diagnostic["diagnostics"]:
+                        raise AssertionError(f"{source}: invalid material library: {diagnostic}")
+                    row["material_library"] = True
                 if expected.get("expect") == "compile-error":
                     for result, file in zip(results, files):
-                        if result.returncode == 0 or expected["message"] not in result.stderr or file.exists():
+                        if result.returncode != 1 or expected["message"] not in result.stderr or file.exists():
                             raise AssertionError(f"{source} {mode}: expected compile rejection {expected['message']!r}: {result.stderr}")
                     row[mode] = {"compile_error": expected["message"]}
                     continue

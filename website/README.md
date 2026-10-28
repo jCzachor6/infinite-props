@@ -7,11 +7,13 @@ getting-started guide with the documentation, and the source page.
 ## Pages
 
 - **Home** (`index.html`): the hero, "What is Infinite Props?", the live
-  examples (opening with the simplest one: a tree of two files,
-  `public/intro/tree.ips` and its part `clump.ips`, shown and downloadable
-  beside a forest of 36 seeds (18 on a phone) with a re-roll button; recompile
-  `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop` after editing
-  them, and paste the new source into the tabs in `index.html`), the games
+  examples (after the butterfly benchmark, the simplest one: a tree of three files,
+  `public/intro/tree.ips`, its part `clump.ips` and the 0.8 leaf material
+  `foliage.ips` both import (a part takes the leaf colour and makes the
+  material from it, since materials cannot be passed to parts), shown and
+  downloadable beside a forest of 36 seeds (18 on a phone) with a re-roll
+  button; recompile `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop`
+  after editing them, and paste the new source into the tabs in `index.html`), the games
   showcase and the main features. The examples are the
   four weapons and three portrait packs under
   `examples/showcase/`, compiled binaries whose
@@ -39,15 +41,17 @@ getting-started guide with the documentation, and the source page.
   idle time; with reduced motion the strip is skipped. The share link
   `#roll/<weapon>/<seed>` reopens the same win, because the look follows from
   the seed alone.
-  Second, between the tree example and the live examples, **Butterfly
-  benchmark** (its live results on the left of the model; below it on a
+  First, right after "What is Infinite Props?" and before the tree example,
+  **Butterfly benchmark** (its live results on the left of the model; above it on a
   phone) composes a 256×256
   butterfly from three compiled programs: forewing, hindwing and body.
   Each wing is generated once and mirrored; five canvas layers animate
   independently on the page. A dedicated worker keeps WASM generation off
   the animation thread. The button releases the preview, then generates and
   releases 50 fresh seeds in sequence, showing the completed count, mean
-  generation time and mean VM fuel for each part. Preview generation,
+  generation time and mean VM fuel for each part. When a run ends or auto
+  roll is stopped, a fresh preview settles on the stage once the last
+  flight is over, ready for the next run. Preview generation,
   downloads and flight time are excluded from the averages. Reduced motion
   replaces flight and flapping with a short fade.
   The files and their byte sizes/hashes are in
@@ -116,7 +120,12 @@ node website/test/release-smoke.js website/dist build/tools
 ```
 
 Serve `dist/` with any static server (or `npm run dev` for the Vite dev
-server).
+server). On Apache, `public/.htaccess` (copied into `dist/`) serves WASM with
+its MIME type, redirects to HTTPS and makes browsers revalidate every file
+outside `assets/` (the pages, `iprop.js`, `iprop.wasm`, the worker, the
+`.iprop` files and their manifests), which keep their names across releases;
+other servers need the same `Cache-Control: no-cache` for them. Only Vite's
+hashed files under `assets/` can be cached long term.
 
 Run these commands from the repository root after building the native tools.
 The documentation generator requires Python 3.10 or newer and uses

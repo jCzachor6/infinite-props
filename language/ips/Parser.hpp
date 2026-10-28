@@ -43,7 +43,9 @@ ParseResult parseRecovering(std::string_view source,
 
 // The parser grammar (reference):
 //
-//   program    := import* asset
+//   program    := import* asset | materialFile
+//   materialFile := (material | "palette" paletteBody | constDecl)+
+//   material   := "material" Ident "{" (ident "=" expr ";"?)* "}"
 //   import     := "import" ident "from" string ";"?
 //   asset      := "asset" ident "{" (sizeDecl | originDecl | inputDecl | outputDecl | paletteDecl
 //                  | function)* "}"

@@ -19,6 +19,9 @@ struct SourceCompilationOptions {
     bool stripDebug = true;
     bool compress = true;
     std::size_t diagnosticLimit = 20; // bounded to [1,20] across all sources/stages
+    // Authoring tools may validate a material entry without an executable.
+    // Asset entries still run the entire compilation/validation pipeline.
+    bool allowMaterialEntry = false;
 };
 
 using SourceCompilationStatus = ips::DiagnosticStatus;
@@ -35,7 +38,7 @@ struct SourceCompilationResult {
     // The file identifier of every import of each loaded file, in order.
     std::map<std::string, std::vector<std::string>> imports;
     std::vector<CompilationDiagnostic> diagnostics;
-    std::vector<u8> bytes; // empty on failure; validated final artifact on success
+    std::vector<u8> bytes; // validated executable; empty for failure or an allowed material entry
 
     bool succeeded() const noexcept { return status == SourceCompilationStatus::Success; }
 };

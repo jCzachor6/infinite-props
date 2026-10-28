@@ -12,6 +12,29 @@ from release_common import described_versions, read_version_matrix
 
 
 class ContractReaderTest(unittest.TestCase):
+    def test_material_capability_is_additive_but_rejects_incomplete_or_false_policies(self):
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'docs/language-description.schema.json').read_text())
+        properties = schema['properties']['source_rules']['properties']['materials']['properties']
+        material = {key: (value['const'] if 'const' in value else value['items']['enum']
+                         if value['type'] == 'array' else value['enum'][0])
+                    for key, value in properties.items()}
+        catalog = copy.deepcopy(LANGUAGE)
+        self.assertIs(read_language(catalog), catalog)  # Older schema 4 has no materials object.
+        catalog['source_rules']['materials'] = material
+        self.assertIs(read_language(catalog), catalog)
+        catalog['source_rules']['materials'] = {**material, 'future_addition': {'unknown': True}}
+        self.assertIs(read_language(catalog), catalog)
+        for key, value in material.items():
+            for replacement in [None, not value if type(value) is bool else 'unsupported']:
+                broken = copy.deepcopy(catalog)
+                broken['source_rules']['materials'][key] = replacement
+                with self.subTest(key=key, replacement=replacement), self.assertRaises(RuntimeError):
+                    read_language(broken)
+            missing = copy.deepcopy(catalog)
+            del missing['source_rules']['materials'][key]
+            with self.subTest(missing=key), self.assertRaises(RuntimeError):
+                read_language(missing)
+
     def test_manifest_requires_schema_2_and_its_version_matrix(self):
         current = {'schema_version':3,'product_version':'0.4.0','language_version':'0.5',
                    'c_api_version':'0.3','c_abi_soversion':'0.4','source_commit':None,'working_tree_dirty':False,

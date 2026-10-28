@@ -129,6 +129,33 @@ function workspace(source = "asset t { size 8x8 input u32 n=-7 draw{} }") {
     return dir;
 }
 
+test("real editor diagnostics validate material entries and locate field errors", async () => {
+    const source = "// żółć\nconst i32 K=3\nmaterial Bark {\nbase=#0f0\nwidth=K\n}\n";
+    const dir = workspace(source);
+    const ipc = process.env.IPROP_COMPILER || path.resolve(__dirname, "../../build/tools/ipc");
+    const entry = path.join(dir, "entry.ips");
+    try {
+        const good = await runCompilerDiagnostics(ipc, entry);
+        assert.equal(good.status, "ok");
+        assert.deepEqual(good.diagnostics, []);
+        const broken = source.replace("width=K", "width=missing");
+        fs.writeFileSync(entry, broken);
+        const bad = await runCompilerDiagnostics(ipc, entry);
+        assert.equal(bad.status, "invalid_source");
+        assert.equal(bad.diagnostics.length, 1);
+        const [error] = bad.diagnostics;
+        assert.equal(error.file, "entry.ips");
+        assert.equal(error.stage, "typing");
+        assert.match(error.message, /undefined name 'missing'/);
+        assert.equal(error.source_id, sourceContentId(broken));
+        assert.deepEqual(editorRange(broken, error.range), {
+            start: {line:4, character:6}, end: {line:4, character:13},
+        });
+        assert.equal(fs.readFileSync(entry, "utf8"), broken);
+        assert.deepEqual(fs.readdirSync(dir), ["entry.ips"]);
+    } finally { fs.rmSync(dir, {recursive:true,force:true}); }
+});
+
 
 test("JSON schema preserves structured fields and rejects mixed, malformed, or mismatched responses", () => {
     const source = "asset t { size 8x8 input u32 n=-7 draw{} }";

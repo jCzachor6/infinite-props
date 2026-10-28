@@ -8,12 +8,16 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 from markdown_tokens import headings, links
+from release_common import product_version
+from release_preflight import metadata
 
 
 class CurrentDocumentationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.spec = (ROOT / "spec/iprop-v0.7.md").read_text(encoding="utf-8")
+        cls.product = product_version(ROOT)
+        cls.line = ".".join(cls.product.split(".")[:2])
+        cls.spec = (ROOT / f"spec/iprop-v{cls.line}.md").read_text(encoding="utf-8")
         cls.constants = (ROOT / "runtime/iprop/Constants.hpp").read_text(encoding="utf-8")
 
     def test_every_registered_instruction_has_its_wire_number_and_mnemonic(self):
@@ -46,11 +50,25 @@ class CurrentDocumentationTest(unittest.TestCase):
 
     def test_specification_is_self_contained_and_numbered_references_resolve(self):
         # The released product line freezes its specification (release preflight).
-        self.assertRegex(self.spec, r"(?m)^\*\*Status:\*\* Frozen v0\.7 contract, released with product 0\.7\.0")
+        self.assertRegex(self.spec, r"(?m)^\*\*Status:\*\* Frozen v" + re.escape(self.line) +
+                         r" contract, (prepared for|released with) product " + re.escape(self.line + ".0"))
         self.assertNotRegex(self.spec, r"(?im)^\*\*Status:\*\*.*(draft|candidate)")
         self.assertNotRegex(self.spec, r"iprop-v0\.[1-6]\.md")
         defined = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)*)[. ]", self.spec, re.M))
         self.assertLessEqual(set(re.findall(r"§(\d+(?:\.\d+)*)", self.spec)), defined)
+
+    def test_080_retains_the_frozen_07_wire_and_vm_contract(self):
+        previous = (ROOT / "spec/iprop-v0.7.md").read_text(encoding="utf-8")
+        self.assertEqual(self.spec[self.spec.index("## Contents"):], previous[previous.index("## Contents"):])
+        self.assertIn("Materials expand", self.spec)
+
+    def test_current_release_metadata_is_ready_without_creating_a_tag(self):
+        release = metadata(ROOT, "v" + self.product, publishing=True)
+        self.assertEqual(release["product_version"], "0.8.0")
+        self.assertEqual(release["language_version"], "0.8.0")
+        self.assertEqual(release["c_api_version"], "0.4")
+        self.assertEqual(release["c_abi_soversion"], "0.5")
+        self.assertIn("migration-v0.8.md", release["notes"])
 
     def test_authored_documentation_links_and_fragments_resolve(self):
         paths = [ROOT / "README.md", ROOT / "CHANGELOG.md", *ROOT.glob("docs/**/*.md"),

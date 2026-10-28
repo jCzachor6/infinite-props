@@ -5,6 +5,6 @@ namespace iprop::ips {
 // Patch releases identify additive source capabilities independently of the
 // unversioned file format and the C API/ABI compatibility lines.
 inline constexpr unsigned kLanguageVersionMajor=0;
-inline constexpr unsigned kLanguageVersionMinor=7;
-inline constexpr unsigned kLanguageVersionPatch=2;
+inline constexpr unsigned kLanguageVersionMinor=8;
+inline constexpr unsigned kLanguageVersionPatch=0;
 } // namespace iprop::ips

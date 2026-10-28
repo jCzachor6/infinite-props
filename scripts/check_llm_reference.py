@@ -47,7 +47,12 @@ def main():
         examples = {name for entry in config['sections'] if entry['id'] in config['defaults']['sections']
                     for name in entry.get('examples', []) + entry.get('demos', [])}
         pairs = len(config['diagnostic_pairs']) + len(config['style_pairs'])
-        require(len([c for c in checks if c.get('execution') == 'pass']) == len(examples), 'selected examples were not executed')
+        libraries = {name for name in examples if cases[(root / 'examples/language' / name).resolve()].get('check_expect') == 'pass'
+                     and cases[(root / 'examples/language' / name).resolve()]['expect'] == 'compile-error'}
+        require(len([c for c in checks if c.get('execution') == 'pass']) == len(examples - libraries),
+                'selected asset examples were not executed')
+        require({c['file'] for c in checks if c.get('execution') == 'material_library' and c['check'] == 'pass'} ==
+                {'examples/language/' + name for name in libraries}, 'selected material libraries were not checked')
         require(len([c for c in checks if c.get('correction_execution') == 'pass']) == pairs, 'repair pairs were not executed')
         require(reference.count('```ips') == len(checks) + pairs, 'unregistered/unexecuted code block in reference')
         # The complete reference: the idioms first, every builtin once.

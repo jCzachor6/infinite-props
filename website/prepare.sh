@@ -27,7 +27,7 @@ mkdir -p website/public/spec
 for old in website/public/spec/iprop-v*.md website/public/reference/optimizations*.md website/public/reference/optimization-acceptance*.md; do
   if [ -f "$old" ]; then rm -f "$old"; fi
 done
-cp spec/iprop-v0.7.md website/public/spec/
+cp spec/*.md website/public/spec/
 mkdir -p website/public/recipes
 cp examples/recipes/*.ips examples/recipes/README.md website/public/recipes/
 
