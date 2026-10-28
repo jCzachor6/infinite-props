@@ -20,6 +20,8 @@ are 0.8.0, and the source-language version is 0.8.0. C API 0.4, ABI / SONAME
   regression cases and native/WASM comparisons.
 - Website documentation, current specification, search, versioned book and
   package manifests generated from the same compiler and source revision.
+- Home-page forest demo using an imported foliage material, alongside the
+  updated butterfly benchmark layout and flight/preview behavior.
 - Browser revalidation for stable website paths outside hashed `assets/`,
   including runtime files, showcase manifests and documentation data.
 

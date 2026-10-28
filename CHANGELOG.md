@@ -44,6 +44,11 @@ and [release preparation guide](docs/release-v0.8.md).
 
 ### Website
 
+- The home-page forest example uses an imported foliage material to keep
+  each tree's base, shadow, light and rim colors together.
+- The butterfly benchmark precedes the forest, shows mobile results above
+  the animation and restores a fresh preview after a run. Butterflies keep
+  flying along their final heading for two more seconds before fading.
 - Browsers revalidate stable paths outside Vite's hashed `assets/`, including
   WASM/runtime files, showcase manifests and documentation data.
 - The built website includes the 0.8 specification and retains the frozen 0.7
