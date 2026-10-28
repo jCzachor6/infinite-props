@@ -16,11 +16,11 @@ const std::map<std::string, std::string> kSources{
     {"entry.ips", R"(import bark from "bark.ips";
         asset tree { size 16x16
           draw {
-            m = Bark()
+            m = bark.Bark()
             branch(8.0, 15.0, 5.0, m)
             pixel(1, 1, m.shadow)
           }
-          branch(x: f32, y: f32, w: f32, m: Bark) {
+          branch(x: f32, y: f32, w: f32, m: bark.Bark) {
             line(x, y, x, y - w, int(m.edge_width) + 1, m.base)
             pixel(int(x), int(y - w) - 1, m.edge)
           }
@@ -29,6 +29,7 @@ const std::map<std::string, std::string> kSources{
           base = #5a4230 to #7a5c40
           shadow = #2a1a10
           highlight = #9a7a54
+          edge = color.mix(base, #000000, 0.5)
           taper = 0.5 to 0.8
           edge_width = 1
         })"},
@@ -69,7 +70,7 @@ TEST_CASE("material without base is rejected") {
 TEST_CASE("unknown material field is rejected") {
     auto sources = kSources;
     sources["entry.ips"] = R"(import bark from "bark.ips";
-        asset tree { size 16x16 draw { m = Bark(); pixel(1, 1, m.missing); } })";
+        asset tree { size 16x16 draw { m = bark.Bark(); pixel(1, 1, m.missing); } })";
     const auto result = compileSource("entry.ips", loadFrom(sources));
     CHECK(result.status == SourceCompilationStatus::InvalidSource);
 }
@@ -85,8 +86,8 @@ TEST_CASE("formatting a material user prints the source as written") {
     REQUIRE(result.status == SourceCompilationStatus::Success);
     const auto& entry = result.programs.at("entry.ips");
     const auto formatted = ips::formatProgram(entry, {{"bark", &result.programs.at("bark.ips")}});
-    CHECK(formatted.find("m = Bark()") != std::string::npos);
-    CHECK(formatted.find("m: Bark") != std::string::npos);
+    CHECK(formatted.find("m = bark.Bark()") != std::string::npos);
+    CHECK(formatted.find("m: bark.Bark") != std::string::npos);
     CHECK(formatted.find("__") == std::string::npos);
     std::map<std::string, std::string> again = kSources;
     again["entry.ips"] = formatted;
@@ -99,8 +100,8 @@ TEST_CASE("calls to helpers of a material user keep their argument errors") {
         auto sources = kSources;
         sources["entry.ips"] = std::string(R"(import bark from "bark.ips";
             asset tree { size 16x16
-              draw { m = Bark(); )") + call + R"( }
-              branch(x: f32, y: f32, w: f32, m: Bark) { pixel(int(x), int(y - w), m.base) }
+              draw { m = bark.Bark(); )") + call + R"( }
+              branch(x: f32, y: f32, w: f32, m: bark.Bark) { pixel(int(x), int(y - w), m.base) }
             })";
         INFO(call);
         CHECK(compileSource("entry.ips", loadFrom(sources)).status == SourceCompilationStatus::InvalidSource);
@@ -114,8 +115,8 @@ TEST_CASE("material file palettes and consts are private to that file") {
             asset t { size 8x8
               palette SHADES = [#000000, #ffffff]
               const f32 K = 2.0
-              draw { m = Bark(); n = Leaf(); paint(m); pixel(1, 1, n.base); pixel(2, 2, SHADES[0]) }
-              paint(m: Bark) { pixel(0, 0, m.base); pixel(int(m.bend * K), 0, m.base) }
+              draw { m = a.Bark(); n = b.Leaf(); paint(m); pixel(1, 1, n.base); pixel(2, 2, SHADES[0]) }
+              paint(m: a.Bark) { pixel(0, 0, m.base); pixel(int(m.bend * K), 0, m.base) }
             })"},
         {"a.ips", R"(const f32 K = 0.5
             palette SHADES = [#5a4230, #7a5c40]
@@ -136,32 +137,94 @@ TEST_CASE("errors in a material file are reported against that file") {
     REQUIRE_FALSE(result.diagnostics.empty());
     CHECK(result.diagnostics.front().path == "bark.ips");
 
-    sources["bark.ips"] = "material Bark { base = #5a4230; taper = #ffffff }";
+    sources["bark.ips"] = "material Bark { base = 1.0 }";
     result = compileSource("entry.ips", loadFrom(sources));
     REQUIRE_FALSE(result.diagnostics.empty());
     CHECK(result.diagnostics.front().path == "bark.ips");
     CHECK(result.diagnostics.front().location->line == 1);
-    CHECK(firstMessage(result).find("'taper' must be f32") != std::string::npos);
+    CHECK(firstMessage(result).find("'base' must be a color") != std::string::npos);
 }
 
-TEST_CASE("two imported materials with the same name are rejected at the import") {
-    const std::map<std::string, std::string> sources{
+TEST_CASE("materials are qualified by their import alias") {
+    std::map<std::string, std::string> sources{
         {"entry.ips", "import a from \"a.ips\";\nimport b from \"b.ips\";\n"
-                      "asset t { size 8x8 draw { m = Bark(); pixel(0, 0, m.base) } }"},
+                      "asset t { size 8x8 draw { m = a.Bark(); n = b.Bark(); pixel(0, 0, m.base); "
+                      "pixel(1, 0, n.base) } }"},
         {"a.ips", "material Bark { base = #000000 }"},
         {"b.ips", "material Bark { base = #ffffff }"},
     };
+    auto result = compileSource("entry.ips", loadFrom(sources));
+    INFO(firstMessage(result));
+    CHECK(result.status == SourceCompilationStatus::Success);
+
+    sources["entry.ips"] = "import a from \"a.ips\";\nasset t { size 8x8 draw { m = Bark(); pixel(0, 0, m.base) } }";
+    result = compileSource("entry.ips", loadFrom(sources));
+    REQUIRE(result.status == SourceCompilationStatus::InvalidSource);
+    CHECK(firstMessage(result).find("a.Bark()") != std::string::npos);
+}
+
+TEST_CASE("a material field can read the fields before it") {
+    auto sources = kSources;
+    sources["bark.ips"] = "material Bark { base = #000000 to #ffffff; shadow = color.mix(base, #000000, 0.5); "
+                          "edge = base; taper = 1.0; edge_width = 0; highlight = #ffffff }";
+    sources["entry.ips"] = R"(import bark from "bark.ips";
+        asset tree { size 4x1 draw { m = bark.Bark(); pixel(0, 0, m.base); pixel(1, 0, m.edge) } })";
+    auto result = compileSource("entry.ips", loadFrom(sources));
+    INFO(firstMessage(result));
+    REQUIRE(result.status == SourceCompilationStatus::Success);
+    const auto run = compiler_test::execute(result.bytes, 3);
+    CHECK(run.canvas.pixels[0] == run.canvas.pixels[1]);
+
+    sources["bark.ips"] = "material Bark { shadow = base; base = #000000 }";
+    result = compileSource("entry.ips", loadFrom(sources));
+    REQUIRE(result.status == SourceCompilationStatus::InvalidSource);
+    CHECK(result.diagnostics.front().path == "bark.ips");
+}
+
+TEST_CASE("material creation can override fields by name") {
+    auto sources = kSources;
+    sources["entry.ips"] = R"(import bark from "bark.ips";
+        asset tree { size 4x1 draw { m = bark.Bark(base = #ff0000); pixel(0, 0, m.base); pixel(1, 0, m.edge) } })";
+    auto result = compileSource("entry.ips", loadFrom(sources));
+    INFO(firstMessage(result));
+    REQUIRE(result.status == SourceCompilationStatus::Success);
+    const auto run = compiler_test::execute(result.bytes, 3);
+    CHECK(run.canvas.pixels[0].r == 255);
+    CHECK(run.canvas.pixels[0].g == 0);
+    // `edge` mixes the overridden base, not the definition's range.
+    CHECK(run.canvas.pixels[1].g == 0);
+
+    for (const char* create : {"bark.Bark(#ff0000)", "bark.Bark(missing = 1)",
+                               "bark.Bark(base = #ff0000, base = #00ff00)", "bark.Bark(taper = #ff0000)"}) {
+        sources["entry.ips"] = std::string(R"(import bark from "bark.ips";
+            asset tree { size 4x1 draw { m = )") + create + R"(; pixel(0, 0, m.base) } })";
+        INFO(create);
+        CHECK(compileSource("entry.ips", loadFrom(sources)).status == SourceCompilationStatus::InvalidSource);
+    }
+}
+
+TEST_CASE("diagnostics spell expanded material fields as written") {
+    auto sources = kSources;
+    sources["entry.ips"] = R"(import bark from "bark.ips";
+        asset tree { size 4x1 draw { m = bark.Bark(taper = 1); pixel(0, 0, m.base) } })";
     const auto result = compileSource("entry.ips", loadFrom(sources));
     REQUIRE(result.status == SourceCompilationStatus::InvalidSource);
-    CHECK(result.diagnostics.front().path == "entry.ips");
-    CHECK(result.diagnostics.front().location->line == 2);
+    CHECK(firstMessage(result).find("m.taper") != std::string::npos);
+    CHECK(firstMessage(result).find("__") == std::string::npos);
+}
+
+TEST_CASE("a name reassigned to a plain value is no longer a material") {
+    auto sources = kSources;
+    sources["entry.ips"] = R"(import bark from "bark.ips";
+        asset tree { size 4x1 draw { m = bark.Bark(); m = 5; pixel(0, 0, m.base) } })";
+    CHECK(compileSource("entry.ips", loadFrom(sources)).status == SourceCompilationStatus::InvalidSource);
 }
 
 TEST_CASE("material creation rolls fields in the order they are written") {
     const std::map<std::string, std::string> sources{
         {"entry.ips", R"(import m from "m.ips";
             asset t { size 4x1
-              draw { c = Coat(); pixel(0, 0, c.base); pixel(1, 0, c.shade); pixel(2, 0, c.edge) }
+              draw { c = m.Coat(); pixel(0, 0, c.base); pixel(1, 0, c.shade); pixel(2, 0, c.edge) }
             })"},
         {"m.ips", "material Coat { base = #000000 to #ffffff; shade = #000000 to #ffffff; "
                   "edge = #000000 to #ffffff }"},

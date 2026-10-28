@@ -17,19 +17,22 @@ listed in the release migration note (see `CHANGELOG.md`).
   material file's) may reuse their names. Top-level `palette` and `const`
   declarations in an asset file are an error.
 - Assets import material files with the ordinary `import alias from "path"`
-  syntax. The alias is not a part and cannot be called or drawn.
-- Fields: `base: color` is required (constant or range, optionally with a
-  `with` distribution). `edge: color` defaults to `base`; `taper: f32`
-  defaults to `1.0`; `edge_width: i32` (pixels) defaults to `0`. Any other
-  field is author-named and may be a `color`, `i32`, `f32` or `vec2` constant
-  or range. The special fields must have exactly their stated types. Duplicate
-  fields, a missing `base` and two imported definitions with the same name are
-  errors. Errors in a material file are reported against that file.
-- `m = Name()` in a function creates an instance: every range rolls once, each
-  field independently, in definition order (the order the fields are written;
-  defaulted fields roll nothing). Field reads never roll.
+  syntax. The alias is not a part and cannot be called or drawn; it
+  qualifies the file's materials (`alias.Name`).
+- Fields: `base: color` is required. Any other field is author-named and may
+  be a `color`, `i32`, `f32` or `vec2` constant or range, optionally with a
+  `with` distribution. A field may read the fields written before it by
+  name, so a field cannot share its name with a palette or const of the
+  file. Duplicate fields and a missing `base` are errors. Errors in a
+  material file are reported against that file.
+- `m = alias.Name()` in a function creates an instance: every range rolls
+  once, each field independently, in the order the fields are written.
+  Field reads never roll. `alias.Name(field = value, ...)` replaces fields
+  for that instance: each override is named, sets a field of the
+  definition at most once, has the field's type, and is evaluated in the
+  creating function in the field's place, so later fields read it.
 - Each definition is a distinct type. Helpers declare parameters as
-  `m: Name`; the compiler checks field reads against that definition and
+  `m: alias.Name`; the compiler checks field reads against that definition and
   reports unknown fields by name.
 - Instances are immutable, are copied field-by-field without new draws, and
   cannot be declared as host inputs. Returning a material, lists of

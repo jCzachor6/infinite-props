@@ -198,11 +198,10 @@ Import ParserImpl::parseImport() {
     return Import{alias.text, path.text, at, {start, pos_}};
 }
 
-// Material names are capitalised (Bark); a lowercase name is a mistyped
-// builtin type, which parseParamType explains.
-bool ParserImpl::isMaterialName() const {
-    return kind() == TokenKind::Identifier && !peek().text.empty() &&
-           peek().text.front() >= 'A' && peek().text.front() <= 'Z';
+// A material type is qualified by the alias of its material file import:
+// `forest.Bark`. Builtin types are keywords, so this never shadows one.
+bool ParserImpl::atMaterialType() const {
+    return isNameKind(kind()) && kind(1) == TokenKind::Dot && kind(2) == TokenKind::Identifier;
 }
 
 MaterialDef ParserImpl::parseMaterialDef() {
@@ -448,9 +447,12 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     while (kind() != TokenKind::RParen) {
         const Token paramName = expectName("a parameter name");
         expect(TokenKind::Colon, "':' and a parameter type");
-        if (isMaterialName()) {
+        if (atMaterialType()) {
+            const Token alias = advance();
+            advance(); // '.'
             const Token material = advance();
-            params.push_back(Param{paramName.text, ParamType::I32, paramName.location, material.text});
+            params.push_back(Param{paramName.text, ParamType::I32, paramName.location,
+                                   alias.text + "." + material.text});
         } else {
             const ParamType type = parseParamType();
             params.push_back(Param{paramName.text, type, paramName.location});
@@ -462,7 +464,7 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     expect(TokenKind::RParen, "')'");
     std::optional<ParamType> returnType;
     if (match(TokenKind::Arrow)) {
-        if (isMaterialName())
+        if (atMaterialType())
             failHere("returning a material is not supported; return a field such as m.base");
         returnType = parseParamType();
     }

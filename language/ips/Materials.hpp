@@ -4,6 +4,7 @@
 #include "ips/SourceError.hpp"
 
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace iprop::ips {
@@ -17,11 +18,15 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr);
 std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit = 20);
 
 // Moves clones of a checked material file's definitions and its file-local
-// palette/const declarations into the importing program's asset. The
-// palettes and consts are renamed `<alias>__<name>`, so they never collide
-// with the importer's own declarations or another material file's. Throws
-// at `import` when a material of the same name was merged already.
+// palette/const declarations into the importing program's asset. Materials
+// are named by the import alias (`forest.Bark`); the palettes and consts are
+// renamed `<alias>__<name>`, so they never collide with the importer's own
+// declarations or another material file's.
 void mergeMaterialFile(Program& importer, const Program& source, const Import& import);
+
+// Expansion names a field `m__base` and a merged const `forest__K`. Shows
+// them in diagnostics as the source spells them: `m.base`, `forest.K`.
+std::string demangleMaterialNames(const std::string& text);
 
 // Rewrites material creations, field reads and material parameters into
 // ordinary scalar locals/parameters before semantic checking. Throws

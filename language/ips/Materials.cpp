@@ -7,6 +7,7 @@
 #include "ips/Typing.hpp"
 
 #include <map>
+#include <regex>
 #include <set>
 
 namespace iprop::ips {
@@ -131,15 +132,6 @@ void renameReferences(std::unique_ptr<Expr>& expr, const std::map<std::string, s
     forEachChild(*expr, [&](std::unique_ptr<Expr>& child) { renameReferences(child, names); });
 }
 
-// The fields every material has, with their fixed types. `base` is
-// required; the others default (edge to base, taper to 1.0, edge_width to 0).
-std::optional<ValueType> fixedFieldType(std::string_view name) {
-    if (name == "base" || name == "edge") return ValueType::Color;
-    if (name == "taper") return ValueType::F32;
-    if (name == "edge_width") return ValueType::I32;
-    return std::nullopt;
-}
-
 } // namespace
 
 std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
@@ -147,6 +139,9 @@ std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
     const auto report = [&](SourceError error) {
         if (errors.size() < limit) errors.push_back(std::move(error));
     };
+    std::set<std::string> declarations;
+    for (const auto& palette : file.materialPalettes) declarations.insert(palette.name);
+    for (const auto& constant : file.materialConstants) declarations.insert(constant.name);
     std::set<std::string> names;
     for (const auto& def : file.materials) {
         if (!names.insert(def.name).second)
@@ -156,13 +151,19 @@ std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
         for (const auto& field : def.fields) {
             if (!seen.insert(field.name).second)
                 report(SourceError{field.location, "duplicate material field '" + field.name + "' in '" + def.name + "'"});
+            // A field may read an earlier field by name, so a field cannot
+            // share its name with a palette or const of the file.
+            if (declarations.contains(field.name))
+                report(SourceError{field.location, "material field '" + field.name +
+                                                       "' has the same name as a palette or const of this file"});
             hasBase = hasBase || field.name == "base";
         }
         if (!hasBase) report(SourceError{def.location, "material '" + def.name + "' must define 'base'"});
     }
 
     // The palettes and consts are checked as the declarations of an empty
-    // asset, then each field is typed in that asset's draw scope.
+    // asset, then each field is typed in that asset's draw scope, with the
+    // earlier fields of its material in scope as locals.
     Program probe;
     probe.asset.name = "materials";
     probe.asset.location = file.materials.front().location;
@@ -185,16 +186,16 @@ std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
         return std::optional<FunctionSurface>{};
     };
     typer.registerAssetDeclarations(probe, resolveAssetDeclarations(probe));
-    typer.enterFunction(probe, probe.asset.functions.front(), true);
     for (auto& def : file.materials) {
+        typer.enterFunction(probe, probe.asset.functions.front(), true);
         for (auto& field : def.fields) {
             if (errors.size() >= limit) return errors;
-            const auto fixed = fixedFieldType(field.name);
+            const auto expected = field.name == "base" ? std::optional(ValueType::Color) : std::nullopt;
             try {
-                const auto type = typer.typeOf(*field.value, fixed);
-                if (fixed && type != *fixed)
-                    throw SourceError{field.location, "material field '" + field.name + "' must be " +
-                                                          typeName(*fixed) + ", got " + typeName(type),
+                const auto type = typer.typeOf(*field.value, expected);
+                if (expected && type != *expected)
+                    throw SourceError{field.location, "material field 'base' must be a color, got " +
+                                                          std::string(typeName(type)),
                                       {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
                 if (type != ValueType::Color && type != ValueType::I32 && type != ValueType::F32 &&
                     type != ValueType::Vec2)
@@ -203,8 +204,12 @@ std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
                                                           typeName(type),
                                       {}, DiagnosticCode::TypeError, DiagnosticStage::Typing};
                 field.type = type;
+                typer.declareLocal(field.name, type);
             } catch (const SourceError& error) {
                 report(error);
+                typer.declareInvalidLocal(field.name);
+            } catch (const UnresolvedType&) {
+                typer.declareInvalidLocal(field.name);
             }
         }
     }
@@ -221,12 +226,11 @@ void mergeMaterialFile(Program& importer, const Program& source, const Import& i
         return copy;
     };
     for (const auto& def : source.materials) {
-        for (const auto& existing : importer.asset.materials)
-            if (existing.name == def.name)
-                throw SourceError{import.location, "material '" + def.name + "' from '" + import.alias +
-                                                       "' is already defined by another material import"};
         MaterialDef copy;
-        copy.name = def.name;
+        copy.name = import.alias + "." + def.name;
+        for (const auto& existing : importer.asset.materials)
+            if (existing.name == copy.name)
+                throw SourceError{import.location, "duplicate import alias '" + import.alias + "'"};
         copy.location = def.location;
         copy.sourceRange = def.sourceRange;
         for (const auto& field : def.fields)
@@ -245,6 +249,11 @@ void mergeMaterialFile(Program& importer, const Program& source, const Import& i
         importer.asset.constants.push_back(Asset::Constant{
             constant.type, names.at(constant.name), clone(*constant.value), constant.location, constant.sourceRange});
     }
+}
+
+std::string demangleMaterialNames(const std::string& text) {
+    static const std::regex mangled{R"(\b([A-Za-z_][A-Za-z0-9_]*?)__([A-Za-z_][A-Za-z0-9_]*))"};
+    return std::regex_replace(text, mangled, "$1.$2");
 }
 
 namespace {
@@ -266,15 +275,20 @@ struct DefInfo {
 };
 
 // Fields in definition order, so creation rolls each range in the order it
-// was written; the defaulted fields (which roll nothing) follow.
+// was written and a field can read the fields before it.
 DefInfo buildDefInfo(const MaterialDef& def) {
     DefInfo info;
     info.def = &def;
-    for (const auto& field : def.fields)
-        info.fields.push_back(FieldInfo{field.name, fixedFieldType(field.name).value_or(*field.type), &field});
-    for (const char* name : {"edge", "taper", "edge_width"})
-        if (!info.find(name)) info.fields.push_back(FieldInfo{name, *fixedFieldType(name), nullptr});
+    for (const auto& field : def.fields) info.fields.push_back(FieldInfo{field.name, *field.type, &field});
     return info;
+}
+
+// `forest.Bark` for a callee written as a material type, otherwise empty.
+std::string qualifiedName(const Expr& callee) {
+    const auto* member = std::get_if<Member>(&callee);
+    if (!member) return {};
+    const auto* alias = std::get_if<Identifier>(member->object.get());
+    return alias ? alias->name + "." + member->name : std::string{};
 }
 
 struct OrigParam {
@@ -315,11 +329,14 @@ struct Expander {
             return;
         }
         if (auto* call = std::get_if<Call>(&expr)) {
+            if (const auto name = qualifiedName(*call->callee); defs.contains(name))
+                throw SourceError{call->location, "material '" + name +
+                                                      "' can only be created by assignment, such as m = " + name + "()"};
             if (const auto* callee = std::get_if<Identifier>(call->callee.get())) {
-                if (const auto def = defs.find(callee->name); def != defs.end() && call->args.empty())
-                    throw SourceError{callee->location, "material '" + callee->name +
-                                                             "' can only be created by assignment, such as m = " +
-                                                             callee->name + "()"};
+                for (const auto& [name, def] : defs)
+                    if (name.ends_with("." + callee->name))
+                        throw SourceError{callee->location, "material '" + callee->name +
+                                                                 "' needs its import alias: " + name + "()"};
                 if (const auto fn = funcs.find(callee->name); fn != funcs.end()) {
                     expandCall(*call, fn->second);
                     return;
@@ -367,17 +384,37 @@ struct Expander {
         call.args = std::move(out);
     }
 
-    std::unique_ptr<Expr> fieldValue(const std::string& var, const FieldInfo& field) {
-        if (field.field) {
-            auto value = cloneExpr(*field.field->value);
-            transformExpr(value);
-            return value;
+    // `var = forest.Bark(name = value, ...)`: one local per field, in
+    // definition order. A field's own expression reads the earlier fields
+    // through their locals; an override replaces it and must keep its type.
+    std::vector<Stmt> create(const std::string& var, const DefInfo& def, Call& call, SourceLocation at) {
+        std::map<std::string, Arg*> overrides;
+        for (auto& arg : call.args) {
+            if (!arg.name)
+                throw SourceError{arg.location, "material fields are set by name, such as " + def.def->name +
+                                                     "(" + def.fields.front().name + " = ...)"};
+            if (!def.find(*arg.name))
+                throw SourceError{arg.location, "material '" + def.def->name + "' has no field '" + *arg.name + "'"};
+            if (!overrides.emplace(*arg.name, &arg).second)
+                throw SourceError{arg.location, "field '" + *arg.name + "' is set twice"};
         }
-        if (field.name == "edge")
-            return std::make_unique<Expr>(Identifier{var + "__base", {}});
-        if (field.name == "taper")
-            return std::make_unique<Expr>(Literal{Literal::Kind::Float, "1.0", {}});
-        return std::make_unique<Expr>(Literal{Literal::Kind::Int, "0", {}});
+        std::vector<Stmt> out;
+        std::map<std::string, std::string> earlier;
+        for (const auto& field : def.fields) {
+            VarDecl decl{var + "__" + field.name, nullptr, at};
+            if (const auto found = overrides.find(field.name); found != overrides.end()) {
+                decl.value = std::move(found->second->value);
+                transformExpr(decl.value);
+                decl.declaredType = field.type;
+            } else {
+                decl.value = cloneExpr(*field.field->value);
+                renameReferences(decl.value, earlier);
+            }
+            earlier[field.name] = decl.name;
+            out.push_back(Stmt{std::move(decl)});
+        }
+        vars[var] = &def;
+        return out;
     }
 
     std::vector<Stmt> transformStmts(std::vector<Stmt>& body) {
@@ -393,20 +430,9 @@ struct Expander {
         std::vector<Stmt> out;
         if (auto* decl = std::get_if<VarDecl>(&stmt)) {
             if (decl->value) {
-                if (const auto* call = std::get_if<Call>(decl->value.get())) {
-                    if (const auto* callee = std::get_if<Identifier>(call->callee.get())) {
-                        if (const auto found = defs.find(callee->name);
-                            found != defs.end() && call->args.empty()) {
-                            const DefInfo* def = &found->second;
-                            vars[decl->name] = def;
-                            for (const auto& field : def->fields) {
-                                auto value = fieldValue(decl->name, field);
-                                out.push_back(Stmt{VarDecl{decl->name + "__" + field.name,
-                                                           std::move(value), decl->location}});
-                            }
-                            return out;
-                        }
-                    }
+                if (auto* call = std::get_if<Call>(decl->value.get())) {
+                    if (const auto found = defs.find(qualifiedName(*call->callee)); found != defs.end())
+                        return create(decl->name, found->second, *call, decl->location);
                 }
                 if (const auto* id = std::get_if<Identifier>(decl->value.get())) {
                     if (const auto src = vars.find(id->name); src != vars.end()) {
@@ -421,6 +447,8 @@ struct Expander {
                 }
                 transformExpr(decl->value);
             }
+            // The name now holds an ordinary value, not the material.
+            vars.erase(decl->name);
             out.push_back(std::move(stmt));
             return out;
         }
@@ -434,6 +462,7 @@ struct Expander {
             transformExpr(whileStmt->condition);
             whileStmt->body = transformStmts(whileStmt->body);
         } else if (auto* forStmt = std::get_if<ForStmt>(&stmt)) {
+            vars.erase(forStmt->variable);
             transformExpr(forStmt->from);
             transformExpr(forStmt->to);
             forStmt->body = transformStmts(forStmt->body);

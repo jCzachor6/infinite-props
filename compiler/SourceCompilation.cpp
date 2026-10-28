@@ -154,6 +154,10 @@ SourceCompilationResult compileSource(
             for (auto& error : ips::checkAssetDiagnostics(checked(path), surfaces,
                                                          limit - result.diagnostics.size())) {
                 if (error.path.empty()) error.path = path;
+                if (usesMaterials) {
+                    error.message = ips::demangleMaterialNames(error.message);
+                    for (auto& suggestion : error.suggestions) suggestion = ips::demangleMaterialNames(suggestion);
+                }
                 appendDiagnostic(error);
             }
         }

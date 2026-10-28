@@ -7,11 +7,13 @@ Target: **0.8** (breaking changes allowed; see the migration note at release).
 ### Language: materials
 
 - New `material Name { ... }` definitions in material files (files with no
-  asset), imported with the ordinary `import` syntax. `base` is required;
-  `edge` defaults to `base`, `taper` to `1.0` and `edge_width` to `0`. Other
-  fields are author-named `color`/`i32`/`f32`/`vec2` constants or ranges.
-- `m = Name()` creates an instance, rolling each field once in definition
-  order. Each definition is a distinct helper parameter type (`m: Name`);
+  asset), imported with the ordinary `import` syntax and named by the import
+  alias (`forest.Bark`). `base` is the only required field; other fields are
+  author-named `color`/`i32`/`f32`/`vec2` constants or ranges and may read
+  the fields before them. The file's own `palette`/`const` stay private.
+- `m = forest.Bark()` creates an instance, rolling each field once in the
+  order written; `forest.Bark(base = #2a1a10)` overrides fields by name.
+  Each definition is a distinct helper parameter type (`m: forest.Bark`);
   instances are immutable and cannot be host inputs. See the
   [materials handbook chapter](docs/language/materials.md) and the
   [0.8 materials contract](spec/materials-0.8.md).

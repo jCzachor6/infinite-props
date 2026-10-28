@@ -30,6 +30,8 @@
 - [ ] **Dostęp:** pola instancji `m.base`, `m.edge`, `m.taper`, `m.edge_width` oraz pola nazwane z definicji. Brak `m.tone(n)` i brak pozycji `0..1` w v1.
 - [ ] **Geometria zostaje poza materiałem:** pozycja, kąt, długość i grubość konkretnego kształtu podaje wywołanie rysujące (np. `branch(start, angle, length, width, m)`), materiał nadaje mu krawędź, zwężanie i cieniowanie.
 
+- [x] **Zmiana po review (2026-10-28):** z pól specjalnych zostaje tylko wymagane `base` (`color`). `edge`, `taper` i `edge_width` są zwykłymi polami autora, bez wartości domyślnych w języku. Pole może czytać wcześniejsze pola po nazwie (np. `shadow = color.mix(base, #000000, 0.45)`), a tworzenie przyjmuje nadpisania po nazwie: `forest.Bark(base = #2a1a10)`. Materiały są kwalifikowane aliasem importu (`forest.Bark`, `m: forest.Bark`), a `palette`/`const` pliku materiałów są prywatne dla tego pliku.
+
 ## Przypadki użycia (kryteria akceptacji funkcji)
 
 - [ ] **Drzewo:** materiał kory stosuje się do każdej gałęzi z osobna; każda gałąź ma własną grubość i kąt z rekurencji seeda, a materiał zapewnia tę samą korę: obrys w kolorze `edge` o szerokości `edge_width` px, zwężanie `taper` ku końcowi i nazwane odcienie autora na górę/dół gałęzi. Helper może pominąć kreskę na łączeniu z pniem (koniec startowy bez krawędzi, start lekko wewnątrz pnia), bo materiał tylko proponuje krawędź, a helper decyduje per bok/koniec.

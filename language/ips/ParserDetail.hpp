@@ -108,7 +108,7 @@ public:
 
     Import parseImport();
     MaterialDef parseMaterialDef();
-    bool isMaterialName() const;
+    bool atMaterialType() const;
     Asset parseAsset();
     void parseDeclaration(Asset& asset);
     void parseSize(Asset& asset);

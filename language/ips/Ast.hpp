@@ -297,7 +297,8 @@ struct Param {
     std::string name;
     ParamType type;
     SourceLocation location;
-    // Set when the declared type is a material definition name (e.g. Bark).
+    // Set when the declared type is a material, qualified by its import
+    // alias (e.g. forest.Bark).
     std::optional<std::string> materialType{};
 };
 
