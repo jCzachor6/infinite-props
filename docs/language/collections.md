@@ -122,7 +122,7 @@ remain shared. Fuel is reserved before comparisons or result allocation:
 base 1 plus `2*N + W*C`, where `N` is the input length, `C` is `N*(N-1)/2`
 for distinct or `N*ceil(log2(N))` for sort (zero for empty/singleton lists),
 and `W` bounds the element comparison width. Scalar numbers use 1, colors 4,
-vectors 2; description widths are specified in [the format contract](../../spec/iprop-v0.7.md#33-list-transformations).
+vectors 2; description widths are specified in [the format contract](../../spec/iprop-v0.8.md#33-list-transformations).
 Repeated transformations remain subject to the generation arena and fuel caps.
 
 A list used only to compute a scalar

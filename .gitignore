@@ -65,6 +65,7 @@ website/public/editor/
 website/public/website/
 website/public/docs/
 website/public/LLM_REFERENCE.md
+website/public/CHANGELOG.md
 website/docs/language.html
 backends/html5/demo/*.iprop
 

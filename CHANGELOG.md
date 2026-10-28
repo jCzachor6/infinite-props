@@ -2,7 +2,13 @@
 
 ## Unreleased
 
-Target: **0.8** (breaking changes allowed; see the migration note at release).
+## v0.8.0 — 2026-10-28
+
+Product, editor, website, Unity and Python packages: **0.8.0**. Source
+language: **0.8.0**. The unversioned binary format, C API **0.4** and
+ABI / SONAME **0.5** remain unchanged. Existing 0.7 binaries do not need
+recompilation. See the [0.7 to 0.8 migration guide](docs/language/migration-v0.8.md)
+and [release preparation guide](docs/release-v0.8.md).
 
 ### Language: materials
 
@@ -22,6 +28,24 @@ Target: **0.8** (breaking changes allowed; see the migration note at release).
   names private, and preserves the library's builtin resolution. Material
   files support standalone checks and source-only formatting in the CLI
   and editor.
+
+### Authoring and documentation
+
+- `ipc --describe-language` exposes the optional `source_rules.materials`
+  capability in schema 4, with matching formal schema and reader validation.
+- Frozen 0.8 format/VM and material contracts, a 0.7-to-0.8 migration guide,
+  updated grammar, and offline release notes in the generated documentation.
+- The complete coding-agent reference includes material libraries and their
+  importing assets, with an explicit 128 KiB budget and executable checks.
+- Optimization acceptance validates source-only material libraries separately
+  from assets while retaining exact rejection, image and output comparisons.
+
+### Website
+
+- Browsers revalidate stable paths outside Vite's hashed `assets/`, including
+  WASM/runtime files, showcase manifests and documentation data.
+- The built website includes the 0.8 specification and retains the frozen 0.7
+  contract for historical migration links. Release notes remain readable offline.
 
 ## v0.7.2 — 2026-10-25
 

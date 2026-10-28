@@ -65,6 +65,10 @@ export function syncDocumentation(bundle, publicDir) {
         if (fs.existsSync(path.join(bundle, directory)))
             fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
     fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));
+    // Release notes link the root changelog from the offline docs payload.
+    fs.rmSync(path.join(publicDir, "CHANGELOG.md"), { force: true });
+    if (fs.existsSync(path.join(bundle, "CHANGELOG.md")))
+        fs.copyFileSync(path.join(bundle, "CHANGELOG.md"), path.join(publicDir, "CHANGELOG.md"));
 }
 
 export function buildSite(compiler = process.env.IPROP_COMPILER || path.join(root, "build/tools", process.platform === "win32" ? "ipc.exe" : "ipc")) {

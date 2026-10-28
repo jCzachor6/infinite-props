@@ -12,9 +12,11 @@ the idioms chapter ([Writing idiomatic props](language/idioms.md)) and its
 examples, then before/after pairs that each fix one broken rule, then the
 compiler rules in plain sentences. The handbook follows: assets, syntax,
 types, control flow, helpers, randomness, colors, palettes, parts, execution
-limits and the grammar. Every builtin is listed, and checked repairs close the
-document. The default document has a **102,400-byte UTF-8 budget (100 KiB)**, with a
-maximum allowed budget of **102,400 bytes**, fixed through the 0.7 release.
+limits, materials and the grammar. Every builtin is listed, and checked repairs close the
+document. For source language 0.8 the default document has a **131,072-byte
+UTF-8 budget (128 KiB)**, with the same maximum allowed budget. The 0.7
+release used 102,400 bytes (100 KiB); the expanded budget includes the complete
+material rules, library source and importing asset.
 Generation fails before replacing
 output if the selected content exceeds that budget. No section, signature or
 example is silently truncated. Reduce the selection when more detail would
@@ -64,6 +66,9 @@ registered message through real `--check --diagnostics=json`, then checks,
 compiles and renders the corrected program. Both sides of every style pair, and the
 selected examples and demos, are also checked, compiled and rendered with seed 7 from temporary owning copies
 of the registered example tree. No executable is written beside its source.
+Material libraries registered with `check_expect: pass` are checked directly
+and included as source; their importing asset is compiled and rendered. They
+never require a standalone executable.
 
 The generated file, selection configuration and source explanations/examples
 are covered by the existing documentation manifest hashes. `language_docs.py

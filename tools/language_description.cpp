@@ -249,6 +249,18 @@ Json sourceRules() {
         {"check_all_declarations", true}, {"check_effects_in_dead_branches", true},
         {"user_helper_calls", false}, {"generation_state", false},
         {"distribution_validation", "compile_time"}});
+    rules["materials"] = Json::object({{"keyword", "contextual"},
+        {"definition_scope", "separate_file_without_asset"}, {"qualification", "import_alias"},
+        {"private_declarations", Json::array({"palette", "const"})},
+        {"required_field", "base"}, {"required_field_type", "color"},
+        {"field_types", Json::array({"color", "i32", "f32", "vec2"})},
+        {"field_dependencies", "earlier_fields"}, {"construction", "assignment_only"},
+        {"overrides", "named_exact_type"}, {"evaluation_order", "definition_order"},
+        {"replacement", "evaluate_then_commit"}, {"helper_parameters", "nominal_by_value"},
+        {"copy_rng", "none"}, {"mutable_fields", false}, {"host_inputs", false},
+        {"helper_returns", false}, {"collections", false}, {"asset_constants", false},
+        {"part_arguments", false}, {"standalone_check", true}, {"standalone_format", true},
+        {"lowering", "scalar_fields"}, {"format_change", false}});
     rules["named_calls"] = Json::object({{"targets", Json::array({"builtin", "helper", "part"})},
         {"mixed_positional_and_named", true}, {"positional_binding", "positional_parameter_ordinal"},
         {"named_arguments_advance_positional_ordinal", false}, {"duplicate_arguments", false},

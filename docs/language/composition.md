@@ -54,9 +54,9 @@ Uniform overrides evaluate in the part's input declaration order. Then the
 `seed` and placement expressions evaluate, regardless of the order
 of named arguments in the source. Transform
 arguments are compile-time constants. Each dynamic argument evaluates once.
-See [parts and D4 transforms](../../spec/iprop-v0.7.md#105-part-transforms)
+See [parts and D4 transforms](../../spec/iprop-v0.8.md#105-part-transforms)
 for the exact geometry mapping and rectangle bounds, and
-[part instances](../../spec/iprop-v0.7.md#106-part-instances-section) for the output
+[part instances](../../spec/iprop-v0.8.md#106-part-instances-section) for the output
 coordinates.
 
 The current example uses named arguments in a different written order from

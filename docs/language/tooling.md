@@ -140,7 +140,7 @@ Canvas dimensions are limited to 16384 per side in the reference runtime.
 Hosts may impose smaller limits on dimensions or total pixel counts.
 Binary pools/indices, function nesting, stream stacks
 and structured outputs also have bounds; see
-[validation and resource limits](../../spec/iprop-v0.7.md#14-validation-and-limits).
+[validation and resource limits](../../spec/iprop-v0.8.md#14-validation-and-limits).
 Compressed v0.7 files bound both encoded and decoded size to 64 MiB.
 Host-specific limits and invalid input values can reject an
 invocation before draw starts.

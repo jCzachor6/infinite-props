@@ -1,6 +1,6 @@
 {
   "name": "dev.infiniteprops.runtime",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "displayName": "Infinite Props",
   "description": "Deterministic .iprop generation, named geometry and native texture integration.",
   "unity": "2022.3",

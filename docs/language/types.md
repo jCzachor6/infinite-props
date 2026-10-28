@@ -20,6 +20,11 @@
 `u32` is an input declaration type, not a local/helper type. A point is
 represented by `vec2`; there is no separate storable `point` type.
 
+An imported [material](materials.md) such as `forest.Bark` is a nominal
+source type for locals and helper parameters. It expands to scalar fields
+before code generation and is not a VM value type. Materials cannot be
+returned, declared as host inputs/constants or used in collections.
+
 Numeric arithmetic mixes `i32` and `f32` by widening the integer to `f32`.
 Builtin/helper arguments and return values also permit this widening.
 Local reassignment requires an exact type match. Use `int(x)` or `float(x)`

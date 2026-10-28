@@ -1,10 +1,10 @@
-# Materials — 0.8 language contract (draft)
+# Materials — 0.8 language contract
 
-Status: draft for the 0.8 release line. The frozen 0.7 format/VM contract in
-`iprop-v0.7.md` is not rewritten; this note records the material semantics
-that the 0.8 language adds on top of it. Backward compatibility with 0.7
-binaries is not a requirement for 0.8, but every breaking change must be
-listed in the release migration note (see `CHANGELOG.md`).
+**Status:** Frozen for product and source language 0.8.0 (2026-10-28).
+This source-language addition uses the unchanged format and VM specified by
+[`iprop-v0.8.md`](iprop-v0.8.md). Existing 0.7 binaries and host integrations
+remain compatible; new material source requires the 0.8 compiler. See the
+[0.7 to 0.8 migration guide](../docs/language/migration-v0.8.md).
 
 ## Source contract
 

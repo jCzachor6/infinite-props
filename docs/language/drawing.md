@@ -1,7 +1,7 @@
 # Drawing and colors
 
 Raster calls paint the current canvas in call order. Pixel centers and edge
-coverage are fixed by [canvas algorithms](../../spec/iprop-v0.7.md#11-canvas-operations--exact-algorithms).
+coverage are fixed by [canvas algorithms](../../spec/iprop-v0.8.md#11-canvas-operations--exact-algorithms).
 Out-of-canvas coverage is clipped. Geometry arguments must be finite and
 within the operation's representable domain; invalid geometry can trap.
 The generated signatures distinguish integer pixels/thickness from floating
@@ -27,7 +27,7 @@ The C API
 [image view](../c-api-images.md) identifies this mode as
 `IPROP_IMAGE_ALPHA_LEGACY_DESTINATION` and returns the exact stored bytes.
 Exact blending, alpha endpoints and rounding are specified in
-[pixel blending](../../spec/iprop-v0.7.md#111-pixelx-y-colour).
+[pixel blending](../../spec/iprop-v0.8.md#111-pixelx-y-colour).
 
 <!-- example: ../../examples/language/drawing.ips -->
 
@@ -144,7 +144,7 @@ Replaces alpha with a clamped integer channel while retaining RGB.
 <!-- builtin: color.mul -->
 
 Multiplies color channels using the pinned integer conversion. See
-[color utilities](../../spec/iprop-v0.7.md#1212-the-colours) for alpha and rounding.
+[color utilities](../../spec/iprop-v0.8.md#1212-the-colours) for alpha and rounding.
 
 ### color.scale
 <!-- builtin: color.scale -->

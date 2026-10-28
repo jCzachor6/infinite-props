@@ -8,8 +8,13 @@ types, restricted declaration constants, required declarations and acyclic calls
 apply after parsing. Strings are only valid as import paths after typing.
 
 ```ebnf
-program       = { import }, asset, EOF ;
+program       = { import }, (asset | material_file), EOF ;
 import        = "import", name, "from", string, [ ";" ] ;
+material_file = material_item, { material_item } ; (* must contain at least one material *)
+material_item = material | palette | asset_constant ;
+material      = "material", identifier, "{", { ";" | material_field }, "}" ;
+material_field = name, "=", expression, [ ";" ] ;
+material_type = name, ".", identifier ;
 asset         = "asset", identifier, "{", { declaration }, "}" ;
 declaration   = size | origin | input | output
               | palette | asset_constant | draw | helper ;
@@ -24,7 +29,7 @@ asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reser
 draw          = "draw", block ;
 helper        = name, "(", [ parameters ], ")", [ "->", value_type ], block ;
 parameters    = parameter, { ",", parameter }, [ "," ] ;
-parameter     = name, ":", value_type ;
+parameter     = name, ":", (value_type | material_type) ;
 scalar_type   = "i32" | "f32" | "color" | "vec2" | "distribution" ;
 sampler_type  = "sampler", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
 stepper_type  = "stepper", "<", ("i32" | "f32" | "color" | "vec2"), ">" ;
@@ -111,6 +116,14 @@ Asset const and sampling-palette expressions must be pure compile-time values.
 An outer palette range captures a sampler; scalar entries then lift to constant
 descriptions. Runtime list ranges stay eager, and sampler picks cannot execute
 in declaration initializers. See [palettes](palettes.md#sampling-palettes).
+
+`material` is contextual at file scope. A material file contains definitions
+and optional private palette/const declarations, with no asset. At least one
+material definition is required. Fields are read-only scalar values; `base`
+must be a color. Material types are accepted only for helper parameters,
+not returns, inputs, constants or collection elements. Constructors are
+qualified calls in assignments, with named overrides only. See
+[materials](materials.md) for field-order evaluation and replacement rules.
 
 Point distribution literals accept general numeric runtime expressions. Static
 operands are checked during compilation; const declarations require pure

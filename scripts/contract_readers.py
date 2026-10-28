@@ -165,6 +165,24 @@ def read_language(value):
         'dependencies': {'forward_acyclic'}, 'evaluation': {'compile_time'}, 'distribution_validation': {'compile_time'}},
         ['read_only', 'check_all_declarations', 'check_effects_in_dead_branches', 'user_helper_calls', 'generation_state'], 'asset_constants')
     constant_types = {'i32', 'f32', 'color', 'vec2', 'distribution'}
+    if 'materials' in rules:
+        material = rules['materials']
+        _strings_and_bools(material, {'keyword': {'contextual'},
+            'definition_scope': {'separate_file_without_asset'}, 'qualification': {'import_alias'},
+            'required_field': {'base'}, 'required_field_type': {'color'},
+            'field_dependencies': {'earlier_fields'}, 'construction': {'assignment_only'},
+            'overrides': {'named_exact_type'}, 'evaluation_order': {'definition_order'},
+            'replacement': {'evaluate_then_commit'}, 'helper_parameters': {'nominal_by_value'},
+            'copy_rng': {'none'}, 'lowering': {'scalar_fields'}},
+            ['mutable_fields', 'host_inputs', 'helper_returns', 'collections', 'asset_constants',
+             'part_arguments', 'standalone_check', 'standalone_format', 'format_change'], 'materials')
+        strings(material.get('field_types'), 'material field types', {'color', 'i32', 'f32', 'vec2'}, True)
+        require(set(material['field_types']) == {'color', 'i32', 'f32', 'vec2'}, 'material field types')
+        strings(material.get('private_declarations'), 'material declarations', {'palette', 'const'}, True)
+        require(set(material['private_declarations']) == {'palette', 'const'}, 'material declarations')
+        require(material['standalone_check'] and material['standalone_format'] and
+                not any(material[k] for k in ['mutable_fields', 'host_inputs', 'helper_returns', 'collections',
+                                             'asset_constants', 'part_arguments', 'format_change']), 'material policy')
     strings(constants.get('types'), 'constant types', constant_types | LIST_TYPES | DESCRIPTION_TYPES, True)
     require(constants['read_only'] and constants['check_all_declarations'] and constants['check_effects_in_dead_branches'] and
             not constants['user_helper_calls'] and not constants['generation_state'], 'constant policy')

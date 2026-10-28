@@ -143,15 +143,20 @@ brings the language into your editor.
 
 | Start here | Go deeper |
 | :--- | :--- |
-| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v0.7.md) |
+| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v0.8.md) |
 | [Example recipes](examples/recipes/README.md) | [C API and ABI policy](docs/c-api-abi.md) |
 | [Compact LLM reference](docs/llm-reference.md) | [Export contracts](docs/export-contracts.md) |
 | [Building and installation](docs/building.md) | [CI and publication](docs/ci.md) |
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
-**Product 0.7.2 · Source language 0.7.2.** The compiler and runtime use an
+**Product 0.8.0 · Source language 0.8.0.** The compiler and runtime use an
 **unversioned** file format; C API **0.4** uses ABI / SONAME **0.5**.
-Coming from 0.6? See the [migration guide](docs/language/migration-v0.7.md).
+New in 0.8: reusable [materials](docs/language/materials.md) with private
+libraries, typed helper parameters and named overrides. See the
+[material tree example](examples/language/material-tree.ips),
+[0.7 to 0.8 migration](docs/language/migration-v0.8.md) and
+[release preparation guide](docs/release-v0.8.md).
+Coming from 0.6? Start with the [0.7 migration](docs/language/migration-v0.7.md).
 
 ## License
 

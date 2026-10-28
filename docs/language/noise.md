@@ -19,7 +19,7 @@ integers beyond f32 precision are needed.
 <!-- builtin: noise -->
 
 Frozen value noise over the lattice, with interpolation defined by
-[the original noise contract](../../spec/iprop-v0.7.md#124-noisex-y-seed).
+[the original noise contract](../../spec/iprop-v0.8.md#124-noisex-y-seed).
 
 ## fault
 <!-- builtin: fault -->
@@ -73,10 +73,10 @@ traps with `cell index is not representable as f32`.
 Applies the pinned ordered Bayer threshold to `t` at integer pixel x/y.
 The vector form converts `p.x`, `p.y` with `int()` first.
 It returns floating coverage. Matrix indexing and threshold comparisons are
-specified in [dither](../../spec/iprop-v0.7.md#1213-the-dither-the-fold-and-the-polar).
+specified in [dither](../../spec/iprop-v0.8.md#1213-the-dither-the-fold-and-the-polar).
 
 The complete algorithms and domain checks are in
-[noise v2](../../spec/iprop-v0.7.md#1210-the-noise-v2).
+[noise v2](../../spec/iprop-v0.8.md#1210-the-noise-v2).
 This example deliberately traps on a nonfinite derived coordinate:
 
 <!-- example: ../../examples/language/traps/noise-domain.ips -->

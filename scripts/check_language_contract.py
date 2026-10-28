@@ -26,6 +26,17 @@ def main():
     assert description['abi_version'] == {'major': int(major), 'minor': int(minor)}
 
     rules = description['source_rules']
+    assert rules['materials'] == {
+        'keyword': 'contextual', 'definition_scope': 'separate_file_without_asset',
+        'qualification': 'import_alias', 'private_declarations': ['palette', 'const'],
+        'required_field': 'base', 'required_field_type': 'color',
+        'field_types': ['color', 'i32', 'f32', 'vec2'], 'field_dependencies': 'earlier_fields',
+        'construction': 'assignment_only', 'overrides': 'named_exact_type',
+        'evaluation_order': 'definition_order', 'replacement': 'evaluate_then_commit',
+        'helper_parameters': 'nominal_by_value', 'copy_rng': 'none', 'mutable_fields': False,
+        'host_inputs': False, 'helper_returns': False, 'collections': False,
+        'asset_constants': False, 'part_arguments': False, 'standalone_check': True,
+        'standalone_format': True, 'lowering': 'scalar_fields', 'format_change': False}
     scalar_types = ['i32', 'f32', 'color', 'vec2', 'distribution']
     constant_types = scalar_types + ['list<' + name + '>' for name in scalar_types]
     sampler_types = ['sampler<' + name + '>' for name in scalar_types[:-1]]
@@ -243,6 +254,19 @@ def main():
 
         for name, body, accepted in cases:
             check(name, 'asset t {size 8x8 ' + body + '}', accepted)
+
+        library = 'const i32 K=3\nmaterial Bark {base=#0f0;width=K} material Leaf {base=#fff}'
+        (root / 'materials.ips').write_text(library, encoding='utf-8')
+        material_entry = ('import forest from "materials.ips"; asset t {size 8x8 '
+                          'draw{m=forest.Bark();paint(m)} paint(m:forest.Bark){pixel(0,0,m.base)}}')
+        check('material nominal helper and private declarations', material_entry, True)
+        check('material nominal type mismatch', material_entry.replace('paint(m)}', 'n=forest.Leaf();paint(n)}'), False)
+        check('material private declaration', material_entry.replace('m=forest.Bark()', 'm=forest.Bark(width=K)'), False)
+        check('material unknown field', material_entry.replace('m.base', 'm.missing'), False)
+        check('material field type override', material_entry.replace('forest.Bark()', 'forest.Bark(width=#fff)'), False)
+        check('standalone material library', library, True)
+        check('standalone material semantic error', 'material Bark {base=1}', False)
+        check('material declarations cannot share an asset file', library + ' asset t {size 8x8 draw{}}', False)
 
         (root / 'child.ips').write_text('asset child {size 8x8 input i32 n=-7 draw{}}')
         entry = ('import child from "child.ips" asset t {size 8x8 '

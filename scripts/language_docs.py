@@ -176,6 +176,8 @@ def sources(root, language):
 
 def resources(root):
     files = [root / "docs/language/book.json", root / "examples/language/cases.json"]
+    if (root / "CHANGELOG.md").is_file():
+        files.append(root / "CHANGELOG.md")
     files += list((root / "examples/language").rglob("*.ips"))
     files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
     files += list((root / "spec").glob("*.md"))

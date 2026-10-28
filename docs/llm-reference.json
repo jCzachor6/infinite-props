@@ -1,7 +1,7 @@
 {
-  "maximum_bytes": 102400,
+  "maximum_bytes": 131072,
   "defaults": {
-    "max_bytes": 102400,
+    "max_bytes": 131072,
     "sections": [
       "idioms",
       "style",
@@ -13,6 +13,7 @@
       "random",
       "colors",
       "palette",
+      "materials",
       "collections",
       "samplers",
       "part",
@@ -185,6 +186,16 @@
           "heading": "Grammar",
           "paragraphs": 2
         }
+      ]
+    },
+    {
+      "id": "materials",
+      "title": "Reusable materials",
+      "chapter": "materials.md",
+      "parts": "chapter",
+      "examples": [
+        "materials/forest.ips",
+        "material-tree.ips"
       ]
     },
     {

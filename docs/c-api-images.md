@@ -52,7 +52,7 @@ For example, painting RGBA `(200,100,50,128)` on transparent zero storage yields
 RGB can therefore be nonzero where stored alpha is zero. The query returns those
 exact bytes without normalizing or converting them. Hosts must interpret this
 explicit mode when selecting their own rendering or export policy. The normative
-algorithm remains [pixel blending](../spec/iprop-v0.7.md#111-pixelx-y-colour),
+algorithm remains [pixel blending](../spec/iprop-v0.8.md#111-pixelx-y-colour),
 also described by [language drawing](language/drawing.md).
 
 ## Checked failure behavior

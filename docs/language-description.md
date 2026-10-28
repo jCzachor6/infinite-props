@@ -20,7 +20,7 @@ The binary format is unversioned, so operations carry no minimum format version.
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `0.7.2`, source language `0.7.2`,
+The current values are product `0.8.0`, source language `0.8.0`,
 C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
@@ -29,14 +29,15 @@ See [the ABI policy](c-api-abi.md).
 
 Schema 4 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
-See [0.7 migration](language/migration-v0.7.md).
+Source language 0.8 adds the optional `materials` object without changing
+schema 4. See [0.8 migration](language/migration-v0.8.md).
 
 Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `c_api_version` and
 `c_abi_soversion`. Packaging and documentation builds reject a compiler whose
 export differs from the versions in the source tree. A release requires the
-frozen format specification of its product line (`spec/iprop-v0.7.md` for
-0.7.x, frozen with product 0.7.0).
+frozen format specification of its product line (`spec/iprop-v0.8.md` for
+0.8.x, frozen with product 0.8.0).
 
 ## Source rules
 
@@ -52,6 +53,7 @@ identified by `source_type`.
 | `types.storable` | Types admitted in local slots. |
 | `types.parameterized` | Supported list/sampler/stepper constructors, element types and immutable arena ownership. Lists of sampler and stepper descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
+| `materials` | Optional since 0.8.0: contextual declarations in separate files, alias qualification, private declarations, required color base, scalar field types, earlier-field reads, named overrides, field-order construction and atomic replacement. Records nominal helper parameters, zero-RNG copies, unsupported storage/host boundaries, standalone checks/formatting and scalar lowering with no format change. |
 | `collections` | List size, evaluation, immutable transfer, index, legacy palette and arena rules. |
 | `collections.methods` | Optional seventeen receiver-first signatures for `.distinct()` and `.sort()`, from the shared frontend registry. Each records its same-list result, empty parameters, opcode, `constant_evaluable` flag and intrinsic effects. These are separate from global builtins and reserved keywords. |
 | `surfaces.methods` | Optional receiver-first `.blur(sigma: f32)` signatures for layer and mask, from `surfaceMethodSpecs`. Each records its same-surface result, opcode, minor 7, false `constant_evaluable` and intrinsic effects. The method name is separate from global builtins and reserved keywords. |

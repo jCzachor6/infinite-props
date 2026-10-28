@@ -1,19 +1,24 @@
 # Infinite Props specification
 
-[Format and VM 0.7](iprop-v0.7.md) is the self-contained **development** contract
-for this checkout. It covers the file/container layout, all instructions, exact
-algorithms, validation and resource limits. The file format itself is
-unversioned. Older specifications and releases remain available in Git history.
+[Format and VM 0.8](iprop-v0.8.md) is the self-contained, frozen contract for
+product 0.8.0. It covers the complete file/container layout, instructions,
+numeric/RNG/raster algorithms, validation and resource limits. The format is
+unversioned; its encodings and VM behavior are unchanged from 0.7.
 
-[Materials 0.8 (draft)](materials-0.8.md) records the material language
-contract planned for the 0.8 release line.
+[Materials 0.8](materials-0.8.md) is the frozen source-language contract for
+the new material definitions, instances, helper parameters and authoring tools.
+Materials expand to existing scalar instructions, so they add no VM type or
+opcode. Product and source language are 0.8.0; C API 0.4 and ABI 0.5 remain
+independent and unchanged. Existing 0.7 binaries stay compatible.
 
 The [language handbook](../docs/language/index.md) defines `.ips` authoring.
-The [0.6 → 0.7 migration](../docs/language/migration-v0.7.md) explains source
-and host changes. Product, language, format, C API and ABI versions are independent.
+See [migration from 0.7 to 0.8](../docs/language/migration-v0.8.md) for the new
+capabilities and [migration from 0.6 to 0.7](../docs/language/migration-v0.7.md)
+for the earlier binary and source changes. The frozen [0.7 specification](iprop-v0.7.md)
+is retained unchanged; older specifications and releases remain in Git history.
 
 An implementation must reject reserved fields, flags and instructions it cannot honor.
 The reference runtime and conformance suite resolve implementation disagreements;
 exact kernels and wire encodings must match this document. Release publication
 requires a dated changelog and a frozen matching specification, as described in
-[CI and publication](../docs/ci.md). The 0.7 contract is frozen with product 0.7.0.
+[CI and publication](../docs/ci.md).

@@ -37,7 +37,7 @@ helpers and part D4 transformations have already applied their effects. In a
 file with a parts section, part values are in root asset
 coordinates, with every enclosing placement and transform applied once.
 Without an instance section, values retain the D4-only local mapping specified
-in [part output coordinates](../spec/iprop-v0.7.md#107-output-coordinates). The accessors
+in [part output coordinates](../spec/iprop-v0.8.md#107-output-coordinates). The accessors
 neither repeat transforms nor reinterpret owner-relative geometry.
 
 `iprop_result_output_find(result, owner, name, &output_index, error)` matches
