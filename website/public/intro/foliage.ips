@@ -1,0 +1,22 @@
+// The look of a tree's leaves: a colour and the shades that follow
+// it, so any colour keeps a matching shadow, light and rim.
+// Mostly greens (deep, olive, lime, blue-green), now and then
+// autumn reds, oranges and golds.
+palette greens = [#1f5a3a to #3f8a4c, #4a6a24 to #8aa03a,
+                  #5a9a2a to #a8c840, #2a6a6a to #5a9a7a,
+                  #8a2a24 to #c8402a, #c0581e to #e8902a,
+                  #c89a20 to #f0d050]
+const distribution kinds = weighted {0: 22, 1: 18, 2: 18,
+  3: 14, 4: 9, 5: 10, 6: 9}
+
+material Leaf {
+  // Each tree takes its own turn on its range: a touch of hue,
+  // more or less saturated.
+  base = color.hsv(greens[0 to 6 with kinds].pick(),
+                   -0.015 to 0.015, 0.9 to 1.15, 1.0)
+  // A cool shadow and a warm light, lit from the upper left; both
+  // stay saturated, so the ramp between them never turns grey.
+  shadow = color.hsv(color.mix(base, #0c2238, 0.55), 0.0, 1.2, 1.0)
+  light = color.hsv(color.mix(base, #fff6b0, 0.4), 0.0, 1.15, 1.05)
+  rim = color.hsv(color.mix(base, #040a14, 0.8), 0.0, 1.3, 1.0)
+}

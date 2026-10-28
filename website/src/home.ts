@@ -468,8 +468,8 @@ for (const slot of Array.from(document.querySelectorAll<HTMLElement>(".game-slot
 
 // ---- the simplest example: one program, a forest --------------------------------------
 
-// A tree (intro/tree.iprop, from tree.ips and its part clump.ips), drawn for
-// a fresh seed per cell.
+// A tree (intro/tree.iprop, from tree.ips, its part clump.ips and the material
+// foliage.ips), drawn for a fresh seed per cell.
 const forest = document.querySelector<HTMLElement>("[data-forest]");
 const forestRoll = document.querySelector<HTMLButtonElement>("[data-forest-roll]");
 
