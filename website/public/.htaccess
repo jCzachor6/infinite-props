@@ -7,11 +7,14 @@ RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
 
-# Pages, the WASM runtime, its worker and the showcase binaries keep their
-# names across releases. Browsers must revalidate them, or a cached iprop.js
-# meets a new iprop.wasm (or an old page asks for deleted hashed assets) and
-# nothing renders. Hashed files under assets/ keep the host's caching.
-<FilesMatch "(\.html|^iprop\.(js|wasm)|^butterfly-worker\.js|\.iprop)$">
+# Every file outside assets/ keeps its name across releases: the pages,
+# the WASM runtime and its worker, the showcase binaries and the manifests
+# that list their sizes and hashes, the docs scripts and data. Browsers must
+# revalidate them all together, or a cached file meets a newer one it
+# describes or loads (a cached iprop.js and a new iprop.wasm, a cached
+# butterfly-benchmark.json and new butterfly parts) and nothing renders.
+# Vite's hashed files under assets/ keep the host's caching.
+<If "%{REQUEST_URI} !~ m#/assets/[^/]+$#">
   <IfModule mod_expires.c>
     ExpiresActive Off
   </IfModule>
@@ -19,4 +22,4 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
     Header set Cache-Control "no-cache"
     Header unset Expires
   </IfModule>
-</FilesMatch>
+</If>

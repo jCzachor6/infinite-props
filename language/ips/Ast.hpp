@@ -325,6 +325,8 @@ struct MaterialField {
     std::string name;
     std::unique_ptr<Expr> value;
     SourceLocation location;
+    // The value's type, set when the material file is checked.
+    std::optional<ParamType> type{};
 };
 
 // `material Bark { base = ...; taper = ... }` — defined only in a material

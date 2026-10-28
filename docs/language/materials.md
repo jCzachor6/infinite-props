@@ -5,7 +5,8 @@ author-chosen shades, an edge color and width, and a taper. Declare materials
 only in a **material file** — a file with no asset — and import that file with
 the ordinary import syntax. One file may define one material or a library of
 several, and it may declare its own `palette` and `const` values for the
-fields to use.
+fields to use. Those belong to the material file: the importing asset does not
+see them and may declare its own palettes and consts with the same names.
 
 ```ips
 material Bark {
@@ -18,8 +19,9 @@ material Bark {
 }
 ```
 
-`base` (color) is required. `edge` defaults to `base`, `taper` (f32) defaults
-to `1.0` (no taper) and `edge_width` (i32 pixels) defaults to `0`. Every other
+`base` (color) is required. `edge` defaults to `base`, `taper` (f32, so write
+`1.0`, not `1`) defaults to `1.0` (no taper) and `edge_width` (i32 pixels)
+defaults to `0`. Every other
 field is named by the author and may be a `color`, `i32`/`f32` or `vec2`
 constant or range, with an optional `with` distribution. Shades are named
 values written as colors or ranges; they are not derived from `base`.

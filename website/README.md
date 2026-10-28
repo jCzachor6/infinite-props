@@ -117,10 +117,11 @@ node website/test/release-smoke.js website/dist build/tools
 
 Serve `dist/` with any static server (or `npm run dev` for the Vite dev
 server). On Apache, `public/.htaccess` (copied into `dist/`) serves WASM with
-its MIME type, redirects to HTTPS and makes browsers revalidate the pages,
-`iprop.js`, `iprop.wasm`, the worker and the `.iprop` files, which keep their
-names across releases; other servers need the same `Cache-Control: no-cache`
-for them.
+its MIME type, redirects to HTTPS and makes browsers revalidate every file
+outside `assets/` (the pages, `iprop.js`, `iprop.wasm`, the worker, the
+`.iprop` files and their manifests), which keep their names across releases;
+other servers need the same `Cache-Control: no-cache` for them. Only Vite's
+hashed files under `assets/` can be cached long term.
 
 Run these commands from the repository root after building the native tools.
 The documentation generator requires Python 3.10 or newer and uses

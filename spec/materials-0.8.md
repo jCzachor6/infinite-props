@@ -12,16 +12,22 @@ listed in the release migration note (see `CHANGELOG.md`).
   more `material Name { ... }` definitions and no `asset`. Defining a
   material in an asset file is an error.
 - A material file may declare its own `palette` and `const` values; field
-  expressions may use them.
+  expressions may use them. They are private to the material file: an
+  importing asset does not see them, and its own declarations (or another
+  material file's) may reuse their names. Top-level `palette` and `const`
+  declarations in an asset file are an error.
 - Assets import material files with the ordinary `import alias from "path"`
   syntax. The alias is not a part and cannot be called or drawn.
 - Fields: `base: color` is required (constant or range, optionally with a
   `with` distribution). `edge: color` defaults to `base`; `taper: f32`
   defaults to `1.0`; `edge_width: i32` (pixels) defaults to `0`. Any other
   field is author-named and may be a `color`, `i32`, `f32` or `vec2` constant
-  or range. Duplicate fields and a missing `base` are errors.
+  or range. The special fields must have exactly their stated types. Duplicate
+  fields, a missing `base` and two imported definitions with the same name are
+  errors. Errors in a material file are reported against that file.
 - `m = Name()` in a function creates an instance: every range rolls once, each
-  field independently, in definition order. Field reads never roll.
+  field independently, in definition order (the order the fields are written;
+  defaulted fields roll nothing). Field reads never roll.
 - Each definition is a distinct type. Helpers declare parameters as
   `m: Name`; the compiler checks field reads against that definition and
   reports unknown fields by name.

@@ -485,7 +485,10 @@ public:
                 out_ << '(';
                 for (std::size_t i = 0; i < function.params.size(); ++i) {
                     if (i) out_ << ", ";
-                    out_ << function.params[i].name << ": " << typeName(valueTypeOf(function.params[i].type));
+                    const auto& param = function.params[i];
+                    out_ << param.name << ": ";
+                    if (param.materialType) out_ << *param.materialType;
+                    else out_ << typeName(valueTypeOf(param.type));
                 }
                 out_ << ')';
                 if (function.returnType) out_ << " -> " << typeName(valueTypeOf(*function.returnType));

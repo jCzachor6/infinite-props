@@ -12,6 +12,7 @@
 #include "ips/SourceText.hpp"
 
 #include <algorithm>
+#include <set>
 
 namespace iprop {
 
@@ -88,26 +89,58 @@ SourceCompilationResult compileSource(
         }
 
         // Each file is checked once, dependencies first, against the
-        // surfaces of its own direct imports.
+        // surfaces of its own direct imports. Material files are checked on
+        // their own, so errors in them are reported against them.
         stage = ips::DiagnosticStage::Typing;
+        std::set<std::string> invalidMaterials;
+        // A file that uses materials is typed and compiled from a reparsed
+        // copy with the materials expanded. result.programs keeps every file
+        // as written, which is what the formatter prints.
+        std::map<std::string, ips::Program> expanded;
+        const auto checked = [&](const std::string& path) -> const ips::Program& {
+            const auto found = expanded.find(path);
+            return found != expanded.end() ? found->second : result.programs.at(path);
+        };
         for (const auto& path : order) {
             if (result.diagnostics.size() >= limit) break;
             auto& program = result.programs.at(path);
-            if (program.isMaterialFile) continue;
-            for (std::size_t i = 0; i < program.imports.size(); ++i) {
-                const auto& imported = result.programs.at(result.imports.at(path)[i]);
-                if (imported.isMaterialFile) {
-                    ips::mergeMaterialFile(program, imported);
-                    program.materialImportAliases.push_back(program.imports[i].alias);
+            if (program.isMaterialFile) {
+                auto errors = ips::checkMaterialFile(program, limit - result.diagnostics.size());
+                if (!errors.empty()) invalidMaterials.insert(path);
+                for (auto& error : errors) {
+                    if (error.path.empty()) error.path = path;
+                    appendDiagnostic(error);
                 }
-            }
-            try {
-                ips::expandMaterials(program);
-            } catch (const ips::SourceError& error) {
-                auto located = error;
-                if (located.path.empty()) located.path = path;
-                appendDiagnostic(located);
                 continue;
+            }
+            bool usesMaterials = false;
+            bool importsInvalidMaterial = false;
+            for (std::size_t i = 0; i < program.imports.size(); ++i) {
+                const auto& source = result.imports.at(path)[i];
+                if (!result.programs.at(source).isMaterialFile) continue;
+                usesMaterials = true;
+                importsInvalidMaterial = importsInvalidMaterial || invalidMaterials.contains(source);
+            }
+            if (importsInvalidMaterial) continue;
+            for (const auto& function : program.asset.functions)
+                for (const auto& param : function.params)
+                    usesMaterials = usesMaterials || param.materialType.has_value();
+            if (usesMaterials) {
+                auto& copy = expanded.emplace(path, ips::parse(result.sources.at(path))).first->second;
+                try {
+                    for (std::size_t i = 0; i < copy.imports.size(); ++i) {
+                        const auto& imported = result.programs.at(result.imports.at(path)[i]);
+                        if (!imported.isMaterialFile) continue;
+                        ips::mergeMaterialFile(copy, imported, copy.imports[i]);
+                        copy.materialImportAliases.push_back(copy.imports[i].alias);
+                    }
+                    ips::expandMaterials(copy);
+                } catch (const ips::SourceError& error) {
+                    auto located = error;
+                    if (located.path.empty()) located.path = path;
+                    appendDiagnostic(located);
+                    continue;
+                }
             }
             std::map<std::string, ips::PartInfo> surfaces;
             for (std::size_t i = 0; i < program.imports.size(); ++i) {
@@ -118,7 +151,7 @@ SourceCompilationResult compileSource(
                 }
                 surfaces.emplace(program.imports[i].alias, ips::partInfoOf(imported.asset));
             }
-            for (auto& error : ips::checkAssetDiagnostics(program, surfaces,
+            for (auto& error : ips::checkAssetDiagnostics(checked(path), surfaces,
                                                          limit - result.diagnostics.size())) {
                 if (error.path.empty()) error.path = path;
                 appendDiagnostic(error);
@@ -140,14 +173,14 @@ SourceCompilationResult compileSource(
                 if (parts.size() >= kMaxParts) return;
                 const auto& source = result.imports.at(path)[i];
                 if (result.programs.at(source).isMaterialFile) continue;
-                parts.emplace(prefix + imports[i].alias, &result.programs.at(source));
+                parts.emplace(prefix + imports[i].alias, &checked(source));
                 partSources.emplace(prefix + imports[i].alias, source);
                 self(self, source, prefix + imports[i].alias + ".");
             }
         };
         expand(expand, result.entryPath, "");
         stage = ips::DiagnosticStage::Planning;
-        auto bytes = compileProgram(result.programs.at(result.entryPath), parts,
+        auto bytes = compileProgram(checked(result.entryPath), parts,
                                     options.optimize, partSources);
         stage = ips::DiagnosticStage::Validation;
         if (options.stripDebug) bytes = stripDebug(bytes);

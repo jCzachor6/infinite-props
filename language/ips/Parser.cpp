@@ -61,6 +61,15 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
             throw SourceError{program.materials.front().location,
                               "material definitions must be in a separate file without an asset"};
         }
+        // Top-level palettes and consts belong to a material file; an asset
+        // declares its own inside the asset block.
+        if (hasAsset && result.diagnostics.empty() &&
+            (!program.materialPalettes.empty() || !program.materialConstants.empty())) {
+            const auto at = program.materialPalettes.empty() ? program.materialConstants.front().location
+                                                             : program.materialPalettes.front().location;
+            throw SourceError{at, "top-level palette and const declarations belong in a material file; "
+                                  "declare them inside the asset block"};
+        }
         if (!hasAsset && program.materials.empty() && result.diagnostics.empty()) {
             failExpected("an 'asset' block");
         }
@@ -93,7 +102,11 @@ void ParserImpl::recordError(SourceError error) {
 
 bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     if (scope == RecoveryScope::Program) {
-        return kind() == TokenKind::KeywordImport || kind() == TokenKind::KeywordAsset;
+        if (kind() == TokenKind::KeywordImport || kind() == TokenKind::KeywordAsset ||
+            kind() == TokenKind::KeywordConst) return true;
+        // Material files also declare top-level materials and palettes.
+        return kind() == TokenKind::Identifier && kind(1) == TokenKind::Identifier &&
+               (peek().text == "material" || peek().text == "palette");
     }
     if (scope == RecoveryScope::Declaration) {
         if (kind() == TokenKind::KeywordInput || kind() == TokenKind::KeywordOutput ||
@@ -183,6 +196,13 @@ Import ParserImpl::parseImport() {
     const Token path = expect(TokenKind::String, "a quoted file path");
     match(TokenKind::Semi);
     return Import{alias.text, path.text, at, {start, pos_}};
+}
+
+// Material names are capitalised (Bark); a lowercase name is a mistyped
+// builtin type, which parseParamType explains.
+bool ParserImpl::isMaterialName() const {
+    return kind() == TokenKind::Identifier && !peek().text.empty() &&
+           peek().text.front() >= 'A' && peek().text.front() <= 'Z';
 }
 
 MaterialDef ParserImpl::parseMaterialDef() {
@@ -428,8 +448,7 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     while (kind() != TokenKind::RParen) {
         const Token paramName = expectName("a parameter name");
         expect(TokenKind::Colon, "':' and a parameter type");
-        if (kind() == TokenKind::Identifier && !peek().text.empty() &&
-            peek().text.front() >= 'A' && peek().text.front() <= 'Z') {
+        if (isMaterialName()) {
             const Token material = advance();
             params.push_back(Param{paramName.text, ParamType::I32, paramName.location, material.text});
         } else {
@@ -443,7 +462,7 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
     expect(TokenKind::RParen, "')'");
     std::optional<ParamType> returnType;
     if (match(TokenKind::Arrow)) {
-        if (kind() == TokenKind::Identifier)
+        if (isMaterialName())
             failHere("returning a material is not supported; return a field such as m.base");
         returnType = parseParamType();
     }
