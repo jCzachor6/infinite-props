@@ -33,6 +33,8 @@ combining `--check` with `--output` or `--format` is an invocation error.
 `--no-opt`, `--debug` and compression options select the same artifact policy
 as ordinary compilation, while still writing no files. Each imported source
 is loaded once, and error snippets use that exact owning snapshot.
+For a standalone [material library](materials.md), `--check` validates its
+declarations and fields without requiring an asset or producing an executable.
 
 JSON diagnostics use `schema_version: 1` with independently recorded product
 and source-language versions, status and diagnostics. Each diagnostic provides
@@ -63,6 +65,8 @@ executable bytes after stripping source-line debug data.
 `ipc entry.ips --format canonical.ips --format-only` runs the same full
 in-memory compile/validation pipeline and writes only canonical source. It
 creates no `.iprop`; `--format` without `--format-only` still compiles normally.
+`--format-only` also accepts a standalone material library and preserves its
+declaration order, field order and comments.
 Source output must differ from the entry, all imports and any requested binary,
 including filesystem aliases. `--format-only` requires `--format` and rejects
 `--output` and `--check`. A compile or output error preserves the previous

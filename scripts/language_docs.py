@@ -141,7 +141,8 @@ def sources(root, language):
     registered = {source_path(root, examples, c["file"]): c for c in cases}
     require(len(registered) == len(cases) and set(registered) == set(examples.rglob("*.ips")),
             "Register every language example exactly once")
-    require(all(c["expect"] in ("pass", "compile-error", "trap") and
+    require(all(c.get("check_expect", "pass") in ("pass", "compile-error") and
+                c["expect"] in ("pass", "compile-error", "trap") and
                 (c["expect"] == "pass" or c.get("message")) for c in cases), "Invalid example expectations")
     described, referenced, navigation = [], set(), []
     for chapter, content in text.items():

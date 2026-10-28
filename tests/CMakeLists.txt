@@ -205,6 +205,8 @@ if(Python3_Interpreter_FOUND)
         "${CMAKE_SOURCE_DIR}/scripts/check_source_cli.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_format_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_format_cli.py" "$<TARGET_FILE:ipc>")
+    add_test(NAME compiler_materials_cli COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/scripts/check_materials_cli.py" "$<TARGET_FILE:ipc>" "$<TARGET_FILE:ipgen>")
     add_test(NAME recipe_format_cli COMMAND ${Python3_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/scripts/check_recipe_format.py" "$<TARGET_FILE:ipc>")
     add_test(NAME compiler_export_contracts COMMAND ${Python3_EXECUTABLE}

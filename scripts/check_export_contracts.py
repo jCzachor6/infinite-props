@@ -118,7 +118,10 @@ def main():
         for case in examples:
             process = run(compiler,ROOT/'examples/language'/case['file'],'--check','--diagnostics=json')
             document = read_diagnostics(parse_json(process.stdout),process.returncode)
-            assert process.returncode == (1 if case['expect']=='compile-error' else 0), case
+            # A material library is a valid authoring entry for --check,
+            # although ordinary compilation still requires an asset.
+            expectation = case.get('check_expect', case['expect'])
+            assert process.returncode == (1 if expectation == 'compile-error' else 0), case
             if validators:
                 validators['diagnostics'].validate(document)
             field_docs(document,schemas['diagnostics'],schemas['diagnostics'])

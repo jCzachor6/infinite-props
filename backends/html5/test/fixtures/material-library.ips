@@ -1,0 +1,9 @@
+const distribution curve = gaussian(0.5, 0.18)
+material Coat {
+  base = #000000 to #ffffff with curve
+  width = 3
+  shade = color.mix(base, #000000, 0.5)
+  offset = {1.0, 2.0}
+}
+material paint { base = #00ff00 }
+material pixel { base = #ff0000 }

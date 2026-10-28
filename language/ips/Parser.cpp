@@ -30,6 +30,7 @@ ParseResult ParserImpl::parseRecoveringProgram(std::size_t limit) {
                            !hasAsset && kind(1) == TokenKind::Identifier) {
                     advance(); // 'palette'
                     program.materialPalettes.push_back(parsePalette());
+                    program.materialPalettes.back().sourceRange = {start, pos_};
                 } else if (kind() == TokenKind::KeywordConst && !hasAsset) {
                     const auto constStart = pos_;
                     advance();
@@ -215,11 +216,13 @@ MaterialDef ParserImpl::parseMaterialDef() {
     while (kind() != TokenKind::RBrace) {
         if (kind() == TokenKind::End) failHere("unterminated material block (missing '}')");
         if (match(TokenKind::Semi)) continue;
+        const auto fieldStart = pos_;
         const Token field = expectName("a material field name");
         expect(TokenKind::Assign, "'=' and a field value");
         auto value = parseExpr();
         match(TokenKind::Semi);
         def.fields.push_back(MaterialField{field.text, std::move(value), field.location});
+        def.fields.back().sourceRange = {fieldStart, pos_};
     }
     advance(); // '}'
     def.sourceRange = {start, pos_};

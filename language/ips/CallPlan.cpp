@@ -103,7 +103,7 @@ std::optional<BoundCallPlan> sourceCallPlan(const Program& program, const Call& 
         return bindCall(call, surfacePaintCallSignature(call, ValueType::Mask), name);
     }
     if (const auto found = builtinSpecs().find(name);
-        found != builtinSpecs().end() && !(builtinYieldsToHelper(name) && declared()))
+        found != builtinSpecs().end() && (call.builtinOnly || !(builtinYieldsToHelper(name) && declared())))
         return bindCall(call, builtinCallSignature(found->second, call, name), name);
     if (name == "ramp") return bindCall(call, rampCallSignature(), name);
     for (const auto& function : program.asset.functions) {

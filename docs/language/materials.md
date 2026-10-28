@@ -55,6 +55,19 @@ without new draws. Returning a material from a helper, `list<Material>` and
 `sampler`/`stepper` of materials are not supported; pass a numeric selector
 to a part and create the material inside it when a part needs one.
 
+A local keeps its first type. You can replace a whole instance with another
+instance of the same material, but cannot change it into a scalar or a
+different material type. The replacement is evaluated completely before
+updating the local: `m = forest.Bark(taper = m.taper * 0.9)` reads the old
+`m.taper`. A default expression that reads an earlier field still sees the
+new instance's field. Helper parameters remain read-only.
+
+Check a material library directly with `ipc materials/forest.ips --check`.
+Format it with `ipc materials/forest.ips --format-only --format formatted.ips`;
+both commands support material files without creating an `.iprop`. Ordinary
+compilation uses an asset that imports the library. The editor uses these
+same commands for diagnostics and Format Document.
+
 A material never draws. Fields such as `edge`, `edge_width` and `taper` above
 are ordinary fields the author chose; the helper drawing a shape decides per
 side and per end whether to use them — for example, a branch helper omits the edge line at the joint where

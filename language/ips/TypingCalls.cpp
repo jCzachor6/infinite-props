@@ -20,7 +20,7 @@ ValueType Typer::typeCall(const Call& call) {
             return typeRamp(*name, call);
         }
         const auto builtin = builtinSpecs().find(name->name);
-        if (builtin != builtinSpecs().end() && !yieldsToHelper(name->name)) {
+        if (builtin != builtinSpecs().end() && (call.builtinOnly || !yieldsToHelper(name->name))) {
             return typeBuiltinCall(*name, call, builtin->second);
         }
         return typeUserCall(*name, call);

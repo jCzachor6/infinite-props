@@ -67,6 +67,9 @@ struct Call {
     std::unique_ptr<Expr> callee;
     std::vector<Arg> args;
     SourceLocation location;
+    // Set on checked expressions imported from a material file. A builtin
+    // resolved there must not turn into an importing asset's legacy helper.
+    bool builtinOnly = false;
 };
 
 // A vector literal: `{32, 4}` or `{96 - 20, 170 - 23, 40, 23}`.
@@ -328,6 +331,7 @@ struct MaterialField {
     SourceLocation location;
     // The value's type, set when the material file is checked.
     std::optional<ParamType> type{};
+    TokenRange sourceRange{};
 };
 
 // `material Bark { base = ...; taper = ... }` — defined only in a material

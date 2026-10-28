@@ -35,7 +35,7 @@ ResolvedCall CallResolver::resolve(const ips::Call& call) const {
     }
     const auto ns = functionNamespace(function_.name);
     if (const auto found = ips::builtinSpecs().find(name); found != ips::builtinSpecs().end() &&
-        !(ips::builtinYieldsToHelper(name) && plan_.functionId(name, ns))) {
+        (call.builtinOnly || !(ips::builtinYieldsToHelper(name) && plan_.functionId(name, ns)))) {
         const auto& spec = found->second;
         std::vector<T> types;
         for (const auto* arg : args) types.push_back(function_.typeOf(*arg->value));

@@ -17,6 +17,11 @@ Target: **0.8** (breaking changes allowed; see the migration note at release).
   instances are immutable and cannot be host inputs. See the
   [materials handbook chapter](docs/language/materials.md) and the
   [0.8 materials contract](spec/materials-0.8.md).
+- Material replacement preserves the old value while evaluating overrides;
+  lowering retains nominal types and read-only bindings, keeps generated
+  names private, and preserves the library's builtin resolution. Material
+  files support standalone checks and source-only formatting in the CLI
+  and editor.
 
 ## v0.7.2 — 2026-10-25
 

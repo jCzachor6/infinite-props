@@ -67,6 +67,35 @@ function pending(dir) {
 }
 function clean(dir) { assert.equal(fs.readdirSync(dir).filter(name => name.startsWith(".iprop-format-")).length, 0); }
 
+test("real editor formats a standalone material library without changing its buffer or producing a binary", async () => {
+    const source = "// biblioteka żółć\nmaterial Bark{/* base */base=P[1];width=K;" +
+        "shade=color.mix(base,#000,0.5) // shade\n}\nconst i32 K=3;palette P=[#0f0,#f00]\n// EOF\n";
+    const dir = workspace(source), h = editorHarness(dir, execFile);
+    h.settings.compilerPath = compiler;
+    try {
+        const before = fs.readFileSync(h.entry.fileName);
+        const edits = await format(h);
+        assert.equal(edits.length, 1, h.warnings.join("\n"));
+        assert.deepEqual(fs.readFileSync(h.entry.fileName), before);
+        assert.equal(h.entry.getText(), source);
+        const text = edits[0].newText;
+        assert.match(text, /material Bark \{/);
+        assert.match(text, /width = K/);
+        assert.ok(!text.includes("asset ") && !text.includes("$material"));
+        assert.ok(text.indexOf("material Bark") < text.indexOf("const i32 K"));
+        for (const comment of ["// biblioteka żółć", "/* base */", "// shade", "// EOF"])
+            assert.equal(text.split(comment).length - 1, 1, text);
+        const output = path.join(dir, "formatted.ips");
+        fs.writeFileSync(output, text);
+        const check = spawnSync(compiler, [output, "--check", "--diagnostics=json"], {encoding:"utf8"});
+        assert.equal(check.status, 0, check.stdout + check.stderr);
+        const again = await runCompilerFormatting(compiler, output);
+        assert.equal(again, text);
+        assert.ok(!fs.readdirSync(dir).some(name => name.endsWith(".iprop")));
+        clean(dir);
+    } finally { h.dispose(); fs.rmSync(dir, {recursive:true,force:true}); }
+});
+
 test("asset constants format through the editor with forward references and comments", async () => {
     const source = "asset t{size 1x1 const vec2 direction=vec2.normalize({next,4}); // direction\n" +
         "const i32 next=3 const distribution typical=gaussian(sigma=0.18,mean=0.5) draw{point(direction)} " +

@@ -245,7 +245,7 @@ private:
                 return;
             }
             const auto found = builtinSpecs().find(name);
-            const bool helper = builtinYieldsToHelper(name) && std::any_of(program_.asset.functions.begin(),
+            const bool helper = !call->builtinOnly && builtinYieldsToHelper(name) && std::any_of(program_.asset.functions.begin(),
                 program_.asset.functions.end(), [&](const auto& function) { return function.name == name; });
             if (found == builtinSpecs().end() || helper) fail(call->location, "user helper and part calls are not allowed ('" + name + "')");
             const auto& spec = found->second;

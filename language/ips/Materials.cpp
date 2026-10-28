@@ -35,7 +35,7 @@ std::unique_ptr<Expr> cloneExpr(const Expr& expr) {
                 std::vector<Arg> args;
                 for (const auto& arg : node.args)
                     args.push_back(Arg{arg.name, cloneExpr(*arg.value), arg.location});
-                return mk(Expr{Call{cloneExpr(*node.callee), std::move(args), node.location}}, expr);
+                return mk(Expr{Call{cloneExpr(*node.callee), std::move(args), node.location, node.builtinOnly}}, expr);
             } else if constexpr (std::is_same_v<T, VectorLit>) {
                 std::vector<std::unique_ptr<Expr>> items;
                 for (const auto& item : node.elements) items.push_back(cloneExpr(*item));
@@ -118,8 +118,24 @@ void forEachChild(Expr& expr, Visit&& visit) {
         expr);
 }
 
-// Renames references to a material file's palettes and consts. Callees
-// name builtins, never these declarations, so they keep their names.
+// '$' cannot occur in a source identifier. Keep internal fields and private
+// declarations disjoint from source names, even names containing '__'.
+std::string fieldName(const std::string& owner, const std::string& field) {
+    return "$material$local$" + owner + "$" + field;
+}
+
+std::string privateName(const std::string& alias, const std::string& name) {
+    return "$material$private$" + alias + "$" + name;
+}
+
+// A material file has no helpers. Preserve its checked builtin resolution
+// when its expressions are copied into an asset with its own helpers.
+void bindMaterialBuiltins(Expr& expr) {
+    if (auto* call = std::get_if<Call>(&expr)) call->builtinOnly = true;
+    forEachChild(expr, [&](std::unique_ptr<Expr>& child) { bindMaterialBuiltins(*child); });
+}
+
+// Renames value references, leaving the independently bound callees alone.
 void renameReferences(std::unique_ptr<Expr>& expr, const std::map<std::string, std::string>& names) {
     if (auto* id = std::get_if<Identifier>(expr.get())) {
         if (const auto found = names.find(id->name); found != names.end()) id->name = found->second;
@@ -218,11 +234,12 @@ std::vector<SourceError> checkMaterialFile(Program& file, std::size_t limit) {
 
 void mergeMaterialFile(Program& importer, const Program& source, const Import& import) {
     std::map<std::string, std::string> names;
-    for (const auto& palette : source.materialPalettes) names[palette.name] = import.alias + "__" + palette.name;
-    for (const auto& constant : source.materialConstants) names[constant.name] = import.alias + "__" + constant.name;
+    for (const auto& palette : source.materialPalettes) names[palette.name] = privateName(import.alias, palette.name);
+    for (const auto& constant : source.materialConstants) names[constant.name] = privateName(import.alias, constant.name);
     const auto clone = [&](const Expr& expr) {
         auto copy = cloneExpr(expr);
         renameReferences(copy, names);
+        bindMaterialBuiltins(*copy);
         return copy;
     };
     for (const auto& def : source.materials) {
@@ -252,7 +269,7 @@ void mergeMaterialFile(Program& importer, const Program& source, const Import& i
 }
 
 std::string demangleMaterialNames(const std::string& text) {
-    static const std::regex mangled{R"(\b([A-Za-z_][A-Za-z0-9_]*?)__([A-Za-z_][A-Za-z0-9_]*))"};
+    static const std::regex mangled{R"(\$material\$(?:private|local)\$([A-Za-z_][A-Za-z0-9_]*)\$([A-Za-z_][A-Za-z0-9_]*)(?:\$[0-9]+)?)"};
     return std::regex_replace(text, mangled, "$1.$2");
 }
 
@@ -298,9 +315,51 @@ struct OrigParam {
 };
 
 struct Expander {
+    const Program& owner;
     std::map<std::string, DefInfo> defs;
     std::map<std::string, std::vector<OrigParam>> funcs;
+    // nullptr records an ordinary local. Keep every source binding for the
+    // whole function, just as scalar checking does across branches and loops.
     std::map<std::string, const DefInfo*> vars;
+    std::set<std::string> parameters;
+    std::size_t nextTemporary = 0;
+
+    explicit Expander(const Program& program) : owner(program) {}
+
+    void checkWritable(const std::string& name, SourceLocation at) const {
+        if (parameters.contains(name))
+            throw SourceError{at, "cannot assign to parameter '" + name + "'"};
+        if (name == "seed") throw SourceError{at, "'seed' is a reserved name"};
+        for (const auto& input : owner.asset.inputs)
+            if (input.name == name) throw SourceError{at, "cannot assign to input '" + name + "'"};
+        for (const auto& palette : owner.asset.palettes)
+            if (palette.name == name) throw SourceError{at, "cannot assign to palette '" + name + "'"};
+        if (findAssetConstant(owner, name))
+            throw SourceError{at, "cannot assign to const '" + name + "'"};
+    }
+
+    void checkMaterialBinding(const VarDecl& decl, const DefInfo& def) const {
+        checkWritable(decl.name, decl.location);
+        for (const auto& output : owner.asset.outputs)
+            if (output.name == decl.name)
+                throw SourceError{decl.location, "cannot assign a material to output '" + decl.name + "'"};
+        if (decl.declaredType)
+            throw SourceError{decl.location, std::string(typeName(*decl.declaredType)) + " '" + decl.name +
+                                                  "' cannot hold material '" + def.def->name + "'"};
+        if (const auto found = vars.find(decl.name); found != vars.end() && found->second != &def) {
+            const std::string previous = found->second ? found->second->def->name : "a non-material value";
+            throw SourceError{decl.location, "local '" + decl.name + "' is " + previous +
+                                                  ", cannot assign material '" + def.def->name + "'"};
+        }
+    }
+
+    void bindPlain(const std::string& name, SourceLocation at) {
+        checkWritable(name, at);
+        if (const auto found = vars.find(name); found != vars.end() && found->second)
+            throw SourceError{at, "local '" + name + "' is " + found->second->def->name +
+                                      ", cannot assign a non-material value"};
+        vars.emplace(name, nullptr);
+    }
 
     const DefInfo& requireDef(const std::string& name, SourceLocation at) const {
         const auto found = defs.find(name);
@@ -312,14 +371,20 @@ struct Expander {
     void transformExpr(std::unique_ptr<Expr>& expr) { if (expr) transformExpr(*expr); }
 
     void transformExpr(Expr& expr) {
+        if (const auto* id = std::get_if<Identifier>(&expr)) {
+            if (const auto found = vars.find(id->name); found != vars.end() && found->second)
+                throw SourceError{id->location, "material '" + id->name +
+                                                    "' must be copied, passed to a material parameter or read by field"};
+            return;
+        }
         if (auto* member = std::get_if<Member>(&expr)) {
             if (const auto* id = std::get_if<Identifier>(member->object.get())) {
-                if (const auto found = vars.find(id->name); found != vars.end()) {
+                if (const auto found = vars.find(id->name); found != vars.end() && found->second) {
                     const DefInfo* def = found->second;
                     if (!def->find(member->name))
                         throw SourceError{member->location, "material '" + def->def->name +
                                                                  "' has no field '" + member->name + "'"};
-                    const std::string flat = id->name + "__" + member->name;
+                    const std::string flat = fieldName(id->name, member->name);
                     const auto at = member->location;
                     expr = Identifier{flat, at};
                     return;
@@ -333,14 +398,21 @@ struct Expander {
                 throw SourceError{call->location, "material '" + name +
                                                       "' can only be created by assignment, such as m = " + name + "()"};
             if (const auto* callee = std::get_if<Identifier>(call->callee.get())) {
-                for (const auto& [name, def] : defs)
-                    if (name.ends_with("." + callee->name))
-                        throw SourceError{callee->location, "material '" + callee->name +
-                                                                 "' needs its import alias: " + name + "()"};
-                if (const auto fn = funcs.find(callee->name); fn != funcs.end()) {
+                const bool builtin = callee->name == "ramp" || builtinSpecs().contains(callee->name);
+                if (const auto fn = funcs.find(callee->name); fn != funcs.end() && !call->builtinOnly &&
+                    (!builtin || builtinYieldsToHelper(callee->name))) {
                     expandCall(*call, fn->second);
                     return;
                 }
+                if (!builtin)
+                    for (const auto& [name, def] : defs)
+                        if (name.ends_with("." + callee->name))
+                            throw SourceError{callee->location, "material '" + callee->name +
+                                                                     "' needs its import alias: " + name + "()"};
+                // A callee has its own namespace; it is not a value read of
+                // a same-named material local.
+                for (auto& arg : call->args) transformExpr(arg.value);
+                return;
             }
             transformExpr(call->callee);
             for (auto& arg : call->args) transformExpr(arg.value);
@@ -376,17 +448,17 @@ struct Expander {
                 throw SourceError{arg.location, "material argument for '" + param->name +
                                                      "' must be a " + param->def->def->name + " variable"};
             for (const auto& field : param->def->fields) {
-                auto value = std::make_unique<Expr>(Identifier{id->name + "__" + field.name, id->location});
-                out.push_back(Arg{arg.name ? std::optional(param->name + "__" + field.name) : std::nullopt,
+                auto value = std::make_unique<Expr>(Identifier{fieldName(id->name, field.name), id->location});
+                out.push_back(Arg{arg.name ? std::optional(fieldName(param->name, field.name)) : std::nullopt,
                                   std::move(value), arg.location});
             }
         }
         call.args = std::move(out);
     }
 
-    // `var = forest.Bark(name = value, ...)`: one local per field, in
-    // definition order. A field's own expression reads the earlier fields
-    // through their locals; an override replaces it and must keep its type.
+    // Evaluate into fresh temporaries in definition order. Defaults read the
+    // new instance's earlier fields; overrides still see the old source
+    // bindings. Commit only when the entire RHS has been evaluated.
     std::vector<Stmt> create(const std::string& var, const DefInfo& def, Call& call, SourceLocation at) {
         std::map<std::string, Arg*> overrides;
         for (auto& arg : call.args) {
@@ -400,12 +472,12 @@ struct Expander {
         }
         std::vector<Stmt> out;
         std::map<std::string, std::string> earlier;
+        const auto temporary = "$" + std::to_string(nextTemporary++);
         for (const auto& field : def.fields) {
-            VarDecl decl{var + "__" + field.name, nullptr, at};
+            VarDecl decl{fieldName(var, field.name) + temporary, nullptr, at, field.type};
             if (const auto found = overrides.find(field.name); found != overrides.end()) {
                 decl.value = std::move(found->second->value);
                 transformExpr(decl.value);
-                decl.declaredType = field.type;
             } else {
                 decl.value = cloneExpr(*field.field->value);
                 renameReferences(decl.value, earlier);
@@ -413,6 +485,9 @@ struct Expander {
             earlier[field.name] = decl.name;
             out.push_back(Stmt{std::move(decl)});
         }
+        for (const auto& field : def.fields)
+            out.push_back(Stmt{VarDecl{fieldName(var, field.name),
+                std::make_unique<Expr>(Identifier{earlier.at(field.name), at}), at, field.type}});
         vars[var] = &def;
         return out;
     }
@@ -431,24 +506,26 @@ struct Expander {
         if (auto* decl = std::get_if<VarDecl>(&stmt)) {
             if (decl->value) {
                 if (auto* call = std::get_if<Call>(decl->value.get())) {
-                    if (const auto found = defs.find(qualifiedName(*call->callee)); found != defs.end())
+                    if (const auto found = defs.find(qualifiedName(*call->callee)); found != defs.end()) {
+                        checkMaterialBinding(*decl, found->second);
                         return create(decl->name, found->second, *call, decl->location);
+                    }
                 }
                 if (const auto* id = std::get_if<Identifier>(decl->value.get())) {
-                    if (const auto src = vars.find(id->name); src != vars.end()) {
-                        vars[decl->name] = src->second;
+                    if (const auto src = vars.find(id->name); src != vars.end() && src->second) {
+                        checkMaterialBinding(*decl, *src->second);
                         for (const auto& field : src->second->fields)
-                            out.push_back(Stmt{VarDecl{decl->name + "__" + field.name,
+                            out.push_back(Stmt{VarDecl{fieldName(decl->name, field.name),
                                                        std::make_unique<Expr>(Identifier{
-                                                           id->name + "__" + field.name, id->location}),
+                                                           fieldName(id->name, field.name), id->location}),
                                                        decl->location}});
+                        vars[decl->name] = src->second;
                         return out;
                     }
                 }
                 transformExpr(decl->value);
             }
-            // The name now holds an ordinary value, not the material.
-            vars.erase(decl->name);
+            bindPlain(decl->name, decl->location);
             out.push_back(std::move(stmt));
             return out;
         }
@@ -462,20 +539,20 @@ struct Expander {
             transformExpr(whileStmt->condition);
             whileStmt->body = transformStmts(whileStmt->body);
         } else if (auto* forStmt = std::get_if<ForStmt>(&stmt)) {
-            vars.erase(forStmt->variable);
             transformExpr(forStmt->from);
             transformExpr(forStmt->to);
+            bindPlain(forStmt->variable, forStmt->location);
             forStmt->body = transformStmts(forStmt->body);
         } else if (auto* ret = std::get_if<ReturnStmt>(&stmt)) {
             if (ret->value) {
                 if (const auto* id = std::get_if<Identifier>(ret->value.get());
-                    id && vars.contains(id->name))
+                    id && vars.contains(id->name) && vars.at(id->name))
                     throw SourceError{id->location, "returning a material is not supported; return a field"};
                 transformExpr(ret->value);
             }
         } else if (auto* layer = std::get_if<LayerStmt>(&stmt)) {
-            vars.erase(layer->name);
             layer->body = transformStmts(layer->body);
+            bindPlain(layer->name, layer->location);
         } else if (auto* clip = std::get_if<ClipStmt>(&stmt)) {
             transformExpr(clip->mask);
             clip->body = transformStmts(clip->body);
@@ -488,7 +565,7 @@ struct Expander {
 } // namespace
 
 void expandMaterials(Program& program) {
-    Expander expander;
+    Expander expander(program);
     for (const auto& def : program.asset.materials) {
         if (expander.defs.contains(def.name))
             throw SourceError{def.location, "duplicate material '" + def.name + "'"};
@@ -501,7 +578,12 @@ void expandMaterials(Program& program) {
     if (!anyMaterial) return;
     for (const auto& fn : program.asset.functions) {
         std::vector<OrigParam> params;
+        std::set<std::string> names;
         for (const auto& param : fn.params) {
+            if (!names.insert(param.name).second)
+                throw SourceError{param.location, "duplicate parameter '" + param.name + "'"};
+            if (param.materialType && findAssetConstant(program, param.name))
+                throw SourceError{param.location, "parameter '" + param.name + "' cannot shadow an asset const"};
             if (param.materialType) {
                 params.push_back(OrigParam{param.name, true, &expander.requireDef(*param.materialType, param.location)});
             } else {
@@ -512,16 +594,20 @@ void expandMaterials(Program& program) {
     }
     for (auto& fn : program.asset.functions) {
         expander.vars.clear();
+        expander.parameters.clear();
+        expander.nextTemporary = 0;
         std::vector<Param> params;
         for (const auto& param : fn.params) {
+            expander.parameters.insert(param.name);
             if (!param.materialType) {
+                expander.vars.emplace(param.name, nullptr);
                 params.push_back(param);
                 continue;
             }
             const DefInfo* def = &expander.requireDef(*param.materialType, param.location);
             expander.vars[param.name] = def;
             for (const auto& field : def->fields)
-                params.push_back(Param{param.name + "__" + field.name, field.type, param.location});
+                params.push_back(Param{fieldName(param.name, field.name), field.type, param.location});
         }
         fn.params = std::move(params);
         fn.body = expander.transformStmts(fn.body);
@@ -530,4 +616,3 @@ void expandMaterials(Program& program) {
 }
 
 } // namespace iprop::ips
-

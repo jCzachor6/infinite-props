@@ -79,15 +79,6 @@ SourceCompilationResult compileSource(
             result.status = SourceCompilationStatus::InvalidSource;
             return result;
         }
-        if (result.programs.at(result.entryPath).isMaterialFile) {
-            appendDiagnostic(ips::SourceError{
-                result.programs.at(result.entryPath).materials.front().location,
-                "a material file has no asset to compile; import it from an asset",
-                result.entryPath, ips::DiagnosticCode::InvalidSyntax, ips::DiagnosticStage::Parser});
-            result.status = SourceCompilationStatus::InvalidSource;
-            return result;
-        }
-
         // Each file is checked once, dependencies first, against the
         // surfaces of its own direct imports. Material files are checked on
         // their own, so errors in them are reported against them.
@@ -163,6 +154,20 @@ SourceCompilationResult compileSource(
         }
         if (!result.diagnostics.empty()) {
             result.status = SourceCompilationStatus::InvalidSource;
+            return result;
+        }
+
+        const auto& entry = result.programs.at(result.entryPath);
+        if (entry.isMaterialFile) {
+            if (options.allowMaterialEntry) {
+                result.status = SourceCompilationStatus::Success;
+            } else {
+                appendDiagnostic(ips::SourceError{
+                    entry.materials.front().location,
+                    "a material file has no asset to compile; import it from an asset",
+                    result.entryPath, ips::DiagnosticCode::InvalidSyntax, ips::DiagnosticStage::Parser});
+                result.status = SourceCompilationStatus::InvalidSource;
+            }
             return result;
         }
 

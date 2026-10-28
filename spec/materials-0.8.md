@@ -34,9 +34,20 @@ listed in the release migration note (see `CHANGELOG.md`).
 - Each definition is a distinct type. Helpers declare parameters as
   `m: alias.Name`; the compiler checks field reads against that definition and
   reports unknown fields by name.
+- A local keeps the type of its first assignment; a material cannot replace
+  a scalar or a different material type. Parameters, inputs, palettes and
+  constants remain read-only. A whole-instance replacement evaluates the
+  new instance completely before updating the target: overrides read the
+  old target, while default expressions read the new earlier fields.
+- Material names are qualified and do not shadow unqualified helpers or
+  builtins. Expressions in a material file retain their builtin bindings
+  when imported; only overrides are resolved in the creating function.
 - Instances are immutable, are copied field-by-field without new draws, and
   cannot be declared as host inputs. Returning a material, lists of
   materials, and `sampler`/`stepper` of materials are outside this contract.
+- Standalone material files support `ipc --check` and `--format-only`,
+  including semantic diagnostics and comment-preserving formatting, without
+  producing an executable. Ordinary compilation requires an asset entry.
 
 ## Execution contract
 

@@ -22,6 +22,8 @@ const sources = [
     ["math-edges", "backends/html5/test/fixtures/math-edges.ips"],
     ["math-bounds", "examples/language/math-bounds.ips"],
     ["asset-constants", "examples/language/asset-constants.ips"],
+    ["materials", "backends/html5/test/fixtures/materials.ips"],
+    ["material-tree", "examples/language/material-tree.ips"],
     ["collections", "examples/language/collections.ips"],
     ["round", "backends/html5/test/fixtures/round.ips"],
     ["ramp-large", "backends/html5/test/fixtures/ramp-large.ips"],
