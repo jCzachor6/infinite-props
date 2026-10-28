@@ -39,6 +39,8 @@ and [release preparation guide](docs/release-v0.8.md).
   importing assets, with an explicit 128 KiB budget and executable checks.
 - Optimization acceptance validates source-only material libraries separately
   from assets while retaining exact rejection, image and output comparisons.
+- SDK installation retains the verified, LF-normalized documentation on
+  Windows instead of overwriting it with CRLF source files.
 
 ### Website
 

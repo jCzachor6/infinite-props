@@ -2,6 +2,8 @@
 import copy
 import json
 import io
+import os
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -98,6 +100,67 @@ class DocumentationTest(unittest.TestCase):
         book.write_text(book.read_text() + "changed")
         with self.assertRaisesRegex(RuntimeError, "Documentation file changed"):
             docs.verify(self.output, "0.4.0")
+
+    def test_sdk_install_preserves_generated_documentation_from_crlf_sources(self):
+        # Exercise the real install rules with lightweight interface targets;
+        # documentation installation needs no compiler or native build.
+        source = Path(__file__).resolve().parents[2]
+        files = {
+            "backends/ResultQueries.hpp": "// fixture\n",
+            "runtime/iprop/Fixture.hpp": "// fixture\n",
+            "examples/showcase/readme-collection.png": "fixture image",
+            "examples/showcase/LICENSE.md": "# License\n",
+            "editor/README.md": "# Editor\n",
+            "website/README.md": "# Website\n",
+            "website/public/favicon.svg": "<svg/>\n",
+            "licenses/fixture.txt": "License\n",
+            "third_party/README.md": "# Third party\n",
+            "third_party/zlib-LICENSE.txt": "License\n",
+            "LICENSE": "License\n",
+            "README.md": "# SDK\n",
+            "spec/iprop-v0.4.md": "# Format\n",
+            "CHANGELOG.md": "# Changelog\n\n## v0.4.0\n\nRelease notes.\n",
+            "cmake/ipropConfig.cmake.in": "@PACKAGE_INIT@\n",
+            "cmake/ipropc.pc.in": "Name: iprop\n",
+        }
+        for backend in ("capi", "html5", "sfml", "godot", "apple", "unity", "android", "python"):
+            files[f"backends/{backend}/README.md"] = "# Backend\n"
+        for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py",
+                     "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp"):
+            files[f"backends/test/{name}"] = "\n"
+        for name, content in files.items():
+            file = self.root / name
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(content.replace("\n", "\r\n").encode("utf-8"))
+        # Distinguish checkout files from generated files even on file
+        # systems where CMake's copy timestamp comparison is coarse.
+        for file in self.root.rglob("*"):
+            if file.is_file():
+                os.utime(file, (1, 1))
+        with patch.object(docs, "contracts", return_value=LANGUAGE):
+            docs.build(Path("unused"), self.output, self.root)
+        (self.root / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.24)\n"
+            "project(iprop VERSION 0.4.0 LANGUAGES NONE)\n"
+            "set(CMAKE_INSTALL_LIBDIR lib)\n"
+            "include(GNUInstallDirs)\n"
+            f'include("{source.as_posix()}/cmake/CAbi.cmake")\n'
+            "foreach(target iprop_runtime iprop_capi iprop_capi_static ipc ipa ipgen ipval ipdis ipsheet)\n"
+            "  add_library(${target} INTERFACE)\n"
+            "endforeach()\n"
+            "set(Python3_Interpreter_FOUND TRUE)\n"
+            f'set(IPROP_LANGUAGE_DOCS_DIR "{self.output.as_posix()}")\n'
+            f'include("{source.as_posix()}/cmake/Install.cmake")\n',
+            encoding="utf-8", newline="\n")
+        build, prefix = self.output.parent / "build", self.output.parent / "installed"
+        for command in (["cmake", "-S", str(self.root), "-B", str(build)],
+                        ["cmake", "--install", str(build), "--prefix", str(prefix)]):
+            result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        installed = prefix / "share/iprop"
+        docs.verify(installed, "0.4.0")
+        self.assertEqual((installed / "CHANGELOG.md").read_bytes(),
+                         (self.output / "CHANGELOG.md").read_bytes())
 
     def test_compiler_description_cannot_use_another_product_version(self):
         value = {**LANGUAGE, "product_version": "0.3.0"}

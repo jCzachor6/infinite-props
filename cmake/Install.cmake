@@ -84,15 +84,18 @@ foreach(guide editor website)
     install(FILES ${guide}/README.md
         DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/${guide})
 endforeach()
-if(Python3_Interpreter_FOUND)
-    # Expanded chapters replace their authored directives in installed SDKs.
-    install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
-endif()
 install(FILES LICENSE README.md CHANGELOG.md DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
 install(FILES website/public/favicon.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/website/public)
 install(DIRECTORY licenses/ DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
 install(FILES third_party/README.md third_party/zlib-LICENSE.txt
     DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop/licenses)
+
+if(Python3_Interpreter_FOUND)
+    # Install the verified payload after all authored resources. Besides
+    # expanding directives, it normalizes CRLF sources to the manifest's LF
+    # bytes; no later source copy may overwrite those verified files.
+    install(DIRECTORY "${IPROP_LANGUAGE_DOCS_DIR}/" DESTINATION ${CMAKE_INSTALL_DATADIR}/iprop)
+endif()
 
 set(iprop_config_dir ${CMAKE_INSTALL_LIBDIR}/cmake/iprop)
 configure_package_config_file(cmake/ipropConfig.cmake.in
