@@ -531,20 +531,25 @@ code, kbd, pre { font-family: var(--font-mono); }
   image-rendering: crisp-edges;
 }
 
-/* The bloom, painted by home.ts on a canvas with 24 native pixels of room on
-   each side of the 96x96 sprite, laid over it as light. */
+/* Keep the halo behind its own sprite and above the surrounding stage. */
+.tile__canvas, .drop__sprite, .game-slot__sprite, .reel__sprite { isolation: isolate; }
+
+/* The bloom, painted by home.ts on a canvas with 48 native pixels of room on
+   each side of the 96x96 sprite, shines out from underneath it. */
 canvas.glow {
   position: absolute;
-  top: -25%;
-  left: -25%;
-  width: 150%;
+  z-index: -1;
+  top: -50%;
+  left: -50%;
+  width: 200%;
   max-width: none;
-  height: 150%;
+  height: 200%;
   image-rendering: auto;
   mix-blend-mode: screen;
   pointer-events: none;
 }
 canvas.glow[hidden] { display: none; }
+.drop__sprite canvas.glow--front { z-index: 1; opacity: calc(1 / 3); }
 
 /* Loot rarity, as an ARPG colours it: what the weapon actually rolled. */
 .rarity {
@@ -790,6 +795,7 @@ canvas.glow[hidden] { display: none; }
   flex: none;
   width: 8.5rem;
   aspect-ratio: 1;
+  overflow: hidden;
   border-radius: 6px;
   border-bottom: 4px solid var(--tier);
   background:
@@ -800,7 +806,8 @@ canvas.glow[hidden] { display: none; }
 .reel__item[data-tier="rare"] { --tier: #4da3ff; }
 .reel__item[data-tier="epic"] { --tier: #b77bff; }
 .reel__item[data-tier="legendary"] { --tier: #ff9f1a; }
-.reel__item canvas { width: 86%; height: 86%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.reel__sprite { position: relative; width: 86%; aspect-ratio: 1; }
+.reel__sprite canvas:not(.glow) { display: block; width: 100%; height: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
 .reel__marker {
   position: absolute;
   top: 0;
@@ -839,15 +846,15 @@ canvas.glow[hidden] { display: none; }
   padding: 1.5rem;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 176, 46, 0.5), rgba(255, 120, 20, 0.12) 38%, transparent 62%),
-    linear-gradient(160deg, #2a1606, #120a03 70%);
+    radial-gradient(circle at 50% 50%, rgba(255, 176, 46, 0.44), rgba(255, 120, 20, 0.1) 38%, transparent 62%),
+    linear-gradient(160deg, #241305, #100902 70%);
 }
 /* Slowly turning golden rays behind the weapon. */
 .drop__rays {
   position: absolute;
   inset: -60%;
   z-index: -1;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 196, 80, 0.2) 0deg 7deg, transparent 7deg 18deg);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 196, 80, 0.18) 0deg 7deg, transparent 7deg 18deg);
   -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 55%);
   mask-image: radial-gradient(circle, #000 18%, transparent 55%);
   animation: rays 24s linear infinite;
