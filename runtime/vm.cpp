@@ -25,6 +25,11 @@ Value zeroValue(ValueType type) {
     case ValueType::Stepper: return Value(StepperValue{type, {}});
     case ValueType::Layer: return Value(LayerValue{});
     case ValueType::Mask: return Value(MaskValue{});
+    case ValueType::Diagram2d: return Value(Diagram2dValue{});
+    case ValueType::Contours2d: return Value(Contours2dValue{});
+    case ValueType::Regions2d: return Value(Regions2dValue{});
+    case ValueType::Part2d: return Value(Part2dValue{});
+    case ValueType::Parts2d: return Value(Parts2dValue{});
     default: break;
     }
     return Value(i32{0});

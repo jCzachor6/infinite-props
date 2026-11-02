@@ -82,7 +82,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 4.0,
+      "value": 5.0,
       "accept": true,
       "schema": true
     },
@@ -116,7 +116,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 5,
+      "value": 6,
       "accept": false,
       "schema": false
     },
@@ -1656,6 +1656,142 @@
         "asset_constants"
       ],
       "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "earlier export without geometry handles",
+      "path": [
+        "source_rules",
+        "geometry_handles"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "invalid geometry types",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "types"
+      ],
+      "value": [
+        "diagram2d"
+      ],
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry descriptor_codes",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "descriptor_codes"
+      ],
+      "value": {
+        "diagram2d": 16,
+        "contours2d": 16,
+        "regions2d": 17,
+        "part2d": 18,
+        "parts2d": 19
+      },
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry maximum_sites",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "maximum_sites"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry maximum_ring_vertices",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "maximum_ring_vertices"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry host_inputs",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "host_inputs"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry asset_constants",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry collections",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "collections"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry type_names",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "type_names"
+      ],
+      "value": "reserved",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid geometry unassigned_read",
+      "path": [
+        "source_rules",
+        "geometry_handles",
+        "unassigned_read"
+      ],
+      "value": "zero",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "null geometry capability",
+      "path": [
+        "source_rules",
+        "geometry_handles"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "retired language schema 4",
+      "path": [
+        "schema_version"
+      ],
+      "value": 4,
       "accept": false,
       "schema": false
     }

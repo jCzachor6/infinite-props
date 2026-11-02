@@ -1,0 +1,19 @@
+// Stage 04 establishes types and ownership. Constructors arrive in the
+// following stages; these helpers deliberately do not invent empty handles.
+asset GeometryHandles {
+    size 1x1
+
+    keepDiagram(value: diagram2d) -> diagram2d {
+        diagram2d copy = value
+        return copy
+    }
+    keepContours(value: contours2d) -> contours2d { return value }
+    keepRegions(value: regions2d) -> regions2d { return value }
+    keepPart(value: part2d) -> part2d { return value }
+    keepParts(value: parts2d) -> parts2d { return value }
+
+    draw {
+        diagram2d = 1
+        pixel(0, 0, #112233)
+    }
+}

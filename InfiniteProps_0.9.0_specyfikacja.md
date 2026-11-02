@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–03 zakończone; rozszerzenia noise i bezpośrednie maski wdrożone i sprawdzone natywnie oraz w WASM. Następny etap: 04 (wspólna geometria, typy VM i zasoby).
+**Status:** etapy 00–04 zakończone; noise, bezpośrednie maski oraz wspólny rdzeń geometrii i uchwyty VM sprawdzone natywnie oraz w WASM. Następny etap: 05 (Voronoi i rozmieszczenie sites).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -527,16 +527,16 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 01; wykonywany po 03.
 
-- [ ] 04.1 Dodać pięć typów uchwytów z obsługą lokalnych i helperów oraz odrzuceniem niedozwolonych kontenerów, inputs i stałych.
-- [ ] 04.2 Wprowadzić współdzielone punkty/krawędzie/obwody/dziury i pochodzenie; cache metadanych bez osobnych kopii geometrii dla każdego publicznego typu.
-- [ ] 04.3 Objąć limiterem pamięć zasobów, kontenerów i pracy tymczasowej, także zależności zewnętrznych; przypiąć wykorzystane źródła/licencje i nie dodawać niepotrzebnych bibliotek.
-- [ ] 04.4 Zintegrować typowanie i walidator, brak przypisania, scope i zwalnianie; sprawdzić konflikty namespace/importów bez zbędnego rezerwowania zwykłych nazw lokalnych.
-- [ ] 04.5 Przetestować przekroczenia limitów, wycofanie nieudanego tworzenia, zwalnianie po ostatniej referencji i brak wycieków po trapach; utrwalić techniczny kontrakt geometrii.
-- [ ] **Etap 04 zakończony.**
+- [x] 04.1 Dodać pięć typów uchwytów z obsługą lokalnych i helperów oraz odrzuceniem niedozwolonych kontenerów, inputs i stałych.
+- [x] 04.2 Wprowadzić współdzielone punkty/krawędzie/obwody/dziury i pochodzenie; cache metadanych bez osobnych kopii geometrii dla każdego publicznego typu.
+- [x] 04.3 Objąć limiterem pamięć zasobów, kontenerów i pracy tymczasowej, także zależności zewnętrznych; przypiąć wykorzystane źródła/licencje i nie dodawać niepotrzebnych bibliotek.
+- [x] 04.4 Zintegrować typowanie i walidator, brak przypisania, scope i zwalnianie; sprawdzić konflikty namespace/importów bez zbędnego rezerwowania zwykłych nazw lokalnych.
+- [x] 04.5 Przetestować przekroczenia limitów, wycofanie nieudanego tworzenia, zwalnianie po ostatniej referencji i brak wycieków po trapach; utrwalić techniczny kontrakt geometrii.
+- [x] **Etap 04 zakończony.**
 
 **Odbiór:** ograniczony pamięciowo wspólny rdzeń, działające uchwyty VM, bez ogólnego systemu struktur/list i bez naruszenia starszego kodowania.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja (2026-11-02):** [kontrakt rdzenia](spec/geometry-core-v0.9.md), [wektory topologii i metadanych](tests/fixtures/geometry-v0.9.json), [raport](spec/verification/geometry-core-v0.9.json), [przykład typowanych helperów](examples/language/geometry-handles.ips). Świeże buildy Release poza iCloud: 76/76 CTest, 11 testów geometrii / 3011 asercji, Node 10/10; pełny native/WASM PASS. Nowa bramka sprawdza pięć różnych uchwytów, trzy niezależne topologie, bity metadanych, dokładne progi pamięci/fuel, 60 generacji, 35 odrzuceń bytecode, pięć trapów i 25 błędów kompilacji. Sprawdzone maksima 256 sites/regionów, 2048/65536 wierzchołków, rzeczywiste zapełnienie wspólnego limitu 64 MiB, 244 błędy alokacji w czterech ścieżkach, pamięć tymczasowa i pojemności, ostatnia referencja, zachowanie po zniszczeniu wykonania, współdzielenie rastra oraz płaskie pochodzenie kolejnych operacji. Odczyt niezainicjalizowanego uchwytu pozostaje trapem również po optymalizacji nieużywanego przypisania. Nowe nazwy typów są kontekstowe; istniejące nazwy lokalne, helpery i importy pozostają dostępne. Utrzymano stare ID/kodowanie i 42 wcześniejsze wzorce; runtime 0.8 i etap 03 odrzucają wszystkie 15 nowych programów testowych, również martwe i skompresowane. Eksport opisu języka przechodzi na schemat 5 z udokumentowaną migracją zamkniętego katalogu typów (193 mutacje / 152 przypadki CLI); handbook: 86 builtinów / 152 przykłady. Pakietowy runtime działa bez wewnętrznych programów testowych. Algorytmy i publiczne konstruktory pozostają w etapach 05–09, eksport hosta w 10, pełna taryfa w 13. Potwierdzenie commit/push i SHA w raporcie dostarczenia zgodnie z §8.
 
 ### Etap 05 — Voronoi i rozmieszczenie sites
 

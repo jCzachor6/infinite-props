@@ -11,6 +11,7 @@
 #include "iprop/Collections.hpp"
 #include "iprop/Samplers.hpp"
 #include "iprop/Noise.hpp"
+#include "iprop/Geometry.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -70,7 +71,8 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::I32)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
-    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask,
+    ips::ValueType::Diagram2d, ips::ValueType::Contours2d, ips::ValueType::Regions2d, ips::ValueType::Part2d, ips::ValueType::Parts2d};
 
 Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signature) {
     Json parameters = Json::array();
@@ -235,6 +237,16 @@ Json sourceRules() {
         components(ips::ValueType::Color, ips::ValueType::I32,
                    {{"r", Opcode::ColorR}, {"g", Opcode::ColorG}, {"b", Opcode::ColorB}, {"a", Opcode::ColorA}})});
     auto rules = Json::object({{"inputs", std::move(inputs)}, {"types", std::move(typeRules)}});
+    Json geometryCodes = Json::object();
+    for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d, ValueType::Part2d, ValueType::Parts2d})
+        geometryCodes[valueTypeName(type)] = static_cast<u8>(type);
+    rules["geometry_handles"] = Json::object({{"types", types([](ips::ValueType type) { return type.isGeometry(); })},
+        {"descriptor_codes", std::move(geometryCodes)}, {"type_names", "contextual"},
+        {"storage", "shared_immutable_topology"}, {"unassigned_read", "trap"},
+        {"host_inputs", false}, {"asset_constants", false}, {"collections", false},
+        {"generation_data_limit_bytes", kMaxGenerationData}, {"maximum_sites", kMaxGeometrySites},
+        {"maximum_regions", kMaxGeometryRegions}, {"maximum_ring_vertices", kMaxRingVertices},
+        {"maximum_vertices", kMaxGeometryVertices}});
     // Fixed rules of the current compiler, in their published order.
     rules["locals"] = Json::object({{"declaration", "first_assignment"}, {"scope", "function"},
         {"type_inference_order", "source_traversal"}, {"definite_assignment_analysis", false},

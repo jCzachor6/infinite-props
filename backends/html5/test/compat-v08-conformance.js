@@ -147,7 +147,18 @@ function run(iprop, tool, directory) {
             const match = actual.overloads.find(o => JSON.stringify(o.parameters) === JSON.stringify(overload.parameters));
             assert.deepEqual(match, overload, "changed 0.8 overload " + builtin.name);
         }
-        if (builtin.variadic) assert.deepEqual(actual.variadic, builtin.variadic, builtin.name);
+        if (builtin.variadic) {
+            const projected={...actual.variadic};
+            if (builtin.variadic.choice_types) {
+                // New storable handles extend the accepted choices. Freeze
+                // every legacy type and rule exactly, and permit only these
+                // explicit append-only additions without rewriting the pins.
+                const additions=["diagram2d","contours2d","regions2d","part2d","parts2d"];
+                assert.deepEqual(projected.choice_types,[...builtin.variadic.choice_types,...additions],builtin.name+" append-only choice types");
+                projected.choice_types=projected.choice_types.slice(0,builtin.variadic.choice_types.length);
+            }
+            assert.deepEqual(projected, builtin.variadic, builtin.name);
+        }
     }
     for (const [i, vector] of fixture.noise_vectors.entries())
         assert.equal(fixture.programs[0].generations[0].result.outputs[0].values[i].x, vector.expected_bits);

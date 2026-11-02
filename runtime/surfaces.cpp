@@ -17,6 +17,11 @@ RenderTarget RenderTarget::create(std::shared_ptr<SurfaceBuffer> buffer,
 
 ResourceArena::~ResourceArena() { clear(); }
 
+std::shared_ptr<ResourceArena::SurfaceLifetime> ResourceArena::resourceLifetime() {
+    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes, {}});
+    return surfaceLifetime;
+}
+
 void ResourceArena::clear() {
     if (surfaceLifetime) surfaceLifetime->bytes = nullptr;
     surfaceLifetime.reset();
@@ -33,7 +38,7 @@ std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
         u64 bytes;
         ~Refund() { arena.release(bytes); }
     } refund{*this, chargedBytes};
-    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes});
+    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes, {}});
     const std::weak_ptr<SurfaceLifetime> lifetime = surfaceLifetime;
     auto* raw = new SurfaceBuffer;
     refund.bytes = 0; // shared_ptr invokes the deleter if its control allocation fails

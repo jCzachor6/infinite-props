@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 4,
+      "const": 5,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -111,7 +111,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -151,7 +156,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -191,7 +201,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -3267,6 +3282,144 @@
             "format_change"
           ],
           "additionalProperties": true
+        },
+        "geometry_handles": {
+          "type": "object",
+          "properties": {
+            "types": {
+              "type": "array",
+              "const": [
+                "diagram2d",
+                "contours2d",
+                "regions2d",
+                "part2d",
+                "parts2d"
+              ],
+              "description": "Distinct geometry and dynamic-part handle types in descriptor order.",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
+                ],
+                "description": "One distinct immutable VM handle type."
+              }
+            },
+            "descriptor_codes": {
+              "type": "object",
+              "properties": {
+                "diagram2d": {
+                  "type": "integer",
+                  "const": 15,
+                  "description": "Stable descriptor kind for diagram2d."
+                },
+                "contours2d": {
+                  "type": "integer",
+                  "const": 16,
+                  "description": "Stable descriptor kind for contours2d."
+                },
+                "regions2d": {
+                  "type": "integer",
+                  "const": 17,
+                  "description": "Stable descriptor kind for regions2d."
+                },
+                "part2d": {
+                  "type": "integer",
+                  "const": 18,
+                  "description": "Stable descriptor kind for part2d."
+                },
+                "parts2d": {
+                  "type": "integer",
+                  "const": 19,
+                  "description": "Stable descriptor kind for parts2d."
+                }
+              },
+              "required": [
+                "diagram2d",
+                "contours2d",
+                "regions2d",
+                "part2d",
+                "parts2d"
+              ],
+              "additionalProperties": true,
+              "description": "Append-only kind codes in the existing types section."
+            },
+            "type_names": {
+              "type": "string",
+              "const": "contextual",
+              "description": "Geometry type spellings are contextual and remain ordinary identifiers elsewhere."
+            },
+            "storage": {
+              "type": "string",
+              "const": "shared_immutable_topology",
+              "description": "Immutable shared topology and source buffers."
+            },
+            "unassigned_read": {
+              "type": "string",
+              "const": "trap",
+              "description": "A local read of a null geometry handle traps."
+            },
+            "host_inputs": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether host inputs can contain geometry handles."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether asset constants can contain geometry handles."
+            },
+            "collections": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether generic list, sampler, stepper or palette elements can contain geometry handles."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Shared generation allocation limit in bytes."
+            },
+            "maximum_sites": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum diagram site count."
+            },
+            "maximum_regions": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum result region count."
+            },
+            "maximum_ring_vertices": {
+              "type": "integer",
+              "const": 2048,
+              "description": "Maximum directed vertices in one ring, including a hole."
+            },
+            "maximum_vertices": {
+              "type": "integer",
+              "const": 65536,
+              "description": "Maximum directed vertices in a complete result, including holes."
+            }
+          },
+          "required": [
+            "types",
+            "descriptor_codes",
+            "type_names",
+            "storage",
+            "unassigned_read",
+            "host_inputs",
+            "asset_constants",
+            "collections",
+            "generation_data_limit_bytes",
+            "maximum_sites",
+            "maximum_regions",
+            "maximum_ring_vertices",
+            "maximum_vertices"
+          ],
+          "additionalProperties": true,
+          "description": "Optional 0.9 geometry handle contract; previous exports may omit it."
         }
       },
       "required": [
@@ -3470,9 +3623,9 @@
     "builtins"
   ],
   "additionalProperties": true,
-  "description": "Language export schema 4: explicit asset inputs, typed constants, immutable collections and independent product, source-language, C API and ABI contracts.",
+  "description": "Language export schema 5: explicit asset inputs, typed constants, immutable collections and independent product, source-language, C API and ABI contracts. Includes opaque geometry and dynamic-part handle types.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "infinite-props language-description schema 4",
+  "title": "infinite-props language-description schema 5",
   "$defs": {
     "version": {
       "type": "object",
@@ -3608,7 +3761,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -3667,7 +3825,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -3775,7 +3938,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -3845,7 +4013,12 @@
               "list<stepper<i32>>",
               "list<stepper<f32>>",
               "list<stepper<color>>",
-              "list<stepper<vec2>>"
+              "list<stepper<vec2>>",
+              "diagram2d",
+              "contours2d",
+              "regions2d",
+              "part2d",
+              "parts2d"
             ],
             "description": "Allowed value types for every eager choice."
           },

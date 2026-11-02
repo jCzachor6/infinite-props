@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "ips/ParserDetail.hpp"
+#include "ips/Types.hpp"
 
 namespace iprop::ips {
 namespace detail {
@@ -133,9 +134,10 @@ bool ParserImpl::recoveryStart(RecoveryScope scope) const {
     case TokenKind::TypeDistribution:
         return true;
     default:
-        return isNameKind(kind()) &&
+        return (kind() == TokenKind::Identifier && geometryType(peek().text) && isNameKind(kind(1))) ||
+               (isNameKind(kind()) &&
                (kind(1) == TokenKind::Assign || kind(1) == TokenKind::LParen ||
-                kind(1) == TokenKind::Dot);
+                kind(1) == TokenKind::Dot));
     }
 }
 
@@ -476,11 +478,15 @@ Function ParserImpl::parseFunctionAfterName(const Token& name) {
 }
 
 ParamType ParserImpl::parseParamType(bool insideList) {
+    if (kind() == TokenKind::Identifier) {
+        if (const auto type = geometryType(peek().text)) { advance(); return *type; }
+    }
     if (kind() == TokenKind::KeywordList && kind(1) == TokenKind::Less) {
         advance(); advance();
         if (kind() == TokenKind::KeywordList) failHere("nested lists are not supported");
         const auto item = parseParamType(true);
-        if (!item.isScalar() && !item.isDescription()) failHere("lists of surfaces are not supported");
+        if (!item.isScalar() && !item.isDescription())
+            failHere(item.isGeometry() ? "lists of geometry handles are not supported" : "lists of surfaces are not supported");
         if (listTypeClosed_) listTypeClosed_ = false;
         else expect(TokenKind::Greater, "'>' after list element type");
         return ParamType::list(item);
@@ -523,7 +529,7 @@ ParamType ParserImpl::parseParamType(bool insideList) {
         advance();
         return ParamType::Mask;
     default:
-        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, stepper<T>, layer or mask)");
+        failExpected("a parameter type (i32, f32, color, vec2, distribution, list<T>, sampler<T>, stepper<T>, layer, mask, diagram2d, contours2d, regions2d, part2d or parts2d)");
     }
 }
 
@@ -594,6 +600,12 @@ Stmt ParserImpl::parseStatement() {
 
 Stmt ParserImpl::parseIdentifierStatement() {
     const auto start = pos_;
+    if (kind() == TokenKind::Identifier && geometryType(peek().text) && isNameKind(kind(1))) {
+        const auto type = parseParamType();
+        const auto local = expectName("a local geometry handle name");
+        expect(TokenKind::Assign, "'=' after local geometry handle name");
+        return Stmt{VarDecl{local.text, parseExpr(), local.location, type}};
+    }
     if (kind() == TokenKind::KeywordMask) {
         const auto at = peek().location;
         if (kind(1) == TokenKind::Dot)
@@ -607,7 +619,9 @@ Stmt ParserImpl::parseIdentifierStatement() {
          kind() == TokenKind::KeywordSampler || kind() == TokenKind::KeywordStepper) && kind(1) == TokenKind::Less &&
         (kind(2) == TokenKind::TypeI32 || kind(2) == TokenKind::TypeF32 ||
          kind(2) == TokenKind::TypeColor || kind(2) == TokenKind::TypeVec2 ||
-         kind(2) == TokenKind::TypeDistribution || kind(2) == TokenKind::KeywordSampler || kind(2) == TokenKind::KeywordStepper)) {
+         kind(2) == TokenKind::TypeDistribution || kind(2) == TokenKind::KeywordSampler || kind(2) == TokenKind::KeywordStepper ||
+         kind(2) == TokenKind::KeywordLayer || kind(2) == TokenKind::KeywordMask ||
+         (kind(2) == TokenKind::Identifier && geometryType(peek(2).text)))) {
         const auto type = parseParamType();
         const auto local = expectName("a local list name");
         expect(TokenKind::Assign, "'=' after local list name");

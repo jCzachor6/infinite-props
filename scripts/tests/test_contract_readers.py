@@ -19,7 +19,7 @@ class ContractReaderTest(unittest.TestCase):
                          if value['type'] == 'array' else value['enum'][0])
                     for key, value in properties.items()}
         catalog = copy.deepcopy(LANGUAGE)
-        self.assertIs(read_language(catalog), catalog)  # Older schema 4 has no materials object.
+        self.assertIs(read_language(catalog), catalog)  # A profile may omit the materials capability.
         catalog['source_rules']['materials'] = material
         self.assertIs(read_language(catalog), catalog)
         catalog['source_rules']['materials'] = {**material, 'future_addition': {'unknown': True}}

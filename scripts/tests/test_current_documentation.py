@@ -51,6 +51,10 @@ class CurrentDocumentationTest(unittest.TestCase):
         for name in ("List", "Sampler", "Layer", "Mask", "Stepper"):
             with self.subTest(descriptor=name):
                 self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", self.spec)
+        geometry = (ROOT / "spec/geometry-core-v0.9.md").read_text(encoding="utf-8")
+        for name in ("Diagram2d", "Contours2d", "Regions2d", "Part2d", "Parts2d"):
+            with self.subTest(descriptor=name):
+                self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", geometry)
 
     def test_specification_is_self_contained_and_numbered_references_resolve(self):
         # The released product line freezes its specification (release preflight).

@@ -44,6 +44,8 @@ def main():
     storable_types = constant_types + sampler_types + ['list<' + name + '>' for name in sampler_types] + stepper_types + ['list<' + name + '>' for name in stepper_types]
     constant_types = storable_types.copy()
     storable_types += ['layer', 'mask']
+    geometry_types = ['diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d']
+    storable_types += geometry_types
     assert rules['inputs'] == [
         {'source_type': 'color', 'binary_type': 'color', 'value_type': 'color'},
         {'source_type': 'f32', 'binary_type': 'f32', 'value_type': 'f32'},
@@ -53,6 +55,9 @@ def main():
         assert rules['types'][field] == storable_types
     assert rules['types']['output_only_geometry'] == ['circle', 'rect']
     assert rules['types']['point_value_type'] == 'vec2'
+    assert rules['geometry_handles']['types'] == geometry_types
+    assert rules['geometry_handles']['descriptor_codes'] == dict(zip(geometry_types, range(15, 20)))
+    assert not set(geometry_types) & set(rules['reserved_keywords'])
     assert rules['resource_exports']['types'] == ['mask', 'layer']
     assert rules['resource_exports']['table'] == 'separate_from_host_geometry'
     assert rules['resource_exports']['buffer_release'] == 'last_handle'
@@ -114,6 +119,10 @@ def main():
     assert rules['masks']['maximum_radius'] == 64
     assert rules['masks']['part_clip'] == 'parent_applies_to_blit_once'
     cases = [
+        *[(name+' helper and contextual local', 'keep(v:'+name+')->'+name+'{'+name+' copy=v return choose(seed,copy,copy)}draw{'+name+'=1}', True) for name in geometry_types],
+        *[(name+' list rejected', 'keep(v:list<'+name+'>){}draw{}', False) for name in geometry_types],
+        *[(name+' input rejected', 'input '+name+' v=0 draw{}', False) for name in geometry_types],
+        *[(name+' constant rejected', 'const '+name+' v=0 draw{}', False) for name in geometry_types],
         ('layer blur and helper chain', 'echo(x:layer)->layer{return x.blur(0)} draw{layer image{}surface.paint(echo(image).blur(sigma=2))}', True),
         ('mask blur and widening', 'draw{layer image{}m=mask.from(image).blur(2);surface.paint(m,#fff)}', True),
         ('blur ordinary helper name', 'blur(x:i32)->i32{return x} draw{blur=blur(2)}', True),

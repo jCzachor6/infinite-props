@@ -23,6 +23,13 @@ std::optional<i32> builtinConstant(const Expr& expression) {
 
 const char* typeName(ValueType type) { return iprop::valueTypeName(type); }
 
+std::optional<ValueType> geometryType(std::string_view name) {
+    for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d,
+                            ValueType::Part2d, ValueType::Parts2d})
+        if (name == typeName(type)) return type;
+    return std::nullopt;
+}
+
 std::optional<unsigned> colorChannel(std::string_view member) {
     constexpr std::string_view names[] = {"r", "g", "b", "a"};
     for (unsigned i = 0; i < 4; ++i)

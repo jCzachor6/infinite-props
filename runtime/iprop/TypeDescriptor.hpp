@@ -12,10 +12,12 @@ struct TypeDescriptor {
         I32 = 0, F32 = 1, Color = 2, Vec2 = 3, Distribution = 4,
         List = 5, Rect = 6, Circle = 7, Void = 8, Builder = 9, Sampler = 10, PointBuilder = 11, Layer = 12, Mask = 13,
         Stepper = 14,
+        Diagram2d = 15, Contours2d = 16, Regions2d = 17, Part2d = 18, Parts2d = 19,
     };
     static const TypeDescriptor I32, F32, Color, Vec2, Distribution;
     static const TypeDescriptor List, Rect, Circle, Void, Builder, Sampler, PointBuilder;
     static const TypeDescriptor Layer, Mask, Stepper;
+    static const TypeDescriptor Diagram2d, Contours2d, Regions2d, Part2d, Parts2d;
     Kind kind = Kind::I32;
     Kind element = Kind::Void;
     // Lists may contain sampler<T> or stepper<T> descriptions, but no lists
@@ -39,8 +41,10 @@ struct TypeDescriptor {
     constexpr bool isDescription() const { return isSampler() || isStepper(); }
     constexpr bool isParameterized() const { return isList() || isDescription(); }
     constexpr bool isResource() const {
-        return (kind == Kind::Layer || kind == Kind::Mask) && element == Kind::Void && parameter == Kind::Void;
+        return (kind == Kind::Layer || kind == Kind::Mask || isGeometry()) &&
+            element == Kind::Void && parameter == Kind::Void;
     }
+    constexpr bool isGeometry() const { return kind >= Kind::Diagram2d && kind <= Kind::Parts2d; }
     constexpr bool needsDescriptor() const { return isParameterized() || isResource(); }
     constexpr bool isScalar() const { return kind <= Kind::Distribution && element == Kind::Void && parameter == Kind::Void; }
     constexpr bool isStorable() const {
@@ -70,6 +74,11 @@ inline constexpr TypeDescriptor TypeDescriptor::PointBuilder{Kind::PointBuilder}
 inline constexpr TypeDescriptor TypeDescriptor::Layer{Kind::Layer};
 inline constexpr TypeDescriptor TypeDescriptor::Mask{Kind::Mask};
 inline constexpr TypeDescriptor TypeDescriptor::Stepper{Kind::Stepper};
+inline constexpr TypeDescriptor TypeDescriptor::Diagram2d{Kind::Diagram2d};
+inline constexpr TypeDescriptor TypeDescriptor::Contours2d{Kind::Contours2d};
+inline constexpr TypeDescriptor TypeDescriptor::Regions2d{Kind::Regions2d};
+inline constexpr TypeDescriptor TypeDescriptor::Part2d{Kind::Part2d};
+inline constexpr TypeDescriptor TypeDescriptor::Parts2d{Kind::Parts2d};
 
 using ValueType = TypeDescriptor;
 const char* valueTypeName(TypeDescriptor type);

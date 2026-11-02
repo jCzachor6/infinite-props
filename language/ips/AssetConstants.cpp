@@ -109,7 +109,8 @@ public:
                 }
             } else {
                 if (current_->type.isResource())
-                    fail(current_->location, "surface handles depend on generation and cannot be const");
+                    fail(current_->location, current_->type.isGeometry() ? "geometry handles depend on generation and cannot be const" :
+                        "surface handles depend on generation and cannot be const");
                 inspect(*current_->value, dependencies[i]);
             }
             pending[i] = dependencies[i].size();

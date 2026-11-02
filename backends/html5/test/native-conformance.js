@@ -122,7 +122,7 @@ function wasmOutputBits(outputs) {
     });
 }
 
-function run(iprop, toolsDir) {
+function run(iprop, toolsDir, geometryProbes = {}) {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-conformance-"));
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
@@ -137,7 +137,7 @@ function run(iprop, toolsDir) {
     let listMethodEvidence = {};
     let samplerEvidence = {};
     let stepperEvidence = {};
-    let blurEvidence = {}, compatibilityV08 = {}, noiseV09 = {}, noiseMaskV09 = {};
+    let blurEvidence = {}, compatibilityV08 = {}, noiseV09 = {}, noiseMaskV09 = {}, geometryV09 = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
     const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
@@ -472,12 +472,13 @@ function run(iprop, toolsDir) {
         compatibilityV08 = require("./compat-v08-conformance.js").run(iprop, tool, temporary);
         noiseV09 = require("./noise-v09-conformance.js").run(iprop, tool, temporary);
         noiseMaskV09 = require("./noise-mask-conformance.js").run(iprop, tool, temporary);
+        geometryV09 = require("./geometry-v09-conformance.js").run(iprop, tool, temporary, geometryProbes);
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         vectorOverloads, colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
-        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence, compatibilityV08, noiseV09, noiseMaskV09 };
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence, compatibilityV08, noiseV09, noiseMaskV09, geometryV09 };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

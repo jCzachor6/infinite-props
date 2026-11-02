@@ -16,6 +16,8 @@ namespace iprop::ips {
 using ValueType = iprop::TypeDescriptor;
 
 const char* typeName(ValueType type);
+// Contextual type spellings remain ordinary identifiers outside declarations.
+std::optional<ValueType> geometryType(std::string_view name);
 
 bool isNumeric(ValueType type);
 

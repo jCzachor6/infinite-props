@@ -8,10 +8,12 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 4
+LANGUAGE_SCHEMA_VERSION = 5
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
+GEOMETRY_TYPES = {'diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d'}
+VALUE_TYPES |= GEOMETRY_TYPES
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
@@ -197,7 +199,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
@@ -395,6 +397,23 @@ def read_language(value):
         require(len(operators) == 8 and all(o['result'] == 'mask' and
             o['effects']['rng'] == 'none' and 'unassigned_handle' in o['effects']['may_trap'] and
             not o['constant_evaluable'] for b in operators for o in b['overloads']), 'mask operator effects')
+    if 'geometry_handles' in rules:
+        geometry = rules['geometry_handles']
+        _strings_and_bools(geometry, {'type_names': {'contextual'}, 'storage': {'shared_immutable_topology'},
+            'unassigned_read': {'trap'}}, ['host_inputs', 'asset_constants', 'collections'], 'geometry handle policy')
+        require(not any(geometry[k] for k in ['host_inputs', 'asset_constants', 'collections']), 'geometry restrictions')
+        names = ['diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d']
+        require(geometry.get('types') == names, 'geometry types')
+        codes = obj(geometry.get('descriptor_codes'), names, 'geometry descriptor codes')
+        for i, name in enumerate(names, 15):
+            integer(codes[name], 'geometry descriptor code')
+            require(codes[name] == i, 'geometry descriptor code')
+        for key, expected in [('generation_data_limit_bytes', 67108864), ('maximum_sites', 256),
+                ('maximum_regions', 256), ('maximum_ring_vertices', 2048), ('maximum_vertices', 65536)]:
+            integer(geometry.get(key), 'geometry ' + key)
+            require(geometry[key] == expected, 'geometry limit')
+        require(all(set(names) <= set(types[key]) for key in ['storable', 'helper_parameters', 'helper_value_returns']), 'geometry storage and transfer')
+        require(not set(names) & set(constants['types']), 'geometry const prohibition')
     if 'noise_mask' in rules:
         noise = rules['noise_mask']
         _strings_and_bools(noise, {

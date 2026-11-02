@@ -2,7 +2,8 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 4`, which removes implicit draw controls. Schema 3 added typed
+`schema_version: 5`, which adds geometry and dynamic-part handle types to the
+closed type vocabulary. Schema 4 removed implicit draw controls. Schema 3 added typed
 asset declarations and intrinsic `constant_evaluable` flags. Schema 2 removed the
 schema 1 emoji aliases. Consumers require the supported schema version and
 ignore unknown additive fields within it, while rejecting retired draw-control metadata.
@@ -27,10 +28,21 @@ The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities.
 See [the ABI policy](c-api-abi.md).
 
-Schema 4 describes the constant policy, parameterized lists, samplers/steppers,
+Schema 5 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
 Source language 0.8 adds the optional `materials` object without changing
 schema 4. See [0.8 migration](language/migration-v0.8.md).
+
+## Migrating schema 4 to 5
+
+Require schema 5 and add `diagram2d`, `contours2d`, `regions2d`, `part2d` and
+`parts2d` to value-type readers and renderers. These names appear in storable,
+helper and variadic choice type arrays. They denote opaque immutable generation
+resources, and cannot be host inputs, constants, palette elements or generic
+list/sampler/stepper elements. Read optional `source_rules.geometry_handles`
+for descriptor codes and limits. Keep product, language, C API/ABI and diagnostic
+version handling independent; existing binary type/opcode IDs remain unchanged.
+All older description protocol versions are rejected by the current reader.
 
 Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `c_api_version` and
@@ -51,6 +63,7 @@ identified by `source_type`.
 | `inputs[].binary_type` | Metadata/host override type in the emitted binary; both source integer types use `u32` bit patterns. |
 | `inputs[].value_type` | Type visible to expressions; both integer input types are interpreted as `i32`. |
 | `types.storable` | Types admitted in local slots. |
+| `geometry_handles` | Optional schema-5 capability: five contextual handle types, descriptor codes, ownership, unassigned reads, storage restrictions and geometry/memory limits. |
 | `types.parameterized` | Supported list/sampler/stepper constructors, element types and immutable arena ownership. Lists of sampler and stepper descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `materials` | Optional since 0.8.0: contextual declarations in separate files, alias qualification, private declarations, required color base, scalar field types, earlier-field reads, named overrides, field-order construction and atomic replacement. Records nominal helper parameters, zero-RNG copies, unsupported storage/host boundaries, standalone checks/formatting and scalar lowering with no format change. |

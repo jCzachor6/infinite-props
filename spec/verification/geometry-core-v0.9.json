@@ -1,0 +1,700 @@
+{
+  "schema_version": 1,
+  "stage": "04",
+  "date": "2026-11-02",
+  "base_commit": "717cf6afbc7e3224cdc47a18a9cfab24d8ec9021",
+  "branch": "develop",
+  "scope": "Shared immutable geometry, five VM handles, deterministic capacities and resource ownership; no public constructor/render/export operation added.",
+  "toolchain": {
+    "native": "Apple clang version 21.0.0 (clang-2100.0.123.102)",
+    "architecture": "arm64",
+    "emscripten": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.10-git",
+    "configuration": "Release",
+    "floating_point": "FMA disabled; no fast math",
+    "warnings": "warnings as errors",
+    "native_build": "/private/tmp/iprop-v09-stage04-native",
+    "wasm_build": "/private/tmp/iprop-v09-stage04-wasm"
+  },
+  "native": {
+    "ctest": {
+      "passed": 76,
+      "failed": 0,
+      "seconds": 34.2,
+      "log": "geometry-core-v0.9-ctest.txt"
+    },
+    "geometry": {
+      "cases": 11,
+      "assertions": 3011,
+      "passed": true
+    },
+    "allocation_failures": {
+      "injected": 244,
+      "construction_paths": 4,
+      "transient_and_persistent": true,
+      "zero_live_heap_and_quota_leaks": true,
+      "metadata_reads_allocate": false
+    }
+  },
+  "native_wasm": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      },
+      "geometryV09": {
+        "passed": true,
+        "types": 5,
+        "vectors": 3,
+        "generations": 60,
+        "rejections": 35,
+        "traps": 5,
+        "compilerErrors": 25,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "reference_shapes": {
+    "fixture": "tests/fixtures/geometry-v0.9.json",
+    "independent_reference": "backends/html5/test/geometry-v09-conformance.js reference()",
+    "retained_bytes": [
+      1368,
+      1796,
+      968
+    ],
+    "peak_bytes": [
+      1757,
+      2211,
+      1336
+    ],
+    "fuel": [
+      218,
+      395,
+      77
+    ],
+    "handles_and_sources_bytes": 1800,
+    "covers": [
+      "single shared edge with opposite orientations",
+      "hole and nested island",
+      "negative fractional triangle",
+      "f32 area, centroid, bounds",
+      "provenance and sorted adjacency",
+      "exact fuel and quota boundaries",
+      "helper transfer of all five real handle alternatives on native and WASM"
+    ]
+  },
+  "node": {
+    "passed": 10,
+    "failed": 0
+  },
+  "export_contracts": {
+    "language_schema_version": 5,
+    "diagnostic_schema_version": 1,
+    "documentation_schema_version": 3,
+    "mutations": 193,
+    "real_cli_cases": 152,
+    "passed": true,
+    "migration": "docs/language-description.md#migrating-schema-4-to-5",
+    "schema_4_rejected": true,
+    "formal_json_schema_engine": {
+      "status": "not_run",
+      "reason": "The optional CI jsonschema dependency is not installed locally. Stdlib protocol readers, all emitted-field schema documentation coverage, mutation checks and real CLI cases passed."
+    }
+  },
+  "packaged_runtime_smoke": {
+    "scope": "packaged public runtime, no internal test executables",
+    "passed": true,
+    "types": 5,
+    "vectors": 3,
+    "generations": 60,
+    "rejections": 35,
+    "traps": 5,
+    "compilerErrors": 25,
+    "nativeRepresentation": false,
+    "wasmRepresentation": false,
+    "wasm": true
+  },
+  "archived_runtime_rejections": {
+    "archives": {
+      "0.8": {
+        "path": "/private/tmp/iprop-v09-stage01-native/tools/ipval",
+        "sha256": "211bb46269032354bd1ad15330043e99c109f744570aab2db43bac1a37ab4994"
+      },
+      "stage03": {
+        "path": "/private/tmp/iprop-v09-stage03-native/tools/ipval",
+        "sha256": "98a01c6ce398a5980001ea45690ea0676b653cb0affce9e1cd21ba570f84d211"
+      }
+    },
+    "programs": [
+      {
+        "name": "diagram2d-dead",
+        "sha256": "ffe4d3a5685f0de3558c3d3a9bcd8a32e4be70d7bb9fb813f9b098c01d9ab98a",
+        "current_valid": true
+      },
+      {
+        "name": "diagram2d-live",
+        "sha256": "ca48910bfaf5d1b5277ed017a85a5442b892427ce099a9e11fd3ca714cfe94c5",
+        "current_valid": true
+      },
+      {
+        "name": "diagram2d-compressed-dead",
+        "sha256": "819e4f1a65934c6e46e403274a6464151c3cc1c25d420f5441f35ae9904a0f0e",
+        "current_valid": true
+      },
+      {
+        "name": "contours2d-dead",
+        "sha256": "e102dfb83808cc9dfd0e36ebc39af20e948bba861ffb2d6916fe24639b70f359",
+        "current_valid": true
+      },
+      {
+        "name": "contours2d-live",
+        "sha256": "0215716d7569b23fadfe5e4b67f4b631083899dfa6a0a4b745ebb82512ef1340",
+        "current_valid": true
+      },
+      {
+        "name": "contours2d-compressed-dead",
+        "sha256": "7b4633bc3b03c000de7a9e1d2722055cf1b86eab24b0698eb91c9795d1e29904",
+        "current_valid": true
+      },
+      {
+        "name": "regions2d-dead",
+        "sha256": "1beae107f26f3657b09062c2bfd0e3bb34fb66c2537b305d2b6a9bce36cc7911",
+        "current_valid": true
+      },
+      {
+        "name": "regions2d-live",
+        "sha256": "833c3a856a333987a4b33ad8707a1b65f42c794789dd9d029059c67ddaf51660",
+        "current_valid": true
+      },
+      {
+        "name": "regions2d-compressed-dead",
+        "sha256": "c0edc7e4cb32c2adbf3028ae139c19f8aa7875aa7da254301450f132a86711c9",
+        "current_valid": true
+      },
+      {
+        "name": "part2d-dead",
+        "sha256": "2771a436adb0ed780d22c28cfc6c67f490efaf04cf223778a1350bf68c7e73ca",
+        "current_valid": true
+      },
+      {
+        "name": "part2d-live",
+        "sha256": "f22cf26d8370c7463417e5ec8628a1df2b85e339a15d610d09883ea3cc50bb23",
+        "current_valid": true
+      },
+      {
+        "name": "part2d-compressed-dead",
+        "sha256": "861bdfb2c6a5aa2e27413304d36309c2cb07add49b004280859afb795e615dc1",
+        "current_valid": true
+      },
+      {
+        "name": "parts2d-dead",
+        "sha256": "f29580a6faa04740fd397b40c0e664a7892825aba464a4ba50884c969dbebd74",
+        "current_valid": true
+      },
+      {
+        "name": "parts2d-live",
+        "sha256": "af2e22ffd97460daa5d115dcdbe9b1d0bf5aecc1936f5ac6053dcae319a29512",
+        "current_valid": true
+      },
+      {
+        "name": "parts2d-compressed-dead",
+        "sha256": "f24ae966030c29ca3785fafdd997f7f85ff6a46b26ebd9217619d536b7ce3d77",
+        "current_valid": true
+      }
+    ],
+    "rejections": [
+      {
+        "program": "diagram2d-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "diagram2d-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "diagram2d-live",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "diagram2d-live",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "diagram2d-compressed-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "diagram2d-compressed-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/diagram2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-live",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-live",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-compressed-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "contours2d-compressed-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/contours2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-live",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-live",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-compressed-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "regions2d-compressed-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/regions2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-live",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-live",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-compressed-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "part2d-compressed-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/part2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-dead.iprop at byte 202: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-live",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-live",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-live.iprop at byte 213: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-compressed-dead",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      },
+      {
+        "program": "parts2d-compressed-dead",
+        "runtime": "stage03",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage04-archived/parts2d-compressed-dead.iprop at byte 203: invalid parameterized type descriptor"
+      }
+    ],
+    "current_ipval_sha256": "5f8163196f35f74cb347c9d14f2ac4c93406bed04f234c7d0a56f0d6f7146652"
+  },
+  "compatibility_notes": [
+    "All 42 inherited frozen references are unchanged.",
+    "Variadic choice type arrays append exactly the five new handles; all legacy entries, rules and overload contracts remain exact.",
+    "No old opcode, scalar/type/section/output ID, program-header field, host input, resource-export layout or C ABI version changed."
+  ],
+  "requirements": {
+    "04.1": {
+      "status": "passed",
+      "evidence": [
+        "codes 15..19 in the existing types section, unchanged references and reserved fields",
+        "typed and inferred locals plus exact helper parameters/results, formatter and IPA/IPDIS round trips",
+        "all resource lists/samplers/steppers, inputs, constants and palettes rejected",
+        "schema-5 type vocabulary and consumer migration verified"
+      ]
+    },
+    "04.2": {
+      "status": "passed",
+      "evidence": [
+        "one shared GeometryData for diagram/contours/regions",
+        "single canonical edges, directed uses, flat hole/neighbor ranges, source provenance",
+        "cached area/centroid/bounds with zero-allocation metadata reads",
+        "part/parts records retain geometry or existing A8/RGBA storage",
+        "1000 derived operations retain the root without a recursive history chain"
+      ]
+    },
+    "04.3": {
+      "status": "passed",
+      "evidence": [
+        "same 64 MiB arena as masks, layers and collections",
+        "fixed object/element slots, explicit common vector growth policy, unused capacity and reallocation peaks charged",
+        "temporary index/byte vectors and constant-space heapsort workspace charged",
+        "checked allocation overflow and refunds on real heap failure",
+        "actual 64 MiB workspace allocation tested",
+        "no external geometry dependency; repository-owned implementation"
+      ]
+    },
+    "04.4": {
+      "status": "passed",
+      "evidence": [
+        "all five types remain distinct in validation, zero values and VM transfer",
+        "unexecuted initializer traps in optimized and ordinary helper bodies, including discarded reads",
+        "function scope, overwrite, branch and frame cleanup",
+        "nine local/helper/import spellings remain ordinary names",
+        "old runtimes reject unsupported descriptors, including unused ones"
+      ]
+    },
+    "04.5": {
+      "status": "passed",
+      "evidence": [
+        "exact 256 sites/regions, 2048 ring vertices and 65536 total vertices",
+        "one-less fuel/quota failures roll back unpublished builders and scratch",
+        "244 heap failures across four factories with live-allocation accounting",
+        "last-reference release, raster retention and safe destruction after execution closure",
+        "immutable technical contract and independent native/WASM topology and metadata fixtures"
+      ]
+    }
+  },
+  "documentation": {
+    "builtins": 86,
+    "examples": 152,
+    "handbook_build": "passed",
+    "final_report_bundle_check": "passed",
+    "authored_link_tests": 6
+  },
+  "source_sha256": {
+    "InfiniteProps_0.9.0_specyfikacja.md": "940bd0435e903981f4f916232f828c8022c65b0736d6d04347565900b9c4e5e5",
+    "backends/html5/CMakeLists.txt": "ed13f34b14d89e02283ae43af7e036653e0ee42ed03f27b4381d570dbbd0782f",
+    "backends/html5/test/compat-v08-conformance.js": "f0f91cc9cafabc81243d5a397c2774053c356fd5f540925291dda83cda9a8ef7",
+    "backends/html5/test/constant-conformance.js": "153504fd7534568cff325529d20de58f832d1ba7d69db29ad025721d6101b6bf",
+    "backends/html5/test/geometry-v09-conformance.js": "22b685928e47fd4734ba84a3684510f43f75dec799266f9c1d065f745366390e",
+    "backends/html5/test/native-conformance.js": "e165ba5a8cdd00faba0470e70c38a7aaca1ae49ec46bd29499ba91ff20b93f8a",
+    "backends/html5/test/run-tests.js": "7ab7697bb6e6060dafb24525351d31213e306b2cef8437cf9d0b499964db998a",
+    "cmake/RuntimeSources.cmake": "8e843514b0902010de4b8b8aee77dcb73a490b4d08a4784599bb332ea1a28e53",
+    "compiler/DeadCode.cpp": "242490bd02f58cc0fd1a0217c005caa3074f8084720ffe718adadb81c86eb7b3",
+    "docs/export-contracts.md": "fae312ba7bec48c7a46e57e7081623429446ae4adf743ab2743a3c25b987e634",
+    "docs/language-description.md": "39a409f67766f2bc27f55dcae48b1200a94292721bb633be7a28ab54d4ff9a53",
+    "docs/language-description.schema.json": "91c2485047310507576accb7be878c7c519bd05c4d6dd8e1c3004f3fe1c2dec1",
+    "docs/language/geometry.md": "36563f07eb5b5f283bc418f7f45635bc4f521bd3d1d74c98d6f86dd0e2e3b291",
+    "examples/language/cases.json": "cf15962f9d040ea67ba1a3d658b0053418a78b5af85d4692c9609aad6f5d87ef",
+    "examples/language/geometry-handles.ips": "c0b4280e8dead69970a780d9202e7a7c02ea07b2ab0fa8e4fb67b614572f3c80",
+    "language/ips/AssetConstants.cpp": "6bad2163c9273f44d9e01b652e4a802a0b1b14623cd449c236c5e3816707d94e",
+    "language/ips/ExportSchema.hpp": "6b3f38c545deb2da4406ab296e65a7c0665b4968e8310a74c6f3009d9691083a",
+    "language/ips/Parser.cpp": "5663e2690b989b13fd1b1b1a07767f4a7669715511b78f6f4ebcd8f350715765",
+    "language/ips/Types.cpp": "b968a938df45864f069362fb1bede4f4c1d65a6783d80504ff5902fc7d28090a",
+    "language/ips/Types.hpp": "abcd5d63a1909e89bd00fbddbe78d40b390192645979130f878b38dba0e80fb4",
+    "runtime/collections.cpp": "cfee6258cfa1312c05ffb22410619403e35a0d826368df13a33aeda01afd6d3e",
+    "runtime/geometry.cpp": "4ea5a468bb00fee67b30f16bc2974ebb1ab51e452101502bf4ed9194e8d5539f",
+    "runtime/iprop/Collections.hpp": "975a2a4b9546093d8eba16dc76bd8e829d535ac3e2686703358c0d288704a34d",
+    "runtime/iprop/Geometry.hpp": "1687d99d1f863a73ae053557b23b633b784ff4dcfcb3477380ed4cb35d3862f7",
+    "runtime/iprop/ResourceMemory.hpp": "d53d0bf6d62bfe1143c1913d6acd7d5dd7b0b98f01578ea155468e7881f8c77b",
+    "runtime/iprop/TypeDescriptor.hpp": "f9c6c676996bbcdef51d673f107a2dede42e7e4432df9eff45a08b3980ba2aa5",
+    "runtime/iprop/Value.hpp": "04ec04bb20e496c5acd170febcd602e5de772d5b96b521178e1829fd06123058",
+    "runtime/stack.cpp": "2c7a8fc31f1e644392a5a8161ba880a72b7ceee2ef63cb1e4c72f1df7c7fc061",
+    "runtime/surfaces.cpp": "a97615c6df4b41236908b049862e459c73fbb3729316e9b374abc486eaaf49ed",
+    "runtime/type_descriptor.cpp": "ef559597f3a9d7089b5672e62c014b4f4aef9b7b6221ec6825e90a32f9765520",
+    "runtime/vm.cpp": "f7cd8658d705722a27132a5b88120ddd6363763f120e5ca77ef05bb7b95d57b9",
+    "scripts/check_language_contract.py": "7cb38d3427ceeded72aae95ab1444fa45bac73147345459b31559578340369c6",
+    "scripts/contract_readers.py": "1d933982cdea5a339b8077adcb2088f4f6e7a040df57f47dfd593e570c024599",
+    "scripts/language_docs.py": "0e39ec9b511e9c7cb97222af9ecfbed704e5ea32ca3854549a607ebf1fb6be83",
+    "scripts/tests/language.json": "54ce95e51fb0c14066ac3ef1b55d45d51b2046f05b24c0c176832656c12cecf2",
+    "scripts/tests/language_fixture.py": "e26af82b4e5d20c1f77afbccebe8695ee0c1b1f7ab27743b8cec3afa92e78c0c",
+    "scripts/tests/test_contract_readers.py": "67280a4f1cc5d83e13e1cd0462e7ff4e00d557da91e9dfd91d815e324f517a97",
+    "scripts/tests/test_current_documentation.py": "492e00b60a1f8cea4508a963cf6527da4c15677f3930e4d304dd838774406622",
+    "spec/geometry-core-v0.9.md": "110988f87972f52350d0e2011b557c4d1726c83512a064304c41748c3b0dc4ea",
+    "tests/CMakeLists.txt": "26e62c59f225416f5eb7e2bc7be7d1cf94523e7d5e84f4605c7a1ceb3bd369a0",
+    "tests/fixtures/export-contract-mutations.json": "7414628cc4adf43b65b40110d67777dc21903820aac3b1f8ff5fddcbfe6d40aa",
+    "tests/fixtures/geometry-v0.9.json": "8ca4ac3e44e0581d54535007a4ff3dac31d5204e1716a91be230e1e540c893e6",
+    "tests/geometry_allocation_probe.cpp": "7de1390cfccc136c6d9e98b82d45d9dbd8bd97d360c69539d2e11da11aa533cb",
+    "tests/geometry_representation_probe.cpp": "f4894c30db8f59e96ad3f50605a03e8f8d606360e879d54fd77bb0736aad5a8a",
+    "tests/geometry_test.cpp": "7843d15ab3df35767fb5bc560fa776d742d87c4227396a6bb4a99256385f0885",
+    "tests/support/geometry_fixture.hpp": "be7e5c928576d721955cada49023baf8baa060cc29aa1ad57c84a9c272f47c98",
+    "tools/ipa.cpp": "293cef953fc1499f7174eb85443ee6a1cfdd13764512cb4ea6b516d583a8ad95",
+    "tools/language_description.cpp": "d1fc02d7d37e40266062360837754fc206831944625c88018e1cd3f4127f8167",
+    "website/test/release-smoke.js": "cebfe46bed9c06521b322c113f6abeb06b1b9c43b432fb33378067b7d3bf0f43"
+  },
+  "binary_sha256": {
+    "ipc": "87d4be08320486b9eb415de27d0336ca1acba9a229b0f92255efb41c783ecc62",
+    "ipa": "45aa08028c0b1114f2408b83588a45a703180dda9e553b6a4eca85e34efce3d3",
+    "ipdis": "bc132ed3b0a5c55893d6f19e35a82cd793c1a7fdc711862944c2d16d88a0c3d8",
+    "ipval": "5f8163196f35f74cb347c9d14f2ac4c93406bed04f234c7d0a56f0d6f7146652",
+    "ipgen": "9334da758be5d999db862afb031e5b799423b1917f7cf8dda3ab6e55ce7a9f79",
+    "iprop_tests": "a02bfa35862b9b4a9d21fa054b94c6b84fc306726681683dfaf1124b94a69d87",
+    "geometry_representation_probe": "53a3205b48b31e093582df7c5cdd8cd25c5f5fe836c659eb210eca3527dcf5cc",
+    "geometry_allocation_probe": "e51fff9b4587d190927b54ac4a07892335e56f3ef6367301543cc6bdef6d6cd9",
+    "iprop.js": "b68d941f6a6dfd7c065003f9e845b5c85facf5b35b8021afc55b5a7b6ae54b06",
+    "iprop.wasm": "dc3ab0a0bf281e8b29404a296018aadef96d920da4ca9609933e529954b09461",
+    "geometry_representation_probe.js": "f0f586a944a0ba33d40373ac0857f4c90e206c649efa15f35ce1e1edc5d77c63",
+    "geometry_representation_probe.wasm": "176940f6e3333f47ad37f1d2b83f55956fe710f2e3cb7487fbe894190e3fde96"
+  },
+  "unchanged_frozen_references_sha256": {
+    "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+    "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+    "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+    "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+    "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+    "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+    "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+    "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+    "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+    "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+    "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+    "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf",
+    "tests/fixtures/compat-v0.8/branch.ips": "54ccb61fad18e4eddbd9e6d5c4aca4ab37937015989b72ad08e34201bd892469",
+    "tests/fixtures/compat-v0.8/composition.ips": "8d0336902b766ca3c98f760034028e9d0c133b7319251c0a51b31547ad0dd375",
+    "tests/fixtures/compat-v0.8/leaf.ips": "ff057e10c4e84db8ac9b849242c0f0be77a0acf5fd7e31ba7ad091fa146f9cbd",
+    "spec/iprop-v0.8.md": "79a3ba6b7aeee0f3d83208da13511ae4962c38393e1e1d85ee44ee37c21e41d9",
+    "tests/golden/noise.png": "538996893b4bd9ce753a50aeb5733e1745c1d6a69bc86f76c1394de12d498358",
+    "tests/golden/parts.png": "bab687c573971f6238dd90b1f9a0ea4d4f4e7d210a55f614e828d9891a9591e5",
+    "tests/golden/portrait-seed0.png": "6896cfa9fa2f94898ca2a99c8b1055d29c65fa7ee481c56ade0bd17bde99147d",
+    "tests/golden/portrait-seed1.png": "e07be1d6d7b87d926fa747ca2c5aa0a37137fcc6215e8c3113eca8fa762ff73e",
+    "tests/golden/portrait-seed2.png": "f9eb6f19411402d640d74dad5c1edd0c3a6c51db319479a7dc43e8f12b0a9a84",
+    "tests/golden/portrait-seed26.png": "62b7dbbd0f590aecf5d2a98c3cbf4fe3abd6e469abbaef62f65165fb720a1ba9",
+    "tests/golden/portrait-seed7.png": "980cdbddc42ff065d74713a4280a1247121097b57973f2483063cbb96c080392",
+    "tests/golden/shapes.png": "bb7100fdfe98c8e02b57f5fb75b57dbca4b50a5b93b6efc83332c020eff33c38",
+    "tests/golden/noise.ipa": "c2e61b250e6d4dc7664cbc936f339f4eededd0504263818c32aed75be1e2c179",
+    "tests/golden/parts.ipa": "a4c48e39196750e9af22b2d3213421bd63c39872ed9b64c735f3284bfd9dad5a",
+    "tests/golden/shapes.ipa": "200748a4a927174bba61e59b2def2ee22d21aac0cbc40692f0c0e9cb2ec8b84f",
+    "tests/fixtures/noise-v0.9.json": "00df81bc182827eacb0a44ad4711dfc18d2e012454d01fbfb26fac6ac64f5b75",
+    "backends/html5/test/noise-v09-reference.js": "ac5a0dff48cffa208c9190fdb03f058441c3ddff31eed2b40cdc55e88e64fa94",
+    "backends/html5/test/noise-v09-conformance.js": "610e2ca9fcad139747fb25997c7469dfe8ba7fc99973f865bfb361e1a7c001c0",
+    "tests/math/noise_extensions_test.cpp": "fb49ca5bd005aa9e9c1d724f0daecea3329522368a8a22f20324f0912a70549c",
+    "spec/noise-v0.9.md": "663eb879d3a4028dbdc463d298cf9c3da619c20dd5fecec18a4115ce8f59cce1",
+    "spec/verification/noise-v0.9.json": "59debc65265ab2621c34cd62512821ff85feee3088ff984084e4d11e90b8c290",
+    "spec/verification/noise-v0.9-ctest.txt": "5bb4788e410c17ecec5a6e0dd2f0858a5ecf3da1a1510248b9e96fdcc8117cfe",
+    "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc",
+    "tests/fixtures/noise-mask-v0.9.json": "6d7406a48a769b1013a219945bf0d60a13766b855a1b80c1a1be5c6e01339f57",
+    "backends/html5/test/noise-mask-reference.js": "e182b41dcbe2065386d776f7d71507da12ed295954b34821683842fd3f428abd",
+    "backends/html5/test/noise-mask-conformance.js": "720e73364eae2bb5514df24c054ac33687581d1ce77004814fa7fb3def439be7",
+    "tests/compiler/noise_masks_test.cpp": "e933ca6b39d11cc3223c01297b0f9823b034393210af98665979fa4e756a31ca",
+    "spec/noise-mask-v0.9.md": "37fe03e8ea52da3f5383e672a063216316ab43293a375d40f7c616da5c76bc85",
+    "spec/verification/noise-mask-v0.9.json": "a715e5c22c3eb695604feac77351d91318d1736e771fa32c3df7439f4335c3ff",
+    "spec/verification/noise-mask-v0.9-ctest.txt": "6f570a868ca61d4b39093cc07055d0aa94c1a923685c7a76726d927a22455059"
+  },
+  "log_sha256": {
+    "build": "124294232319c6ed77b4232c02abf7d26acf6c2785a7ce267696ea3ef711999b",
+    "wasm-build": "48aa53facbc26fd30cb48713849825640be44903e271205a610a5823f3445420",
+    "focused": "ac465eb95603a6ef8b7f85352951bebf1d4fc5f8a4bd1c0b7233307e2069a5c8",
+    "ctest": "5e790fe0c8408d511979776fce6e7cbe2feabd060af46759630bdee601b15f6f",
+    "conformance": "ffb98a7f022c18691ee90515b9ac7815071fd1e1f93aef7f58a4b94a01f46dbe",
+    "node": "96ae18737b4952c9ca68bddd6f04b7aee2626f1578957e99fe07fa416cecac8e",
+    "export": "5912a3009dfe76695fb39b370aa1d3218030dc5c6ab0475ca81c8313587ead55",
+    "allocations": "0c86a38ec3308e974c62efcb667daf744420ff1f59d3c7c87d8127cbef599195",
+    "sdk-smoke": "36f15f031ee92f682d51460732b3d0788256c6bb3de631df4cb5a179fb040f2a",
+    "docs_final": "03533dd1848fbdf9f6e0b49c720481c18f94eda09ab6c2aa6f42ae20b9c291e3",
+    "documentation": "24da47f3b844da9029fa679b7ffd92e8edc2168bd16bc3e98a77afcac6a70898"
+  }
+}

@@ -38,7 +38,11 @@ async function main() {
     };
 
     const result = await conformance.run(iprop, fetchBytes);
-    const native = require("./native-conformance.js").run(iprop, toolsDir);
+    // Source builds include an internal-core test executable; the web SDK
+    // deliberately ships only iprop.js/iprop.wasm and the ordinary JS API.
+    const geometryProbe=path.join(buildDir,"geometry_representation_probe.js");
+    const native = require("./native-conformance.js").run(iprop, toolsDir,
+        fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{});
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
@@ -103,6 +107,10 @@ async function main() {
         console.log("native/WASM 0.9 noise masks: PASS (" + native.noiseMaskV09.vectors + " independent A8 images; " +
             native.noiseMaskV09.generations + " exact generations; " + native.noiseMaskV09.traps + " matching traps; " +
             native.noiseMaskV09.rejections + " bytecode rejections)");
+        console.log("native/WASM 0.9 geometry: PASS (" + native.geometryV09.types + " distinct handles; " +
+            native.geometryV09.vectors + " independent topology/metadata vectors; " + native.geometryV09.generations +
+            " exact generations; " + native.geometryV09.traps + " matching traps; " + native.geometryV09.rejections + " bytecode rejections; core probes native=" +
+            native.geometryV09.nativeRepresentation + ", WASM=" + native.geometryV09.wasmRepresentation + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

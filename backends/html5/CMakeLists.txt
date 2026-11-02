@@ -47,3 +47,10 @@ target_link_options(iprop_html5 PRIVATE
     "-sENVIRONMENT=web,worker,node"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sNO_EXIT_RUNTIME=1")
+
+# Test executable only: validates the shared geometry representation on WASM
+# before its public constructor operations land. No extra embind export.
+add_executable(geometry_representation_probe ../../tests/geometry_representation_probe.cpp)
+target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
+iprop_warnings(geometry_representation_probe)
+target_link_options(geometry_representation_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")

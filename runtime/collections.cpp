@@ -103,6 +103,11 @@ const CapturedRangeData* descriptionData(const Value& value) {
 }
 
 TypeDescriptor valueType(const Value& value) {
+    if (std::holds_alternative<Diagram2dValue>(value)) return TypeDescriptor::Diagram2d;
+    if (std::holds_alternative<Contours2dValue>(value)) return TypeDescriptor::Contours2d;
+    if (std::holds_alternative<Regions2dValue>(value)) return TypeDescriptor::Regions2d;
+    if (std::holds_alternative<Part2dValue>(value)) return TypeDescriptor::Part2d;
+    if (std::holds_alternative<Parts2dValue>(value)) return TypeDescriptor::Parts2d;
     if (std::holds_alternative<MaskValue>(value)) return TypeDescriptor::Mask;
     if (std::holds_alternative<LayerValue>(value)) return TypeDescriptor::Layer;
     if (std::holds_alternative<PointDistributionBuilder>(value)) return TypeDescriptor::PointBuilder;

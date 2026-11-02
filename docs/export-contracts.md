@@ -23,18 +23,25 @@ versions. Changing a known field's type, meaning or enum domain requires a new
 schema version, a documented migration and updated executable consumer cases;
 changing the source-language or product version alone does not migrate JSON.
 
-Language-description schema 4 describes explicit asset inputs, without
-implicit draw controls. It includes typed constants, parameterized lists,
-samplers/steppers, point distributions and surfaces, with signatures and effects
-from shared compiler/runtime registries. Older schema versions are rejected.
-Diagnostic and documentation-manifest schemas retain their independent versions.
-Source language 0.8 adds optional `source_rules.materials` in schema 4.
-It describes the source-only capability separately from VM storable types;
-readers validate it when present and continue to accept earlier exports without it.
+Language-description schema 5 extends the closed value-type vocabulary with
+`diagram2d`, `contours2d`, `regions2d`, `part2d` and `parts2d`. Readers must update
+their version gate and accepted types; schemas 1–4 are rejected. The new handles
+are storable/helper values and variadic choices, with generation ownership and
+no host-input, constant or generic-container representation. Optional
+`source_rules.geometry_handles` describes descriptor codes, limits and ownership.
+This protocol migration does not change the program header or C API/ABI versions.
 
-Development stage 03 adds optional `source_rules.noise_mask` in schema 4,
+Schema 4 introduced explicit asset inputs without implicit draw controls. The
+current schema retains typed constants, parameterized lists, samplers/steppers,
+point distributions and surfaces, with signatures/effects from shared registries.
+Diagnostic and documentation-manifest schemas retain their independent versions.
+Source language 0.8 introduced optional `source_rules.materials` in schema 4;
+schema 5 retains this source-only capability separately from VM storable types.
+Readers validate it when present and accept profiles without it in the supported schema.
+
+Development stage 03 added optional `source_rules.noise_mask` in schema 4,
 with noise namespace constants and the direct-mask sampling/default rules.
-Readers validate it when present and accept earlier exports without it.
+Readers validate it when present and accept profiles without it in the supported schema.
 
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four

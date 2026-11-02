@@ -29,6 +29,14 @@ bool stepStack(Execution& ex, Instruction ins) {
         if (ins.operand >= frame.locals.size()) {
             ex.trap("local index out of range", ErrorReason::IndexRange);
         }
+        if (valueType(frame.locals[ins.operand]).isGeometry()) {
+            const bool assigned = std::visit([](const auto& value) {
+                if constexpr (requires { value.data; }) return static_cast<bool>(value.data);
+                return false;
+            }, frame.locals[ins.operand]);
+            if (!assigned) ex.trap(std::string(valueTypeName(valueType(frame.locals[ins.operand]))) +
+                " is unassigned", ErrorReason::RuntimeViolation);
+        }
         ex.push(frame.locals[ins.operand]);
         break;
     case Opcode::LocalSet:

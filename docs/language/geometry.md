@@ -11,6 +11,28 @@ A random point of a segment is `a to b` between two `vec2` values; see
 
 <!-- example: ../../examples/language/geometry.ips -->
 
+## Geometry handles on develop
+
+The 0.9 foundation adds five distinct immutable handle types: `diagram2d`,
+`contours2d`, `regions2d`, `part2d` and `parts2d`. They can be inferred locals,
+explicitly typed locals, helper parameters and helper return values. Copying
+or passing a handle shares its data. These type spellings are contextual:
+`diagram2d = 1` remains an ordinary numeric local assignment.
+Existing `pick` and `choose` can select matching handles with their usual
+evaluation and RNG rules, sharing the selected data.
+
+Handles cannot be host inputs, asset constants, palette elements, or elements
+of `list<T>`, `sampler<T>` or `stepper<T>`. Reading a handle whose initializer
+did not execute traps; it does not produce an empty geometry value. Locals
+retain the language's existing function scope.
+
+Stage 04 supplies storage, typing and ownership. Voronoi, contour, region and
+dynamic-part constructors and operations are implemented in subsequent stages.
+The helper-only example compiles today; it does not generate a diagram.
+See the [geometry core contract](../../spec/geometry-core-v0.9.md).
+
+<!-- example: ../../examples/language/geometry-handles.ips -->
+
 ## vec2.len
 <!-- builtin: vec2.len -->
 

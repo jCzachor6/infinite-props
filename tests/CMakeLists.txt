@@ -107,6 +107,7 @@ add_executable(iprop_tests
     outputs_test.cpp
     parts_test.cpp
     part_geometry_test.cpp
+    geometry_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
@@ -149,6 +150,15 @@ target_link_libraries(blur_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(blur_allocation_probe)
 add_test(NAME blur_allocation_failures COMMAND blur_allocation_probe)
 
+add_executable(geometry_allocation_probe geometry_allocation_probe.cpp)
+target_link_libraries(geometry_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(geometry_allocation_probe)
+add_test(NAME geometry_allocation_failures COMMAND geometry_allocation_probe)
+
+add_executable(geometry_representation_probe geometry_representation_probe.cpp)
+target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
+iprop_warnings(geometry_representation_probe)
+
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
@@ -160,6 +170,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME geometry_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/geometry-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:geometry_representation_probe>")
     add_test(NAME noise_mask_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-mask-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
