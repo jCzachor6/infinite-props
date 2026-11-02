@@ -97,6 +97,9 @@ async function main() {
         console.log("native/WASM 0.8 compatibility: PASS (" + native.compatibilityV08.generations +
             " frozen/reference generations; " + native.compatibilityV08.traps + " matching traps; " +
             native.compatibilityV08.compilerErrors + " constant diagnostics)");
+        console.log("native/WASM 0.9 noise: PASS (" + native.noiseV09.vectors + " independent vectors; " +
+            native.noiseV09.generations + " exact generations; " + native.noiseV09.traps + " matching traps; " +
+            native.noiseV09.compilerErrors + " constant diagnostics; " + native.noiseV09.rejections + " bytecode rejections)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

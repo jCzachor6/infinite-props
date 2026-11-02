@@ -13,7 +13,7 @@ function bits(outputs) {
 function run(iprop, tool, directory) {
     const catalogue = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding:"utf8"}));
     const signatures = catalogue.builtins.flatMap(b => b.overloads.filter(o => o.expansion));
-    assert.equal(signatures.length, 20, "all requested vector overloads are exported");
+    assert.equal(signatures.length, 24, "all requested vector overloads are exported");
     // The scalar references are explicit, independent of the compiler's expansion table.
     const pairs = [
         ["rect(p,size,tint)", "rect(p.x,p.y,size.x,size.y,tint)"],
@@ -28,6 +28,11 @@ function run(iprop, tool, directory) {
         ...["noise.fbm","noise.ridge"].map(name =>
             [`samples={${name}(p,4,seed),0}`, `samples={${name}(p.x,p.y,4,seed),0}`]),
         ["samples={warp(p,0.5,seed),0}", "samples={warp(p.x,p.y,0.5,seed),0}"],
+        ["samples={noise.cell2(p,seed),0}", "samples={noise.cell2(p.x,p.y,seed),0}"],
+        ["id=noise.cell_id(p,seed) samples={id&65535,id>>16}",
+         "id=noise.cell_id(p.x,p.y,seed) samples={id&65535,id>>16}"],
+        ["samples=noise.warp_vec(p,0.5,seed)", "samples=noise.warp_vec(p.x,p.y,0.5,seed)"],
+        ["samples={noise.fbm(p,4,2.2,0.6,seed),0}", "samples={noise.fbm(p.x,p.y,4,2.2,0.6,seed),0}"],
         ["pixel(p,tint)", "pixel(int(p.x),int(p.y),tint)"],
         ["samples=cell.jitter(p,seed)", "samples=cell.jitter(int(p.x),int(p.y),seed)"],
         ["samples={dither(0.4,p),0}", "samples={dither(0.4,int(p.x),int(p.y)),0}"],
@@ -37,7 +42,7 @@ function run(iprop, tool, directory) {
         ["samples=lerp(t=unit(),b=point(),a=point())",
          "a=point() b=point() t=unit() samples={lerp(a.x,b.x,t),lerp(a.y,b.y,t)}"],
     ];
-    assert.equal(pairs.length, 20);
+    assert.equal(pairs.length, signatures.length);
     const wrap = body => `asset overloads {size 24x24 input f32 bias=-0.75 input color tint=#12345678
       output list point samples output point following
       point()->vec2{return {unit()*8,unit()*8}}
@@ -86,6 +91,10 @@ function run(iprop, tool, directory) {
     for (const [vector,scalar,message] of [
         ["noise.grad(p,seed)","noise.grad(p.x,p.y,seed)","noise coordinate out of range"],
         ["noise.fbm(p,4,seed)","noise.fbm(p.x,p.y,4,seed)","noise coordinate out of range"],
+        ["noise.cell2(p,seed)","noise.cell2(p.x,p.y,seed)","noise coordinate out of range"],
+        ["noise.cell_id(p,seed)","noise.cell_id(p.x,p.y,seed)","noise coordinate out of range"],
+        ["noise.warp_vec(p,0,seed)","noise.warp_vec(p.x,p.y,0,seed)","noise coordinate out of range"],
+        ["noise.fbm(p,4,2,0.5,seed)","noise.fbm(p.x,p.y,4,2,0.5,seed)","noise coordinate out of range"],
         ["cell.jitter(p,seed)","cell.jitter(int(p.x),int(p.y),seed)","cell index is not representable as f32"],
         ["pixel(p,#fff)","pixel(int(p.x),int(p.y),#fff)","coordinate out of range"],
     ]) for (const call of [vector,scalar]) {

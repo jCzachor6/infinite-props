@@ -27,7 +27,10 @@ class CurrentDocumentationTest(unittest.TestCase):
         names = dict(re.findall(r'(?:fixed|dynamic)\(Opcode::(\w+), "([^"]+)"', registry))
         self.assertEqual(numbers.keys(), names.keys())
         # Tables also contain paired integer/float instruction columns.
-        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.spec, re.M))
+        # Implementation stages land on develop before the final product-version
+        # bump. Check their authored wire contracts without editing frozen 0.8.
+        extensions = (ROOT / "spec/noise-v0.9.md").read_text(encoding="utf-8")
+        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.spec + "\n" + extensions, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})
 

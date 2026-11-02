@@ -50,6 +50,9 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"noise.grad", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseGrad}}}},
         {"noise.fbm", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseFbm}}}},
         {"noise.cell", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell}}}},
+        {"noise.cell2", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell2}}}},
+        {"noise.cell_id", {V::I32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCellId}}}},
+        {"noise.warp_vec", {V::Vec2, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::NoiseWarpVec}}}},
         {"warp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::Warp}}}},
         {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, {"seed", V::I32}}, Opcode::CellJitter}}}},
         {"noise.ridge", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseRidge}}}},
@@ -135,11 +138,18 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         spec.overloads.push_back({std::move(params), scalar.opcode,
             adaptation == BuiltinAdaptation::VectorLerp ? V::Vec2 : scalar.result, adaptation});
     };
-    for (const auto* name : {"noise", "fault", "noise.grad", "noise.cell"})
+    for (const auto* name : {"noise", "fault", "noise.grad", "noise.cell", "noise.cell2", "noise.cell_id"})
         add(name, {{"p", V::Vec2}, {"seed", V::I32}});
     for (const auto* name : {"noise.fbm", "noise.ridge"})
         add(name, {{"p", V::Vec2}, {"octaves", V::I32}, {"seed", V::I32}});
     add("warp", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+    add("noise.warp_vec", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+    // Append both new fBm overloads after the frozen scalar/vec2 pair.
+    auto& fbm = table.at("noise.fbm").overloads;
+    fbm.push_back({{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32},
+        {"lacunarity", V::F32}, {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32});
+    fbm.push_back({{{"p", V::Vec2}, {"octaves", V::I32}, {"lacunarity", V::F32},
+        {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32, BuiltinAdaptation::Coordinates});
     add("rect", {{"position", V::Vec2}, {"size", V::Vec2}, {"color", V::Color}});
     add("rect", {{"position", V::Vec2}, {"w", V::F32}, {"h", V::F32}, {"color", V::Color}});
     add("rect", {{"x", V::F32}, {"y", V::F32}, {"size", V::Vec2}, {"color", V::Color}});

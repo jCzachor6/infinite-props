@@ -96,6 +96,7 @@ add_executable(iprop_tests
     math/vectors_test.cpp
     math/distance_test.cpp
     math/noise_test.cpp
+    math/noise_extensions_test.cpp
     math/curves_test.cpp
     math/colors_test.cpp
     vector_determinism_test.cpp
@@ -158,6 +159,8 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/compat-v08-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME runtime_matrix_comparators COMMAND ${IPROP_NODE_EXECUTABLE}

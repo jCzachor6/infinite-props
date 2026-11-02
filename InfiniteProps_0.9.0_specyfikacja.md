@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–01 zakończone; zakres, testy zgodności 0.8 i pomiary bazowe gotowe. Implementacja nowych funkcji zaczyna się od etapu 02.
+**Status:** etapy 00–02 zakończone; rozszerzenia noise wdrożone i sprawdzone natywnie oraz w WASM. Następny etap: 03 (`noise.mask`).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -95,7 +95,7 @@ qy = legacy_fbm(x + 3.7f, y + 9.1f, 4, seed)
 result = {x + amount * qx, y + amount * qy}
 ```
 
-Zachować kolejność `f32` i istniejące reguły seedów oktaw. `amount=0` po walidacji wejścia zwraca wejściowe bity bez zbędnego próbkowania. Odrzucać nieskończone wartości i naruszenia domen faktycznie wykonywanych próbek, również po deformacji. Istniejące `warp()` zachowuje swój algorytm i walidację; nie zastępować go nowym wywołaniem, jeśli zmieniłoby to wynik lub kolejność błędów.
+Zachować kolejność `f32` i istniejące reguły seedów oktaw. `amount=0` po walidacji wejścia zwraca wejściowe bity bez zbędnego próbkowania. Wejście i wynik muszą należeć do bazowej domeny `noise.grad`; po deformacji nie próbkować hipotetycznego zewnętrznego fBm. Odrzucać nieskończone wartości i naruszenia domen faktycznie wykonywanych próbek. Istniejące `warp()` zachowuje swój algorytm i walidację; nie zastępować go nowym wywołaniem, jeśli zmieniłoby to wynik lub kolejność błędów.
 
 ### 3.3. Konfigurowalne fBm
 
@@ -499,15 +499,15 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 01.
 
-- [ ] 02.1 Wprowadzić wspólny skan F1/F2/winner, `cell2` i `cell_id` z zamrożonym remisem i hashem, bez regresji F1.
-- [ ] 02.2 Dodać `warp_vec` oparte na istniejącym polu warp oraz konfigurowalne fBm; zachować stare przeciążenia i ich domeny.
-- [ ] 02.3 Uzupełnić katalog, przeciążenia vec2, const folding tam, gdzie dopuszczalny, lowering i walidację bytecode; nowe ID tylko dopisywać.
-- [ ] 02.4 Sprawdzić F2≥F1, granice i remisy, amount=0, octaves poniżej/na/powyżej 1–8, gain=0/1, lacunarity przy granicach, NaN/Inf i przekroczenia domen po skalowaniu/warp.
-- [ ] **Etap 02 zakończony.**
+- [x] 02.1 Wprowadzić wspólny skan F1/F2/winner, `cell2` i `cell_id` z zamrożonym remisem i hashem, bez regresji F1.
+- [x] 02.2 Dodać `warp_vec` oparte na istniejącym polu warp oraz konfigurowalne fBm; zachować stare przeciążenia i ich domeny.
+- [x] 02.3 Uzupełnić katalog, przeciążenia vec2, const folding tam, gdzie dopuszczalny, lowering i walidację bytecode; nowe ID tylko dopisywać.
+- [x] 02.4 Sprawdzić F2≥F1, granice i remisy, amount=0, octaves poniżej/na/powyżej 1–8, gain=0/1, lacunarity przy granicach, NaN/Inf i przekroczenia domen po skalowaniu/warp.
+- [x] **Etap 02 zakończony.**
 
 **Odbiór:** wektory starego noise bez zmian, nowe wyniki native/WASM zgodne, RNG niezużywany, konserwatywne koszty naliczane przed pracą.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja (2026-11-02):** [kontrakt techniczny](spec/noise-v0.9.md), [wektory bitowe](tests/fixtures/noise-v0.9.json), [raport](spec/verification/noise-v0.9.json), [przykład IPS](examples/language/noise-extensions.ips). Dodano opcode `0xDF`–`0xE2`, bez zmiany istniejących ID i wzorców 0.8; stare przeciążenia fBm zachowują pozycje w katalogu. Natywny test skupiony: 4661 asercji w 5 przypadkach. Nowy gate native/WASM: 63 wektory z niezależnego modelu binary32, 143 generacje (6048 obserwacji wzorcowych), 87 trapów, 14 diagnostyk stałych i 36 odrzuceń bytecode; obejmuje 8 konfiguracji kompilatora, scalar/vec2, stałe i IPA/IPDIS. Zachowany gate 0.8: 480 generacji, 64 trapy i 16 diagnostyk bez zmian. Pełny CTest: 73/73; Node: 10/10; pełny native/WASM conformance przechodzi. Zachowane narzędzia 0.8 odrzucają 8 programów z nowymi instrukcjami (osiągalnymi i nieosiągalnymi). Generowanie handbooka: 85 builtinów, 150 przykładów. Koszt rezerwowany przed pracą: `cell2/cell_id` 25, `warp_vec` 8 (1 przy zerze), konfigurowalne fBm 1–8 także przy gain=0; integracja pełnej taryfy i limitu pracy pozostaje w etapie 13. Potwierdzenie commit/push i SHA w raporcie dostarczenia, zgodnie z §8.
 
 ### Etap 03 — `noise.mask()`
 

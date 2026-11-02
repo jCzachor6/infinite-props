@@ -5,6 +5,7 @@
 #include "iprop/math/Vector.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <limits>
 
@@ -157,11 +158,17 @@ Vec2 cellJitter(Execution& ex, i32 cx, i32 cy, u32 seed) {
     return {jitterCoordinate(ex, cx, u), jitterCoordinate(ex, cy, v)};
 }
 
-f32 cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
+struct CellSample {
+    f32 first = std::numeric_limits<f32>::infinity();
+    f32 second = std::numeric_limits<f32>::infinity();
+    u32 winner = 0;
+};
+
+CellSample cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
     // All cells in the 5x5 window must have exactly representable origins.
     const i32 ix = latticeIndex(ex, x, -kExactCellLimit + 2, kExactCellLimit - 2);
     const i32 iy = latticeIndex(ex, y, -kExactCellLimit + 2, kExactCellLimit - 2);
-    f32 best = std::numeric_limits<f32>::infinity();
+    CellSample sample;
     for (i32 dy = -2; dy <= 2; ++dy) {
         for (i32 dx = -2; dx <= 2; ++dx) {
             const i32 cx = ix + dx;
@@ -170,12 +177,61 @@ f32 cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
             const f32 rx = point.x - x;
             const f32 ry = point.y - y;
             const f32 d = std::sqrt(rx * rx + ry * ry);
-            if (d < best) {
-                best = d;
+            // Strict comparison preserves the first (cy, cx) on a tie.
+            // Equal distances from distinct cells still count toward F2.
+            if (d < sample.first) {
+                sample.second = sample.first;
+                sample.first = d;
+                sample.winner = cellHash(seed, cx, cy);
+            } else if (d < sample.second) {
+                sample.second = d;
             }
         }
     }
-    return best;
+    return sample;
+}
+
+f32 configuredFbm(Execution& ex, f32 x, f32 y, i32 octaves,
+                  f32 lacunarity, f32 gain, u32 seed) {
+    if (!std::isfinite(lacunarity) || lacunarity <= 0.f || lacunarity > 8.f)
+        ex.trap("fbm lacunarity out of range", ErrorReason::NumericRange);
+    if (!std::isfinite(gain) || gain < 0.f || gain > 1.f)
+        ex.trap("fbm gain out of range", ErrorReason::NumericRange);
+    octaves = std::clamp(octaves, 1, 8);
+    // Including dispatch, one fuel per declared effective octave, even if
+    // gain=0 lets us skip the remaining samples. Reserve before any sampling.
+    ex.spend(static_cast<u64>(octaves - 1));
+    const i32 samples = gain == 0.f ? 1 : octaves;
+    f32 sum = 0.f, total = 0.f, amplitude = 1.f, frequency = 1.f;
+    for (i32 i = 0; i < samples; ++i) {
+        const f32 g = gradNoise(ex, x * frequency, y * frequency,
+            seed + static_cast<u32>(i) * 0x9e3779b9u);
+        sum += amplitude * g;
+        total += amplitude;
+        amplitude *= gain;
+        frequency *= lacunarity;
+    }
+    return sum / total;
+}
+
+Vec2 warpVector(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
+    if (!std::isfinite(amount))
+        ex.trap("warp amount out of range", ErrorReason::NumericRange);
+    const auto check = [&](f32 coordinate) {
+        (void)latticeIndex(ex, coordinate, std::numeric_limits<i32>::min(),
+                           std::numeric_limits<i32>::max() - 1);
+    };
+    check(x);
+    check(y);
+    // No offset, multiplication or sampling: retain even negative-zero bits.
+    if (amount == 0.f) return {x, y};
+    ex.spend(7); // Dispatch + eight inner gradient samples; no outer fBm.
+    const f32 qx = fbmNoise(ex, x, y, 4, seed);
+    const f32 qy = fbmNoise(ex, x + 3.7f, y + 9.1f, 4, seed);
+    const Vec2 result{x + amount * qx, y + amount * qy};
+    check(result.x);
+    check(result.y);
+    return result;
 }
 
 f32 warpNoise(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
@@ -476,7 +532,39 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(cellNoise(ex, x, y, seed)));
+        ex.push(Value(cellNoise(ex, x, y, seed).first));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseCell2:
+    case Opcode::NoiseCellId: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.spend(24); // Dispatch + all 25 Worley feature candidates.
+        const auto sample = cellNoise(ex, x, y, seed);
+        if (ins.opcode == Opcode::NoiseCell2) ex.push(Value(sample.second));
+        else ex.push(Value(std::bit_cast<i32>(sample.winner)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseWarpVec: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 amount = ex.popF32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(warpVector(ex, x, y, amount, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseFbmConfig: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 gain = ex.popF32();
+        const f32 lacunarity = ex.popF32();
+        const i32 octaves = ex.popI32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(configuredFbm(ex, x, y, octaves, lacunarity, gain, seed)));
         ++ex.frame().ip;
         return true;
     }

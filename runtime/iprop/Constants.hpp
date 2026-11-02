@@ -283,6 +283,12 @@ enum class Opcode : u8 {
     LayerBlur = 0xDD,
     MaskBlur = 0xDE,
 
+    // Noise extensions (v0.9); existing instruction IDs stay frozen.
+    NoiseCell2 = 0xDF,
+    NoiseCellId = 0xE0,
+    NoiseWarpVec = 0xE1,
+    NoiseFbmConfig = 0xE2,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };
