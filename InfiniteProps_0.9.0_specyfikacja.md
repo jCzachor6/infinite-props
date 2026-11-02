@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etap 00 zakończony; uzgodniony zakres i checklista gotowe, implementacja funkcji 0.9 jeszcze nierozpoczęta.
+**Status:** etapy 00–01 zakończone; zakres, testy zgodności 0.8 i pomiary bazowe gotowe. Implementacja nowych funkcji zaczyna się od etapu 02.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -353,6 +353,8 @@ Punktem odniesienia jest **całkowity koszt operacji w 0.8**, bez instrukcji arg
 | `sampler<T>.pick(n)`, `stepper<T>.pick(n)` | 50–70% narzutu zbiorczego; dodatni koszt każdego elementu |
 | `color.mix/shade/hsv`, `ramp` | Do 50% rabatu, tylko przy koszcie bazowym >1 |
 
+**Wynik pomiarów etapu 01:** istniejące skalarne noise/fault/warp oraz `color.mix/shade/hsv` kosztują w 0.8 po 1 fuel za samą operację, także przy 8 oktawach. Nie da się obniżyć ich ceny przy zachowaniu minimum 1. Nie zwiększać cen bazowych ani kosztu argumentów/pętli dla uzyskania procentu z tabeli; etap 13 ma odnotować to ograniczenie i oprzeć bezpieczeństwo na niezależnym limicie pracy. `ramp` jest obecnie loweringiem kompilatora, więc jego pełny koszt trzeba mierzyć wraz z tym rozwinięciem. Wzorzec i metodologia: [pomiary 0.8](benchmarks/baselines/v0.8.0/README.md).
+
 - fBm/ridge mają cenę monotoniczną względem liczby oktaw; blur względem powierzchni i jądra; morfologia względem powierzchni i promienia.
 - `cell2` i `cell_id` wyceniać jak pełny skan Worley; `warp_vec` według rzeczywiście wymaganych wewnętrznych fBm, a nie jak pojedynczy gradient noise.
 - `mask.expand/shrink` muszą zachować dokładny wynik A8 i granice. W 0.8 taryfa zależy od logicznych próbek dysku, więc samo przemnożenie starej ceny nie zastępuje optymalizacji. Jeżeli brak bezpiecznej optymalizacji, pozostawić konserwatywną stawkę i opisać odchylenie od celu.
@@ -483,15 +485,15 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 00.
 
-- [ ] 01.1 Utrwalić wektory bitowe noise/fault/warp 0.8 oraz domeny, remisy Worley i dotychczasowe błędy; objąć warianty scalar/vec2 i stałe składane przez kompilator.
-- [ ] 01.2 Utrwalić RNG, D4, clipping, legacy/source-over i point/rect/circle outputs, także dla zagnieżdżonych statycznych importów.
-- [ ] 01.3 Zapisać odtwarzalny benchmark CPU/fuel/pamięci operacji z §6, z rewizją, toolchainem i parametrami; oddzielić pomiary od testów bitowych.
-- [ ] 01.4 Potwierdzić istniejące fixtures ID/opcode/formatu i wynik native/WASM; nie regenerować wzorców jedynie po to, by dopasować je do nowego wyniku.
-- [ ] **Etap 01 zakończony.**
+- [x] 01.1 Utrwalić wektory bitowe noise/fault/warp 0.8 oraz domeny, remisy Worley i dotychczasowe błędy; objąć warianty scalar/vec2 i stałe składane przez kompilator.
+- [x] 01.2 Utrwalić RNG, D4, clipping, legacy/source-over i point/rect/circle outputs, także dla zagnieżdżonych statycznych importów.
+- [x] 01.3 Zapisać odtwarzalny benchmark CPU/fuel/pamięci operacji z §6, z rewizją, toolchainem i parametrami; oddzielić pomiary od testów bitowych.
+- [x] 01.4 Potwierdzić istniejące fixtures ID/opcode/formatu i wynik native/WASM; nie regenerować wzorców jedynie po to, by dopasować je do nowego wyniku.
+- [x] **Etap 01 zakończony.**
 
 **Odbiór:** możliwe jest wykrycie zmiany choćby jednego bitu starszych funkcji oraz porównanie całkowitych kosztów operacji.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja (2026-11-02):** [wzorzec i raport](benchmarks/baselines/v0.8.0/README.md), [wyniki kontroli](benchmarks/baselines/v0.8.0/verification.json), [metodologia i polecenia](benchmarks/operations/README.md). Zamrożono 78 wektorów, 3 remisy Worley, 2 binaria 0.8, 193 opcode i 126 kontraktów przeciążeń; sprawdzono 8 konfiguracji kompilatora i statyczne importy w 8 D4, przy 3 seedach i 2 skalach. Rozszerzony gate przechodzi natywnie i w świeżym WASM: 480 generacji, 64 błędy runtime i 16 diagnostyk stałych; kontrolne zmiany jednego bitu wyjścia oraz RGBA są wykrywane. Pełny CTest: 72/72; Node: 10/10; pełny native/WASM conformance wraz z rozszerzonym gate przechodzi. Benchmark: 141 scenariuszy, 15 próbek po 16 generacji i 3 próbki rozgrzewkowe; drugi przebieg odtwarza fuel całkowity/samej operacji, alokacje, szczyt pamięci i hashe. Pamięć oznacza żądane bajty C++, nie RSS ani logiczny limit VM. Dotychczasowe golden/fixtures niezmienione; kod runtime i kompilatora niezmieniony. Potwierdzenie commit/push i SHA w raporcie dostarczenia, zgodnie z §8.
 
 ### Etap 02 — rozszerzenia noise
 

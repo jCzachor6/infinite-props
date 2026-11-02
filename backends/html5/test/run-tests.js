@@ -94,6 +94,9 @@ async function main() {
             native.resourceExports.traps + " matching traps; " + native.resourceExports.rejections + " malformed/version rejections)");
         console.log("native/WASM blur: PASS (" + native.blur.comparisons + " exact generations; " + native.blur.pins +
             " independent 2D pins; " + native.blur.traps + " matching traps; " + native.blur.rejections + " malformed/version rejections)");
+        console.log("native/WASM 0.8 compatibility: PASS (" + native.compatibilityV08.generations +
+            " frozen/reference generations; " + native.compatibilityV08.traps + " matching traps; " +
+            native.compatibilityV08.compilerErrors + " constant diagnostics)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

@@ -78,6 +78,7 @@ add_executable(iprop_tests
     golden_test.cpp
     binary_test.cpp
     format_test.cpp
+    compat_v08_ids_test.cpp
     compression_test.cpp
     asset_test.cpp
     code_test.cpp
@@ -157,6 +158,8 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/compat-v08-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME runtime_matrix_comparators COMMAND ${IPROP_NODE_EXECUTABLE}
         --test "${CMAKE_SOURCE_DIR}/scripts/tests/runtime_matrix_wasm.test.js")
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env

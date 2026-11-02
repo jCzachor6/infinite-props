@@ -7,6 +7,9 @@ recorded in their manifests, rather than current performance guarantees:
   compiler results, image/output bits, traps and RNG observations.
 - [C API captures](capi/README.md): load/generation samples, allocation traffic
   and adapter comparisons with executable/input identities.
+- [Operation baseline for 0.9](operations/README.md): CPU, total/isolated fuel,
+  allocation traffic and peak live bytes for the existing §6 operation families,
+  with a retained 0.8 reference and an independent bit compatibility gate.
 - `runtime/language-v0.5-matrix.json` and `runtime/language-v0.6-matrix.json`,
   with their matching `*-reports-macos-arm64.tar.gz` archives: compatibility
   matrix summaries and retained detailed reports. Their names identify the
