@@ -58,6 +58,7 @@ add_executable(iprop_tests
     compiler/surfaces_test.cpp
     compiler/source_over_test.cpp
     compiler/masks_test.cpp
+    compiler/noise_masks_test.cpp
     compiler/blur_test.cpp
     compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
@@ -159,6 +160,8 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME noise_mask_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-mask-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}

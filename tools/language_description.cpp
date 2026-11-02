@@ -10,6 +10,7 @@
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Collections.hpp"
 #include "iprop/Samplers.hpp"
+#include "iprop/Noise.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -320,6 +321,16 @@ Json sourceRules() {
         {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
         {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
+    Json noiseConstants = Json::object();
+    for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
+        noiseConstants["noise." + std::string(detail::kNoiseModeNames[i])] = static_cast<i32>(i);
+    noiseConstants["noise.above"] = detail::kNoiseAbove;
+    noiseConstants["noise.below"] = detail::kNoiseBelow;
+    rules["noise_mask"] = Json::object({{"constants", std::move(noiseConstants)},
+        {"buffer_format", "A8"}, {"coordinate_space", "local_pixel_centers_times_frequency"},
+        {"origin", "crop_without_phase_shift"}, {"octaves_min", 1}, {"octaves_max", 8},
+        {"rng", "explicit_seed_no_stream_draws"}, {"asset_constants", false},
+        {"short_defaults", Json::object({{"octaves", 4}, {"softness", 0}, {"comparison", "noise.above"}, {"warp_amount", 0}})}});
     rules["resource_exports"] = Json::object({
         {"types", Json::array({"mask", "layer"})}, {"table", "separate_from_host_geometry"},
         {"syntax", "output <mask|layer> <name>"}, {"read", "direct_child_last_called_part"},

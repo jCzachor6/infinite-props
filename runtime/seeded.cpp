@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/Noise.hpp"
 #include "iprop/math/Curves.hpp"
 #include "iprop/math/Distribution.hpp"
 #include "iprop/math/Color.hpp"
@@ -214,7 +215,7 @@ f32 configuredFbm(Execution& ex, f32 x, f32 y, i32 octaves,
     return sum / total;
 }
 
-Vec2 warpVector(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
+Vec2 warpVector(Execution& ex, f32 x, f32 y, f32 amount, u32 seed, bool charge = true) {
     if (!std::isfinite(amount))
         ex.trap("warp amount out of range", ErrorReason::NumericRange);
     const auto check = [&](f32 coordinate) {
@@ -225,7 +226,7 @@ Vec2 warpVector(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
     check(y);
     // No offset, multiplication or sampling: retain even negative-zero bits.
     if (amount == 0.f) return {x, y};
-    ex.spend(7); // Dispatch + eight inner gradient samples; no outer fBm.
+    if (charge) ex.spend(7); // Dispatch + eight inner gradient samples; no outer fBm.
     const f32 qx = fbmNoise(ex, x, y, 4, seed);
     const f32 qy = fbmNoise(ex, x + 3.7f, y + 9.1f, 4, seed);
     const Vec2 result{x + amount * qx, y + amount * qy};
@@ -328,6 +329,31 @@ void advanceAndPushUnit(Execution& ex) {
 }
 
 } // namespace
+
+f32 sampleNoise(Execution& ex, NoiseMode kind, Vec2 point, i32 octaves, u32 seed) {
+    const auto [x, y] = point;
+    switch (kind) {
+    case NoiseMode::Value:
+        // Legacy value noise predates domain guards. Guard this new caller
+        // without changing the frozen scalar instruction's error behavior.
+        (void)latticeIndex(ex, x, std::numeric_limits<i32>::min(), std::numeric_limits<i32>::max() - 1);
+        (void)latticeIndex(ex, y, std::numeric_limits<i32>::min(), std::numeric_limits<i32>::max() - 1);
+        return noise(x, y, seed);
+    case NoiseMode::Grad: return gradNoise(ex, x, y, seed);
+    case NoiseMode::Fbm: return fbmNoise(ex, x, y, octaves, seed);
+    case NoiseMode::Cell: return cellNoise(ex, x, y, seed).first;
+    case NoiseMode::CellEdge: {
+        const auto sample = cellNoise(ex, x, y, seed);
+        return sample.second - sample.first;
+    }
+    case NoiseMode::Ridge: return ridgeNoise(ex, x, y, octaves, seed);
+    }
+    ex.trap("unknown noise mask kind", ErrorReason::NumericRange);
+}
+
+Vec2 warpNoisePoint(Execution& ex, Vec2 point, f32 amount, u32 seed) {
+    return warpVector(ex, point.x, point.y, amount, seed, false);
+}
 
 double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, double lo, double hi, double u) {
     ex.spend(math::pointDrawWork(distribution, lo, hi));

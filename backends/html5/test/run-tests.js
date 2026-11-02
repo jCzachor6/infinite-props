@@ -100,6 +100,9 @@ async function main() {
         console.log("native/WASM 0.9 noise: PASS (" + native.noiseV09.vectors + " independent vectors; " +
             native.noiseV09.generations + " exact generations; " + native.noiseV09.traps + " matching traps; " +
             native.noiseV09.compilerErrors + " constant diagnostics; " + native.noiseV09.rejections + " bytecode rejections)");
+        console.log("native/WASM 0.9 noise masks: PASS (" + native.noiseMaskV09.vectors + " independent A8 images; " +
+            native.noiseMaskV09.generations + " exact generations; " + native.noiseMaskV09.traps + " matching traps; " +
+            native.noiseMaskV09.rejections + " bytecode rejections)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

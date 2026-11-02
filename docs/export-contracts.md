@@ -32,6 +32,10 @@ Source language 0.8 adds optional `source_rules.materials` in schema 4.
 It describes the source-only capability separately from VM storable types;
 readers validate it when present and continue to accept earlier exports without it.
 
+Development stage 03 adds optional `source_rules.noise_mask` in schema 4,
+with noise namespace constants and the direct-mask sampling/default rules.
+Readers validate it when present and accept earlier exports without it.
+
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`

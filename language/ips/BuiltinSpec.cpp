@@ -52,6 +52,12 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"noise.cell", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell}}}},
         {"noise.cell2", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell2}}}},
         {"noise.cell_id", {V::I32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCellId}}}},
+        {"noise.mask", {V::Mask, L::Opcode, {
+            {{{"origin", V::Vec2}, {"size", V::Vec2}, {"kind", V::I32}, {"frequency", V::Vec2},
+              {"threshold", V::F32}, {"seed", V::I32}}, Opcode::NoiseMask},
+            {{{"origin", V::Vec2}, {"size", V::Vec2}, {"kind", V::I32}, {"frequency", V::Vec2},
+              {"threshold", V::F32}, {"seed", V::I32}, {"octaves", V::I32}, {"softness", V::F32},
+              {"comparison", V::I32}, {"warp_amount", V::F32}}, Opcode::NoiseMaskConfig}}}},
         {"noise.warp_vec", {V::Vec2, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::NoiseWarpVec}}}},
         {"warp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::Warp}}}},
         {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, {"seed", V::I32}}, Opcode::CellJitter}}}},

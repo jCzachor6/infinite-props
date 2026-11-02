@@ -1603,6 +1603,61 @@
       "value": 2,
       "accept": true,
       "schema": true
+    },
+    {
+      "id": "earlier export without direct noise masks",
+      "path": [
+        "source_rules",
+        "noise_mask"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "null noise mask contract",
+      "path": [
+        "source_rules",
+        "noise_mask"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "changed noise mode wire constant",
+      "path": [
+        "source_rules",
+        "noise_mask",
+        "constants",
+        "noise.mode_cell_edge"
+      ],
+      "value": 5,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "boolean noise mode constant",
+      "path": [
+        "source_rules",
+        "noise_mask",
+        "constants",
+        "noise.mode_value"
+      ],
+      "value": false,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "invalid mask const eligibility",
+      "path": [
+        "source_rules",
+        "noise_mask",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

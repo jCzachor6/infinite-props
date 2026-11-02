@@ -1,5 +1,6 @@
 {
   "cases": [
+    {"file":"noise-mask.ips","expect":"pass"},
     {"file":"noise-extensions.ips","expect":"pass"},
     {"file":"vector-overloads.ips","expect":"pass"},
     {"file":"blur.ips","expect":"pass"},

@@ -2584,6 +2584,149 @@
           "additionalProperties": true,
           "description": "Immutable coverage views and A8 results, exact disk morphology and scoped pixel clipping."
         },
+        "noise_mask": {
+          "type": "object",
+          "properties": {
+            "constants": {
+              "type": "object",
+              "properties": {
+                "noise.mode_value": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_grad": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_fbm": {
+                  "type": "integer",
+                  "const": 2,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_cell": {
+                  "type": "integer",
+                  "const": 3,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_cell_edge": {
+                  "type": "integer",
+                  "const": 4,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_ridge": {
+                  "type": "integer",
+                  "const": 5,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.above": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Inclusive above comparison."
+                },
+                "noise.below": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Inclusive below comparison."
+                }
+              },
+              "required": [
+                "noise.mode_value",
+                "noise.mode_grad",
+                "noise.mode_fbm",
+                "noise.mode_cell",
+                "noise.mode_cell_edge",
+                "noise.mode_ridge",
+                "noise.above",
+                "noise.below"
+              ],
+              "additionalProperties": true,
+              "description": "Scalar constants in the reserved noise namespace."
+            },
+            "buffer_format": {
+              "type": "string",
+              "const": "A8",
+              "description": "Standard one-byte mask coverage."
+            },
+            "coordinate_space": {
+              "type": "string",
+              "const": "local_pixel_centers_times_frequency",
+              "description": "Sample local target pixel centers after frequency scaling."
+            },
+            "origin": {
+              "type": "string",
+              "const": "crop_without_phase_shift",
+              "description": "Origin limits coverage without moving the field."
+            },
+            "octaves_min": {
+              "type": "integer",
+              "const": 1,
+              "description": "Minimum accepted declared octave count in every mode."
+            },
+            "octaves_max": {
+              "type": "integer",
+              "const": 8,
+              "description": "Maximum accepted declared octave count in every mode."
+            },
+            "rng": {
+              "type": "string",
+              "const": "explicit_seed_no_stream_draws",
+              "description": "Only argument expressions can advance generation RNG."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Masks depend on generation and cannot be constant values."
+            },
+            "short_defaults": {
+              "type": "object",
+              "properties": {
+                "octaves": {
+                  "type": "integer",
+                  "const": 4,
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "softness": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "comparison": {
+                  "type": "string",
+                  "const": "noise.above",
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "warp_amount": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Value supplied by the six-argument overload."
+                }
+              },
+              "required": [
+                "octaves",
+                "softness",
+                "comparison",
+                "warp_amount"
+              ],
+              "additionalProperties": true,
+              "description": "Parameters supplied by the short overload."
+            }
+          },
+          "required": [
+            "constants",
+            "buffer_format",
+            "coordinate_space",
+            "origin",
+            "octaves_min",
+            "octaves_max",
+            "rng",
+            "asset_constants",
+            "short_defaults"
+          ],
+          "additionalProperties": true,
+          "description": "Optional 0.9 direct-noise mask contract; earlier exports may omit it."
+        },
         "resource_exports": {
           "type": "object",
           "properties": {

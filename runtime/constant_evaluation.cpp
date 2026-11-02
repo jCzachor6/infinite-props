@@ -6,6 +6,7 @@ namespace iprop::detail {
 bool isConstantOperation(const OpcodeSpec& operation) {
     const auto& effects = operation.effects;
     return operation.operand == OperandKind::None && operation.stack && operation.stack->result &&
+        operation.stack->result->isScalar() &&
         !effects.conservative && !effects.writesCanvas && !effects.writesOutputs &&
         (effects.rng == RngEffect::None || effects.rng == RngEffect::SeededComputation);
 }

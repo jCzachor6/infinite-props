@@ -395,6 +395,27 @@ def read_language(value):
         require(len(operators) == 8 and all(o['result'] == 'mask' and
             o['effects']['rng'] == 'none' and 'unassigned_handle' in o['effects']['may_trap'] and
             not o['constant_evaluable'] for b in operators for o in b['overloads']), 'mask operator effects')
+    if 'noise_mask' in rules:
+        noise = rules['noise_mask']
+        _strings_and_bools(noise, {
+            'buffer_format': {'A8'}, 'coordinate_space': {'local_pixel_centers_times_frequency'},
+            'origin': {'crop_without_phase_shift'}, 'rng': {'explicit_seed_no_stream_draws'}},
+            ['asset_constants'], 'noise mask policy')
+        require(not noise['asset_constants'], 'noise mask generation dependency')
+        for key, expected in [('octaves_min', 1), ('octaves_max', 8)]:
+            integer(noise.get(key), 'noise_mask.' + key)
+            require(noise[key] == expected, 'noise mask octave bounds')
+        constants = obj(noise.get('constants'), [], 'noise mask constants')
+        for name, expected in [(name, i) for i, name in enumerate(
+                ['mode_value', 'mode_grad', 'mode_fbm', 'mode_cell', 'mode_cell_edge', 'mode_ridge'])] + [('above', 0), ('below', 1)]:
+            actual = constants.get('noise.' + name)
+            integer(actual, 'noise.' + name)
+            require(actual == expected, 'noise namespace constant')
+        defaults = obj(noise.get('short_defaults'), ['octaves', 'softness', 'comparison', 'warp_amount'], 'noise mask defaults')
+        for key, expected in [('octaves', 4), ('softness', 0), ('warp_amount', 0)]:
+            integer(defaults[key], 'noise mask default ' + key)
+            require(defaults[key] == expected, 'noise mask default value')
+        require(defaults['comparison'] == 'noise.above', 'noise mask default comparison')
     if 'point_distributions' in rules:
         points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
         _strings_and_bools(points, {

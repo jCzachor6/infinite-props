@@ -1,4 +1,5 @@
 #include "ips/Types.hpp"
+#include "iprop/Noise.hpp"
 
 namespace iprop::ips {
 
@@ -6,6 +7,18 @@ const CompositionSpec* surfaceMode(const Expr& expression) {
     const auto* member = std::get_if<Member>(&expression);
     const auto* base = member ? std::get_if<Identifier>(member->object.get()) : nullptr;
     return base && base->name == "surface" ? compositionSpec(member->name) : nullptr;
+}
+
+std::optional<i32> builtinConstant(const Expr& expression) {
+    if (const auto* mode = surfaceMode(expression)) return mode->sourceConstant;
+    const auto* member = std::get_if<Member>(&expression);
+    const auto* base = member ? std::get_if<Identifier>(member->object.get()) : nullptr;
+    if (!base || base->name != "noise") return std::nullopt;
+    for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
+        if (member->name == detail::kNoiseModeNames[i]) return static_cast<i32>(i);
+    if (member->name == "above") return detail::kNoiseAbove;
+    if (member->name == "below") return detail::kNoiseBelow;
+    return std::nullopt;
 }
 
 const char* typeName(ValueType type) { return iprop::valueTypeName(type); }

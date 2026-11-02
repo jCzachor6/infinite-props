@@ -279,7 +279,7 @@ ValueType Typer::infer(const Expr& expr) {
         // Resolve the complete part-output path first, including outputs
         // named x or y; a component access then types that point recursively.
         const Path path = flatten(expr);
-        if (surfaceMode(expr))
+        if (builtinConstant(expr))
             return ValueType::I32;
         if (path.segments.size() == 2 && path.segments[0] == "outputs") {
             return typePartRead(expr);

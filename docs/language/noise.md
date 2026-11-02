@@ -97,6 +97,36 @@ domains, fuel and reference vectors are in the
 Normalized ridged octave sum. Octaves clamp to 1–8, with the same per-octave
 gradient domain checks as `noise.fbm`.
 
+## noise.mask
+<!-- builtin: noise.mask -->
+
+Creates an ordinary A8 mask directly from noise, without geometry or an IPS
+pixel loop. `origin` and positive `size` delimit a half-open rectangle in
+local asset units; pixel centers use the active target scale. The field is
+sampled at those local centers multiplied by positive `frequency`. Moving
+the rectangle crops the same field rather than shifting it.
+
+The six integer kinds are `noise.mode_value` (0), `noise.mode_grad` (1),
+`noise.mode_fbm` (2), `noise.mode_cell` (3), `noise.mode_cell_edge` (4, F2−F1
+from one scan), and `noise.mode_ridge` (5). The raw threshold is not remapped
+to a normalized range.
+
+The six-argument call uses four octaves, zero softness, `noise.above` (0),
+and zero warp. The ten-argument call adds `octaves`, `softness`, `comparison`,
+and `warp_amount` after `seed`. Octaves must be 1–8 even in modes that ignore
+them. `noise.above` includes equality; `noise.below` (1) also includes equality.
+Positive softness uses a smooth transition centered on the threshold, in
+noise units. Warp uses `noise.warp_vec` after frequency scaling; zero skips
+all warp samples. Parameters and all performed sample domains are checked.
+
+Use the result with `surface.paint`, `clip`, mask algebra, morphology, blur,
+helpers and mask outputs. It retains off-target coverage and raster scale.
+It uses explicit seed, preserves RNG, and cannot be an asset constant.
+The [mask contract](../../spec/noise-mask-v0.9.md) fixes rounding, domains,
+resource charging and reference vectors.
+
+<!-- example: ../../examples/language/noise-mask.ips -->
+
 ## warp
 <!-- builtin: warp -->
 

@@ -37,11 +37,16 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
         default: throw std::logic_error("test requires a scalar opcode");
         }
     }
-    append(helper,spec.opcode,0,aux); append(helper,Opcode::Return);
+    append(helper,spec.opcode,0,aux);
+    // Resource results are verified by their own kernel tests; discard here
+    // so this scalar helper fixture does not need a resource type table.
+    const bool resource = spec.stack->result && spec.stack->result->isResource();
+    if (resource) append(helper,Opcode::Drop);
+    append(helper,Opcode::Return);
     std::vector<u8> draw;
     append(draw,Opcode::Call,1);
     std::vector<u8> results;
-    if (spec.stack->result) { results.push_back(static_cast<u8>(*spec.stack->result)); append(draw,Opcode::Drop); }
+    if (spec.stack->result && !resource) { results.push_back(static_cast<u8>(*spec.stack->result)); append(draw,Opcode::Drop); }
     append(draw,Opcode::Return);
     return fullFile(minimalMeta(),constSection({"draw"},{1},{1.f,2.f,3.f,4.f},{{10,20,30,255}}),
         codeSection({drawSpec(draw),{kAnonymousName,{},results,{},helper}},{}));
@@ -107,5 +112,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 197);
+    CHECK(names.size() == 199);
 }

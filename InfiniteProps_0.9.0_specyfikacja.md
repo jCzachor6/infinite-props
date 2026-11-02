@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–02 zakończone; rozszerzenia noise wdrożone i sprawdzone natywnie oraz w WASM. Następny etap: 03 (`noise.mask`).
+**Status:** etapy 00–03 zakończone; rozszerzenia noise i bezpośrednie maski wdrożone i sprawdzone natywnie oraz w WASM. Następny etap: 04 (wspólna geometria, typy VM i zasoby).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -513,15 +513,15 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 02; korzysta z istniejących limiterów masek.
 
-- [ ] 03.1 Dodać oba przeciążenia, stałe trybów i walidację; współdzielić kernele skalarne i pojedynczy skan F1/F2.
-- [ ] 03.2 Zaimplementować próbkowanie środków, zakres origin/size, frequency, warp, progowanie, softness i kwantyzację A8 według §3.4.
-- [ ] 03.3 Zintegrować z paint/clip/algebrą masek oraz zachować mapowanie i skalę; nie tworzyć typu pola ani pętli IPS wewnątrz lowering.
-- [ ] 03.4 Porównać A8 z ręczną referencją dla każdego trybu, progów, miękkich brzegów, różnych skal i origin; sprawdzić RNG oraz przerwanie fuel/pamięcią.
-- [ ] **Etap 03 zakończony.**
+- [x] 03.1 Dodać oba przeciążenia, stałe trybów i walidację; współdzielić kernele skalarne i pojedynczy skan F1/F2.
+- [x] 03.2 Zaimplementować próbkowanie środków, zakres origin/size, frequency, warp, progowanie, softness i kwantyzację A8 według §3.4.
+- [x] 03.3 Zintegrować z paint/clip/algebrą masek oraz zachować mapowanie i skalę; nie tworzyć typu pola ani pętli IPS wewnątrz lowering.
+- [x] 03.4 Porównać A8 z ręczną referencją dla każdego trybu, progów, miękkich brzegów, różnych skal i origin; sprawdzić RNG oraz przerwanie fuel/pamięcią.
+- [x] **Etap 03 zakończony.**
 
 **Odbiór:** tekstury plam i szczelin działają bez geometrii, każda próbka i bufor są rozliczane, trap nie publikuje maski.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja (2026-11-02):** [kontrakt techniczny](spec/noise-mask-v0.9.md), [wektory A8](tests/fixtures/noise-mask-v0.9.json), [raport](spec/verification/noise-mask-v0.9.json), [przykład plam i szczelin](examples/language/noise-mask.ips). Świeży build Release poza iCloud: 74/74 CTest, 6 testów maski / 15615 asercji, Node 10/10; pełny native/WASM PASS. Nowa bramka sprawdza 52 niezależne obrazy A8, 388 generacji, 15546 obserwacji pikseli, 162 trapy, 20 odrzuceń bytecode i 3 błędy kompilacji. Ręczna referencja obejmuje sześć trybów, twarde i miękkie progi, oba porównania, warp, częstotliwości anizotropowe, różne skale, origin ujemny/ułamkowy i przeniesienie pokrycia spoza targetu. Sprawdzone paint/clip/algebra, dodatni blur i morfologia, osiem D4, współdzielenie eksportu, RNG, granice fuel i wspólnego limitu pamięci oraz brak wyniku po trapie. Oba nowe opcode są odrzucane przez zachowane runtime 0.8 i etap 02, także w martwym kodzie. Stare wektory i golden pozostają bez zmian. Handbook: 86 builtinów / 151 przykładów; eksport języka i jego addytywne pole maski mają sprawdzony schemat (181 mutacji, 151 rzeczywistych przypadków CLI). Koszt maski jest konserwatywny i rezerwowany przed alokacją; pełna kalibracja taryfy i niezależny limiter pracy pozostają w etapie 13.
 
 ### Etap 04 — wspólna geometria, typy VM i zasoby
 

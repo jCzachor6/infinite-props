@@ -21,6 +21,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
         case T::Color: return ValueType::Color;
         case T::Vec2: return ValueType::Vec2;
         case T::Distribution: return ValueType::Distribution;
+        case T::Mask: return ValueType::Mask;
         default: throw std::logic_error("not a VM value");
         }
     };

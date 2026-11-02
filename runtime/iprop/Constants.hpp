@@ -288,6 +288,8 @@ enum class Opcode : u8 {
     NoiseCellId = 0xE0,
     NoiseWarpVec = 0xE1,
     NoiseFbmConfig = 0xE2,
+    NoiseMask = 0xE3,
+    NoiseMaskConfig = 0xE4,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

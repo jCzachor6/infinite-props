@@ -24,6 +24,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Warp: case Opcode::CellJitter: case Opcode::NoiseRidge:
     case Opcode::NoiseCell2: case Opcode::NoiseCellId:
     case Opcode::NoiseWarpVec: case Opcode::NoiseFbmConfig:
+    case Opcode::NoiseMask: case Opcode::NoiseMaskConfig:
         return {R::SeededComputation,false,false,check(C::NumericRange)};
     case Opcode::Weather: return {R::SeededComputation,true};
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
@@ -208,6 +209,11 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::NoiseWarpVec, "noise.warp_vec", StackSignature({S::F32, S::F32, S::F32, S::I32}, V::Vec2)),
     fixed(Opcode::NoiseFbmConfig, "noise.fbm_config",
           StackSignature({S::F32, S::F32, S::I32, S::F32, S::F32, S::I32}, V::F32)),
+    fixed(Opcode::NoiseMask, "noise.mask",
+        StackSignature({S::Vec2, S::Vec2, S::I32, S::Vec2, S::F32, S::I32}, V::Mask)),
+    fixed(Opcode::NoiseMaskConfig, "noise.mask_config",
+        StackSignature({S::Vec2, S::Vec2, S::I32, S::Vec2, S::F32, S::I32,
+                        S::I32, S::F32, S::I32, S::F32}, V::Mask)),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),

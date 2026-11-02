@@ -1,0 +1,374 @@
+{
+  "schema_version": 1,
+  "stage": "03",
+  "date": "2026-11-02",
+  "base_commit": "99a44b7e4da174eecafd2542a97c405533dd565a",
+  "scope": "Local Release native / Node-hosted WASM validation of both noise.mask overloads. Product version remains 0.8.0 until the planned version/release stage.",
+  "toolchain": {
+    "native": "AppleClang 21.0.0.21000099",
+    "wasm": "Emscripten 6.0.10-git",
+    "platform": "Darwin",
+    "architecture": "arm64",
+    "configuration": "Release",
+    "fp_contract": "off",
+    "warnings_as_errors": true
+  },
+  "native": {
+    "build": "PASS",
+    "ctest": {
+      "passed": 74,
+      "total": 74,
+      "seconds": 20.05,
+      "log": "noise-mask-v0.9-ctest.txt"
+    },
+    "focused": {
+      "cases": 6,
+      "assertions": 15615
+    },
+    "handbook": {
+      "builtins": 86,
+      "examples": 151
+    }
+  },
+  "node": {
+    "passed": 10,
+    "total": 10
+  },
+  "export_contracts": {
+    "status": "PASS",
+    "mutation_cases": 181,
+    "real_cli_cases": 151,
+    "schema_version": 4,
+    "noise_mask_field": "optional_additive",
+    "validation": [
+      "stdlib_protocol_readers",
+      "all_emitted_fields_documented_in_schema",
+      "shared_mutation_fixtures",
+      "bundle_boundaries"
+    ],
+    "optional_ci_jsonschema": {
+      "status": "not_run_locally",
+      "reason": "CI-only jsonschema==4.26.0 is not installed; the isolated installation attempt could not resolve pypi.org. Standard export-contract validation passed."
+    }
+  },
+  "native_wasm": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "archived_runtime_rejections": {
+    "archives": {
+      "0.8": {
+        "directory": "/private/tmp/iprop-v09-stage01-native/tools",
+        "ipval_sha256": "211bb46269032354bd1ad15330043e99c109f744570aab2db43bac1a37ab4994",
+        "verified_against": "stage02 archived_08_rejections + frozen stage01 runtime hash"
+      },
+      "stage02": {
+        "directory": "/private/tmp/iprop-v09-stage02-native/tools",
+        "ipval_sha256": "7c4dab1015542538a37135aaa1e0573b8701fb1f5d9feaea3424e2d57f78daa1",
+        "verified_against": "spec/verification/noise-v0.9.json binary_sha256"
+      }
+    },
+    "cases": [
+      {
+        "program": "full-dead",
+        "program_sha256": "11c155e9f2830ff9d0e591ce4a09edff75074adbc332f7a6c4e456161d87047f",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/full-dead.iprop at byte 142: reserved opcode"
+      },
+      {
+        "program": "full-dead",
+        "program_sha256": "11c155e9f2830ff9d0e591ce4a09edff75074adbc332f7a6c4e456161d87047f",
+        "runtime": "stage02",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/full-dead.iprop at byte 142: reserved opcode"
+      },
+      {
+        "program": "full",
+        "program_sha256": "24f1b63c87f22d10267bd2c689d5c3e840f40d77e6a68068b0f25f2e907498af",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/full.iprop at byte 222: reserved opcode"
+      },
+      {
+        "program": "full",
+        "program_sha256": "24f1b63c87f22d10267bd2c689d5c3e840f40d77e6a68068b0f25f2e907498af",
+        "runtime": "stage02",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/full.iprop at byte 222: reserved opcode"
+      },
+      {
+        "program": "short-dead",
+        "program_sha256": "6d4a4a96ec4f5b80ef597ea4e54eb98609cb481f31cfbbd374960caa92b9cc1b",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/short-dead.iprop at byte 142: reserved opcode"
+      },
+      {
+        "program": "short-dead",
+        "program_sha256": "6d4a4a96ec4f5b80ef597ea4e54eb98609cb481f31cfbbd374960caa92b9cc1b",
+        "runtime": "stage02",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/short-dead.iprop at byte 142: reserved opcode"
+      },
+      {
+        "program": "short",
+        "program_sha256": "c56875569ba67092f7fca1985504e2d9553e8e526f9a3a504e3ada827321e6ee",
+        "runtime": "0.8",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/short.iprop at byte 202: reserved opcode"
+      },
+      {
+        "program": "short",
+        "program_sha256": "c56875569ba67092f7fca1985504e2d9553e8e526f9a3a504e3ada827321e6ee",
+        "runtime": "stage02",
+        "status": 1,
+        "error": "invalid: /private/tmp/iprop-v09-stage03-archived/short.iprop at byte 202: reserved opcode"
+      }
+    ],
+    "current_accepts": 4
+  },
+  "preview": {
+    "source": "examples/language/noise-mask.ips",
+    "seed": 26,
+    "width": 256,
+    "height": 192,
+    "fuel_spent": 3760947,
+    "visual_inspection": "PASS: spots and cell-edge cracks, without geometry",
+    "png_sha256": "b62ef1628c0c1f73254ab94675911e2429fdbbcee36ac1456fa6bf0d7f6f4001"
+  },
+  "source_sha256": {
+    "InfiniteProps_0.9.0_specyfikacja.md": "714d63f9a06c672b5b4c0213fa141f35654add6aebc2b3a999c9cfdc2aa09502",
+    "backends/html5/test/native-conformance.js": "46c8a1f6f52e6766f5acf8ad3a9fde835013c6e175c2e789f8f34986b4de2193",
+    "backends/html5/test/noise-mask-conformance.js": "720e73364eae2bb5514df24c054ac33687581d1ce77004814fa7fb3def439be7",
+    "backends/html5/test/noise-mask-reference.js": "e182b41dcbe2065386d776f7d71507da12ed295954b34821683842fd3f428abd",
+    "backends/html5/test/run-tests.js": "133bd972543dfca01f3a892849b9ed33f26d2f6ae8e8274f1f4079f82992d98e",
+    "docs/export-contracts.md": "3782ed295f189ef4168bf50677a4136cdd963391f530b8e3e73bccbb2eb42456",
+    "docs/language-description.schema.json": "bab895d0396638ffb90de3e8662bcf87cc9cf291a8ff8e6325baf971c0d219e4",
+    "docs/language/noise.md": "8e3bc4537915500c57285d0fb50450e42c62344e83ae965b8ad234bc62380053",
+    "examples/language/cases.json": "6e05a761cd74734278ede43e160bc9d54a60ef0a015415d242f2141527377d64",
+    "examples/language/noise-mask.ips": "e590d8be67475b9a2b17426793580b47ce67dde4e2523bfa4352c5ad5a74d71e",
+    "language/ips/AssetConstants.cpp": "e29d7ac9c1879bfc400a93609c46b089f59edfc73d0c48f51f804a7d4718639a",
+    "language/ips/BuiltinSpec.cpp": "9281329b1f49775f8ce047addb2626255ebc964151188ddb36efb8e039bc3265",
+    "language/ips/Fold.cpp": "904a6e39bfa2357e81aafb08076488f3231dde24ef7a44ee3339787ee760c5ff",
+    "language/ips/ParserExpr.cpp": "1c5d0451f8976c49d9aa6676ea76f4f0d2422c2cd6cc54d24e724f5488d041c5",
+    "language/ips/Types.cpp": "7fd94dcc98673bb2b6b5f203f0ec2ac230ca4e44696728b4a3c431306c1900a2",
+    "language/ips/Types.hpp": "6da6281ed9ef01c49fbb116be7cff0ff7b5cbe5ae99c1f8187e0cc79a47e3a9b",
+    "language/ips/Typing.cpp": "9ff84bcef73d05bb02b20ddb27a99ee02bbe99cbc61c89192cebb9246cf6c849",
+    "runtime/constant_evaluation.cpp": "817693631e9c839d50c1f518bf4b57947601c01e704f48c6ae09b68dae5722e5",
+    "runtime/iprop/Constants.hpp": "649c734a281a8f8b80d566afd6ef143e12ff56bce5b819a2cc08f9c3db2130b5",
+    "runtime/iprop/Noise.hpp": "24f3dc07257e69f4202a33408d1b1aa429c8badc65021d4ae9aebe49d2edca2c",
+    "runtime/iprop/OpcodeSpec.hpp": "bfadffffa8ef2b84f3af5b7e5186d22120b9721d99a4c4dc27b8446d28fd0892",
+    "runtime/masks.cpp": "01034153d8afd484fe4dfa58e14de6040b9e70f0a29d9051226864cb64c42452",
+    "runtime/opcode_spec.cpp": "dc9704d9c8f60d9f46845089f7ebc7eb6fd5ebd348ab38d0eba06a867b1d87ca",
+    "runtime/seeded.cpp": "4d2a3f7185fa2ca41931ecc6816f72b7c090b1a15e62e352e714865b4af1503e",
+    "scripts/contract_readers.py": "ebff6332ad4257800e39707269d57d8c7315f2b4c1fe09015a57c712e9b8f3eb",
+    "scripts/tests/test_current_documentation.py": "f96fe344d3e50ada7be06daf06a1b7501a30d7b5bee5e33f4075e35cd9a13b8b",
+    "spec/noise-mask-v0.9.md": "37fe03e8ea52da3f5383e672a063216316ab43293a375d40f7c616da5c76bc85",
+    "tests/CMakeLists.txt": "902759d5bcbf327086d9bc1d9bb1c1e176cd4cfdac4ee6df13303272683893cc",
+    "tests/builtin_spec_test.cpp": "58783e1ab177fde8131ca07c69124ee0013c19fab748b3d23eace7f4d153090e",
+    "tests/compiler/noise_masks_test.cpp": "e933ca6b39d11cc3223c01297b0f9823b034393210af98665979fa4e756a31ca",
+    "tests/fixtures/export-contract-mutations.json": "8801f0f4e5f81421e2989456d6f1114276c82188ae5d54686d13f97a37ec45fb",
+    "tests/fixtures/noise-mask-v0.9.json": "6d7406a48a769b1013a219945bf0d60a13766b855a1b80c1a1be5c6e01339f57",
+    "tests/opcode_spec_test.cpp": "1d3bececa5a262cbddc264666228db461c3e4f004dc2608dc299c09a723d04af",
+    "tools/language_description.cpp": "6e935fa639491bee387f5b73410a7198a9ca22ba506d866e33c85dc96ed3a4f9"
+  },
+  "binary_sha256": {
+    "native_ipc": "901f79e3c6ae3e7774dd6d80b5947ebb951049b225c06e9cdda6729c44a0259a",
+    "native_ipa": "0c5d3fa24da38cedd0291db8f4b8900ca8afde385a7bd4be5f36a341aa6906db",
+    "native_ipdis": "f1212727d66a37d6fa98b2121c25a4a2d7ecf175241623c2efe55c0313b58d67",
+    "native_ipval": "98a01c6ce398a5980001ea45690ea0676b653cb0affce9e1cd21ba570f84d211",
+    "native_ipgen": "bbc2c5b916bfd0c660a04c6f9b55f8a7afbadb057ebcb6fa70bc96d4a8fc86c2",
+    "wasm": "ba5335a29f9e85f9d4bd4ef7e17b6ec61b166cf83659621c3b126aaa9ff8f7f9"
+  },
+  "unchanged_frozen_references_sha256": {
+    "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+    "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+    "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+    "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+    "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+    "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+    "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+    "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+    "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+    "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+    "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+    "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf",
+    "tests/fixtures/compat-v0.8/branch.ips": "54ccb61fad18e4eddbd9e6d5c4aca4ab37937015989b72ad08e34201bd892469",
+    "tests/fixtures/compat-v0.8/composition.ips": "8d0336902b766ca3c98f760034028e9d0c133b7319251c0a51b31547ad0dd375",
+    "tests/fixtures/compat-v0.8/leaf.ips": "ff057e10c4e84db8ac9b849242c0f0be77a0acf5fd7e31ba7ad091fa146f9cbd",
+    "spec/iprop-v0.8.md": "79a3ba6b7aeee0f3d83208da13511ae4962c38393e1e1d85ee44ee37c21e41d9",
+    "tests/golden/noise.png": "538996893b4bd9ce753a50aeb5733e1745c1d6a69bc86f76c1394de12d498358",
+    "tests/golden/parts.png": "bab687c573971f6238dd90b1f9a0ea4d4f4e7d210a55f614e828d9891a9591e5",
+    "tests/golden/portrait-seed0.png": "6896cfa9fa2f94898ca2a99c8b1055d29c65fa7ee481c56ade0bd17bde99147d",
+    "tests/golden/portrait-seed1.png": "e07be1d6d7b87d926fa747ca2c5aa0a37137fcc6215e8c3113eca8fa762ff73e",
+    "tests/golden/portrait-seed2.png": "f9eb6f19411402d640d74dad5c1edd0c3a6c51db319479a7dc43e8f12b0a9a84",
+    "tests/golden/portrait-seed26.png": "62b7dbbd0f590aecf5d2a98c3cbf4fe3abd6e469abbaef62f65165fb720a1ba9",
+    "tests/golden/portrait-seed7.png": "980cdbddc42ff065d74713a4280a1247121097b57973f2483063cbb96c080392",
+    "tests/golden/shapes.png": "bb7100fdfe98c8e02b57f5fb75b57dbca4b50a5b93b6efc83332c020eff33c38",
+    "tests/golden/noise.ipa": "c2e61b250e6d4dc7664cbc936f339f4eededd0504263818c32aed75be1e2c179",
+    "tests/golden/parts.ipa": "a4c48e39196750e9af22b2d3213421bd63c39872ed9b64c735f3284bfd9dad5a",
+    "tests/golden/shapes.ipa": "200748a4a927174bba61e59b2def2ee22d21aac0cbc40692f0c0e9cb2ec8b84f",
+    "tests/fixtures/noise-v0.9.json": "00df81bc182827eacb0a44ad4711dfc18d2e012454d01fbfb26fac6ac64f5b75",
+    "backends/html5/test/noise-v09-reference.js": "ac5a0dff48cffa208c9190fdb03f058441c3ddff31eed2b40cdc55e88e64fa94",
+    "backends/html5/test/noise-v09-conformance.js": "610e2ca9fcad139747fb25997c7469dfe8ba7fc99973f865bfb361e1a7c001c0",
+    "tests/math/noise_extensions_test.cpp": "fb49ca5bd005aa9e9c1d724f0daecea3329522368a8a22f20324f0912a70549c",
+    "spec/noise-v0.9.md": "663eb879d3a4028dbdc463d298cf9c3da619c20dd5fecec18a4115ce8f59cce1",
+    "spec/verification/noise-v0.9.json": "59debc65265ab2621c34cd62512821ff85feee3088ff984084e4d11e90b8c290",
+    "spec/verification/noise-v0.9-ctest.txt": "5bb4788e410c17ecec5a6e0dd2f0858a5ecf3da1a1510248b9e96fdcc8117cfe",
+    "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc"
+  },
+  "log_sha256": {
+    "configure": "434ddec07531ddd1d4a12d3faf8a3e36f17c18e89897b8077707454bf36f6cd5",
+    "build": "4e57dd98cb1b64cf39b0f59e5169b215d193c35fd529392b4a0e63f991a96258",
+    "wasm-configure": "51865ab22caf572d6216e869f02cead2b1e326e9ae5ffabf1a9ea8b4c9768dec",
+    "wasm-build": "a88efdfa1f48b570d6b50dad7115a939a064d75d9dc1b9da2bfc3d445e49e755",
+    "focused": "8b26089d0778084d49581f2619e3045e3f25ff28bba5864d506ea5ae5a6879fa",
+    "ctest": "6f570a868ca61d4b39093cc07055d0aa94c1a923685c7a76726d927a22455059",
+    "conformance": "ad8717d6efb210f07a6931821b3dafcc59f52ba94e1ad8a4e117f393418f6abb",
+    "node": "8723b8934c8137f1c0c9b91393a1234e88908410deaacc71c69861c68b42a7cc",
+    "export": "9fdcd0c6d7c786b16ee1d3f7cf0c75653ec57bfb40b8ea425e4720f776e2d124",
+    "docs-final": "b05371a243a92f02c070bd18a4baa7ef32318402abc84ba77ff8fe429fa44293",
+    "documentation": "ee718b65f8006990394126d8f5ff316dc9e28fda6874008f4f938776414a80ff"
+  },
+  "requirements": {
+    "03.1": "Two fixed VM descriptors (0xE3/0xE4), two IPS overloads, eight scalar namespace constants; shared scalar sampling and one F1/F2 scan. Validator rejects wrong types/aux; resource results never constant-fold.",
+    "03.2": "Independent frozen binary32 oracle: 52 images covering six modes, defaults, soft/hard and inclusive equality, two comparisons, frequency axes, positive/negative warp, origins, scaling, tiny and off-target rectangles.",
+    "03.3": "Standard immutable A8 buffer with target scale and identity placement; native scalar-reference checks plus paint, clips, algebra, positive blur/morphology, all eight D4 mappings and shared resource export. No new public type or IPS loop.",
+    "03.4": "Six focused native cases (15615 assertions), 388 native/WASM generations, 15546 pinned visible pixels, 162 matching runtime traps, 20 bytecode rejections, 3 source errors. Exact fuel preflight, memory quota, last-reference release, no result after trap, RNG and signature-order evaluation."
+  },
+  "documentation": {
+    "passed": 6,
+    "total": 6,
+    "links_and_fragments": "PASS",
+    "frozen_0_8_specification": "unchanged"
+  }
+}

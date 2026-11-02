@@ -17,7 +17,7 @@ constexpr bool accepts(StackType expected, ValueType actual) {
 
 struct StackSignature {
     // Input order is deepest first, like the VM function signatures.
-    std::array<StackType,6> inputs{};
+    std::array<StackType,10> inputs{};
     std::size_t inputCount = 0;
     std::optional<ValueType> result;
     constexpr StackSignature(std::initializer_list<StackType> params,
