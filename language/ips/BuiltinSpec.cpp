@@ -20,6 +20,15 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
+        {"regions", {V::Regions2d,L::Opcode,{
+            {{{"source",V::Diagram2d}},Opcode::RegionsDiagram},
+            {{{"source",V::Contours2d}},Opcode::RegionsContours}}}},
+        {"regions.count", {V::I32,L::Opcode,{{{{"rs",V::Regions2d}},Opcode::RegionsCount}}}},
+        {"regions.id", {V::I32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsId}}}},
+        {"regions.area", {V::F32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsArea}}}},
+        {"regions.center", {V::Vec2,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsCenter}}}},
+        {"regions.neighbors", {V::list(V::I32),L::Opcode,
+            {{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsNeighbors}}}},
         {"contour", {V::Contours2d, L::Opcode, {
             {{{"source",V::Mask},{"threshold",V::F32}},Opcode::Contour},
             {{{"source",V::Mask},{"threshold",V::F32},{"simplify",V::F32},
@@ -325,7 +334,7 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
 }
 
 bool builtinYieldsToHelper(std::string_view name) {
-    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi" || name == "contour";
+    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi" || name == "contour" || name == "regions";
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {

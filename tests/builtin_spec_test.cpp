@@ -86,7 +86,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Diagram2d ? "diagramValue" :
+                const std::string value = type == T::Regions2d ? "regionsValue" : type == T::Contours2d ? "contoursValue" :
+                    type == T::Diagram2d ? "diagramValue" :
+                    name.starts_with("regions.") && param.name=="index" ? "0" :
                     name == "diagram.site" || name == "diagram.neighbors" ? "0" :
                     name == "voronoi" && param.name == "size" ? "{8,8}" :
                     name == "voronoi" && param.name == "row_bias" ? "0.0" :
@@ -105,7 +107,10 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             const bool layer = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type.isResource();});
             const bool mask = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Mask;});
             const bool diagram=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Diagram2d;});
-            const std::string capture = diagram ? "diagramValue=voronoi({0,0},{8,8},1,1) " :
+            const bool regions=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Regions2d;});
+            const bool contours=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Contours2d;});
+            const std::string capture = regions ? "regionsValue=regions(voronoi({0,0},{8,8},1,1)) " :
+                contours ? "layer image{rect(0,0,8,8,#fff)} contoursValue=contour(mask.from(image),0.5) " : diagram ? "diagramValue=voronoi({0,0},{8,8},1,1) " :
                 layer ? "layer image{} " + std::string(mask ? "region=mask.from(image) " : "") : "";
             const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + args + ") } }");

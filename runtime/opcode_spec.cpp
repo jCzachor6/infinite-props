@@ -31,8 +31,11 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
     case Opcode::Contour: case Opcode::ContourConfig:
         return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
+    case Opcode::RegionsDiagram: case Opcode::RegionsContours:
+    case Opcode::RegionsCount:
     case Opcode::DiagramCount:
         return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::RegionsId: case Opcode::RegionsArea: case Opcode::RegionsCenter: case Opcode::RegionsNeighbors:
     case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
         return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::Weather: return {R::SeededComputation,true};
@@ -240,6 +243,13 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DiagramNeighbors, "diagram.neighbors", OperandKind::Zero),
     dynamic(Opcode::Contour, "contour", OperandKind::Zero),
     dynamic(Opcode::ContourConfig, "contour.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsDiagram, "regions.diagram", OperandKind::Zero),
+    dynamic(Opcode::RegionsContours, "regions.contours", OperandKind::Zero),
+    dynamic(Opcode::RegionsCount, "regions.count", OperandKind::Zero),
+    dynamic(Opcode::RegionsId, "regions.id", OperandKind::Zero),
+    dynamic(Opcode::RegionsArea, "regions.area", OperandKind::Zero),
+    dynamic(Opcode::RegionsCenter, "regions.center", OperandKind::Zero),
+    dynamic(Opcode::RegionsNeighbors, "regions.neighbors", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),

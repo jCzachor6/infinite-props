@@ -579,7 +579,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 05, 06.
 
-- [ ] 07.1 Zbudować regiony z diagramów i konturów oraz count/id/area/center/neighbors według ustalonej semantyki pochodzenia i fragmentów.
+- [x] 07.1 Zbudować regiony z diagramów i konturów oraz count/id/area/center/neighbors według ustalonej semantyki pochodzenia i fragmentów.
 - [ ] 07.2 Zaimplementować jeden offset z round joins, dodatnim/ujemnym inset, rozpadem składowych, min_area i stabilną kolejnością.
 - [ ] 07.3 Dodać maskę pojedynczego regionu i sumy regionów z dziurami; współdzielić rasteryzator i ustalić regułę przypisania wspólnych granic.
 - [ ] 07.4 Dodać ograniczone `regions.points`; przetestować odrzucenie dziur i >256 wierzchołków bez utraty danych w innych API.
@@ -588,7 +588,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** poprawne ID i indeksy po filtracji/podziale, dokładne dziury i spójne granice, brak przebudowy całej geometrii przy odczytach.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**07.1 (2026-11-03):** Dwa krótkie przeciążenia `regions` współdzielą gotowy store bez alokacji geometrii. Count/id/area/center korzystają z cache; neighbors zwraca zwykłą listę. Sprawdzone zachowanie dziur, ID, filtrowanie pola netto, ponowne przypisanie wyspy po usunięciu rodzica i indeksy zachowanych sąsiadów. Trzy testy / 2483 asercje, round-trip IPS/IPA i named calls, niezainicjalizowane uchwyty oraz błędne indeksy także z optymalizacją; własny helper `regions` zachowuje pierwszeństwo. Przechodzi wcześniejsza pełna bramka native/WASM (w tym 88 zestawów konturów) i cztery ponownie wykonane bramki smoke/eksport/dokumentacja/CI. [Kontrakt](spec/regions-v0.9.md) przypina semantykę pochodzenia i porządek fragmentów; ich tworzenie, maski i points pozostają w kolejnych podpunktach etapu 07. Nie dodano opcode konfiguracji przed ich implementacją.
 
 ### Etap 08 — fugi i bevel
 

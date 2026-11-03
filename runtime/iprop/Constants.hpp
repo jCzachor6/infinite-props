@@ -301,6 +301,13 @@ enum class Opcode : u8 {
     DiagramNeighbors = 0xED,
     Contour = 0xEE,
     ContourConfig = 0xEF,
+    RegionsDiagram = 0xF0,
+    RegionsContours = 0xF2,
+    RegionsCount = 0xF4,
+    RegionsId = 0xF5,
+    RegionsArea = 0xF6,
+    RegionsCenter = 0xF7,
+    RegionsNeighbors = 0xF8,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

@@ -110,6 +110,7 @@ add_executable(iprop_tests
     geometry_test.cpp
     voronoi_test.cpp
     contours_test.cpp
+    regions_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp

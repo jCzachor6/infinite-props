@@ -108,9 +108,47 @@ subtracting immediate holes and after simplification. It keeps or removes a
 whole component with its holes; islands inside holes are tested separately.
 Components have stable decreasing-area order with bounding-box and discovery
 tie breaks. Geometry limits and fuel also apply to data later filtered out.
-Contours can be passed through helpers; region conversion follows in stage 07.
+Contours can be passed through helpers and converted with `regions`.
 
 <!-- example: ../../examples/language/contours.ips -->
+
+## regions
+<!-- builtin: regions -->
+
+Converts a diagram or contours to separately addressable components. The short
+call shares immutable geometry and preserves holes and source order. It creates
+no dynamic part. See the [regions contract](../../spec/regions-v0.9.md).
+
+<!-- example: ../../examples/language/regions.ips -->
+
+## regions.count
+<!-- builtin: regions.count -->
+
+Returns the number of current components. An empty set returns zero.
+
+## regions.id
+<!-- builtin: regions.id -->
+
+Returns the original site index or canonical input contour component index.
+Result indices address current components; source IDs survive filtering and
+can repeat when a component is split by an offset.
+
+## regions.area
+<!-- builtin: regions.area -->
+
+Returns cached local area with holes subtracted. An invalid index traps.
+
+## regions.center
+<!-- builtin: regions.center -->
+
+Returns the cached centroid, with hole moments subtracted.
+
+## regions.neighbors
+<!-- builtin: regions.neighbors -->
+
+Returns sorted unique current indices whose original diagram edges establish
+adjacency. Missing components are excluded; contour sources return an empty
+list. These are provenance relationships, so a later gap does not erase them.
 
 ## vec2.len
 <!-- builtin: vec2.len -->

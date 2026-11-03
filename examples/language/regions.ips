@@ -1,0 +1,21 @@
+asset region_centers {
+    size 48x32
+    output list point centers
+    draw {
+        d = voronoi({0, 0}, {48, 32}, 12, seed, voronoi.grid, 0.35, 1)
+        rs = regions(d)
+        count = regions.count(rs)
+        for i in 0..count {
+            source_id = regions.id(rs, i)
+            p = regions.center(rs, i)
+            centers = p
+            radius = sqrt(regions.area(rs, i)) * 0.18
+            oval(p - {radius, radius}, {radius * 2, radius * 2}, color.shade(#b79d7a, source_id * 2))
+            adjacent = regions.neighbors(rs, i)
+            for j in 0..list.len(adjacent) {
+                n = adjacent[j]
+                if (n > i) { line(p, regions.center(rs, n), 1, #765) }
+            }
+        }
+    }
+}
