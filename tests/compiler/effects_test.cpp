@@ -171,6 +171,10 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             setup="layer image{rect(0,0,8,1,#fff)rect(0,7,8,1,#fff)rect(0,1,1,6,#fff)rect(7,1,1,6,#fff)} source=regions(contour(mask.from(image),0.5)) ";
             args="source,0";
         }
+        if (name == "regions.gap") {
+            setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
+            args="source,float(v-1)";
+        }
         if (name == "regions.mask") {
             setup="source=regions(voronoi({2147483000,0},{1024,8},1,0)) ";
             args=overload.params.size()==1?"source":"source,0";

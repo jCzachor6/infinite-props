@@ -604,7 +604,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 07.
 
-- [ ] 08.1 Oprzeć stałą fugę width/2 na wspólnym offsetowaniu; uwzględnić brzeg zewnętrzny, dziury i powtarzane zastosowanie.
+- [x] 08.1 Oprzeć stałą fugę width/2 na wspólnym offsetowaniu; uwzględnić brzeg zewnętrzny, dziury i powtarzane zastosowanie.
 - [ ] 08.2 Przypiąć i wdrożyć deterministyczny profil zmiennej fugi ze współdzielonym odczytem po obu stronach krawędzi oraz ograniczoną liczbą segmentów.
 - [ ] 08.3 Przypiąć profil bevel, normalne, narożniki, remisy krawędzi i alfa; wygenerować warstwę bez zmiany geometrii oraz bez nowego systemu oświetlenia.
 - [ ] 08.4 Sprawdzić width=0 dla gap, zanik cienkich regionów, variation=0/1, deterministyczność seedów, zewnętrzne/wewnętrzne krawędzie i nakładanie warstwy source-over/legacy.
@@ -612,7 +612,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** stały gap odpowiada temu samemu offsetowi co inset, zmienne granice mają wspólny profil, bevel daje powtarzalny efekt w scenach muru/płytek.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja 08.1:** krótki `regions.gap` (opcode `FC`) używa bezpośrednio offsetu width/2; pełny frontend, walidator, runtime, formatter, IPA/IPDIS i opis języka. 2 testy / 2827 asercji: współdzielenie width=0, zgodność punktów/krawędzi/metadanych i fuel, dziury, zanik, powtarzane zastosowanie, błędy i optymalizacja. Dodatkowo 40 generacji publicznego API native/WASM porównuje gap z inset, PNG, metadane i RNG. 82 kontrole CTest zaliczone po uzupełnieniu dokumentacji i przykładu; pełny dotychczasowy gate native/WASM zaliczony. Kontrakt: [fugi i bevel](spec/gap-bevel-v0.9.md). 08.2–08.4 nadal otwarte.
 
 ### Etap 09 — dynamiczne części i D4
 

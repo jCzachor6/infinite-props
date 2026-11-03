@@ -111,6 +111,7 @@ add_executable(iprop_tests
     voronoi_test.cpp
     contours_test.cpp
     regions_test.cpp
+    gap_bevel_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp

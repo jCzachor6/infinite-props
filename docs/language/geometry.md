@@ -174,6 +174,18 @@ Coverage uses a fixed 4 by 4 subpixel grid and half-open shared boundaries.
 The union is formed before A8 quantization, so overlapping regions do not add
 alpha. Empty sets return a transparent 1 by 1 mask at origin zero.
 
+## regions.gap
+<!-- builtin: regions.gap -->
+
+Shrinks every current boundary by half the requested gap width, including
+outer boundaries and holes. Width must be finite and nonnegative. Zero
+shares the original geometry. Repeated calls accumulate on the current
+geometry; fragments preserve IDs and ancestry. It uses the same round-join
+offset kernel and limits as `regions` with an inset, and does not draw.
+See the [gap and bevel contract](../../spec/gap-bevel-v0.9.md).
+
+<!-- example: ../../examples/language/gap-bevel.ips -->
+
 ## vec2.len
 <!-- builtin: vec2.len -->
 

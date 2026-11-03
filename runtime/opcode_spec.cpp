@@ -31,6 +31,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
     case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
     case Opcode::RegionsMaskAll:
+    case Opcode::RegionsGap:
     case Opcode::Contour: case Opcode::ContourConfig:
         return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::RegionsDiagram: case Opcode::RegionsContours:
@@ -259,6 +260,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::RegionsPoints, "regions.points", OperandKind::Zero),
     dynamic(Opcode::RegionsMask, "regions.mask", OperandKind::Zero),
     dynamic(Opcode::RegionsMaskAll, "regions.mask_all", OperandKind::Zero),
+    dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),
