@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–08 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury, regiony, fugi i bevel sprawdzone native/WASM. Implementacja etapu 08 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap: 09 (dynamiczne części i D4).
+**Status:** etapy 00–09 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury, regiony, fugi, bevel oraz dynamiczne części i D4 sprawdzone native/WASM. Implementacja etapu 09 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap planu: 10 (eksport części i API hosta).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -630,7 +630,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 09.3 Zaimplementować zaokrąglenie położenia, bounds, center, draw i mask z clippingiem i aktywnym compositingiem; zachować alfę źródła warstwowego dokładnie raz.
 - [x] 09.4 Sprawdzić wszystkie osiem symetrii D4, pozycje ułamkowe/ujemne, różne kotwice, dziury, miękką alfę, puste źródło i brak wyglądu.
 - [x] 09.5 Potwierdzić stabilne stare widoki, brak nowych ID przy get/place/fill/texture, dwa utworzenia tego samego źródła i limit 256 po porzucaniu uchwytów.
-- [ ] **Etap 09 zakończony.**
+- [x] **Etap 09 zakończony.**
 
 **Odbiór:** niezależne części są instancjami runtime; brak kopiowania całego canvasa na każdy obiekt oraz regresji statycznych importów.
 
@@ -643,6 +643,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **09.4 (2026-11-03):** 09.3 opublikowane jako `9f0c3cb`. [275 wektorów](tests/fixtures/dynamic-parts-v0.9.json) i [niezależny oracle](tests/reference/dynamic-parts-reference.js) sprawdzają pełne RGBA/A8, mapping, bity metadanych oraz oryginalnej ramki; koszty fuel/pamięci są jawnie utrwalonymi pinami implementacji. Wszystkie 64 pary D4 dla każdego źródła rastrowego, analityczna dziura i trójkąt, ujemne/ułamkowe położenia, różne kotwice, skale 2×3 i 0.75×1.25, oba kompozytory, miękkie/puste clipy i wszystkie wyglądy. Gate: 81 wariantów publicznych, **1056 generacji native/WASM**, 33 trapy, 56 odrzuceń nieużywanego bytecode, 9 diagnostyk; wszystkie 8 konfiguracji kompilatora, IPA/IPDIS i formatter. **85/85 CTest**, cały wcześniejszy gate native/WASM przechodzi. [Przykład dynamicznych kafli](examples/language/dynamic-tiles.ips) obejrzany, oba przykłady mają przypięte RGBA/fuel i zgodność WASM; 115 builtinów / 159 przykładów. Granice zasobów i końcowy audyt to 09.5.
 
 **09.5 (2026-11-03):** 09.4 opublikowane jako `cb9c96b`. Doprecyzowany i wykonany podział skal: geometria dobiera odwrotną siatkę D4 targetu bez kopiowania wierzchołków; rastry i tekstury nie są resamplowane. 42 dodatkowe przypadki geometrii i 6 odrzuceń niedopasowanych rastrów, bez zmiany wcześniejszych 275 wyników. Końcowy gate: **317 wektorów, 634 pełne rekordy rdzeni, 1063 generacje native/WASM, 37 trapów, 56 odrzuceń bytecode i 10 diagnostyk**. **86/86 CTest**, 13 testów części / 1687 asercji; 132 wymuszone awarie alokacji w 12 ścieżkach bez wycieków, atomowe ID przy błędzie bulk. Potwierdzone stare widoki i bufory po zamknięciu wykonania, ID 0–255 także po porzucaniu uchwytów, 512 powtórzeń operacji bez nowych ID oraz 24 efektowne argumenty w kolejności sygnatury. Granice fuel i pojedynczego bajtu areny są zgodne native/WASM. Paczka bez sond przechodzi 1063 generacje publiczne; checked C API/Python: 4 generacje z dokładnym RGBA, punktami i fuel. Siedem starszych runtime odrzuca po 48 nowych programów; 67 dawnych wzorców bez zmian. Kontrakty eksportu: 221 mutacji / 159 przypadków CLI; 115 builtinów / 159 przykładów. Zbiorczy raport i audyt dostarczenia zostaną utrwalone w commicie zamknięcia etapu.
+
+**Zamknięcie etapu 09:** implementacja 09.5 opublikowana jako `5576a2a`. [Raport weryfikacji](spec/verification/dynamic-parts-v0.9.json) i [pełny log 86/86 CTest](spec/verification/dynamic-parts-v0.9-ctest.txt) utrwalają zgodność native/WASM, granice zasobów, paczkę bez sond, checked C API/Python, stare runtime i hashe źródeł/binarek. Dokumentacja sprawdzona względem źródeł na czystym `5576a2a` (115 builtinów / 159 przykładów); audyt dostarczenia powtarza build/verify na czystym commicie zamknięcia i potwierdza SHA po pushu. Opcjonalny silnik Python `jsonschema` nie był dostępny; walidatory kontraktów oraz 221 mutacji / 159 rzeczywistych przypadków CLI przeszły. Eksport typowanych części i rozszerzenia bindingów pozostają nieodznaczonymi etapami 10–11.
 
 ### Etap 10 — eksport części i API hosta
 
