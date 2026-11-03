@@ -129,6 +129,33 @@ count to 256, before user simplification or min_area. Fuel can terminate a
 costly scan or topology check before these size limits. All traps release
 scratch and unpublished results. No partial host result is published.
 
+The fixed automatic-workspace reservation is 4096 bytes. Scratch segments,
+linked vertices and ring records use capacity slots of 40, 32 and 96 bytes,
+plus the shared allocator's 32-byte allocation header. Persistent geometry
+uses the shared core's tariffs. No original mask is retained by the result.
+
+The scan reserves `4*(width+1)*(height+1)+2*(width+height+2)` fuel; each emitted
+segment costs 2. Each heapsort reserves `4*n*(1+bit_width(n))`; graph lookup,
+cycle traversal, collinear normalization, moments, edge intersection checks,
+parent searches, original-arc distance checks, containment checks and publishing
+also charge their visits. Simplification charges skipped dead-edge records as
+well as live ones. Builder and validation costs are additional. Fixture fuel
+pins describe the constructor, excluding capture, argument evaluation and VM
+instruction costs. Final tariff/work-limit calibration belongs to stage 13.
+
 The fixture corpus in [contours-v0.9.json](../tests/fixtures/contours-v0.9.json)
-pins the case table and analytical topology. Runtime verification will add
-complete native/WASM records and resource-boundary evidence before closure.
+pins the table, analytical topology and hashes of complete records: f32 points,
+edges/provenance, rings/parents, binary64 moments, components/holes, cached f32
+metadata, fuel, retained quota and full release. The independent JS oracle
+builds a coordinate-key graph and uses dual foreground/background flood fills;
+it does not read runtime source or use runtime output to construct polygons.
+Simplified rings are additionally checked against original arcs, intersections
+and nesting. All 512 binary 3×3 masks are tested at both connectivities and
+thresholds 0, 0.5 and 1. Nested geometry plus simplification is checked under
+every D4, including reflections.
+
+The [verification report](verification/contours-v0.9.json) records native/WASM
+equality, exact resource boundaries, injected allocator failures, old-runtime
+rejections and unchanged earlier fixtures. The public constructor is also
+exercised with only the packaged runtime/API and ordinary tools, without either
+internal topology probe. This stage adds no dependency or host geometry output.

@@ -116,6 +116,12 @@ TEST_CASE("contours validate domains and release scratch on fuel quota and size 
         detail::ContourOptions{0.5f,-1},detail::ContourOptions{0.5f,0,-1},detail::ContourOptions{0.5f,0,0,2}}) {
         CHECK_THROWS_AS(detail::maskContours(ex,m,options),Trap);CHECK(ex.resources.bytes==baseline);
     }
+    for (const auto bad:{std::numeric_limits<f32>::infinity(),std::numeric_limits<f32>::quiet_NaN()})for(u32 field=0;field<3;++field) {
+        detail::ContourOptions o;
+        if(field==0)o.threshold=bad;else if(field==1)o.simplify=bad;else o.minArea=bad;
+        CHECK_THROWS_AS(detail::maskContours(ex,m,o),Trap);CHECK(ex.resources.bytes==baseline);
+    }
+    CHECK_THROWS_AS(detail::maskContours(ex,MaskValue{},{}),Trap);CHECK(ex.resources.bytes==baseline);
     const auto before=ex.fuel;{const auto d=detail::maskContours(ex,m,{});valid(*d);}const auto cost=before-ex.fuel;
     ex.fuel=cost;CHECK_NOTHROW(detail::maskContours(ex,m,{}));CHECK(ex.fuel==0);CHECK(ex.resources.bytes==baseline);
     ex.fuel=cost-1;CHECK_THROWS_AS(detail::maskContours(ex,m,{}),Trap);CHECK(ex.resources.bytes==baseline);

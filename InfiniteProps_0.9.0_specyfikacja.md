@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–05 zakończone; noise, maski, rdzeń geometrii i Voronoi sprawdzone native/WASM. Implementacja etapu 05 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap: 06 (kontury).
+**Status:** etapy 00–06 zakończone; noise, maski, rdzeń geometrii, Voronoi i kontury sprawdzone native/WASM. Implementacja etapu 06 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap: 07 (regiony).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -562,14 +562,18 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 06.1 Przypiąć tabelę Marching Squares, interpolację, reguły progów/degeneracji i domknięcie rastra dla connectivity four/eight.
 - [x] 06.2 Zaimplementować ekstrakcję, orientację, zagnieżdżenia, dziury i stabilne porządkowanie w układzie źródłowej maski.
 - [x] 06.3 Dodać simplify z ochroną topologii oraz min_area dla całych składowych po odjęciu dziur, z ograniczeniem kosztu także odrzuconych danych.
-- [ ] 06.4 Sprawdzić pustą/pełną maskę, pierścień, wyspę w dziurze, składowe rozłączne, diagonalne styki, cienkie mosty, brzeg maski i threshold=0/0.5/1.
-- [ ] **Etap 06 zakończony.**
+- [x] 06.4 Sprawdzić pustą/pełną maskę, pierścień, wyspę w dziurze, składowe rozłączne, diagonalne styki, cienkie mosty, brzeg maski i threshold=0/0.5/1.
+- [x] **Etap 06 zakończony.**
 
 **Odbiór:** zamknięta stabilna geometria bez zgubionych dziur, samoprzecięć i nieograniczonych danych pośrednich; zgodność native/WASM.
 
-**06.1 (2026-11-03):** [kontrakt konturów](spec/contours-v0.9.md) przypina 16 przypadków, oba siodła, interpolację alfa i regułę degeneracji, domknięcie dokładnie na prostokącie maski, mapowanie skali/D4, kolejność oraz ochronę topologii. [Zestaw analityczny](tests/fixtures/contours-v0.9.json) zawiera niezależną tabelę i oczekiwane składowe/dziury. Implementacja i weryfikacja native/WASM pozostają otwarte. Kontrakt opublikowany jako `e16e400863b3e463fbe53656b9e388f5d04bf1de`; zdalny SHA potwierdzony.
+**06.1 (2026-11-03):** [kontrakt konturów](spec/contours-v0.9.md) przypina 16 przypadków, oba siodła, interpolację alfa i regułę degeneracji, domknięcie dokładnie na prostokącie maski, mapowanie skali/D4, kolejność oraz ochronę topologii. [Zestaw analityczny](tests/fixtures/contours-v0.9.json) zawiera niezależną tabelę i oczekiwane składowe/dziury. Dokumentacyjny commit nie zamykał implementacji; jej potwierdzenie znajduje się poniżej. Kontrakt opublikowany jako `e16e400863b3e463fbe53656b9e388f5d04bf1de`; zdalny SHA potwierdzony.
 
-**06.2–06.3 (2026-11-03):** Dwa przeciążenia `contour` działają przez parser, semantykę, lowering, emitter, VM, walidator i formatowanie; schema 5 ma opcjonalny opis konturów. Ekstrakcja zachowuje położenie/skale/D4 źródła, zagnieżdżenia, dziury, kanoniczne początki, sortowanie i pochodzenie. Uproszczenie mierzy błąd wobec całych pierwotnych łuków i sprawdza przecięcia, orientację oraz zawieranie innych obwodów. Filtr porównuje pole netto całej składowej i niezależnie zachowuje wyspy. 88 zestawów sprawdzono niezależnym oracle geometrii i flood-fill rastra; pełne rekordy native/WASM (łącznie z momentami, fuel i pamięcią) są identyczne. Testy rdzenia: 117 187 asercji / dziewięć przypadków, w tym wszystkie 512 masek 3×3 przy obu connectivity i trzech progach. 246 wymuszonych błędów alokacji bez wycieków; limity 256/2048/65536 obejmują dane sprzed simplify/min_area. Pełna wcześniejsza bramka native/WASM przechodzi. Weryfikacja końcowa, archiwalne runtime i raport pozostają w 06.4.
+**06.2–06.3 (2026-11-03):** Dwa przeciążenia `contour` działają przez parser, semantykę, lowering, emitter, VM, walidator i formatowanie; schema 5 ma opcjonalny opis konturów. Ekstrakcja zachowuje położenie/skale/D4 źródła, zagnieżdżenia, dziury, kanoniczne początki, sortowanie i pochodzenie. Uproszczenie mierzy błąd wobec całych pierwotnych łuków i sprawdza przecięcia, orientację oraz zawieranie innych obwodów. Filtr porównuje pole netto całej składowej i niezależnie zachowuje wyspy. 88 zestawów sprawdzono niezależnym oracle geometrii i flood-fill rastra; pełne rekordy native/WASM (łącznie z momentami, fuel i pamięcią) są identyczne. Testy rdzenia: 117 187 asercji / dziewięć przypadków, w tym wszystkie 512 masek 3×3 przy obu connectivity i trzech progach. 246 wymuszonych błędów alokacji bez wycieków; limity 256/2048/65536 obejmują dane sprzed simplify/min_area. Pełna wcześniejsza bramka native/WASM przechodzi. Wyniki końcowe 06.4 podano poniżej.
+
+**06.4 (2026-11-03):** [Raport końcowy](spec/verification/contours-v0.9.json) i [80/80 CTest](spec/verification/contours-v0.9-ctest.txt). Dziewięć testów konturów / 117 201 asercji, 3072 ekstrakcje wszystkich masek 3×3, 88 utrwalonych zestawów i osiem dodatkowych wariantów zagnieżdżenia/simplify/D4. Cała geometria i metadane, fuel oraz pamięć są bitowo identyczne w native/WASM. Publiczna bramka obejmuje 706 generacji, dziewięć trapów, sześć odrzuceń bytecode i sześć błędów kompilacji. Sprawdzone dokładne granice fuel i wspólnej areny oraz 246 błędów alokacji; brak wycieków i częściowych wyników. Wszystkie cztery starsze runtime (0.8, etapy 03/04/05) odrzucają po sześć programów z nowymi instrukcjami; 54 wcześniejsze wzorce pozostają bez zmian. Czytniki/protokoły: 205 mutacji / 154 przykłady CLI; handbook: 91 builtinów / 154 przykłady. Osobny wariant pakietowy bez programów testowych przechodzi te same 706 generacji i dziewięć trapów. Nie dodano zależności geometrycznej. Końcowa kalibracja taryfy i niezależnego limitu pracy pozostaje w etapie 13.
+
+**Publikacja 06.2–06.3 (2026-11-03):** [9659c78](https://github.com/jCzachor6/infinite-props/commit/9659c7880bbf09630efda80d34f1a5ee595fca8c). Push na `origin/develop` oraz zdalny SHA `9659c7880bbf09630efda80d34f1a5ee595fca8c` potwierdzone. Kolejny commit zapisuje końcowe próby 06.4, raport i zamknięcie checklisty, zgodnie z §8.
 
 ### Etap 07 — regiony, offsetowanie i maski
 
