@@ -1,0 +1,730 @@
+{
+  "stage": "08 - gaps and bevels",
+  "date": "2026-11-03",
+  "verified_at_utc": "2026-11-03T15:07:05.711181+00:00",
+  "branch": "develop",
+  "runtime_implementation_commit": "6c1292da161b7ad686655933de57aa79f6c9c549",
+  "verification_checkpoint_commit": "7fa4ab488df28e538468069952cb9152d475cb7b",
+  "step_commits": {
+    "08.1": "5f138f77fc6447d2ed2d366e85330773ccdb397d",
+    "08.2": "d36b072cc19cd3772a4e988df7878c14e2ba4c56",
+    "08.3": "6c1292da161b7ad686655933de57aa79f6c9c549",
+    "08.4": "7fa4ab488df28e538468069952cb9152d475cb7b"
+  },
+  "scope": "Stage 08 only. Constant/variable gaps and bevel layers; no stage 09 parts, release, tag, main merge or deployment.",
+  "product_version": "0.8.0",
+  "source_language_version": "0.8.0",
+  "language_schema_version": 5,
+  "opcode_count": 226,
+  "opcodes": {
+    "FC": "regions.gap",
+    "FD": "regions.gap.config",
+    "FE": "regions.bevel",
+    "FF": "regions.bevel.config"
+  },
+  "toolchain": {
+    "native": "AppleClang 21.0.0 arm64 Release",
+    "wasm": "Emscripten 6.0.10-git Release",
+    "floating_point": "FMA disabled on both cores",
+    "sfml": false,
+    "godot": false,
+    "new_geometry_dependencies": []
+  },
+  "builds": {
+    "native": "/private/tmp/iprop-v09-stage08-native",
+    "wasm": "/private/tmp/iprop-v09-stage08-wasm",
+    "documentation": "/private/tmp/iprop-v09-stage08-docs"
+  },
+  "ctest": {
+    "passed": 84,
+    "total": 84,
+    "seconds": 22.91,
+    "log": "spec/verification/gap-bevel-v0.9-ctest.txt",
+    "sha256": "f210bf9d0875193a44217f79600d252d596082ad5946305f9f44be060650b1c6"
+  },
+  "focused": {
+    "test_cases": 8,
+    "assertions": 37465,
+    "exhaustive_binary_3x3_sources": 512,
+    "variable_gaps": 1536,
+    "argument_order_active_seeds": [
+      0,
+      7,
+      4294967295
+    ]
+  },
+  "gap_bevel_gate": {
+    "passed": true,
+    "vectors": 47,
+    "scenes": 2,
+    "publicVectors": 24,
+    "topologies": 47,
+    "generations": 485,
+    "traps": 51,
+    "rejections": 87,
+    "compilerErrors": 7,
+    "resourceBoundaries": [
+      {
+        "name": "rectangle-variable",
+        "fuel": 49186,
+        "minimumFreeBytes": 31136
+      },
+      {
+        "name": "hole-variable",
+        "fuel": 171099,
+        "minimumFreeBytes": 56116
+      },
+      {
+        "name": "diagram-scaled",
+        "fuel": 346389,
+        "minimumFreeBytes": 41500
+      }
+    ],
+    "nativeRepresentation": true,
+    "wasmRepresentation": true,
+    "wasm": true
+  },
+  "oracle": {
+    "corpus": "tests/fixtures/gap-bevel-v0.9.json",
+    "sha256": "8d3635e5d7cbcdaf480cb161ab76401bee6119ded9299d78471c269985266dce",
+    "complete_records": "First-implementation regression pins; they are not a second independently generated exact offset mesh.",
+    "independent_checks": [
+      "BigInt u32 profile hash and matching knots on both sides of a shared original edge",
+      "Dense trig arc/profile winding membership away from the pinned 1/64 error band",
+      "Binary64 moments, f32 metadata, simple rings, holes and canonical order",
+      "Naive per-sample union raster and complete nearest-edge bevel search; RGBA/color-alpha averaging",
+      "Independent integer source-over/legacy paint, clipping, destination alpha and no automatic drawing"
+    ],
+    "compiler_configurations": 8,
+    "ipa_ipdis": true,
+    "formatter": true,
+    "named_arguments_signature_order_once": true,
+    "active_rng_unchanged": true
+  },
+  "resource_accounting": {
+    "allocation_failure_modes": [
+      "transient",
+      "persistent"
+    ],
+    "injected_failures": 1046,
+    "heap_and_quota_leaks": 0,
+    "paths": [
+      "variable gap",
+      "repeated gap",
+      "bevel with explicit alpha",
+      "zero-strength bevel",
+      "gap plus bevel",
+      "fractional off-target bevel"
+    ],
+    "fuel_and_memory_boundaries": [
+      {
+        "name": "rectangle-variable",
+        "fuel": 49186,
+        "minimumFreeBytes": 31136
+      },
+      {
+        "name": "hole-variable",
+        "fuel": 171099,
+        "minimumFreeBytes": 56116
+      },
+      {
+        "name": "diagram-scaled",
+        "fuel": 346389,
+        "minimumFreeBytes": 41500
+      }
+    ],
+    "boundary_method": "Source built first, then operation budget reset; exact fuel and one-byte arena boundary tested native and WASM. Mask plus optional layer retained by the probe are included.",
+    "retained_layer_after_execution_and_geometry_destruction": true,
+    "intermediate_limit_probe": "Width 1e10, variation1 on holed source traps at 65536 intermediate segments before publication.",
+    "arena_limit_bytes": 67108864,
+    "final_independent_work_and_tariff_stages": [
+      12,
+      13
+    ]
+  },
+  "full_native_wasm_regression": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      },
+      "geometryV09": {
+        "passed": true,
+        "types": 5,
+        "vectors": 3,
+        "generations": 60,
+        "rejections": 35,
+        "traps": 5,
+        "compilerErrors": 25,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "voronoiV09": {
+        "passed": true,
+        "vectors": 19,
+        "generations": 306,
+        "topologies": 19,
+        "traps": 18,
+        "rejections": 3,
+        "compilerErrors": 5,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "contoursV09": {
+        "passed": true,
+        "vectors": 88,
+        "generations": 706,
+        "topologies": 88,
+        "mappedNestedCases": 8,
+        "traps": 9,
+        "rejections": 6,
+        "compilerErrors": 6,
+        "resourceBoundaries": [
+          {
+            "name": "empty",
+            "fuel": 49,
+            "minimumFreeBytes": 4996
+          },
+          {
+            "name": "nested-simplify-1000",
+            "fuel": 6383,
+            "minimumFreeBytes": 16439
+          },
+          {
+            "name": "seeded-gray-7",
+            "fuel": 3348,
+            "minimumFreeBytes": 11376
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "regionsV09": {
+        "passed": true,
+        "vectors": 55,
+        "publicVectors": 31,
+        "topologies": 55,
+        "generations": 564,
+        "traps": 41,
+        "rejections": 36,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-inset",
+            "fuel": 3656,
+            "minimumFreeBytes": 13938
+          },
+          {
+            "name": "dumbbell-split",
+            "fuel": 18631,
+            "minimumFreeBytes": 26336
+          },
+          {
+            "name": "hole-inset",
+            "fuel": 24337,
+            "minimumFreeBytes": 31284
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "gapBevelV09": {
+        "passed": true,
+        "vectors": 47,
+        "scenes": 2,
+        "publicVectors": 24,
+        "topologies": 47,
+        "generations": 485,
+        "traps": 51,
+        "rejections": 87,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-variable",
+            "fuel": 49186,
+            "minimumFreeBytes": 31136
+          },
+          {
+            "name": "hole-variable",
+            "fuel": 171099,
+            "minimumFreeBytes": 56116
+          },
+          {
+            "name": "diagram-scaled",
+            "fuel": 346389,
+            "minimumFreeBytes": 41500
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "packaged_runtime_smoke": {
+    "passed": true,
+    "vectors": 47,
+    "scenes": 2,
+    "publicVectors": 24,
+    "topologies": 0,
+    "generations": 485,
+    "traps": 51,
+    "rejections": 87,
+    "compilerErrors": 7,
+    "resourceBoundaries": [],
+    "nativeRepresentation": false,
+    "wasmRepresentation": false,
+    "wasm": true,
+    "path": "/private/tmp/iprop-v09-stage08-packaged",
+    "files": [
+      "tools/ipc",
+      "tools/ipa",
+      "tools/ipdis",
+      "tools/ipgen",
+      "tools/ipval",
+      "runtime/iprop.js",
+      "runtime/iprop.wasm",
+      "runtime/api.js"
+    ],
+    "byte_identical_to_tested_artifacts": true,
+    "internal_probes_shipped": false,
+    "scope": "24 public vectors and both authored scenes execute through the public API; internal geometry records use frozen reference data when probes are absent."
+  },
+  "archived_runtime_rejections": {
+    "programs": 12,
+    "dead_opcodes": 4,
+    "live_overloads": 4,
+    "plain_and_automatic_compression": true,
+    "program_sha256": {
+      "regions.gap-dead": "13433e92745130c9525da34f13ca496b0361a1d75be9652b09bcb6d4c8c918be",
+      "regions.gap.config-dead": "f4bf835a7406111fcb88770c5dab35976fa3f8712888da7489f2363d715ba3bd",
+      "regions.bevel-dead": "03e7b9d6176b7e04f082610510ae5fa00a7e04153bf3755dec051411ae3135d9",
+      "regions.bevel.config-dead": "1bbe02ce53227a0044a71c98f14741bce9ff9f1cf67f7884aea7a1488f9a3451",
+      "gap-plain": "cc27999c64879131bf2e3b9a6608fa48419f766510681eaed65b8e206a3e162e",
+      "gap-automatic": "14083a929b4b3ae3e0b7f81569ca873e9e54f26a918b87a2dc59ad7c39c9850b",
+      "gap-config-plain": "ed8a70ea2f9f49ae3f204fd34968aa4abb17962217142bf5ad3632a67e775cec",
+      "gap-config-automatic": "f5698272ef7c909dc5fef042fe8e4fce696e97c207629f99a53d7e95a6f02e4e",
+      "bevel-plain": "f3cd2eac75be3786d8f8b71a2a826180bc1891369c00b026fe805c43f248bd90",
+      "bevel-automatic": "7244e826a229574ead74be9b07b4aa2ed45535528978ecad00a45bb4b8592d35",
+      "bevel-config-plain": "9998f7a22ca94aae8eac14eebc68a14ed3876c227a6f240f2186fc340e8d9549",
+      "bevel-config-automatic": "3e39bf30bfec286951143f275d47a7193c888cf59b0d16ecb5416084c1e7b96d"
+    },
+    "runtimes": [
+      {
+        "name": "0.8",
+        "binary": "/private/tmp/iprop-v09-stage01-native/tools/ipval",
+        "sha256": "211bb46269032354bd1ad15330043e99c109f744570aab2db43bac1a37ab4994",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 194: reserved opcode"
+      },
+      {
+        "name": "stage-03",
+        "binary": "/private/tmp/iprop-v09-stage03-native/tools/ipval",
+        "sha256": "98a01c6ce398a5980001ea45690ea0676b653cb0affce9e1cd21ba570f84d211",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 194: reserved opcode"
+      },
+      {
+        "name": "stage-04",
+        "binary": "/private/tmp/iprop-v09-stage04-native/tools/ipval",
+        "sha256": "5f8163196f35f74cb347c9d14f2ac4c93406bed04f234c7d0a56f0d6f7146652",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 194: reserved opcode"
+      },
+      {
+        "name": "stage-05",
+        "binary": "/private/tmp/iprop-v09-stage05-native/tools/ipval",
+        "sha256": "c9bed3c7eea64e96253855e062a891a79f9eedb62e7ac273a74c28105e6e0ae7",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 198: reserved opcode"
+      },
+      {
+        "name": "stage-06",
+        "binary": "/private/tmp/iprop-v09-stage06-native/tools/ipval",
+        "sha256": "9c4c3f65f060762e603487fa651ded34987fe46942342ca692d33710d091b89a",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 198: reserved opcode"
+      },
+      {
+        "name": "stage-07",
+        "binary": "/private/tmp/iprop-v09-stage07-native/tools/ipval",
+        "sha256": "02bf9ea3fd41ff5d8b4a35ff6f2ff65591c97cbbd77a611d5167a0c9b05fa7d0",
+        "rejections": 12,
+        "dead_opcode_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 142: reserved opcode",
+        "live_program_example": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-gap-bevel-archive-3rb8_grx/fixture.iprop at byte 206: reserved opcode"
+      }
+    ],
+    "detailed_log_sha256": "7df960712b44c857f6c6bb966bf1b204fa10626041efb7306fc419ac7dfc9b48"
+  },
+  "earlier_frozen_references": {
+    "unchanged_count": 61,
+    "sha256": {
+      "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+      "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+      "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+      "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+      "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+      "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+      "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+      "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+      "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+      "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+      "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+      "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf",
+      "tests/fixtures/compat-v0.8/branch.ips": "54ccb61fad18e4eddbd9e6d5c4aca4ab37937015989b72ad08e34201bd892469",
+      "tests/fixtures/compat-v0.8/composition.ips": "8d0336902b766ca3c98f760034028e9d0c133b7319251c0a51b31547ad0dd375",
+      "tests/fixtures/compat-v0.8/leaf.ips": "ff057e10c4e84db8ac9b849242c0f0be77a0acf5fd7e31ba7ad091fa146f9cbd",
+      "spec/iprop-v0.8.md": "79a3ba6b7aeee0f3d83208da13511ae4962c38393e1e1d85ee44ee37c21e41d9",
+      "tests/golden/noise.png": "538996893b4bd9ce753a50aeb5733e1745c1d6a69bc86f76c1394de12d498358",
+      "tests/golden/parts.png": "bab687c573971f6238dd90b1f9a0ea4d4f4e7d210a55f614e828d9891a9591e5",
+      "tests/golden/portrait-seed0.png": "6896cfa9fa2f94898ca2a99c8b1055d29c65fa7ee481c56ade0bd17bde99147d",
+      "tests/golden/portrait-seed1.png": "e07be1d6d7b87d926fa747ca2c5aa0a37137fcc6215e8c3113eca8fa762ff73e",
+      "tests/golden/portrait-seed2.png": "f9eb6f19411402d640d74dad5c1edd0c3a6c51db319479a7dc43e8f12b0a9a84",
+      "tests/golden/portrait-seed26.png": "62b7dbbd0f590aecf5d2a98c3cbf4fe3abd6e469abbaef62f65165fb720a1ba9",
+      "tests/golden/portrait-seed7.png": "980cdbddc42ff065d74713a4280a1247121097b57973f2483063cbb96c080392",
+      "tests/golden/shapes.png": "bb7100fdfe98c8e02b57f5fb75b57dbca4b50a5b93b6efc83332c020eff33c38",
+      "tests/golden/noise.ipa": "c2e61b250e6d4dc7664cbc936f339f4eededd0504263818c32aed75be1e2c179",
+      "tests/golden/parts.ipa": "a4c48e39196750e9af22b2d3213421bd63c39872ed9b64c735f3284bfd9dad5a",
+      "tests/golden/shapes.ipa": "200748a4a927174bba61e59b2def2ee22d21aac0cbc40692f0c0e9cb2ec8b84f",
+      "tests/fixtures/noise-v0.9.json": "00df81bc182827eacb0a44ad4711dfc18d2e012454d01fbfb26fac6ac64f5b75",
+      "backends/html5/test/noise-v09-reference.js": "ac5a0dff48cffa208c9190fdb03f058441c3ddff31eed2b40cdc55e88e64fa94",
+      "tests/math/noise_extensions_test.cpp": "fb49ca5bd005aa9e9c1d724f0daecea3329522368a8a22f20324f0912a70549c",
+      "spec/noise-v0.9.md": "663eb879d3a4028dbdc463d298cf9c3da619c20dd5fecec18a4115ce8f59cce1",
+      "spec/verification/noise-v0.9.json": "59debc65265ab2621c34cd62512821ff85feee3088ff984084e4d11e90b8c290",
+      "spec/verification/noise-v0.9-ctest.txt": "5bb4788e410c17ecec5a6e0dd2f0858a5ecf3da1a1510248b9e96fdcc8117cfe",
+      "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc",
+      "tests/fixtures/noise-mask-v0.9.json": "6d7406a48a769b1013a219945bf0d60a13766b855a1b80c1a1be5c6e01339f57",
+      "backends/html5/test/noise-mask-reference.js": "e182b41dcbe2065386d776f7d71507da12ed295954b34821683842fd3f428abd",
+      "backends/html5/test/noise-mask-conformance.js": "720e73364eae2bb5514df24c054ac33687581d1ce77004814fa7fb3def439be7",
+      "tests/compiler/noise_masks_test.cpp": "e933ca6b39d11cc3223c01297b0f9823b034393210af98665979fa4e756a31ca",
+      "spec/noise-mask-v0.9.md": "37fe03e8ea52da3f5383e672a063216316ab43293a375d40f7c616da5c76bc85",
+      "spec/verification/noise-mask-v0.9.json": "a715e5c22c3eb695604feac77351d91318d1736e771fa32c3df7439f4335c3ff",
+      "spec/verification/noise-mask-v0.9-ctest.txt": "6f570a868ca61d4b39093cc07055d0aa94c1a923685c7a76726d927a22455059",
+      "tests/fixtures/geometry-v0.9.json": "8ca4ac3e44e0581d54535007a4ff3dac31d5204e1716a91be230e1e540c893e6",
+      "tests/support/geometry_fixture.hpp": "be7e5c928576d721955cada49023baf8baa060cc29aa1ad57c84a9c272f47c98",
+      "tests/geometry_test.cpp": "7843d15ab3df35767fb5bc560fa776d742d87c4227396a6bb4a99256385f0885",
+      "tests/geometry_representation_probe.cpp": "f4894c30db8f59e96ad3f50605a03e8f8d606360e879d54fd77bb0736aad5a8a",
+      "tests/geometry_allocation_probe.cpp": "7de1390cfccc136c6d9e98b82d45d9dbd8bd97d360c69539d2e11da11aa533cb",
+      "spec/verification/geometry-core-v0.9.json": "554ecfbb33e403fb92692c87e57a20329248326df2d9bfbe6728e38b887292db",
+      "spec/verification/geometry-core-v0.9-ctest.txt": "5e790fe0c8408d511979776fce6e7cbe2feabd060af46759630bdee601b15f6f",
+      "tests/fixtures/voronoi-v0.9.json": "0155618ebaf45467b0a7696eef48f3c66fe91868132f7a7e0efb6c249e6236ee",
+      "tests/reference/voronoi-reference.js": "2f48cc7e8620e693006db047716dc8346e3a2b4e3b28e021858fa14658d25cfa",
+      "tests/voronoi_test.cpp": "b05e321b80fefc947c32875f5f26768cc7fd2919ac3d92f9eb403c56fb4e7bd8",
+      "tests/voronoi_probe.cpp": "4368d843add4392bbd106ec99e214af1a84f95ff0522462b64cd50eda7d47342",
+      "tests/voronoi_allocation_probe.cpp": "cfb10ac7d859d3f9dbb26cd94a75949da035e2baaecb58b32da0bea848a392cf",
+      "tests/fixtures/contours-v0.9.json": "7ea4f27fe4431f9188ab8c5a9cde65e56b38f2f0a09d0b88b098c0a746908641",
+      "tests/reference/contours-reference.js": "97b83dac9f2a08ab83a14338c986bc42b9ca63b4cdad6ccaf887afc3470b490d",
+      "spec/contours-v0.9.md": "4db324fde0825e91ce41f9aca4a6fa3a044df78ee7fb8a27e3aad9b4f2ffd96c",
+      "tests/fixtures/regions-v0.9.json": "76b3d29d73fab3dfef56ed6fe57c9d35ca251a9bc1b9154701f2ad5cd26d0e00",
+      "tests/reference/regions-reference.js": "fa5d4ab3cd63c669ee1e87c653122eb80ea261226aaea5da26c910493b345cb5",
+      "spec/regions-v0.9.md": "2a8d904cfbfcf9c91b0648388e5c7cc3858e979c8bd6250f71a345627b40c12b",
+      "spec/verification/regions-v0.9.json": "d4a87867fbad81c51b71687ef315daee74d5eb04437ecc5902656b3299d9590e",
+      "spec/verification/regions-v0.9-ctest.txt": "38d542206d6362fb5ff7f1da5a3ff27ea28c9aa98fd915437c33abe077de075b"
+    },
+    "harness_adaptations": {
+      "backends/html5/test/noise-v09-conformance.js": {
+        "before": "610e2ca9fcad139747fb25997c7469dfe8ba7fc99973f865bfb361e1a7c001c0",
+        "after": "104a29a60029cee585da2622086b1173e3f16b05c4fbca73adcf468aa67c3a72"
+      }
+    },
+    "reason": "Only the two unknown-opcode mutations changed from now-defined FF to reserved 0B; numeric oracles, PNGs and published stage-07 records are unchanged."
+  },
+  "export_contracts": {
+    "passed": true,
+    "mutations": 214,
+    "real_cli_cases": 157,
+    "builtin_count": 101,
+    "registered_examples": 157,
+    "schema_validation": false,
+    "schema_validation_reason": "Optional Python jsonschema is not installed; standard-library readers, mutations, emitted-field coverage, actual CLI and current bundle boundaries passed.",
+    "report_sha256": "0e248d02aaa0e26d48dcaeada4a05e072049ed63113cf27184a2050145027de0"
+  },
+  "documentation": {
+    "authored_tests_passed": 6,
+    "builtin_count": 101,
+    "examples": 157,
+    "source_rules_gap_bevel": {
+      "constant_gap": "same_offset_width_half",
+      "variable_gap": "original_edge_linear_knots_shared_vertex_endpoints",
+      "profile_knots": 9,
+      "bevel": "nearest_edge_faceted_linear_fade_4x4_RGBA8",
+      "bevel_ties": "original_edge_then_current_use",
+      "overlap": "lowest_current_region_index",
+      "raster_clip": "ignored_until_paint",
+      "rng": "explicit_gap_seed_no_stream_draws",
+      "asset_constants": false
+    },
+    "scenes": [
+      {
+        "source": "examples/language/gap-bevel.ips",
+        "seed": 7,
+        "size": [
+          128,
+          96
+        ],
+        "fuel": 3269529,
+        "rgba_sha256": "2ed88774ca970cc549211fa43ae1297eb64148efe1e690105cd33734783d5104"
+      },
+      {
+        "source": "examples/language/wall-bevel.ips",
+        "seed": 7,
+        "size": [
+          128,
+          96
+        ],
+        "fuel": 3014276,
+        "rgba_sha256": "538e73a40d4c82265fb213e0c29479b8dc526bc45d110f33e7a1feac04e23424"
+      }
+    ],
+    "visual_inspection": "Both authored 128x96 PNGs inspected; scene hashes match native/WASM. Example fuel is not final stage-13 calibration.",
+    "final_clean_manifest": "Rebuilt and verified against final clean source after the closing commit; the closing commit hash is reported after publication rather than embedded in itself."
+  },
+  "requirements": {
+    "08.1": {
+      "status": "pass",
+      "evidence": [
+        "Identical constant-gap/offset topology and fuel for three sources/five widths",
+        "Outer and hole boundaries, empty/collapsed shapes, repeated derivation, zero-width sharing",
+        "Complete parser/typing/lowering/validator/runtime/formatter/language export paths"
+      ]
+    },
+    "08.2": {
+      "status": "pass",
+      "evidence": [
+        "Original-edge canonical nine-knot profile with vertex-shared endpoints and explicit u32 hash/salts",
+        "Flat ancestry, current-geometry repetition, preserved IDs/fragments/neighbors/order",
+        "Shared positive-winding offset arrangement and existing intermediate/output bounds"
+      ]
+    },
+    "08.3": {
+      "status": "pass",
+      "evidence": [
+        "Shared scanline bounds/winding/sample pipeline; isolated RGBA layer",
+        "Pinned nearest segment, outward hole-aware normals, corner ties, linear fade and alpha/color averaging",
+        "Width-expanded edge lists and row-only scratch, clipping deferred to explicit paint"
+      ]
+    },
+    "08.4": {
+      "status": "pass",
+      "evidence": [
+        "47 frozen complete records, 2 authored scenes, 485 public generations",
+        "51 traps, 87 malformed-bytecode rejections, 7 source diagnostics",
+        "1046 heap-fault injections, exact fuel/arena boundaries, full regression and archive checks"
+      ]
+    }
+  },
+  "commands": [
+    "cmake --build /private/tmp/iprop-v09-stage08-native --parallel 5",
+    "EM_CACHE=/private/tmp/iprop-v09-stage01-emcache cmake --build /private/tmp/iprop-v09-stage08-wasm --parallel 3",
+    "ctest --test-dir /private/tmp/iprop-v09-stage08-native --output-on-failure --parallel 5",
+    "/private/tmp/iprop-v09-stage08-native/tests/iprop_tests \"[gap-bevel-v09]\"",
+    "/private/tmp/iprop-v09-stage08-native/tests/gap_bevel_allocation_probe",
+    "node backends/html5/test/gap-bevel-conformance.js /private/tmp/iprop-v09-stage08-native/tools /private/tmp/iprop-v09-stage08-native/tests/gap_bevel_probe /private/tmp/iprop-v09-stage08-wasm/gap_bevel_probe.js",
+    "IPROP_CONFORMANCE_REPORT_DIR=/private/tmp/iprop-v09-stage08-conformance node backends/html5/test/run-tests.js /private/tmp/iprop-v09-stage08-wasm /private/tmp/iprop-v09-stage08-native/tools",
+    "python3 scripts/check_export_contracts.py /private/tmp/iprop-v09-stage08-native/tools/ipc --probe /private/tmp/iprop-v09-stage08-native/tests/compiler_diagnostic_failure_probe",
+    "python3 scripts/language_docs.py build --compiler /private/tmp/iprop-v09-stage08-native/tools/ipc --output-dir /private/tmp/iprop-v09-stage08-docs",
+    "python3 scripts/language_docs.py verify --compiler /private/tmp/iprop-v09-stage08-native/tools/ipc --output-dir /private/tmp/iprop-v09-stage08-docs --against-source --clean"
+  ],
+  "publication": {
+    "branch": "origin/develop",
+    "verified_checkpoint_sha": "7fa4ab488df28e538468069952cb9152d475cb7b",
+    "closing_commit": "Reported after push; never embedded in its own report.",
+    "release_tag_main_merge_deployment": false
+  },
+  "source_hashes": {
+    "InfiniteProps_0.9.0_specyfikacja.md": "9251f5a5699b529e967e2ffa03a825bbc481d11a12a73d526a558b0d84ca78e5",
+    "backends/html5/CMakeLists.txt": "103a22780874bd870e6fa25d8984c653af7a4f47815f88ad40a70e0491d4f88d",
+    "backends/html5/test/gap-bevel-conformance.js": "687e5fac482b7de36d8372c0dd4aeea8df7226158ddcf33e097762102a0c7e55",
+    "backends/html5/test/native-conformance.js": "eebb19574b793bb1b957b266f6136f34262840787ad2bf0d5a760864ebc69d45",
+    "backends/html5/test/noise-v09-conformance.js": "104a29a60029cee585da2622086b1173e3f16b05c4fbca73adcf468aa67c3a72",
+    "backends/html5/test/run-tests.js": "af1ec63e022face3fcd2ad4e616bf77fd1ee0afb3c7a3573aac8c198809d1342",
+    "docs/export-contracts.md": "9691ae320743d77db74211535709d4266ba9f4e421a352e1cbe33d39cd428d46",
+    "docs/language-description.schema.json": "d2a80bf419458189ef559663f2ddcd1df19540428b20260311478da651576d93",
+    "docs/language/geometry.md": "7d076d4afc440c21871a5b0e9a6c4ac17b288c4da0ec02b984fdfb7cf5f63c30",
+    "examples/language/cases.json": "e4a54d23dc59c490a58ae4e2e832e64d058b3ba95d84e76dfe9f6c41482771d3",
+    "examples/language/gap-bevel.ips": "6ce39acb8ed4dc25011e7b183a0a5a7fbe59bb6ceaab475d24d1b0676301fee1",
+    "examples/language/wall-bevel.ips": "c28f76978db4630be35f2f22daed1d600c9c855d8fa1e04c4f1eeb31b402a724",
+    "language/ips/BuiltinSpec.cpp": "32477ce606ff7577576df769b5a1a23101510bc4ef97a976840e6bb4743a920b",
+    "language/ips/TypingCalls.cpp": "76fc0b891ad7254446814fb4d6f81410781168e8586da4b5c4c86c3cebff2f88",
+    "runtime/iprop/Constants.hpp": "2f861fa9330aace8735046300e10c3b418e528a8346acff7b6c53f5876bc9159",
+    "runtime/iprop/Regions.hpp": "80d67148bf0ab48efafd8c3d02417d990a40d214abd2c935524c7b14caaf204e",
+    "runtime/opcode_spec.cpp": "fc21c93f6f03101450472ff8949f1dc0c5b5ce759636de62116834914c792050",
+    "runtime/region_offset.cpp": "35eeb03c2566499b5b032c0a44cc0b52046b14181c3143ec5f7d35f78cf72593",
+    "runtime/region_raster.cpp": "f7ce69d2d93c07fc566145035659bdf1325b0cee1e70ca161253ced20be4eba7",
+    "runtime/regions.cpp": "efd7ae40d2fa2e6c0affa72d9f4e93186674117c92d4b0dc4372217a0ca881dc",
+    "runtime/validator.cpp": "5e83ff46f4e62e8a987558ccbd0329f9811fbdda8378020f1dd30f00904f848d",
+    "scripts/contract_readers.py": "092bb607fa8d974c7c6f8932560cd7638c452e0d99a22f21996cac8e6d548201",
+    "scripts/language_docs.py": "cdf8210518cd951f485f621fda802ce5c8ab77feb895afc942c300554a35698d",
+    "scripts/tests/test_current_documentation.py": "17b18649333757c7f328852a49dfa4b5f0a53108b34c23810feadcfa3dd8efe8",
+    "tests/CMakeLists.txt": "a675d61701390a7f2719a633a01b896f56372b5eb61d59899ed274eada38a2f6",
+    "tests/compiler/effects_test.cpp": "0019c0f2d21be0c2b5a79889d18f82d7289b457f0efa8346946936f093f47d9e",
+    "tests/defense_test.cpp": "b216f0ba13de8db3d100021816b45c0e0dd9c0ec178c7125d07bb2942e62eb5c",
+    "tests/fixtures/export-contract-mutations.json": "bc58eb6bba07e26078397bdb2385bf34913d9e780ee32bb214db1de0f3cccb99",
+    "tests/fixtures/gap-bevel-v0.9.json": "8d3635e5d7cbcdaf480cb161ab76401bee6119ded9299d78471c269985266dce",
+    "tests/gap_bevel_allocation_probe.cpp": "56d04f212abf046b394746d486ee29ccae699a224a88a1490b64bc8599dc257f",
+    "tests/gap_bevel_probe.cpp": "8c0602b1cf9f9d10ae7724d46bcff7159c02fc7deb2b62c6cb686ec1587e8ac9",
+    "tests/gap_bevel_test.cpp": "b3ef2271f6cd0b1ce282f02c1533f921a7152ce8ecf025b8585c00ffc57f3c18",
+    "tests/opcode_spec_test.cpp": "a37ef4a3eab1863dc4f7e69fca48cab84cc6678c5c7836cfe091cf2543895044",
+    "tests/reference/gap-bevel-reference.js": "d7d4d00e774e6cf8d17c5f87b3c25c7d030f230a38ce65e9c5b61623f7b68923",
+    "tests/validation/functions_test.cpp": "539eec81cce61174e7f6c191561f022f9a91d1239e483201d80c70a2674df028",
+    "tools/language_description.cpp": "c2eb8de86b77bc1a4013e4ef9f3bb7c46eeb0e7bfa11336df804ce6a119c52e5"
+  },
+  "normative_contract_sha256": "e107445d1983e5f3166a0f0c09705cd0dd05a8e553c427f7fcda0a4eeaf340cd",
+  "binary_hashes": {
+    "/private/tmp/iprop-v09-stage08-native/tools/ipc": "7609460cdca9ceabcb11850061c0b9d25f7ffc8b68ccb4b4ed10471d9b4e583b",
+    "/private/tmp/iprop-v09-stage08-native/tools/ipa": "49b148e5e842716cad933c15ba5ad3744c933173d0a604156009a6ed01c545c4",
+    "/private/tmp/iprop-v09-stage08-native/tools/ipdis": "e08584ad6e53eedc6369e860628fd23ede7c19705dd2663593020ec1c3c20890",
+    "/private/tmp/iprop-v09-stage08-native/tools/ipgen": "6eeb3b8f927227eecbe87ad5fa28112f95e4e6e57fa26636acc36e78528d5572",
+    "/private/tmp/iprop-v09-stage08-native/tools/ipval": "24387cb804e049006000f3e10c6e9e1452549bd8fb479810b4d645ad32b577dd",
+    "/private/tmp/iprop-v09-stage08-native/tests/iprop_tests": "bdb5941aaee97ed6d10ab9d252b334b54aa9eeb691c31b1eb1aa6b694e24086e",
+    "/private/tmp/iprop-v09-stage08-native/tests/gap_bevel_probe": "985be1a4d9d27d2e23dc22dfc1c7493278b49ae7edcc42b21b3bd6c4a2759e60",
+    "/private/tmp/iprop-v09-stage08-native/tests/gap_bevel_allocation_probe": "d60e265f1a26d53f155d8f67034617b3567e1b51816cd492d69694710b2d2810",
+    "/private/tmp/iprop-v09-stage08-wasm/iprop.js": "f22406ea984ffeb81860ba0487e2fbad7d445d76e05550b5d12335f95057790c",
+    "/private/tmp/iprop-v09-stage08-wasm/iprop.wasm": "1622d94828fbe9e522e31de34bafe4fa8f7bb3258fddb08091c1f5e59026a237",
+    "/private/tmp/iprop-v09-stage08-wasm/gap_bevel_probe.js": "cbaf424808ea3b462b0ca068466e8b9ce8ac2803eb73c05f45bf9cf4d10f37c6",
+    "/private/tmp/iprop-v09-stage08-wasm/gap_bevel_probe.wasm": "268605732d30106483e71346f81414d5aa7de962a25b74649b0ae91588b9f8e9"
+  },
+  "logs_sha256": {
+    "/private/tmp/iprop-v09-stage08-ctest.txt": "f210bf9d0875193a44217f79600d252d596082ad5946305f9f44be060650b1c6",
+    "/private/tmp/iprop-v09-stage08-focused.txt": "00f36a7a7b91c63df4f39cff0f88f353158ba38030568365ff61e14abe1b12e1",
+    "/private/tmp/iprop-v09-stage08-allocation.txt": "a6ec21a548b3db6b76e35f7222c041ebe47ba1686b02af4bb75d039a67dee11d",
+    "/private/tmp/iprop-v09-stage08-conformance.txt": "ecefcbb6a406d65f27a45f6f4fae9cb5f09dc4541efc3dabaa5a2c31f6dc2d6a",
+    "/private/tmp/iprop-v09-stage08-package.txt": "bb76b8f2b9772ad68c5b94d5aefca2d1ed23a810abe709c620ed6bb7b8af0555",
+    "/private/tmp/iprop-v09-stage08-export-contracts.txt": "a7c21be684cdba0ccf50043e0892e9a6390f80394ad7a46bc7f24e3a6e006e8c",
+    "/private/tmp/iprop-v09-stage08-archives.txt": "9622d14a71b94648cd19435a1ce68d6ea6d641e9a4da3a3f17c3465247004bac",
+    "/private/tmp/iprop-v09-stage08-fixture-generation.txt": "9fffe8b0a17a28718d6fd02067b314c961c24377b4a696146673635cf49bb0ed"
+  }
+}

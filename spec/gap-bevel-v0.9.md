@@ -69,7 +69,7 @@ Use the same positive-winding arrangement, intersections, tracing, hierarchy,
 ordering, ID, adjacency and publication as constant offsets. Inward corners
 retain the original negative winding lobes. Outward corners use unit-direction
 bisectors, linearly interpolating radius in angular parameter. Subdivide until
-`max(r0,r1)*(1-cosHalf) + abs(r1-r0)*sinHalf/2 <= 1/64`, max depth31,
+`max(r0,r1)*(1-cosHalf) + abs(r1-r0)*sinHalf/2 <= 1/64`, max depth 31,
 64-entry explicit stack. This bounds the varying-radius chord error before
 f32 rounding. No new polygon engine is involved.
 
@@ -80,7 +80,7 @@ Variable automatic workspace is 12288 charged bytes, replacing the constant
 8192. Interim fuel reserves 36 per corner (two nine-knot profiles, normals and
 endpoint evaluation), one per tested interior knot and arc subdivision visit;
 all shared arrangement/builder costs remain additional. Final tariffs/work
-limits are still stages12–13.
+limits are still stages 12–13.
 
 ## Bevel (08.3)
 
@@ -95,7 +95,7 @@ Validate finite width>0, finite nonzero light, finite strength in [0,1] and
 positive finite raster scale before allocating. These checks also apply to
 empty input, zero strength and transparent colors. Normalize light in binary64
 using sqrt(x*x+y*y), safe for all finite nonzero f32 inputs. Defaults are
-RGBA(255,255,255,255), RGBA(0,0,0,255), strength0.5.
+RGBA(255,255,255,255), RGBA(0,0,0,255), strength 0.5.
 
 At each subpixel sample inside the union choose the **lowest current region
 index** containing it. Within that region, including holes, find the closest
@@ -124,7 +124,7 @@ X bounds before exact projection. A subrow owns four u16 region indices per
 pixel (2-byte slots); one row holds premultiplied accumulators (32-byte slots).
 No per-region canvas, distance-field image or full-canvas intermediate is
 created. Capacity/growth charges and failures follow the geometry arena.
-Automatic bevel workspace is 4096 plus the shared raster's1024 bytes.
+Automatic bevel workspace is 4096 plus the shared raster's 1024 bytes.
 
 Interim fuel reserves 4 per cached edge, 4 per zeroed RGBA pixel,
 5 per prepared pixel, 1 per row accumulator reset, 1 per subrow owner reset,
@@ -132,7 +132,7 @@ Interim fuel reserves 4 per cached edge, 4 per zeroed RGBA pixel,
 4 per exact projection and per winning sample shade, 4 per pixel/subrow
 visit, and 1 per finalized pixel; existing bounds/crossing/sort charges remain.
 Zero strength skips edge and sampling work after validated bounds and output
-allocation. The final independent work limits and tariffs remain stages12–13.
+allocation. The final independent work limits and tariffs remain stages 12–13.
 
 ## Verification (08.4)
 
@@ -146,10 +146,10 @@ and a naive complete nearest-edge search for every bevel subsample. The runtime
 uses positive-winding arrangements and scanlines with active edge lists.
 
 The native/WASM gate covers both source directions of one original edge,
-variation0/1, zero width, empty/collapsed/thin components, holes and islands,
+variation 0/1, zero width, empty/collapsed/thin components, holes and islands,
 eight D4 dumbbells, repeated gaps, negative/fractional origins, off-target
 geometry, overlaps, 257-point boundaries, nonuniform target scale, alpha
-colors/strength0/1, default/full overloads, explicit legacy/source-over,
+colors/strength 0/1, default/full overloads, explicit legacy/source-over,
 background alpha, clipping, alpha-mask conversion and no automatic drawing.
 Public metadata and ordinary points/neighbors are checked against the complete
 records under all eight optimization/debug/compression configurations, with
@@ -160,7 +160,7 @@ Two separately authored 128×96 scenes pin complete RGBA and fuel:
 [tiles](../examples/language/gap-bevel.ips),3269529/5000000 and
 [staggered wall](../examples/language/wall-bevel.ips),3014276/5000000. Both were
 visually inspected and match native/WASM. These are example measurements, not
-the final stage13 tariff calibration or a general performance guarantee.
+the final stage 13 tariff calibration or a general performance guarantee.
 
 The gate also checks 51 located runtime failures, 87 malformed-bytecode
 rejections (including all dynamic argument types and zero fields in dead code),
@@ -168,4 +168,11 @@ seven source diagnostics and three exact fuel/quota boundaries on both cores.
 The isolated allocator probe injects 1046 transient/persistent heap failures
 across variable/repeated gaps, normal/zero-strength bevels, the combined pipeline
 and off-target fractional geometry, with no heap/quota leaks. Exhaustive C++
-coverage includes 1536 variable gaps from all 512 binary3×3 contour sources.
+coverage includes 1536 variable gaps from all 512 binary 3×3 contour sources.
+
+The [stage-08 verification report](verification/gap-bevel-v0.9.json) binds
+these results to the tested source and artifact hashes, the 84/84 CTest run,
+the full existing native/WASM regression gate, a packaged-runtime smoke without
+internal probes, and explicit rejection by six archived runtimes. Product/source
+version remains 0.8.0; release integration and final tariff calibration are later
+stages.
