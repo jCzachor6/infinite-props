@@ -343,6 +343,15 @@ Json sourceRules() {
         {"origin", "crop_without_phase_shift"}, {"octaves_min", 1}, {"octaves_max", 8},
         {"rng", "explicit_seed_no_stream_draws"}, {"asset_constants", false},
         {"short_defaults", Json::object({{"octaves", 4}, {"softness", 0}, {"comparison", "noise.above"}, {"warp_amount", 0}})}});
+    rules["regions"] = Json::object({
+        {"offset","positive_winding_round_joins"},{"arc_tolerance_world","1/64"},
+        {"source_ids","original_source_fragment_ids_may_repeat"},
+        {"order","source_then_net_area_bounds_discovery"},
+        {"neighbors","surviving_fragments_common_original_edge"},
+        {"min_area","after_offset_before_result_region_limit"},
+        {"points","one_ring_no_holes_no_truncation"},{"maximum_points",256},
+        {"raster","4x4_half_open_union_before_A8"},{"mask_clip","ignored_until_paint"},
+        {"asset_constants",false}});
     rules["contour"] = Json::object({
         {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
         {"algorithm","marching_squares_clamped_alpha_interpolation"},

@@ -1924,6 +1924,59 @@
       "accept": false,
       "schema": false,
       "value": true
+    },
+    {
+      "id": "earlier schema 5 without regions",
+      "path": [
+        "source_rules",
+        "regions"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "null regions policy",
+      "path": [
+        "source_rules",
+        "regions"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "regions point truncation forbidden",
+      "path": [
+        "source_rules",
+        "regions",
+        "maximum_points"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "regions tolerance pinned",
+      "path": [
+        "source_rules",
+        "regions",
+        "arc_tolerance_world"
+      ],
+      "value": 0.1,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "regions raster union pinned",
+      "path": [
+        "source_rules",
+        "regions",
+        "raster"
+      ],
+      "value": "source_over_each_mask",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

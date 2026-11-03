@@ -116,7 +116,12 @@ Contours can be passed through helpers and converted with `regions`.
 <!-- builtin: regions -->
 
 Converts a diagram or contours to separately addressable components. The short
-call shares immutable geometry and preserves holes and source order. It creates
+call shares immutable geometry and preserves holes and source order. The full
+call adds `inset` and `min_area`; both arguments must be supplied. Positive
+inset shrinks the filled shape and negative inset grows it, with round joins.
+An offset can remove a component or split it into several fragments with the
+same ID. Min_area filters net fragment area after the offset. Different source
+regions remain independent when they grow into each other. It creates
 no dynamic part. See the [regions contract](../../spec/regions-v0.9.md).
 
 <!-- example: ../../examples/language/regions.ips -->
@@ -149,6 +154,25 @@ Returns the cached centroid, with hole moments subtracted.
 Returns sorted unique current indices whose original diagram edges establish
 adjacency. Missing components are excluded; contour sources return an empty
 list. These are provenance relationships, so a later gap does not erase them.
+
+## regions.points
+<!-- builtin: regions.points -->
+
+Returns an ordinary `list<vec2>` in canonical ring order for a region without
+holes and with at most 256 vertices. Regions with holes or more vertices trap;
+no points or holes are discarded. Use `regions.mask` for these shapes.
+
+## regions.mask
+<!-- builtin: regions.mask -->
+
+Creates an A8 mask for one indexed region, or for the geometric union when
+called with only the set. It preserves holes, samples at the active target's
+raster scale, retains off-target geometry and ignores active clipping while
+creating the resource. Paint or clip the returned mask explicitly.
+
+Coverage uses a fixed 4 by 4 subpixel grid and half-open shared boundaries.
+The union is formed before A8 quantization, so overlapping regions do not add
+alpha. Empty sets return a transparent 1 by 1 mask at origin zero.
 
 ## vec2.len
 <!-- builtin: vec2.len -->

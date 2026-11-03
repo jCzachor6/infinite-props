@@ -61,6 +61,12 @@ Earlier schema-3 bundles may use major.minor for `language_version`.
 Current values are `0.8.0`, `0.8.0`, `0.4` and `0.5`. The file format is
 unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
+Stage 07 adds optional `source_rules.regions` in schema 5. It describes signed
+round offsets, source IDs shared by fragments, stable ordering and provenance
+neighbors, filtering before the result-region limit, the restricted points
+view, and 4 by 4 union rasterization independent of active clipping. The
+existing `regions2d`, mask and ordinary list vocabulary needs no schema bump.
+
 The language export and diagnostics add an optional integer `patch` to
 `language_version`; current exports emit all three components. This additive
 field keeps the JSON schema versions unchanged. C API and ABI retain their

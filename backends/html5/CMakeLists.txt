@@ -62,3 +62,8 @@ add_executable(contours_probe ../../tests/contours_probe.cpp)
 target_link_libraries(contours_probe PRIVATE iprop_runtime)
 iprop_warnings(contours_probe)
 target_link_options(contours_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+
+add_executable(regions_probe ../../tests/regions_probe.cpp)
+target_link_libraries(regions_probe PRIVATE iprop_runtime)
+iprop_warnings(regions_probe)
+target_link_options(regions_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")

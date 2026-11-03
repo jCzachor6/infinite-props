@@ -414,6 +414,21 @@ def read_language(value):
             require(geometry[key] == expected, 'geometry limit')
         require(all(set(names) <= set(types[key]) for key in ['storable', 'helper_parameters', 'helper_value_returns']), 'geometry storage and transfer')
         require(not set(names) & set(constants['types']), 'geometry const prohibition')
+    if 'regions' in rules:
+        regions = rules['regions']
+        _strings_and_bools(regions, {
+            'offset': {'positive_winding_round_joins'},
+            'arc_tolerance_world': {'1/64'},
+            'source_ids': {'original_source_fragment_ids_may_repeat'},
+            'order': {'source_then_net_area_bounds_discovery'},
+            'neighbors': {'surviving_fragments_common_original_edge'},
+            'min_area': {'after_offset_before_result_region_limit'},
+            'points': {'one_ring_no_holes_no_truncation'},
+            'raster': {'4x4_half_open_union_before_A8'},
+            'mask_clip': {'ignored_until_paint'}}, ['asset_constants'], 'regions policy')
+        require(not regions['asset_constants'], 'regions generation dependency')
+        integer(regions.get('maximum_points'), 'regions.maximum_points')
+        require(regions['maximum_points'] == 256, 'regions point bound')
     if 'contour' in rules:
         contour = rules['contour']
         _strings_and_bools(contour, {

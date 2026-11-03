@@ -580,15 +580,21 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Zależności:** 05, 06.
 
 - [x] 07.1 Zbudować regiony z diagramów i konturów oraz count/id/area/center/neighbors według ustalonej semantyki pochodzenia i fragmentów.
-- [ ] 07.2 Zaimplementować jeden offset z round joins, dodatnim/ujemnym inset, rozpadem składowych, min_area i stabilną kolejnością.
-- [ ] 07.3 Dodać maskę pojedynczego regionu i sumy regionów z dziurami; współdzielić rasteryzator i ustalić regułę przypisania wspólnych granic.
-- [ ] 07.4 Dodać ograniczone `regions.points`; przetestować odrzucenie dziur i >256 wierzchołków bez utraty danych w innych API.
+- [x] 07.2 Zaimplementować jeden offset z round joins, dodatnim/ujemnym inset, rozpadem składowych, min_area i stabilną kolejnością.
+- [x] 07.3 Dodać maskę pojedynczego regionu i sumy regionów z dziurami; współdzielić rasteryzator i ustalić regułę przypisania wspólnych granic.
+- [x] 07.4 Dodać ograniczone `regions.points`; przetestować odrzucenie dziur i >256 wierzchołków bez utraty danych w innych API.
 - [ ] 07.5 Sprawdzić zanik/podział regionu, powiększanie i nakładanie, usuniętych sąsiadów, puste zbiory i maski, skalę/origin, clip i paint.
 - [ ] **Etap 07 zakończony.**
 
 **Odbiór:** poprawne ID i indeksy po filtracji/podziale, dokładne dziury i spójne granice, brak przebudowy całej geometrii przy odczytach.
 
 **07.1 (2026-11-03):** Dwa krótkie przeciążenia `regions` współdzielą gotowy store bez alokacji geometrii. Count/id/area/center korzystają z cache; neighbors zwraca zwykłą listę. Sprawdzone zachowanie dziur, ID, filtrowanie pola netto, ponowne przypisanie wyspy po usunięciu rodzica i indeksy zachowanych sąsiadów. Trzy testy / 2483 asercje, round-trip IPS/IPA i named calls, niezainicjalizowane uchwyty oraz błędne indeksy także z optymalizacją; własny helper `regions` zachowuje pierwszeństwo. Przechodzi wcześniejsza pełna bramka native/WASM (w tym 88 zestawów konturów) i cztery ponownie wykonane bramki smoke/eksport/dokumentacja/CI. [Kontrakt](spec/regions-v0.9.md) przypina semantykę pochodzenia i porządek fragmentów; ich tworzenie, maski i points pozostają w kolejnych podpunktach etapu 07. Nie dodano opcode konfiguracji przed ich implementacją.
+
+**Publikacja 07.1 (2026-11-03):** [23ea669](https://github.com/jCzachor6/infinite-props/commit/23ea669e4e614d68c4d1ce1e3fc8d1df19b8b38b). Push na `origin/develop` i zgodny zdalny SHA potwierdzone.
+
+**07.2–07.4 (2026-11-03):** Jeden ograniczony kernel offsetu z dodatnim/ujemnym inset i round joins (tolerancja łuku 1/64 jednostki przed zaokrągleniem f32), dodatnim winding i walidacją przecięć. Działa zanik, podział, pole netto po odjęciu dziur, min_area przed limitem 256 wynikowych regionów, stabilne ID/kolejność oraz indeksy sąsiadów z pochodzenia krawędzi. Jedna rasteryzacja scanline z siatką 4×4 obsługuje pojedynczy region i sumę przed kwantyzacją A8, bez wypalania clip i bez ograniczenia geometrii do targetu. `regions.points` zachowuje pełne dane w pozostałych API i jawnie odrzuca dziury oraz >256 punktów. Odczyty metadanych korzystają z cache. Nie dodano zależności geometrycznej.
+
+**Weryfikacja 07.2–07.4:** 82/82 CTest, 10 testów regionów / 43 040 asercji, 1536 offsetów wszystkich masek binarnych 3×3 i 510 wymuszonych błędów alokacji bez wycieków. 55 zestawów geometrii, metadanych, fuel i pamięci jest bitowo identycznych w native/WASM; niezależna referencja sprawdza pola/momenty, przecięcia, odległości offsetu i każdą próbkę maski. Publiczna bramka: 564 generacje, 41 trapów, 36 odrzuceń bytecode, siedem błędów kompilacji; te same 564 generacje przechodzą w wariancie pakietowym bez programów testowych. Pełna wcześniejsza regresja native/WASM przechodzi. Eksport języka: schema 5 z opcjonalnym opisem regionów, 210 mutacji / 155 przykładów CLI; handbook: 99 builtinów / 155 przykładów. Końcowy raport i zamknięcie 07.5 zostaną zapisane w kolejnym commicie, zgodnie z §8.
 
 ### Etap 08 — fugi i bevel
 

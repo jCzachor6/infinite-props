@@ -214,7 +214,7 @@ std::unique_ptr<Expr> ParserImpl::parsePostfixAfter(std::unique_ptr<Expr> expr) 
         if (match(TokenKind::Dot)) {
             const auto* base = std::get_if<Identifier>(expr.get());
             const Token name = base && ((base->name == "mask" && kind() == TokenKind::KeywordFrom) ||
-                (base->name == "noise" && kind() == TokenKind::KeywordMask)) ?
+                ((base->name == "noise" || base->name == "regions") && kind() == TokenKind::KeywordMask)) ?
                 advance() : expectName("a member name after '.'");
             expr = std::make_unique<Expr>(
                 Member{std::move(expr), name.text, name.location});

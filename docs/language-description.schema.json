@@ -3566,6 +3566,81 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 06 mask contours policy in schema 5."
+        },
+        "regions": {
+          "type": "object",
+          "properties": {
+            "offset": {
+              "type": "string",
+              "const": "positive_winding_round_joins",
+              "description": "Pinned regions offset."
+            },
+            "arc_tolerance_world": {
+              "type": "string",
+              "const": "1/64",
+              "description": "Pinned regions arc tolerance world."
+            },
+            "source_ids": {
+              "type": "string",
+              "const": "original_source_fragment_ids_may_repeat",
+              "description": "Pinned regions source ids."
+            },
+            "order": {
+              "type": "string",
+              "const": "source_then_net_area_bounds_discovery",
+              "description": "Pinned regions order."
+            },
+            "neighbors": {
+              "type": "string",
+              "const": "surviving_fragments_common_original_edge",
+              "description": "Pinned regions neighbors."
+            },
+            "min_area": {
+              "type": "string",
+              "const": "after_offset_before_result_region_limit",
+              "description": "Pinned regions min area."
+            },
+            "points": {
+              "type": "string",
+              "const": "one_ring_no_holes_no_truncation",
+              "description": "Pinned regions points."
+            },
+            "maximum_points": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned regions maximum points."
+            },
+            "raster": {
+              "type": "string",
+              "const": "4x4_half_open_union_before_A8",
+              "description": "Pinned regions raster."
+            },
+            "mask_clip": {
+              "type": "string",
+              "const": "ignored_until_paint",
+              "description": "Pinned regions mask clip."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned regions asset constants."
+            }
+          },
+          "required": [
+            "offset",
+            "arc_tolerance_world",
+            "source_ids",
+            "order",
+            "neighbors",
+            "min_area",
+            "points",
+            "maximum_points",
+            "raster",
+            "mask_clip",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 07 regions policy in schema 5."
         }
       },
       "required": [

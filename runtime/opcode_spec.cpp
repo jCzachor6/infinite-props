@@ -29,12 +29,16 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::VoronoiMetric: case Opcode::VoronoiRows:
         return {R::SeededComputation,false,false,check(C::NumericRange)};
     case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+    case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
+    case Opcode::RegionsMaskAll:
     case Opcode::Contour: case Opcode::ContourConfig:
         return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::RegionsDiagram: case Opcode::RegionsContours:
     case Opcode::RegionsCount:
     case Opcode::DiagramCount:
         return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::RegionsPoints: case Opcode::RegionsMask:
+        return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle)|check(C::NumericRange))};
     case Opcode::RegionsId: case Opcode::RegionsArea: case Opcode::RegionsCenter: case Opcode::RegionsNeighbors:
     case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
         return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
@@ -250,6 +254,11 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::RegionsArea, "regions.area", OperandKind::Zero),
     dynamic(Opcode::RegionsCenter, "regions.center", OperandKind::Zero),
     dynamic(Opcode::RegionsNeighbors, "regions.neighbors", OperandKind::Zero),
+    dynamic(Opcode::RegionsDiagramConfig, "regions.diagram.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsContoursConfig, "regions.contours.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsPoints, "regions.points", OperandKind::Zero),
+    dynamic(Opcode::RegionsMask, "regions.mask", OperandKind::Zero),
+    dynamic(Opcode::RegionsMaskAll, "regions.mask_all", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),

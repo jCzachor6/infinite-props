@@ -182,13 +182,20 @@ private:
         switch (ins.opcode) {
 
         case Opcode::RegionsDiagram: case Opcode::RegionsContours:
-            expect(at,ins.opcode==Opcode::RegionsDiagram?ValueType::Diagram2d:ValueType::Contours2d,"regions source");
+        case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
+            if(ins.opcode==Opcode::RegionsDiagramConfig||ins.opcode==Opcode::RegionsContoursConfig){
+                expect(at,ValueType::F32,"regions min_area");expect(at,ValueType::F32,"regions inset");
+            }
+            expect(at,ins.opcode==Opcode::RegionsDiagram||ins.opcode==Opcode::RegionsDiagramConfig?ValueType::Diagram2d:ValueType::Contours2d,"regions source");
             push(at,ValueType::Regions2d);return;
         case Opcode::RegionsCount: case Opcode::RegionsId: case Opcode::RegionsArea:
-        case Opcode::RegionsCenter: case Opcode::RegionsNeighbors:
-            if(ins.opcode!=Opcode::RegionsCount)expect(at,ValueType::I32,"regions index");
+        case Opcode::RegionsCenter: case Opcode::RegionsNeighbors: case Opcode::RegionsPoints:
+        case Opcode::RegionsMask: case Opcode::RegionsMaskAll:
+            if(ins.opcode!=Opcode::RegionsCount&&ins.opcode!=Opcode::RegionsMaskAll)expect(at,ValueType::I32,"regions index");
             expect(at,ValueType::Regions2d,"regions receiver");
-            push(at,ins.opcode==Opcode::RegionsArea?ValueType::F32:
+            push(at,ins.opcode==Opcode::RegionsPoints?ValueType::list(ValueType::Vec2):
+                ins.opcode==Opcode::RegionsMask||ins.opcode==Opcode::RegionsMaskAll?ValueType::Mask:
+                ins.opcode==Opcode::RegionsArea?ValueType::F32:
                 ins.opcode==Opcode::RegionsCenter?ValueType::Vec2:
                 ins.opcode==Opcode::RegionsNeighbors?ValueType::list(ValueType::I32):ValueType::I32);return;
 

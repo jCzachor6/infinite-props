@@ -184,6 +184,7 @@ def resources(root):
     # Authored extension contracts link their versioned verification reports.
     files += list((root / "spec/verification").glob("*.json"))
     files += list((root / "tests/fixtures").glob("contours-v0.9.json"))
+    files += list((root / "tests/fixtures").glob("regions-v0.9.json"))
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
     files += [root / "docs/llm-reference.json"]

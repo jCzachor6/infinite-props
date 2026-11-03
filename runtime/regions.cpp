@@ -5,6 +5,17 @@
 
 namespace iprop::detail {
 namespace {
+// Keep ordinary list ownership/tariffs, refunding a failed unpublished list
+// even when a heap failure occurs while registering or pushing its handle.
+template<class Fill>
+void listResult(Execution& ex,ValueType type,std::size_t count,Fill fill){
+    ex.spend(count);const auto bytes=ResourceArena::listBytes(count);ex.allocateResource(bytes);
+    bool registered=false;
+    try{
+        auto data=std::make_shared<ListData>();data->type=type;data->elements.reserve(count);fill(*data);
+        ex.resources.lists.push_back(data);registered=true;ex.push(ListValue{type,std::move(data)});
+    }catch(...){if(registered)ex.resources.lists.pop_back();ex.resources.release(bytes);throw;}
+}
 EdgeProvenance ancestry(const GeometryData& source, u32 edge) {
     auto p=source.edges[edge].provenance;
     p.edge=source.source ? p.edge : edge;
@@ -21,13 +32,10 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
     ex.resources.resourceLifetime()->location=ex.activeInstruction;
     // The default conversion is a view, including a valid empty store. The
     // other VM alternative prevents an implicit source-language conversion.
-    if (minimum==0) return source;
+    if (minimum==0 || source->regions.empty()) return source;
     const ResourceReservation workspace(ex.resources,1024);
-    ex.spend(source->regions.size()+source->rings.size()+source->points.size()+source->edges.size());
+    ex.spend(source->regions.size());
     ResourceVector<u32,4> regions(source->regions.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
-    ResourceVector<u32,4> rings(source->rings.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
-    ResourceVector<u32,4> points(source->points.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
-    ResourceVector<u32,4> edges(source->edges.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
     u32 kept=0;
     for (u32 i=0;i<source->regions.size();++i) {
         ex.spend(1);
@@ -36,10 +44,17 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
         for (const auto h:source->regionHoles(i)) { ex.spend(1);area+=source->rings[h].area; }
         if (area<minimum) continue;
         regions[i]=kept++;
-        rings[r.outer]=0;
-        for (const auto h:source->regionHoles(i)) { ex.spend(1);rings[h]=0; }
     }
     if (kept==source->regions.size()) return source;
+    if (!kept) return std::move(GeometryBuilder(ex,GeometryOrigin::Offset,source)).finish();
+    ex.spend(source->rings.size()+source->points.size()+source->edges.size());
+    ResourceVector<u32,4> rings(source->rings.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
+    ResourceVector<u32,4> points(source->points.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
+    ResourceVector<u32,4> edges(source->edges.size(),kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
+    for(u32 i=0;i<source->regions.size();++i){
+        ex.spend(1);if(regions[i]==kNoGeometryIndex)continue;const auto& r=source->regions[i];rings[r.outer]=0;
+        for(const auto h:source->regionHoles(i)){ex.spend(1);rings[h]=0;}
+    }
     GeometryBuilder builder(ex,GeometryOrigin::Offset,source);
     ResourceVector<GeometryEdgeUse,8> uses{ResourceAllocator<GeometryEdgeUse,8>(ex.resources)};
     ResourceVector<u32,4> holes{ResourceAllocator<u32,4>(ex.resources)};
@@ -78,6 +93,15 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
 
 bool stepRegions(Execution& ex,Instruction ins) {
     switch(ins.opcode) {
+    case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig: {
+        const auto minimum=ex.popF32(),inset=ex.popF32();
+        const auto source=ins.opcode==Opcode::RegionsDiagramConfig?ex.popHandle<Diagram2dValue>("diagram2d").data:
+            ex.popHandle<Contours2dValue>("contours2d").data;
+        ex.push(Regions2dValue{offsetRegions(ex,source,inset,minimum)});break;
+    }
+    case Opcode::RegionsMaskAll: {
+        const auto rs=ex.popHandle<Regions2dValue>("regions2d");ex.push(rasterRegions(ex,*rs.data));break;
+    }
     case Opcode::RegionsDiagram:
         ex.push(Regions2dValue{geometryRegions(ex,ex.popHandle<Diagram2dValue>("diagram2d").data)});break;
     case Opcode::RegionsContours:
@@ -85,19 +109,27 @@ bool stepRegions(Execution& ex,Instruction ins) {
     case Opcode::RegionsCount: {
         const auto r=ex.popHandle<Regions2dValue>("regions2d");ex.push(static_cast<i32>(r.data->regions.size()));break;
     }
-    case Opcode::RegionsId: case Opcode::RegionsArea: case Opcode::RegionsCenter: case Opcode::RegionsNeighbors: {
+    case Opcode::RegionsId: case Opcode::RegionsArea: case Opcode::RegionsCenter: case Opcode::RegionsNeighbors:
+    case Opcode::RegionsPoints: case Opcode::RegionsMask: {
         const auto index=ex.popI32();const auto rs=ex.popHandle<Regions2dValue>("regions2d");
         if(index<0 || static_cast<std::size_t>(index)>=rs.data->regions.size())ex.trap("regions index out of range",ErrorReason::IndexRange);
         const auto& r=rs.data->regions[static_cast<u32>(index)];
-        if(ins.opcode==Opcode::RegionsId)ex.push(r.sourceId);
+        if(ins.opcode==Opcode::RegionsMask)ex.push(rasterRegions(ex,*rs.data,index));
+        else if(ins.opcode==Opcode::RegionsPoints){
+            const auto& ring=rs.data->rings[r.outer];
+            if(r.holesCount||ring.count>256)ex.trap("regions.points requires one ring without holes and 3..256 vertices",ErrorReason::NumericRange);
+            listResult(ex,ValueType::list(ValueType::Vec2),ring.count,[&](ListData& data){
+                for(u32 k=0;k<ring.count;++k)data.elements.emplace_back(rs.data->start(rs.data->uses[ring.begin+k]));
+            });
+        }
+        else if(ins.opcode==Opcode::RegionsId)ex.push(r.sourceId);
         else if(ins.opcode==Opcode::RegionsArea)ex.push(r.area);
         else if(ins.opcode==Opcode::RegionsCenter)ex.push(r.center);
         else {
-            const auto neighbors=rs.data->regionNeighbors(static_cast<u32>(index));ex.spend(neighbors.size());
-            ex.allocateResource(ResourceArena::listBytes(neighbors.size()));
-            auto data=std::make_shared<ListData>();data->type=ValueType::list(ValueType::I32);data->elements.reserve(neighbors.size());
-            for(const auto n:neighbors)data->elements.emplace_back(n);
-            ex.resources.lists.push_back(data);ex.push(ListValue{data->type,std::move(data)});
+            const auto neighbors=rs.data->regionNeighbors(static_cast<u32>(index));
+            listResult(ex,ValueType::list(ValueType::I32),neighbors.size(),[&](ListData& data){
+                for(const auto n:neighbors)data.elements.emplace_back(n);
+            });
         }
         break;
     }

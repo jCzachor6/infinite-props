@@ -302,12 +302,17 @@ enum class Opcode : u8 {
     Contour = 0xEE,
     ContourConfig = 0xEF,
     RegionsDiagram = 0xF0,
+    RegionsDiagramConfig = 0xF1,
     RegionsContours = 0xF2,
+    RegionsContoursConfig = 0xF3,
     RegionsCount = 0xF4,
     RegionsId = 0xF5,
     RegionsArea = 0xF6,
     RegionsCenter = 0xF7,
     RegionsNeighbors = 0xF8,
+    RegionsPoints = 0xF9,
+    RegionsMask = 0xFA,
+    RegionsMaskAll = 0xFB,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

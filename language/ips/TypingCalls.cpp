@@ -40,7 +40,8 @@ ValueType Typer::typeCall(const Call& call) {
                 path.base == "surface" || path.base == "mask" || full == "list.len" ||
                 full == "diagram.count" || full == "diagram.site" || full == "diagram.neighbors" ||
                 full == "regions.count" || full == "regions.id" || full == "regions.area" ||
-                full == "regions.center" || full == "regions.neighbors";
+                full == "regions.center" || full == "regions.neighbors" ||
+                full == "regions.points" || full == "regions.mask";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};

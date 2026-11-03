@@ -3,14 +3,25 @@ asset region_centers {
     output list point centers
     draw {
         d = voronoi({0, 0}, {48, 32}, 12, seed, voronoi.grid, 0.35, 1)
-        rs = regions(d)
+        rs = regions(d, inset = 0.6, min_area = 2)
+        surface.paint(regions.mask(rs), #b79d7a, blend = surface.source_over)
         count = regions.count(rs)
         for i in 0..count {
             source_id = regions.id(rs, i)
             p = regions.center(rs, i)
             centers = p
+            if (i == 0) {
+                selected = regions.mask(rs, i)
+                surface.paint(selected, #dfc49d, blend = surface.source_over)
+                outline = regions.points(rs, i)
+                for j in 0..list.len(outline) {
+                    next = (j + 1) % list.len(outline)
+                    line(outline[j], outline[next], 1, #765)
+                }
+            }
             radius = sqrt(regions.area(rs, i)) * 0.18
-            oval(p - {radius, radius}, {radius * 2, radius * 2}, color.shade(#b79d7a, source_id * 2))
+            oval(p - {radius, radius}, {radius * 2, radius * 2},
+                 color.shade(#b79d7a, source_id * 2))
             adjacent = regions.neighbors(rs, i)
             for j in 0..list.len(adjacent) {
                 n = adjacent[j]

@@ -43,10 +43,12 @@ async function main() {
     const geometryProbe=path.join(buildDir,"geometry_representation_probe.js");
     const voronoiProbe=path.join(buildDir,"voronoi_probe.js");
     const contoursProbe=path.join(buildDir,"contours_probe.js");
+    const regionsProbe=path.join(buildDir,"regions_probe.js");
     const native = require("./native-conformance.js").run(iprop, toolsDir,
         {...(fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{}),
          ...(fs.existsSync(voronoiProbe)?{voronoiWasm:voronoiProbe}:{}),
-         ...(fs.existsSync(contoursProbe)?{contoursWasm:contoursProbe}:{})});
+         ...(fs.existsSync(contoursProbe)?{contoursWasm:contoursProbe}:{}),
+         ...(fs.existsSync(regionsProbe)?{regionsWasm:regionsProbe}:{})});
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
@@ -123,6 +125,10 @@ async function main() {
             native.voronoiV09.generations + " exact generations; " + native.voronoiV09.traps + " matching traps; " +
             native.voronoiV09.rejections + " bytecode rejections; complete-topology probes native=" +
             native.voronoiV09.nativeRepresentation + ", WASM=" + native.voronoiV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 regions: PASS (" + native.regionsV09.vectors + " vectors; " +
+            native.regionsV09.generations + " exact generations; " + native.regionsV09.traps + " matching traps; " +
+            native.regionsV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.regionsV09.nativeRepresentation + ", WASM=" + native.regionsV09.wasmRepresentation + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

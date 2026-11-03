@@ -169,6 +169,15 @@ target_link_libraries(voronoi_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(voronoi_allocation_probe)
 add_test(NAME voronoi_allocation_failures COMMAND voronoi_allocation_probe)
 
+add_executable(regions_allocation_probe regions_allocation_probe.cpp)
+target_link_libraries(regions_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(regions_allocation_probe)
+add_test(NAME regions_allocation_failures COMMAND regions_allocation_probe)
+
+add_executable(regions_probe regions_probe.cpp)
+target_link_libraries(regions_probe PRIVATE iprop_runtime)
+iprop_warnings(regions_probe)
+
 add_executable(contours_probe contours_probe.cpp)
 target_link_libraries(contours_probe PRIVATE iprop_runtime)
 iprop_warnings(contours_probe)
@@ -188,6 +197,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME regions_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/regions-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:regions_probe>")
     add_test(NAME contours_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/contours-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:contours_probe>")

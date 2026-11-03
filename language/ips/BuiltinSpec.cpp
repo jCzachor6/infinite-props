@@ -22,13 +22,20 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
         {"regions", {V::Regions2d,L::Opcode,{
             {{{"source",V::Diagram2d}},Opcode::RegionsDiagram},
-            {{{"source",V::Contours2d}},Opcode::RegionsContours}}}},
+            {{{"source",V::Diagram2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsDiagramConfig},
+            {{{"source",V::Contours2d}},Opcode::RegionsContours},
+            {{{"source",V::Contours2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsContoursConfig}}}},
         {"regions.count", {V::I32,L::Opcode,{{{{"rs",V::Regions2d}},Opcode::RegionsCount}}}},
         {"regions.id", {V::I32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsId}}}},
         {"regions.area", {V::F32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsArea}}}},
         {"regions.center", {V::Vec2,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsCenter}}}},
         {"regions.neighbors", {V::list(V::I32),L::Opcode,
             {{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsNeighbors}}}},
+        {"regions.points", {V::list(V::Vec2),L::Opcode,
+            {{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsPoints}}}},
+        {"regions.mask", {V::Mask,L::Opcode,{
+            {{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsMask},
+            {{{"rs",V::Regions2d}},Opcode::RegionsMaskAll}}}},
         {"contour", {V::Contours2d, L::Opcode, {
             {{{"source",V::Mask},{"threshold",V::F32}},Opcode::Contour},
             {{{"source",V::Mask},{"threshold",V::F32},{"simplify",V::F32},
