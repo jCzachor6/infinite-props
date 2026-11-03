@@ -93,6 +93,13 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
 
 bool stepRegions(Execution& ex,Instruction ins) {
     switch(ins.opcode) {
+    case Opcode::RegionsBevel: case Opcode::RegionsBevelConfig: {
+        const auto strength=ins.opcode==Opcode::RegionsBevelConfig?ex.popF32():0.5f;
+        const auto shadow=ins.opcode==Opcode::RegionsBevelConfig?ex.popColor():Color{0,0,0,255};
+        const auto highlight=ins.opcode==Opcode::RegionsBevelConfig?ex.popColor():Color{255,255,255,255};
+        const auto light=ex.popVec2();const auto width=ex.popF32();const auto source=ex.popHandle<Regions2dValue>("regions2d");
+        ex.push(bevelRegions(ex,*source.data,width,light,highlight,shadow,strength));break;
+    }
     case Opcode::RegionsGap: case Opcode::RegionsGapConfig: {
         const auto seed=ins.opcode==Opcode::RegionsGapConfig?ex.popI32():0;
         const auto variation=ins.opcode==Opcode::RegionsGapConfig?ex.popF32():0;

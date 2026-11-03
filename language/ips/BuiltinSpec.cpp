@@ -28,6 +28,9 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"regions.gap", {V::Regions2d,L::Opcode,{
             {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
             {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},
+        {"regions.bevel", {V::Layer,L::Opcode,{
+            {{{"source",V::Regions2d},{"width",V::F32},{"light",V::Vec2}},Opcode::RegionsBevel},
+            {{{"source",V::Regions2d},{"width",V::F32},{"light",V::Vec2},{"highlight",V::Color},{"shadow",V::Color},{"strength",V::F32}},Opcode::RegionsBevelConfig}}}},
         {"regions.count", {V::I32,L::Opcode,{{{{"rs",V::Regions2d}},Opcode::RegionsCount}}}},
         {"regions.id", {V::I32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsId}}}},
         {"regions.area", {V::F32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsArea}}}},

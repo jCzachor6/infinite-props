@@ -189,6 +189,14 @@ private:
             expect(at,ValueType::Regions2d,"regions gap source");
             push(at,ValueType::Regions2d);return;
 
+        case Opcode::RegionsBevel: case Opcode::RegionsBevelConfig:
+            if(ins.opcode==Opcode::RegionsBevelConfig){
+                expect(at,ValueType::F32,"regions bevel strength");expect(at,ValueType::Color,"regions bevel shadow");
+                expect(at,ValueType::Color,"regions bevel highlight");
+            }
+            expect(at,ValueType::Vec2,"regions bevel light");expect(at,ValueType::F32,"regions bevel width");
+            expect(at,ValueType::Regions2d,"regions bevel source");push(at,ValueType::Layer);return;
+
         case Opcode::RegionsDiagram: case Opcode::RegionsContours:
         case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
             if(ins.opcode==Opcode::RegionsDiagramConfig||ins.opcode==Opcode::RegionsContoursConfig){

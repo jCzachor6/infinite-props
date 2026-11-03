@@ -177,6 +177,10 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
             args=overload.params.size()==2?"source,float(v-1)":"source,0,float(v-1),7";
         }
+        if (name == "regions.bevel") {
+            setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
+            args=overload.params.size()==3?"source,0,{1,1}":"source,1,{1,1},#fff,#000,float(v-1)";
+        }
         if (name == "regions.mask") {
             setup="source=regions(voronoi({2147483000,0},{1024,8},1,0)) ";
             args=overload.params.size()==1?"source":"source,0";

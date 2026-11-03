@@ -3,10 +3,12 @@ asset gap_bevel {
     draw {
         rect(0, 0, 128, 96, #322e2a)
         diagram = voronoi({0, 0}, {128, 96}, 12, 71, voronoi.grid, 0.25, 0)
-        stones = regions.gap(regions(diagram), 2)
+        stones = regions.gap(regions(diagram), 2, 0.35, 71)
         for i in 0..regions.count(stones) {
             color = color.mix(#6d7e8a, #b6a88f, float(regions.id(stones, i)) / 11)
             surface.paint(regions.mask(stones, i), color, blend=surface.source_over)
         }
+        shade = regions.bevel(stones, 2.5, {-1, -1})
+        surface.paint(shade, blend=surface.source_over)
     }
 }

@@ -8,6 +8,8 @@ append-only, with zero aux and operand, checked even in unreachable code.
 | --- | --- | --- |
 | 0xFC | `regions.gap` | regions2d f32 → regions2d |
 | 0xFD | `regions.gap.config` | regions2d f32 f32 i32 → regions2d |
+| 0xFE | `regions.bevel` | regions2d f32 vec2 → layer |
+| 0xFF | `regions.bevel.config` | regions2d f32 vec2 color color f32 → layer |
 
 ## Constant gap (08.1)
 
@@ -79,3 +81,55 @@ Variable automatic workspace is 12288 charged bytes, replacing the constant
 endpoint evaluation), one per tested interior knot and arc subdivision visit;
 all shared arrangement/builder costs remain additional. Final tariffs/work
 limits are still stages12–13.
+
+## Bevel (08.3)
+
+`regions.bevel(source,width,light)` and the six-argument form adding
+`highlight,shadow,strength` use the same bounds, positive winding, half-open
+scanline crossings and 4×4 local sample grid as region masks. They create an
+ordinary RGBA8 layer, preserve complete off-target bounds, ignore active clips
+until painting, and do not draw, advance RNG, change or retain geometry.
+Empty input gives transparent 1×1 at zero in the active scale.
+
+Validate finite width>0, finite nonzero light, finite strength in [0,1] and
+positive finite raster scale before allocating. These checks also apply to
+empty input, zero strength and transparent colors. Normalize light in binary64
+using sqrt(x*x+y*y), safe for all finite nonzero f32 inputs. Defaults are
+RGBA(255,255,255,255), RGBA(0,0,0,255), strength0.5.
+
+At each subpixel sample inside the union choose the **lowest current region
+index** containing it. Within that region, including holes, find the closest
+closed line segment. Distance is binary64 squared Euclidean point-to-segment
+distance with projected t clamped to [0,1]. Equal distances choose the lower
+original edge index (through retained ancestry), then the current ring-use
+index. Corners are faceted: use that winning edge's outward unit normal
+`(dy,-dx)/sqrt(dx*dx+dy*dy)`, without blending incident normals. Hole traversal
+reverses the normal into the hole. Light and normals are in local units,
+independent of nonuniform target raster scale.
+
+For nearest distance d<=width, let `fade=clamp(1-d/width,0,1)` and
+`dot=clamp(normal.x*unitLight.x+normal.y*unitLight.y,-1,1)`. Dot>=0 selects
+highlight, dot<0 selects shadow. Subsample alpha in byte units is
+`color.a*strength*abs(dot)*fade`; RGB is that color. Samples outside, farther
+than width, or with zero dot/alpha contribute zero. Sum alpha and premultiplied
+RGB in sy,sx order over the sixteen samples. Pixel alpha is nearest(sumA/16),
+ties up. For nonzero quantized alpha, straight RGB is nearest(sumRGB/sumA),
+ties up, clamped to bytes. A zero-alpha pixel is canonical transparent black.
+This retains the supplied alpha and avoids applying region coverage twice.
+
+One source-use record caches segment, bounds, squared length, outward normal
+and original index (64 charged bytes). The existing crossing visit also builds
+a width-expanded Y-active edge list (4-byte indices). Distance queries reject
+X bounds before exact projection. A subrow owns four u16 region indices per
+pixel (2-byte slots); one row holds premultiplied accumulators (32-byte slots).
+No per-region canvas, distance-field image or full-canvas intermediate is
+created. Capacity/growth charges and failures follow the geometry arena.
+Automatic bevel workspace is 4096 plus the shared raster's1024 bytes.
+
+Interim fuel reserves 4 per cached edge, 4 per zeroed RGBA pixel,
+5 per prepared pixel, 1 per row accumulator reset, 1 per subrow owner reset,
+1 per owner-interval binary-search step/write, active-edge append/visit,
+4 per exact projection and per winning sample shade, 4 per pixel/subrow
+visit, and 1 per finalized pixel; existing bounds/crossing/sort charges remain.
+Zero strength skips edge and sampling work after validated bounds and output
+allocation. The final independent work limits and tariffs remain stages12–13.

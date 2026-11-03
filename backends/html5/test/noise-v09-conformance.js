@@ -167,7 +167,7 @@ function run(iprop,tool,directory) {
         }
         const instruction=ops.find(i=>i.opcode===opcodes[v.op]);assert(instruction);
         const aux=Buffer.from(bytes);aux[instruction.at+1]=1;reject(aux,/aux byte must be zero/,true);
-        const unknown=Buffer.from(bytes);unknown[instruction.at]=0xff;reject(unknown,/reserved opcode/,true);
+        const unknown=Buffer.from(bytes);unknown[instruction.at]=0x0b;reject(unknown,/reserved opcode/,true);
         const reserved=Buffer.from(bytes);reserved.writeUInt32LE(9,4);reject(reserved,/reserved header field must be zero/,true);
         // Current runtime accepts new instructions on a polymorphic dead
         // stack. Aux and reserved-header checks still apply to dead code.
@@ -176,7 +176,7 @@ function run(iprop,tool,directory) {
         const deadAt=instructions(unreachable).find(at=>unreachable[at]===opcodes[v.op]);
         assert.notEqual(deadAt,undefined);
         const deadAux=Buffer.from(unreachable);deadAux[deadAt+1]=1;reject(deadAux,/aux byte must be zero/,true);
-        const deadUnknown=Buffer.from(unreachable);deadUnknown[deadAt]=0xff;reject(deadUnknown,/reserved opcode/,true);
+        const deadUnknown=Buffer.from(unreachable);deadUnknown[deadAt]=0x0b;reject(deadUnknown,/reserved opcode/,true);
     }
     return {generations,pins,vectors:vectors.length,traps,compilerErrors,rejections,wasm:Boolean(iprop)};
 }

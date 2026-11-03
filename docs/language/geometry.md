@@ -191,6 +191,25 @@ See the [gap and bevel contract](../../spec/gap-bevel-v0.9.md).
 
 <!-- example: ../../examples/language/gap-bevel.ips -->
 
+## regions.bevel
+<!-- builtin: regions.bevel -->
+
+Creates a separate RGBA8 shading layer inside region boundaries, including
+hole boundaries, without changing geometry or painting the current target.
+Width must be finite and positive; light must be finite and nonzero and points
+toward the light in local coordinates. The short call uses white highlight,
+black shadow and strength 0.5. The six-argument form adds explicit colors and
+finite strength in 0–1, preserving each color's alpha.
+
+The closest edge's outward normal determines highlight or shadow. The effect
+fades linearly to zero at the requested width and is sampled on the same 4 by 4
+grid as region masks. Equal distances choose the original edge index, then
+the current traversal index. At overlaps the first current region owns the
+sample. Alpha and premultiplied color are averaged before RGBA8 quantization.
+Paint the result explicitly with `surface.paint(shade, blend=surface.source_over)`
+or the existing legacy mode. Target scale sets resolution; clipping applies
+when the layer is painted. Off-target bounds are retained.
+
 ## vec2.len
 <!-- builtin: vec2.len -->
 

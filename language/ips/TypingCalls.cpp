@@ -41,7 +41,7 @@ ValueType Typer::typeCall(const Call& call) {
                 full == "diagram.count" || full == "diagram.site" || full == "diagram.neighbors" ||
                 full == "regions.count" || full == "regions.id" || full == "regions.area" ||
                 full == "regions.center" || full == "regions.neighbors" ||
-                full == "regions.points" || full == "regions.mask" || full == "regions.gap";
+                full == "regions.points" || full == "regions.mask" || full == "regions.gap" || full == "regions.bevel";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};

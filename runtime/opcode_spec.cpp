@@ -32,6 +32,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
     case Opcode::RegionsMaskAll:
     case Opcode::RegionsGap:
+    case Opcode::RegionsBevel: case Opcode::RegionsBevelConfig:
     case Opcode::Contour: case Opcode::ContourConfig:
         return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::RegionsGapConfig:
@@ -264,6 +265,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::RegionsMaskAll, "regions.mask_all", OperandKind::Zero),
     dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
     dynamic(Opcode::RegionsGapConfig, "regions.gap.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsBevel, "regions.bevel", OperandKind::Zero),
+    dynamic(Opcode::RegionsBevelConfig, "regions.bevel.config", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),

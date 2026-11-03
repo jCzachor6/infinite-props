@@ -126,3 +126,32 @@ TEST_CASE("variable gaps normalize every binary 3x3 contour without leaking scra
         }}CHECK(ex.resources.bytes==0);
     }
 }
+TEST_CASE("bevel shades local outward normals with explicit alpha and shared raster bounds","[gap-bevel-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=1000000000;ex.target=RenderTarget::create(1,1,{1,1});
+    {const std::array<Vec2,1> site{{{8,6}}};const auto source=detail::explicitVoronoi(ex,{0,0},{16,12},site,0);
+    const auto bytes=ex.resources.bytes;
+    {const auto layer=detail::bevelRegions(ex,*source,2,{0,-1},{255,20,40,128},{10,30,50,64},0.5f);
+        CHECK(layer.buffer->format==SurfaceBuffer::Format::RGBA8);CHECK(layer.buffer->coverage.empty());
+        CHECK(layer.buffer->raster.width==16);CHECK(layer.buffer->raster.height==12);
+        CHECK(layer.buffer->raster.at(8,0)==Color{255,20,40,48});CHECK(layer.buffer->raster.at(8,11)==Color{10,30,50,24});
+        CHECK(layer.buffer->raster.at(8,5)==Color{});CHECK(ex.canvas().at(0,0)==Color{});
+        CHECK(source->regions[0].area==192);
+        const auto zero=detail::bevelRegions(ex,*source,2,{0,-1},{255,255,255,255},{0,0,0,255},0);
+        for(const auto pixel:zero.buffer->raster.pixels)CHECK(pixel==Color{});
+        const auto reverse=detail::bevelRegions(ex,*source,2,{0,1});CHECK(reverse.buffer->raster.at(8,0).r==0);
+        CHECK(reverse.buffer->raster.at(8,11).r==255);
+        ex.target.canvas().scaleX=2;ex.target.canvas().scaleY=3;
+        const auto scaled=detail::bevelRegions(ex,*source,2,{0,-1000},{255,20,40,128},{10,30,50,64},0.5f);
+        CHECK(scaled.buffer->raster.width==32);CHECK(scaled.buffer->raster.height==36);
+        CHECK(scaled.buffer->raster.at(16,0)==Color{255,20,40,59});
+    }CHECK(ex.resources.bytes==bytes);ex.target.canvas().scaleX=1;ex.target.canvas().scaleY=1;
+    for(const f32 width:{0.f,-1.f,std::numeric_limits<f32>::infinity(),std::numeric_limits<f32>::quiet_NaN()})CHECK_THROWS(detail::bevelRegions(ex,*source,width,{1,1}));
+    for(const auto light:{Vec2{0,0},Vec2{std::numeric_limits<f32>::infinity(),1},Vec2{1,std::numeric_limits<f32>::quiet_NaN()}})CHECK_THROWS(detail::bevelRegions(ex,*source,1,light));
+    for(const f32 strength:{-1.f,1.01f,std::numeric_limits<f32>::infinity(),std::numeric_limits<f32>::quiet_NaN()})CHECK_THROWS(detail::bevelRegions(ex,*source,1,{1,1},{},{},strength));
+    CHECK(ex.resources.bytes==bytes);}
+    CHECK(ex.resources.bytes==0);
+    {detail::GeometryBuilder b(ex,GeometryOrigin::Contours);const auto empty=std::move(b).finish();
+        const auto layer=detail::bevelRegions(ex,*empty,1,{1,1});CHECK(layer.buffer->raster.width==1);
+        CHECK(layer.buffer->raster.pixels[0]==Color{});CHECK_THROWS(detail::bevelRegions(ex,*empty,0,{1,1}));}
+    CHECK(ex.resources.bytes==0);
+}
