@@ -53,7 +53,8 @@ function run(iprop,tool,directory,probes={}){
     const base=path.join(directory,'dynamic-parts'),corpus=JSON.parse(fs.readFileSync(fixture));
     const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/dynamic_parts_probe'+(process.platform==='win32'?'.exe':''));
     const hasNative=fs.existsSync(nativeProbe),hasWasm=!!probes.wasm;
-    let generations=0,records=0,traps=0,rejections=0,compilerErrors=0,publicVectors=0;
+    let generations=0,records=0,traps=0,rejections=0,compilerErrors=0,publicVectors=0,coreRejections=0;
+    const resourceBoundaries=[];
     const invoke=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe'});
     function compile(text,flags=[]){fs.writeFileSync(base+'.ips',text);invoke('ipc',[base+'.ips',...flags,'-o',base+'.iprop']);return fs.readFileSync(base+'.iprop');}
     function assemble(text){fs.writeFileSync(base+'.ipa',text);invoke('ipa',[base+'.ipa','-o',base+'.iprop']);return fs.readFileSync(base+'.iprop');}
@@ -82,6 +83,22 @@ function run(iprop,tool,directory,probes={}){
             if(hasWasm){const r=JSON.parse(execFileSync('node',[probes.wasm,...probeArgs(c)],{encoding:'utf8'}));
                 assert.deepEqual(compact(r),c.result,c.name+' WASM full core/fuel/bytes pin');for(const key of Object.keys(expected))assert.deepEqual(r[key],expected[key],c.name+' WASM '+key);records++;}
         }
+        for(const c of corpus.core_failures||[])for(const [name,command,prefix] of [[hasNative?'native':'',nativeProbe,[]],[hasWasm?'WASM':'','node',[probes.wasm]]]){
+            if(!name)continue;const result=spawnSync(command,[...prefix,...probeArgs(c)],{encoding:'utf8'});
+            assert.equal(result.status,4,result.stderr);assert.match(result.stderr,/scale does not match/);assert.equal(result.stdout,'');coreRejections++;
+        }
+        for(const boundary of corpus.resource_boundaries||[]){const c=corpus.cases.find(c=>c.name===boundary.name);assert(c);
+            assert.equal(boundary.source_bytes,c.result.sourceBytes);assert.equal(boundary.core_fuel,c.result.fuel);
+            for(const [name,command,prefix] of [[hasNative?'native':'',nativeProbe,[]],[hasWasm?'WASM':'','node',[probes.wasm]]]){
+                if(!name)continue;
+                const attempt=(fuel,free)=>spawnSync(command,[...prefix,...probeArgs(c,fuel,free===undefined?0:64*1024*1024-boundary.source_bytes-free)],{encoding:'utf8'});
+                for(const [fuel,free] of [[boundary.core_fuel,undefined],[1e9,boundary.minimum_free_bytes]]){
+                    const result=attempt(fuel,free);assert.equal(result.status,0,result.stderr);assert.deepEqual(compact(JSON.parse(result.stdout)),c.result,name+' exact resource boundary');}
+                for(const [fuel,free,message] of [[boundary.core_fuel-1,undefined,/fuel exhausted/],[1e9,boundary.minimum_free_bytes-1,/64 MiB/]]){
+                    const result=attempt(fuel,free);assert.equal(result.status,4,result.stderr);assert.match(result.stderr,message);assert.equal(result.stdout,'','failed core operation publishes no partial record');}
+            }
+            resourceBoundaries.push({...boundary,native:hasNative,wasm:hasWasm});
+        }
         const control=generate(compile('asset t{size 1x1 output list point trace draw{trace={-1,unit()}trace={-2,unit()}}}')).outputs[0].values;
         for(const scene of corpus.scenes||[])generate(compile(fs.readFileSync(path.join(repo,scene.source),'utf8')),null,null,scene);
         const selected=corpus.cases.filter(c=>c.kind>=2&&((c.name.startsWith('matrix-')&&(c.sourceD4+ref.kind(c.rot,c.mx,c.my))%3===0)||c.name.startsWith('appearance-')||c.name.startsWith('original-')));
@@ -96,6 +113,28 @@ function run(iprop,tool,directory,probes={}){
             }
             compile(text);invoke('ipc',[base+'.ips','--format-only','--format',base+'-formatted.ips']);
             generate(compile(fs.readFileSync(base+'-formatted.ips','utf8')),expected,trace);
+        }
+        const reuse=`asset t{size 8x8 output list point trace draw{trace={-1,unit()}
+            rs=regions(voronoi({0,0},{8,8},1,7))ps=parts.from_regions(rs)old=parts.get(ps,0)
+            layer image{rect(0,0,8,8,#445566)}
+            for i in 0..512{q=parts.get(ps,0)q=part.fill(q,#fff)q=part.texture(q,image)
+                q=part.place(q,{float(i)*0.5,-float(i)/3.0},(i%4)*90,0,0)
+                if((i&63)==0){part.draw(q)shape=part.mask(q)}}
+            trace={part.id(old),part.id(q)}trace=part.center(old)trace=part.bounds_origin(old)trace=part.bounds_size(old)
+            trace=part.center(q)trace={part.id(part.create(rs,0)),parts.count(ps)}trace={-2,unit()}}}`;
+        const reuseTrace=[control[0],...[ [0,0],[4,4],[0,0],[8,8],[256,-170],[1,1] ].map(p=>({x:ref.bits(p[0]),y:ref.bits(p[1])})),control[1]];
+        for(const optimize of[false,true])generate(compile(reuse,optimize?[]:['--no-opt']),null,reuseTrace);
+        const argumentControl=generate(compile('asset t{size 8x8 output list point calls draw{for i in 1..25{calls={i,unit()}}}}')).outputs[0].values;
+        for(const optimize of[false,true]){
+            const result=generate(compile(fs.readFileSync(path.join(repo,'tests/fixtures/dynamic-parts-arguments.ips'),'utf8'),optimize?[]:['--no-opt']),null,argumentControl);
+            assert.deepEqual(result.outputs[1].values,[[0,0],[3,0],[-1,-4],[8,8],[0,1],[2,3],[1,4]].map(p=>({x:ref.bits(p[0]),y:ref.bits(p[1])})));
+        }
+        for(const optimize of[false,true]){
+            const prefix='asset t{size 2x2 output list point trace draw{rs=regions(voronoi({0,0},{2,2},1,0))';
+            const flags=optimize?[]:['--no-opt'];
+            generate(compile(prefix+'for i in 0..255{part.create(rs,0)}last=part.create(rs,0)layer empty{}zero=parts.from_regions(regions(contour(mask.from(empty),0.5)))trace={part.id(last),parts.count(zero)}}}',flags),null,[{x:ref.bits(255),y:ref.bits(0)}]);
+            reject(compile(prefix+'for i in 0..256{part.create(rs,0)}part.create(rs,0)}}',flags),/dynamic part creations exceed 256/);
+            reject(compile('asset t{size 2x2 draw{rs=regions(voronoi({0,0},{2,2},2,0))for i in 0..255{part.create(rs,0)}parts.from_regions(rs)}}',flags),/dynamic part creations exceed 256/);
         }
         const dead=`asset t{size 8x8 unused(rs:regions2d,m:mask,l:layer,p:part2d,ps:parts2d,i:i32,v:vec2,c:color){
             part.create(rs,i)part.create(m)part.create(l)parts.from_regions(rs)parts.count(ps)parts.get(ps,i)
@@ -127,7 +166,9 @@ function run(iprop,tool,directory,probes={}){
             fs.writeFileSync(base+'.ips','asset t{size 2x2 draw{'+setup+body+'}}');const r=spawnSync(tool('ipc'),[base+'.ips','-o',base+'-failed.iprop'],{encoding:'utf8'});
             assert.equal(r.status,1,r.stderr);assert.match(r.stderr,/must be|no matching overload/);compilerErrors++;
         }
-        return {passed:true,vectors:corpus.cases.length,scenes:(corpus.scenes||[]).length,records,internalNative:hasNative,internalWasm:hasWasm,wasm:!!iprop,publicVectors,generations,traps,rejections,compilerErrors};
+        fs.writeFileSync(base+'.ips','asset t{size 2x2 const i32 forbidden=0&&part.id(part.create(regions(voronoi({0,0},{2,2},1,0)),0)) draw{}}');
+        {const result=spawnSync(tool('ipc'),[base+'.ips','-o',base+'-failed.iprop'],{encoding:'utf8'});assert.equal(result.status,1);assert.match(result.stderr,/generation effects|not allowed/);compilerErrors++;}
+        return {passed:true,vectors:corpus.cases.length,scenes:(corpus.scenes||[]).length,records,coreFailureVectors:(corpus.core_failures||[]).length,coreRejections,internalNative:hasNative,internalWasm:hasWasm,wasm:!!iprop,publicVectors,generations,traps,rejections,compilerErrors,resourceBoundaries};
     }finally{if(owned)fs.rmSync(directory,{recursive:true,force:true});}
 }
 module.exports={run,probeArgs,compact,publicSource};

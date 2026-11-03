@@ -2,6 +2,8 @@
 #include <catch2/matchers/catch_matchers_exception.hpp>
 #include <cmath>
 #include <limits>
+#include <filesystem>
+#include <fstream>
 #include "support/geometry_fixture.hpp"
 #include "iprop/DynamicParts.hpp"
 #include "iprop/VM.hpp"
@@ -241,4 +243,93 @@ TEST_CASE("dynamic drawing coexists with a static component aliased part and sha
         CHECK_NOTHROW(ips::formatProgram(ips::parse(sources.at("root.ips"))));
         CHECK(disassemble(assemble(disassemble(compiled.bytes)))==disassemble(compiled.bytes));
     }
+}
+TEST_CASE("bulk creation is atomic at the cumulative limit even after old handles are released","[dynamic-parts-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=10000000;
+    ex.target=RenderTarget::create(16,16,{1,1});
+    {const Regions2dValue source{geometry_fixture::holes(ex)};
+    for(u32 i=0;i<253;++i)(void)detail::createPart(ex,source,0);
+    auto parts=detail::partsFromRegions(ex,source);REQUIRE(parts.data->parts.size()==2);
+    CHECK(parts.data->parts[0].data->id==253);CHECK(parts.data->parts[1].data->id==254);
+    const auto bytes=ex.resources.bytes;
+    CHECK_THROWS_WITH(detail::partsFromRegions(ex,source),"dynamic part creations exceed 256");
+    CHECK(ex.dynamicPartCreations==255);CHECK(ex.resources.bytes==bytes);
+    CHECK(detail::createPart(ex,source,0).data->id==255);parts={};
+    CHECK_THROWS(detail::partsFromRegions(ex,source));CHECK(ex.dynamicPartCreations==256);
+    detail::GeometryBuilder b(ex,GeometryOrigin::Contours);const Regions2dValue empty{std::move(b).finish()};
+    const auto zero=detail::partsFromRegions(ex,empty);CHECK(zero.data->parts.empty());CHECK(ex.dynamicPartCreations==256);}
+    CHECK(ex.resources.bytes==0);
+}
+TEST_CASE("actual part views retain immutable geometry texture and A8 beyond execution lifetime","[dynamic-parts-v09]") {
+    Part2dValue old,placed;MaskValue mask;std::weak_ptr<const GeometryData> geometry;
+    std::weak_ptr<const SurfaceBuffer> texture;
+    {
+        LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=10000000;
+        ex.target=RenderTarget::create(16,16,{1,1});
+        const Regions2dValue source{geometry_fixture::holes(ex)};geometry=source.data;
+        const auto bytes=surfaceBytes(2,3);ex.allocateResource(bytes);auto image=ex.resources.makeSurface(bytes);
+        image->raster.resize(2,3);image->raster.at(0,0)={17,23,29,128};texture=image;
+        const auto p=detail::createPart(ex,source,0);old=detail::fillPart(ex,p,{31,37,41,64});
+        const auto textured=detail::texturePart(ex,p,LayerValue{image,{}});
+        placed=detail::placePart(ex,textured,{2.25f,-0.5f},90,1,0);mask=detail::maskPart(ex,placed);
+        CHECK(ex.dynamicPartCreations==1);CHECK(old.data->id==placed.data->id);CHECK(ex.resources.bytes>0);
+    }
+    CHECK_FALSE(geometry.expired());CHECK_FALSE(texture.expired());
+    CHECK(old.data->fill==Color{31,37,41,64});CHECK_FALSE(old.data->texture);CHECK_FALSE(placed.data->fill);
+    CHECK(placed.data->texture->buffer->raster.at(0,0)==Color{17,23,29,128});
+    CHECK(std::get<RegionSource>(old.data->source).geometry==std::get<RegionSource>(placed.data->source).geometry);
+    CHECK(std::get<RegionSource>(old.data->source).geometry->regions[0].holesCount==1);
+    const auto retained=mask.buffer;REQUIRE(retained);CHECK(retained->coverage.size()==80);
+    {LoadedFile f;f.code.functions.emplace_back();detail::Execution another(f);another.fuel=10000000;
+        another.target=RenderTarget::create(4,4,{1,1});
+        CHECK(detail::createPart(another,Regions2dValue{geometry_fixture::fractional(another)},0).data->id==0);}
+    CHECK(old.data->sourceId==9);CHECK(placed.data->sourceId==9);
+    old={};placed={};CHECK(geometry.expired());CHECK(texture.expired());
+    CHECK(retained->coverage[0]==255);CHECK(retained->coverage[22]==0);
+}
+TEST_CASE("dynamic builtin arguments evaluate once in signature order with IDs and RNG effects","[dynamic-parts-v09]") {
+    const auto path=std::filesystem::path(__FILE__).parent_path()/"fixtures/dynamic-parts-arguments.ips";
+    std::ifstream input(path);const std::string source{std::istreambuf_iterator<char>(input),std::istreambuf_iterator<char>()};
+    REQUIRE_FALSE(source.empty());
+    const auto reference=loadFile(compile("asset t{size 8x8 output list point calls draw{for i in 1..25{calls={i,unit()}}}}"));
+    for(const bool optimize:{false,true})for(const u32 seed:{0u,7u,0xffffffffu}){
+        const auto file=loadFile(compile(source,optimize));validate(file);GenerationInputs args;args.seed=seed;
+        VM expected(reference,args);expected.run();const auto control=expected.result();VM vm(file,args);vm.run();const auto result=vm.result();
+        REQUIRE(result.outputs[0].points.size()==24);REQUIRE(result.outputs[1].points.size()==7);
+        for(u32 i=0;i<24;++i){CHECK(result.outputs[0].points[i].x==static_cast<f32>(i+1));
+            CHECK(result.outputs[0].points[i].y==control.outputs[0].points[i].y);}
+        const std::array<Vec2,7> metrics{{{0,0},{3,0},{-1,-4},{8,8},{0,1},{2,3},{1,4}}};
+        for(u32 i=0;i<metrics.size();++i){CHECK(result.outputs[1].points[i].x==metrics[i].x);CHECK(result.outputs[1].points[i].y==metrics[i].y);}
+    }
+}
+TEST_CASE("vector parts choose the inverse D4 target grid while raster sources keep their scale","[dynamic-parts-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=1000000000;
+    ex.target=RenderTarget::create(32,32,{2,3},CompositionMode::SourceOver);
+    {const Regions2dValue source{geometry_fixture::holes(ex)};const auto p=detail::createPart(ex,source,0);
+    const auto filled=detail::fillPart(ex,p,{17,23,29,128});
+    for(i32 rot:{0,90,180,270})for(i32 mx:{0,1})for(i32 my:{0,1}){
+        const auto placed=detail::placePart(ex,filled,{4.5f,3.25f},rot,mx,my);
+        CHECK(placed.data->placed);CHECK(placed.data->boundsSize==(rot==90||rot==270?Vec2{8,10}:Vec2{10,8}));
+        CHECK(placed.data->original.scale==(rot==90||rot==270?Vec2{3,2}:Vec2{2,3}));
+        CHECK_NOTHROW(detail::maskPart(ex,placed));CHECK_NOTHROW(detail::drawPart(ex,placed));
+        const auto reset=detail::placePart(ex,placed,p.data->center,0,0,0);
+        CHECK(reset.data->center==p.data->center);CHECK(reset.data->boundsOrigin==p.data->boundsOrigin);CHECK(reset.data->boundsSize==p.data->boundsSize);
+        CHECK(reset.data->original.centerX==p.data->original.centerX);CHECK(reset.data->original.centerY==p.data->original.centerY);
+    }
+    CHECK_FALSE(p.data->placed);CHECK(p.data->original.scale==Vec2{2,3});CHECK(ex.dynamicPartCreations==1);
+    auto image=std::make_shared<SurfaceBuffer>();image->raster.resize(5,4);image->raster.scaleX=2;image->raster.scaleY=3;
+    image->raster.at(0,0)={31,37,41,128};
+    const auto raster=detail::createPart(ex,LayerValue{image,{}});CHECK_THROWS(detail::placePart(ex,raster,{0,0},90,0,0));
+    const auto texture=detail::texturePart(ex,p,LayerValue{image,{}});CHECK_THROWS(detail::placePart(ex,texture,{0,0},90,0,0));
+    auto compatible=std::make_shared<SurfaceBuffer>();compatible->raster.resize(5,4);compatible->raster.scaleX=3;compatible->raster.scaleY=2;
+    compatible->raster.at(0,0)={43,47,53,128};const auto textured=detail::texturePart(ex,p,LayerValue{compatible,{}});
+    CHECK_THROWS(detail::drawPart(ex,textured));
+    CHECK(detail::maskPart(ex,textured).buffer->coverage==detail::maskPart(ex,p).buffer->coverage);
+    const auto placedTexture=detail::placePart(ex,textured,{4.5f,3.25f},90,0,0);CHECK_NOTHROW(detail::drawPart(ex,placedTexture));
+    ex.canvas().scaleX=4;ex.canvas().scaleY=5;const auto changed=detail::maskPart(ex,p);
+    CHECK(changed.buffer->raster.width==40);CHECK(changed.buffer->raster.height==40);
+    CHECK(changed.buffer->raster.scaleX==4);CHECK(changed.buffer->raster.scaleY==5);
+    CHECK(p.data->center==source.data->regions[0].center);
+    CHECK_THROWS(detail::maskPart(ex,placedTexture));
+    }CHECK(ex.resources.bytes==0);
 }

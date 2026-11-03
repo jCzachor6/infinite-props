@@ -2074,6 +2074,28 @@
       "value": "squared",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "earlier dynamic parts without geometry grid detail",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "geometry_scale"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "dynamic geometry cannot be implicitly resampled",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "geometry_scale"
+      ],
+      "value": "resample_captured_pixels",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

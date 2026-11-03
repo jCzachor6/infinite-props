@@ -3782,6 +3782,11 @@
               "type": "boolean",
               "const": false,
               "description": "Pinned dynamic part asset constants."
+            },
+            "geometry_scale": {
+              "type": "string",
+              "const": "inverse_D4_target_grid_without_resampling",
+              "description": "Optional vector geometry grid selection; raster buffers retain their intrinsic scale."
             }
           },
           "required": [

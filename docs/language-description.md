@@ -275,3 +275,5 @@ alpha-once layer drawing and shape-only A8 masks. Creation is generation state
 with a conservative effect summary, never asset-constant evaluation. Dynamic
 `part.draw(p)` writes the canvas and checks required appearance. Static imports
 continue to bind seed/at calls, including an import aliased `part`.
+The optional `geometry_scale` detail selects the inverse-D4 target grid for
+vector geometry; raster sources and textures keep exact pixel-scale matching.

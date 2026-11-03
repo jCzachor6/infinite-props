@@ -67,8 +67,11 @@ IPA/IPDIS and the language description use the normal builtin pipeline.
 `fill`, `texture` and `place` create a new 256-byte view, sharing the original
 source and preserving identity. Fill and texture are exclusive: the last one
 replaces the other. Earlier views remain stable. Texture capture validates
-RGBA storage, mapping and a raster scale equal to the **original** part frame;
-it is sampled before placement, with transparent pixels outside its extent.
+RGBA storage and mapping. Raster shapes and explicitly placed geometry require
+the texture's scale to match their original source grid. Unplaced vector geometry
+can retain a texture from another grid; drawing must match that texture grid,
+while shape masking remains independent of appearance. Texture is sampled in
+original coordinates before placement, with transparent pixels outside its extent.
 
 Creation caches a binary64 original pixel frame: anchor, bbox edges and f32
 source scale. For geometry, the anchor is the cached f32 net-area centroid
@@ -79,9 +82,18 @@ This avoids reconstructing pixel anchors from rounded local f32 coordinates.
 
 Let B be the existing D4 from `(rot,mirror_x,mirror_y)`, applied as rotation
 then reflections. Let L_B be its linear action about zero (the basis is obtained
-from D4, not another symmetry table). The target scale must exactly equal
-`B.mapExtent(sourceScale)`. For the original pixel anchor c and requested local
-position a, compute in binary64, independently on each axis:
+from D4, not another symmetry table). Raster source scale is intrinsic: the
+target must exactly equal `B.mapExtent(sourceScale)`. Vector geometry has no
+intrinsic pixel scale. Select its original raster grid as
+`neededScale = B.mapExtent(targetScale)` (D4 and its inverse exchange the same
+extent axes). Reframe the cached geometry anchor/edges by
+`oldPixelCoordinate / oldScale * neededScale`, then store neededScale in the new
+view. The original products of two f32 values were exact binary64, so division
+recovers original local coordinates without drift, vertex copies or rescanning.
+A retained texture must match neededScale; pixels are never resampled.
+
+For the original anchor c in that source grid and requested local position a,
+compute in binary64, independently on each axis:
 
 ```
 t = floor(double(a)*targetScale - L_B(c) + 0.5)
@@ -93,13 +105,20 @@ original frame, never from an earlier placed view. Effective center is
 original bbox corners plus t, divided by target scale. Convert each final
 metadata component once to finite f32. Queries read these cached values in O(1).
 Default placement retains original geometry metadata bits and location.
+Explicit place freezes its effective target grid so later use cannot silently
+reinterpret the rounded pixel translation at a different scale. Unplaced
+geometry rasterizes at the current target grid, including after a target-scale
+change; metadata remains the original local geometry. A placement flag fits the
+existing record padding: the view header remains 256 bytes.
 
 For an original raster mapping A at origin o and mapped extent e, the placed
 mapping has D4 `A.compose(B)` and integer origin
 `L_B(o)+t+min(0,L_B(e))`. This uses edge extents; sampling still uses D4's
 separate pixel-index mapping. Validate the complete placed raster mapping
-before allocating a view. Rotating under unequal scales requires the swapped
-target scale, just as for existing masks/layers; no interpolation is introduced.
+before allocating a view. Raster rotation under unequal scales requires a
+matching swapped target scale, just as for existing masks/layers. Solid geometry
+can rotate under an unchanged anisotropic target: the shared rasterizer uses
+the inverse-D4 grid. No interpolation is introduced.
 Neither appearance nor placement draws, allocates an ID, consumes RNG, modifies
 source pixels/topology or incorporates the active clip.
 
@@ -114,7 +133,7 @@ pipeline as ordinary layers. The operation reserves one visit per full source
 pixel even off target. Legacy transparent-pixel handling stays unchanged.
 
 Fill and texture render through the original shape mask. Geometry uses the
-**same** region raster kernel at captured source scale, before pixel-preserving
+**same** region raster kernel in its selected source grid, before pixel-preserving
 D4/translation. Raster shapes use their original alpha without contouring.
 For positive shape coverage, fill supplies RGBA or texture is sampled in the
 original mapped pixel coordinates (outside is transparent). Multiply appearance
@@ -148,12 +167,16 @@ raster rejection. Asset constants and generic handle containers stay forbidden.
 
 ## Reference matrix (09.4)
 
-[275 vectors](../tests/fixtures/dynamic-parts-v0.9.json) cover every source/part
+[317 vectors](../tests/fixtures/dynamic-parts-v0.9.json) cover every source/part
 D4 pair for A8, RGBA and RGBA-backed masks; geometry includes an asymmetric
 holed rectangle and a triangle with negative/fractional coordinates. Cases
 include anisotropic and fractional scales, exact half-pixel anchors, negative
 placement, repeated absolute placement, all appearance choices, empty/soft
 clips, transparent colors and backgrounds with hidden RGB.
+The additional 42 geometry cases cover all D4 under unchanged 2×3 and
+0.75×1.25 targets, matching texture grids and unplaced geometry selecting a new
+target grid. Six failing raster cases ensure those sources keep their intrinsic
+scale. All earlier 275 results, including cost pins, remain unchanged.
 
 The [independent JS oracle](../tests/reference/dynamic-parts-reference.js) uses
 explicit signed matrices, point-in-ring sampling, exact integer composition
@@ -187,3 +210,43 @@ virtual occupied quota and placement mode. Source/texture/clips are prepared
 before resetting the operation budget; creation and all subsequent operations
 are charged. Mask storage remains retained while draw runs. Virtual quota and
 all actual resources are released before reporting `released=0`.
+Placement modes 0/1/2 mean original/absolute/repeated absolute; mode 3 keeps
+the original anisotropic target during place, and mode 4 changes the target
+axes before using unplaced geometry.
+
+## Limits, argument effects and lifetime (09.5)
+
+The generation counter never decreases when a view is dropped. Public optimized
+and unoptimized programs discard 255 instances, create ID 255 and then create
+an empty collection without consuming an ID; the next nonempty creation traps.
+An oversized bulk request fails before allocating/publishing its collection.
+512 repetitions of get/fill/texture/place, including mask/draw, preserve IDs and
+old views. A separate source fixture marks all 24 argument evaluations with RNG
+and output effects: reversed named arguments still execute once in signature
+order, including all creation overloads and metadata calls.
+
+Actual immutable views retain geometry, texture and A8 after execution/program
+destruction and another generation. The old data is not replaced by later
+generations. 132 transient/persistent heap-failure injections exercise twelve
+creation, bulk, appearance, place, mask, draw and combined paths. Failed creation
+does not consume IDs; all completed allocations and quota charges are refunded
+after unwinding. Failed VM generations expose no image/result.
+
+The internal probe resets its budget after source preparation. These exact
+operation thresholds pass in both native and WASM; one less fuel or one less
+available arena byte traps without a partial record. The already-created source,
+texture and clip bytes are additional, and the first mask remains retained while
+draw runs. These are charged logical arena bytes, not RSS or a general benchmark.
+
+| Probe case | Core fuel | Additional arena bytes needed |
+| --- | ---: | ---: |
+| `scaled-geometry-0-6` | 29997 | 3056 |
+| `matrix-3-6-3` | 72 | 656 |
+| `matrix-2-1-6` | 60 | 768 |
+
+Seven archived validators (0.8 and stages 03–08), checked against their saved
+binary hashes, reject 48 new programs each: every dead opcode and sixteen live
+overloads in plain/automatic-compression form. Current native execution accepts
+the live programs. 67 earlier reference files remain unchanged. Existing image
+and point-output paths also execute both authored examples through checked C API
+and Python; typed part result records remain the separate stage-10 contract.

@@ -48,7 +48,10 @@ int main(int argc,char** argv){
     const Vec2 rawScale{number(argv[8]),number(argv[9])};
     const Vec2 captureScale=kind<2?rawScale:originalD4->mapExtent(rawScale);
     const auto transform=D4Transform::fromParameters(signedInteger(argv[2]),signedInteger(argv[3]),signedInteger(argv[4]));
-    const auto finalScale=place&&transform?transform->mapExtent(captureScale):captureScale;
+    const bool explicitPlace=place!=0&&place!=4;
+    const auto finalScale=place==3?captureScale:place==4?D4Transform::fromKind(1)->mapExtent(captureScale):
+        explicitPlace&&transform?transform->mapExtent(captureScale):captureScale;
+    const auto textureScale=kind<2?(explicitPlace&&transform?transform->mapExtent(finalScale):finalScale):captureScale;
     try{
         ex.target=RenderTarget::create(32,32,captureScale,mode?CompositionMode::SourceOver:CompositionMode::Legacy);
         {
@@ -61,7 +64,7 @@ int main(int argc,char** argv){
                     if(kind==2)pixels->coverage[y*5+x]=c.a;else pixels->raster.at(x,y)=c;}
             }
             const auto textureD4=*D4Transform::fromKind(6);
-            auto paint=surface(ex,7,6,textureD4.mapExtent(captureScale),true);
+            auto paint=surface(ex,7,6,textureD4.mapExtent(textureScale),true);
             for(u32 y=0;y<6;++y)for(u32 x=0;x<7;++x)paint->raster.at(x,y)={static_cast<u8>(11+x*23),static_cast<u8>(19+y*29),
                 static_cast<u8>(31+x*17+y*13),static_cast<u8>(x*37+y*61)};
             LayerValue texture{paint,{textureD4,{-4,-2}}};
@@ -80,11 +83,12 @@ int main(int argc,char** argv){
                     view=detail::fillPart(ex,view,appearance==3?Color{7,11,13,0}:appearance==6?Color{13,29,47,255}:Color{17,89,203,128});
                 if(appearance==2||appearance==4||appearance==5)view=detail::texturePart(ex,view,texture);
                 if(appearance==4)view=detail::fillPart(ex,view,{41,97,153,64});
-                if(place){
+                if(explicitPlace){
                     if(place==2)view=detail::placePart(ex,view,{7.25f,9.5f},0,0,0);
                     ex.canvas().scaleX=finalScale.x;ex.canvas().scaleY=finalScale.y;
                     view=detail::placePart(ex,view,{number(argv[5]),number(argv[6])},signedInteger(argv[2]),signedInteger(argv[3]),signedInteger(argv[4]));
                 }
+                if(place==4){ex.canvas().scaleX=finalScale.x;ex.canvas().scaleY=finalScale.y;}
                 MaskValue mask;
                 if(maskMode!=2)mask=detail::maskPart(ex,view);
                 if(maskMode!=1)detail::drawPart(ex,view);

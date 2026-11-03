@@ -159,7 +159,7 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
         }
         if(name=="part.texture"){
             for(const bool optimize:{false,true})
-                expectTrap(staleExportScale("p=part.create(regions(voronoi({0,0},{2,2},1,0)),0) part.texture(p,image)",optimize),
+                expectTrap(staleExportScale("layer current{pixel(0,0,#fff)} p=part.create(current) part.texture(p,image)",optimize),
                     ErrorReason::NumericRange,{0,8,4,{}});
             continue;
         }

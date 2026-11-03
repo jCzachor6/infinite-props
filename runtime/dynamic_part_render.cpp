@@ -10,14 +10,16 @@ const DynamicPartData& checked(Execution& ex,const Part2dValue& part){
     if(!part.data)ex.trap("part2d is unassigned",ErrorReason::RuntimeViolation);
     const auto& p=*part.data;
     ex.resources.resourceLifetime()->location=ex.activeInstruction;
-    if(p.transform.mapExtent(p.original.scale)!=Vec2{ex.canvas().scaleX,ex.canvas().scaleY})
+    if((!std::holds_alternative<RegionSource>(p.source)||p.placed)&&
+        p.transform.mapExtent(p.original.scale)!=Vec2{ex.canvas().scaleX,ex.canvas().scaleY})
         ex.trap("surface raster scale does not match the active target",ErrorReason::NumericRange);
     return p;
 }
 MaskValue originalMask(Execution& ex,const DynamicPartData& p){
     return std::visit([&](const auto& source)->MaskValue{
         if constexpr(std::is_same_v<std::decay_t<decltype(source)>,RegionSource>)
-            return rasterRegionsAtScale(ex,*source.geometry,static_cast<i32>(source.region),p.original.scale);
+            return rasterRegionsAtScale(ex,*source.geometry,static_cast<i32>(source.region),
+                p.placed?p.original.scale:Vec2{ex.canvas().scaleX,ex.canvas().scaleY});
         else return {source.buffer,source.mapping};
     },p.source);
 }
@@ -51,6 +53,11 @@ MaskValue maskPart(Execution& ex,const Part2dValue& part){
 }
 void drawPart(Execution& ex,const Part2dValue& part){
     const auto& p=checked(ex,part);
+    if(p.texture&&std::holds_alternative<RegionSource>(p.source)){
+        const auto needed=p.placed?p.original.scale:Vec2{ex.canvas().scaleX,ex.canvas().scaleY};
+        if(p.texture->mapping.transform.mapExtent(Vec2{p.texture->buffer->raster.scaleX,p.texture->buffer->raster.scaleY})!=needed)
+            ex.trap("texture raster scale does not match the part source grid",ErrorReason::NumericRange);
+    }
     if(!p.fill&&!p.texture){
         const auto* captured=std::get_if<LayerValue>(&p.source);
         if(!captured)ex.trap("dynamic part has no appearance",ErrorReason::RuntimeViolation);

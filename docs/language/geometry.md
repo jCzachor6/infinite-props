@@ -226,8 +226,10 @@ appearance. Tint alpha multiplies shape coverage when drawing.
 <!-- builtin: part.texture -->
 
 Return a view using a shared RGBA layer in the original source coordinates.
-This replaces a solid tint. Pixels outside the texture are transparent. The
-texture's mapped raster scale must match the original source scale.
+This replaces a solid tint. Pixels outside the texture are transparent. Raster
+shapes require the texture's mapped scale to match their original source scale.
+For geometry this is the source grid selected for drawing/placement; an
+unplaced geometry view can retain another texture grid and be placed later.
 
 ## part.place
 <!-- builtin: part.place -->
@@ -235,8 +237,10 @@ texture's mapped raster scale must match the original source scale.
 Place the original anchor at `at`, applying runtime `rot` (0, 90, 180, 270),
 then `mirror_x`/`mirror_y` (0 or 1). Each call replaces placement relative to
 the original; it does not accumulate earlier placements. Translation rounds
-to target pixels with `floor(t+0.5)`, including negative positions. No implicit
-raster scaling occurs; rotations that swap axes also swap required scales.
+to target pixels with `floor(t+0.5)`, including negative positions. Geometry
+uses the inverse-D4 target grid, so solid geometry rotates at unequal X/Y scales.
+Raster sources and textures require matching mapped scales; no pixel resampling
+occurs. Explicit placement retains its effective grid for subsequent use.
 
 ## part.center
 <!-- builtin: part.center -->

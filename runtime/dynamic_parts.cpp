@@ -126,14 +126,29 @@ Part2dValue placePart(Execution& ex,const Part2dValue& part,Vec2 at,i32 rot,i32 
     if(!t)ex.trap("dynamic part requires rot 0/90/180/270 and mirror flags 0/1",ErrorReason::NumericRange);
     if(!std::isfinite(at.x)||!std::isfinite(at.y))ex.trap("dynamic part position must be finite",ErrorReason::NumericRange);
     const auto scale=targetScale(ex);
-    if(t->mapExtent(part.data->original.scale)!=scale)
+    const bool geometry=std::holds_alternative<RegionSource>(part.data->source);
+    if(!geometry&&t->mapExtent(part.data->original.scale)!=scale)
         ex.trap("surface raster scale does not match the active target",ErrorReason::NumericRange);
-    const auto anchor=linear(*t,{part.data->original.centerX,part.data->original.centerY});
+    DynamicPartData result=*part.data;result.transform=*t;result.placed=true;
+    if(geometry){
+        // Vector geometry has no intrinsic pixel scale. Cache the original
+        // frame in the grid which becomes the active target after D4. Each
+        // cached product was f32*f32 in binary64, so division recovers the
+        // exact original local coordinate without rescanning/copying vertices.
+        const auto needed=t->mapExtent(scale);auto& frame=result.original;
+        if(needed!=frame.scale){
+            frame.centerX=frame.centerX/frame.scale.x*needed.x;frame.centerY=frame.centerY/frame.scale.y*needed.y;
+            frame.left=frame.left/frame.scale.x*needed.x;frame.right=frame.right/frame.scale.x*needed.x;
+            frame.top=frame.top/frame.scale.y*needed.y;frame.bottom=frame.bottom/frame.scale.y*needed.y;frame.scale=needed;
+        }
+        if(result.texture&&result.texture->mapping.transform.mapExtent(Vec2{result.texture->buffer->raster.scaleX,result.texture->buffer->raster.scaleY})!=needed)
+            ex.trap("texture raster scale does not match the placed part source grid",ErrorReason::NumericRange);
+    }
+    const auto anchor=linear(*t,{result.original.centerX,result.original.centerY});
     const auto rounded=[&](double value){const auto n=std::floor(value+0.5);
         if(!std::isfinite(n)||n<std::numeric_limits<i32>::min()||n>std::numeric_limits<i32>::max())
             ex.trap("dynamic part translation is not representable",ErrorReason::NumericRange);
         return static_cast<i32>(n);};
-    DynamicPartData result=*part.data;result.transform=*t;
     result.translation={rounded(static_cast<double>(at.x)*scale.x-anchor.x),rounded(static_cast<double>(at.y)*scale.y-anchor.y)};
     metadata(ex,result,scale);
     std::visit([&](const auto& source){if constexpr(!std::is_same_v<std::decay_t<decltype(source)>,RegionSource>)
@@ -148,7 +163,8 @@ Part2dValue texturePart(Execution& ex,const Part2dValue& part,const LayerValue& 
     assigned(ex,static_cast<bool>(part.data),"part2d");assigned(ex,static_cast<bool>(image.buffer),"layer");
     if(image.buffer->format!=SurfaceBuffer::Format::RGBA8)ex.trap("layer buffer must be RGBA8",ErrorReason::RuntimeViolation);
     validateSurfaceView(ex,*image.buffer,image.mapping,false);
-    if(image.mapping.transform.mapExtent(Vec2{image.buffer->raster.scaleX,image.buffer->raster.scaleY})!=part.data->original.scale)
+    if((!std::holds_alternative<RegionSource>(part.data->source)||part.data->placed)&&
+        image.mapping.transform.mapExtent(Vec2{image.buffer->raster.scaleX,image.buffer->raster.scaleY})!=part.data->original.scale)
         ex.trap("texture raster scale does not match the original part source",ErrorReason::NumericRange);
     locate(ex);auto p=makeResource<DynamicPartData,256>(ex.resources,*part.data);p->texture=image;p->fill.reset();return {std::move(p)};
 }

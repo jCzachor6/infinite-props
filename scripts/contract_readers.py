@@ -457,6 +457,8 @@ def read_language(value):
         require(not policy['asset_constants'], 'dynamic parts generation dependency')
         integer(policy.get('creation_limit'), 'dynamic part creation limit')
         require(policy['creation_limit'] == 256, 'dynamic part creation limit')
+        if 'geometry_scale' in policy:
+            require(policy['geometry_scale'] == 'inverse_D4_target_grid_without_resampling', 'dynamic part geometry scale')
     if 'contour' in rules:
         contour = rules['contour']
         _strings_and_bools(contour, {

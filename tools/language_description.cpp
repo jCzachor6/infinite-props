@@ -365,6 +365,7 @@ Json sourceRules() {
         {"coordinates","original_pixel_frame"},{"appearance","last_fill_or_texture_original_coordinates"},
         {"layer_alpha","default_once_override_shape_times_appearance"},{"mask","A8_shape_ignore_appearance_clip"},
         {"draw","active_composition_clip_no_implicit_export"},{"scale","exact_D4_mapped_source_scale"},
+        {"geometry_scale","inverse_D4_target_grid_without_resampling"},
         {"metadata","cached_effective_post_rounding"},{"part_draw","one_argument_dynamic_seed_at_static"},
         {"asset_constants",false}});
     rules["contour"] = Json::object({

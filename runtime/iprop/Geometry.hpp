@@ -73,7 +73,8 @@ struct RegionSource {
     std::shared_ptr<const GeometryData> geometry;
     u32 region = 0;
 };
-// Original source pixel coordinates, cached once at capture. Raster anchors
+// Original source coordinates in a cached pixel grid. Geometry can select the
+// inverse-D4 target grid without changing local coordinates. Raster anchors
 // retain exact half-pixel values even for scales such as 3 pixels/local unit.
 struct DynamicPartFrame {
     double centerX=0, centerY=0, left=0, top=0, right=0, bottom=0;
@@ -86,6 +87,7 @@ struct DynamicPartData {
     i32 id = -1, sourceId = -1;
     Vec2 center, boundsOrigin, boundsSize;
     D4Transform transform;
+    bool placed = false; // freezes the target pixel grid after explicit place
     RasterPoint translation; // linear D4 about source zero, then integer pixels
     std::optional<Color> fill;
     std::optional<LayerValue> texture;
