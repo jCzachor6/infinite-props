@@ -414,6 +414,19 @@ def read_language(value):
             require(geometry[key] == expected, 'geometry limit')
         require(all(set(names) <= set(types[key]) for key in ['storable', 'helper_parameters', 'helper_value_returns']), 'geometry storage and transfer')
         require(not set(names) & set(constants['types']), 'geometry const prohibition')
+    if 'contour' in rules:
+        contour = rules['contour']
+        _strings_and_bools(contour, {
+            'algorithm': {'marching_squares_clamped_alpha_interpolation'},
+            'boundary': {'replicated_edge_samples_closed_rectangle'},
+            'coordinates': {'source_scale_placement_and_D4'},
+            'simplify': {'bounded_original_arc_error_preserve_intersections_and_nesting'},
+            'min_area': {'net_component_area_keep_holes'}}, ['asset_constants'], 'contour policy')
+        require(not contour['asset_constants'], 'contour generation dependency')
+        constants = obj(contour.get('constants'), ['contour.four', 'contour.eight'], 'contour constants')
+        for name, expected in [('contour.four', 0), ('contour.eight', 1)]:
+            integer(constants[name], name)
+            require(constants[name] == expected, 'contour constant')
     if 'voronoi' in rules:
         diagram = rules['voronoi']
         _strings_and_bools(diagram, {

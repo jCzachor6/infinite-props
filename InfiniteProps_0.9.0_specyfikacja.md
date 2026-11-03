@@ -560,14 +560,16 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Zależności:** 04; wykonywany po 05.
 
 - [x] 06.1 Przypiąć tabelę Marching Squares, interpolację, reguły progów/degeneracji i domknięcie rastra dla connectivity four/eight.
-- [ ] 06.2 Zaimplementować ekstrakcję, orientację, zagnieżdżenia, dziury i stabilne porządkowanie w układzie źródłowej maski.
-- [ ] 06.3 Dodać simplify z ochroną topologii oraz min_area dla całych składowych po odjęciu dziur, z ograniczeniem kosztu także odrzuconych danych.
+- [x] 06.2 Zaimplementować ekstrakcję, orientację, zagnieżdżenia, dziury i stabilne porządkowanie w układzie źródłowej maski.
+- [x] 06.3 Dodać simplify z ochroną topologii oraz min_area dla całych składowych po odjęciu dziur, z ograniczeniem kosztu także odrzuconych danych.
 - [ ] 06.4 Sprawdzić pustą/pełną maskę, pierścień, wyspę w dziurze, składowe rozłączne, diagonalne styki, cienkie mosty, brzeg maski i threshold=0/0.5/1.
 - [ ] **Etap 06 zakończony.**
 
 **Odbiór:** zamknięta stabilna geometria bez zgubionych dziur, samoprzecięć i nieograniczonych danych pośrednich; zgodność native/WASM.
 
-**06.1 (2026-11-03):** [kontrakt konturów](spec/contours-v0.9.md) przypina 16 przypadków, oba siodła, interpolację alfa i regułę degeneracji, domknięcie dokładnie na prostokącie maski, mapowanie skali/D4, kolejność oraz ochronę topologii. [Zestaw analityczny](tests/fixtures/contours-v0.9.json) zawiera niezależną tabelę i oczekiwane składowe/dziury. Implementacja i weryfikacja native/WASM pozostają otwarte. Początkowy fetch napotkał błąd DNS; publikacja zostanie potwierdzona osobno.
+**06.1 (2026-11-03):** [kontrakt konturów](spec/contours-v0.9.md) przypina 16 przypadków, oba siodła, interpolację alfa i regułę degeneracji, domknięcie dokładnie na prostokącie maski, mapowanie skali/D4, kolejność oraz ochronę topologii. [Zestaw analityczny](tests/fixtures/contours-v0.9.json) zawiera niezależną tabelę i oczekiwane składowe/dziury. Implementacja i weryfikacja native/WASM pozostają otwarte. Kontrakt opublikowany jako `e16e400863b3e463fbe53656b9e388f5d04bf1de`; zdalny SHA potwierdzony.
+
+**06.2–06.3 (2026-11-03):** Dwa przeciążenia `contour` działają przez parser, semantykę, lowering, emitter, VM, walidator i formatowanie; schema 5 ma opcjonalny opis konturów. Ekstrakcja zachowuje położenie/skale/D4 źródła, zagnieżdżenia, dziury, kanoniczne początki, sortowanie i pochodzenie. Uproszczenie mierzy błąd wobec całych pierwotnych łuków i sprawdza przecięcia, orientację oraz zawieranie innych obwodów. Filtr porównuje pole netto całej składowej i niezależnie zachowuje wyspy. 88 zestawów sprawdzono niezależnym oracle geometrii i flood-fill rastra; pełne rekordy native/WASM (łącznie z momentami, fuel i pamięcią) są identyczne. Testy rdzenia: 117 187 asercji / dziewięć przypadków, w tym wszystkie 512 masek 3×3 przy obu connectivity i trzech progach. 246 wymuszonych błędów alokacji bez wycieków; limity 256/2048/65536 obejmują dane sprzed simplify/min_area. Pełna wcześniejsza bramka native/WASM przechodzi. Weryfikacja końcowa, archiwalne runtime i raport pozostają w 06.4.
 
 ### Etap 07 — regiony, offsetowanie i maski
 

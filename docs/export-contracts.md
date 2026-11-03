@@ -48,6 +48,11 @@ constants, site/relaxation limits, the metric and immutable shared topology.
 The new builtins use the existing schema-5 geometry/list vocabulary; this
 additive capability does not require another protocol version change.
 
+Stage 06 adds optional `source_rules.contour` in schema 5, describing the two
+connectivity constants, alpha interpolation, source mapping, boundary closure,
+topology-preserving simplification and net component area filtering. Its two
+overloads use the existing mask and contours2d vocabulary.
+
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`

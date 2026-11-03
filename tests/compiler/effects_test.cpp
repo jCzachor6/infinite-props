@@ -158,6 +158,10 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             continue;
         }
         std::string setup, args=arguments(overload,true);
+        if (name == "contour") {
+            setup="layer image{}region=mask.from(image) ";
+            args=overload.params.size()==2 ? "region,float(v+2)" : "region,float(v+2),0,0,contour.four";
+        }
         if (name.starts_with("mask.")) {
             setup="layer image{}region=mask.from(image) ";
             if (name=="mask.expand" || name=="mask.shrink") args="region,v+65";

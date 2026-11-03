@@ -30,7 +30,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         # Implementation stages land on develop before the final product-version
         # bump. Check their authored wire contracts without editing frozen 0.8.
         extensions = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in
-                               ("spec/noise-v0.9.md", "spec/noise-mask-v0.9.md", "spec/voronoi-v0.9.md"))
+                               ("spec/noise-v0.9.md", "spec/noise-mask-v0.9.md", "spec/voronoi-v0.9.md", "spec/contours-v0.9.md"))
         tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.spec + "\n" + extensions, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})

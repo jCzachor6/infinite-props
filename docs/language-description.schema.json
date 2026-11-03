@@ -3499,6 +3499,73 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 05 bounded Voronoi policy, using schema 5 geometry handles."
+        },
+        "contour": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "const": "marching_squares_clamped_alpha_interpolation",
+              "description": "Pinned contour algorithm."
+            },
+            "boundary": {
+              "type": "string",
+              "const": "replicated_edge_samples_closed_rectangle",
+              "description": "Pinned contour boundary."
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "source_scale_placement_and_D4",
+              "description": "Pinned contour coordinates."
+            },
+            "simplify": {
+              "type": "string",
+              "const": "bounded_original_arc_error_preserve_intersections_and_nesting",
+              "description": "Pinned contour simplify."
+            },
+            "min_area": {
+              "type": "string",
+              "const": "net_component_area_keep_holes",
+              "description": "Pinned contour min area."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned contour asset constants."
+            },
+            "constants": {
+              "type": "object",
+              "properties": {
+                "contour.four": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable contour connectivity constant."
+                },
+                "contour.eight": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable contour connectivity constant."
+                }
+              },
+              "required": [
+                "contour.four",
+                "contour.eight"
+              ],
+              "additionalProperties": true,
+              "description": "Contextual i32 contour connectivity."
+            }
+          },
+          "required": [
+            "algorithm",
+            "boundary",
+            "coordinates",
+            "simplify",
+            "min_area",
+            "asset_constants",
+            "constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 06 mask contours policy in schema 5."
         }
       },
       "required": [

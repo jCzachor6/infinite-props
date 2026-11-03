@@ -42,6 +42,7 @@ set(IPROP_RUNTIME_SOURCES
     surfaces.cpp
     geometry.cpp
     voronoi.cpp
+    contours.cpp
     blur.cpp
     resource_exports.cpp
     masks.cpp

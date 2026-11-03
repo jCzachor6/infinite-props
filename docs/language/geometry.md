@@ -26,8 +26,8 @@ of `list<T>`, `sampler<T>` or `stepper<T>`. Reading a handle whose initializer
 did not execute traps; it does not produce an empty geometry value. Locals
 retain the language's existing function scope.
 
-Stage 04 supplies storage, typing and ownership; stage 05 adds Voronoi below.
-Contour, region and dynamic-part operations follow in subsequent stages.
+Stage 04 supplies storage, typing and ownership; stages 05–06 add Voronoi and
+contours below. Region and dynamic-part operations follow in subsequent stages.
 See the [geometry core contract](../../spec/geometry-core-v0.9.md).
 
 <!-- example: ../../examples/language/geometry-handles.ips -->
@@ -82,6 +82,35 @@ An invalid index traps. After Lloyd this is the relaxed site.
 Returns an ordinary `list<i32>` of sorted unique indices sharing a positive
 length edge. Contact at a single vertex is excluded. The returned list
 uses the ordinary list quota; the immutable diagram is shared.
+
+## contour
+<!-- builtin: contour -->
+
+Extracts immutable closed geometry from a mask's alpha samples, retaining its
+stored placement, raster scale and D4. It scans the complete source, including
+pixels outside the active target. It does not draw or advance the RNG.
+The two-argument call is `contour(source, threshold)`. The five-argument call
+adds `simplify`, `min_area` and `connectivity`, in that order. Defaults are
+0, 0 and `contour.four` (0); use `contour.eight` (1) to join diagonal foreground
+samples. Both modes keep explicit holes and independent islands inside holes.
+
+Threshold must be finite in 0–1. At zero, alpha greater than zero is inside;
+otherwise alpha at least threshold is inside. An empty mask returns a valid
+empty set, and a full mask closes exactly on its rectangle. Alpha is linearly
+interpolated between pixel centers; the
+[contour contract](../../spec/contours-v0.9.md) pins the endpoint degeneracy rule
+and all sixteen Marching Squares cases.
+
+Simplify is a finite nonnegative distance in local units. It may retain extra
+points to preserve orientation, all holes, nesting and freedom from
+intersections. Min_area is a finite nonnegative net component area, after
+subtracting immediate holes and after simplification. It keeps or removes a
+whole component with its holes; islands inside holes are tested separately.
+Components have stable decreasing-area order with bounding-box and discovery
+tie breaks. Geometry limits and fuel also apply to data later filtered out.
+Contours can be passed through helpers; region conversion follows in stage 07.
+
+<!-- example: ../../examples/language/contours.ips -->
 
 ## vec2.len
 <!-- builtin: vec2.len -->

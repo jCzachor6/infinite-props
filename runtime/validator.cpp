@@ -181,6 +181,17 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
+        case Opcode::Contour: case Opcode::ContourConfig:
+            if (ins.opcode == Opcode::ContourConfig) {
+                expect(at,ValueType::I32,"contour connectivity");
+                expect(at,ValueType::F32,"contour min_area");
+                expect(at,ValueType::F32,"contour simplify");
+            }
+            expect(at,ValueType::F32,"contour threshold");
+            expect(at,ValueType::Mask,"contour source");
+            push(at,ValueType::Contours2d);
+            return;
+
         case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
             if (ins.opcode == Opcode::VoronoiSitesRelax) expect(at,ValueType::I32,"voronoi relax");
             expect(at,ValueType::list(ValueType::Vec2),"voronoi sites");

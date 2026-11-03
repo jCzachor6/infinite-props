@@ -1870,6 +1870,60 @@
       "accept": false,
       "schema": false,
       "value": true
+    },
+    {
+      "id": "optional contour policy absent",
+      "path": [
+        "source_rules",
+        "contour"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "null contour policy",
+      "path": [
+        "source_rules",
+        "contour"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "contour connectivity drift",
+      "path": [
+        "source_rules",
+        "contour",
+        "constants",
+        "contour.eight"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": 2
+    },
+    {
+      "id": "contour interpolation drift",
+      "path": [
+        "source_rules",
+        "contour",
+        "algorithm"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "nearest"
+    },
+    {
+      "id": "contour constants forbidden",
+      "path": [
+        "source_rules",
+        "contour",
+        "asset_constants"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": true
     }
   ],
   "diagnostics": [

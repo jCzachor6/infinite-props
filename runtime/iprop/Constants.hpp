@@ -299,6 +299,8 @@ enum class Opcode : u8 {
     DiagramCount = 0xEB,
     DiagramSite = 0xEC,
     DiagramNeighbors = 0xED,
+    Contour = 0xEE,
+    ContourConfig = 0xEF,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

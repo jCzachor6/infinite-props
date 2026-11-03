@@ -29,6 +29,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::VoronoiMetric: case Opcode::VoronoiRows:
         return {R::SeededComputation,false,false,check(C::NumericRange)};
     case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+    case Opcode::Contour: case Opcode::ContourConfig:
         return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
     case Opcode::DiagramCount:
         return {R::None,false,false,check(C::UnassignedHandle)};
@@ -237,6 +238,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::DiagramCount, "diagram.count", OperandKind::Zero),
     dynamic(Opcode::DiagramSite, "diagram.site", OperandKind::Zero),
     dynamic(Opcode::DiagramNeighbors, "diagram.neighbors", OperandKind::Zero),
+    dynamic(Opcode::Contour, "contour", OperandKind::Zero),
+    dynamic(Opcode::ContourConfig, "contour.config", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),

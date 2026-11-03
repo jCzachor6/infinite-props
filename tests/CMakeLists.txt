@@ -109,6 +109,7 @@ add_executable(iprop_tests
     part_geometry_test.cpp
     geometry_test.cpp
     voronoi_test.cpp
+    contours_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
@@ -167,6 +168,14 @@ target_link_libraries(voronoi_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(voronoi_allocation_probe)
 add_test(NAME voronoi_allocation_failures COMMAND voronoi_allocation_probe)
 
+add_executable(contours_probe contours_probe.cpp)
+target_link_libraries(contours_probe PRIVATE iprop_runtime)
+iprop_warnings(contours_probe)
+add_executable(contours_allocation_probe contours_allocation_probe.cpp)
+target_link_libraries(contours_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(contours_allocation_probe)
+add_test(NAME contours_allocation_failures COMMAND contours_allocation_probe)
+
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
@@ -178,6 +187,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME contours_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/contours-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:contours_probe>")
     add_test(NAME voronoi_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/voronoi-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:voronoi_probe>")

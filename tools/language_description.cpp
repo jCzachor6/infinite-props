@@ -343,6 +343,14 @@ Json sourceRules() {
         {"origin", "crop_without_phase_shift"}, {"octaves_min", 1}, {"octaves_max", 8},
         {"rng", "explicit_seed_no_stream_draws"}, {"asset_constants", false},
         {"short_defaults", Json::object({{"octaves", 4}, {"softness", 0}, {"comparison", "noise.above"}, {"warp_amount", 0}})}});
+    rules["contour"] = Json::object({
+        {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
+        {"algorithm","marching_squares_clamped_alpha_interpolation"},
+        {"boundary","replicated_edge_samples_closed_rectangle"},
+        {"coordinates","source_scale_placement_and_D4"},
+        {"simplify","bounded_original_arc_error_preserve_intersections_and_nesting"},
+        {"min_area","net_component_area_keep_holes"},
+        {"asset_constants",false}});
     rules["voronoi"] = Json::object({
         {"constants",Json::object({{"voronoi.random",0},{"voronoi.grid",1}})},
         {"minimum_sites",1},{"maximum_sites",256},{"maximum_relax",4},

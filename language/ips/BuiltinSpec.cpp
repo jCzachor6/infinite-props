@@ -20,6 +20,10 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
+        {"contour", {V::Contours2d, L::Opcode, {
+            {{{"source",V::Mask},{"threshold",V::F32}},Opcode::Contour},
+            {{{"source",V::Mask},{"threshold",V::F32},{"simplify",V::F32},
+              {"min_area",V::F32},{"connectivity",V::I32}},Opcode::ContourConfig}}}},
         {"voronoi", {V::Diagram2d, L::Opcode, {
             {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32}},Opcode::Voronoi},
             {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
@@ -321,7 +325,7 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
 }
 
 bool builtinYieldsToHelper(std::string_view name) {
-    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi";
+    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi" || name == "contour";
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {

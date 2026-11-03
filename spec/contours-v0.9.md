@@ -21,7 +21,9 @@ nothing, consume no RNG and cannot initialize asset constants.
 
 Threshold must be finite in [0,1]; simplify and min_area finite and nonnegative;
 connectivity must be 0 or 1. Null handles and malformed source views trap.
-Extraction uses the source's complete A8 raster, independent of target/clips.
+Extraction uses the source's complete A8 alpha samples, independent of
+target/clips. A mask view of an RGBA layer reads its alpha directly; it does
+not allocate a redundant A8 copy.
 
 ## Samples, interpolation and boundary
 

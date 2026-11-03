@@ -17,6 +17,10 @@ std::optional<i32> builtinConstant(const Expr& expression) {
         if (member->name == "random") return 0;
         if (member->name == "grid") return 1;
     }
+    if (base && base->name == "contour") {
+        if (member->name == "four") return 0;
+        if (member->name == "eight") return 1;
+    }
     if (!base || base->name != "noise") return std::nullopt;
     for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
         if (member->name == detail::kNoiseModeNames[i]) return static_cast<i32>(i);

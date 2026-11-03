@@ -216,6 +216,7 @@ bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);
 bool stepVoronoi(Execution& ex, Instruction ins);
+bool stepContours(Execution& ex, Instruction ins);
 bool stepBlur(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);
