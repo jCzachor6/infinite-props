@@ -45,12 +45,14 @@ async function main() {
     const contoursProbe=path.join(buildDir,"contours_probe.js");
     const regionsProbe=path.join(buildDir,"regions_probe.js");
     const gapBevelProbe=path.join(buildDir,"gap_bevel_probe.js");
+    const dynamicPartsProbe=path.join(buildDir,"dynamic_parts_probe.js");
     const native = require("./native-conformance.js").run(iprop, toolsDir,
         {...(fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{}),
          ...(fs.existsSync(voronoiProbe)?{voronoiWasm:voronoiProbe}:{}),
          ...(fs.existsSync(contoursProbe)?{contoursWasm:contoursProbe}:{}),
          ...(fs.existsSync(regionsProbe)?{regionsWasm:regionsProbe}:{}),
-         ...(fs.existsSync(gapBevelProbe)?{gapBevelWasm:gapBevelProbe}:{})});
+         ...(fs.existsSync(gapBevelProbe)?{gapBevelWasm:gapBevelProbe}:{}),
+         ...(fs.existsSync(dynamicPartsProbe)?{dynamicPartsWasm:dynamicPartsProbe}:{})});
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
@@ -135,6 +137,10 @@ async function main() {
             native.gapBevelV09.generations + " exact generations; " + native.gapBevelV09.traps + " matching traps; " +
             native.gapBevelV09.rejections + " bytecode rejections; complete-topology probes native=" +
             native.gapBevelV09.nativeRepresentation + ", WASM=" + native.gapBevelV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 dynamic parts: PASS (" + native.dynamicPartsV09.vectors + " vectors; " +
+            native.dynamicPartsV09.generations + " exact generations; " + native.dynamicPartsV09.traps + " matching traps; " +
+            native.dynamicPartsV09.rejections + " bytecode rejections; core native=" + native.dynamicPartsV09.internalNative +
+            ", WASM=" + native.dynamicPartsV09.internalWasm + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

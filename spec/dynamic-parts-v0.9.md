@@ -145,3 +145,45 @@ summary. Dynamic drawing advertises canvas writes and part-render argument
 checks, including required appearance. The normative runtime checks above
 remain authoritative, including the execution-wide creation limit and empty
 raster rejection. Asset constants and generic handle containers stay forbidden.
+
+## Reference matrix (09.4)
+
+[275 vectors](../tests/fixtures/dynamic-parts-v0.9.json) cover every source/part
+D4 pair for A8, RGBA and RGBA-backed masks; geometry includes an asymmetric
+holed rectangle and a triangle with negative/fractional coordinates. Cases
+include anisotropic and fractional scales, exact half-pixel anchors, negative
+placement, repeated absolute placement, all appearance choices, empty/soft
+clips, transparent colors and backgrounds with hidden RGB.
+
+The [independent JS oracle](../tests/reference/dynamic-parts-reference.js) uses
+explicit signed matrices, point-in-ring sampling, exact integer composition
+and a naive per-pixel texture search. It imports no runtime, geometry output,
+D4 helper or compositor. Analytical centroids include the subtracted hole.
+All sixteen geometry subpixel samples and complete RGBA canvases are compared,
+as are A8 storage/mapping, f32 metadata and binary64 original-frame bits.
+
+Each fixture retains complete metadata/A8 and a SHA-256 over the full RGBA
+canvas. Runtime fuel, retained/source bytes and release counts are initial
+implementation regression pins, **not** an independent tariff oracle. Native
+and WASM internal probes compare complete records and actual canvases, including
+those costs. In a packaged run without probes, only the public API executes;
+the reference still validates the stored records. Reports distinguish these.
+
+The public gate executes 81 raster cases through imported source/texture
+layers, A8 algebra, source D4, helper passing and choices, metadata, appearance,
+placement, draw/mask, clipping and both compositors. Each case uses all eight
+optimization/debug/compression settings, IPA/IPDIS and formatter round trips.
+It compares full native/WASM RGBA, output bits and public fuel. All 16 new
+instructions have dead-function aux/operand and every-argument type mutations.
+Failure cases publish no image. The authored [tiles](../examples/language/dynamic-tiles.ips)
+use a single shared texture and consume 2,923,291 of the default 5,000,000 fuel
+at 128×96; this is an interim example measurement, not stage-13 calibration.
+
+`dynamic_parts_probe` is a test-only executable (native/WASM), not a C ABI or
+SDK export. Its nineteen arguments are source kind, rot/mirror_x/mirror_y,
+position f32 bits, appearance, raw X/Y scale bits, original D4, original pixel
+origin X/Y, clip, composition, background, mask/draw mode, operation fuel,
+virtual occupied quota and placement mode. Source/texture/clips are prepared
+before resetting the operation budget; creation and all subsequent operations
+are charged. Mask storage remains retained while draw runs. Virtual quota and
+all actual resources are released before reporting `released=0`.

@@ -184,6 +184,10 @@ add_executable(gap_bevel_probe gap_bevel_probe.cpp)
 target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
 iprop_warnings(gap_bevel_probe)
 
+add_executable(dynamic_parts_probe dynamic_parts_probe.cpp)
+target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
+iprop_warnings(dynamic_parts_probe)
+
 add_executable(gap_bevel_allocation_probe gap_bevel_allocation_probe.cpp)
 target_link_libraries(gap_bevel_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(gap_bevel_allocation_probe)
@@ -208,6 +212,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME dynamic_parts_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/dynamic-parts-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:dynamic_parts_probe>")
     add_test(NAME gap_bevel_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/gap-bevel-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:gap_bevel_probe>")

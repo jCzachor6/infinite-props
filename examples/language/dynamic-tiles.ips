@@ -1,0 +1,34 @@
+asset dynamic_tiles {
+    size 128x96
+    output list point instances
+
+    decorate(p: part2d, image: layer, index: i32) -> part2d {
+        if ((index % 3) == 0) {
+            return part.fill(p, color.mix(#9e765a, #dbc6a4, float(index) / 11))
+        }
+        return part.texture(p, image)
+    }
+
+    draw {
+        rect(0, 0, 128, 96, #292c34)
+        diagram = voronoi({8, 8}, {112, 80}, 12, 71, voronoi.grid, 0.25, 0)
+        stones = regions.gap(regions(diagram), 2, 0.25, 71)
+        layer image(alpha=surface.source_over) {
+            rect(0, 0, 128, 96, #83949f)
+            for band in 0..12 {
+                rect(0, float(band) * 8, 128, 2, #ffffff12)
+            }
+            surface.paint(regions.bevel(stones, 2.5, {-1, -1}), blend=surface.source_over)
+        }
+        tiles = parts.from_regions(stones)
+        for i in 0..parts.count(tiles) {
+            original = parts.get(tiles, i)
+            tile = decorate(original, image, i)
+            at = part.center(original) + {float(i % 3) - 1.25, float(i % 2) - 0.5}
+            tile = part.place(tile, at, (i & 3) * 90, (i >> 2) & 1, 0)
+            part.draw(tile)
+            instances = {part.id(tile), part.source_id(tile)}
+            instances = part.center(tile)
+        }
+    }
+}

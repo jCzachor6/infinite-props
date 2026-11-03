@@ -72,3 +72,8 @@ add_executable(gap_bevel_probe ../../tests/gap_bevel_probe.cpp)
 target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
 iprop_warnings(gap_bevel_probe)
 target_link_options(gap_bevel_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+
+add_executable(dynamic_parts_probe ../../tests/dynamic_parts_probe.cpp)
+target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
+iprop_warnings(dynamic_parts_probe)
+target_link_options(dynamic_parts_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")

@@ -265,6 +265,8 @@ appearance by default, applying alpha once. Drawing does not create another ID
 or export a snapshot. A static import aliased `part` continues to use
 `part.draw(seed, at=...)`; a single argument selects the dynamic operation.
 
+<!-- example: ../../examples/language/dynamic-tiles.ips -->
+
 ## part.mask
 <!-- builtin: part.mask -->
 
