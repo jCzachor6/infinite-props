@@ -69,10 +69,9 @@ struct Shade {
 };
 }
 namespace {
-RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 index,Shade* shade){
+RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 index,Shade* shade,Vec2 scale){
     if(index < -1 || (index>=0 && static_cast<std::size_t>(index)>=source.regions.size()))
         ex.trap("regions index out of range",ErrorReason::IndexRange);
-    const Vec2 scale{ex.canvas().scaleX,ex.canvas().scaleY};
     if(!std::isfinite(scale.x)||!std::isfinite(scale.y)||scale.x<=0||scale.y<=0)
         invalid(ex,"surface raster scale must be finite and positive");
     ex.resources.resourceLifetime()->location=ex.activeInstruction;
@@ -170,7 +169,10 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
 }
 }
 MaskValue rasterRegions(Execution& ex,const GeometryData& source,i32 index){
-    const auto result=rasterRegionsCore(ex,source,index,nullptr);return{result.buffer,result.mapping};
+    return rasterRegionsAtScale(ex,source,index,{ex.canvas().scaleX,ex.canvas().scaleY});
+}
+MaskValue rasterRegionsAtScale(Execution& ex,const GeometryData& source,i32 index,Vec2 scale){
+    const auto result=rasterRegionsCore(ex,source,index,nullptr,scale);return{result.buffer,result.mapping};
 }
 LayerValue bevelRegions(Execution& ex,const GeometryData& source,f32 width,Vec2 light,Color highlight,Color shadow,f32 strength){
     if(!std::isfinite(width)||width<=0)invalid(ex,"regions bevel width must be finite and positive");
@@ -180,6 +182,6 @@ LayerValue bevelRegions(Execution& ex,const GeometryData& source,f32 width,Vec2 
         invalid(ex,"surface raster scale must be finite and positive");
     ex.resources.resourceLifetime()->location=ex.activeInstruction;const ResourceReservation workspace(ex.resources,4096);
     Shade shade(ex,width,light,highlight,shadow,strength);
-    const auto result=rasterRegionsCore(ex,source,-1,&shade);return{result.buffer,result.mapping};
+    const auto result=rasterRegionsCore(ex,source,-1,&shade,{ex.canvas().scaleX,ex.canvas().scaleY});return{result.buffer,result.mapping};
 }
 } // namespace iprop::detail

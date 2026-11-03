@@ -25,6 +25,8 @@ Previous opcode/type values remain unchanged; reserved gaps supply these bytes.
 | 0x3D | `part.place` | part2d vec2 i32 i32 i32 → part2d |
 | 0x3E | `part.fill` | part2d color → part2d |
 | 0x3F | `part.texture` | part2d layer → part2d |
+| 0x67 | `part.draw.dynamic` | part2d → void |
+| 0x68 | `part.mask` | part2d → mask |
 
 `part.create(source,index)` captures one region, including holes and its cached
 centroid, bounds and source ID. `part.create(source)` accepts a mask or layer.
@@ -100,3 +102,46 @@ before allocating a view. Rotating under unequal scales requires the swapped
 target scale, just as for existing masks/layers; no interpolation is introduced.
 Neither appearance nor placement draws, allocates an ID, consumes RNG, modifies
 source pixels/topology or incorporates the active clip.
+
+## Render and shape masks (09.3)
+
+`part.draw(p)` renders at the current point in execution order, using the active
+legacy/source-over mode and clip stack. It neither allocates an instance nor
+exports a result. Region/mask sources without appearance trap
+`dynamic part has no appearance`. Layer sources without an override use their
+original RGBA, with alpha **once**, by the same paintSurface/compositePixel
+pipeline as ordinary layers. The operation reserves one visit per full source
+pixel even off target. Legacy transparent-pixel handling stays unchanged.
+
+Fill and texture render through the original shape mask. Geometry uses the
+**same** region raster kernel at captured source scale, before pixel-preserving
+D4/translation. Raster shapes use their original alpha without contouring.
+For positive shape coverage, fill supplies RGBA or texture is sampled in the
+original mapped pixel coordinates (outside is transparent). Multiply appearance
+alpha by shape coverage once with `(a*b+127)/255`, then let the ordinary
+compositor apply current clips and composition. Reserve one visit per shape
+source pixel (two with texture), additional to geometry rasterization and clip
+visits. No RGBA canvas is created per part; default layer rendering allocates
+no pixel buffer and filled/textured rendering uses at most a region's A8 mask.
+
+`part.mask(p)` ignores fill, texture and active clip, and does not draw. Region
+sources return the shared raster pipeline's A8 with placed mapping. Existing
+A8 source buffers are reused without copying. RGBA-backed sources materialize
+alpha in a cropped A8 buffer covering the cached original positive-alpha bbox,
+with two fuel per copied pixel (initialization and sampling); source D4 is
+honored by maskCoverage. The returned mapping describes the effective part D4
+and translation in target scale. Holes and soft alpha are retained exactly.
+
+No new global keyword is reserved. The source builtin `part.draw(p)` has one
+argument; a legacy static component aliased `part` still binds its seed/at call
+with at least two arguments. Typing, call planning/lowering and formatting use
+the same distinction. The existing wire `part.draw name [kind]` remains 0xA0;
+the dynamic wire mnemonic is `part.draw.dynamic` (0x67).
+
+Language-description schema remains 5. Optional `source_rules.dynamic_parts`
+describes the pinned instance/view/render policy; it introduces no new closed
+value type or effect enum. Creation has a conservative generation-state effect
+summary. Dynamic drawing advertises canvas writes and part-render argument
+checks, including required appearance. The normative runtime checks above
+remain authoritative, including the execution-wide creation limit and empty
+raster rejection. Asset constants and generic handle containers stay forbidden.

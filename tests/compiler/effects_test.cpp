@@ -163,6 +163,12 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
                     ErrorReason::NumericRange,{0,8,4,{}});
             continue;
         }
+        if(name=="part.draw"||name=="part.mask"){
+            const auto source=ips::parse("asset t{size 8x8 draw{p=part.create(regions(voronoi({2147483000,0},{1024,8},1,0)),0) "+
+                name+"(part.fill(p,#fff))}}");
+            for(const bool optimize:{false,true})expectTrap(compileProgram(source,{},optimize),ErrorReason::NumericRange);
+            continue;
+        }
         if (name == "mask.from" || name == "mask.invert" || name == "surface.paint") {
             const std::string use = name == "mask.from" ? "mask.from(image)" : name == "mask.invert" ?
                 "mask.invert(region)" : overload.params.size() == 2 ? "surface.paint(region,#ffffff)" :

@@ -442,6 +442,21 @@ def read_language(value):
         require(not policy['asset_constants'], 'gap/bevel generation dependency')
         integer(policy.get('profile_knots'), 'gap/bevel profile knots')
         require(policy['profile_knots'] == 9, 'gap/bevel profile knot bound')
+    if 'dynamic_parts' in rules:
+        policy = rules['dynamic_parts']
+        _strings_and_bools(policy, {
+            'identity': {'generation_counter_never_recycled'},
+            'source': {'shared_region_A8_RGBA8'}, 'views': {'immutable_id_preserving'},
+            'placement': {'absolute_D4_then_floor_t_plus_half'},
+            'anchor': {'net_centroid_or_alpha_pixel_bbox'}, 'coordinates': {'original_pixel_frame'},
+            'appearance': {'last_fill_or_texture_original_coordinates'},
+            'layer_alpha': {'default_once_override_shape_times_appearance'},
+            'mask': {'A8_shape_ignore_appearance_clip'}, 'draw': {'active_composition_clip_no_implicit_export'},
+            'scale': {'exact_D4_mapped_source_scale'}, 'metadata': {'cached_effective_post_rounding'},
+            'part_draw': {'one_argument_dynamic_seed_at_static'}}, ['asset_constants'], 'dynamic parts policy')
+        require(not policy['asset_constants'], 'dynamic parts generation dependency')
+        integer(policy.get('creation_limit'), 'dynamic part creation limit')
+        require(policy['creation_limit'] == 256, 'dynamic part creation limit')
     if 'contour' in rules:
         contour = rules['contour']
         _strings_and_bools(contour, {

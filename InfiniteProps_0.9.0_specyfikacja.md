@@ -626,7 +626,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 - [x] 09.1 Dodać tworzenie z regionu/A8/RGBA i zbiorcze tworzenie, count/get, globalny licznik ID i limit łącznych utworzeń bez resetowania po zwolnieniu.
 - [x] 09.2 Dodać niemutowalne fill/texture/place i metadane; współdzielić bufory, istniejący D4 i źródła geometrii.
-- [ ] 09.3 Zaimplementować zaokrąglenie położenia, bounds, center, draw i mask z clippingiem i aktywnym compositingiem; zachować alfę źródła warstwowego dokładnie raz.
+- [x] 09.3 Zaimplementować zaokrąglenie położenia, bounds, center, draw i mask z clippingiem i aktywnym compositingiem; zachować alfę źródła warstwowego dokładnie raz.
 - [ ] 09.4 Sprawdzić wszystkie osiem symetrii D4, pozycje ułamkowe/ujemne, różne kotwice, dziury, miękką alfę, puste źródło i brak wyglądu.
 - [ ] 09.5 Potwierdzić stabilne stare widoki, brak nowych ID przy get/place/fill/texture, dwa utworzenia tego samego źródła i limit 256 po porzucaniu uchwytów.
 - [ ] **Etap 09 zakończony.**
@@ -636,6 +636,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **09.1 (2026-11-03):** [Kontrakt instancji](spec/dynamic-parts-v0.9.md), [przykład tworzenia](examples/language/dynamic-parts.ips). Osiem nowych instrukcji, sześć builtinów; pełna ścieżka kompilatora, walidatora, VM, formattera, IPA/IPDIS i opisu języka. Sprawdzone współdzielenie regionów i rastrów, dziury/source ID, puste rastry, indeksy, helpery, RNG, zwalnianie widoków i limit 256 także po ich porzucaniu. Świeży native Release: **84/84 CTest**, ukierunkowane testy tworzenia/builtinów/efektów: 26 przypadków / 11938 asercji. Publiczny smoke native/WASM zwraca identyczne ID i pusty obraz bez automatycznego renderu. Wygląd i render części pozostają otwarte w 09.2–09.5.
 
 **09.2 (2026-11-03):** 09.1 opublikowane jako `c2a718a`. Dodane `fill/texture/place`, center i bounds; źródła i ID są współdzielone, ostatni wygląd zastępuje poprzedni, a miejsce jest absolutne wobec oryginału. Cache oryginalnej kotwicy w pikselach zachowuje dokładne połówki przy skali 3; brak ponownych skanów przy odczycie metadanych. Kontrakt przypina binary64, zaokrąglenie i składanie istniejącego D4. Sprawdzone 16 zestawów parametrów symetrii, 64 pary D4 źródła/części, pozycje ujemne/ułamkowe, powtórne place, niedozwolone parametry, wymagana zamiana nierównych skal, trwałość dawnych widoków i brak nowych ID. **84/84 CTest**, testy ukierunkowane: 29 przypadków / 12453 asercje; publiczny przykład native/WASM ma identyczne ID i metadane. Handbook: 113 builtinów / 158 przykładów. Render/mask pozostają w 09.3.
+
+**09.3 (2026-11-03):** 09.2 opublikowane jako `d00b8ba`. Render i mask używają wspólnego rasteryzatora regionów, D4, paintSurface i kompozytora. Domyślne RGBA nakłada alfę raz; fill/texture mnożą wygląd przez pierwotne krycie. Brak wyglądu daje jawny trap przy draw, ale mask jest poprawna. Maski nie przejmują clipu ani wyglądu; istniejące A8 są współdzielone, alfa RGBA jest materializowana tylko w dodatnim bboxie. Poprawiona kontekstowa składnia `part.mask` oraz rozpoznawanie statycznych wywołań `pot.draw`/`part.draw(seed,at)` obok dynamicznego `part.draw(p)`. **84/84 CTest**, testy ukierunkowane: 32 przypadki / 12804 asercje, pełne RGBA i metadane przykładu native/WASM identyczne. Schema 5 z opcjonalną polityką części; 115 builtinów / 158 przykładów. Macierz referencyjna, granice zasobów i audyt zamknięcia pozostają w 09.4–09.5.
 
 ### Etap 10 — eksport części i API hosta
 

@@ -6,6 +6,8 @@
 #include "iprop/DynamicParts.hpp"
 #include "iprop/VM.hpp"
 #include "Compiler.hpp"
+#include "SourceCompilation.hpp"
+#include "iprop/Regions.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
 #include "ips/Parser.hpp"
@@ -168,5 +170,75 @@ TEST_CASE("dynamic view builtins compile roundtrip and expose effective cached m
         CHECK(points[5].x==1);CHECK(points[5].y==0);
         CHECK(disassemble(assemble(disassemble(bytes)))==disassemble(bytes));
         CHECK(disassemble(compile(ips::formatProgram(ips::parse(text)),optimize))==disassemble(bytes));
+    }
+}
+TEST_CASE("layer parts use default alpha once while overrides retain the original shape alpha","[dynamic-parts-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=10000000;
+    ex.target=RenderTarget::create(4,3,{1,1},CompositionMode::SourceOver);
+    auto image=std::make_shared<SurfaceBuffer>();image->raster.resize(4,3);
+    image->raster.at(1,1)={17,23,29,128};image->raster.at(2,1)={31,37,41,1};
+    {const auto p=detail::createPart(ex,LayerValue{image,{}});
+    detail::drawPart(ex,p);CHECK(ex.canvas().at(1,1)==Color{17,23,29,128});CHECK(ex.canvas().at(2,1)==Color{31,37,41,1});
+    const auto mask=detail::maskPart(ex,p);CHECK(mask.buffer->format==SurfaceBuffer::Format::A8);
+    CHECK(mask.buffer->raster.width==2);CHECK(mask.buffer->raster.height==1);
+    CHECK(maskCoverage(mask,1,1)==128);CHECK(maskCoverage(mask,2,1)==1);CHECK(maskCoverage(mask,0,0)==0);
+    ex.canvas().resize(4,3);
+    const auto filled=detail::fillPart(ex,p,{43,47,53,128});detail::drawPart(ex,filled);
+    CHECK(ex.canvas().at(1,1)==Color{43,47,53,64});CHECK(ex.canvas().at(2,1)==Color{43,47,53,1});
+    const auto transparent=detail::fillPart(ex,p,{});const auto unchangedMask=detail::maskPart(ex,transparent);
+    CHECK(unchangedMask.buffer->coverage==mask.buffer->coverage);
+    auto paint=std::make_shared<SurfaceBuffer>();paint->raster.resize(1,1);paint->raster.at(0,0)={59,61,67,64};
+    const auto textured=detail::texturePart(ex,filled,LayerValue{paint,{{},{1,1}}});
+    ex.canvas().resize(4,3);detail::drawPart(ex,textured);
+    CHECK(ex.canvas().at(1,1)==Color{59,61,67,32});CHECK(ex.canvas().at(2,1)==Color{});
+    ex.target.mode=CompositionMode::Legacy;ex.canvas().at(1,1)={71,73,79,83};detail::drawPart(ex,p);
+    CHECK(ex.canvas().at(1,1)==composePixel({71,73,79,83},{17,23,29,128},CompositionMode::Legacy));
+    CHECK(ex.dynamicPartCreations==1);}
+    CHECK(ex.resources.bytes==0);
+}
+TEST_CASE("part masks ignore appearance and construction clips while draws honor current clips","[dynamic-parts-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=10000000;
+    ex.target=RenderTarget::create(16,16,{1,1},CompositionMode::SourceOver);
+    {const Regions2dValue source{geometry_fixture::holes(ex)};const auto p=detail::createPart(ex,source,0);
+    CHECK_THROWS_WITH(detail::drawPart(ex,p),"dynamic part has no appearance");
+    auto zero=std::make_shared<SurfaceBuffer>();zero->format=SurfaceBuffer::Format::A8;
+    zero->raster.width=zero->raster.height=16;zero->coverage.resize(256);
+    ex.target.clips.push_back({zero,{}});
+    const auto mask=detail::maskPart(ex,p);CHECK(maskCoverage(mask,0,0)==255);CHECK(maskCoverage(mask,2,2)==0);
+    const auto reference=detail::rasterRegions(ex,*source.data,0);CHECK(mask.buffer->coverage==reference.buffer->coverage);
+    const auto filled=detail::fillPart(ex,p,{17,23,29,128});detail::drawPart(ex,filled);
+    for(const auto pixel:ex.canvas().pixels)CHECK(pixel==Color{});
+    ex.target.clips.clear();detail::drawPart(ex,filled);
+    CHECK(ex.canvas().at(0,0)==Color{17,23,29,128});CHECK(ex.canvas().at(2,2)==Color{});
+    zero->coverage.assign(256,128);ex.target.clips.push_back({zero,{}});ex.canvas().resize(16,16);detail::drawPart(ex,filled);
+    CHECK(ex.canvas().at(0,0)==Color{17,23,29,64});CHECK(ex.canvas().at(2,2)==Color{});
+    const auto m=detail::createPart(ex,reference);CHECK_THROWS_WITH(detail::drawPart(ex,m),"dynamic part has no appearance");
+    const auto shared=detail::maskPart(ex,m);CHECK(shared.buffer==reference.buffer);
+    CHECK(ex.dynamicPartCreations==2);}
+    ex.target.clips.clear();CHECK(ex.resources.bytes==0);
+}
+TEST_CASE("dynamic drawing coexists with a static component aliased part and shares the ID counter","[dynamic-parts-v09]") {
+    const std::map<std::string,std::string> sources{
+        {"root.ips",R"(import part from "leaf.ips" asset t{size 8x4 output list point ids
+            make()->part2d{layer image{pixel(1,1,#abc)}return part.create(image)}
+            draw{first=make()ids={part.id(first),seed}part.draw(seed=7,at={0,0})
+                part.draw(first)last=make()ids={part.id(last),seed}m=part.mask(first)
+                surface.paint(m,#fff,blend=surface.source_over)}})"},
+        {"leaf.ips",R"(asset leaf{size 4x4 output point id draw{
+            p=part.create(regions(voronoi({0,0},{4,4},1,0)),0) id={part.id(p),seed}
+            part.draw(part.fill(p,#123))}})"}};
+    for(const bool optimize:{false,true}){
+        SourceCompilationOptions options;options.optimize=optimize;options.compress=false;
+        const auto compiled=compileSource("root.ips",[&](std::string_view path){return sources.at(std::string(path));},options);
+        std::string diagnostics;for(const auto& diagnostic:compiled.diagnostics)diagnostics+=diagnostic.message+"\n";
+        INFO(diagnostics);
+        REQUIRE(compiled.succeeded());const auto f=loadFile(compiled.bytes);validate(f);VM vm(f,{26,0,0,{}});vm.run();
+        const auto result=vm.result();REQUIRE(result.outputs.size()==2);
+        REQUIRE(result.outputs[0].points.size()==2);CHECK(result.outputs[0].points[0].x==0);CHECK(result.outputs[0].points[1].x==2);
+        CHECK(result.outputs[0].points[0].y==26);CHECK(result.outputs[0].points[1].y==26);
+        CHECK(result.outputs[1].points[0].x==1);CHECK(result.outputs[1].points[0].y==7);
+        CHECK(result.image.at(1,1)==Color{255,255,255,255});
+        CHECK_NOTHROW(ips::formatProgram(ips::parse(sources.at("root.ips"))));
+        CHECK(disassemble(assemble(disassemble(compiled.bytes)))==disassemble(compiled.bytes));
     }
 }

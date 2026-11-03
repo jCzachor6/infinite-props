@@ -21,5 +21,8 @@ asset dynamic_parts {
         ids = part.center(moved)
         ids = part.bounds_origin(moved)
         ids = part.bounds_size(moved)
+        layer rendered(alpha=surface.source_over) { part.draw(colored) }
+        surface.paint(rendered, blend=surface.source_over)
+        surface.paint(part.mask(soft), #4080c080, blend=surface.source_over)
     }
 }

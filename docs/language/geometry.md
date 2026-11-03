@@ -256,6 +256,23 @@ This uses cached metadata without rescanning the source.
 Read the transformed shape bbox size. Quarter turns exchange width and height;
 fills and textures do not change it.
 
+## part.draw
+<!-- builtin: part.draw -->
+
+Draw one runtime instance in the current composition mode and clip. Region and
+mask sources need `fill` or `texture`; a captured layer keeps its original RGBA
+appearance by default, applying alpha once. Drawing does not create another ID
+or export a snapshot. A static import aliased `part` continues to use
+`part.draw(seed, at=...)`; a single argument selects the dynamic operation.
+
+## part.mask
+<!-- builtin: part.mask -->
+
+Return the transformed A8 shape without drawing. Appearance and the active
+clip do not affect it. Raster pixels keep their exact alpha; region holes use
+the shared 4×4 rasterizer. Existing A8 buffers remain shared; RGBA alpha is
+materialized only within its nonempty bbox. Later painting applies clipping.
+
 ## regions.gap
 <!-- builtin: regions.gap -->
 

@@ -3704,6 +3704,105 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 08 gaps and bevels policy in schema 5."
+        },
+        "dynamic_parts": {
+          "type": "object",
+          "properties": {
+            "creation_limit": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned dynamic part creation limit."
+            },
+            "identity": {
+              "type": "string",
+              "const": "generation_counter_never_recycled",
+              "description": "Pinned dynamic part identity."
+            },
+            "source": {
+              "type": "string",
+              "const": "shared_region_A8_RGBA8",
+              "description": "Pinned dynamic part source."
+            },
+            "views": {
+              "type": "string",
+              "const": "immutable_id_preserving",
+              "description": "Pinned dynamic part views."
+            },
+            "placement": {
+              "type": "string",
+              "const": "absolute_D4_then_floor_t_plus_half",
+              "description": "Pinned dynamic part placement."
+            },
+            "anchor": {
+              "type": "string",
+              "const": "net_centroid_or_alpha_pixel_bbox",
+              "description": "Pinned dynamic part anchor."
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "original_pixel_frame",
+              "description": "Pinned dynamic part coordinates."
+            },
+            "appearance": {
+              "type": "string",
+              "const": "last_fill_or_texture_original_coordinates",
+              "description": "Pinned dynamic part appearance."
+            },
+            "layer_alpha": {
+              "type": "string",
+              "const": "default_once_override_shape_times_appearance",
+              "description": "Pinned dynamic part layer alpha."
+            },
+            "mask": {
+              "type": "string",
+              "const": "A8_shape_ignore_appearance_clip",
+              "description": "Pinned dynamic part mask."
+            },
+            "draw": {
+              "type": "string",
+              "const": "active_composition_clip_no_implicit_export",
+              "description": "Pinned dynamic part draw."
+            },
+            "scale": {
+              "type": "string",
+              "const": "exact_D4_mapped_source_scale",
+              "description": "Pinned dynamic part scale."
+            },
+            "metadata": {
+              "type": "string",
+              "const": "cached_effective_post_rounding",
+              "description": "Pinned dynamic part metadata."
+            },
+            "part_draw": {
+              "type": "string",
+              "const": "one_argument_dynamic_seed_at_static",
+              "description": "Pinned dynamic part part draw."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned dynamic part asset constants."
+            }
+          },
+          "required": [
+            "creation_limit",
+            "identity",
+            "source",
+            "views",
+            "placement",
+            "anchor",
+            "coordinates",
+            "appearance",
+            "layer_alpha",
+            "mask",
+            "draw",
+            "scale",
+            "metadata",
+            "part_draw",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 09 runtime instances policy in schema 5."
         }
       },
       "required": [

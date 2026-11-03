@@ -267,3 +267,11 @@ The optional `source_rules.resource_exports` policy describes internal mask/laye
 slots, direct-child and last-called-part reads, immutable snapshots, no-write
 placement retention, shared buffer lifetime, per-generation cleanup and fixed
 slot accounting. These slots are separate from every host geometry output index.
+
+Stage 09 adds optional `source_rules.dynamic_parts` within schema 5. It pins the
+creation counter/limit, shared sources, immutable ID-preserving views, original
+pixel-frame anchors, absolute D4 placement with one translation rounding,
+alpha-once layer drawing and shape-only A8 masks. Creation is generation state
+with a conservative effect summary, never asset-constant evaluation. Dynamic
+`part.draw(p)` writes the canvas and checks required appearance. Static imports
+continue to bind seed/at calls, including an import aliased `part`.

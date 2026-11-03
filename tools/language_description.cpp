@@ -358,6 +358,15 @@ Json sourceRules() {
         {"bevel","nearest_edge_faceted_linear_fade_4x4_RGBA8"},
         {"bevel_ties","original_edge_then_current_use"},{"overlap","lowest_current_region_index"},
         {"raster_clip","ignored_until_paint"},{"rng","explicit_gap_seed_no_stream_draws"},{"asset_constants",false}});
+    rules["dynamic_parts"] = Json::object({
+        {"creation_limit",kMaxDynamicParts},{"identity","generation_counter_never_recycled"},
+        {"source","shared_region_A8_RGBA8"},{"views","immutable_id_preserving"},
+        {"placement","absolute_D4_then_floor_t_plus_half"},{"anchor","net_centroid_or_alpha_pixel_bbox"},
+        {"coordinates","original_pixel_frame"},{"appearance","last_fill_or_texture_original_coordinates"},
+        {"layer_alpha","default_once_override_shape_times_appearance"},{"mask","A8_shape_ignore_appearance_clip"},
+        {"draw","active_composition_clip_no_implicit_export"},{"scale","exact_D4_mapped_source_scale"},
+        {"metadata","cached_effective_post_rounding"},{"part_draw","one_argument_dynamic_seed_at_static"},
+        {"asset_constants",false}});
     rules["contour"] = Json::object({
         {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
         {"algorithm","marching_squares_clamped_alpha_interpolation"},

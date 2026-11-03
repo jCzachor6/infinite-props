@@ -71,6 +71,8 @@ enum class Opcode : u8 {
     PartPlace = 0x3D,
     PartFill = 0x3E,
     PartTexture = 0x3F,
+    DynamicPartDraw = 0x67,
+    PartMask = 0x68,
 
     // Stack and constants (§9.2)
     ConstI32 = 0x10,

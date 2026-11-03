@@ -170,6 +170,8 @@ bool stepDynamicParts(Execution& ex,Instruction ins) {
         ex.push(placePart(ex,p,at,rot,mx,my));break;}
     case Opcode::PartFill:{const auto tint=ex.popColor();const auto p=ex.popHandle<Part2dValue>("part2d");ex.push(fillPart(ex,p,tint));break;}
     case Opcode::PartTexture:{const auto image=ex.popLayer();const auto p=ex.popHandle<Part2dValue>("part2d");ex.push(texturePart(ex,p,image));break;}
+    case Opcode::DynamicPartDraw:{const auto p=ex.popHandle<Part2dValue>("part2d");drawPart(ex,p);break;}
+    case Opcode::PartMask:{const auto p=ex.popHandle<Part2dValue>("part2d");ex.push(maskPart(ex,p));break;}
     default:return false;
     }
     ++ex.frame().ip;return true;

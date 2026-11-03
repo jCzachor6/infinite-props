@@ -203,6 +203,8 @@ private:
         case Opcode::PartFill: case Opcode::PartTexture:
             expect(at,ins.opcode==Opcode::PartFill?ValueType::Color:ValueType::Layer,"part appearance");
             expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Part2d);return;
+        case Opcode::DynamicPartDraw: case Opcode::PartMask:
+            expect(at,ValueType::Part2d,"part receiver");if(ins.opcode==Opcode::PartMask)push(at,ValueType::Mask);return;
 
         case Opcode::RegionsGap: case Opcode::RegionsGapConfig:
             if(ins.opcode==Opcode::RegionsGapConfig){

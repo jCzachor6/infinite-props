@@ -18,6 +18,10 @@ constexpr OperationEffects effects(Opcode op) {
         return {R::None,false,false,check(C::UnassignedHandle),true};
     case Opcode::PartPlace: case Opcode::PartTexture:
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::PartMask:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::DynamicPartDraw:
+        return {R::None,true,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)|check(C::PartRenderArguments))};
     case Opcode::PartCenter: case Opcode::PartBoundsOrigin: case Opcode::PartBoundsSize: case Opcode::PartFill:
     case Opcode::PartsCount: case Opcode::PartId: case Opcode::PartSourceId:
         return {R::None,false,false,check(C::UnassignedHandle)};
@@ -290,6 +294,8 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::PartPlace, "part.place", OperandKind::Zero),
     dynamic(Opcode::PartFill, "part.fill", OperandKind::Zero),
     dynamic(Opcode::PartTexture, "part.texture", OperandKind::Zero),
+    dynamic(Opcode::DynamicPartDraw, "part.draw.dynamic", OperandKind::Zero),
+    dynamic(Opcode::PartMask, "part.mask", OperandKind::Zero),
     dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
     dynamic(Opcode::RegionsGapConfig, "regions.gap.config", OperandKind::Zero),
     dynamic(Opcode::RegionsBevel, "regions.bevel", OperandKind::Zero),

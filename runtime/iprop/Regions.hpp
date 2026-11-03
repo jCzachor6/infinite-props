@@ -15,6 +15,9 @@ std::shared_ptr<const GeometryData> gapRegions(Execution& ex,
 // Shared raster pipeline for a complete union (-1) or a single component.
 // It samples in the active raster scale, independently of clipping and target extent.
 MaskValue rasterRegions(Execution& ex, const GeometryData& source, i32 index = -1);
+// Dynamic instances retain a source raster frame; render in that scale before
+// applying their pixel-preserving D4. The ordinary region path is unchanged.
+MaskValue rasterRegionsAtScale(Execution& ex, const GeometryData& source, i32 index, Vec2 scale);
 LayerValue bevelRegions(Execution& ex, const GeometryData& source, f32 width, Vec2 light,
     Color highlight = {255,255,255,255}, Color shadow = {0,0,0,255}, f32 strength = 0.5f);
 } // namespace iprop::detail

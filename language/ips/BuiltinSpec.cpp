@@ -40,6 +40,8 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"part.place", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"at",V::Vec2},{"rot",V::I32},{"mirror_x",V::I32},{"mirror_y",V::I32}},Opcode::PartPlace}}}},
         {"part.fill", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"tint",V::Color}},Opcode::PartFill}}}},
         {"part.texture", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"image",V::Layer}},Opcode::PartTexture}}}},
+        {"part.draw", {V::Void,L::Opcode,{{{{"p",V::Part2d}},Opcode::DynamicPartDraw}}}},
+        {"part.mask", {V::Mask,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartMask}}}},
         {"regions.gap", {V::Regions2d,L::Opcode,{
             {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
             {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},

@@ -2020,6 +2020,60 @@
       "value": true,
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "earlier schema without dynamic parts",
+      "path": [
+        "source_rules",
+        "dynamic_parts"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "dynamic parts missing placement",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "placement"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "dynamic parts recycled identity",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "identity"
+      ],
+      "value": "recycled",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "dynamic parts invalid creation limit",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "creation_limit"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "dynamic parts alpha squared",
+      "path": [
+        "source_rules",
+        "dynamic_parts",
+        "layer_alpha"
+      ],
+      "value": "squared",
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [
