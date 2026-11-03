@@ -559,7 +559,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 04; wykonywany po 05.
 
-- [ ] 06.1 Przypiąć tabelę Marching Squares, interpolację, reguły progów/degeneracji i domknięcie rastra dla connectivity four/eight.
+- [x] 06.1 Przypiąć tabelę Marching Squares, interpolację, reguły progów/degeneracji i domknięcie rastra dla connectivity four/eight.
 - [ ] 06.2 Zaimplementować ekstrakcję, orientację, zagnieżdżenia, dziury i stabilne porządkowanie w układzie źródłowej maski.
 - [ ] 06.3 Dodać simplify z ochroną topologii oraz min_area dla całych składowych po odjęciu dziur, z ograniczeniem kosztu także odrzuconych danych.
 - [ ] 06.4 Sprawdzić pustą/pełną maskę, pierścień, wyspę w dziurze, składowe rozłączne, diagonalne styki, cienkie mosty, brzeg maski i threshold=0/0.5/1.
@@ -567,7 +567,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** zamknięta stabilna geometria bez zgubionych dziur, samoprzecięć i nieograniczonych danych pośrednich; zgodność native/WASM.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**06.1 (2026-11-03):** [kontrakt konturów](spec/contours-v0.9.md) przypina 16 przypadków, oba siodła, interpolację alfa i regułę degeneracji, domknięcie dokładnie na prostokącie maski, mapowanie skali/D4, kolejność oraz ochronę topologii. [Zestaw analityczny](tests/fixtures/contours-v0.9.json) zawiera niezależną tabelę i oczekiwane składowe/dziury. Implementacja i weryfikacja native/WASM pozostają otwarte. Początkowy fetch napotkał błąd DNS; publikacja zostanie potwierdzona osobno.
 
 ### Etap 07 — regiony, offsetowanie i maski
 

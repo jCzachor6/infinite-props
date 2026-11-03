@@ -1,0 +1,17 @@
+{
+  "contract": "spec/contours-v0.9.md",
+  "four": [[], [[0,3]], [[1,0]], [[1,3]], [[2,1]], [[0,3],[2,1]], [[2,0]], [[2,3]], [[3,2]], [[0,2]], [[1,0],[3,2]], [[1,2]], [[3,1]], [[0,1]], [[3,0]], []],
+  "eight": [[], [[0,3]], [[1,0]], [[1,3]], [[2,1]], [[0,1],[2,3]], [[2,0]], [[2,3]], [[3,2]], [[0,2]], [[3,0],[1,2]], [[1,2]], [[3,1]], [[0,1]], [[3,0]], []],
+  "cases": [
+    {"name":"empty","pixels":[[0,0],[0,0]],"components":0,"holes":0},
+    {"name":"full","pixels":[[255,255,255],[255,255,255]],"components":1,"holes":0,"areas":[6]},
+    {"name":"single","pixels":[[255]],"components":1,"holes":0,"areas":[1]},
+    {"name":"ring","pixels":[[255,255,255],[255,0,255],[255,255,255]],"components":1,"holes":1,"areas":[8.5]},
+    {"name":"diagonal-four","pixels":[[255,0],[0,255]],"components":2,"holes":0},
+    {"name":"diagonal-eight","pixels":[[255,0],[0,255]],"connectivity":1,"components":1,"holes":0},
+    {"name":"zero-empty","pixels":[[0]],"threshold":0,"components":0,"holes":0},
+    {"name":"zero-positive","pixels":[[1]],"threshold":0,"components":1,"holes":0,"areas":[1]},
+    {"name":"one-empty","pixels":[[254]],"threshold":1,"components":0,"holes":0},
+    {"name":"one-full","pixels":[[255]],"threshold":1,"components":1,"holes":0,"areas":[1]}
+  ]
+}
