@@ -1,0 +1,1111 @@
+{
+  "stage": "07",
+  "date": "2026-11-03",
+  "verified_at_utc": "2026-11-03T13:30:08.068575+00:00",
+  "branch": "develop",
+  "implementation_commit": "cf0ab55ac8cfb4f379a7724803b2c1fa50da42d6",
+  "conversion_commit": "23ea669e4e614d68c4d1ce1e3fc8d1df19b8b38b",
+  "scope": "Region conversions and cached metadata, signed round offsets and fragmentation, geometric union masks, and restricted point lists",
+  "product_version": "0.8.0",
+  "source_language_version": "0.8.0",
+  "language_schema_version": 5,
+  "opcode_count": 222,
+  "toolchain": {
+    "native": "AppleClang 21.0.0 (clang-2100.0.123.102), arm64, Release",
+    "wasm": "Emscripten 6.0.10-git, Release",
+    "fma": "disabled",
+    "warnings": "as errors"
+  },
+  "builds": {
+    "native": "/private/tmp/iprop-v09-stage07-native",
+    "wasm": "/private/tmp/iprop-v09-stage07-wasm",
+    "emscripten_cache": "/private/tmp/iprop-v09-stage01-emcache"
+  },
+  "ctest": {
+    "passed": 82,
+    "total": 82,
+    "seconds": 21.45,
+    "log": "spec/verification/regions-v0.9-ctest.txt"
+  },
+  "focused": {
+    "passed": 10,
+    "assertions": 43040,
+    "binary_masks": 512,
+    "offsets": [
+      0.125,
+      -0.25,
+      0.75
+    ],
+    "exhaustive_offsets": 1536
+  },
+  "regions_gate": {
+    "passed": true,
+    "vectors": 55,
+    "publicVectors": 31,
+    "topologies": 55,
+    "generations": 564,
+    "traps": 41,
+    "rejections": 36,
+    "compilerErrors": 7,
+    "resourceBoundaries": [
+      {
+        "name": "rectangle-inset",
+        "fuel": 3656,
+        "minimumFreeBytes": 13938
+      },
+      {
+        "name": "dumbbell-split",
+        "fuel": 18631,
+        "minimumFreeBytes": 26336
+      },
+      {
+        "name": "hole-inset",
+        "fuel": 24337,
+        "minimumFreeBytes": 31284
+      }
+    ],
+    "nativeRepresentation": true,
+    "wasmRepresentation": true,
+    "wasm": true
+  },
+  "oracle": {
+    "inputs": "Fixture-authored polygons, diagrams and alpha masks; expected component/hole/source counts and analytic areas are authored independently.",
+    "metadata": "Independent binary64 shoelace moments and f32 area/centroid/bounds, ring intersections/nesting, canonical order, and original-edge adjacency.",
+    "offset": "Independent signed Euclidean distance membership away from the 1/64 chord plus f32 rounding tolerance; every retained boundary chord checked against source distance. Frozen complete records are regression pins, not an independently generated exact offset mesh.",
+    "raster": "Independent per-point 4x4 coverage and component union including holes. Runtime uses a separate scanline/interval implementation.",
+    "equivalence": "All points/sites/edges/provenance/rings/parents/regions/moments, retained quota and fuel are exactly equal in native/WASM for all 55 cases; all 564 public generations compare pixels and output bits."
+  },
+  "resource_accounting": {
+    "generation_limit_bytes": 67108864,
+    "raw_segment_limit": 65536,
+    "cut_record_limit": 262144,
+    "boundary_atom_limit": 65536,
+    "ring_vertex_limit": 2048,
+    "result_region_limit_after_min_area": 256,
+    "heap_failure_injections": 510,
+    "failure_modes": [
+      "transient",
+      "persistent"
+    ],
+    "allocation_paths": [
+      "filtering",
+      "positive offset",
+      "negative offset",
+      "raster",
+      "points list",
+      "neighbor list"
+    ],
+    "result": "No retained heap or quota leak. Default conversions and repeated scalar metadata reads allocate no geometry.",
+    "exact_boundaries": [
+      {
+        "name": "rectangle-inset",
+        "fuel": 3656,
+        "minimumFreeBytes": 13938
+      },
+      {
+        "name": "dumbbell-split",
+        "fuel": 18631,
+        "minimumFreeBytes": 26336
+      },
+      {
+        "name": "hole-inset",
+        "fuel": 24337,
+        "minimumFreeBytes": 31284
+      }
+    ],
+    "boundary_note": "minimumFreeBytes includes already retained source geometry plus the constructor and raster peak. Exact and one-less fuel/quota checks run on both native and WASM.",
+    "limit_evidence": "257 comb fragments trap without filtering and succeed when min_area removes them; 2048-point geometry remains available to masks; larger offset rings and 65536+ raw segments trap even with a filtering threshold.",
+    "later_stages": "No tariff discount or independent deadline/work limit is claimed; these remain stages 12 and 13."
+  },
+  "full_native_wasm_regression": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      },
+      "geometryV09": {
+        "passed": true,
+        "types": 5,
+        "vectors": 3,
+        "generations": 60,
+        "rejections": 35,
+        "traps": 5,
+        "compilerErrors": 25,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "voronoiV09": {
+        "passed": true,
+        "vectors": 19,
+        "generations": 306,
+        "topologies": 19,
+        "traps": 18,
+        "rejections": 3,
+        "compilerErrors": 5,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "contoursV09": {
+        "passed": true,
+        "vectors": 88,
+        "generations": 706,
+        "topologies": 88,
+        "mappedNestedCases": 8,
+        "traps": 9,
+        "rejections": 6,
+        "compilerErrors": 6,
+        "resourceBoundaries": [
+          {
+            "name": "empty",
+            "fuel": 49,
+            "minimumFreeBytes": 4996
+          },
+          {
+            "name": "nested-simplify-1000",
+            "fuel": 6383,
+            "minimumFreeBytes": 16439
+          },
+          {
+            "name": "seeded-gray-7",
+            "fuel": 3348,
+            "minimumFreeBytes": 11376
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "regionsV09": {
+        "passed": true,
+        "vectors": 55,
+        "publicVectors": 31,
+        "topologies": 55,
+        "generations": 564,
+        "traps": 41,
+        "rejections": 36,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-inset",
+            "fuel": 3656,
+            "minimumFreeBytes": 13938
+          },
+          {
+            "name": "dumbbell-split",
+            "fuel": 18631,
+            "minimumFreeBytes": 26336
+          },
+          {
+            "name": "hole-inset",
+            "fuel": 24337,
+            "minimumFreeBytes": 31284
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "packaged_runtime_smoke": {
+    "passed": true,
+    "vectors": 55,
+    "publicVectors": 31,
+    "topologies": 0,
+    "generations": 564,
+    "traps": 41,
+    "rejections": 36,
+    "compilerErrors": 7,
+    "resourceBoundaries": [],
+    "nativeRepresentation": false,
+    "wasmRepresentation": false,
+    "wasm": true
+  },
+  "archived_runtime_rejections": {
+    "programs": 20,
+    "dead_opcodes": 12,
+    "live_overloads": 4,
+    "plain_and_automatic_compression": true,
+    "runtimes": [
+      {
+        "name": "0.8",
+        "binary": "/private/tmp/iprop-v09-stage01-native/tools/ipval",
+        "sha256": "211bb46269032354bd1ad15330043e99c109f744570aab2db43bac1a37ab4994",
+        "rejections": [
+          {
+            "program": "regions.diagram-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "60913c95f27560c6fb356784a6e54edee8ba8cfe48d0a234ea245dd1990c6544"
+          },
+          {
+            "program": "regions.diagram.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "04f5f1b78096ca917cf75d7a7dca440db2295c629de140085c8d372535a031d6"
+          },
+          {
+            "program": "regions.contours-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "a2b1e7e0170d5a5f772b0ad068e33b87ac163c61c331186fcb49dbca023ad463"
+          },
+          {
+            "program": "regions.contours.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "c33713266a2725a8c678a3fd95cdd01bc3625225a6c11307506850c891e0633d"
+          },
+          {
+            "program": "regions.count-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9abe4d4f773ea01ef4f1dca1938e9a5b1fe7ffb975e3a882b1da60edde49fb1b"
+          },
+          {
+            "program": "regions.id-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "8386b7157c8accd295863ed999b15702540bcb8988f816644a362301aa502607"
+          },
+          {
+            "program": "regions.area-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "72316b463a5ff106b9f904c8d342f841fb835bb35c1a2f2bd5136d78fac9d54a"
+          },
+          {
+            "program": "regions.center-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "eda077a3560bf3fab46d0f3d00f632988cde0c20374045802bc50b6f8f5e328a"
+          },
+          {
+            "program": "regions.neighbors-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "406eb2212c24d9e7e6b5c1f4deed62101ac342dcd77b35ef0ea02ec13e6fbf77"
+          },
+          {
+            "program": "regions.points-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "548edf84df4d436c5cdb3f14d2942e14e84809338c31d5c4713c71e0340310f1"
+          },
+          {
+            "program": "regions.mask-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "093c6826b63e0234d29670c78e1b0ed7322b74df0d849a1d08271448d9fc983a"
+          },
+          {
+            "program": "regions.mask_all-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9ecd2c4a6ac7a66cc667e0e6d7a9c2f0d0ad5e0bcfda040b9c7a201aebcab3c3"
+          },
+          {
+            "program": "diagram-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "25451ee5cf16880738e5752f75270363a16d5d505f9037995c3b26903de156dc"
+          },
+          {
+            "program": "diagram-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "ac51d718e0d77482fdd9fa21f40c6ae0322ae7d7fc6c1c96f59e364342ba20e2"
+          },
+          {
+            "program": "diagram-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "92b878f6e7db87dec410b874614595648ca630cd19d77dd7ac8954a5d60687d0"
+          },
+          {
+            "program": "diagram-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "64f56818986e9a7027697346e2872bea888473677ed6b1922723d61e4ca7c8e9"
+          },
+          {
+            "program": "contours-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "4fb615544d2deafcaab233cbb0412d7ac4f4dd582417f7824c9c09e7e215f572"
+          },
+          {
+            "program": "contours-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "5e7e60bae01f8e4b4b81e8becf019ed6e67060c9a386d5f11e706cd8b355c624"
+          },
+          {
+            "program": "contours-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "f76c4c3918995ed06fefc9c001fc53ccd34e1e8955a2892d340335f39e0571ed"
+          },
+          {
+            "program": "contours-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "6164bc69574ac2e730b6892f1f322e8841592dced8aec595ba3483c8eb123a3d"
+          }
+        ]
+      },
+      {
+        "name": "stage-03",
+        "binary": "/private/tmp/iprop-v09-stage03-native/tools/ipval",
+        "sha256": "98a01c6ce398a5980001ea45690ea0676b653cb0affce9e1cd21ba570f84d211",
+        "rejections": [
+          {
+            "program": "regions.diagram-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "60913c95f27560c6fb356784a6e54edee8ba8cfe48d0a234ea245dd1990c6544"
+          },
+          {
+            "program": "regions.diagram.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "04f5f1b78096ca917cf75d7a7dca440db2295c629de140085c8d372535a031d6"
+          },
+          {
+            "program": "regions.contours-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "a2b1e7e0170d5a5f772b0ad068e33b87ac163c61c331186fcb49dbca023ad463"
+          },
+          {
+            "program": "regions.contours.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "c33713266a2725a8c678a3fd95cdd01bc3625225a6c11307506850c891e0633d"
+          },
+          {
+            "program": "regions.count-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9abe4d4f773ea01ef4f1dca1938e9a5b1fe7ffb975e3a882b1da60edde49fb1b"
+          },
+          {
+            "program": "regions.id-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "8386b7157c8accd295863ed999b15702540bcb8988f816644a362301aa502607"
+          },
+          {
+            "program": "regions.area-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "72316b463a5ff106b9f904c8d342f841fb835bb35c1a2f2bd5136d78fac9d54a"
+          },
+          {
+            "program": "regions.center-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "eda077a3560bf3fab46d0f3d00f632988cde0c20374045802bc50b6f8f5e328a"
+          },
+          {
+            "program": "regions.neighbors-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "406eb2212c24d9e7e6b5c1f4deed62101ac342dcd77b35ef0ea02ec13e6fbf77"
+          },
+          {
+            "program": "regions.points-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "548edf84df4d436c5cdb3f14d2942e14e84809338c31d5c4713c71e0340310f1"
+          },
+          {
+            "program": "regions.mask-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "093c6826b63e0234d29670c78e1b0ed7322b74df0d849a1d08271448d9fc983a"
+          },
+          {
+            "program": "regions.mask_all-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9ecd2c4a6ac7a66cc667e0e6d7a9c2f0d0ad5e0bcfda040b9c7a201aebcab3c3"
+          },
+          {
+            "program": "diagram-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "25451ee5cf16880738e5752f75270363a16d5d505f9037995c3b26903de156dc"
+          },
+          {
+            "program": "diagram-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "ac51d718e0d77482fdd9fa21f40c6ae0322ae7d7fc6c1c96f59e364342ba20e2"
+          },
+          {
+            "program": "diagram-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "92b878f6e7db87dec410b874614595648ca630cd19d77dd7ac8954a5d60687d0"
+          },
+          {
+            "program": "diagram-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "64f56818986e9a7027697346e2872bea888473677ed6b1922723d61e4ca7c8e9"
+          },
+          {
+            "program": "contours-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "4fb615544d2deafcaab233cbb0412d7ac4f4dd582417f7824c9c09e7e215f572"
+          },
+          {
+            "program": "contours-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "5e7e60bae01f8e4b4b81e8becf019ed6e67060c9a386d5f11e706cd8b355c624"
+          },
+          {
+            "program": "contours-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "f76c4c3918995ed06fefc9c001fc53ccd34e1e8955a2892d340335f39e0571ed"
+          },
+          {
+            "program": "contours-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "6164bc69574ac2e730b6892f1f322e8841592dced8aec595ba3483c8eb123a3d"
+          }
+        ]
+      },
+      {
+        "name": "stage-04",
+        "binary": "/private/tmp/iprop-v09-stage04-native/tools/ipval",
+        "sha256": "5f8163196f35f74cb347c9d14f2ac4c93406bed04f234c7d0a56f0d6f7146652",
+        "rejections": [
+          {
+            "program": "regions.diagram-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "60913c95f27560c6fb356784a6e54edee8ba8cfe48d0a234ea245dd1990c6544"
+          },
+          {
+            "program": "regions.diagram.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "04f5f1b78096ca917cf75d7a7dca440db2295c629de140085c8d372535a031d6"
+          },
+          {
+            "program": "regions.contours-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "a2b1e7e0170d5a5f772b0ad068e33b87ac163c61c331186fcb49dbca023ad463"
+          },
+          {
+            "program": "regions.contours.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "c33713266a2725a8c678a3fd95cdd01bc3625225a6c11307506850c891e0633d"
+          },
+          {
+            "program": "regions.count-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9abe4d4f773ea01ef4f1dca1938e9a5b1fe7ffb975e3a882b1da60edde49fb1b"
+          },
+          {
+            "program": "regions.id-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "8386b7157c8accd295863ed999b15702540bcb8988f816644a362301aa502607"
+          },
+          {
+            "program": "regions.area-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "72316b463a5ff106b9f904c8d342f841fb835bb35c1a2f2bd5136d78fac9d54a"
+          },
+          {
+            "program": "regions.center-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "eda077a3560bf3fab46d0f3d00f632988cde0c20374045802bc50b6f8f5e328a"
+          },
+          {
+            "program": "regions.neighbors-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "406eb2212c24d9e7e6b5c1f4deed62101ac342dcd77b35ef0ea02ec13e6fbf77"
+          },
+          {
+            "program": "regions.points-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "548edf84df4d436c5cdb3f14d2942e14e84809338c31d5c4713c71e0340310f1"
+          },
+          {
+            "program": "regions.mask-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "093c6826b63e0234d29670c78e1b0ed7322b74df0d849a1d08271448d9fc983a"
+          },
+          {
+            "program": "regions.mask_all-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9ecd2c4a6ac7a66cc667e0e6d7a9c2f0d0ad5e0bcfda040b9c7a201aebcab3c3"
+          },
+          {
+            "program": "diagram-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "25451ee5cf16880738e5752f75270363a16d5d505f9037995c3b26903de156dc"
+          },
+          {
+            "program": "diagram-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 186: reserved opcode",
+            "program_sha256": "ac51d718e0d77482fdd9fa21f40c6ae0322ae7d7fc6c1c96f59e364342ba20e2"
+          },
+          {
+            "program": "diagram-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "92b878f6e7db87dec410b874614595648ca630cd19d77dd7ac8954a5d60687d0"
+          },
+          {
+            "program": "diagram-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "64f56818986e9a7027697346e2872bea888473677ed6b1922723d61e4ca7c8e9"
+          },
+          {
+            "program": "contours-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "4fb615544d2deafcaab233cbb0412d7ac4f4dd582417f7824c9c09e7e215f572"
+          },
+          {
+            "program": "contours-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "5e7e60bae01f8e4b4b81e8becf019ed6e67060c9a386d5f11e706cd8b355c624"
+          },
+          {
+            "program": "contours-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "f76c4c3918995ed06fefc9c001fc53ccd34e1e8955a2892d340335f39e0571ed"
+          },
+          {
+            "program": "contours-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "6164bc69574ac2e730b6892f1f322e8841592dced8aec595ba3483c8eb123a3d"
+          }
+        ]
+      },
+      {
+        "name": "stage-05",
+        "binary": "/private/tmp/iprop-v09-stage05-native/tools/ipval",
+        "sha256": "c9bed3c7eea64e96253855e062a891a79f9eedb62e7ac273a74c28105e6e0ae7",
+        "rejections": [
+          {
+            "program": "regions.diagram-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "60913c95f27560c6fb356784a6e54edee8ba8cfe48d0a234ea245dd1990c6544"
+          },
+          {
+            "program": "regions.diagram.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "04f5f1b78096ca917cf75d7a7dca440db2295c629de140085c8d372535a031d6"
+          },
+          {
+            "program": "regions.contours-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "a2b1e7e0170d5a5f772b0ad068e33b87ac163c61c331186fcb49dbca023ad463"
+          },
+          {
+            "program": "regions.contours.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "c33713266a2725a8c678a3fd95cdd01bc3625225a6c11307506850c891e0633d"
+          },
+          {
+            "program": "regions.count-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9abe4d4f773ea01ef4f1dca1938e9a5b1fe7ffb975e3a882b1da60edde49fb1b"
+          },
+          {
+            "program": "regions.id-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "8386b7157c8accd295863ed999b15702540bcb8988f816644a362301aa502607"
+          },
+          {
+            "program": "regions.area-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "72316b463a5ff106b9f904c8d342f841fb835bb35c1a2f2bd5136d78fac9d54a"
+          },
+          {
+            "program": "regions.center-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "eda077a3560bf3fab46d0f3d00f632988cde0c20374045802bc50b6f8f5e328a"
+          },
+          {
+            "program": "regions.neighbors-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "406eb2212c24d9e7e6b5c1f4deed62101ac342dcd77b35ef0ea02ec13e6fbf77"
+          },
+          {
+            "program": "regions.points-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "548edf84df4d436c5cdb3f14d2942e14e84809338c31d5c4713c71e0340310f1"
+          },
+          {
+            "program": "regions.mask-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "093c6826b63e0234d29670c78e1b0ed7322b74df0d849a1d08271448d9fc983a"
+          },
+          {
+            "program": "regions.mask_all-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9ecd2c4a6ac7a66cc667e0e6d7a9c2f0d0ad5e0bcfda040b9c7a201aebcab3c3"
+          },
+          {
+            "program": "diagram-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "25451ee5cf16880738e5752f75270363a16d5d505f9037995c3b26903de156dc"
+          },
+          {
+            "program": "diagram-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "ac51d718e0d77482fdd9fa21f40c6ae0322ae7d7fc6c1c96f59e364342ba20e2"
+          },
+          {
+            "program": "diagram-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 202: reserved opcode",
+            "program_sha256": "92b878f6e7db87dec410b874614595648ca630cd19d77dd7ac8954a5d60687d0"
+          },
+          {
+            "program": "diagram-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 202: reserved opcode",
+            "program_sha256": "64f56818986e9a7027697346e2872bea888473677ed6b1922723d61e4ca7c8e9"
+          },
+          {
+            "program": "contours-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "4fb615544d2deafcaab233cbb0412d7ac4f4dd582417f7824c9c09e7e215f572"
+          },
+          {
+            "program": "contours-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 222: reserved opcode",
+            "program_sha256": "5e7e60bae01f8e4b4b81e8becf019ed6e67060c9a386d5f11e706cd8b355c624"
+          },
+          {
+            "program": "contours-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "f76c4c3918995ed06fefc9c001fc53ccd34e1e8955a2892d340335f39e0571ed"
+          },
+          {
+            "program": "contours-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "6164bc69574ac2e730b6892f1f322e8841592dced8aec595ba3483c8eb123a3d"
+          }
+        ]
+      },
+      {
+        "name": "stage-06",
+        "binary": "/private/tmp/iprop-v09-stage06-native/tools/ipval",
+        "sha256": "9c4c3f65f060762e603487fa651ded34987fe46942342ca692d33710d091b89a",
+        "rejections": [
+          {
+            "program": "regions.diagram-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "60913c95f27560c6fb356784a6e54edee8ba8cfe48d0a234ea245dd1990c6544"
+          },
+          {
+            "program": "regions.diagram.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "04f5f1b78096ca917cf75d7a7dca440db2295c629de140085c8d372535a031d6"
+          },
+          {
+            "program": "regions.contours-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "a2b1e7e0170d5a5f772b0ad068e33b87ac163c61c331186fcb49dbca023ad463"
+          },
+          {
+            "program": "regions.contours.config-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "c33713266a2725a8c678a3fd95cdd01bc3625225a6c11307506850c891e0633d"
+          },
+          {
+            "program": "regions.count-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9abe4d4f773ea01ef4f1dca1938e9a5b1fe7ffb975e3a882b1da60edde49fb1b"
+          },
+          {
+            "program": "regions.id-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "8386b7157c8accd295863ed999b15702540bcb8988f816644a362301aa502607"
+          },
+          {
+            "program": "regions.area-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "72316b463a5ff106b9f904c8d342f841fb835bb35c1a2f2bd5136d78fac9d54a"
+          },
+          {
+            "program": "regions.center-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "eda077a3560bf3fab46d0f3d00f632988cde0c20374045802bc50b6f8f5e328a"
+          },
+          {
+            "program": "regions.neighbors-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "406eb2212c24d9e7e6b5c1f4deed62101ac342dcd77b35ef0ea02ec13e6fbf77"
+          },
+          {
+            "program": "regions.points-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "548edf84df4d436c5cdb3f14d2942e14e84809338c31d5c4713c71e0340310f1"
+          },
+          {
+            "program": "regions.mask-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "093c6826b63e0234d29670c78e1b0ed7322b74df0d849a1d08271448d9fc983a"
+          },
+          {
+            "program": "regions.mask_all-dead",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 142: reserved opcode",
+            "program_sha256": "9ecd2c4a6ac7a66cc667e0e6d7a9c2f0d0ad5e0bcfda040b9c7a201aebcab3c3"
+          },
+          {
+            "program": "diagram-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "25451ee5cf16880738e5752f75270363a16d5d505f9037995c3b26903de156dc"
+          },
+          {
+            "program": "diagram-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 190: reserved opcode",
+            "program_sha256": "ac51d718e0d77482fdd9fa21f40c6ae0322ae7d7fc6c1c96f59e364342ba20e2"
+          },
+          {
+            "program": "diagram-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 202: reserved opcode",
+            "program_sha256": "92b878f6e7db87dec410b874614595648ca630cd19d77dd7ac8954a5d60687d0"
+          },
+          {
+            "program": "diagram-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 202: reserved opcode",
+            "program_sha256": "64f56818986e9a7027697346e2872bea888473677ed6b1922723d61e4ca7c8e9"
+          },
+          {
+            "program": "contours-arity1-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "4fb615544d2deafcaab233cbb0412d7ac4f4dd582417f7824c9c09e7e215f572"
+          },
+          {
+            "program": "contours-arity1-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 226: reserved opcode",
+            "program_sha256": "5e7e60bae01f8e4b4b81e8becf019ed6e67060c9a386d5f11e706cd8b355c624"
+          },
+          {
+            "program": "contours-arity3-plain",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 238: reserved opcode",
+            "program_sha256": "f76c4c3918995ed06fefc9c001fc53ccd34e1e8955a2892d340335f39e0571ed"
+          },
+          {
+            "program": "contours-arity3-auto",
+            "reason": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-regions-archive-dkcclulg/fixture.iprop at byte 238: reserved opcode",
+            "program_sha256": "6164bc69574ac2e730b6892f1f322e8841592dced8aec595ba3483c8eb123a3d"
+          }
+        ]
+      }
+    ]
+  },
+  "earlier_frozen_references": {
+    "unchanged_count": 57,
+    "sha256": {
+      "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+      "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+      "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+      "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+      "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+      "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+      "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+      "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+      "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+      "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+      "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+      "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf",
+      "tests/fixtures/compat-v0.8/branch.ips": "54ccb61fad18e4eddbd9e6d5c4aca4ab37937015989b72ad08e34201bd892469",
+      "tests/fixtures/compat-v0.8/composition.ips": "8d0336902b766ca3c98f760034028e9d0c133b7319251c0a51b31547ad0dd375",
+      "tests/fixtures/compat-v0.8/leaf.ips": "ff057e10c4e84db8ac9b849242c0f0be77a0acf5fd7e31ba7ad091fa146f9cbd",
+      "spec/iprop-v0.8.md": "79a3ba6b7aeee0f3d83208da13511ae4962c38393e1e1d85ee44ee37c21e41d9",
+      "tests/golden/noise.png": "538996893b4bd9ce753a50aeb5733e1745c1d6a69bc86f76c1394de12d498358",
+      "tests/golden/parts.png": "bab687c573971f6238dd90b1f9a0ea4d4f4e7d210a55f614e828d9891a9591e5",
+      "tests/golden/portrait-seed0.png": "6896cfa9fa2f94898ca2a99c8b1055d29c65fa7ee481c56ade0bd17bde99147d",
+      "tests/golden/portrait-seed1.png": "e07be1d6d7b87d926fa747ca2c5aa0a37137fcc6215e8c3113eca8fa762ff73e",
+      "tests/golden/portrait-seed2.png": "f9eb6f19411402d640d74dad5c1edd0c3a6c51db319479a7dc43e8f12b0a9a84",
+      "tests/golden/portrait-seed26.png": "62b7dbbd0f590aecf5d2a98c3cbf4fe3abd6e469abbaef62f65165fb720a1ba9",
+      "tests/golden/portrait-seed7.png": "980cdbddc42ff065d74713a4280a1247121097b57973f2483063cbb96c080392",
+      "tests/golden/shapes.png": "bb7100fdfe98c8e02b57f5fb75b57dbca4b50a5b93b6efc83332c020eff33c38",
+      "tests/golden/noise.ipa": "c2e61b250e6d4dc7664cbc936f339f4eededd0504263818c32aed75be1e2c179",
+      "tests/golden/parts.ipa": "a4c48e39196750e9af22b2d3213421bd63c39872ed9b64c735f3284bfd9dad5a",
+      "tests/golden/shapes.ipa": "200748a4a927174bba61e59b2def2ee22d21aac0cbc40692f0c0e9cb2ec8b84f",
+      "tests/fixtures/noise-v0.9.json": "00df81bc182827eacb0a44ad4711dfc18d2e012454d01fbfb26fac6ac64f5b75",
+      "backends/html5/test/noise-v09-reference.js": "ac5a0dff48cffa208c9190fdb03f058441c3ddff31eed2b40cdc55e88e64fa94",
+      "backends/html5/test/noise-v09-conformance.js": "610e2ca9fcad139747fb25997c7469dfe8ba7fc99973f865bfb361e1a7c001c0",
+      "tests/math/noise_extensions_test.cpp": "fb49ca5bd005aa9e9c1d724f0daecea3329522368a8a22f20324f0912a70549c",
+      "spec/noise-v0.9.md": "663eb879d3a4028dbdc463d298cf9c3da619c20dd5fecec18a4115ce8f59cce1",
+      "spec/verification/noise-v0.9.json": "59debc65265ab2621c34cd62512821ff85feee3088ff984084e4d11e90b8c290",
+      "spec/verification/noise-v0.9-ctest.txt": "5bb4788e410c17ecec5a6e0dd2f0858a5ecf3da1a1510248b9e96fdcc8117cfe",
+      "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc",
+      "tests/fixtures/noise-mask-v0.9.json": "6d7406a48a769b1013a219945bf0d60a13766b855a1b80c1a1be5c6e01339f57",
+      "backends/html5/test/noise-mask-reference.js": "e182b41dcbe2065386d776f7d71507da12ed295954b34821683842fd3f428abd",
+      "backends/html5/test/noise-mask-conformance.js": "720e73364eae2bb5514df24c054ac33687581d1ce77004814fa7fb3def439be7",
+      "tests/compiler/noise_masks_test.cpp": "e933ca6b39d11cc3223c01297b0f9823b034393210af98665979fa4e756a31ca",
+      "spec/noise-mask-v0.9.md": "37fe03e8ea52da3f5383e672a063216316ab43293a375d40f7c616da5c76bc85",
+      "spec/verification/noise-mask-v0.9.json": "a715e5c22c3eb695604feac77351d91318d1736e771fa32c3df7439f4335c3ff",
+      "spec/verification/noise-mask-v0.9-ctest.txt": "6f570a868ca61d4b39093cc07055d0aa94c1a923685c7a76726d927a22455059",
+      "tests/fixtures/geometry-v0.9.json": "8ca4ac3e44e0581d54535007a4ff3dac31d5204e1716a91be230e1e540c893e6",
+      "tests/support/geometry_fixture.hpp": "be7e5c928576d721955cada49023baf8baa060cc29aa1ad57c84a9c272f47c98",
+      "tests/geometry_test.cpp": "7843d15ab3df35767fb5bc560fa776d742d87c4227396a6bb4a99256385f0885",
+      "tests/geometry_representation_probe.cpp": "f4894c30db8f59e96ad3f50605a03e8f8d606360e879d54fd77bb0736aad5a8a",
+      "tests/geometry_allocation_probe.cpp": "7de1390cfccc136c6d9e98b82d45d9dbd8bd97d360c69539d2e11da11aa533cb",
+      "spec/verification/geometry-core-v0.9.json": "554ecfbb33e403fb92692c87e57a20329248326df2d9bfbe6728e38b887292db",
+      "spec/verification/geometry-core-v0.9-ctest.txt": "5e790fe0c8408d511979776fce6e7cbe2feabd060af46759630bdee601b15f6f",
+      "tests/fixtures/voronoi-v0.9.json": "0155618ebaf45467b0a7696eef48f3c66fe91868132f7a7e0efb6c249e6236ee",
+      "tests/reference/voronoi-reference.js": "2f48cc7e8620e693006db047716dc8346e3a2b4e3b28e021858fa14658d25cfa",
+      "tests/voronoi_test.cpp": "b05e321b80fefc947c32875f5f26768cc7fd2919ac3d92f9eb403c56fb4e7bd8",
+      "tests/voronoi_probe.cpp": "4368d843add4392bbd106ec99e214af1a84f95ff0522462b64cd50eda7d47342",
+      "tests/voronoi_allocation_probe.cpp": "cfb10ac7d859d3f9dbb26cd94a75949da035e2baaecb58b32da0bea848a392cf",
+      "tests/fixtures/contours-v0.9.json": "7ea4f27fe4431f9188ab8c5a9cde65e56b38f2f0a09d0b88b098c0a746908641",
+      "tests/reference/contours-reference.js": "97b83dac9f2a08ab83a14338c986bc42b9ca63b4cdad6ccaf887afc3470b490d",
+      "spec/contours-v0.9.md": "4db324fde0825e91ce41f9aca4a6fa3a044df78ee7fb8a27e3aad9b4f2ffd96c"
+    }
+  },
+  "export_contracts": {
+    "passed": true,
+    "mutations": 210,
+    "registered_examples": 155,
+    "builtins": 99,
+    "protocol_versions": {
+      "language": 5,
+      "diagnostics": 1,
+      "manifest": 3
+    },
+    "schema_validation": "not_run: optional jsonschema dependency is not installed; standard-library readers, mutations, field documentation and real CLI checks passed"
+  },
+  "documentation": {
+    "passed": true,
+    "builtins": 99,
+    "examples": 155,
+    "example": "examples/language/regions.ips",
+    "headless_render_viewed": true,
+    "render_size": [
+      192,
+      128
+    ],
+    "render_seed": 7,
+    "fuel": {
+      "budget": 5000000,
+      "spent": 676218
+    },
+    "render_sha256": "bd61fbafe51750695a12d656972deeb9a4ac70d01202dbf67fbd78afa8b1a3ae"
+  },
+  "requirements": [
+    {
+      "id": "07.1",
+      "status": "passed",
+      "evidence": [
+        "tests/regions_test.cpp: conversion sharing, cached metadata, helpers, null/index traps, net filtering, island reparenting and neighbors",
+        "55 complete geometry vectors and 564 public executions",
+        "language parser/typing/registry/validator/VM/formatter/export-description integration"
+      ]
+    },
+    {
+      "id": "07.2",
+      "status": "passed",
+      "evidence": [
+        "runtime/region_offset.cpp: one bounded positive-winding kernel, signed round joins and exact provenance",
+        "dumbbell splits, holes grow/shrink/open, disappearing/overshrunk regions, eight D4 variants, 1536 exhaustive binary-mask offsets",
+        "min_area before 256 output regions; source order and area/bounds/discovery fragment order"
+      ]
+    },
+    {
+      "id": "07.3",
+      "status": "passed",
+      "evidence": [
+        "runtime/region_raster.cpp: shared one-region/union scanline kernel with 4x4 samples and half-open boundaries",
+        "every A8 sample checked by independent point membership; overlap union before alpha, holes, empty masks, off-target translation and nonuniform host scale",
+        "source-over/legacy paint, clipping and creation under empty clipping exercised through public API"
+      ]
+    },
+    {
+      "id": "07.4",
+      "status": "passed",
+      "evidence": [
+        "256 vertices return a complete list; 257/2048 vertices and holes reject the restricted point view without changing source geometry",
+        "mask creation remains available for the complete geometry; public points error paths and ordinary list quotas verified"
+      ]
+    },
+    {
+      "id": "07.5",
+      "status": "passed",
+      "evidence": [
+        "82/82 CTest; full native/WASM regression and packaged runtime without internal probes",
+        "55 frozen cases, 564 generations, 41 traps, 36 malformed bytecode rejections, seven compiler errors",
+        "510 heap failures, exact quota/fuel boundaries, destroyed-execution retention, and five older runtimes each rejecting 20 programs"
+      ]
+    }
+  ],
+  "commands": [
+    "cmake -S . -B /private/tmp/iprop-v09-stage07-native -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF -DFETCHCONTENT_SOURCE_DIR_CATCH2=\"$PWD/build/_deps/catch2-src\"",
+    "cmake --build /private/tmp/iprop-v09-stage07-native --parallel 5",
+    "EM_CACHE=/private/tmp/iprop-v09-stage01-emcache cmake -S backends/html5 -B /private/tmp/iprop-v09-stage07-wasm -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=/opt/homebrew/Cellar/emscripten/6.0.10_1/libexec/cmake/Modules/Platform/Emscripten.cmake",
+    "EM_CACHE=/private/tmp/iprop-v09-stage01-emcache cmake --build /private/tmp/iprop-v09-stage07-wasm --parallel 5",
+    "ctest --test-dir /private/tmp/iprop-v09-stage07-native --output-on-failure --parallel 5",
+    "/private/tmp/iprop-v09-stage07-native/tests/iprop_tests \"[regions-v09]\"",
+    "/private/tmp/iprop-v09-stage07-native/tests/regions_allocation_probe",
+    "node backends/html5/test/regions-conformance.js /private/tmp/iprop-v09-stage07-native/tools /private/tmp/iprop-v09-stage07-native/tests/regions_probe /private/tmp/iprop-v09-stage07-wasm/regions_probe.js",
+    "IPROP_CONFORMANCE_REPORT_DIR=/private/tmp/iprop-v09-stage07-conformance node backends/html5/test/run-tests.js /private/tmp/iprop-v09-stage07-wasm /private/tmp/iprop-v09-stage07-native/tools",
+    "python3 scripts/check_export_contracts.py /private/tmp/iprop-v09-stage07-native/tools/ipc --report /private/tmp/iprop-v09-stage07-export-contracts.json",
+    "python3 scripts/language_docs.py check --compiler /private/tmp/iprop-v09-stage07-native/tools/ipc --output-dir /private/tmp/iprop-v09-stage07-docs"
+  ],
+  "publication": {
+    "implementation_pushed": true,
+    "remote_implementation_sha": "cf0ab55ac8cfb4f379a7724803b2c1fa50da42d6",
+    "closing_report_commit": "recorded in delivery, not self-referenced",
+    "release_tag_merge_deploy": false
+  },
+  "source_hashes": {
+    "backends/html5/CMakeLists.txt": "b792fe920b27b1203d3794c8d40ac2c59cf4b507498aafaa622c4138115fecf3",
+    "backends/html5/test/native-conformance.js": "d35f4bcff79c7e54d995632f276bc3181702b622895a05521d378b2134adc7ee",
+    "backends/html5/test/regions-conformance.js": "a362ddc21a71d39ffa740b3c18e2af51202f36207b887540e141abe79ec3078c",
+    "backends/html5/test/run-tests.js": "cd2f248ac9a6b336472a1455dededd0226a5f7a827b80b57d9a5b501323b72a3",
+    "cmake/RuntimeSources.cmake": "0f73e64fc9b30a11a313273c9e681411719f556ea38996d437add56b1e733e4a",
+    "docs/language-description.schema.json": "b606e9d95be93cabd1968b0416e62d9a140ec50b3fe2503687a3d63e0c476ee1",
+    "examples/language/cases.json": "77ea0e394801529708065cec3faa666d463d79bfef37d733f8d2ce7df95efcd3",
+    "examples/language/regions.ips": "5599de0b93ca37020c66152ebfea0550d1f28348f072439055823db4330f4d92",
+    "language/ips/BuiltinSpec.cpp": "9c907be204b76b4b7df3338f735d1ff0e2930fc3672e631144b2f33550e5ccf5",
+    "language/ips/ParserExpr.cpp": "a38c28da9b493e24229b0be70379cf040a75558826ac4e9f80337becf6870864",
+    "language/ips/TypingCalls.cpp": "62e631040a150f2206ca35501b00be32e659ddf2c955d29ad9ae9ca163d9eb87",
+    "runtime/iprop/Constants.hpp": "b2ca20afde1a3c77d246d2740b616ac8acf9a46174d29a7ee5e4c81e592e126c",
+    "runtime/iprop/GeometryAlgorithms.hpp": "ae30a7f5c34846c79a5461d3953e7939da63df2412dd42f91a343590315e4a6c",
+    "runtime/iprop/Regions.hpp": "991c156bf94661465c9f1fb1067b0a4fed8e7bdb4ae14bdcff9f6297d8f463e5",
+    "runtime/iprop/VmInternals.hpp": "47e7b9ff0734f2eb17693e7387d89d1b361918d7d58f7f33bdf6e9ea5cf1b6a6",
+    "runtime/opcode_spec.cpp": "5dd28762e5654e7d70996bb14af798cecd20a2546e81c40c7d07289fd38d674e",
+    "runtime/region_offset.cpp": "258bf88ef36d74f2c87767634fbccecd5bc8a2e496a91976ddbbeb3df0cddbfe",
+    "runtime/region_raster.cpp": "42510319d22dc9ed5b4533cb5cbb1def29c7348776c5eab0bc05b7ad9e1d1f81",
+    "runtime/regions.cpp": "d3161f5be26f78be514a3ebf242ee0381013c69797afaf09ca0bd382c552d40b",
+    "runtime/validator.cpp": "ad1f3c3b04eff53e8c8b18febff2b236ab847b2115132fc5eea8ccfcd150de8a",
+    "runtime/vm.cpp": "ce6c764badfe6665eaba44445ba0612e99a369f5005c38bf0d78a1a79bba4246",
+    "scripts/contract_readers.py": "c98c56832b771008f7cd4217a79924da451863232af891d3ec85bf70343a455c",
+    "scripts/language_docs.py": "bd4daca61d9234526b308887fa4df7fd4069c07f4510de21929921aa703de23b",
+    "scripts/tests/test_current_documentation.py": "07b0c726a155ba71d689007e59bbe8dddb9eaa871cebde85008310886d755194",
+    "tests/CMakeLists.txt": "a4739548fd4913c20ce155935e4f16f7467cd5dfa350d9dc7b41b50abdcc9ae0",
+    "tests/builtin_spec_test.cpp": "5abb26c881f43e0870898c706514d9b6cdd433de75ec71980f7df8c88d931c99",
+    "tests/compiler/effects_test.cpp": "18894cea567d9003266e02759ffb682bab6f41ebd26a5b8bc4433018227173a8",
+    "tests/fixtures/export-contract-mutations.json": "119bf5c700eac51ddcf592e19a2deb4589909062ab948f5eb697e8b58a6c12de",
+    "tests/fixtures/regions-v0.9.json": "76b3d29d73fab3dfef56ed6fe57c9d35ca251a9bc1b9154701f2ad5cd26d0e00",
+    "tests/opcode_spec_test.cpp": "0c9ac1063a253128b7ee1caf52843b9708a271988a4250fa4a46a9eae3b34997",
+    "tests/reference/regions-reference.js": "fa5d4ab3cd63c669ee1e87c653122eb80ea261226aaea5da26c910493b345cb5",
+    "tests/regions_allocation_probe.cpp": "c514cd29a095dafa4f533e86b374bb8f3a624f66de40faa06408e91c83b3a432",
+    "tests/regions_probe.cpp": "e23d12327ddfc15c5ff8df5869c6af30a225cbcaf419d6e09f3b9a06b11cdebf",
+    "tests/regions_test.cpp": "392513352ab44ae1637fbdfaae49ff296cc14019c0aa954133352cd6184c2ff9",
+    "tests/support/geometry_json.hpp": "26ffbbe65dc567501911fa06e37f6acfdb0bf77a524b5705bcbb602a6b90ce64",
+    "tests/support/regions_fixture.hpp": "2b9012ce706f9da0d6fd5ee29e28868e73bf23a0a1a5694bf89ab62b0ebd73ee",
+    "tools/language_description.cpp": "fa28800eb6e4b6fa66a8fa50b381571b580fb0ab852393bf0071f66614502e83"
+  },
+  "normative_contract_sha256": "2a8d904cfbfcf9c91b0648388e5c7cc3858e979c8bd6250f71a345627b40c12b",
+  "binary_hashes": {
+    "/private/tmp/iprop-v09-stage07-native/tools/ipc": "509ca11672649d4ce97d79c5e506c581d844778294135fe94f5ddda1bc2d1c45",
+    "/private/tmp/iprop-v09-stage07-native/tools/ipgen": "99b18fefac85620d669f12fff48a22de2af66a9477afdc53a350d22eca01a250",
+    "/private/tmp/iprop-v09-stage07-native/tools/ipval": "02bf9ea3fd41ff5d8b4a35ff6f2ff65591c97cbbd77a611d5167a0c9b05fa7d0",
+    "/private/tmp/iprop-v09-stage07-native/tests/regions_probe": "c8a31669b175d45de9f2fda4747736b590ed9ac0c59db95b31e8565a5d770de2",
+    "/private/tmp/iprop-v09-stage07-wasm/iprop.js": "79946a59f67061acd9536f937ed110abe3038e80ff45bae9f8cfc4618e717c0c",
+    "/private/tmp/iprop-v09-stage07-wasm/iprop.wasm": "9d87ad6dd1b035a7efc05d85b08e0917f058db96786c23f2b8f954e032db9722",
+    "/private/tmp/iprop-v09-stage07-wasm/regions_probe.js": "50b6b9f59278eead36ffd22bb5be41d50c813d12f95b7342bfa15c439ac2e14c",
+    "/private/tmp/iprop-v09-stage07-wasm/regions_probe.wasm": "b97b2660add1f62ff162d0bd0e13332acb78ec8a0a38872f4937941f2a86b72e"
+  },
+  "logs_sha256": {
+    "/private/tmp/iprop-v09-stage07-ctest.txt": "38d542206d6362fb5ff7f1da5a3ff27ea28c9aa98fd915437c33abe077de075b",
+    "/private/tmp/iprop-v09-stage07-focused.txt": "d14e24e6100705988db66c896da55fe2184715fa41b855476d85c70897a8c177",
+    "/private/tmp/iprop-v09-stage07-allocation.txt": "c96f85beb0d0a4b4e85e6b7e37832b0419d310100a0336e4c90c2cc9099850a3",
+    "/private/tmp/iprop-v09-stage07-conformance.txt": "fd2081d1aa2b5d7b22f7861efd85b0e9757c4cddbd296ac2e34c17a840a7205b",
+    "/private/tmp/iprop-v09-stage07-conformance/conformance.json": "acb9c24289182e7b0766cc92fa6370180507c118c62ffa795de6e59594d6fbca",
+    "/private/tmp/iprop-v09-stage07-final-regions.json": "df3350a1ac1d32fb2b04db57bf40f5d58b056a70559da4259a7f3822122f3a56",
+    "/private/tmp/iprop-v09-stage07-package.json": "cbb82469b61b2c52866a4dec2d53d752fd5da0bedb32d8750cbdc2dd13ee4325",
+    "/private/tmp/iprop-v09-stage07-export-contracts.json": "aed88a907082bcda31a94a08875f48a2e96ef6c90844374f44a7aa927f7cd3f4",
+    "/private/tmp/iprop-v09-stage07-archived-rejections.json": "e08810bf1236034b26bf04c47fb8a9a415b4c71f9f69a7484461d985e1272cf1",
+    "/private/tmp/iprop-v09-stage07-frozen-references.json": "b7fa503613741c82eb52dc158aba6a3d1f40bc3b4627d5cbd3f044903b267a3a"
+  }
+}

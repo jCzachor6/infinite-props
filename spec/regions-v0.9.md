@@ -1,6 +1,6 @@
 # Regions, offsets and raster masks for 0.9
 
-**Status:** stage 07 in progress on `develop`. The product and language versions
+**Status:** stage 07 completed on `develop`. The product and language versions
 remain 0.8.0, and the language-description protocol remains schema 5.
 Existing instruction, type, section and output IDs remain unchanged.
 
@@ -212,3 +212,7 @@ Public compiler/VM checks exercise both source types and constructor arities,
 metadata and restricted lists, formatter/assembly round-trips, clip/paint,
 nonuniform host scale and off-target resources. Internal probes are omitted
 from the packaged web SDK; its public checks use the same pinned records.
+
+The [stage verification report](verification/regions-v0.9.json) records the source
+identity, complete CTest log path, frozen vectors, resource boundaries and
+requirement evidence.

@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–06 zakończone; noise, maski, rdzeń geometrii, Voronoi i kontury sprawdzone native/WASM. Implementacja etapu 06 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap: 07 (regiony).
+**Status:** etapy 00–07 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury i regiony sprawdzone native/WASM. Implementacja etapu 07 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap: 08 (fugi i bevel).
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -583,8 +583,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 07.2 Zaimplementować jeden offset z round joins, dodatnim/ujemnym inset, rozpadem składowych, min_area i stabilną kolejnością.
 - [x] 07.3 Dodać maskę pojedynczego regionu i sumy regionów z dziurami; współdzielić rasteryzator i ustalić regułę przypisania wspólnych granic.
 - [x] 07.4 Dodać ograniczone `regions.points`; przetestować odrzucenie dziur i >256 wierzchołków bez utraty danych w innych API.
-- [ ] 07.5 Sprawdzić zanik/podział regionu, powiększanie i nakładanie, usuniętych sąsiadów, puste zbiory i maski, skalę/origin, clip i paint.
-- [ ] **Etap 07 zakończony.**
+- [x] 07.5 Sprawdzić zanik/podział regionu, powiększanie i nakładanie, usuniętych sąsiadów, puste zbiory i maski, skalę/origin, clip i paint.
+- [x] **Etap 07 zakończony.**
 
 **Odbiór:** poprawne ID i indeksy po filtracji/podziale, dokładne dziury i spójne granice, brak przebudowy całej geometrii przy odczytach.
 
@@ -595,6 +595,10 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **07.2–07.4 (2026-11-03):** Jeden ograniczony kernel offsetu z dodatnim/ujemnym inset i round joins (tolerancja łuku 1/64 jednostki przed zaokrągleniem f32), dodatnim winding i walidacją przecięć. Działa zanik, podział, pole netto po odjęciu dziur, min_area przed limitem 256 wynikowych regionów, stabilne ID/kolejność oraz indeksy sąsiadów z pochodzenia krawędzi. Jedna rasteryzacja scanline z siatką 4×4 obsługuje pojedynczy region i sumę przed kwantyzacją A8, bez wypalania clip i bez ograniczenia geometrii do targetu. `regions.points` zachowuje pełne dane w pozostałych API i jawnie odrzuca dziury oraz >256 punktów. Odczyty metadanych korzystają z cache. Nie dodano zależności geometrycznej.
 
 **Weryfikacja 07.2–07.4:** 82/82 CTest, 10 testów regionów / 43 040 asercji, 1536 offsetów wszystkich masek binarnych 3×3 i 510 wymuszonych błędów alokacji bez wycieków. 55 zestawów geometrii, metadanych, fuel i pamięci jest bitowo identycznych w native/WASM; niezależna referencja sprawdza pola/momenty, przecięcia, odległości offsetu i każdą próbkę maski. Publiczna bramka: 564 generacje, 41 trapów, 36 odrzuceń bytecode, siedem błędów kompilacji; te same 564 generacje przechodzą w wariancie pakietowym bez programów testowych. Pełna wcześniejsza regresja native/WASM przechodzi. Eksport języka: schema 5 z opcjonalnym opisem regionów, 210 mutacji / 155 przykładów CLI; handbook: 99 builtinów / 155 przykładów. Końcowy raport i zamknięcie 07.5 zostaną zapisane w kolejnym commicie, zgodnie z §8.
+
+**07.5 (2026-11-03):** [Raport końcowy](spec/verification/regions-v0.9.json) i [82/82 CTest](spec/verification/regions-v0.9-ctest.txt). Pełna macierz native/WASM przechodzi; 55 zestawów porównuje wszystkie punkty/sites, krawędzie/pochodzenie, obwody/dziury, metadane oraz fuel/pamięć. Publiczne API: 564 generacje, 41 trapów, 36 odrzuceń bytecode i siedem błędów kompilacji. Wariant pakietowy bez wewnętrznych programów testowych przechodzi te same 564 generacje i 41 trapów. Potwierdzone granice fuel/areny oraz 510 wymuszonych błędów alokacji bez wycieków. Limit wynikowych 256 regionów działa po min_area (257 fragmentów może zostać odfiltrowanych); limity obwodu i danych pośrednich obejmują także odrzucane wyniki. Skala niejednorodna, origin ujemny/ułamkowy, geometria poza targetem, clip, oba tryby paint, pusty zbiór i maska, zanik/podział/nakładanie oraz usunięci sąsiedzi mają testy. Pięć starszych runtime (0.8, etapy 03–06) odrzuca po 20 nowych programów; 57 wcześniejszych wzorców/referencji pozostaje niezmienionych. Przykład IPS skompilowany, wygenerowany i obejrzany; nie wykonywano release ani wdrożenia.
+
+**Publikacja 07.2–07.4 (2026-11-03):** [cf0ab55](https://github.com/jCzachor6/infinite-props/commit/cf0ab55ac8cfb4f379a7724803b2c1fa50da42d6). Push na `origin/develop` i zgodny zdalny SHA potwierdzone. Bieżący commit zapisuje raport, log i zamknięcie etapu; jego SHA podaje raport dostarczenia, zgodnie z §8.
 
 ### Etap 08 — fugi i bevel
 
