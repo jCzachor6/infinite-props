@@ -133,3 +133,39 @@ Interim fuel reserves 4 per cached edge, 4 per zeroed RGBA pixel,
 visit, and 1 per finalized pixel; existing bounds/crossing/sort charges remain.
 Zero strength skips edge and sampling work after validated bounds and output
 allocation. The final independent work limits and tariffs remain stages12–13.
+
+## Verification (08.4)
+
+[Frozen vectors](../tests/fixtures/gap-bevel-v0.9.json) pin 47 complete records:
+input/result points, rings, moments, provenance, IDs, neighbors, mask, optional
+RGBA layer, operation fuel, retained bytes and complete release of scratch.
+They are first-implementation regression pins, rather than a second exact mesh
+generator. Independent checks use BigInt u32 profile hashes, dense trigonometric
+arc/profile membership away from the 1/64 error band, polygon moments/topology,
+and a naive complete nearest-edge search for every bevel subsample. The runtime
+uses positive-winding arrangements and scanlines with active edge lists.
+
+The native/WASM gate covers both source directions of one original edge,
+variation0/1, zero width, empty/collapsed/thin components, holes and islands,
+eight D4 dumbbells, repeated gaps, negative/fractional origins, off-target
+geometry, overlaps, 257-point boundaries, nonuniform target scale, alpha
+colors/strength0/1, default/full overloads, explicit legacy/source-over,
+background alpha, clipping, alpha-mask conversion and no automatic drawing.
+Public metadata and ordinary points/neighbors are checked against the complete
+records under all eight optimization/debug/compression configurations, with
+formatting and IPA/IPDIS round trips. Argument-order tests use effectful helpers
+and reverse named arguments to verify signature-order evaluation exactly once.
+
+Two separately authored 128×96 scenes pin complete RGBA and fuel:
+[tiles](../examples/language/gap-bevel.ips),3269529/5000000 and
+[staggered wall](../examples/language/wall-bevel.ips),3014276/5000000. Both were
+visually inspected and match native/WASM. These are example measurements, not
+the final stage13 tariff calibration or a general performance guarantee.
+
+The gate also checks 51 located runtime failures, 87 malformed-bytecode
+rejections (including all dynamic argument types and zero fields in dead code),
+seven source diagnostics and three exact fuel/quota boundaries on both cores.
+The isolated allocator probe injects 1046 transient/persistent heap failures
+across variable/repeated gaps, normal/zero-strength bevels, the combined pipeline
+and off-target fractional geometry, with no heap/quota leaks. Exhaustive C++
+coverage includes 1536 variable gaps from all 512 binary3×3 contour sources.

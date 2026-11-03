@@ -2,6 +2,7 @@
   "cases": [
     {"file":"regions.ips","expect":"pass"},
     {"file":"gap-bevel.ips","expect":"pass"},
+    {"file":"wall-bevel.ips","expect":"pass"},
     {"file":"contours.ips","expect":"pass"},
     {"file":"voronoi.ips","expect":"pass"},
     {"file":"geometry-handles.ips","expect":"pass"},

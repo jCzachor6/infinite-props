@@ -352,6 +352,12 @@ Json sourceRules() {
         {"points","one_ring_no_holes_no_truncation"},{"maximum_points",256},
         {"raster","4x4_half_open_union_before_A8"},{"mask_clip","ignored_until_paint"},
         {"asset_constants",false}});
+    rules["gap_bevel"] = Json::object({
+        {"constant_gap","same_offset_width_half"},
+        {"variable_gap","original_edge_linear_knots_shared_vertex_endpoints"},{"profile_knots",9},
+        {"bevel","nearest_edge_faceted_linear_fade_4x4_RGBA8"},
+        {"bevel_ties","original_edge_then_current_use"},{"overlap","lowest_current_region_index"},
+        {"raster_clip","ignored_until_paint"},{"rng","explicit_gap_seed_no_stream_draws"},{"asset_constants",false}});
     rules["contour"] = Json::object({
         {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
         {"algorithm","marching_squares_clamped_alpha_interpolation"},

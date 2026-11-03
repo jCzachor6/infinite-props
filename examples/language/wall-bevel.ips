@@ -1,0 +1,15 @@
+asset wall_bevel {
+    size 128x96
+    draw {
+        rect(0, 0, 128, 96, #39352f)
+        diagram = voronoi({0, 0}, {128, 96}, 12, 91,
+                          voronoi.grid, 0.15, 0, 1.75, {1, 0}, 1, 0, 0.5)
+        bricks = regions.gap(regions(diagram), 2, 0.15, 91)
+        for i in 0..regions.count(bricks) {
+            tint = color.mix(#805b42, #b28a67, float(regions.id(bricks, i)) / 11)
+            surface.paint(regions.mask(bricks, i), tint, blend=surface.source_over)
+        }
+        shade = regions.bevel(bricks, 2, {-1, -1}, #fce4be, #35271f, 0.65)
+        surface.paint(shade, blend=surface.source_over)
+    }
+}

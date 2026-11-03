@@ -183,6 +183,11 @@ add_executable(gap_bevel_probe gap_bevel_probe.cpp)
 target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
 iprop_warnings(gap_bevel_probe)
 
+add_executable(gap_bevel_allocation_probe gap_bevel_allocation_probe.cpp)
+target_link_libraries(gap_bevel_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(gap_bevel_allocation_probe)
+add_test(NAME gap_bevel_allocation_failures COMMAND gap_bevel_allocation_probe)
+
 add_executable(contours_probe contours_probe.cpp)
 target_link_libraries(contours_probe PRIVATE iprop_runtime)
 iprop_warnings(contours_probe)
@@ -202,6 +207,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME gap_bevel_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/gap-bevel-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:gap_bevel_probe>")
     add_test(NAME regions_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/regions-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:regions_probe>")

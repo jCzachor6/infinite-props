@@ -1977,6 +1977,49 @@
       "value": "source_over_each_mask",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "null gap/bevel policy",
+      "path": [
+        "source_rules",
+        "gap_bevel"
+      ],
+      "value": null,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "wrong gap profile bound",
+      "path": [
+        "source_rules",
+        "gap_bevel",
+        "profile_knots"
+      ],
+      "value": 8,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "unknown bevel tie rule",
+      "path": [
+        "source_rules",
+        "gap_bevel",
+        "bevel_ties"
+      ],
+      "value": "unordered",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "gap/bevel constants allowed",
+      "path": [
+        "source_rules",
+        "gap_bevel",
+        "asset_constants"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

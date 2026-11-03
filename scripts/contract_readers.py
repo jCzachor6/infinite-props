@@ -429,6 +429,19 @@ def read_language(value):
         require(not regions['asset_constants'], 'regions generation dependency')
         integer(regions.get('maximum_points'), 'regions.maximum_points')
         require(regions['maximum_points'] == 256, 'regions point bound')
+    if 'gap_bevel' in rules:
+        policy = rules['gap_bevel']
+        _strings_and_bools(policy, {
+            'constant_gap': {'same_offset_width_half'},
+            'variable_gap': {'original_edge_linear_knots_shared_vertex_endpoints'},
+            'bevel': {'nearest_edge_faceted_linear_fade_4x4_RGBA8'},
+            'bevel_ties': {'original_edge_then_current_use'},
+            'overlap': {'lowest_current_region_index'},
+            'raster_clip': {'ignored_until_paint'},
+            'rng': {'explicit_gap_seed_no_stream_draws'}}, ['asset_constants'], 'gap/bevel policy')
+        require(not policy['asset_constants'], 'gap/bevel generation dependency')
+        integer(policy.get('profile_knots'), 'gap/bevel profile knots')
+        require(policy['profile_knots'] == 9, 'gap/bevel profile knot bound')
     if 'contour' in rules:
         contour = rules['contour']
         _strings_and_bools(contour, {

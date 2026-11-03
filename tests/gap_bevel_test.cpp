@@ -155,3 +155,44 @@ TEST_CASE("bevel shades local outward normals with explicit alpha and shared ras
         CHECK(layer.buffer->raster.pixels[0]==Color{});CHECK_THROWS(detail::bevelRegions(ex,*empty,0,{1,1}));}
     CHECK(ex.resources.bytes==0);
 }
+TEST_CASE("gap intermediate limits and bevel parameter failures refund before publication","[gap-bevel-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=1000000000;ex.target=RenderTarget::create(1,1,{1,1});
+    {const auto source=geometry_fixture::holes(ex);const auto bytes=ex.resources.bytes;
+        CHECK_THROWS(detail::gapRegions(ex,source,1e10f,1,7));CHECK(ex.resources.bytes==bytes);
+        for(const f32 scale:{0.f,-1.f,std::numeric_limits<f32>::infinity(),std::numeric_limits<f32>::quiet_NaN()}){
+            ex.canvas().scaleX=scale;CHECK_THROWS(detail::bevelRegions(ex,*source,1,{1,1},{},{},0));CHECK(ex.resources.bytes==bytes);
+        }ex.canvas().scaleX=1;
+        for(const f32 component:{std::numeric_limits<f32>::max(),std::numeric_limits<f32>::denorm_min()}){
+            const auto layer=detail::bevelRegions(ex,*source,1,{component,-component});CHECK(!layer.buffer->raster.pixels.empty());
+        }
+    }CHECK(ex.resources.bytes==0);
+}
+TEST_CASE("bevel layers retain pixels independently after execution and geometry destruction","[gap-bevel-v09]") {
+    LoadedFile f;LayerValue retained;
+    {detail::Execution ex(f);ex.fuel=100000000;ex.target=RenderTarget::create(1,1,{2,3});
+        const auto source=geometry_fixture::holes(ex);const auto gap=detail::gapRegions(ex,source,0.5f,1,7);
+        retained=detail::bevelRegions(ex,*gap,1,{-1,-1});}
+    CHECK(retained.buffer.use_count()==1);CHECK(retained.buffer->raster.width==20);CHECK(retained.buffer->raster.height==24);
+    bool visible=false;for(const auto p:retained.buffer->raster.pixels)visible|=p.a>0;CHECK(visible);
+}
+TEST_CASE("gap and bevel arguments evaluate once in signature order despite reversed names","[gap-bevel-v09]") {
+    const std::string text=R"(asset t{size 8x6 output list point trace
+        f(tag:i32,value:f32)->f32{trace={tag,unit()}return value}
+        i(tag:i32,value:i32)->i32{trace={tag,unit()}return value}
+        v(tag:i32,value:vec2)->vec2{trace={tag,unit()}return value}
+        c(tag:i32,value:color)->color{trace={tag,unit()}return value}
+        r(tag:i32,value:regions2d)->regions2d{trace={tag,unit()}return value}
+        draw{trace={0,unit()}rs=regions(voronoi({0,0},{8,6},1,7))
+            next=regions.gap(seed=i(4,7),variation=f(3,0.5),width=f(2,1),source=r(1,rs))
+            shade=regions.bevel(strength=f(10,0.5),shadow=c(9,#000),highlight=c(8,#fff),light=v(7,{-1,-1}),width=f(6,2),source=r(5,next))
+            trace={11,unit()}
+        }})";
+    const auto control=loadFile(compile("asset t{size 8x6 output list point trace draw{for j in 0..12{trace={j,unit()}}}}"));
+    for(const bool optimize:{false,true})for(const u32 seed:{0u,7u,0xffffffffu}){
+        const auto file=loadFile(compile(text,optimize));GenerationInputs in;in.seed=seed;
+        VM actual(file,in),expected(control,in);actual.run();expected.run();const auto a=actual.result(),b=expected.result();
+        REQUIRE(a.outputs[0].points.size()==12);REQUIRE(b.outputs[0].points.size()==12);
+        for(u32 j=0;j<12;++j){CHECK(a.outputs[0].points[j].x==b.outputs[0].points[j].x);CHECK(a.outputs[0].points[j].y==b.outputs[0].points[j].y);}
+        CHECK(a.image.pixels==b.image.pixels);
+    }
+}

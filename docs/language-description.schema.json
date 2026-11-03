@@ -3641,6 +3641,69 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 07 regions policy in schema 5."
+        },
+        "gap_bevel": {
+          "type": "object",
+          "properties": {
+            "constant_gap": {
+              "type": "string",
+              "const": "same_offset_width_half",
+              "description": "Pinned gap/bevel constant gap."
+            },
+            "variable_gap": {
+              "type": "string",
+              "const": "original_edge_linear_knots_shared_vertex_endpoints",
+              "description": "Pinned gap/bevel variable gap."
+            },
+            "profile_knots": {
+              "type": "integer",
+              "const": 9,
+              "description": "Pinned gap/bevel profile knots."
+            },
+            "bevel": {
+              "type": "string",
+              "const": "nearest_edge_faceted_linear_fade_4x4_RGBA8",
+              "description": "Pinned gap/bevel bevel."
+            },
+            "bevel_ties": {
+              "type": "string",
+              "const": "original_edge_then_current_use",
+              "description": "Pinned gap/bevel bevel ties."
+            },
+            "overlap": {
+              "type": "string",
+              "const": "lowest_current_region_index",
+              "description": "Pinned gap/bevel overlap."
+            },
+            "raster_clip": {
+              "type": "string",
+              "const": "ignored_until_paint",
+              "description": "Pinned gap/bevel raster clip."
+            },
+            "rng": {
+              "type": "string",
+              "const": "explicit_gap_seed_no_stream_draws",
+              "description": "Pinned gap/bevel rng."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned gap/bevel asset constants."
+            }
+          },
+          "required": [
+            "constant_gap",
+            "variable_gap",
+            "profile_knots",
+            "bevel",
+            "bevel_ties",
+            "overlap",
+            "raster_clip",
+            "rng",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 08 gaps and bevels policy in schema 5."
         }
       },
       "required": [

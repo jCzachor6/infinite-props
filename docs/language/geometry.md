@@ -210,6 +210,8 @@ Paint the result explicitly with `surface.paint(shade, blend=surface.source_over
 or the existing legacy mode. Target scale sets resolution; clipping applies
 when the layer is painted. Off-target bounds are retained.
 
+<!-- example: ../../examples/language/wall-bevel.ips -->
+
 ## vec2.len
 <!-- builtin: vec2.len -->
 

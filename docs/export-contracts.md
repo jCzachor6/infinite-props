@@ -66,6 +66,10 @@ round offsets, source IDs shared by fragments, stable ordering and provenance
 neighbors, filtering before the result-region limit, the restricted points
 view, and 4 by 4 union rasterization independent of active clipping. The
 existing `regions2d`, mask and ordinary list vocabulary needs no schema bump.
+Stage 08 adds optional `source_rules.gap_bevel`, also in schema 5. It pins the
+constant offset relationship, nine-knot shared-edge profile, nearest-edge
+bevel/fade/raster, distance ties, overlap ownership, clipping, seeded RNG policy
+and prohibition of asset constants. Existing region/layer types suffice.
 
 The language export and diagnostics add an optional integer `patch` to
 `language_version`; current exports emit all three components. This additive
