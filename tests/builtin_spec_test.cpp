@@ -33,7 +33,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             const ips::BuiltinSpec concrete{spec.lowering,{overload}};
             const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             CHECK(signature.effects == effects);
-            CHECK_FALSE(effects.conservative);
+            CHECK(effects.conservative == (name=="part.create" || name=="parts.from_regions"));
             if (overload.result == T::Void)
                 CHECK((effects.rng != RngEffect::None || effects.writesCanvas || effects.writesOutputs));
             if (overload.opcode) {
@@ -86,7 +86,9 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Regions2d ? "regionsValue" : type == T::Contours2d ? "contoursValue" :
+                const std::string value = type == T::Part2d ? "partValue" : type == T::Parts2d ? "partsValue" :
+                    name.starts_with("part") && (param.name=="index" || param.name=="rot") ? "0" :
+                    type == T::Regions2d ? "regionsValue" : type == T::Contours2d ? "contoursValue" :
                     type == T::Diagram2d ? "diagramValue" :
                     name.starts_with("regions.") && param.name=="index" ? "0" :
                     name == "diagram.site" || name == "diagram.neighbors" ? "0" :
@@ -109,9 +111,13 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             const bool diagram=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Diagram2d;});
             const bool regions=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Regions2d;});
             const bool contours=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Contours2d;});
-            const std::string capture = regions ? "regionsValue=regions(voronoi({0,0},{8,8},1,1)) " :
+            const bool parts=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Parts2d;});
+            const bool part=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Part2d;});
+            const std::string capture = parts ? "partsValue=parts.from_regions(regions(voronoi({0,0},{8,8},1,1))) " :
+                part ? "layer image{rect(0,0,8,8,#fff)} partValue=part.create(image) " :
+                regions ? "regionsValue=regions(voronoi({0,0},{8,8},1,1)) " :
                 contours ? "layer image{rect(0,0,8,8,#fff)} contoursValue=contour(mask.from(image),0.5) " : diagram ? "diagramValue=voronoi({0,0},{8,8},1,1) " :
-                layer ? "layer image{} " + std::string(mask ? "region=mask.from(image) " : "") : "";
+                layer ? "layer image{rect(0,0,8,8,#fff)} " + std::string(mask ? "region=mask.from(image) " : "") : "";
             const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));

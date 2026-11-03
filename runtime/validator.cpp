@@ -181,6 +181,21 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
+        case Opcode::PartCreateRegion:
+            expect(at,ValueType::I32,"part region index");expect(at,ValueType::Regions2d,"part region source");
+            push(at,ValueType::Part2d);return;
+        case Opcode::PartCreateMask: case Opcode::PartCreateLayer:
+            expect(at,ins.opcode==Opcode::PartCreateMask?ValueType::Mask:ValueType::Layer,"part raster source");
+            push(at,ValueType::Part2d);return;
+        case Opcode::PartsFromRegions:
+            expect(at,ValueType::Regions2d,"parts source");push(at,ValueType::Parts2d);return;
+        case Opcode::PartsCount: case Opcode::PartsGet:
+            if(ins.opcode==Opcode::PartsGet)expect(at,ValueType::I32,"parts index");
+            expect(at,ValueType::Parts2d,"parts source");
+            push(at,ins.opcode==Opcode::PartsCount?ValueType::I32:ValueType::Part2d);return;
+        case Opcode::PartId: case Opcode::PartSourceId:
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::I32);return;
+
         case Opcode::RegionsGap: case Opcode::RegionsGapConfig:
             if(ins.opcode==Opcode::RegionsGapConfig){
                 expect(at,ValueType::I32,"regions gap seed");expect(at,ValueType::F32,"regions gap variation");

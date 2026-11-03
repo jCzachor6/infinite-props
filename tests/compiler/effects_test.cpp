@@ -151,6 +151,12 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
     for (const auto& [name,spec] : ips::builtinSpecs()) for (const auto& overload : spec.overloads) {
         if ((ips::builtinEffects(spec, &overload).checks & static_cast<u8>(EffectCheck::NumericRange)) == 0) continue;
         INFO(name << " arity " << overload.params.size());
+        if (name == "part.create") {
+            const std::string use=overload.params[0].type==ips::ValueType::Mask?"part.create(region)":"part.create(image)";
+            for(const bool optimize:{false,true})
+                expectTrap(staleExportScale(use,optimize),ErrorReason::NumericRange,{0,8,4,{}});
+            continue;
+        }
         if (name == "mask.from" || name == "mask.invert" || name == "surface.paint") {
             const std::string use = name == "mask.from" ? "mask.from(image)" : name == "mask.invert" ?
                 "mask.invert(region)" : overload.params.size() == 2 ? "surface.paint(region,#ffffff)" :

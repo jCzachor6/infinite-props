@@ -174,6 +174,47 @@ Coverage uses a fixed 4 by 4 subpixel grid and half-open shared boundaries.
 The union is formed before A8 quantization, so overlapping regions do not add
 alpha. Empty sets return a transparent 1 by 1 mask at origin zero.
 
+## part.create
+<!-- builtin: part.create -->
+
+Create an independent runtime instance from one region (`source, index`), an
+A8 mask or an RGBA layer (`source`). Sources are shared. Region holes and source
+IDs survive; rasters keep soft alpha and have source ID -1. An entirely
+transparent raster traps. Creation does not draw. The generation can create at
+most 256 instances, even if earlier handles have been discarded.
+See the [dynamic part contract](../../spec/dynamic-parts-v0.9.md).
+
+<!-- example: ../../examples/language/dynamic-parts.ips -->
+
+## parts.from_regions
+<!-- builtin: parts.from_regions -->
+
+Create one instance for each region in order. Empty input returns an empty
+collection. The whole creation budget is checked before publication.
+
+## parts.count
+<!-- builtin: parts.count -->
+
+Return the number of instances in a collection without rebuilding its source.
+
+## parts.get
+<!-- builtin: parts.get -->
+
+Read an immutable instance by zero-based index. Invalid indices trap; reading
+does not allocate an ID or copy the source.
+
+## part.id
+<!-- builtin: part.id -->
+
+Return the instance's generation-local ID. IDs start at zero and are shared by
+helper calls and statically imported components.
+
+## part.source_id
+<!-- builtin: part.source_id -->
+
+Return the source region's ID, or -1 for a raster instance. Two creations from
+the same source have distinct instance IDs and the same source ID.
+
 ## regions.gap
 <!-- builtin: regions.gap -->
 

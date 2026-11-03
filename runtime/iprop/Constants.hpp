@@ -56,6 +56,16 @@ enum class Opcode : u8 {
     Call = 0x08,
     Return = 0x09,
 
+    // Dynamic instances (v0.9), allocated in previously reserved gaps.
+    PartCreateRegion = 0x18,
+    PartCreateMask = 0x19,
+    PartCreateLayer = 0x1A,
+    PartsFromRegions = 0x1B,
+    PartsCount = 0x1C,
+    PartsGet = 0x1D,
+    PartId = 0x1E,
+    PartSourceId = 0x1F,
+
     // Stack and constants (§9.2)
     ConstI32 = 0x10,
     ConstF32 = 0x11,
@@ -326,6 +336,7 @@ enum class Opcode : u8 {
 // format semantics; MAY be relaxed without a spec change).
 inline constexpr u16 kMaxFunctions = 1024;
 inline constexpr u16 kMaxParts = 256;
+inline constexpr u16 kMaxDynamicParts = 256;
 inline constexpr u16 kMaxLocals = 1024;
 inline constexpr u32 kMaxSectionSize = 1u << 26; // 64 MiB
 inline constexpr u16 kMaxStackDepth = 512;

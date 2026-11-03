@@ -1,0 +1,19 @@
+asset dynamic_parts {
+    size 8x4
+    output list point ids
+    draw {
+        shapes = regions(voronoi({0, 0}, {8, 4}, [{2, 2}, {6, 2}]))
+        first = part.create(shapes, 0)
+        tiles = parts.from_regions(shapes)
+        ids = {part.id(first), part.source_id(first)}
+        count = parts.count(tiles)
+        for i in 0..count {
+            tile = parts.get(tiles, i)
+            ids = {part.id(tile), part.source_id(tile)}
+        }
+        layer image(alpha=surface.source_over) { pixel(3, 1, #d0905080) }
+        soft = part.create(mask.from(image))
+        colored = part.create(image)
+        ids = {part.id(soft), part.id(colored)}
+    }
+}

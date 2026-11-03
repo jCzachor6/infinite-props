@@ -1,5 +1,6 @@
 {
   "cases": [
+    {"file":"dynamic-parts.ips","expect":"pass"},
     {"file":"regions.ips","expect":"pass"},
     {"file":"gap-bevel.ips","expect":"pass"},
     {"file":"wall-bevel.ips","expect":"pass"},

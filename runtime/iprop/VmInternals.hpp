@@ -119,6 +119,9 @@ struct Execution {
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
     ResourceArena resources;
+    // Whole-generation identity, shared by helper and static component calls.
+    // Releasing a view or a resource never refunds an instance creation.
+    u32 dynamicPartCreations = 0;
 
     explicit Execution(const LoadedFile& f) : file(f) {}
     Canvas& canvas() { return target.canvas(); }
@@ -218,6 +221,7 @@ bool stepMasks(Execution& ex, Instruction ins);
 bool stepVoronoi(Execution& ex, Instruction ins);
 bool stepContours(Execution& ex, Instruction ins);
 bool stepRegions(Execution& ex, Instruction ins);
+bool stepDynamicParts(Execution& ex, Instruction ins);
 bool stepBlur(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);

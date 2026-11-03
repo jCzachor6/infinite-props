@@ -10,6 +10,16 @@ constexpr OperationEffects effects(Opcode op) {
     using C = EffectCheck;
     const auto check = [](C value) { return static_cast<u16>(value); };
     switch (op) {
+    case Opcode::PartCreateRegion:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::IndexRange)),true};
+    case Opcode::PartCreateMask: case Opcode::PartCreateLayer:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)),true};
+    case Opcode::PartsFromRegions:
+        return {R::None,false,false,check(C::UnassignedHandle),true};
+    case Opcode::PartsCount: case Opcode::PartId: case Opcode::PartSourceId:
+        return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::PartsGet:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::IndexRange))};
     case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
         return {R::AdvanceCurrent};
     case Opcode::RngInt: case Opcode::RngFloat: case Opcode::RngIntWith: case Opcode::RngFloatWith:
@@ -263,6 +273,14 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::RegionsPoints, "regions.points", OperandKind::Zero),
     dynamic(Opcode::RegionsMask, "regions.mask", OperandKind::Zero),
     dynamic(Opcode::RegionsMaskAll, "regions.mask_all", OperandKind::Zero),
+    dynamic(Opcode::PartCreateRegion, "part.create.region", OperandKind::Zero),
+    dynamic(Opcode::PartCreateMask, "part.create.mask", OperandKind::Zero),
+    dynamic(Opcode::PartCreateLayer, "part.create.layer", OperandKind::Zero),
+    dynamic(Opcode::PartsFromRegions, "parts.from_regions", OperandKind::Zero),
+    dynamic(Opcode::PartsCount, "parts.count", OperandKind::Zero),
+    dynamic(Opcode::PartsGet, "parts.get", OperandKind::Zero),
+    dynamic(Opcode::PartId, "part.id", OperandKind::Zero),
+    dynamic(Opcode::PartSourceId, "part.source_id", OperandKind::Zero),
     dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
     dynamic(Opcode::RegionsGapConfig, "regions.gap.config", OperandKind::Zero),
     dynamic(Opcode::RegionsBevel, "regions.bevel", OperandKind::Zero),

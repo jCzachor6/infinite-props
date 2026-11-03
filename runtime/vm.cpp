@@ -46,7 +46,7 @@ using Step = bool (*)(Execution&, Instruction);
 constexpr Step kSteps[] = {stepCore, stepStack, stepControl, stepArithmetic, stepVector, stepSdf,
     stepColor, stepCurves, stepSeeded, stepCanvas, stepOutputs, stepParts, stepCollections,
     stepSamplers, stepSteppers, stepPointDistributions, stepSurfaces, stepMasks, stepBlur,
-    stepResourceExports, stepVoronoi, stepContours, stepRegions};
+    stepResourceExports, stepVoronoi, stepContours, stepRegions, stepDynamicParts};
 // The owning group per opcode, found by the first execution and then reused,
 // so every later instruction costs one indexed call. Every thread computes the
 // same immutable pointer; reserved opcodes never get an entry.

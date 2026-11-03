@@ -25,6 +25,15 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
             {{{"source",V::Diagram2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsDiagramConfig},
             {{{"source",V::Contours2d}},Opcode::RegionsContours},
             {{{"source",V::Contours2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsContoursConfig}}}},
+        {"part.create", {V::Part2d,L::Opcode,{
+            {{{"source",V::Regions2d},{"index",V::I32}},Opcode::PartCreateRegion},
+            {{{"source",V::Mask}},Opcode::PartCreateMask},
+            {{{"source",V::Layer}},Opcode::PartCreateLayer}}}},
+        {"parts.from_regions", {V::Parts2d,L::Opcode,{{{{"source",V::Regions2d}},Opcode::PartsFromRegions}}}},
+        {"parts.count", {V::I32,L::Opcode,{{{{"source",V::Parts2d}},Opcode::PartsCount}}}},
+        {"parts.get", {V::Part2d,L::Opcode,{{{{"source",V::Parts2d},{"index",V::I32}},Opcode::PartsGet}}}},
+        {"part.id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartId}}}},
+        {"part.source_id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartSourceId}}}},
         {"regions.gap", {V::Regions2d,L::Opcode,{
             {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
             {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},

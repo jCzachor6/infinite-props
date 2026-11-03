@@ -11,6 +11,7 @@ endif()
 
 add_executable(iprop_tests
     smoke_test.cpp
+    dynamic_parts_test.cpp
     lexer_test.cpp
     language/parser_assets_test.cpp
     language/parser_statements_test.cpp

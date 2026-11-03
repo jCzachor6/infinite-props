@@ -115,5 +115,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0x0a)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 226);
+    CHECK(names.size() == 234);
 }

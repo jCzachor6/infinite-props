@@ -40,7 +40,8 @@ def main():
             signatures += 1
             effects = entry['effects']
             valid(effects)
-            assert effects['summary'] == 'intrinsic', builtin
+            expected_summary = 'conservative' if builtin['name'] in {'part.create', 'parts.from_regions'} else 'intrinsic'
+            assert effects['summary'] == expected_summary, builtin
             if 'opcode' in entry:
                 previous = opcode_effects.setdefault(entry['opcode'], effects)
                 assert previous == effects, builtin

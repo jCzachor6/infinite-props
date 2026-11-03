@@ -624,7 +624,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 07, 08.
 
-- [ ] 09.1 Dodać tworzenie z regionu/A8/RGBA i zbiorcze tworzenie, count/get, globalny licznik ID i limit łącznych utworzeń bez resetowania po zwolnieniu.
+- [x] 09.1 Dodać tworzenie z regionu/A8/RGBA i zbiorcze tworzenie, count/get, globalny licznik ID i limit łącznych utworzeń bez resetowania po zwolnieniu.
 - [ ] 09.2 Dodać niemutowalne fill/texture/place i metadane; współdzielić bufory, istniejący D4 i źródła geometrii.
 - [ ] 09.3 Zaimplementować zaokrąglenie położenia, bounds, center, draw i mask z clippingiem i aktywnym compositingiem; zachować alfę źródła warstwowego dokładnie raz.
 - [ ] 09.4 Sprawdzić wszystkie osiem symetrii D4, pozycje ułamkowe/ujemne, różne kotwice, dziury, miękką alfę, puste źródło i brak wyglądu.
@@ -633,7 +633,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** niezależne części są instancjami runtime; brak kopiowania całego canvasa na każdy obiekt oraz regresji statycznych importów.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**09.1 (2026-11-03):** [Kontrakt instancji](spec/dynamic-parts-v0.9.md), [przykład tworzenia](examples/language/dynamic-parts.ips). Osiem nowych instrukcji, sześć builtinów; pełna ścieżka kompilatora, walidatora, VM, formattera, IPA/IPDIS i opisu języka. Sprawdzone współdzielenie regionów i rastrów, dziury/source ID, puste rastry, indeksy, helpery, RNG, zwalnianie widoków i limit 256 także po ich porzucaniu. Świeży native Release: **84/84 CTest**, ukierunkowane testy tworzenia/builtinów/efektów: 26 przypadków / 11938 asercji. Publiczny smoke native/WASM zwraca identyczne ID i pusty obraz bez automatycznego renderu. Wygląd i render części pozostają otwarte w 09.2–09.5.
 
 ### Etap 10 — eksport części i API hosta
 
