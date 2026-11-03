@@ -15,5 +15,11 @@ asset dynamic_parts {
         soft = part.create(mask.from(image))
         colored = part.create(image)
         ids = {part.id(soft), part.id(colored)}
+        filled = part.fill(first, #8090a080)
+        textured = part.texture(filled, image)
+        moved = part.place(textured, {-0.5, 0.5}, 90, 0, 0)
+        ids = part.center(moved)
+        ids = part.bounds_origin(moved)
+        ids = part.bounds_size(moved)
     }
 }

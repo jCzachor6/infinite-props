@@ -65,6 +65,12 @@ enum class Opcode : u8 {
     PartsGet = 0x1D,
     PartId = 0x1E,
     PartSourceId = 0x1F,
+    PartCenter = 0x3A,
+    PartBoundsOrigin = 0x3B,
+    PartBoundsSize = 0x3C,
+    PartPlace = 0x3D,
+    PartFill = 0x3E,
+    PartTexture = 0x3F,
 
     // Stack and constants (§9.2)
     ConstI32 = 0x10,

@@ -16,6 +16,9 @@ constexpr OperationEffects effects(Opcode op) {
         return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)),true};
     case Opcode::PartsFromRegions:
         return {R::None,false,false,check(C::UnassignedHandle),true};
+    case Opcode::PartPlace: case Opcode::PartTexture:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::PartCenter: case Opcode::PartBoundsOrigin: case Opcode::PartBoundsSize: case Opcode::PartFill:
     case Opcode::PartsCount: case Opcode::PartId: case Opcode::PartSourceId:
         return {R::None,false,false,check(C::UnassignedHandle)};
     case Opcode::PartsGet:
@@ -281,6 +284,12 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::PartsGet, "parts.get", OperandKind::Zero),
     dynamic(Opcode::PartId, "part.id", OperandKind::Zero),
     dynamic(Opcode::PartSourceId, "part.source_id", OperandKind::Zero),
+    dynamic(Opcode::PartCenter, "part.center", OperandKind::Zero),
+    dynamic(Opcode::PartBoundsOrigin, "part.bounds_origin", OperandKind::Zero),
+    dynamic(Opcode::PartBoundsSize, "part.bounds_size", OperandKind::Zero),
+    dynamic(Opcode::PartPlace, "part.place", OperandKind::Zero),
+    dynamic(Opcode::PartFill, "part.fill", OperandKind::Zero),
+    dynamic(Opcode::PartTexture, "part.texture", OperandKind::Zero),
     dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
     dynamic(Opcode::RegionsGapConfig, "regions.gap.config", OperandKind::Zero),
     dynamic(Opcode::RegionsBevel, "regions.bevel", OperandKind::Zero),

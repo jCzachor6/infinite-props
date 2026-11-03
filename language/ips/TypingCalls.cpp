@@ -43,6 +43,8 @@ ValueType Typer::typeCall(const Call& call) {
                 full == "regions.center" || full == "regions.neighbors" ||
                 full == "part.create" || full == "parts.from_regions" || full == "parts.count" ||
                 full == "parts.get" || full == "part.id" || full == "part.source_id" ||
+                full == "part.center" || full == "part.bounds_origin" || full == "part.bounds_size" ||
+                full == "part.place" || full == "part.fill" || full == "part.texture" ||
                 full == "regions.points" || full == "regions.mask" || full == "regions.gap" || full == "regions.bevel";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {

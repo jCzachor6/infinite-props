@@ -34,6 +34,12 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"parts.get", {V::Part2d,L::Opcode,{{{{"source",V::Parts2d},{"index",V::I32}},Opcode::PartsGet}}}},
         {"part.id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartId}}}},
         {"part.source_id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartSourceId}}}},
+        {"part.center", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartCenter}}}},
+        {"part.bounds_origin", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartBoundsOrigin}}}},
+        {"part.bounds_size", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartBoundsSize}}}},
+        {"part.place", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"at",V::Vec2},{"rot",V::I32},{"mirror_x",V::I32},{"mirror_y",V::I32}},Opcode::PartPlace}}}},
+        {"part.fill", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"tint",V::Color}},Opcode::PartFill}}}},
+        {"part.texture", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"image",V::Layer}},Opcode::PartTexture}}}},
         {"regions.gap", {V::Regions2d,L::Opcode,{
             {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
             {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},

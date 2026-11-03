@@ -73,16 +73,23 @@ struct RegionSource {
     std::shared_ptr<const GeometryData> geometry;
     u32 region = 0;
 };
+// Original source pixel coordinates, cached once at capture. Raster anchors
+// retain exact half-pixel values even for scales such as 3 pixels/local unit.
+struct DynamicPartFrame {
+    double centerX=0, centerY=0, left=0, top=0, right=0, bottom=0;
+    Vec2 scale{1,1};
+};
 // Source geometry/raster, placement and appearance are retained separately.
-// Public creation/ID allocation and rendering land in stage 09; these records
-// introduce no constructor opcode, automatic rendering or exported ABI layout.
+// These are internal immutable records, not an exported ABI layout.
 struct DynamicPartData {
     std::variant<RegionSource, MaskValue, LayerValue> source;
     i32 id = -1, sourceId = -1;
     Vec2 center, boundsOrigin, boundsSize;
-    SurfaceMapping mapping;
+    D4Transform transform;
+    RasterPoint translation; // linear D4 about source zero, then integer pixels
     std::optional<Color> fill;
     std::optional<LayerValue> texture;
+    DynamicPartFrame original;
 };
 struct DynamicPartsData {
     detail::ResourceVector<Part2dValue, 16> parts;

@@ -215,6 +215,47 @@ helper calls and statically imported components.
 Return the source region's ID, or -1 for a raster instance. Two creations from
 the same source have distinct instance IDs and the same source ID.
 
+## part.fill
+<!-- builtin: part.fill -->
+
+Return a new view with a solid tint, replacing a previous texture. The shape
+and its original alpha, source and ID remain shared. Earlier views keep their
+appearance. Tint alpha multiplies shape coverage when drawing.
+
+## part.texture
+<!-- builtin: part.texture -->
+
+Return a view using a shared RGBA layer in the original source coordinates.
+This replaces a solid tint. Pixels outside the texture are transparent. The
+texture's mapped raster scale must match the original source scale.
+
+## part.place
+<!-- builtin: part.place -->
+
+Place the original anchor at `at`, applying runtime `rot` (0, 90, 180, 270),
+then `mirror_x`/`mirror_y` (0 or 1). Each call replaces placement relative to
+the original; it does not accumulate earlier placements. Translation rounds
+to target pixels with `floor(t+0.5)`, including negative positions. No implicit
+raster scaling occurs; rotations that swap axes also swap required scales.
+
+## part.center
+<!-- builtin: part.center -->
+
+Read the effective anchor after placement rounding. The original anchor is
+the region centroid with holes removed, or the alpha-positive pixel bbox center.
+
+## part.bounds_origin
+<!-- builtin: part.bounds_origin -->
+
+Read the transformed shape bbox origin, independent of appearance and clipping.
+This uses cached metadata without rescanning the source.
+
+## part.bounds_size
+<!-- builtin: part.bounds_size -->
+
+Read the transformed shape bbox size. Quarter turns exchange width and height;
+fills and textures do not change it.
+
 ## regions.gap
 <!-- builtin: regions.gap -->
 

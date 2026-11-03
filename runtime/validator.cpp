@@ -195,6 +195,14 @@ private:
             push(at,ins.opcode==Opcode::PartsCount?ValueType::I32:ValueType::Part2d);return;
         case Opcode::PartId: case Opcode::PartSourceId:
             expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::I32);return;
+        case Opcode::PartCenter: case Opcode::PartBoundsOrigin: case Opcode::PartBoundsSize:
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Vec2);return;
+        case Opcode::PartPlace:
+            expect(at,ValueType::I32,"part mirror_y");expect(at,ValueType::I32,"part mirror_x");expect(at,ValueType::I32,"part rot");
+            expect(at,ValueType::Vec2,"part at");expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Part2d);return;
+        case Opcode::PartFill: case Opcode::PartTexture:
+            expect(at,ins.opcode==Opcode::PartFill?ValueType::Color:ValueType::Layer,"part appearance");
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Part2d);return;
 
         case Opcode::RegionsGap: case Opcode::RegionsGapConfig:
             if(ins.opcode==Opcode::RegionsGapConfig){

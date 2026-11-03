@@ -157,6 +157,12 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
                 expectTrap(staleExportScale(use,optimize),ErrorReason::NumericRange,{0,8,4,{}});
             continue;
         }
+        if(name=="part.texture"){
+            for(const bool optimize:{false,true})
+                expectTrap(staleExportScale("p=part.create(regions(voronoi({0,0},{2,2},1,0)),0) part.texture(p,image)",optimize),
+                    ErrorReason::NumericRange,{0,8,4,{}});
+            continue;
+        }
         if (name == "mask.from" || name == "mask.invert" || name == "surface.paint") {
             const std::string use = name == "mask.from" ? "mask.from(image)" : name == "mask.invert" ?
                 "mask.invert(region)" : overload.params.size() == 2 ? "surface.paint(region,#ffffff)" :
@@ -166,6 +172,9 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             continue;
         }
         std::string setup, args=arguments(overload,true);
+        if(name=="part.place"){
+            setup="p=part.create(regions(voronoi({0,0},{8,8},1,0)),0) ";args="p,{float(v)/float(v),0},0,0,0";
+        }
         if (name == "contour") {
             setup="layer image{}region=mask.from(image) ";
             args=overload.params.size()==2 ? "region,float(v+2)" : "region,float(v+2),0,0,contour.four";
