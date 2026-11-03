@@ -343,13 +343,19 @@
     "authored_link_tests": 6
   },
   "publication_at_verification": {
-    "status": "pending",
-    "reason": "CLI cannot resolve github.com; permission policy rejects execution outside the sandbox. Connected github.fetch_commit tool is unavailable (Unknown tool). No successful push or live remote SHA claimed.",
-    "tracking_ref": "origin/develop is only the previously cached reference until live verification succeeds.",
-    "scope": "Local implementation and test completion do not close the delivery gate in section 8."
+    "status": "implementation_pushed_and_sha_verified",
+    "implementation_commit": "55731b45b04f22ef0fe00bdb6336e8c06f46b48a",
+    "remote_branch": "origin/develop",
+    "observed_implementation_remote_sha": "55731b45b04f22ef0fe00bdb6336e8c06f46b48a",
+    "verified_at_utc": "2026-11-03T08:12:40.317506+00:00",
+    "push_command": "git push origin develop",
+    "verification_command": "git ls-remote origin refs/heads/develop",
+    "prior_dns_error_resolved": true,
+    "escalation_used": false,
+    "delivery_metadata": "A subsequent documentation-only commit closes the checklist and records the already-published implementation SHA; it does not reference its own hash."
   },
   "source_sha256": {
-    "InfiniteProps_0.9.0_specyfikacja.md": "449851a582c87d23ec97d35a0a83337b6d24f0359b133c0e6e5151a36fd44ba9",
+    "InfiniteProps_0.9.0_specyfikacja.md": "015d298ad39d57591b9fbdc744905dbd534017a6bc4cc77c3dc209d982e863bb",
     "backends/html5/CMakeLists.txt": "cbf2afc98970dce3d218e6f9f4bb732de9ee9850346017dff5da3079c37ae11f",
     "backends/html5/test/native-conformance.js": "2eb6f7aae38c614321bcab3be16eb9583ea02a2773decda1f3cdc750309ed1a4",
     "backends/html5/test/run-tests.js": "7d997cd2c9dffe44e9d13eaca2a4e18da294d8c4fa2e80b353dfce341e9b08a1",
