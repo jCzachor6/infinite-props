@@ -26,7 +26,8 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
             {{{"source",V::Contours2d}},Opcode::RegionsContours},
             {{{"source",V::Contours2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsContoursConfig}}}},
         {"regions.gap", {V::Regions2d,L::Opcode,{
-            {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap}}}},
+            {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
+            {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},
         {"regions.count", {V::I32,L::Opcode,{{{{"rs",V::Regions2d}},Opcode::RegionsCount}}}},
         {"regions.id", {V::I32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsId}}}},
         {"regions.area", {V::F32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsArea}}}},

@@ -91,19 +91,13 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
     return std::move(builder).finish();
 }
 
-std::shared_ptr<const GeometryData> gapRegions(Execution& ex,
-    const std::shared_ptr<const GeometryData>& source,f32 width) {
-    if(!source)ex.trap("region source is unassigned",ErrorReason::RuntimeViolation);
-    if(!std::isfinite(width)||width<0)
-        ex.trap("regions gap width must be finite and nonnegative",ErrorReason::NumericRange);
-    return offsetRegions(ex,source,width*0.5f);
-}
-
 bool stepRegions(Execution& ex,Instruction ins) {
     switch(ins.opcode) {
-    case Opcode::RegionsGap: {
+    case Opcode::RegionsGap: case Opcode::RegionsGapConfig: {
+        const auto seed=ins.opcode==Opcode::RegionsGapConfig?ex.popI32():0;
+        const auto variation=ins.opcode==Opcode::RegionsGapConfig?ex.popF32():0;
         const auto width=ex.popF32();const auto source=ex.popHandle<Regions2dValue>("regions2d");
-        ex.push(Regions2dValue{gapRegions(ex,source.data,width)});break;
+        ex.push(Regions2dValue{gapRegions(ex,source.data,width,variation,seed)});break;
     }
     case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig: {
         const auto minimum=ex.popF32(),inset=ex.popF32();

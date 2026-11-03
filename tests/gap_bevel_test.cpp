@@ -1,7 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include "support/geometry_fixture.hpp"
 #include "support/regions_fixture.hpp"
+#include "support/contour_fixture.hpp"
 #include "iprop/VM.hpp"
+#include "iprop/Voronoi.hpp"
 #include "Compiler.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
@@ -80,4 +82,47 @@ TEST_CASE("gap frontend binds named arguments roundtrips and keeps dead-result v
     }
     CHECK_THROWS(compile("asset t{size 1x1 draw{regions.gap(1,2)}}"));
     CHECK_THROWS(compile("asset t{size 1x1 const rs=regions.gap(regions(voronoi({0,0},{1,1},1,0)),0) draw{}}"));
+}
+TEST_CASE("variable gaps share an unoriented original-edge profile and retain flat ancestry","[gap-bevel-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=1000000000;
+    const std::array<Vec2,2> sites{{{4,8},{12,8}}};
+    {const auto source=detail::explicitVoronoi(ex,{0,0},{16,16},sites,0);const auto bytes=ex.resources.bytes;
+    for(const i32 seed:{0,7,-1,std::numeric_limits<i32>::min()}){
+        const auto constant=detail::gapRegions(ex,source,1);const auto zero=detail::gapRegions(ex,source,1,0,seed);
+        sameGeometry(*constant,*zero);CHECK(detail::gapRegions(ex,source,0,1,seed).get()==source.get());
+        for(const f32 variation:{0.25f,1.f}){
+            const auto result=detail::gapRegions(ex,source,1,variation,seed);REQUIRE(result->regions.size()==2);
+            const auto repeated=detail::gapRegions(ex,source,1,variation,seed);sameGeometry(*result,*repeated);
+            CHECK(result->source.get()==source.get());CHECK(result->regionNeighbors(0).size()==1);
+            for(u32 j=1;j<8;++j){
+                Vec2 left{},right{};bool foundLeft=false,foundRight=false;
+                for(u32 i=0;i<2;++i){const auto& r=result->rings[result->regions[i].outer];
+                    for(u32 k=0;k<r.count;++k){const auto p=result->start(result->uses[r.begin+k]);
+                        if(p.y==static_cast<f32>(j*2)&&std::abs(p.x-8)<1){if(i==0){left=p;foundLeft=true;}else{right=p;foundRight=true;}}}}
+                REQUIRE(foundLeft);REQUIRE(foundRight);CHECK(std::abs((8-left.x)-(right.x-8))<0.000002f);
+            }
+            const auto twice=detail::gapRegions(ex,result,0.5f,variation,seed);CHECK(twice->source.get()==source.get());
+            CHECK(twice->regions[0].area<result->regions[0].area);CHECK(source->regions[0].area==128);
+        }
+    }
+    for(const f32 variation:{-1.f,1.01f,std::numeric_limits<f32>::infinity(),std::numeric_limits<f32>::quiet_NaN()}){
+        CHECK_THROWS(detail::gapRegions(ex,source,0,variation,0));CHECK(ex.resources.bytes==bytes);
+    }}CHECK(ex.resources.bytes==0);
+    {const auto source=geometry_fixture::holes(ex);const auto result=detail::gapRegions(ex,source,0.5f,1,7);
+        CHECK(!result->holes.empty());CHECK(result->regions[0].area<source->regions[0].area);}
+    CHECK(ex.resources.bytes==0);
+}
+TEST_CASE("variable gaps normalize every binary 3x3 contour without leaking scratch","[gap-bevel-v09]") {
+    LoadedFile f;f.code.functions.emplace_back();detail::Execution ex(f);ex.fuel=1000000000000ull;
+    for(u32 bits=0;bits<512;++bits){
+        {std::array<u8,9> pixels{};for(u32 j=0;j<9;++j)pixels[j]=(bits&(1u<<j))?255:0;
+        const auto mask=test_support::contourMask(ex,3,3,pixels);const auto source=detail::maskContours(ex,mask,{});
+        for(const f32 width:{0.25f,1.f,4.f}){
+            INFO(bits << " width=" << width);
+            const auto result=detail::gapRegions(ex,source,width,1,17);
+            CHECK(result->regions.size()<=256);
+            for(const auto& ring:result->rings){CHECK(ring.count>=3);CHECK(ring.count<=2048);CHECK((ring.area<0)==ring.hole);}
+            for(const auto& region:result->regions)CHECK(region.area>0);
+        }}CHECK(ex.resources.bytes==0);
+    }
 }

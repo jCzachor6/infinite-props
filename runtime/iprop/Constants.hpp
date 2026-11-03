@@ -314,6 +314,7 @@ enum class Opcode : u8 {
     RegionsMask = 0xFA,
     RegionsMaskAll = 0xFB,
     RegionsGap = 0xFC,
+    RegionsGapConfig = 0xFD,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

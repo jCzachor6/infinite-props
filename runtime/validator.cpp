@@ -181,7 +181,10 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
-        case Opcode::RegionsGap:
+        case Opcode::RegionsGap: case Opcode::RegionsGapConfig:
+            if(ins.opcode==Opcode::RegionsGapConfig){
+                expect(at,ValueType::I32,"regions gap seed");expect(at,ValueType::F32,"regions gap variation");
+            }
             expect(at,ValueType::F32,"regions gap width");
             expect(at,ValueType::Regions2d,"regions gap source");
             push(at,ValueType::Regions2d);return;

@@ -605,14 +605,16 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Zależności:** 07.
 
 - [x] 08.1 Oprzeć stałą fugę width/2 na wspólnym offsetowaniu; uwzględnić brzeg zewnętrzny, dziury i powtarzane zastosowanie.
-- [ ] 08.2 Przypiąć i wdrożyć deterministyczny profil zmiennej fugi ze współdzielonym odczytem po obu stronach krawędzi oraz ograniczoną liczbą segmentów.
+- [x] 08.2 Przypiąć i wdrożyć deterministyczny profil zmiennej fugi ze współdzielonym odczytem po obu stronach krawędzi oraz ograniczoną liczbą segmentów.
 - [ ] 08.3 Przypiąć profil bevel, normalne, narożniki, remisy krawędzi i alfa; wygenerować warstwę bez zmiany geometrii oraz bez nowego systemu oświetlenia.
 - [ ] 08.4 Sprawdzić width=0 dla gap, zanik cienkich regionów, variation=0/1, deterministyczność seedów, zewnętrzne/wewnętrzne krawędzie i nakładanie warstwy source-over/legacy.
 - [ ] **Etap 08 zakończony.**
 
 **Odbiór:** stały gap odpowiada temu samemu offsetowi co inset, zmienne granice mają wspólny profil, bevel daje powtarzalny efekt w scenach muru/płytek.
 
-**Weryfikacja 08.1:** krótki `regions.gap` (opcode `FC`) używa bezpośrednio offsetu width/2; pełny frontend, walidator, runtime, formatter, IPA/IPDIS i opis języka. 2 testy / 2827 asercji: współdzielenie width=0, zgodność punktów/krawędzi/metadanych i fuel, dziury, zanik, powtarzane zastosowanie, błędy i optymalizacja. Dodatkowo 40 generacji publicznego API native/WASM porównuje gap z inset, PNG, metadane i RNG. 82 kontrole CTest zaliczone po uzupełnieniu dokumentacji i przykładu; pełny dotychczasowy gate native/WASM zaliczony. Kontrakt: [fugi i bevel](spec/gap-bevel-v0.9.md). 08.2–08.4 nadal otwarte.
+**Weryfikacja 08.1:** krótki `regions.gap` (opcode `FC`, commit `5f138f7`) używa bezpośrednio offsetu width/2; pełny frontend, walidator, runtime, formatter, IPA/IPDIS i opis języka. 2 testy / 2827 asercji: współdzielenie width=0, zgodność punktów/krawędzi/metadanych i fuel, dziury, zanik, powtarzane zastosowanie, błędy i optymalizacja. Dodatkowo 40 generacji publicznego API native/WASM porównuje gap z inset, PNG, metadane i RNG. 82 kontrole CTest zaliczone po uzupełnieniu dokumentacji i przykładu; pełny dotychczasowy gate native/WASM zaliczony.
+
+**Weryfikacja 08.2:** profil 9 węzłów oparty na seedzie i pierwotnych indeksach krawędzi/wierzchołków; kanoniczna parametryzacja niezależna od orientacji, pochodzenie zachowane przy powtarzaniu. Wspólne przecięcia, positive winding, podział i publikacja z offsetu, z istniejącymi limitami pośrednimi. Kontrakt, hashe/salty, round joins i taryfa pośrednia przypięte w [specyfikacji technicznej](spec/gap-bevel-v0.9.md). 4 testy / 37062 asercje, w tym 1536 zmiennych gapów na wszystkich binarnych maskach 3×3 i kontrola obu stron wspólnej krawędzi. 49 pełnych zapisów geometrii i 120 generacji publicznego API zgodnych native/WASM; variation=0 identyczne ze stałym gapem. 82 kontrole CTest zaliczone po aktualizacji generatora testów efektów i dawniej zastrzeżonego opcode. 08.3–08.4 nadal otwarte.
 
 ### Etap 09 — dynamiczne części i D4
 

@@ -2,6 +2,7 @@
 #include "iprop/GeometryAlgorithms.hpp"
 
 #include <array>
+#include <bit>
 #include <cmath>
 #include <tuple>
 
@@ -15,6 +16,7 @@ struct Segment { Vec2 a,b;EdgeProvenance provenance;u32 next=0;bool used=false; 
 struct Cut { u32 segment;double t;Vec2 point; };
 struct Loop { u32 begin=0,count=0,parent=kNoGeometryIndex,source=0,discovery=0;double area=0,net=0;Vec2 lo{},hi{};bool keep=false; };
 struct Arc { Point a,b;u32 depth; };
+struct ProfileArc {Point a,b;double first,last;u32 depth;};
 struct Link {u32 edge,region;i32 source,neighbor;};
 [[noreturn]] void invalid(Execution& ex,const char* message){ex.trap(message,ErrorReason::NumericRange);}
 bool same(Vec2 a,Vec2 b){return a.x==b.x && a.y==b.y;}
@@ -33,8 +35,34 @@ EdgeProvenance provenance(const GeometryData& d,u32 edge,i32 source){
     const auto other=p.source==source?p.neighbor:p.neighbor==source?p.source:-1;
     p.source=source;p.neighbor=other;p.origin=EdgeOrigin::Offset;return p;
 }
+u32 gapHash(u32 x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;return x^(x>>16);}
+// The original edge and vertex indices define one unoriented profile. Even
+// repeated derivation samples that same profile on the current geometry.
+struct Profile {
+    Vec2 a,b;std::array<double,9> radii;
+    Profile(const GeometryData& d,u32 edge,double half,double variation,i32 seed){
+        const auto& root=d.source?*d.source:d;const auto original=d.source?d.edges[edge].provenance.edge:edge;
+        const auto e=root.edges[original];auto first=e.first,last=e.second;
+        if(key(root.points[last])<key(root.points[first]))std::swap(first,last);
+        a=root.points[first];b=root.points[last];const auto s=std::bit_cast<u32>(seed);
+        for(u32 j=0;j<=8;++j){
+            const auto h=j==0||j==8?gapHash(s^0x9e3779b9u^gapHash((j==0?first:last)+0x68bc21ebu)):
+                gapHash(s^0x85ebca6bu^gapHash(original+0x27d4eb2du)^(j*0x9e3779b9u));
+            const double unit=static_cast<double>(h>>8)/16777215.0;
+            radii[j]=half*((1-variation)+(2*variation)*unit);
+        }
+    }
+    double parameter(Vec2 p)const{
+        const auto v=subtract(b,a),w=subtract(p,a);return(w.x*v.x+w.y*v.y)/(v.x*v.x+v.y*v.y);
+    }
+    double radius(double t)const{
+        const auto value=std::clamp(t,0.0,1.0)*8;const auto j=std::min(static_cast<u32>(value),7u);
+        return radii[j]+(radii[j+1]-radii[j])*(value-j);
+    }
+};
 struct Offset {
     Execution& ex;const std::shared_ptr<const GeometryData>& source;double inset;
+    double variation=0;i32 seed=0;
     Buffer<Segment,48> raw,segments;
     Buffer<Cut,32> cuts;
     Buffer<Loop,80> loops;
@@ -86,6 +114,56 @@ struct Offset {
                 // The next shifted straight edge inherits its own provenance.
                 incoming=p;
             }else append(to,p);
+        }
+        if(started)add(last,first,incoming);
+    }
+    void variableRing(u32 index,i32 id){
+        const auto& d=*source;const auto& r=d.rings[index];
+        Vec2 first{},last{};EdgeProvenance incoming{};bool started=false;
+        const auto append=[&](Vec2 point,EdgeProvenance edge){
+            if(!started){first=last=point;started=true;}else{add(last,point,incoming);last=point;}incoming=edge;
+        };
+        for(u32 k=0;k<r.count;++k){
+            ex.spend(36);
+            const auto previous=d.uses[r.begin+(k+r.count-1)%r.count],current=d.uses[r.begin+k];
+            const auto a=d.start(previous),b=d.start(current),c=d.end(current);
+            const auto u=normal(a,b),v=normal(b,c);
+            const Profile oldProfile(d,previous.edge,inset,variation,seed),profile(d,current.edge,inset,variation,seed);
+            const double fromRadius=oldProfile.radius(oldProfile.parameter(b)),toRadius=profile.radius(profile.parameter(b));
+            const auto p=provenance(d,current.edge,id),old=provenance(d,previous.edge,id),join=p.edge<old.edge?p:old;
+            append(rounded(ex,{b.x+u.x*fromRadius,b.y+u.y*fromRadius}),join);
+            const double bend=turn(a,b,c);
+            if(bend>0){append(b,join);append(rounded(ex,{b.x+v.x*toRadius,b.y+v.y*toRadius}),p);}
+            else if(bend<0){
+                std::array<ProfileArc,64> stack;u32 depth=1;stack[0]={u,v,fromRadius,toRadius,0};
+                while(depth){
+                    ex.spend(1);const auto arc=stack[--depth];
+                    const double x=arc.a.x+arc.b.x,y=arc.a.y+arc.b.y,length=std::sqrt(x*x+y*y);
+                    if(!(length>0))invalid(ex,"region gap has an unresolved reversing corner");
+                    const Point middle{x/length,y/length};const double radius=(arc.first+arc.last)*0.5;
+                    const double cosine=std::clamp(arc.a.x*middle.x+arc.a.y*middle.y,-1.0,1.0);
+                    // A radial-linear arc's chord error is bounded by the
+                    // circular sag plus the varying-radius tangential term.
+                    const double error=std::max(arc.first,arc.last)*(1-cosine)+
+                        std::abs(arc.last-arc.first)*std::sqrt(std::max(0.0,1-cosine*cosine))*0.5;
+                    if(error<=arcTolerance){append(rounded(ex,{b.x+arc.b.x*arc.last,b.y+arc.b.y*arc.last}),join);continue;}
+                    if(arc.depth==31||depth+2>stack.size())invalid(ex,"region gap round join exceeds subdivision limit");
+                    stack[depth++]={middle,arc.b,radius,arc.last,arc.depth+1};
+                    stack[depth++]={arc.a,middle,arc.first,radius,arc.depth+1};
+                }
+                incoming=p;
+            }else append(rounded(ex,{b.x+v.x*toRadius,b.y+v.y*toRadius}),p);
+            // Split at original-edge knots, with canonical interpolation on
+            // the current segment, independent of ring traversal direction.
+            const bool forward=key(b)<key(c);const auto lo=forward?b:c,hi=forward?c:b;
+            const double t0=profile.parameter(lo),t1=profile.parameter(hi);
+            for(u32 j=1;j<8;++j){
+                ex.spend(1);const u32 knot=(forward==(t1>t0))?j:8-j;const double t=static_cast<double>(knot)/8;
+                if(!(t>std::min(t0,t1)&&t<std::max(t0,t1)))continue;
+                const double along=(t-t0)/(t1-t0),radius=profile.radii[knot];
+                append(rounded(ex,{lo.x+(static_cast<double>(hi.x)-lo.x)*along+v.x*radius,
+                    lo.y+(static_cast<double>(hi.y)-lo.y)*along+v.y*radius}),p);
+            }
         }
         if(started)add(last,first,incoming);
     }
@@ -273,7 +351,8 @@ struct Offset {
     void run(){
         for(u32 i=0;i<source->regions.size();++i){
             ex.spend(1);raw.clear();cuts.clear();const auto begin=static_cast<u32>(segments.size()),loopBegin=static_cast<u32>(loops.size());
-            const auto& r=source->regions[i];ring(r.outer,r.sourceId);for(const auto h:source->regionHoles(i))ring(h,r.sourceId);
+            const auto emit=[&](u32 index){if(variation>0)variableRing(index,source->regions[i].sourceId);else ring(index,source->regions[i].sourceId);};
+            const auto& r=source->regions[i];emit(r.outer);for(const auto h:source->regionHoles(i))emit(h);
             intersections();boundaries();trace(i,begin);validate(begin,loopBegin);hierarchy(loopBegin);
         }
     }
@@ -331,5 +410,14 @@ std::shared_ptr<const GeometryData> offsetRegions(Execution& ex,const std::share
     if(inset==0 || source->regions.empty())return geometryRegions(ex,source,minimum);
     ex.resources.resourceLifetime()->location=ex.activeInstruction;const ResourceReservation workspace(ex.resources,8192);
     Offset offset(ex,source,inset);offset.run();return offset.publish(minimum);
+}
+std::shared_ptr<const GeometryData> gapRegions(Execution& ex,const std::shared_ptr<const GeometryData>& source,f32 width,f32 variation,i32 seed){
+    if(!source)ex.trap("region source is unassigned",ErrorReason::RuntimeViolation);
+    if(!std::isfinite(width)||width<0)invalid(ex,"regions gap width must be finite and nonnegative");
+    if(!std::isfinite(variation)||variation<0||variation>1)invalid(ex,"regions gap variation must be finite in [0,1]");
+    const f32 half=width*0.5f;
+    if(variation==0||half==0||source->regions.empty())return offsetRegions(ex,source,half);
+    ex.resources.resourceLifetime()->location=ex.activeInstruction;const ResourceReservation workspace(ex.resources,12288);
+    Offset offset(ex,source,half);offset.variation=variation;offset.seed=seed;offset.run();return offset.publish(0);
 }
 } // namespace iprop::detail

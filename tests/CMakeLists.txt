@@ -179,6 +179,10 @@ add_executable(regions_probe regions_probe.cpp)
 target_link_libraries(regions_probe PRIVATE iprop_runtime)
 iprop_warnings(regions_probe)
 
+add_executable(gap_bevel_probe gap_bevel_probe.cpp)
+target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
+iprop_warnings(gap_bevel_probe)
+
 add_executable(contours_probe contours_probe.cpp)
 target_link_libraries(contours_probe PRIVATE iprop_runtime)
 iprop_warnings(contours_probe)

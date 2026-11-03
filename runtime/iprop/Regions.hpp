@@ -11,7 +11,7 @@ std::shared_ptr<const GeometryData> geometryRegions(Execution& ex,
 std::shared_ptr<const GeometryData> offsetRegions(Execution& ex,
     const std::shared_ptr<const GeometryData>& source, f32 inset, f32 minArea = 0);
 std::shared_ptr<const GeometryData> gapRegions(Execution& ex,
-    const std::shared_ptr<const GeometryData>& source, f32 width);
+    const std::shared_ptr<const GeometryData>& source, f32 width, f32 variation = 0, i32 seed = 0);
 // Shared raster pipeline for a complete union (-1) or a single component.
 // It samples in the active raster scale, independently of clipping and target extent.
 MaskValue rasterRegions(Execution& ex, const GeometryData& source, i32 index = -1);

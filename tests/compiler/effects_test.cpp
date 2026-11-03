@@ -77,8 +77,10 @@ TEST_CASE("registry RNG effects agree with every current-stream and seeded built
         const auto effects = ips::builtinEffects(spec, &overload);
         if (effects.rng != RngEffect::AdvanceCurrent && effects.rng != RngEffect::SeededComputation) continue;
         INFO(name);
+        const std::string setup=name=="regions.gap"?"source=regions(voronoi({0,0},{8,8},1,0)) ":"";
+        const std::string args=name=="regions.gap"?"source,1,1,7":arguments(overload);
         const auto program = ips::parse("asset t {size 8x8 output list point trace draw{"
-            "rect(0,0,8,8,#999999);trace={0,unit()};" + name + "(" + arguments(overload) +
+            "rect(0,0,8,8,#999999);trace={0,unit()};" + setup + name + "(" + args +
             ");trace={1,unit()};}}");
         for (const bool optimize : {false,true}) for (const u32 seed : {0u,7u,0xffffffffu}) {
             const auto actual = execute(compileProgram(program, {}, optimize), seed);
@@ -173,7 +175,7 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
         }
         if (name == "regions.gap") {
             setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
-            args="source,float(v-1)";
+            args=overload.params.size()==2?"source,float(v-1)":"source,0,float(v-1),7";
         }
         if (name == "regions.mask") {
             setup="source=regions(voronoi({2147483000,0},{1024,8},1,0)) ";

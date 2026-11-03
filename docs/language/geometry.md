@@ -182,6 +182,11 @@ outer boundaries and holes. Width must be finite and nonnegative. Zero
 shares the original geometry. Repeated calls accumulate on the current
 geometry; fragments preserve IDs and ancestry. It uses the same round-join
 offset kernel and limits as `regions` with an inset, and does not draw.
+The four-argument form adds finite `variation` in 0–1 and an explicit integer
+seed. Zero variation is exactly the constant gap. Otherwise a bounded linear
+profile varies the width around its requested value. Both sides of an original
+shared edge read the same profile; independent contour islands need not match.
+Repeated calls use the current geometry while retaining original-edge profiles.
 See the [gap and bevel contract](../../spec/gap-bevel-v0.9.md).
 
 <!-- example: ../../examples/language/gap-bevel.ips -->
