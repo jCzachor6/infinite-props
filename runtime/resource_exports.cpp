@@ -6,10 +6,19 @@
 
 namespace iprop {
 
+bool hasPartOutputs(const LoadedFile& file) noexcept {
+    const auto contains = [](const auto& outputs) {
+        return std::any_of(outputs.begin(), outputs.end(), [](const auto& output) { return output.kind == OutputKind::Part; });
+    };
+    if (contains(file.meta.outputs)) return true;
+    for (const auto& part : file.code.parts) if (contains(part.outputs)) return true;
+    return false;
+}
+
 void parseResourceExports(std::span<const u8> data, const Section& section, LoadedFile& file) {
     auto reader = sectionReader(data, section);
     const auto count = reader.readU32();
-    if (!count || count > kMaxConstPoolEntries)
+    if ((!count && !hasPartOutputs(file)) || count > kMaxConstPoolEntries)
         throw FormatError("invalid resource export count", section.offset, ErrorReason::InvalidMetadata);
     // Bounds-check before allocating any table, including an oversized count.
     if (static_cast<u64>(count) * 12u + 4u > reader.remaining())
@@ -47,7 +56,8 @@ void parseResourceExports(std::span<const u8> data, const Section& section, Load
 }
 
 void validateResourceOwnership(const LoadedFile& file) {
-    if (file.resourceExports.empty()) return;
+    const bool parts = hasPartOutputs(file);
+    if (file.resourceExports.empty() && !parts) return;
     if (file.functionOwners.size() != file.code.functions.size() || file.functionOwners.front() != kRootParent)
         throw FormatError("invalid entry function owner", ErrorReason::InvalidMetadata, ErrorStage::Validate);
     for (u32 p = 0; p < file.code.parts.size(); ++p) {
@@ -55,6 +65,12 @@ void validateResourceOwnership(const LoadedFile& file) {
         if (!part.nameIndex || file.functionOwners[part.functionIndex] != p)
             throw FormatError("resource exports require part instances and matching function owners",
                 ErrorReason::InvalidMetadata, ErrorStage::Validate);
+    }
+    std::vector<u32> slotOwners;
+    if (parts) {
+        slotOwners.insert(slotOwners.end(), file.meta.outputs.size(), kRootParent);
+        for (u32 p = 0; p < file.code.parts.size(); ++p)
+            slotOwners.insert(slotOwners.end(), file.code.parts[p].outputs.size(), p);
     }
     for (u32 f = 0; f < file.code.functions.size(); ++f) {
         const auto& fn = file.code.functions[f];
@@ -69,6 +85,8 @@ void validateResourceOwnership(const LoadedFile& file) {
                 fail("call crosses resource export asset ownership");
             if (ins.opcode == Opcode::PartDraw && file.code.parts[ins.operand].parent != owner)
                 fail("part.draw of a part that is not a child of the drawing asset");
+            if (ins.opcode == Opcode::OutListPart && slotOwners[ins.operand] != owner)
+                fail("part export write by a different asset");
             if (ins.opcode == Opcode::OutMask || ins.opcode == Opcode::OutLayer) {
                 if (file.resourceExports[ins.operand].owner != owner)
                     fail("resource export write by a different asset");

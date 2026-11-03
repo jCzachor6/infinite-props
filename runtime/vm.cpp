@@ -459,6 +459,7 @@ void VM::run() {
             ex.frames.clear(); ex.entryStack.clear(); ex.partCalls.clear(); ex.layerScopes.clear();
             ex.target = ex.rootTarget;
             ex.resourceSlots.clear();
+            for (auto& slot : ex.outputSlots) slot.parts.reset();
             ex.resources.clear();
         }
         throw;
@@ -488,6 +489,7 @@ GenerationResult VM::result() const {
         output.points = slots[i].points;
         output.rects = slots[i].rects;
         output.circles = slots[i].circles;
+        output.parts = slots[i].parts;
         result.outputs.push_back(std::move(output));
     }
     return result;
@@ -518,6 +520,7 @@ GenerationResult VM::takeResult() {
         output.points = std::move(slot.points);
         output.rects = std::move(slot.rects);
         output.circles = std::move(slot.circles);
+        output.parts = std::move(slot.parts);
     }
     impl_->taken = true;
     return result;

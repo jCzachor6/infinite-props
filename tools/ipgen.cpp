@@ -193,6 +193,8 @@ int ipgenMain(int argc, char* argv[]) {
     }
 
     GenerationInputs inputs;
+    if (hasPartOutputs(loaded))
+        return fail("part outputs are unsupported by the legacy JSON result; use the typed host API");
     inputs.seed = options.seed;
     inputs.sizeX = options.sizeX;
     inputs.sizeY = options.sizeY;

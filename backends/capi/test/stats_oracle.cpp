@@ -50,6 +50,7 @@ int main(int argc, char** argv) {
                     case iprop::OutputKind::Point: elements += slot.points.size(); break;
                     case iprop::OutputKind::Rect: elements += slot.rects.size(); break;
                     case iprop::OutputKind::Circle: elements += slot.circles.size(); break;
+                    case iprop::OutputKind::Part: elements += slot.partSnapshots().size(); break;
                     }
                 }
                 iprop_generate_options options{};

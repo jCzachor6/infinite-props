@@ -8,6 +8,7 @@
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartOutput.hpp"
 #include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
@@ -48,6 +49,7 @@ struct OutputSlot {
     std::vector<OutputPoint> points;
     std::vector<OutputRect> rects;
     std::vector<OutputCircle> circles;
+    std::shared_ptr<PartOutputData> parts;
     // The latest value as part.get returns it to the owner's caller.
     OutputPoint readPoint{};
     OutputRect readRect{};
@@ -122,6 +124,7 @@ struct Execution {
     // Whole-generation identity, shared by helper and static component calls.
     // Releasing a view or a resource never refunds an instance creation.
     u32 dynamicPartCreations = 0;
+    u32 exportedParts = 0; // all slots/static calls share the append limit
 
     explicit Execution(const LoadedFile& f) : file(f) {}
     Canvas& canvas() { return target.canvas(); }

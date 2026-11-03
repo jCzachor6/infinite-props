@@ -100,6 +100,8 @@ emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 sizeX, u32
     try {
         const auto loaded = iprop::loadFile(bytes);
         iprop::validate(loaded);
+        if (iprop::hasPartOutputs(loaded))
+            throw std::invalid_argument("part outputs are unsupported by this binding; use the typed host API");
         iprop::VM vm(loaded, {seed, sizeX, sizeY, readUniforms(loaded, uniforms)});
         vm.run();
 

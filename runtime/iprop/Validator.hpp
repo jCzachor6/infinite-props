@@ -50,6 +50,7 @@ private:
 // Parses a complete file: layout, consts, meta, code (Phases 3-5 rules).
 // Throws located FormatError on any structural violation.
 LoadedFile loadFile(std::span<const u8> data);
+bool hasPartOutputs(const LoadedFile& file) noexcept;
 void parseResourceExports(std::span<const u8> data, const Section& section, LoadedFile& file);
 void validateResourceOwnership(const LoadedFile& file);
 

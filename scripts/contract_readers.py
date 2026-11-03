@@ -459,6 +459,15 @@ def read_language(value):
         require(policy['creation_limit'] == 256, 'dynamic part creation limit')
         if 'geometry_scale' in policy:
             require(policy['geometry_scale'] == 'inverse_D4_target_grid_without_resampling', 'dynamic part geometry scale')
+    if 'part_exports' in rules:
+        policy = rules['part_exports']
+        _strings_and_bools(policy, {
+            'syntax': {'output list part <name>'}, 'value_type': {'part2d'},
+            'write': {'append_immutable_root_snapshot_no_draw'}, 'read': {'forbidden'},
+            'resources': {'shared_result_owned'},
+            'index': {'slot_append_order_independent_of_instance_id'}}, ['serialization'], 'part exports policy')
+        integer(policy.get('maximum_records'), 'part export record limit')
+        require(policy['maximum_records'] == 256 and not policy['serialization'], 'part export bounds and serialization')
     if 'contour' in rules:
         contour = rules['contour']
         _strings_and_bools(contour, {

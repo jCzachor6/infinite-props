@@ -3808,6 +3808,63 @@
           ],
           "additionalProperties": true,
           "description": "Optional stage 09 runtime instances policy in schema 5."
+        },
+        "part_exports": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "type": "string",
+              "const": "output list part <name>",
+              "description": "Pinned part export syntax."
+            },
+            "value_type": {
+              "type": "string",
+              "const": "part2d",
+              "description": "Pinned part export value type."
+            },
+            "write": {
+              "type": "string",
+              "const": "append_immutable_root_snapshot_no_draw",
+              "description": "Pinned part export write."
+            },
+            "read": {
+              "type": "string",
+              "const": "forbidden",
+              "description": "Pinned part export read."
+            },
+            "resources": {
+              "type": "string",
+              "const": "shared_result_owned",
+              "description": "Pinned part export resources."
+            },
+            "index": {
+              "type": "string",
+              "const": "slot_append_order_independent_of_instance_id",
+              "description": "Pinned part export index."
+            },
+            "maximum_records": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned part export maximum records."
+            },
+            "serialization": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned part export serialization."
+            }
+          },
+          "required": [
+            "syntax",
+            "value_type",
+            "write",
+            "read",
+            "resources",
+            "index",
+            "maximum_records",
+            "serialization"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 10 typed part export policy in schema 5."
         }
       },
       "required": [

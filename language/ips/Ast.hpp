@@ -257,7 +257,7 @@ struct Stmt
 enum class InputType { Color, F32, U32, I32 };
 
 // Resource exports are source-level outputs, separate from the frozen host enum.
-enum class OutputKind { Point, Rect, Circle, Mask, Layer };
+enum class OutputKind { Point, Rect, Circle, Mask, Layer, Part };
 constexpr bool isResourceOutput(OutputKind kind) {
     return kind == OutputKind::Mask || kind == OutputKind::Layer;
 }

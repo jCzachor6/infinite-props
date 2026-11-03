@@ -273,6 +273,10 @@ void Emitter::emitOutputWrite(const ips::Program* owner,
         return plan_.resourceSlotIndex.at({current_->partOwner.value_or(kRootParent), output.name});
     };
     switch (output.kind) {
+    case ips::OutputKind::Part:
+        emitExpr(value);
+        ins(Opcode::OutListPart, 0, slot());
+        return;
     case ips::OutputKind::Mask:
         emitExpr(value);
         ins(Opcode::OutMask, 0, resource());

@@ -213,11 +213,14 @@ inline Json Json::object(std::initializer_list<std::pair<std::string, Json>> mem
 
 // Writes one named output as a JSON object.
 inline void writeOutputJson(std::ostream& out, const NamedOutput& output, bool bits = false) {
+    if (output.kind == OutputKind::Part)
+        throw std::invalid_argument("part outputs are unsupported by the legacy JSON result; use the typed host API");
     out << "{\"name\":\"" << jsonEscape(output.name) << "\",\"kind\":\"";
     switch (output.kind) {
     case OutputKind::Point: out << "point"; break;
     case OutputKind::Rect: out << "rect"; break;
     case OutputKind::Circle: out << "circle"; break;
+    case OutputKind::Part: break;
     }
     out << "\",\"list\":" << (output.isList ? "true" : "false") << ",\"values\":[";
     bool first = true;

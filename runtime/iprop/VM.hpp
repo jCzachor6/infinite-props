@@ -2,6 +2,7 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartOutput.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 
@@ -33,6 +34,10 @@ struct NamedOutput {
     std::vector<OutputPoint> points;
     std::vector<OutputRect> rects;
     std::vector<OutputCircle> circles;
+    std::shared_ptr<const PartOutputData> parts;
+    std::span<const OutputPart> partSnapshots() const {
+        return parts ? std::span<const OutputPart>(parts->records.data(), parts->records.size()) : std::span<const OutputPart>{};
+    }
 };
 
 // The generation result (spec §8.1/§5.4): the image plus every declared

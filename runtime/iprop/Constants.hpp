@@ -39,6 +39,7 @@ enum class OutputKind : u8 {
     Point = 0,
     Rect = 1,
     Circle = 2,
+    Part = 3, // v0.9: list-only immutable dynamic-part snapshots
 };
 
 // Opcodes (spec §9). Values are part of the frozen format contract: they
@@ -210,6 +211,7 @@ enum class Opcode : u8 {
     OutListPoint = 0x93,
     OutListRect = 0x94,
     OutListCircle = 0x95,
+    OutListPart = 0x69, // v0.9, previously reserved
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,

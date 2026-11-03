@@ -89,6 +89,24 @@ void writeCircle(Execution& ex, u16 index, f32 x, f32 y, f32 r, bool list) {
 // append in program order.
 bool stepOutputs(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
+    case Opcode::OutListPart: {
+        if (ins.aux) ex.trap("part export aux must be zero", ErrorReason::InvalidInstruction);
+        checkSlot(ex, ins.operand, OutputKind::Part, true);
+        if (ex.exportedParts >= kMaxExportedParts)
+            ex.trap("exported parts exceed 256", ErrorReason::RuntimeViolation);
+        const auto part = ex.popHandle<Part2dValue>("part2d");
+        auto& slot = ex.outputSlots[ins.operand];
+        const auto index = slot.parts ? static_cast<u32>(slot.parts->records.size()) : 0u;
+        auto snapshot = snapshotPart(ex, part, ins.operand, index);
+        ex.resources.resourceLifetime()->location = ex.activeInstruction;
+        // Publish the first table only after its append succeeds.
+        auto records = slot.parts ? slot.parts : makeResource<PartOutputData,128>(ex.resources, ex.resources);
+        records->records.push_back(std::move(snapshot));
+        slot.parts = std::move(records);
+        ++ex.exportedParts;
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::OutPoint: {
         checkSlot(ex, ins.operand, OutputKind::Point, false);
         const f32 y = ex.popF32();

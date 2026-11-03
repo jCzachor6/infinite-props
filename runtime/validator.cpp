@@ -560,6 +560,10 @@ private:
             checkSlot(at, op, OutputKind::Circle, true, false);
             for (int i = 0; i < 3; ++i) expect(at, ValueType::F32, "circle value");
             return;
+        case Opcode::OutListPart:
+            checkSlot(at, op, OutputKind::Part, true, false);
+            expect(at, ValueType::Part2d, "part snapshot");
+            return;
         case Opcode::PartGetPoint:
             checkSlot(at, op, OutputKind::Point, false, true);
             push(at, ValueType::F32);

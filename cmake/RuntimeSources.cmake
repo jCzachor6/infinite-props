@@ -53,6 +53,7 @@ set(IPROP_RUNTIME_SOURCES
     parts.cpp
     dynamic_parts.cpp
     dynamic_part_render.cpp
+    part_output.cpp
     part_render_plan.cpp
     utf8.cpp)
 list(TRANSFORM IPROP_RUNTIME_SOURCES

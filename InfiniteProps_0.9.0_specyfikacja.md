@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–09 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury, regiony, fugi, bevel oraz dynamiczne części i D4 sprawdzone native/WASM. Implementacja etapu 09 opublikowana na `origin/develop`, lokalny i zdalny SHA potwierdzone. Następny etap planu: 10 (eksport części i API hosta).
+**Status:** etapy 00–09 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury, regiony, fugi, bevel oraz dynamiczne części i D4 sprawdzone native/WASM. Etap 10 w realizacji: deklaracja, bytecode i wynik C++ z eksportem snapshotów wdrożone; typed checked C API i pełny odbiór etapu pozostają otwarte.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -650,7 +650,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 09.
 
-- [ ] 10.1 Dodać deklarację `output list part`, kodowanie programu, append snapshotu, walidację i globalny limit 256 eksportowanych rekordów.
+- [x] 10.1 Dodać deklarację `output list part`, kodowanie programu, append snapshotu, walidację i globalny limit 256 eksportowanych rekordów.
 - [ ] 10.2 Rozszerzyć wynik C++ i checked C API o typowane części oraz dostęp do geometrii, dziur, A8/RGBA i współdzielonych zasobów, bez zmiany layoutu starego ABI.
 - [ ] 10.3 Określić i przetestować ownership, pożyczone widoki, kopie, puste sloty, błędne indeksy/pojemności oraz jawne odrzucanie nieobsługiwanych nowych wyjść przez starsze ścieżki.
 - [ ] 10.4 Sprawdzić render-only/export-only, brak wyglądu, wiele snapshotów jednego ID, niezależną kolejność eksportu, sloty statycznych importów i zachowanie wyniku po zwolnieniu VM/programu.
@@ -658,6 +658,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [ ] **Etap 10 zakończony.**
 
 **Odbiór:** host otrzymuje rzeczywiste niezależne części, bez utraty dziur/alfy/transformacji, bez ukrytej kopii zasobów i bez zależności od życia VM.
+
+**10.1 (2026-11-03):** [Kontrakt](spec/part-exports-v0.9.md): kind 3 i opcode `0x69`, bez zmiany starych ID ani nagłówka. Wspólne ownership z istniejącą sekcją 10, append w root coordinates, współdzielone tabele/zasoby i limit 256 niezależny od ID instancji. Parser/typowanie/emitter/formatter/IPA/IPDIS/opis języka objęte zmianą. 26 testów części/eksportów/zgodności, **544350 asercji**; kontrakty **221 mutacji / 159 przypadków CLI**. Nowy program przechodzi compile/load/validate, runtime z etapu 09 odrzuca nowy kind; legacy JSON odrzuca go przed zapisem obrazu. C API i binding WASM do czasu ich rozszerzenia jawnie odrzucają ten wynik. 10.2–10.5 pozostają otwarte.
 
 **Weryfikacja:** oczekuje na wykonanie.
 

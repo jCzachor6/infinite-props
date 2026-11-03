@@ -148,6 +148,14 @@ immutable handles, cannot be lists, and never add host geometry slots.
 | `point` | `{x, y}`, a `vec2` |
 | `circle` | `{x, y, radius}` |
 | `rect` | `{x, y, width, height}` |
+| `part` (list only) | A `part2d` immutable snapshot |
+
+`output list part tiles` appends each assigned part without drawing it.
+Snapshots retain shared geometry with holes, A8/RGBA and appearance, effective
+root placement, ID and append order. Empty slots are returned. The global
+limit is 256 snapshots across all slots; exporting an ID twice is allowed.
+Only typed C++/C host results represent these records; legacy float/JSON paths
+reject them explicitly. See the [part export contract](../../spec/part-exports-v0.9.md).
 
 Components must be numeric and widen to `f32`. Scalar part outputs can be
 read and propagated; list outputs cannot be read as expressions. Outputs

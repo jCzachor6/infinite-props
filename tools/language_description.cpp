@@ -368,6 +368,12 @@ Json sourceRules() {
         {"geometry_scale","inverse_D4_target_grid_without_resampling"},
         {"metadata","cached_effective_post_rounding"},{"part_draw","one_argument_dynamic_seed_at_static"},
         {"asset_constants",false}});
+    rules["part_exports"] = Json::object({
+        {"syntax","output list part <name>"},{"value_type","part2d"},
+        {"write","append_immutable_root_snapshot_no_draw"},{"read","forbidden"},
+        {"maximum_records",kMaxExportedParts},{"resources","shared_result_owned"},
+        {"index","slot_append_order_independent_of_instance_id"},
+        {"serialization",false}});
     rules["contour"] = Json::object({
         {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
         {"algorithm","marching_squares_clamped_alpha_interpolation"},

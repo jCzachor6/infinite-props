@@ -103,6 +103,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
     case Opcode::OutMask: case Opcode::OutLayer:
+    case Opcode::OutListPart:
         return {R::None,false,true,static_cast<u16>(check(C::UnassignedHandle)|check(C::PartOutputContext)|check(C::NumericRange))};
     case Opcode::PartGetMask: case Opcode::PartGetLayer:
         return {R::None,false,false,static_cast<u16>(check(C::PartOutputMissing)|check(C::PartOutputContext))};
@@ -307,6 +308,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::OutListPoint, "out.list.point", OperandKind::Name),
     dynamic(Opcode::OutListRect, "out.list.rect", OperandKind::Name),
     dynamic(Opcode::OutListCircle, "out.list.circle", OperandKind::Name),
+    dynamic(Opcode::OutListPart, "out.list.part", OperandKind::Name),
     dynamic(Opcode::PartGetPoint, "part.get.point", OperandKind::Name),
     dynamic(Opcode::PartGetRect, "part.get.rect", OperandKind::Name),
     dynamic(Opcode::PartGetCircle, "part.get.circle", OperandKind::Name),

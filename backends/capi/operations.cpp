@@ -22,6 +22,8 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
     size_t floats = 0;
     for (const auto& output : outputs) {
         switch (output.kind) {
+        case iprop::OutputKind::Part:
+            throw std::logic_error("part outputs require the typed part result API");
         case iprop::OutputKind::Point:
             floats += 2 * output.points.size();
             break;
@@ -49,6 +51,8 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
         entry.is_list = output.isList ? 1 : 0;
         entry.name = result.names[i].c_str();
         switch (output.kind) {
+        case iprop::OutputKind::Part:
+            throw std::logic_error("part outputs require the typed part result API");
         case iprop::OutputKind::Point:
             entry.kind = IPROP_OUTPUT_POINT;
             entry.count = static_cast<uint32_t>(output.points.size());
@@ -180,6 +184,9 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
                      iprop_result& result, ErrorContext& context,
                      const iprop_parameters* parameters) {
+    // Until typed packing is enabled, never silently drop the new output kind.
+    if (hasPartOutputs(*program.data))
+        throw FormatError("part outputs require the typed part result API", ErrorReason::InvalidOutput, ErrorStage::Arguments);
     context.file = program.data.get();
     context.stage = ErrorStage::Arguments;
     VM vm = parameters != nullptr ? VM(*program.data, inputs, parameters->values) : VM(*program.data, inputs);

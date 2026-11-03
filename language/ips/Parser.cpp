@@ -397,9 +397,11 @@ OutputDecl ParserImpl::parseOutput() {
     case TokenKind::KeywordMask: outputKind = OutputKind::Mask; break;
     case TokenKind::KeywordLayer: outputKind = OutputKind::Layer; break;
     default:
-        failExpected("an output kind (point, rect, circle, mask or layer)");
+        if (kind() == TokenKind::Identifier && tokens_[pos_].text == "part") outputKind = OutputKind::Part;
+        else failExpected("an output kind (point, rect, circle, mask, layer or list part)");
     }
     if (isList && isResourceOutput(outputKind)) failHere("resource exports cannot be lists");
+    if (!isList && outputKind == OutputKind::Part) failHere("part outputs must be lists");
     advance();
     const Token name = expectName("an output name");
     match(TokenKind::Semi);
