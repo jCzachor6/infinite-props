@@ -414,6 +414,22 @@ def read_language(value):
             require(geometry[key] == expected, 'geometry limit')
         require(all(set(names) <= set(types[key]) for key in ['storable', 'helper_parameters', 'helper_value_returns']), 'geometry storage and transfer')
         require(not set(names) & set(constants['types']), 'geometry const prohibition')
+    if 'voronoi' in rules:
+        diagram = rules['voronoi']
+        _strings_and_bools(diagram, {
+            'rng': {'counter_hash_explicit_seed_no_stream_draws'},
+            'metric': {'squared_parallel_over_anisotropy_plus_squared_perpendicular'},
+            'neighbors': {'sorted_shared_positive_length_edges'},
+            'numeric_kernel': {'binary64_half_planes_shared_f32_topology'}},
+            ['asset_constants'], 'voronoi policy')
+        require(not diagram['asset_constants'], 'voronoi generation dependency')
+        for key, expected in [('minimum_sites', 1), ('maximum_sites', 256), ('maximum_relax', 4)]:
+            integer(diagram.get(key), 'voronoi.' + key)
+            require(diagram[key] == expected, 'voronoi bounds')
+        constants = obj(diagram.get('constants'), ['voronoi.random', 'voronoi.grid'], 'voronoi constants')
+        for name, expected in [('voronoi.random', 0), ('voronoi.grid', 1)]:
+            integer(constants[name], name)
+            require(constants[name] == expected, 'voronoi constant')
     if 'noise_mask' in rules:
         noise = rules['noise_mask']
         _strings_and_bools(noise, {

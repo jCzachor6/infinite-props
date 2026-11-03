@@ -290,6 +290,15 @@ enum class Opcode : u8 {
     NoiseFbmConfig = 0xE2,
     NoiseMask = 0xE3,
     NoiseMaskConfig = 0xE4,
+    Voronoi = 0xE5,
+    VoronoiConfig = 0xE6,
+    VoronoiMetric = 0xE7,
+    VoronoiRows = 0xE8,
+    VoronoiSites = 0xE9,
+    VoronoiSitesRelax = 0xEA,
+    DiagramCount = 0xEB,
+    DiagramSite = 0xEC,
+    DiagramNeighbors = 0xED,
 
     // Parts (§9.10)
     PartDraw = 0xA0,

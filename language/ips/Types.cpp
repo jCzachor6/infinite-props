@@ -13,6 +13,10 @@ std::optional<i32> builtinConstant(const Expr& expression) {
     if (const auto* mode = surfaceMode(expression)) return mode->sourceConstant;
     const auto* member = std::get_if<Member>(&expression);
     const auto* base = member ? std::get_if<Identifier>(member->object.get()) : nullptr;
+    if (base && base->name == "voronoi") {
+        if (member->name == "random") return 0;
+        if (member->name == "grid") return 1;
+    }
     if (!base || base->name != "noise") return std::nullopt;
     for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
         if (member->name == detail::kNoiseModeNames[i]) return static_cast<i32>(i);

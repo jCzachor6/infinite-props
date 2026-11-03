@@ -41,8 +41,10 @@ async function main() {
     // Source builds include an internal-core test executable; the web SDK
     // deliberately ships only iprop.js/iprop.wasm and the ordinary JS API.
     const geometryProbe=path.join(buildDir,"geometry_representation_probe.js");
+    const voronoiProbe=path.join(buildDir,"voronoi_probe.js");
     const native = require("./native-conformance.js").run(iprop, toolsDir,
-        fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{});
+        {...(fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{}),
+         ...(fs.existsSync(voronoiProbe)?{voronoiWasm:voronoiProbe}:{})});
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
@@ -111,6 +113,10 @@ async function main() {
             native.geometryV09.vectors + " independent topology/metadata vectors; " + native.geometryV09.generations +
             " exact generations; " + native.geometryV09.traps + " matching traps; " + native.geometryV09.rejections + " bytecode rejections; core probes native=" +
             native.geometryV09.nativeRepresentation + ", WASM=" + native.geometryV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 Voronoi: PASS (" + native.voronoiV09.vectors + " reference vectors; " +
+            native.voronoiV09.generations + " exact generations; " + native.voronoiV09.traps + " matching traps; " +
+            native.voronoiV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.voronoiV09.nativeRepresentation + ", WASM=" + native.voronoiV09.wasmRepresentation + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

@@ -37,7 +37,8 @@ ValueType Typer::typeCall(const Call& call) {
             }
             const bool reserved = path.base == "dist" || path.base == "noise" ||
                 path.base == "cell" || path.base == "color" || path.base == "vec2" ||
-                path.base == "surface" || path.base == "mask" || full == "list.len";
+                path.base == "surface" || path.base == "mask" || full == "list.len" ||
+                full == "diagram.count" || full == "diagram.site" || full == "diagram.neighbors";
             const auto builtin = builtinSpecs().find(full);
             if (reserved && builtin != builtinSpecs().end()) {
                 Identifier synthetic{full, path.location};

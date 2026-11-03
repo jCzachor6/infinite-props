@@ -26,12 +26,62 @@ of `list<T>`, `sampler<T>` or `stepper<T>`. Reading a handle whose initializer
 did not execute traps; it does not produce an empty geometry value. Locals
 retain the language's existing function scope.
 
-Stage 04 supplies storage, typing and ownership. Voronoi, contour, region and
-dynamic-part constructors and operations are implemented in subsequent stages.
-The helper-only example compiles today; it does not generate a diagram.
+Stage 04 supplies storage, typing and ownership; stage 05 adds Voronoi below.
+Contour, region and dynamic-part operations follow in subsequent stages.
 See the [geometry core contract](../../spec/geometry-core-v0.9.md).
 
 <!-- example: ../../examples/language/geometry-handles.ips -->
+
+## voronoi
+<!-- builtin: voronoi -->
+
+Creates a bounded diagram in local asset coordinates, independently of the
+target, clipping and Worley noise. Supply either a count (1–256) and explicit
+seed, or a `list<vec2>` of distinct finite sites inside the closed rectangle.
+Sites retain their indices. Positive finite size and representable endpoints
+are required; geometry that cannot retain positive f32 cells traps.
+
+The generated overloads take 4, 7, 9 or 12 arguments. The short form uses
+`voronoi.random` (0), jitter 1 and no relaxation. The seven-argument form adds
+method, jitter (0–1) and Lloyd iterations (0–4). `voronoi.grid` (1) creates a
+row-major grid; its incomplete last row spans the width evenly. Jitter 0
+keeps grid centers, jitter 1 uses each whole grid slot. Random validates
+jitter but ignores it. Neither method advances the current RNG stream.
+
+The nine-argument form adds anisotropy (0.25–4) and a finite nonzero direction.
+Distance is squared parallel displacement divided by anisotropy squared,
+plus squared perpendicular displacement. Values above 1 extend cells along
+the direction. The twelve-argument form adds `row_bias`, `row_jitter` and
+`row_offset`, all in 0–1. Bias mixes base sites with rows along direction;
+jitter moves each row across that direction, and offset shifts alternate
+rows by a fraction of one slot. Defaults are 0, 0 and 0.5. Bias 0 skips the
+row layout; anisotropy 1 is exactly the ordinary metric.
+
+Explicit sites accept an optional fourth argument, `relax`. Each iteration
+moves sites to clipped-cell centroids and rebuilds the diagram. The
+[Voronoi contract](../../spec/voronoi-v0.9.md) pins distribution, numeric
+degeneracies, canonical topology, limits and fuel.
+
+<!-- example: ../../examples/language/voronoi.ips -->
+
+## diagram.count
+<!-- builtin: diagram.count -->
+
+Returns the number of sites and cells. Copying a diagram or reading its
+count and sites shares geometry without allocating a new store.
+
+## diagram.site
+<!-- builtin: diagram.site -->
+
+Returns the f32 site at an index in 0 through `diagram.count(d)-1`.
+An invalid index traps. After Lloyd this is the relaxed site.
+
+## diagram.neighbors
+<!-- builtin: diagram.neighbors -->
+
+Returns an ordinary `list<i32>` of sorted unique indices sharing a positive
+length edge. Contact at a single vertex is excluded. The returned list
+uses the ordinary list quota; the immutable diagram is shared.
 
 ## vec2.len
 <!-- builtin: vec2.len -->

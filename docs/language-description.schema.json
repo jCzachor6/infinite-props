@@ -3420,6 +3420,85 @@
           ],
           "additionalProperties": true,
           "description": "Optional 0.9 geometry handle contract; previous exports may omit it."
+        },
+        "voronoi": {
+          "type": "object",
+          "properties": {
+            "minimum_sites": {
+              "type": "integer",
+              "const": 1,
+              "description": "Pinned Voronoi minimum sites."
+            },
+            "maximum_sites": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned Voronoi maximum sites."
+            },
+            "maximum_relax": {
+              "type": "integer",
+              "const": 4,
+              "description": "Pinned Voronoi maximum relax."
+            },
+            "rng": {
+              "type": "string",
+              "const": "counter_hash_explicit_seed_no_stream_draws",
+              "description": "Pinned Voronoi rng."
+            },
+            "metric": {
+              "type": "string",
+              "const": "squared_parallel_over_anisotropy_plus_squared_perpendicular",
+              "description": "Pinned Voronoi metric."
+            },
+            "neighbors": {
+              "type": "string",
+              "const": "sorted_shared_positive_length_edges",
+              "description": "Pinned Voronoi neighbors."
+            },
+            "numeric_kernel": {
+              "type": "string",
+              "const": "binary64_half_planes_shared_f32_topology",
+              "description": "Pinned Voronoi numeric kernel."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned Voronoi asset constants."
+            },
+            "constants": {
+              "type": "object",
+              "properties": {
+                "voronoi.random": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable Voronoi method constant."
+                },
+                "voronoi.grid": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable Voronoi method constant."
+                }
+              },
+              "required": [
+                "voronoi.random",
+                "voronoi.grid"
+              ],
+              "additionalProperties": true,
+              "description": "Contextual i32 generation methods."
+            }
+          },
+          "required": [
+            "minimum_sites",
+            "maximum_sites",
+            "maximum_relax",
+            "rng",
+            "metric",
+            "neighbors",
+            "numeric_kernel",
+            "asset_constants",
+            "constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 05 bounded Voronoi policy, using schema 5 geometry handles."
         }
       },
       "required": [

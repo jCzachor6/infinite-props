@@ -48,7 +48,10 @@ std::vector<u8> program(const OpcodeSpec& spec, const std::vector<ValueType>& ar
     std::vector<u8> results;
     if (spec.stack->result && !resource) { results.push_back(static_cast<u8>(*spec.stack->result)); append(draw,Opcode::Drop); }
     append(draw,Opcode::Return);
-    return fullFile(minimalMeta(),constSection({"draw"},{1},{1.f,2.f,3.f,4.f},{{10,20,30,255}}),
+    const bool voronoi=spec.opcode == Opcode::Voronoi || spec.opcode == Opcode::VoronoiConfig ||
+        spec.opcode == Opcode::VoronoiMetric || spec.opcode == Opcode::VoronoiRows;
+    const auto meta=voronoi ? metaSection(8,8,0,0,1000000,false,{},0,0,0,{},{}) : minimalMeta();
+    return fullFile(meta,constSection({"draw"},{1},{1.f,2.f,3.f,4.f},{{10,20,30,255}}),
         codeSection({drawSpec(draw),{kAnonymousName,{},results,{},helper}},{}));
 }
 } // namespace
@@ -112,5 +115,5 @@ TEST_CASE("opcode descriptors agree with runtime stack effects and reject wrong 
     }
     CHECK(findOpcode(static_cast<Opcode>(0xff)) == nullptr);
     CHECK(findOpcode("unknown") == nullptr);
-    CHECK(names.size() == 199);
+    CHECK(names.size() == 208);
 }

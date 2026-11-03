@@ -92,11 +92,15 @@ for this stage; the new implementation is repository-owned C++ under its license
 
 ## Cached metadata and arithmetic
 
-`finish()` visits each ring in its stored order. For consecutive points A and B,
+`finish()` visits each ring in its stored order. Stage 05 stabilizes translated
+geometry by subtracting the ring's first vertex O from each point before the
+shoelace sum. For consecutive relative points A and B,
 compute binary64 `c = Ax*By - Bx*Ay`, accumulating `sum(c)`,
 `sum((Ax+Bx)*c)` and `sum((Ay+By)*c)` in traversal order, with FMA disabled.
-Signed area is the first sum divided by two; first moments are the other sums
-divided by six. A region sums its outer ring followed by its listed holes.
+Signed area is the first sum divided by two; world first moments are the other
+sums divided by six plus `O*area`. This retains the stage-04 fixture bits while
+avoiding cancellation at large finite origins. A region sums its outer ring
+followed by its listed holes.
 Its public area is rounded once to binary32, and centroid components are the
 binary64 first moments divided by total area, each rounded once to binary32.
 Positive area that rounds to zero or a nonfinite binary32 result traps.

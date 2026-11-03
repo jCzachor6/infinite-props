@@ -1,5 +1,6 @@
 {
   "cases": [
+    {"file":"voronoi.ips","expect":"pass"},
     {"file":"geometry-handles.ips","expect":"pass"},
     {"file":"noise-mask.ips","expect":"pass"},
     {"file":"noise-extensions.ips","expect":"pass"},

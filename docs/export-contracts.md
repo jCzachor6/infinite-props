@@ -43,6 +43,11 @@ Development stage 03 added optional `source_rules.noise_mask` in schema 4,
 with noise namespace constants and the direct-mask sampling/default rules.
 Readers validate it when present and accept profiles without it in the supported schema.
 
+Stage 05 adds optional `source_rules.voronoi` in schema 5, describing method
+constants, site/relaxation limits, the metric and immutable shared topology.
+The new builtins use the existing schema-5 geometry/list vocabulary; this
+additive capability does not require another protocol version change.
+
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`

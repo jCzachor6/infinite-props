@@ -108,6 +108,7 @@ add_executable(iprop_tests
     parts_test.cpp
     part_geometry_test.cpp
     geometry_test.cpp
+    voronoi_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
@@ -158,6 +159,13 @@ add_test(NAME geometry_allocation_failures COMMAND geometry_allocation_probe)
 add_executable(geometry_representation_probe geometry_representation_probe.cpp)
 target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
 iprop_warnings(geometry_representation_probe)
+add_executable(voronoi_probe voronoi_probe.cpp)
+target_link_libraries(voronoi_probe PRIVATE iprop_runtime)
+iprop_warnings(voronoi_probe)
+add_executable(voronoi_allocation_probe voronoi_allocation_probe.cpp)
+target_link_libraries(voronoi_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(voronoi_allocation_probe)
+add_test(NAME voronoi_allocation_failures COMMAND voronoi_allocation_probe)
 
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
@@ -170,6 +178,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME voronoi_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/voronoi-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:voronoi_probe>")
     add_test(NAME geometry_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/geometry-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:geometry_representation_probe>")

@@ -1,0 +1,21 @@
+asset voronoi_sites {
+    size 64x48
+    output list point sites
+    draw {
+        d = voronoi({0, 0}, {64, 48}, 12, seed,
+                    voronoi.grid, 0.35, 1, 2, {1, 0}, 0.8, 0.2, 0.5)
+        count = diagram.count(d)
+        for i in 0..count {
+            p = diagram.site(d, i)
+            sites = p
+            adjacent = diagram.neighbors(d, i)
+            for j in 0..list.len(adjacent) {
+                other = adjacent[j]
+                if (other > i) {
+                    line(p, diagram.site(d, other), 1, #345)
+                }
+            }
+            oval(p - {1, 1}, {2, 2}, #fc8)
+        }
+    }
+}

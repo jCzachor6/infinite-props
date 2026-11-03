@@ -176,15 +176,20 @@ std::shared_ptr<const GeometryData> GeometryBuilder::finish() && {
             if (used & direction) invalid(ex_, "geometry edge is reused in the same direction");
             used |= direction;
             const auto a = data->start(use), b = data->end(use);
-            const double cross = static_cast<double>(a.x) * b.y - static_cast<double>(b.x) * a.y;
+            const auto reference = data->start(data->uses[ring.begin]);
+            const double ax=static_cast<double>(a.x)-reference.x, ay=static_cast<double>(a.y)-reference.y;
+            const double bx=static_cast<double>(b.x)-reference.x, by=static_cast<double>(b.y)-reference.y;
+            const double cross = ax*by-bx*ay;
             twiceArea += cross;
-            momentX += (static_cast<double>(a.x) + b.x) * cross;
-            momentY += (static_cast<double>(a.y) + b.y) * cross;
+            momentX += (ax+bx)*cross;
+            momentY += (ay+by)*cross;
         }
         if (!std::isfinite(twiceArea) || (ring.hole ? twiceArea >= 0 : twiceArea <= 0))
             invalid(ex_, "geometry ring has zero area or incorrect orientation");
         ring.area = twiceArea * 0.5;
-        ring.momentX = momentX / 6.0; ring.momentY = momentY / 6.0;
+        const auto reference=data->start(data->uses[ring.begin]);
+        ring.momentX = momentX / 6.0 + static_cast<double>(reference.x)*ring.area;
+        ring.momentY = momentY / 6.0 + static_cast<double>(reference.y)*ring.area;
     }
     if (std::find(edgeUses.begin(), edgeUses.end(), u8{0}) != edgeUses.end())
         invalid(ex_, "geometry contains an unused edge");

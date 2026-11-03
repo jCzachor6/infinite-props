@@ -1,0 +1,161 @@
+Test project /private/tmp/iprop-v09-stage05-native
+      Start 78: language_llm_reference
+      Start 67: compiler_diagnostic_failures
+      Start 76: compiler_optimization_acceptance
+      Start 72: compiler_export_contracts
+ 1/78 Test #72: compiler_export_contracts ............   Passed    7.35 sec
+      Start 75: ci_release_tools
+ 2/78 Test #75: ci_release_tools .....................   Passed    6.39 sec
+      Start 77: language_documentation
+ 3/78 Test #76: compiler_optimization_acceptance .....   Passed   16.19 sec
+      Start 55: noise_mask_v09
+ 4/78 Test #77: language_documentation ...............   Passed    5.05 sec
+      Start 53: voronoi_v09
+ 5/78 Test #55: noise_mask_v09 .......................   Passed    3.17 sec
+      Start 57: compatibility_v08
+ 6/78 Test #67: compiler_diagnostic_failures .........   Passed   19.40 sec
+      Start 47: smoke
+ 7/78 Test #47: smoke ................................   Passed    1.01 sec
+      Start 56: noise_v09
+ 8/78 Test #57: compatibility_v08 ....................   Passed    1.55 sec
+      Start 54: geometry_v09
+ 9/78 Test #53: voronoi_v09 ..........................   Passed    2.20 sec
+      Start  8: capi_image_view_static
+10/78 Test  #8: capi_image_view_static ...............   Passed    0.00 sec
+      Start 49: vm_result_allocations
+11/78 Test #49: vm_result_allocations ................   Passed    0.01 sec
+      Start 48: source_printer_allocation_failures
+12/78 Test #48: source_printer_allocation_failures ...   Passed    0.03 sec
+      Start 44: capi_parameter_panel_static
+13/78 Test #44: capi_parameter_panel_static ..........   Passed    0.06 sec
+      Start 29: capi_parameter_overrides_shared
+14/78 Test #29: capi_parameter_overrides_shared ......   Passed    0.00 sec
+      Start 22: capi_metadata_static
+15/78 Test #22: capi_metadata_static .................   Passed    0.00 sec
+      Start 19: capi_parts_shared
+16/78 Test #19: capi_parts_shared ....................   Passed    0.00 sec
+      Start  9: capi_error_buffers_shared
+17/78 Test  #9: capi_error_buffers_shared ............   Passed    0.00 sec
+      Start 64: source_over_rational_reference
+18/78 Test #54: geometry_v09 .........................   Passed    0.47 sec
+      Start  3: capi_error_descriptor_shared
+19/78 Test  #3: capi_error_descriptor_shared .........   Passed    0.00 sec
+      Start 23: capi_stats_shared
+20/78 Test #23: capi_stats_shared ....................   Passed    0.00 sec
+      Start 45: capi_render_inputs_static
+21/78 Test #45: capi_render_inputs_static ............   Passed    0.06 sec
+      Start 20: capi_parts_static
+22/78 Test #20: capi_parts_static ....................   Passed    0.00 sec
+      Start 40: capi_parameter_transactions
+23/78 Test #40: capi_parameter_transactions ..........   Passed    0.00 sec
+      Start 14: capi_reflection_static
+24/78 Test #14: capi_reflection_static ...............   Passed    0.00 sec
+      Start 12: capi_checked_static
+25/78 Test #12: capi_checked_static ..................   Passed    0.00 sec
+      Start 37: capi_stats_oracle
+26/78 Test #37: capi_stats_oracle ....................   Passed    0.01 sec
+      Start 31: capi_generate_ex_shared
+27/78 Test #56: noise_v09 ............................   Passed    1.07 sec
+      Start 35: capi_checked_errors
+28/78 Test #35: capi_checked_errors ..................   Passed    0.01 sec
+      Start 36: capi_result_storage
+29/78 Test #36: capi_result_storage ..................   Passed    0.00 sec
+      Start 30: capi_parameter_overrides_static
+30/78 Test #30: capi_parameter_overrides_static ......   Passed    0.00 sec
+      Start 28: capi_parameter_setters_static
+31/78 Test #28: capi_parameter_setters_static ........   Passed    0.00 sec
+      Start 39: capi_generate_ex_errors
+32/78 Test #31: capi_generate_ex_shared ..............   Passed    0.06 sec
+      Start 10: capi_error_buffers_static
+33/78 Test #10: capi_error_buffers_static ............   Passed    0.00 sec
+      Start 46: capi_conformance
+34/78 Test #46: capi_conformance .....................   Passed    0.01 sec
+      Start  6: capi_library_static
+35/78 Test  #6: capi_library_static ..................   Passed    0.00 sec
+      Start 21: capi_metadata_shared
+36/78 Test #21: capi_metadata_shared .................   Passed    0.00 sec
+      Start 13: capi_reflection_shared
+37/78 Test #13: capi_reflection_shared ...............   Passed    0.00 sec
+      Start 27: capi_parameter_setters_shared
+38/78 Test #27: capi_parameter_setters_shared ........   Passed    0.00 sec
+      Start 11: capi_checked_shared
+39/78 Test #11: capi_checked_shared ..................   Passed    0.00 sec
+      Start 32: capi_generate_ex_static
+40/78 Test #32: capi_generate_ex_static ..............   Passed    0.06 sec
+      Start 26: capi_parameters_static
+41/78 Test #26: capi_parameters_static ...............   Passed    0.00 sec
+      Start 24: capi_stats_static
+42/78 Test #24: capi_stats_static ....................   Passed    0.00 sec
+      Start 42: capi_parameter_panel_shared
+43/78 Test #42: capi_parameter_panel_shared ..........   Passed    0.05 sec
+      Start  4: capi_error_descriptor_static
+44/78 Test  #4: capi_error_descriptor_static .........   Passed    0.00 sec
+      Start 17: capi_output_declarations_shared
+45/78 Test #17: capi_output_declarations_shared ......   Passed    0.00 sec
+      Start 15: capi_result_outputs_shared
+46/78 Test #15: capi_result_outputs_shared ...........   Passed    0.00 sec
+      Start  7: capi_image_view_shared
+47/78 Test  #7: capi_image_view_shared ...............   Passed    0.00 sec
+      Start 41: capi_parameters_errors
+48/78 Test #41: capi_parameters_errors ...............   Passed    0.00 sec
+      Start 16: capi_result_outputs_static
+49/78 Test #16: capi_result_outputs_static ...........   Passed    0.00 sec
+      Start 38: capi_generation_request
+50/78 Test #38: capi_generation_request ..............   Passed    0.00 sec
+      Start 34: capi_error_boundary
+51/78 Test #34: capi_error_boundary ..................   Passed    0.01 sec
+      Start 25: capi_parameters_shared
+52/78 Test #25: capi_parameters_shared ...............   Passed    0.00 sec
+      Start  5: capi_library_shared
+53/78 Test  #5: capi_library_shared ..................   Passed    0.00 sec
+      Start 43: capi_render_inputs_shared
+54/78 Test #39: capi_generate_ex_errors ..............   Passed    0.21 sec
+      Start 33: capi_error_sink
+55/78 Test #33: capi_error_sink ......................   Passed    0.01 sec
+      Start 51: geometry_allocation_failures
+56/78 Test #51: geometry_allocation_failures .........   Passed    0.01 sec
+      Start 18: capi_output_declarations_static
+57/78 Test #18: capi_output_declarations_static ......   Passed    0.00 sec
+      Start 50: blur_allocation_failures
+58/78 Test #50: blur_allocation_failures .............   Passed    0.00 sec
+      Start  1: capi_package_compatibility
+59/78 Test #43: capi_render_inputs_shared ............   Passed    0.06 sec
+      Start 73: compiler_language_contract
+60/78 Test #64: source_over_rational_reference .......   Passed    0.72 sec
+      Start 71: recipe_format_cli
+61/78 Test #71: recipe_format_cli ....................   Passed    0.42 sec
+      Start 63: mask_rational_reference
+62/78 Test  #1: capi_package_compatibility ...........   Passed    0.54 sec
+      Start 61: editor_formatting
+63/78 Test #73: compiler_language_contract ...........   Passed    0.52 sec
+      Start 68: compiler_check_cli
+64/78 Test #78: language_llm_reference ...............   Passed   22.45 sec
+      Start  2: capi_descriptors
+65/78 Test  #2: capi_descriptors .....................   Passed    0.00 sec
+      Start 52: voronoi_allocation_failures
+66/78 Test #52: voronoi_allocation_failures ..........   Passed    0.07 sec
+      Start 60: compiler_output_defaults
+67/78 Test #61: editor_formatting ....................   Passed    0.31 sec
+      Start 59: editor_diagnostics
+68/78 Test #68: compiler_check_cli ...................   Passed    0.32 sec
+      Start 62: binding_python
+69/78 Test #63: mask_rational_reference ..............   Passed    0.42 sec
+      Start 69: compiler_format_cli
+70/78 Test #60: compiler_output_defaults .............   Passed    0.23 sec
+      Start 70: compiler_materials_cli
+71/78 Test #62: binding_python .......................   Passed    0.15 sec
+      Start 65: retired_format_rejection
+72/78 Test #59: editor_diagnostics ...................   Passed    0.20 sec
+      Start 58: runtime_matrix_comparators
+73/78 Test #69: compiler_format_cli ..................   Passed    0.18 sec
+      Start 66: resource_export_reference
+74/78 Test #58: runtime_matrix_comparators ...........   Passed    0.11 sec
+      Start 74: compiler_language_effects
+75/78 Test #66: resource_export_reference ............   Passed    0.05 sec
+76/78 Test #65: retired_format_rejection .............   Passed    0.14 sec
+77/78 Test #70: compiler_materials_cli ...............   Passed    0.16 sec
+78/78 Test #74: compiler_language_effects ............   Passed    0.03 sec
+
+100% tests passed, 0 tests failed out of 78
+
+Total Test time (real) =  22.92 sec

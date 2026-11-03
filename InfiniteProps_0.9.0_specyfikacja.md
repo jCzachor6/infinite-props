@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–04 zakończone; noise, bezpośrednie maski oraz wspólny rdzeń geometrii i uchwyty VM sprawdzone natywnie oraz w WASM. Następny etap: 05 (Voronoi i rozmieszczenie sites).
+**Status:** etapy 00–04 zakończone. Etap 05 (Voronoi i rozmieszczenie sites) zaimplementowany i zweryfikowany lokalnie native/WASM; do zamknięcia pozostaje potwierdzenie pushu na `origin/develop` i zgodności SHA. Następny etap implementacyjny: 06 (kontury), po dostarczeniu 05.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -542,16 +542,18 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 04.
 
-- [ ] 05.1 Zaimplementować bazowy diagram i własne sites, kanoniczne wspólne krawędzie, odczyty site/count/neighbors i przycinanie do obszaru.
-- [ ] 05.2 Dodać deterministyczne random/grid/jitter i Lloyd 0–4; zamrozić rozkład, kolejność, niepełne rzędy i ograniczoną obsługę kolizji generowanych sites.
-- [ ] 05.3 Dodać anizotropową metrykę i kierunek oraz row_bias/row_jitter/row_offset jako osobną fazę generowania sites.
-- [ ] 05.4 Sprawdzić count=1/256, błędne count, duplikaty, sites na brzegu i poza obszarem, przypadki współliniowe, jitter=0/1, relax=4, kierunki ukośne i neutralność rozszerzeń.
-- [ ] 05.5 Zweryfikować sumę pól w przypiętej tolerancji, brak luk i powielonych granic, symetrię sąsiedztwa oraz golden native/WASM.
-- [ ] **Etap 05 zakończony.**
+- [x] 05.1 Zaimplementować bazowy diagram i własne sites, kanoniczne wspólne krawędzie, odczyty site/count/neighbors i przycinanie do obszaru.
+- [x] 05.2 Dodać deterministyczne random/grid/jitter i Lloyd 0–4; zamrozić rozkład, kolejność, niepełne rzędy i ograniczoną obsługę kolizji generowanych sites.
+- [x] 05.3 Dodać anizotropową metrykę i kierunek oraz row_bias/row_jitter/row_offset jako osobną fazę generowania sites.
+- [x] 05.4 Sprawdzić count=1/256, błędne count, duplikaty, sites na brzegu i poza obszarem, przypadki współliniowe, jitter=0/1, relax=4, kierunki ukośne i neutralność rozszerzeń.
+- [x] 05.5 Zweryfikować sumę pól w przypiętej tolerancji, brak luk i powielonych granic, symetrię sąsiedztwa oraz golden native/WASM.
+- [ ] **Etap 05 zakończony — oczekuje na potwierdzenie publikacji i zdalnego SHA.**
 
 **Odbiór:** wszystkie przeciążenia Voronoi działają, dane są stabilne i ograniczone, każda iteracja i pamięć tymczasowa mają koszt.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja (2026-11-03):** [kontrakt Voronoi](spec/voronoi-v0.9.md), [wektory referencyjne](tests/fixtures/voronoi-v0.9.json), [raport](spec/verification/voronoi-v0.9.json), [przykład sites i sąsiedztwa](examples/language/voronoi.ips). Wszystkie sześć przeciążeń i trzy odczyty działają przez parser, typowanie, lowering, emitter, walidator, VM, formatter, IPA/IPDIS i opis języka. Świeże buildy Release poza iCloud: 78/78 CTest; siedem testów Voronoi / 2 278 223 asercje; pełny native/WASM PASS. Bramka obejmuje 19 zestawów, 306 generacji, bity całej topologii/metadanych, fuel i pamięć, 18 trapów, trzy odrzucenia bytecode oraz pięć błędów kompilacji. Niezależny oracle przekształca cały prostokąt do metryki euklidesowej; nie używa wyników runtime jako wzorca geometrii. Zachowano osobno analityczne poligony i utrwalone hashe referencyjnie sprawdzonych rekordów. Sprawdzone limity 1/256 także dla jawnej listy sites, współliniowość i współokręgowość, duplikaty/brzeg, niepełne rzędy, ukośne kierunki, neutralność i Lloyd 0–4. Krawędzie wewnętrzne mają dwa przeciwne użycia, zewnętrzne pokrywają każdy bok prostokąta dokładnie raz; zaokrąglone obwody nie mogą się samoprzecinać. Suma pól mieści się w tolerancji względnej 2e-6. Wspólna arena obejmuje scratch i wszystkie iteracje; 952 wymuszone błędy alokacji nie pozostawiają wycieków, count/site nie alokują. Metadane liczą momenty względem pierwszego wierzchołka, co stabilizuje duże współrzędne i zachowuje wcześniejsze wzorce. Count=256 z czterema iteracjami wymaga w sprawdzonym przypadku około 7,4M fuel; jawne zwiększenie meta `fuel` w IPA działa, domyślne 5M zachowuje trap. Nie dodano biblioteki geometrycznej. Runtime 0.8, etap 03 i etap 04 odrzucają po 21 nowych programów, także martwe opcode. Wcześniejsze wzorce pozostają niezmienione. Schema języka pozostaje 5 z opcjonalnym opisem Voronoi (200 mutacji / 153 przykłady CLI); handbook: 90 builtinów / 153 przykłady. Wariant pakietowy przechodzi bez wewnętrznych programów testowych. Kontury, regiony i dynamiczne części pozostają w kolejnych etapach.
+
+**Publikacja:** podczas końcowej weryfikacji `git fetch origin develop` nie rozwiązał DNS `github.com`; profil wykonania odrzucił eskalację. Kod i testy są gotowe do commitu. Nie oznaczać etapu jako dostarczonego bez udanego pushu i odczytu zdalnego SHA zgodnie z §8.
 
 ### Etap 06 — kontury, dziury i upraszczanie
 

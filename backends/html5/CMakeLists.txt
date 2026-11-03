@@ -54,3 +54,7 @@ add_executable(geometry_representation_probe ../../tests/geometry_representation
 target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
 iprop_warnings(geometry_representation_probe)
 target_link_options(geometry_representation_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+add_executable(voronoi_probe ../../tests/voronoi_probe.cpp)
+target_link_libraries(voronoi_probe PRIVATE iprop_runtime)
+iprop_warnings(voronoi_probe)
+target_link_options(voronoi_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")

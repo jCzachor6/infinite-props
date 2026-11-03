@@ -1794,6 +1794,82 @@
       "value": 4,
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "optional Voronoi policy absent",
+      "path": [
+        "source_rules",
+        "voronoi"
+      ],
+      "accept": true,
+      "schema": true,
+      "delete": true
+    },
+    {
+      "id": "null Voronoi policy",
+      "path": [
+        "source_rules",
+        "voronoi"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": null
+    },
+    {
+      "id": "Voronoi site limit drift",
+      "path": [
+        "source_rules",
+        "voronoi",
+        "maximum_sites"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": 257
+    },
+    {
+      "id": "Voronoi relax limit drift",
+      "path": [
+        "source_rules",
+        "voronoi",
+        "maximum_relax"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": 5
+    },
+    {
+      "id": "Voronoi grid constant drift",
+      "path": [
+        "source_rules",
+        "voronoi",
+        "constants",
+        "voronoi.grid"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": 2
+    },
+    {
+      "id": "Voronoi stream draw forbidden",
+      "path": [
+        "source_rules",
+        "voronoi",
+        "rng"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": "advance_current"
+    },
+    {
+      "id": "Voronoi constants forbidden",
+      "path": [
+        "source_rules",
+        "voronoi",
+        "asset_constants"
+      ],
+      "accept": false,
+      "schema": false,
+      "value": true
     }
   ],
   "diagnostics": [

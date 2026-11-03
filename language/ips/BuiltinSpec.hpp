@@ -58,7 +58,7 @@ const BuiltinOverload* builtinOverload(const BuiltinSpec& spec, std::span<const 
 // A polygon call without a fixed overload of its arity: poly(color, x0, y0, ...)
 // is variadic, while poly(points, color) lowers through its overload.
 bool variadicPolygon(const BuiltinSpec& spec, std::size_t arity);
-// The distribution constructors arrived after helpers could take their
+// The distribution/geometry constructors arrived after helpers could take their
 // names, so a helper declared with one of these names keeps its calls.
 bool builtinYieldsToHelper(std::string_view name);
 // Choices preserve identical storable types; mixed numeric choices widen to f32.

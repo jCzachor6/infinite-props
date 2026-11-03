@@ -20,6 +20,24 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
+        {"voronoi", {V::Diagram2d, L::Opcode, {
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32}},Opcode::Voronoi},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32}},Opcode::VoronoiConfig},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
+              {"anisotropy",V::F32},{"direction",V::Vec2}},Opcode::VoronoiMetric},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
+              {"anisotropy",V::F32},{"direction",V::Vec2},{"row_bias",V::F32},
+              {"row_jitter",V::F32},{"row_offset",V::F32}},Opcode::VoronoiRows},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"sites",V::list(V::Vec2)}},Opcode::VoronoiSites},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"sites",V::list(V::Vec2)},
+              {"relax",V::I32}},Opcode::VoronoiSitesRelax}}}},
+        {"diagram.count", {V::I32,L::Opcode,{{{{"d",V::Diagram2d}},Opcode::DiagramCount}}}},
+        {"diagram.site", {V::Vec2,L::Opcode,{{{{"d",V::Diagram2d},{"index",V::I32}},Opcode::DiagramSite}}}},
+        {"diagram.neighbors", {V::list(V::I32),L::Opcode,
+            {{{{"d",V::Diagram2d},{"index",V::I32}},Opcode::DiagramNeighbors}}}},
         {"fault", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Fault}}}},
         {"smooth", {V::F32, L::Opcode, {{{{"t", V::F32}}, Opcode::Smooth}}}},
         {"sqrt", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Sqrt}}}},
@@ -303,7 +321,7 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
 }
 
 bool builtinYieldsToHelper(std::string_view name) {
-    return name == "gaussian" || name == "triangular" || name == "beta";
+    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi";
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {

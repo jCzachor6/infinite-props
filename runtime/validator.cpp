@@ -181,6 +181,20 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
+        case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+            if (ins.opcode == Opcode::VoronoiSitesRelax) expect(at,ValueType::I32,"voronoi relax");
+            expect(at,ValueType::list(ValueType::Vec2),"voronoi sites");
+            expect(at,ValueType::Vec2,"voronoi size");
+            expect(at,ValueType::Vec2,"voronoi origin");
+            push(at,ValueType::Diagram2d);
+            return;
+        case Opcode::DiagramCount: case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
+            if (ins.opcode != Opcode::DiagramCount) expect(at,ValueType::I32,"diagram index");
+            expect(at,ValueType::Diagram2d,"diagram receiver");
+            push(at,ins.opcode == Opcode::DiagramCount ? ValueType::I32 :
+                ins.opcode == Opcode::DiagramSite ? ValueType::Vec2 : ValueType::list(ValueType::I32));
+            return;
+
         case Opcode::LayerBegin:
         case Opcode::ClipBegin:
             if (ins.opcode == Opcode::ClipBegin) expect(at, ValueType::Mask, "clip mask");

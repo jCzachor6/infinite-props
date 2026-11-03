@@ -25,7 +25,15 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::NoiseCell2: case Opcode::NoiseCellId:
     case Opcode::NoiseWarpVec: case Opcode::NoiseFbmConfig:
     case Opcode::NoiseMask: case Opcode::NoiseMaskConfig:
+    case Opcode::Voronoi: case Opcode::VoronoiConfig:
+    case Opcode::VoronoiMetric: case Opcode::VoronoiRows:
         return {R::SeededComputation,false,false,check(C::NumericRange)};
+    case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+        return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
+    case Opcode::DiagramCount:
+        return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
+        return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::Weather: return {R::SeededComputation,true};
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
@@ -83,7 +91,9 @@ constexpr OperationEffects effects(Opcode op) {
     }
 }
 constexpr OpcodeSpec fixed(Opcode op, const char* name, StackSignature stack) {
-    return {op,name,OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
+    const bool voronoi=op == Opcode::Voronoi || op == Opcode::VoronoiConfig ||
+        op == Opcode::VoronoiMetric || op == Opcode::VoronoiRows;
+    return {op,name,voronoi ? OperandKind::Zero : OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
 }
 constexpr OpcodeSpec dynamic(Opcode op, const char* name, OperandKind operand,
                              AuxPolicy aux = AuxPolicy::Zero) {
@@ -214,6 +224,19 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::NoiseMaskConfig, "noise.mask_config",
         StackSignature({S::Vec2, S::Vec2, S::I32, S::Vec2, S::F32, S::I32,
                         S::I32, S::F32, S::I32, S::F32}, V::Mask)),
+    fixed(Opcode::Voronoi, "voronoi", StackSignature({S::Vec2,S::Vec2,S::I32,S::I32},V::Diagram2d)),
+    fixed(Opcode::VoronoiConfig, "voronoi.config",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32},V::Diagram2d)),
+    fixed(Opcode::VoronoiMetric, "voronoi.metric",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32,S::F32,S::Vec2},V::Diagram2d)),
+    fixed(Opcode::VoronoiRows, "voronoi.rows",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32,S::F32,S::Vec2,
+                        S::F32,S::F32,S::F32},V::Diagram2d)),
+    dynamic(Opcode::VoronoiSites, "voronoi.sites", OperandKind::Zero),
+    dynamic(Opcode::VoronoiSitesRelax, "voronoi.sites_relax", OperandKind::Zero),
+    dynamic(Opcode::DiagramCount, "diagram.count", OperandKind::Zero),
+    dynamic(Opcode::DiagramSite, "diagram.site", OperandKind::Zero),
+    dynamic(Opcode::DiagramNeighbors, "diagram.neighbors", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),
