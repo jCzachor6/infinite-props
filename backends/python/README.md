@@ -96,3 +96,10 @@ through Python and Pillow after generating it:
 ```sh
 python3 backends/test/check-pixel-corpus.py build/backends/capi/libipropc.dylib build/pixel-corpus
 ```
+
+The Linux sanitizer harness runs both allocators: `malloc` with ASan/UBSan
+checks Python-owned buffer bounds, then ordinary `pymalloc` with LSan checks
+native lifetime without CPython 3.12's retained small-string noise. A separate
+interpreter baseline must pass; intentional native heap overflow and leak
+probes must still fail with their named C++ frames. Suppressions match only
+CPython allocator functions, never the native library or ctypes as a whole.
