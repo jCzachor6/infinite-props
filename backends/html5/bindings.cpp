@@ -1,216 +1,168 @@
-// The HTML5/WASM binding: exposes the reference interpreter to JavaScript
-// through one entry point, `generate(fileBytes, seed,
-// sizeX, sizeY[, uniforms]) -> {width, height, data, outputs}`. `uniforms`
-// maps declared input names to values: numbers for u32/f32 inputs and
-// "#RRGGBB" or "#RRGGBBAA" strings for colours, as `ipgen --uniform` takes
-// them. The returned `data` is a Uint8Array view into the module heap; it
-// stays valid until the next generate() call.
-
+// Public WASM generation uses the same checked C API as the native hosts.
+// The low-level RGBA view expires on the next call; all typed resources are
+// owned JS copies. js/api.js also copies RGBA for independently owned results.
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include "part_values.hpp"
 
-#include <cstring>
-#include <map>
+#include <bit>
+#include <cstdint>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "iprop/VM.hpp"
-#include "iprop/Validator.hpp"
-
-using namespace iprop;
-
+using emscripten::val;
+using u32 = std::uint32_t;
 namespace {
+std::vector<std::uint8_t> g_rgba;
 
-// A reusable heap buffer for the latest RGBA result. generate() returns a
-// view over it; the next call reuses (and invalidates) it.
-std::vector<u8> g_rgba;
-
-[[noreturn]] void throwJs(const std::string& message) {
-    emscripten::val::global("Error")
-        .new_(emscripten::val(message))
-        .throw_();
+class ApiError : public std::runtime_error {
+public:
+    iprop_error_ex detail;
+    ApiError(const iprop_error_ex& error, const char* message) : std::runtime_error(message), detail(error) {
+        detail.message_buffer = nullptr;
+    }
+};
+struct Checked {
+    iprop_error_ex error{};
+    char message[8192]{};
+    Checked() {
+        iprop_error_ex_init(&error, sizeof(error));
+        error.message_buffer = message; error.message_capacity = sizeof(message);
+    }
+    void operator()(iprop_status_ex status) const { if (status != IPROP_EX_OK) throw ApiError(error, message); }
+};
+[[noreturn]] void throwJs(const std::string& message, const iprop_error_ex* detail = nullptr) {
+    auto error = val::global("Error").new_(val("iprop: " + message));
+    if (detail) {
+        error.set("status", detail->status); error.set("reason", detail->reason); error.set("stage", detail->stage);
+        error.set("byteOffset", static_cast<double>(detail->byte_offset)); error.set("locationFlags", detail->location_flags);
+        error.set("offsetSpace", detail->offset_space); error.set("functionIndex", detail->function_index);
+        error.set("pc", detail->pc); error.set("debugLine", detail->debug_line);
+        error.set("messageTruncated", detail->message_truncated != 0);
+    }
+    error.throw_();
 }
-
-bool hexDigit(char c, u8& out) {
-    if (c >= '0' && c <= '9') { out = static_cast<u8>(c - '0'); return true; }
-    if (c >= 'a' && c <= 'f') { out = static_cast<u8>(c - 'a' + 10); return true; }
-    if (c >= 'A' && c <= 'F') { out = static_cast<u8>(c - 'A' + 10); return true; }
+bool hexDigit(char c, std::uint8_t& out) {
+    if (c >= '0' && c <= '9') { out = static_cast<std::uint8_t>(c - '0'); return true; }
+    if (c >= 'a' && c <= 'f') { out = static_cast<std::uint8_t>(c - 'a' + 10); return true; }
+    if (c >= 'A' && c <= 'F') { out = static_cast<std::uint8_t>(c - 'A' + 10); return true; }
     return false;
 }
-
-// #RRGGBB (opaque) or #RRGGBBAA, as ipgen parses --uniform colours.
-bool parseColor(const std::string& text, Color& color) {
+bool parseColor(const std::string& text, iprop_color_rgba8& color) {
     if ((text.size() != 7 && text.size() != 9) || text[0] != '#') return false;
-    u8* channels[4] = {&color.r, &color.g, &color.b, &color.a};
-    color.a = 255;
+    std::uint8_t* channels[4] = {&color.r, &color.g, &color.b, &color.a}; color.a = 255;
     for (std::size_t i = 0; i < (text.size() - 1) / 2; ++i) {
-        u8 hi = 0, lo = 0;
+        std::uint8_t hi = 0, lo = 0;
         if (!hexDigit(text[1 + i * 2], hi) || !hexDigit(text[2 + i * 2], lo)) return false;
-        *channels[i] = static_cast<u8>(hi * 16u + lo);
+        *channels[i] = static_cast<std::uint8_t>(hi * 16u + lo);
     }
     return true;
 }
-
-// Reads the uniforms object against the file's declared root inputs. Throws
-// std::invalid_argument, which generate() turns into a JS Error.
-std::map<std::string, UniformValue> readUniforms(const LoadedFile& loaded, emscripten::val uniforms) {
-    std::map<std::string, UniformValue> values;
-    if (uniforms.isUndefined() || uniforms.isNull()) return values;
-    const auto names = emscripten::vecFromJSArray<std::string>(
-        emscripten::val::global("Object").call<emscripten::val>("keys", uniforms));
+void readUniforms(const iprop_program* program, iprop_parameters* parameters, val uniforms, Checked& check) {
+    if (uniforms.isUndefined() || uniforms.isNull()) return;
+    const auto names = emscripten::vecFromJSArray<std::string>(val::global("Object").call<val>("keys", uniforms));
     for (const auto& name : names) {
-        const InputDecl* decl = loaded.meta.findInput(name, loaded.pool);
-        if (decl == nullptr) throw std::invalid_argument("unknown uniform '" + name + "'");
-        const emscripten::val value = uniforms[name];
-        UniformValue uniform;
-        uniform.type = decl->type;
-        switch (decl->type) {
-        case InputType::Color:
-            if (!value.isString() || !parseColor(value.as<std::string>(), uniform.color))
+        u32 index = 0;
+        const iprop_utf8_view key{name.data(), static_cast<u32>(name.size())};
+        if (iprop_program_input_find(program, key, &index, &check.error) != IPROP_EX_OK)
+            throw std::invalid_argument("unknown uniform '" + name + "'");
+        iprop_input_info_ex input{}; iprop_input_info_ex_init(&input, sizeof(input));
+        check(iprop_program_input_get(program, index, &input, &check.error));
+        const auto value = uniforms[name];
+        if (input.type == IPROP_INPUT_COLOR) {
+            iprop_color_rgba8 color{};
+            if (!value.isString() || !parseColor(value.as<std::string>(), color))
                 throw std::invalid_argument("uniform '" + name + "' must be a #RRGGBB or #RRGGBBAA colour");
-            break;
-        case InputType::F32:
+            check(iprop_parameters_set_color(parameters, index, color, &check.error));
+        } else if (input.type == IPROP_INPUT_F32) {
             if (!value.isNumber()) throw std::invalid_argument("uniform '" + name + "' must be a number");
-            uniform.f = static_cast<f32>(value.as<double>());
-            break;
-        case InputType::U32: {
+            check(iprop_parameters_set_f32(parameters, index, static_cast<float>(value.as<double>()), &check.error));
+        } else {
             const double number = value.isNumber() ? value.as<double>() : -1.0;
             if (!(number >= 0.0 && number <= 4294967295.0) || number != static_cast<double>(static_cast<u32>(number)))
                 throw std::invalid_argument("uniform '" + name + "' must be an unsigned 32-bit integer");
-            uniform.u = static_cast<u32>(number);
-            break;
+            check(iprop_parameters_set_u32(parameters, index, static_cast<u32>(number), &check.error));
         }
-        }
-        values[name] = uniform;
     }
-    return values;
 }
-
+val outputs(const iprop_result* result, Checked& check) {
+    u32 count = 0; check(iprop_result_output_count(result, &count, &check.error));
+    auto list = val::array();
+    for (u32 i = 0; i < count; ++i) {
+        iprop_output_slot_ex slot{}; check(iprop::backend::querySlot(result, i, slot, &check.error));
+        auto entry = val::object(), points = val::array(), rects = val::array(), circles = val::array();
+        auto valueBits = val::array(), parts = val::array();
+        entry.set("index", slot.output_index); entry.set("owner", slot.owner);
+        entry.set("name", slot.name.byte_count ? std::string(slot.name.data, slot.name.byte_count) : std::string());
+        entry.set("isList", slot.is_list != 0); entry.set("kind", slot.kind); entry.set("count", slot.element_count);
+        if (slot.kind == IPROP_OUTPUT_KIND_PART) {
+            std::vector<iprop_part_snapshot_ex> records;
+            check(iprop::backend::copyParts(result, slot, records, &check.error));
+            for (const auto& p : records) parts.call<void>("push", iprop::html5::part(p));
+        } else {
+            iprop_result_output_view_ex old{}; check(iprop::backend::queryOutput(result, i, old, &check.error));
+            const auto stride = iprop::backend::outputComponents(slot.kind);
+            const char* names[] = {"x", "y", slot.kind == IPROP_OUTPUT_KIND_RECT ? "w" : "r", "h"};
+            for (u32 k = 0; k < slot.element_count; ++k) {
+                auto value = val::object(), bits = val::object();
+                for (u32 c = 0; c < stride; ++c) {
+                    const float f = old.values[static_cast<std::size_t>(k) * stride + c];
+                    bits.set(names[c], std::bit_cast<u32>(f)); value.set(names[c], f);
+                }
+                valueBits.call<void>("push", bits);
+                if (slot.kind == IPROP_OUTPUT_KIND_POINT) points.call<void>("push", value);
+                else if (slot.kind == IPROP_OUTPUT_KIND_RECT) rects.call<void>("push", value);
+                else circles.call<void>("push", value);
+            }
+        }
+        entry.set("valueBits", valueBits); entry.set("points", points); entry.set("rects", rects);
+        entry.set("circles", circles); entry.set("parts", parts); list.call<void>("push", entry);
+    }
+    return list;
+}
 } // namespace
 
-emscripten::val generateWith(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY,
-                             emscripten::val uniforms) {
-    // Copy the input bytes out of the JS array view into our own buffer.
-    const std::size_t length = fileBytes["byteLength"].as<std::size_t>();
-    std::vector<iprop::u8> bytes(length);
-    emscripten::val view{emscripten::typed_memory_view(length, bytes.data())};
-    view.call<void>("set", fileBytes);
-
+val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
     try {
-        const auto loaded = iprop::loadFile(bytes);
-        iprop::validate(loaded);
-        if (iprop::hasPartOutputs(loaded))
-            throw std::invalid_argument("part outputs are unsupported by this binding; use the typed host API");
-        iprop::VM vm(loaded, {seed, sizeX, sizeY, readUniforms(loaded, uniforms)});
-        vm.run();
-
-        const iprop::Canvas& canvas = vm.canvas();
-        g_rgba.resize(static_cast<std::size_t>(canvas.width) * canvas.height * 4);
-        for (u32 y = 0; y < canvas.height; ++y) {
-            for (u32 x = 0; x < canvas.width; ++x) {
-                const iprop::Color& pixel = canvas.at(x, y);
-                const std::size_t at =
-                    (static_cast<std::size_t>(y) * canvas.width + x) * 4;
-                g_rgba[at] = pixel.r;
-                g_rgba[at + 1] = pixel.g;
-                g_rgba[at + 2] = pixel.b;
-                g_rgba[at + 3] = pixel.a;
-            }
-        }
-
-        const iprop::GenerationResult result = vm.result();
-        emscripten::val outputs = emscripten::val::array();
-        for (const auto& output : result.outputs) {
-            emscripten::val entry = emscripten::val::object();
-            entry.set("name", output.name);
-            entry.set("isList", output.isList);
-            entry.set("kind", static_cast<u8>(output.kind));
-            emscripten::val points = emscripten::val::array();
-            for (const auto& point : output.points) {
-                emscripten::val p = emscripten::val::object();
-                p.set("x", point.x);
-                p.set("y", point.y);
-                points.call<void>("push", p);
-            }
-            emscripten::val rects = emscripten::val::array();
-            for (const auto& rect : output.rects) {
-                emscripten::val r = emscripten::val::object();
-                r.set("x", rect.x);
-                r.set("y", rect.y);
-                r.set("w", rect.w);
-                r.set("h", rect.h);
-                rects.call<void>("push", r);
-            }
-            emscripten::val circles = emscripten::val::array();
-            for (const auto& circle : output.circles) {
-                emscripten::val c = emscripten::val::object();
-                c.set("x", circle.x);
-                c.set("y", circle.y);
-                c.set("r", circle.r);
-                circles.call<void>("push", c);
-            }
-            // Export bits before widening to a JS Number, which can lose
-            // a NaN payload or sign. This is the exact conformance surface.
-            emscripten::val valueBits = emscripten::val::array();
-            const auto bits = [](f32 value) {
-                u32 encoded = 0;
-                std::memcpy(&encoded, &value, sizeof(encoded));
-                return encoded;
-            };
-            for (const auto& point : output.points) {
-                auto p = emscripten::val::object();
-                p.set("x", bits(point.x));
-                p.set("y", bits(point.y));
-                valueBits.call<void>("push", p);
-            }
-            for (const auto& rect : output.rects) {
-                auto r = emscripten::val::object();
-                r.set("x", bits(rect.x));
-                r.set("y", bits(rect.y));
-                r.set("w", bits(rect.w));
-                r.set("h", bits(rect.h));
-                valueBits.call<void>("push", r);
-            }
-            for (const auto& circle : output.circles) {
-                auto c = emscripten::val::object();
-                c.set("x", bits(circle.x));
-                c.set("y", bits(circle.y));
-                c.set("r", bits(circle.r));
-                valueBits.call<void>("push", c);
-            }
-            entry.set("valueBits", valueBits);
-            entry.set("points", points);
-            entry.set("rects", rects);
-            entry.set("circles", circles);
-            outputs.call<void>("push", entry);
-        }
-
-        emscripten::val resultObject = emscripten::val::object();
-        resultObject.set("width", canvas.width);
-        resultObject.set("height", canvas.height);
-        resultObject.set("data",
-                         emscripten::val(emscripten::typed_memory_view(
-                             g_rgba.size(), g_rgba.data())));
-        resultObject.set("outputs", outputs);
-        emscripten::val fuel = emscripten::val::object();
-        fuel.set("budget", static_cast<double>(vm.fuelBudget()));
-        fuel.set("remaining", static_cast<double>(vm.fuel()));
-        fuel.set("used", static_cast<double>(vm.fuelBudget() - vm.fuel()));
-        resultObject.set("fuel", fuel);
-        return resultObject;
-    } catch (const iprop::FormatError& error) {
-        throwJs(std::string("iprop: ") + error.what());
-    } catch (const std::invalid_argument& error) {
-        throwJs(std::string("iprop: ") + error.what());
-    }
+        const auto length = fileBytes["byteLength"].as<std::size_t>();
+        std::vector<std::uint8_t> bytes(length ? length : 1);
+        val(emscripten::typed_memory_view(length, bytes.data())).call<void>("set", fileBytes);
+        Checked check;
+        iprop_program* raw = nullptr; check(iprop_program_load_ex(bytes.data(), length, &raw, &check.error));
+        const std::unique_ptr<iprop_program, decltype(&iprop_program_free)> program(raw, iprop_program_free);
+        iprop_parameters* rawParameters = nullptr;
+        check(iprop_parameters_create(program.get(), &rawParameters, &check.error));
+        const std::unique_ptr<iprop_parameters, decltype(&iprop_parameters_free)> parameters(rawParameters, iprop_parameters_free);
+        readUniforms(program.get(), parameters.get(), uniforms, check);
+        iprop_generate_options_ex options{}; iprop_generate_options_ex_init(&options, sizeof(options));
+        options.flags = IPROP_GENERATE_PART_OUTPUTS; options.seed = seed; options.size_x = sizeX; options.size_y = sizeY;
+        iprop_result* rawResult = nullptr;
+        check(iprop_generate_ex(program.get(), &options, parameters.get(), &rawResult, &check.error));
+        const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> result(rawResult, iprop_result_free);
+        iprop_image_view_ex image{}; check(iprop::backend::queryImage(result.get(), image, &check.error));
+        g_rgba.assign(image.pixels, image.pixels + image.byte_count);
+        std::vector<iprop::backend::ResultResource> stores;
+        check(iprop::backend::copyResources(result.get(), stores, &check.error));
+        auto object = val::object();
+        object.set("width", image.width); object.set("height", image.height);
+        object.set("rowStride", static_cast<double>(image.row_stride)); object.set("pixelFormat", image.pixel_format);
+        object.set("alphaMode", image.alpha_mode); object.set("storageOrigin", image.origin);
+        object.set("outputs", outputs(result.get(), check)); object.set("resources", iprop::html5::resources(stores));
+        iprop_result_stats_ex stats{}; iprop_result_stats_ex_init(&stats, sizeof(stats));
+        check(iprop_result_query_stats(result.get(), &stats, &check.error));
+        auto fuel = val::object();
+        fuel.set("budget", static_cast<double>(stats.fuel_budget)); fuel.set("remaining", static_cast<double>(stats.fuel_remaining));
+        fuel.set("used", static_cast<double>(stats.fuel_used)); object.set("fuel", fuel);
+        object.set("data", val(emscripten::typed_memory_view(g_rgba.size(), g_rgba.data())));
+        return object;
+    } catch (const ApiError& error) { throwJs(error.what(), &error.detail); }
+      catch (const std::exception& error) { throwJs(error.what()); }
 }
-
-emscripten::val generate(emscripten::val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
-    return generateWith(fileBytes, seed, sizeX, sizeY,
-                        emscripten::val::undefined());
+val generate(val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
+    return generateWith(fileBytes, seed, sizeX, sizeY, val::undefined());
 }
-
 EMSCRIPTEN_BINDINGS(iprop) {
     emscripten::function("generate", &generate);
     emscripten::function("generate", &generateWith);

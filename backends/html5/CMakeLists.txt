@@ -7,7 +7,10 @@
 # Outputs: iprop.js, iprop.wasm in build/wasm.
 
 cmake_minimum_required(VERSION 3.24)
-project(iprop_html5 LANGUAGES CXX)
+# Keep the C API's build identity tied to the authoritative root project.
+file(STRINGS ../../CMakeLists.txt iprop_version_line LIMIT_COUNT 1 REGEX "^[ \t]+VERSION [0-9]+\\.[0-9]+\\.[0-9]+")
+string(REGEX REPLACE ".*VERSION ([0-9.]+).*" "\\1" iprop_version "${iprop_version_line}")
+project(iprop_html5 VERSION ${iprop_version} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,7 +37,15 @@ target_link_options(iprop_runtime PUBLIC "-sUSE_ZLIB=1")
 add_executable(iprop_html5
     bindings.cpp)
 
-target_link_libraries(iprop_html5 PRIVATE iprop_runtime embind)
+include(../../cmake/CAbi.cmake)
+include(../../cmake/CApiSources.cmake)
+configure_file(../capi/BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
+add_library(iprop_wasm_capi STATIC ${IPROP_CAPI_IMPLEMENTATION_SOURCES})
+target_include_directories(iprop_wasm_capi PUBLIC ../capi PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_compile_definitions(iprop_wasm_capi PUBLIC IPROP_CAPI_STATIC)
+target_link_libraries(iprop_wasm_capi PRIVATE iprop_runtime)
+iprop_warnings(iprop_wasm_capi)
+target_link_libraries(iprop_html5 PRIVATE iprop_wasm_capi iprop_runtime embind)
 
 set_target_properties(iprop_html5 PROPERTIES
     OUTPUT_NAME "iprop"

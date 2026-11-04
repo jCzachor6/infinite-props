@@ -42,6 +42,11 @@
                         height: result.height,
                         data: new Uint8Array(result.data),
                         outputs: result.outputs,
+                        resources: result.resources,
+                        rowStride: result.rowStride,
+                        pixelFormat: result.pixelFormat,
+                        alphaMode: result.alphaMode,
+                        storageOrigin: result.storageOrigin,
                         fuel: result.fuel,
                     };
                 }

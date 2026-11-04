@@ -4,8 +4,8 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp outputs.cpp part_results.cpp)
-add_library(iprop_capi SHARED ${iprop_capi_sources})
+include(../../cmake/CApiSources.cmake)
+add_library(iprop_capi SHARED ${IPROP_CAPI_IMPLEMENTATION_SOURCES})
 
 add_library(iprop::capi ALIAS iprop_capi)
 target_link_libraries(iprop_capi PRIVATE iprop::runtime)
@@ -21,7 +21,7 @@ set_target_properties(iprop_capi PROPERTIES
     SOVERSION ${IPROP_C_ABI_SOVERSION}
     EXPORT_NAME capi)
 
-add_library(iprop_capi_static STATIC ${iprop_capi_sources})
+add_library(iprop_capi_static STATIC ${IPROP_CAPI_IMPLEMENTATION_SOURCES})
 
 target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
 add_library(iprop::capi_static ALIAS iprop_capi_static)

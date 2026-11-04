@@ -1,9 +1,9 @@
 "use strict";
-// Test-only full C++/C/native/WASM observations. The public JS binding keeps
-// an explicit unsupported error until its typed result integration (stage 11).
+// Full C++/C/native/WASM and public typed JavaScript result observations.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const {execFileSync,spawnSync}=require('node:child_process');
 const {instructions,sections}=require('./sampler-conformance.js');
+const {observe:observeBinding}=require('./part-binding-observation.js');
 const repo=path.resolve(__dirname,'../../..');
 const params=[[0,0,0],[90,0,0],[180,0,0],[270,0,0],[0,1,0],[0,0,1],[90,0,1],[90,1,0]];
 const fixtures=path.join(repo,'tests/fixtures'),pins=JSON.parse(fs.readFileSync(path.join(fixtures,'part-exports-v0.9.json')));
@@ -24,7 +24,7 @@ function run(iprop,tool,directory,probes={}) {
     if(probes.native)assert(fs.existsSync(native),'requested native result probe exists');
     if(probes.wasm)assert(fs.existsSync(probes.wasm),'requested WASM result probe exists');
     const hasNative=fs.existsSync(native),hasWasm=!!probes.wasm;
-    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0;
+    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0,publicBindingGenerations=0;
     const configs=Array.from({length:8},(_,i)=>({opt:!!(i&4),debug:!!(i&2),compressed:!!(i&1)}));
     const invoke=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe',maxBuffer:16*1024*1024});
     function compile(text,config=configs[4]) {
@@ -43,6 +43,14 @@ function run(iprop,tool,directory,probes={}) {
         if(hasWasm){const wasm=JSON.parse(execFileSync(process.execPath,[probes.wasm,...args],{encoding:'utf8',maxBuffer:16*1024*1024}));
             if(result){assert.deepEqual(wasm,result,'complete native/WASM result incl. geometry, holes, rasters, mappings, IDs, owners, order, bits, RGBA and fuel');pairs++;}
             result=wasm;records++;}
+        if(iprop){const value=iprop.generate(bytes,{seed,sizeX:size[0],sizeY:size[1]});const actual=observeBinding(value);
+            if(result){assert.deepEqual(actual,semantic(result),'public binding preserves every typed field/resource/image');
+                assert.deepEqual([value.fuel.budget,value.fuel.remaining],result.fuel,'public binding fuel');}
+            const saved=JSON.stringify(actual);
+            iprop.generate(bytes,{seed:seed^0xffffffff,sizeX:size[0],sizeY:size[1]});
+            assert.equal(JSON.stringify(observeBinding(value)),saved,'old public result survives later generation and WASM memory growth');
+            if(!result)result={...actual,fuel:[value.fuel.budget,value.fuel.remaining]};
+            records++;publicBindingGenerations++;}
         assert(fs.readFileSync(program).equals(bytes),'generation never serializes/mutates the program');
         if(result)generations++;return result;
     }
@@ -50,7 +58,7 @@ function run(iprop,tool,directory,probes={}) {
         fs.writeFileSync(program,bytes);const image=base+'-forbidden.png';fs.rmSync(image,{force:true});
         const r=spawnSync(tool('ipgen'),[program,'-o',image],{encoding:'utf8'});
         assert.equal(r.status,1,r.stderr);assert.match(r.stderr,/unsupported.*legacy JSON/);assert.equal(r.stdout,'');assert(!fs.existsSync(image));legacyRejections++;
-        if(iprop){assert.throws(()=>iprop.generate(bytes,{seed:7}),/part outputs.*unsupported/);bindingRejections++;}
+        if(iprop){const value=iprop.generate(bytes,{seed:7});assert(value.outputs.some(s=>s.kind===3));assert(Array.isArray(value.resources));}
     }
     function reject(bytes,reason,validation=false) {
         fs.writeFileSync(program,bytes);
@@ -58,8 +66,9 @@ function run(iprop,tool,directory,probes={}) {
             const r=spawnSync(command,[...prefix,program,'7','0','0'],{encoding:'utf8',maxBuffer:16*1024*1024});
             assert.equal(r.status,validation?3:4,r.stderr);assert.equal(r.stdout,'');if(reason)assert.match(r.stderr,reason);
         }
+        if(iprop){assert.throws(()=>iprop.generate(bytes,{seed:7}),error=>error.status===(validation?2:3));bindingRejections++;}
         if(validation){const r=spawnSync(tool('ipval'),[program],{encoding:'utf8'});assert.equal(r.status,1,r.stderr);rejections++;}
-        else if(hasNative||hasWasm)traps++;
+        else if(hasNative||hasWasm||iprop)traps++;
     }
     try {
         for(const name of ['middle','leaf','unused','tail','raster-source'])fs.copyFileSync(path.join(fixtures,'part-exports-'+name+'.ips'),path.join(dir,'part-exports-'+name+'.ips'));
@@ -160,8 +169,8 @@ function run(iprop,tool,directory,probes={}) {
         }
         return {passed:true,programs,generations,fullRecords:records,nativeWasmPairs:pairs,pins:pins.cases.length,pinComparisons:pinned,
             matrixGenerations:matrix,roundtrips,formatted,traps,rejections,compilerErrors,legacyRejections,bindingRejections,
-            internalNative:hasNative,internalWasm:hasWasm,checkedCapi:hasNative,publicBindingTypedParts:false,
-            typedObservationSkipped:!hasNative&&!hasWasm};
+            internalNative:hasNative,internalWasm:hasWasm,checkedCapi:hasNative||!!iprop,publicBindingTypedParts:!!iprop,
+            publicBindingGenerations,typedObservationSkipped:!hasNative&&!hasWasm&&!iprop};
     } finally {if(owned)fs.rmSync(directory,{recursive:true,force:true});}
 }
 module.exports={run,canonical,digest};

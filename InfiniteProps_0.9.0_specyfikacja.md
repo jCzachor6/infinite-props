@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–10 zakończone. Trwa etap 11: Python udostępnia pełne typowane snapshoty i współdzielone zasoby przez C API 0.5 / ABI 0.5. Pozostałe bindingi i zbiorcza weryfikacja etapu 11 pozostają otwarte; raport etapu 10 jest zapisany w repozytorium.
+**Status:** etapy 00–10 zakończone. Trwa etap 11: Python i publiczny HTML5/WASM udostępniają pełne typowane snapshoty i współdzielone zasoby przez C API 0.5 / ABI 0.5. Pozostałe bindingi i zbiorcza weryfikacja etapu 11 pozostają otwarte; raport etapu 10 jest zapisany w repozytorium.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -686,7 +686,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Kroki integracji 11.1:**
 
 - [x] 11.1a Python: pełne snapshoty, jedna kopia zasobu na ID, obwody/dziury, dokładne A8/RGBA, automatyczna negocjacja typed generation i niezależny lifetime.
-- [ ] 11.1b HTML5/WASM.
+- [x] 11.1b HTML5/WASM: publiczny binding korzysta ze wspólnej implementacji checked C API; pełne snapshoty/zasoby, stare valueBits, owner/index/count, błędy i niezależny lifetime.
 - [ ] 11.1c Apple.
 - [ ] 11.1d Unity/C#.
 - [ ] 11.1e Android/JNI/Kotlin.
@@ -695,7 +695,9 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **11.1a (2026-11-04):** Python porównuje każde pole z 23 wspólnymi obserwacjami C++/checked C API. Siedem wcześniejszych semantic pins sprawdzono przed utrwaleniem referencji; dodatkowe sceny obejmują wszystkie dynamiczne i statyczne D4 oraz różne siatki targetu. Pełne dane, kolejność, ID, dziury, bufory i bity metadanych są zgodne także po kolejnej generacji i zwolnieniu programu. Siedem testów Python: sześć przechodzi, jeden opcjonalny test Pillow/CLI obrazka pominięty z powodu braku Pillow. CLI zachowuje dawny JSON point/rect/circle i jawnie odrzuca deklaracje part przed zapisem obrazu; nie dodano serializacji wyniku. Podpunkty 11.1–11.4 pozostają otwarte do integracji i weryfikacji wszystkich hostów.
 
-**Weryfikacja:** Python wykonany lokalnie na macOS; pozostałe hosty oczekują na wykonanie. Pełna macierz powstanie w 11.4.
+**11.1b (2026-11-04):** 11.1a opublikowano jako `2e74eef`. Publiczny WASM przechodzi 23 wspólne sceny oraz **604 kompletne obserwacje** zgodne z C++/checked C API i sondą WASM (1812 pełnych obserwacji łącznie, 604 pary native/WASM). Każdy wynik sprawdzono ponownie po kolejnej generacji; eksport zachowuje pełną geometrię, dziury, A8/RGBA, mappingi i bity metadanych. Przechodzi 512 przypadków macierzy, 28 IPA/IPDIS, 7 formatter round-trip, 7 trapów i 30 mutacji bytecode. Legacy CLI JSON nadal odrzuca 57 nowych programów; publiczny binding obsługuje je, a 37 błędnych programów/generacji odrzuca z checked statusem. Siedem wcześniejszych pinów bez zmian. Nie dodano formatu zapisu wyniku.
+
+**Weryfikacja:** Python i publiczny WASM wykonane lokalnie; pozostałe hosty oczekują na zakończenie. Pełna macierz powstanie w 11.4.
 
 ### Etap 12 — niezależne limity pracy i przerywanie
 

@@ -99,6 +99,26 @@ by the host and is independent of these deterministic counts.
 
 ## Notes
 
+### Typed part results
+
+Generation uses the same checked C API 0.5 implementation as native hosts.
+Every output has `index`, `owner`, `count` and an ordered `parts` array in
+addition to its existing fields. Kind 3 denotes `output list part`; old float
+outputs retain their exact `valueBits`. Empty declarations remain present.
+Each snapshot exposes every [C API part field](../../docs/c-api-part-outputs.md)
+using camelCase names, with `{x,y}` points and four tint bytes. D4 and integer
+translation are already effective, including enclosing static imports.
+
+`result.resources[id - 1]` resolves each nonzero resource ID. One table entry
+holds exact A8/RGBA `data`, or ordered `rings`/`regions` with explicit holes.
+IDs are local to one result; zero means an absent optional texture and
+`regionIndex == 0xffffffff` denotes a raster shape. Resources and snapshots
+are owned JavaScript values, surviving later calls and WASM heap growth.
+The public `Iprop` wrapper also owns its RGBA copy. Only the low-level module's
+RGBA view remains borrowed until the next call. No persisted result format
+is introduced. Checked errors additionally expose status/reason/stage and
+location fields.
+
 - The module is built with `MODULARIZE=1` and `ENVIRONMENT=web,node`, so the
   same build serves the demo page and the Node test runner.
 - The WASM heap is reused between `generate` calls; `js/api.js` copies the
