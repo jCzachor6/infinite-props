@@ -26,6 +26,7 @@ enum class ErrorReason : std::uint32_t {
     InvalidArgument = 4000,
     CanvasSize = 4003, UniformType = 4004, UnknownParameter = 4005,
     DuplicateParameter = 4006, ForeignParameters = 4007,
+    UnsupportedFeature = 4008,
     OutOfMemory = 5000, Internal = 5001,
 };
 

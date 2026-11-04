@@ -19,11 +19,12 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
         result.names.push_back(std::move(output.name));
     }
 
-    size_t floats = 0;
+    size_t floats = 0, partSlots = 0;
     for (const auto& output : outputs) {
         switch (output.kind) {
         case iprop::OutputKind::Part:
-            throw std::logic_error("part outputs require the typed part result API");
+            if (!output.partSnapshots().empty()) ++partSlots;
+            break;
         case iprop::OutputKind::Point:
             floats += 2 * output.points.size();
             break;
@@ -36,6 +37,7 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
         }
     }
     result.packed.reserve(floats);
+    result.partSlots.reserve(partSlots);
 
     result.outputs.reserve(outputs.size());
     size_t ownerEnd = file.meta.outputs.size();
@@ -45,14 +47,17 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
             ownerEnd += file.code.parts[owner].outputs.size();
             ++owner;
         }
-        const auto& output = outputs[i];
+        auto& output = outputs[i];
         iprop_output entry{};
         entry.owner = owner;
         entry.is_list = output.isList ? 1 : 0;
         entry.name = result.names[i].c_str();
         switch (output.kind) {
         case iprop::OutputKind::Part:
-            throw std::logic_error("part outputs require the typed part result API");
+            entry.kind = static_cast<iprop_output_kind>(IPROP_OUTPUT_KIND_PART);
+            entry.count = static_cast<uint32_t>(output.partSnapshots().size());
+            if (entry.count) result.partSlots.push_back({static_cast<uint32_t>(i), std::move(output.parts)});
+            break;
         case iprop::OutputKind::Point:
             entry.kind = IPROP_OUTPUT_POINT;
             entry.count = static_cast<uint32_t>(output.points.size());
@@ -87,6 +92,10 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
     // The values pointers into the (fully reserved) packed array.
     size_t begin = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
+        if (static_cast<uint32_t>(result.outputs[i].kind) == IPROP_OUTPUT_KIND_PART) {
+            result.outputs[i].values = nullptr;
+            continue;
+        }
         result.outputs[i].values =
             result.packed.empty() ? nullptr : result.packed.data() + begin;
         begin += result.outputs[i].count *
@@ -184,9 +193,6 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 void generateProgram(const iprop_program& program, const GenerationInputs& inputs,
                      iprop_result& result, ErrorContext& context,
                      const iprop_parameters* parameters) {
-    // Until typed packing is enabled, never silently drop the new output kind.
-    if (hasPartOutputs(*program.data))
-        throw FormatError("part outputs require the typed part result API", ErrorReason::InvalidOutput, ErrorStage::Arguments);
     context.file = program.data.get();
     context.stage = ErrorStage::Arguments;
     VM vm = parameters != nullptr ? VM(*program.data, inputs, parameters->values) : VM(*program.data, inputs);

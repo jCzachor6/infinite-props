@@ -35,7 +35,7 @@ int main(void) {
     CHECK(info.product_major == IPROP_TEST_PRODUCT_MAJOR);
     CHECK(info.product_minor == IPROP_TEST_PRODUCT_MINOR);
     CHECK(info.product_patch == IPROP_TEST_PRODUCT_PATCH);
-    CHECK(info.api_major == 0 && info.api_minor == 4);
+    CHECK(info.api_major == 0 && info.api_minor == 5);
     CHECK(info.abi_major == 0 && info.abi_minor == 5);
     /* The file format is unversioned: these fields are reserved zeros. */
     CHECK(info.format_major == 0 && info.format_minor_min == 0 && info.format_minor_max == 0);
@@ -46,7 +46,8 @@ int main(void) {
           IPROP_CAP_PART_REFLECTION | IPROP_CAP_METADATA_EXTENDED |
           IPROP_CAP_PARAMETERS | IPROP_CAP_RESULT_STATISTICS | IPROP_CAP_IMAGE_VIEW | IPROP_CAP_PARAMETERS_TYPED |
           IPROP_CAP_PARAMETER_OVERRIDES | IPROP_CAP_GENERATE_EX |
-        IPROP_CAP_RESULT_OUTPUTS | IPROP_CAP_TYPED_OUTPUTS));
+        IPROP_CAP_RESULT_OUTPUTS | IPROP_CAP_TYPED_OUTPUTS |
+        IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES));
     CHECK(IPROP_OK == 0 && IPROP_E_OOM == 1 && IPROP_E_FORMAT == 2 &&
           IPROP_E_TRAP == 3 && IPROP_E_ARGUMENT == 4);
     CHECK(IPROP_UNIFORM_COLOR == 0 && IPROP_UNIFORM_F32 == 1 && IPROP_UNIFORM_U32 == 2);

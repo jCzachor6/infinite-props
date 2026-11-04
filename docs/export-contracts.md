@@ -1,7 +1,7 @@
 # Export contracts
 
 The development compiler exports source language **0.8.0** with product
-**0.8.0**, an unversioned format, C API **0.4** and ABI **0.5**. JSON protocol versions
+**0.8.0**, an unversioned format, C API **0.5** and ABI **0.5**. JSON protocol versions
 are independent: language-description schema **5**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
@@ -22,6 +22,11 @@ alpha-once layer rendering and shape-only masks. Readers validate it when
 present and accept earlier schema-5 profiles without it. The existing effect
 enum is unchanged; creation uses a conservative generation-state summary and
 dynamic drawing uses the existing part-render argument check.
+
+Stage 10 adds optional `source_rules.part_exports` within schema 5: list-only
+part declarations, append order, immutable root snapshots, 256-record limit
+and result-owned shared resources, without generated-result serialization.
+Its fields are validated when present; earlier schema-5 exports remain valid.
 
 A schema version fixes known field types and meanings. Consumers accept unknown
 additive fields, including additions inside signatures or diagnostics. They

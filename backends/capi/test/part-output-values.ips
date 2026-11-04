@@ -1,0 +1,26 @@
+asset ExportedParts {
+  size 8x8
+  output list part geometry
+  output list part rasters
+  output list part empty
+  output point trace
+
+  draw {
+    layer whole(alpha=surface.legacy) { rect(0, 0, 8, 8, #ffffffff) }
+    layer hole(alpha=surface.legacy) { rect(2, 2, 3, 3, #ffffffff) }
+    shape = mask.subtract(mask.from(whole), mask.from(hole))
+    rs = regions(contour(shape, 0.5))
+    p = part.create(rs, 0)
+    geometry = p
+    geometry = part.fill(part.place(p, {-2.25, 9.5}, 90, 1, 0), #12345680)
+    layer texture(alpha=surface.source_over) {
+      pixel(0, 0, #12345601)
+      pixel(1, 0, #abcdef80)
+    }
+    geometry = part.texture(p, texture)
+    rasters = part.create(texture)
+    rasters = part.create(mask.from(texture))
+    rasters = part.create(mask.invert(mask.from(texture)))
+    trace = {part.id(p), part.source_id(p)}
+  }
+}

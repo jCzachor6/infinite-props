@@ -65,3 +65,23 @@ and subsequent generations; the last result/reference releases them.
 Legacy float/JSON result paths explicitly reject programs/slots with this new
 kind instead of inventing empty float arrays. Typed host queries are the
 generation-result contract. Platform binding support is stage 11.
+
+## Checked C result queries (10.2)
+
+API 0.5 adds separate sized slot/snapshot/resource/ring/region descriptors,
+capabilities for typed parts and resource queries, and checked unsupported
+status 6 / reason 4008. API 0.4 structures and the legacy enum remain frozen;
+ABI/install line 0.5 is unchanged. The [host contract](../docs/c-api-part-outputs.md)
+defines fields, source/appearance mapping, borrowed buffers, host copies and
+legacy compatibility checks. No generated-result serialization is added.
+
+Resources receive deterministic result-local IDs 1..N by first encounter in
+global slot/append order, source before texture; zero means absent. Stores
+are deduplicated by identity, not content or address-sorted order. Geometry
+queries expose original ordered outer/hole rings and region metadata; raster
+queries expose exact tight A8/RGBA8 bytes and source scale. Snapshot mappings
+are separate from stores. Queries enumerate at most 512 sources in bounded
+scratch, without heap allocation, copying topology or materializing masks.
+The C adapter moves the immutable slot tables; its nonempty-slot reference
+index fits the 128-byte record accounting allowance and retains no extra
+pixel/vertex buffers.

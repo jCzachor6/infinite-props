@@ -19,6 +19,9 @@ iprop_status iprop_program_load(const uint8_t* bytes, size_t length,
         auto program = std::make_unique<iprop_program>();
         iprop::capi::ErrorContext context;
         iprop::capi::loadProgram(*program, {bytes, length}, context);
+        if (iprop::hasPartOutputs(*program->data))
+            throw iprop::FormatError("part outputs are unsupported by legacy load; use checked API 0.5",
+                                    iprop::ErrorReason::UnsupportedFeature, iprop::ErrorStage::Arguments);
         *out_program = program.release();
         return iprop::capi::CallOutcome{};
     });
@@ -76,6 +79,9 @@ iprop_status iprop_generate(const iprop_program* program,
             return iprop::capi::CallOutcome::argument();
         if (options->uniform_count != 0 && options->uniforms == nullptr)
             return iprop::capi::CallOutcome::argument();
+        if (iprop::hasPartOutputs(*program->data))
+            throw iprop::FormatError("part outputs are unsupported by legacy generate; use checked API 0.5",
+                                    iprop::ErrorReason::UnsupportedFeature, iprop::ErrorStage::Arguments);
         iprop::GenerationInputs inputs;
         const auto read = iprop::capi::legacyInputs(*options, inputs);
         if (!read.succeeded) return read;
@@ -121,6 +127,7 @@ void iprop_result_free(iprop_result* result) { delete result; }
 
 void iprop_result_image(const iprop_result* result, iprop_image* out) {
     if (result == nullptr || out == nullptr) return;
+    if (iprop_result_check_legacy(result, nullptr) != IPROP_EX_OK) return;
     const auto image = iprop::capi::resultImage(*result);
     out->width = image.width;
     out->height = image.height;

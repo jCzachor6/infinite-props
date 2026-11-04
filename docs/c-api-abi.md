@@ -1,4 +1,4 @@
-# C API 0.4 and ABI line 0.5
+# C API 0.5 and ABI line 0.5
 
 Product 0.7.0 intentionally removes variant/archetype controls and uses C ABI
 line 0.5. The earliest compatible product is 0.7.0. Clients must rebuild with
@@ -15,10 +15,16 @@ and complete-field reads/writes under their new layouts.
 The shared library uses SOVERSION/install identity 0.5. Windows uses the DLL
 name `ipropc-0.5.dll`; imported CMake targets resolve the current artifact.
 Package version selection rejects product requests before 0.7.0. Runtime
-queries report API 0.4 and ABI 0.5 independently; the file format is
+queries report API 0.5 and ABI 0.5 independently; the file format is
 unversioned, so the library's format fields are reserved zeros.
 
 Conformance checks the new sizes and every field offset, shared/static clients,
 descriptor boundaries, ownership, error paths and relocated SDK packages.
 Older headers/clients and frozen 0.4 fixtures remain historical records, not
 positive compatibility gates for the new library.
+
+API 0.5 adds [typed dynamic-part results](c-api-part-outputs.md), separate sized
+descriptors and resource queries. API 0.4 layouts/symbols and the legacy enums
+remain frozen. Capability bits advertise parts and resources; unsupported
+legacy result representations fail explicitly. This additive feature release
+does not change the ABI/install identity or the product release version.

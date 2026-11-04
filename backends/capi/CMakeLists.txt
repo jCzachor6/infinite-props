@@ -4,7 +4,7 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp outputs.cpp)
+set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp outputs.cpp part_results.cpp)
 add_library(iprop_capi SHARED ${iprop_capi_sources})
 
 add_library(iprop::capi ALIAS iprop_capi)
@@ -123,6 +123,13 @@ add_custom_command(OUTPUT ${result_output_fixture}
 add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
 add_dependencies(capi_golden capi_result_output_fixture)
 
+set(part_output_fixture ${golden}/part-output-values.iprop)
+add_custom_command(OUTPUT ${part_output_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/part-output-values.ips --no-compress -o ${part_output_fixture}
+    DEPENDS ipc test/part-output-values.ips)
+add_custom_target(capi_part_output_fixture DEPENDS ${part_output_fixture})
+add_dependencies(capi_golden capi_part_output_fixture)
+
 foreach(source test/language.ips test/gaussian-blur.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
         ../../examples/language/samplers.ips ../../examples/language/steppers.ips ../../examples/language/sampling-palettes.ips
@@ -191,6 +198,7 @@ endfunction()
 iprop_capi_test(capi_descriptors test/descriptors.cpp)
 iprop_capi_test(capi_error_descriptor test/error_descriptor.c BOTH)
 iprop_capi_test(capi_library test/library.c BOTH)
+iprop_capi_test(capi_part_results test/part_results.c BOTH ARGS ${part_output_fixture})
 foreach(linkage shared static)
     target_compile_definitions(capi_library_${linkage} PRIVATE
         IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}

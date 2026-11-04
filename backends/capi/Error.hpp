@@ -43,6 +43,7 @@ static_assert(static_cast<uint32_t>(ErrorReason::UniformType) == IPROP_REASON_UN
 static_assert(static_cast<uint32_t>(ErrorReason::UnknownParameter) == IPROP_REASON_UNKNOWN_PARAMETER);
 static_assert(static_cast<uint32_t>(ErrorReason::DuplicateParameter) == IPROP_REASON_DUPLICATE_PARAMETER);
 static_assert(static_cast<uint32_t>(ErrorReason::ForeignParameters) == IPROP_REASON_FOREIGN_PARAMETERS);
+static_assert(static_cast<uint32_t>(ErrorReason::UnsupportedFeature) == IPROP_REASON_UNSUPPORTED_FEATURE);
 static_assert(static_cast<uint32_t>(ErrorReason::OutOfMemory) == IPROP_REASON_OUT_OF_MEMORY);
 static_assert(static_cast<uint32_t>(ErrorReason::Internal) == IPROP_REASON_INTERNAL);
 
