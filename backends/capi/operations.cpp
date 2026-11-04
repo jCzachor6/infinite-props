@@ -186,6 +186,8 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
     case ErrorReason::CanvasSize: return CallOutcome::argument("canvas too large", ErrorReason::CanvasSize);
     default: break;
     }
+    if (hasPartOutputs(*program.data) && !(request.flags & IPROP_GENERATE_PART_OUTPUTS))
+        return CallOutcome::unsupported("part outputs require IPROP_GENERATE_PART_OUTPUTS and IPROP_CAP_PART_OUTPUTS");
     out = request;
     return {};
 }

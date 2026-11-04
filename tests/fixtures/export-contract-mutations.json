@@ -2096,6 +2096,115 @@
       "value": "resample_captured_pixels",
       "accept": false,
       "schema": false
+    },
+    {
+      "id": "earlier schema without part exports",
+      "path": [
+        "source_rules",
+        "part_exports"
+      ],
+      "delete": true,
+      "accept": true,
+      "schema": true
+    },
+    {
+      "id": "part exports missing value type",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "value_type"
+      ],
+      "delete": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports wrong value type",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "value_type"
+      ],
+      "value": "list<part2d>",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports singular declaration",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "syntax"
+      ],
+      "value": "output part <name>",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports implicit drawing",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "write"
+      ],
+      "value": "draw_and_append",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports recycled entries",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "index"
+      ],
+      "value": "instance_id",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports copy resources",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "resources"
+      ],
+      "value": "copy_per_entry",
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports oversized limit",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "maximum_records"
+      ],
+      "value": 257,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports boolean limit",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "maximum_records"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
+    },
+    {
+      "id": "part exports result serialization",
+      "path": [
+        "source_rules",
+        "part_exports",
+        "serialization"
+      ],
+      "value": true,
+      "accept": false,
+      "schema": false
     }
   ],
   "diagnostics": [

@@ -306,12 +306,16 @@ also internal and is not host-readable.
 <!-- example: ../../examples/language/parts/exported-patch.ips -->
 
 The format has a separate resource-export table. C API `output_count`, part
-output ranges and host indices count geometry only; point/rect/circle tags
-and ABI layouts do not change. Slots reserve 64 bytes each in the generation
-arena. Views share a buffer, charge it once, and do not scan pixels. A write
+output ranges and host indices count public structured slots, including
+`output list part` snapshots; internal mask/layer slots add none. Existing
+point/rect/circle tags and ABI layouts do not change. Internal resource slots
+reserve 64 bytes each in the generation arena. Views share a buffer, charge
+it once, and do not scan pixels. A write
 or read costs one instruction fuel and consumes no RNG. The last handle frees
 its surface; success and traps clear remaining generation resources. Handles
-cannot escape a generation or survive in a cross-seed cache.
+are not host outputs. A [dynamic part snapshot](../../spec/part-exports-v0.9.md)
+can retain their captured buffer after generation; ordinary IPS handles cannot
+be passed into a later generation.
 
 <!-- example: ../../examples/language/errors/export-type.ips -->
 <!-- example: ../../examples/language/errors/export-list.ips -->

@@ -1,0 +1,14 @@
+asset RasterSource {
+  size 3x2
+  origin 1, 0.5
+  output layer image
+  output mask shape
+  draw {
+    layer captured(alpha=surface.source_over) {
+      pixel(0, 0, #12345601)
+      pixel(2, 1, #abcdef80)
+    }
+    image = captured
+    shape = mask.from(captured)
+  }
+}

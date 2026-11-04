@@ -98,6 +98,10 @@ int load(const char* path,iprop_program** program,iprop_result** result) {
     uint8_t* bytes;std::size_t size;CHECK(read_fixture(path,&bytes,&size)==0);
     CHECK(iprop_program_load_ex(bytes,size,program,nullptr)==IPROP_EX_OK);std::free(bytes);
     iprop_generate_options_ex options{};CHECK(iprop_generate_options_ex_init(&options,sizeof(options))==IPROP_EX_OK);
+    auto* const previous=reinterpret_cast<iprop_result*>(std::uintptr_t{1});auto* candidate=previous;
+    armed=true;const auto status=iprop_generate_ex(*program,&options,nullptr,&candidate,nullptr);armed=false;
+    CHECK(status==IPROP_EX_E_UNSUPPORTED && candidate==previous);++checks;
+    options.flags=IPROP_GENERATE_PART_OUTPUTS;
     CHECK(iprop_generate_ex(*program,&options,nullptr,result,nullptr)==IPROP_EX_OK);
     return 0;
 }

@@ -232,10 +232,14 @@ IPROP_API iprop_status_ex iprop_library_info_ex_init(iprop_library_info_ex* out,
 
 /* New generation options, separate from the frozen API 0.2 structure.
  * All absent optional fields default to zero: current seed/index defaults,
- * source dimensions (size_x/size_y == 0), no requested flags. No flags are
- * supported yet; any nonzero complete flags field is rejected by consumers.
- * Future requests must negotiate a capability and set a recognized flag;
+ * source dimensions (size_x/size_y == 0), no requested flags. API 0.5 accepts
+ * IPROP_GENERATE_PART_OUTPUTS after negotiating IPROP_CAP_PART_OUTPUTS. It is
+ * required for any part declaration (also empty/uncalled slots); without it
+ * generate_ex returns E_UNSUPPORTED before execution or result publication.
+ * Unknown flag bits are E_ARGUMENT. Future requests must negotiate a
+ * capability and set a recognized flag;
  * appending a nonzero unknown tail alone never requests behavior. */
+#define IPROP_GENERATE_PART_OUTPUTS UINT32_C(1)
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;

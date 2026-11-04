@@ -46,13 +46,15 @@ async function main() {
     const regionsProbe=path.join(buildDir,"regions_probe.js");
     const gapBevelProbe=path.join(buildDir,"gap_bevel_probe.js");
     const dynamicPartsProbe=path.join(buildDir,"dynamic_parts_probe.js");
+    const partExportsProbe=path.join(buildDir,"part_exports_probe.js");
     const native = require("./native-conformance.js").run(iprop, toolsDir,
         {...(fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{}),
          ...(fs.existsSync(voronoiProbe)?{voronoiWasm:voronoiProbe}:{}),
          ...(fs.existsSync(contoursProbe)?{contoursWasm:contoursProbe}:{}),
          ...(fs.existsSync(regionsProbe)?{regionsWasm:regionsProbe}:{}),
          ...(fs.existsSync(gapBevelProbe)?{gapBevelWasm:gapBevelProbe}:{}),
-         ...(fs.existsSync(dynamicPartsProbe)?{dynamicPartsWasm:dynamicPartsProbe}:{})});
+         ...(fs.existsSync(dynamicPartsProbe)?{dynamicPartsWasm:dynamicPartsProbe}:{}),
+         ...(fs.existsSync(partExportsProbe)?{partExportsWasm:partExportsProbe}:{})});
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
     report({ passed: result.passed && native.passed, golden: result, native, compression });
     if (result.passed && native.passed) {
@@ -141,6 +143,10 @@ async function main() {
             native.dynamicPartsV09.generations + " exact generations; " + native.dynamicPartsV09.traps + " matching traps; " +
             native.dynamicPartsV09.rejections + " bytecode rejections; core native=" + native.dynamicPartsV09.internalNative +
             ", WASM=" + native.dynamicPartsV09.internalWasm + ")");
+        console.log("native/WASM 0.9 part exports: PASS (" + native.partExportsV09.generations + " full typed generations; " +
+            native.partExportsV09.nativeWasmPairs + " complete pairs; " + native.partExportsV09.traps + " traps; " +
+            native.partExportsV09.rejections + " bytecode rejections; checked C API=" + native.partExportsV09.checkedCapi +
+            "; core native=" + native.partExportsV09.internalNative + ", WASM=" + native.partExportsV09.internalWasm + ")");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

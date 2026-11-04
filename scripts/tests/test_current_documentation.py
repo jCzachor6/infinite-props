@@ -30,7 +30,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         # Implementation stages land on develop before the final product-version
         # bump. Check their authored wire contracts without editing frozen 0.8.
         extensions = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in
-                               ("spec/noise-v0.9.md", "spec/noise-mask-v0.9.md", "spec/voronoi-v0.9.md", "spec/contours-v0.9.md", "spec/regions-v0.9.md", "spec/gap-bevel-v0.9.md", "spec/dynamic-parts-v0.9.md"))
+                               ("spec/noise-v0.9.md", "spec/noise-mask-v0.9.md", "spec/voronoi-v0.9.md", "spec/contours-v0.9.md", "spec/regions-v0.9.md", "spec/gap-bevel-v0.9.md", "spec/dynamic-parts-v0.9.md", "spec/part-exports-v0.9.md"))
         tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.spec + "\n" + extensions, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})
@@ -74,7 +74,7 @@ class CurrentDocumentationTest(unittest.TestCase):
         release = metadata(ROOT, "v" + self.product, publishing=True)
         self.assertEqual(release["product_version"], "0.8.0")
         self.assertEqual(release["language_version"], "0.8.0")
-        self.assertEqual(release["c_api_version"], "0.4")
+        self.assertEqual(release["c_api_version"], "0.5")
         self.assertEqual(release["c_abi_soversion"], "0.5")
         self.assertIn("migration-v0.8.md", release["notes"])
 

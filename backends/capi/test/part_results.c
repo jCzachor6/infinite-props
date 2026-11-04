@@ -16,6 +16,22 @@ int main(int argc,char** argv) {
     CHECK(iprop_program_load_ex(bytes,length,&program,&error)==IPROP_EX_OK);
     CHECK(iprop_generate_options_ex_init(&options,sizeof(options))==IPROP_EX_OK);
     {
+        iprop_result* preserved=(iprop_result*)(uintptr_t)1;
+        CHECK(iprop_generate_ex(program,&options,NULL,&preserved,&error)==IPROP_EX_E_UNSUPPORTED);
+        CHECK(preserved==(iprop_result*)(uintptr_t)1 && error.reason==IPROP_REASON_UNSUPPORTED_FEATURE);
+        options.struct_size=4;
+        CHECK(iprop_generate_ex(program,&options,NULL,&preserved,&error)==IPROP_EX_E_UNSUPPORTED && preserved==(iprop_result*)(uintptr_t)1);
+        options.struct_size=7;options.flags=IPROP_GENERATE_PART_OUTPUTS;
+        CHECK(iprop_generate_ex(program,&options,NULL,&preserved,&error)==IPROP_EX_E_UNSUPPORTED && preserved==(iprop_result*)(uintptr_t)1);
+        options.struct_size=sizeof(options);
+    }
+    options.flags=IPROP_GENERATE_PART_OUTPUTS;
+    {
+        iprop_result* prefix_result=NULL;options.struct_size=8;
+        CHECK(iprop_generate_ex(program,&options,NULL,&prefix_result,&error)==IPROP_EX_OK);
+        iprop_result_free(prefix_result);options.struct_size=sizeof(options);
+    }
+    {
         iprop_generate_options legacy={0};iprop_result* preserved=(iprop_result*)(uintptr_t)1;
         CHECK(iprop_generate(program,&legacy,&preserved,message,sizeof(message))==IPROP_E_FORMAT);
         CHECK(preserved==(iprop_result*)(uintptr_t)1 && strstr(message,"unsupported")!=NULL);

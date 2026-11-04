@@ -75,7 +75,7 @@ int main(int argc, char** argv) {
     CHECK(verdict(*program, &options, foreign) == ErrorReason::ForeignParameters);
     CHECK(verdict(*reloaded, &options, foreign) == ErrorReason::None);
 
-    // Descriptor shape: null, smaller than four bytes and complete nonzero flags.
+    // Descriptor shape: null, smaller than four bytes and unknown flag bits.
     // A four-byte prefix is a complete request for the source defaults.
     CHECK(verdict(*program, nullptr, nullptr) == ErrorReason::InvalidArgument);
     for (uint32_t size = 0; size < 4; ++size) {
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     CHECK(checkGenerationRequest(*program, &options, nullptr, out).succeeded && out.seed == 0 && out.sizeX == 0 && out.sizeY == 0);
     options.struct_size = offsetof(iprop_generate_options_ex, size_y);
     options.size_y = UINT32_MAX; // absent field defaults to zero
-    options.struct_size = sizeof(options); options.size_y = 0; options.flags = 1;
+    options.struct_size = sizeof(options); options.size_y = 0; options.flags = 2;
     CHECK(verdict(*program, &options, nullptr) == ErrorReason::InvalidArgument);
     options.struct_size = offsetof(iprop_generate_options_ex, flags) + 3; // incomplete flags are absent
     CHECK(verdict(*program, &options, nullptr) == ErrorReason::None);
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
     }
     options.size_x = UINT32_MAX;
     CHECK(verdict(*program, &options, foreign) == ErrorReason::ForeignParameters);
-    options.flags = 1;
+    options.flags = 2;
     CHECK(verdict(*program, &options, foreign) == ErrorReason::InvalidArgument);
     options.flags = 0;
 

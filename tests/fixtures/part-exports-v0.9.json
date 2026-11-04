@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "contract": "spec/part-exports-v0.9.md",
+  "scope": "Regression pins over complete test-only C++ observations, independently checked through C API and compared to WASM. Fuel pins describe the current implementation; they are not an independent tariff oracle. The C++ matrix and analytical render-order pixels provide independent placement/alpha checks. This is not a product result serialization format.",
+  "cases": [
+    {
+      "name": "geometry-raster-holes",
+      "source": "backends/capi/test/part-output-values.ips",
+      "seed": 7,
+      "size": [
+        8,
+        8
+      ],
+      "outputs": 4,
+      "parts": 6,
+      "resources": 3,
+      "semantic_sha256": "2242c0fa944d5f350761e640b8f776058bf67da93fb8ed37aa7c42d9c648ccb7",
+      "default_fuel_used": 3926
+    },
+    {
+      "name": "resource-limit",
+      "source": "backends/capi/test/part-output-limit.ips",
+      "seed": 0,
+      "size": [
+        1,
+        1
+      ],
+      "outputs": 1,
+      "parts": 256,
+      "resources": 512,
+      "semantic_sha256": "d64da05e4323c9654ab781778bc6e6865e788bc3c10426758258339e314b8a4d",
+      "default_fuel_used": 8461
+    },
+    {
+      "name": "empty",
+      "source": "backends/capi/test/part-output-empty.ips",
+      "seed": 7,
+      "size": [
+        1,
+        1
+      ],
+      "outputs": 1,
+      "parts": 0,
+      "resources": 0,
+      "semantic_sha256": "bd2597a0a3874d48d175cd074a20cdcefed3fb40516385154005d8549471f43d",
+      "default_fuel_used": 0
+    },
+    {
+      "name": "nested",
+      "source": "tests/fixtures/part-exports-nested.ips",
+      "seed": 7,
+      "size": [
+        18,
+        25
+      ],
+      "outputs": 5,
+      "parts": 5,
+      "resources": 2,
+      "semantic_sha256": "c0c66a1df3e3eb2b2b84ef7c629b18c53bad945b11d84448954de3e54bb9ab26",
+      "default_fuel_used": 1076
+    },
+    {
+      "name": "render-order",
+      "source": "tests/fixtures/part-exports-order.ips",
+      "seed": 0,
+      "size": [
+        4,
+        3
+      ],
+      "outputs": 1,
+      "parts": 3,
+      "resources": 1,
+      "semantic_sha256": "bb6af3f255d4897632286d76df7591f2a0498d0928ecf5fad67add7d7ac7281f",
+      "default_fuel_used": 119
+    },
+    {
+      "name": "mapped-raster",
+      "source": "tests/fixtures/part-exports-mapped.ips",
+      "seed": 7,
+      "size": [
+        20,
+        18
+      ],
+      "outputs": 1,
+      "parts": 5,
+      "resources": 2,
+      "semantic_sha256": "87b35ebb12e571853188cebe648673d1f35046068f01d3017278471bd6134f3f",
+      "default_fuel_used": 1785
+    },
+    {
+      "name": "shared-regions",
+      "source": "tests/fixtures/part-exports-regions.ips",
+      "seed": 7,
+      "size": [
+        8,
+        4
+      ],
+      "outputs": 1,
+      "parts": 3,
+      "resources": 1,
+      "semantic_sha256": "8cc1f9eae0a3123c12a9d91691d77447aac33ffe40946e409690ea1ee55a5b5a",
+      "default_fuel_used": 1673
+    }
+  ]
+}

@@ -217,6 +217,10 @@ TEST_CASE("list part output compiles formats and roundtrips as a typed append", 
         const auto assembly=disassemble(bytes);
         CHECK(assembly.find("out.list.part")!=std::string::npos);
         CHECK(disassemble(assemble(assembly))==assembly);
+        auto inferred=assembly;
+        for(std::size_t at=0;(at=inferred.find("owner: ",at))!=std::string::npos;)
+            inferred.erase(at,inferred.find('\n',at)-at+1);
+        CHECK(disassemble(assemble(inferred))==assembly); // root/helper owners infer without redundant declarations
         const auto formatted=ips::formatProgram(ips::parse(scene));
         CHECK(ips::formatProgram(ips::parse(formatted))==formatted);
         CHECK(disassemble(compile(formatted,optimize))==assembly);

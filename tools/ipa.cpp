@@ -1088,7 +1088,12 @@ std::vector<u8> assemble(const std::string& source) {
     }
 
     Writer exports;
-    if (!program.resourceExports.empty() || !program.functionOwners.empty()) {
+    const auto containsPart = [](const auto& outputs) {
+        return std::any_of(outputs.begin(), outputs.end(), [](const auto& output) { return output.kind == OutputKind::Part; });
+    };
+    bool partOutputs = containsPart(program.outputs);
+    for (const auto& part : program.parts) partOutputs = partOutputs || containsPart(part.outputs);
+    if (!program.resourceExports.empty() || !program.functionOwners.empty() || partOutputs) {
         if (program.resourceExports.size() > kMaxConstPoolEntries) throw SourceError(0, "too many resource exports");
         exports.writeU32(static_cast<u32>(program.resourceExports.size()));
         for (const auto& output : program.resourceExports) {

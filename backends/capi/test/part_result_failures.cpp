@@ -35,6 +35,7 @@ int main() {
     const auto file=loadFile(bytes);validate(file);
     iprop_program* program=nullptr;CHECK(iprop_program_load_ex(bytes.data(),bytes.size(),&program,nullptr)==IPROP_EX_OK);
     iprop_generate_options_ex options{};CHECK(iprop_generate_options_ex_init(&options,sizeof(options))==IPROP_EX_OK);
+    options.flags=IPROP_GENERATE_PART_OUTPUTS;
 
     for(const bool mode:{false,true})for(unsigned path=0;path<5;++path) {
         bool success=false;

@@ -1,7 +1,13 @@
 # Typed dynamic parts (C API 0.5, ABI 0.5)
 
 Negotiate `IPROP_CAP_PART_OUTPUTS` and `IPROP_CAP_RESULT_RESOURCES`. Load with
-`iprop_program_load_ex` and generate with `iprop_generate_ex`. Existing public
+`iprop_program_load_ex` and generate with `iprop_generate_ex`, setting
+`options.flags = IPROP_GENERATE_PART_OUTPUTS`. Any part declaration, including
+empty and uncalled slots, requires this explicit flag. Without it the checked
+generation returns `E_UNSUPPORTED` before execution or result allocation.
+This protects API 0.4 callers that use checked generation followed by an old
+image accessor. The flag is accepted for older programs too; unknown bits are
+`E_ARGUMENT`. Existing public
 structures, enums and ABI layouts are unchanged; the API feature version is
 0.5, while the ABI/install line remains 0.5. Product/language release versions
 are integrated separately.
@@ -60,7 +66,7 @@ Invalid flags, IDs, slot/element/region/ring/hole indices, null outputs, short
 capacities and overlapping source copies return `E_ARGUMENT` before a payload
 write. Outputs and trailing host capacity remain unchanged on failure.
 
-The frozen packed-float `result_output_get` and scalar accessors return
+In an explicitly requested typed result, frozen packed-float `result_output_get` and scalar accessors return
 `IPROP_EX_E_UNSUPPORTED` / `IPROP_REASON_UNSUPPORTED_FEATURE` for part slots,
 including empty ones. They still work for point/rect/circle slots in a mixed
 typed result. Legacy load/generate return `IPROP_E_FORMAT` with an explicit

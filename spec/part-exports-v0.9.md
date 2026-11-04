@@ -16,6 +16,17 @@ Wire output kind **3** is list-only; kinds 0–2 and all old instructions retain
 their values. Instruction **0x69 `out.list.part`**, zero aux and a u16 global
 slot operand, pops one `part2d`. Kind, list flag, slot index, operand type and
 asset ownership are checked before execution, including dead functions.
+
+| Opcode | Mnemonic | Stack |
+| --- | --- | --- |
+| 0x69 | `out.list.part` | part2d → void (append to list-part slot operand) |
+
+Output kind 3 means a part snapshot list; kinds 0 (point), 1 (rect) and 2
+(circle) retain their old encodings. IPA infers root/part function owners when
+part slots require section 10; explicit `owner:` declarations still identify
+helpers belonging to a static asset. Root-only hand assembly needs no redundant
+owner declarations. All pre-extension program encodings remain unchanged.
+
 Every generation permits **256 appended records across all slots**, independent
 of the 256 instance creations. Re-exporting one ID consumes records, not IDs.
 Neither counter is reset by static calls or dropping handles. Overflow traps,
@@ -75,6 +86,13 @@ ABI/install line 0.5 is unchanged. The [host contract](../docs/c-api-part-output
 defines fields, source/appearance mapping, borrowed buffers, host copies and
 legacy compatibility checks. No generated-result serialization is added.
 
+Checked generation of any program declaring a part slot requires
+`options.flags & IPROP_GENERATE_PART_OUTPUTS`, after negotiating its capability.
+Absent/incomplete/zero flags yield E_UNSUPPORTED before VM/result allocation.
+This also prevents an API 0.4 checked caller from reaching its void legacy image
+accessor with an unrepresentable result. The flag is valid for older programs;
+unknown bits still fail E_ARGUMENT. No generation-options layout changes.
+
 Resources receive deterministic result-local IDs 1..N by first encounter in
 global slot/append order, source before texture; zero means absent. Stores
 are deduplicated by identity, not content or address-sorted order. Geometry
@@ -133,3 +151,36 @@ owners are `[0,2,3,3,4]`. The
 p/q/p: all records have one instance ID, while the two colored image pixels
 are exactly `[18,52,86,192]` and `[255,238,204,64]`. Alpha is applied once for
 default RGBA and once per shape/appearance boundary for the fill override.
+
+
+## Program compatibility and complete gate (10.5)
+
+Seven frozen semantic-digest cases cover complete geometry/holes, soft A8/RGBA,
+256 records/512 distinct stores, empty slots, nested imports, render order,
+original raster/texture D4 7 at `(-5,4)`, and region indices 0/1/2 sharing one
+store. These are test observations, not a public result format. Fuel entries
+pin the current implementation and are not an independent tariff oracle.
+
+The full gate executes 604 native/WASM pairs (1,208 complete observations) with
+checked C API comparison and missing-opt-in rejection for every native case.
+All eight compiler configurations, 28 IPA/IPDIS and seven formatter round-trips,
+seven runtime traps, 30 malformed programs and eight compiler diagnostics are
+checked. Failed generations publish no result. Eight hash-verified earlier
+runtime validators reject 17 new programs each; 72 earlier reference artifacts
+remain unchanged. The entire native suite passes 91 CTest targets, including
+814 C++ cases and 4,515,488 assertions.
+
+A relocated installed SDK passes four real C99 shared/static consumers. Clients
+compiled with the archived API 0.4 header preserve old scalar/image behavior and
+receive unsupported status before publication for new part programs, without
+knowing the new flag. New clients explicitly opt in, including a valid eight-byte
+options prefix; incomplete/absent flags cannot request the feature.
+
+The public web package intentionally has no result probes. Its gate verifies
+compile/load, validation, round trips and 57 explicit unsupported JS/legacy JSON
+requests, recording typed observations as skipped rather than fabricating empty
+parts. Full native/WASM/C API data is tested separately. Platform typed bindings
+remain stage 11. Formal Python JSON Schema validation was unavailable locally;
+the stdlib protocol validators, 231 mutations, 159 actual CLI cases and Node
+diagnostic reader pass. Canonical stage evidence is recorded in
+`spec/verification/part-exports-v0.9.json` and its CTest log.

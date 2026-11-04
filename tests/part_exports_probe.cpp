@@ -122,6 +122,13 @@ void capi(const std::vector<u8>& bytes,const GenerationInputs& inputs,const Gene
     }
     iprop_generate_options_ex options{};iprop_generate_options_ex_init(&options,sizeof(options));
     options.seed=inputs.seed;options.size_x=inputs.sizeX;options.size_y=inputs.sizeY;
+    if(std::any_of(expected.outputs.begin(),expected.outputs.end(),[](const auto& slot){return slot.kind==OutputKind::Part;})) {
+        auto* const previous=reinterpret_cast<iprop_result*>(std::uintptr_t{1});auto* candidate=previous;
+        iprop_error_ex error{};iprop_error_ex_init(&error,sizeof(error));
+        require(iprop_generate_ex(program.get(),&options,nullptr,&candidate,&error)==IPROP_EX_E_UNSUPPORTED&&
+            error.reason==IPROP_REASON_UNSUPPORTED_FEATURE&&candidate==previous,"C API 0.4 path must reject every part declaration without typed opt-in");
+    }
+    options.flags=IPROP_GENERATE_PART_OUTPUTS;
     iprop_result* rawResult=nullptr;require(iprop_generate_ex(program.get(),&options,nullptr,&rawResult,nullptr)==IPROP_EX_OK,"C API generate");
     std::unique_ptr<iprop_result,decltype(&iprop_result_free)> result(rawResult,iprop_result_free);program.reset();
     iprop_image_view_ex image{};iprop_image_view_ex_init(&image,sizeof(image));
@@ -240,6 +247,7 @@ int main(int argc,char** argv) {
         if(error.stage==ErrorStage::Execute) {
             if(status!=IPROP_EX_OK){std::cerr<<"C API unexpectedly rejected valid program\n";return 5;}
             iprop_generate_options_ex options{};iprop_generate_options_ex_init(&options,sizeof(options));
+            options.flags=IPROP_GENERATE_PART_OUTPUTS;
             options.seed=inputs.seed;options.size_x=inputs.sizeX;options.size_y=inputs.sizeY;
             auto* const previous=reinterpret_cast<iprop_result*>(std::uintptr_t{1});auto* result=previous;
             const auto generated=iprop_generate_ex(program,&options,nullptr,&result,&failure);iprop_program_free(program);

@@ -20,8 +20,10 @@ unversioned, so the library's format fields are reserved zeros.
 
 Conformance checks the new sizes and every field offset, shared/static clients,
 descriptor boundaries, ownership, error paths and relocated SDK packages.
-Older headers/clients and frozen 0.4 fixtures remain historical records, not
-positive compatibility gates for the new library.
+Headers/clients from ABI line 0.4 and its frozen fixtures remain historical
+records, not positive compatibility gates for ABI line 0.5. API 0.4 headers
+already on ABI 0.5 remain compatible; typed part generation requires an explicit
+API 0.5 capability/flag, so older checked callers receive an unsupported error.
 
 API 0.5 adds [typed dynamic-part results](c-api-part-outputs.md), separate sized
 descriptors and resource queries. API 0.4 layouts/symbols and the legacy enums

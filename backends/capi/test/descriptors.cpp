@@ -43,8 +43,12 @@ int main() {
         CHECK(read.sizeY == (capacity >= 20 ? 32u : 0u));
         std::free(prefix);
     }
+    GenerateOptions opted;
+    options.flags = IPROP_GENERATE_PART_OUTPUTS;
+    CHECK(readGenerateOptions(&options, opted) == OptionIssue::None && opted.flags == IPROP_GENERATE_PART_OUTPUTS);
+    options.flags = 0;
     GenerateOptions preserved{1, 4, 5};
-    for (uint32_t flags : {1u, 2u, UINT32_C(0x80000000), UINT32_MAX}) {
+    for (uint32_t flags : {2u, 4u, UINT32_C(0x80000000), UINT32_MAX}) {
         options.flags = flags;
         CHECK(readGenerateOptions(&options, preserved) == OptionIssue::UnknownFlags);
         CHECK(preserved.seed == 1 && preserved.sizeX == 4 && preserved.sizeY == 5);

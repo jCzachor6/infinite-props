@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–09 zakończone; noise, maski, rdzeń geometrii, Voronoi, kontury, regiony, fugi, bevel oraz dynamiczne części i D4 sprawdzone native/WASM. Etap 10 w realizacji: deklaracja, bytecode i wynik C++ z eksportem snapshotów wdrożone; typed checked C API i pełny odbiór etapu pozostają otwarte.
+**Status:** etapy 00–09 zakończone. Kroki 10.1–10.5 wykonane: typowane snapshoty, geometria/A8/RGBA, checked C API 0.5 i zachowane ABI 0.5. Wszystkie 91 testów oraz zgodność native/WASM przechodzą. Trwa utrwalanie raportu i końcowy audyt publikacji etapu 10; bindingi pozostają etapem 11.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -654,7 +654,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 10.2 Rozszerzyć wynik C++ i checked C API o typowane części oraz dostęp do geometrii, dziur, A8/RGBA i współdzielonych zasobów, bez zmiany layoutu starego ABI.
 - [x] 10.3 Określić i przetestować ownership, pożyczone widoki, kopie, puste sloty, błędne indeksy/pojemności oraz jawne odrzucanie nieobsługiwanych nowych wyjść przez starsze ścieżki.
 - [x] 10.4 Sprawdzić render-only/export-only, brak wyglądu, wiele snapshotów jednego ID, niezależną kolejność eksportu, sloty statycznych importów i zachowanie wyniku po zwolnieniu VM/programu.
-- [ ] 10.5 Sprawdzić compile/load/generate rozszerzonego `.iprop`, zgodność starych fixtures i bezpieczne odrzucanie nowych rozszerzeń przez stary czytnik; nie dodawać serializacji wyniku.
+- [x] 10.5 Sprawdzić compile/load/generate rozszerzonego `.iprop`, zgodność starych fixtures i bezpieczne odrzucanie nowych rozszerzeń przez stary czytnik; nie dodawać serializacji wyniku.
 - [ ] **Etap 10 zakończony.**
 
 **Odbiór:** host otrzymuje rzeczywiste niezależne części, bez utraty dziur/alfy/transformacji, bez ukrytej kopii zasobów i bez zależności od życia VM.
@@ -667,7 +667,9 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **10.4 (2026-11-04):** 10.3 opublikowane jako `9d0b1ce`. **7 testów / 288132 asercji**, w tym **4096 generacji** ze wszystkimi D4 dynamicznej części i dwóch poziomów importów, czterema skalami oraz opt/no-opt. Niezależne wzory na krawędzie i signed basis sprawdzają dokładne bity centroidu/bounds, source grid, D4 i całkowitą translację; także ujemne położenia, części poza targetem i zaokrąglone rozmiary canvasa importu. Render-only/export-only, powtórne draw bez dopisywania, kolejność snapshotów, pusty clip, brak wyglądu, kolejne wywołania bez zapisu oraz limit współdzielony z importem potwierdzone. Sonda testowa porównuje pełne C++/checked C API, a native/WASM mają identyczne rekordy, geometrię z dziurami, bufory i RGBA w scenach podstawowej, nested i order. Dla nested właściciele slotów `[0,2,3,3,4]` uwzględniają nieodwołany import bez wyjść; handoff wyniku nie zależy od życia programu. 10.5 otwarte.
 
-**Weryfikacja:** trwa odbiór etapu.
+**10.5 (2026-11-04):** 10.4 opublikowane jako `22c5f2b`. **91/91 CTest**, w głównym procesie 814 testów / 4515488 asercji. Pełne conformance: **604 pary native/WASM / 1208 pełnych obserwacji**, checked C API porównuje każde pole, źródła i ownership; **7 trapów, 30 mutacji bytecode, 8 diagnostyk, 28 IPA/IPDIS, 7 formatter round-trip**. Siedem przypiętych scen obejmuje niezerowy mapping źródła/tekstury, A8/RGBA, dziury, indeksy regionów 0–2 przy jednym zasobie i maksymalne 256 rekordów / 512 zasobów. **8 starszych runtime odrzuca po 17 nowych programów**, 72 wcześniejsze wzorce bez zmian. Cztery C99 clients z przeniesionego SDK przechodzą shared/static, także ze starym nagłówkiem API 0.4. Nowe checked generate wymaga jawnego `IPROP_GENERATE_PART_OUTPUTS`; bez flagi zwraca `E_UNSUPPORTED` przed VM/alokacją wyniku, również dla pustych i niewywołanych slotów. Prefixy 4/7 odrzucone, 8-bajtowy prefix z flagą obsługiwany. Zapobiega to fałszywemu pustemu obrazowi w starym checked kliencie. Aktualny gate ownership ma 1851 przypadków i zero alokacji query; 82 awarie i cztery granice areny przechodzą. Paczka bez sond weryfikuje compile/load i 57 jawnych odrzuceń legacy JS/JSON, a pełne typed obserwacje oznacza jako niewykonane. Dokumentacja 115 builtinów / 159 przykładów i kontrakty 231 mutacji / 159 CLI przechodzą; opcjonalny Python `jsonschema` niedostępny. Nie dodano serializacji wyniku. Zbiorczy raport i audyt czystego commitu zostaną utrwalone w commicie zamknięcia.
+
+**Weryfikacja:** implementacja i wymagane gate przechodzą; oczekuje utrwalenie raportu i potwierdzenie SHA po pushu.
 
 ### Etap 11 — bindingi i hosty
 
