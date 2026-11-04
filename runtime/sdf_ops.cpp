@@ -44,6 +44,7 @@ bool stepSdf(Execution& ex, Instruction ins) {
         return true;
     }
     case Opcode::DistBezier: {
+        ex.work(25);
         const Vec2 c = ex.popVec2();
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
@@ -53,6 +54,7 @@ bool stepSdf(Execution& ex, Instruction ins) {
         return true;
     }
     case Opcode::DistBezierCubic: {
+        ex.work(25);
         const Vec2 d = ex.popVec2();
         const Vec2 c = ex.popVec2();
         const Vec2 b = ex.popVec2();

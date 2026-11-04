@@ -65,7 +65,7 @@ TruncatedDraw invertDensitySegment(double length, double p, double q, double z) 
     return result;
 }
 
-TruncatedDraw densityDistributionDraw(const Distribution& distribution, double lo, double hi, double u) {
+TruncatedDraw densityDistributionDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work) {
     TruncatedDraw result;
     if (!distribution.points || distribution.points->points.size() < 2) {
         result.status = DrawStatus::NoMass; return result;
@@ -83,6 +83,7 @@ TruncatedDraw densityDistributionDraw(const Distribution& distribution, double l
     std::array<Segment, kMaxDistributionPoints - 1> segments;
     double total = 0.0;
     for (std::size_t i = 1; i < points.size(); ++i) {
+        if (work) work->spend();
         segments[i - 1] = clip(points[i - 1], points[i], lo, hi);
         total = total + segments[i - 1].area;
     }
@@ -90,6 +91,7 @@ TruncatedDraw densityDistributionDraw(const Distribution& distribution, double l
     double cumulative = 0.0;
     bool selected = false;
     for (std::size_t i = 0; i + 1 < points.size(); ++i) {
+        if (work) work->spend();
         const auto& segment = segments[i];
         if (!(segment.area > 0.0)) continue;
         const double next = cumulative + segment.area;

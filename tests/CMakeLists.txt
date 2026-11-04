@@ -91,6 +91,7 @@ add_executable(iprop_tests
     opcode_spec_test.cpp
     vm_test.cpp
     vm_result_test.cpp
+    execution_limits_test.cpp
     control_test.cpp
     control_validation_test.cpp
     math/integer_test.cpp
@@ -188,6 +189,10 @@ iprop_warnings(gap_bevel_probe)
 add_executable(dynamic_parts_probe dynamic_parts_probe.cpp)
 target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
 iprop_warnings(dynamic_parts_probe)
+
+add_executable(execution_limits_probe execution_limits_probe.cpp)
+target_link_libraries(execution_limits_probe PRIVATE iprop_capi_static)
+iprop_warnings(execution_limits_probe)
 
 add_executable(part_exports_probe part_exports_probe.cpp)
 target_link_libraries(part_exports_probe PRIVATE iprop_capi_static)

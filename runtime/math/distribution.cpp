@@ -37,7 +37,7 @@ constexpr double kLanczos[9] = {0.99999999999980993, 676.5203681218851, -1259.13
     9.9843695780195716e-6, 1.5056327351493116e-7};
 
 // The incomplete beta continued fraction (modified Lentz).
-double betaFraction(double a, double b, double x, u32& steps) {
+double betaFraction(double a, double b, double x, u32& steps, detail::WorkBudget* work) {
     const double qab = a + b, qap = a + 1.0, qam = a - 1.0;
     double c = 1.0;
     double d = 1.0 - qab * x / qap;
@@ -45,6 +45,7 @@ double betaFraction(double a, double b, double x, u32& steps) {
     d = 1.0 / d;
     double h = d;
     for (int m = 1;; ++m) {
+        if (work) work->spend();
         ++steps;
         const double m2 = 2.0 * m;
         double aa = m * (b - m) * x / ((qam + m2) * (a + m2));
@@ -70,22 +71,23 @@ double betaFraction(double a, double b, double x, u32& steps) {
 double logBeta(double a, double b) { return logGamma(a) + logGamma(b) - logGamma(a + b); }
 
 // log I_t(a, b) for 0 < t < 1, without underflow in the lower tail.
-double logIncompleteBeta(double a, double b, double t, double lb, u32& steps) {
+double logIncompleteBeta(double a, double b, double t, double lb, u32& steps, detail::WorkBudget* work) {
     const double front = a * pinnedLog(t) + b * pinnedLog(1.0 - t) - lb;
-    if (t < (a + 1.0) / (a + b + 2.0)) return front + pinnedLog(betaFraction(a, b, t, steps) / a);
-    return pinnedLog(1.0 - pinnedExp(front) * betaFraction(b, a, 1.0 - t, steps) / b);
+    if (t < (a + 1.0) / (a + b + 2.0)) return front + pinnedLog(betaFraction(a, b, t, steps, work) / a);
+    return pinnedLog(1.0 - pinnedExp(front) * betaFraction(b, a, 1.0 - t, steps, work) / b);
 }
 
 // I_t(a, b) = p for t in [lo, hi]: Newton on log I over log t, falling back
 // to geometric or linear bisection.
-double betaQuantile(double a, double b, double p, double lo, double hi, u32& steps) {
+double betaQuantile(double a, double b, double p, double lo, double hi, u32& steps, detail::WorkBudget* work) {
     const double lb = logBeta(a, b);
     const double lp = pinnedLog(p);
     const double b1 = b - 1.0;
     double t = 0.5 * (lo + hi);
     for (int it = 1;; ++it) {
+        if (work) work->spend();
         ++steps;
-        const double h = logIncompleteBeta(a, b, t, lb, steps) - lp;
+        const double h = logIncompleteBeta(a, b, t, lb, steps, work) - lp;
         if (std::fabs(h) <= kSolverTolerance) return t;
         if (h < 0.0) lo = t;
         else hi = t;
@@ -131,9 +133,9 @@ double upperSupport(const Family& f) {
          : f.kind == DistributionFamily::Triangular ? f.p2 : f.p3;
 }
 
-double cdf(const Family& f, double x, u32& steps) {
+double cdf(const Family& f, double x, u32& steps, detail::WorkBudget* work) {
     switch (f.kind) {
-    case DistributionFamily::Gaussian: return normalCdf((x - f.p0) / f.p1, steps);
+    case DistributionFamily::Gaussian: return normalCdf((x - f.p0) / f.p1, steps, work);
     case DistributionFamily::Triangular: {
         const double a = f.p0, c = f.p1, b = f.p2;
         if (x <= a) return 0.0;
@@ -141,12 +143,12 @@ double cdf(const Family& f, double x, u32& steps) {
         if (x < c) return (x - a) * (x - a) / ((b - a) * (c - a));
         return 1.0 - (b - x) * (b - x) / ((b - a) * (b - c));
     }
-    default: return incompleteBeta(f.p0, f.p1, (x - f.p2) / (f.p3 - f.p2), steps);
+    default: return incompleteBeta(f.p0, f.p1, (x - f.p2) / (f.p3 - f.p2), steps, work);
     }
 }
 
 // x in [lower, upper] with F(x) = p, for p <= 1/2.
-double quantile(const Family& f, double p, double lower, double upper, u32& steps) {
+double quantile(const Family& f, double p, double lower, double upper, u32& steps, detail::WorkBudget* work) {
     switch (f.kind) {
     case DistributionFamily::Gaussian: return f.p0 + f.p1 * normalQuantile(p);
     case DistributionFamily::Triangular: {
@@ -156,7 +158,7 @@ double quantile(const Family& f, double p, double lower, double upper, u32& step
     }
     default: {
         const double w = f.p3 - f.p2;
-        const double t = betaQuantile(f.p0, f.p1, p, (lower - f.p2) / w, (upper - f.p2) / w, steps);
+        const double t = betaQuantile(f.p0, f.p1, p, (lower - f.p2) / w, (upper - f.p2) / w, steps, work);
         return f.p2 + t * w;
     }
     }
@@ -188,7 +190,7 @@ double pinnedLog(double x) {
     return e * kLn2Hi + (2.0 * s * q + e * kLn2Lo);
 }
 
-double normalCdf(double z, u32& steps) {
+double normalCdf(double z, u32& steps, detail::WorkBudget* work) {
     const double x = std::fabs(z) * kSqrt1_2;
     if (x < 1.5) {
         // erf(x) = 2/sqrt(pi) exp(-x^2) sum (2x^2)^n x / (2n+1)!!
@@ -196,6 +198,7 @@ double normalCdf(double z, u32& steps) {
         double term = x;
         double total = x;
         for (int n = 1;; ++n) {
+            if (work) work->spend();
             ++steps;
             term = term * (2.0 * x2) / (2 * n + 1);
             total = total + term;
@@ -208,6 +211,7 @@ double normalCdf(double z, u32& steps) {
     // erfc(x) = exp(-x^2) / (sqrt(pi) K), K = x + (1/2)/(x + 1/(x + (3/2)/(x + ...)))
     double f = x, c = x, d = 0.0;
     for (int n = 1;; ++n) {
+        if (work) work->spend();
         ++steps;
         const double a = n * 0.5;
         d = x + a * d;
@@ -271,12 +275,12 @@ double logGamma(double x) {
     return (kHalfLog2Pi + (x + 0.5) * pinnedLog(t)) - t + pinnedLog(a);
 }
 
-double incompleteBeta(double a, double b, double t, u32& steps) {
+double incompleteBeta(double a, double b, double t, u32& steps, detail::WorkBudget* work) {
     if (t <= 0.0) return 0.0;
     if (t >= 1.0) return 1.0;
     const double front = pinnedExp(a * pinnedLog(t) + b * pinnedLog(1.0 - t) - logBeta(a, b));
-    if (t < (a + 1.0) / (a + b + 2.0)) return front * betaFraction(a, b, t, steps) / a;
-    return 1.0 - front * betaFraction(b, a, 1.0 - t, steps) / b;
+    if (t < (a + 1.0) / (a + b + 2.0)) return front * betaFraction(a, b, t, steps, work) / a;
+    return 1.0 - front * betaFraction(b, a, 1.0 - t, steps, work) / b;
 }
 
 bool validDistribution(const Distribution& d) {
@@ -303,9 +307,9 @@ i32 roundRangeInt(double x) {
     return static_cast<i32>(t);
 }
 
-TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u) {
+TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work) {
     if (distribution.family == DistributionFamily::Weighted || distribution.family == DistributionFamily::Density)
-        return pointDistributionDraw(distribution, lo, hi, u);
+        return pointDistributionDraw(distribution, lo, hi, u, work);
     TruncatedDraw result;
     const Family f = family(distribution);
     try {
@@ -321,11 +325,11 @@ TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double 
             return result;
         }
         const Family m = mirror(f);
-        const double below = cdf(f, lower, result.steps);  // P(X <= lower)
-        const double above = cdf(m, -upper, result.steps); // P(X >= upper)
+        const double below = cdf(f, lower, result.steps, work);  // P(X <= lower)
+        const double above = cdf(m, -upper, result.steps, work); // P(X >= upper)
         double mass = 0.0;
-        if (below >= 0.5) mass = cdf(m, -lower, result.steps) - above;
-        else if (above >= 0.5) mass = cdf(f, upper, result.steps) - below;
+        if (below >= 0.5) mass = cdf(m, -lower, result.steps, work) - above;
+        else if (above >= 0.5) mass = cdf(f, upper, result.steps, work) - below;
         else mass = (1.0 - above) - below;
         if (!(mass >= kMinimumMass)) {
             result.status = DrawStatus::NoMass;
@@ -338,8 +342,8 @@ TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double 
             return result;
         }
         const double p = below + u * mass;
-        double x = p <= 0.5 ? quantile(f, p, lower, upper, result.steps)
-                            : -quantile(m, above + (1.0 - u) * mass, -upper, -lower, result.steps);
+        double x = p <= 0.5 ? quantile(f, p, lower, upper, result.steps, work)
+                            : -quantile(m, above + (1.0 - u) * mass, -upper, -lower, result.steps, work);
         if (x < lower) x = lower;
         if (x > upper) x = upper;
         result.value = x;

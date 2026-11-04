@@ -46,7 +46,7 @@ int numberCompare(const DistributionNumber& a, const DistributionNumber& b) {
     if(const auto* i=std::get_if<i32>(&a)) return compare(*i,std::get<i32>(b));
     return floatCompare(std::get<f32>(a),std::get<f32>(b),true);
 }
-int distributionCompare(const Distribution& a, const Distribution& b) {
+int distributionCompare(const Distribution& a, const Distribution& b, detail::WorkBudget* work) {
     if(const auto family=compare(a.family,b.family)) return family;
     for(std::size_t i=0;i<a.parameters.size();++i)
         if(const auto parameter=floatCompare(a.parameters[i],b.parameters[i],true)) return parameter;
@@ -55,13 +55,15 @@ int distributionCompare(const Distribution& a, const Distribution& b) {
     if(const auto family=compare(a.points->family,b.points->family)) return family;
     if(const auto size=compare(a.points->points.size(),b.points->points.size())) return size;
     for(std::size_t i=0;i<a.points->points.size();++i) {
+        if(work) work->spend();
         const auto& x=a.points->points[i]; const auto& y=b.points->points[i];
         if(const auto key=numberCompare(x.key,y.key)) return key;
         if(const auto value=numberCompare(x.value,y.value)) return value;
     }
     return 0;
 }
-int elementCompare(const Value& a, const Value& b, TypeDescriptor type, bool exact=false) {
+int elementCompare(const Value& a, const Value& b, TypeDescriptor type, bool exact, detail::WorkBudget* work) {
+    if(work) work->spend();
     if(type==ValueType::I32) return compare(std::get<i32>(a),std::get<i32>(b));
     if(type==ValueType::F32) return floatCompare(std::get<f32>(a),std::get<f32>(b),exact);
     if(type==ValueType::Color) {
@@ -75,13 +77,13 @@ int elementCompare(const Value& a, const Value& b, TypeDescriptor type, bool exa
         if(const auto component=floatCompare(x.x,y.x,exact)) return component;
         return floatCompare(x.y,y.y,exact);
     }
-    if(type==ValueType::Distribution) return distributionCompare(std::get<Distribution>(a),std::get<Distribution>(b));
+    if(type==ValueType::Distribution) return distributionCompare(std::get<Distribution>(a),std::get<Distribution>(b),work);
     const auto& x=*descriptionData(a);const auto& y=*descriptionData(b);
     if(const auto mode=compare(x.mode,y.mode)) return mode;
-    if(const auto lower=elementCompare(x.lower,y.lower,type.item(),true)) return lower;
+    if(const auto lower=elementCompare(x.lower,y.lower,type.item(),true,work)) return lower;
     if(x.mode!=SamplerMode::Constant)
-        if(const auto upper=elementCompare(x.upper,y.upper,type.item(),true)) return upper;
-    return x.mode==SamplerMode::With?distributionCompare(x.distribution,y.distribution):0;
+        if(const auto upper=elementCompare(x.upper,y.upper,type.item(),true,work)) return upper;
+    return x.mode==SamplerMode::With?distributionCompare(x.distribution,y.distribution,work):0;
 }
 }
 
@@ -103,14 +105,14 @@ CheckedListSelection checkListSelection(const ListValue& source, bool sort) {
     if(sort) {u64 passes=0;for(std::size_t run=1;run<n;run*=2)++passes;comparisons=n*passes;}
     return {source,sort,2u*n+width*comparisons};
 }
-ListSelection selectList(const CheckedListSelection& list) {
+ListSelection selectList(const CheckedListSelection& list, detail::WorkBudget* work) {
     const auto& source=list.source;const bool sort=list.sort;
     ListSelection result;const auto n=source.data->elements.size();const auto type=source.type.item();
     if(!sort) {
         for(u16 i=0;i<n;++i) {
             bool duplicate=false;
             for(std::size_t j=0;j<result.count;++j)
-                if(elementCompare(source.data->elements[i],source.data->elements[result.indices[j]],type)==0) {duplicate=true;break;}
+                if(elementCompare(source.data->elements[i],source.data->elements[result.indices[j]],type,false,work)==0) {duplicate=true;break;}
             if(!duplicate) result.indices[result.count++]=i;
         }
         return result;
@@ -124,7 +126,7 @@ ListSelection selectList(const CheckedListSelection& list) {
             auto left=start,right=middle;
             for(auto at=start;at<end;++at) {
                 const bool takeLeft=left<middle && (right==end || elementCompare(
-                    source.data->elements[result.indices[left]],source.data->elements[result.indices[right]],type)<=0);
+                    source.data->elements[result.indices[left]],source.data->elements[result.indices[right]],type,false,work)<=0);
                 temporary[at]=result.indices[takeLeft?left++:right++];
             }
         }

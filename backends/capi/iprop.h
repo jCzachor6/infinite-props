@@ -36,17 +36,18 @@ extern "C" {
 #endif
 
 /* Header API feature version, independent of the product/file versions.
- * API 0.5 uses ABI line 0.5. API 0.4 declarations, enum values,
+ * API 0.6 uses ABI line 0.5. API 0.4/0.5 declarations, enum values,
  * layouts and ownership cannot change in an additive API release.
  * Later APIs add symbols and separate sized descriptors; they do not
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 5
+#define IPROP_API_VERSION_MINOR 6
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
 typedef struct iprop_result iprop_result;   /* one generation's outputs */
+typedef struct iprop_cancellation iprop_cancellation;
 
 typedef enum {
     IPROP_OK = 0,        /* success */
@@ -204,6 +205,7 @@ typedef struct {
 #define IPROP_CAP_TYPED_OUTPUTS (UINT64_C(1) << 17)
 #define IPROP_CAP_PART_OUTPUTS (UINT64_C(1) << 18)
 #define IPROP_CAP_RESULT_RESOURCES (UINT64_C(1) << 19)
+#define IPROP_CAP_EXECUTION_LIMITS (UINT64_C(1) << 20)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -285,6 +287,9 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_PART_OUTPUT_MISSING UINT32_C(3012)
 #define IPROP_REASON_INVALID_PART UINT32_C(3013)
 #define IPROP_REASON_STREAM_UNDERFLOW UINT32_C(3014)
+#define IPROP_REASON_WORK_EXHAUSTED UINT32_C(3015)
+#define IPROP_REASON_CANCELLED UINT32_C(3016)
+#define IPROP_REASON_DEADLINE_EXCEEDED UINT32_C(3017)
 #define IPROP_REASON_INVALID_ARGUMENT UINT32_C(4000)
 #define IPROP_REASON_CANVAS_SIZE UINT32_C(4003)
 #define IPROP_REASON_UNIFORM_TYPE UINT32_C(4004)
@@ -936,6 +941,55 @@ IPROP_API iprop_status_ex iprop_generate_ex(const iprop_program* program,
                                           const iprop_generate_options_ex* options,
                                           const iprop_parameters* parameters,
                                           iprop_result** out_result, iprop_error_ex* error);
+
+/* API 0.6, IPROP_CAP_EXECUTION_LIMITS. Every generation, including legacy
+ * entries, has a finite independent work budget; fuel remains unchanged.
+ * A zero/absent work_limit selects IPROP_DEFAULT_WORK_LIMIT. timeout_ns is
+ * a relative monotonic generation timeout, zero/absent disables the clock.
+ * UINT64_MAX requests a finite large budget/timeout (saturated at clock max).
+ * Cancellation is one-way and thread safe. Keep the token handle alive for
+ * every call using it; execution retains the shared flag during the call.
+ * An optional poll returns nonzero to cancel. It runs on the generation's
+ * thread, must be bounded, and must not throw or reenter generation. It can
+ * read host-owned atomic/shared memory. poll_context is borrowed for the call.
+ * Polls also occur inside long operations and copies; OS allocation/scheduling
+ * and host callback time cannot be bounded by the interpreter.
+ * flags must be zero. Sized descriptors use the existing complete-field and
+ * unknown-tail policy. A null limits pointer uses finite defaults.
+ * Loading/validation and host rendering/encoding are outside the deadline.
+ * Failure preserves *out_result, publishes no partial result and returns a
+ * structured reason; WORK_EXHAUSTED/CANCELLED/DEADLINE_EXCEEDED are E_TRAP at
+ * Execute stage, including generation setup, without a fabricated PC. */
+#define IPROP_DEFAULT_WORK_LIMIT UINT64_C(100000000)
+#define IPROP_WORK_POLL_INTERVAL UINT64_C(1024)
+typedef uint32_t (*iprop_cancel_poll)(void* context);
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint64_t work_limit;
+    uint64_t timeout_ns;
+    const iprop_cancellation* cancellation;
+    iprop_cancel_poll poll;
+    void* poll_context;
+} iprop_execution_limits_ex;
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint64_t work_budget;
+    uint64_t work_remaining;
+    uint64_t work_used;
+} iprop_work_stats_ex;
+IPROP_API iprop_status_ex iprop_execution_limits_ex_init(iprop_execution_limits_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_work_stats_ex_init(iprop_work_stats_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_cancellation_create(iprop_cancellation** out, iprop_error_ex* error);
+IPROP_API void iprop_cancellation_cancel(iprop_cancellation* token);
+IPROP_API uint32_t iprop_cancellation_is_cancelled(const iprop_cancellation* token);
+IPROP_API void iprop_cancellation_free(iprop_cancellation* token);
+IPROP_API iprop_status_ex iprop_generate_controlled(const iprop_program* program,
+    const iprop_generate_options_ex* options, const iprop_parameters* parameters,
+    const iprop_execution_limits_ex* limits, iprop_result** out_result, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_query_work(const iprop_result* result,
+    iprop_work_stats_ex* out, iprop_error_ex* error);
 
 #ifdef __cplusplus
 } /* extern "C" */

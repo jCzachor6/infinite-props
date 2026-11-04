@@ -48,14 +48,15 @@ void sorted(Execution& ex, Buffer<T,Slot>& values, Less less) {
     ex.spend(4*n*(1+std::bit_width(n)));
     const auto sift=[&](std::size_t root, std::size_t count) {
         while (root < count/2) {
+            ex.work();
             auto child=root*2+1;
             if (child+1 < count && less(values[child],values[child+1])) ++child;
             if (!less(values[root],values[child])) break;
             std::swap(values[root],values[child]); root=child;
         }
     };
-    for (auto i=values.size()/2; i>0; --i) sift(i-1,values.size());
-    for (auto i=values.size(); i>1; --i) { std::swap(values[0],values[i-1]); sift(0,i-1); }
+    for (auto i=values.size()/2; i>0; --i) { ex.work(); sift(i-1,values.size()); }
+    for (auto i=values.size(); i>1; --i) { ex.work();  std::swap(values[0],values[i-1]); sift(0,i-1); }
 }
 
 struct Extractor {
@@ -135,7 +136,8 @@ struct Extractor {
             {{3,2,-1,-1}},{{0,2,-1,-1}},{{1,0,3,2}},{{1,2,-1,-1}},
             {{3,1,-1,-1}},{{0,1,-1,-1}},{{3,0,-1,-1}},{{-1,-1,-1,-1}}
         }};
-        for (u32 y=0; y<=height; ++y) for (u32 x=0; x<=width; ++x) {
+        for (u32 y=0; y<=height; ++y) { ex.work(); for (u32 x=0; x<=width; ++x) {
+            ex.work();
             const unsigned bits=(inside(alpha(x,y))?1u:0u)|(inside(alpha(x+1,y))?2u:0u)|
                 (inside(alpha(x+1,y+1))?4u:0u)|(inside(alpha(x,y+1))?8u:0u);
             auto pairs=table[bits];
@@ -149,12 +151,12 @@ struct Extractor {
                 default: return crossing(x,y,true);
                 }
             };
-            for (unsigned i=0; i<4 && pairs[i]>=0; i+=2) segment(endpoint(pairs[i]),endpoint(pairs[i+1]));
+            for (unsigned i=0; i<4 && pairs[i]>=0; i+=2) { ex.work(); segment(endpoint(pairs[i]),endpoint(pairs[i+1])); }
             if (y == 0) boundary(x,y,false,false);
             if (x == width) boundary(x+1,y,true,false);
             if (y == height) boundary(x,y+1,false,true);
             if (x == 0) boundary(x,y,true,true);
-        }
+        } }
     }
 };
 
@@ -174,6 +176,7 @@ struct Topology {
         auto i=r.start;
         r.lo=r.hi=vertices[i].p;
         for (u32 k=0; k<r.count; ++k) {
+            ex.work();
             ex.spend(1);
             const auto a=vertices[i].p;
             r.lo={std::min(r.lo.x,a.x),std::min(r.lo.y,a.y)};
@@ -183,6 +186,7 @@ struct Topology {
         }
         double twice=0; i=r.start; const auto reference=vertices[i].p;
         for (u32 k=0; k<r.count; ++k) {
+            ex.work();
             ex.spend(1);
             const auto a=vertices[i].p, b=vertices[vertices[i].next].p;
             twice+=(static_cast<double>(a.x)-reference.x)*(static_cast<double>(b.y)-reference.y)-
@@ -196,6 +200,7 @@ struct Topology {
         sorted(ex,segments,[](const auto& a,const auto& b){return a.first<b.first;});
         Buffer<u8,1> incoming(segments.size(),u8{0},ResourceAllocator<u8,1>(ex.resources));
         for (u32 i=0; i<segments.size(); ++i) {
+            ex.work();
             ex.spend(2+std::bit_width(segments.size()));
             if (i && segments[i-1].first == segments[i].first) invalid(ex,"contour has multiple outgoing segments");
             const auto next=std::lower_bound(segments.begin(),segments.end(),segments[i].second,
@@ -206,11 +211,13 @@ struct Topology {
         }
         constexpr u32 visited=0x80000000u;
         for (u32 first=0; first<segments.size(); ++first) {
+            ex.work();
             if (segments[first].next&visited) continue;
             Ring r; r.begin=r.start=static_cast<u32>(vertices.size()); r.discovery=segments[first].discovery;
             const auto ring=static_cast<u32>(rings.size());
             auto i=first;
             do {
+                ex.work();
                 ex.spend(1);
                 auto& s=segments[i];
                 if (s.next&visited) invalid(ex,"contour ring is not a simple cycle");
@@ -221,12 +228,14 @@ struct Topology {
             if (r.rawCount<3) invalid(ex,"contour ring requires three distinct vertices");
             r.count=r.rawCount; rings.push_back(r);
             for (u32 k=0; k<r.rawCount; ++k) {
+                ex.work();
                 auto& v=vertices[r.begin+k];
                 v.previous=r.begin+(k+r.rawCount-1)%r.rawCount;
                 v.next=r.begin+(k+1)%r.rawCount;
             }
             // Remove exactly forward collinear points before the public ring cap.
             for (u32 k=0; k<r.rawCount; ++k) {
+                ex.work();
                 ex.spend(1); const auto id=r.begin+k; const auto v=vertices[id];
                 const auto a=vertices[v.previous].p, b=v.p, c=vertices[v.next].p;
                 if (same(a,b) || same(b,c)) invalid(ex,"contour edge collapses in f32 coordinates");
@@ -239,6 +248,7 @@ struct Topology {
     bool contains(const Ring& r,Vec2 p) {
         bool inside=false; auto i=r.start;
         for (u32 k=0; k<r.count; ++k) {
+            ex.work();
             ex.spend(1);
             const auto a=vertices[i].p, b=vertices[vertices[i].next].p;
             if ((a.y>p.y)!=(b.y>p.y)) {
@@ -251,18 +261,20 @@ struct Topology {
     }
     void validate() {
         Buffer<u32,4> edges{ResourceAllocator<u32,4>(ex.resources)};
-        for (u32 i=0; i<vertices.size(); ++i) if (vertices[i].alive) {
+        for (u32 i=0; i<vertices.size(); ++i) { ex.work(); if (vertices[i].alive) {
             ex.spend(1);
             const auto v=vertices[i];
             if (turn(vertices[v.previous].p,v.p,vertices[v.next].p)==0 &&
                 !onSegment(vertices[v.previous].p,vertices[v.next].p,v.p)) invalid(ex,"contour edge backtracks");
             edges.push_back(i);
-        }
+        } }
         const auto minX=[&](u32 i){return std::min(vertices[i].p.x,vertices[vertices[i].next].p.x);};
         sorted(ex,edges,[&](u32 a,u32 b){return std::pair(minX(a),a)<std::pair(minX(b),b);});
         for (u32 at=0; at<edges.size(); ++at) {
+            ex.work();
             const auto i=edges[at]; const auto a=vertices[i].p, b=vertices[vertices[i].next].p;
             for (u32 bt=at+1; bt<edges.size(); ++bt) {
+                ex.work();
                 ex.spend(1); const auto j=edges[bt];
                 if (minX(j)>std::max(a.x,b.x)) break;
                 if (vertices[i].next==j || vertices[j].next==i) continue;
@@ -273,8 +285,10 @@ struct Topology {
     }
     void hierarchy() {
         for (u32 i=0; i<rings.size(); ++i) {
+            ex.work();
             auto& r=rings[i]; double smallest=std::numeric_limits<double>::infinity();
             for (u32 j=0; j<rings.size(); ++j) {
+                ex.work();
                 ex.spend(1); const auto& p=rings[j];
                 if (i==j || std::abs(p.area)<=std::abs(r.area) || std::abs(p.area)>=smallest ||
                     r.lo.x<p.lo.x || r.lo.y<p.lo.y || r.hi.x>p.hi.x || r.hi.y>p.hi.y) continue;
@@ -283,11 +297,12 @@ struct Topology {
         }
         u32 components=0;
         for (auto& r:rings) {
-            for (auto parent=r.parent; parent!=kNoGeometryIndex; parent=rings[parent].parent) { ex.spend(1); ++r.depth; }
+            ex.work();
+            for (auto parent=r.parent; parent!=kNoGeometryIndex; parent=rings[parent].parent) { ex.work();  ex.spend(1); ++r.depth; }
             if (r.depth%2==0 && ++components>kMaxGeometryRegions) invalid(ex,"contour exceeds 256 unfiltered components");
             if ((r.area<0)!=(r.depth%2==1)) {
                 ex.spend(r.rawCount);
-                for (u32 k=0; k<r.rawCount; ++k) std::swap(vertices[r.begin+k].previous,vertices[r.begin+k].next);
+                for (u32 k=0; k<r.rawCount; ++k) { ex.work(); std::swap(vertices[r.begin+k].previous,vertices[r.begin+k].next); }
                 r.reversed=!r.reversed;
             }
             metrics(r);
@@ -301,6 +316,7 @@ struct Topology {
         const double dx=static_cast<double>(q.x)-p.x, dy=static_cast<double>(q.y)-p.y, length=dx*dx+dy*dy;
         if (length==0) return false;
         for (auto i=originalNext(r,a); i!=b; i=originalNext(r,i)) {
+            ex.work();
             ex.spend(1); const auto v=vertices[i].p;
             const double x=static_cast<double>(v.x)-p.x, y=static_cast<double>(v.y)-p.y;
             const double t=std::clamp((x*dx+y*dy)/length,0.0,1.0), rx=x-t*dx, ry=y-t*dy;
@@ -311,6 +327,7 @@ struct Topology {
     bool chordClear(u32 a,u32 current,u32 b) {
         const auto p=vertices[a].p, q=vertices[b].p;
         for (u32 i=0; i<vertices.size(); ++i) {
+            ex.work();
             ex.spend(1);
             if (!vertices[i].alive || i==a || i==current) continue;
             const auto j=vertices[i].next;
@@ -324,12 +341,14 @@ struct Topology {
     bool keepsContainment(u32 ring) {
         const auto& r=rings[ring];
         for (u32 i=0; i<rings.size(); ++i) {
+            ex.work();
             if (i==ring) continue;
             ex.spend(1);
             const auto p=vertices[rings[i].start].p;
             if (p.x<r.lo.x || p.x>r.hi.x || p.y<r.lo.y || p.y>r.hi.y) continue;
             bool expected=false;
             for (auto parent=rings[i].parent; parent!=kNoGeometryIndex; parent=rings[parent].parent) {
+                ex.work();
                 ex.spend(1); if (parent==ring) { expected=true; break; }
             }
             if (contains(r,p)!=expected) return false;
@@ -340,8 +359,10 @@ struct Topology {
         if (tolerance==0) return;
         const double squared=static_cast<double>(tolerance)*tolerance;
         for (u32 ri=0; ri<rings.size(); ++ri) {
+            ex.work();
             auto& r=rings[ri]; auto i=r.start; const auto count=r.count;
             for (u32 k=0; k<count; ++k) {
+                ex.work();
                 ex.spend(1); const auto v=vertices[i]; const auto next=v.next;
                 const double area=r.area-turn(vertices[v.previous].p,v.p,vertices[v.next].p)*0.5;
                 if (r.count>3 && (area>0)==(r.area>0) && area!=0 && nearArc(r,v.previous,v.next,squared) && chordClear(v.previous,i,v.next)) {
@@ -363,16 +384,16 @@ struct Topology {
     std::shared_ptr<const GeometryData> publish(f32 minimum) {
         ex.spend(4*rings.size()+vertices.size());
         Buffer<u32,4> components{ResourceAllocator<u32,4>(ex.resources)}, order{ResourceAllocator<u32,4>(ex.resources)};
-        for (auto& r:rings) r.netArea=r.area;
-        for (const auto& r:rings) if (r.depth%2==1) rings[r.parent].netArea+=r.area;
-        for (u32 i=0; i<rings.size(); ++i) if (rings[i].depth%2==0) {
+        for (auto& r:rings) { ex.work(); r.netArea=r.area; }
+        for (const auto& r:rings) { ex.work(); if (r.depth%2==1) rings[r.parent].netArea+=r.area; }
+        for (u32 i=0; i<rings.size(); ++i) { ex.work(); if (rings[i].depth%2==0) {
             if (!(rings[i].netArea>0)) invalid(ex,"contour component must have positive area after holes");
             if (rings[i].netArea>=minimum) components.push_back(i);
-        }
+        } }
         sorted(ex,components,[&](u32 a,u32 b){return key(a,rings[a].netArea)<key(b,rings[b].netArea);});
-        for (u32 i=0; i<components.size(); ++i) { auto& r=rings[components[i]]; r.keep=true; r.sourceId=static_cast<i32>(i); }
-        for (auto& r:rings) if (r.depth%2==1) { r.keep=rings[r.parent].keep; r.sourceId=rings[r.parent].sourceId; }
-        for (u32 i=0; i<rings.size(); ++i) if (rings[i].keep) order.push_back(i);
+        for (u32 i=0; i<components.size(); ++i) { ex.work();  auto& r=rings[components[i]]; r.keep=true; r.sourceId=static_cast<i32>(i); }
+        for (auto& r:rings) { ex.work(); if (r.depth%2==1) { r.keep=rings[r.parent].keep; r.sourceId=rings[r.parent].sourceId; } }
+        for (u32 i=0; i<rings.size(); ++i) { ex.work(); if (rings[i].keep) order.push_back(i); }
         sorted(ex,order,[&](u32 a,u32 b) {
             return std::pair(rings[a].depth,key(a,std::abs(rings[a].area)))<
                    std::pair(rings[b].depth,key(b,std::abs(rings[b].area)));
@@ -383,22 +404,25 @@ struct Topology {
         GeometryBuilder builder(ex,GeometryOrigin::Contours);
         u32 points=0, edges=0;
         for (const auto index:order) {
+            ex.work();
             auto& r=rings[index]; auto i=r.start;
-            for (u32 k=0; k<r.count; ++k) { builder.point(vertices[i].p); i=vertices[i].next; }
+            for (u32 k=0; k<r.count; ++k) { ex.work();  builder.point(vertices[i].p); i=vertices[i].next; }
             uses.clear();
             for (u32 k=0; k<r.count; ++k) {
+                ex.work();
                 const auto a=points+k, b=points+(k+1)%r.count;
                 const auto edge=builder.edge(std::min(a,b),std::max(a,b),{edges++,r.sourceId,-1,EdgeOrigin::Contour});
                 uses.push_back({edge,a>b});
             }
             auto parent=r.parent;
-            while (parent!=kNoGeometryIndex && !rings[parent].keep) { ex.spend(1); parent=rings[parent].parent; }
+            while (parent!=kNoGeometryIndex && !rings[parent].keep) { ex.work();  ex.spend(1); parent=rings[parent].parent; }
             mapped[index]=builder.ring(uses,parent==kNoGeometryIndex?kNoGeometryIndex:mapped[parent]);
             points+=r.count;
         }
         for (const auto component:components) {
+            ex.work();
             holes.clear();
-            for (const auto i:order) { ex.spend(1); if (rings[i].parent==component && rings[i].depth%2==1) holes.push_back(mapped[i]); }
+            for (const auto i:order) { ex.work();  ex.spend(1); if (rings[i].parent==component && rings[i].depth%2==1) holes.push_back(mapped[i]); }
             builder.region(mapped[component],rings[component].sourceId,holes);
         }
         return std::move(builder).finish();

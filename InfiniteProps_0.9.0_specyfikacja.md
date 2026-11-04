@@ -727,7 +727,9 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 11; przed jakimikolwiek szerokimi obniżkami taryfy.
 
-- [ ] 12.1 Wprowadzić wspólny deterministyczny limit pracy natywnej i objąć nim także dotychczasowe operacje przewidziane do rabatowania, z zachowaniem domyślnego fuel.
+- [x] 12.1 Wprowadzić wspólny deterministyczny limit pracy natywnej i objąć nim także dotychczasowe operacje przewidziane do rabatowania, z zachowaniem domyślnego fuel.
+- [x] 12.2a Zaimplementować deadline, atomowe anulowanie i punkty przerwania w VM, C API, CLI i publicznym WASM.
+- [ ] 12.2b Udostępnić wspólne sterowanie w Python, Swift, C#/Unity, Kotlin/JNI, SFML i Godot oraz sprawdzić rzeczywiste bindingi.
 - [ ] 12.2 Udostępnić deadline/anulowanie w VM i hostach oraz punkty przerwania wewnątrz długich skanów, geometrii i kopiowania.
 - [ ] 12.3 Na podstawie pomiarów ustalić skończony domyślny limit pracy, sposób liczenia jednostek i maksymalną porcję nieprzerywalnej pracy; zapisać wartości i ich uzasadnienie.
 - [ ] 12.4 Sprawdzić kosztowne dane przy niskim fuel za builtin, skumulowaną pracę wielu małych wywołań, granice pamięci i przerwanie w każdym pipeline.
@@ -736,7 +738,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** host ma egzekwowalne ograniczenie kosztu niezależne od promocyjnej taryfy; brak zegara w danym środowisku nie wyłącza licznika pracy.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**12.1 / 12.2a — weryfikacja rdzenia (2026-11-04):** [kontrakt techniczny](spec/execution-limits-v0.9.md). Osobny licznik obejmuje setup, instrukcje, skany, geometrię, alokowane bufory i kopie; 5 mln fuel i dotychczasowe stawki pozostają bez zmian. C API 0.6 dodaje osobne deskryptory i token, zachowując ABI 0.5 i stare layouty. Wykonano 93/93 natywnych CTest (build bez SFML/Godot), dziewięć skupionych przypadków / 516 asercji oraz pełne conformance native/WASM. Nowa bramka porównuje dokładne liczniki work/fuel i obrazy 21 pipeline’ów, 42 granice, 21 odzyskań i 2048 anulowań. Rzeczywisty drugi worker przerywa synchroniczne `noise.mask` wewnątrz instrukcji. Przebieg zachowuje poprzednie wzorce obrazów/RNG i pełne 23 sceny części. Pozostałe bindingi, pomiary domyślnego limitu i końcowy audyt 12.3–12.5 pozostają otwarte; robocze 100 mln jednostek / interwał 1024 wymagają uzasadnienia pomiarowego.
 
 ### Etap 13 — pełna taryfa, optymalizacje i benchmarki
 

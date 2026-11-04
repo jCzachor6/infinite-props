@@ -131,7 +131,7 @@ bool stepPointDistributions(Execution& ex, Instruction ins) {
         if (!(data->mass > 0.0)) ex.trap(data->distribution.family == DistributionFamily::Density ?
             "density needs positive total area" : "weighted needs positive total mass", ErrorReason::NumericRange);
         std::shared_ptr<const PointDistributionData> frozen(data, &data->distribution);
-        ex.resources.distributions.push_back(frozen);
+        appendWork(ex.resources.distributions, frozen, *ex.workBudget);
         Distribution d; d.family = frozen->family; d.points = std::move(frozen);
         ex.push(std::move(d)); break;
     }

@@ -242,6 +242,7 @@ iprop_capi_test(capi_parameter_setters test/parameter_setters.c BOTH
 iprop_capi_test(capi_parameter_overrides test/parameter_overrides.c BOTH
     ARGS ${golden}/reflection-defaults.iprop)
 iprop_capi_test(capi_generate_ex test/generate_ex.c BOTH ARGS ${golden})
+iprop_capi_test(capi_execution_limits test/execution_limits.c BOTH ARGS ${golden}/portrait.iprop)
 
 iprop_capi_test(capi_error_sink test/error_sink.cpp
     ARGS ${golden}/uniforms.iprop ${owner_fixture})

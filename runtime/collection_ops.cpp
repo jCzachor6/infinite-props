@@ -27,14 +27,15 @@ bool stepCollections(Execution& ex, Instruction ins) {
             const bool sort=ins.opcode==Opcode::ListSort;
             // Inspection itself is prepaid; reserve all bounded comparison/copy
             // work before either algorithm or an output-buffer allocation.
-            const auto n=source.data->elements.size();ex.spend(2u*n);
+            const auto n=source.data->elements.size();ex.spend(2u*n);ex.work(2u*n);
             const auto checked=checkListSelection(source,sort);ex.spend(checked.work-2u*n);
-            const auto selection=selectList(checked);
+            const auto selection=selectList(checked,ex.workBudget.get());
             if(selection.unchanged(source)) ex.push(source);
             else {
                 ex.allocateResource(ResourceArena::listBytes(selection.count));
+                ex.work(selection.count);
                 auto result=materializeListSelection(source,selection);
-                ex.resources.lists.push_back(result.data);ex.push(std::move(result));
+                appendWork(ex.resources.lists, result.data, *ex.workBudget);ex.push(std::move(result));
             }
         } catch(const std::invalid_argument& error) {ex.trap(error.what(),ErrorReason::RuntimeViolation);}
         break;
@@ -54,6 +55,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
             if (list.type.item().isDescription()) {
                 ex.spend(list.data->elements.size());
                 for (const auto& value : list.data->elements) {
+                    ex.work();
                     const auto* data = descriptionData(value);
                     if (!descriptionConstants.contains(data)) descriptions.insert(data);
                     retainPoints(data->distribution);
@@ -61,10 +63,11 @@ bool stepCollections(Execution& ex, Instruction ins) {
                 bytes += descriptions.size() * ResourceArena::descriptionBytes();
             }
             if (list.type.item() == ValueType::Distribution) {
-                for (const auto& value : list.data->elements) retainPoints(std::get<Distribution>(value));
+                for (const auto& value : list.data->elements) { ex.work(); retainPoints(std::get<Distribution>(value)); }
                 if (!points.empty()) ex.spend(list.data->elements.size());
             }
             for (const auto* data : points) {
+                ex.work();
                 ex.spend(data->points.size()); bytes += ResourceArena::distributionBytes(data->points.size());
             }
             ex.allocateResource(bytes);
@@ -105,7 +108,7 @@ bool stepCollections(Execution& ex, Instruction ins) {
         // Freeze without copying the element storage. No mutable alias is
         // observable by the source or any later instruction.
         std::shared_ptr<const ListData> frozen(data, &data->list);
-        ex.resources.lists.push_back(frozen);
+        appendWork(ex.resources.lists, frozen, *ex.workBudget);
         ex.push(ListValue{expected, std::move(frozen)});
         break;
     }

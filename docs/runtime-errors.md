@@ -27,6 +27,7 @@ code must be handled using its status/stage, without assuming its text.
 | 1000–1010 | Invalid format fallback, truncated input, bad magic, unsupported version, header, compression, layout, constants, metadata, code, debug |
 | 2000–2002 | Invalid instruction/stack/control validation, signature, part cycle |
 | 3000–3014 | Runtime fallback, fuel, stack underflow/type/limit, call depth, index, control, divide by zero, integer overflow, numeric range, output, missing part output, part render, stream underflow |
+| 3015–3017 | Independent native work exhausted, generation cancelled, monotonic deadline exceeded |
 | 4000, 4003–4007 | Invalid argument fallback, canvas size, uniform type, unknown parameter, duplicate parameter, parameters of another program; 4001/4002 are retired |
 | 5000–5001 | Out of memory, unexpected internal failure |
 

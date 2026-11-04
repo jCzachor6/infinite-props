@@ -1,0 +1,116 @@
+{
+  "scope": "Stage 12.1 and VM/C API/CLI/WASM portion of 12.2; stage remains open",
+  "base_commit": "7d15ae42f4d77c8dc6909ddb40dcecc481262733",
+  "product_version": "0.8.0 (development; no release/version bump)",
+  "c_api": "0.6 additive, ABI 0.5 unchanged",
+  "work_default_provisional": 100000000,
+  "poll_interval_provisional": 1024,
+  "fuel_default": 5000000,
+  "fuel_tariff_changed": false,
+  "native_ctest": {
+    "passed": 93,
+    "total": 93,
+    "platform": "macOS arm64, AppleClang 21.0.0",
+    "graphics_backends_built": false,
+    "ci": false
+  },
+  "focused": {
+    "cases": 9,
+    "assertions": 516
+  },
+  "c_api_shared_static": {
+    "exact_work_boundaries": true,
+    "cancellations_per_linkage": 2048,
+    "prefix_canaries": true,
+    "recovery": true
+  },
+  "work_conformance": {
+    "pipelines": 21,
+    "nativePairs": 21,
+    "boundaries": 42,
+    "recoveries": 21,
+    "repeatedCancellations": 2048,
+    "internalNative": true,
+    "worker": {
+      "passed": true,
+      "opcode": "noise.mask",
+      "elapsedMs": 12.302917000022717,
+      "sharedMemory": true
+    }
+  },
+  "full_conformance": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "part_exports": {
+      "passed": true,
+      "programs": 167,
+      "generations": 604,
+      "fullRecords": 1812,
+      "nativeWasmPairs": 604,
+      "pins": 7,
+      "pinComparisons": 56,
+      "matrixGenerations": 512,
+      "roundtrips": 28,
+      "formatted": 7,
+      "traps": 7,
+      "rejections": 30,
+      "compilerErrors": 8,
+      "legacyRejections": 57,
+      "bindingRejections": 37,
+      "internalNative": true,
+      "internalWasm": true,
+      "checkedCapi": true,
+      "publicBindingTypedParts": true,
+      "publicBindingGenerations": 604,
+      "repeatedBindingErrors": 2048,
+      "sharedBindingScenes": 23,
+      "typedObservationSkipped": false
+    },
+    "native_wasm_groups": {
+      "passed": true,
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97
+    }
+  },
+  "closure_note": "After the complete gates, completed VM.run was made an explicit no-op; smoke, VM result allocation, both C controls and CI tools were rerun successfully. Final complete stage gates remain required.",
+  "logs": {
+    "ctest": {
+      "path": "execution-limits-v0.9-core-ctest.txt",
+      "sha256": "530ff13b72f70a7aaf6a88f06bc1021db56e64588d037f8f1377c88d672d459f"
+    },
+    "conformance": {
+      "path": "execution-limits-v0.9-core-conformance.txt",
+      "sha256": "3c26bd605016deb379804679e38a5e888565329432af338068df7d8e62dac4ee"
+    },
+    "closure": {
+      "path": "execution-limits-v0.9-core-closure.txt",
+      "sha256": "7a00b2da8bcbffb5dc027baf536e3659f32fe21e996175031127b7701fcfe864"
+    }
+  },
+  "source_sha256": {
+    "runtime/iprop/ExecutionLimits.hpp": "d835b7f147ef252ff05fd82eb0136702ca79cc09fbd14e302c1f6d7b06180aed",
+    "runtime/iprop/ResourceMemory.hpp": "dc8939799e1bc151f3429ec554a1bc2cdb342dffbef537a72ac62d65caa4a369",
+    "runtime/vm.cpp": "2f32575f1fca69a1d39010a19ef67f60d56bd48a917c7a2843269e9fc2a47d98",
+    "backends/capi/iprop.h": "e4ec3a5658b22da16a7eecb533e0dac13d3d517e82514a257a4e019e4d171bfd",
+    "backends/capi/execution_limits.cpp": "d2e25d6096dfd738a0d4a47c199ce8a42404e9a940f59881f80d6326f414f0ed",
+    "backends/capi/ExecutionOptions.hpp": "b9a055c3496d0d00418cf35d4237da0184b44abf5a001c228df6f53bb7188623",
+    "backends/html5/module_api.js": "bf2d0e87faa4eb3e4a9c1c4bf84c7a58d685da28f2cdfbd454a05387f6e2413a",
+    "backends/html5/bindings.cpp": "702e55d73531a32c0ff808b64ac3cafeb7f19c57e361cd61ae4f7b6e7f51f57e",
+    "tests/execution_limits_test.cpp": "f2ce9fdda0a01fe805899a6c15c89438a13a03a2424ec4c5c41b18cda7689553",
+    "backends/capi/test/execution_limits.c": "bb4c166ddd1f92a12ebec3d5c0bb082a0d956ec81b06e001ab563858f7c2e12a",
+    "backends/html5/test/execution-limits-conformance.js": "fea86b3d09a52ba4575d95a47f46472eec782e8e6944dcb1bef1b9ccd04ae62b"
+  },
+  "remaining": [
+    "12.2 host bindings Python Swift C#/Unity Kotlin/JNI SFML Godot",
+    "12.3 measured default/chunk calibration",
+    "12.4/12.5 complete host resistance and final exact-source audit"
+  ]
+}

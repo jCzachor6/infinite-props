@@ -137,8 +137,10 @@ void Execution::callFunction(u16 functionIndex) {
     Frame& caller = frames.back();
 
     // Pop parameters in reverse: the last parameter is on top.
-    std::vector<Value> args(callee.params.size());
+    std::vector<Value> args;
+    initializeWork(args, callee.params.size(), Value{}, *workBudget);
     for (std::size_t p = callee.params.size(); p > 0; --p) {
+        work();
         args[p - 1] = pop();
     }
 
@@ -146,6 +148,7 @@ void Execution::callFunction(u16 functionIndex) {
     next.functionIndex = functionIndex;
     next.locals = std::move(args);
     for (const ValueType type : callee.locals) {
+        work();
         next.locals.push_back(zeroValue(type));
     }
     next.stream = caller.stream; // spec §8.2: call frames share the stream
@@ -169,8 +172,10 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     const u32 seed = static_cast<u32>(popI32());
     const auto& fn = file.code.functions[part.functionIndex];
     // A part frame receives only its declared uniforms.
-    std::vector<Value> args(fn.params.size());
+    std::vector<Value> args;
+    initializeWork(args, fn.params.size(), Value{}, *workBudget);
     for (std::size_t p = fn.params.size(); p > 0; --p) {
+        work();
         args[p - 1] = pop();
     }
 
@@ -190,7 +195,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     state.render = render;
     auto nextTarget = RenderTarget::create(resources.makeSurface(partBytes),
         static_cast<u32>(render.sourceExtent.x), static_cast<u32>(render.sourceExtent.y),
-        render.sourceScale, target.mode);
+        render.sourceScale, target.mode, workBudget.get());
     state.savedTarget = std::move(target);
     partCalls.push_back(std::move(state));
 
@@ -201,6 +206,7 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     next.functionIndex = static_cast<u16>(part.functionIndex);
     next.locals = std::move(args);
     for (const ValueType type : fn.locals) {
+        work();
         next.locals.push_back(zeroValue(type));
     }
     next.stream = seed; // spec §8.2: a part frame starts its own stream
@@ -252,9 +258,10 @@ void Execution::ensureControl(u16 functionIndex) {
     const auto& fn = file.code.functions[functionIndex];
     const auto count = fn.code.size() / 4;
     auto& info = control[functionIndex];
-    info.assign(count, {});
+    initializeWork(info, count, ControlInfo{}, *workBudget);
     std::vector<std::size_t> open;
     for (std::size_t i = 0; i < count; ++i) {
+        work();
         const auto ins = decodeInstruction(fn.code.subspan(i * 4, 4));
         switch (ins.opcode) {
         case Opcode::Block:
@@ -331,6 +338,9 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
                const std::span<const UniformValue>* rootValues) {
     impl_->ex.budget = file.meta.fuel;
     impl_->ex.fuel = file.meta.fuel;
+    impl_->ex.workBudget = std::make_shared<detail::WorkBudget>(inputs.limits);
+    impl_->ex.resources.workBudget = impl_->ex.workBudget;
+    impl_->ex.workBudget->poll();
 
     switch (checkGenerationArguments(file.meta, inputs.sizeX, inputs.sizeY)) {
     case ErrorReason::CanvasSize:
@@ -346,7 +356,8 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     }
     impl_->ex.target = RenderTarget::create(targetW, targetH,
         {static_cast<f32>(targetW) / static_cast<f32>(file.meta.sizeX),
-         static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY)});
+         static_cast<f32>(targetH) / static_cast<f32>(file.meta.sizeY)},
+         CompositionMode::Legacy, impl_->ex.workBudget.get());
     impl_->ex.rootTarget = impl_->ex.target;
     if (!file.resourceExports.empty()) {
         impl_->ex.allocateResource(static_cast<u64>(file.resourceExports.size()) * 64u);
@@ -360,6 +371,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     const auto& entry = file.code.entry();
     root.locals.reserve(entry.params.size() + entry.locals.size());
     for (std::size_t index = 0; index < file.meta.inputs.size(); ++index) {
+        impl_->ex.work();
         const auto& decl = file.meta.inputs[index];
         const UniformValue* value = nullptr;
         if (rootValues != nullptr) {
@@ -397,6 +409,7 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
         }
     }
     for (const ValueType type : entry.locals) {
+        impl_->ex.work();
         root.locals.push_back(zeroValue(type));
     }
     root.stream = inputs.seed;
@@ -404,12 +417,18 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
 
     // Global output slots, resolved names, and slot owners: root outputs
     // first, then each part's outputs in part order (spec §4.3/§9.9).
+    std::size_t slotCount = file.meta.outputs.size();
+    for (const auto& part : file.code.parts) { impl_->ex.work(); slotCount += part.outputs.size(); }
+    impl_->ex.outputSlots.reserve(slotCount);
+    impl_->ex.outputNames.reserve(slotCount);
+    impl_->ex.slotOwner.reserve(slotCount);
     const auto addSlot = [&](const OutputDecl& decl, const ConstPool& pool, u16 owner) {
+        impl_->ex.work();
         detail::OutputSlot slot;
         slot.kind = decl.kind;
         slot.isList = decl.isList;
         impl_->ex.outputSlots.push_back(std::move(slot));
-        impl_->ex.outputNames.push_back(pool.strings[decl.nameIndex]);
+        impl_->ex.outputNames.push_back(detail::copyStringWork(pool.strings[decl.nameIndex], *impl_->ex.workBudget));
         impl_->ex.slotOwner.push_back(owner);
     };
     for (const auto& decl : file.meta.outputs) {
@@ -429,13 +448,17 @@ VM& VM::operator=(VM&&) noexcept = default;
 void VM::run() {
     if (impl_->taken) throw std::logic_error("VM result already consumed");
     if (impl_->failed) throw std::logic_error("VM generation failed");
+    if (impl_->finished) return;
     detail::Execution& ex = impl_->ex;
     try {
+    ex.workBudget->stage = ErrorStage::Execute;
+    ex.workBudget->poll();
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
         const auto& fn = ex.file.code.functions[frame.functionIndex];
         ex.activeInstruction = ErrorLocation::instruction(fn.fileOffset + frame.ip * 4,
             frame.functionIndex, static_cast<u32>(frame.ip));
+        ex.work();
         if (frame.ip >= fn.code.size() / 4) {
             // Implicit return: the validated function ends with its declared
             // results on the stack.
@@ -450,6 +473,7 @@ void VM::run() {
             ex.trap("reserved opcode", ErrorReason::RuntimeViolation);
         }
     }
+    ex.workBudget->poll();
     impl_->finished = true;
     ex.resourceSlots.clear();
     ex.resources.clear();
@@ -472,23 +496,31 @@ const Canvas& VM::canvas() const {
 }
 u64 VM::fuel() const { return impl_->ex.fuel; }
 u64 VM::fuelBudget() const { return impl_->ex.budget; }
+u64 VM::work() const { return impl_->ex.workBudget->remaining(); }
+u64 VM::workBudget() const { return impl_->ex.workBudget->budget(); }
+std::shared_ptr<detail::WorkBudget> VM::executionBudget() const { return impl_->ex.workBudget; }
 const std::vector<Value>& VM::debugStack() const { return impl_->ex.entryStack; }
 
 GenerationResult VM::result() const {
     if (impl_->failed) throw std::logic_error("VM generation failed");
     if (impl_->taken) throw std::logic_error("VM result already consumed");
     GenerationResult result;
-    result.image = impl_->ex.canvas();
+    auto& work = *impl_->ex.workBudget;
+    const auto& canvas = impl_->ex.canvas();
+    result.image.width = canvas.width; result.image.height = canvas.height;
+    result.image.scaleX = canvas.scaleX; result.image.scaleY = canvas.scaleY;
+    detail::copyWork(result.image.pixels, canvas.pixels, work);
     const auto& slots = impl_->ex.outputSlots;
     result.outputs.reserve(slots.size());
     for (std::size_t i = 0; i < slots.size(); ++i) {
+        work.spend();
         NamedOutput output;
-        output.name = impl_->ex.outputNames[i];
+        output.name = detail::copyStringWork(impl_->ex.outputNames[i], work);
         output.kind = slots[i].kind;
         output.isList = slots[i].isList;
-        output.points = slots[i].points;
-        output.rects = slots[i].rects;
-        output.circles = slots[i].circles;
+        detail::copyWork(output.points, slots[i].points, work);
+        detail::copyWork(output.rects, slots[i].rects, work);
+        detail::copyWork(output.circles, slots[i].circles, work);
         output.parts = slots[i].parts;
         result.outputs.push_back(std::move(output));
     }
@@ -507,7 +539,8 @@ GenerationResult VM::takeResult() {
     GenerationResult result;
     // The only allocation happens before any ownership is transferred.
     // Everything after resize is nonthrowing, including returning the result.
-    result.outputs.resize(ex.outputSlots.size());
+    detail::initializeWork(result.outputs, ex.outputSlots.size(), NamedOutput{}, *ex.workBudget);
+    ex.workBudget->poll();
     result.image = std::move(ex.canvas());
     ex.target = {};
     ex.rootTarget = {};

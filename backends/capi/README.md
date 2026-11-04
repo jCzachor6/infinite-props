@@ -6,6 +6,14 @@ ships as a shared library and a static twin, both named `ipropc`.
 API 0.5 adds [typed dynamic-part results](../../docs/c-api-part-outputs.md),
 shared geometry with holes and exact A8/RGBA resources, on the same ABI 0.5
 line. Existing structures and enum values remain unchanged.
+
+API 0.6 adds `IPROP_CAP_EXECUTION_LIMITS`: `iprop_generate_controlled` accepts
+separate work/timeout/cancellation controls and `iprop_result_query_work`
+reports deterministic native work. Zero work selects the finite default;
+zero timeout disables the clock. Every generation, including legacy entries,
+retains the independent work guard. Fuel and the ABI 0.5 install identity are
+unchanged. New descriptors use the same sized-prefix/canary rules as existing
+queries; controlled failures preserve the caller's result pointer.
 On Windows the static archive is named `ipropc_static` to avoid colliding
 with the DLL's import library. Shared consumers use the header's DLL import
 annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target

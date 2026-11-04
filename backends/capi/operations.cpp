@@ -9,18 +9,21 @@ namespace iprop::capi {
 
 // Packed float storage remains necessary for the frozen C layout. Reserve
 // its full capacity and finalize both tables before publishing any view.
-void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file) {
+void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file, detail::WorkBudget* work) {
+    const auto visit = [&](u64 units = 1) { if (work) work->spend(units); };
     result.image = std::move(generation.image);
     result.ownerCount = static_cast<uint32_t>(file.code.parts.size()) + 1;
 
     auto& outputs = generation.outputs;
     result.names.reserve(outputs.size());
     for (auto& output : outputs) {
+        visit();
         result.names.push_back(std::move(output.name));
     }
 
     size_t floats = 0, partSlots = 0;
     for (const auto& output : outputs) {
+        visit();
         switch (output.kind) {
         case iprop::OutputKind::Part:
             if (!output.partSnapshots().empty()) ++partSlots;
@@ -43,7 +46,9 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
     size_t ownerEnd = file.meta.outputs.size();
     uint32_t owner = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
+        visit();
         while (i >= ownerEnd && owner < file.code.parts.size()) {
+            visit();
             ownerEnd += file.code.parts[owner].outputs.size();
             ++owner;
         }
@@ -62,6 +67,7 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
             entry.kind = IPROP_OUTPUT_POINT;
             entry.count = static_cast<uint32_t>(output.points.size());
             for (const auto& point : output.points) {
+                visit(2);
                 result.packed.push_back(point.x);
                 result.packed.push_back(point.y);
             }
@@ -70,6 +76,7 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
             entry.kind = IPROP_OUTPUT_RECT;
             entry.count = static_cast<uint32_t>(output.rects.size());
             for (const auto& rect : output.rects) {
+                visit(4);
                 result.packed.push_back(rect.x);
                 result.packed.push_back(rect.y);
                 result.packed.push_back(rect.w);
@@ -80,6 +87,7 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
             entry.kind = IPROP_OUTPUT_CIRCLE;
             entry.count = static_cast<uint32_t>(output.circles.size());
             for (const auto& circle : output.circles) {
+                visit(3);
                 result.packed.push_back(circle.x);
                 result.packed.push_back(circle.y);
                 result.packed.push_back(circle.r);
@@ -92,6 +100,7 @@ void packResult(iprop_result& result, GenerationResult generation, const LoadedF
     // The values pointers into the (fully reserved) packed array.
     size_t begin = 0;
     for (size_t i = 0; i < outputs.size(); ++i) {
+        visit();
         if (static_cast<uint32_t>(result.outputs[i].kind) == IPROP_OUTPUT_KIND_PART) {
             result.outputs[i].values = nullptr;
             continue;
@@ -202,7 +211,12 @@ void generateProgram(const iprop_program& program, const GenerationInputs& input
     vm.run();
     result.fuelBudget = vm.fuelBudget();
     result.fuelRemaining = vm.fuel();
-    packResult(result, vm.takeResult(), *program.data);
+    const auto work = vm.executionBudget();
+    work->location = {};
+    packResult(result, vm.takeResult(), *program.data, work.get());
+    work->poll();
+    result.workBudget = work->budget();
+    result.workRemaining = work->remaining();
 }
 
 iprop_program_info_ex programInfo(const iprop_program& program) noexcept {

@@ -30,27 +30,28 @@ struct Shade {
     }
     void initialize(const GeometryData& source){
         ex.spend(source.uses.size()*4);edges.reserve(source.uses.size());
-        for(const auto use:source.uses){const auto a=source.start(use),b=source.end(use);
+        for(const auto use:source.uses){ ex.work(); const auto a=source.start(use),b=source.end(use);
             const double dx=static_cast<double>(b.x)-a.x,dy=static_cast<double>(b.y)-a.y,l2=dx*dx+dy*dy,l=std::sqrt(l2);
             edges.push_back({a,b,{std::min(a.x,b.x),std::min(a.y,b.y)},{std::max(a.x,b.x),std::max(a.y,b.y)},
                 l2,dy/l,-dx/l,source.source?source.edges[use.edge].provenance.edge:use.edge});
         }
     }
     void prepare(u32 pixels){ex.spend(static_cast<u64>(pixels)*5);owners.resize(static_cast<std::size_t>(pixels)*4);row.resize(pixels);}
-    void beginRow(u32 pixels){ex.spend(pixels);std::fill(row.begin(),row.end(),ShadePixel{});}
-    void beginSubrow(){ex.spend(owners.size());std::fill(owners.begin(),owners.end(),u16{0xffff});active.clear();}
+    void beginRow(u32 pixels){ex.spend(pixels);for(auto& value:row){ex.work();value=ShadePixel{};}}
+    void beginSubrow(){ex.spend(owners.size());for(auto& value:owners){ex.work();value=u16{0xffff};}active.clear();}
     void edge(u32 at,double py){const auto& e=edges[at];
         if(py>=static_cast<double>(e.lo.y)-width&&py<=static_cast<double>(e.hi.y)+width){ex.spend(1);active.push_back(at);}}
     void interval(double left,double right,u32 region,i64 origin,f32 scale){
         const auto lower=[&](double edge){std::size_t lo=0,hi=owners.size();while(lo<hi){
+            ex.work();
             ex.spend(1);const auto mid=(lo+hi)/2;const double px=(static_cast<double>(origin)+(static_cast<double>(mid)+0.5)/4)/scale;
             if(px<edge)lo=mid+1;else hi=mid;}return lo;};
-        const auto end=lower(right);for(auto at=lower(left);at<end;++at){ex.spend(1);if(owners[at]==0xffff)owners[at]=static_cast<u16>(region);}
+        const auto end=lower(right);for(auto at=lower(left);at<end;++at){ ex.work(); ex.spend(1);if(owners[at]==0xffff)owners[at]=static_cast<u16>(region);}
     }
     void sample(double px,double py,u16 region,ShadePixel& sum){
         double nearest=width*width;u32 winner=kNoGeometryIndex;
         const auto [first,last]=ranges[region];
-        for(u32 k=first;k<last;++k){ex.spend(1);const auto at=active[k];const auto& e=edges[at];
+        for(u32 k=first;k<last;++k){ ex.work(); ex.spend(1);const auto at=active[k];const auto& e=edges[at];
             if(px<static_cast<double>(e.lo.x)-width||px>static_cast<double>(e.hi.x)+width)continue;
             ex.spend(4);const double dx=static_cast<double>(e.b.x)-e.a.x,dy=static_cast<double>(e.b.y)-e.a.y;
             const double t=std::clamp(((px-e.a.x)*dx+(py-e.a.y)*dy)/e.length2,0.0,1.0);
@@ -64,7 +65,7 @@ struct Shade {
         sum.a+=alpha;sum.r+=alpha*color.r;sum.g+=alpha*color.g;sum.b+=alpha*color.b;
     }
     static u8 quantize(double value){return static_cast<u8>(std::clamp(std::floor(value+0.5),0.0,255.0));}
-    void finishRow(Canvas& canvas,u32 y){ex.spend(row.size());for(u32 x=0;x<row.size();++x){const auto& p=row[x];const auto alpha=quantize(p.a/16);
+    void finishRow(Canvas& canvas,u32 y){ex.spend(row.size());for(u32 x=0;x<row.size();++x){ ex.work(); const auto& p=row[x];const auto alpha=quantize(p.a/16);
         canvas.at(x,y)=alpha?Color{quantize(p.r/p.a),quantize(p.g/p.a),quantize(p.b/p.a),alpha}:Color{};}}
 };
 }
@@ -80,8 +81,9 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
     const u32 first=index<0?0:static_cast<u32>(index),last=index<0?static_cast<u32>(source.regions.size()):first+1;
     Vec2 lo{},hi{};bool nonempty=false;
     for(u32 i=first;i<last;++i){
+        ex.work();
         const auto& r=source.rings[source.regions[i].outer];Bounds b{source.start(source.uses[r.begin]),source.start(source.uses[r.begin])};
-        for(u32 k=0;k<r.count;++k){ex.spend(1);const auto p=source.start(source.uses[r.begin+k]);
+        for(u32 k=0;k<r.count;++k){ ex.work(); ex.spend(1);const auto p=source.start(source.uses[r.begin+k]);
             b.lo={std::min(b.lo.x,p.x),std::min(b.lo.y,p.y)};b.hi={std::max(b.hi.x,p.x),std::max(b.hi.y,p.y)};}
         bounds.push_back(b);
         if(!nonempty){lo=b.lo;hi=b.hi;nonempty=true;}
@@ -103,22 +105,26 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
     ex.allocateResource(bytes);auto buffer=ex.resources.makeSurface(bytes);
     buffer->format=shade?SurfaceBuffer::Format::RGBA8:SurfaceBuffer::Format::A8;buffer->raster.width=width;buffer->raster.height=height;
     buffer->raster.scaleX=scale.x;buffer->raster.scaleY=scale.y;
-    if(shade)buffer->raster.pixels.resize(static_cast<std::size_t>(count));else buffer->coverage.assign(static_cast<std::size_t>(count),0);
+    if(shade)initializeWork(buffer->raster.pixels,static_cast<std::size_t>(count),Color{},*ex.workBudget);
+    else initializeWork(buffer->coverage,static_cast<std::size_t>(count),u8{0},*ex.workBudget);
     if(shade&&(!nonempty||shade->strength==0))return{std::move(buffer),{{},{static_cast<i32>(left),static_cast<i32>(top)}}};
     if(shade){shade->initialize(source);shade->prepare(width);}
     ResourceVector<Crossing,24> crossings{ResourceAllocator<Crossing,24>(ex.resources)};
     ResourceVector<Interval,16> intervals{ResourceAllocator<Interval,16>(ex.resources)};
-    if(nonempty)for(u32 y=0;y<height;++y)for(u32 sy=0;sy<4;++sy){
+    if(nonempty)for(u32 y=0;y<height;++y){ ex.work(); for(u32 sy=0;sy<4;++sy){
+        ex.work();
         if(shade){if(sy==0)shade->beginRow(width);shade->beginSubrow();}
         const double py=(static_cast<double>(top)+y+(static_cast<double>(sy)+0.5)/4)/scale.y;
         intervals.clear();
         for(u32 i=first;i<last;++i){
+            ex.work();
             if(shade)shade->ranges[i]={static_cast<u32>(shade->active.size()),static_cast<u32>(shade->active.size())};
             ex.spend(1);const auto b=bounds[i-first];if(py<b.lo.y||py>=b.hi.y)continue;
             crossings.clear();const auto& region=source.regions[i];
             const auto ring=[&](u32 indexOfRing){
                 const auto& r=source.rings[indexOfRing];
                 for(u32 k=0;k<r.count;++k){
+                    ex.work();
                     ex.spend(1);const auto use=source.uses[r.begin+k];const auto a=source.start(use),b=source.end(use);
                     if(shade)shade->edge(r.begin+k,py);
                     if((a.y>py)==(b.y>py))continue;
@@ -129,12 +135,13 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
                     crossings.push_back({x,a.y>b.y?1:-1,use.edge});
                 }
             };
-            ring(region.outer);for(const auto h:source.regionHoles(i))ring(h);
+            ring(region.outer);for(const auto h:source.regionHoles(i)){ ex.work(); ring(h); }
             geometrySort(ex,crossings,[](const auto& a,const auto& b){return std::tuple(a.x,a.delta,a.edge)<std::tuple(b.x,b.delta,b.edge);});
             i32 winding=0;double start=0;
             for(std::size_t at=0;at<crossings.size();){
+                ex.work();
                 const auto x=crossings[at].x;const bool was=winding>0;
-                do{ex.spend(1);winding+=crossings[at++].delta;}while(at<crossings.size()&&crossings[at].x==x);
+                do{ ex.work(); ex.spend(1);winding+=crossings[at++].delta;}while(at<crossings.size()&&crossings[at].x==x);
                 if(!was&&winding>0)start=x;else if(was&&winding<=0&&x>start){
                     if(shade)shade->interval(start,x,i,left,scale.x);else intervals.push_back({start,x});}
             }
@@ -143,29 +150,30 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
         }
         if(shade){
             ex.spend(static_cast<u64>(width)*4);
-            for(u32 x=0;x<width;++x)for(u32 sx=0;sx<4;++sx){const auto owner=shade->owners[static_cast<std::size_t>(x)*4+sx];
+            for(u32 x=0;x<width;++x){ ex.work(); for(u32 sx=0;sx<4;++sx){ ex.work(); const auto owner=shade->owners[static_cast<std::size_t>(x)*4+sx];
                 if(owner==0xffff)continue;
                 const double px=(static_cast<double>(left)+x+(static_cast<double>(sx)+0.5)/4)/scale.x;
-                shade->sample(px,py,owner,shade->row[x]);}
+                shade->sample(px,py,owner,shade->row[x]);} }
             if(sy==3)shade->finishRow(buffer->raster,y);
             continue;
         }
         geometrySort(ex,intervals,[](const auto& a,const auto& b){return std::pair(a.left,a.right)<std::pair(b.left,b.right);});
         std::size_t merged=0;
-        for(const auto interval:intervals){ex.spend(1);
+        for(const auto interval:intervals){ ex.work(); ex.spend(1);
             if(merged&&interval.left<=intervals[merged-1].right)intervals[merged-1].right=std::max(intervals[merged-1].right,interval.right);
             else intervals[merged++]=interval;}
         intervals.resize(merged);std::size_t at=0;ex.spend(static_cast<u64>(width)*4);
-        for(u32 x=0;x<width;++x){u8 covered=0;
+        for(u32 x=0;x<width;++x){ ex.work(); u8 covered=0;
             for(u32 sx=0;sx<4;++sx){
+                ex.work();
                 const double px=(static_cast<double>(left)+x+(static_cast<double>(sx)+0.5)/4)/scale.x;
-                while(at<intervals.size()&&px>=intervals[at].right){ex.spend(1);++at;}
+                while(at<intervals.size()&&px>=intervals[at].right){ ex.work(); ex.spend(1);++at;}
                 if(at<intervals.size()&&px>=intervals[at].left)++covered;
             }
             buffer->coverage[static_cast<std::size_t>(y)*width+x]+=covered;
         }
-    }
-    if(!shade){ex.spend(count);for(auto& value:buffer->coverage)value=static_cast<u8>((static_cast<u32>(value)*255+8)/16);}
+    } }
+    if(!shade){ex.spend(count);for(auto& value:buffer->coverage){ ex.work(); value=static_cast<u8>((static_cast<u32>(value)*255+8)/16); }}
     return{std::move(buffer),{{},{static_cast<i32>(left),static_cast<i32>(top)}}};
 }
 }

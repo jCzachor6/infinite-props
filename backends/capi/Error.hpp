@@ -24,6 +24,9 @@ static_assert(static_cast<uint32_t>(ErrorReason::InvalidSignature) == IPROP_REAS
 static_assert(static_cast<uint32_t>(ErrorReason::PartCycle) == IPROP_REASON_PART_CYCLE);
 static_assert(static_cast<uint32_t>(ErrorReason::RuntimeViolation) == IPROP_REASON_RUNTIME_VIOLATION);
 static_assert(static_cast<uint32_t>(ErrorReason::FuelExhausted) == IPROP_REASON_FUEL_EXHAUSTED);
+static_assert(static_cast<uint32_t>(ErrorReason::WorkExhausted) == IPROP_REASON_WORK_EXHAUSTED);
+static_assert(static_cast<uint32_t>(ErrorReason::Cancelled) == IPROP_REASON_CANCELLED);
+static_assert(static_cast<uint32_t>(ErrorReason::DeadlineExceeded) == IPROP_REASON_DEADLINE_EXCEEDED);
 static_assert(static_cast<uint32_t>(ErrorReason::StackUnderflow) == IPROP_REASON_STACK_UNDERFLOW);
 static_assert(static_cast<uint32_t>(ErrorReason::StackType) == IPROP_REASON_STACK_TYPE);
 static_assert(static_cast<uint32_t>(ErrorReason::StackLimit) == IPROP_REASON_STACK_LIMIT);

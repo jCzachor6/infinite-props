@@ -36,6 +36,7 @@ OutputPart snapshotPart(Execution& ex, const Part2dValue& part, u16 slot, u32 in
         if (ex.slotOwner[slot] != ex.partCalls.back().partIndex)
             ex.trap("part export write by a different asset", ErrorReason::InvalidOutput);
         for (std::size_t i = ex.partCalls.size(); i-- > 0;) {
+            ex.work();
             const auto& call = ex.partCalls[i];
             const auto& render = call.render;
             const auto translated = render.transform.mapPixelWide(
@@ -66,7 +67,7 @@ OutputPart snapshotPart(Execution& ex, const Part2dValue& part, u16 slot, u32 in
     }
     for (const auto value : {result.center.x, result.center.y, result.boundsOrigin.x,
             result.boundsOrigin.y, result.boundsSize.x, result.boundsSize.y})
-        if (!std::isfinite(value)) ex.trap("part export bounds are not representable", ErrorReason::NumericRange);
+        { ex.work(); if (!std::isfinite(value)) ex.trap("part export bounds are not representable", ErrorReason::NumericRange); }
     return result;
 }
 } // namespace iprop::detail

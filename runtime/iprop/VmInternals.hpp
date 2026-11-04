@@ -12,6 +12,7 @@
 #include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
+#include "iprop/ExecutionLimits.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -102,6 +103,7 @@ struct Execution {
     RenderTarget rootTarget; // preserves the existing failed-run canvas tooling hook
     u64 budget = 0;
     u64 fuel = 0;
+    std::shared_ptr<WorkBudget> workBudget = std::make_shared<WorkBudget>();
     std::vector<Frame> frames;
     // Snapshot before dispatch: call/part operations may advance the frame PC
     // before a trap. Structured locations identify the failing instruction.
@@ -126,7 +128,7 @@ struct Execution {
     u32 dynamicPartCreations = 0;
     u32 exportedParts = 0; // all slots/static calls share the append limit
 
-    explicit Execution(const LoadedFile& f) : file(f) {}
+    explicit Execution(const LoadedFile& f) : file(f) { resources.workBudget = workBudget; }
     Canvas& canvas() { return target.canvas(); }
     const Canvas& canvas() const { return target.canvas(); }
 
@@ -171,6 +173,8 @@ struct Execution {
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
+    void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    void checkpoint() const { workBudget->checkpoint(); }
 
     // Frame lifecycle.
     void callFunction(u16 functionIndex);

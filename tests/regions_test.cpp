@@ -187,6 +187,9 @@ TEST_CASE("regions points rejects holes and 257 vertices without changing full g
 }
 TEST_CASE("region limits apply after fragment filtering and bound discarded intermediates","[regions-v09]") {
     LoadedFile f;detail::Execution ex(f);ex.fuel=10000000000ull;
+    // Isolate geometry/quota boundaries from the independent work guard.
+    ExecutionLimits limits;limits.workLimit=10000000000ull;
+    ex.workBudget=std::make_shared<detail::WorkBudget>(limits);ex.resources.workBudget=ex.workBudget;
     std::vector<Vec2> comb;
     for(u32 i=0;i<257;++i){const auto x=static_cast<f32>(i*4);comb.push_back({x,0});comb.push_back({x+3,0});if(i<256){comb.push_back({x+3,5});comb.push_back({x+4,5});}}
     comb.push_back({1027,6});comb.push_back({0,6});

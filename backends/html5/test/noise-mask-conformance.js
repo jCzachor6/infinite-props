@@ -37,12 +37,13 @@ function run(iprop,tool,directory){
         }
         ++generations;return {image,output};
     }
-    function reject(bytes,message,validation=false){
+    function reject(bytes,message,validation=false,options={}){
         fs.writeFileSync(base+".iprop",bytes);const png=base+"-failed.png";fs.rmSync(png,{force:true});
-        const result=spawnSync(tool(validation?"ipval":"ipgen"),[base+".iprop",...(validation?[]:["-o",png])],{encoding:"utf8"});
+        const result=spawnSync(tool(validation?"ipval":"ipgen"),[base+".iprop",...(validation?[]:["-o",png]),
+            ...(options.workLimit?["--work-limit",String(options.workLimit)]:[])],{encoding:"utf8"});
         assert.equal(result.signal,null);assert.equal(result.status,1,result.stderr);assert.match(result.stderr,message);
         assert.equal(fs.existsSync(png),false,"failed mask generation must not publish a PNG");
-        if(iprop)assert.throws(()=>iprop.generate(new Uint8Array(bytes),{}),message);
+        if(iprop)assert.throws(()=>iprop.generate(new Uint8Array(bytes),options),message);
         if(validation)++rejections;else ++traps;
     }
     const controls=new Map();for(const seed of [0,26,4294967295])controls.set(seed,generate(compile("asset t{size 1x1 output point state draw{state={1,unit()}}}"),{seed}).output.outputs);
@@ -117,9 +118,9 @@ function run(iprop,tool,directory){
         reject(fuel(raw(invalid),total-2),/fuel exhausted/);
     }
     // Retain distinct mask locals until they collectively exceed the shared
-    // arena. Raise fuel only in this test to reach memory preflight.
+    // arena. Raise fuel and work only in this test to isolate memory preflight.
     const many=compile(`asset t{size 1x1 draw{${Array.from({length:65},(_,i)=>`m${i}=noise.mask({0,0},{1024,1024},0,{0.01,0.01},0.5,7)`).join(' ')}}}`,['--no-opt','--no-compress']);
-    reject(fuel(many,500000000),/generation data exceeds 64 MiB/);
+    reject(fuel(many,500000000),/generation data exceeds 64 MiB/,false,{workLimit:1000000000});
     for(const full of [false,true]){
         const valid=raw(good,full),opcode=full?0xe4:0xe3;
         const ops=instructions(valid);let cursor=0;

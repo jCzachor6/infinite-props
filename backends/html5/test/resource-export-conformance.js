@@ -25,6 +25,7 @@ function run(iprop,tool,directory) {
     }
     function generate(binary,seed=26,options={}) {
         const png=base+".png",flags=options.sizeX?["--size",`${options.sizeX}x${options.sizeY}`]:[];
+        if(options.workLimit) flags.push("--work-limit",String(options.workLimit));
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const rgba=Buffer.from(decodePng(fs.readFileSync(png)).data);
         const wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...options});
@@ -65,7 +66,7 @@ function run(iprop,tool,directory) {
     fs.writeFileSync(path.join(tree,"root.ips"),wrong);const wrongBinary=path.join(tree,"wrong.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"-o",wrongBinary]);trap(wrongBinary,/last called part/);
     // Repeated replacement is bounded by live handles, rather than arena history.
     const reusable=compile('asset t{size 1024x1024 draw{layer image{}region=mask.from(image)for i in 0..64{region=mask.invert(region)}}}',["--no-opt"]);
-    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large);
+    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large,26,{workLimit:1000000000});
     // A real snapshot survives slot replacement and keeps its allocation alive.
     fs.writeFileSync(path.join(tree,"leaf.ips"),'asset t{size 1024x1024 output layer image draw{layer captured{}image=captured}}');
     const many=Array.from({length:16},(_,i)=>`leaf.draw(seed,at={0,0})snapshot${i}=leaf.outputs.image`).join(';');

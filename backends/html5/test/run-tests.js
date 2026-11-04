@@ -56,8 +56,12 @@ async function main() {
          ...(fs.existsSync(gapBevelProbe)?{gapBevelWasm:gapBevelProbe}:{}),
          ...(fs.existsSync(dynamicPartsProbe)?{dynamicPartsWasm:dynamicPartsProbe}:{}),
          ...(fs.existsSync(partExportsProbe)?{partExportsWasm:partExportsProbe}:{})});
+    const executionLimits = require("./execution-limits-conformance.js");
+    const workTool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
+    const work = executionLimits.run(iprop, workTool);
+    const worker = await executionLimits.workerCancellation(iprop, workTool);
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
-    report({ passed: result.passed && native.passed, golden: result, native, compression });
+    report({ passed: result.passed && native.passed, golden: result, native, compression, executionLimits: { ...work, worker } });
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
         console.log("native/WASM compression: PASS (" + compression.images + " exact current images; " + compression.rejections + " matching rejected envelopes)");
@@ -149,6 +153,7 @@ async function main() {
             native.partExportsV09.rejections + " bytecode rejections; checked C API=" + native.partExportsV09.checkedCapi +
             "; core native=" + native.partExportsV09.internalNative + ", WASM=" + native.partExportsV09.internalWasm + ")");
         console.log("public WASM shared part fixtures: PASS (" + native.partExportsV09.sharedBindingScenes + " complete C++/C scenes and independent lifetime)");
+        console.log("native/WASM work limits: PASS (" + work.pipelines + " pipelines; " + work.nativePairs + " exact C/native/WASM counters; worker cancellation inside noise.mask)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

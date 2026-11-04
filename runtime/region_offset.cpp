@@ -85,6 +85,7 @@ struct Offset {
             if(!started){first=last=point;started=true;}else{add(last,point,incoming);last=point;}incoming=edge;
         };
         for(u32 k=0;k<r.count;++k){
+            ex.work();
             ex.spend(4);
             const auto previous=d.uses[r.begin+(k+r.count-1)%r.count],current=d.uses[r.begin+k];
             const auto a=d.start(previous),b=d.start(current),c=d.end(current);
@@ -104,6 +105,7 @@ struct Offset {
                 const Point start{u.x/radius,u.y/radius},end{v.x/radius,v.y/radius};
                 std::array<Arc,64> stack;u32 depth=1;stack[0]={start,end,0};
                 while(depth){
+                    ex.work();
                     ex.spend(1);const auto arc=stack[--depth];
                     const double x=arc.a.x+arc.b.x,y=arc.a.y+arc.b.y,length=std::sqrt(x*x+y*y);
                     if(!(length>0))invalid(ex,"region offset has an unresolved reversing corner");
@@ -126,6 +128,7 @@ struct Offset {
             if(!started){first=last=point;started=true;}else{add(last,point,incoming);last=point;}incoming=edge;
         };
         for(u32 k=0;k<r.count;++k){
+            ex.work();
             ex.spend(36);
             const auto previous=d.uses[r.begin+(k+r.count-1)%r.count],current=d.uses[r.begin+k];
             const auto a=d.start(previous),b=d.start(current),c=d.end(current);
@@ -139,6 +142,7 @@ struct Offset {
             else if(bend<0){
                 std::array<ProfileArc,64> stack;u32 depth=1;stack[0]={u,v,fromRadius,toRadius,0};
                 while(depth){
+                    ex.work();
                     ex.spend(1);const auto arc=stack[--depth];
                     const double x=arc.a.x+arc.b.x,y=arc.a.y+arc.b.y,length=std::sqrt(x*x+y*y);
                     if(!(length>0))invalid(ex,"region gap has an unresolved reversing corner");
@@ -160,6 +164,7 @@ struct Offset {
             const bool forward=key(b)<key(c);const auto lo=forward?b:c,hi=forward?c:b;
             const double t0=profile.parameter(lo),t1=profile.parameter(hi);
             for(u32 j=1;j<8;++j){
+                ex.work();
                 ex.spend(1);const u32 knot=(forward==(t1>t0))?j:8-j;const double t=static_cast<double>(knot)/8;
                 if(!(t>std::min(t0,t1)&&t<std::max(t0,t1)))continue;
                 const double along=(t-t0)/(t1-t0),radius=profile.radii[knot];
@@ -178,16 +183,17 @@ struct Offset {
         return std::abs(v.x)>=std::abs(v.y)?(static_cast<double>(p.x)-s.a.x)/v.x:(static_cast<double>(p.y)-s.a.y)/v.y;
     }
     void intersections(){
-        for(u32 i=0;i<raw.size();++i){cut(i,0,raw[i].a);cut(i,1,raw[i].b);}
-        for(u32 i=0;i<raw.size();++i)for(u32 j=i+1;j<raw.size();++j){
+        for(u32 i=0;i<raw.size();++i){ ex.work(); cut(i,0,raw[i].a);cut(i,1,raw[i].b);}
+        for(u32 i=0;i<raw.size();++i){ ex.work(); for(u32 j=i+1;j<raw.size();++j){
+            ex.work();
             ex.spend(1);const auto& a=raw[i];const auto& b=raw[j];
             if(std::max(a.a.x,a.b.x)<std::min(b.a.x,b.b.x)||std::max(b.a.x,b.b.x)<std::min(a.a.x,a.b.x)||
                std::max(a.a.y,a.b.y)<std::min(b.a.y,b.b.y)||std::max(b.a.y,b.b.y)<std::min(a.a.y,a.b.y))continue;
             const auto u=subtract(a.b,a.a),v=subtract(b.b,b.a),w=subtract(b.a,a.a);const double denominator=cross(u,v);
             if(denominator==0){
                 if(cross(u,w)!=0)continue;
-                for(const auto p:{b.a,b.b}){const double t=parameter(a,p);if(t>=0&&t<=1)cut(i,t,p);}
-                for(const auto p:{a.a,a.b}){const double t=parameter(b,p);if(t>=0&&t<=1)cut(j,t,p);}
+                for(const auto p:{b.a,b.b}){ ex.work(); const double t=parameter(a,p);if(t>=0&&t<=1)cut(i,t,p);}
+                for(const auto p:{a.a,a.b}){ ex.work(); const double t=parameter(b,p);if(t>=0&&t<=1)cut(j,t,p);}
             }else{
                 const double t=cross(w,v)/denominator,s=cross(w,u)/denominator;
                 if(t<0||t>1||s<0||s>1)continue;
@@ -197,7 +203,7 @@ struct Offset {
                     rounded(ex,{a.a.x+u.x*t,a.a.y+u.y*t});
                 cut(i,t,p);cut(j,s,p);
             }
-        }
+        } }
         geometrySort(ex,cuts,[](const auto& a,const auto& b){return std::tuple(a.segment,a.t,key(a.point))<std::tuple(b.segment,b.t,key(b.point));});
     }
     static int sign(double a,double derivative){return a<0?-1:a>0?1:derivative<0?-1:derivative>0?1:0;}
@@ -205,6 +211,7 @@ struct Offset {
         const auto& own=raw[owner];const auto delta=subtract(own.b,own.a);
         const Point q{own.a.x+delta.x*t,own.a.y+delta.y*t};int result=0;
         for(const auto& edge:raw){
+            ex.work();
             ex.spend(1);const auto v=subtract(edge.b,edge.a);
             double side=cross(v,{q.x-edge.a.x,q.y-edge.a.y});
             if(turn(own.a,own.b,edge.a)==0&&turn(own.a,own.b,edge.b)==0)side=0;
@@ -217,6 +224,7 @@ struct Offset {
     }
     void boundaries(){
         for(u32 i=1;i<cuts.size();++i){
+            ex.work();
             ex.spend(1);const auto& a=cuts[i-1];const auto& b=cuts[i];
             if(a.segment!=b.segment||a.t==b.t||same(a.point,b.point))continue;
             const auto v=subtract(raw[a.segment].b,raw[a.segment].a);const Point right{-v.y,v.x};
@@ -238,16 +246,18 @@ struct Offset {
         Buffer<Segment,48> order{ResourceAllocator<Segment,48>(ex.resources)};
         ex.spend(segments.size()-begin);order.insert(order.end(),segments.begin()+begin,segments.end());segments.resize(begin);
         geometrySort(ex,order,[](const auto& a,const auto& b){return std::tuple(key(a.a),key(a.b),a.provenance.edge)<std::tuple(key(b.a),key(b.b),b.provenance.edge);});
-        for(const auto& s:order){ex.spend(1);if(segments.size()==begin||!same(segments.back().a,s.a)||!same(segments.back().b,s.b))segments.push_back(s);}
+        for(const auto& s:order){ ex.work(); ex.spend(1);if(segments.size()==begin||!same(segments.back().a,s.a)||!same(segments.back().b,s.b))segments.push_back(s);}
         const auto end=static_cast<u32>(segments.size());
         Buffer<u32,4> sorted{ResourceAllocator<u32,4>(ex.resources)};
-        for(u32 i=begin;i<end;++i)sorted.push_back(i);
+        for(u32 i=begin;i<end;++i){ ex.work(); sorted.push_back(i); }
         // segments already sorts by start; binary search finds outgoing edges.
         for(u32 i=begin;i<end;++i){
+            ex.work();
             auto& s=segments[i];const auto target=key(s.b);std::size_t lo=0,hi=sorted.size();
-            while(lo<hi){ex.spend(1);const auto mid=(lo+hi)/2;if(key(segments[sorted[mid]].a)<target)lo=mid+1;else hi=mid;}
+            while(lo<hi){ ex.work(); ex.spend(1);const auto mid=(lo+hi)/2;if(key(segments[sorted[mid]].a)<target)lo=mid+1;else hi=mid;}
             u32 selected=kNoGeometryIndex;const auto reverse=subtract(s.a,s.b);
             for(auto j=lo;j<sorted.size()&&key(segments[sorted[j]].a)==target;++j){
+                ex.work();
                 ex.spend(1);const auto candidate=sorted[j];const auto direction=subtract(segments[candidate].b,s.b);
                 if(selected==kNoGeometryIndex)selected=candidate;
                 else{
@@ -262,19 +272,22 @@ struct Offset {
         }
         Buffer<Segment,48> closed{ResourceAllocator<Segment,48>(ex.resources)};
         for(u32 i=begin;i<end;++i){
+            ex.work();
             ex.spend(1);if(segments[i].used)continue;const auto start=static_cast<u32>(closed.size());auto j=i;
-            do{ex.spend(1);auto& s=segments[j];if(s.used)invalid(ex,"region offset has an ambiguous touching boundary");s.used=true;closed.push_back(s);j=s.next;}while(j!=i);
+            do{ ex.work(); ex.spend(1);auto& s=segments[j];if(s.used)invalid(ex,"region offset has an ambiguous touching boundary");s.used=true;closed.push_back(s);j=s.next;}while(j!=i);
             // Remove exactly collinear forward vertices. Provenance changes
             // remain explicit, even along straight lines.
             bool changed=true;
             while(changed&&closed.size()-start>=3){
+                ex.work();
                 changed=false;const auto n=static_cast<u32>(closed.size())-start;
                 for(u32 k=0;k<n;++k){
+                    ex.work();
                     ex.spend(1);const auto prev=start+(k+n-1)%n,at=start+k;auto& a=closed[prev];const auto b=closed[at];
                     if(a.provenance.edge==b.provenance.edge&&turn(a.a,b.a,b.b)==0&&
                        (static_cast<double>(b.a.x)-a.a.x)*(static_cast<double>(b.b.x)-b.a.x)+
                        (static_cast<double>(b.a.y)-a.a.y)*(static_cast<double>(b.b.y)-b.a.y)>0){
-                        a.b=b.b;for(u32 z=at;z+1<closed.size();++z){ex.spend(1);closed[z]=closed[z+1];}
+                        a.b=b.b;for(u32 z=at;z+1<closed.size();++z){ ex.work(); ex.spend(1);closed[z]=closed[z+1];}
                         closed.resize(closed.size()-1);changed=true;break;
                     }
                 }
@@ -285,6 +298,7 @@ struct Offset {
             Loop loop;loop.begin=start;loop.count=n;loop.source=sourceIndex;loop.discovery=static_cast<u32>(loops.size());loop.lo=loop.hi=closed[start].a;
             u32 canonical=start;double twice=0;const auto reference=closed[start].a;
             for(u32 k=0;k<n;++k){
+                ex.work();
                 ex.spend(1);const auto& s=closed[start+k];twice+=cross(subtract(s.a,reference),subtract(s.b,reference));
                 loop.lo={std::min(loop.lo.x,s.a.x),std::min(loop.lo.y,s.a.y)};loop.hi={std::max(loop.hi.x,s.a.x),std::max(loop.hi.y,s.a.y)};
                 if(key(s.a)<key(closed[canonical].a))canonical=start+k;
@@ -293,22 +307,23 @@ struct Offset {
             if(loop.area==0){closed.resize(start);continue;}
             // Rotate through a bounded scratch range; no recursive std sort.
             Buffer<Segment,48> rotated{ResourceAllocator<Segment,48>(ex.resources)};rotated.reserve(n);
-            for(u32 k=0;k<n;++k){ex.spend(1);rotated.push_back(closed[start+(canonical-start+k)%n]);}
-            ex.spend(n);for(u32 k=0;k<n;++k)closed[start+k]=rotated[k];
+            for(u32 k=0;k<n;++k){ ex.work(); ex.spend(1);rotated.push_back(closed[start+(canonical-start+k)%n]);}
+            ex.spend(n);for(u32 k=0;k<n;++k){ ex.work(); closed[start+k]=rotated[k]; }
             loops.push_back(loop);
         }
         segments.resize(begin);
-        for(auto& loop:loops)if(loop.source==sourceIndex){loop.begin+=begin;}
+        for(auto& loop:loops){ ex.work(); if(loop.source==sourceIndex){loop.begin+=begin;} }
         ex.spend(closed.size());segments.insert(segments.end(),closed.begin(),closed.end());
     }
     void validate(u32 begin,u32 firstLoop){
         ex.spend(segments.size()-begin);
         Buffer<u32,4> order{ResourceAllocator<u32,4>(ex.resources)},owners(segments.size()-begin,kNoGeometryIndex,ResourceAllocator<u32,4>(ex.resources));
-        for(u32 i=firstLoop;i<loops.size();++i)for(u32 k=0;k<loops[i].count;++k){ex.spend(1);owners[loops[i].begin+k-begin]=i;}
-        for(u32 i=begin;i<segments.size();++i){ex.spend(1);order.push_back(i);}
+        for(u32 i=firstLoop;i<loops.size();++i){ ex.work(); for(u32 k=0;k<loops[i].count;++k){ ex.work(); ex.spend(1);owners[loops[i].begin+k-begin]=i;} }
+        for(u32 i=begin;i<segments.size();++i){ ex.work(); ex.spend(1);order.push_back(i);}
         geometrySort(ex,order,[&](u32 a,u32 b){return std::pair(std::min(segments[a].a.x,segments[a].b.x),a)<std::pair(std::min(segments[b].a.x,segments[b].b.x),b);});
         const auto on=[](Vec2 a,Vec2 b,Vec2 p){return p.x>=std::min(a.x,b.x)&&p.x<=std::max(a.x,b.x)&&p.y>=std::min(a.y,b.y)&&p.y<=std::max(a.y,b.y);};
-        for(u32 i=0;i<order.size();++i)for(u32 j=i+1;j<order.size();++j){
+        for(u32 i=0;i<order.size();++i){ ex.work(); for(u32 j=i+1;j<order.size();++j){
+            ex.work();
             ex.spend(1);const auto left=order[i],right=order[j];const auto a=segments[left],b=segments[right];
             if(std::min(b.a.x,b.b.x)>std::max(a.a.x,a.b.x))break;
             if(std::max(a.a.y,a.b.y)<std::min(b.a.y,b.b.y)||std::max(b.a.y,b.b.y)<std::min(a.a.y,a.b.y))continue;
@@ -330,11 +345,11 @@ struct Offset {
                 allowed=(x+1)%loop.count==y||(y+1)%loop.count==x;
             }
             if(!allowed)invalid(ex,"region offset intersects itself after f32 rounding");
-        }
+        } }
     }
     bool contains(const Loop& loop,Vec2 p){
         bool inside=false;
-        for(u32 k=0;k<loop.count;++k){ex.spend(1);const auto& edge=segments[loop.begin+k];
+        for(u32 k=0;k<loop.count;++k){ ex.work(); ex.spend(1);const auto& edge=segments[loop.begin+k];
             const auto a=edge.a,b=edge.b;if((a.y>p.y)!=(b.y>p.y)){
                 const double x=a.x+(static_cast<double>(p.y)-a.y)*(static_cast<double>(b.x)-a.x)/(static_cast<double>(b.y)-a.y);
                 if(p.x<x)inside=!inside;
@@ -343,8 +358,9 @@ struct Offset {
     }
     void hierarchy(u32 begin){
         for(u32 i=begin;i<loops.size();++i){
+            ex.work();
             auto& l=loops[i];if(l.area>0)continue;u32 parent=kNoGeometryIndex;
-            for(u32 j=begin;j<loops.size();++j){ex.spend(1);const auto& p=loops[j];if(p.area<=0||p.area<=-l.area)continue;
+            for(u32 j=begin;j<loops.size();++j){ ex.work(); ex.spend(1);const auto& p=loops[j];if(p.area<=0||p.area<=-l.area)continue;
                 if(l.lo.x<p.lo.x||l.lo.y<p.lo.y||l.hi.x>p.hi.x||l.hi.y>p.hi.y)continue;
                 if(contains(p,segments[l.begin].a)&&(parent==kNoGeometryIndex||p.area<loops[parent].area))parent=j;
             }
@@ -354,16 +370,17 @@ struct Offset {
     }
     void run(){
         for(u32 i=0;i<source->regions.size();++i){
+            ex.work();
             ex.spend(1);raw.clear();cuts.clear();const auto begin=static_cast<u32>(segments.size()),loopBegin=static_cast<u32>(loops.size());
             const auto emit=[&](u32 index){if(variation>0)variableRing(index,source->regions[i].sourceId);else ring(index,source->regions[i].sourceId);};
-            const auto& r=source->regions[i];emit(r.outer);for(const auto h:source->regionHoles(i))emit(h);
+            const auto& r=source->regions[i];emit(r.outer);for(const auto h:source->regionHoles(i)){ ex.work(); emit(h); }
             intersections();boundaries();trace(i,begin);validate(begin,loopBegin);hierarchy(loopBegin);
         }
     }
     auto fragmentKey(u32 index)const{const auto& l=loops[index];return std::tuple(l.source,-l.net,l.lo.y,l.lo.x,l.hi.y,l.hi.x,l.discovery);}
     std::shared_ptr<const GeometryData> publish(f32 minimum){
         Buffer<u32,4> order{ResourceAllocator<u32,4>(ex.resources)};
-        for(u32 i=0;i<loops.size();++i){ex.spend(1);auto& l=loops[i];
+        for(u32 i=0;i<loops.size();++i){ ex.work(); ex.spend(1);auto& l=loops[i];
             if(l.area>0){if(!(l.net>0))invalid(ex,"region offset component has nonpositive net area");if(l.net>=minimum){l.keep=true;order.push_back(i);}}}
         if(order.size()>kMaxGeometryRegions)invalid(ex,"region offset exceeds 256 regions after min_area");
         geometrySort(ex,order,[&](u32 a,u32 b){return fragmentKey(a)<fragmentKey(b);});
@@ -376,31 +393,32 @@ struct Offset {
         const auto emit=[&](u32 index,u32 parent,u32 outputIndex){
             const auto& l=loops[index];uses.clear();
             const auto first=builder.point(segments[l.begin].a);
-            for(u32 k=1;k<l.count;++k)builder.point(segments[l.begin+k].a);
-            for(u32 k=0;k<l.count;++k){const auto a=first+k,b=first+(k+1)%l.count;
+            for(u32 k=1;k<l.count;++k){ ex.work(); builder.point(segments[l.begin+k].a); }
+            for(u32 k=0;k<l.count;++k){ ex.work(); const auto a=first+k,b=first+(k+1)%l.count;
                 const auto p=segments[l.begin+k].provenance;
                 const auto edge=builder.edge(std::min(a,b),std::max(a,b),p);uses.push_back({edge,a>b});
                 if(p.neighbor>=0){ex.spend(1);links.push_back({p.edge,outputIndex,p.source,p.neighbor});}}
             mapped[index]=builder.ring(uses,parent);
         };
-        for(u32 at=0;at<order.size();++at){const auto i=order[at];emit(i,kNoGeometryIndex,at);outers.push_back(mapped[i]);
-            for(u32 h=0;h<loops.size();++h){ex.spend(1);if(loops[h].parent==i)emit(h,mapped[i],at);}}
+        for(u32 at=0;at<order.size();++at){ ex.work(); const auto i=order[at];emit(i,kNoGeometryIndex,at);outers.push_back(mapped[i]);
+            for(u32 h=0;h<loops.size();++h){ ex.work(); ex.spend(1);if(loops[h].parent==i)emit(h,mapped[i],at);}}
         geometrySort(ex,links,[](const auto& a,const auto& b){return std::tuple(a.edge,a.region,a.neighbor)<std::tuple(b.edge,b.region,b.neighbor);});
         u32 unique=0;
-        for(const auto link:links){ex.spend(1);if(!unique||links[unique-1].edge!=link.edge||links[unique-1].region!=link.region||links[unique-1].neighbor!=link.neighbor)links[unique++]=link;}
+        for(const auto link:links){ ex.work(); ex.spend(1);if(!unique||links[unique-1].edge!=link.edge||links[unique-1].region!=link.region||links[unique-1].neighbor!=link.neighbor)links[unique++]=link;}
         links.resize(unique);const auto count=static_cast<u32>(order.size());const auto bytes=(count*count+7)/8;ex.spend(bytes);
         Buffer<u8,1> adjacent(bytes,u8{0},ResourceAllocator<u8,1>(ex.resources));
         const auto set=[&](u32 a,u32 b){const auto bit=a*count+b;adjacent[bit/8]|=static_cast<u8>(1u<<(bit%8));};
-        for(u32 begin=0;begin<links.size();){u32 end=begin+1;while(end<links.size()&&links[end].edge==links[begin].edge){ex.spend(1);++end;}
-            for(u32 i=begin;i<end;++i)for(u32 j=i+1;j<end;++j){ex.spend(1);const auto a=links[i],b=links[j];
-                if(a.region!=b.region&&a.source!=b.source&&a.neighbor==b.source&&b.neighbor==a.source){set(a.region,b.region);set(b.region,a.region);}}
+        for(u32 begin=0;begin<links.size();){ ex.work(); u32 end=begin+1;while(end<links.size()&&links[end].edge==links[begin].edge){ ex.work(); ex.spend(1);++end;}
+            for(u32 i=begin;i<end;++i){ ex.work(); for(u32 j=i+1;j<end;++j){ ex.work(); ex.spend(1);const auto a=links[i],b=links[j];
+                if(a.region!=b.region&&a.source!=b.source&&a.neighbor==b.source&&b.neighbor==a.source){set(a.region,b.region);set(b.region,a.region);}} }
             begin=end;
         }
         Buffer<i32,4> neighbors{ResourceAllocator<i32,4>(ex.resources)};
         for(u32 at=0;at<order.size();++at){
+            ex.work();
             const auto i=order[at];holes.clear();neighbors.clear();
-            for(u32 h=0;h<loops.size();++h){ex.spend(1);if(loops[h].parent==i)holes.push_back(mapped[h]);}
-            for(u32 other=0;other<count;++other){ex.spend(1);const auto bit=at*count+other;if(adjacent[bit/8]&(1u<<(bit%8)))neighbors.push_back(static_cast<i32>(other));}
+            for(u32 h=0;h<loops.size();++h){ ex.work(); ex.spend(1);if(loops[h].parent==i)holes.push_back(mapped[h]);}
+            for(u32 other=0;other<count;++other){ ex.work(); ex.spend(1);const auto bit=at*count+other;if(adjacent[bit/8]&(1u<<(bit%8)))neighbors.push_back(static_cast<i32>(other));}
             builder.region(outers[at],source->regions[loops[i].source].sourceId,holes,neighbors);
         }
         return std::move(builder).finish();

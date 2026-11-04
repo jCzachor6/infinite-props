@@ -113,10 +113,11 @@ function run(iprop, tool, directory) {
         assert.deepEqual(actual.outputs[1].values,[{x:bits(state(4)&65535),y:bits(state(4)>>>16)}]);++pins;
     }
 
-    function trap(binary, message) {
-        const png = base + "-trap.png", native = spawnSync(tool("ipgen"), [binary,"-o",png], {encoding:"utf8"});
+    function trap(binary, message, options = {}) {
+        const flags = options.workLimit ? ["--work-limit", String(options.workLimit)] : [];
+        const png = base + "-trap.png", native = spawnSync(tool("ipgen"), [binary,"-o",png,...flags], {encoding:"utf8"});
         assert.equal(native.status,1,native.stderr); assert.equal(native.signal,null); assert.match(native.stderr,message);
-        assert.equal(fs.existsSync(png),false); assert.throws(() => iprop.generate(new Uint8Array(fs.readFileSync(binary)),{}),message); ++traps;
+        assert.equal(fs.existsSync(png),false); assert.throws(() => iprop.generate(new Uint8Array(fs.readFileSync(binary)),options),message); ++traps;
     }
     for (const opt of [false,true]) for (const sample of [
         ["if(v==1){layer image{}region=mask.from(image)}clip(region){}", /mask is unassigned/],
@@ -126,7 +127,8 @@ function run(iprop, tool, directory) {
     ]) trap(compile("asset t{input i32 v=0 size 2x1 draw{" + sample[0] + "}}",opt),sample[1]);
     const retainedMasks = Array.from({length:64}, (_,i) => `region${i}=mask.invert(region)`);
     const memory = compile("asset t{size 1024x1024 draw{layer image{}region=mask.from(image)" + retainedMasks.join("") + "}}", false);
-    trap(fuelLimit(memory,200000000), /generation data exceeds 64 MiB/);
+    // Isolate the existing memory boundary from the independent work guard.
+    trap(fuelLimit(memory,200000000), /generation data exceeds 64 MiB/, {workLimit:1000000000});
     let helpers = "";
     for (let i=0;i<17;++i) helpers += `scope${i}(region:mask){clip(region){clip(region){${i<16?`scope${i+1}(region)`:""}}}}`;
     trap(compile("asset t{size 1x1 " + helpers + "draw{layer image{}region=mask.from(image)scope0(region)}}",false), /surface scope depth exceeds 32/);

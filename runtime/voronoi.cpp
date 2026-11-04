@@ -78,8 +78,9 @@ void checkRelax(Execution& ex,i32 relax) {
 void checkSites(Execution& ex,const Rectangle& rect,const Workspace& ws,u32 count) {
     ex.spend(1+static_cast<u64>(count)*(count+1)/2);
     for (u32 i=0;i<count;++i) {
+        ex.work();
         if (!rect.contains(ws.sites[i])) invalid(ex,"voronoi site must be finite and inside the rectangle");
-        for (u32 j=0;j<i;++j) if (same(ws.sites[i],ws.sites[j])) invalid(ex,"voronoi sites must be distinct");
+        for (u32 j=0;j<i;++j) { ex.work(); if (same(ws.sites[i],ws.sites[j])) invalid(ex,"voronoi sites must be distinct"); }
     }
 }
 struct Metric {
@@ -121,6 +122,7 @@ struct Planes {
         Point out{p.middle.x-t*p.n.y,p.middle.y+t*p.n.x};
         // A boundary coordinate is exact even after a nearly parallel solve.
         for (const auto id : {a,b}) {
+            ex.work();
             if (id == 0) out.y=0;
             if (id == 1) out.x=rect.size.x;
             if (id == 2) out.y=rect.size.y;
@@ -132,20 +134,21 @@ struct Planes {
     Vec2 canonical(Execution& ex,Point p,u32 incoming,u32 outgoing,u32 cell) const {
         ex.spend(count+5);
         u32 boundaries=0;
-        for (u32 k=0;k<4;++k) if (line(k).classified(p) == 0) boundaries|=1u<<k;
-        for (const auto id : {incoming,outgoing}) if (id < 4) boundaries|=1u<<id;
+        for (u32 k=0;k<4;++k) { ex.work(); if (line(k).classified(p) == 0) boundaries|=1u<<k; }
+        for (const auto id : {incoming,outgoing}) { ex.work(); if (id < 4) boundaries|=1u<<id; }
         std::array<u32,3> tied{count,count,count};
         const auto forced=[&](u32 id,u32 candidate) {
             return id >= 4 && ((id-4)/count == candidate || (id-4)%count == candidate);
         };
         for (u32 j=0;j<count;++j) {
+            ex.work();
             if (j != cell && !forced(incoming,j) && !forced(outgoing,j) && line(pair(cell,j)).classified(p) != 0) continue;
             if (tied[0] == count) tied[0]=j;
             else if (tied[1] == count) tied[1]=j;
             else if (tied[2] == count) tied[2]=j;
         }
         u32 first=4,second=4;
-        for (u32 k=0;k<4;++k) if (boundaries & (1u<<k)) { if (first == 4) first=k; else second=k; }
+        for (u32 k=0;k<4;++k) { ex.work(); if (boundaries & (1u<<k)) { if (first == 4) first=k; else second=k; } }
         if (second != 4) p=intersection(ex,first,second);
         else if (first != 4 && tied[1] != count) p=intersection(ex,first,pair(tied[0],tied[1]));
         else if (first == 4 && tied[2] != count) p=intersection(ex,pair(tied[0],tied[1]),pair(tied[0],tied[2]));
@@ -163,25 +166,28 @@ template<class Iterator,class Less> void sort(Execution& ex,Iterator begin,Itera
     ex.spend(1+4*static_cast<u64>(size)*(1+std::bit_width(size)));
     const auto sift=[&](std::size_t root,std::size_t count) {
         while (root < count/2) {
+            ex.work();
             auto child=root*2+1;
             if (child+1 < count && less(begin[child],begin[child+1])) ++child;
             if (!less(begin[root],begin[child])) break;
             std::swap(begin[root],begin[child]); root=child;
         }
     };
-    for (auto root=size/2;root>0;--root) sift(root-1,size);
-    for (auto n=size;n>1;--n) { std::swap(begin[0],begin[n-1]); sift(0,n-1); }
+    for (auto root=size/2;root>0;--root) { ex.work(); sift(root-1,size); }
+    for (auto n=size;n>1;--n) { ex.work();  std::swap(begin[0],begin[n-1]); sift(0,n-1); }
 }
 std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rect,Workspace& ws,u32 count,const VoronoiOptions& options) {
-    for (u32 i=0;i<count;++i) ws.local[i]=rect.local(ws.sites[i]);
+    for (u32 i=0;i<count;++i) { ex.work(); ws.local[i]=rect.local(ws.sites[i]); }
     const Planes planes{rect,ws,count,Metric(options)};
     ResourceVector<Occurrence,16> vertices{ResourceAllocator<Occurrence,16>(ex.resources)};
     ws.adjacent.fill(0);
     for (u32 cell=0;cell<count;++cell) {
+        ex.work();
         auto* input=&ws.a; auto* output=&ws.b; u32 length=4;
         (*input)[0]={{0,0},3}; (*input)[1]={{rect.size.x,0},0};
         (*input)[2]={rect.size,1}; (*input)[3]={{0,rect.size.y},2};
         for (u32 other=0;other<count;++other) {
+            ex.work();
             if (other == cell) continue;
             ex.spend(1+2*length);
             const auto id=planes.pair(cell,other); const auto line=planes.line(id);
@@ -193,6 +199,7 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
                 (*output)[next++]=v;
             };
             for (u32 k=0;k<length;++k) {
+                ex.work();
                 const auto a=(*input)[k],b=(*input)[(k+1)%length];
                 const bool insideA=sign*line.classified(a.p) <= 0,insideB=sign*line.classified(b.p) <= 0;
                 if (insideA != insideB) append({planes.intersection(ex,b.incoming,id),insideA ? b.incoming : id});
@@ -206,6 +213,7 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
         }
         auto& range=ws.cells[cell]; range.begin=static_cast<u32>(vertices.size());
         for (u32 k=0;k<length;++k) {
+            ex.work();
             const auto p=planes.canonical(ex,(*input)[k].p,(*input)[k].incoming,(*input)[(k+1)%length].incoming,cell);
             if (vertices.size() > range.begin && same(vertices.back().p,p)) continue;
             if (vertices.size() == kMaxGeometryVertices) invalid(ex,"voronoi exceeds 65536 ring vertices");
@@ -217,13 +225,14 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
     }
     ResourceVector<u32,4> order{ResourceAllocator<u32,4>(ex.resources)};
     order.reserve(vertices.size());
-    for (u32 i=0;i<vertices.size();++i) order.push_back(i);
+    for (u32 i=0;i<vertices.size();++i) { ex.work(); order.push_back(i); }
     sort(ex,order.begin(),order.end(),[&](u32 a,u32 b) {
         return std::tie(vertices[a].p.x,vertices[a].p.y,a) < std::tie(vertices[b].p.x,vertices[b].p.y,b);
     });
     GeometryBuilder builder(ex,GeometryOrigin::Diagram);
     u32 point=0;
     for (std::size_t k=0;k<order.size();++k) {
+        ex.work();
         const auto i=order[k];
         if (!k || !same(vertices[i].p,vertices[order[k-1]].p)) point=builder.point(vertices[i].p);
         vertices[i].point=point;
@@ -231,14 +240,17 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
     ResourceVector<EdgeUse,24> edges{ResourceAllocator<EdgeUse,24>(ex.resources)};
     edges.reserve(vertices.size());
     for (u32 cell=0;cell<count;++cell) {
+        ex.work();
         const auto range=ws.cells[cell];
         ex.spend(static_cast<u64>(range.count)*range.count);
         for (u32 k=0;k<range.count;++k) {
+            ex.work();
             const auto i=range.begin+k,j=range.begin+(k+1)%range.count;
             const auto p=vertices[i].p,q=vertices[j].p,r=vertices[range.begin+(k+2)%range.count].p;
             if (turn(p,q,r)==0 && (onSegment(p,q,r) || onSegment(q,r,p)))
                 invalid(ex,"voronoi cell has a collapsed f32 edge");
             for (u32 other=k+2;other<range.count;++other) {
+                ex.work();
                 if (k==0 && other==range.count-1) continue;
                 const auto c=vertices[range.begin+other].p,d=vertices[range.begin+(other+1)%range.count].p;
                 if (intersects(p,q,c,d)) invalid(ex,"voronoi cell cannot be represented as simple f32 geometry");
@@ -253,8 +265,9 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
     u32 canonicalEdge=0;
     std::array<f32,4> boundaryEnd{rect.origin.x,rect.origin.y,rect.origin.x,rect.origin.y};
     for (std::size_t i=0;i<edges.size();) {
+        ex.work();
         auto end=i+1;
-        while (end<edges.size() && edges[i].first == edges[end].first && edges[i].second == edges[end].second) ++end;
+        while (end<edges.size() && edges[i].first == edges[end].first && edges[i].second == edges[end].second) { ex.work(); ++end; }
         const auto& a=edges[i];
         EdgeProvenance provenance{canonicalEdge++,static_cast<i32>(a.cell),-1,EdgeOrigin::Boundary};
         if (end-i == 2) {
@@ -276,21 +289,23 @@ std::shared_ptr<const GeometryData> construct(Execution& ex,const Rectangle& rec
             boundaryEnd[side]=finish;
         } else invalid(ex,"voronoi edge has more than two owners");
         const auto id=builder.edge(a.first,a.second,provenance);
-        for (auto j=i;j<end;++j) vertices[edges[j].occurrence].edge=id;
+        for (auto j=i;j<end;++j) { ex.work(); vertices[edges[j].occurrence].edge=id; }
         i=end;
     }
     if (boundaryEnd!=std::array<f32,4>{rect.end.x,rect.end.y,rect.end.x,rect.end.y})
         invalid(ex,"voronoi rectangle boundary is incomplete");
     for (u32 cell=0;cell<count;++cell) {
+        ex.work();
         builder.site(ws.sites[cell]);
         const auto range=ws.cells[cell];
         for (u32 k=0;k<range.count;++k) {
+            ex.work();
             const auto& a=vertices[range.begin+k]; const auto& b=vertices[range.begin+(k+1)%range.count];
             ws.uses[k]={a.edge,a.point>b.point};
         }
         u32 neighbors=0;
         ex.spend(count);
-        for (u32 j=0;j<count;++j) if (ws.adjacent[cell*4+j/64] & (u64{1}<<(j%64))) ws.neighbors[neighbors++]=static_cast<i32>(j);
+        for (u32 j=0;j<count;++j) { ex.work(); if (ws.adjacent[cell*4+j/64] & (u64{1}<<(j%64))) ws.neighbors[neighbors++]=static_cast<i32>(j); }
         const auto ring=builder.ring(std::span(ws.uses.data(),range.count));
         builder.region(ring,static_cast<i32>(cell),{},std::span(ws.neighbors.data(),neighbors));
     }
@@ -334,10 +349,11 @@ Point rowPoint(const Rectangle& rect,const VoronoiOptions& o,u32 index,u32 count
 std::shared_ptr<const GeometryData> relax(Execution& ex,const Rectangle& rect,Workspace& ws,u32 count,const VoronoiOptions& o) {
     checkSites(ex,rect,ws,count);
     for (i32 iteration=0;;++iteration) {
+        ex.work();
         auto result=construct(ex,rect,ws,count,o);
         if (iteration == o.relax) return result;
         ex.spend(count);
-        for (u32 i=0;i<count;++i) ws.sites[i]=result->regions[i].center;
+        for (u32 i=0;i<count;++i) { ex.work(); ws.sites[i]=result->regions[i].center; }
         result.reset();
         checkSites(ex,rect,ws,count);
     }
@@ -363,8 +379,10 @@ std::shared_ptr<const GeometryData> generatedVoronoi(Execution& ex,Vec2 origin,V
     const auto count=static_cast<u32>(o.count),seed=static_cast<u32>(o.seed);
     const auto cols=columns(count,rect.size.x,rect.size.y),rows=(count+cols-1)/cols;
     for (u32 i=0;i<count;++i) {
+        ex.work();
         bool accepted=false;
         for (u32 attempt=0;attempt<32;++attempt) {
+            ex.work();
             ex.spend(16+i);
             Point p;
             if (o.method == 0 || attempt) p={unit(seed,i,0,attempt)*rect.size.x,unit(seed,i,1,attempt)*rect.size.y};
@@ -379,7 +397,7 @@ std::shared_ptr<const GeometryData> generatedVoronoi(Execution& ex,Vec2 origin,V
             }
             const auto candidate=rect.world(p);
             bool duplicate=false;
-            for (u32 j=0;j<i;++j) duplicate|=same(ws.sites[j],candidate);
+            for (u32 j=0;j<i;++j) { ex.work(); duplicate|=same(ws.sites[j],candidate); }
             if (!duplicate) { ws.sites[i]=candidate; accepted=true; break; }
         }
         if (!accepted) invalid(ex,"voronoi generated sites collide after 32 attempts");
@@ -394,7 +412,7 @@ std::shared_ptr<const GeometryData> explicitVoronoi(Execution& ex,Vec2 origin,Ve
     ResourceReservation reservation(ex.resources,sizeof(Workspace));
     ex.spend(1+sizeof(Workspace)/64+sites.size());
     Workspace ws;
-    for (std::size_t i=0;i<sites.size();++i) ws.sites[i]=sites[i];
+    for (std::size_t i=0;i<sites.size();++i) { ex.work(); ws.sites[i]=sites[i]; }
     VoronoiOptions options; options.relax=iterations;
     return relax(ex,rect,ws,static_cast<u32>(sites.size()),options);
 }
@@ -419,6 +437,7 @@ bool stepVoronoi(Execution& ex,Instruction ins) {
         std::array<Vec2,kMaxGeometrySites> points;
         ex.spend(sites.data->elements.size());
         for (std::size_t i=0;i<sites.data->elements.size();++i) {
+            ex.work();
             const auto* p=std::get_if<Vec2>(&sites.data->elements[i]);
             if (!p) ex.trap("voronoi sites element must be vec2",ErrorReason::StackType);
             points[i]=*p;
@@ -437,8 +456,8 @@ bool stepVoronoi(Execution& ex,Instruction ins) {
             ex.spend(neighbors.size());
             ex.allocateResource(ResourceArena::listBytes(neighbors.size()));
             auto data=std::make_shared<ListData>();data->type=ValueType::list(ValueType::I32);data->elements.reserve(neighbors.size());
-            for (const auto neighbor : neighbors) data->elements.emplace_back(neighbor);
-            ex.resources.lists.push_back(data);ex.push(ListValue{data->type,std::move(data)});
+            for (const auto neighbor : neighbors) { ex.work(); data->elements.emplace_back(neighbor); }
+            appendWork(ex.resources.lists, data, *ex.workBudget);ex.push(ListValue{data->type,std::move(data)});
         }
         break;
     }

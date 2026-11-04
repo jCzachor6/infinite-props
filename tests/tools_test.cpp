@@ -247,3 +247,29 @@ TEST_CASE("PNG files round-trip RGBA pixels and reject other forms") {
     REQUIRE_THROWS(tools::decodePng(png));
     REQUIRE_THROWS(tools::encodePng({2, 2, {0, 0, 0, 0}}));
 }
+
+TEST_CASE("ipgen enforces an independent work limit before publishing files", "[execution-limits]") {
+    TempPath temp("work-limit"); writeFixture(temp);
+    const std::string file = temp.path.string(), png = temp.pngPath().string();
+    {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", "1", "-o", png.c_str()};
+        CHECK(ipgenMain(6, const_cast<char**>(args)) == 1);
+        CHECK(captured.errText().find("native work limit exhausted") != std::string::npos);
+        CHECK(captured.text().empty());
+        CHECK_FALSE(std::filesystem::exists(png));
+    }
+    for (const char* invalid : {"-1", "18446744073709551616", "1.0", "1x"}) {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", invalid};
+        CHECK(ipgenMain(4, const_cast<char**>(args)) == 1);
+        CHECK(captured.errText().find("bad --work-limit value") != std::string::npos);
+    }
+    {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", "0", "--work-stats", "-o", png.c_str()};
+        CHECK(ipgenMain(7, const_cast<char**>(args)) == 0);
+        CHECK(captured.text().find("\"work\": {\"budget\": 100000000") != std::string::npos);
+        CHECK(std::filesystem::exists(png));
+    }
+}

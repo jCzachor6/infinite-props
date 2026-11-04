@@ -46,9 +46,10 @@ MaskValue maskPart(Execution& ex,const Part2dValue& part){
     const u64 count=static_cast<u64>(width)*height;ex.spend(count*2);
     const auto bytes=maskBytes(width,height);ex.allocateResource(bytes);auto buffer=ex.resources.makeSurface(bytes);
     buffer->format=SurfaceBuffer::Format::A8;buffer->raster.width=width;buffer->raster.height=height;
-    buffer->raster.scaleX=f.scale.x;buffer->raster.scaleY=f.scale.y;buffer->coverage.resize(static_cast<std::size_t>(count));
-    for(u32 y=0;y<height;++y)for(u32 x=0;x<width;++x)
-        buffer->coverage[static_cast<std::size_t>(y)*width+x]=maskCoverage(mask,static_cast<i64>(left)+x,static_cast<i64>(top)+y);
+    buffer->raster.scaleX=f.scale.x;buffer->raster.scaleY=f.scale.y;
+    initializeWork(buffer->coverage,static_cast<std::size_t>(count),u8{0},*ex.workBudget);
+    for(u32 y=0;y<height;++y){ ex.work(); for(u32 x=0;x<width;++x)
+        { ex.work(); buffer->coverage[static_cast<std::size_t>(y)*width+x]=maskCoverage(mask,static_cast<i64>(left)+x,static_cast<i64>(top)+y); } }
     const auto mapping=partSurfaceMapping(ex,p,*buffer,{{},{left,top}});return {std::move(buffer),mapping};
 }
 void drawPart(Execution& ex,const Part2dValue& part){
@@ -69,7 +70,8 @@ void drawPart(Execution& ex,const Part2dValue& part){
     const auto& raster=mask.buffer->raster;
     const RasterPoint extent{static_cast<i32>(raster.width),static_cast<i32>(raster.height)};
     ex.spend(static_cast<u64>(raster.width)*raster.height*(p.texture?2:1));
-    for(u32 y=0;y<raster.height;++y)for(u32 x=0;x<raster.width;++x){
+    for(u32 y=0;y<raster.height;++y){ ex.work(); for(u32 x=0;x<raster.width;++x){
+        ex.work();
         const auto at=static_cast<std::size_t>(y)*raster.width+x;
         const auto coverage=mask.buffer->format==SurfaceBuffer::Format::A8?mask.buffer->coverage[at]:raster.pixels[at].a;
         if(!coverage)continue;
@@ -85,6 +87,6 @@ void drawPart(Execution& ex,const Part2dValue& part){
         }
         color.a=multiplyCoverage(color.a,coverage);
         compositePixel(ex,static_cast<i32>(dx),static_cast<i32>(dy),color);
-    }
+    } }
 }
 } // namespace iprop::detail

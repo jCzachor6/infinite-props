@@ -38,7 +38,7 @@ struct OutputMapping {
     }
     template <class T> T published(T value) const {
         if (!active || !placed) return value;
-        for (std::size_t i = ex.partCalls.size() - 1; i-- > 0;) value = ex.partCalls[i].render.toCaller(value);
+        for (std::size_t i = ex.partCalls.size() - 1; i-- > 0;) { ex.work(); value = ex.partCalls[i].render.toCaller(value); }
         return value;
     }
 
@@ -56,7 +56,7 @@ void writePoint(Execution& ex, u16 index, f32 x, f32 y, bool list) {
     if (!list) {
         slot.points.clear(); // singular: a later write replaces the value
     }
-    slot.points.push_back({published.x, published.y});
+    appendWork(slot.points, OutputPoint{published.x, published.y}, *ex.workBudget);
 }
 
 void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) {
@@ -68,7 +68,7 @@ void writeRect(Execution& ex, u16 index, f32 x, f32 y, f32 w, f32 h, bool list) 
     if (!list) {
         slot.rects.clear();
     }
-    slot.rects.push_back(published);
+    appendWork(slot.rects, published, *ex.workBudget);
 }
 
 void writeCircle(Execution& ex, u16 index, f32 x, f32 y, f32 r, bool list) {
@@ -80,7 +80,7 @@ void writeCircle(Execution& ex, u16 index, f32 x, f32 y, f32 r, bool list) {
     if (!list) {
         slot.circles.clear();
     }
-    slot.circles.push_back({published.x, published.y, r});
+    appendWork(slot.circles, OutputCircle{published.x, published.y, r}, *ex.workBudget);
 }
 
 } // namespace

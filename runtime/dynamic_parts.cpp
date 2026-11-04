@@ -38,7 +38,7 @@ void metadata(Execution& ex,DynamicPartData& p,Vec2 scale){
                     static_cast<f32>((std::min(a.y,b.y)+p.translation.y)/scale.y)};
     p.boundsSize={static_cast<f32>(std::abs(a.x-b.x)/scale.x),static_cast<f32>(std::abs(a.y-b.y)/scale.y)};
     for(const auto v:{p.center.x,p.center.y,p.boundsOrigin.x,p.boundsOrigin.y,p.boundsSize.x,p.boundsSize.y})
-        if(!std::isfinite(v))ex.trap("dynamic part bounds are not representable",ErrorReason::NumericRange);
+        { ex.work(); if(!std::isfinite(v))ex.trap("dynamic part bounds are not representable",ErrorReason::NumericRange); }
 }
 std::shared_ptr<DynamicPartData> regionPart(Execution& ex, const Regions2dValue& source, u32 index, i32 id) {
     const auto& region=source.data->regions[index];
@@ -46,7 +46,7 @@ std::shared_ptr<DynamicPartData> regionPart(Execution& ex, const Regions2dValue&
     DynamicPartFrame f;f.scale=scale;f.centerX=static_cast<double>(region.center.x)*scale.x;
     f.centerY=static_cast<double>(region.center.y)*scale.y;
     const auto& ring=source.data->rings[region.outer];ex.spend(ring.count);
-    for(u32 k=0;k<ring.count;++k){const auto p=source.data->start(source.data->uses[ring.begin+k]);
+    for(u32 k=0;k<ring.count;++k){ ex.work(); const auto p=source.data->start(source.data->uses[ring.begin+k]);
         const double x=static_cast<double>(p.x)*scale.x,y=static_cast<double>(p.y)*scale.y;
         if(k==0){f.left=f.right=x;f.top=f.bottom=y;}
         else{f.left=std::min(f.left,x);f.right=std::max(f.right,x);f.top=std::min(f.top,y);f.bottom=std::max(f.bottom,y);}}
@@ -66,11 +66,12 @@ template<class Surface> Part2dValue rasterPart(Execution& ex, const Surface& sou
     const auto& raster=source.buffer->raster;
     ex.spend(static_cast<u64>(raster.width)*raster.height);
     u32 loX=raster.width,loY=raster.height,hiX=0,hiY=0;
-    for(u32 y=0;y<raster.height;++y)for(u32 x=0;x<raster.width;++x){
+    for(u32 y=0;y<raster.height;++y){ ex.work(); for(u32 x=0;x<raster.width;++x){
+        ex.work();
         const auto at=static_cast<std::size_t>(y)*raster.width+x;
         const auto alpha=source.buffer->format==SurfaceBuffer::Format::A8?source.buffer->coverage[at]:raster.pixels[at].a;
         if(alpha){loX=std::min(loX,x);loY=std::min(loY,y);hiX=std::max(hiX,x);hiY=std::max(hiY,y);}
-    }
+    } }
     if(loX==raster.width)ex.trap("empty dynamic part",ErrorReason::RuntimeViolation);
     const RasterPoint extent{static_cast<i32>(raster.width),static_cast<i32>(raster.height)};
     const auto a=source.mapping.transform.mapPixelWide({loX,loY},extent);
@@ -84,7 +85,7 @@ template<class Surface> Part2dValue rasterPart(Execution& ex, const Surface& sou
     const Vec2 size{static_cast<f32>(width/scale.x),static_cast<f32>(height/scale.y)};
     const Vec2 center{static_cast<f32>((left+width*0.5)/scale.x),static_cast<f32>((top+height*0.5)/scale.y)};
     for(const auto v:{origin.x,origin.y,size.x,size.y,center.x,center.y})
-        if(!std::isfinite(v))ex.trap("dynamic part bounds are not representable",ErrorReason::NumericRange);
+        { ex.work(); if(!std::isfinite(v))ex.trap("dynamic part bounds are not representable",ErrorReason::NumericRange); }
     locate(ex);auto p=makeResource<DynamicPartData,256>(ex.resources);
     p->source=source;p->id=static_cast<i32>(ex.dynamicPartCreations);
     p->center=center;p->boundsOrigin=origin;p->boundsSize=size;
@@ -106,7 +107,7 @@ Parts2dValue partsFromRegions(Execution& ex,const Regions2dValue& source) {
     assigned(ex,static_cast<bool>(source.data),"regions2d");
     const auto count=static_cast<u32>(source.data->regions.size());checkCreations(ex,count);ex.spend(count);locate(ex);
     auto result=makeResource<DynamicPartsData,128>(ex.resources,ex.resources);result->parts.reserve(count);
-    for(u32 i=0;i<count;++i)result->parts.push_back({regionPart(ex,source,i,static_cast<i32>(ex.dynamicPartCreations+i))});
+    for(u32 i=0;i<count;++i){ ex.work(); result->parts.push_back({regionPart(ex,source,i,static_cast<i32>(ex.dynamicPartCreations+i))}); }
     ex.dynamicPartCreations+=count;return {std::move(result)};
 }
 SurfaceMapping partSurfaceMapping(Execution& ex,const DynamicPartData& p,const SurfaceBuffer& source,const SurfaceMapping& mapping){

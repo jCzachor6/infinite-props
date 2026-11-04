@@ -51,6 +51,7 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
         return;
     }
     for (std::size_t i = 0; i < count; ++i) {
+        ex.work();
         points[i].x *= ex.canvas().scaleX;
         points[i].y *= ex.canvas().scaleY;
         if (!std::isfinite(points[i].x) || !std::isfinite(points[i].y)) {
@@ -59,6 +60,7 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     }
     f32 left = points[0].x, right = left, top = points[0].y, bottom = top;
     for (std::size_t i = 1; i < count; ++i) {
+        ex.work();
         left = std::min(left, points[i].x);
         right = std::max(right, points[i].x);
         top = std::min(top, points[i].y);
@@ -76,8 +78,11 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas().width) - 1);
     const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas().height) - 1);
     for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
+        ex.work();
         for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
+            ex.work();
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
+            ex.work(25); // Five candidates with at most five Newton evaluations.
             const f32 distance = kernel.distanceTo(p);
             if (distance <= radius) {
                 compositePixel(ex, x, y, colour);
@@ -94,6 +99,7 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
     }
     f32 left = points[0].x, right = points[0].x, top = points[0].y, bottom = points[0].y;
     for (const auto& p : points) {
+        ex.work();
         left = std::min(left, p.x);
         right = std::max(right, p.x);
         top = std::min(top, p.y);
@@ -107,11 +113,14 @@ void fillPolygon(Execution& ex, const std::vector<Vec2>& points, const Color& co
 
     const std::size_t n = points.size();
     for (i32 py = y0; py <= y1; ++py) {
+        ex.work();
         for (i32 px = x0; px <= x1; ++px) {
+            ex.work();
             bool inside = false;
             const f32 cx = static_cast<f32>(px) + .5f;
             const f32 cy = static_cast<f32>(py) + .5f;
             for (std::size_t i = 0; i < n; ++i) {
+                ex.work();
                 const std::size_t j = (i + n - 1) % n;
                 const auto& a = points[i]; // current vertex
                 const auto& d = points[j]; // previous vertex
@@ -187,10 +196,12 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         if (thickness > 0) {
             ex.spend(visitCount(static_cast<i64>(steps) + 1, thickness));
             for (i32 i = 0; i <= steps; ++i) {
+                ex.work();
                 const f32 t = static_cast<f32>(i) / static_cast<f32>(steps);
                 const i32 ix = static_cast<i32>(std::round(ax + dx * t));
                 const i32 iy = static_cast<i32>(std::round(ay + dy * t));
                 for (i32 q = 0; q < thickness; ++q) {
+                    ex.work();
                     compositePixel(ex, ix, iy + q, colour);
                 }
             }
@@ -206,6 +217,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const std::size_t count = ins.opcode == Opcode::Curve ? 3 : 4;
         std::array<Vec2, 4> points{};
         for (std::size_t i = count; i > 0; --i) {
+            ex.work();
             points[i - 1] = ex.popVec2();
         }
         strokeCurve(ex, points, count, thickness, colour);
@@ -218,6 +230,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const u16 count = ins.operand;
         std::vector<Vec2> points(count);
         for (u16 i = count; i > 0; --i) {
+            ex.work();
             const f32 y = ex.popF32() * sY;
             const f32 x = ex.popF32() * sX;
             points[i - 1] = {x, y};
@@ -235,6 +248,7 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         std::vector<Vec2> points;
         points.reserve(list.data->elements.size());
         for (const auto& value : list.data->elements) {
+            ex.work();
             const auto point = std::get<Vec2>(value);
             points.push_back({point.x * sX, point.y * sY});
         }
@@ -255,7 +269,9 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const i32 x1 = coordToInt(ex, std::ceil(x + rx), "oval x");
         ex.spend(visitCount(static_cast<i64>(x1) - x0 + 1, static_cast<i64>(y1) - y0 + 1));
         for (i32 py = y0; py <= y1; ++py) {
+            ex.work();
             for (i32 px = x0; px <= x1; ++px) {
+                ex.work();
                 const f32 nx = (static_cast<f32>(px) - x) / rx;
                 const f32 ny = (static_cast<f32>(py) - y) / ry;
                 if (nx * nx + ny * ny <= 1.f) {
@@ -274,7 +290,9 @@ bool stepCanvas(Execution& ex, Instruction ins) {
         const u32 h = ex.canvas().height;
         ex.spend(static_cast<u64>(w) * h);
         for (u32 y = 0; y < h; ++y) {
+            ex.work();
             for (u32 x = 0; x < w; ++x) {
+                ex.work();
                 Color& c = ex.canvas().at(x, y);
                 if (c.a == 0 || (c.r > 230 && c.g < 180)) {
                     continue;

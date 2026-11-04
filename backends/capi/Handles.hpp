@@ -13,6 +13,10 @@ struct iprop_program {
     std::shared_ptr<const iprop::LoadedFile> data;
 };
 
+struct iprop_cancellation {
+    std::shared_ptr<iprop::CancellationToken> token = std::make_shared<iprop::CancellationToken>();
+};
+
 struct iprop_parameters {
     std::shared_ptr<const iprop::LoadedFile> data;
     std::vector<iprop::UniformValue> values;
@@ -40,5 +44,7 @@ struct iprop_result {
     uint32_t ownerCount = 1;
     uint64_t fuelBudget = 0;
     uint64_t fuelRemaining = 0;
+    uint64_t workBudget = 0;
+    uint64_t workRemaining = 0;
 };
 static_assert(sizeof(iprop::OutputPart) + sizeof(iprop_result::PartSlot) <= 128);

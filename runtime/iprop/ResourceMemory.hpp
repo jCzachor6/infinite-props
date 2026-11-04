@@ -72,6 +72,10 @@ struct ResourceAllocator {
         ::operator delete(data);
         releaseMemory(lifetime, 32u + static_cast<u64>(count) * SlotBytes);
     }
+    template<class U, class... Args> void construct(U* at, Args&&... args) {
+        if (lifetime) if (auto work = lifetime->work.lock()) work->checkpoint();
+        std::construct_at(at, std::forward<Args>(args)...);
+    }
     template<class U, u64 OtherSlot> bool operator==(const ResourceAllocator<U, OtherSlot>& other) const {
         return lifetime == other.lifetime;
     }
@@ -81,12 +85,20 @@ template<class T, u64 SlotBytes>
 class ResourceVector {
     using Base = std::vector<T, ResourceAllocator<T, SlotBytes>>;
     Base data_;
+    void work(std::size_t count) const {
+        const auto lifetime = data_.get_allocator().lifetime;
+        if (lifetime) if (auto budget = lifetime->work.lock()) {
+            budget->location = lifetime->location;
+            budget->spend(static_cast<u64>(count));
+        }
+    }
     void grow(std::size_t required) {
         if (required <= data_.capacity()) return;
         const auto capacity = data_.capacity(), maximum = data_.max_size();
         if (required > maximum)
             throw Trap("geometry allocation size overflow", ErrorReason::OutOfMemory, ErrorStage::Execute);
         const auto doubled = capacity > maximum / 2 ? maximum : capacity * 2;
+        work(data_.size());
         data_.reserve(std::max(required, doubled));
     }
 public:
@@ -97,12 +109,20 @@ public:
     using allocator_type = ResourceAllocator<T, SlotBytes>;
     ResourceVector() = default;
     explicit ResourceVector(allocator_type allocator) : data_(allocator) {}
-    ResourceVector(std::size_t count, const T& value, allocator_type allocator) : data_(count,value,allocator) {}
-    ResourceVector(const ResourceVector&) = default;
+    ResourceVector(std::size_t count, const T& value, allocator_type allocator) : data_(allocator) {
+        work(count); data_.reserve(count); data_.resize(count, value);
+    }
+    ResourceVector(const ResourceVector& other) : data_(other.data_.get_allocator()) {
+        work(other.size()); data_.reserve(other.size());
+        data_.insert(data_.end(), other.begin(), other.end());
+    }
     ResourceVector(ResourceVector&&) = default;
     ResourceVector& operator=(ResourceVector&&) = default;
     ResourceVector& operator=(const ResourceVector& other) {
-        if (this != &other) { grow(other.size()); data_ = other.data_; }
+        if (this != &other) {
+            work(other.size()); grow(other.size()); data_.clear();
+            data_.insert(data_.end(), other.begin(), other.end());
+        }
         return *this;
     }
     void push_back(const T& value) { emplace_back(value); }
@@ -110,6 +130,7 @@ public:
     template<class... Args> T& emplace_back(Args&&... args) {
         // Materialize before growth so push_back(vector.front()) is safe.
         T value(std::forward<Args>(args)...);
+        work(1);
         grow(data_.size() + 1);
         return data_.emplace_back(std::move(value));
     }
@@ -121,13 +142,19 @@ public:
         if (count > data_.max_size() - data_.size())
             throw Trap("geometry allocation size overflow", ErrorReason::OutOfMemory, ErrorStage::Execute);
         grow(data_.size() + count);
-        return data_.insert(data_.cbegin() + offset, first, last);
+        // All algorithm insertions append immutable ranges. Copy them with
+        // allocator construction checkpoints instead of an opaque bulk memcpy.
+        if (offset != static_cast<typename Base::difference_type>(data_.size()))
+            throw std::logic_error("geometry insertion must append");
+        work(count);
+        for (; first != last; ++first) data_.emplace_back(*first);
+        return data_.begin() + offset;
     }
-    void resize(std::size_t count) { grow(count); data_.resize(count); }
+    void resize(std::size_t count) { if (count > data_.size()) work(count - data_.size()); grow(count); data_.resize(count); }
     void resize(std::size_t count, const T& value) {
-        T copy(value); grow(count); data_.resize(count, copy);
+        T copy(value); if (count > data_.size()) work(count - data_.size()); grow(count); data_.resize(count, copy);
     }
-    void reserve(std::size_t count) { data_.reserve(count); }
+    void reserve(std::size_t count) { if (count > data_.capacity()) work(data_.size()); data_.reserve(count); }
     void clear() noexcept { data_.clear(); }
     auto size() const noexcept { return data_.size(); }
     auto capacity() const noexcept { return data_.capacity(); }

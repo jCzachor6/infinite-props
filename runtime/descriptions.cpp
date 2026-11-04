@@ -52,7 +52,7 @@ void captureDescription(Execution& ex, TypeDescriptor type, SamplerMode mode) {
         ex.trap(name + " distribution is not initialized or invalid", ErrorReason::NumericRange);
     ex.allocateResource(ResourceArena::descriptionBytes());
     auto frozen = std::make_shared<const CapturedRangeData>(std::move(data));
-    ex.resources.descriptions.push_back(frozen);
+    appendWork(ex.resources.descriptions, frozen, *ex.workBudget);
     if (type.isStepper()) ex.push(StepperValue{type, std::move(frozen)});
     else ex.push(SamplerValue{type, std::move(frozen)});
 }
@@ -78,9 +78,9 @@ void pickDescriptionList(Execution& ex, TypeDescriptor type, DescriptionElement 
     auto data = std::make_shared<ListData>();
     data->type = ValueType::list(type.item());
     data->elements.reserve(static_cast<std::size_t>(count));
-    for (i32 i = 0; i < count; ++i) data->elements.push_back(element(ex, *description, i, count));
+    for (i32 i = 0; i < count; ++i) { ex.work(); data->elements.push_back(element(ex, *description, i, count)); }
     // Publish only after every element and all resource checks succeed.
-    ex.resources.lists.push_back(data);
+    appendWork(ex.resources.lists, data, *ex.workBudget);
     ex.push(ListValue{data->type, std::move(data)});
 }
 

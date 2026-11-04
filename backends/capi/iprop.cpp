@@ -3,6 +3,7 @@
 #include "CheckedBoundary.hpp"
 #include "LegacyBoundary.hpp"
 #include "Operations.hpp"
+#include "ExecutionOptions.hpp"
 
 #include <array>
 #include <limits>
@@ -93,9 +94,9 @@ iprop_status iprop_generate(const iprop_program* program,
     });
 }
 
-iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
-                                 const iprop_parameters* parameters, iprop_result** out_result,
-                                 iprop_error_ex* error) {
+static iprop_status_ex generateChecked(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
+    iprop_result** out_result, iprop_error_ex* error) {
     using namespace iprop::capi;
     // These owners survive the guarded callable and every diagnostic catch.
     std::unique_ptr<iprop_result> result;
@@ -104,23 +105,39 @@ iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_gene
         ProtectedSpan{options, queryCapacity(options)},
         ProtectedSpan{parameters, parameters != nullptr ? sizeof(*parameters) : 0},
         ProtectedSpan{parameters != nullptr ? parameters->values.data() : nullptr,
-                      parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0}};
+                      parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0},
+        ProtectedSpan{limits, queryCapacity(limits)}};
     return checkedBoundary(error, out_result, sizeof(iprop_result*), context, [&] {
         if (program == nullptr) return CallOutcome::argument("program is null");
         if (out_result == nullptr) return CallOutcome::argument("out_result is null");
         GenerateOptions request;
         const auto checked = checkGenerationRequest(*program, options, parameters, request);
         if (!checked.succeeded) return checked;
+        ExecutionRequest execution;
+        const auto control = readExecutionRequest(limits, execution);
+        if (!control.succeeded) return control;
         iprop::GenerationInputs inputs;
         inputs.seed = request.seed;
         inputs.sizeX = request.sizeX;
         inputs.sizeY = request.sizeY;
+        inputs.limits = execution.limits;
         result = std::make_unique<iprop_result>();
         // Parameters are read only, by root-input ID; NULL selects defaults.
         generateProgram(*program, inputs, *result, context, parameters);
         *out_result = result.release();
         return CallOutcome{};
     }, spans);
+}
+
+iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, iprop_result** out_result, iprop_error_ex* error) {
+    return generateChecked(program, options, parameters, nullptr, out_result, error);
+}
+
+iprop_status_ex iprop_generate_controlled(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
+    iprop_result** out_result, iprop_error_ex* error) {
+    return generateChecked(program, options, parameters, limits, out_result, error);
 }
 
 void iprop_result_free(iprop_result* result) { delete result; }

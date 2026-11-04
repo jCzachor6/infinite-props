@@ -3,17 +3,29 @@
 // owned JS copies. js/api.js also copies RGBA for independently owned results.
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
+#include <emscripten.h>
 #include "part_values.hpp"
 
 #include <bit>
 #include <cstdint>
+#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 using emscripten::val;
+using emscripten::EM_VAL;
 using u32 = std::uint32_t;
+// JS exceptions must never escape through C++ frames: preserve their cleanup
+// by converting a failed/throwing cancellation source into native cancellation.
+EM_JS(u32, iprop_cancel_js, (EM_VAL handle), {
+    try {
+        const control = Emval.toValue(handle);
+        return ((control.signal && control.signal.aborted) ||
+            (control.cancelFlag && Atomics.load(control.cancelFlag, 0) !== 0)) ? 1 : 0;
+    } catch (_) { return 1; }
+});
 namespace {
 std::vector<std::uint8_t> g_rgba;
 
@@ -124,7 +136,7 @@ val outputs(const iprop_result* result, Checked& check) {
 }
 } // namespace
 
-val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
+val generateControlled(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms, val execution) {
     try {
         const auto length = fileBytes["byteLength"].as<std::size_t>();
         std::vector<std::uint8_t> bytes(length ? length : 1);
@@ -138,8 +150,27 @@ val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
         readUniforms(program.get(), parameters.get(), uniforms, check);
         iprop_generate_options_ex options{}; iprop_generate_options_ex_init(&options, sizeof(options));
         options.flags = IPROP_GENERATE_PART_OUTPUTS; options.seed = seed; options.size_x = sizeX; options.size_y = sizeY;
+        iprop_execution_limits_ex limits{}; iprop_execution_limits_ex_init(&limits, sizeof(limits));
+        if (!execution.isUndefined() && !execution.isNull()) {
+            const auto number = [&](const char* name) {
+                const auto value = execution[name];
+                if (value.isUndefined()) return 0.0;
+                if (!value.isNumber()) throw std::invalid_argument(std::string(name) + " must be a number");
+                const double result = value.as<double>();
+                if (!std::isfinite(result) || result < 0 || result > 9007199254740991.0)
+                    throw std::invalid_argument(std::string(name) + " is outside its supported range");
+                return result;
+            };
+            const auto work = number("workLimit"), timeout = number("timeoutMs") * 1000000.0;
+            if (std::floor(work) != work || timeout > 9007199254740991.0)
+                throw std::invalid_argument("execution limits must have exact, representable counters");
+            limits.work_limit = static_cast<std::uint64_t>(work);
+            limits.timeout_ns = static_cast<std::uint64_t>(std::ceil(timeout));
+            limits.poll_context = &execution;
+            limits.poll = [](void* context) -> u32 { return iprop_cancel_js(static_cast<val*>(context)->as_handle()); };
+        }
         iprop_result* rawResult = nullptr;
-        check(iprop_generate_ex(program.get(), &options, parameters.get(), &rawResult, &check.error));
+        check(iprop_generate_controlled(program.get(), &options, parameters.get(), &limits, &rawResult, &check.error));
         const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> result(rawResult, iprop_result_free);
         iprop_image_view_ex image{}; check(iprop::backend::queryImage(result.get(), image, &check.error));
         g_rgba.assign(image.pixels, image.pixels + image.byte_count);
@@ -155,6 +186,12 @@ val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
         auto fuel = val::object();
         fuel.set("budget", static_cast<double>(stats.fuel_budget)); fuel.set("remaining", static_cast<double>(stats.fuel_remaining));
         fuel.set("used", static_cast<double>(stats.fuel_used)); object.set("fuel", fuel);
+        iprop_work_stats_ex workStats{}; iprop_work_stats_ex_init(&workStats, sizeof(workStats));
+        check(iprop_result_query_work(result.get(), &workStats, &check.error));
+        auto work = val::object();
+        work.set("budget", static_cast<double>(workStats.work_budget));
+        work.set("remaining", static_cast<double>(workStats.work_remaining)); work.set("used", static_cast<double>(workStats.work_used));
+        object.set("work", work);
         object.set("data", val(emscripten::typed_memory_view(g_rgba.size(), g_rgba.data())));
         return object;
     // Return normally through the WASM/C++ frames, including catch cleanup.
@@ -162,10 +199,14 @@ val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
     } catch (const ApiError& error) { return errorResult(error.what(), &error.detail); }
       catch (const std::exception& error) { return errorResult(error.what()); }
 }
+val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
+    return generateControlled(fileBytes, seed, sizeX, sizeY, uniforms, val::undefined());
+}
 val generate(val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
     return generateWith(fileBytes, seed, sizeX, sizeY, val::undefined());
 }
 EMSCRIPTEN_BINDINGS(iprop) {
     emscripten::function("_generate", &generate);
     emscripten::function("_generate", &generateWith);
+    emscripten::function("_generate", &generateControlled);
 }

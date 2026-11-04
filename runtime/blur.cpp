@@ -42,29 +42,35 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
     result->format = Channels == 4 ? SurfaceBuffer::Format::RGBA8 : SurfaceBuffer::Format::A8;
     result->raster.width = width; result->raster.height = height;
     result->raster.scaleX = raster.scaleX; result->raster.scaleY = raster.scaleY;
-    if constexpr (Channels == 4) result->raster.pixels.resize(static_cast<std::size_t>(pixels));
-    else result->coverage.resize(static_cast<std::size_t>(pixels));
-    std::vector<double> cache(static_cast<std::size_t>(cacheBytes / sizeof(double)));
+    if constexpr (Channels == 4) initializeWork(result->raster.pixels, static_cast<std::size_t>(pixels), Color{}, *ex.workBudget);
+    else initializeWork(result->coverage, static_cast<std::size_t>(pixels), u8{0}, *ex.workBudget);
+    std::vector<double> cache;
+    initializeWork(cache, static_cast<std::size_t>(cacheBytes / sizeof(double)), 0.0, *ex.workBudget);
     std::array<double, 2 * kMaxBlurRadius + 1> weights{};
     const double denominator = 2.0 * static_cast<double>(sigma) * static_cast<double>(sigma);
     double total = 0.0;
     for (i32 j = -radius; j <= radius; ++j) {
+        ex.work();
         const auto index = static_cast<std::size_t>(j + radius);
         weights[index] = math::pinnedExp(-static_cast<double>(j * j) / denominator);
         total = total + weights[index];
     }
-    for (u32 j = 0; j < kernel; ++j) weights[j] = weights[j] / total;
+    for (u32 j = 0; j < kernel; ++j) { ex.work(); weights[j] = weights[j] / total; }
     const auto clamp = [](i64 value, u32 extent) {
         return static_cast<u32>(std::clamp(value, i64{0}, static_cast<i64>(extent) - 1));
     };
     u32 nextRow = 0;
     for (u32 y = 0; y < height; ++y) {
+        ex.work();
         const u32 lastRow = clamp(static_cast<i64>(y) + radius, height);
         for (; nextRow <= lastRow; ++nextRow) {
+            ex.work();
             auto* row = cache.data() + static_cast<std::size_t>(nextRow % rows) * width * Channels;
             for (u32 x = 0; x < width; ++x) {
+                ex.work();
                 std::array<double, Channels> sum{};
                 for (i32 j = -radius; j <= radius; ++j) {
+                    ex.work();
                     const auto index = static_cast<std::size_t>(nextRow) * width + clamp(static_cast<i64>(x) + j, width);
                     const double weight = weights[static_cast<std::size_t>(j + radius)];
                     if constexpr (Channels == 4) {
@@ -79,16 +85,18 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
                         sum[0] = sum[0] + coverage * weight;
                     }
                 }
-                for (std::size_t c = 0; c < Channels; ++c) row[static_cast<std::size_t>(x) * Channels + c] = sum[c];
+                for (std::size_t c = 0; c < Channels; ++c) { ex.work(); row[static_cast<std::size_t>(x) * Channels + c] = sum[c]; }
             }
         }
         for (u32 x = 0; x < width; ++x) {
+            ex.work();
             std::array<double, Channels> sum{};
             for (i32 j = -radius; j <= radius; ++j) {
+                ex.work();
                 const auto sy = clamp(static_cast<i64>(y) + j, height);
                 const auto index = (static_cast<std::size_t>(sy % rows) * width + x) * Channels;
                 const double weight = weights[static_cast<std::size_t>(j + radius)];
-                for (std::size_t c = 0; c < Channels; ++c) sum[c] = sum[c] + cache[index + c] * weight;
+                for (std::size_t c = 0; c < Channels; ++c) { ex.work(); sum[c] = sum[c] + cache[index + c] * weight; }
             }
             const auto index = static_cast<std::size_t>(y) * width + x;
             if constexpr (Channels == 4) {
