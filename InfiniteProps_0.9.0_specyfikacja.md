@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–09 zakończone. Kroki 10.1–10.5 wykonane: typowane snapshoty, geometria/A8/RGBA, checked C API 0.5 i zachowane ABI 0.5. Wszystkie 91 testów oraz zgodność native/WASM przechodzą. Trwa utrwalanie raportu i końcowy audyt publikacji etapu 10; bindingi pozostają etapem 11.
+**Status:** etapy 00–10 zakończone. Typowane snapshoty części, geometria/A8/RGBA i checked C API 0.5 są zweryfikowane przy zachowanym ABI 0.5. Przechodzi 91/91 testów i 604 pełne porównania native/WASM. Raport etapu 10 zapisano w repozytorium; bindingi pozostają otwartym etapem 11.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -655,7 +655,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 10.3 Określić i przetestować ownership, pożyczone widoki, kopie, puste sloty, błędne indeksy/pojemności oraz jawne odrzucanie nieobsługiwanych nowych wyjść przez starsze ścieżki.
 - [x] 10.4 Sprawdzić render-only/export-only, brak wyglądu, wiele snapshotów jednego ID, niezależną kolejność eksportu, sloty statycznych importów i zachowanie wyniku po zwolnieniu VM/programu.
 - [x] 10.5 Sprawdzić compile/load/generate rozszerzonego `.iprop`, zgodność starych fixtures i bezpieczne odrzucanie nowych rozszerzeń przez stary czytnik; nie dodawać serializacji wyniku.
-- [ ] **Etap 10 zakończony.**
+- [x] **Etap 10 zakończony.**
 
 **Odbiór:** host otrzymuje rzeczywiste niezależne części, bez utraty dziur/alfy/transformacji, bez ukrytej kopii zasobów i bez zależności od życia VM.
 
@@ -669,7 +669,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **10.5 (2026-11-04):** 10.4 opublikowane jako `22c5f2b`. **91/91 CTest**, w głównym procesie 814 testów / 4515488 asercji. Pełne conformance: **604 pary native/WASM / 1208 pełnych obserwacji**, checked C API porównuje każde pole, źródła i ownership; **7 trapów, 30 mutacji bytecode, 8 diagnostyk, 28 IPA/IPDIS, 7 formatter round-trip**. Siedem przypiętych scen obejmuje niezerowy mapping źródła/tekstury, A8/RGBA, dziury, indeksy regionów 0–2 przy jednym zasobie i maksymalne 256 rekordów / 512 zasobów. **8 starszych runtime odrzuca po 17 nowych programów**, 72 wcześniejsze wzorce bez zmian. Cztery C99 clients z przeniesionego SDK przechodzą shared/static, także ze starym nagłówkiem API 0.4. Nowe checked generate wymaga jawnego `IPROP_GENERATE_PART_OUTPUTS`; bez flagi zwraca `E_UNSUPPORTED` przed VM/alokacją wyniku, również dla pustych i niewywołanych slotów. Prefixy 4/7 odrzucone, 8-bajtowy prefix z flagą obsługiwany. Zapobiega to fałszywemu pustemu obrazowi w starym checked kliencie. Aktualny gate ownership ma 1851 przypadków i zero alokacji query; 82 awarie i cztery granice areny przechodzą. Paczka bez sond weryfikuje compile/load i 57 jawnych odrzuceń legacy JS/JSON, a pełne typed obserwacje oznacza jako niewykonane. Dokumentacja 115 builtinów / 159 przykładów i kontrakty 231 mutacji / 159 CLI przechodzą; opcjonalny Python `jsonschema` niedostępny. Nie dodano serializacji wyniku. Zbiorczy raport i audyt czystego commitu zostaną utrwalone w commicie zamknięcia.
 
-**Weryfikacja:** implementacja i wymagane gate przechodzą; oczekuje utrwalenie raportu i potwierdzenie SHA po pushu.
+**Weryfikacja końcowa (2026-11-04):** kroki 10.1–10.5 opublikowano na `origin/develop`; checkpoint implementacji `1b0775bd7c0ae74fba12c0f1969326d9162add93` ma potwierdzone zdalne SHA i rozbieżność `0 0`. [Raport](spec/verification/part-exports-v0.9.json) oraz [log CTest](spec/verification/part-exports-v0.9-ctest.txt) utrwalają wyniki, zakres i ograniczenia. Dokumentacja zbudowana i zweryfikowana na czystym checkpoincie: 115 builtinów / 159 przykładów. Commit zamknięcia obejmuje wyłącznie ten plik, raport i log; dokumentację należy ponownie sprawdzić na jego czystym SHA w audycie dostarczenia. Pełny eksport działa w C++/checked C API; publiczne bindingi są nadal etapem 11. Nie jest to wydanie ani publikacja strony.
 
 ### Etap 11 — bindingi i hosty
 

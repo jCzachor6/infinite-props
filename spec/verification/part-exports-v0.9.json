@@ -1,0 +1,960 @@
+{
+  "stage": "10 - part exports and host API",
+  "date": "2026-11-04",
+  "verified_at_utc": "2026-11-04T08:55:15.372963+00:00",
+  "branch": "develop",
+  "runtime_implementation_commit": "1b0775bd7c0ae74fba12c0f1969326d9162add93",
+  "verification_checkpoint_commit": "1b0775bd7c0ae74fba12c0f1969326d9162add93",
+  "base_commit": "ac3c66cd5a9919089562fbd7a0ad4b5f0827c5e8",
+  "step_commits": {
+    "10.1": "95726f545e910e90b98d5d0efecc0c420e9c591a",
+    "10.2": "c4cd41ada0dd9449d6b61a2433560b171baeb45d",
+    "10.3": "9d0b1cea723db90d18dd9b83fad1280401102e3e",
+    "10.4": "22c5f2b1897b3c2b5211fa8f0941f923d1369a2e",
+    "10.5": "1b0775bd7c0ae74fba12c0f1969326d9162add93"
+  },
+  "scope": "Stage 10 only: immutable typed part snapshots in C++ and checked C API. Platform typed bindings remain stage 11; no release, tag, main merge or deployment.",
+  "product_version": "0.8.0",
+  "source_language_version": "0.8.0",
+  "language_schema_version": 5,
+  "c_api_version": "0.5",
+  "c_abi_soversion": "0.5",
+  "format": {
+    "output_kind_part": 3,
+    "new_opcode": {
+      "69": "out.list.part"
+    },
+    "opcode_count": 243,
+    "existing_ids_unchanged": true,
+    "header_reserved_fields_unchanged": true,
+    "resource_exports_section": 10,
+    "zero_resource_count_requires_part_declarations": true,
+    "function_owner_table_required": true,
+    "persisted_result_format_added": false
+  },
+  "limits_and_ownership": {
+    "snapshot_appends_per_generation": 256,
+    "part_creations_per_generation": 256,
+    "distinct_result_resources_maximum": 512,
+    "resource_ids": "1-based first encounter in global-slot/append order; source before texture; identity-based sharing, not content deduplication",
+    "result_owns_sources": true,
+    "result_survives_vm_program_and_later_generations": true,
+    "borrowed_views_expire_at": "result_free",
+    "explicit_copies_owned_by": "host",
+    "query_heap_allocations": 0,
+    "snapshot_growth": "generation-wide accounting; old and new capacities charged during growth; shared resource buffers retained without copies"
+  },
+  "checked_generation_negotiation": {
+    "capability_bits": {
+      "IPROP_CAP_PART_OUTPUTS": 18,
+      "IPROP_CAP_RESULT_RESOURCES": 19
+    },
+    "required_flag": {
+      "IPROP_GENERATE_PART_OUTPUTS": 1
+    },
+    "missing_flag_status": {
+      "IPROP_EX_E_UNSUPPORTED": 6,
+      "IPROP_REASON_UNSUPPORTED_FEATURE": 4008
+    },
+    "missing_flag_rejected_before_vm_or_result_allocation": true,
+    "empty_uncalled_or_dead_part_declarations_also_require_opt_in": true,
+    "prefix_bytes_rejected_without_complete_flag": [
+      4,
+      7
+    ],
+    "prefix_bytes_accepting_complete_flag": 8,
+    "old_packed_float_accessors_reject_part_slots": true,
+    "legacy_compatibility_check": "iprop_result_check_legacy"
+  },
+  "toolchain": {
+    "native": "AppleClang 21.0.0 (clang-2100.0.123.102), arm64-apple-darwin25.6.0 Release",
+    "wasm": "Emscripten 6.0.10-git Release",
+    "cmake": "4.2.3",
+    "node": "26.10.0",
+    "python": "3.14.7",
+    "floating_point": "FMA disabled on both cores",
+    "sfml": false,
+    "godot": false,
+    "new_dependencies": []
+  },
+  "builds": {
+    "native": "/private/tmp/iprop-v09-stage10-native",
+    "wasm": "/private/tmp/iprop-v09-stage10-wasm"
+  },
+  "ctest": {
+    "passed": 91,
+    "total": 91,
+    "seconds": 29.44,
+    "log": "spec/verification/part-exports-v0.9-ctest.txt",
+    "sha256": "d99e4050e903aab55e718dadfd0c1615cadf6896de08298eb26b29d36d1700c4",
+    "cpp_cases": 814,
+    "cpp_assertions": 4515488
+  },
+  "independent_placement_matrix": {
+    "generations": 4096,
+    "axes": {
+      "dynamic_d4": 8,
+      "inner_static_d4": 8,
+      "outer_static_d4": 8,
+      "grids": 4,
+      "optimization_modes": 2
+    },
+    "reference": "Independent signed basis/edge formulas, not runtime D4 helpers. Exact metadata bits, rounded static canvas extents/origins, negative/fractional placement and unequal grids.",
+    "source": "tests/part_outputs_test.cpp"
+  },
+  "c_api_contract_gate": {
+    "boundary_error_resource_checks": 1851,
+    "query_allocations_under_allocator_denial": 0,
+    "injected_transient_persistent_faults": 82,
+    "fault_paths": 5,
+    "exact_quota_boundaries": 4,
+    "heap_and_quota_leaks": 0,
+    "first_snapshot_extra_logical_bytes": 288,
+    "growth_1_to_2_peak_extra_logical_bytes_with_old_table_live": 288,
+    "one_byte_below_each_boundary_traps_without_publication": true,
+    "coverage": [
+      "descriptor prefixes/tails/unaligned storage",
+      "error transactionality and alias guards",
+      "empty slots and wrong kinds/indices/capacities",
+      "A8/RGBA alpha and full geometry holes",
+      "copies and borrowed views",
+      "256 snapshots / 512 distinct identical-content stores",
+      "actual shared-buffer identity and final-owner release"
+    ]
+  },
+  "part_exports_gate": {
+    "passed": true,
+    "programs": 165,
+    "generations": 604,
+    "fullRecords": 1208,
+    "nativeWasmPairs": 604,
+    "pins": 7,
+    "pinComparisons": 56,
+    "matrixGenerations": 512,
+    "roundtrips": 28,
+    "formatted": 7,
+    "traps": 7,
+    "rejections": 30,
+    "compilerErrors": 8,
+    "legacyRejections": 57,
+    "bindingRejections": 57,
+    "internalNative": true,
+    "internalWasm": true,
+    "checkedCapi": true,
+    "publicBindingTypedParts": false,
+    "typedObservationSkipped": false
+  },
+  "full_native_wasm_conformance": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      },
+      "geometryV09": {
+        "passed": true,
+        "types": 5,
+        "vectors": 3,
+        "generations": 60,
+        "rejections": 35,
+        "traps": 5,
+        "compilerErrors": 25,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "voronoiV09": {
+        "passed": true,
+        "vectors": 19,
+        "generations": 306,
+        "topologies": 19,
+        "traps": 18,
+        "rejections": 3,
+        "compilerErrors": 5,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "contoursV09": {
+        "passed": true,
+        "vectors": 88,
+        "generations": 706,
+        "topologies": 88,
+        "mappedNestedCases": 8,
+        "traps": 9,
+        "rejections": 6,
+        "compilerErrors": 6,
+        "resourceBoundaries": [
+          {
+            "name": "empty",
+            "fuel": 49,
+            "minimumFreeBytes": 4996
+          },
+          {
+            "name": "nested-simplify-1000",
+            "fuel": 6383,
+            "minimumFreeBytes": 16439
+          },
+          {
+            "name": "seeded-gray-7",
+            "fuel": 3348,
+            "minimumFreeBytes": 11376
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "regionsV09": {
+        "passed": true,
+        "vectors": 55,
+        "publicVectors": 31,
+        "topologies": 55,
+        "generations": 564,
+        "traps": 41,
+        "rejections": 36,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-inset",
+            "fuel": 3656,
+            "minimumFreeBytes": 13938
+          },
+          {
+            "name": "dumbbell-split",
+            "fuel": 18631,
+            "minimumFreeBytes": 26336
+          },
+          {
+            "name": "hole-inset",
+            "fuel": 24337,
+            "minimumFreeBytes": 31284
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "gapBevelV09": {
+        "passed": true,
+        "vectors": 47,
+        "scenes": 2,
+        "publicVectors": 24,
+        "topologies": 47,
+        "generations": 485,
+        "traps": 51,
+        "rejections": 87,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-variable",
+            "fuel": 49186,
+            "minimumFreeBytes": 31136
+          },
+          {
+            "name": "hole-variable",
+            "fuel": 171099,
+            "minimumFreeBytes": 56116
+          },
+          {
+            "name": "diagram-scaled",
+            "fuel": 346389,
+            "minimumFreeBytes": 41500
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "dynamicPartsV09": {
+        "passed": true,
+        "vectors": 317,
+        "scenes": 2,
+        "records": 634,
+        "coreFailureVectors": 6,
+        "coreRejections": 12,
+        "internalNative": true,
+        "internalWasm": true,
+        "wasm": true,
+        "publicVectors": 81,
+        "generations": 1063,
+        "traps": 37,
+        "rejections": 56,
+        "compilerErrors": 10,
+        "resourceBoundaries": [
+          {
+            "name": "scaled-geometry-0-6",
+            "core_fuel": 29997,
+            "source_bytes": 3244,
+            "minimum_free_bytes": 3056,
+            "native": true,
+            "wasm": true
+          },
+          {
+            "name": "matrix-3-6-3",
+            "core_fuel": 72,
+            "source_bytes": 1656,
+            "minimum_free_bytes": 656,
+            "native": true,
+            "wasm": true
+          },
+          {
+            "name": "matrix-2-1-6",
+            "core_fuel": 60,
+            "source_bytes": 1596,
+            "minimum_free_bytes": 768,
+            "native": true,
+            "wasm": true
+          }
+        ]
+      },
+      "partExportsV09": {
+        "passed": true,
+        "programs": 165,
+        "generations": 604,
+        "fullRecords": 1208,
+        "nativeWasmPairs": 604,
+        "pins": 7,
+        "pinComparisons": 56,
+        "matrixGenerations": 512,
+        "roundtrips": 28,
+        "formatted": 7,
+        "traps": 7,
+        "rejections": 30,
+        "compilerErrors": 8,
+        "legacyRejections": 57,
+        "bindingRejections": 57,
+        "internalNative": true,
+        "internalWasm": true,
+        "checkedCapi": true,
+        "publicBindingTypedParts": false,
+        "typedObservationSkipped": false
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "semantic_fixtures": {
+    "path": "tests/fixtures/part-exports-v0.9.json",
+    "pins": 7,
+    "coverage": [
+      "geometry/raster/holes",
+      "256 snapshots / 512 resources",
+      "empty slots",
+      "nested owners [0,2,3,3,4]",
+      "append q/p/q versus draw p/q/p",
+      "source and texture D4/origin [7,-5,4]",
+      "shared store with region indices 0/1/2"
+    ],
+    "render_order_rgba": [
+      [
+        18,
+        52,
+        86,
+        192
+      ],
+      [
+        255,
+        238,
+        204,
+        64
+      ]
+    ],
+    "fuel_note": "Current implementation pins, not an independent tariff oracle.",
+    "json_observation_scope": "Test-only complete observations, not a product result serializer or installed probe."
+  },
+  "archived_reader_rejections": {
+    "programs": {
+      "geometry-raster-holes-plain": "331286e253e6c83bfd305a993f92ad3d8f9f2b20c96b7ef3b89f86ff081c11c4",
+      "geometry-raster-holes-compressed": "5bdecedb3ee280f5f93b32784594d23c41b6d065e5f5b5972d6e15a634a04fba",
+      "resource-limit-plain": "0ef38186628cf49119ca57aeccaafe32459cad7cfadb687e9bda7172733c399f",
+      "resource-limit-compressed": "2533cdca133d73018425de853330de582c8b9ace173903dc5955ba403a00527c",
+      "empty-plain": "543c8a3e52ed005fe4dffb044dce16d8d992895ceffd7a3ec70c86864fd8f151",
+      "empty-compressed": "ea3e1efff6cd4f6f353f4e185940397ed32a62c223794c50d66c5aa08ff2c3c1",
+      "nested-plain": "e9735aa19b84a301011006008c2dabb450311a39dda5012e735cbb9d1241af97",
+      "nested-compressed": "e95f58f775adf6880e7e62467dcca4896c2345d18a60baceaa5d1f4ea6ef9186",
+      "render-order-plain": "317dc063a2c53f6f7b11a35758645010f862b0d74b26014ff240e0be5c0411ff",
+      "render-order-compressed": "f468604b08123c3c3d49b2ebf4b65a47b27d92afbf5dfaf08f6291ae2664ed63",
+      "mapped-raster-plain": "f838f30a37f82ee5614847d8128c5d6d8d7a00104fcfbbc1cf7b81ab27fc5090",
+      "mapped-raster-compressed": "b7fa5c8447b3b54f46670cddf4ad0f605ed48f599f8c4eb120cf3b5752ccb6ed",
+      "shared-regions-plain": "05c2ec5be26a2510f0be4afb36f3fbd37e22c2793163fc04fd1090f8e1fe6b9e",
+      "shared-regions-compressed": "ad0ebadfbd465d0a0731314d1f0afcb1a5b9ecaab414edb8f53c5c1569252f9e",
+      "uncalled-only-plain": "cdf74668151869ecf9a3424e12d0fdc1d8c61db4796aa95e4b6b43e01db9956c",
+      "uncalled-only-compressed": "c0f548b71009dff40289012913a639f48aea29c0e92a5c46d7536e907dd6a515",
+      "dead-append-inferred-owner": "07b361c755d7645b310459c08f82809daa19484010557766f3da1c2ad677d97b"
+    },
+    "runtimes": [
+      {
+        "name": "0.8",
+        "binary": "/private/tmp/iprop-v09-stage01-native/tools/ipval",
+        "sha256": "211bb46269032354bd1ad15330043e99c109f744570aab2db43bac1a37ab4994",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-03",
+        "binary": "/private/tmp/iprop-v09-stage03-native/tools/ipval",
+        "sha256": "98a01c6ce398a5980001ea45690ea0676b653cb0affce9e1cd21ba570f84d211",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-04",
+        "binary": "/private/tmp/iprop-v09-stage04-native/tools/ipval",
+        "sha256": "5f8163196f35f74cb347c9d14f2ac4c93406bed04f234c7d0a56f0d6f7146652",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-05",
+        "binary": "/private/tmp/iprop-v09-stage05-native/tools/ipval",
+        "sha256": "c9bed3c7eea64e96253855e062a891a79f9eedb62e7ac273a74c28105e6e0ae7",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-06",
+        "binary": "/private/tmp/iprop-v09-stage06-native/tools/ipval",
+        "sha256": "9c4c3f65f060762e603487fa651ded34987fe46942342ca692d33710d091b89a",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-07",
+        "binary": "/private/tmp/iprop-v09-stage07-native/tools/ipval",
+        "sha256": "02bf9ea3fd41ff5d8b4a35ff6f2ff65591c97cbbd77a611d5167a0c9b05fa7d0",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-08",
+        "binary": "/private/tmp/iprop-v09-stage08-native/tools/ipval",
+        "sha256": "24387cb804e049006000f3e10c6e9e1452549bd8fb479810b4d645ad32b577dd",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      },
+      {
+        "name": "stage-09",
+        "binary": "/private/tmp/iprop-v09-stage09-native/tools/ipval",
+        "sha256": "322de255befd555ff177d6d646d0102ac5d61b9244c2c492a98c2cc3b18aff35",
+        "rejections": 17,
+        "sample": {
+          "program": "geometry-raster-holes-plain",
+          "diagnostic": "invalid: /var/folders/hn/27f3zhfx7hn93sc1x8603sbc0000gn/T/iprop-stage10-archives-asz2w0s1/geometry-raster-holes-plain.iprop at byte 116: unknown output kind"
+        }
+      }
+    ],
+    "current_full_native_cpp_capi_generations": 17,
+    "scope": "Plain and forced-compressed new part declarations: geometry/holes/RGBA/A8, 256 records/512 stores, empty lists, nested static outputs, render order and uncalled-only outputs. A hand-assembled dead append additionally checks inferred root ownership."
+  },
+  "unchanged_frozen_references": {
+    "unchanged_count": 72,
+    "sha256": {
+      "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+      "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+      "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+      "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+      "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+      "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+      "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+      "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+      "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+      "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+      "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+      "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf",
+      "tests/fixtures/compat-v0.8/branch.ips": "54ccb61fad18e4eddbd9e6d5c4aca4ab37937015989b72ad08e34201bd892469",
+      "tests/fixtures/compat-v0.8/composition.ips": "8d0336902b766ca3c98f760034028e9d0c133b7319251c0a51b31547ad0dd375",
+      "tests/fixtures/compat-v0.8/leaf.ips": "ff057e10c4e84db8ac9b849242c0f0be77a0acf5fd7e31ba7ad091fa146f9cbd",
+      "spec/iprop-v0.8.md": "79a3ba6b7aeee0f3d83208da13511ae4962c38393e1e1d85ee44ee37c21e41d9",
+      "tests/golden/noise.png": "538996893b4bd9ce753a50aeb5733e1745c1d6a69bc86f76c1394de12d498358",
+      "tests/golden/parts.png": "bab687c573971f6238dd90b1f9a0ea4d4f4e7d210a55f614e828d9891a9591e5",
+      "tests/golden/portrait-seed0.png": "6896cfa9fa2f94898ca2a99c8b1055d29c65fa7ee481c56ade0bd17bde99147d",
+      "tests/golden/portrait-seed1.png": "e07be1d6d7b87d926fa747ca2c5aa0a37137fcc6215e8c3113eca8fa762ff73e",
+      "tests/golden/portrait-seed2.png": "f9eb6f19411402d640d74dad5c1edd0c3a6c51db319479a7dc43e8f12b0a9a84",
+      "tests/golden/portrait-seed26.png": "62b7dbbd0f590aecf5d2a98c3cbf4fe3abd6e469abbaef62f65165fb720a1ba9",
+      "tests/golden/portrait-seed7.png": "980cdbddc42ff065d74713a4280a1247121097b57973f2483063cbb96c080392",
+      "tests/golden/shapes.png": "bb7100fdfe98c8e02b57f5fb75b57dbca4b50a5b93b6efc83332c020eff33c38",
+      "tests/golden/noise.ipa": "c2e61b250e6d4dc7664cbc936f339f4eededd0504263818c32aed75be1e2c179",
+      "tests/golden/parts.ipa": "a4c48e39196750e9af22b2d3213421bd63c39872ed9b64c735f3284bfd9dad5a",
+      "tests/golden/shapes.ipa": "200748a4a927174bba61e59b2def2ee22d21aac0cbc40692f0c0e9cb2ec8b84f",
+      "tests/fixtures/noise-v0.9.json": "00df81bc182827eacb0a44ad4711dfc18d2e012454d01fbfb26fac6ac64f5b75",
+      "backends/html5/test/noise-v09-reference.js": "ac5a0dff48cffa208c9190fdb03f058441c3ddff31eed2b40cdc55e88e64fa94",
+      "tests/math/noise_extensions_test.cpp": "fb49ca5bd005aa9e9c1d724f0daecea3329522368a8a22f20324f0912a70549c",
+      "spec/noise-v0.9.md": "663eb879d3a4028dbdc463d298cf9c3da619c20dd5fecec18a4115ce8f59cce1",
+      "spec/verification/noise-v0.9.json": "59debc65265ab2621c34cd62512821ff85feee3088ff984084e4d11e90b8c290",
+      "spec/verification/noise-v0.9-ctest.txt": "5bb4788e410c17ecec5a6e0dd2f0858a5ecf3da1a1510248b9e96fdcc8117cfe",
+      "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc",
+      "tests/fixtures/noise-mask-v0.9.json": "6d7406a48a769b1013a219945bf0d60a13766b855a1b80c1a1be5c6e01339f57",
+      "backends/html5/test/noise-mask-reference.js": "e182b41dcbe2065386d776f7d71507da12ed295954b34821683842fd3f428abd",
+      "backends/html5/test/noise-mask-conformance.js": "720e73364eae2bb5514df24c054ac33687581d1ce77004814fa7fb3def439be7",
+      "tests/compiler/noise_masks_test.cpp": "e933ca6b39d11cc3223c01297b0f9823b034393210af98665979fa4e756a31ca",
+      "spec/noise-mask-v0.9.md": "37fe03e8ea52da3f5383e672a063216316ab43293a375d40f7c616da5c76bc85",
+      "spec/verification/noise-mask-v0.9.json": "a715e5c22c3eb695604feac77351d91318d1736e771fa32c3df7439f4335c3ff",
+      "spec/verification/noise-mask-v0.9-ctest.txt": "6f570a868ca61d4b39093cc07055d0aa94c1a923685c7a76726d927a22455059",
+      "tests/fixtures/geometry-v0.9.json": "8ca4ac3e44e0581d54535007a4ff3dac31d5204e1716a91be230e1e540c893e6",
+      "tests/support/geometry_fixture.hpp": "be7e5c928576d721955cada49023baf8baa060cc29aa1ad57c84a9c272f47c98",
+      "tests/geometry_test.cpp": "7843d15ab3df35767fb5bc560fa776d742d87c4227396a6bb4a99256385f0885",
+      "tests/geometry_representation_probe.cpp": "f4894c30db8f59e96ad3f50605a03e8f8d606360e879d54fd77bb0736aad5a8a",
+      "tests/geometry_allocation_probe.cpp": "7de1390cfccc136c6d9e98b82d45d9dbd8bd97d360c69539d2e11da11aa533cb",
+      "spec/verification/geometry-core-v0.9.json": "554ecfbb33e403fb92692c87e57a20329248326df2d9bfbe6728e38b887292db",
+      "spec/verification/geometry-core-v0.9-ctest.txt": "5e790fe0c8408d511979776fce6e7cbe2feabd060af46759630bdee601b15f6f",
+      "tests/fixtures/voronoi-v0.9.json": "0155618ebaf45467b0a7696eef48f3c66fe91868132f7a7e0efb6c249e6236ee",
+      "tests/reference/voronoi-reference.js": "2f48cc7e8620e693006db047716dc8346e3a2b4e3b28e021858fa14658d25cfa",
+      "tests/voronoi_test.cpp": "b05e321b80fefc947c32875f5f26768cc7fd2919ac3d92f9eb403c56fb4e7bd8",
+      "tests/voronoi_probe.cpp": "4368d843add4392bbd106ec99e214af1a84f95ff0522462b64cd50eda7d47342",
+      "tests/voronoi_allocation_probe.cpp": "cfb10ac7d859d3f9dbb26cd94a75949da035e2baaecb58b32da0bea848a392cf",
+      "tests/fixtures/contours-v0.9.json": "7ea4f27fe4431f9188ab8c5a9cde65e56b38f2f0a09d0b88b098c0a746908641",
+      "tests/reference/contours-reference.js": "97b83dac9f2a08ab83a14338c986bc42b9ca63b4cdad6ccaf887afc3470b490d",
+      "spec/contours-v0.9.md": "4db324fde0825e91ce41f9aca4a6fa3a044df78ee7fb8a27e3aad9b4f2ffd96c",
+      "tests/fixtures/regions-v0.9.json": "76b3d29d73fab3dfef56ed6fe57c9d35ca251a9bc1b9154701f2ad5cd26d0e00",
+      "tests/reference/regions-reference.js": "fa5d4ab3cd63c669ee1e87c653122eb80ea261226aaea5da26c910493b345cb5",
+      "spec/regions-v0.9.md": "2a8d904cfbfcf9c91b0648388e5c7cc3858e979c8bd6250f71a345627b40c12b",
+      "spec/verification/regions-v0.9.json": "d4a87867fbad81c51b71687ef315daee74d5eb04437ecc5902656b3299d9590e",
+      "spec/verification/regions-v0.9-ctest.txt": "38d542206d6362fb5ff7f1da5a3ff27ea28c9aa98fd915437c33abe077de075b",
+      "tests/fixtures/gap-bevel-v0.9.json": "8d3635e5d7cbcdaf480cb161ab76401bee6119ded9299d78471c269985266dce",
+      "tests/reference/gap-bevel-reference.js": "d7d4d00e774e6cf8d17c5f87b3c25c7d030f230a38ce65e9c5b61623f7b68923",
+      "examples/language/gap-bevel.ips": "6ce39acb8ed4dc25011e7b183a0a5a7fbe59bb6ceaab475d24d1b0676301fee1",
+      "examples/language/wall-bevel.ips": "c28f76978db4630be35f2f22daed1d600c9c855d8fa1e04c4f1eeb31b402a724",
+      "backends/html5/test/gap-bevel-conformance.js": "687e5fac482b7de36d8372c0dd4aeea8df7226158ddcf33e097762102a0c7e55",
+      "backends/html5/test/noise-v09-conformance.js": "104a29a60029cee585da2622086b1173e3f16b05c4fbca73adcf468aa67c3a72",
+      "tests/fixtures/dynamic-parts-v0.9.json": "e0be277059ce9cfc18c13c30b8509fbba88132755088c43ae05fd0feb444a040",
+      "tests/reference/dynamic-parts-reference.js": "195c4493aab0aab1208c3d96fb2e4a5215bfc85668bf2f4ddbbeb9cb1479077f",
+      "examples/language/dynamic-parts.ips": "859c9a642655a89d6f6ef7b634afb091fea3b3a358433c450ec4b1c76f5f6cd7",
+      "examples/language/dynamic-tiles.ips": "a0ec65aa9eb4cafe6e1dcf868739d4ae71b14afce523f38ada8de0c2390c6218",
+      "backends/html5/test/dynamic-parts-conformance.js": "d61d38ec52a262ab8e0bd308eb6a50e911bb51486b1e3bef29441a917a09189f"
+    },
+    "harness_adaptations": {},
+    "scope": "All earlier frozen vectors, references, scenes and prior feature conformance gates remain unchanged. New exports have a separate additive gate."
+  },
+  "relocated_installed_sdk": {
+    "passed": true,
+    "prefix": "/private/tmp/iprop-v09-stage10-sdk/relocated",
+    "staging_prefix_removed": true,
+    "clients": [
+      {
+        "name": "parts_shared",
+        "passed": true,
+        "stdout": "C99 typed parts, shared geometry/alpha, copies and independent result lifetime: PASS",
+        "executable_sha256": "39771e1d60eff12a3ba0140ac0c330305f339d84427970b9341e80d91ec294c3"
+      },
+      {
+        "name": "parts_static",
+        "passed": true,
+        "stdout": "C99 typed parts, shared geometry/alpha, copies and independent result lifetime: PASS",
+        "executable_sha256": "683b4147090a62b6efb298d017f4685bc28edbf6a401ec19074eb15b3eba7951"
+      },
+      {
+        "name": "legacy_shared",
+        "passed": true,
+        "stdout": "Archived API 0.4 header: scalar results preserved; new part outputs rejected before result publication: PASS",
+        "executable_sha256": "5ced1b4ca3394b2579f7ed1ae6337aab25b82dae7b2efabc705c77c7ca26d28a"
+      },
+      {
+        "name": "legacy_static",
+        "passed": true,
+        "stdout": "Archived API 0.4 header: scalar results preserved; new part outputs rejected before result publication: PASS",
+        "executable_sha256": "ef943eb245f9e8155c7c8d29ce7f7e4228c33d7b0f75173ecbec1b965d92b464"
+      }
+    ],
+    "api04_header_commit": "ac3c66cd5a9919089562fbd7a0ad4b5f0827c5e8",
+    "api04_header_sha256": "ce754621646aa69a8319c66e4c46e702b23268b1990cee8b68828694cfb34f32",
+    "api04_new_part_optin_rejections": 2,
+    "api05_header_sha256": "df4bb5c6d376ad4ff5c8f53fb1c05d9c9937f7b96663833a79cd1df22665cbad",
+    "installed_header_matches_source": true,
+    "library_hashes": {
+      "lib/libipropc.0.8.0.dylib": "ba79b16902ca75505456ffd611fe7391d0cbccc59f4c016ce841a46a3ca2fbea",
+      "lib/libipropc.a": "08dce0739df56acda8c4d36b22f6d2cf91b44bc354c7a7c07b0150c6520c4868",
+      "lib/libipropc.dylib": "ba79b16902ca75505456ffd611fe7391d0cbccc59f4c016ce841a46a3ca2fbea",
+      "lib/libipropc.0.5.dylib": "ba79b16902ca75505456ffd611fe7391d0cbccc59f4c016ce841a46a3ca2fbea"
+    },
+    "scope": "Local macOS relocated SDK consumers: real C99 shared/static typed parts and archived API 0.4 header with unchanged ABI 0.5. Not a release or platform binding integration."
+  },
+  "public_package_without_probes": {
+    "passed": true,
+    "files": {
+      "tools/ipc": "a2b63c3ca61f0bb087be02ab9fe8a8c9b70bdf0c1e7ab787f112d9551d99b774",
+      "tools/ipa": "a2b4343fb3aec81a87c9844b5527e2226b375297cd79edb983f7ebddaa2c8703",
+      "tools/ipgen": "02c05dc5a3fdbc9269aa61d46cc7e469fdf43b1962e052f66ca630c223210964",
+      "tools/ipval": "9a09baa96249ce06786659f7c635c4d9ca2d2af6d5e6b6bc0b202290c124dbaf",
+      "tools/ipdis": "63f72af970fb954d104a45e7e95070ba6ea69af9f1f0040cd25092495c8c2852",
+      "web/iprop.js": "f222034ffa4a7455cc62025257f9e39d60ee1a919a4c626f7db84aa270c675ef",
+      "web/iprop.wasm": "305038fe5b92d63cac0c39284b1a3d2c77628f4eb050874f2d83c3e059b78534",
+      "web/api.js": "f50a3d8a0fc4a926b9e307e39d40cd2acbd61c85764f0ea9831782dfa4b16c12"
+    },
+    "result": {
+      "passed": true,
+      "programs": 165,
+      "generations": 0,
+      "fullRecords": 0,
+      "nativeWasmPairs": 0,
+      "pins": 7,
+      "pinComparisons": 0,
+      "matrixGenerations": 512,
+      "roundtrips": 28,
+      "formatted": 7,
+      "traps": 0,
+      "rejections": 30,
+      "compilerErrors": 8,
+      "legacyRejections": 57,
+      "bindingRejections": 57,
+      "internalNative": false,
+      "internalWasm": false,
+      "checkedCapi": false,
+      "publicBindingTypedParts": false,
+      "typedObservationSkipped": true
+    },
+    "scope": "Copied five standalone CLI tools and public iprop.js/iprop.wasm/api.js, without test probes. Compile/load/roundtrip and explicit legacy/public binding rejection pass. Typed observations are honestly skipped; complete typed data was separately verified in C++/C API/native/WASM probes. Platform binding integration remains stage 11."
+  },
+  "documentation_and_contracts": {
+    "export_mutations": 231,
+    "actual_cli_cases": 159,
+    "stdlib_contract_readers_passed": true,
+    "node_diagnostic_reader_passed": true,
+    "python_jsonschema_available": false,
+    "formal_python_jsonschema_engine_run": false,
+    "current_documentation_unit_tests_passed": 6,
+    "build_and_against_source_clean_verify_passed": true,
+    "manifest": {
+      "source_commit": "1b0775bd7c0ae74fba12c0f1969326d9162add93",
+      "working_tree_dirty": false,
+      "product_version": "0.8.0",
+      "language_version": "0.8.0",
+      "c_api_version": "0.5",
+      "c_abi_soversion": "0.5",
+      "schema_version": 3,
+      "builtin_count": 115,
+      "example_count": 159
+    },
+    "checkpoint_manifest_sha256": "1baa1c48747501db5b0c4e4f0c8e39d830a0082bdd7277bded75714682162f8b",
+    "closing_delivery": "Rebuild/verify clean documentation after the evidence-only closing commit. The closing commit is reported by delivery audit; this report pins the implementation checkpoint to avoid a circular self-hash."
+  },
+  "requirements": {
+    "10.1": {
+      "passed": true,
+      "evidence": [
+        "output declaration/lowering/validator/IPA-IPDIS tests",
+        "global 256 snapshot append boundary and shared static-import limits"
+      ]
+    },
+    "10.2": {
+      "passed": true,
+      "evidence": [
+        "complete C++ versus checked C API observation for every native full case",
+        "geometry/rings/holes and A8/RGBA views/copies with resource identity"
+      ]
+    },
+    "10.3": {
+      "passed": true,
+      "evidence": [
+        "1851 descriptor/error/resource checks with no query allocations",
+        "82 fault injections and four exact quota boundaries",
+        "retained result and explicit copy ownership tests"
+      ]
+    },
+    "10.4": {
+      "passed": true,
+      "evidence": [
+        "4096 independently computed D4/import/grid/optimization generations",
+        "render-only/export-only/no appearance/clip/order/slot gap scenarios",
+        "program freed before observing every native full result"
+      ]
+    },
+    "10.5": {
+      "passed": true,
+      "evidence": [
+        "604 complete native/WASM pairs, compile/load/generate and bytecode rejection",
+        "eight archived readers each reject 17 new valid programs",
+        "72 earlier reference files unchanged",
+        "four relocated shared/static C99 clients including archived API 0.4 header"
+      ]
+    }
+  },
+  "publication_checkpoint": {
+    "local_sha": "1b0775bd7c0ae74fba12c0f1969326d9162add93",
+    "remote_develop_sha": "1b0775bd7c0ae74fba12c0f1969326d9162add93",
+    "ahead": 0,
+    "behind": 0,
+    "clean": true,
+    "source": "git ls-remote origin refs/heads/develop"
+  },
+  "closing_commit_expected_paths": [
+    "InfiniteProps_0.9.0_specyfikacja.md",
+    "spec/verification/part-exports-v0.9.json",
+    "spec/verification/part-exports-v0.9-ctest.txt"
+  ],
+  "source_artifact_sha256": {
+    "backends/capi/CMakeLists.txt": "48c2ba55df3f2f459dee9f20419186e69a01349c01ceff17ac31153c81d7fcca",
+    "backends/capi/Error.hpp": "32a2309310bb3e904e377bdb671e6d802a0a2104376e96b93caaedd4dc0eed97",
+    "backends/capi/ErrorBoundary.hpp": "dd295fef7f81e347f4aa65ec2b0824cc79f69f282c2b24e6a60c2dd1bd289cbe",
+    "backends/capi/Handles.hpp": "f18598f4e925f8f3ef9bdb72e4b368061cd5f0a33c765455f7a20ca62d2fe376",
+    "backends/capi/Options.hpp": "602db98b9764e9d0f4f51c2ac950a00628884d5a858da10243914d71b901e7a5",
+    "backends/capi/README.md": "02322e1dfcd4dcfca342ae8494fadc4d4d911a276c03951ad44ce115ff391136",
+    "backends/capi/iprop.cpp": "69e3153ea5f38d40372e3b28358febf156a7f1ed39934906661f2daf628bd771",
+    "backends/capi/iprop.h": "df4bb5c6d376ad4ff5c8f53fb1c05d9c9937f7b96663833a79cd1df22665cbad",
+    "backends/capi/library.cpp": "f5ec9b483f2eac584baa932b785a194beaace5babf176a8f599c00218e162e2c",
+    "backends/capi/operations.cpp": "c5f01e70075272a5b793ebc69f1b3ebebd1fac476690802440950b572244b724",
+    "backends/capi/outputs.cpp": "7809a32d369a8650171801a367cdb1ae7a46f28db90b201b704b9c5517145632",
+    "backends/capi/part_results.cpp": "404cbd1b94bd512ace9a01e1e36283699447121c54baaea0b7441536eb5dc85c",
+    "backends/capi/test/descriptors.cpp": "1fae4ddbf811eb8451d080dd86c88b375d18a97dd1cc8b4aaa78e6b2c0cee524",
+    "backends/capi/test/generate_ex.c": "dc30fe6f6ce74798f6e15faef56662773702caede43705d8ce63b09dfba4e61d",
+    "backends/capi/test/generation_request.cpp": "e6c0cee3ff301170213e355bb9ea66c8b5044f978ba59d460c974c4fff961904",
+    "backends/capi/test/library.c": "67996ec7ed6792b27f5a7f0b28bd1e81e8963efdba00138059cf9ede4044d3ef",
+    "backends/capi/test/part-output-empty.ips": "a552bb30218623f2e9a8984fd1a36be7643d2c478168e2247635923cbb5ca389",
+    "backends/capi/test/part-output-limit.ips": "b4b5e6ab8ae02800f58af1f1413be8dfdaa1515cc8f93115b45b3c28b188353e",
+    "backends/capi/test/part-output-values.ips": "b4afcc522caa1d1af9d6679b5e7bca60457bbaa103c3a4045574d4c0d6416c73",
+    "backends/capi/test/part_result_contracts.cpp": "3a12f7272bc8cb9a586ccf74300c2e0ba83c5eaf56e1b1993e8b74873b7a4690",
+    "backends/capi/test/part_result_failures.cpp": "57f631b6b5c277a75e7974eed56a01e422025a0cca3ae27e98418343df46cc52",
+    "backends/capi/test/part_results.c": "8efc6fdcbf44f8e0d3ad5a72b6302c15d548e0fecf532792099f70d3176f9740",
+    "backends/capi/test/stats_oracle.cpp": "fdafd9b389ad258d37985c6fae4ab0219295c6a63773c014ea88e20a5e077ba2",
+    "backends/html5/CMakeLists.txt": "ea4a0e7cf62117340f0ed9903c5fd09aef3d11760660ec7e11fe68e1ad7da295",
+    "backends/html5/bindings.cpp": "3f545918e85446002a29501128f1f2b0ba6ef4f06ccfd36909fdafd52fb0dd29",
+    "backends/html5/test/native-conformance.js": "08b9bd98600c77a251d55d51caa199c215d72504255402ba1c72a1add38fb7d7",
+    "backends/html5/test/part-exports-conformance.js": "757093072a65064b8609ea529045ac28cb9382c8529677fdc3264544d033dfe3",
+    "backends/html5/test/run-tests.js": "1a17796670d808d506a8396a54ccd745bd6f11d6affd9c3df659342e484cd478",
+    "cmake/RuntimeSources.cmake": "43d4f903933af8fb691ef913d150d3491f030b206b35e0031d729ae5eb50751f",
+    "compiler/Assemble.cpp": "0d09da6bd11ce205df2d99d835bbb5288665c82563b70f9bc692666a9d7ec740",
+    "compiler/Emit.cpp": "20bf9db3568205f2d7a02160b370b7b1bf95ce42929cd4e5314333a96f02b1a9",
+    "compiler/EmitExpr.cpp": "deae093dc8952388412f403a8aa489ca7b21c35a6189e4e3a510b4f3e388ac4c",
+    "docs/c-api-abi.md": "4bc01433e36da878bc2efe6001d4f11c984ad9f9a583be28814f6e53f94105ae",
+    "docs/c-api-checked.md": "8ff1980643fb31200281ab16eb6f3e7f6dab77e90503eb639b78a22ec75d245c",
+    "docs/c-api-contracts.md": "7706c3444fda3a001b6ec991dd36ddf640a0b71a8fbf215e56517a33ec403605",
+    "docs/c-api-output-declarations.md": "ea46f38ec776be7f0632a60bc6448cf75e5021680d9d74c7a634d2c0e1acc7b8",
+    "docs/c-api-part-outputs.md": "43375b07b2772b67d95a8adcf36865be4cd8ea938750e34c50a3d4a373ab4da4",
+    "docs/c-api-parts.md": "a90a03acc93dc19b7a5f4854abcbaa8e3fc07a61d0a7f14aff66afeb314dd39c",
+    "docs/c-api-result-outputs.md": "740ccf2872985d7646b4a583619b55cb8c8c225f593cc028b04e591c901f58b3",
+    "docs/export-contracts.md": "1844a7cf0ddad87f3483d153ab3025eb87e445a075f8b696e98dbb556af6fc1b",
+    "docs/language-description.schema.json": "2711b1d9c277cba91b6a984cd77726e3f3728499a5a3f7fb9338036109dc82d3",
+    "docs/language/assets.md": "0d3c68e56c2b30a972a1a75d7334023e81c4ffeb9ebdb74a798bfdd454d35e63",
+    "docs/language/grammar.md": "cc9ba29e4b83a417e8ddd961f6def7067ef48f827d8d6ae69d1605a6d9b2e5a5",
+    "docs/language/surfaces.md": "ccb46b0ae890ed1b656021ee959f3ff7a5865bd2bb227f0b1e53e3680ffd4454",
+    "language/ips/Ast.hpp": "bf4a802623f8fb89a7a53eb005493890a80754a552a41fa46cc10621a79cbc0f",
+    "language/ips/Parser.cpp": "2fd665095c760e95a9c538ba64af4d1a9fa3e4271871ab04fe2648a5f452f8f1",
+    "language/ips/Semantics.cpp": "20fb4dcc586896316e68a4ca86d36cb3ff33404195cceed3dc0a35414561850a",
+    "language/ips/SourcePrinter.cpp": "7bb0c326e8d8c65dcc67fcb2c315f9bff5a02042ffb7c820b1a8e3aecbfa4a1b",
+    "language/ips/Typing.cpp": "f1b5fc93a97138b7f63eda70585ee8b9ee877ca35e93aefc02823b84fcb2ce44",
+    "runtime/iprop/Constants.hpp": "b90b67bbefa594af9f456d98cb4f29e390b611b2d9fb27ee851c00b84b6230d2",
+    "runtime/iprop/Error.hpp": "d8055167430f4fc9b2fe60f2d33e4a89879bfa3301cc16eb25f879c80f0af5bc",
+    "runtime/iprop/PartOutput.hpp": "3c54c7b4b619ea3bf36ae5c7daab9d7f8d590d2cd3a927a98677cc58fca44e64",
+    "runtime/iprop/VM.hpp": "aa591745f1b601b764e5ec6b3fcd8cc9ad6ae494b4a96c85052c23df61fa6c33",
+    "runtime/iprop/Validator.hpp": "d847d0a4c574e890a536279291a2388304aef82d4f89f936ff14b1bf52b1b66d",
+    "runtime/iprop/VmInternals.hpp": "9ea6ca645af26a7f54e5efb4a2125ad0d1d53c17c76b6773ecd1e22b93b0643d",
+    "runtime/meta.cpp": "cc71d883f094db370c0c3c6e90e4d69ecc274ef0a80e4770a4d6cedd5499eb4a",
+    "runtime/opcode_spec.cpp": "fcc9f8a04e6c8924a4d38b59cfc3a9d0fabfadc0d8f67287ecb46b56bfde6081",
+    "runtime/outputs.cpp": "aa47d901d7538ab685e689d5b11bfdb911822ff364779fab1a92b6f417a231c7",
+    "runtime/part_output.cpp": "047e73720a11a09e385e36267435f30598fc1c1c0bd054c72418175f79b7611e",
+    "runtime/parts.cpp": "69c53c5911361d930299352c37cab5499ab29fd538e43956e7e67506fe00df25",
+    "runtime/resource_exports.cpp": "3f930c63fc384f5ac7941d4dbd11e8f45d31e7e7b416c0d657037900920234cb",
+    "runtime/validator.cpp": "b6d110a261ac2ffa7a4eab6d7701f05c82c62f013542669167e19a8e53828434",
+    "runtime/vm.cpp": "7a6043acc90626b369e1e3a0382c940123613929d32789ade024d1e0c7464004",
+    "scripts/contract_readers.py": "ad3f04bcb1ce5c684c76b32ca173011d9c40b423bb96636c5a5b629f8efd51be",
+    "scripts/language_docs.py": "76cdb75c69b101ccdd0c13765d27096187ea170525c8c2bf6e6b5dd8cf780f7f",
+    "scripts/tests/test_current_documentation.py": "c7017e87ac161d0caba9b615393ad1863001fef0f3224f9373238066bfe19fb0",
+    "spec/part-exports-v0.9.md": "082e842527a6f0b90d60307684dcfcc9a4639132a24adb79ad4bd729608e83b7",
+    "tests/CMakeLists.txt": "8e73ee83cfc553e4c7ee600b95352962f61f76b4dff9da5cee0ebc5134627320",
+    "tests/fixtures/export-contract-mutations.json": "acc5ef6c5bd0fa594b2709460109805541b2c4ecf36a3c61ab597cd3742a209f",
+    "tests/fixtures/part-exports-leaf.ips": "8b8f6dffb9a850284215c998e61dd117f7ded7bc354d26d097489d771283a51f",
+    "tests/fixtures/part-exports-mapped.ips": "f82805f870ed36a6698636f820c327d2da4b78335a1ab6a557221102f2f7cecc",
+    "tests/fixtures/part-exports-middle.ips": "0ea0f2bffc55ceb39df59acd37259ddd090e68d7ad7fcbec4fb8fb102b2600db",
+    "tests/fixtures/part-exports-nested.ips": "2b3ecf1537a0deeed05a3678ce78959cabe9c3c2ffe5eb88cb4f94bb5d7be3fa",
+    "tests/fixtures/part-exports-order.ips": "741e8e724478b4424968250e5c63afbd0284461766358fcb44e09927925380c9",
+    "tests/fixtures/part-exports-raster-source.ips": "f88b0ff400f3f06f0c55f2dce1533967b3e44c6486aefa93caf560fd0a365be2",
+    "tests/fixtures/part-exports-regions.ips": "60e5adfae81e0671faf1c3111a3fc6e849108a46350f1cc6a618ff3abff8e213",
+    "tests/fixtures/part-exports-tail.ips": "8b2f13311bef1cd8aed33d2e0f50462694be80b79d72c359bbd17e342de55299",
+    "tests/fixtures/part-exports-unused.ips": "6a9c17f04dd0500730bf970702db258015b07b09d8384828601275eb1c88f735",
+    "tests/fixtures/part-exports-v0.9.json": "c196a39d133c8caaaea809e28ed4ff9644f5aac62b84679d9e0639e78cb2d9cb",
+    "tests/opcode_spec_test.cpp": "c20a499b53bf144a6aaf88350b65ec353ff571d0479715ca53ffd3dc1ed9f1f2",
+    "tests/part_exports_probe.cpp": "898693e7d72c18f03e721ebb3be4bae18aad10b59439edf7a60035900d3eee55",
+    "tests/part_outputs_test.cpp": "60154fec86a2549ad0ec4ee2f88f0facb92995318ee932251708199dae97c7c5",
+    "tools/ipa.cpp": "d2ddf455303b3861c7322cfeea063257b076981844747c2f131c9b34d81a91b0",
+    "tools/ipdis.cpp": "44598d41b276f8b0f6518e2084808cd33eb82139a43ff4eda00857cb59de3882",
+    "tools/ipgen.cpp": "792bd1cfe73fde75baa41fcd98694c8b56be8e62d515b7831f22d64aa737b0be",
+    "tools/json.hpp": "ed6a3545e78b0735bb4851715e7f2e3673296058d450e2d6a305030a52bc84d9",
+    "tools/language_description.cpp": "b4eaab256b09a87645c3b107384913c5ec6e116a9759547948837bcce2468bec"
+  },
+  "local_evidence_sha256": {
+    "/private/tmp/iprop-v09-stage10-ctest.txt": "d99e4050e903aab55e718dadfd0c1615cadf6896de08298eb26b29d36d1700c4",
+    "/private/tmp/iprop-v09-stage10-native/Testing/Temporary/LastTest.log": "76c208b1a4f22c1ae8b79186f4875c1a6c8aa2bbc50e2bc02373248d8bf139ae",
+    "/private/tmp/iprop-v09-stage10-conformance/conformance.json": "b3bbd13fb0039c41b232fc10b55b84b6645018d05685bb3b4fcea9e6f6aad4ab",
+    "/private/tmp/iprop-v09-stage10-conformance.txt": "c174b29668f1784ec7e184c5f4f69a70adbfbe63efb4f2ef84a4ab9ae5f6d7b6",
+    "/private/tmp/iprop-v09-stage10-archived-rejections.json": "c509d450765b4a26535bb05d5926c127b9d9ce0cdc4325c12d493e99db879805",
+    "/private/tmp/iprop-v09-stage10-frozen-references.json": "859b73daad076036368f2ef56ba9646236125b7e97e0527c75e435fc30b9c801",
+    "/private/tmp/iprop-v09-stage10-archives.txt": "3f140f65fa60f6cf01954ae524ff7cce54f65e77132aae3ae071c9af9e8faf0d",
+    "/private/tmp/iprop-v09-stage10-sdk.json": "46c92bf02889f69c41a5ca07f5a8b9205a5e20c70642837e0e36fc4deecab5cc",
+    "/private/tmp/iprop-v09-stage10-sdk.txt": "78e7b0548276052b29827c88dff2905844497fda4bad60adff1ae5ff09864743",
+    "/private/tmp/iprop-v09-stage10-package.json": "e065b7f61336fe50a14b445ebdbf655d7f760a8ef2b7b35b3292fc0f230267e0",
+    "/private/tmp/iprop-v09-stage10-package.txt": "16a2f2f9fbab49c1b511cf7d623154afdfcef4c4426b4f8b29e1daf8ea756eb0",
+    "/private/tmp/iprop-v09-stage10-checkpoint-remote.json": "b13dcf92b284547cecf8a82f10fbbd7915806e071dc52e99581bbdde6352d4c8",
+    "/private/tmp/iprop-v09-stage10-checkpoint-docs.txt": "92483286799d6bc8c92c75d881b8fd83c693223fa9fe734a76f98b3259e85bf3",
+    "/private/tmp/iprop-v09-stage10-current-docs.txt": "e40965f1f6664af56e962533edfa98218ca2a87e10c646fd1aff4d9ea03984b7",
+    "/private/tmp/iprop-v09-stage10-final-build.txt": "23905f9aef1068b885f414eefd778a0b8d0ad19e455d94afe4f1f936092f77b0",
+    "/private/tmp/iprop-v09-stage10-final-configure.txt": "269dba024d46b6350c9e30183d28bde95e5f6a30a631a071799e9828cfb9130c",
+    "/private/tmp/iprop-v09-stage10-wasm-build.txt": "76c283ebbfddc3cdc88d0af9d49a7b0223c64ab56ead983693e5ea038b5defbd",
+    "/private/tmp/iprop-v09-stage10-wasm-configure.txt": "4c7c70cac32e5018379fe24dd8ba79a1ee9df3980563418365d1616c15e2507a"
+  },
+  "binary_sha256": {
+    "/private/tmp/iprop-v09-stage10-native/tools/ipc": "a2b63c3ca61f0bb087be02ab9fe8a8c9b70bdf0c1e7ab787f112d9551d99b774",
+    "/private/tmp/iprop-v09-stage10-native/tools/ipa": "a2b4343fb3aec81a87c9844b5527e2226b375297cd79edb983f7ebddaa2c8703",
+    "/private/tmp/iprop-v09-stage10-native/tools/ipdis": "63f72af970fb954d104a45e7e95070ba6ea69af9f1f0040cd25092495c8c2852",
+    "/private/tmp/iprop-v09-stage10-native/tools/ipval": "9a09baa96249ce06786659f7c635c4d9ca2d2af6d5e6b6bc0b202290c124dbaf",
+    "/private/tmp/iprop-v09-stage10-native/tools/ipgen": "02c05dc5a3fdbc9269aa61d46cc7e469fdf43b1962e052f66ca630c223210964",
+    "/private/tmp/iprop-v09-stage10-native/tests/iprop_tests": "21a590f3955153090c988b177216e3ab39197df628c8b3d70414ff2eed02274b",
+    "/private/tmp/iprop-v09-stage10-native/tests/part_exports_probe": "a35093e382c685164b295f1f28ec6b3f07487e825f201353907c97355c64a520",
+    "/private/tmp/iprop-v09-stage10-native/backends/capi/capi_part_result_contracts": "1561a877182c9f5159f951599a6e18d1d26410b6ef2c6e13e6c273400f996e3a",
+    "/private/tmp/iprop-v09-stage10-native/backends/capi/capi_part_result_failures": "b28c2595fbb056565c00a6e3774faf93c88174270dab76e9dd9c777c63b90f3b",
+    "/private/tmp/iprop-v09-stage10-native/backends/capi/libipropc.a": "1a687c39e65b5c897aab08714496d2356623a78188817a8c6d659fd97e322a41",
+    "/private/tmp/iprop-v09-stage10-native/backends/capi/libipropc.0.8.0.dylib": "b58ee44f40fa79f1c73513b135510239ecbeda14b341956801b332dfec6b5de8",
+    "/private/tmp/iprop-v09-stage10-wasm/iprop.js": "f222034ffa4a7455cc62025257f9e39d60ee1a919a4c626f7db84aa270c675ef",
+    "/private/tmp/iprop-v09-stage10-wasm/iprop.wasm": "305038fe5b92d63cac0c39284b1a3d2c77628f4eb050874f2d83c3e059b78534",
+    "/private/tmp/iprop-v09-stage10-wasm/part_exports_probe.js": "7234bc9b4d4c6bf5ff9063ef826a0731926fa234172f10d20004002e3572bf12",
+    "/private/tmp/iprop-v09-stage10-wasm/part_exports_probe.wasm": "e7c94798cf7e9eb06c6b9b20594509e2ddea074b399a031598616e150c620856"
+  },
+  "limitations": [
+    "Public typed platform bindings are intentionally not implemented by stage 10. The current JS binding rejects new part results explicitly; typed probe comparisons do not count as public binding integration.",
+    "Public package compile/load/rejection checks pass, but its typed data observations are explicitly skipped without probes.",
+    "Formal Python jsonschema validation was unavailable; stdlib and Node protocol readers plus real CLI mutations were exercised.",
+    "Local macOS native and Emscripten results are not release, deployment or the full maintained-platform matrix.",
+    "Final fuel/work tariff, platform bindings, product version integration and full release gate remain later stages."
+  ]
+}
