@@ -6,7 +6,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace InfiniteProps
 {
-    public enum OutputKind : uint { Point, Rect, Circle }
+    public enum OutputKind : uint { Point, Rect, Circle, Part }
     public enum InputKind : uint { Color, Float, UInt }
 
     public readonly struct InputValue
@@ -55,6 +55,7 @@ namespace InfiniteProps
         public bool IsList { get; internal set; }
         public uint Count { get; internal set; }
         public float[] Values { get; internal set; }
+        public IReadOnlyList<PartSnapshot> Parts { get; internal set; }
     }
     public sealed class Statistics
     {
@@ -105,7 +106,7 @@ namespace InfiniteProps
 
     /// <summary>Calls and disposal serialize per program. Returned arrays own
     /// their data; independent programs may generate concurrently.</summary>
-    public sealed class Program : IDisposable
+    public sealed partial class Program : IDisposable
     {
         private readonly object gate = new object();
         private readonly Native.ProgramHandle handle;
@@ -118,8 +119,9 @@ namespace InfiniteProps
             {
                 var library = Native.Sized<Native.Library>();
                 error.Check(Native.iprop_library_query_ex(ref library, ref error.Value));
-                if (library.ApiMajor != 0 || library.ApiMinor < 4 || library.AbiMajor != 0 || library.AbiMinor != 5)
-                    throw new NotSupportedException("Infinite Props requires C API 0.4 / ABI 0.5");
+                if (library.ApiMajor != 0 || library.ApiMinor < 5 || library.AbiMajor != 0 || library.AbiMinor != 5 ||
+                    (library.Capabilities & (3UL << 18)) != (3UL << 18))
+                    throw new NotSupportedException("Infinite Props requires C API 0.5 / ABI 0.5 with typed part resources");
                 IntPtr pointer;
                 error.Check(Native.iprop_program_load_ex(bytes.Length == 0 ? new byte[1] : bytes,
                     (ulong)bytes.LongLength, out pointer, ref error.Value));
@@ -179,6 +181,7 @@ namespace InfiniteProps
                             finally { pinned.Free(); }
                         }
                         var options = Native.Sized<Native.Options>();
+                        options.Flags = 1; // IPROP_GENERATE_PART_OUTPUTS, negotiated above.
                         options.Seed = seed; options.Width = width; options.Height = height;
                         IntPtr result;
                         error.Check(Native.iprop_generate_ex(handle, ref options, parameters, out result, ref error.Value));
@@ -203,24 +206,31 @@ namespace InfiniteProps
             var outputs = new List<Output>();
             for (uint i = 0; i < count; ++i)
             {
-                var slot = Native.Sized<Native.OutputView>();
-                error.Check(Native.iprop_result_output_get(result, i, ref slot, ref error.Value));
-                var values = new float[checked((int)((ulong)slot.Count * slot.Stride))];
-                if (values.Length != 0) Marshal.Copy(slot.Values, values, 0, values.Length);
+                var slot = Native.Sized<Native.OutputSlot>();
+                error.Check(Native.iprop_result_output_slot(result, i, ref slot, ref error.Value));
+                var values = Array.Empty<float>();
+                IReadOnlyList<PartSnapshot> parts = Array.Empty<PartSnapshot>();
+                if (slot.Kind == 3) parts = ReadParts(result, i, slot.Count, error);
+                else {
+                    var old = Native.Sized<Native.OutputView>();
+                    error.Check(Native.iprop_result_output_get(result, i, ref old, ref error.Value));
+                    values = new float[checked((int)((ulong)old.Count * old.Stride))];
+                    if (values.Length != 0) Marshal.Copy(old.Values, values, 0, values.Length);
+                }
                 outputs.Add(new Output { Index = slot.Index, Owner = slot.Owner,
                     Name = Native.ReadString(slot.Name), Kind = (OutputKind)slot.Kind,
-                    IsList = slot.IsList != 0, Count = slot.Count, Values = values });
+                    IsList = slot.IsList != 0, Count = slot.Count, Values = values, Parts = parts });
             }
             return new GeneratedImage { Width = image.Width, Height = image.Height, RowStride = image.RowStride,
                 PixelFormat = image.PixelFormat, AlphaMode = image.AlphaMode, StorageOrigin = image.Origin,
-                Rgba = rgba, Outputs = outputs.AsReadOnly(), Statistics = new Statistics {
+                Rgba = rgba, Outputs = outputs.AsReadOnly(), Resources = ReadResources(result, error), Statistics = new Statistics {
                     FuelBudget = stats.FuelBudget, FuelRemaining = stats.FuelRemaining, FuelUsed = stats.FuelUsed,
                     ImageByteCount = stats.ImageByteCount, OutputElementCount = stats.OutputElementCount } };
         }
         public void Dispose() { lock (gate) handle.Dispose(); }
     }
 
-    internal static class Native
+    internal static partial class Native
     {
 #if UNITY_IOS && !UNITY_EDITOR
         private const string LibraryName = "__Internal";

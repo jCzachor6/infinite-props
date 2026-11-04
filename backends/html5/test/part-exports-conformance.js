@@ -24,7 +24,7 @@ function run(iprop,tool,directory,probes={}) {
     if(probes.native)assert(fs.existsSync(native),'requested native result probe exists');
     if(probes.wasm)assert(fs.existsSync(probes.wasm),'requested WASM result probe exists');
     const hasNative=fs.existsSync(native),hasWasm=!!probes.wasm;
-    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0,publicBindingGenerations=0;
+    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0,publicBindingGenerations=0,repeatedBindingErrors=0;
     const configs=Array.from({length:8},(_,i)=>({opt:!!(i&4),debug:!!(i&2),compressed:!!(i&1)}));
     const invoke=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe',maxBuffer:16*1024*1024});
     function compile(text,config=configs[4]) {
@@ -167,10 +167,16 @@ function run(iprop,tool,directory,probes={}) {
             const r=spawnSync(tool('ipc'),[base+'-bad.ips','-o',base+'-bad.iprop'],{encoding:'utf8'});
             assert.equal(r.status,1,r.stderr);assert(!fs.existsSync(base+'-bad.iprop'));compilerErrors++;
         }
+        if(iprop){
+            const failed=compile('asset t{size 2x2 output list part pieces draw{p=part.create(regions(voronoi({0,0},{2,2},[{1,1}])),0)pieces=p part.draw(p)}}');
+            for(let i=0;i<2048;++i){assert.throws(()=>iprop.generate(failed,{seed:i}),e=>e instanceof Error&&e.status===3&&e.stage===4&&e.reason===3000);repeatedBindingErrors++;}
+            const good=compile(fs.readFileSync(path.join(fixtures,'part-exports-order.ips'),'utf8'));
+            assert.equal(digest(observeBinding(iprop.generate(good,{seed:7}))),pins.cases.find(p=>p.name==='render-order').semantic_sha256,'valid result after repeated failures');
+        }
         return {passed:true,programs,generations,fullRecords:records,nativeWasmPairs:pairs,pins:pins.cases.length,pinComparisons:pinned,
             matrixGenerations:matrix,roundtrips,formatted,traps,rejections,compilerErrors,legacyRejections,bindingRejections,
             internalNative:hasNative,internalWasm:hasWasm,checkedCapi:hasNative||!!iprop,publicBindingTypedParts:!!iprop,
-            publicBindingGenerations,typedObservationSkipped:!hasNative&&!hasWasm&&!iprop};
+            publicBindingGenerations,repeatedBindingErrors,typedObservationSkipped:!hasNative&&!hasWasm&&!iprop};
     } finally {if(owned)fs.rmSync(directory,{recursive:true,force:true});}
 }
 module.exports={run,canonical,digest};

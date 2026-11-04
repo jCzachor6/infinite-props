@@ -3,6 +3,7 @@ package dev.infiniteprops
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.infiniteprops.tests.verifyBindings
 import dev.infiniteprops.tests.verifyPixelCorpus
+import dev.infiniteprops.tests.verifyPartOutputs
 import java.nio.ByteBuffer
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
@@ -12,6 +13,7 @@ class RuntimeTests {
     @Test fun nativeContracts() {
         val assets = InstrumentationRegistry.getInstrumentation().context.assets
         verifyBindings { assets.open(it).use { stream -> stream.readBytes() } }
+        verifyPartOutputs { assets.open(it).use { stream -> stream.readBytes() } }
         verifyPixelCorpus(load = { assets.open(it).use { stream -> stream.readBytes() } }) { image, expected, index ->
             val bitmap = image.toBitmap()
             try {

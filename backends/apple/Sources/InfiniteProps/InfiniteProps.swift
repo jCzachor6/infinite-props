@@ -41,7 +41,7 @@ public struct Statistics: Sendable {
     public let fuelBudget, fuelRemaining, fuelUsed, imageByteCount, outputElementCount: UInt64
 }
 
-public enum OutputKind: UInt32, Sendable { case point = 0, rect = 1, circle = 2 }
+public enum OutputKind: UInt32, Sendable { case point = 0, rect = 1, circle = 2, part = 3 }
 
 /// Packed x/y, x/y/w/h or x/y/radius values, in declaration order. An unset
 /// singular or empty list remains present. Names include any embedded NUL.
@@ -52,6 +52,7 @@ public struct Output: Sendable {
     public let isList: Bool
     public let count: UInt32
     public let values: [Float]
+    public let parts: [PartSnapshot]
 }
 
 public struct GeneratedImage: Sendable {
@@ -63,6 +64,10 @@ public struct GeneratedImage: Sendable {
     public let rgba: Data
     public let outputs: [Output]
     public let statistics: Statistics
+    public let resources: [ResultResource]
+    public func resource(_ id: UInt32) -> ResultResource? {
+        id > 0 && Int(id) <= resources.count ? resources[Int(id) - 1] : nil
+    }
     public func output(named name: String, owner: UInt32 = 0) -> Output? {
         outputs.first { $0.owner == owner && $0.name.utf8.elementsEqual(name.utf8) }
     }
@@ -77,7 +82,7 @@ public struct IpropError: Error, Sendable, CustomStringConvertible {
     public var description: String { "\(message) (status \(status), reason \(reason), stage \(stage))" }
 }
 
-private func checked(_ body: (UnsafeMutablePointer<iprop_error_ex>) -> UInt32) throws {
+func checked(_ body: (UnsafeMutablePointer<iprop_error_ex>) -> UInt32) throws {
     var error = iprop_error_ex()
     iprop_error_ex_init(&error, UInt32(MemoryLayout<iprop_error_ex>.size))
     var buffer = [CChar](repeating: 0, count: 8192)
@@ -114,11 +119,12 @@ public final class Program: @unchecked Sendable {
         var library = iprop_library_info_ex()
         iprop_library_info_ex_init(&library, UInt32(MemoryLayout<iprop_library_info_ex>.size))
         try checked { iprop_library_query_ex(&library, $0) }
-        guard library.api_major == 0, library.api_minor >= 4,
-              library.abi_major == 0, library.abi_minor == 5 else {
+        guard library.api_major == 0, library.api_minor >= 5,
+              library.abi_major == 0, library.abi_minor == 5,
+              library.capabilities & (UInt64(3) << 18) == UInt64(3) << 18 else {
             throw IpropError(status: 4, reason: 4000, stage: 0, byteOffset: 0,
                 locationFlags: 0, offsetSpace: 0, functionIndex: 0, pc: 0, debugLine: 0,
-                message: "InfiniteProps requires C API 0.4 / ABI 0.5", messageTruncated: false)
+                message: "InfiniteProps requires C API 0.5 / ABI 0.5 with typed part resources", messageTruncated: false)
         }
         var loaded: OpaquePointer?
         // Empty input still supplies a non-null pointer so it is a format error.
@@ -205,6 +211,7 @@ public final class Program: @unchecked Sendable {
         }
         var options = iprop_generate_options_ex()
         iprop_generate_options_ex_init(&options, UInt32(MemoryLayout<iprop_generate_options_ex>.size))
+        options.flags = 1 // IPROP_GENERATE_PART_OUTPUTS (UINT32_C macros are not imported by Swift).
         options.seed = seed; options.size_x = width; options.size_y = height
         var result: OpaquePointer?
         try checked { iprop_generate_ex(handle, &options, parameters, &result, $0) }
@@ -219,20 +226,30 @@ public final class Program: @unchecked Sendable {
         try checked { iprop_result_output_count(result, &count, $0) }
         var outputs: [Output] = []
         for index in 0..<count {
-            var slot = iprop_result_output_view_ex()
-            iprop_result_output_view_ex_init(&slot, UInt32(MemoryLayout<iprop_result_output_view_ex>.size))
-            try checked { iprop_result_output_get(result, index, &slot, $0) }
-            let values = slot.element_count == 0 ? [] : Array(UnsafeBufferPointer(
-                start: slot.values, count: Int(slot.element_count) * Int(slot.stride_floats)))
+            var slot = iprop_output_slot_ex()
+            iprop_output_slot_ex_init(&slot, UInt32(MemoryLayout<iprop_output_slot_ex>.size))
+            try checked { iprop_result_output_slot(result, index, &slot, $0) }
+            var values: [Float] = []
+            var parts: [PartSnapshot] = []
+            if slot.kind == OutputKind.part.rawValue {
+                parts = try readPartSnapshots(result, index, slot.element_count)
+            } else {
+                var old = iprop_result_output_view_ex()
+                iprop_result_output_view_ex_init(&old, UInt32(MemoryLayout<iprop_result_output_view_ex>.size))
+                try checked { iprop_result_output_get(result, index, &old, $0) }
+                if old.element_count != 0 {
+                    values = Array(UnsafeBufferPointer(start: old.values, count: Int(old.element_count) * Int(old.stride_floats)))
+                }
+            }
             outputs.append(Output(index: slot.output_index, owner: slot.owner, name: string(slot.name),
                 kind: OutputKind(rawValue: slot.kind)!, isList: slot.is_list != 0,
-                count: slot.element_count, values: values))
+                count: slot.element_count, values: values, parts: parts))
         }
         return GeneratedImage(width: image.width, height: image.height, rowStride: image.row_stride,
             pixelFormat: image.pixel_format, alphaMode: image.alpha_mode, storageOrigin: image.origin,
             rgba: Data(bytes: image.pixels!, count: Int(image.byte_count)), outputs: outputs,
             statistics: Statistics(fuelBudget: stats.fuel_budget, fuelRemaining: stats.fuel_remaining,
                 fuelUsed: stats.fuel_used, imageByteCount: stats.image_byte_count,
-                outputElementCount: stats.output_element_count))
+                outputElementCount: stats.output_element_count), resources: try readPartResources(result))
     }
 }

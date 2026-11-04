@@ -33,7 +33,7 @@ struct Checked {
     }
     void operator()(iprop_status_ex status) const { if (status != IPROP_EX_OK) throw ApiError(error, message); }
 };
-[[noreturn]] void throwJs(const std::string& message, const iprop_error_ex* detail = nullptr) {
+val errorResult(const std::string& message, const iprop_error_ex* detail = nullptr) {
     auto error = val::global("Error").new_(val("iprop: " + message));
     if (detail) {
         error.set("status", detail->status); error.set("reason", detail->reason); error.set("stage", detail->stage);
@@ -42,7 +42,7 @@ struct Checked {
         error.set("pc", detail->pc); error.set("debugLine", detail->debug_line);
         error.set("messageTruncated", detail->message_truncated != 0);
     }
-    error.throw_();
+    auto result = val::object(); result.set("__ipropError", error); return result;
 }
 bool hexDigit(char c, std::uint8_t& out) {
     if (c >= '0' && c <= '9') { out = static_cast<std::uint8_t>(c - '0'); return true; }
@@ -157,13 +157,15 @@ val generateWith(val fileBytes, u32 seed, u32 sizeX, u32 sizeY, val uniforms) {
         fuel.set("used", static_cast<double>(stats.fuel_used)); object.set("fuel", fuel);
         object.set("data", val(emscripten::typed_memory_view(g_rgba.size(), g_rgba.data())));
         return object;
-    } catch (const ApiError& error) { throwJs(error.what(), &error.detail); }
-      catch (const std::exception& error) { throwJs(error.what()); }
+    // Return normally through the WASM/C++ frames, including catch cleanup.
+    // module_api.js throws the owned JS Error only after this call completes.
+    } catch (const ApiError& error) { return errorResult(error.what(), &error.detail); }
+      catch (const std::exception& error) { return errorResult(error.what()); }
 }
 val generate(val fileBytes, u32 seed, u32 sizeX, u32 sizeY) {
     return generateWith(fileBytes, seed, sizeX, sizeY, val::undefined());
 }
 EMSCRIPTEN_BINDINGS(iprop) {
-    emscripten::function("generate", &generate);
-    emscripten::function("generate", &generateWith);
+    emscripten::function("_generate", &generate);
+    emscripten::function("_generate", &generateWith);
 }

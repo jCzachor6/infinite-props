@@ -52,12 +52,14 @@ set_target_properties(iprop_html5 PROPERTIES
     LINK_FLAGS "-sMODULARIZE=1 -sEXPORT_NAME=createIpropModule -sENVIRONMENT=web,worker,node")
 
 target_link_options(iprop_html5 PRIVATE
+    "--pre-js" "${CMAKE_CURRENT_SOURCE_DIR}/module_api.js"
     "-fexceptions"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=createIpropModule"
     "-sENVIRONMENT=web,worker,node"
     "-sALLOW_MEMORY_GROWTH=1"
     "-sNO_EXIT_RUNTIME=1")
+set_property(TARGET iprop_html5 APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/module_api.js")
 
 # Test executable only: validates the shared geometry representation on WASM
 # before its public constructor operations land. No extra embind export.

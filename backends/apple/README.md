@@ -1,9 +1,18 @@
 # Apple / Swift
 
-A Swift package over C API 0.4 / ABI 0.5 for macOS 12+ and iOS 15+.
+A Swift package over C API 0.5 / ABI 0.5 for macOS 12+ and iOS 15+.
 It provides typed inputs, metadata, owned RGBA/geometry/statistics results,
 structured errors and CGImage, SpriteKit and Metal helpers. It has no game
 dependencies. See the [shared binding contract](../../docs/native-bindings.md).
+
+Part slots have `kind == .part`, ordered `parts` snapshots and empty float
+`values`. Resolve nonzero `shapeResource`/`textureResource` IDs with
+`image.resource(id)` in the result's shared `resources` table. Geometry keeps
+ordered rings, parents and explicit hole indices; rasters keep exact A8/RGBA
+`Data`. All snapshot fields, original mappings and effective D4/translation
+follow the [typed C API contract](../../docs/c-api-part-outputs.md).
+Resources are copied once per ID and survive program close and later calls.
+Zero means an absent optional texture; `UInt32.max` is the raster region index.
 
 ## Build from source
 

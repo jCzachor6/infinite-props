@@ -6,6 +6,16 @@ Texture2D/Sprite helpers. Unity 2022.3+; native targets are macOS arm64/x86_64,
 Windows/Linux x86_64, Android and iOS arm64. WebGL uses the separate
 [HTML5/WASM backend](../html5/README.md).
 
+The native wrapper requires C API 0.5 / ABI 0.5 and negotiates typed part
+resources before loading. `OutputKind.Part` slots expose ordered `Parts` and
+empty float `Values`. `GeneratedImage.Resources` owns one copy per result-local
+ID; `image.Resource(id)` returns that shared object, or null for an invalid ID.
+Geometry keeps rings/parents/holes; raster `Data` preserves exact A8/RGBA.
+Snapshots expose every [typed C field](../../docs/c-api-part-outputs.md),
+including original mappings, effective D4, rounded translation and scales.
+Arrays survive disposal and later generations. Resource ID zero means no
+optional texture; `uint.MaxValue` is the raster shape's region index.
+
 ## Build and install
 
 From the repository root, build plugins for the platforms you need:

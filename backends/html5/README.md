@@ -89,17 +89,16 @@ const glow = iprop.generate(bytes, { seed: 26, uniforms: { v: 2, renderLayer: 1,
 ```
 
 `data` is a copied `Uint8Array` of RGBA pixels; `outputs` mirrors the desktop
-`GenerationResult` (points/rects/circles per named slot). The raw module
+`GenerationResult` (points/rects/circles/parts per named slot, with shared
+`resources`). The raw module
 function is `generate(fileBytes, seed, sizeX, sizeY[,
 uniforms])`.
 
 `fuel` contains the successful invocation's `budget`, `used` and `remaining`
-instruction counts, read directly from the VM. Wall-clock time is measured
+fuel units, read directly from the VM. Wall-clock time is measured
 by the host and is independent of these deterministic counts.
 
-## Notes
-
-### Typed part results
+## Typed part results
 
 Generation uses the same checked C API 0.5 implementation as native hosts.
 Every output has `index`, `owner`, `count` and an ordered `parts` array in
@@ -118,6 +117,8 @@ The public `Iprop` wrapper also owns its RGBA copy. Only the low-level module's
 RGBA view remains borrowed until the next call. No persisted result format
 is introduced. Checked errors additionally expose status/reason/stage and
 location fields.
+
+## Notes
 
 - The module is built with `MODULARIZE=1` and `ENVIRONMENT=web,node`, so the
   same build serves the demo page and the Node test runner.

@@ -1,5 +1,13 @@
 # Android / Kotlin
 
+The JNI/Kotlin wrapper requires C API 0.5 / ABI 0.5. `OutputKind.PART` exposes
+ordered `parts` with the complete [C snapshot](../../docs/c-api-part-outputs.md).
+`image.resource(id)` resolves nonzero IDs in the shared `resources` table;
+zero is an absent optional texture and `UInt.MAX_VALUE` denotes no region for
+a raster shape. Each resource owns one A8/RGBA byte array or ordered geometry
+rings with explicit holes. Original mappings, effective D4/translation, scales
+and float bits are preserved. Results survive close and later generation.
+
 A Kotlin API, JNI bridge and Android Bitmap adapter packaged as an AAR.
 The JNI bridge statically links the runtime and C API; generation works
 offline with compiled `.iprop` assets. See the

@@ -16,15 +16,16 @@ data class Input(val index: UInt, val name: String, val defaultValue: InputValue
 data class Metadata(val width: UInt, val height: UInt, val originX: Float, val originY: Float,
     val fuel: ULong, val emissionColor: Color?, val emissionOffsetX: Float,
     val emissionOffsetY: Float, val emissionRadius: Float, val containerFlags: UInt)
-enum class OutputKind { POINT, RECT, CIRCLE }
-data class Output(val index: UInt, val owner: UInt, val name: String, val kind: OutputKind,
-    val isList: Boolean, val count: UInt, val values: FloatArray)
+enum class OutputKind { POINT, RECT, CIRCLE, PART }
+data class Output @JvmOverloads constructor(val index: UInt, val owner: UInt, val name: String, val kind: OutputKind,
+    val isList: Boolean, val count: UInt, val values: FloatArray, val parts: List<PartSnapshot> = emptyList())
 data class Statistics(val fuelBudget: ULong, val fuelRemaining: ULong, val fuelUsed: ULong,
     val imageByteCount: ULong, val outputElementCount: ULong)
-data class GeneratedImage(val width: UInt, val height: UInt, val rowStride: ULong,
+data class GeneratedImage @JvmOverloads constructor(val width: UInt, val height: UInt, val rowStride: ULong,
     val pixelFormat: UInt, val alphaMode: UInt, val storageOrigin: UInt,
-    val rgba: ByteArray, val outputs: List<Output>, val statistics: Statistics) {
+    val rgba: ByteArray, val outputs: List<Output>, val statistics: Statistics, val resources: List<ResultResource> = emptyList()) {
     fun output(name: String, owner: UInt = 0u): Output? = outputs.firstOrNull { it.owner == owner && it.name == name }
+    fun resource(id: UInt): ResultResource? = if (id > 0u && id <= resources.size.toUInt()) resources[id.toInt() - 1] else null
 }
 
 class IpropException(message: String, val status: Int, val reason: Int, val stage: Int,
@@ -77,11 +78,12 @@ class Program(bytes: ByteArray) : AutoCloseable {
                     val slot = Native.outputInfo(result, index)
                     Output(index.toUInt(), slot[0].toUInt(), Native.outputName(result, index).toString(Charsets.UTF_8),
                         OutputKind.entries[slot[1].toInt()], slot[2] != 0L, slot[3].toUInt(),
-                        Native.outputValues(result, index).map { Float.fromBits(it) }.toFloatArray())
+                        if (slot[1] == 3L) floatArrayOf() else Native.outputValues(result, index).map { Float.fromBits(it) }.toFloatArray(),
+                        if (slot[1] == 3L) readParts(result, index, slot[3].toInt()) else emptyList())
                 }
                 return GeneratedImage(info[0].toUInt(), info[1].toUInt(), info[2].toULong(),
                     info[3].toUInt(), info[4].toUInt(), info[5].toUInt(), Native.pixels(result), outputs,
-                    Statistics(stats[0].toULong(), stats[1].toULong(), stats[2].toULong(), stats[3].toULong(), stats[4].toULong()))
+                    Statistics(stats[0].toULong(), stats[1].toULong(), stats[2].toULong(), stats[3].toULong(), stats[4].toULong()), readResources(result))
             } finally { Native.freeResult(result) }
         } finally { Native.end(handle) }
     }
@@ -113,4 +115,12 @@ internal object Native {
     external fun outputInfo(result: Long, index: Int): LongArray
     external fun outputName(result: Long, index: Int): ByteArray
     external fun outputValues(result: Long, index: Int): IntArray
+    external fun partInfo(result: Long, slot: Int, index: Int): LongArray
+    external fun resourceCount(result: Long): Int
+    external fun resourceInfo(result: Long, id: Int): LongArray
+    external fun resourcePixels(result: Long, id: Int): ByteArray
+    external fun ringInfo(result: Long, id: Int, ring: Int): LongArray
+    external fun ringVertices(result: Long, id: Int, ring: Int): IntArray
+    external fun regionInfo(result: Long, id: Int, region: Int): LongArray
+    external fun regionHoles(result: Long, id: Int, region: Int): IntArray
 }

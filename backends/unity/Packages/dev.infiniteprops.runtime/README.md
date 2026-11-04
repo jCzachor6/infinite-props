@@ -1,5 +1,10 @@
 # Infinite Props for Unity
 
+Typed part results require C API 0.5 / ABI 0.5. Part output slots expose
+`Parts`; each snapshot references the generated image's shared `Resources`
+table by result-local IDs. Rings, hole assignments, exact A8/RGBA and effective
+transforms remain available independently of program disposal and later calls.
+
 Import compiled `.iprop` files to create `IpropAsset` objects and previews.
 Use `asset.Load()` in a `using` block, then `program.Generate(seed)` to obtain
 owned RGBA pixels, geometry and statistics. `image.ToTexture2D()` and

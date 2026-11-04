@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–10 zakończone. Trwa etap 11: Python i publiczny HTML5/WASM udostępniają pełne typowane snapshoty i współdzielone zasoby przez C API 0.5 / ABI 0.5. Pozostałe bindingi i zbiorcza weryfikacja etapu 11 pozostają otwarte; raport etapu 10 jest zapisany w repozytorium.
+**Status:** etapy 00–10 zakończone. Trwa etap 11: Python, publiczny HTML5/WASM, Swift, C# i Kotlin/JNI udostępniają pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5. Godot, SFML i zbiorcza weryfikacja etapu 11 pozostają otwarte.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -687,9 +687,9 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 - [x] 11.1a Python: pełne snapshoty, jedna kopia zasobu na ID, obwody/dziury, dokładne A8/RGBA, automatyczna negocjacja typed generation i niezależny lifetime.
 - [x] 11.1b HTML5/WASM: publiczny binding korzysta ze wspólnej implementacji checked C API; pełne snapshoty/zasoby, stare valueBits, owner/index/count, błędy i niezależny lifetime.
-- [ ] 11.1c Apple.
-- [ ] 11.1d Unity/C#.
-- [ ] 11.1e Android/JNI/Kotlin.
+- [x] 11.1c Apple: pełne własne rekordy i zasoby w Swift; zbudowany XCFramework macOS/iOS/symulator, rzeczywiste testy Swift/CGImage na macOS.
+- [x] 11.1d Unity/C#: pełne rekordy i wspólna tabela zasobów w produkcyjnym wrapperze C#; runtime .NET z rzeczywistym C API na macOS.
+- [x] 11.1e Android/JNI/Kotlin: pełny most typów/zasobów i lifetime; rzeczywiste wywołania JNI z JVM i CheckJNI. Test urządzenia/emulatora pozostaje osobną pozycją macierzy 11.4.
 - [ ] 11.1f Godot.
 - [ ] 11.1g SFML.
 
@@ -697,7 +697,11 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **11.1b (2026-11-04):** 11.1a opublikowano jako `2e74eef`. Publiczny WASM przechodzi 23 wspólne sceny oraz **604 kompletne obserwacje** zgodne z C++/checked C API i sondą WASM (1812 pełnych obserwacji łącznie, 604 pary native/WASM). Każdy wynik sprawdzono ponownie po kolejnej generacji; eksport zachowuje pełną geometrię, dziury, A8/RGBA, mappingi i bity metadanych. Przechodzi 512 przypadków macierzy, 28 IPA/IPDIS, 7 formatter round-trip, 7 trapów i 30 mutacji bytecode. Legacy CLI JSON nadal odrzuca 57 nowych programów; publiczny binding obsługuje je, a 37 błędnych programów/generacji odrzuca z checked statusem. Siedem wcześniejszych pinów bez zmian. Nie dodano formatu zapisu wyniku.
 
-**Weryfikacja:** Python i publiczny WASM wykonane lokalnie; pozostałe hosty oczekują na zakończenie. Pełna macierz powstanie w 11.4.
+**11.1c–e (2026-11-04):** 11.1b opublikowano jako `b6be993`. Swift, produkcyjny C# oraz Kotlin/JNI porównują wszystkie pola w 23 wspólnych scenach C++/C, także po kolejnej generacji i zwolnieniu programu. Każdy z tych hostów odtworzył **21 829** przypadków wspólnego korpusu (`e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919`) bez różnicy RGBA/wyjść. Swift: siedem testów, sześć przechodzi, opcjonalny Metal pominięty z powodu braku urządzenia; CGImage przechodzi. XCFramework zbudowany dla macOS arm64/x86_64, iOS arm64 i symulatora arm64/x86_64. C# sprawdzony z .NET 8, JNI z Kotlin 2.2.10/JVM i CheckJNI; nie są to testy Unity Editor ani urządzenia Android. Python z Pillow przechodzi wszystkie siedem testów oraz ten sam korpus z kontrolami negatywnymi.
+
+**11.2 — obsługa błędów WASM:** pełny wcześniejszy gate ujawnił uszkodzenie granicy po wielu błędnych generacjach. C++ zwraca teraz błąd przez prywatny most i kończy sprzątanie przed rzuceniem JS Error; publiczne `Module.generate` i `Iprop.generate` nadal rzucają wyjątki. Sprawdzono 3000 kolejnych błędów i callback inicjalizacji; stały gate obejmuje 2048 błędów i poprawny wynik po nich. Cały gate native/WASM przechodzi, w tym 604 pełne publiczne porównania części. Wspólny korpus uwzględnia kind/count części z zerem liści float; pełne dane części weryfikuje osobny wspólny gate 23 scen, bez nowego formatu produktu.
+
+**Weryfikacja:** pięć hostów wykonanych lokalnie w podanym zakresie; Godot i SFML oczekują na zakończenie. Pełna macierz powstanie w 11.4.
 
 ### Etap 12 — niezależne limity pracy i przerywanie
 
