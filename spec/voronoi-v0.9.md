@@ -1,5 +1,9 @@
 # Bounded Voronoi — 0.9 stage 05
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 This additive develop contract implements §4.2 of the 0.9 plan. Product and
 source-language versions remain 0.8.0 until release. The unversioned `.iprop`
 header, old section IDs, old opcodes and old results remain unchanged.

@@ -2,6 +2,7 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),crypto=require("node:crypto");
 const {execFileSync,spawnSync}=require("node:child_process");
 const reference=require("../../../tests/reference/voronoi-reference.js");
+const {sections}=require("./sampler-conformance.js");
 const repo=path.resolve(__dirname,"../../.."),fixturePath=path.join(repo,"tests/fixtures/voronoi-v0.9.json");
 const digest=v=>crypto.createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const vec=v=>"{"+v.join(",")+"}";
@@ -64,7 +65,12 @@ function run(iprop,tool,directory,probes={}){
         const maximum=cases.find(c=>c.name==="maximum-grid");
         const explicitMaximum={...maximum,sites:reference.sites(maximum)};
         assert.equal(digest(generate(compile(source(explicitMaximum))).slice(0,2)),maximum.public_sha256,"256 explicit sites use the same complete diagram");
-        for(const c of cases.filter(c=>c.budget))reject(compile(source(c)),/fuel exhausted/);
+        for(const c of cases.filter(c=>c.budget)) {
+            const bytes=compile(source(c),["--no-compress"]);
+            const spent=JSON.parse(nativeRun("ipgen",[base+".iprop","-o",base+".png"])).fuel.spent;
+            bytes.writeBigUInt64LE(BigInt(spent-1),sections(bytes).get(1)+16);
+            reject(bytes,/fuel exhausted/);
+        }
         for(const [call,message] of [
             ["voronoi({0,0},{1,1},0,0)",/count must be in/],["voronoi({0,0},{1,1},257,0)",/count must be in/],
             ["voronoi({0,0},{0,1},1,0)",/rectangle/],["voronoi({0,0},{1,1},[{0,0},{0,0}])",/distinct/],
@@ -81,7 +87,7 @@ function run(iprop,tool,directory,probes={}){
             reject(compile(`asset t{size 1x1 draw{if(false){${text}} ${type==="sites"?"voronoi({0,0},{1,1},d)":`diagram.${type}(d${type==="count"?"":",0"})`}}}`),/unassigned/);
         }
         const dead=assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nvoronoi\ndrop\nendfn\n");
-        const {sections}=require("./sampler-conformance.js"),code=sections(dead).get(3);
+        const code=sections(dead).get(3);
         // Locate a complete instruction by decoding the disassembler's sole
         // 0xe5 record after the function header (not an arbitrary global byte).
         let at=-1;for(let i=code;i<dead.length-3;++i)if(dead[i]===0xe5&&dead[i+1]===0&&dead[i+2]===0&&dead[i+3]===0){at=i;break;}assert(at>=0);

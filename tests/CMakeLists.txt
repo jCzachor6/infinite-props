@@ -10,6 +10,7 @@ if(IPROP_FETCH_DEPS)
 endif()
 
 add_executable(iprop_tests
+    fuel_tariff_test.cpp
     smoke_test.cpp
     dynamic_parts_test.cpp
     part_outputs_test.cpp

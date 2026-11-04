@@ -1,5 +1,9 @@
 # Noise extensions for 0.9
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 **Status:** implemented stage 02 contract on `develop`; the frozen
 [0.8 specification](iprop-v0.8.md) remains unchanged. These additions will
 be incorporated into the full 0.9 specification before release.

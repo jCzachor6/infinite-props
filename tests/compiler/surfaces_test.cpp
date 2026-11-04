@@ -160,7 +160,7 @@ TEST_CASE("surface buffers share storage and quota and fuel preflight precede wo
     const auto original=ex.target.buffer;
     ex.beginLayer(2,0);
     const auto buffer=ex.target.buffer;
-    CHECK(buffer!=original);CHECK(ex.resources.bytes==144);CHECK(ex.fuel==96);
+    CHECK(buffer!=original);CHECK(ex.resources.bytes==144);CHECK(ex.fuel==97);
     CHECK(ex.canvas().scaleX==0.5f);CHECK(ex.canvas().scaleY==2.f);
     detail::compositePixel(ex,1,1,{146,156,168,255});ex.closeLayers(0);
     const auto image=std::get<LayerValue>(ex.frame().locals[2]);
@@ -170,11 +170,11 @@ TEST_CASE("surface buffers share storage and quota and fuel preflight precede wo
     ex.push(ex.frame().locals[0]);ex.leaveFrame();
     CHECK(std::get<LayerValue>(ex.peek()).buffer==image.buffer);
     CHECK(detail::stepSurfaces(ex,{Opcode::SurfacePaint,0,0}));
-    CHECK(ex.canvas().at(1,1)==Color{146,156,168,255});CHECK(ex.resources.bytes==144);CHECK(ex.fuel==92);CHECK(ex.frame().stream==26);
+    CHECK(ex.canvas().at(1,1)==Color{146,156,168,255});CHECK(ex.resources.bytes==144);CHECK(ex.fuel==93);CHECK(ex.frame().stream==26);
     auto view=image;view.mapping={*D4Transform::fromKind(1),{1,0}};
     CHECK(view.buffer==image.buffer);CHECK(ex.resources.bytes==144);
     detail::Execution limited(file);limited.target=RenderTarget::create(2,2,{1,1});limited.frames.push_back({});
-    limited.frame().locals={i32{0},i32{0},LayerValue{}};limited.fuel=3;
+    limited.frame().locals={i32{0},i32{0},LayerValue{}};limited.fuel=2;
     CHECK_THROWS_AS(limited.beginLayer(2,0),Trap);CHECK(limited.resources.bytes==0);CHECK(limited.layerScopes.empty());
     limited.fuel=100;limited.resources.bytes=kMaxGenerationData-143;
     CHECK_THROWS_AS(limited.beginLayer(2,0),Trap);CHECK(limited.resources.bytes==kMaxGenerationData-143);CHECK(limited.layerScopes.empty());

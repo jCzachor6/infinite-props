@@ -1,5 +1,9 @@
 # Gaps and bevels — 0.9 implementation contract
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 Stage 08 builds on [regions](regions-v0.9.md). Product/source version and C ABI
 remain unchanged until the release integration stage. New opcode values are
 append-only, with zero aux and operand, checked even in unreachable code.

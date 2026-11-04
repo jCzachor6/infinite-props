@@ -123,6 +123,17 @@ Distribution Execution::popDistribution() {
 }
 
 void Execution::spend(u64 cost) {
+    if (fuelRate != 100) {
+        if (cost > UINT64_MAX - fuelUnits) trap("fuel exhausted", ErrorReason::FuelExhausted);
+        fuelUnits += cost;
+        const auto total = fuelScaled(fuelUnits, fuelRate);
+        cost = total - fuelPaid;
+        fuelPaid = total;
+    }
+    spendRaw(cost);
+}
+
+void Execution::spendRaw(u64 cost) {
     if (cost > fuel) {
         trap("fuel exhausted", ErrorReason::FuelExhausted);
     }
@@ -470,8 +481,9 @@ void VM::run() {
             continue;
         }
         const auto ins = decodeInstruction(fn.code.subspan(frame.ip * 4, 4));
-        // 1 unit per instruction; composite canvas ops charge their visit
-        // counts themselves, up front (spec §8.3).
+        // Include dispatch in the whole-operation tariff. Every bounded
+        // reservation pays only the increase of the rounded cumulative cost.
+        ex.beginInstruction(ins.opcode);
         ex.spend(1);
         if (!detail::dispatch(ex, ins)) {
             ex.trap("reserved opcode", ErrorReason::RuntimeViolation);

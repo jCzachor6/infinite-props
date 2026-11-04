@@ -1,5 +1,9 @@
 # Dynamic parts — 0.9 implementation contract
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 Stage 09 adds runtime instances over the immutable [geometry](geometry-core-v0.9.md)
 and existing A8/RGBA8 buffers. Exported snapshots and host result APIs belong to
 stage 10. No output kind, C ABI, header reserved field or product version changes.

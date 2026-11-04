@@ -221,7 +221,7 @@ TEST_CASE("curve fuel charges the complete control box before drawing") {
     const auto loaded = loadFile(bytes);
     VM vm(loaded, {});
     vm.run();
-    REQUIRE(vm.fuelBudget() - vm.fuel() == 33);
+    REQUIRE(vm.fuelBudget() - vm.fuel() == 28); // eleven arguments + ceil(22 * .75)
     Prog huge;
     huge.F(-1000.f).F(-1000.f).emit(0x5B).F(0.f).F(0.f).emit(0x5B)
         .F(1000.f).F(1000.f).emit(0x5B).F(1.f).C({255, 0, 0, 255}).emit(0x86);
@@ -358,7 +358,7 @@ TEST_CASE("fuel costs match the §11 visit formulas") {
         VM vm(loaded, {});
         vm.run();
         // 6 const.f32 + 1 const.color + 1 poly(1+25) + implicit end.
-        REQUIRE(vm.fuel() == 100000 - (6 + 1 + 26));
+        REQUIRE(vm.fuel() == 100000 - (6 + 1 + 20)); // ceil(26 * .75)
     }
     // weather on the 8x8 canvas: 1 + 64 visits.
     {

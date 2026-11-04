@@ -15,7 +15,7 @@
       "parts": 6,
       "resources": 3,
       "semantic_sha256": "2242c0fa944d5f350761e640b8f776058bf67da93fb8ed37aa7c42d9c648ccb7",
-      "default_fuel_used": 3926
+      "default_fuel_used": 1067
     },
     {
       "name": "resource-limit",
@@ -29,7 +29,7 @@
       "parts": 256,
       "resources": 512,
       "semantic_sha256": "d64da05e4323c9654ab781778bc6e6865e788bc3c10426758258339e314b8a4d",
-      "default_fuel_used": 8461
+      "default_fuel_used": 8205
     },
     {
       "name": "empty",
@@ -57,7 +57,7 @@
       "parts": 5,
       "resources": 2,
       "semantic_sha256": "c0c66a1df3e3eb2b2b84ef7c629b18c53bad945b11d84448954de3e54bb9ab26",
-      "default_fuel_used": 1076
+      "default_fuel_used": 404
     },
     {
       "name": "render-order",
@@ -71,7 +71,7 @@
       "parts": 3,
       "resources": 1,
       "semantic_sha256": "bb6af3f255d4897632286d76df7591f2a0498d0928ecf5fad67add7d7ac7281f",
-      "default_fuel_used": 119
+      "default_fuel_used": 68
     },
     {
       "name": "mapped-raster",
@@ -85,7 +85,7 @@
       "parts": 5,
       "resources": 2,
       "semantic_sha256": "87b35ebb12e571853188cebe648673d1f35046068f01d3017278471bd6134f3f",
-      "default_fuel_used": 1785
+      "default_fuel_used": 766
     },
     {
       "name": "shared-regions",
@@ -99,7 +99,7 @@
       "parts": 3,
       "resources": 1,
       "semantic_sha256": "8cc1f9eae0a3123c12a9d91691d77447aac33ffe40946e409690ea1ee55a5b5a",
-      "default_fuel_used": 1673
+      "default_fuel_used": 412
     }
   ]
 }

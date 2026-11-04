@@ -210,13 +210,17 @@ TEST_CASE("sampler arena sharing and batch preflight preserve RNG and publish no
     trapped(ex,1,handle,ErrorReason::OutOfMemory);
     ex.resources.bytes = 0; ex.fuel = 2;
     trapped(ex,3,handle,ErrorReason::FuelExhausted);
-    // A later fuel trap during draws keeps all partial elements private.
-    ex.fuel = 3;
-    trapped(ex,3,handle,ErrorReason::FuelExhausted);
-    ex.frame().stack.clear(); ex.fuel=4;ex.push(handle);ex.push(i32{3});
+    // Scalar batches now cost exactly one per element. Vec2 interpolation
+    // still has its own cost; failure after a private element never publishes.
+    const auto vectorType = ValueType::sampler(ValueType::Vec2);
+    file.collections.types[0] = vectorType;
+    auto data = std::make_shared<CapturedRangeData>();
+    data->type = vectorType; data->mode = SamplerMode::Uniform;
+    data->lower = Vec2{0,0}; data->upper = Vec2{1,1};
+    ex.frame().stack.clear(); ex.fuel=4;ex.push(SamplerValue{vectorType,data});ex.push(i32{3});
     const auto before=ex.frame().stream;
     CHECK_THROWS_AS(detail::stepSamplers(ex,{Opcode::SamplerPickList,0,0}),Trap);
-    CHECK(ex.frame().stream==before+0x9e3779b9u);
+    CHECK(ex.frame().stream==before+2u*0x9e3779b9u);
     CHECK(ex.frame().stack.empty());
     CHECK(ex.resources.lists.size()==1); // only the earlier successful empty list
 }

@@ -76,7 +76,7 @@ MaskBounds boundsFromEdges(Execution& ex, i64 left, i64 top, i64 right, i64 bott
         static_cast<u32>(right - left), static_cast<u32>(bottom - top)};
 }
 
-std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bounds, u64 samples) {
+std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bounds, u64 samples, u8 initial = 0) {
     const u64 count = static_cast<u64>(bounds.width) * bounds.height;
     if (samples && count > std::numeric_limits<u64>::max() / samples)
         ex.trap("fuel exhausted", ErrorReason::FuelExhausted);
@@ -90,7 +90,7 @@ std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bound
     buffer->raster.height = bounds.height;
     buffer->raster.scaleX = ex.canvas().scaleX;
     buffer->raster.scaleY = ex.canvas().scaleY;
-    initializeWork(buffer->coverage, static_cast<std::size_t>(count), u8{0}, *ex.workBudget);
+    initializeWork(buffer->coverage, static_cast<std::size_t>(count), initial, *ex.workBudget);
     return buffer;
 }
 
@@ -133,9 +133,8 @@ MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 freque
     const auto bounds = boundsFromEdges(ex, left, top,
         std::max(left + 1, edge(end.x, scale.x, true)), std::max(top + 1, edge(end.y, scale.y, true)));
     const auto mode = static_cast<NoiseMode>(kind);
-    // Existing conservative fuel units: four lattice corners per value/gradient
-    // octave, 25 candidates per Worley scan, eight inner warp octaves. The
-    // stage-12 work guard is independent; tariff calibration remains stage 13.
+    // Kernel units before the single whole-operation tariff: four lattice
+    // corners per octave, 25 Worley candidates, eight inner warp octaves.
     const u64 samples = mode == NoiseMode::Cell || mode == NoiseMode::CellEdge ? 25u :
         (mode == NoiseMode::Fbm || mode == NoiseMode::Ridge ? 4u * static_cast<u64>(octaves) : 4u);
     auto buffer = createMask(ex, bounds, 1u + samples + (warpAmount == 0.f ? 0u : 32u));
@@ -201,7 +200,42 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
         halfWidths[static_cast<std::size_t>(radius - dy)] = horizontal;
         samples += static_cast<u64>(2 * horizontal + 1) * (dy ? 2u : 1u);
     }
-    auto buffer = createMask(ex, bounds, samples);
+    const bool vanishes = !expand && (bounds.width <= static_cast<u32>(2 * radius) ||
+        bounds.height <= static_cast<u32>(2 * radius));
+    auto buffer = createMask(ex, bounds, samples, expand || vanishes || radius > 1 ? 0 : 255);
+    if (vanishes) return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
+    if (radius > 1) {
+        // A disk is the union of horizontal intervals. A monotone deque finds
+        // each interval's exact max/min in linear time; combine its rows using
+        // integer max/min. No approximation, extra raster or changed A8 bits.
+        struct Entry { i64 position; u8 value; };
+        std::array<Entry, 2 * kMaxMaskRadius + 1> queue{};
+        const ResourceReservation scratch(ex.resources, sizeof(queue) + sizeof(halfWidths));
+        // Erosion's radius-wide border is zero even before reading the source.
+        const auto border = expand ? 0u : static_cast<u32>(radius);
+        for (i32 dy = -radius; dy <= radius; ++dy) {
+            const auto half = halfWidths[static_cast<std::size_t>(radius + dy)];
+            for (u32 y = border; y < bounds.height - border; ++y) {
+                ex.work();
+                u64 head = 0, tail = 0;
+                for (i64 x = static_cast<i64>(border) - half; x < static_cast<i64>(bounds.width - border) + half; ++x) {
+                    ex.work();
+                    while (head != tail && queue[head % queue.size()].position < x - 2 * half) { ex.work(); ++head; }
+                    const auto value = maskCoverage(mask, static_cast<i64>(bounds.x) + x,
+                        static_cast<i64>(bounds.y) + y + dy);
+                    while (head != tail && (expand ? value >= queue[(tail - 1) % queue.size()].value :
+                            value <= queue[(tail - 1) % queue.size()].value)) { ex.work(); --tail; }
+                    queue[tail++ % queue.size()] = {x, value};
+                    if (x >= static_cast<i64>(border) + half) {
+                        auto& output = buffer->coverage[static_cast<std::size_t>(y) * bounds.width + static_cast<std::size_t>(x - half)];
+                        const auto extreme = queue[head % queue.size()].value;
+                        output = dy == -radius ? extreme : expand ? std::max(output, extreme) : std::min(output, extreme);
+                    }
+                }
+            }
+        }
+        return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
+    }
     for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
         ex.work();
         u8 result = expand ? 0 : 255;
@@ -243,7 +277,7 @@ void Execution::beginClip() {
 }
 
 u8 clipCoverage(Execution& ex, i32 x, i32 y) {
-    ex.spend(ex.target.clips.size());
+    ex.spendRaw(ex.target.clips.size());
     u8 coverage = 255;
     for (const auto& mask : ex.target.clips)
         { ex.work(); coverage = multiplyCoverage(coverage, maskCoverage(mask, x, y)); }

@@ -151,7 +151,8 @@ function run(iprop,tool,directory,probes={}) {
         const unassigned=assemble('meta: size=1x1\noutput: list part pieces\ntypes: part2d\nfn draw ( ) -> ( ):\nlocals: part2d\nlocal.get 0\nout.list.part pieces\nendfn\n');
         reject(unassigned,/3000:/);
         const fuel=compile(fs.readFileSync(path.join(fixtures,'part-exports-order.ips'),'utf8'));
-        const fuelCopy=Buffer.from(fuel);fuelCopy.writeBigUInt64LE(118n,sections(fuel).get(1)+16);reject(fuelCopy,/3001:/);
+        const fuelCopy=Buffer.from(fuel),cost=pins.cases.find(c=>c.source.endsWith('part-exports-order.ips')).default_fuel_used;
+        fuelCopy.writeBigUInt64LE(BigInt(cost-1),sections(fuel).get(1)+16);reject(fuelCopy,/3001:/);
 
         const plain=compile(fs.readFileSync(path.join(repo,'backends/capi/test/part-output-values.ips'),'utf8'),configs[0]);
         const meta=sections(plain).get(1),first=meta+36,code=instructions(plain),appends=code.filter(at=>plain[at]===0x69);

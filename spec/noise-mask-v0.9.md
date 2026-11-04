@@ -1,5 +1,9 @@
 # Direct noise masks (0.9, stage 03)
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 This development extension adds standard A8 masks on top of the frozen
 [0.8 contract](iprop-v0.8.md) and [scalar 0.9 kernels](noise-v0.9.md).
 It does not change the product version, header, existing IDs or scalar results.

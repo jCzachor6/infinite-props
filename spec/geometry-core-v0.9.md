@@ -1,5 +1,9 @@
 # Geometry core, handles and ownership for 0.9
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 **Status:** stage 04 contract on `develop`; product/source-language/API versions
 remain at their released values until stage 14. No new geometry constructor,
 rendering opcode, host output kind, section, or C ABI layout is introduced here.

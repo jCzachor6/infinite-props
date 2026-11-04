@@ -68,3 +68,47 @@ also requires the current WASM build and golden test assets as described in
 [the HTML5 backend](../../backends/html5/README.md). It runs the same frozen
 0.8 gate alongside the existing conformance suites. Neither runner has an
 option to overwrite the frozen reference.
+
+## Final 0.9 tariff and pipeline comparison
+
+The normative rates and minimum-price exceptions are in
+[the runtime tariff](../../spec/fuel-v0.9.md). Reuse the 141-case capture above
+to compare every old operation's **whole** native charge with 0.8; setup and
+caller instructions remain separate. Preserve the old benchmark/tools before
+rebuilding when also comparing new 0.9 generators with their interim prices.
+
+```sh
+python3 benchmarks/operations/tariff.py --before /tmp/old-build --after build-perf --output build-perf/tariff --iterations 3
+```
+
+This adds 300 pipeline cases: manual gradient-noise/pixel sampling, direct
+noise masks, contour/region raster, figures, and dynamic parts, each at
+64²/128²/256² and seeds 0–19. The manual and direct-mask paths must match every
+RGBA byte. Contours simplify at 0.5 pixels and use 4×4 coverage; parts preserve
+that geometry. The figure proxy uses equal-area circles at region centroids,
+so it intentionally loses shape and holes. Report its measured pixel error,
+not a claim of equivalent quality or a fuel target achieved at equal quality.
+All five paths include their complete setup/geometry cost.
+
+Another 102 cases cover radius 0/1/4/16/64, layer/mask blur at six sigma values,
+both paint modes with zero/partial/full alpha and off-target mapped sources,
+Gaussian sampler/stepper counts 0/1/16/256, single/batched parts over
+36/128/256 regions, site/relaxation and octave/warp sweeps, and 21 shared
+generation kernels. Output/RNG metadata and every RGBA byte must match the
+old runtime; timings never excuse a semantic difference.
+
+The same uncompressed binary runs alternately before/after, with one warmup
+and three recorded samples, one generation per sample. Process CPU, wall time,
+fuel, deterministic work, requested C++ peak and allocation traffic are saved
+in `results.json.gz`, with sources/tool hashes and exact fixture sources.
+The allocation-counter scope is the same as above. Explicit **1B test fuel and
+work limits** let the slow old morphology finish; production defaults remain
+5M/100M and are verified separately. `--group` supports focused reproduction.
+The benchmark executable also accepts optional seed, batch, work-limit and
+warmup arguments; its original two-argument protocol remains unchanged.
+
+The stage-13 report under `spec/verification/fuel-v0.9.json` also retains ten
+new scalar noise comparisons and the exhaustive 1–256 random-site sweep for
+20 seeds. Their small drivers are embedded in the compressed scalar capture;
+all raw captures include tool/source identities. The batch gate requires the
+complete 36/128/256-part workflow, including `parts.get`, to beat single creation.

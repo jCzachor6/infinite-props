@@ -46,7 +46,7 @@ void release(void* value) noexcept {
     std::free(header->base);
 }
 using Clock = std::chrono::steady_clock;
-struct Sample { double wallNs, cpuNs; Counter memory; iprop::u64 fuel, hash; };
+struct Sample { double wallNs, cpuNs; Counter memory; iprop::u64 fuel, hash, work; };
 template<class Function> Sample measure(Function&& function) {
     counter = {}; ++epoch;
     const auto cpuStart = std::clock();
@@ -59,7 +59,7 @@ template<class Function> Sample measure(Function&& function) {
     if (cpuStart == std::clock_t(-1) || cpuEnd == std::clock_t(-1))
         throw std::runtime_error("process CPU clock unavailable");
     return {std::chrono::duration<double, std::nano>(end - start).count(),
-        double(cpuEnd - cpuStart) * 1e9 / CLOCKS_PER_SEC, counter, 0, 0};
+        double(cpuEnd - cpuStart) * 1e9 / CLOCKS_PER_SEC, counter, 0, 0, 0};
 }
 iprop::u64 hashImage(const iprop::Canvas& image) {
     iprop::u64 hash = 14695981039346656037ull;
@@ -83,12 +83,24 @@ void operator delete(void* p, std::size_t, std::align_val_t) noexcept { release(
 void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { release(p); }
 
 int main(int argc, char** argv) {
-    if (argc != 3) { std::cerr << "usage: operations-benchmark file.iprop iterations\n"; return 2; }
+    if (argc < 3 || argc > 7) {
+        std::cerr << "usage: operations-benchmark file.iprop iterations [seed [batch [work-limit [warmup]]]]\n";
+        return 2;
+    }
     unsigned iterations = 0;
     const std::string_view count(argv[2]);
     const auto parsed = std::from_chars(count.data(), count.data() + count.size(), iterations);
     if (parsed.ec != std::errc{} || parsed.ptr != count.data() + count.size() || iterations == 0 || iterations > 10000)
         return 2;
+    iprop::u64 options[]{7, 16, 0, 3};
+    for (int i = 3; i < argc; ++i) {
+        const std::string_view argument(argv[i]);
+        const auto value = std::from_chars(argument.data(), argument.data() + argument.size(), options[i - 3]);
+        if (value.ec != std::errc{} || value.ptr != argument.data() + argument.size()) return 2;
+    }
+    if (options[0] > UINT32_MAX || !options[1] || options[1] > 256 || options[3] > 100) return 2;
+    const auto seed = static_cast<iprop::u32>(options[0]);
+    const auto batch = static_cast<unsigned>(options[1]), warmup = static_cast<unsigned>(options[3]);
     try {
         const auto control = measure([] {
             void* first = ::operator new(4096);
@@ -106,22 +118,23 @@ int main(int argc, char** argv) {
         const auto file = iprop::loadFile(bytes);
         iprop::validate(file);
         std::vector<Sample> samples(iterations);
-        constexpr unsigned warmup = 3;
         // std::clock can have a 1 us quantum. Amortize it across identical
         // generations, so inexpensive operations do not report zero CPU.
-        constexpr unsigned batch = 16;
         for (unsigned i = 0; i < iterations + warmup; ++i) {
             iprop::GenerationResult result;
-            iprop::u64 fuel = 0;
+            iprop::u64 fuel = 0, work = 0;
             auto sample = measure([&] {
                 for (unsigned generation = 0; generation < batch; ++generation) {
                     result = {};
-                    iprop::VM vm(file, iprop::GenerationInputs{7, 0, 0, {}});
+                    iprop::GenerationInputs inputs{seed, 0, 0, {}};
+                    inputs.limits.workLimit = options[2];
+                    iprop::VM vm(file, inputs);
                     vm.run();
                     const auto spent = vm.fuelBudget() - vm.fuel();
                     if (generation && spent != fuel) throw std::runtime_error("fuel changed within a sample");
                     fuel = spent;
                     result = vm.takeResult();
+                    work = vm.workBudget() - vm.work();
                 }
             });
             sample.wallNs /= batch; sample.cpuNs /= batch;
@@ -129,11 +142,13 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("allocation traffic changed within a sample");
             sample.memory.calls /= batch; sample.memory.bytes /= batch;
             sample.fuel = fuel;
+            sample.work = work;
             sample.hash = hashImage(result.image); // outside measured CPU/memory
             if (i >= warmup) samples[i - warmup] = sample;
         }
         std::cout << std::setprecision(17) << "{\"schema_version\":1,\"warmup\":" << warmup
-                  << ",\"seed\":7,\"generations_per_sample\":" << batch << ",\"cpu_clock_ticks_per_second\":" << CLOCKS_PER_SEC
+                  << ",\"seed\":" << seed << ",\"work_limit\":" << options[2]
+                  << ",\"generations_per_sample\":" << batch << ",\"cpu_clock_ticks_per_second\":" << CLOCKS_PER_SEC
                   << ",\"iterations\":" << iterations << ",\"samples\":[";
         for (std::size_t i = 0; i < samples.size(); ++i) {
             if (i) std::cout << ',';
@@ -141,7 +156,8 @@ int main(int argc, char** argv) {
             std::cout << "{\"wall_ns\":" << s.wallNs << ",\"cpu_ns\":" << s.cpuNs
                       << ",\"cpp_new_calls\":" << s.memory.calls << ",\"cpp_requested_bytes\":" << s.memory.bytes
                       << ",\"cpp_peak_live_bytes\":" << s.memory.peak << ",\"cpp_live_at_return_bytes\":" << s.memory.live
-                      << ",\"fuel_total\":" << s.fuel << ",\"rgba_fnv1a64\":\"" << std::hex << s.hash << std::dec << "\"}";
+                      << ",\"fuel_total\":" << s.fuel << ",\"work_total\":" << s.work
+                      << ",\"rgba_fnv1a64\":\"" << std::hex << s.hash << std::dec << "\"}";
         }
         std::cout << "]}\n";
     } catch (const std::exception& error) { std::cerr << error.what() << '\n'; return 1; }

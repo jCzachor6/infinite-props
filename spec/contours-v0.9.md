@@ -1,5 +1,9 @@
 # Mask contours — 0.9 stage 06
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 This additive develop contract implements §4.3 of the 0.9 plan over the
 [shared geometry store](geometry-core-v0.9.md). Product and source versions
 remain 0.8.0. Regions, rendering and dynamic parts follow in later stages.

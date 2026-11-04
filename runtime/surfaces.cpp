@@ -93,7 +93,7 @@ void Execution::beginLayer(u16 local, u8 mode) {
         trap("surface scope depth exceeds 32", ErrorReason::RuntimeViolation);
     const auto width = canvas().width, height = canvas().height;
     const Vec2 scale{canvas().scaleX, canvas().scaleY};
-    spend(static_cast<u64>(width) * height);
+    spend(fuelScaled(static_cast<u64>(width) * height, 70));
     allocateResource(surfaceBytes(width, height));
     // Like a part canvas, a capture starts without the parent's clips: they
     // apply exactly once, when the snapshot is painted.

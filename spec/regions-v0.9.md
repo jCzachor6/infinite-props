@@ -1,5 +1,9 @@
 # Regions, offsets and raster masks for 0.9
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 **Status:** stage 07 completed on `develop`. The product and language versions
 remain 0.8.0, and the language-description protocol remains schema 5.
 Existing instruction, type, section and output IDs remain unchanged.

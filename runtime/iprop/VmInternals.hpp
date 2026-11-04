@@ -13,6 +13,7 @@
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
 #include "iprop/ExecutionLimits.hpp"
+#include "iprop/FuelTariff.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -103,6 +104,8 @@ struct Execution {
     RenderTarget rootTarget; // preserves the existing failed-run canvas tooling hook
     u64 budget = 0;
     u64 fuel = 0;
+    u64 fuelUnits = 0, fuelPaid = 0;
+    u8 fuelRate = 100;
     std::shared_ptr<WorkBudget> workBudget = std::make_shared<WorkBudget>();
     std::vector<Frame> frames;
     // Snapshot before dispatch: call/part operations may advance the frame PC
@@ -173,6 +176,8 @@ struct Execution {
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
+    void spendRaw(u64 cost);
+    void beginInstruction(Opcode op) { fuelRate = fuelPercent(op); fuelUnits = fuelPaid = 0; }
     void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
     void checkpoint() const { workBudget->checkpoint(); }
 

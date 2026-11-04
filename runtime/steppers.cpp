@@ -20,7 +20,7 @@ double position(Execution& ex, const StepperData& data, double lo, double hi, do
 
 Value stepValue(Execution& ex, const StepperData& data, double t) {
     if (data.mode == SamplerMode::Constant) return data.lower;
-    ex.spend(1);
+    // The batch's one unit per stored element includes this scalar step.
     const auto item = data.type.item();
     if (item == ValueType::I32)
         return math::roundRangeInt(position(ex, data, std::get<i32>(data.lower), std::get<i32>(data.upper), t));

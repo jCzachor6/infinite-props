@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–11 zakończone. Wszystkie siedem bindingów udostępnia pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5; raport etapu 11 zawiera wykonaną macierz i ograniczenia platform. Etapy 12–14 pozostają otwarte.
+**Status:** etapy 00–13 zakończone. Wszystkie siedem bindingów korzysta ze wspólnego C API 0.6 / ABI 0.5. Etapy 14–15 pozostają otwarte.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -456,7 +456,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 ## 8. Zasady realizacji, odhaczania i publikacji
 
-- Kroki realizować na `develop` w poniższej kolejności. Podpunkty są jednostkami pracy; większy etap może mieć kilka spójnych commitów. Nie odkładać całego kodu i checklisty do jednego końcowego commitu.
+- Kroki realizować na `develop` w poniższej kolejności. Podpunkty są jednostkami pracy; większy etap może mieć kilka spójnych commitów. Etap 13, zgodnie z dyspozycją użytkownika, otrzymuje jeden commit po ukończeniu całego etapu.
 - Przed zmianami sprawdzić branch, stan drzewa, instrukcje repo i rozbieżność z `origin/develop`. Nie dołączać cudzych zmian, nie nadpisywać zdalnej historii i nie używać force push.
 - Checkbox `[x]` potwierdza wykonaną pracę i wskazaną weryfikację, nigdy sam plan ani stub. Po każdym podpunkcie/kroku gotowym do przekazania aktualizować checklistę i wynik weryfikacji w tym samym commicie co zmiany.
 - Po sprawdzeniu staged diff wykonać commit i push na `origin/develop`. Potwierdzić równość lokalnego i zdalnego SHA. Dopiero wtedy raportować krok jako dostarczony; nieudany push jest otwartą przeszkodą, nie sukcesem publikacji.
@@ -758,18 +758,24 @@ ASan/UBSan/LSan pokrywa 93/93 przypadki w dwóch przebiegach: 92 zaliczone w pe�
 
 **Zależności:** 01–12.
 
-- [ ] 13.1 Zmierzyć stare i nowe całkowite koszty wszystkich grup z §6 oraz wprowadzić wspólną normatywną tabelę/formuły stawek, bez podwójnego liczenia pracy.
-- [ ] 13.2 Obniżyć noise/fault/warp oraz skalibrować nowe generatory i części; zweryfikować monotoniczność ceny względem oktaw, powierzchni, sites i relaksacji.
-- [ ] 13.3 Zoptymalizować morfologię z dokładną zgodnością A8, gdzie to bezpieczne; skalibrować maski, blur, paint i narzut capture oraz figury.
-- [ ] 13.4 Wdrożyć rabaty operacji zbiorczych i kolorów, zachowując RNG/stepper i dodatni koszt elementów; nie podnosić ceny pixel/helperów/pętli.
-- [ ] 13.5 Porównać ręczny noise+pixel, noise.mask, contour+regions, figury i części dla 64×64/128×128/256×256 oraz ≥20 seedów na scenariusz; zapisać CPU, fuel, szczyt pamięci i porównanie obrazu/jakości.
-- [ ] 13.6 Osobno zbadać morfologię radius=0/1/4/16/64, kilka sigma blur, paint masek/warstw, przezroczystość i obszar poza targetem; pick(n) dla 0/1/16/256 oraz części dla 36/128/256 regionów.
-- [ ] 13.7 Powtórzyć testy odporności po rabatach; zapisać osiągnięte stawki i każde uzasadnione odstępstwo od celów procentowych. Zmniejszyć rabat przy ryzyku, zamiast podnosić fuel.
-- [ ] **Etap 13 zakończony.**
+- [x] 13.1 Zmierzyć stare i nowe całkowite koszty wszystkich grup z §6 oraz wprowadzić wspólną normatywną tabelę/formuły stawek, bez podwójnego liczenia pracy.
+- [x] 13.2 Obniżyć noise/fault/warp oraz skalibrować nowe generatory i części; zweryfikować monotoniczność ceny względem oktaw, powierzchni, sites i relaksacji.
+- [x] 13.3 Zoptymalizować morfologię z dokładną zgodnością A8, gdzie to bezpieczne; skalibrować maski, blur, paint i narzut capture oraz figury.
+- [x] 13.4 Wdrożyć rabaty operacji zbiorczych i kolorów, zachowując RNG/stepper i dodatni koszt elementów; nie podnosić ceny pixel/helperów/pętli.
+- [x] 13.5 Porównać ręczny noise+pixel, noise.mask, contour+regions, figury i części dla 64×64/128×128/256×256 oraz ≥20 seedów na scenariusz; zapisać CPU, fuel, szczyt pamięci i porównanie obrazu/jakości.
+- [x] 13.6 Osobno zbadać morfologię radius=0/1/4/16/64, kilka sigma blur, paint masek/warstw, przezroczystość i obszar poza targetem; pick(n) dla 0/1/16/256 oraz części dla 36/128/256 regionów.
+- [x] 13.7 Powtórzyć testy odporności po rabatach; zapisać osiągnięte stawki i każde uzasadnione odstępstwo od celów procentowych. Zmniejszyć rabat przy ryzyku, zamiast podnosić fuel.
+- [x] **Etap 13 zakończony.**
 
 **Odbiór:** tabela jest liczbowa i zweryfikowana, deklaratywne odpowiedniki mają wyraźną przewagę fuel bez regresji wyników, RNG, pamięci i limitów wykonania.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja:** [taryfa normatywna](spec/fuel-v0.9.md), [raport i zakres](spec/verification/fuel-v0.9.json), reprodukcja w `benchmarks/operations/README.md`. Pomiary obejmują 141 przypadków porównanych z 0.8, 10 nowych skalarów i 402 scenariusze, w tym pięć ścieżek × trzy rozmiary × 20 seedów. Sprawdzono 118 serii monotonicznych oraz wszystkie sites 1–256 dla 20 seedów (5120 generacji). Surowe CPU/fuel/pamięć/obrazy i źródła są skompresowane, zamiast powielać rozbudowane raporty.
+
+Stawki: algebra i morfologia 40%, blur/paint 60%, bufor capture 70%, poly/curve/oval 75%; nowe kernele geometrii i masek 20%, skan wierzchołków pojedynczej części 50%, paczki 25% plus dodatnia opłata za każdą instancję. Pełny przepływ paczki z `parts.get` jest tańszy dla 36/128/256 regionów. Noise/fault/warp i kolory pozostają przy minimalnym 1; `ramp` pozostaje loweringiem 25 w bazowym pomiarze no-opt. Nie zwiększono cen pixel/helperów/pętli ani budżetów domyślnych.
+
+Bezpośredni noise.mask daje identyczne RGBA przy 5,3–5,7% fuel ręcznej pętli. Kontury/części mają jawnie zmierzoną różnicę wynikającą z uproszczenia i AA; proxy figur z kół traci kształt/dziury i nie jest traktowane jako równoważna jakość. Morfologia zachowuje dokładne A8/D4, używa ograniczonej kolejki i przy radius=64 przyspiesza w pomiarze około 30×; małe erozje mogą kosztować kilka mikrosekund więcej.
+
+Na końcowej taryfie zaliczono macOS 98/98, Linux 100/100, pełny native/WASM, 21 identycznych liczników pracy i rzeczywiste anulowanie w workerze. Zamrożone 21 829 przypadków obrazu przeszło przez Python/Pillow, SFML/GPU i Godot/GPU. ASan/UBSan/LSan: pełne 93/93 przed ostatnim dostrojeniem rabatu paczek, następnie 26/26 dotkniętych ścieżek na końcowej stawce (w tym wszystkie 827 przypadków C++, części, kontrole C API i błędy alokacji). Zestawienie zachowuje ten zakres i nie oznacza ponowienia całego wydania na wszystkich platformach.
 
 ### Etap 14 — dokumentacja, przykłady i integracja produktu
 

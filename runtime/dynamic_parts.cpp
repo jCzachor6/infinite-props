@@ -97,7 +97,7 @@ Part2dValue createPart(Execution& ex,const Regions2dValue& source,i32 index) {
     assigned(ex,static_cast<bool>(source.data),"regions2d");
     if(index<0||static_cast<std::size_t>(index)>=source.data->regions.size())
         ex.trap("regions index out of range",ErrorReason::IndexRange);
-    checkCreations(ex,1);ex.spend(1);locate(ex);
+    checkCreations(ex,1);ex.spendRaw(1);locate(ex);
     auto p=regionPart(ex,source,static_cast<u32>(index),static_cast<i32>(ex.dynamicPartCreations));
     ++ex.dynamicPartCreations;return {std::move(p)};
 }
@@ -105,7 +105,7 @@ Part2dValue createPart(Execution& ex,const MaskValue& source){return rasterPart(
 Part2dValue createPart(Execution& ex,const LayerValue& source){return rasterPart(ex,source);}
 Parts2dValue partsFromRegions(Execution& ex,const Regions2dValue& source) {
     assigned(ex,static_cast<bool>(source.data),"regions2d");
-    const auto count=static_cast<u32>(source.data->regions.size());checkCreations(ex,count);ex.spend(count);locate(ex);
+    const auto count=static_cast<u32>(source.data->regions.size());checkCreations(ex,count);ex.spendRaw(count);locate(ex);
     auto result=makeResource<DynamicPartsData,128>(ex.resources,ex.resources);result->parts.reserve(count);
     for(u32 i=0;i<count;++i){ ex.work(); result->parts.push_back({regionPart(ex,source,i,static_cast<i32>(ex.dynamicPartCreations+i))}); }
     ex.dynamicPartCreations+=count;return {std::move(result)};

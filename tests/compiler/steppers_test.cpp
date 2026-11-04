@@ -314,7 +314,9 @@ TEST_CASE("stepper checks counts handles mass memory and fuel without publishing
     trap({handle.type, {}}, -1, ErrorReason::NumericRange);
     h.ex.resources.bytes = kMaxGenerationData; trap(handle, 1, ErrorReason::OutOfMemory);
     h.ex.resources.bytes = 256; h.ex.fuel = 2; trap(handle, 3, ErrorReason::FuelExhausted);
-    h.ex.fuel = 4; trap(handle, 3, ErrorReason::FuelExhausted); // fails after one private element
+    h.ex.fuel = 1000;
+    const auto costly = h.capture(i32{0}, i32{5}, analytic(DistributionFamily::Gaussian, {2.5f,1,0,0}));
+    h.ex.fuel = 4; trap(costly, 3, ErrorReason::FuelExhausted); // quantile work still costs fuel
     h.ex.fuel = 1000;
     const auto absent = h.capture(i32{10}, i32{20}, points(DistributionFamily::Weighted, {{i32{0}, i32{1}}}));
     CHECK(h.pick(absent, 0).data->elements.empty()); trap(absent, 1, ErrorReason::NumericRange);
@@ -382,7 +384,7 @@ TEST_CASE("stepper empty picks defer all distribution mass checks and charge exa
         CHECK_THROWS_AS(h.pick(absent, 1), Trap); h.ex.frame().stack.clear();
         const auto handle = h.capture(0.f, 1.f, d); fuel = h.ex.fuel;
         const auto generated = h.pick(handle, 10); CHECK(generated.data->elements.size() == 10);
-        u64 expected = 20; // stored element and nonconstant step, excluding the dispatch base
+        u64 expected = 10; // one unit per stored scalar step, excluding dispatch
         for (int i=0;i<10;++i) {
             const auto quantile=math::truncatedDraw(d,0.0,1.0,static_cast<double>(i)/9.0);
             REQUIRE(quantile.status==math::DrawStatus::Ok);

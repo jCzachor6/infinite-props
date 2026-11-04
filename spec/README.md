@@ -17,6 +17,10 @@ capabilities and [migration from 0.6 to 0.7](../docs/language/migration-v0.7.md)
 for the earlier binary and source changes. The frozen [0.7 specification](iprop-v0.7.md)
 is retained unchanged; older specifications and releases remain in Git history.
 
+Development 0.9 uses the [shared runtime fuel tariff](fuel-v0.9.md) and
+[independent execution limits](execution-limits-v0.9.md). They apply to old
+programs too; historical fuel totals are not a compatibility guarantee.
+
 An implementation must reject reserved fields, flags and instructions it cannot honor.
 The reference runtime and conformance suite resolve implementation disagreements;
 exact kernels and wire encodings must match this document. Release publication

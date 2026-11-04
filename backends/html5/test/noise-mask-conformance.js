@@ -112,7 +112,8 @@ function run(iprop,tool,directory){
     const fuel=(bytes,n)=>{const copy=Buffer.from(bytes);copy.writeBigUInt64LE(BigInt(n),sections(copy).get(1)+16);return copy;};
     for(const kind of [0,1,2,3,4,5])for(const n of [1,4,8])for(const warp of [0,0.3]){
         const args=modified(2,'i',kind);args[6]=['i',n];args[9]=['f',warp];const bytes=raw(args);
-        const work=2+(kind===3||kind===4?25:kind===2||kind===5?4*n:4)+(warp===0?0:32),total=instructions(bytes).length+work;
+        const work=2+(kind===3||kind===4?25:kind===2||kind===5?4*n:4)+(warp===0?0:32);
+        const total=instructions(bytes).length-1+Math.ceil((1+work)/5); // whole opcode at 20%
         generate(fuel(bytes,total));reject(fuel(bytes,total-1),/fuel exhausted/);
         const invalid=args.map((arg,i)=>i===3?['v',[3.4028234663852886e38,1]]:arg);
         reject(fuel(raw(invalid),total-2),/fuel exhausted/);

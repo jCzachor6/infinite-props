@@ -1,5 +1,9 @@
 # Dynamic part outputs — stage 10 contract
 
+Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Kernel reservation counts below are unscaled units; earlier verification
+totals describe their historical checkpoints. Work limits are independent.
+
 This extends [dynamic parts](dynamic-parts-v0.9.md) with generation results.
 The program container stays unversioned; all header/output reserved bytes stay
 zero. No generated-result serialization is introduced.
