@@ -14,6 +14,7 @@ namespace iprop {
 // default; UINT64_MAX is an explicit (still finite) host override.
 inline constexpr u64 kDefaultWorkLimit = 100'000'000;
 inline constexpr u64 kWorkPollInterval = 1024;
+inline constexpr std::size_t kMaxWorkCopyBytes = 32 * 1024;
 
 class CancellationToken {
 public:
@@ -90,11 +91,13 @@ private:
 // delegated to it. Call on new output storage, with no preexisting elements.
 template<class T>
 void initializeWork(std::vector<T>& output, std::size_t count, const T& value, WorkBudget& work) {
+    static_assert(sizeof(T) <= kMaxWorkCopyBytes);
+    constexpr auto chunk = std::min(static_cast<std::size_t>(kWorkPollInterval), kMaxWorkCopyBytes / sizeof(T));
     work.spend(static_cast<u64>(count));
     work.poll();
     output.reserve(count);
     for (std::size_t at = 0; at < count;) {
-        const auto end = std::min(count, at + static_cast<std::size_t>(kWorkPollInterval));
+        const auto end = std::min(count, at + chunk);
         output.insert(output.end(), end - at, value);
         work.poll(); at = end;
     }
@@ -102,11 +105,13 @@ void initializeWork(std::vector<T>& output, std::size_t count, const T& value, W
 
 template<class T>
 void copyWork(std::vector<T>& output, const std::vector<T>& source, WorkBudget& work) {
+    static_assert(sizeof(T) <= kMaxWorkCopyBytes);
+    constexpr auto chunk = std::min(static_cast<std::size_t>(kWorkPollInterval), kMaxWorkCopyBytes / sizeof(T));
     work.spend(static_cast<u64>(source.size()));
     work.poll();
     output.reserve(source.size());
     for (std::size_t at = 0; at < source.size();) {
-        const auto end = std::min(source.size(), at + static_cast<std::size_t>(kWorkPollInterval));
+        const auto end = std::min(source.size(), at + chunk);
         output.insert(output.end(), source.begin() + static_cast<std::ptrdiff_t>(at),
             source.begin() + static_cast<std::ptrdiff_t>(end));
         work.poll(); at = end;

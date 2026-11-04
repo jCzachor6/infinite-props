@@ -128,7 +128,7 @@ for slot in asset.output_slots:
 Keep `output_slots` and `resources` together when retaining a result. Both
 remain valid after a later generation, reload or destruction of the asset;
 IDs belong to that particular result. Generation negotiates typed parts
-through C API 0.5 and publishes the image, outputs and resources together.
+through C API 0.6 and publishes the image, outputs and resources together.
 
 Names are decoded using their exact UTF-8 byte count. Godot 4.5.2's UTF-8 parser
 stops at embedded NUL, so the adapter decodes bounded non-NUL segments and
@@ -169,7 +169,7 @@ empty singular/list slots. Binary fixtures pin UTF-8/embedded-NUL/empty names
 and raw bits for each geometry kind; retained engine images/output arrays are
 checked after program reload and later generation.
 
-`asset.generate(seed, width = 0, height = 0)` also supports the runtime's uint32
+`asset.generate(seed, width = 0, height = 0, limits = {})` also supports the runtime's uint32
 size overrides; zero selects the declared dimension. To replay the complete
 [shared pixel corpus](../../docs/native-bindings.md#required-pixel-equality-gate)
 through Image and GPU texture readback:
@@ -185,3 +185,19 @@ Use a graphics display (Xvfb on Linux CI), not the headless dummy renderer.
 including D4 mappings, region holes, exact raster bytes, shared resource
 identity and lifetime after generation, reload and asset destruction. This
 headless data check complements the separate Image/texture pixel corpus.
+
+The optional `limits` dictionary accepts `work_limit`, `timeout_ns` and
+`cancellation`. Counters must be nonnegative Godot integers (0..INT64_MAX);
+zero work selects the finite native default and zero timeout disables the
+monotonic clock. Unknown keys and other value types are rejected.
+`IpropCancellation.new()` creates a one-way native token. Pass it as
+`{"cancellation": token}` and call `token.cancel()` from another thread while
+generation runs. A retained Ref keeps the handle alive; cancellation never
+calls into the asset or takes a generation lock. Other asset methods must not
+run concurrently with generation.
+
+`asset.work` contains native `budget`, `remaining`, `used` for its latest
+completed generation. On failure `generate` returns null and preserves the
+prior outputs/resources/work; `asset.last_error` exposes status, reason, stage,
+location flags, PC and message. Successful generation clears the error.
+This adapter builds against C API 0.6, retaining ABI 0.5.

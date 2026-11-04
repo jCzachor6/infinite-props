@@ -729,11 +729,11 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 - [x] 12.1 Wprowadzić wspólny deterministyczny limit pracy natywnej i objąć nim także dotychczasowe operacje przewidziane do rabatowania, z zachowaniem domyślnego fuel.
 - [x] 12.2a Zaimplementować deadline, atomowe anulowanie i punkty przerwania w VM, C API, CLI i publicznym WASM.
-- [ ] 12.2b Udostępnić wspólne sterowanie w Python, Swift, C#/Unity, Kotlin/JNI, SFML i Godot oraz sprawdzić rzeczywiste bindingi.
+- [x] 12.2b Udostępnić wspólne sterowanie w Python, Swift, C#/Unity, Kotlin/JNI, SFML i Godot oraz sprawdzić rzeczywiste bindingi.
 - [x] 12.2b.1 Podłączyć i sprawdzić Python, Swift, C#/Unity i Kotlin/JNI: pełne wyniki, dokładny work, deadline, anulowanie podczas skanu i własność tokenów.
-- [ ] 12.2b.2 Podłączyć i sprawdzić SFML oraz Godot przez ten sam C API.
-- [ ] 12.2 Udostępnić deadline/anulowanie w VM i hostach oraz punkty przerwania wewnątrz długich skanów, geometrii i kopiowania.
-- [ ] 12.3 Na podstawie pomiarów ustalić skończony domyślny limit pracy, sposób liczenia jednostek i maksymalną porcję nieprzerywalnej pracy; zapisać wartości i ich uzasadnienie.
+- [x] 12.2b.2 Podłączyć i sprawdzić SFML oraz Godot przez ten sam C API.
+- [x] 12.2 Udostępnić deadline/anulowanie w VM i hostach oraz punkty przerwania wewnątrz długich skanów, geometrii i kopiowania.
+- [x] 12.3 Na podstawie pomiarów ustalić skończony domyślny limit pracy, sposób liczenia jednostek i maksymalną porcję nieprzerywalnej pracy; zapisać wartości i ich uzasadnienie.
 - [ ] 12.4 Sprawdzić kosztowne dane przy niskim fuel za builtin, skumulowaną pracę wielu małych wywołań, granice pamięci i przerwanie w każdym pipeline.
 - [ ] 12.5 Potwierdzić, że fuel/work są deterministyczne, deadline nie wpływa na RNG i udane obrazy, a błędy nie publikują częściowych wyników ani nie zostawiają zasobów.
 - [ ] **Etap 12 zakończony.**
@@ -745,6 +745,10 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **12.2b.1 — bindingi zarządzane (2026-11-04):** Python: 10/10 testów; Swift: 8 zaliczonych / jeden Metal pominięty z braku urządzenia; rzeczywisty C#/native oraz Kotlin/JNI z CheckJNI: PASS. Każdy przebieg obejmuje 23 pełne sceny części przy dokładnym budżecie i o jednostkę za małym, deadline oraz anulowanie aktywnego skanu z innego wątku. Kotlin sprawdza też zamknięcie tokena w trakcie generacji. Wszystkie cztery odtwarzają 21 829 zamrożonych obrazów bez zmiany wzorców; test pikseli jawnie przyznaje większy work dla dawnych scen o zwiększonym fuel. Domyślny budżet produktu pozostaje bez zmian. Zbudowano świeży XCFramework z trzema slice’ami / pięcioma architekturami; wykonanie Swift dotyczy macOS arm64. Nie zaliczono iOS runtime, Unity Editor ani urządzenia/emulatora Android.
 
 [Raport bindingów zarządzanych](spec/verification/execution-limits-v0.9-managed.json) oraz [logi](spec/verification/execution-limits-v0.9-managed.txt) zapisują zakres lokalnej weryfikacji. Kontrola typów Swift przechodzi również dla iOS arm64 i symulatora arm64; nie jest to test wykonania na tych platformach. Trzy testy pakowania/dokumentacji przechodzą po dołączeniu wspólnego źródła testu anulowania.
+
+**12.2b.2 / 12.3 — silniki i pomiary (2026-11-04):** SFML i Godot udostępniają opcjonalne limity przez wspólny C API, utrzymują token podczas wywołania i sprawdzają 23 pełne sceny przy dokładnym work, budżecie o jednostkę za małym, deadline oraz anulowaniu aktywnego skanu. Godot zachowuje poprzednie zasoby/statystyki po błędzie. Natywnie: 100/100 CTest na Linuksie oraz 98/98 na macOS (dwa testy GL wykonane na Linuksie). Oba silniki odtwarzają tam 21 829 obrazów razem z odczytem tekstur GPU; cztery bindingi zarządzane również zachowują ten zamrożony korpus. Pełne conformance native/WASM pozostaje zgodne. Przeniesiony SDK przechodzi 10 testów Python i osobne konsumenty C++ shared/static z limitami i anulowaniem. [Logi hostów](spec/verification/execution-limits-v0.9-hosts.txt).
+
+[Kalibracja](spec/verification/execution-limits-v0.9-calibration.json) obejmuje 188 przypadków na native i WASM. Najwyższy work 141 dawnych operacji to 4 612 363, a 42 pipeline’ów 64²/256² — 6 217 470. Ustalono **100 mln** domyślnego work, **1024** logiczne kroki między punktami sprawdzenia oraz **32 KiB** w pojedynczej porcji bulk copy/init; największy stały workspace geometrii ma ograniczenie kompilacyjne 32 KiB. Bufor sterowania jest przenoszony z punktami przerwania, a jednostki obejmują także jego setup i przekazanie wyników helpera. Odtwarzane liczniki work/fuel, obrazy i powody błędów zgadzają się między native i WASM. Zaobserwowane maksymalne odstępy wynoszą 4,245 ms native / 0,967 ms WASM; nie są przenośną gwarancją czasu — zegar hosta, allocator, planista i sprzątanie mają osobny opis zakresu. Końcowy audyt 12.4–12.5 i sanitizery pozostają otwarte.
 
 ### Etap 13 — pełna taryfa, optymalizacje i benchmarki
 

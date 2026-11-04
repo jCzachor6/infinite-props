@@ -1,0 +1,171 @@
+Local stage-12 host verification. Linux runs in isolated Docker Compose, not GitHub Actions. iOS runtime, Unity Editor/IL2CPP, Android device/emulator and macOS Metal were not executed.
+
+=== Final Swift macOS and CGImage ===
+Building for debugging...
+[Planning 56 / 96]
+[Creating build graph]
+[29 / 53]
+[30 / 54] InfiniteProps
+[40 / 125]
+[43 / 125]
+[53 / 125]
+[55 / 125]
+[61 / 125]
+[64 / 125]
+[71 / 125]
+[76 / 125]
+[77 / 125]
+[89 / 125]
+[92 / 125]
+[94 / 125]
+[97 / 125]
+[101 / 125] InfiniteProps
+[109 / 125] InfiniteProps
+[115 / 126] InfinitePropsTests-product
+[120 / 137]
+[121 / 137]
+[131 / 137] InfinitePropsTests-product
+[133 / 137] InfinitePropsTests-product
+Build complete! (9,60 sek.)
+Test Suite 'All tests' started at 2026-11-04 17:14:01.271.
+Test Suite 'InfinitePropsTests.xctest' started at 2026-11-04 17:14:01.273.
+Test Suite 'PartOutputTests' started at 2026-11-04 17:14:01.273.
+Test Case '-[InfinitePropsTests.PartOutputTests testCompleteCppCapiParityAndIndependentLifetime]' started.
+Test Case '-[InfinitePropsTests.PartOutputTests testCompleteCppCapiParityAndIndependentLifetime]' passed (0.111 seconds).
+Test Case '-[InfinitePropsTests.PartOutputTests testExactWorkAndControlsPreserveEveryTypedFixture]' started.
+Test Case '-[InfinitePropsTests.PartOutputTests testExactWorkAndControlsPreserveEveryTypedFixture]' passed (0.165 seconds).
+Test Suite 'PartOutputTests' passed at 2026-11-04 17:14:01.549.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.276 (0.276) seconds
+Test Suite 'PixelCorpusTests' started at 2026-11-04 17:14:01.549.
+Test Case '-[InfinitePropsTests.PixelCorpusTests testEntireSharedCorpusAndAppleImageTransport]' started.
+Test Case '-[InfinitePropsTests.PixelCorpusTests testEntireSharedCorpusAndAppleImageTransport]' passed (5.234 seconds).
+Test Suite 'PixelCorpusTests' passed at 2026-11-04 17:14:06.783.
+	 Executed 1 test, with 0 failures (0 unexpected) in 5.234 (5.234) seconds
+Test Suite 'RuntimeTests' started at 2026-11-04 17:14:06.783.
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentCancellationInsideNativeScanAndRecovery]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentCancellationInsideNativeScanAndRecovery]' passed (0.014 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentProgramCalls]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentProgramCalls]' passed (0.003 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testExactNamesAndFloatBits]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testExactNamesAndFloatBits]' passed (0.001 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testGenerationInputsOwnershipAndErrors]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testGenerationInputsOwnershipAndErrors]' passed (0.010 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback]' started.
+/private/tmp/iprop-v09-stage12-apple-package/Tests/InfinitePropsTests/RuntimeTests.swift:73: -[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback] : Test skipped - Metal device unavailable on this host
+Test Case '-[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback]' skipped (0.000 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testUnicodeInputsAndLocatedRuntimeFailure]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testUnicodeInputsAndLocatedRuntimeFailure]' passed (0.001 seconds).
+Test Suite 'RuntimeTests' passed at 2026-11-04 17:14:06.813.
+	 Executed 6 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.029 (0.030) seconds
+Test Suite 'InfinitePropsTests.xctest' passed at 2026-11-04 17:14:06.813.
+	 Executed 9 tests, with 1 test skipped and 0 failures (0 unexpected) in 5.540 (5.540) seconds
+Test Suite 'All tests' passed at 2026-11-04 17:14:06.813.
+	 Executed 9 tests, with 1 test skipped and 0 failures (0 unexpected) in 5.540 (5.542) seconds
+Apple + CGImage (Metal unavailable): 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+
+=== Final CSharp native ===
+Production C# typed parts: PASS 23 complete C++/C fixtures and independent result lifetime
+Production C# execution limits: PASS 23 exact typed budgets, deadline, concurrent cancellation and recovery
+C# pixel corpus: 21829 cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Unity C# / native C API conformance passed
+
+=== Final Kotlin host JNI ===
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/iprop-v09-stage12-android-host
+[  1%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/list_operations.cpp.o
+[  2%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/descriptions.cpp.o
+[  5%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/collections.cpp.o
+[  5%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/collection_ops.cpp.o
+[  7%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/samplers.cpp.o
+[  8%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/steppers.cpp.o
+[  9%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/point_distributions.cpp.o
+[ 11%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/code.cpp.o
+[ 12%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/validator.cpp.o
+[ 14%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/vm.cpp.o
+[ 15%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/constant_evaluation.cpp.o
+[ 16%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/stack.cpp.o
+[ 18%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/control.cpp.o
+[ 19%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/arithmetic.cpp.o
+[ 21%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/vector_ops.cpp.o
+[ 22%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/sdf_ops.cpp.o
+[ 23%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/color_ops.cpp.o
+[ 25%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/curves_ops.cpp.o
+[ 26%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/math/distribution.cpp.o
+[ 28%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/math/point_distribution.cpp.o
+[ 29%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/math/density.cpp.o
+[ 30%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/seeded.cpp.o
+[ 32%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/canvas.cpp.o
+[ 33%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/surfaces.cpp.o
+[ 35%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/geometry.cpp.o
+[ 36%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/voronoi.cpp.o
+[ 38%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/contours.cpp.o
+[ 39%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/regions.cpp.o
+[ 40%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/region_offset.cpp.o
+[ 42%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/region_raster.cpp.o
+[ 43%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/blur.cpp.o
+[ 45%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/resource_exports.cpp.o
+[ 46%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/masks.cpp.o
+[ 47%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/outputs.cpp.o
+[ 49%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/parts.cpp.o
+[ 50%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/dynamic_parts.cpp.o
+[ 52%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/dynamic_part_render.cpp.o
+[ 53%] Building CXX object iprop-native/runtime/CMakeFiles/iprop_runtime.dir/part_output.cpp.o
+[ 54%] Linking CXX static library libiprop_runtime.a
+[ 80%] Built target iprop_runtime
+[ 81%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/library.cpp.o
+[ 83%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/iprop.cpp.o
+[ 84%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/descriptors.cpp.o
+[ 85%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/operations.cpp.o
+[ 87%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/reflection.cpp.o
+[ 88%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/results.cpp.o
+[ 90%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/parameters.cpp.o
+[ 91%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/outputs.cpp.o
+[ 92%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/part_results.cpp.o
+[ 94%] Building CXX object iprop-native/backends/capi/CMakeFiles/iprop_capi_static.dir/execution_limits.cpp.o
+[ 95%] Linking CXX static library libipropc.a
+[ 97%] Built target iprop_capi_static
+[ 98%] Linking CXX shared library libiprop_jni.dylib
+[100%] Built target iprop_jni
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.jetbrains.kotlin.org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/private/tmp/iprop-v09-stage11-kotlin/lib/kotlin-compiler.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.jetbrains.kotlin.com.intellij.util.containers.Unsafe (file:/private/tmp/iprop-v09-stage11-kotlin/lib/kotlin-compiler.jar)
+WARNING: Please consider reporting this to the maintainers of class org.jetbrains.kotlin.com.intellij.util.containers.Unsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by dev.infiniteprops.Native in an unnamed module (file:/private/tmp/iprop-v09-stage12-android-host/conformance.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Kotlin/JNI execution limits: PASS work/deadline, active cancellation, deferred token close and recovery
+Kotlin/JNI typed parts: PASS 23 complete C++/C fixtures and independent result lifetime
+Android/JNI: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Kotlin / JNI native conformance passed
+
+=== Final Python/Pillow and gate negative controls ===
+Python + Pillow: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Pixel gate rejects a changed RGB byte under zero alpha and a truncated corpus
+
+=== Relocated SDK verification summary ===
+Relocated SDK: Python 10 tests/23 full scenes and C++ shared/static execution controls PASS
+
+=== Linux SFML pixel corpus ===
+SFML + texture + GPU render: 21829 pixel-exact cases
+
+=== Linux Godot pixel corpus ===
+Godot Engine v4.5.2.stable.official.6ce3de25a - https://godotengine.org
+libxkbcommon.so.0: cannot open shared object file: No such file or directory
+WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+     at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+libdbus-1.so.3: cannot open shared object file: No such file or directory
+OpenGL API 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 20.1.2, 128 bits)
+
+Godot + Image + GPU texture: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919

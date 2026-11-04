@@ -150,7 +150,7 @@ brings the language into your editor.
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
 **Product 0.8.0 · Source language 0.8.0.** The compiler and runtime use an
-**unversioned** file format; C API **0.4** uses ABI / SONAME **0.5**.
+**unversioned** file format; C API **0.6** uses ABI / SONAME **0.5**.
 New in 0.8: reusable [materials](docs/language/materials.md) with private
 libraries, typed helper parameters and named overrides. See the
 [material tree example](examples/language/material-tree.ips),

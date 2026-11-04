@@ -244,13 +244,14 @@ void Execution::leaveFrame() {
         caller.stream = finished.stream; // reference semantics (spec §8.2)
     }
     for (Value& value : finished.stack) {
+        work();
         caller.stack.push_back(std::move(value));
     }
 }
 
 void Execution::ensureControl(u16 functionIndex) {
     if (functionIndex >= control.size()) {
-        control.resize(file.code.functions.size());
+        initializeWork(control, file.code.functions.size(), std::vector<ControlInfo>{}, *workBudget);
     }
     if (!control[functionIndex].empty()) {
         return;
@@ -269,7 +270,7 @@ void Execution::ensureControl(u16 functionIndex) {
         case Opcode::ClipBegin:
         case Opcode::Loop:
         case Opcode::If:
-            open.push_back(i);
+            appendWork(open, i, *workBudget);
             break;
         case Opcode::Else: {
             if (open.empty()) {
@@ -361,8 +362,11 @@ void VM::setup(const LoadedFile& file, const GenerationInputs& inputs,
     impl_->ex.rootTarget = impl_->ex.target;
     if (!file.resourceExports.empty()) {
         impl_->ex.allocateResource(static_cast<u64>(file.resourceExports.size()) * 64u);
-        for (const auto& output : file.resourceExports)
+        impl_->ex.resourceSlots.reserve(file.resourceExports.size());
+        for (const auto& output : file.resourceExports) {
+            impl_->ex.work();
             impl_->ex.resourceSlots.push_back(zeroValue(output.type));
+        }
     }
 
     // Root frame: declared root uniforms only.

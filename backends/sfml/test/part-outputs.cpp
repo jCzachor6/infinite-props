@@ -89,6 +89,22 @@ int main(int argc, char** argv) {
             Program program(loadProgram(readFile(argv[1])),iprop_program_free);
             Result result(generate(program.get(),seed,nullptr,width,height),iprop_result_free);
             owned=copyResult(result.get());
+            require(owned.work.work_used > 0 && owned.work.work_used ==
+                owned.work.work_budget - owned.work.work_remaining, "work statistics");
+            const auto original = observe(owned).dump();
+            Result exact(generate(program.get(),seed,nullptr,width,height,{owned.work.work_used,0,{}}),iprop_result_free);
+            require(observe(copyResult(exact.get())).dump() == original, "exact work changes typed result");
+            Result deadline(generate(program.get(),seed,nullptr,width,height,{0,60'000'000'000,{}}),iprop_result_free);
+            require(observe(copyResult(deadline.get())).dump() == original, "successful deadline changes typed result");
+            const auto expectFailure = [&](ExecutionLimits limits, std::uint32_t reason) {
+                try { Result rejected(generate(program.get(),seed,nullptr,width,height,limits),iprop_result_free);
+                    throw std::runtime_error("execution limit ignored"); }
+                catch (const Failure& error) { require(error.reason == reason && error.stage == IPROP_STAGE_EXECUTE, "wrong execution error"); }
+            };
+            expectFailure({owned.work.work_used-1,0,{}},IPROP_REASON_WORK_EXHAUSTED);
+            expectFailure({0,1,{}},IPROP_REASON_DEADLINE_EXCEEDED);
+            Result recovered(generate(program.get(),seed,nullptr,width,height),iprop_result_free);
+            require(observe(copyResult(recovered.get())).dump() == original, "recovery changes typed result");
             Result later(generate(program.get(),seed ^ UINT32_MAX,nullptr,width,height),iprop_result_free);
             program.reset(); // Native result and copied result both outlive program.
         }

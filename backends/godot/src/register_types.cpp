@@ -16,6 +16,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
+    GDREGISTER_CLASS(iprop_godot::IpropCancellation);
     GDREGISTER_CLASS(iprop_godot::IpropAsset);
     GDREGISTER_CLASS(iprop_godot::IpropSprite2D);
 }

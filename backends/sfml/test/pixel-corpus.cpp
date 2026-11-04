@@ -48,7 +48,8 @@ int main(int argc, char** argv) {
                 else error.check(iprop_parameters_set_u32_named(parameters.get(), view, integer, error.get()), "uint");
             }
             const auto expectedWidth = r.word(), expectedHeight = r.word(); const auto expected = r.blob();
-            Result result(generate(program.get(), seed, parameters.get(), width, height), iprop_result_free);
+            Result result(generate(program.get(), seed, parameters.get(), width, height,
+                                   {1'000'000'000, 0, {}}), iprop_result_free);
             const auto image = queryImage(result.get()); const std::string label = "case " + std::to_string(i);
             require(image.width == expectedWidth && image.height == expectedHeight, label + ": size");
             require(image.byte_count == expected.size() && std::memcmp(image.pixels, expected.data(), expected.size()) == 0, label + ": RGBA");

@@ -10,6 +10,16 @@ if(NOT TARGET backend_result_fixtures)
     add_custom_target(backend_result_fixtures DEPENDS ${raw} ${empty})
 endif()
 
+if(NOT TARGET backend_execution_fixture)
+    set(execution_fixture ${CMAKE_BINARY_DIR}/binding-fixtures/execution-slow.iprop)
+    add_custom_command(OUTPUT ${execution_fixture}
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py
+            $<TARGET_FILE_DIR:ipc> ${CMAKE_BINARY_DIR}/binding-fixtures --execution-only
+        DEPENDS ipc ${CMAKE_CURRENT_LIST_DIR}/test/prepare-bindings.py
+            ${CMAKE_CURRENT_LIST_DIR}/test/execution-slow.ips)
+    add_custom_target(backend_execution_fixture DEPENDS ${execution_fixture})
+endif()
+
 if(NOT TARGET backend_part_fixtures)
     set(part_fixtures ${CMAKE_BINARY_DIR}/binding-fixtures/part-bindings.json)
     file(GLOB part_sources CONFIGURE_DEPENDS

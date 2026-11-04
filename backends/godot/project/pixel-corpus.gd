@@ -70,7 +70,7 @@ func _init() -> void:
 		var expected_width := word()
 		var expected_height := word()
 		var expected := blob()
-		var image := asset.generate(seed, width, height)
+		var image := asset.generate(seed, width, height, {"work_limit": 1000000000})
 		var label := "Godot corpus case %d seed %d" % [index, seed]
 		demand(image != null and image.get_size() == Vector2i(expected_width, expected_height), label + ": size")
 		demand(image.get_data() == expected, label + ": RGBA")

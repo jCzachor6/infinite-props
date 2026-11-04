@@ -104,11 +104,21 @@ auto owned = iprop::sfml_host::copyResult(native.get());
 native.reset(); // owned.outputs, owned.resources and owned.pixels remain valid.
 ```
 
-The adapter opts into typed generation through C API 0.5. Image-only viewers
+The adapter opts into typed generation and execution controls through C API 0.6
+(ABI 0.5). Image-only viewers
 can continue using `queryImage` without copying the resource payload. The
 installed SDK includes `Host.hpp` and its shared query dependency under
 `share/iprop/backends/`. See the
 [shared part contract](../../docs/native-bindings.md#typed-part-results).
+
+`generate` also accepts a final optional `ExecutionLimits` value:
+`{workLimit, timeoutNanoseconds, cancellation}`. Zero work selects the finite
+native default; zero timeout disables the monotonic clock. `createCancellation()`
+returns a shared native token; `iprop_cancellation_cancel(token.get())` can run
+on another thread. The generation's value copy retains it until completion.
+`copyResult` exposes native counters in `GeneratedResult::work`. A thrown
+`Failure` retains status, reason, stage and executing PC without borrowing
+an error buffer. Work, deadline and cancellation errors do not publish a result.
 
 Installed hosts live at `<prefix>/bin/iprop_sfml` with selected shared
 SFML libraries under `<prefix>/lib` (DLLs under `bin` on Windows). A Linux

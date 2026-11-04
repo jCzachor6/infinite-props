@@ -22,6 +22,21 @@ namespace iprop::sfml_host {
 using Program = std::unique_ptr<iprop_program, decltype(&iprop_program_free)>;
 using Result = std::unique_ptr<iprop_result, decltype(&iprop_result_free)>;
 using Parameters = std::unique_ptr<iprop_parameters, decltype(&iprop_parameters_free)>;
+using Cancellation = std::shared_ptr<iprop_cancellation>;
+
+struct ExecutionLimits {
+    std::uint64_t workLimit = 0, timeoutNanoseconds = 0;
+    Cancellation cancellation;
+};
+
+class Failure : public std::runtime_error {
+public:
+    const iprop_status_ex status;
+    const std::uint32_t reason, stage, locationFlags, pc;
+    Failure(iprop_status_ex code, const iprop_error_ex& error, const std::string& message)
+        : std::runtime_error(message), status(code), reason(error.reason), stage(error.stage),
+          locationFlags(error.location_flags), pc(error.pc) {}
+};
 
 // Caller-owned structured error storage for one C API call. The descriptor
 // points at this object's message buffer, so it is neither copied nor moved.
@@ -42,7 +57,7 @@ public:
     // Throws the operation's message and its stable cause on failure.
     void check(iprop_status_ex status, const char* operation) const {
         if (status == IPROP_EX_OK) return;
-        throw std::runtime_error(std::string(operation) + " failed: " +
+        throw Failure(status, value_, std::string(operation) + " failed: " +
                                  (message_[0] != '\0' ? message_ : "no message") +
                                  " (reason " + std::to_string(value_.reason) + ")");
     }
@@ -51,6 +66,15 @@ private:
     iprop_error_ex value_{};
     char message_[512] = {};
 };
+
+// Shared ownership retains the handle during generation; cancellation takes
+// no program lock and may arrive from another thread.
+inline Cancellation createCancellation() {
+    Error error;
+    iprop_cancellation* token = nullptr;
+    error.check(iprop_cancellation_create(&token, error.get()), "iprop_cancellation_create");
+    return Cancellation(token, iprop_cancellation_free);
+}
 
 // This borrowed view is valid until result_free, including after program_free
 // and later generations. The host copies byte_count bytes before releasing it.
@@ -112,6 +136,7 @@ struct GeneratedResult {
     std::vector<OutputSlot> outputs;
     std::vector<backend::ResultResource> resources;
     iprop_result_stats_ex statistics;
+    iprop_work_stats_ex work;
 };
 
 // Optional complete owned handoff for engine integration. Image-only viewers
@@ -127,6 +152,8 @@ inline GeneratedResult copyResult(const iprop_result* result) {
     error.check(backend::copyResources(result, candidate.resources, error.get()), "copyResources");
     error.check(iprop_result_stats_ex_init(&candidate.statistics, sizeof(candidate.statistics)), "stats init");
     error.check(iprop_result_query_stats(result, &candidate.statistics, error.get()), "stats query");
+    error.check(iprop_work_stats_ex_init(&candidate.work, sizeof(candidate.work)), "work init");
+    error.check(iprop_result_query_work(result, &candidate.work, error.get()), "work query");
     return candidate;
 }
 
@@ -235,15 +262,22 @@ inline void setParameter(iprop_parameters* parameters, std::string_view name, st
 // returned handle must be freed by the caller.
 inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
                               const iprop_parameters* parameters = nullptr,
-                              std::uint32_t width = 0, std::uint32_t height = 0) {
+                              std::uint32_t width = 0, std::uint32_t height = 0,
+                              ExecutionLimits limits = {}) {
     Error error;
     iprop_generate_options_ex options;
     error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
     options.flags = IPROP_GENERATE_PART_OUTPUTS;
     options.seed = seed;
     options.size_x = width; options.size_y = height;
+    iprop_execution_limits_ex execution;
+    error.check(iprop_execution_limits_ex_init(&execution, sizeof(execution)), "execution init");
+    execution.work_limit = limits.workLimit;
+    execution.timeout_ns = limits.timeoutNanoseconds;
+    execution.cancellation = limits.cancellation.get();
     iprop_result* result = nullptr;
-    error.check(iprop_generate_ex(program, &options, parameters, &result, error.get()), "iprop_generate_ex");
+    error.check(iprop_generate_controlled(program, &options, parameters, &execution, &result, error.get()),
+                "iprop_generate_controlled");
     return result;
 }
 

@@ -133,9 +133,9 @@ MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 freque
     const auto bounds = boundsFromEdges(ex, left, top,
         std::max(left + 1, edge(end.x, scale.x, true)), std::max(top + 1, edge(end.y, scale.y, true)));
     const auto mode = static_cast<NoiseMode>(kind);
-    // Interim conservative work units: four lattice corners per value/gradient
+    // Existing conservative fuel units: four lattice corners per value/gradient
     // octave, 25 candidates per Worley scan, eight inner warp octaves. The
-    // final shared tariff/work limiter lands in stage 13.
+    // stage-12 work guard is independent; tariff calibration remains stage 13.
     const u64 samples = mode == NoiseMode::Cell || mode == NoiseMode::CellEdge ? 25u :
         (mode == NoiseMode::Fbm || mode == NoiseMode::Ridge ? 4u * static_cast<u64>(octaves) : 4u);
     auto buffer = createMask(ex, bounds, 1u + samples + (warpAmount == 0.f ? 0u : 32u));

@@ -3,6 +3,10 @@ extends SceneTree
 
 var failed := false
 
+func cancel_later(token: IpropCancellation) -> void:
+	OS.delay_msec(10)
+	token.cancel()
+
 func demand(ok: bool, message: String) -> void:
 	if not ok:
 		failed = true
@@ -117,13 +121,40 @@ func _init() -> void:
 		for r in stores:
 			demand(is_same(asset.get_resource(r.id), r), "one shared table entry per ID")
 		demand(asset.get_resource(0).is_empty() and asset.get_resource(stores.size() + 1).is_empty(), "invalid resource ID")
+		var used: int = asset.work.used
+		demand(used > 0 and used == asset.work.budget - asset.work.remaining, "work statistics")
+		var exact: Image = asset.generate(int(item.seed), int(item.size[0]), int(item.size[1]), {"work_limit": used})
+		demand(exact != null and asset.work.used == used and observation(exact, asset.output_slots, asset.resources) == expected, "exact work typed result")
+		var timed: Image = asset.generate(int(item.seed), int(item.size[0]), int(item.size[1]), {"timeout_ns": 60000000000})
+		demand(timed != null and asset.work.used == used and observation(timed, asset.output_slots, asset.resources) == expected, "deadline must not change successful result")
+		var previous: Array = asset.resources
+		demand(asset.generate(int(item.seed), int(item.size[0]), int(item.size[1]), {"work_limit": used - 1}) == null, "one-short work must fail")
+		demand(asset.last_error.reason == 3015 and asset.last_error.stage == 4 and is_same(asset.resources, previous), "work failure preserves previous result")
+		demand(asset.generate(int(item.seed), int(item.size[0]), int(item.size[1]), {"timeout_ns": 1}) == null, "deadline must fail")
+		demand(asset.last_error.reason == 3017 and asset.last_error.stage == 4 and is_same(asset.resources, previous), "deadline preserves previous result")
 		if item.name == "geometry-raster-holes":
 			demand(asset.generate(int(item.seed), -1, 0) == null, "invalid generation must fail")
-			demand(is_same(asset.get_resources(), stores), "failure preserves prior resource table")
+			demand(is_same(asset.get_resources(), previous), "failure preserves prior resource table")
 		asset.generate(int(item.seed) ^ 0xffffffff, int(item.size[0]), int(item.size[1]))
 		demand(asset.load_file(folder.path_join("root.iprop")) == OK, "reload")
 		asset = null
 		demand(observation(image, slots, stores) == expected, "retained result after generation, reload and free: " + item.name)
+	var slow := IpropAsset.new()
+	demand(slow.load_file(args[0].path_join("execution-slow.iprop")) == OK, "slow fixture load")
+	var token := IpropCancellation.new()
+	demand(token.is_valid() and not token.is_cancelled(), "fresh cancellation token")
+	var thread := Thread.new()
+	demand(thread.start(cancel_later.bind(token)) == OK, "cancellation thread")
+	var interrupted: Image = slow.generate(26, 0, 0, {"work_limit": 1000000000, "cancellation": token})
+	thread.wait_to_finish()
+	demand(interrupted == null and slow.last_error.reason == 3016 and slow.last_error.stage == 4 and (int(slow.last_error.location_flags) & 4) != 0, "cancellation inside active opcode")
+	demand(token.is_cancelled(), "one-way token")
+	for i in range(32):
+		demand(slow.generate(26, 0, 0, {"cancellation": token}) == null and slow.last_error.reason == 3016, "pre-cancel")
+	for options in [{"work_limit": -1}, {"timeout_ns": true}, {"work_limit": 1.5}, {"unknown": 1}, {"cancellation": slow}]:
+		demand(slow.generate(26, 0, 0, options) == null and slow.last_error.reason == 4000, "invalid execution options")
+	demand(slow.set_input("enabled", 0) == OK and slow.generate(26) != null and slow.last_error.is_empty(), "recovery")
 	if not failed:
 		print("Godot typed parts: PASS 23 complete C++/C fixtures and independent result lifetime")
+		print("Godot execution controls: PASS 23 exact/one-short typed budgets, deadline, active cancellation, preservation and recovery")
 	quit(1 if failed else 0)

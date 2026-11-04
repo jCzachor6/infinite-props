@@ -1,7 +1,7 @@
 # Independent work limits and interruption (0.9, stage 12)
 
-Status: the VM, checked C API, CLI, public WASM and four managed bindings
-are verified locally. SFML/Godot, calibration and the final audit are in progress.
+Status: the VM, checked C API, CLI and all seven hosts expose the shared
+controls. Calibration is recorded below; the final delivery audit is in progress.
 Fuel prices and the default 5,000,000 fuel have not changed.
 
 ## Independent deterministic work
@@ -11,7 +11,7 @@ new geometry, dynamic parts and final C result packing share it. Neither a
 new builtin call nor returning from a helper resets/refunds work. Zero in a
 host request selects the finite default, currently **100,000,000** work units.
 An explicit positive u64 replaces it; even `UINT64_MAX` is finite. The default
-and poll interval will receive their measurement justification in step 12.3.
+and poll interval are justified by the stage-12 calibration below.
 There is no new file field, instruction, result persistence format or tariff
 version. Legacy generation entries also use the finite default.
 
@@ -60,11 +60,17 @@ No clock is read when a deadline is absent. The work guard is always active.
 step; reservations can advance the counter before physical work, so a jump
 in `work_used` between polls does not measure uninterruptible work. Large
 surface initialization/copies and strings are split into at most 1024 slots
-or bytes. Geometry storage polls during relocation/construction, including
+or bytes and at most **32 KiB** in each bulk initialization/copy chunk.
+Growing control tables also move elements with checkpoints. Geometry storage polls during relocation/construction, including
 prepaid loops. Fixed bounded scalar kernels and fixed automatic workspaces
-remain bounded calls; allocation/system scheduling and a host's own callback
-cannot have a portable wall-clock bound. Measurement of the slowest native
-and WASM chunks and the final default rationale remain step 12.3.
+remain bounded calls. The largest fixed Voronoi workspace is statically capped
+at **32 KiB**; lists/distributions have at most 256 elements, call depth 256,
+locals 1024 and operand depth 512. A logical loop step may contain bounded
+scalar math (including at most 25 curve Newton evaluations); 1024 is a count
+of bounded steps, not machine instructions. Allocation, system scheduling,
+cleanup after interruption and a host's callback cannot have a portable
+wall-clock bound. Host rendering/encoding and later standalone queries have
+their separate scope described below.
 
 Generation errors use `WorkExhausted` (3015), `Cancelled` (3016) and
 `DeadlineExceeded` (3017), all Execute-stage traps, including setup. There is
@@ -162,3 +168,43 @@ The frozen 21,829-image corpus is unchanged. Its pixel replayers explicitly
 supply 1,000,000,000 work units to reach historical high-fuel stress cases;
 new default-limit and exact-budget tests are separate. This preserves the
 pixel oracle and does not raise any production default or change fuel.
+
+SFML takes a final optional `ExecutionLimits` value, retaining a shared native
+token by value; `GeneratedResult::work` keeps counters and `Failure` owns the
+structured cause. Godot takes a final optional dictionary with `work_limit`,
+`timeout_ns`, `cancellation`; its signed integer API accepts 0..INT64_MAX.
+A local `Ref<IpropCancellation>` holds the token across the call. Its `work`
+and result tables publish together; failed generations preserve them and set
+`last_error`. In each host cancellation only touches the independent native
+atomic flag. Other mutable engine/asset operations retain their ordinary
+thread restrictions.
+
+## Measured default and chunks
+
+The [calibration](verification/execution-limits-v0.9-calibration.json) records
+188 cases, three warmups and five recorded plain/probed samples on native
+AppleClang and Emscripten/Node, using the same binaries, work/fuel counters
+and RGBA hashes (or identical trap reasons). All 141 legacy cases and all 42
+64²/256² pipeline cases succeed with the default. Their respective maximum
+work counts are **4,612,363** and **6,217,470**. The 100M finite default leaves
+about **16 times** the measured pipeline maximum, retaining room for larger
+compositions without allowing unlimited work after a fuel discount.
+
+The large 2048² image and 256-site/four-relaxation Voronoi controls use
+4,194,305 and 5,124,829 work units. Two stress cases with explicitly increased
+test fuel are stopped by 3015: an off-canvas 2048² Worley mask and four million
+small helper calls. Their measured whole-call medians are 404/742 ms native
+and 678/3912 ms WASM. This default is a finite cost guard; interactive hosts
+should select a monotonic timeout for their latency requirement. The radius-64
+morphology control hits its unchanged conservative fuel reservation (3001).
+
+The 1024-step interval balances polling overhead with interruption inside
+long builtins. Bulk helpers additionally cap each physical copy at 32 KiB,
+independent of record width; tests interrupt both large-record copying and
+control-buffer growth before completion. Observed maximum between-poll gaps
+are **4.245 ms native** and **0.967 ms WASM** in this capture, including
+instrumentation and scheduling effects. These are measurements, not portable
+time guarantees. Final wrapper delivery is recorded separately (maximum
+observed tail 0.605 ms native / 1.524 ms WASM); it is outside the next-checkpoint
+claim. Deadlines/cancellation remain optional and never replace deterministic
+work accounting.

@@ -34,6 +34,7 @@ struct Workspace {
     std::array<GeometryEdgeUse,kMaxGeometrySites+8> uses{};
     std::array<i32,kMaxGeometrySites> neighbors{};
 };
+static_assert(sizeof(Workspace) <= 32 * 1024, "fixed uninterruptible workspace must remain bounded");
 [[noreturn]] void invalid(Execution& ex,const char* text) { ex.trap(text,ErrorReason::NumericRange); }
 bool finite(Vec2 p) { return std::isfinite(p.x) && std::isfinite(p.y); }
 bool same(Vec2 a,Vec2 b) { return a.x == b.x && a.y == b.y; }

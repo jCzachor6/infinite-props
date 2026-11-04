@@ -211,6 +211,53 @@ TEST_CASE("stopping geometry allocation and moves releases all unpublished memor
     CHECK(ex.resources.bytes == original);
 }
 
+TEST_CASE("large records and growing control buffers keep bounded interruption chunks", "[execution-limits]") {
+    using Record = std::array<u8,512>;
+    struct Copies {
+        std::vector<Record>* output;
+        std::size_t previous = 0, maximumBytes = 0;
+        static bool stop(void* context) {
+            auto& p = *static_cast<Copies*>(context);
+            const auto current = p.output->size();
+            p.maximumBytes = std::max(p.maximumBytes,(current-p.previous)*sizeof(Record));
+            p.previous = current;
+            return current >= 128;
+        }
+    };
+    std::vector<Record> output;
+    Copies copies{&output};
+    ExecutionLimits limits; limits.cancelled=Copies::stop; limits.context=&copies;
+    detail::WorkBudget budget(limits);
+    CHECK_THROWS_AS(detail::initializeWork(output,1024,Record{},budget),Trap);
+    CHECK(output.size() == 128);
+    CHECK(copies.maximumBytes <= kMaxWorkCopyBytes);
+
+    struct Move {
+        std::size_t* count;
+        explicit Move(std::size_t* moves) : count(moves) {}
+        Move(Move&& other) noexcept : count(other.count) { ++*count; }
+        Move& operator=(Move&&) = default;
+    };
+    struct Moves {
+        std::size_t* count;
+        std::size_t previous = 0, maximum = 0;
+        static bool stop(void* context) {
+            auto& p=*static_cast<Moves*>(context);
+            p.maximum=std::max(p.maximum,*p.count-p.previous); p.previous=*p.count;
+            return *p.count >= 2048;
+        }
+    };
+    std::size_t moved=0;
+    std::vector<Move> control; control.reserve(8192);
+    for(std::size_t i=0;i<8192;++i) control.emplace_back(&moved);
+    Moves moves{&moved}; limits.cancelled=Moves::stop; limits.context=&moves;
+    detail::WorkBudget relocation(limits);
+    CHECK_THROWS_AS(detail::appendWork(control,Move{&moved},relocation),Trap);
+    CHECK(moves.maximum <= kWorkPollInterval);
+    CHECK(moved == 2048);
+    CHECK(control.size() == 8192);
+}
+
 TEST_CASE("scalar noise reserves work independently of its one-fuel legacy tariff", "[execution-limits]") {
     const auto scalar = [](Opcode opcode, std::vector<Value> args, u64 expected, u64 extraFuel = 0) {
         LoadedFile file; file.code.functions.emplace_back(); detail::Execution ex(file);

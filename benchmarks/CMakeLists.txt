@@ -11,3 +11,7 @@ iprop_warnings(iprop_capi_benchmark)
 add_executable(iprop_operations_benchmark EXCLUDE_FROM_ALL operations.cpp)
 target_link_libraries(iprop_operations_benchmark PRIVATE iprop::runtime)
 iprop_warnings(iprop_operations_benchmark)
+
+add_executable(iprop_execution_benchmark EXCLUDE_FROM_ALL execution-limits.cpp)
+target_link_libraries(iprop_execution_benchmark PRIVATE iprop::capi_static)
+iprop_warnings(iprop_execution_benchmark)
