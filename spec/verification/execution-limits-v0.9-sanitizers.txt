@@ -106,7 +106,7 @@ test 77
 
 77: Test command: /usr/bin/python3 "/work/stage12/source/backends/test/check-python.py" "/work/stage12/asan/tools" "/work/stage12/asan/backends/capi/libipropc.so.0.8.0" "/work/stage12/asan/binding-fixtures"
 77: Working Directory: /work/stage12/asan/tests
-77: Environment variables: 
+77: Environment variables:
 77:  IPROP_SANITIZER_PRELOAD=/usr/lib/gcc/aarch64-linux-gnu/13/libasan.so:/usr/lib/gcc/aarch64-linux-gnu/13/libstdc++.so
 77:  IPROP_SANITIZER_PROBE=/work/stage12/asan/tests/libpython_sanitizer_probe.so
 77: Test timeout computed to be: 10000000
@@ -128,10 +128,10 @@ test 77
 77: test_invalid_input (test_runtime.RuntimeTests.test_invalid_input) ... ok
 77: test_pillow_and_cli_export (test_runtime.RuntimeTests.test_pillow_and_cli_export) ... ok
 77: test_unicode_inputs_and_located_runtime_failure (test_runtime.RuntimeTests.test_unicode_inputs_and_located_runtime_failure) ... ok
-77: 
+77:
 77: ----------------------------------------------------------------------
 77: Ran 10 tests in 3.418s
-77: 
+77:
 77: OK
 77: Python sanitizer allocator: pymalloc (ASan/UBSan/LSan)
 77: test_all_typed_fixtures_keep_pixels_rng_and_exact_native_work (test_execution_limits.ExecutionLimitTests.test_all_typed_fixtures_keep_pixels_rng_and_exact_native_work) ... ok
@@ -144,17 +144,17 @@ test 77
 77: test_invalid_input (test_runtime.RuntimeTests.test_invalid_input) ... ok
 77: test_pillow_and_cli_export (test_runtime.RuntimeTests.test_pillow_and_cli_export) ... ok
 77: test_unicode_inputs_and_located_runtime_failure (test_runtime.RuntimeTests.test_unicode_inputs_and_located_runtime_failure) ... ok
-77: 
+77:
 77: ----------------------------------------------------------------------
 77: Ran 10 tests in 3.076s
-77: 
+77:
 77: OK
 77: -----------------------------------------------------
 77: Suppressions used:
 77:   count      bytes template
 77:     186     180611 PyObject_Malloc
 77: -----------------------------------------------------
-77: 
+77:
 1/1 Test #77: binding_python ...................   Passed    8.72 sec
 
 The following tests passed:

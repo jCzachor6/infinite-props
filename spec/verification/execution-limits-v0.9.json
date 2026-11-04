@@ -220,7 +220,7 @@
     "execution-limits-v0.9-macos-ctest.txt": "6fe49379d74377cc3e50bdf8b086a573cdfb9037dc1707ff242a8b89c599223a",
     "execution-limits-v0.9-conformance.txt": "3c26bd605016deb379804679e38a5e888565329432af338068df7d8e62dac4ee",
     "execution-limits-v0.9-sanitizers-initial.txt.gz": "47a2fb55ef911b9cfd5684c385545411146b916d06bfdece5ae5cd4b58581ca9",
-    "execution-limits-v0.9-sanitizers.txt": "5fd3033a0cc3a69bd4488b77119a8466e462a11cf36ff5eac6e2570387bb57bd",
+    "execution-limits-v0.9-sanitizers.txt": "db5f8c61f57ff9feba99e4e2773e6be84e336c6c599c89a35afb4a0535d97302",
     "execution-limits-v0.9-hosts.txt": "7b17a0991c763a66be435f06934709caa72763ff56cd1bc214b001e8eac5e0f0"
   },
   "harness_closure_normal_checks": {
@@ -231,5 +231,6 @@
       "ci_release_tools",
       "language_documentation"
     ]
-  }
+  },
+  "log_normalization": "Trailing whitespace removed from the sanitizer closure transcript; initial complete raw log is preserved in gzip."
 }
