@@ -95,6 +95,8 @@ test("editor inspector keeps source maps and binary export uses production outpu
             createDiagnosticCollection: () => ({ set() {}, clear() {}, delete() {}, dispose() {} }),
             registerCodeLensProvider: disposable,
             registerCodeActionsProvider: disposable,
+            registerCompletionItemProvider: () => ({ dispose() {} }),
+            registerHoverProvider: () => ({ dispose() {} }),
             registerDocumentFormattingEditProvider: disposable,
         },
         workspace: {

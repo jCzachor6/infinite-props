@@ -1,15 +1,10 @@
 # Geometry core, handles and ownership for 0.9
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-**Status:** stage 04 contract on `develop`; product/source-language/API versions
-remain at their released values until stage 14. No new geometry constructor,
-rendering opcode, host output kind, section, or C ABI layout is introduced here.
-The shared store is exercised directly by native and WASM test executables.
-The language-description JSON protocol advances to schema 5 because its closed
-type vocabulary expands; see [the protocol migration](../docs/language-description.md#migrating-schema-4-to-5).
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
 
 ## Types and program encoding
 
@@ -42,7 +37,7 @@ Existing locals, helpers and part imports named `diagram`, `regions`, `part`,
 Inputs, asset constants, palettes and generic lists/samplers/steppers cannot
 contain these handles. Singular geometry outputs and generic `list<part2d>` are
 not added. Existing mask/layer resource exports still accept only mask/layer.
-The specialized host part output belongs to stage 10.
+[Part exports](part-exports-v0.9.md) define the specialized host part output.
 
 Locals have function scope and the existing source-traversal typing rules.
 Their runtime zero is a distinct null handle, never a valid empty store.
@@ -90,9 +85,9 @@ neighbor indices. No ring or region owns an independent point array.
 There is no epsilon welding or coordinate quantization in this representation.
 Topology compares vertex IDs exactly; separate vertices may have identical
 coordinates. A zero-length edge is invalid. Algorithm-specific clipping,
-canonicalization, joins and raster boundary tolerances are pinned when those
-algorithms land in stages 05–08. No third-party geometry dependency is needed
-for this stage; the new implementation is repository-owned C++ under its license.
+canonicalization, joins and raster tolerances are pinned in the respective
+Voronoi/contour/region/gap contracts. The implementation uses repository-owned
+C++ under its license, without a third-party geometry dependency.
 
 ## Cached metadata and arithmetic
 
@@ -117,7 +112,7 @@ independent of the target's raster scale.
 The finalized store caches area, centroid and bounds. Metadata access and hole/
 neighbor spans neither allocate nor rebuild topology. Part storage separates
 the source reference, identity, cached bounds, D4 placement and optional fill/
-texture. Part creation, identity allocation and rendering remain stage 09.
+texture. [Dynamic parts](dynamic-parts-v0.9.md) define creation, identity and rendering.
 
 ## Bounded memory and work
 
@@ -168,10 +163,13 @@ constant automatic workspace and no library-dependent recursive sort stack.
 An unpublished builder owns all provisional buffers. `finish()` consumes it,
 including on failure; only successful validation returns a const store.
 Unwinding releases scratch, headers, capacities and source references. No RNG
-is read or advanced. Public operation tariffs and the full work/deadline policy
-remain stage 13; this stage introduces no unbounded native scan.
+is read or advanced. The [tariff](fuel-v0.9.md) and
+[work/deadline policy](execution-limits-v0.9.md) apply to all public execution.
 
 ## Verification
+
+Historical checkpoint evidence follows; current versions, host support and
+tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
 `tests/fixtures/geometry-v0.9.json` contains independently calculated topology,
 binary32 metadata, retained/peak memory and fuel for adjacent rectangles, a

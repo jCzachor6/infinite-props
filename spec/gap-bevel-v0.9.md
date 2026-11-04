@@ -1,11 +1,11 @@
 # Gaps and bevels — 0.9 implementation contract
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-Stage 08 builds on [regions](regions-v0.9.md). Product/source version and C ABI
-remain unchanged until the release integration stage. New opcode values are
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
+This builds on [regions](regions-v0.9.md). New opcode values are
 append-only, with zero aux and operand, checked even in unreachable code.
 
 | Opcode | Mnemonic | Stack |
@@ -81,10 +81,10 @@ At most nine shifted segments per current edge before corner joins. All
 generated segments, intersection cuts, boundary atoms and output rings use
 the existing 65536/262144/65536/2048 bounds, including later-discarded data.
 Variable automatic workspace is 12288 charged bytes, replacing the constant
-8192. Interim fuel reserves 36 per corner (two nine-knot profiles, normals and
+8192. Kernel units reserve 36 per corner (two nine-knot profiles, normals and
 endpoint evaluation), one per tested interior knot and arc subdivision visit;
-all shared arrangement/builder costs remain additional. Final tariffs/work
-limits are still stages 12–13.
+all shared arrangement/builder units remain additional. Public execution applies
+the [20% tariff](fuel-v0.9.md) and [work limits](execution-limits-v0.9.md).
 
 ## Bevel (08.3)
 
@@ -130,15 +130,19 @@ No per-region canvas, distance-field image or full-canvas intermediate is
 created. Capacity/growth charges and failures follow the geometry arena.
 Automatic bevel workspace is 4096 plus the shared raster's 1024 bytes.
 
-Interim fuel reserves 4 per cached edge, 4 per zeroed RGBA pixel,
+Kernel units reserve 4 per cached edge, 4 per zeroed RGBA pixel,
 5 per prepared pixel, 1 per row accumulator reset, 1 per subrow owner reset,
 1 per owner-interval binary-search step/write, active-edge append/visit,
 4 per exact projection and per winning sample shade, 4 per pixel/subrow
 visit, and 1 per finalized pixel; existing bounds/crossing/sort charges remain.
 Zero strength skips edge and sampling work after validated bounds and output
-allocation. The final independent work limits and tariffs remain stages 12–13.
+allocation. The final [work limits](execution-limits-v0.9.md) and
+[20% tariff](fuel-v0.9.md) apply.
 
 ## Verification (08.4)
+
+Historical checkpoint evidence follows; current versions, host support and
+tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
 [Frozen vectors](../tests/fixtures/gap-bevel-v0.9.json) pin 47 complete records:
 input/result points, rings, moments, provenance, IDs, neighbors, mask, optional
@@ -177,6 +181,5 @@ coverage includes 1536 variable gaps from all 512 binary 3×3 contour sources.
 The [stage-08 verification report](verification/gap-bevel-v0.9.json) binds
 these results to the tested source and artifact hashes, the 84/84 CTest run,
 the full existing native/WASM regression gate, a packaged-runtime smoke without
-internal probes, and explicit rejection by six archived runtimes. Product/source
-version remains 0.8.0; release integration and final tariff calibration are later
-stages.
+internal probes, and explicit rejection by six archived runtimes. This is
+historical checkpoint evidence from product/source 0.8.0 before final calibration.

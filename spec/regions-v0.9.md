@@ -1,12 +1,10 @@
 # Regions, offsets and raster masks for 0.9
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-**Status:** stage 07 completed on `develop`. The product and language versions
-remain 0.8.0, and the language-description protocol remains schema 5.
-Existing instruction, type, section and output IDs remain unchanged.
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
 
 ## Conversion and metadata (07.1)
 
@@ -201,10 +199,13 @@ subdivision visit. Each heapsort reserves `4*n*(1+bit_width(n))`; builder costs
 are additional as specified by the geometry core. Raster reserves one unit per
 zeroed output byte and one for its final A8 conversion, plus four samples per
 pixel per subrow and charged crossing/interval/edge scans. Empty/shared fast
-paths skip scans they do not perform. Final independent work/deadline limits
-and tariff calibration remain later stages; no discount is introduced here.
+paths skip scans they do not perform. Public execution applies the
+[20% tariff](fuel-v0.9.md) and [work/deadline limits](execution-limits-v0.9.md).
 
 ## Verification
+
+Historical checkpoint evidence follows; current versions, host support and
+tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
 The [fixtures](../tests/fixtures/regions-v0.9.json) pin input geometry and complete
 native/WASM record hashes. Expected counts/IDs/analytic areas are authored

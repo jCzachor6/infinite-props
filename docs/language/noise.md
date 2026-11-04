@@ -155,3 +155,13 @@ The complete algorithms and domain checks are in
 This example deliberately traps on a nonfinite derived coordinate:
 
 <!-- example: ../../examples/language/traps/noise-domain.ips -->
+
+## Animal texture masks
+
+Cell distance below a threshold gives cheetah spots; cell-edge distance above
+it gives giraffe patches separated by light seams. Both use internal coordinate
+warp, an explicit seed and one direct mask instead of a pixel loop. No geometry
+or part resources are needed for these texture-only workflows.
+
+<!-- example: ../../examples/language/cheetah-spots.ips -->
+<!-- example: ../../examples/language/giraffe-spots.ips -->

@@ -22,6 +22,7 @@ namespace {
 struct Options {
     std::string file;
     bool floatBits = false;
+    bool omitPartOutputs = false;
     u32 seed = 0;
     u32 sizeX = 0; // 0 = use the meta size
     u32 sizeY = 0;
@@ -45,6 +46,7 @@ void printUsage(std::FILE* out) {
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
                  "  -o, --output PATH   PNG output path (default: <stem>-<seed>.png)\n"
                  "  --float-bits        encode output coordinates as raw binary32 bits\n"
+                 "  --omit-part-outputs preview PNG/legacy outputs without typed part records\n"
                  "  --work-limit N      independent native work budget (0 = finite default)\n"
                  "  --timeout-ms N      monotonic generation timeout (0 = none)\n"
                  "  --work-stats        include work counters in result JSON\n"
@@ -150,6 +152,8 @@ int ipgenMain(int argc, char* argv[]) {
             wantHelp = true;
         } else if (arg == "--float-bits") {
             options.floatBits = true;
+        } else if (arg == "--omit-part-outputs") {
+            options.omitPartOutputs = true;
         } else if (arg == "--work-stats") {
             options.workStats = true;
         } else if (arg == "--work-limit") {
@@ -212,7 +216,7 @@ int ipgenMain(int argc, char* argv[]) {
     }
 
     GenerationInputs inputs;
-    if (hasPartOutputs(loaded))
+    if (hasPartOutputs(loaded) && !options.omitPartOutputs)
         return fail("part outputs are unsupported by the legacy JSON result; use the typed host API");
     inputs.seed = options.seed;
     inputs.sizeX = options.sizeX;
@@ -313,14 +317,19 @@ int ipgenMain(int argc, char* argv[]) {
         json << "}";
     }
     json << "\n  ],\n  \"outputs\": [";
+    bool firstOutput = true;
     for (std::size_t i = 0; i < result.outputs.size(); ++i) {
-        if (i != 0) {
+        if (options.omitPartOutputs && result.outputs[i].kind == OutputKind::Part) continue;
+        if (!firstOutput) {
             json << ",";
         }
         json << "\n    ";
+        firstOutput = false;
         tools::writeOutputJson(json, result.outputs[i], options.floatBits);
     }
-    json << "\n  ]\n}\n";
+    json << "\n  ]";
+    if (options.omitPartOutputs && hasPartOutputs(loaded)) json << ",\n  \"part_outputs_omitted\": true";
+    json << "\n}\n";
     std::cout << json.str();
 
     return 0;

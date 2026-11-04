@@ -62,6 +62,7 @@ website/public/recipes/
 website/public/examples/
 website/public/backends/
 website/public/editor/
+website/public/tests/
 website/public/website/
 website/public/docs/
 website/public/LLM_REFERENCE.md

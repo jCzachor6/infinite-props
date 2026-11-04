@@ -41,7 +41,7 @@ Json operationEffects(const OperationEffects& effects) {
 Json effectRules() {
     auto rules = Json::object({{"intrinsic_scope", "operation_excluding_arguments_and_resources"},
         {"argument_effects", "evaluated_before_operation_in_caller_stream"},
-        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit"})},
+        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit", "work_limit", "cancelled", "deadline_exceeded"})},
         {"validation_limits", Json::array({"operand_stack_limit"})}, {"allocation_failure", true}});
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
@@ -311,7 +311,7 @@ Json sourceRules() {
             {"color", "premultiplied_stored_channels_unpremultiply_after_both_passes"},
             {"rounding", "nearest_half_up_zero_alpha_zero_rgb"}, {"mask_result", "A8_alpha_equivalent"},
             {"geometry", "preserve_dimensions_scale_placement_D4"}, {"zero_sigma", "validate_then_share_no_allocation"},
-            {"clip", "paint_only"}, {"positive_sigma_fuel", "one_plus_K_plus_W_H_times_1_plus_2_K"},
+            {"clip", "paint_only"}, {"positive_sigma_fuel", "ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K"},
             {"scratch_bytes", "8_times_W_min_H_K_channels"}, {"scratch_channels", Json::object({{"layer", 4}, {"mask", 1}})},
             {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"}})},
         {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
@@ -330,8 +330,8 @@ Json sourceRules() {
         {"capture_opcode", findOpcode(Opcode::LayerBegin)->mnemonic},
         {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
         {"maximum_active_scopes", kMaxSurfaceScopes}, {"generation_data_limit_bytes", kMaxGenerationData},
-        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
-        {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
+        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "two_plus_ceil_70_percent_target_pixels"},
+        {"paint_fuel", "ceil_60_percent_one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
     Json noiseConstants = Json::object();
     for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
@@ -419,8 +419,8 @@ Json sourceRules() {
         {"clip_opcode", findOpcode(Opcode::ClipBegin)->mnemonic},
         {"paint_opcode", findOpcode(Opcode::SurfacePaintMask)->mnemonic},
         {"result_bytes", "128_plus_1_per_pixel"}, {"view_fuel", "one_no_scan"},
-        {"algebra_fuel", "one_plus_zeroed_pixels_plus_result_pixels"},
-        {"morphology_fuel", "one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
+        {"algebra_fuel", "ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels"},
+        {"morphology_fuel", "ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
         {"clip_write_fuel", "one_per_active_level"}});
     rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
         {"element_types", types([](ips::ValueType type) { return type.isSampler() ||

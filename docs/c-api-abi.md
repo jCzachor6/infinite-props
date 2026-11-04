@@ -37,4 +37,5 @@ through `IPROP_CAP_EXECUTION_LIMITS`, `iprop_generate_controlled` and separate
 generation options and fuel statistics keep their layouts. Legacy entries
 also use a finite default work budget; requesting a different work limit or
 deadline requires the new controlled entry. Existing API 0.4/0.5 clients on
-ABI 0.5 remain compatible. No file/program version or fuel tariff changes.
+ABI 0.5 remain compatible. These API additions leave file/program encodings unchanged.
+Runtime 0.9 uses the [shared fuel tariff](../spec/fuel-v0.9.md).

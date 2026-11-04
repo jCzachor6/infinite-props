@@ -1,0 +1,46 @@
+{
+  "stage": 14,
+  "status": "complete",
+  "date": "2026-11-04",
+  "base_commit": "ef941a8f0ef04d13dbc636ba7d823d9f6cc95609",
+  "versions": {
+    "product": "0.9.0",
+    "source": "0.9.0",
+    "c_api": "0.6",
+    "abi": "0.5",
+    "language_schema": 6,
+    "diagnostics_schema": 1,
+    "documentation_schema": 3,
+    "binary_format": "unversioned"
+  },
+  "documentation": {
+    "builtins": 115,
+    "checked_examples": 165,
+    "llm_bytes": 126364,
+    "llm_max_bytes": 131072,
+    "frozen_contract": "spec/iprop-v0.9.md"
+  },
+  "checks": {
+    "macos_ctest": "98/98",
+    "final_affected_gates": "5/5",
+    "native_wasm": "full suite PASS",
+    "editor_tests": "51/51",
+    "website_doc_tests": "6/6",
+    "contract_mutations": 233,
+    "real_cli_cases": 165,
+    "formal_json_schema": "PASS, Linux jsonschema 4.10.3 / draft 2020-12",
+    "new_examples": "6 sources / 96 optimized, no-opt, debug and formatted generations; stable formatter",
+    "typed_example": "4 seeds, 36 snapshots, one shared resource, retained after Program closes",
+    "installed_sdk": "tools, offline docs and shared/static C consumers PASS",
+    "website": "7 pages / 24 recipes / 7 showcase assets / 42 exact native-WASM images / 51 butterfly cases",
+    "browser": "Chromium 141, handbook desktop/mobile and navigation; actual editor preview HTML/native image with simulated VS Code bridge"
+  },
+  "scope_limits": [
+    "Local verification; stage 15 release/platform/sanitizer matrix remains open.",
+    "No tag, main merge, release or site deployment."
+  ],
+  "evidence": {
+    "file": "documentation-v0.9.tar.gz",
+    "sha256": "f5fd1b9db29d76015a54c93740b6774e4349c6c8742f3a3bb77f3511d4d2058a"
+  }
+}

@@ -1,6 +1,6 @@
 # C API handle and descriptor contracts
 
-These rules govern API 0.4/0.5 sized descriptors and handles on ABI line 0.5.
+These rules govern API 0.4/0.5/0.6 sized descriptors and handles on ABI line 0.5.
 Query the loaded library's capability bits before using optional operations.
 The [ABI policy](c-api-abi.md) applies to both checked and untyped entry points;
 clients built against earlier layouts must rebuild.

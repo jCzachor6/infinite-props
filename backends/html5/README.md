@@ -100,7 +100,7 @@ by the host and is independent of these deterministic counts.
 
 ## Typed part results
 
-Generation uses the same checked C API 0.5 implementation as native hosts.
+Generation uses the same checked C API 0.6 implementation as native hosts.
 Every output has `index`, `owner`, `count` and an ordered `parts` array in
 addition to its existing fields. Kind 3 denotes `output list part`; old float
 outputs retain their exact `valueBits`. Empty declarations remain present.

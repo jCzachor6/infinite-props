@@ -8,7 +8,7 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 5
+LANGUAGE_SCHEMA_VERSION = 6
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
@@ -308,8 +308,8 @@ def read_language(value):
             'source_over_kernel': {'straight_rgba8_u64_nearest_half_up'},
             'rounding_boundary': {'every_primitive_blit_and_paint'},
             'paint_opcode': {'surface.paint'}, 'capture_opcode': {'layer.begin'},
-            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'one_plus_target_pixels'},
-            'paint_fuel': {'one_plus_source_pixels'}, 'unset_handle': {'trap'}},
+            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'two_plus_ceil_70_percent_target_pixels'},
+            'paint_fuel': {'ceil_60_percent_one_plus_source_pixels'}, 'unset_handle': {'trap'}},
             ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections'], 'surface policy')
         require(not any(surface[k] for k in ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections']), 'surface restrictions')
         require(surface['alpha_modes'] == ['surface.legacy', 'surface.source_over'], 'surface alpha modes')
@@ -343,7 +343,7 @@ def read_language(value):
                 'color': 'premultiplied_stored_channels_unpremultiply_after_both_passes',
                 'rounding': 'nearest_half_up_zero_alpha_zero_rgb', 'mask_result': 'A8_alpha_equivalent',
                 'geometry': 'preserve_dimensions_scale_placement_D4', 'zero_sigma': 'validate_then_share_no_allocation',
-                'clip': 'paint_only', 'positive_sigma_fuel': 'one_plus_K_plus_W_H_times_1_plus_2_K',
+                'clip': 'paint_only', 'positive_sigma_fuel': 'ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K',
                 'scratch_bytes': '8_times_W_min_H_K_channels', 'scratch_channels': {'layer': 4, 'mask': 1},
                 'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter'}
             blur = obj(surface['blur'], list(expected), 'surface blur policy')
@@ -384,8 +384,8 @@ def read_language(value):
             'clip_evaluation': {'mask_once_no_rng'}, 'from_opcode': {'mask.from'},
             'clip_opcode': {'clip.begin'}, 'paint_opcode': {'surface.paint.mask'},
             'result_bytes': {'128_plus_1_per_pixel'}, 'view_fuel': {'one_no_scan'},
-            'algebra_fuel': {'one_plus_zeroed_pixels_plus_result_pixels'},
-            'morphology_fuel': {'one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
+            'algebra_fuel': {'ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels'},
+            'morphology_fuel': {'ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
             'clip_write_fuel': {'one_per_active_level'}},
             ['zero_coverage_write', 'geometry_outputs_clipped'], 'mask policy')
         require(not masks['zero_coverage_write'] and not masks['geometry_outputs_clipped'], 'mask write policy')
@@ -636,7 +636,7 @@ def read_language(value):
     ordered_signature(call['part'], 'part', typed=False)
     effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
     require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
-    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit'})
+    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit', 'work_limit', 'cancelled', 'deadline_exceeded'})
     strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
     boolean(effect['allocation_failure'], 'allocation failure')
     for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:

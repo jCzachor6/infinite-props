@@ -1,6 +1,8 @@
 # Dynamic part outputs — stage 10 contract
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
+
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
@@ -79,7 +81,8 @@ and subsequent generations; the last result/reference releases them.
 
 Legacy float/JSON result paths explicitly reject programs/slots with this new
 kind instead of inventing empty float arrays. Typed host queries are the
-generation-result contract. Platform binding support is stage 11.
+generation-result contract. All seven maintained bindings expose this result;
+see the [host integration guides](../docs/execution-limits.md).
 
 ## Checked C result queries (10.2)
 

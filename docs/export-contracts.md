@@ -1,8 +1,8 @@
 # Export contracts
 
-The development compiler exports source language **0.8.0** with product
-**0.8.0**, an unversioned format, C API **0.5** and ABI **0.5**. JSON protocol versions
-are independent: language-description schema **5**, diagnostic schema **1**
+The development compiler exports source language **0.9.0** with product
+**0.9.0**, an unversioned format, C API **0.6** and ABI **0.5**. JSON protocol versions
+are independent: language-description schema **6**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
 | Payload | Formal contract | Consumer |
@@ -16,17 +16,12 @@ binding and effects come from the compiler's shared registries; schemas contain
 no builtin signature catalogue. [Descriptive rules](language-description.md)
 and [diagnostic semantics](compiler-diagnostics.md) explain their runtime meaning.
 
-Stage 09 adds optional `source_rules.dynamic_parts` in schema 5: shared sources,
-generation-wide IDs, immutable appearance/placement, effective D4/rounding,
-alpha-once layer rendering and shape-only masks. Readers validate it when
-present and accept earlier schema-5 profiles without it. The existing effect
-enum is unchanged; creation uses a conservative generation-state summary and
-dynamic drawing uses the existing part-render argument check.
-
-Stage 10 adds optional `source_rules.part_exports` within schema 5: list-only
-part declarations, append order, immutable root snapshots, 256-record limit
-and result-owned shared resources, without generated-result serialization.
-Its fields are validated when present; earlier schema-5 exports remain valid.
+Schema 6 retains the geometry/dynamic-part vocabulary and capability objects
+introduced during 0.9 development in schema 5. It replaces the closed surface
+and mask fuel formulas with the final discounted tariff (including capture
+begin/end), and adds execution-wide work/cancellation/deadline trap names.
+Update version gates and known enums/strings together; earlier schemas are
+rejected. No program header or C API/ABI migration follows from this JSON change.
 
 A schema version fixes known field types and meanings. Consumers accept unknown
 additive fields, including additions inside signatures or diagnostics. They
@@ -35,89 +30,17 @@ versions. Changing a known field's type, meaning or enum domain requires a new
 schema version, a documented migration and updated executable consumer cases;
 changing the source-language or product version alone does not migrate JSON.
 
-Language-description schema 5 extends the closed value-type vocabulary with
-`diagram2d`, `contours2d`, `regions2d`, `part2d` and `parts2d`. Readers must update
-their version gate and accepted types; schemas 1–4 are rejected. The new handles
-are storable/helper values and variadic choices, with generation ownership and
-no host-input, constant or generic-container representation. Optional
-`source_rules.geometry_handles` describes descriptor codes, limits and ownership.
-This protocol migration does not change the program header or C API/ABI versions.
-
-Schema 4 introduced explicit asset inputs without implicit draw controls. The
-current schema retains typed constants, parameterized lists, samplers/steppers,
-point distributions and surfaces, with signatures/effects from shared registries.
-Diagnostic and documentation-manifest schemas retain their independent versions.
-Source language 0.8 introduced optional `source_rules.materials` in schema 4;
-schema 5 retains this source-only capability separately from VM storable types.
-Readers validate it when present and accept profiles without it in the supported schema.
-
-Development stage 03 added optional `source_rules.noise_mask` in schema 4,
-with noise namespace constants and the direct-mask sampling/default rules.
-Readers validate it when present and accept profiles without it in the supported schema.
-
-Stage 05 adds optional `source_rules.voronoi` in schema 5, describing method
-constants, site/relaxation limits, the metric and immutable shared topology.
-The new builtins use the existing schema-5 geometry/list vocabulary; this
-additive capability does not require another protocol version change.
-
-Stage 06 adds optional `source_rules.contour` in schema 5, describing the two
-connectivity constants, alpha interpolation, source mapping, boundary closure,
-topology-preserving simplification and net component area filtering. Its two
-overloads use the existing mask and contours2d vocabulary.
+The source-rule capabilities describe materials, geometry handles, direct noise
+masks, Voronoi, contours, regions, gaps/bevels, dynamic parts and typed exports.
+Known optional fields are validated when present. Signatures/effects remain
+registry-generated; [descriptive rules](language-description.md) define each
+capability and [0.9 migration](language/migration-v0.9.md) explains the boundaries.
 
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`
 (major.minor.patch), plus `c_api_version` and `c_abi_soversion` (major.minor).
 Earlier schema-3 bundles may use major.minor for `language_version`.
-Current values are `0.8.0`, `0.8.0`, `0.4` and `0.5`. The file format is
+Current values are `0.9.0`, `0.9.0`, `0.6` and `0.5`. The file format is
 unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
-Stage 07 adds optional `source_rules.regions` in schema 5. It describes signed
-round offsets, source IDs shared by fragments, stable ordering and provenance
-neighbors, filtering before the result-region limit, the restricted points
-view, and 4 by 4 union rasterization independent of active clipping. The
-existing `regions2d`, mask and ordinary list vocabulary needs no schema bump.
-Stage 08 adds optional `source_rules.gap_bevel`, also in schema 5. It pins the
-constant offset relationship, nine-knot shared-edge profile, nearest-edge
-bevel/fade/raster, distance ties, overlap ownership, clipping, seeded RNG policy
-and prohibition of asset constants. Existing region/layer types suffice.
-
-The language export and diagnostics add an optional integer `patch` to
-`language_version`; current exports emit all three components. This additive
-field keeps the JSON schema versions unchanged. C API and ABI retain their
-major/minor pairs; `c_abi_soversion` is checked against the ABI pair.
-Verification compares source constants, compiler exports and every artifact
-matrix. Valid checksums cannot override version mismatches.
-
-Current handbooks use the source-language filename `language-v0.8.0.md`, not
-the product version. The emitted, unversioned format is specified by the
-frozen [self-contained 0.8 contract](../spec/iprop-v0.8.md), named after
-the product line. Product release tags, source language, C API features and the
-ABI loader line are never inferred from one another.
-
-Formal schemas check structure. Small protocol readers additionally check
-unique names, evaluation-order permutations, source/binary input mappings,
-part defaults, effect domains, safe relative manifest paths and ordered ranges.
-Bundle readers verify the complete file inventory, content hashes, builtin and
-example counts, and optional source/compiler identity. Correct checksums cannot
-make a malformed catalog valid. Current bundles carry the three schema files
-and the bounded `LLM_REFERENCE.md`, so the SDK and website expose the same
-contracts offline.
-
-The editor also checks diagnostic status against process exit, exact source
-hashes, UTF-8 boundaries and transactional fix ranges before applying edits.
-Offsets are half-open UTF-8 byte ranges; lines and columns are one-based, with
-columns counting Unicode codepoints. Protocol integers fit JavaScript's exact
-integer range.
-
-Readers accept only these current schemas. A schema 1/2/3 language export or
-a schema 1 or 2 documentation manifest is rejected; no reader falls back to an older
-shape.
-
-`compiler_export_contracts` checks actual registry exports, every registered
-language example, CLI and allocation-failure diagnostics, shared mutation cases
-and a malformed rehashed archive. The editor receives the same diagnostic
-mutations. CI repeats the check with the pinned JSON Schema implementation from
-`scripts/requirements-ci.txt`. Normal documentation builds use only Python's
-standard library; they do not install or import the CI schema dependency.

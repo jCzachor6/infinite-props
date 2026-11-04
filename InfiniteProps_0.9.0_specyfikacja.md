@@ -386,73 +386,15 @@ Docelowa relacja dla porównywalnego obrazu: natywne generatory 10–20, gotowe 
 - Brak obsługi zegara w danym hoście nie wyłącza limitu pracy. Jeśli biblioteka nie pozwala ograniczyć pojedynczego wywołania, ograniczyć wejście lub zastosować inne wykonanie przed dopuszczeniem rabatu.
 - Nowe błędy fuel/pamięci/pracy/anulowania pozostawiają hostowi niezmieniony parametr wyniku i nie publikują częściowego obrazu, eksportu ani zasobu.
 
-## 7. Docelowe przykłady IPS 0.9
+## 7. Sprawdzane przykłady
 
-Przykłady ilustrują trzy różne potrzeby. Nie należy wymuszać geometrii lub części tam, gdzie autor potrzebuje wyłącznie tekstury. Wzory korzystają z zapisanego seeda, a nie odczytów aktualnego RNG w kolejnych punktach pipeline.
-
-### 7.1. Plamy jako sama tekstura
-
-```ips
-asset CheetahTexture {
-  size 128x128
-  draw {
-    pattern_seed = seed
-    rect(0, 0, 128, 128, #d5b37d)
-    spots = noise.mask({0, 0}, {128, 128}, noise.mode_cell,
-                       {0.085, 0.085}, 0.30, pattern_seed,
-                       octaves=1, softness=0.0,
-                       comparison=noise.below, warp_amount=0.32)
-    surface.paint(spots, #34271d)
-  }
-}
-```
-
-Dla plam żyrafy użyć `noise.mode_cell_edge`, `noise.above` i deformacji. `contour()` jest potrzebne dopiero do adresowania lub eksportu poszczególnych wysp.
-
-### 7.2. Kamienne płytki i cieniowanie
-
-```ips
-asset StoneWall {
-  size 128x96
-  draw {
-    pattern_seed = seed
-    rect(0, 0, 128, 96, #40382f)
-    d = voronoi({0, 0}, {128, 96}, 28, pattern_seed,
-                voronoi.random, 0.7, 1,
-                2.2, {1, 0}, 0.65, 0.35, 0.5)
-    rs = regions(d)
-    rs = regions.gap(rs, 2.0, 0.35, pattern_seed)
-    surface.paint(regions.mask(rs), #b79d7a)
-    shade = regions.bevel(rs, 3.0, {-1, -1})
-    surface.paint(shade)
-  }
-}
-```
-
-### 7.3. Niezależne części i eksport
-
-```ips
-asset DynamicTiles {
-  size 128x128
-  output list part tiles
-  draw {
-    pattern_seed = seed
-    d = voronoi({0, 0}, {128, 128}, 36, pattern_seed,
-                method=voronoi.grid, jitter=0.6, relax=1)
-    rs = regions(d, inset=1.5, min_area=6.0)
-    ps = parts.from_regions(rs)
-    for i in 0..parts.count(ps) {
-      tile = parts.get(ps, i)
-      tone = (part.source_id(tile) & 7) - 3
-      tile = part.fill(tile, color.shade(#81858a, tone))
-      part.draw(tile)
-      tiles = tile
-    }
-  }
-}
-```
-
-Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create(layer)`. Dla geometrycznych wysp z noise: `regions(contour(spots, 0.5))`, następnie `parts.from_regions`. Nie istnieje `part.create(contours2d)`.
+Źródła są kompilowane, wykonywane i sprawdzane przez formatter razem z handbookiem:
+[gepard](examples/language/cheetah-spots.ips), [żyrafa](examples/language/giraffe-spots.ips),
+[mur](examples/language/stone-wall.ips), [bruk](examples/language/paving.ips),
+[sucha ziemia](examples/language/dry-earth.ips) oraz
+[dynamiczne kafelki z eksportem](examples/language/part-export.ips).
+Tekstury używają bezpośrednio `noise.mask`; geometrię i części tworzymy wtedy,
+gdy są potrzebne osobne regiony, transformacje lub eksport.
 
 ## 8. Zasady realizacji, odhaczania i publikacji
 
@@ -781,16 +723,18 @@ Na końcowej taryfie zaliczono macOS 98/98, Linux 100/100, pełny native/WASM, 2
 
 **Zależności:** 13.
 
-- [ ] 14.1 Zaktualizować handbook, eksport opisu języka, LLM reference, podpowiedzi edytora i dokumentację hostów z katalogu i ostatecznych kontraktów 0.9.
-- [ ] 14.2 Przenieść przykłady z §7 do sprawdzanych źródeł; dodać sceny bruku, muru, suchej ziemi, plam żyrafy i geparda oraz przykład eksportu części.
-- [ ] 14.3 Dodać migrację 0.8→0.9 z opisem nowej taryfy, namespace, ograniczeń uchwytów, D4 i granicy programu/wyniku, bez obiecywania historycznego fuel.
-- [ ] 14.4 Uzgodnić wersje produktu, języka i potrzebnych kontraktów API/ABI z istniejącą polityką repo; dopisać changelog i zamrożoną specyfikację techniczną 0.9.
-- [ ] 14.5 Sprawdzić kompilowanie przykładów, formatter round-trip, generowanie dokumentacji i wspólne ścieżki wizualne strony/edytora; aktualizacja źródeł nie jest publikacją strony.
-- [ ] **Etap 14 zakończony.**
+- [x] 14.1 Zaktualizować handbook, eksport opisu języka, LLM reference, podpowiedzi edytora i dokumentację hostów z katalogu i ostatecznych kontraktów 0.9.
+- [x] 14.2 Przenieść przykłady z §7 do sprawdzanych źródeł; dodać sceny bruku, muru, suchej ziemi, plam żyrafy i geparda oraz przykład eksportu części.
+- [x] 14.3 Dodać migrację 0.8→0.9 z opisem nowej taryfy, namespace, ograniczeń uchwytów, D4 i granicy programu/wyniku, bez obiecywania historycznego fuel.
+- [x] 14.4 Uzgodnić wersje produktu, języka i potrzebnych kontraktów API/ABI z istniejącą polityką repo; dopisać changelog i zamrożoną specyfikację techniczną 0.9.
+- [x] 14.5 Sprawdzić kompilowanie przykładów, formatter round-trip, generowanie dokumentacji i wspólne ścieżki wizualne strony/edytora; aktualizacja źródeł nie jest publikacją strony.
+- [x] **Etap 14 zakończony.**
 
 **Odbiór:** publiczne opisy i przykłady odpowiadają rzeczywistemu API oraz taryfie, bez pozostałości pseudokodu lub niezdefiniowanych wywołań.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Weryfikacja:** [raport](spec/verification/documentation-v0.9.json) i [skompresowane logi/obrazy](spec/verification/documentation-v0.9.tar.gz). Handbook: 115 builtinów / 165 wykonywanych przykładów; sześć nowych scen ma stabilny formatter i zgodne obrazy/wyjścia w 96 generacjach. Referencja LLM pozostaje poniżej 128 KiB. Schemat 6 opisuje końcową taryfę i pułapki wykonania; 233 mutacje / 165 przypadków CLI przechodzą także formalny JSON Schema. Produkt/język 0.9.0, API 0.6 / ABI 0.5; zamrożony kontrakt składa się z zachowanej bazy i jawnych rozszerzeń, bez kopiowania tysięcy linii.
+
+macOS: 98/98 CTest oraz końcowe 5/5 dotkniętych bramek; pełne native/WASM, 51 testów edytora, sześć testów renderowania dokumentacji i smoke przeniesionego SDK: PASS. Paczka strony zachowuje komplet plików manifestu, 42 obrazy native/WASM i 51 scen motyli. Chromium sprawdza handbook desktop/mobile, menu i rzeczywisty HTML podglądu z obrazem z natywnego runtime; most VS Code jest symulowany, osobny GUI extension-host nie był uruchamiany. Sześć scen obejrzano, a Python potwierdza 36 snapshotów / jeden współdzielony zasób eksportu po zamknięciu programu. Etap 15, wydanie i publikacja strony pozostają osobne.
 
 ### Etap 15 — końcowa weryfikacja 0.9
 

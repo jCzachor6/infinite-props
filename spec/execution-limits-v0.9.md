@@ -1,5 +1,7 @@
 # Independent work limits and interruption (0.9, stage 12)
 
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
+
 Status: the VM, checked C API, CLI and all seven hosts expose the shared
 controls. Calibration and the completed local audit are recorded below and in
 [the verification report](verification/execution-limits-v0.9.json).

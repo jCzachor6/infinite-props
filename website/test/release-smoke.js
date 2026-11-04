@@ -62,7 +62,7 @@ async function main() {
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
     assert.equal(docs.schema_version, 3);
     const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
-    assert.equal(catalogue.schema_version, 5);
+    assert.equal(catalogue.schema_version, 6);
     assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
@@ -88,7 +88,7 @@ async function main() {
     // A correct manifest must not mask stale files left by a previous build.
     const inventory = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
         entry.isDirectory() ? inventory(path.join(directory, entry.name)) : [path.relative(site, path.join(directory, entry.name)).replaceAll(path.sep, "/")]);
-    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"]) {
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website", "tests"]) {
         const expected = Object.keys(docs.files).filter(file => file.startsWith(directory + "/"));
         if (directory === "docs") expected.push("docs/language-manifest.json", "docs/nav.js", "docs/language-index.js");
         assert.deepEqual(inventory(path.join(site, directory)).filter(file => !file.endsWith(".html")).sort(), expected.sort());

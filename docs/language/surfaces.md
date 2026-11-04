@@ -145,7 +145,7 @@ on the right. Source-over preserves the color of translucent layers:
 <!-- example: ../../examples/language/soft-mask.ips -->
 
 <!-- llm: skip -->
-For positive sigma, filtering costs `1 + K + W*H*(1 + 2*K)` fuel, where
+For positive sigma, filtering costs `ceil((1 + K + W*H*(1 + 2*K))*60/100)` fuel, where
 `K = 2*ceil(3*sigma)+1` and W/H are the input dimensions. Weight preparation,
 result initialization and both passes are reserved before filtering, even for
 constant or transparent images. Output storage and a binary64 row cache share
@@ -167,16 +167,17 @@ Root canvas allocation retains its existing limits. Extra part canvases use the
 arena and release their allocation when the last handle expires. Existing part allocation, blit fuel,
 pixel rules, output transforms and RNG stay unchanged.
 
-A capture instruction costs one fuel plus one per target pixel cleared; paint
-costs one plus one per source pixel visited. These costs are reserved before
+Capture begin/end costs `2 + ceil(width*height*70/100)`; paint costs
+`ceil((1 + source_width*source_height)*60/100)`. These costs are reserved before
 allocation or scanning. Drawing inside a layer keeps the primitive's usual
 fuel cost. Each surface buffer releases when its last handle is destroyed;
 success or a trap clears the generation's remaining handles. A failed
 generation never publishes a partial image. Default fuel remains 5,000,000.
 
 Layers use the file's type descriptor table. They do not add
-public C input/output enums or host layouts. Host outputs remain points,
-rectangles and circles; resource exports use their own internal table.
+public C input/output enums or host layouts. Typed part outputs can retain
+layer/mask sources through the shared result
+resource table; see [structured outputs](assets.md#structured-outputs).
 
 ## Masks from captured alpha
 
@@ -268,9 +269,9 @@ up. Coverage zero preserves the old pixel, and weather still preserves alpha.
 Normal scope exit, return, break and continue restore target, mode and clips in
 reverse entry order. A trap releases generation resources and publishes no image.
 
-An A8 result reserves `128 + width*height` bytes. Its instruction costs one fuel,
-plus one per zeroed pixel and one per algebra output pixel, or one per logical
-disk sample for morphology. This counts all disk samples even when an optimized
+An A8 result reserves `128 + width*height` bytes. Sum dispatch (one),
+zeroed pixels and algebra output pixels or logical disk samples, then charge
+`ceil(units*40/100)` once for the whole instruction. This counts all disk samples even when an optimized
 scan stops early. Radius 1 has five samples; radius 64 has 12,853. `mask.from`
 and `offset` cost one without scanning; paint visits each source rectangle pixel.
 Every in-target attempted write charges one per active clip level, including

@@ -1,6 +1,8 @@
 # Direct noise masks (0.9, stage 03)
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
+
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
@@ -92,10 +94,14 @@ Padding is billed conservatively like sampled pixels; transparent results,
 clips, thresholds and off-target placement never produce a discount.
 Overflow, insufficient fuel or memory traps before any result is pushed.
 A later sample-domain trap releases the provisional buffer. A failed VM
-publishes no successful image, mask or resource export. The final tariff and
-independent native-work/deadline limiter remain in stage 13.
+publishes no successful image, mask or resource export. These are kernel units;
+the [tariff](fuel-v0.9.md) applies 20% once per complete instruction, and the
+[independent work/deadline limiter](execution-limits-v0.9.md) remains active.
 
 ## Verification
+
+Historical checkpoint evidence follows; current versions, host support and
+tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
 `tests/compiler/noise_masks_test.cpp` exercises scalar/manual equivalence,
 validation, mapping, integration, lifetimes, argument order and failed results.

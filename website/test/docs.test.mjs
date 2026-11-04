@@ -16,9 +16,9 @@ test("documentation sync retires stale payloads and preserves authored navigatio
         fs.writeFileSync(target, content);
     };
     try {
-        for (const file of ["docs/language-v0.8.0.md", "docs/language/migration-v0.7.md", "spec/iprop-v0.7.md", "spec/iprop-v0.8.md", "examples/language/new.ips", "LLM_REFERENCE.md"])
+        for (const file of ["docs/language-v0.8.0.md", "docs/language/migration-v0.7.md", "spec/iprop-v0.7.md", "spec/iprop-v0.8.md", "tests/fixtures/current.json", "examples/language/new.ips", "LLM_REFERENCE.md"])
             write(bundle, file, "current");
-        for (const file of ["docs/validation-v0.7-stage1.md", "docs/language-v0.6.md", "docs/language/migration-v0.6.md", "spec/iprop-v0.6.md", "reference/optimizations-v0.4.md", "examples/language/old.ips"])
+        for (const file of ["docs/validation-v0.7-stage1.md", "docs/language-v0.6.md", "docs/language/migration-v0.6.md", "spec/iprop-v0.6.md", "reference/optimizations-v0.4.md", "tests/fixtures/retired.json", "examples/language/old.ips"])
             write(publicDir, file, "stale");
         write(publicDir, "docs/nav.js", "authored navigation");
         write(bundle, "CHANGELOG.md", "current release notes");
@@ -30,6 +30,7 @@ test("documentation sync retires stale payloads and preserves authored navigatio
             assert.equal(fs.readFileSync(path.join(publicDir, "CHANGELOG.md"), "utf8"), "current release notes");
             assert.deepEqual(fs.readdirSync(path.join(publicDir, "spec")), ["iprop-v0.7.md", "iprop-v0.8.md"]);
             assert.ok(!fs.existsSync(path.join(publicDir, "reference")));
+            assert.deepEqual(fs.readdirSync(path.join(publicDir, "tests/fixtures")), ["current.json"]);
             assert.deepEqual(fs.readdirSync(path.join(publicDir, "docs/language")), ["migration-v0.7.md"]);
             assert.ok(!fs.existsSync(path.join(publicDir, "docs/validation-v0.7-stage1.md")));
             assert.ok(!fs.existsSync(path.join(publicDir, "docs/language-v0.6.md")));

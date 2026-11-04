@@ -8,9 +8,9 @@
 // work end to end. Real tests arrive with the interpreter phases.
 TEST_CASE("runtime version matches the project version") {
     REQUIRE(iprop::versionMajor == 0);
-    REQUIRE(iprop::versionMinor == 8);
+    REQUIRE(iprop::versionMinor == 9);
     REQUIRE(iprop::versionPatch == 0);
-    REQUIRE(std::string(iprop::versionString()) == "0.8.0");
+    REQUIRE(std::string(iprop::versionString()) == "0.9.0");
 }
 
 TEST_CASE("catch2 is wired up") {

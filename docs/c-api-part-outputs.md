@@ -9,8 +9,7 @@ This protects API 0.4 callers that use checked generation followed by an old
 image accessor. The flag is accepted for older programs too; unknown bits are
 `E_ARGUMENT`. Existing public
 structures, enums and ABI layouts are unchanged; the API feature version is
-0.5, while the ABI/install line remains 0.5. Product/language release versions
-are integrated separately.
+0.5, while the ABI/install line remains 0.5. The current bundled API is 0.6; product/source are 0.9.0.
 
 `iprop_result_output_count` and `iprop_result_output_find` cover every declared
 slot, including empty part lists and uncalled static instances. Query
@@ -76,8 +75,10 @@ the void legacy image accessor: call it before `iprop_result_image`; an
 incompatible checked result leaves the void accessor's entire output untouched.
 The sized `iprop_result_query_image` works for all successful typed results.
 The legacy CLI JSON result similarly rejects a new part declaration before
-generation/image output. There is no new generated-result serialization.
+generation/image output. The explicit `ipgen --omit-part-outputs` preview option
+executes the whole generation and emits the PNG/ordinary outputs with
+`part_outputs_omitted: true`; it does not serialize part resources. There is no new generated-result serialization.
 
 The normative program/ownership/quota rules are in the
-[stage 10 contract](../spec/part-exports-v0.9.md). Binding integrations are a
-separate stage; an older binding must propagate unsupported errors.
+[part export contract](../spec/part-exports-v0.9.md). All seven maintained bindings expose typed results; an older binding must
+propagate unsupported errors. See [execution controls](execution-limits.md).

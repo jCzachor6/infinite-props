@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## v0.9.0 — 2026-11-04
+
+Product/source and editor, website, Unity/Python packages: **0.9.0**.
+C API **0.6**, ABI/SONAME **0.5**; binary format remains unversioned.
+See [0.8 to 0.9 migration](docs/language/migration-v0.9.md) and the
+[frozen contract set](spec/iprop-v0.9.md). Release/tag publication is separate.
+
+- Configurable scalar noise and direct warped noise masks; bounded Voronoi,
+  contours with holes, region offsets, gaps, bevels and rasterization.
+- Immutable dynamic parts with shared sources, D4 placement, appearance and
+  explicit typed exports in C++, C API and all seven maintained bindings.
+  Generated results have no new persisted format.
+- Shared fuel discounts and exact disk-morphology optimization; unchanged
+  image/RNG semantics and independent work, cancellation and deadline controls.
+- Catalog-backed editor hints, checked texture/geometry/export workflows,
+  handbook/LLM/host documentation and language-description schema **6**.
+  Diagnostic schema **1** and documentation-manifest schema **3** are unchanged.
+
+
 ## v0.8.0 — 2026-10-28
 
 Product, editor, website, Unity and Python packages: **0.8.0**. Source

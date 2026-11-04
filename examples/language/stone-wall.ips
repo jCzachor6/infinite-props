@@ -1,0 +1,13 @@
+asset StoneWall {
+  size 128x96
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 128, 96, #40382f)
+    d = voronoi({0, 0}, {128, 96}, 28, pattern_seed, voronoi.random, 0.7, 1, 2.2, {1, 0}, 0.65, 0.35, 0.5)
+    rs = regions.gap(regions(d), 2.0, 0.35, pattern_seed)
+    surface.paint(regions.mask(rs), #b79d7a)
+    shade = regions.bevel(rs, 3, {(-1), (-1)})
+    surface.paint(shade, blend = surface.source_over)
+  }
+}

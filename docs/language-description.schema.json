@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 5,
+      "const": 6,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -1953,12 +1953,12 @@
             },
             "capture_fuel": {
               "type": "string",
-              "const": "one_plus_target_pixels",
+              "const": "two_plus_ceil_70_percent_target_pixels",
               "description": "Capture fuel."
             },
             "paint_fuel": {
               "type": "string",
-              "const": "one_plus_source_pixels",
+              "const": "ceil_60_percent_one_plus_source_pixels",
               "description": "Paint fuel."
             },
             "unset_handle": {
@@ -2237,7 +2237,7 @@
                   "description": "Gaussian blur clip."
                 },
                 "positive_sigma_fuel": {
-                  "const": "one_plus_K_plus_W_H_times_1_plus_2_K",
+                  "const": "ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K",
                   "description": "Gaussian blur positive sigma fuel."
                 },
                 "scratch_bytes": {
@@ -2515,12 +2515,12 @@
             },
             "algebra_fuel": {
               "type": "string",
-              "const": "one_plus_zeroed_pixels_plus_result_pixels",
+              "const": "ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels",
               "description": "Algebra fuel."
             },
             "morphology_fuel": {
               "type": "string",
-              "const": "one_plus_zeroed_pixels_plus_all_logical_disk_samples",
+              "const": "ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples",
               "description": "Morphology fuel."
             },
             "clip_write_fuel": {
@@ -3904,7 +3904,10 @@
             "enum": [
               "call_depth_limit",
               "fuel_exhausted",
-              "generation_data_limit"
+              "generation_data_limit",
+              "work_limit",
+              "cancelled",
+              "deadline_exceeded"
             ],
             "description": "Program-wide execution resource limits."
           },

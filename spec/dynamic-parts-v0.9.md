@@ -1,12 +1,12 @@
 # Dynamic parts — 0.9 implementation contract
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-Stage 09 adds runtime instances over the immutable [geometry](geometry-core-v0.9.md)
-and existing A8/RGBA8 buffers. Exported snapshots and host result APIs belong to
-stage 10. No output kind, C ABI, header reserved field or product version changes.
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
+Instances share immutable [geometry](geometry-core-v0.9.md) and A8/RGBA8 buffers.
+[Part exports](part-exports-v0.9.md) define snapshots and host result APIs.
 
 ## Creation and identity (09.1)
 
@@ -161,7 +161,7 @@ with at least two arguments. Typing, call planning/lowering and formatting use
 the same distinction. The existing wire `part.draw name [kind]` remains 0xA0;
 the dynamic wire mnemonic is `part.draw.dynamic` (0x67).
 
-Language-description schema remains 5. Optional `source_rules.dynamic_parts`
+Language-description schema is 6. Optional `source_rules.dynamic_parts`
 describes the pinned instance/view/render policy; it introduces no new closed
 value type or effect enum. Creation has a conservative generation-state effect
 summary. Dynamic drawing advertises canvas writes and part-render argument

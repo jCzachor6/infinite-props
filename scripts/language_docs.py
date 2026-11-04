@@ -438,7 +438,8 @@ def check_examples(compiler, language, cases, root=ROOT):
             else:
                 require(compiled.returncode == 0, "Example did not compile: " + str(source) + "\n" + compiled.stderr)
                 image = Path(temporary) / f"{number}.png"
-                generated = run(generator, binary, "--seed", 7, "-o", image)
+                generated = run(generator, binary, "--seed", 7, "-o", image,
+                                *(["--omit-part-outputs"] if case.get("omit_part_outputs") else []))
                 if case["expect"] == "trap":
                     require(generated.returncode != 0 and case["message"] in generated.stdout + generated.stderr,
                             "Expected runtime trap: " + str(source) + "\n" + generated.stdout + generated.stderr)

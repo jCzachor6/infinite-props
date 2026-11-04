@@ -254,7 +254,7 @@ def execute(compiler, source, directory, name):
                               text=True, encoding='utf-8', timeout=60)
     require(compiled.returncode == 0 and binary.is_file(), 'example compilation failed: ' + str(source) + '\n' + compiled.stderr)
     generator = compiler.parent / ('ipgen.exe' if compiler.suffix == '.exe' else 'ipgen')
-    generated = subprocess.run([str(generator), str(binary), '--seed', '7', '-o', str(image)],
+    generated = subprocess.run([str(generator), str(binary), '--seed', '7', '-o', str(image), '--omit-part-outputs'],
                                capture_output=True, text=True, encoding='utf-8', timeout=60)
     require(generated.returncode == 0 and image.is_file(), 'example execution failed: ' + str(source) + '\n' + generated.stderr)
 

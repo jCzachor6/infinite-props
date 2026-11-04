@@ -59,9 +59,9 @@ export function syncDocumentation(bundle, publicDir) {
             if (entry !== "nav.js") fs.rmSync(path.join(docsDir, entry), { recursive: true, force: true });
         }
     }
-    for (const directory of ["examples", "spec", "reference", "backends", "editor", "website"])
+    for (const directory of ["examples", "spec", "reference", "backends", "editor", "website", "tests"])
         fs.rmSync(path.join(publicDir, directory), { recursive: true, force: true });
-    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"])
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website", "tests"])
         if (fs.existsSync(path.join(bundle, directory)))
             fs.cpSync(path.join(bundle, directory), path.join(publicDir, directory), { recursive: true });
     fs.copyFileSync(path.join(bundle, "LLM_REFERENCE.md"), path.join(publicDir, "LLM_REFERENCE.md"));

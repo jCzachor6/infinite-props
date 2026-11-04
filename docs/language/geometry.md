@@ -11,7 +11,7 @@ A random point of a segment is `a to b` between two `vec2` values; see
 
 <!-- example: ../../examples/language/geometry.ips -->
 
-## Geometry handles on develop
+## Geometry handles
 
 The 0.9 foundation adds five distinct immutable handle types: `diagram2d`,
 `contours2d`, `regions2d`, `part2d` and `parts2d`. They can be inferred locals,
@@ -26,8 +26,8 @@ of `list<T>`, `sampler<T>` or `stepper<T>`. Reading a handle whose initializer
 did not execute traps; it does not produce an empty geometry value. Locals
 retain the language's existing function scope.
 
-Stage 04 supplies storage, typing and ownership; stages 05–06 add Voronoi and
-contours below. Region and dynamic-part operations follow in subsequent stages.
+Voronoi and contours produce topology; regions filter/offset it and dynamic
+parts retain shared sources for individual appearance, placement and export.
 See the [geometry core contract](../../spec/geometry-core-v0.9.md).
 
 <!-- example: ../../examples/language/geometry-handles.ips -->
@@ -395,3 +395,20 @@ The sector count is an integer. Valid counts and angular folding follow
 
 Returns `{radius, angle}` for a vector; angle is in radians under the same
 downward-y convention as vector rotation. Signed-zero behavior is pinned.
+
+## Procedural workflows
+
+Use direct masks for textures; use region topology when the pieces need gaps,
+bevels, adjacency or independent placement. These examples run with the default
+fuel/work budgets. IDs determine appearance without drawing from the RNG stream.
+
+<!-- example: ../../examples/language/stone-wall.ips -->
+<!-- example: ../../examples/language/paving.ips -->
+<!-- example: ../../examples/language/dry-earth.ips -->
+
+Export requires an explicit `output list part` assignment. Drawing alone does
+not append a record. The image and typed snapshots share the same generation;
+see [result ownership](assets.md#structured-outputs) and the
+[0.9 migration guide](migration-v0.9.md#programs-and-generated-results).
+
+<!-- example: ../../examples/language/part-export.ips -->

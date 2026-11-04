@@ -1,5 +1,7 @@
 {
   "language": [
+    {"id": "schema 6 rejects old capture tariff", "path": ["source_rules", "surfaces", "capture_fuel"], "value": "one_plus_target_pixels", "accept": false, "schema": false},
+    {"id": "retired language schema 5", "path": ["schema_version"], "value": 5, "accept": false, "schema": false},
     {
       "id": "earlier schema 2 without components",
       "path": [
@@ -82,7 +84,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 5.0,
+      "value": 6.0,
       "accept": true,
       "schema": true
     },
@@ -116,7 +118,7 @@
       "path": [
         "schema_version"
       ],
-      "value": 6,
+      "value": 7,
       "accept": false,
       "schema": false
     },
@@ -1926,7 +1928,7 @@
       "value": true
     },
     {
-      "id": "earlier schema 5 without regions",
+      "id": "current profile without regions",
       "path": [
         "source_rules",
         "regions"

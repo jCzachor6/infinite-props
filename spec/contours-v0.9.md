@@ -1,12 +1,11 @@
 # Mask contours — 0.9 stage 06
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-This additive develop contract implements §4.3 of the 0.9 plan over the
-[shared geometry store](geometry-core-v0.9.md). Product and source versions
-remain 0.8.0. Regions, rendering and dynamic parts follow in later stages.
+**Status:** Frozen v0.9 extension of the [shared geometry store](geometry-core-v0.9.md),
+incorporated by [the normative contract set](iprop-v0.9.md).
 
 ## Calls and instructions
 
@@ -145,7 +144,8 @@ parent searches, original-arc distance checks, containment checks and publishing
 also charge their visits. Simplification charges skipped dead-edge records as
 well as live ones. Builder and validation costs are additional. Fixture fuel
 pins describe the constructor, excluding capture, argument evaluation and VM
-instruction costs. Final tariff/work-limit calibration belongs to stage 13.
+instruction costs. Public execution applies the [20% tariff](fuel-v0.9.md)
+and [independent work limits](execution-limits-v0.9.md).
 
 The fixture corpus in [contours-v0.9.json](../tests/fixtures/contours-v0.9.json)
 pins the table, analytical topology and hashes of complete records: f32 points,

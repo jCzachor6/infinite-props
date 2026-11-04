@@ -1,0 +1,10 @@
+asset GiraffeTexture {
+  size 128x128
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 128, 128, #e3c98e)
+    spots = noise.mask({0, 0}, {128, 128}, noise.mode_cell_edge, {0.055, 0.055}, 0.18, pattern_seed, octaves = 1, softness = 0.0, comparison = noise.above, warp_amount = 0.28)
+    surface.paint(spots, #92603b)
+  }
+}

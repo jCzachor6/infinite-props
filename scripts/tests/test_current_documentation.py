@@ -18,6 +18,10 @@ class CurrentDocumentationTest(unittest.TestCase):
         cls.product = product_version(ROOT)
         cls.line = ".".join(cls.product.split(".")[:2])
         cls.spec = (ROOT / f"spec/iprop-v{cls.line}.md").read_text(encoding="utf-8")
+        cls.baseline = (ROOT / "spec/iprop-v0.8.md").read_text(encoding="utf-8")
+        cls.components = re.findall(r"\[[^\]]+\]\(([^)#]+\.md)\)", cls.spec)
+        cls.contract = "\n".join((ROOT / "spec" / name).read_text(encoding="utf-8")
+                                  for name in cls.components if not name.startswith("../"))
         cls.constants = (ROOT / "runtime/iprop/Constants.hpp").read_text(encoding="utf-8")
 
     def test_every_registered_instruction_has_its_wire_number_and_mnemonic(self):
@@ -26,57 +30,56 @@ class CurrentDocumentationTest(unittest.TestCase):
         registry = (ROOT / "runtime/opcode_spec.cpp").read_text(encoding="utf-8")
         names = dict(re.findall(r'(?:fixed|dynamic)\(Opcode::(\w+), "([^"]+)"', registry))
         self.assertEqual(numbers.keys(), names.keys())
-        # Tables also contain paired integer/float instruction columns.
-        # Implementation stages land on develop before the final product-version
-        # bump. Check their authored wire contracts without editing frozen 0.8.
-        extensions = "\n".join((ROOT / file).read_text(encoding="utf-8") for file in
-                               ("spec/noise-v0.9.md", "spec/noise-mask-v0.9.md", "spec/voronoi-v0.9.md", "spec/contours-v0.9.md", "spec/regions-v0.9.md", "spec/gap-bevel-v0.9.md", "spec/dynamic-parts-v0.9.md", "spec/part-exports-v0.9.md"))
-        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.spec + "\n" + extensions, re.M))
+        # The normative index must include every extension, with no inferred components.
+        expected = {p.name for p in (ROOT / "spec").glob("*-v0.9.md") if p.name != "iprop-v0.9.md"}
+        self.assertLessEqual(expected, set(self.components))
+        tables = "\n".join(re.findall(r"^\|.*Mnemonic.*\n(?:^\|.*\n)+", self.contract, re.M))
         documented = set(re.findall(r"\| (0x[0-9A-Fa-f]+) \| `?([a-z][a-z0-9_.]*)(?=[ `|])", tables))
         self.assertEqual(documented, {(number, names[name]) for name, number in numbers.items()})
 
     def test_all_section_ids_and_storable_wire_types_are_documented(self):
         enum = self.constants.split("enum class SectionId", 1)[1].split("};", 1)[0]
         actual = {(int(number), name.lower()) for name, number in re.findall(r"\b(\w+) = (\d+)", enum)}
-        section_table = self.spec.split("| ID | Section | Contract |", 1)[1].split("### 2.3", 1)[0]
+        section_table = self.baseline.split("| ID | Section | Contract |", 1)[1].split("### 2.3", 1)[0]
         documented = {(int(number), name.replace(" ", "")) for number, name in
                       re.findall(r"\| (\d+) \| ([a-z ]+) \|", section_table)}
         self.assertEqual(documented, actual)
         types = (ROOT / "runtime/iprop/TypeDescriptor.hpp").read_text(encoding="utf-8")
         kinds = dict(re.findall(r"\b(\w+) = (\d+)", types.split("enum class Kind", 1)[1].split("};", 1)[0]))
-        scalar_table = self.spec.split("## 3. Types and values", 1)[1].split("## 4.", 1)[0]
+        scalar_table = self.baseline.split("## 3. Types and values", 1)[1].split("## 4.", 1)[0]
         for name in ("I32", "F32", "Color", "Vec2", "Distribution"):
             with self.subTest(type=name):
                 self.assertRegex(scalar_table, rf"\| {name.lower()}[^|]*\| {kinds[name]} \|")
         for name in ("List", "Sampler", "Layer", "Mask", "Stepper"):
             with self.subTest(descriptor=name):
-                self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", self.spec)
+                self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", self.baseline)
         geometry = (ROOT / "spec/geometry-core-v0.9.md").read_text(encoding="utf-8")
         for name in ("Diagram2d", "Contours2d", "Regions2d", "Part2d", "Parts2d"):
             with self.subTest(descriptor=name):
                 self.assertIn(f"| {kinds[name]} (`{name.lower()}`) |", geometry)
 
-    def test_specification_is_self_contained_and_numbered_references_resolve(self):
+    def test_normative_contract_set_is_frozen_and_numbered_references_resolve(self):
         # The released product line freezes its specification (release preflight).
         self.assertRegex(self.spec, r"(?m)^\*\*Status:\*\* Frozen v" + re.escape(self.line) +
                          r" contract, (prepared for|released with) product " + re.escape(self.line + ".0"))
         self.assertNotRegex(self.spec, r"(?im)^\*\*Status:\*\*.*(draft|candidate)")
         self.assertNotRegex(self.spec, r"iprop-v0\.[1-6]\.md")
-        defined = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)*)[. ]", self.spec, re.M))
-        self.assertLessEqual(set(re.findall(r"§(\d+(?:\.\d+)*)", self.spec)), defined)
+        for document in (self.spec, self.baseline):
+            defined = set(re.findall(r"^#{2,3} (\d+(?:\.\d+)*)[. ]", document, re.M))
+            self.assertLessEqual(set(re.findall(r"§(\d+(?:\.\d+)*)", document)), defined)
 
     def test_080_retains_the_frozen_07_wire_and_vm_contract(self):
         previous = (ROOT / "spec/iprop-v0.7.md").read_text(encoding="utf-8")
-        self.assertEqual(self.spec[self.spec.index("## Contents"):], previous[previous.index("## Contents"):])
-        self.assertIn("Materials expand", self.spec)
+        self.assertEqual(self.baseline[self.baseline.index("## Contents"): ], previous[previous.index("## Contents"):])
+        self.assertIn("Materials expand", self.baseline)
 
     def test_current_release_metadata_is_ready_without_creating_a_tag(self):
         release = metadata(ROOT, "v" + self.product, publishing=True)
-        self.assertEqual(release["product_version"], "0.8.0")
-        self.assertEqual(release["language_version"], "0.8.0")
+        self.assertEqual(release["product_version"], "0.9.0")
+        self.assertEqual(release["language_version"], "0.9.0")
         self.assertEqual(release["c_api_version"], "0.6")
         self.assertEqual(release["c_abi_soversion"], "0.5")
-        self.assertIn("migration-v0.8.md", release["notes"])
+        self.assertIn("migration-v0.9.md", release["notes"])
 
     def test_authored_documentation_links_and_fragments_resolve(self):
         paths = [ROOT / "README.md", ROOT / "CHANGELOG.md", *ROOT.glob("docs/**/*.md"),

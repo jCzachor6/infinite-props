@@ -135,6 +135,11 @@ kind must have unique names. Inputs cannot be assigned or used as loop counters.
 
 ## Structured outputs
 
+`output list part pieces` appends an immutable dynamic-part snapshot on each
+assignment. It has no singular form. Results own shared geometry/raster resources
+independently of the VM; `part.draw` does not append. Use typed host APIs rather
+than legacy JSON; `.iprop` stores the program, not generated results.
+
 `output kind name` declares a scalar slot. Assignment replaces its current
 value; an unwritten slot remains unset. `output list kind name` appends each
 assignment in execution order. Outputs are written by `draw` or a helper

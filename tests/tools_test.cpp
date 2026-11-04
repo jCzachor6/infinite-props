@@ -273,3 +273,24 @@ TEST_CASE("ipgen enforces an independent work limit before publishing files", "[
         CHECK(std::filesystem::exists(png));
     }
 }
+
+TEST_CASE("ipgen previews typed part outputs only with explicit omission") {
+    TempPath temp("typed-preview");
+    const auto bytes = compiler_test::compileChecked(
+        "asset t { size 8x8 output list part pieces output point anchor draw {"
+        "layer image {rect(0,0,8,8,#123456)} p=part.create(image) "
+        "pieces=p part.draw(p) anchor={2,3} } }");
+    { std::ofstream out(temp.path, std::ios::binary);
+      out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()); }
+    CapturedStdout captured;
+    const auto file = temp.path.string(), png = temp.pngPath().string();
+    const char* rejected[] = {"ipgen", file.c_str(), "-o", png.c_str()};
+    REQUIRE(ipgenMain(4, const_cast<char**>(rejected)) == 1);
+    REQUIRE_FALSE(std::filesystem::exists(png));
+    const char* preview[] = {"ipgen", file.c_str(), "--omit-part-outputs", "-o", png.c_str()};
+    REQUIRE(ipgenMain(5, const_cast<char**>(preview)) == 0);
+    CHECK(std::filesystem::exists(png));
+    CHECK(captured.stream.str().find("\"part_outputs_omitted\": true") != std::string::npos);
+    CHECK(captured.stream.str().find("anchor") != std::string::npos);
+    CHECK(captured.stream.str().find("pieces") == std::string::npos);
+}

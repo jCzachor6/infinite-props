@@ -1,0 +1,17 @@
+asset DynamicTiles {
+  size 128x128
+  output list part tiles
+
+  draw {
+    pattern_seed = seed
+    d = voronoi({0, 0}, {128, 128}, 36, pattern_seed, voronoi.grid, 0.6, 1)
+    rs = regions(d, inset = 1.5, min_area = 6.0)
+    pieces = parts.from_regions(rs)
+    for i in 0..parts.count(pieces) {
+      tile = parts.get(pieces, i)
+      tile = part.fill(tile, color.shade(#81858a, ((part.source_id(tile) & 7) - 3)))
+      part.draw(tile)
+      tiles = tile
+    }
+  }
+}

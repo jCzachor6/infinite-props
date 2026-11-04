@@ -1,12 +1,10 @@
 # Noise extensions for 0.9
 
-Stage 13: public execution uses the [shared fuel tariff](fuel-v0.9.md).
+Public execution uses the [shared fuel tariff](fuel-v0.9.md).
 Kernel reservation counts below are unscaled units; earlier verification
 totals describe their historical checkpoints. Work limits are independent.
 
-**Status:** implemented stage 02 contract on `develop`; the frozen
-[0.8 specification](iprop-v0.8.md) remains unchanged. These additions will
-be incorporated into the full 0.9 specification before release.
+**Status:** Frozen v0.9 extension, incorporated by [the normative contract set](iprop-v0.9.md).
 
 ## Instructions and language calls
 
@@ -103,7 +101,7 @@ Coordinate-domain failures report `noise coordinate out of range`.
 Legacy `warp` retains all three fBms, even at zero amount, and its old order
 of checks. It is not implemented by calling `warp_vec`.
 
-## Interim stage 02 fuel
+## Scalar operation fuel
 
 Reserve before scanning/sampling. Counts include the VM's one dispatch unit;
 argument instructions and vec2 extraction are charged separately:
@@ -115,13 +113,16 @@ argument instructions and vec2 extraction are charged separately:
 | warp_vec, amount nonzero | 8 (two four-octave fields) |
 | warp_vec, amount zero | 1 |
 
-Legacy fuel is unchanged at this stage. Stage 13 will integrate the full
-runtime tariff and the independent native-work limiter. Constant evaluation
+The [runtime tariff](fuel-v0.9.md) retains these scalar minimums and applies
+the independent native-work limiter. Constant evaluation
 uses the same bounded kernels; no runtime sample is emitted for folded
 calls. Failed generation exposes no
 successful result. Insufficient reserved fuel may precede a numeric error.
 
 ## Executable evidence
+
+Historical checkpoint evidence follows; current versions, host support and
+tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
 The extension vectors in `tests/fixtures/noise-v0.9.json` pin exact argument
 and result encodings. An independent binary32 JS reference recomputes them,
