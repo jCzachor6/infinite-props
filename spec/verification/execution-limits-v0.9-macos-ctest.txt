@@ -1,0 +1,201 @@
+Test project /private/tmp/iprop-v09-stage12-native
+      Start 98: language_llm_reference
+      Start 87: compiler_diagnostic_failures
+      Start 96: compiler_optimization_acceptance
+      Start 69: dynamic_parts_v09
+ 1/98 Test #69: dynamic_parts_v09 ....................   Passed   12.64 sec
+      Start 92: compiler_export_contracts
+ 2/98 Test #96: compiler_optimization_acceptance .....   Passed   18.86 sec
+      Start 70: gap_bevel_v09
+ 3/98 Test #92: compiler_export_contracts ............   Passed    7.45 sec
+      Start 72: contours_v09
+ 4/98 Test #87: compiler_diagnostic_failures .........   Passed   22.15 sec
+      Start 71: regions_v09
+ 5/98 Test #98: language_llm_reference ...............   Passed   23.87 sec
+      Start 68: part_exports_v09
+ 6/98 Test #70: gap_bevel_v09 ........................   Passed    5.01 sec
+      Start 75: noise_mask_v09
+ 7/98 Test #72: contours_v09 .........................   Passed    5.19 sec
+      Start 73: voronoi_v09
+ 8/98 Test #71: regions_v09 ..........................   Passed    4.37 sec
+      Start 95: ci_release_tools
+ 9/98 Test #75: noise_mask_v09 .......................   Passed    3.60 sec
+      Start 77: compatibility_v08
+10/98 Test #68: part_exports_v09 .....................   Passed    3.77 sec
+      Start 97: language_documentation
+11/98 Test #73: voronoi_v09 ..........................   Passed    3.17 sec
+      Start 76: noise_v09
+12/98 Test #77: compatibility_v08 ....................   Passed    2.39 sec
+      Start 58: smoke
+13/98 Test #76: noise_v09 ............................   Passed    1.58 sec
+      Start 33: capi_parameter_overrides_shared
+14/98 Test #33: capi_parameter_overrides_shared ......   Passed    0.00 sec
+      Start 49: capi_render_inputs_shared
+15/98 Test #49: capi_render_inputs_shared ............   Passed    0.09 sec
+      Start 62: geometry_allocation_failures
+16/98 Test #62: geometry_allocation_failures .........   Passed    0.01 sec
+      Start 43: capi_stats_oracle
+17/98 Test #43: capi_stats_oracle ....................   Passed    0.01 sec
+      Start 74: geometry_v09
+18/98 Test #74: geometry_v09 .........................   Passed    0.93 sec
+      Start 10: capi_part_result_failures
+19/98 Test #10: capi_part_result_failures ............   Passed    0.01 sec
+      Start 16: capi_checked_static
+20/98 Test #16: capi_checked_static ..................   Passed    0.01 sec
+      Start 13: capi_error_buffers_shared
+21/98 Test #13: capi_error_buffers_shared ............   Passed    0.00 sec
+      Start 17: capi_reflection_shared
+22/98 Test #17: capi_reflection_shared ...............   Passed    0.00 sec
+      Start 41: capi_checked_errors
+23/98 Test #41: capi_checked_errors ..................   Passed    0.01 sec
+      Start 51: capi_render_inputs_static
+24/98 Test #51: capi_render_inputs_static ............   Passed    0.10 sec
+      Start 63: voronoi_allocation_failures
+25/98 Test #63: voronoi_allocation_failures ..........   Passed    0.12 sec
+      Start 45: capi_generate_ex_errors
+26/98 Test #45: capi_generate_ex_errors ..............   Passed    0.37 sec
+      Start 21: capi_output_declarations_shared
+27/98 Test #21: capi_output_declarations_shared ......   Passed    0.00 sec
+      Start 18: capi_reflection_static
+28/98 Test #18: capi_reflection_static ...............   Passed    0.00 sec
+      Start 40: capi_error_boundary
+29/98 Test #40: capi_error_boundary ..................   Passed    0.01 sec
+      Start 22: capi_output_declarations_static
+30/98 Test #22: capi_output_declarations_static ......   Passed    0.00 sec
+      Start 44: capi_generation_request
+31/98 Test #44: capi_generation_request ..............   Passed    0.01 sec
+      Start  8: capi_part_results_static
+32/98 Test  #8: capi_part_results_static .............   Passed    0.00 sec
+      Start  9: capi_part_result_contracts
+33/98 Test  #9: capi_part_result_contracts ...........   Passed    0.02 sec
+      Start 15: capi_checked_shared
+34/98 Test #15: capi_checked_shared ..................   Passed    0.00 sec
+      Start 50: capi_parameter_panel_static
+35/98 Test #50: capi_parameter_panel_static ..........   Passed    0.08 sec
+      Start 19: capi_result_outputs_shared
+36/98 Test #19: capi_result_outputs_shared ...........   Passed    0.00 sec
+      Start 32: capi_parameter_setters_static
+37/98 Test #32: capi_parameter_setters_static ........   Passed    0.00 sec
+      Start 52: capi_conformance
+38/98 Test #52: capi_conformance .....................   Passed    0.02 sec
+      Start 12: capi_image_view_static
+39/98 Test #12: capi_image_view_static ...............   Passed    0.00 sec
+      Start 36: capi_generate_ex_static
+40/98 Test #36: capi_generate_ex_static ..............   Passed    0.11 sec
+      Start 59: source_printer_allocation_failures
+41/98 Test #59: source_printer_allocation_failures ...   Passed    0.03 sec
+      Start 39: capi_error_sink
+42/98 Test #39: capi_error_sink ......................   Passed    0.01 sec
+      Start 30: capi_parameters_static
+43/98 Test #30: capi_parameters_static ...............   Passed    0.00 sec
+      Start 11: capi_image_view_shared
+44/98 Test #11: capi_image_view_shared ...............   Passed    0.00 sec
+      Start 20: capi_result_outputs_static
+45/98 Test #20: capi_result_outputs_static ...........   Passed    0.00 sec
+      Start 23: capi_parts_shared
+46/98 Test #23: capi_parts_shared ....................   Passed    0.00 sec
+      Start 35: capi_generate_ex_shared
+47/98 Test #35: capi_generate_ex_shared ..............   Passed    0.08 sec
+      Start 29: capi_parameters_shared
+48/98 Test #29: capi_parameters_shared ...............   Passed    0.00 sec
+      Start 42: capi_result_storage
+49/98 Test #42: capi_result_storage ..................   Passed    0.01 sec
+      Start 64: regions_allocation_failures
+50/98 Test #64: regions_allocation_failures ..........   Passed    0.03 sec
+      Start 66: gap_bevel_allocation_failures
+51/98 Test #66: gap_bevel_allocation_failures ........   Passed    0.36 sec
+      Start 65: dynamic_parts_allocation_failures
+52/98 Test #65: dynamic_parts_allocation_failures ....   Passed    0.01 sec
+      Start 34: capi_parameter_overrides_static
+53/98 Test #34: capi_parameter_overrides_static ......   Passed    0.00 sec
+      Start 31: capi_parameter_setters_shared
+54/98 Test #31: capi_parameter_setters_shared ........   Passed    0.00 sec
+      Start 24: capi_parts_static
+55/98 Test #24: capi_parts_static ....................   Passed    0.00 sec
+      Start 61: blur_allocation_failures
+56/98 Test #61: blur_allocation_failures .............   Passed    0.01 sec
+      Start 84: source_over_rational_reference
+57/98 Test #58: smoke ................................   Passed    2.82 sec
+      Start 25: capi_metadata_shared
+58/98 Test #25: capi_metadata_shared .................   Passed    0.00 sec
+      Start 14: capi_error_buffers_static
+59/98 Test #14: capi_error_buffers_static ............   Passed    0.00 sec
+      Start 57: godot_part_outputs
+60/98 Test #84: source_over_rational_reference .......   Passed    1.09 sec
+      Start 46: capi_parameter_transactions
+61/98 Test #46: capi_parameter_transactions ..........   Passed    0.01 sec
+      Start 26: capi_metadata_static
+62/98 Test #26: capi_metadata_static .................   Passed    0.00 sec
+      Start 47: capi_parameters_errors
+63/98 Test #47: capi_parameters_errors ...............   Passed    0.01 sec
+      Start  4: capi_error_descriptor_static
+64/98 Test  #4: capi_error_descriptor_static .........   Passed    0.00 sec
+      Start 27: capi_stats_shared
+65/98 Test #27: capi_stats_shared ....................   Passed    0.00 sec
+      Start 67: contours_allocation_failures
+66/98 Test #67: contours_allocation_failures .........   Passed    0.01 sec
+      Start  7: capi_part_results_shared
+67/98 Test  #7: capi_part_results_shared .............   Passed    0.00 sec
+      Start 48: capi_parameter_panel_shared
+68/98 Test #48: capi_parameter_panel_shared ..........   Passed    0.10 sec
+      Start  3: capi_error_descriptor_shared
+69/98 Test  #3: capi_error_descriptor_shared .........   Passed    0.00 sec
+      Start 28: capi_stats_static
+70/98 Test #28: capi_stats_static ....................   Passed    0.00 sec
+      Start 82: binding_python
+71/98 Test #57: godot_part_outputs ...................   Passed    1.14 sec
+      Start 93: compiler_language_contract
+72/98 Test #95: ci_release_tools .....................   Passed    7.94 sec
+      Start 91: recipe_format_cli
+73/98 Test #93: compiler_language_contract ...........   Passed    0.77 sec
+      Start 83: mask_rational_reference
+74/98 Test #82: binding_python .......................   Passed    0.87 sec
+      Start 54: sfml_part_outputs
+75/98 Test #97: language_documentation ...............   Passed    7.19 sec
+      Start 55: sfml_errors
+76/98 Test #91: recipe_format_cli ....................   Passed    0.53 sec
+      Start 81: editor_formatting
+77/98 Test #55: sfml_errors ..........................   Passed    0.23 sec
+      Start 88: compiler_check_cli
+78/98 Test #83: mask_rational_reference ..............   Passed    0.52 sec
+      Start 53: sfml_execution_limits
+79/98 Test #53: sfml_execution_limits ................   Passed    0.02 sec
+      Start  2: capi_descriptors
+80/98 Test  #2: capi_descriptors .....................   Passed    0.00 sec
+      Start 80: compiler_output_defaults
+81/98 Test #54: sfml_part_outputs ....................   Passed    0.65 sec
+      Start 56: godot_conformance
+82/98 Test #81: editor_formatting ....................   Passed    0.40 sec
+      Start 79: editor_diagnostics
+83/98 Test #88: compiler_check_cli ...................   Passed    0.38 sec
+      Start  5: capi_library_shared
+84/98 Test  #5: capi_library_shared ..................   Passed    0.00 sec
+      Start 37: capi_execution_limits_shared
+85/98 Test #80: compiler_output_defaults .............   Passed    0.30 sec
+      Start 60: vm_result_allocations
+86/98 Test #60: vm_result_allocations ................   Passed    0.01 sec
+      Start 89: compiler_format_cli
+87/98 Test #37: capi_execution_limits_shared .........   Passed    0.03 sec
+      Start 38: capi_execution_limits_static
+88/98 Test #38: capi_execution_limits_static .........   Passed    0.03 sec
+      Start  1: capi_package_compatibility
+89/98 Test #56: godot_conformance ....................   Passed    0.19 sec
+      Start 90: compiler_materials_cli
+90/98 Test #79: editor_diagnostics ...................   Passed    0.26 sec
+      Start  6: capi_library_static
+91/98 Test  #6: capi_library_static ..................   Passed    0.00 sec
+      Start 85: retired_format_rejection
+92/98 Test #89: compiler_format_cli ..................   Passed    0.20 sec
+      Start 78: runtime_matrix_comparators
+93/98 Test #90: compiler_materials_cli ...............   Passed    0.19 sec
+      Start 86: resource_export_reference
+94/98 Test #86: resource_export_reference ............   Passed    0.05 sec
+      Start 94: compiler_language_effects
+95/98 Test #78: runtime_matrix_comparators ...........   Passed    0.12 sec
+96/98 Test #94: compiler_language_effects ............   Passed    0.04 sec
+97/98 Test #85: retired_format_rejection .............   Passed    0.16 sec
+98/98 Test  #1: capi_package_compatibility ...........   Passed    0.61 sec
+
+100% tests passed, 0 tests failed out of 98
+
+Total Test time (real) =  36.12 sec

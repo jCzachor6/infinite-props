@@ -1,7 +1,8 @@
 # Independent work limits and interruption (0.9, stage 12)
 
 Status: the VM, checked C API, CLI and all seven hosts expose the shared
-controls. Calibration is recorded below; the final delivery audit is in progress.
+controls. Calibration and the completed local audit are recorded below and in
+[the verification report](verification/execution-limits-v0.9.json).
 Fuel prices and the default 5,000,000 fuel have not changed.
 
 ## Independent deterministic work
@@ -208,3 +209,20 @@ time guarantees. Final wrapper delivery is recorded separately (maximum
 observed tail 0.605 ms native / 1.524 ms WASM); it is outside the next-checkpoint
 claim. Deadlines/cancellation remain optional and never replace deterministic
 work accounting.
+
+## Verification closure
+
+Linux passes 100/100 CTest including the two GL tests checked there; macOS
+passes the remaining 98/98. Full native/WASM conformance, all seven public
+hosts, 23 complete typed binding scenes and the relocated SDK pass. Six native
+host paths replay the unchanged 21,829-image corpus; WASM passes its complete
+native/reference suite and the 188-case calibration comparison.
+
+ASan/UBSan/LSan covers 93/93 cases through the full run plus a Python harness
+closure. CPython 3.12's shutdown allocations are independently reproducible
+without this library. The harness separates malloc buffer checks from pymalloc
+leak checks, retains allocator-only interpreter suppressions and requires named
+native overflow/leak probes to remain detectable. Both Python modes pass all
+10 tests. The original failed harness log is retained alongside the closure.
+Platform limits and exact source/log hashes are in the report; this is local
+stage-12 verification, with the fuel tariff unchanged.

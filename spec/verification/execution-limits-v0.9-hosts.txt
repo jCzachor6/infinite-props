@@ -169,3 +169,24 @@ libdbus-1.so.3: cannot open shared object file: No such file or directory
 OpenGL API 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 20.1.2, 128 bits)
 
 Godot + Image + GPU texture: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+
+=== Clean source and relocated SDK documentation on 0c4a86e ===
+
+final-code-docs-verify
+Language documentation: PASS 0.8.0 (115 builtins, 159 examples)
+
+final-code-sdk-verify
+Language documentation: PASS 0.8.0 (115 builtins, 159 examples)
+
+harness-normal
+Test project /private/tmp/iprop-v09-stage12-native
+    Start 84: binding_python
+1/3 Test #84: binding_python ...................   Passed    2.30 sec
+    Start 97: ci_release_tools
+2/3 Test #97: ci_release_tools .................   Passed   16.33 sec
+    Start 99: language_documentation
+3/3 Test #99: language_documentation ...........   Passed    4.52 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =  23.16 sec
