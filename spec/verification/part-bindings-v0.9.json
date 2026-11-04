@@ -1,7 +1,7 @@
 {
   "stage": "11 - typed bindings and hosts",
   "date": "2026-11-04",
-  "verified_at_utc": "2026-11-04T11:13:48.421845+00:00",
+  "verified_at_utc": "2026-11-04T11:27:22.906716+00:00",
   "branch": "develop",
   "base_commit": "48a3032b4e26999d2e2f61b11426644a158fba0a",
   "verification_checkpoint_commit": "f845598c563042fdfe1b4f3ac2644f0299e90377",
@@ -197,10 +197,11 @@
       "publicBindingTypedParts": true,
       "publicBindingGenerations": 604,
       "repeatedBindingErrors": 2048,
+      "sharedBindingScenes": 23,
       "typedObservationSkipped": false
     },
-    "provenance": "Native CLI/core probes from stage10 build; current stage11 public WASM and all conformance groups. Core algorithms unchanged in stage11 except GCC instruction formatting; fresh stage11 native independently passes full CTest on macOS and Linux.",
-    "raw_json_sha256": "015d2f8eda850d2514a6e955db6e8c8101497a986b835cd833dab6eaae23a6ce",
+    "provenance": "Full gate rerun with fresh stage11 native CLI/C++/checked-C probes and the current stage11 public WASM/probes. Includes 604 native/WASM pairs, 1812 broad-matrix observations and the separate shared 23-scene public-binding gate. No runtime/binding source changed during this audit.",
+    "raw_json_sha256": "b8e1d62bf15306acdd28f051407f5cb3417707acca14676a00aba9aa96ad7215",
     "all_native_groups": {
       "passed": true,
       "failures": [],
@@ -500,6 +501,7 @@
         "publicBindingTypedParts": true,
         "publicBindingGenerations": 604,
         "repeatedBindingErrors": 2048,
+        "sharedBindingScenes": 23,
         "typedObservationSkipped": false
       }
     },
@@ -542,6 +544,7 @@
       "publicBindingTypedParts": true,
       "publicBindingGenerations": 604,
       "repeatedBindingErrors": 2048,
+      "sharedBindingScenes": 23,
       "typedObservationSkipped": false
     },
     "scope": "Copied standalone tools plus public iprop.js/iprop.wasm/api.js, with no native or WASM test probes. Full public results, frozen semantic pins, lifetime, roundtrips and repeated errors. Test expectations are source-tree test code, not a public serialization format."
@@ -585,7 +588,8 @@
       "backends/sfml/README.md"
     ],
     "all_runtime_binding_and_test_sources_match": true,
-    "execution": "Isolated local Docker Compose. Sources/dependencies/corpus read-only; build and logs in private tmp. Not a GitHub Actions job."
+    "execution": "Isolated local Docker Compose. Sources/dependencies/corpus read-only; build and logs in private tmp. Not a GitHub Actions job.",
+    "snapshot_checkpoint_commit": "f845598c563042fdfe1b4f3ac2644f0299e90377"
   },
   "docs": {
     "checkpoint": "f845598c563042fdfe1b4f3ac2644f0299e90377",
@@ -606,8 +610,8 @@
   "logs": {
     "part-bindings-v0.9-hosts.txt": {
       "path": "spec/verification/part-bindings-v0.9-hosts.txt",
-      "sha256": "95ec2281be10bc13e92fed2a7053e5a04da0b1e599a5718c85bf578778ffd6d6",
-      "bytes": 13913
+      "sha256": "60685bc719b178f98b34dc5865c4ee5d2efe380fc3f9b2a682c980b1bc63d30f",
+      "bytes": 14458
     },
     "part-bindings-v0.9-macos-ctest.txt": {
       "path": "spec/verification/part-bindings-v0.9-macos-ctest.txt",
@@ -621,8 +625,8 @@
     },
     "part-bindings-v0.9-conformance.txt": {
       "path": "spec/verification/part-bindings-v0.9-conformance.txt",
-      "sha256": "21c9abc582853f6756d8712df65454dbbfacf58d26820ccc5eed1290a82e9cc2",
-      "bytes": 3923
+      "sha256": "69da5c3c55b0f91eaa15a2a41a77e0d5a23503eb5bc4fd228f1f185611eab179",
+      "bytes": 3848
     }
   },
   "binary_hashes": {
@@ -700,5 +704,17 @@
     "Windows runtime",
     "GitHub Actions results for final checkpoint not observed"
   ],
-  "delivery": "The final clean HEAD/remote equality audit follows the closing report/checklist commit. This artifact pins its implementation checkpoint and does not self-reference the closing commit."
+  "delivery": "The final clean HEAD/remote equality audit follows the closing report/checklist commit. This artifact pins its implementation checkpoint and does not self-reference the closing commit.",
+  "completion_audit": {
+    "base_commit": "27060356973a1b51e988721070d33a52362972d2",
+    "runtime_implementation_checkpoint": "f845598c563042fdfe1b4f3ac2644f0299e90377",
+    "runtime_binding_sources_unchanged": true,
+    "shared_wasm_scenes": 23,
+    "shared_fixture_sha256": "b4bbafb7e1e210454413f3e4167b21208df5663cc91b95105a8d5acfab009f64",
+    "test_source_sha256": {
+      "backends/html5/test/part-exports-conformance.js": "af64251177ce55c6fe308662e263cdbfdc8e40fc5faf3db61510406dde6edcfb",
+      "backends/html5/test/run-tests.js": "5d26d374b233c1cbd9ab0c03e24ebec5ad084838471c8db0a87156187bb91bc7"
+    },
+    "note": "Only test coverage and evidence changed after the implementation checkpoint. CTest and the frozen 21829-case pixel corpus retain their separately recorded scope; this audit did not regenerate that corpus or claim device/CI execution."
+  }
 }

@@ -721,6 +721,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 [Raport etapu 11](spec/verification/part-bindings-v0.9.json), [logi hostów i SDK](spec/verification/part-bindings-v0.9-hosts.txt), [CTest Linux](spec/verification/part-bindings-v0.9-linux-ctest.txt), [CTest macOS](spec/verification/part-bindings-v0.9-macos-ctest.txt) i [pełne conformance](spec/verification/part-bindings-v0.9-conformance.txt) zapisują zakres, SHA korpusu i ograniczenia. Commit zamknięcia obejmuje ten plik oraz raport i logi; jego czyste SHA wymaga ponownego build/verify dokumentacji i porównania z rzeczywistym zdalnym SHA w audycie dostarczenia. Nie jest to wydanie 0.9 ani publikacja strony.
 
+**Audyt odbioru (2026-11-04):** publiczny test WASM uruchamia teraz bezpośrednio te same 23 zamrożone sceny C++/C co pozostałe bindingi, porównując pełny wynik oraz jego zachowanie po kolejnej generacji. Przygotowanie korzysta z istniejącego wspólnego helpera Python; nie powstał nowy zestaw referencji ani format produktu. Przeniesiona publiczna paczka bez sond przechodzi ten przebieg razem z dotychczasowymi 604 obserwacjami i 2048 błędami. Ponownie uruchomiony pełny gate używa świeżych narzędzi native etapu 11 i przechodzi 604 pary native/WASM, 1812 pełnych obserwacji oraz 23 wspólne sceny. Korpus pikseli pozostaje wcześniejszym przypiętym zestawem 21 829 przypadków; runtime i bindingi nie zmieniły się podczas tego audytu.
+
 ### Etap 12 — niezależne limity pracy i przerywanie
 
 **Zależności:** 11; przed jakimikolwiek szerokimi obniżkami taryfy.

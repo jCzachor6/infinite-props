@@ -29,4 +29,4 @@ native/WASM 0.9 regions: PASS (55 vectors; 564 exact generations; 41 matching tr
 native/WASM 0.9 gaps/bevels: PASS (47 vectors; 485 exact generations; 51 matching traps; 87 bytecode rejections; complete-topology probes native=true, WASM=true)
 native/WASM 0.9 dynamic parts: PASS (317 vectors; 1063 exact generations; 37 matching traps; 56 bytecode rejections; core native=true, WASM=true)
 native/WASM 0.9 part exports: PASS (604 full typed generations; 604 complete pairs; 7 traps; 30 bytecode rejections; checked C API=true; core native=true, WASM=true)
-shared pixel corpus: {"format":"IPXCRP01","cases":21829,"programs":4992,"bytes":70951072,"sha256":"e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919"}
+public WASM shared part fixtures: PASS (23 complete C++/C scenes and independent lifetime)

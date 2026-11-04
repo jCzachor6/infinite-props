@@ -16,6 +16,25 @@ function semantic(record){const {fuel,...result}=record;return result;}
 const sha=value=>crypto.createHash('sha256').update(value).digest('hex');
 const digest=record=>sha(JSON.stringify(canonical(semantic(record))));
 const transform=k=>`rot=${params[k][0]}, mirror_x=${params[k][1]}, mirror_y=${params[k][2]}`;
+function sharedBindingCases(iprop,tool,directory) {
+    const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3');
+    execFileSync(python,[path.join(repo,'backends/test/part_bindings.py'),path.dirname(tool('ipc')),directory],{stdio:'pipe'});
+    const cases=JSON.parse(fs.readFileSync(path.join(directory,'part-bindings.json')));
+    const reference=JSON.parse(fs.readFileSync(path.join(repo,'backends/test/part-bindings-v0.9.json'))).cases;
+    assert.equal(cases.length,23);assert.equal(reference.length,cases.length);
+    for(const [index,item] of cases.entries()) {
+        const folder=path.join(directory,item.directory),bytes=fs.readFileSync(path.join(folder,'root.iprop'));
+        assert.deepEqual([item.name,item.seed,item.size],[reference[index].name,reference[index].seed,reference[index].size]);
+        const expected=JSON.parse(fs.readFileSync(path.join(folder,'expected.json')));
+        assert.deepEqual(expected,reference[index].expected,'use the frozen shared C++/C observation');
+        const options={seed:item.seed,sizeX:item.size[0],sizeY:item.size[1]};
+        const result=iprop.generate(bytes,options);
+        assert.deepEqual(observeBinding(result),expected,'shared public WASM part fixture: '+item.name);
+        iprop.generate(bytes,{...options,seed:item.seed^0xffffffff});
+        assert.deepEqual(observeBinding(result),expected,'shared WASM result retains all owned data: '+item.name);
+    }
+    return cases.length;
+}
 function run(iprop,tool,directory,probes={}) {
     const owned=!directory;if(owned)directory=fs.mkdtempSync(path.join(os.tmpdir(),'iprop-part-exports-'));
     const dir=path.join(directory,'part-exports');fs.mkdirSync(dir,{recursive:true});
@@ -24,7 +43,7 @@ function run(iprop,tool,directory,probes={}) {
     if(probes.native)assert(fs.existsSync(native),'requested native result probe exists');
     if(probes.wasm)assert(fs.existsSync(probes.wasm),'requested WASM result probe exists');
     const hasNative=fs.existsSync(native),hasWasm=!!probes.wasm;
-    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0,publicBindingGenerations=0,repeatedBindingErrors=0;
+    let programs=0,generations=0,pairs=0,records=0,pinned=0,roundtrips=0,formatted=0,traps=0,rejections=0,compilerErrors=0,legacyRejections=0,bindingRejections=0,matrix=0,publicBindingGenerations=0,repeatedBindingErrors=0,sharedBindingScenes=0;
     const configs=Array.from({length:8},(_,i)=>({opt:!!(i&4),debug:!!(i&2),compressed:!!(i&1)}));
     const invoke=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe',maxBuffer:16*1024*1024});
     function compile(text,config=configs[4]) {
@@ -168,6 +187,7 @@ function run(iprop,tool,directory,probes={}) {
             assert.equal(r.status,1,r.stderr);assert(!fs.existsSync(base+'-bad.iprop'));compilerErrors++;
         }
         if(iprop){
+            sharedBindingScenes=sharedBindingCases(iprop,tool,path.join(dir,'shared-bindings'));
             const failed=compile('asset t{size 2x2 output list part pieces draw{p=part.create(regions(voronoi({0,0},{2,2},[{1,1}])),0)pieces=p part.draw(p)}}');
             for(let i=0;i<2048;++i){assert.throws(()=>iprop.generate(failed,{seed:i}),e=>e instanceof Error&&e.status===3&&e.stage===4&&e.reason===3000);repeatedBindingErrors++;}
             const good=compile(fs.readFileSync(path.join(fixtures,'part-exports-order.ips'),'utf8'));
@@ -176,7 +196,7 @@ function run(iprop,tool,directory,probes={}) {
         return {passed:true,programs,generations,fullRecords:records,nativeWasmPairs:pairs,pins:pins.cases.length,pinComparisons:pinned,
             matrixGenerations:matrix,roundtrips,formatted,traps,rejections,compilerErrors,legacyRejections,bindingRejections,
             internalNative:hasNative,internalWasm:hasWasm,checkedCapi:hasNative||!!iprop,publicBindingTypedParts:!!iprop,
-            publicBindingGenerations,repeatedBindingErrors,typedObservationSkipped:!hasNative&&!hasWasm&&!iprop};
+            publicBindingGenerations,repeatedBindingErrors,sharedBindingScenes,typedObservationSkipped:!hasNative&&!hasWasm&&!iprop};
     } finally {if(owned)fs.rmSync(directory,{recursive:true,force:true});}
 }
 module.exports={run,canonical,digest};

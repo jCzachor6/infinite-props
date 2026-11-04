@@ -3,7 +3,8 @@
 //   node test/run-tests.js [path-to-wasm-build-dir] [path-to-native-tools]
 //
 // Requires the emscripten build, native ipa/ipc/ipgen tools and the test
-// assets prepared by prepare.sh. Exits 0 on success, 1 on failure.
+// assets prepared by prepare.sh. Python prepares the common binding fixtures.
+// Exits 0 on success, 1 on failure.
 
 "use strict";
 
@@ -147,6 +148,7 @@ async function main() {
             native.partExportsV09.nativeWasmPairs + " complete pairs; " + native.partExportsV09.traps + " traps; " +
             native.partExportsV09.rejections + " bytecode rejections; checked C API=" + native.partExportsV09.checkedCapi +
             "; core native=" + native.partExportsV09.internalNative + ", WASM=" + native.partExportsV09.internalWasm + ")");
+        console.log("public WASM shared part fixtures: PASS (" + native.partExportsV09.sharedBindingScenes + " complete C++/C scenes and independent lifetime)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

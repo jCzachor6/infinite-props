@@ -167,3 +167,6 @@ libdbus-1.so.3: cannot open shared object file: No such file or directory
 OpenGL API 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 20.1.2, 128 bits)
 
 Godot + Image + GPU texture: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+
+=== Completion audit: copied public WASM with the common 23 fixtures ===
+{"passed":true,"programs":167,"generations":604,"fullRecords":604,"nativeWasmPairs":0,"pins":7,"pinComparisons":56,"matrixGenerations":512,"roundtrips":28,"formatted":7,"traps":7,"rejections":30,"compilerErrors":8,"legacyRejections":57,"bindingRejections":37,"internalNative":false,"internalWasm":false,"checkedCapi":true,"publicBindingTypedParts":true,"publicBindingGenerations":604,"repeatedBindingErrors":2048,"sharedBindingScenes":23,"typedObservationSkipped":false}
