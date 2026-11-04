@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–10 zakończone. Typowane snapshoty części, geometria/A8/RGBA i checked C API 0.5 są zweryfikowane przy zachowanym ABI 0.5. Przechodzi 91/91 testów i 604 pełne porównania native/WASM. Raport etapu 10 zapisano w repozytorium; bindingi pozostają otwartym etapem 11.
+**Status:** etapy 00–10 zakończone. Trwa etap 11: Python udostępnia pełne typowane snapshoty i współdzielone zasoby przez C API 0.5 / ABI 0.5. Pozostałe bindingi i zbiorcza weryfikacja etapu 11 pozostają otwarte; raport etapu 10 jest zapisany w repozytorium.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -683,7 +683,19 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Odbiór:** wszystkie utrzymywane bindingi implementują kontrakt; wymagane sprawdzenia platform przechodzą, a ograniczenia środowiska są jawne.
 
-**Weryfikacja:** oczekuje na wykonanie.
+**Kroki integracji 11.1:**
+
+- [x] 11.1a Python: pełne snapshoty, jedna kopia zasobu na ID, obwody/dziury, dokładne A8/RGBA, automatyczna negocjacja typed generation i niezależny lifetime.
+- [ ] 11.1b HTML5/WASM.
+- [ ] 11.1c Apple.
+- [ ] 11.1d Unity/C#.
+- [ ] 11.1e Android/JNI/Kotlin.
+- [ ] 11.1f Godot.
+- [ ] 11.1g SFML.
+
+**11.1a (2026-11-04):** Python porównuje każde pole z 23 wspólnymi obserwacjami C++/checked C API. Siedem wcześniejszych semantic pins sprawdzono przed utrwaleniem referencji; dodatkowe sceny obejmują wszystkie dynamiczne i statyczne D4 oraz różne siatki targetu. Pełne dane, kolejność, ID, dziury, bufory i bity metadanych są zgodne także po kolejnej generacji i zwolnieniu programu. Siedem testów Python: sześć przechodzi, jeden opcjonalny test Pillow/CLI obrazka pominięty z powodu braku Pillow. CLI zachowuje dawny JSON point/rect/circle i jawnie odrzuca deklaracje part przed zapisem obrazu; nie dodano serializacji wyniku. Podpunkty 11.1–11.4 pozostają otwarte do integracji i weryfikacji wszystkich hostów.
+
+**Weryfikacja:** Python wykonany lokalnie na macOS; pozostałe hosty oczekują na wykonanie. Pełna macierz powstanie w 11.4.
 
 ### Etap 12 — niezależne limity pracy i przerywanie
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import struct
 import zlib
+from part_bindings import prepare as prepare_parts
 
 
 def rgba_png(file):
@@ -101,7 +102,8 @@ def main():
     canonical = replace_pool_name(module.fixture(True), b"", "é".encode("utf-8"))
     canonical = replace_pool_name(canonical, b"\0c\0\0", "e\u0301".encode("utf-8"))
     (args.output / "backend-normalized-names.iprop").write_bytes(canonical)
-    print(json.dumps({"fixtures": str(args.output.resolve()), "rgba_bytes": 128}))
+    parts = prepare_parts(args.tools, args.output)
+    print(json.dumps({"fixtures": str(args.output.resolve()), "rgba_bytes": 128, "part_binding_cases": parts}))
 
 
 if __name__ == "__main__":

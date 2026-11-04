@@ -1,6 +1,6 @@
 # Python
 
-A Python 3.10+ package using stdlib `ctypes` and the native C API 0.4 / ABI 0.5.
+A Python 3.10+ package using stdlib `ctypes` and the native C API 0.5 / ABI 0.5.
 The runtime library is loaded separately; Pillow is an optional image-export
 dependency. See the [shared contract](../../docs/native-bindings.md).
 
@@ -39,11 +39,26 @@ packed `values` as Python floats and `value_bits` as exact uint32 leaves,
 including NaN payloads and negative zero. Results are immutable copies and
 survive context-manager exit. Calls and close serialize per program.
 
+`output list part` slots have `kind == OutputKind.PART`, an ordered `parts`
+tuple and no packed float values. Each `PartSnapshot` exposes the complete
+[C API record](../../docs/c-api-part-outputs.md), including source/texture
+mapping, effective D4, integer translation, scales, anchor and bounds.
+`image.resource(part.shape_resource)` resolves an entry in `image.resources`;
+zero denotes an absent optional texture, and `region_index == 0xffffffff`
+denotes a raster shape. A resource is copied once per result-local ID and
+contains either exact A8/RGBA `data`, or `rings` and `regions` with explicit
+hole indices. Tuples/bytes are immutable and survive native result/program
+destruction and later generations. The wrapper negotiates both capabilities
+and enables typed generation automatically.
+
 `to_pillow()` copies top-left RGBA bytes and interprets stored channels as
 straight RGBA for presentation. Raw data retains the runtime's legacy
 destination alpha tag, as described in the shared guide.
 
-The CLI accepts repeated named overrides and prints geometry/statistics JSON:
+The CLI accepts repeated named overrides and prints the existing
+point/rect/circle geometry/statistics JSON. Programs declaring part outputs
+receive an explicit error before writing an image; use the Python result API
+for full typed data. No persisted result format is introduced.
 
 ```sh
 iprop-python stone.iprop stone.png --seed 7 --input 'tint=#8a9299'
