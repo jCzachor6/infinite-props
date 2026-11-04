@@ -189,6 +189,10 @@ add_executable(dynamic_parts_probe dynamic_parts_probe.cpp)
 target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
 iprop_warnings(dynamic_parts_probe)
 
+add_executable(part_exports_probe part_exports_probe.cpp)
+target_link_libraries(part_exports_probe PRIVATE iprop_capi_static)
+iprop_warnings(part_exports_probe)
+
 add_executable(dynamic_parts_allocation_probe dynamic_parts_allocation_probe.cpp)
 target_link_libraries(dynamic_parts_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(dynamic_parts_allocation_probe)

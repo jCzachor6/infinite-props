@@ -1,0 +1,10 @@
+import leaf from "part-exports-leaf.ips"
+
+asset MiddlePartOutputs {
+  size 9x7
+  origin 1.25, -0.5
+  output list part empty
+  draw {
+    leaf.draw(seed, at={-1.5, 4.25}, rot=90, mirror_x=1, mirror_y=0)
+  }
+}

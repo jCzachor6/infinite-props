@@ -77,3 +77,8 @@ add_executable(dynamic_parts_probe ../../tests/dynamic_parts_probe.cpp)
 target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
 iprop_warnings(dynamic_parts_probe)
 target_link_options(dynamic_parts_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+
+add_executable(part_exports_probe ../../tests/part_exports_probe.cpp)
+target_link_libraries(part_exports_probe PRIVATE iprop_runtime)
+iprop_warnings(part_exports_probe)
+target_link_options(part_exports_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sNODERAWFS=1" "-sALLOW_MEMORY_GROWTH=1")

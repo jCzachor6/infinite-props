@@ -106,3 +106,30 @@ First append needs 288 additional logical bytes; growth from capacity 1 to 2
 needs 288 at peak while the old 160-byte allocation remains live. Each threshold
 succeeds exactly and traps at one less byte, without a partial append. These
 are operation-local quota boundaries, not RSS or complete-generation budgets.
+
+
+## Placement, export order and static calls (10.4)
+
+The independent C++ matrix runs 4,096 generations: all eight dynamic D4 values
+and all pairs of enclosing static D4, four target grids (including unequal and
+fractional scales), optimized and unoptimized. Explicit signed formulas use
+pixel **edge** extents, rounded static canvas sizes/origins and four transformed
+bbox corners; they do not call runtime D4/placement helpers. Every center/bbox
+f32 bit, effective D4/translation and source/target scale is checked. Source
+geometry, raster alpha and appearance remain shared. The additional tests cover
+render-only/export-only, different append/draw orders, repeated draw, empty
+clips, no appearance, repeated static calls with/without a write, IDs across
+imports and the shared export cap.
+
+`part_exports_probe` is a test-only full-result observer, not an installed
+serializer or binding. Native compares every declaration/owner, snapshot field,
+float bit, RGBA byte, geometry ring/hole/metadata, resource byte/view/copy and
+fuel against checked C API after program destruction. WASM executes the same
+program and emits the same observations for conformance. The
+[nested](../tests/fixtures/part-exports-nested.ips) case includes empty root/middle
+and uncalled tail slots plus an uncalled import without outputs; stored slot
+owners are `[0,2,3,3,4]`. The
+[order](../tests/fixtures/part-exports-order.ips) case exports q/p/q while drawing
+p/q/p: all records have one instance ID, while the two colored image pixels
+are exactly `[18,52,86,192]` and `[255,238,204,64]`. Alpha is applied once for
+default RGBA and once per shape/appearance boundary for the fill override.

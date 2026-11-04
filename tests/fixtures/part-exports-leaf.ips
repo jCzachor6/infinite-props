@@ -1,0 +1,18 @@
+asset LeafPartOutputs {
+  size 7x5
+  origin 0.5, 1.25
+  output list part geometry
+  output list part rasters
+
+  save(p: part2d) { geometry = p }
+  draw {
+    g = part.create(regions(voronoi({-1.5, -0.5}, {6, 4}, [{1.5, 1.5}])), 0)
+    p = part.place(g, {-0.25, 3.5}, 90*(seed&3), (seed>>2)&1, 0)
+    save(g)
+    save(p)
+    save(part.fill(p, #12345680))
+    layer image(alpha=surface.source_over) { rect(0, 0, 7, 5, #aabbcc80) }
+    save(part.texture(g, image))
+    rasters = part.create(image)
+  }
+}

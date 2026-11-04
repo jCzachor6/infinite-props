@@ -1,0 +1,18 @@
+asset ExportAndRenderOrder {
+  size 4x3
+  output list part pieces
+  draw {
+    layer image(alpha=surface.source_over) { pixel(1, 1, #12345680) }
+    p = part.create(image)
+    q = part.fill(part.place(p, {2.5, 1.5}, 0, 0, 0), #ffeecc80)
+    layer rendered(alpha=surface.source_over) {
+      pieces = q
+      part.draw(p)
+      pieces = p
+      part.draw(q)
+      part.draw(p)
+      pieces = q
+    }
+    surface.paint(rendered, blend=surface.source_over)
+  }
+}
