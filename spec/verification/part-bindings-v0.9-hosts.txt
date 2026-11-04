@@ -1,0 +1,169 @@
+=== iprop-v09-stage11-python-tests.txt ===
+compiled /Users/jakubczachor/Library/Mobile Documents/com~apple~CloudDocs/Desktop/quants-space/infinite-props/backends/test/bindings.ips -> /private/tmp/iprop-v09-stage11-fixtures/bindings.iprop
+compiled /Users/jakubczachor/Library/Mobile Documents/com~apple~CloudDocs/Desktop/quants-space/infinite-props/backends/test/binding-trap.ips -> /private/tmp/iprop-v09-stage11-fixtures/binding-trap.iprop
+compiled /Users/jakubczachor/Library/Mobile Documents/com~apple~CloudDocs/Desktop/quants-space/infinite-props/backends/test/binding-unicode.ips -> /private/tmp/iprop-v09-stage11-fixtures/binding-unicode.iprop
+{"fixtures": "/private/tmp/iprop-v09-stage11-fixtures", "rgba_bytes": 128, "part_binding_cases": 23}
+test_cli_refuses_partial_json_before_writing_an_image (test_part_outputs.PartOutputTests.test_cli_refuses_partial_json_before_writing_an_image) ... ok
+test_complete_cpp_capi_parity_and_independent_lifetime (test_part_outputs.PartOutputTests.test_complete_cpp_capi_parity_and_independent_lifetime) ... ok
+test_byte_counted_names_exact_bits_and_empty_slots (test_runtime.RuntimeTests.test_byte_counted_names_exact_bits_and_empty_slots) ... ok
+test_generation_and_ownership (test_runtime.RuntimeTests.test_generation_and_ownership) ... ok
+test_invalid_input (test_runtime.RuntimeTests.test_invalid_input) ... ok
+test_pillow_and_cli_export (test_runtime.RuntimeTests.test_pillow_and_cli_export) ... ok
+test_unicode_inputs_and_located_runtime_failure (test_runtime.RuntimeTests.test_unicode_inputs_and_located_runtime_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 1.831s
+
+OK
+Python + Pillow: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Pixel gate rejects a changed RGB byte under zero alpha and a truncated corpus
+
+=== iprop-v09-stage11-swift-tests.txt ===
+Building for debugging...
+Build complete! (0,27 sek.)
+Test Suite 'All tests' started at 2026-11-04 10:53:22.355.
+Test Suite 'InfinitePropsTests.xctest' started at 2026-11-04 10:53:22.357.
+Test Suite 'PartOutputTests' started at 2026-11-04 10:53:22.357.
+Test Case '-[InfinitePropsTests.PartOutputTests testCompleteCppCapiParityAndIndependentLifetime]' started.
+Test Case '-[InfinitePropsTests.PartOutputTests testCompleteCppCapiParityAndIndependentLifetime]' passed (0.110 seconds).
+Test Suite 'PartOutputTests' passed at 2026-11-04 10:53:22.466.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.110 (0.110) seconds
+Test Suite 'PixelCorpusTests' started at 2026-11-04 10:53:22.466.
+Test Case '-[InfinitePropsTests.PixelCorpusTests testEntireSharedCorpusAndAppleImageTransport]' started.
+Test Case '-[InfinitePropsTests.PixelCorpusTests testEntireSharedCorpusAndAppleImageTransport]' passed (4.558 seconds).
+Test Suite 'PixelCorpusTests' passed at 2026-11-04 10:53:27.024.
+	 Executed 1 test, with 0 failures (0 unexpected) in 4.558 (4.558) seconds
+Test Suite 'RuntimeTests' started at 2026-11-04 10:53:27.024.
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentProgramCalls]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testConcurrentProgramCalls]' passed (0.005 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testExactNamesAndFloatBits]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testExactNamesAndFloatBits]' passed (0.000 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testGenerationInputsOwnershipAndErrors]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testGenerationInputsOwnershipAndErrors]' passed (0.007 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback]' started.
+/private/tmp/iprop-v09-stage11-apple-package/Tests/InfinitePropsTests/RuntimeTests.swift:73: -[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback] : Test skipped - Metal device unavailable on this host
+Test Case '-[InfinitePropsTests.RuntimeTests testMetalUploadAndReadback]' skipped (0.000 seconds).
+Test Case '-[InfinitePropsTests.RuntimeTests testUnicodeInputsAndLocatedRuntimeFailure]' started.
+Test Case '-[InfinitePropsTests.RuntimeTests testUnicodeInputsAndLocatedRuntimeFailure]' passed (0.001 seconds).
+Test Suite 'RuntimeTests' passed at 2026-11-04 10:53:27.038.
+	 Executed 5 tests, with 1 test skipped and 0 failures (0 unexpected) in 0.013 (0.014) seconds
+Test Suite 'InfinitePropsTests.xctest' passed at 2026-11-04 10:53:27.038.
+	 Executed 7 tests, with 1 test skipped and 0 failures (0 unexpected) in 4.681 (4.681) seconds
+Test Suite 'All tests' passed at 2026-11-04 10:53:27.038.
+	 Executed 7 tests, with 1 test skipped and 0 failures (0 unexpected) in 4.681 (4.683) seconds
+Apple + CGImage (Metal unavailable): 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
+
+=== iprop-v09-stage11-csharp-tests.txt ===
+CSSM_ModuleLoad(): One or more parameters passed to a function were not valid.
+Production C# typed parts: PASS 23 complete C++/C fixtures and independent result lifetime
+C# pixel corpus: 21829 cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Unity C# / native C API conformance passed
+
+=== iprop-v09-stage11-android-host.txt ===
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/iprop-v09-stage11-android-host
+[ 81%] Built target iprop_runtime
+[ 97%] Built target iprop_capi_static
+[100%] Built target iprop_jni
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by org.jetbrains.kotlin.org.fusesource.jansi.internal.JansiLoader in an unnamed module (file:/private/tmp/iprop-v09-stage11-kotlin/lib/kotlin-compiler.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.jetbrains.kotlin.com.intellij.util.containers.Unsafe (file:/private/tmp/iprop-v09-stage11-kotlin/lib/kotlin-compiler.jar)
+WARNING: Please consider reporting this to the maintainers of class org.jetbrains.kotlin.com.intellij.util.containers.Unsafe
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::loadLibrary has been called by dev.infiniteprops.Native in an unnamed module (file:/private/tmp/iprop-v09-stage11-android-host/conformance.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Kotlin/JNI typed parts: PASS 23 complete C++/C fixtures and independent result lifetime
+Android/JNI: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919
+Kotlin / JNI native conformance passed
+
+=== iprop-v09-stage11-ios-typecheck.txt ===
+arm64-apple-ios15.0: Swift wrapper typecheck PASS
+arm64-apple-ios15.0-simulator: Swift wrapper typecheck PASS
+
+=== iprop-v09-stage11-package.txt ===
+{"passed":true,"programs":167,"generations":604,"fullRecords":604,"nativeWasmPairs":0,"pins":7,"pinComparisons":56,"matrixGenerations":512,"roundtrips":28,"formatted":7,"traps":7,"rejections":30,"compilerErrors":8,"legacyRejections":57,"bindingRejections":37,"internalNative":false,"internalWasm":false,"checkedCapi":true,"publicBindingTypedParts":true,"publicBindingGenerations":604,"repeatedBindingErrors":2048,"typedObservationSkipped":false}
+
+=== iprop-v09-stage11-checkpoint-docs.txt ===
+Language documentation: PASS 0.8.0 (115 builtins, 159 examples)
+Language documentation: PASS 0.8.0 (115 builtins, 159 examples)
+
+=== relocated SDK verification (last 55 lines) ===
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/24-uniform-emblem.ips
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/23-nested-choices.ips
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/19-looped-checkers.ips
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/07-color-gradient.ips
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/02-palette-bands.ips
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/recipes/10-sdf-ring.ips
+-- Up-to-date: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/c
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/c/CMakeLists.txt
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/c/parameter_panel.c
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/examples/c/render_inputs.c
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/LLM_REFERENCE.md
+-- Up-to-date: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/editor
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/share/iprop/editor/README.md
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/lib/cmake/iprop/ipropTargets.cmake
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/lib/cmake/iprop/ipropTargets-release.cmake
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/lib/cmake/iprop/ipropConfig.cmake
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/lib/cmake/iprop/ipropConfigVersion.cmake
+-- Installing: /private/tmp/iprop-v09-stage11-sdk/original/lib/cmake/iprop/ipropProductVersion.cmake
+RUN /private/tmp/iprop-v09-stage11-python/bin/python /private/tmp/iprop-v09-stage11-sdk/relocated/share/iprop/backends/test/check-python.py /private/tmp/iprop-v09-stage11-sdk/relocated/bin /private/tmp/iprop-v09-stage11-sdk/relocated/lib/libipropc.dylib /private/tmp/iprop-v09-stage11-sdk/fixtures
+compiled /private/tmp/iprop-v09-stage11-sdk/relocated/share/iprop/backends/test/bindings.ips -> /private/tmp/iprop-v09-stage11-sdk/fixtures/bindings.iprop
+compiled /private/tmp/iprop-v09-stage11-sdk/relocated/share/iprop/backends/test/binding-trap.ips -> /private/tmp/iprop-v09-stage11-sdk/fixtures/binding-trap.iprop
+compiled /private/tmp/iprop-v09-stage11-sdk/relocated/share/iprop/backends/test/binding-unicode.ips -> /private/tmp/iprop-v09-stage11-sdk/fixtures/binding-unicode.iprop
+{"fixtures": "/private/tmp/iprop-v09-stage11-sdk/fixtures", "rgba_bytes": 128, "part_binding_cases": 23}
+test_cli_refuses_partial_json_before_writing_an_image (test_part_outputs.PartOutputTests.test_cli_refuses_partial_json_before_writing_an_image) ... ok
+test_complete_cpp_capi_parity_and_independent_lifetime (test_part_outputs.PartOutputTests.test_complete_cpp_capi_parity_and_independent_lifetime) ... ok
+test_byte_counted_names_exact_bits_and_empty_slots (test_runtime.RuntimeTests.test_byte_counted_names_exact_bits_and_empty_slots) ... ok
+test_generation_and_ownership (test_runtime.RuntimeTests.test_generation_and_ownership) ... ok
+test_invalid_input (test_runtime.RuntimeTests.test_invalid_input) ... ok
+test_pillow_and_cli_export (test_runtime.RuntimeTests.test_pillow_and_cli_export) ... ok
+test_unicode_inputs_and_located_runtime_failure (test_runtime.RuntimeTests.test_unicode_inputs_and_located_runtime_failure) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.811s
+
+OK
+RUN cmake -S /private/tmp/iprop-v09-stage11-sdk/consumer -B /private/tmp/iprop-v09-stage11-sdk/consumer-build -DCMAKE_PREFIX_PATH=/private/tmp/iprop-v09-stage11-sdk/relocated -DCMAKE_BUILD_TYPE=Debug
+-- The CXX compiler identification is AppleClang 21.0.0.21000099
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ZLIB: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib/libz.tbd (found suitable version "1.2.12", minimum required is "1.2.9")
+-- Configuring done (1.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /private/tmp/iprop-v09-stage11-sdk/consumer-build
+RUN cmake --build /private/tmp/iprop-v09-stage11-sdk/consumer-build --parallel 2
+[ 50%] Building CXX object CMakeFiles/consumer_static.dir/main.cpp.o
+[ 50%] Building CXX object CMakeFiles/consumer_shared.dir/main.cpp.o
+[100%] Linking CXX executable consumer_shared
+[100%] Linking CXX executable consumer_static
+[100%] Built target consumer_shared
+[100%] Built target consumer_static
+RUN /private/tmp/iprop-v09-stage11-sdk/consumer-build/consumer_shared /private/tmp/iprop-v09-stage11-sdk/fixtures/part-binding-geometry-raster-holes/root.iprop
+RUN /private/tmp/iprop-v09-stage11-sdk/consumer-build/consumer_static /private/tmp/iprop-v09-stage11-sdk/fixtures/part-binding-geometry-raster-holes/root.iprop
+=== Linux SFML software OpenGL ===
+SFML + texture + GPU render: 21829 pixel-exact cases
+
+=== Linux Godot software OpenGL ===
+Godot Engine v4.5.2.stable.official.6ce3de25a - https://godotengine.org
+libxkbcommon.so.0: cannot open shared object file: No such file or directory
+WARNING: Could not set V-Sync mode, as changing V-Sync mode is not supported by the graphics driver.
+     at: set_use_vsync (platform/linuxbsd/x11/gl_manager_x11.cpp:364)
+libdbus-1.so.3: cannot open shared object file: No such file or directory
+OpenGL API 4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.4 - Compatibility - Using Device: Mesa - llvmpipe (LLVM 20.1.2, 128 bits)
+
+Godot + Image + GPU texture: 21829 pixel-exact cases; SHA-256 e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919

@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–10 zakończone. Trwa etap 11: wszystkie siedem bindingów udostępnia pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5. Trwa końcowa weryfikacja SDK i macierzy platform.
+**Status:** etapy 00–11 zakończone. Wszystkie siedem bindingów udostępnia pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5; raport etapu 11 zawiera wykonaną macierz i ograniczenia platform. Etapy 12–14 pozostają otwarte.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -676,10 +676,10 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Zależności:** 10.
 
 - [x] 11.1 Udostępnić pełny wynik części w HTML5/WASM, Apple, Android, Unity, Godot, Python i SFML przez wspólny kontrakt z C API.
-- [ ] 11.2 Uzupełnić mosty typów, zarządzanie pamięcią i potrzebne wersje API/ABI bez łamania istniejących layoutów; nie dodawać osobnego formatu eksportu dla każdej platformy.
-- [ ] 11.3 Uruchomić conformance obejmujące rekordy, dziury, bufory, D4 i lifetime; porównać te same wyniki z referencją C++/C.
-- [ ] 11.4 Zapisać macierz platform: wykonane lokalnie/CI, sprawdzone tylko statycznie i niedostępne. Nie oznaczać brakującego testu platformy jako zaliczonego.
-- [ ] **Etap 11 zakończony.**
+- [x] 11.2 Uzupełnić mosty typów, zarządzanie pamięcią i potrzebne wersje API/ABI bez łamania istniejących layoutów; nie dodawać osobnego formatu eksportu dla każdej platformy.
+- [x] 11.3 Uruchomić conformance obejmujące rekordy, dziury, bufory, D4 i lifetime; porównać te same wyniki z referencją C++/C.
+- [x] 11.4 Zapisać macierz platform: wykonane lokalnie/CI, sprawdzone tylko statycznie i niedostępne. Nie oznaczać brakującego testu platformy jako zaliczonego.
+- [x] **Etap 11 zakończony.**
 
 **Odbiór:** wszystkie utrzymywane bindingi implementują kontrakt; wymagane sprawdzenia platform przechodzą, a ograniczenia środowiska są jawne.
 
@@ -703,7 +703,23 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **11.1f–g (2026-11-04):** 11.1c–e opublikowano jako `4e93503`. Rzeczywisty GDExtension Godot 4.5.2 i produkcyjny adapter SFML przechodzą wszystkie 23 wspólne pełne obserwacje C++/C, łącznie z ownership, dziurami, dokładnymi buforami i D4. Godot zachowuje poprzednie kontenery przez zastąpienie ich przy reloadzie, a błędy C++ zatrzymuje na granicy silnika. SDK otrzymuje kompletne źródła helperów, referencji i adaptera SFML. Skorygowano ścieżki wyjściowe testów Godot, aby działały w wskazanym katalogu build, oraz zapis kilku instrukcji odrzucanych przez GCC `-Werror=misleading-indentation`, bez zmiany ich działania.
 
-**Weryfikacja:** dane części sprawdzone w siedmiu hostach; zbiorcza macierz i próby grafiki z software OpenGL na Linuksie pozostają w 11.4. Publiczna przeniesiona paczka WASM bez sond przechodzi 604 pełne obserwacje, siedem pinów i 2048 kolejnych błędów zakończonych poprawną generacją. Swift przechodzi dodatkowo typecheck dla iOS device i simulator; nie jest to wykonanie na iOS.
+**11.2–11.3 (2026-11-04):** każdy host przechodzi 23 pełne wspólne obserwacje i zachowuje własne dane po zwolnieniu wyniku/programu oraz kolejnej generacji. Nagłówek C API ma ten sam kontrakt tokenów co etap 10; zmieniły się wyłącznie komentarze. Nie zmieniono layoutów ani nie dodano formatu zapisu wyniku. Przeniesione SDK przechodzi siedem testów Python z Pillow i 23 scenami oraz dwóch klientów C++ shared/static korzystających z zainstalowanego adaptera SFML. Publiczna przeniesiona paczka WASM bez sond przechodzi 604 pełne obserwacje, siedem pinów i 2048 kolejnych błędów zakończonych poprawną generacją. Pełny wcześniejszy gate zawiera 604 pary native/WASM i 1812 obserwacji z publicznym JS. Wszystkie hosty odtwarzają wspólny korpus 21 829 przypadków; kind/count części jest w korpusie, a pełne dane części w osobnym gate 23 scen.
+
+**11.4 — macierz wykonania (2026-11-04):**
+
+| Host | Wykonano lokalnie | Kompilacja bez wykonania / niedostępne |
+| --- | --- | --- |
+| HTML5/WASM | Publiczny JS w Node, pełne dane, lifetime, błędy, 21 829 przypadków | Przeglądarka i jej GPU niesprawdzane w tym etapie |
+| Python | Produkcyjny ctypes/Pillow, 7/7 testów, 23 pełne sceny, 21 829 przypadków, przeniesione SDK | Brak pominięć w tym zakresie |
+| Apple | Swift i CGImage na macOS arm64: 6 testów zaliczonych, 1 pominięty; 23 sceny i 21 829 przypadków | Metal niedostępny; XCFramework macOS/iOS/symulator zbudowany, Swift iOS device/simulator typechecked; iOS i x86_64 runtime niewykonane |
+| Unity/C# | Produkcyjne źródła wrappera pod .NET 8, rzeczywiste C API, 23 sceny i 21 829 przypadków | Unity Editor i tekstury silnika niewykonane |
+| Android | Produkcyjny Kotlin/JNI pod JVM z CheckJNI, 23 sceny i 21 829 przypadków | NDK niekompletny, brak uruchomienia Android ABI/urządzenia/emulatora; test instrumentacyjny podłączony do wspólnych źródeł |
+| Godot | Rzeczywisty GDExtension, 23 pełne sceny na macOS i Linuksie; Image/tekstury: 21 829 przypadków pod Linux/Xvfb/Mesa | macOS windowed GL niedostępny; Linux używa software OpenGL |
+| SFML | Produkcyjny adapter, 23 pełne sceny; upload/readback/BlendNone render: 21 829 przypadków pod Linux/Xvfb/Mesa | macOS desktop GL niedostępny; Linux używa software OpenGL |
+
+**Weryfikacja końcowa:** **97/97 CTest na Linuksie**, bez wyłączeń, oraz **95/95 na macOS**, z dwoma testami GL sprawdzonymi na Linuksie. Dla Windows i CI tego checkpointu nie utrwalono wyników wykonania; nie są zaliczone jako testy platform. Linux to lokalny izolowany Docker Compose, nie job GitHub Actions. Wzorzec źródeł potwierdza zgodność wszystkich plików runtime/bindingów/testów z checkpointem `f845598c563042fdfe1b4f3ac2644f0299e90377`; różnice kopii dotyczą jedynie trzech plików dokumentacji. Checkpoint jest opublikowany na `origin/develop`, a dokumentację zbudowano i zweryfikowano na jego czystym SHA: 115 builtinów / 159 przykładów.
+
+[Raport etapu 11](spec/verification/part-bindings-v0.9.json), [logi hostów i SDK](spec/verification/part-bindings-v0.9-hosts.txt), [CTest Linux](spec/verification/part-bindings-v0.9-linux-ctest.txt), [CTest macOS](spec/verification/part-bindings-v0.9-macos-ctest.txt) i [pełne conformance](spec/verification/part-bindings-v0.9-conformance.txt) zapisują zakres, SHA korpusu i ograniczenia. Commit zamknięcia obejmuje ten plik oraz raport i logi; jego czyste SHA wymaga ponownego build/verify dokumentacji i porównania z rzeczywistym zdalnym SHA w audycie dostarczenia. Nie jest to wydanie 0.9 ani publikacja strony.
 
 ### Etap 12 — niezależne limity pracy i przerywanie
 

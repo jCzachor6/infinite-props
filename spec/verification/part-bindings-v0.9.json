@@ -1,0 +1,704 @@
+{
+  "stage": "11 - typed bindings and hosts",
+  "date": "2026-11-04",
+  "verified_at_utc": "2026-11-04T11:13:48.421845+00:00",
+  "branch": "develop",
+  "base_commit": "48a3032b4e26999d2e2f61b11426644a158fba0a",
+  "verification_checkpoint_commit": "f845598c563042fdfe1b4f3ac2644f0299e90377",
+  "step_commits": {
+    "11.1a": "2e74eef38563e3d6c5eec0c44e95d13a3a65bffa",
+    "11.1b": "b6be993227d266f53019bd8ed0cfe5b1c7c4c804",
+    "11.1c-e": "4e93503c53e1105590fe9b8e2efd55faf2b4a851",
+    "11.1f-g": "292d2f7a4c6f45619aae16a7f5aa20f8aac58c70",
+    "gcc_probe_portability": "f845598c563042fdfe1b4f3ac2644f0299e90377"
+  },
+  "scope": "Stage 11 only. Seven typed hosts share checked C API; no release, version bump, tag, main merge, deployment or 3D assets.",
+  "product_version": "0.8.0",
+  "source_language_version": "0.8.0",
+  "c_api_version": "0.5",
+  "c_abi_soversion": "0.5",
+  "contract": {
+    "c_header_token_contract_unchanged_from_stage10": true,
+    "existing_c_layouts_unchanged": true,
+    "capability_bits": [
+      18,
+      19
+    ],
+    "generate_flag": 1,
+    "part_kind": 3,
+    "persisted_result_format_added": false,
+    "one_owned_resource_per_id": true,
+    "ids_result_local": true,
+    "explicit_empty_slots": true,
+    "full_records": "All effective snapshot fields; source/texture D4 and origins; original geometry vertices, parents and holes; complete region metadata; exact A8/RGBA buffers; exact old scalar bits/names/owners/order.",
+    "lifetime": "Owned host results survive native result/program release and later generation; Godot additionally survives asset reload/destruction. Low-level WASM RGBA remains borrowed until next generate; public Iprop copies RGBA; both own typed resources.",
+    "wasm_error_boundary": "Native catch returns an owned private error value; JavaScript throws after C++ cleanup. Existing public Error/status/reason/stage/location and initialization callback preserved."
+  },
+  "full_part_fixtures": {
+    "cases": 23,
+    "path": "backends/test/part-bindings-v0.9.json",
+    "sha256": "b4bbafb7e1e210454413f3e4167b21208df5663cc91b95105a8d5acfab009f64",
+    "oracle": "Complete C++ result independently compared with checked C API before recording; seven stage-10 semantic SHA pins verified first.",
+    "axes": [
+      "holes/nested rings/region indices",
+      "soft A8 and RGBA/hidden RGB",
+      "shared resource identity",
+      "empty and mixed slots",
+      "all dynamic and static D4/target scales",
+      "256 snapshots and 512 resources",
+      "independent lifetime"
+    ]
+  },
+  "pixel_corpus": {
+    "format": "IPXCRP01",
+    "cases": 21829,
+    "programs": 4992,
+    "bytes": 70951072,
+    "sha256": "e0736a354fe602e04097721b6131922819cece0e86033053e038c1b2dc099919"
+  },
+  "platform_matrix": [
+    {
+      "host": "HTML5/WASM",
+      "status": "executed",
+      "platform": "Node 26.10.0 / Emscripten 6.0.10-git",
+      "full_part_cases": 23,
+      "public_full_observations": 604,
+      "pixel_cases": 21829,
+      "details": "Full public JS compares with native C++/C and WASM probes; 2048 consecutive failures then valid result; separate copied public package passes without probes.",
+      "limitations": [
+        "No browser UI/GPU validation in this stage"
+      ]
+    },
+    {
+      "host": "Python",
+      "status": "executed",
+      "platform": "macOS arm64 / Python 3.14.7 / Pillow 13.0.0",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "tests_passed": 7,
+      "details": "Production ctypes wrapper; Pillow/CLI and hidden-RGB/truncated-corpus negative controls; repeated from relocated installed SDK.",
+      "limitations": []
+    },
+    {
+      "host": "Apple/Swift",
+      "status": "executed_with_platform_limits",
+      "platform": "macOS arm64 / Swift and native XCFramework",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "tests_passed": 6,
+      "tests_skipped": 1,
+      "compiled_native_slices": [
+        "macOS arm64/x86_64",
+        "iOS arm64",
+        "iOS simulator arm64/x86_64"
+      ],
+      "swift_typechecked_targets": [
+        "arm64-apple-ios15.0",
+        "arm64-apple-ios15.0-simulator"
+      ],
+      "details": "Actual Swift native calls and CGImage; source/test copy verified byte-identical to checkpoint.",
+      "limitations": [
+        "Metal skipped: device unavailable",
+        "No iOS device/simulator runtime executed",
+        "x86_64 slices built, not executed"
+      ]
+    },
+    {
+      "host": "Unity/C#",
+      "status": "executed_with_platform_limits",
+      "platform": "macOS arm64 / .NET 8.0.426",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "details": "Actual production Unity runtime C# sources and native C API; resource object identity and lifetime.",
+      "limitations": [
+        "Unity Editor and engine texture path not executed"
+      ]
+    },
+    {
+      "host": "Android/Kotlin/JNI",
+      "status": "executed_with_platform_limits",
+      "platform": "macOS arm64 / Kotlin 2.2.10 / JDK 27 host JVM with -Xcheck:jni",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "details": "Actual C++ JNI bridge plus production Kotlin; shared fixtures also wired into instrumentation sources.",
+      "limitations": [
+        "No Android device/emulator execution",
+        "NDK toolchain incomplete locally; no Android ABI native build claimed",
+        "adb listener cannot start in sandbox"
+      ]
+    },
+    {
+      "host": "Godot",
+      "status": "executed",
+      "platform": "Godot 4.5.2 / godot-cpp 4.5 / macOS arm64 and Linux arm64",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "details": "Actual GDExtension headless full data/identity/reload/lifetime; Linux Image and ImageTexture readback under Xvfb software OpenGL.",
+      "limitations": [
+        "macOS windowed graphics unavailable in sandbox",
+        "Linux graphics used software OpenGL, not physical GPU"
+      ]
+    },
+    {
+      "host": "SFML",
+      "status": "executed",
+      "platform": "SFML 3.1.0 / macOS arm64 and Linux arm64",
+      "full_part_cases": 23,
+      "pixel_cases": 21829,
+      "details": "Actual production copyResult after native result/program release; Linux texture upload/readback and 1:1 BlendNone render under Xvfb software OpenGL.",
+      "limitations": [
+        "macOS desktop GL context unavailable in sandbox",
+        "Linux graphics used software OpenGL, not physical GPU"
+      ]
+    }
+  ],
+  "ctest": {
+    "macos": {
+      "passed": 95,
+      "total": 95,
+      "seconds": 110.98,
+      "excluded": [
+        "sfml_render",
+        "sfml_conformance"
+      ],
+      "reason": "Desktop context failure before graphics test body; covered on Linux."
+    },
+    "linux": {
+      "passed": 97,
+      "total": 97,
+      "seconds": 55.5,
+      "excluded": [],
+      "environment": "Ubuntu 24.04 arm64 / GCC 13.3.0 / Xvfb / Mesa software OpenGL"
+    },
+    "cpp_cases": 814,
+    "cpp_assertions": 4515488
+  },
+  "full_native_wasm_gate": {
+    "passed": true,
+    "parts": {
+      "passed": true,
+      "programs": 167,
+      "generations": 604,
+      "fullRecords": 1812,
+      "nativeWasmPairs": 604,
+      "pins": 7,
+      "pinComparisons": 56,
+      "matrixGenerations": 512,
+      "roundtrips": 28,
+      "formatted": 7,
+      "traps": 7,
+      "rejections": 30,
+      "compilerErrors": 8,
+      "legacyRejections": 57,
+      "bindingRejections": 37,
+      "internalNative": true,
+      "internalWasm": true,
+      "checkedCapi": true,
+      "publicBindingTypedParts": true,
+      "publicBindingGenerations": 604,
+      "repeatedBindingErrors": 2048,
+      "typedObservationSkipped": false
+    },
+    "provenance": "Native CLI/core probes from stage10 build; current stage11 public WASM and all conformance groups. Core algorithms unchanged in stage11 except GCC instruction formatting; fresh stage11 native independently passes full CTest on macOS and Linux.",
+    "raw_json_sha256": "015d2f8eda850d2514a6e955db6e8c8101497a986b835cd833dab6eaae23a6ce",
+    "all_native_groups": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 24,
+        "comparisons": 176,
+        "traps": 16
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 97,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      },
+      "noiseV09": {
+        "generations": 143,
+        "pins": 6048,
+        "vectors": 63,
+        "traps": 87,
+        "compilerErrors": 14,
+        "rejections": 36,
+        "wasm": true
+      },
+      "noiseMaskV09": {
+        "generations": 388,
+        "pins": 15546,
+        "vectors": 52,
+        "traps": 162,
+        "rejections": 20,
+        "compilerErrors": 3,
+        "wasm": true
+      },
+      "geometryV09": {
+        "passed": true,
+        "types": 5,
+        "vectors": 3,
+        "generations": 60,
+        "rejections": 35,
+        "traps": 5,
+        "compilerErrors": 25,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "voronoiV09": {
+        "passed": true,
+        "vectors": 19,
+        "generations": 306,
+        "topologies": 19,
+        "traps": 18,
+        "rejections": 3,
+        "compilerErrors": 5,
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "contoursV09": {
+        "passed": true,
+        "vectors": 88,
+        "generations": 706,
+        "topologies": 88,
+        "mappedNestedCases": 8,
+        "traps": 9,
+        "rejections": 6,
+        "compilerErrors": 6,
+        "resourceBoundaries": [
+          {
+            "name": "empty",
+            "fuel": 49,
+            "minimumFreeBytes": 4996
+          },
+          {
+            "name": "nested-simplify-1000",
+            "fuel": 6383,
+            "minimumFreeBytes": 16439
+          },
+          {
+            "name": "seeded-gray-7",
+            "fuel": 3348,
+            "minimumFreeBytes": 11376
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "regionsV09": {
+        "passed": true,
+        "vectors": 55,
+        "publicVectors": 31,
+        "topologies": 55,
+        "generations": 564,
+        "traps": 41,
+        "rejections": 36,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-inset",
+            "fuel": 3656,
+            "minimumFreeBytes": 13938
+          },
+          {
+            "name": "dumbbell-split",
+            "fuel": 18631,
+            "minimumFreeBytes": 26336
+          },
+          {
+            "name": "hole-inset",
+            "fuel": 24337,
+            "minimumFreeBytes": 31284
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "gapBevelV09": {
+        "passed": true,
+        "vectors": 47,
+        "scenes": 2,
+        "publicVectors": 24,
+        "topologies": 47,
+        "generations": 485,
+        "traps": 51,
+        "rejections": 87,
+        "compilerErrors": 7,
+        "resourceBoundaries": [
+          {
+            "name": "rectangle-variable",
+            "fuel": 49186,
+            "minimumFreeBytes": 31136
+          },
+          {
+            "name": "hole-variable",
+            "fuel": 171099,
+            "minimumFreeBytes": 56116
+          },
+          {
+            "name": "diagram-scaled",
+            "fuel": 346389,
+            "minimumFreeBytes": 41500
+          }
+        ],
+        "nativeRepresentation": true,
+        "wasmRepresentation": true,
+        "wasm": true
+      },
+      "dynamicPartsV09": {
+        "passed": true,
+        "vectors": 317,
+        "scenes": 2,
+        "records": 634,
+        "coreFailureVectors": 6,
+        "coreRejections": 12,
+        "internalNative": true,
+        "internalWasm": true,
+        "wasm": true,
+        "publicVectors": 81,
+        "generations": 1063,
+        "traps": 37,
+        "rejections": 56,
+        "compilerErrors": 10,
+        "resourceBoundaries": [
+          {
+            "name": "scaled-geometry-0-6",
+            "core_fuel": 29997,
+            "source_bytes": 3244,
+            "minimum_free_bytes": 3056,
+            "native": true,
+            "wasm": true
+          },
+          {
+            "name": "matrix-3-6-3",
+            "core_fuel": 72,
+            "source_bytes": 1656,
+            "minimum_free_bytes": 656,
+            "native": true,
+            "wasm": true
+          },
+          {
+            "name": "matrix-2-1-6",
+            "core_fuel": 60,
+            "source_bytes": 1596,
+            "minimum_free_bytes": 768,
+            "native": true,
+            "wasm": true
+          }
+        ]
+      },
+      "partExportsV09": {
+        "passed": true,
+        "programs": 167,
+        "generations": 604,
+        "fullRecords": 1812,
+        "nativeWasmPairs": 604,
+        "pins": 7,
+        "pinComparisons": 56,
+        "matrixGenerations": 512,
+        "roundtrips": 28,
+        "formatted": 7,
+        "traps": 7,
+        "rejections": 30,
+        "compilerErrors": 8,
+        "legacyRejections": 57,
+        "bindingRejections": 37,
+        "internalNative": true,
+        "internalWasm": true,
+        "checkedCapi": true,
+        "publicBindingTypedParts": true,
+        "publicBindingGenerations": 604,
+        "repeatedBindingErrors": 2048,
+        "typedObservationSkipped": false
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "copied_public_package": {
+    "passed": true,
+    "files": {
+      "tools/ipc": "a2b63c3ca61f0bb087be02ab9fe8a8c9b70bdf0c1e7ab787f112d9551d99b774",
+      "tools/ipa": "a2b4343fb3aec81a87c9844b5527e2226b375297cd79edb983f7ebddaa2c8703",
+      "tools/ipgen": "02c05dc5a3fdbc9269aa61d46cc7e469fdf43b1962e052f66ca630c223210964",
+      "tools/ipval": "9a09baa96249ce06786659f7c635c4d9ca2d2af6d5e6b6bc0b202290c124dbaf",
+      "tools/ipdis": "63f72af970fb954d104a45e7e95070ba6ea69af9f1f0040cd25092495c8c2852",
+      "web/iprop.js": "665f0aec7183a863ca941455ff89b751703fb43928503f88e379023aa149d2f3",
+      "web/iprop.wasm": "45b8cc7963a5726592f11934ef92a692c70acb4baefe96627f006f3a2abea4c8",
+      "web/api.js": "41d7d4dc0e641b96783d4d6131268c04e817678b7aa00d38090f0ba35dedcd04"
+    },
+    "result": {
+      "passed": true,
+      "programs": 167,
+      "generations": 604,
+      "fullRecords": 604,
+      "nativeWasmPairs": 0,
+      "pins": 7,
+      "pinComparisons": 56,
+      "matrixGenerations": 512,
+      "roundtrips": 28,
+      "formatted": 7,
+      "traps": 7,
+      "rejections": 30,
+      "compilerErrors": 8,
+      "legacyRejections": 57,
+      "bindingRejections": 37,
+      "internalNative": false,
+      "internalWasm": false,
+      "checkedCapi": true,
+      "publicBindingTypedParts": true,
+      "publicBindingGenerations": 604,
+      "repeatedBindingErrors": 2048,
+      "typedObservationSkipped": false
+    },
+    "scope": "Copied standalone tools plus public iprop.js/iprop.wasm/api.js, with no native or WASM test probes. Full public results, frozen semantic pins, lifetime, roundtrips and repeated errors. Test expectations are source-tree test code, not a public serialization format."
+  },
+  "relocated_sdk": {
+    "passed": true,
+    "relocated": true,
+    "no_test_probes": true,
+    "source_files": {
+      "backends/ResultQueries.hpp": "1f76f2d0ba6786320ef8f252bceb58648587d89cb33420e12cdefddef9f32711",
+      "backends/sfml/src/Host.hpp": "87c1447e6d13f862f9fef4a01cdfea757eb5e79f52b9295261894363e8f31d17",
+      "backends/sfml/src/Render.hpp": "dff78f1b84d35778f58f275ee41e38487ba4d375d0f37defc35f10e0d07024e6",
+      "backends/test/part_bindings.py": "e90c98d29a3012ad57e79577891fb92c89b64f9f5c69c44f2697e5cc4cd5ab18",
+      "backends/test/part-bindings-v0.9.json": "b4bbafb7e1e210454413f3e4167b21208df5663cc91b95105a8d5acfab009f64",
+      "backends/test/check-part-outputs.py": "6e5301acb7c1ba4a24aac9fd0e81550c3baffda51c9711aa3e578b82b61e8d0c",
+      "backends/python/src/infinite_props/_native.py": "d3f3cfe6956ab931afddcacc95b4be301193c9b2baa37e7175c27120955e446c",
+      "backends/python/src/infinite_props/__init__.py": "6a6f0b4e0af84c879e49a920321e73da541cc0e9e3c7ae28fb476a2e5caa5222",
+      "backends/apple/Sources/InfiniteProps/PartOutputs.swift": "f5617d1f8d3e9433f65d37f3c5db50695090786570ac00bbb2774fc6c62fcbcc",
+      "backends/unity/Packages/dev.infiniteprops.runtime/Runtime/PartOutputs.cs": "f0e8ca80089caea597836b4330ca199a0accfe92d3cbe520b1261b3085767fd5",
+      "backends/unity/Packages/dev.infiniteprops.runtime/Runtime/PartOutputs.cs.meta": "cf8c25ab5228d9124f166b480ff431dd5435ad7d2b2df08d6ea3d1cd50ad174f",
+      "backends/android/iprop/src/main/java/dev/infiniteprops/PartOutputs.kt": "17c4d9124832b999057fc13456b70465ab96e250e581e41c840dd991cf585464"
+    },
+    "python_tests": 7,
+    "full_part_cases": 23,
+    "cpp_linkages": [
+      "shared",
+      "static"
+    ],
+    "prefix": "/private/tmp/iprop-v09-stage11-sdk/relocated",
+    "log": "/private/tmp/iprop-v09-stage11-sdk/verification.txt"
+  },
+  "linux_source_snapshot": {
+    "files": 1256,
+    "hash_map_sha256": "6bbc4c065819636ff17a4d330f98b05f166cfc6ebd572097446ed1f5888182f0",
+    "code_test_subset_files": 752,
+    "code_test_subset_sha256": "12743b02419b2aeabac6628066f7893d7742f7fa8fc16436b848a14dbff5f211",
+    "subset_rule": "Sorted compact JSON map of snapshot hashes for suffixes .cpp/.hpp/.h/.c/.cmake/.py/.gd/.kt/.kts/.swift/.cs/.js/.json/.txt, excluding spec/verification and tests/golden.",
+    "differences_from_checkpoint": [
+      "InfiniteProps_0.9.0_specyfikacja.md",
+      "backends/godot/README.md",
+      "backends/sfml/README.md"
+    ],
+    "all_runtime_binding_and_test_sources_match": true,
+    "execution": "Isolated local Docker Compose. Sources/dependencies/corpus read-only; build and logs in private tmp. Not a GitHub Actions job."
+  },
+  "docs": {
+    "checkpoint": "f845598c563042fdfe1b4f3ac2644f0299e90377",
+    "clean": true,
+    "builtins": 115,
+    "examples": 159,
+    "product_version": "0.8.0",
+    "note": "Handbook built and verified against clean implementation checkpoint. Closing report/spec commit must be rebuilt and verified in final delivery audit."
+  },
+  "toolchains": {
+    "macos": "AppleClang 21.0.0.21000099, arm64 Release",
+    "linux": "GCC 13.3.0, arm64 Release",
+    "cmake_macos": "4.2.3",
+    "cmake_linux": "3.28.3",
+    "floating_point": "FMA contraction disabled",
+    "product_dependencies_added": []
+  },
+  "logs": {
+    "part-bindings-v0.9-hosts.txt": {
+      "path": "spec/verification/part-bindings-v0.9-hosts.txt",
+      "sha256": "95ec2281be10bc13e92fed2a7053e5a04da0b1e599a5718c85bf578778ffd6d6",
+      "bytes": 13913
+    },
+    "part-bindings-v0.9-macos-ctest.txt": {
+      "path": "spec/verification/part-bindings-v0.9-macos-ctest.txt",
+      "sha256": "04b6eda2550e9e67a691b4faecf5e84cfc7bd04a412b2312e6754570b0345f44",
+      "bytes": 11039
+    },
+    "part-bindings-v0.9-linux-ctest.txt": {
+      "path": "spec/verification/part-bindings-v0.9-linux-ctest.txt",
+      "sha256": "6493210e581698dee80e02be0b073d0afc51823d4856fb07cdf845313b9af398",
+      "bytes": 11280
+    },
+    "part-bindings-v0.9-conformance.txt": {
+      "path": "spec/verification/part-bindings-v0.9-conformance.txt",
+      "sha256": "21c9abc582853f6756d8712df65454dbbfacf58d26820ccc5eed1290a82e9cc2",
+      "bytes": 3923
+    }
+  },
+  "binary_hashes": {
+    "native_shared_capi": {
+      "path": "/private/tmp/iprop-v09-stage11-native/backends/capi/libipropc.0.8.0.dylib",
+      "sha256": "b58ee44f40fa79f1c73513b135510239ecbeda14b341956801b332dfec6b5de8",
+      "bytes": 906896
+    },
+    "native_static_capi": {
+      "path": "/private/tmp/iprop-v09-stage11-native/backends/capi/libipropc.a",
+      "sha256": "0ef962d49ecdbacb22c946b96f31f92ed85a679655646cbdbbc7a40a7b35b1dd",
+      "bytes": 168920
+    },
+    "public_wasm_module": {
+      "path": "/private/tmp/iprop-v09-stage11-wasm/iprop.js",
+      "sha256": "665f0aec7183a863ca941455ff89b751703fb43928503f88e379023aa149d2f3",
+      "bytes": 42513
+    },
+    "public_wasm_binary": {
+      "path": "/private/tmp/iprop-v09-stage11-wasm/iprop.wasm",
+      "sha256": "45b8cc7963a5726592f11934ef92a692c70acb4baefe96627f006f3a2abea4c8",
+      "bytes": 733434
+    },
+    "jni_host_library": {
+      "path": "/private/tmp/iprop-v09-stage11-android-host/libiprop_jni.dylib",
+      "sha256": "b01813700a93074953b016392c3bd316049f31eaf18a28c7c8a5a0754892528d",
+      "bytes": 943600
+    },
+    "kotlin_host_jar": {
+      "path": "/private/tmp/iprop-v09-stage11-android-host/conformance.jar",
+      "sha256": "899111dcba5fde64c8b8a3e92f53563f103fa73f765e16776bd8f7013aec81ee",
+      "bytes": 5138917
+    },
+    "csharp_test_assembly": {
+      "path": "/Users/jakubczachor/Library/Mobile Documents/com~apple~CloudDocs/Desktop/quants-space/infinite-props/backends/unity/tests/bin/Debug/net8.0/Conformance.dll",
+      "sha256": "d106bee81539d3bd932a8bf8493c78dd7b83c6b52c446455e2a1ad8adf6c73c2",
+      "bytes": 61952
+    },
+    "linux_shared_capi": {
+      "path": "/private/tmp/iprop-v09-stage11-linux/work/native/backends/capi/libipropc.so.0.8.0",
+      "sha256": "d83a8c341de82f2854d68079244faad7c54bf4d02f2d20f8882eb38ac79ec520",
+      "bytes": 1437920
+    },
+    "linux_godot_extension": {
+      "path": "/private/tmp/iprop-v09-stage11-linux/work/native/godot-project/bin/libiprop-godot.linux.release.arm64.so",
+      "sha256": "1dbbbafaaa5000070cb59cb0eda370da9db8955494aedf44c19f807b5f090cc5",
+      "bytes": 2498152
+    },
+    "linux_sfml_pixel_gate": {
+      "path": "/private/tmp/iprop-v09-stage11-linux/work/native/backends/sfml/sfml_pixel_corpus",
+      "sha256": "a102d653c286c519496246cf8a51862e9b2e095119a634c11d3151fa640dbff5",
+      "bytes": 3754784
+    },
+    "xcframework_macos-arm64_x86_64": {
+      "path": "/private/tmp/iprop-v09-stage11-apple-package/Artifacts/CIprop.xcframework/macos-arm64_x86_64/libCIprop.a",
+      "sha256": "36fd84a83c613c7c63cd5cf0a43e1b2604307d183bbbece4567ed7c518a66f0a",
+      "bytes": 6752448
+    },
+    "xcframework_ios-arm64_x86_64-simulator": {
+      "path": "/private/tmp/iprop-v09-stage11-apple-package/Artifacts/CIprop.xcframework/ios-arm64_x86_64-simulator/libCIprop.a",
+      "sha256": "e01bd96fe3ec22748123068dc3774ae37b9d79d0fc221118db5d7217ce70c3a8",
+      "bytes": 6619240
+    },
+    "xcframework_ios-arm64": {
+      "path": "/private/tmp/iprop-v09-stage11-apple-package/Artifacts/CIprop.xcframework/ios-arm64/libCIprop.a",
+      "sha256": "b3b8cd51bfa53ba26ba346655c89077d5c0b6b01e0d66819b8276c0d6360a09a",
+      "bytes": 3334024
+    }
+  },
+  "unavailable_or_unobserved": [
+    "Physical Metal/GPU",
+    "iOS runtime",
+    "Unity Editor",
+    "Android NDK/device/emulator",
+    "Windows runtime",
+    "GitHub Actions results for final checkpoint not observed"
+  ],
+  "delivery": "The final clean HEAD/remote equality audit follows the closing report/checklist commit. This artifact pins its implementation checkpoint and does not self-reference the closing commit."
+}
