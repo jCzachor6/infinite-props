@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
                 const auto name = r.blob(); r.word(); const auto kind = r.word(), list = r.word(), elements = r.word(), leaves = r.word();
                 require(output.name.size() == name.size() && std::memcmp(output.name.data(), name.data(), name.size()) == 0, label + ": name");
                 const auto components = iprop::backend::outputComponents(output.kind);
-                require(static_cast<std::uint32_t>(output.kind) == kind && output.isList == (list != 0) && output.values.size() == leaves && output.values.size() == elements * components, label + ": slot");
+                require(static_cast<std::uint32_t>(output.kind) == kind && output.isList == (list != 0) && output.count == elements && output.values.size() == leaves && output.values.size() == elements * components, label + ": slot");
                 for (const auto value : output.values) require(std::bit_cast<std::uint32_t>(value) == r.word(), label + ": bits");
             }
             uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);

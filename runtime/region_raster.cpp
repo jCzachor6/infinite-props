@@ -147,7 +147,8 @@ RasterResult rasterRegionsCore(Execution& ex,const GeometryData& source,i32 inde
                 if(owner==0xffff)continue;
                 const double px=(static_cast<double>(left)+x+(static_cast<double>(sx)+0.5)/4)/scale.x;
                 shade->sample(px,py,owner,shade->row[x]);}
-            if(sy==3)shade->finishRow(buffer->raster,y);continue;
+            if(sy==3)shade->finishRow(buffer->raster,y);
+            continue;
         }
         geometrySort(ex,intervals,[](const auto& a,const auto& b){return std::pair(a.left,a.right)<std::pair(b.left,b.right);});
         std::size_t merged=0;

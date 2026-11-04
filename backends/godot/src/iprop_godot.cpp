@@ -1,6 +1,7 @@
 // The GDExtension implementation (see iprop_godot.hpp).
 
 #include "iprop_godot.hpp"
+#include "part_values.hpp"
 #include "../../ResultQueries.hpp"
 
 #include <godot_cpp/classes/file_access.hpp>
@@ -108,6 +109,8 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_outputs"), &IpropAsset::get_outputs);
     ClassDB::bind_method(D_METHOD("get_part_outputs"), &IpropAsset::get_part_outputs);
     ClassDB::bind_method(D_METHOD("get_output_slots"), &IpropAsset::get_output_slots);
+    ClassDB::bind_method(D_METHOD("get_resources"), &IpropAsset::get_resources);
+    ClassDB::bind_method(D_METHOD("get_resource", "id"), &IpropAsset::get_resource);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "origin"), "", "get_origin");
@@ -119,6 +122,7 @@ void IpropAsset::_bind_methods() {
                  "get_part_outputs");
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "output_slots"), "",
                  "get_output_slots");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "resources"), "", "get_resources");
 }
 
 IpropAsset::IpropAsset() = default;
@@ -161,9 +165,11 @@ Error IpropAsset::load_file(const String& path) {
     iprop_program_free(program_);
     parameters_ = parameters;
     program_ = candidate.release();
-    outputs_.clear();
-    part_outputs_.clear();
-    output_slots_.clear();
+    // Replace shared containers; retained previous results must survive reload.
+    outputs_ = Dictionary();
+    part_outputs_ = Dictionary();
+    output_slots_ = Array();
+    resources_ = Array();
     size_ = Vector2i(static_cast<int>(meta.size_x),
                      static_cast<int>(meta.size_y));
     origin_ = Vector2(meta.origin_x, meta.origin_y);
@@ -282,6 +288,7 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
     }
     iprop_generate_options_ex options;
     iprop_generate_options_ex_init(&options, sizeof(options));
+    options.flags = IPROP_GENERATE_PART_OUTPUTS;
     options.seed = static_cast<uint32_t>(seed);
     options.size_x = static_cast<uint32_t>(width);
     options.size_y = static_cast<uint32_t>(height);
@@ -315,13 +322,14 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
         static_cast<int>(image.height), false, Image::FORMAT_RGBA8, bytes);
     if (candidate_image.is_null() || candidate_image->is_empty()) return readFailure();
 
+    try {
     Dictionary candidate_outputs, candidate_parts;
     Array candidate_slots;
     uint32_t output_count;
     if (iprop_result_output_count(result, &output_count, failure.get()) != IPROP_EX_OK) return readFailure();
     for (uint32_t i = 0; i < output_count; ++i) {
-        iprop_result_output_view_ex slot;
-        if (iprop::backend::queryOutput(result, i, slot, failure.get()) != IPROP_EX_OK) return readFailure();
+        iprop_output_slot_ex slot;
+        if (iprop::backend::querySlot(result, i, slot, failure.get()) != IPROP_EX_OK) return readFailure();
         String name;
         if (!decodeName(slot.name, name)) {
             return readFailure();
@@ -330,13 +338,26 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
         entry["kind"] = static_cast<int64_t>(slot.kind);
         entry["list"] = slot.is_list != 0;
         const auto components = iprop::backend::outputComponents(slot.kind);
-        if (components == 0) return readFailure();
         PackedFloat32Array values;
-        if (values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
-            iprop::backend::copyOutputValues(result, slot, values.ptrw(), failure.get()) != IPROP_EX_OK) {
-            return readFailure();
+        Array pieces;
+        if (slot.kind == IPROP_OUTPUT_KIND_PART) {
+            std::vector<iprop_part_snapshot_ex> records;
+            if (iprop::backend::copyParts(result, slot, records, failure.get()) != IPROP_EX_OK) return readFailure();
+            for (const auto& p : records) {
+                Dictionary value;
+                if (!partValue(p, value)) return readFailure();
+                pieces.append(value);
+            }
+        } else {
+            if (components == 0) return readFailure();
+            iprop_result_output_view_ex old;
+            if (iprop::backend::queryOutput(result, i, old, failure.get()) != IPROP_EX_OK ||
+                values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
+                iprop::backend::copyOutputValues(result, old, values.ptrw(), failure.get()) != IPROP_EX_OK) return readFailure();
         }
         entry["values"] = values;
+        entry["parts"] = pieces;
+        entry["count"] = static_cast<int64_t>(slot.element_count);
         entry["name"] = name;
         entry["index"] = static_cast<int64_t>(slot.output_index);
         entry["owner"] = static_cast<int64_t>(slot.owner);
@@ -350,10 +371,16 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
             candidate_parts[owner] = part;
         }
     }
+    std::vector<iprop::backend::ResultResource> stores;
+    Array candidate_resources;
+    if (iprop::backend::copyResources(result, stores, failure.get()) != IPROP_EX_OK ||
+        !resourceValues(stores, candidate_resources)) return readFailure();
     outputs_ = candidate_outputs;
     part_outputs_ = candidate_parts;
     output_slots_ = candidate_slots;
+    resources_ = candidate_resources;
     return candidate_image;
+    } catch (const std::exception&) { return readFailure(); }
 }
 
 // ---- IpropSprite2D --------------------------------------------------------

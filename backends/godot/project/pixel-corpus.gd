@@ -84,7 +84,7 @@ func _init() -> void:
 			var elements := word()
 			var leaves := word()
 			var values: PackedFloat32Array = output["values"]
-			demand(output.kind == kind and output.list == list_flag and values.size() == leaves and leaves == elements * [2, 4, 3][kind], label + ": slot")
+			demand(output.kind == kind and output.list == list_flag and output.count == elements and values.size() == leaves and leaves == elements * [2, 4, 3, 0][kind], label + ": slot")
 			var packed := values.to_byte_array()
 			for leaf in range(leaves):
 				demand(packed.decode_u32(leaf * 4) == word(), label + ": f32 bits")

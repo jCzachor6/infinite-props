@@ -1,6 +1,6 @@
 # Infinite Props 0.9.0 — specyfikacja i plan wykonania
 
-**Status:** etapy 00–10 zakończone. Trwa etap 11: Python, publiczny HTML5/WASM, Swift, C# i Kotlin/JNI udostępniają pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5. Godot, SFML i zbiorcza weryfikacja etapu 11 pozostają otwarte.
+**Status:** etapy 00–10 zakończone. Trwa etap 11: wszystkie siedem bindingów udostępnia pełne typowane snapshoty i zasoby przez C API 0.5 / ABI 0.5. Trwa końcowa weryfikacja SDK i macierzy platform.
 
 **Gałąź prac:** `develop`, publikacja kroków na `origin/develop`.
 
@@ -675,7 +675,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **Zależności:** 10.
 
-- [ ] 11.1 Udostępnić pełny wynik części w HTML5/WASM, Apple, Android, Unity, Godot, Python i SFML przez wspólny kontrakt z C API.
+- [x] 11.1 Udostępnić pełny wynik części w HTML5/WASM, Apple, Android, Unity, Godot, Python i SFML przez wspólny kontrakt z C API.
 - [ ] 11.2 Uzupełnić mosty typów, zarządzanie pamięcią i potrzebne wersje API/ABI bez łamania istniejących layoutów; nie dodawać osobnego formatu eksportu dla każdej platformy.
 - [ ] 11.3 Uruchomić conformance obejmujące rekordy, dziury, bufory, D4 i lifetime; porównać te same wyniki z referencją C++/C.
 - [ ] 11.4 Zapisać macierz platform: wykonane lokalnie/CI, sprawdzone tylko statycznie i niedostępne. Nie oznaczać brakującego testu platformy jako zaliczonego.
@@ -690,8 +690,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 11.1c Apple: pełne własne rekordy i zasoby w Swift; zbudowany XCFramework macOS/iOS/symulator, rzeczywiste testy Swift/CGImage na macOS.
 - [x] 11.1d Unity/C#: pełne rekordy i wspólna tabela zasobów w produkcyjnym wrapperze C#; runtime .NET z rzeczywistym C API na macOS.
 - [x] 11.1e Android/JNI/Kotlin: pełny most typów/zasobów i lifetime; rzeczywiste wywołania JNI z JVM i CheckJNI. Test urządzenia/emulatora pozostaje osobną pozycją macierzy 11.4.
-- [ ] 11.1f Godot.
-- [ ] 11.1g SFML.
+- [x] 11.1f Godot: pełne słowniki snapshotów i jedna tabela zasobów, niezależne Image/arrays, zachowanie wyników po generacji, przeładowaniu i zwolnieniu assetu.
+- [x] 11.1g SFML: opcjonalny pełny owned `copyResult`, snapshoty i zasoby przez wspólne query C API; viewer może nadal czytać tylko obraz.
 
 **11.1a (2026-11-04):** Python porównuje każde pole z 23 wspólnymi obserwacjami C++/checked C API. Siedem wcześniejszych semantic pins sprawdzono przed utrwaleniem referencji; dodatkowe sceny obejmują wszystkie dynamiczne i statyczne D4 oraz różne siatki targetu. Pełne dane, kolejność, ID, dziury, bufory i bity metadanych są zgodne także po kolejnej generacji i zwolnieniu programu. Siedem testów Python: sześć przechodzi, jeden opcjonalny test Pillow/CLI obrazka pominięty z powodu braku Pillow. CLI zachowuje dawny JSON point/rect/circle i jawnie odrzuca deklaracje part przed zapisem obrazu; nie dodano serializacji wyniku. Podpunkty 11.1–11.4 pozostają otwarte do integracji i weryfikacji wszystkich hostów.
 
@@ -701,7 +701,9 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 **11.2 — obsługa błędów WASM:** pełny wcześniejszy gate ujawnił uszkodzenie granicy po wielu błędnych generacjach. C++ zwraca teraz błąd przez prywatny most i kończy sprzątanie przed rzuceniem JS Error; publiczne `Module.generate` i `Iprop.generate` nadal rzucają wyjątki. Sprawdzono 3000 kolejnych błędów i callback inicjalizacji; stały gate obejmuje 2048 błędów i poprawny wynik po nich. Cały gate native/WASM przechodzi, w tym 604 pełne publiczne porównania części. Wspólny korpus uwzględnia kind/count części z zerem liści float; pełne dane części weryfikuje osobny wspólny gate 23 scen, bez nowego formatu produktu.
 
-**Weryfikacja:** pięć hostów wykonanych lokalnie w podanym zakresie; Godot i SFML oczekują na zakończenie. Pełna macierz powstanie w 11.4.
+**11.1f–g (2026-11-04):** 11.1c–e opublikowano jako `4e93503`. Rzeczywisty GDExtension Godot 4.5.2 i produkcyjny adapter SFML przechodzą wszystkie 23 wspólne pełne obserwacje C++/C, łącznie z ownership, dziurami, dokładnymi buforami i D4. Godot zachowuje poprzednie kontenery przez zastąpienie ich przy reloadzie, a błędy C++ zatrzymuje na granicy silnika. SDK otrzymuje kompletne źródła helperów, referencji i adaptera SFML. Skorygowano ścieżki wyjściowe testów Godot, aby działały w wskazanym katalogu build, oraz zapis kilku instrukcji odrzucanych przez GCC `-Werror=misleading-indentation`, bez zmiany ich działania.
+
+**Weryfikacja:** dane części sprawdzone w siedmiu hostach; zbiorcza macierz i próby grafiki z software OpenGL na Linuksie pozostają w 11.4. Publiczna przeniesiona paczka WASM bez sond przechodzi 604 pełne obserwacje, siedem pinów i 2048 kolejnych błędów zakończonych poprawną generacją. Swift przechodzi dodatkowo typecheck dla iOS device i simulator; nie jest to wykonanie na iOS.
 
 ### Etap 12 — niezależne limity pracy i przerywanie
 

@@ -199,6 +199,8 @@ def resources(root):
     files += list((root / "backends").glob("*/README.md"))
     if (root / "backends/capi/iprop.h").is_file():
         files.append(root / "backends/capi/iprop.h")
+    files += [root / name for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp")
+              if (root / name).is_file()]
     # Ship the binding source packages with their linked guides. Never absorb
     # local native binaries, SDK downloads, compiler caches or build products.
     excluded = {".build", ".swiftpm", "Artifacts", ".gradle", ".kotlin", ".cxx", "build", "bin", "obj", "Plugins", "__pycache__", "dist"}
@@ -210,7 +212,7 @@ def resources(root):
                   and not any(part.endswith(".egg-info") for part in p.parts)
                   and p.name != "local.properties"
                   and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
-    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp")
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
               if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))

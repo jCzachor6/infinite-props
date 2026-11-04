@@ -608,7 +608,7 @@ IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program
  * input_count describes the part's own input signature; output_begin/count
  * select its contiguous geometry output range for program_output_get, and
  * exclude internal format-0.6 mask/layer resource exports. All output_count
- * fields and output indices count point/rect/circle geometry only.
+ * fields and output indices include point/rect/circle/part declarations.
  * program_output_find uses this owner. An empty part may have the same
  * output_begin as the following part while keeping its own owner.
  * Files with a v0.5 parts section store each part's instance name, its alias
@@ -919,7 +919,8 @@ IPROP_API iprop_status_ex iprop_result_check_legacy(const iprop_result* result, 
  * defaults, and a set must come from this program load (FOREIGN_PARAMETERS
  * otherwise, even for identical bytes). options follow
  * iprop_generate_options_ex: a four-byte prefix suffices, absent fields are
- * zero and nonzero complete flags are rejected. Before any VM setup, invalid
+ * zero; complete flags accept IPROP_GENERATE_PART_OUTPUTS and reject other
+ * bits. Every part declaration requires this opt-in. Before VM setup, invalid
  * options, foreign parameters and CANVAS_SIZE
  * fail as E_ARGUMENT at ARGUMENTS stage. Parameter IDs, names, types and
  * duplicates were enforced when the values were set; generation only reads

@@ -38,6 +38,7 @@ class IpropAsset : public godot::Resource {
     godot::Dictionary outputs_{};
     godot::Dictionary part_outputs_{};
     godot::Array output_slots_{};
+    godot::Array resources_{};
 
 protected:
     static void _bind_methods();
@@ -76,6 +77,10 @@ public:
     godot::Dictionary get_outputs() const { return outputs_; }
     godot::Dictionary get_part_outputs() const { return part_outputs_; }
     godot::Array get_output_slots() const { return output_slots_; }
+    godot::Array get_resources() const { return resources_; }
+    godot::Dictionary get_resource(int64_t id) const {
+        return id > 0 && id <= resources_.size() ? godot::Dictionary(resources_[id - 1]) : godot::Dictionary();
+    }
 };
 
 class IpropSprite2D : public godot::Sprite2D {

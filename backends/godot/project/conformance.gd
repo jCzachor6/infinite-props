@@ -76,9 +76,11 @@ func _init() -> void:
 	var shapes := IpropAsset.new()
 	if shapes.load_file(args[0] + "/shapes.iprop") == OK:
 		var exported := shapes.generate(0)
-		exported.save_png("user://roundtrip.png")
+		# Keep test artifacts in the caller-supplied build directory.
+		var roundtrip := args[0].path_join("godot-roundtrip.png")
+		var saved := exported.save_png(roundtrip)
 		var reloaded := Image.new()
-		if reloaded.load("user://roundtrip.png") != OK \
+		if saved != OK or reloaded.load(roundtrip) != OK \
 				or reloaded.get_data() != exported.get_data():
 			failures += 1
 			printerr("FAIL png round-trip")
@@ -229,10 +231,11 @@ func _init() -> void:
 		printerr("FAIL transactional asset reload")
 	# A failed decode also preserves the loaded handle, queried metadata and
 	# previously published generation, without notifying sprite users.
-	var invalid_path := "user://iprop-conformance-invalid.iprop"
+	var invalid_path := args[0].path_join("godot-conformance-invalid.iprop")
 	var invalid_file := FileAccess.open(invalid_path, FileAccess.WRITE)
 	if invalid_file == null:
 		failures += 1
+		printerr("FAIL cannot create invalid-file fixture")
 	else:
 		invalid_file.store_buffer(PackedByteArray([1, 2, 3, 4]))
 		invalid_file.close()

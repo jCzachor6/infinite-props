@@ -45,6 +45,14 @@ target_include_directories(iprop_godot PRIVATE
 target_include_directories(iprop_godot SYSTEM PRIVATE
     $<TARGET_PROPERTY:godot-cpp,INTERFACE_INCLUDE_DIRECTORIES>)
 iprop_warnings(iprop_godot)
+# godot-cpp disables exceptions transitively. This adapter owns allocating C++
+# candidates and catches failures before returning to the engine. Source flags
+# follow transitive target flags, keeping the override local to this boundary.
+if(MSVC)
+    set_source_files_properties(src/iprop_godot.cpp PROPERTIES COMPILE_OPTIONS "/EHsc")
+else()
+    set_source_files_properties(src/iprop_godot.cpp PROPERTIES COMPILE_OPTIONS "-fexceptions")
+endif()
 
 if(APPLE)
     set(IPROP_GODOT_PLATFORM macos)
@@ -75,7 +83,7 @@ set_target_properties(iprop_godot PROPERTIES
 # library), ready for the Godot editor or the headless runs.
 set(IPROP_GODOT_PROJECT ${CMAKE_BINARY_DIR}/godot-project)
 file(MAKE_DIRECTORY ${IPROP_GODOT_PROJECT}/assets)
-foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd)
+foreach(file project.godot demo.tscn demo.gd conformance.gd pixel-corpus.gd part-outputs.gd)
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/project/${file}
                    ${IPROP_GODOT_PROJECT}/${file} COPYONLY)
 endforeach()
@@ -109,7 +117,7 @@ add_custom_target(godot_demo
 
 if(IPROP_BUILD_TESTS)
     include(${CMAKE_CURRENT_SOURCE_DIR}/../ResultTests.cmake)
-    add_dependencies(iprop_godot capi_golden capi_result_output_fixture backend_result_fixtures)
+    add_dependencies(iprop_godot capi_golden capi_result_output_fixture backend_result_fixtures backend_part_fixtures)
     find_program(IPROP_GODOT_BINARY
         NAMES Godot godot
         HINTS "${CMAKE_SOURCE_DIR}/../.deps/Godot.app/Contents/MacOS"
@@ -119,6 +127,7 @@ if(IPROP_BUILD_TESTS)
         add_test(NAME godot_conformance
             COMMAND ${IPROP_GODOT_BINARY}
                     --headless
+                    --log-file ${CMAKE_BINARY_DIR}/godot-conformance.log
                     --path ${IPROP_GODOT_PROJECT}
                     --script res://conformance.gd
                     -- ${CMAKE_BINARY_DIR}/capi-golden
@@ -126,6 +135,11 @@ if(IPROP_BUILD_TESTS)
         set_tests_properties(godot_conformance PROPERTIES
             DEPENDS capi_golden
             TIMEOUT 120)
+        add_test(NAME godot_part_outputs COMMAND ${IPROP_GODOT_BINARY}
+            --headless --log-file ${CMAKE_BINARY_DIR}/godot-part-outputs.log
+            --path ${IPROP_GODOT_PROJECT} --script res://part-outputs.gd
+            -- ${CMAKE_BINARY_DIR}/binding-fixtures)
+        set_tests_properties(godot_part_outputs PROPERTIES TIMEOUT 120)
     else()
         if(IPROP_GODOT STREQUAL "ON")
             message(FATAL_ERROR "Required Godot engine for conformance was not found")

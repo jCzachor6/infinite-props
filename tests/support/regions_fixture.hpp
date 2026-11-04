@@ -19,7 +19,8 @@ inline std::shared_ptr<const GeometryData> regionFixture(detail::Execution& ex,s
     }
     for(u32 i=0;i<rings.size();++i){
         u32 depth=0,parent=rings[i].parent;while(parent!=kNoGeometryIndex){++depth;parent=rings[parent].parent;}
-        if(depth%2)continue;holes.clear();
+        if(depth%2)continue;
+        holes.clear();
         for(u32 j=0;j<rings.size();++j)if(rings[j].parent==i)holes.push_back(j);
         b.region(i,rings[i].id,holes);
     }

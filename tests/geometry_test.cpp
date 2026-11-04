@@ -88,7 +88,7 @@ TEST_CASE("geometry descriptors validate unused code and malformed wire records"
             "fn dead ( "+name+" ) -> ( "+name+" ):\nlocal.get 0\nreturn\nendfn\n");
         const auto file = loadFile(bytes); validate(file);
         const auto at = file.layout.find(SectionId::Types)->offset+4;
-        for (const auto [delta,value] : {std::pair{0,20}, {1,0}, {2,1}, {3,1}}) {
+        for (const auto& [delta,value] : {std::pair{0,20}, {1,0}, {2,1}, {3,1}}) {
             auto bad=bytes; bad[at+static_cast<std::size_t>(delta)]=static_cast<u8>(value); CHECK_THROWS_AS(loadFile(bad),FormatError);
         }
         for (const u8 constructor : {u8{5},u8{10},u8{14}}) {

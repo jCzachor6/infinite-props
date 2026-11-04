@@ -28,7 +28,9 @@ Point normal(Vec2 a,Vec2 b){const auto d=subtract(b,a);const double length=std::
 Vec2 rounded(Execution& ex,Point p){
     Vec2 q{static_cast<f32>(p.x),static_cast<f32>(p.y)};
     if(!std::isfinite(q.x)||!std::isfinite(q.y))invalid(ex,"region offset coordinates are outside f32 range");
-    if(q.x==0)q.x=0;if(q.y==0)q.y=0;return q;
+    if(q.x==0)q.x=0;
+    if(q.y==0)q.y=0;
+    return q;
 }
 EdgeProvenance provenance(const GeometryData& d,u32 edge,i32 source){
     auto p=d.edges[edge].provenance;p.edge=d.source?p.edge:edge;
@@ -255,7 +257,8 @@ struct Offset {
                     if((before&&!bestBefore)||(before==bestBefore&&angleLess(best,direction)))selected=candidate;
                 }
             }
-            if(selected==kNoGeometryIndex)invalid(ex,"region offset boundary cannot be closed after f32 rounding");s.next=selected;
+            if(selected==kNoGeometryIndex)invalid(ex,"region offset boundary cannot be closed after f32 rounding");
+            s.next=selected;
         }
         Buffer<Segment,48> closed{ResourceAllocator<Segment,48>(ex.resources)};
         for(u32 i=begin;i<end;++i){
@@ -345,7 +348,8 @@ struct Offset {
                 if(l.lo.x<p.lo.x||l.lo.y<p.lo.y||l.hi.x>p.hi.x||l.hi.y>p.hi.y)continue;
                 if(contains(p,segments[l.begin].a)&&(parent==kNoGeometryIndex||p.area<loops[parent].area))parent=j;
             }
-            if(parent==kNoGeometryIndex)invalid(ex,"region offset hole has no enclosing component");l.parent=parent;loops[parent].net+=l.area;
+            if(parent==kNoGeometryIndex)invalid(ex,"region offset hole has no enclosing component");
+            l.parent=parent;loops[parent].net+=l.area;
         }
     }
     void run(){

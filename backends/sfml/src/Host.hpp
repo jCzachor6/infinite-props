@@ -69,6 +69,8 @@ struct OutputSlot {
     bool isList;
     std::string name; // Exact UTF-8 bytes, including embedded NUL.
     std::vector<float> values; // Owned leaf copies; empty declarations remain.
+    std::vector<iprop_part_snapshot_ex> parts; // Exact effective typed snapshots.
+    std::uint32_t count;
 };
 
 inline std::vector<OutputSlot> copyOutputs(const iprop_result* result) {
@@ -79,23 +81,53 @@ inline std::vector<OutputSlot> copyOutputs(const iprop_result* result) {
     std::vector<OutputSlot> outputs;
     outputs.reserve(count);
     for (std::uint32_t i = 0; i < count; ++i) {
-        iprop_result_output_view_ex view;
-        if (backend::queryOutput(result, i, view) != IPROP_EX_OK) {
-            throw std::runtime_error("iprop_result_output_get failed");
-        }
+        iprop_output_slot_ex view;
+        if (backend::querySlot(result, i, view) != IPROP_EX_OK) throw std::runtime_error("iprop_result_output_slot failed");
         const auto components = backend::outputComponents(view.kind);
-        if (components == 0 || view.element_count > std::numeric_limits<std::size_t>::max() / components) {
+        if (view.kind != IPROP_OUTPUT_KIND_PART &&
+            (components == 0 || view.element_count > std::numeric_limits<std::size_t>::max() / components)) {
             throw std::runtime_error("unsupported or oversized output");
         }
-        OutputSlot slot{view.output_index, view.owner, view.kind, view.is_list != 0, {}, {}};
+        OutputSlot slot{view.output_index, view.owner, view.kind, view.is_list != 0, {}, {}, {}, view.element_count};
         if (view.name.byte_count != 0) slot.name.assign(view.name.data, view.name.byte_count);
-        slot.values.resize(static_cast<std::size_t>(view.element_count) * components);
-        if (backend::copyOutputValues(result, view, slot.values.data()) != IPROP_EX_OK) {
-            throw std::runtime_error("typed result output read failed");
+        if (view.kind == IPROP_OUTPUT_KIND_PART) {
+            if (backend::copyParts(result, view, slot.parts) != IPROP_EX_OK) throw std::runtime_error("part snapshot read failed");
+        } else {
+            iprop_result_output_view_ex old;
+            if (backend::queryOutput(result, i, old) != IPROP_EX_OK) throw std::runtime_error("float output read failed");
+            slot.values.resize(static_cast<std::size_t>(view.element_count) * components);
+            if (backend::copyOutputValues(result, old, slot.values.data()) != IPROP_EX_OK)
+                throw std::runtime_error("typed result output read failed");
         }
         outputs.push_back(std::move(slot));
     }
     return outputs;
+}
+
+struct GeneratedResult {
+    std::uint32_t width, height;
+    std::uint64_t rowStride;
+    std::uint32_t pixelFormat, alphaMode, storageOrigin;
+    std::vector<std::uint8_t> pixels;
+    std::vector<OutputSlot> outputs;
+    std::vector<backend::ResultResource> resources;
+    iprop_result_stats_ex statistics;
+};
+
+// Optional complete owned handoff for engine integration. Image-only viewers
+// can keep using queryImage without copying geometry and raster resources.
+inline GeneratedResult copyResult(const iprop_result* result) {
+    const auto image = queryImage(result);
+    GeneratedResult candidate{};
+    candidate.width = image.width; candidate.height = image.height; candidate.rowStride = image.row_stride;
+    candidate.pixelFormat = image.pixel_format; candidate.alphaMode = image.alpha_mode; candidate.storageOrigin = image.origin;
+    candidate.pixels.assign(image.pixels, image.pixels + image.byte_count);
+    candidate.outputs = copyOutputs(result);
+    Error error;
+    error.check(backend::copyResources(result, candidate.resources, error.get()), "copyResources");
+    error.check(iprop_result_stats_ex_init(&candidate.statistics, sizeof(candidate.statistics)), "stats init");
+    error.check(iprop_result_query_stats(result, &candidate.statistics, error.get()), "stats query");
+    return candidate;
 }
 
 // A callable avoids carrying glibc's function attributes into a template
@@ -207,6 +239,7 @@ inline iprop_result* generate(const iprop_program* program, std::uint32_t seed,
     Error error;
     iprop_generate_options_ex options;
     error.check(iprop_generate_options_ex_init(&options, sizeof(options)), "iprop_generate_options_ex_init");
+    options.flags = IPROP_GENERATE_PART_OUTPUTS;
     options.seed = seed;
     options.size_x = width; options.size_y = height;
     iprop_result* result = nullptr;
