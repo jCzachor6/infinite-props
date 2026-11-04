@@ -27,7 +27,8 @@ void partJson(const DynamicPartData& p){
     std::printf(",\"d4\":%u,\"translation\":[%d,%d],\"appearance\":\"%s\",\"originalFrame\":[",p.transform.kind(),p.translation.x,p.translation.y,
         p.fill?"fill":p.texture?"texture":"source");
     bool comma=false;for(const double value:{p.original.centerX,p.original.centerY,p.original.left,p.original.top,p.original.right,p.original.bottom}){
-        if(comma)std::printf(",");comma=true;std::printf("\"%016llx\"",static_cast<unsigned long long>(std::bit_cast<u64>(value)));}
+        if(comma)std::printf(",");
+        comma=true;std::printf("\"%016llx\"",static_cast<unsigned long long>(std::bit_cast<u64>(value)));}
     std::printf("],\"sourceScale\":");test_support::jsonPoint(p.original.scale);std::printf("}");
 }
 void maskJson(const MaskValue& mask){
@@ -96,7 +97,8 @@ int main(int argc,char** argv){
                 std::printf("{\"original\":");partJson(*original.data);std::printf(",\"view\":");partJson(*view.data);
                 std::printf(",\"mask\":");maskJson(mask);std::printf(",\"canvas\":[");bool comma=false;
                 for(const auto c:ex.canvas().pixels)for(const auto channel:{c.r,c.g,c.b,c.a}){
-                    if(comma)std::printf(",");comma=true;std::printf("%u",channel);}
+                    if(comma)std::printf(",");
+                    comma=true;std::printf("%u",channel);}
                 std::printf("],\"sourceBytes\":%llu,\"bytes\":%llu,\"fuel\":%llu,\"creations\":%u",
                     static_cast<unsigned long long>(sourceBytes),static_cast<unsigned long long>(bytes),static_cast<unsigned long long>(fuel),ex.dynamicPartCreations);
             }

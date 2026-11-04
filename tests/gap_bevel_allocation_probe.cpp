@@ -34,7 +34,8 @@ int main(){
                 if(!success&&(result||layer.buffer||ex.resources.bytes!=bytes))return 2;
                 result.reset();layer={};if(ex.resources.bytes!=bytes)return 3;
             }
-            if(live!=baseline)return 4;if(success)break;
+            if(live!=baseline)return 4;
+            if(success)break;
         }if(!success)return 5;
     }
     std::printf("Gap/bevel allocations: PASS %zu injected transient/persistent failures across variable and repeated gap, bevel, zero-strength, combined pipeline and fractional off-target bounds; no heap/quota leaks\n",faults);

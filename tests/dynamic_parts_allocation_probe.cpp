@@ -51,7 +51,8 @@ int main(){
                 if(original.data->fill||original.data->texture||original.data->transform.kind()!=0||original.data->center!=center)return 4;
                 p={};ps={};mask={};if(ex.resources.bytes!=bytes)return 5;
             }
-            if(live!=baseline)return 6;if(success)break;
+            if(live!=baseline)return 6;
+            if(success)break;
         }if(!success)return 7;
     }
     std::printf("Dynamic part allocations: PASS %zu injected transient/persistent failures across 12 creation, bulk, immutable view, mask, render and combined paths; atomic creation IDs and no heap/quota leaks\n",faults);

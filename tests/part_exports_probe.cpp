@@ -253,7 +253,8 @@ int main(int argc,char** argv) {
             const auto generated=iprop_generate_ex(program,&options,nullptr,&result,&failure);iprop_program_free(program);
             if(generated!=IPROP_EX_E_TRAP||failure.reason!=static_cast<u32>(error.reason)||result!=previous){std::cerr<<"C API trap mismatch\n";return 5;}
         } else if(status!=IPROP_EX_E_FORMAT||program!=sentinel||failure.reason!=static_cast<u32>(error.reason)) {
-            if(status==IPROP_EX_OK)iprop_program_free(program);std::cerr<<"C API validation mismatch\n";return 5;
+            if(status==IPROP_EX_OK)iprop_program_free(program);
+            std::cerr<<"C API validation mismatch\n";return 5;
         }
 #endif
         std::cerr<<static_cast<u32>(error.reason)<<": "<<error.what()<<'\n';return error.stage==ErrorStage::Execute?4:3;

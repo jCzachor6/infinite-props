@@ -35,7 +35,8 @@ int main(){
                 if(!success&&(result||mask.buffer||ex.resources.bytes!=bytes))return 2;
                 result.reset();mask={};if(path<4&&ex.resources.bytes!=bytes)return 3;
             }
-            if(live!=baseline)return 4;if(success)break;
+            if(live!=baseline)return 4;
+            if(success)break;
         }if(!success)return 5;
     }
     // Repeated scalar reads and the short conversion allocate no topology.

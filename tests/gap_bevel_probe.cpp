@@ -19,7 +19,8 @@ struct Input {
 };
 }
 int main(int argc,char** argv){
-    if(argc!=11&&argc!=17)return 1;LoadedFile file;file.code.functions.emplace_back();detail::Execution ex(file);ex.fuel=1000000000;
+    if(argc!=11&&argc!=17)return 1;
+    LoadedFile file;file.code.functions.emplace_back();detail::Execution ex(file);ex.fuel=1000000000;
     const u64 budget=std::strtoull(argv[9],nullptr,10),occupied=std::strtoull(argv[10],nullptr,10);
     try{
         ex.target=RenderTarget::create(1,1,{number(argv[7]),number(argv[8])});
@@ -27,11 +28,13 @@ int main(int argc,char** argv){
             std::shared_ptr<const GeometryData> source;Input input{argv[2]};const auto kind=integer(argv[1]);
             if(kind==0){
                 const auto origin=input.point(),size=input.point();const auto n=input.value();std::vector<Vec2> sites;
-                for(u32 i=0;i<n;++i)sites.push_back(input.point());source=detail::explicitVoronoi(ex,origin,size,sites,0);
+                for(u32 i=0;i<n;++i)sites.push_back(input.point());
+                source=detail::explicitVoronoi(ex,origin,size,sites,0);
             }else if(kind==1){
                 const auto n=input.value();std::vector<test_support::RegionRingInput> rings;std::vector<std::vector<Vec2>> points;points.resize(n);rings.reserve(n);
                 for(u32 i=0;i<n;++i){const auto parent=input.value(),count=input.value();const auto id=std::bit_cast<i32>(input.value());
-                    for(u32 k=0;k<count;++k)points[i].push_back(input.point());rings.push_back({points[i],parent,id});}
+                    for(u32 k=0;k<count;++k)points[i].push_back(input.point());
+                    rings.push_back({points[i],parent,id});}
                 source=test_support::regionFixture(ex,rings);
             }else if(kind==2){
                 const auto w=input.value(),h=input.value();std::vector<u8> pixels;for(u32 i=0;i<w*h;++i)pixels.push_back(static_cast<u8>(input.value()));

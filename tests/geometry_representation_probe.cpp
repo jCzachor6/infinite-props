@@ -23,14 +23,16 @@ void values(const GeometryData& data){
     }
     std::printf("],\"topology\":[");
     for(u32 i=0;i<data.rings.size();++i){
-        if(i)std::printf(",");const auto& r=data.rings[i];
+        if(i)std::printf(",");
+        const auto& r=data.rings[i];
         std::printf("{\"parent\":%d,\"hole\":%s,\"vertices\":[",r.parent==kNoGeometryIndex?-1:static_cast<i32>(r.parent),r.hole?"true":"false");
         for(u32 j=0;j<r.count;++j){if(j)std::printf(",");const auto u=data.uses[r.begin+j];const auto& e=data.edges[u.edge];std::printf("%u",u.reversed?e.second:e.first);}
         std::printf("]}");
     }
     std::printf("],\"edge_provenance\":[");
     for(u32 i=0;i<data.edges.size();++i){
-        if(i)std::printf(",");const auto& e=data.edges[i];const auto& p=e.provenance;
+        if(i)std::printf(",");
+        const auto& e=data.edges[i];const auto& p=e.provenance;
         std::printf("[%u,%u,%u,%d,%d,%u]",e.first,e.second,p.edge,p.source,p.neighbor,static_cast<u32>(p.origin));
     }
     std::printf("]");
@@ -73,7 +75,8 @@ int main(){
             catch(const Trap& error){if(error.reason!=ErrorReason::FuelExhausted)return 6;}
             if(success!=enough || limited.resources.bytes!=0)return 7;
         }
-        if(i)std::printf(",");std::printf("\"%s\":{\"peak_bytes\":%llu,\"fuel_boundary\":true}",names[i],static_cast<unsigned long long>(low));
+        if(i)std::printf(",");
+        std::printf("\"%s\":{\"peak_bytes\":%llu,\"fuel_boundary\":true}",names[i],static_cast<unsigned long long>(low));
     }
     std::printf("},\"handles\":{\"types\":[");
     ex.frames.emplace_back();ex.frame().stream=26;ex.fuel=100000;
@@ -95,7 +98,8 @@ int main(){
                 else return false;
             },handles[i]);
             if(!shared || ex.resources.bytes!=bytes || ex.frame().stream!=26)return 8;
-            if(i)std::printf(",");std::printf("\"%s\"",valueTypeName(type));
+            if(i)std::printf(",");
+            std::printf("\"%s\"",valueTypeName(type));
         }
         std::printf("],\"bytes\":%llu,\"shared\":true,\"helper_stream\":26",static_cast<unsigned long long>(bytes));
     }
