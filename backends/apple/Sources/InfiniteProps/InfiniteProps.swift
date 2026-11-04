@@ -39,6 +39,30 @@ public struct Metadata: Sendable {
 
 public struct Statistics: Sendable {
     public let fuelBudget, fuelRemaining, fuelUsed, imageByteCount, outputElementCount: UInt64
+    public let workBudget, workRemaining, workUsed: UInt64
+}
+
+/// One-way native cancellation, independent of a Program's generation lock.
+public final class CancellationToken: @unchecked Sendable {
+    let handle: OpaquePointer
+    public init() throws {
+        try requireRuntime()
+        var pointer: OpaquePointer?
+        try checked { iprop_cancellation_create(&pointer, $0) }
+        guard let pointer else { preconditionFailure("C API returned a null cancellation token") }
+        handle = pointer
+    }
+    deinit { iprop_cancellation_free(handle) }
+    public func cancel() { iprop_cancellation_cancel(handle) }
+    public var isCancelled: Bool { iprop_cancellation_is_cancelled(handle) != 0 }
+}
+
+public struct ExecutionLimits: Sendable {
+    public var workLimit, timeoutNanoseconds: UInt64
+    public var cancellation: CancellationToken?
+    public init(workLimit: UInt64 = 0, timeoutNanoseconds: UInt64 = 0, cancellation: CancellationToken? = nil) {
+        self.workLimit = workLimit; self.timeoutNanoseconds = timeoutNanoseconds; self.cancellation = cancellation
+    }
 }
 
 public enum OutputKind: UInt32, Sendable { case point = 0, rect = 1, circle = 2, part = 3 }
@@ -105,6 +129,19 @@ private func string(_ view: iprop_utf8_view) -> String {
     return String(decoding: UnsafeRawBufferPointer(start: pointer, count: Int(view.byte_count)), as: UTF8.self)
 }
 
+private func requireRuntime() throws {
+    var library = iprop_library_info_ex()
+    iprop_library_info_ex_init(&library, UInt32(MemoryLayout<iprop_library_info_ex>.size))
+    try checked { iprop_library_query_ex(&library, $0) }
+    guard library.api_major == 0, library.api_minor >= 6,
+          library.abi_major == 0, library.abi_minor == 5,
+          library.capabilities & (UInt64(7) << 18) == UInt64(7) << 18 else {
+        throw IpropError(status: 4, reason: 4000, stage: 0, byteOffset: 0,
+            locationFlags: 0, offsetSpace: 0, functionIndex: 0, pc: 0, debugLine: 0,
+            message: "InfiniteProps requires C API 0.6 / ABI 0.5 with typed results and execution limits", messageTruncated: false)
+    }
+}
+
 /// Owns a validated program. Calls, including close(), serialize on one lock;
 /// use independent programs for parallel generation. Results own their copies.
 public final class Program: @unchecked Sendable {
@@ -116,16 +153,7 @@ public final class Program: @unchecked Sendable {
     public convenience init(contentsOf url: URL) throws { try self.init(bytes: Data(contentsOf: url)) }
 
     public init(bytes: Data) throws {
-        var library = iprop_library_info_ex()
-        iprop_library_info_ex_init(&library, UInt32(MemoryLayout<iprop_library_info_ex>.size))
-        try checked { iprop_library_query_ex(&library, $0) }
-        guard library.api_major == 0, library.api_minor >= 5,
-              library.abi_major == 0, library.abi_minor == 5,
-              library.capabilities & (UInt64(3) << 18) == UInt64(3) << 18 else {
-            throw IpropError(status: 4, reason: 4000, stage: 0, byteOffset: 0,
-                locationFlags: 0, offsetSpace: 0, functionIndex: 0, pc: 0, debugLine: 0,
-                message: "InfiniteProps requires C API 0.5 / ABI 0.5 with typed part resources", messageTruncated: false)
-        }
+        try requireRuntime()
         var loaded: OpaquePointer?
         // Empty input still supplies a non-null pointer so it is a format error.
         let storage = bytes.isEmpty ? Data([0]) : bytes
@@ -173,13 +201,13 @@ public final class Program: @unchecked Sendable {
     }
 
     public func generate(seed: UInt32 = 0, width: UInt32 = 0, height: UInt32 = 0,
-                         inputs: [String: InputValue] = [:]) throws -> GeneratedImage {
+                         inputs: [String: InputValue] = [:], limits: ExecutionLimits = ExecutionLimits()) throws -> GeneratedImage {
         try generate(seed: seed, width: width, height: height,
-                     overrides: inputs.map { InputOverride($0.key, $0.value) })
+                     overrides: inputs.map { InputOverride($0.key, $0.value) }, limits: limits)
     }
 
     public func generate(seed: UInt32 = 0, width: UInt32 = 0, height: UInt32 = 0,
-                         overrides: [InputOverride]) throws -> GeneratedImage {
+                         overrides: [InputOverride], limits: ExecutionLimits = ExecutionLimits()) throws -> GeneratedImage {
         lock.lock(); defer { lock.unlock() }
         // Passing nil follows the checked API's structured invalid-handle path.
         var parameters: OpaquePointer?
@@ -213,8 +241,14 @@ public final class Program: @unchecked Sendable {
         iprop_generate_options_ex_init(&options, UInt32(MemoryLayout<iprop_generate_options_ex>.size))
         options.flags = 1 // IPROP_GENERATE_PART_OUTPUTS (UINT32_C macros are not imported by Swift).
         options.seed = seed; options.size_x = width; options.size_y = height
+        var control = iprop_execution_limits_ex()
+        iprop_execution_limits_ex_init(&control, UInt32(MemoryLayout<iprop_execution_limits_ex>.size))
+        control.work_limit = limits.workLimit; control.timeout_ns = limits.timeoutNanoseconds
+        control.cancellation = limits.cancellation?.handle
         var result: OpaquePointer?
-        try checked { iprop_generate_ex(handle, &options, parameters, &result, $0) }
+        try withExtendedLifetime(limits.cancellation) {
+            try checked { iprop_generate_controlled(handle, &options, parameters, &control, &result, $0) }
+        }
         defer { iprop_result_free(result) }
         var image = iprop_image_view_ex()
         iprop_image_view_ex_init(&image, UInt32(MemoryLayout<iprop_image_view_ex>.size))
@@ -222,6 +256,9 @@ public final class Program: @unchecked Sendable {
         var stats = iprop_result_stats_ex()
         iprop_result_stats_ex_init(&stats, UInt32(MemoryLayout<iprop_result_stats_ex>.size))
         try checked { iprop_result_query_stats(result, &stats, $0) }
+        var work = iprop_work_stats_ex()
+        iprop_work_stats_ex_init(&work, UInt32(MemoryLayout<iprop_work_stats_ex>.size))
+        try checked { iprop_result_query_work(result, &work, $0) }
         var count: UInt32 = 0
         try checked { iprop_result_output_count(result, &count, $0) }
         var outputs: [Output] = []
@@ -250,6 +287,7 @@ public final class Program: @unchecked Sendable {
             rgba: Data(bytes: image.pixels!, count: Int(image.byte_count)), outputs: outputs,
             statistics: Statistics(fuelBudget: stats.fuel_budget, fuelRemaining: stats.fuel_remaining,
                 fuelUsed: stats.fuel_used, imageByteCount: stats.image_byte_count,
-                outputElementCount: stats.output_element_count), resources: try readPartResources(result))
+                outputElementCount: stats.output_element_count,
+                workBudget: work.work_budget, workRemaining: work.work_remaining, workUsed: work.work_used), resources: try readPartResources(result))
     }
 }

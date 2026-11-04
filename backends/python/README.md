@@ -1,6 +1,6 @@
 # Python
 
-A Python 3.10+ package using stdlib `ctypes` and the native C API 0.5 / ABI 0.5.
+A Python 3.10+ package using stdlib `ctypes` and the native C API 0.6 / ABI 0.5.
 The runtime library is loaded separately; Pillow is an optional image-export
 dependency. See the [shared contract](../../docs/native-bindings.md).
 
@@ -38,6 +38,16 @@ starts with defaults; values are never coerced to a different declared type.
 packed `values` as Python floats and `value_bits` as exact uint32 leaves,
 including NaN payloads and negative zero. Results are immutable copies and
 survive context-manager exit. Calls and close serialize per program.
+
+`generate(work_limit=0, timeout_ns=0, cancellation=None)` controls native
+execution independently of fuel. Zero work selects the finite default; zero
+timeout disables the monotonic clock. `program.cancellation_token()` returns
+a one-way token whose `cancel()` may be called from another thread while
+generation is running; it uses a separate native atomic flag and is freed
+automatically after its last reference. A token can also be constructed with
+`CancellationToken(library=...)` for the same runtime library. Errors keep
+their structured reasons (3015 work, 3016 cancellation, 3017 deadline).
+Completed statistics include `work_budget`, `work_remaining` and `work_used`.
 
 `output list part` slots have `kind == OutputKind.PART`, an ordered `parts`
 tuple and no packed float values. Each `PartSnapshot` exposes the complete

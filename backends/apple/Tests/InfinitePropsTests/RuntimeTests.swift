@@ -107,4 +107,26 @@ final class RuntimeTests: XCTestCase {
         }
         XCTAssertEqual(try trap.generate(inputs: ["divisor": .int(1)]).output(named: "value")!.values, [1, 0])
     }
+
+    func testConcurrentCancellationInsideNativeScanAndRecovery() throws {
+        let program = try Program(contentsOf: fixtures.appendingPathComponent("execution-slow.iprop"))
+        let token = try CancellationToken()
+        XCTAssertFalse(token.isCancelled)
+        let fired = DispatchSemaphore(value: 0)
+        DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(10)) { token.cancel(); fired.signal() }
+        XCTAssertThrowsError(try program.generate(limits: ExecutionLimits(workLimit: 1_000_000_000, cancellation: token))) { error in
+            let failure = error as? IpropError
+            XCTAssertEqual(failure?.reason, 3016); XCTAssertEqual(failure?.stage, 4)
+            XCTAssertNotEqual((failure?.locationFlags ?? 0) & 4, 0, "cancelled within executing instruction")
+        }
+        XCTAssertEqual(fired.wait(timeout: .now() + .seconds(5)), .success)
+        XCTAssertTrue(token.isCancelled); token.cancel()
+        for _ in 0..<32 {
+            XCTAssertThrowsError(try program.generate(inputs: ["enabled": .int(0)], limits: ExecutionLimits(cancellation: token))) { error in
+                XCTAssertEqual((error as? IpropError)?.reason, 3016)
+            }
+        }
+        let recovered = try program.generate(inputs: ["enabled": .int(0)])
+        XCTAssertEqual(recovered.width, 1)
+    }
 }

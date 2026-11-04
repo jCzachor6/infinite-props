@@ -6,7 +6,7 @@ Texture2D/Sprite helpers. Unity 2022.3+; native targets are macOS arm64/x86_64,
 Windows/Linux x86_64, Android and iOS arm64. WebGL uses the separate
 [HTML5/WASM backend](../html5/README.md).
 
-The native wrapper requires C API 0.5 / ABI 0.5 and negotiates typed part
+The native wrapper requires C API 0.6 / ABI 0.5 and negotiates typed part
 resources before loading. `OutputKind.Part` slots expose ordered `Parts` and
 empty float `Values`. `GeneratedImage.Resources` owns one copy per result-local
 ID; `image.Resource(id)` returns that shared object, or null for an invalid ID.
@@ -64,6 +64,15 @@ Generate on worker threads if needed; create Unity objects on the main thread.
 Dispose programs (SafeHandle also provides a finalization fallback). Returned
 arrays own their data. The caller owns generated sprites **and their textures**
 and must destroy both; see the included sample.
+
+Pass `limits: new ExecutionLimits(workLimit, timeoutNanoseconds, cancellation)`
+to `Generate`. `cancellation` is a standard `System.Threading.CancellationToken`;
+its registration sets the independent native atomic flag while generation is
+running. Registration disposal waits for its callback before freeing the native
+token. Zero work selects the finite default; zero timeout disables the monotonic
+clock. `Statistics.WorkBudget`, `WorkRemaining` and `WorkUsed` report native
+work independently of unchanged fuel. `IpropException.Reason` distinguishes
+work (3015), cancellation (3016) and deadline (3017).
 
 Raw RGBA and geometry use top-left coordinates. Texture helpers flip image
 rows and Sprite helpers convert the declared origin to a Unity pivot. They

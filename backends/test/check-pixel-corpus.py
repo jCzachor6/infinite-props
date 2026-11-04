@@ -44,7 +44,7 @@ def check(library, directory):
                     value = F32.from_bits(bits) if isinstance(declared.default_value, F32) else U32(integer)
                 inputs[name] = value
             expected_width, expected_height, rgba = word(), word(), blob()
-            image = program.generate(seed, width=width, height=height, inputs=inputs)
+            image = program.generate(seed, width=width, height=height, inputs=inputs, work_limit=1_000_000_000)
             label = f"case {index}, seed {seed}"
             assert (image.width, image.height) == (expected_width, expected_height), label + ": size"
             if image.rgba != rgba:

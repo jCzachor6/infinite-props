@@ -62,7 +62,7 @@ final class PixelCorpusTests: XCTestCase {
                     overrides.append(InputOverride(name, value))
                 }
                 let expectedWidth = try reader.word(), expectedHeight = try reader.word(), expected = try reader.blob()
-                let image = try program.generate(seed: seed, width: width, height: height, overrides: overrides)
+                let image = try program.generate(seed: seed, width: width, height: height, overrides: overrides, limits: ExecutionLimits(workLimit: 1_000_000_000))
                 let label = "Corpus case \(index), seed \(seed)"
                 try require(image.width == expectedWidth && image.height == expectedHeight, label + ": size")
                 try require(image.rgba == expected, label + ": RGBA")

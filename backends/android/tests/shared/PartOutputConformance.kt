@@ -57,6 +57,18 @@ fun verifyPartOutputs(load: (String) -> ByteArray) {
         Program(load("$directory/root.iprop")).use { program ->
             result = program.generate(seed, width = (size[0] as Long).toUInt(), height = (size[1] as Long).toUInt())
             check(observation(result) == expected) { "Complete C++/C part mismatch: ${c["name"]}" }
+            val used = result.statistics.workUsed
+            check(used > 0u && result.statistics.workBudget == 100_000_000uL)
+            val exact = program.generate(seed, width = (size[0] as Long).toUInt(), height = (size[1] as Long).toUInt(),
+                limits = ExecutionLimits(workLimit = used, timeoutNanoseconds = 60_000_000_000u))
+            check(exact.statistics.workRemaining == 0uL && exact.statistics.fuelUsed == result.statistics.fuelUsed)
+            check(observation(exact) == expected) { "Exact work changed typed results" }
+            for ((limits, reason) in listOf(ExecutionLimits(workLimit = used - 1u) to 3015,
+                    ExecutionLimits(timeoutNanoseconds = 1u) to 3017)) {
+                try { program.generate(seed, width = (size[0] as Long).toUInt(), height = (size[1] as Long).toUInt(), limits = limits); error("Expected work/deadline error") }
+                catch (failure: IpropException) { check(failure.reason == reason && failure.stage == 4) }
+            }
+            check(observation(program.generate(seed, width = (size[0] as Long).toUInt(), height = (size[1] as Long).toUInt())) == expected)
             program.generate(seed xor UInt.MAX_VALUE, width = (size[0] as Long).toUInt(), height = (size[1] as Long).toUInt())
         }
         check(observation(result) == expected) { "Retained part result: ${c["name"]}" }

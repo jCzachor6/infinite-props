@@ -64,6 +64,9 @@ namespace InfiniteProps
         public ulong FuelUsed { get; internal set; }
         public ulong ImageByteCount { get; internal set; }
         public ulong OutputElementCount { get; internal set; }
+        public ulong WorkBudget { get; internal set; }
+        public ulong WorkRemaining { get; internal set; }
+        public ulong WorkUsed { get; internal set; }
     }
     public sealed partial class GeneratedImage
     {
@@ -119,9 +122,9 @@ namespace InfiniteProps
             {
                 var library = Native.Sized<Native.Library>();
                 error.Check(Native.iprop_library_query_ex(ref library, ref error.Value));
-                if (library.ApiMajor != 0 || library.ApiMinor < 5 || library.AbiMajor != 0 || library.AbiMinor != 5 ||
-                    (library.Capabilities & (3UL << 18)) != (3UL << 18))
-                    throw new NotSupportedException("Infinite Props requires C API 0.5 / ABI 0.5 with typed part resources");
+                if (library.ApiMajor != 0 || library.ApiMinor < 6 || library.AbiMajor != 0 || library.AbiMinor != 5 ||
+                    (library.Capabilities & (7UL << 18)) != (7UL << 18))
+                    throw new NotSupportedException("Infinite Props requires C API 0.6 / ABI 0.5 with typed results and execution limits");
                 IntPtr pointer;
                 error.Check(Native.iprop_program_load_ex(bytes.Length == 0 ? new byte[1] : bytes,
                     (ulong)bytes.LongLength, out pointer, ref error.Value));
@@ -154,7 +157,7 @@ namespace InfiniteProps
         }
 
         public GeneratedImage Generate(uint seed = 0, IReadOnlyDictionary<string, InputValue> inputs = null,
-                                       uint width = 0, uint height = 0)
+                                       uint width = 0, uint height = 0, ExecutionLimits limits = null)
         {
             lock (gate)
             {
@@ -184,9 +187,12 @@ namespace InfiniteProps
                         options.Flags = 1; // IPROP_GENERATE_PART_OUTPUTS, negotiated above.
                         options.Seed = seed; options.Width = width; options.Height = height;
                         IntPtr result;
-                        error.Check(Native.iprop_generate_ex(handle, ref options, parameters, out result, ref error.Value));
-                        try { return ReadResult(result, error); }
-                        finally { Native.iprop_result_free(result); }
+                        using (var execution = new Native.ExecutionScope(limits, error))
+                        {
+                            error.Check(Native.iprop_generate_controlled(handle, ref options, parameters, ref execution.Value, out result, ref error.Value));
+                            try { return ReadResult(result, error); }
+                            finally { Native.iprop_result_free(result); }
+                        }
                     }
                     finally { Native.iprop_parameters_free(parameters); }
                 }
@@ -201,6 +207,8 @@ namespace InfiniteProps
             Marshal.Copy(image.Pixels, rgba, 0, rgba.Length);
             var stats = Native.Sized<Native.Stats>();
             error.Check(Native.iprop_result_query_stats(result, ref stats, ref error.Value));
+            var work = Native.Sized<Native.WorkStats>();
+            error.Check(Native.iprop_result_query_work(result, ref work, ref error.Value));
             uint count;
             error.Check(Native.iprop_result_output_count(result, out count, ref error.Value));
             var outputs = new List<Output>();
@@ -225,7 +233,8 @@ namespace InfiniteProps
                 PixelFormat = image.PixelFormat, AlphaMode = image.AlphaMode, StorageOrigin = image.Origin,
                 Rgba = rgba, Outputs = outputs.AsReadOnly(), Resources = ReadResources(result, error), Statistics = new Statistics {
                     FuelBudget = stats.FuelBudget, FuelRemaining = stats.FuelRemaining, FuelUsed = stats.FuelUsed,
-                    ImageByteCount = stats.ImageByteCount, OutputElementCount = stats.OutputElementCount } };
+                    ImageByteCount = stats.ImageByteCount, OutputElementCount = stats.OutputElementCount,
+                    WorkBudget = work.Budget, WorkRemaining = work.Remaining, WorkUsed = work.Used } };
         }
         public void Dispose() { lock (gate) handle.Dispose(); }
     }

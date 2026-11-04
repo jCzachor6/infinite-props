@@ -85,6 +85,13 @@ def main():
     subprocess.run([args.tools / ("ipc" + suffix), here / "bindings.ips", "-o", args.output / "bindings.iprop"], check=True)
     for name in ("binding-trap", "binding-unicode"):
         subprocess.run([args.tools / ("ipc" + suffix), here / (name + ".ips"), "--debug", "--no-compress", "-o", args.output / (name + ".iprop")], check=True)
+    slow = args.output / "execution-slow.iprop"
+    subprocess.run([args.tools / ("ipc" + suffix), here / "execution-slow.ips", "--no-opt", "--no-compress", "-o", slow], check=True)
+    data = bytearray(slow.read_bytes())
+    section_count = struct.unpack_from("<I", data, 12)[0]
+    meta = next(offset for tag, offset, _ in [struct.unpack_from("<III", data, 20 + i * 12) for i in range(section_count)] if tag == 1)
+    struct.pack_into("<Q", data, meta + 16, 1_000_000_000)
+    slow.write_bytes(data)
     file = args.output / "binding-unicode.iprop"
     data = replace_pool_name(file.read_bytes(), b"tint", "pł\0suffix".encode("utf-8"))
     data = replace_pool_name(data, b"first", "é".encode("utf-8"))

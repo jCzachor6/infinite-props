@@ -127,7 +127,7 @@ class DocumentationTest(unittest.TestCase):
         }
         for backend in ("capi", "html5", "sfml", "godot", "apple", "unity", "android", "python"):
             files[f"backends/{backend}/README.md"] = "# Backend\n"
-        for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py",
+        for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "execution-slow.ips", "prepare-bindings.py",
                      "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp",
                      "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py"):
             files[f"backends/test/{name}"] = "\n"

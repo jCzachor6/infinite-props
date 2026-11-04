@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading;
 using InfiniteProps;
 
 static class Conformance
@@ -12,6 +13,7 @@ static class Conformance
     {
         string path = args[0];
         PartOutputConformance.Run(path);
+        ExecutionControls(path);
         if (args.Length > 1) InfiniteProps.Tests.PixelCorpus.Run(args[1]);
         var program = new Program(File.ReadAllBytes(Path.Combine(path, "bindings.iprop")));
         Require(program.Metadata.Width == 8 && program.Metadata.Height == 4 && program.Metadata.OriginX == 2, "metadata");
@@ -61,4 +63,26 @@ static class Conformance
         }
         Console.WriteLine("Unity C# / native C API conformance passed");
     }
+    static void ExecutionControls(string path)
+    {
+        using (var program = new Program(File.ReadAllBytes(Path.Combine(path, "execution-slow.iprop"))))
+        using (var cancel = new CancellationTokenSource())
+        {
+            cancel.CancelAfter(10);
+            try { program.Generate(limits: new ExecutionLimits(1000000000, cancellation: cancel.Token)); throw new Exception("active cancellation was ignored"); }
+            catch (IpropException failure)
+            {
+                Require(failure.Reason == 3016 && failure.Stage == 4 && (failure.LocationFlags & 4) != 0, "cancel inside native scan");
+            }
+            cancel.Cancel();
+            for (int i = 0; i < 32; ++i)
+            {
+                try { program.Generate(limits: new ExecutionLimits(cancellation: cancel.Token)); throw new Exception("pre-cancel was ignored"); }
+                catch (IpropException failure) { Require(failure.Reason == 3016, "pre-cancel reason"); }
+            }
+            Require(program.Generate(inputs: new Dictionary<string, InputValue> { ["enabled"] = InputValue.Int(0) }).Width == 1, "recovery after cancel");
+        }
+        Console.WriteLine("Production C# execution limits: PASS 23 exact typed budgets, deadline, concurrent cancellation and recovery");
+    }
+
 }

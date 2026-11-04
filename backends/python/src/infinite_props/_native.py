@@ -1,4 +1,4 @@
-"""C API 0.5 / ABI 0.5. Pointer-bearing records use native alignment."""
+"""C API 0.6 / ABI 0.5. Pointer-bearing records use native alignment."""
 import ctypes as c
 from ctypes.util import find_library
 import os
@@ -46,6 +46,17 @@ class Parameter(c.Structure):
 
 class Options(c.Structure):
     _fields_ = [(name, c.c_uint32) for name in ("struct_size", "flags", "seed", "size_x", "size_y")]
+
+
+class Limits(c.Structure):
+    _fields_ = [("struct_size", c.c_uint32), ("flags", c.c_uint32),
+        ("work_limit", c.c_uint64), ("timeout_ns", c.c_uint64),
+        ("cancellation", c.c_void_p), ("poll", c.c_void_p), ("poll_context", c.c_void_p)]
+
+
+class Work(c.Structure):
+    _fields_ = [("struct_size", c.c_uint32), ("flags", c.c_uint32)] + [
+        (name, c.c_uint64) for name in ("budget", "remaining", "used")]
 
 
 class Image(c.Structure):
@@ -133,6 +144,9 @@ class Native:
             "parameters_create": [p, c.POINTER(p), error],
             "parameters_set_named": [p, View, c.POINTER(Parameter), error],
             "generate_ex": [p, c.POINTER(Options), p, c.POINTER(p), error],
+            "generate_controlled": [p, c.POINTER(Options), p, c.POINTER(Limits), c.POINTER(p), error],
+            "cancellation_create": [c.POINTER(p), error],
+            "result_query_work": [p, c.POINTER(Work), error],
             "result_query_image": [p, c.POINTER(Image), error],
             "result_query_stats": [p, c.POINTER(Stats), error],
             "result_output_count": [p, c.POINTER(u), error],
@@ -151,17 +165,19 @@ class Native:
         self.library_query_ex = query
         info = sized(LibraryInfo)
         self.call("library_query_ex", c.byref(info))
-        if ((info.api_major, info.abi_major, info.abi_minor) != (0, 0, 5) or info.api_minor < 5
-                or info.capabilities & (3 << 18) != 3 << 18):
-            raise RuntimeError("Infinite Props requires C API 0.5 / ABI 0.5 with typed part resources")
+        if ((info.api_major, info.abi_major, info.abi_minor) != (0, 0, 5) or info.api_minor < 6
+                or info.capabilities & (7 << 18) != 7 << 18):
+            raise RuntimeError("Infinite Props requires C API 0.6 / ABI 0.5 with typed results and execution limits")
         for name, args in signatures.items():
             function = getattr(self.library, "iprop_" + name)
             function.argtypes, function.restype = args, u
             setattr(self, name, function)
-        for name in ("program_free", "parameters_free", "result_free"):
+        for name in ("program_free", "parameters_free", "result_free", "cancellation_free", "cancellation_cancel"):
             function = getattr(self.library, "iprop_" + name)
             function.argtypes, function.restype = [p], None
             setattr(self, name, function)
+        self.cancellation_is_cancelled = self.library.iprop_cancellation_is_cancelled
+        self.cancellation_is_cancelled.argtypes, self.cancellation_is_cancelled.restype = [p], u
 
     def call(self, name, *args):
         error = sized(Error)

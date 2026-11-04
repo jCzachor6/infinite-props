@@ -1,7 +1,7 @@
 # Independent work limits and interruption (0.9, stage 12)
 
-Status: the VM, checked C API, CLI and public WASM implementation are verified.
-The remaining host bindings, calibration and final stage audit are in progress.
+Status: the VM, checked C API, CLI, public WASM and four managed bindings
+are verified locally. SFML/Godot, calibration and the final audit are in progress.
 Fuel prices and the default 5,000,000 fuel have not changed.
 
 ## Independent deterministic work
@@ -138,3 +138,27 @@ cancellation sources. Its worker test proves interruption inside `noise.mask`,
 with an executing PC, rather than at the next opcode or after a JS timeout.
 Existing memory/geometry-only stress tests explicitly request enough work to
 reach the boundary they test; their original expected errors remain strict.
+
+## Managed hosts
+
+Python exposes keyword `work_limit`, `timeout_ns`, `cancellation` and a shared
+`CancellationToken` (`program.cancellation_token()` selects the same library).
+The generation argument retains its automatically finalized native token.
+Swift takes an `ExecutionLimits` value and retains its atomic token with
+`withExtendedLifetime`. C# takes immutable `ExecutionLimits` and connects the
+standard .NET cancellation registration to a native SafeHandle; disposing the
+registration precedes native free. Kotlin/JNI takes `ExecutionLimits` and uses
+short token leases; close defers native free until active JNI calls finish.
+Cancellation never takes a Program's generation lock.
+
+All four negotiate API >=0.6 / ABI 0.5 and all three capabilities (parts,
+resources, execution controls). Their native work statistics are separate from
+fuel. Real wrapper tests compare all 23 complete typed scenes at exact work
+and one-short budgets, exercise timeout and recovery, and cancel a running
+large scan from another thread (with an executing PC). Kotlin also closes the
+token concurrently to verify its lease.
+
+The frozen 21,829-image corpus is unchanged. Its pixel replayers explicitly
+supply 1,000,000,000 work units to reach historical high-fuel stress cases;
+new default-limit and exact-budget tests are separate. This preserves the
+pixel oracle and does not raise any production default or change fuel.

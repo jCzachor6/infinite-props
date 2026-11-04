@@ -11,13 +11,33 @@ from . import _native as n
 from ._native import IpropError
 
 __all__ = ["Program", "Color", "F32", "U32", "I32", "Input", "Metadata", "Output", "OutputKind", "Statistics", "GeneratedImage", "IpropError",
-    "Point", "PartSnapshot", "Resource", "Ring", "Region"]
+    "Point", "PartSnapshot", "Resource", "Ring", "Region", "CancellationToken"]
 
 
 def _integer(value, minimum, maximum):
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise ValueError(f"Expected an integer in {minimum}..{maximum}")
     return value
+
+
+class CancellationToken:
+    """One-way native cancellation; cancel() may run on another thread.
+
+    The flag is freed automatically after the last reference, including a
+    generation currently using it. Create a new token for a new operation.
+    """
+    def __init__(self, *, library=None, _native=None):
+        self._native = _native or n.Native(library)
+        self._handle = c.c_void_p()
+        self._native.call("cancellation_create", c.byref(self._handle))
+        self._finalizer = weakref.finalize(self, self._native.cancellation_free, self._handle)
+
+    def cancel(self):
+        self._native.cancellation_cancel(self._handle)
+
+    @property
+    def is_cancelled(self):
+        return bool(self._native.cancellation_is_cancelled(self._handle))
 
 
 @dataclass(frozen=True)
@@ -198,6 +218,9 @@ class Statistics:
     fuel_used: int
     image_byte_count: int
     output_element_count: int
+    work_budget: int = 0
+    work_remaining: int = 0
+    work_used: int = 0
 
 
 @dataclass(frozen=True)
@@ -284,9 +307,17 @@ class Program:
     def __exit__(self, *exc):
         self.close()
 
-    def generate(self, seed=0, *, inputs=None, width=0, height=0):
+    def cancellation_token(self):
+        return CancellationToken(_native=self._native)
+
+    def generate(self, seed=0, *, inputs=None, width=0, height=0, work_limit=0, timeout_ns=0, cancellation=None):
         for number in (seed, width, height):
             _integer(number, 0, 0xffffffff)
+        for number in (work_limit, timeout_ns):
+            _integer(number, 0, 0xffffffffffffffff)
+        if cancellation is not None and (not isinstance(cancellation, CancellationToken) or
+                cancellation._native.library._handle != self._native.library._handle):
+            raise ValueError("Cancellation token must use this runtime library")
         with self._lock:
             if not self._finalizer.alive:
                 raise RuntimeError("Program is closed")
@@ -314,8 +345,12 @@ class Program:
                 options = n.sized(n.Options)
                 options.flags = 1  # IPROP_GENERATE_PART_OUTPUTS, negotiated by Native.
                 options.seed, options.size_x, options.size_y = seed, width, height
+                limits = n.sized(n.Limits)
+                limits.work_limit, limits.timeout_ns = work_limit, timeout_ns
+                if cancellation is not None:
+                    limits.cancellation = cancellation._handle.value
                 result = c.c_void_p()
-                self._native.call("generate_ex", self._handle, c.byref(options), parameters, c.byref(result))
+                self._native.call("generate_controlled", self._handle, c.byref(options), parameters, c.byref(limits), c.byref(result))
                 try:
                     return self._read_result(result)
                 finally:
@@ -324,9 +359,10 @@ class Program:
                 self._native.parameters_free(parameters)
 
     def _read_result(self, result):
-        image, stats = n.sized(n.Image), n.sized(n.Stats)
+        image, stats, work = n.sized(n.Image), n.sized(n.Stats), n.sized(n.Work)
         self._native.call("result_query_image", result, c.byref(image))
         self._native.call("result_query_stats", result, c.byref(stats))
+        self._native.call("result_query_work", result, c.byref(work))
         count = c.c_uint32()
         self._native.call("result_output_count", result, c.byref(count))
         outputs = []
@@ -347,7 +383,8 @@ class Program:
         resources = tuple(self._read_resource(result, resource_id) for resource_id in range(1, count.value + 1))
         return GeneratedImage(image.width, image.height, image.row_stride, image.pixel_format, image.alpha_mode,
             image.origin, c.string_at(image.pixels, image.byte_count), tuple(outputs),
-            Statistics(stats.fuel_budget, stats.fuel_remaining, stats.fuel_used, stats.image_byte_count, stats.output_element_count), resources)
+            Statistics(stats.fuel_budget, stats.fuel_remaining, stats.fuel_used, stats.image_byte_count, stats.output_element_count,
+                work.budget, work.remaining, work.used), resources)
 
     def _read_part(self, result, slot, entry):
         value = n.sized(n.Part)

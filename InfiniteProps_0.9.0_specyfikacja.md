@@ -730,6 +730,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 - [x] 12.1 Wprowadzić wspólny deterministyczny limit pracy natywnej i objąć nim także dotychczasowe operacje przewidziane do rabatowania, z zachowaniem domyślnego fuel.
 - [x] 12.2a Zaimplementować deadline, atomowe anulowanie i punkty przerwania w VM, C API, CLI i publicznym WASM.
 - [ ] 12.2b Udostępnić wspólne sterowanie w Python, Swift, C#/Unity, Kotlin/JNI, SFML i Godot oraz sprawdzić rzeczywiste bindingi.
+- [x] 12.2b.1 Podłączyć i sprawdzić Python, Swift, C#/Unity i Kotlin/JNI: pełne wyniki, dokładny work, deadline, anulowanie podczas skanu i własność tokenów.
+- [ ] 12.2b.2 Podłączyć i sprawdzić SFML oraz Godot przez ten sam C API.
 - [ ] 12.2 Udostępnić deadline/anulowanie w VM i hostach oraz punkty przerwania wewnątrz długich skanów, geometrii i kopiowania.
 - [ ] 12.3 Na podstawie pomiarów ustalić skończony domyślny limit pracy, sposób liczenia jednostek i maksymalną porcję nieprzerywalnej pracy; zapisać wartości i ich uzasadnienie.
 - [ ] 12.4 Sprawdzić kosztowne dane przy niskim fuel za builtin, skumulowaną pracę wielu małych wywołań, granice pamięci i przerwanie w każdym pipeline.
@@ -739,6 +741,10 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **Odbiór:** host ma egzekwowalne ograniczenie kosztu niezależne od promocyjnej taryfy; brak zegara w danym środowisku nie wyłącza licznika pracy.
 
 **12.1 / 12.2a — weryfikacja rdzenia (2026-11-04):** [kontrakt techniczny](spec/execution-limits-v0.9.md). Osobny licznik obejmuje setup, instrukcje, skany, geometrię, alokowane bufory i kopie; 5 mln fuel i dotychczasowe stawki pozostają bez zmian. C API 0.6 dodaje osobne deskryptory i token, zachowując ABI 0.5 i stare layouty. Wykonano 93/93 natywnych CTest (build bez SFML/Godot), dziewięć skupionych przypadków / 516 asercji oraz pełne conformance native/WASM. Nowa bramka porównuje dokładne liczniki work/fuel i obrazy 21 pipeline’ów, 42 granice, 21 odzyskań i 2048 anulowań. Rzeczywisty drugi worker przerywa synchroniczne `noise.mask` wewnątrz instrukcji. Przebieg zachowuje poprzednie wzorce obrazów/RNG i pełne 23 sceny części. Pozostałe bindingi, pomiary domyślnego limitu i końcowy audyt 12.3–12.5 pozostają otwarte; robocze 100 mln jednostek / interwał 1024 wymagają uzasadnienia pomiarowego.
+
+**12.2b.1 — bindingi zarządzane (2026-11-04):** Python: 10/10 testów; Swift: 8 zaliczonych / jeden Metal pominięty z braku urządzenia; rzeczywisty C#/native oraz Kotlin/JNI z CheckJNI: PASS. Każdy przebieg obejmuje 23 pełne sceny części przy dokładnym budżecie i o jednostkę za małym, deadline oraz anulowanie aktywnego skanu z innego wątku. Kotlin sprawdza też zamknięcie tokena w trakcie generacji. Wszystkie cztery odtwarzają 21 829 zamrożonych obrazów bez zmiany wzorców; test pikseli jawnie przyznaje większy work dla dawnych scen o zwiększonym fuel. Domyślny budżet produktu pozostaje bez zmian. Zbudowano świeży XCFramework z trzema slice’ami / pięcioma architekturami; wykonanie Swift dotyczy macOS arm64. Nie zaliczono iOS runtime, Unity Editor ani urządzenia/emulatora Android.
+
+[Raport bindingów zarządzanych](spec/verification/execution-limits-v0.9-managed.json) oraz [logi](spec/verification/execution-limits-v0.9-managed.txt) zapisują zakres lokalnej weryfikacji. Kontrola typów Swift przechodzi również dla iOS arm64 i symulatora arm64; nie jest to test wykonania na tych platformach. Trzy testy pakowania/dokumentacji przechodzą po dołączeniu wspólnego źródła testu anulowania.
 
 ### Etap 13 — pełna taryfa, optymalizacje i benchmarki
 

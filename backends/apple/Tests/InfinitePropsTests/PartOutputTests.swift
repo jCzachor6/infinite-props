@@ -69,4 +69,31 @@ final class PartOutputTests: XCTestCase {
             XCTAssertNil(result.resource(0)); XCTAssertNil(result.resource(UInt32(result.resources.count + 1)))
         }
     }
+
+    func testExactWorkAndControlsPreserveEveryTypedFixture() throws {
+        let base = URL(fileURLWithPath: ProcessInfo.processInfo.environment["IPROP_FIXTURES"]!)
+        let cases = try JSONSerialization.jsonObject(with: Data(contentsOf: base.appendingPathComponent("part-bindings.json"))) as! [[String: Any]]
+        for item in cases {
+            let directory = base.appendingPathComponent(item["directory"] as! String)
+            let dimensions = item["size"] as! [UInt32], seed = (item["seed"] as! NSNumber).uint32Value
+            let program = try Program(contentsOf: directory.appendingPathComponent("root.iprop"))
+            let reference = try program.generate(seed: seed, width: dimensions[0], height: dimensions[1])
+            let used = reference.statistics.workUsed
+            XCTAssertGreaterThan(used, 0); XCTAssertEqual(reference.statistics.workBudget, 100_000_000)
+            let exact = try program.generate(seed: seed, width: dimensions[0], height: dimensions[1],
+                limits: ExecutionLimits(workLimit: used, timeoutNanoseconds: 60_000_000_000))
+            XCTAssertEqual(exact.statistics.workRemaining, 0)
+            XCTAssertEqual(exact.statistics.fuelUsed, reference.statistics.fuelUsed)
+            XCTAssertEqual(observe(exact) as NSDictionary, observe(reference) as NSDictionary)
+            for (limits, reason) in [(ExecutionLimits(workLimit: used - 1), UInt32(3015)),
+                                     (ExecutionLimits(timeoutNanoseconds: 1), UInt32(3017))] {
+                XCTAssertThrowsError(try program.generate(seed: seed, width: dimensions[0], height: dimensions[1], limits: limits)) { error in
+                    XCTAssertEqual((error as? IpropError)?.reason, reason)
+                    XCTAssertEqual((error as? IpropError)?.stage, 4)
+                }
+            }
+            let recovered = try program.generate(seed: seed, width: dimensions[0], height: dimensions[1])
+            XCTAssertEqual(observe(recovered) as NSDictionary, observe(reference) as NSDictionary)
+        }
+    }
 }

@@ -150,7 +150,7 @@ jobs:
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
 
       - name: Build native tools for asset preparation and comparison
-        run: python scripts/ci_report.py run build cmake --build build --parallel --target ipa ipc ipdis ipgen ipval
+        run: python scripts/ci_report.py run build cmake --build build --parallel --target ipa ipc ipdis ipgen ipval execution_limits_probe
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14

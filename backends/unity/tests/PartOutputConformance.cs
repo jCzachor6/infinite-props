@@ -67,6 +67,17 @@ static class PartOutputConformance
             {
                 result = program.Generate(seed, width: width, height: height);
                 Equal(result, expected, item["name"].GetValue<string>());
+                ulong used = result.Statistics.WorkUsed;
+                if (used == 0 || result.Statistics.WorkBudget != 100000000) throw new Exception("finite native work statistics");
+                var exact = program.Generate(seed, width: width, height: height, limits: new ExecutionLimits(used, 60000000000));
+                Equal(exact, expected, "exact work " + item["name"].GetValue<string>());
+                if (exact.Statistics.WorkRemaining != 0 || exact.Statistics.FuelUsed != result.Statistics.FuelUsed) throw new Exception("work boundary or changed fuel");
+                foreach (var control in new[] { (new ExecutionLimits(used - 1), 3015u), (new ExecutionLimits(timeoutNanoseconds: 1), 3017u) })
+                {
+                    try { program.Generate(seed, width: width, height: height, limits: control.Item1); throw new Exception("expected execution limit"); }
+                    catch (IpropException failure) { if (failure.Reason != control.Item2 || failure.Stage != 4) throw new Exception("wrong work/deadline reason"); }
+                }
+                Equal(program.Generate(seed, width: width, height: height), expected, "recovery");
                 program.Generate(seed ^ uint.MaxValue, width: width, height: height);
             }
             Equal(result, expected, "retained " + item["name"].GetValue<string>());

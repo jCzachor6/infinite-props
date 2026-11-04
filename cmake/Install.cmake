@@ -79,7 +79,7 @@ foreach(backend apple unity android python)
         PATTERN "__pycache__" EXCLUDE PATTERN "*.egg-info" EXCLUDE
         PATTERN "dist" EXCLUDE PATTERN "local.properties" EXCLUDE)
 endforeach()
-install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips
+install(FILES backends/test/bindings.ips backends/test/binding-trap.ips backends/test/binding-unicode.ips backends/test/execution-slow.ips
     backends/test/prepare-bindings.py backends/test/result_fixture.py backends/test/check-python.py backends/test/check-csharp.py
     backends/test/python-asan.supp backends/test/part_bindings.py
     backends/test/part-bindings-v0.9.json backends/test/check-part-outputs.py

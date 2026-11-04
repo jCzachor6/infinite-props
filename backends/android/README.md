@@ -1,6 +1,6 @@
 # Android / Kotlin
 
-The JNI/Kotlin wrapper requires C API 0.5 / ABI 0.5. `OutputKind.PART` exposes
+The JNI/Kotlin wrapper requires C API 0.6 / ABI 0.5. `OutputKind.PART` exposes
 ordered `parts` with the complete [C snapshot](../../docs/c-api-part-outputs.md).
 `image.resource(id)` resolves nonzero IDs in the shared `resources` table;
 zero is an absent optional texture and `UInt.MAX_VALUE` denotes no region for
@@ -57,6 +57,15 @@ the native handle; results own their arrays. The caller owns returned Bitmaps.
 under zero alpha. For drawing through Android Canvas/View use the explicit
 `toPremultipliedBitmap()` conversion; its alpha conversion is lossy. Raw `rgba`
 retains the runtime's legacy alpha tag.
+
+`generate(..., limits = ExecutionLimits(...))` accepts unsigned `workLimit`,
+`timeoutNanoseconds` and an optional `CancellationToken`. Zero work selects the
+finite native default; zero timeout disables the monotonic clock. A separate
+thread can call `token.cancel()` during a synchronous generation. Use `use` or
+`close()` for tokens; closing defers native destruction until active generation
+leases finish. Statistics add `workBudget`, `workRemaining` and `workUsed`.
+`IpropException.reason` distinguishes work (3015), cancel (3016) and deadline
+(3017). The same tests run through host JNI and Android instrumentation.
 
 ## Verify
 
