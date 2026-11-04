@@ -129,6 +129,14 @@ add_custom_command(OUTPUT ${part_output_fixture}
     DEPENDS ipc test/part-output-values.ips)
 add_custom_target(capi_part_output_fixture DEPENDS ${part_output_fixture})
 add_dependencies(capi_golden capi_part_output_fixture)
+foreach(name part-output-limit part-output-empty)
+    set(out ${golden}/${name}.iprop)
+    add_custom_command(OUTPUT ${out}
+        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/${name}.ips --no-compress -o ${out}
+        DEPENDS ipc test/${name}.ips)
+    add_custom_target(capi_${name}_fixture DEPENDS ${out})
+    add_dependencies(capi_golden capi_${name}_fixture)
+endforeach()
 
 foreach(source test/language.ips test/gaussian-blur.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
@@ -199,6 +207,10 @@ iprop_capi_test(capi_descriptors test/descriptors.cpp)
 iprop_capi_test(capi_error_descriptor test/error_descriptor.c BOTH)
 iprop_capi_test(capi_library test/library.c BOTH)
 iprop_capi_test(capi_part_results test/part_results.c BOTH ARGS ${part_output_fixture})
+iprop_capi_test(capi_part_result_contracts test/part_result_contracts.cpp ARGS
+    ${part_output_fixture} ${golden}/part-output-limit.iprop ${golden}/part-output-empty.iprop)
+iprop_capi_test(capi_part_result_failures test/part_result_failures.cpp)
+target_link_libraries(capi_part_result_failures PRIVATE iprop_compiler)
 foreach(linkage shared static)
     target_compile_definitions(capi_library_${linkage} PRIVATE
         IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}

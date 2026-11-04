@@ -652,7 +652,7 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 
 - [x] 10.1 Dodać deklarację `output list part`, kodowanie programu, append snapshotu, walidację i globalny limit 256 eksportowanych rekordów.
 - [x] 10.2 Rozszerzyć wynik C++ i checked C API o typowane części oraz dostęp do geometrii, dziur, A8/RGBA i współdzielonych zasobów, bez zmiany layoutu starego ABI.
-- [ ] 10.3 Określić i przetestować ownership, pożyczone widoki, kopie, puste sloty, błędne indeksy/pojemności oraz jawne odrzucanie nieobsługiwanych nowych wyjść przez starsze ścieżki.
+- [x] 10.3 Określić i przetestować ownership, pożyczone widoki, kopie, puste sloty, błędne indeksy/pojemności oraz jawne odrzucanie nieobsługiwanych nowych wyjść przez starsze ścieżki.
 - [ ] 10.4 Sprawdzić render-only/export-only, brak wyglądu, wiele snapshotów jednego ID, niezależną kolejność eksportu, sloty statycznych importów i zachowanie wyniku po zwolnieniu VM/programu.
 - [ ] 10.5 Sprawdzić compile/load/generate rozszerzonego `.iprop`, zgodność starych fixtures i bezpieczne odrzucanie nowych rozszerzeń przez stary czytnik; nie dodawać serializacji wyniku.
 - [ ] **Etap 10 zakończony.**
@@ -662,6 +662,8 @@ Dla miękkiego rastra użyć `part.create(mask)`; dla tekstury RGBA `part.create
 **10.1 (2026-11-03):** [Kontrakt](spec/part-exports-v0.9.md): kind 3 i opcode `0x69`, bez zmiany starych ID ani nagłówka. Wspólne ownership z istniejącą sekcją 10, append w root coordinates, współdzielone tabele/zasoby i limit 256 niezależny od ID instancji. Parser/typowanie/emitter/formatter/IPA/IPDIS/opis języka objęte zmianą. 26 testów części/eksportów/zgodności, **544350 asercji**; kontrakty **221 mutacji / 159 przypadków CLI**. Nowy program przechodzi compile/load/validate, runtime z etapu 09 odrzuca nowy kind; legacy JSON odrzuca go przed zapisem obrazu. C API i binding WASM do czasu ich rozszerzenia jawnie odrzucają ten wynik. 10.2–10.5 pozostają otwarte.
 
 **10.2 (2026-11-04):** 10.1 opublikowane jako `95726f5`. Wynik C++ współdzieli snapshoty; checked C API 0.5 udostępnia nowe sized descriptors dla slotów, części, zasobów, regionów i obwodów, jawne dziury oraz dokładne A8/RGBA. Wspólne bufory mają jeden result-local ID, query nie alokuje ani nie materializuje kształtu. Stare layouty/enum i ABI 0.5 zachowane. **11/11 sprawdzeń CTest**: klient C99 shared/static z pełnym eksportem, miękką alfą, kopiami, pustym slotem i lifetime; dawne wyjścia, statystyki, błędy i liczenie alokacji bez regresji. Kontrakt hosta: [C API parts](docs/c-api-part-outputs.md). 10.3–10.5 pozostają otwarte.
+
+**10.3 (2026-11-04):** 10.2 opublikowane jako `c4cd41a`. **1848 sprawdzeń** kompletnych/prefiksowych/nieosiowanych deskryptorów, canary/tail, błędnych slotów/indeksów/rodzajów/pojemności i aliasowania; query z wymuszoną odmową każdej alokacji: **zero alokacji**. 256 rekordów przechowuje 512 odrębnych zasobów mimo identycznej zawartości; współdzielone RGBA nadal ma jeden ID, puste sloty są obecne. Bezpośrednia równość pointera rastra, weak refs po zwolnieniu ostatniego resultu i host copies potwierdzają ownership. **82 wymuszone awarie** jednorazowe/trwałe w append/grow/transfer/pack/generate oraz **4 dokładne granice areny**: brak wycieków, zachowane wcześniejsze snapshoty i niezmieniony uchwyt wyjściowy przy błędzie. Nowe testy C API **4/4**; 10.4–10.5 otwarte.
 
 **Weryfikacja:** trwa odbiór etapu.
 

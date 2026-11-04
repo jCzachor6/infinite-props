@@ -85,3 +85,24 @@ scratch, without heap allocation, copying topology or materializing masks.
 The C adapter moves the immutable slot tables; its nonempty-slot reference
 index fits the 128-byte record accounting allowance and retains no extra
 pixel/vertex buffers.
+
+
+## Ownership and failure evidence (10.3)
+
+`capi_part_result_contracts` exercises 1,848 descriptor/capacity/error/resource
+checks, including unaligned prefixes and future tails for all five new sized
+records. Allocator failure remains armed during successful and invalid queries;
+none allocates. 256 snapshots retain 512 distinct stores even when every byte
+is identical; shared RGBA source/texture/alpha views use the same resource ID.
+Pointer identity and weak references prove retention without hidden pixel copies
+and final release; explicit host copies survive result destruction.
+
+`capi_part_result_failures` injects 82 transient/persistent allocation failures
+across first append, growth, C++ result transfer, C packing and checked generation.
+Failed first append publishes no table; failed growth preserves the previous
+record and counter; failed generation preserves the host output handle. All
+paths return to their original live-allocation and arena counts after cleanup.
+First append needs 288 additional logical bytes; growth from capacity 1 to 2
+needs 288 at peak while the old 160-byte allocation remains live. Each threshold
+succeeds exactly and traps at one less byte, without a partial append. These
+are operation-local quota boundaries, not RSS or complete-generation budgets.
