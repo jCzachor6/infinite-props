@@ -112,16 +112,18 @@ async function main() {
             assert.equal(bytes.readUInt32LE(4), 0);
             assert.equal(bytes.readUInt32LE(8) & 1, 0);
             assert.equal(bytes.readUInt32LE(8) & 2, 2);
+            // Each pack's first selector: a weapon's enchantment, a portrait's sex.
+            const selector = asset.startsWith("portraits") ? "sex" : "enchant";
             for (const seed of [0, 7, 26]) for (const choice of [0, 2]) {
-                const rendered = Module.generate(bytes, seed, 0, 0, {v: choice});
+                const rendered = Module.generate(bytes, seed, 0, 0, {[selector]: choice});
                 const png = path.join(temporary, "native.png");
-                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", "v=" + choice, "-o", png],
+                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", `${selector}=${choice}`, "-o", png],
                                         { encoding: "utf8" });
                 assert.equal(native.status, 0, native.stderr || String(native.error));
                 const decoded = decodePng(fs.readFileSync(png));
                 assert.equal(rendered.width, decoded.width);
                 assert.equal(rendered.height, decoded.height);
-                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input v ${choice}`);
+                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input ${selector} ${choice}`);
                 comparisons++;
             }
         }

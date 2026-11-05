@@ -10,7 +10,8 @@ getting-started guide with the documentation, and the source page.
   examples (after the butterfly benchmark, the simplest one: a tree of three files,
   `public/intro/tree.ips`, its part `clump.ips` and the 0.8 leaf material
   `foliage.ips` both import (a part takes the leaf colour and makes the
-  material from it, since materials cannot be passed to parts), shown and
+  material from it, since materials cannot be passed to parts); the tree
+  bulges its rim with smooth noise and opens gaps with a 0.9 `noise.mask`; shown and
   downloadable beside a forest of 36 seeds (18 on a phone) with a re-roll
   button; recompile `public/intro/tree.iprop` with `ipc tree.ips -o tree.iprop`
   after editing them, and paste the new source into the tabs in `index.html`), the games
@@ -25,7 +26,7 @@ getting-started guide with the documentation, and the source page.
   tile) step it by hand. Weapon tiles mark their `tip`/`grip` outputs on
   hover; the fourth portrait cell lists the latest portrait's structured
   outputs. Weapons lean on their enchanted, ornate looks (chosen per seed
-  through the declared `quality` and `v` inputs) and glow like in a game: the
+  through the declared `quality` and `enchant` inputs) and glow like in a game: the
   page requests the crisp sprite (`bloom=0`), renders the emission map
   (`renderPass=1`), blurs it by the `glow` output's sigma and adds it back in
   passes that follow the gain. The games showcase's first slot is taken by

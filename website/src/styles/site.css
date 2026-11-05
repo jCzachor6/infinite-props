@@ -1114,7 +1114,7 @@ canvas.glow[hidden] { display: none; }
 
 .forest { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; }
 @media (min-width: 40rem) { .forest { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-/* 36 trees on a wide screen, 18 on a phone. */
+/* 36 trees on a wide screen, 18 on a phone; beside the code, home.ts fits the rows to it. */
 @media (max-width: 47.99rem) { .forest__tree:nth-child(n+19) { display: none; } }
 .forest__tree { margin: 0; display: flex; flex-direction: column; align-items: center; }
 .forest__tree canvas { width: 100%; height: auto; aspect-ratio: 1; image-rendering: pixelated; image-rendering: crisp-edges; }
