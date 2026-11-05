@@ -5,584 +5,169 @@
   "cases": [
     {
       "name": "single",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        4,
-        2
-      ],
-      "sites": [
-        [
-          1,
-          1
-        ]
-      ],
-      "polygons": [
-        [
-          [
-            0,
-            0
-          ],
-          [
-            4,
-            0
-          ],
-          [
-            4,
-            2
-          ],
-          [
-            0,
-            2
-          ]
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [4, 2],
+      "sites": [[1, 1]],
+      "polygons": [[[0, 0], [4, 0], [4, 2], [0, 2]]],
       "geometry_sha256": "5ca71380cc83461081811459457f166ab3304b2a27b8c9fa146e6a74df07954b",
       "public_sha256": "b82e7702b07cd0580e18463a6c98d8841552a49e6ec440c257818bf4f65cd5bb"
     },
     {
       "name": "split",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        4,
-        2
-      ],
-      "sites": [
-        [
-          1,
-          1
-        ],
-        [
-          3,
-          1
-        ]
-      ],
-      "polygons": [
-        [
-          [
-            0,
-            0
-          ],
-          [
-            2,
-            0
-          ],
-          [
-            2,
-            2
-          ],
-          [
-            0,
-            2
-          ]
-        ],
-        [
-          [
-            2,
-            0
-          ],
-          [
-            4,
-            0
-          ],
-          [
-            4,
-            2
-          ],
-          [
-            2,
-            2
-          ]
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [4, 2],
+      "sites": [[1, 1], [3, 1]],
+      "polygons": [[[0, 0], [2, 0], [2, 2], [0, 2]], [[2, 0], [4, 0], [4, 2], [2, 2]]],
       "geometry_sha256": "06c7447db954da85a22b375a3f55400f99e283c7d0712a1716c24a103653417d",
       "public_sha256": "8d13b812ff7dc59c20846a226042daaa44fa7be9bc43a5d85aaee8a9ee0038bb"
     },
     {
       "name": "cocircular",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        8,
-        8
-      ],
-      "sites": [
-        [
-          2,
-          2
-        ],
-        [
-          6,
-          2
-        ],
-        [
-          6,
-          6
-        ],
-        [
-          2,
-          6
-        ]
-      ],
-      "polygons": [
-        [
-          [
-            0,
-            0
-          ],
-          [
-            4,
-            0
-          ],
-          [
-            4,
-            4
-          ],
-          [
-            0,
-            4
-          ]
-        ],
-        [
-          [
-            4,
-            0
-          ],
-          [
-            8,
-            0
-          ],
-          [
-            8,
-            4
-          ],
-          [
-            4,
-            4
-          ]
-        ],
-        [
-          [
-            4,
-            4
-          ],
-          [
-            8,
-            4
-          ],
-          [
-            8,
-            8
-          ],
-          [
-            4,
-            8
-          ]
-        ],
-        [
-          [
-            0,
-            4
-          ],
-          [
-            4,
-            4
-          ],
-          [
-            4,
-            8
-          ],
-          [
-            0,
-            8
-          ]
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [8, 8],
+      "sites": [[2, 2], [6, 2], [6, 6], [2, 6]],
+      "polygons": [[[0, 0], [4, 0], [4, 4], [0, 4]], [[4, 0], [8, 0], [8, 4], [4, 4]], [[4, 4], [8, 4], [8, 8], [4, 8]], [[0, 4], [4, 4], [4, 8], [0, 8]]],
       "geometry_sha256": "1b1c50e5f6447c5c903c4685f4657e7fa29091ef7938cab28e2548646bda191c",
       "public_sha256": "06a764fd4b679f6fda67930a573e26e482814e27a77f36200aa546568d289704"
     },
     {
       "name": "collinear",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        8,
-        6
-      ],
-      "sites": [
-        [
-          1,
-          3
-        ],
-        [
-          3,
-          3
-        ],
-        [
-          5,
-          3
-        ],
-        [
-          7,
-          3
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [8, 6],
+      "sites": [[1, 3], [3, 3], [5, 3], [7, 3]],
       "geometry_sha256": "2dad74d1704feac9c119f443bd896f4b03f4a0676207b349ce48573b19beec20",
       "public_sha256": "1f41e928c2e9324b1d1b75b30c4fab478a9a14751c7a574a35e0774b3968a98c"
     },
     {
       "name": "boundary",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        8,
-        8
-      ],
-      "sites": [
-        [
-          0,
-          0
-        ],
-        [
-          8,
-          0
-        ],
-        [
-          8,
-          8
-        ],
-        [
-          0,
-          8
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [8, 8],
+      "sites": [[0, 0], [8, 0], [8, 8], [0, 8]],
       "geometry_sha256": "fe99c76805ee112a1f70a7d3a2086d1592db26b652f98643b56bcd1480a7acde",
       "public_sha256": "8242f735bb198107ca60e7a3abbd5305830ae3dbea0890186cb137f0fb43aba5"
     },
     {
       "name": "lloyd-explicit",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        8,
-        6
-      ],
-      "sites": [
-        [
-          0,
-          0
-        ],
-        [
-          8,
-          0
-        ],
-        [
-          8,
-          6
-        ],
-        [
-          0,
-          6
-        ]
-      ],
+      "origin": [0, 0],
+      "size": [8, 6],
+      "sites": [[0, 0], [8, 0], [8, 6], [0, 6]],
       "relax": 4,
       "geometry_sha256": "f2637f1cc1f4b5ebf27f190eb245e5dec7c902d95578883dadce8146b82e6dcd",
       "public_sha256": "db4c6170ddad682c24c4bb3689f4408a39fe27251fddb67e7ef0b80a953d9cb1"
     },
     {
       "name": "random-short",
-      "origin": [
-        -7,
-        -3
-      ],
-      "size": [
-        32,
-        24
-      ],
-      "options": {
-        "count": 7,
-        "seed": 0
-      },
+      "origin": [-7, -3],
+      "size": [32, 24],
+      "options": {"count": 7, "seed": 0},
       "arity": 4,
       "geometry_sha256": "3903de3e8b380cbe624221095fe9bc90639b1482093962edd589ca0e35b1af16",
       "public_sha256": "bcc1c46ded082216e45316e3ef2943c2aae9fc5d795d7d551f2f4b257f64ec3a"
     },
     {
       "name": "random-jitter-neutral",
-      "origin": [
-        -7,
-        -3
-      ],
-      "size": [
-        32,
-        24
-      ],
-      "options": {
-        "count": 7,
-        "seed": -1,
-        "jitter": 0
-      },
+      "origin": [-7, -3],
+      "size": [32, 24],
+      "options": {"count": 7, "seed": -1, "jitter": 0},
       "arity": 7,
       "geometry_sha256": "c3aecba1c7eba8615c1c4faf863cb87718da4ecb0af39a1e09dfb5ce2e3523df",
       "public_sha256": "56ede8a3f2f5b9700bb4229e27ec1bb2f97e2e9bc99eff22cbd81f4370125304"
     },
     {
       "name": "grid-partial",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        12,
-        8
-      ],
-      "options": {
-        "count": 7,
-        "seed": 18,
-        "method": 1,
-        "jitter": 0
-      },
+      "origin": [0, 0],
+      "size": [12, 8],
+      "options": {"count": 7, "seed": 18, "method": 1, "jitter": 0},
       "arity": 7,
       "geometry_sha256": "cae0dc63bb4bea13c0cbc7fcf6633ff52b9f36858fe178ed69b0bf4e7c2a8ff9",
       "public_sha256": "d39ed9669421b8f4c7833ed85252634213aeccc7bc949a349e2bea0caeeb5c9b"
     },
     {
       "name": "grid-jitter",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        12,
-        8
-      ],
-      "options": {
-        "count": 7,
-        "seed": 18,
-        "method": 1,
-        "jitter": 1
-      },
+      "origin": [0, 0],
+      "size": [12, 8],
+      "options": {"count": 7, "seed": 18, "method": 1, "jitter": 1},
       "arity": 7,
       "geometry_sha256": "1c779311b32866aef11b913ca6b720fa70494dd82c172de396058800b7dc9727",
       "public_sha256": "81557dab87aab911e672f54be41e1418b9145aebc24b778073915e3aaa503c7c"
     },
     {
       "name": "metric-diagonal",
-      "origin": [
-        -4,
-        -6
-      ],
-      "size": [
-        31,
-        17
-      ],
-      "options": {
-        "count": 9,
-        "seed": 71,
-        "anisotropy": 4,
-        "direction": [
-          3,
-          4
-        ]
-      },
+      "origin": [-4, -6],
+      "size": [31, 17],
+      "options": {"count": 9, "seed": 71, "anisotropy": 4, "direction": [3, 4]},
       "arity": 9,
       "geometry_sha256": "2edd40312ace4effb7ebc50bad6a2ba9e4e6627187b193dc82d2636a01f1d7b4",
       "public_sha256": "e3734909bf62d369f9af85a11e656293eb79cdfedfefd370c7209670dec4de6f"
     },
     {
       "name": "metric-minimum",
-      "origin": [
-        -4,
-        -6
-      ],
-      "size": [
-        31,
-        17
-      ],
-      "options": {
-        "count": 11,
-        "seed": -19,
-        "anisotropy": 0.25,
-        "direction": [
-          -3,
-          4
-        ]
-      },
+      "origin": [-4, -6],
+      "size": [31, 17],
+      "options": {"count": 11, "seed": -19, "anisotropy": 0.25, "direction": [-3, 4]},
       "arity": 9,
       "geometry_sha256": "e05503219f9b7ad96c3ca09c9bd8a610bf612403e8434f43d612abb2dadc52bd",
       "public_sha256": "52ea211e09f4c3db013d8225a2ceb38f74b4951c7051a3b01463f60810c6704b"
     },
     {
       "name": "rows-diagonal",
-      "origin": [
-        -4,
-        -6
-      ],
-      "size": [
-        31,
-        17
-      ],
-      "options": {
-        "count": 17,
-        "seed": 71,
-        "anisotropy": 2,
-        "direction": [
-          3,
-          4
-        ],
-        "rowBias": 1,
-        "rowJitter": 1,
-        "rowOffset": 0.5
-      },
+      "origin": [-4, -6],
+      "size": [31, 17],
+      "options": {"count": 17, "seed": 71, "anisotropy": 2, "direction": [3, 4], "rowBias": 1, "rowJitter": 1, "rowOffset": 0.5},
       "arity": 12,
       "geometry_sha256": "c94a1542633ad4f573fcd82c6bf9ddf5f8ae86729848b0876d7173b47d68dadc",
       "public_sha256": "d4eceb6ff1d4b1ba07541139ca15929526f10de9d323128cc7af01bfca1443d9"
     },
     {
       "name": "rows-reversed-lloyd",
-      "origin": [
-        -4,
-        -6
-      ],
-      "size": [
-        31,
-        17
-      ],
-      "options": {
-        "count": 19,
-        "seed": 7,
-        "anisotropy": 4,
-        "direction": [
-          -3,
-          -4
-        ],
-        "rowBias": 0.8,
-        "rowJitter": 1,
-        "rowOffset": 1,
-        "relax": 4
-      },
+      "origin": [-4, -6],
+      "size": [31, 17],
+      "options": {"count": 19, "seed": 7, "anisotropy": 4, "direction": [-3, -4], "rowBias": 0.8, "rowJitter": 1, "rowOffset": 1, "relax": 4},
       "arity": 12,
       "geometry_sha256": "37755a7e5ced53dd31022a55703197721e0c73e1d263b1829ecf5493cd9b0653",
       "public_sha256": "b85c9c54afea599f8c3881ba460bbaffd31901955cfbf3f2284ab24d5748e19c"
     },
     {
       "name": "maximum-grid",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        256,
-        256
-      ],
-      "options": {
-        "count": 256,
-        "seed": 7,
-        "method": 1,
-        "jitter": 0
-      },
+      "origin": [0, 0],
+      "size": [256, 256],
+      "options": {"count": 256, "seed": 7, "method": 1, "jitter": 0},
       "arity": 7,
       "geometry_sha256": "da5dac245bdb46322f941ca2c2fc1c454bdcc8f2ecabe945d885ed96aa6b02c6",
       "public_sha256": "3899cca0be529e3cd661c7e017b47e3a4e8170650eebd992eaaa55c20c1448ef"
     },
     {
       "name": "maximum-random",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        256,
-        256
-      ],
-      "options": {
-        "count": 256,
-        "seed": -1
-      },
+      "origin": [0, 0],
+      "size": [256, 256],
+      "options": {"count": 256, "seed": -1},
       "arity": 4,
       "geometry_sha256": "ce0ecfa99a18ebb8765ac5be3349788b49a99b25feefa0f7c273f979d63985f3",
       "public_sha256": "33bb356895633aef80674c4c671310ab3cf2016105c7de291bc7184d0cb49116"
     },
     {
       "name": "neutral-full",
-      "origin": [
-        -7,
-        -3
-      ],
-      "size": [
-        32,
-        24
-      ],
-      "options": {
-        "count": 7,
-        "seed": 0,
-        "direction": [
-          -3,
-          4
-        ],
-        "rowJitter": 1,
-        "rowOffset": 1
-      },
+      "origin": [-7, -3],
+      "size": [32, 24],
+      "options": {"count": 7, "seed": 0, "direction": [-3, 4], "rowJitter": 1, "rowOffset": 1},
       "arity": 12,
       "geometry_sha256": "3903de3e8b380cbe624221095fe9bc90639b1482093962edd589ca0e35b1af16",
       "public_sha256": "bcc1c46ded082216e45316e3ef2943c2aae9fc5d795d7d551f2f4b257f64ec3a"
     },
     {
       "name": "fractional-rectangle",
-      "origin": [
-        0.1,
-        -0.3
-      ],
-      "size": [
-        1.7,
-        0.6
-      ],
-      "options": {
-        "count": 11,
-        "seed": -31,
-        "method": 1,
-        "jitter": 0.3,
-        "anisotropy": 0.7,
-        "direction": [
-          0.3,
-          -0.7
-        ],
-        "rowBias": 0.7,
-        "rowJitter": 0.3,
-        "rowOffset": 0.2
-      },
+      "origin": [0.1, -0.3],
+      "size": [1.7, 0.6],
+      "options": {"count": 11, "seed": -31, "method": 1, "jitter": 0.3, "anisotropy": 0.7, "direction": [0.3, -0.7], "rowBias": 0.7, "rowJitter": 0.3, "rowOffset": 0.2},
       "arity": 12,
       "geometry_sha256": "b31345a8d09bd74413b5a0307063e91ce347aa7229a9afa9c07cb96665bcb03d",
       "public_sha256": "a55b2507a38909a5d87cd765b14c78137c85b9d8a1ddb3a632282d9ea95db857"
     },
     {
       "name": "maximum-lloyd",
-      "origin": [
-        0,
-        0
-      ],
-      "size": [
-        256,
-        256
-      ],
-      "options": {
-        "count": 256,
-        "seed": 7,
-        "relax": 4
-      },
+      "origin": [0, 0],
+      "size": [256, 256],
+      "options": {"count": 256, "seed": 7, "relax": 4},
       "arity": 7,
       "budget": 30000000,
       "geometry_sha256": "8c1daab5f15f02d386e50f70d8e713ab41d1128330686ad08902d34d512fe7ed",
