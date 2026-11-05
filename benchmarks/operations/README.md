@@ -107,7 +107,7 @@ work limits** let the slow old morphology finish; production defaults remain
 The benchmark executable also accepts optional seed, batch, work-limit and
 warmup arguments; its original two-argument protocol remains unchanged.
 
-The stage-13 report under `spec/verification/fuel-v0.9.json` also retains ten
+The stage-13 entry in `spec/verification/v0.9.json` also records ten
 new scalar noise comparisons and the exhaustive 1–256 random-site sweep for
 20 seeds. Their small drivers are embedded in the compressed scalar capture;
 all raw captures include tool/source identities. The batch gate requires the

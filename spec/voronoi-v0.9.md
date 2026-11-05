@@ -163,6 +163,5 @@ f32 sites, vertices, shared edges, metadata and neighbor lists. Area sums use
 relative tolerance 2e-6; supporting-plane comparisons allow the documented
 f32 rounding envelope. Native/WASM publication itself must be bit-identical.
 
-The [verification report](verification/voronoi-v0.9.json) records toolchains,
-checks, frozen references and artifact hashes. Publication status is separate
-from local implementation/test results and follows the main plan's delivery gate.
+The [verification summary](verification/v0.9.json) records toolchains and checks.
+Publication status is separate from local implementation/test results.

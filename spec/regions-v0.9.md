@@ -218,6 +218,5 @@ metadata and restricted lists, formatter/assembly round-trips, clip/paint,
 nonuniform host scale and off-target resources. Internal probes are omitted
 from the packaged web SDK; its public checks use the same pinned records.
 
-The [stage verification report](verification/regions-v0.9.json) records the source
-identity, complete CTest log path, frozen vectors, resource boundaries and
-requirement evidence.
+The [verification summary](verification/v0.9.json) records the source identity, CTest
+result, resource boundaries and gate counts.

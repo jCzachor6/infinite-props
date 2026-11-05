@@ -158,7 +158,7 @@ and nesting. All 512 binary 3×3 masks are tested at both connectivities and
 thresholds 0, 0.5 and 1. Nested geometry plus simplification is checked under
 every D4, including reflections.
 
-The [verification report](verification/contours-v0.9.json) records native/WASM
+The [verification report](verification/v0.9.json) records native/WASM
 equality, exact resource boundaries, injected allocator failures, old-runtime
 rejections and unchanged earlier fixtures. The public constructor is also
 exercised with only the packaged runtime/API and ordinary tools, without either

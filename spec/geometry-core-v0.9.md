@@ -188,6 +188,6 @@ isolated allocation probe injects transient and persistent heap failures across
 four construction paths, checks live heap allocations as well as quota refunds,
 and verifies that repeated metadata reads perform no allocations.
 
-The [stage verification report](verification/geometry-core-v0.9.json) records
-the build identity, source/binary hashes, complete conformance results and
-requirement-by-requirement evidence.
+The [verification summary](verification/v0.9.json) records the build identity and
+conformance results; the full stage report with source/binary hashes stays in
+the git commit it names.

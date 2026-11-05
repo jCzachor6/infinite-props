@@ -31,6 +31,6 @@ change. The large radius-64 morphology case still hits its conservative fuel
 reservation first; this is a recorded 3001 outcome. The off-canvas Worley scan
 and many cheap helper calls instead hit independent work error 3015.
 
-The retained [calibration report](../../spec/verification/execution-limits-v0.9-calibration.json)
+The retained [calibration summary](../../spec/verification/v0.9.json)
 and compressed raw observations document the selected 100M default, 1024
 logical steps per polling interval and 32 KiB bulk initialization/copy chunks.

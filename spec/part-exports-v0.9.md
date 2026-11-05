@@ -190,4 +190,4 @@ parts. Full native/WASM/C API data is tested separately. Platform typed bindings
 remain stage 11. Formal Python JSON Schema validation was unavailable locally;
 the stdlib protocol validators, 231 mutations, 159 actual CLI cases and Node
 diagnostic reader pass. Canonical stage evidence is recorded in
-`spec/verification/part-exports-v0.9.json` and its CTest log.
+[the verification summary](verification/v0.9.json) and the archived CTest log.

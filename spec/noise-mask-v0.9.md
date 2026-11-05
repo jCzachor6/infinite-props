@@ -109,5 +109,5 @@ validation, mapping, integration, lifetimes, argument order and failed results.
 sampling and A8. `tests/fixtures/noise-mask-v0.9.json` pins its images.
 `backends/html5/test/noise-mask-conformance.js` checks them against native and
 WASM, with optimizer/debug/compression round trips and malformed bytecode.
-The [stage report](verification/noise-mask-v0.9.json) records the exact builds,
-checks, frozen inputs and archived-runtime rejection evidence.
+The [verification summary](verification/v0.9.json) records the toolchain, checks and
+archived-runtime rejection counts.

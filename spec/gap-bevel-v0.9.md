@@ -178,8 +178,7 @@ across variable/repeated gaps, normal/zero-strength bevels, the combined pipelin
 and off-target fractional geometry, with no heap/quota leaks. Exhaustive C++
 coverage includes 1536 variable gaps from all 512 binary 3×3 contour sources.
 
-The [stage-08 verification report](verification/gap-bevel-v0.9.json) binds
-these results to the tested source and artifact hashes, the 84/84 CTest run,
+The [stage-08 verification summary](verification/v0.9.json) records the 84/84 CTest run,
 the full existing native/WASM regression gate, a packaged-runtime smoke without
 internal probes, and explicit rejection by six archived runtimes. This is
 historical checkpoint evidence from product/source 0.8.0 before final calibration.

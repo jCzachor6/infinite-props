@@ -4,7 +4,7 @@
 
 Status: the VM, checked C API, CLI and all seven hosts expose the shared
 controls. Calibration and the completed local audit are recorded below and in
-[the verification report](verification/execution-limits-v0.9.json).
+[the verification report](verification/v0.9.json).
 Fuel prices and the default 5,000,000 fuel have not changed.
 
 ## Independent deterministic work
@@ -184,7 +184,7 @@ thread restrictions.
 
 ## Measured default and chunks
 
-The [calibration](verification/execution-limits-v0.9-calibration.json) records
+The [calibration summary](verification/v0.9.json) records
 188 cases, three warmups and five recorded plain/probed samples on native
 AppleClang and Emscripten/Node, using the same binaries, work/fuel counters
 and RGBA hashes (or identical trap reasons). All 141 legacy cases and all 42
