@@ -174,7 +174,7 @@ int main(int argc,char** argv) {
     CHECK(iprop_result_resource_ring_copy_vertices(result,1,1,
         reinterpret_cast<iprop_point_value*>(const_cast<iprop::Vec2*>(geometry->points.data())),vertexBytes,nullptr)==IPROP_EX_E_ARGUMENT);
     iprop_error_ex error{};CHECK(iprop_error_ex_init(&error,sizeof(error))==IPROP_EX_OK);
-    error.message_buffer=reinterpret_cast<char*>(copy.data());error.message_capacity=copy.size();const auto copyBefore=copy;
+    error.message_buffer=reinterpret_cast<char*>(copy.data());error.message_capacity=static_cast<uint32_t>(copy.size());const auto copyBefore=copy;
     CHECK(iprop_result_resource_copy_pixels(result,2,copy.data(),bytes,&error)==IPROP_EX_E_ARGUMENT && copy==copyBefore);
     error.message_buffer=reinterpret_cast<char*>(const_cast<uint8_t*>(resource.data));error.message_capacity=static_cast<uint32_t>(bytes);
     CHECK(iprop_result_resource_copy_pixels(result,2,copy.data(),bytes,&error)==IPROP_EX_E_ARGUMENT);

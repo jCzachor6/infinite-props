@@ -14,14 +14,14 @@
 namespace {
 enum class Failure { Oom, Standard, Unknown };
 bool armed = false;
-std::size_t count = 0, failAt = 0, injected = 0;
+std::size_t allocations = 0, failAt = 0, injected = 0;
 Failure failure = Failure::Oom;
 struct Unexpected : std::exception {
     const char* what() const noexcept override { return "generation allocation failure is internal"; }
 };
 struct AllocationGuard {
     explicit AllocationGuard(std::size_t ordinal, Failure kind = Failure::Oom) {
-        count = 0; injected = 0; failAt = ordinal; failure = kind; armed = true;
+        allocations = 0; injected = 0; failAt = ordinal; failure = kind; armed = true;
     }
     ~AllocationGuard() { armed = false; }
 };
@@ -59,7 +59,7 @@ bool renameInput(std::vector<uint8_t>& bytes, const char* from, const char* to, 
 #pragma GCC diagnostic ignored "-Wmismatched-new-delete"
 #endif
 void* operator new(std::size_t size) {
-    if (armed && ++count == failAt) {
+    if (armed && ++allocations == failAt) {
         ++injected;
         if (failure == Failure::Standard) throw Unexpected{};
         if (failure == Failure::Unknown) throw 17;
@@ -117,13 +117,13 @@ int main(int argc, char** argv) {
             iprop_status_ex status;
             { AllocationGuard guard(ordinal); status = iprop_generate_ex(program, &options, set, &out, &error); }
             if (ordinal == 0) {
-                measured = count;
+                measured = allocations;
                 CHECK(status == IPROP_EX_OK && out != sentinel && injected == 0);
                 iprop_result_free(out);
                 continue;
             }
             ++faultCases;
-            CHECK(injected == 1 && count == ordinal && status == IPROP_EX_E_OOM && out == sentinel);
+            CHECK(injected == 1 && allocations == ordinal && status == IPROP_EX_E_OOM && out == sentinel);
             CHECK(error.reason == IPROP_REASON_OUT_OF_MEMORY && std::strcmp(message, "out of memory") == 0);
             CHECK(error.stage == IPROP_STAGE_ARGUMENTS || error.stage == IPROP_STAGE_EXECUTE);
             CHECK(program->data.use_count() == owners);
@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
         AllocationGuard guard(1);
         CHECK(iprop_generate_ex(uniforms, &options, parameters, &out, &error) == IPROP_EX_E_ARGUMENT);
         CHECK(iprop_generate_ex(portrait, &options, parameters, &out, &error) == IPROP_EX_E_ARGUMENT);
-        CHECK(count == 0 && out == nullptr && error.reason == IPROP_REASON_FOREIGN_PARAMETERS);
+        CHECK(allocations == 0 && out == nullptr && error.reason == IPROP_REASON_FOREIGN_PARAMETERS);
         options.size_x = 0;
     }
 
