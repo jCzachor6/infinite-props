@@ -126,8 +126,12 @@ location fields.
   same build serves the demo page and the Node test runner.
 - The WASM heap is reused between `generate` calls; `js/api.js` copies the
   result so earlier results stay valid.
-- C++ exception handling is enabled at compilation and linking so validation
-  failures and runtime traps become catchable JavaScript `Error` objects.
+- C++ exceptions use native WebAssembly exception handling
+  (`-fwasm-exceptions`) at compilation and linking, so validation failures and
+  runtime traps become catchable JavaScript `Error` objects without routing
+  every throwing call through JavaScript. It needs Chrome 95, Firefox 100,
+  Safari 15.2, Node 17 or later; the butterfly benchmark generates about 3x
+  faster than with Emscripten's JavaScript-based `-fexceptions`.
 - Rebuild the pinned hashes in `test/conformance.js` whenever the semantics
   change intentionally (spec update first).
 

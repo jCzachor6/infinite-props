@@ -19,6 +19,11 @@ See [0.8 to 0.9 migration](docs/language/migration-v0.9.md) and the
 - Catalog-backed editor hints, checked texture/geometry/export workflows,
   handbook/LLM/host documentation and language-description schema **6**.
   Diagnostic schema **1** and documentation-manifest schema **3** are unchanged.
+- The WebAssembly module uses native WebAssembly exceptions instead of
+  JavaScript-based ones: the website butterfly generates about 3x faster
+  (0.8: ~190 ms, 0.9 before the change: ~330 ms, now ~110 ms in Node 22) and
+  `iprop.wasm` is ~17% smaller. Browsers need Chrome 95, Firefox 100 or
+  Safari 15.2.
 
 
 ## v0.8.0 — 2026-10-28

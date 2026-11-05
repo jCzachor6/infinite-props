@@ -31,7 +31,7 @@ iprop_warnings(iprop_runtime)
 # Runtime traps must reach bindings.cpp's FormatError catch and become JS
 # Errors. Emscripten otherwise disables C++ catching and aborts the module.
 # PUBLIC also enables catching in the binding translation unit.
-target_compile_options(iprop_runtime PUBLIC -fexceptions "-sUSE_ZLIB=1")
+target_compile_options(iprop_runtime PUBLIC -fwasm-exceptions "-sUSE_ZLIB=1")
 target_link_options(iprop_runtime PUBLIC "-sUSE_ZLIB=1")
 
 add_executable(iprop_html5
@@ -53,7 +53,7 @@ set_target_properties(iprop_html5 PROPERTIES
 
 target_link_options(iprop_html5 PRIVATE
     "--pre-js" "${CMAKE_CURRENT_SOURCE_DIR}/module_api.js"
-    "-fexceptions"
+    "-fwasm-exceptions"
     "-sMODULARIZE=1"
     "-sEXPORT_NAME=createIpropModule"
     "-sENVIRONMENT=web,worker,node"
@@ -66,32 +66,32 @@ set_property(TARGET iprop_html5 APPEND PROPERTY LINK_DEPENDS "${CMAKE_CURRENT_SO
 add_executable(geometry_representation_probe ../../tests/geometry_representation_probe.cpp)
 target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
 iprop_warnings(geometry_representation_probe)
-target_link_options(geometry_representation_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(geometry_representation_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 add_executable(voronoi_probe ../../tests/voronoi_probe.cpp)
 target_link_libraries(voronoi_probe PRIVATE iprop_runtime)
 iprop_warnings(voronoi_probe)
-target_link_options(voronoi_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(voronoi_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 add_executable(contours_probe ../../tests/contours_probe.cpp)
 target_link_libraries(contours_probe PRIVATE iprop_runtime)
 iprop_warnings(contours_probe)
-target_link_options(contours_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(contours_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 
 add_executable(regions_probe ../../tests/regions_probe.cpp)
 target_link_libraries(regions_probe PRIVATE iprop_runtime)
 iprop_warnings(regions_probe)
-target_link_options(regions_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(regions_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 
 add_executable(gap_bevel_probe ../../tests/gap_bevel_probe.cpp)
 target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
 iprop_warnings(gap_bevel_probe)
-target_link_options(gap_bevel_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(gap_bevel_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 
 add_executable(dynamic_parts_probe ../../tests/dynamic_parts_probe.cpp)
 target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
 iprop_warnings(dynamic_parts_probe)
-target_link_options(dynamic_parts_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(dynamic_parts_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sALLOW_MEMORY_GROWTH=1")
 
 add_executable(part_exports_probe ../../tests/part_exports_probe.cpp)
 target_link_libraries(part_exports_probe PRIVATE iprop_runtime)
 iprop_warnings(part_exports_probe)
-target_link_options(part_exports_probe PRIVATE "-fexceptions" "-sENVIRONMENT=node" "-sNODERAWFS=1" "-sALLOW_MEMORY_GROWTH=1")
+target_link_options(part_exports_probe PRIVATE "-fwasm-exceptions" "-sENVIRONMENT=node" "-sNODERAWFS=1" "-sALLOW_MEMORY_GROWTH=1")
