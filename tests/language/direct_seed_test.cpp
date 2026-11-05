@@ -8,22 +8,6 @@
 using namespace iprop;
 using namespace compiler_test;
 
-namespace {
-void sameResult(const RunOutcome& actual, const RunOutcome& reference) {
-    CHECK(actual.canvas.pixels == reference.canvas.pixels);
-    REQUIRE(actual.outputs.size() == reference.outputs.size());
-    for (std::size_t j = 0; j < actual.outputs.size(); ++j) {
-        const auto& a = actual.outputs[j].points;
-        const auto& b = reference.outputs[j].points;
-        REQUIRE(a.size() == b.size());
-        for (std::size_t i = 0; i < a.size(); ++i) {
-            CHECK(std::bit_cast<u32>(a[i].x) == std::bit_cast<u32>(b[i].x));
-            CHECK(std::bit_cast<u32>(a[i].y) == std::bit_cast<u32>(b[i].y));
-        }
-    }
-}
-}
-
 TEST_CASE("seed-direct draws match manual isolation and preserve the outer stream") {
     const auto actual = compileChecked(R"(asset direct { size 8x8 output list point trace
       draw {
@@ -59,7 +43,7 @@ TEST_CASE("seed-direct draws match manual isolation and preserve the outer strea
       }
     })");
     for (u32 seed : {0u, 1u, 26u, 0x80000000u, 0xffffffffu})
-        sameResult(execute(actual, seed), execute(reference, seed));
+        sameOutcome(execute(actual, seed), execute(reference, seed));
 }
 
 TEST_CASE("seed and choices evaluate before isolation in signature order") {
@@ -86,7 +70,7 @@ TEST_CASE("seed and choices evaluate before isolation in signature order") {
       note(tag: i32) -> i32 { trace = {tag, unit()} return tag }
     })");
     for (u32 seed : {0u, 7u, 0xffffffffu})
-        sameResult(execute(actual, seed), execute(reference, seed));
+        sameOutcome(execute(actual, seed), execute(reference, seed));
 }
 
 TEST_CASE("seed-direct draws nest and accept numeric mixed choices") {

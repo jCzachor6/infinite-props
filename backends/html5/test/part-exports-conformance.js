@@ -2,22 +2,17 @@
 // Full C++/C/native/WASM and public typed JavaScript result observations.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
 const {execFileSync,spawnSync}=require('node:child_process');
-const {instructions,sections}=require('./sampler-conformance.js');
 const {observe:observeBinding}=require('./part-binding-observation.js');
+const {canonical,instructions,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,'../../..');
 const params=[[0,0,0],[90,0,0],[180,0,0],[270,0,0],[0,1,0],[0,0,1],[90,0,1],[90,1,0]];
 const fixtures=path.join(repo,'tests/fixtures'),pins=JSON.parse(fs.readFileSync(path.join(fixtures,'part-exports-v0.9.json')));
-function canonical(value){
-    if(Array.isArray(value))return value.map(canonical);
-    if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])]));
-    return value;
-}
 function semantic(record){const {fuel,...result}=record;return result;}
 const sha=value=>crypto.createHash('sha256').update(value).digest('hex');
 const digest=record=>sha(JSON.stringify(canonical(semantic(record))));
 const transform=k=>`rot=${params[k][0]}, mirror_x=${params[k][1]}, mirror_y=${params[k][2]}`;
 function sharedBindingCases(iprop,tool,directory) {
-    const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3');
+    const {python}=require('./oracle.js');
     execFileSync(python,[path.join(repo,'backends/test/part_bindings.py'),path.dirname(tool('ipc')),directory],{stdio:'pipe'});
     const cases=JSON.parse(fs.readFileSync(path.join(directory,'part-bindings.json')));
     const reference=JSON.parse(fs.readFileSync(path.join(repo,'backends/test/part-bindings-v0.9.json'))).cases;

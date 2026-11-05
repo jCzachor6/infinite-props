@@ -1,8 +1,8 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path");
 const {execFileSync,spawnSync}=require("node:child_process");
-const {sections}=require("./sampler-conformance.js");
 const {decodePng}=require("./png.js");
+const {sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../.."),names=["diagram2d","contours2d","regions2d","part2d","parts2d"];
 const bits=n=>{const b=Buffer.alloc(4);b.writeFloatLE(n);return b.readUInt32LE();};
 

@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const {execFileSync,spawnSync}=require("node:child_process");
 const {decodePng}=require("./png.js");
-const {sections,instructions}=require("./sampler-conformance.js");
+const {instructions,outputBits,sections}=require("./harness.js");
 function run(iprop,tool,directory){
     const base=path.join(directory,"density"),seeds=[0,1,7,26,0x61c88647,0x37c2760b,0xffffffff];
     let comparisons=0,traps=0,rejections=0;
@@ -15,7 +15,7 @@ function run(iprop,tool,directory){
     function generate(binary,seed,variant=0){
         const png=base+".png",native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),...(variant ? ["--uniform","v="+variant] : []),"--float-bits","-o",png],{encoding:"utf8"}));
         const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,uniforms:variant ? {v:variant} : {}});
-        const outputs=wasm.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+        const outputs=outputBits(wasm.outputs);
         assert.deepEqual(outputs,native.outputs,"density output bits");assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"density RGBA");
         ++comparisons;return outputs;
     }

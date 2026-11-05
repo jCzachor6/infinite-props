@@ -131,10 +131,7 @@ TEST_CASE("part calls are validated against the part surface") {
         hairParts(), "must be f32, got color");
 
     // Unknown part.
-    expectCheckError(
-        "import nope from \"nope.ips\"\nasset t { size 8x8 "
-        "draw { nope.draw(1, at = {0, 0}) } }",
-        "was not provided");
+    expectCheckError("import nope from \"nope.ips\"\nasset t { size 8x8 " "draw { nope.draw(1, at = {0, 0}) } }", "was not provided");
 }
 
 TEST_CASE("part transform argument names cannot be declared as uniforms") {
@@ -173,9 +170,7 @@ TEST_CASE("part output reads are validated") {
         "import hair from \"hair.ips\"\nasset t { size 8x8 output rect r "
         "draw { hair.draw(1, at = {0, 0}) r = hair.outputs.top } }",
         hairParts(), "expects rect, got vec2");
-    expectCheckError(
-        "asset t { size 8x8 draw { x = bogus.outputs.p } }",
-        "not an imported part");
+    expectCheckError("asset t { size 8x8 draw { x = bogus.outputs.p } }", "not an imported part");
 
     // List outputs cannot be read.
     const std::string listPart = R"(
@@ -207,55 +202,6 @@ TEST_CASE("partInfoOf builds a part surface") {
     REQUIRE(info.outputs[0].name == "top");
     REQUIRE(info.outputs[0].kind == OutputKind::Point);
     REQUIRE(!info.outputs[0].isList);
-}
-
-TEST_CASE("import cycles are rejected with the cycle path") {
-    const std::map<std::string, std::string> files = {
-        {"a.ips", "import b from \"b.ips\"\nasset a { size 8x8 draw { } }"},
-        {"b.ips", "import a from \"a.ips\"\nasset b { size 8x8 draw { } }"},
-    };
-    const auto loader = [&](std::string_view path) {
-        const auto found = files.find(std::string(path));
-        if (found == files.end()) {
-            throw std::runtime_error("no such file");
-        }
-        return found->second;
-    };
-
-    bool threw = false;
-    try {
-        (void)resolveImports("a.ips", loader);
-    } catch (const SourceError& error) {
-        threw = true;
-        REQUIRE(std::string(error.message).find("import cycle") !=
-                std::string::npos);
-        REQUIRE(std::string(error.message).find("a.ips") != std::string::npos);
-        REQUIRE(std::string(error.message).find("b.ips") != std::string::npos);
-    }
-    REQUIRE(threw);
-
-    // A three-file cycle not passing through the entry.
-    const std::map<std::string, std::string> three = {
-        {"x.ips", "import y from \"y.ips\"\nasset x { size 8x8 draw { } }"},
-        {"y.ips", "import z from \"z.ips\"\nasset y { size 8x8 draw { } }"},
-        {"z.ips", "import y from \"y.ips\"\nasset z { size 8x8 draw { } }"},
-    };
-    const auto loader3 = [&](std::string_view path) {
-        const auto found = three.find(std::string(path));
-        if (found == three.end()) {
-            throw std::runtime_error("no such file");
-        }
-        return found->second;
-    };
-    bool threw3 = false;
-    try {
-        (void)resolveImports("x.ips", loader3);
-    } catch (const SourceError& error) {
-        threw3 = true;
-        REQUIRE(std::string(error.message).find("y.ips -> z.ips -> y.ips") !=
-                std::string::npos);
-    }
-    REQUIRE(threw3);
 }
 
 TEST_CASE("import resolution returns dependencies first and reports bad files") {

@@ -4,8 +4,8 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("n
 const {execFileSync,spawnSync}=require("node:child_process");
 const {decodePng}=require("./png.js");
 const {replaceFloatConstants}=require("./vector-conformance.js");
-const {sections,instructions}=require("./sampler-conformance.js");
 const reference=require("./noise-v09-reference.js");
+const {instructions,outputBits,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../..");
 const opcodes={cell2:0xdf,cell_id:0xe0,warp_vec:0xe1,fbm:0xe2};
 const mnemonics={cell2:"noise.cell2",cell_id:"noise.cell_id",warp_vec:"noise.warp_vec",fbm:"noise.fbm_config"};
@@ -67,7 +67,7 @@ function run(iprop,tool,directory) {
         const image=decodePng(fs.readFileSync(base+".png"));
         if(iprop) {
             const wasm=iprop.generate(new Uint8Array(bytes),{seed});
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:["point","rect","circle"][s.kind],list:s.isList,values:s.valueBits})),native.outputs,"noise native/WASM output bits");
+            assert.deepEqual(outputBits(wasm.outputs),native.outputs,"noise native/WASM output bits");
             assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"noise native/WASM pixels");
         }
         ++generations;return native.outputs;

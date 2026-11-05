@@ -3,6 +3,7 @@ const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("n
 const {execFileSync,spawnSync}=require("node:child_process");
 const {decodePng}=require("./png.js");
 const reference=require("../../../tests/reference/contours-reference.js");
+const {outputBits}=require("./harness.js");
 const fixture=path.resolve(__dirname,"../../../tests/fixtures/contours-v0.9.json");
 const digest=d=>crypto.createHash("sha256").update(JSON.stringify(d)).digest("hex");
 function argumentsOf(c,budget=1e9,occupied=0){return [c.pixels[0].length,c.pixels.length,Buffer.from(c.pixels.flat()).toString("hex"),
@@ -29,7 +30,7 @@ function run(iprop,tool,directory,probes={}){
         assert.deepEqual([...image.data.slice(0,4)],[17,34,51,255]);
         assert([...image.data.slice(4)].every(x=>x===0),"contour does not paint its source or geometry");
         if(iprop){const wasm=iprop.generate(new Uint8Array(bytes),{seed:26});
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:["point","rect","circle"][s.kind],list:s.isList,values:s.valueBits})),native.outputs,"contour public native/WASM execution and RNG");
+            assert.deepEqual(outputBits(wasm.outputs),native.outputs,"contour public native/WASM execution and RNG");
             assert.deepEqual([...wasm.data],[...image.data],"entire canvas, including untouched pixels");}
         ++generations;return native.outputs;
     }
@@ -82,7 +83,7 @@ function run(iprop,tool,directory,probes={}){
         reject(compile("asset t{size 1x1 draw{layer l{pixel(0,0,#fff)} m=mask.offset(mask.from(l),2147483647,0) contour(m,0.5)}}"),/collapses/);
         for(const op of ["contour","contour.config"]){
             const dead=assemble(`meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\n${op}\ndrop\nendfn\n`);
-            const {sections}=require("./sampler-conformance.js"),code=sections(dead).get(3),id=op==="contour"?0xee:0xef;
+            const {sections}=require("./harness.js"),code=sections(dead).get(3),id=op==="contour"?0xee:0xef;
             let at=-1;for(let i=code;i<dead.length-3;++i)if(dead[i]===id&&dead[i+1]===0&&dead[i+2]===0&&dead[i+3]===0){at=i;break;}assert(at>=0);
             for(const delta of [1,2,3]){const bad=Buffer.from(dead);bad[at+delta]=1;reject(bad,/aux|operand|zero|reserved/,true);}
         }

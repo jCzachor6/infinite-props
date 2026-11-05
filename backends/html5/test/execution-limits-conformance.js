@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path"), os = require("node:os");
 const {execFileSync} = require("node:child_process");
 const {Worker} = require("node:worker_threads");
-const {sections, instructions} = require("./sampler-conformance.js");
+const {instructions,sections}=require("./harness.js");
 const repo = path.resolve(__dirname, "../../..");
 const cases = JSON.parse(fs.readFileSync(path.join(repo,"backends/test/execution-limits-v0.9.json"))).cases;
 function hash(bytes) {
@@ -107,12 +107,6 @@ async function workerCancellation(iprop,tool,directory) {
     }
 }
 module.exports={run,workerCancellation};
-if(require.main===module) {
-    (async()=>{
-        const build=path.resolve(process.argv[2]),tools=path.resolve(process.argv[3]);
-        const Module=await require(path.join(build,"iprop.js"))();
-        const iprop=await require("../js/api.js")(()=>Promise.resolve(Module)).create();
-        const tool=name=>path.join(tools,name+(process.platform==="win32"?".exe":""));
-        console.log(JSON.stringify({...run(iprop,tool),worker:await workerCancellation(iprop,tool)},null,2));
-    })().catch(error=>{console.error(error);process.exitCode=1;});
-}
+if(require.main===module){const tools=path.resolve(process.argv[2]),tool=name=>path.join(tools,name+(process.platform==="win32"?".exe":""));
+    const result=run(null,tool,undefined,{native:process.argv[3]});assert.equal(result.boundaries,cases.length,"every pipeline has an exact C work boundary");
+    console.log(JSON.stringify(result));}

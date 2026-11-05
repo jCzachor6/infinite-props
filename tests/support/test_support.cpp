@@ -59,6 +59,18 @@ void appendZeros(std::vector<u8>& bytes, std::size_t n) {
     bytes.insert(bytes.end(), n, 0);
 }
 
+void patch16(std::vector<u8>& bytes, std::size_t at, u16 value) {
+    bytes.at(at) = static_cast<u8>(value); bytes.at(at + 1) = static_cast<u8>(value >> 8);
+}
+
+void patch32(std::vector<u8>& bytes, std::size_t at, u32 value) {
+    for (unsigned i = 0; i < 4; ++i) bytes.at(at + i) = static_cast<u8>(value >> (8 * i));
+}
+
+void append(std::vector<u8>& body, std::initializer_list<std::vector<u8>> instructions) {
+    for (const auto& instruction : instructions) body.insert(body.end(), instruction.begin(), instruction.end());
+}
+
 std::vector<u8> constSection(const std::vector<std::string>& strings,
                              const std::vector<i32>& ints,
                              const std::vector<f32>& floats,

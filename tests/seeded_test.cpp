@@ -335,16 +335,10 @@ TEST_CASE("call frames share the caller's stream like a reference (spec §8.2)")
     // units — they must be u1 and u2, proving the helper's advances
     // propagated back to the caller.
     std::vector<u8> drawBody;
-    for (const auto b : ins(0x10, 0, 0)) drawBody.push_back(b); // const.i32 1
-    for (const auto b : ins(0x60, 0, 0)) drawBody.push_back(b); // stream.push
-    for (const auto b : ins(0x08, 0, 1)) drawBody.push_back(b); // call 1
-    for (const auto b : ins(0x16, 0, 0)) drawBody.push_back(b); // drop (u0)
-    for (const auto b : ins(0x62, 0, 0)) drawBody.push_back(b); // unit → u1
-    for (const auto b : ins(0x62, 0, 0)) drawBody.push_back(b); // unit → u2
+    append(drawBody, {ins(0x10, 0, 0), ins(0x60, 0, 0), ins(0x08, 0, 1), ins(0x16, 0, 0), ins(0x62, 0, 0), ins(0x62, 0, 0)}); // const.i32 1; stream.push; call 1; drop (u0); unit → u1; unit → u2
 
     std::vector<u8> helperBody;
-    for (const auto b : ins(0x62, 0, 0)) helperBody.push_back(b); // unit
-    for (const auto b : ins(0x09, 0, 0)) helperBody.push_back(b); // return
+    append(helperBody, {ins(0x62, 0, 0), ins(0x09, 0, 0)}); // unit; return
 
     const auto funcs = std::vector<FuncSpec>{
         {0, {0, 0}, {}, {}, drawBody},

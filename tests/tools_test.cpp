@@ -64,14 +64,7 @@ std::vector<u8> fixtureFile() {
     const auto meta = metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0,
                                   {{0, 1, {10, 20, 30, 255}, 0, 0}}, {{0, 0, 2}});
     std::vector<u8> body;
-    for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (x)
-    for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (y)
-    for (const auto b : ins(0x13, 0, 0)) body.push_back(b); // local.get 2 (palette)
-    for (const auto b : ins(0x80, 0, 0)) body.push_back(b); // pixel
-    for (const auto b : ins(0x11, 0, 0)) body.push_back(b); // const.f32 1
-    for (const auto b : ins(0x11, 0, 1)) body.push_back(b); // const.f32 2
-    for (const auto b : ins(0x90, 0, 0)) body.push_back(b); // out.point 0
-    for (const auto b : retIns()) body.push_back(b);
+    append(body, {ins(0x10, 0, 1), ins(0x10, 0, 1), ins(0x13, 0, 0), ins(0x80, 0, 0), ins(0x11, 0, 0), ins(0x11, 0, 1), ins(0x90, 0, 0), retIns()}); // const.i32 1 (x); const.i32 1 (y); local.get 2 (palette); pixel; const.f32 1; const.f32 2; out.point 0
 
     const auto pool = constSection({"draw", "palette", "anchor"}, {0, 1}, {1.f, 2.f}, {});
     return fullFile(meta, pool, codeSection({{0, {2}, {}, {}, body}}, {}));

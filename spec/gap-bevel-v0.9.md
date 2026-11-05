@@ -144,7 +144,7 @@ allocation. The final [work limits](execution-limits-v0.9.md) and
 Historical checkpoint evidence follows; current versions, host support and
 tariffs are defined by [the frozen contract set](iprop-v0.9.md).
 
-[Frozen vectors](../tests/fixtures/gap-bevel-v0.9.json) pin 47 complete records:
+[Frozen vectors](../tests/fixtures/gap-bevel-v0.9.json) pin the SHA-256 of 47 complete records:
 input/result points, rings, moments, provenance, IDs, neighbors, mask, optional
 RGBA layer, operation fuel, retained bytes and complete release of scratch.
 They are first-implementation regression pins, rather than a second exact mesh

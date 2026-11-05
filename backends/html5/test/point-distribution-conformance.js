@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs"), path = require("node:path");
 const {execFileSync, spawnSync} = require("node:child_process");
 const {decodePng} = require("./png.js");
-const {sections, instructions} = require("./sampler-conformance.js");
+const {instructions,outputBits,sections}=require("./harness.js");
 function hash(x) { x ^= x >>> 16; x = Math.imul(x,0x7feb352d); x ^= x >>> 15; x = Math.imul(x,0x846ca68b); return (x ^ (x >>> 16)) >>> 0; }
 function bits(value) { const b=Buffer.alloc(4); b.writeFloatLE(value); return b.readUInt32LE(); }
 function run(iprop, tool, directory) {
@@ -16,7 +16,7 @@ function run(iprop, tool, directory) {
     function generate(binary,seed) {
         const png=base+".png",native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits","-o",png],{encoding:"utf8"}));
         const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed});
-        const outputs=wasm.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+        const outputs=outputBits(wasm.outputs);
         assert.deepEqual(outputs,native.outputs,"point distribution output bits");
         assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"point distribution RGBA");
         ++comparisons; return native.outputs;

@@ -5,29 +5,9 @@ const fs=require("node:fs");
 const path=require("node:path");
 const crypto=require("node:crypto");
 const {decodePng}=require("./png.js");
+const {canonical,instructions,outputBits,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../..");
 const sha=data=>crypto.createHash("sha256").update(data).digest("hex");
-function canonical(value){
-    if(Array.isArray(value))return value.map(canonical);
-    if(value && typeof value==="object")return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
-    return value;
-}
-function sections(data){
-    const result=new Map();
-    for(let i=0;i<data.readUInt32LE(12);++i)result.set(data.readUInt32LE(20+i*12),data.readUInt32LE(24+i*12));
-    return result;
-}
-function instructions(data){
-    const start=sections(data).get(3), functions=[];let at=start+4;
-    function type(){const value=data[at++];if(value===0x80)at+=2;}
-    for(let i=0;i<data.readUInt32LE(start);++i){
-        functions.push({offset:data.readUInt32LE(at+4),length:data.readUInt32LE(at+8)});at+=12;
-        for(let slot=0;slot<3;++slot){const count=data.readUInt16LE(at);at+=2;for(let n=0;n<count;++n)type();}
-    }
-    const end=functions.at(-1).offset+functions.at(-1).length;
-    assert.equal(data.readUInt32LE(at+end),0,"sampler fixture has no parts");
-    return functions.flatMap(fn=>Array.from({length:fn.length/4},(_,i)=>at+fn.offset+4*i));
-}
 function run(iprop,tool,directory){
     const base=path.join(directory,"sampler"), seeds=[0,1,7,26,0xffffffff];
     let comparisons=0,traps=0,rejections=0;
@@ -40,13 +20,13 @@ function run(iprop,tool,directory){
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const image=decodePng(fs.readFileSync(png));
         const wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...size});
-        const outputs=wasm.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+        const outputs=outputBits(wasm.outputs);
         assert.deepEqual(outputs,native.outputs,"sampler output bits");
         assert.equal(wasm.width,image.width);assert.equal(wasm.height,image.height);
         assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"sampler RGBA");++comparisons;
         return {rgba_sha256:sha(image.data),outputs_sha256:sha(JSON.stringify(canonical(native.outputs)))};
     }
-    const frozen=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/frozen-format-v0.6-stage3.json"),"utf8"));
+    const frozen=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/legacy-oracles-v0.6.json"),"utf8"));
     const oracle=frozen.cases.find(entry=>entry.source==="inline:sampler-runtime-reference");
     for(const optimized of [false,true])for(const debug of [false,true])for(const compressed of [false,true]){
         const flags=[...(optimized?[]:["--no-opt"]),debug?"--debug":"--strip",compressed?"--compress":"--no-compress"];
@@ -158,4 +138,4 @@ function run(iprop,tool,directory){
     generate(binary,26);
     return {comparisons,traps,rejections};
 }
-module.exports={run,sections,instructions};
+module.exports={run};

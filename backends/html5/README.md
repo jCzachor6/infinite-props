@@ -14,7 +14,9 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
 | `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/plant) with a Regenerate button |
 | `demo/assets/noise.ips` | the seed-varying noise demo; composed plant sources live in `examples/` |
-| `test/conformance.js` | the shared conformance suite (browser + Node) |
+| `test/conformance.js` | the golden conformance suite with pinned FNV-1a hashes |
+| `test/harness.js` | pure helpers shared by the conformance scripts (sections, instructions, output bits) |
+| `test/oracle.js` | expected values computed at test time by the independent Python oracles |
 | `test/run-tests.js` | the Node test runner |
 | `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
 | `test/png.js` | RGBA8 PNG decoder for native comparisons; regression tests cover all five row filters |
@@ -53,7 +55,7 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
   its pot and flower parts; the noise uses `demo/assets/noise.ips`. Both
   vary with the seed (the noise golden fixture is seed-independent).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
-  runs the seven browser golden entries, verifies their FNV-1a pins against
+  runs the seven golden entries, verifies their FNV-1a pins against
   fresh native renders and the committed golden PNGs, and compares every
   RGBA byte and structured output across both backends. It also compiles
   the loop regression, noise, shapes, portrait, plant, language, math edges,

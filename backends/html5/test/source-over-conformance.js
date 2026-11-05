@@ -3,9 +3,9 @@ const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const {execFileSync,spawnSync}=require("node:child_process");
 const {decodePng}=require("./png.js");
-const {sections,instructions}=require("./sampler-conformance.js");
+const {instructions,outputBits:slotBits,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../.."),sha=data=>crypto.createHash("sha256").update(data).digest("hex");
-const outputBits=result=>result.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+const outputBits=result=>slotBits(result.outputs);
 
 function run(iprop,tool,directory) {
     const base=path.join(directory,"source-over"),seeds=[0,1,7,26,0xffffffff];
@@ -44,11 +44,11 @@ function run(iprop,tool,directory) {
     const grid=compile("asset t{size 256x256 draw{layer image(alpha=surface.source_over){for y in 0..256{for x in 0..256{pixel(x,y,rgba(201,4,172,y))pixel(x,y,rgba(17,213,88,x))}}}surface.paint(image,blend=surface.source_over)}}",false,"-grid");
     fs.writeFileSync(base+".ipa",execFileSync(tool("ipdis"),[grid],{encoding:"utf8"}).replace(/fuel=\d+/,"fuel=10000000"));
     execFileSync(tool("ipa"),[base+".ipa","-o",base+"-grid-full.iprop"]);
-    assert.deepEqual(generate(base+"-grid-full.iprop").data,fs.readFileSync(path.join(repo,"tests/fixtures/source-over-v0.6.rgba")));++pins;
+    assert.deepEqual(generate(base+"-grid-full.iprop").data,Buffer.from(require("./oracle.js").oracle("check_source_over_reference.py").rgba_base64,"base64"));++pins;
 
     // Opaque stage-8 part pins freeze mapping, clipping, scales and raw outputs.
     // Applying half-alpha to those disjoint pixels gives the independent oracle.
-    const frozen=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/frozen-format-v0.6-stage8.json"),"utf8"));
+    const frozen=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/legacy-oracles-v0.6.json"),"utf8"));
     const part=frozen.cases.find(c=>c.source.endsWith("opaque-part-mapping-oracle"));
     const tree=path.join(directory,"source-over-tree");fs.mkdirSync(tree);
     for(const opt of [false,true]) {

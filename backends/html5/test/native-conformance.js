@@ -313,7 +313,7 @@ function run(iprop, toolsDir, geometryProbes = {}) {
                     {x: 0x3f800000, y: 0x3f800000}, {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0}
                 ], label + ": constant exact integers and normalization pins");
                 const baseline = JSON.parse(fs.readFileSync(path.join(repo,
-                    "tests/fixtures/frozen-format-v0.6-stage1.json"), "utf8")).cases[1];
+                    "tests/fixtures/legacy-oracles-v0.6.json"), "utf8")).cases.find(c => c.source === "inline runtime reference");
                 const expected = baseline.generations.find(g => g.seed === seed);
                 if (expected) assert.deepEqual(result.outputs, expected.outputs,
                     label + ": preserved runtime constructor outputs and RNG state");

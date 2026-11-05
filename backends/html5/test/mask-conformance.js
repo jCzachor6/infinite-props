@@ -3,10 +3,9 @@ const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { decodePng } = require("./png.js");
-const { instructions, sections } = require("./sampler-conformance.js");
+const {instructions,outputBits:slotBits,sections}=require("./harness.js");
 const repo = path.resolve(__dirname, "../../..");
-const outputBits = result => result.outputs.map(slot => ({ name: slot.name,
-    kind: ["point", "rect", "circle"][slot.kind], list: slot.isList, values: slot.valueBits }));
+const outputBits=result=>slotBits(result.outputs);
 const bits = value => { const bytes = Buffer.alloc(4); bytes.writeFloatLE(value); return bytes.readUInt32LE(); };
 
 function run(iprop, tool, directory) {
@@ -36,7 +35,7 @@ function run(iprop, tool, directory) {
         execFileSync(tool("ipa"), [assembly, "-o", result]); return result;
     }
     // Full image pins come only from the independent rational/disk oracle.
-    const reference = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/masks-v0.6.json"), "utf8"));
+    const reference = require("./oracle.js").oracle("check_mask_reference.py");
     for (const expected of reference.cases) for (const opt of [false, true]) for (const debug of [false, true]) for (const compressed of [false, true]) {
         const binary = compile(expected.source, opt, "-oracle", [debug ? "--debug" : "--strip", compressed ? "--compress" : "--no-compress"]);
         for (const seed of seeds) {
@@ -56,11 +55,11 @@ function run(iprop, tool, directory) {
         "first=mask.from(firstImage)second=mask.from(secondImage)third=mask.from(thirdImage)" +
         "layer image(alpha=surface.source_over){clip(first){clip(second){clip(third){for y in 0..256{for x in 0..256{pixel(x,y,rgba(37,149,213,173))}}}}}}" +
         "surface.paint(image,blend=surface.source_over)}}", false, "-grid");
-    assert.deepEqual(generate(fuelLimit(grid, 20000000)).rgba, fs.readFileSync(path.join(repo, "tests/fixtures/clip-coverage-v0.6.rgba"))); ++pins;
+    assert.deepEqual(generate(fuelLimit(grid, 20000000)).rgba, Buffer.from(reference.clip_grid_base64, "base64")); ++pins;
 
     // Preserved opaque geometry determines positions; color identifies owner
     // depth, so independently assigning 128/64/32 alpha tests each blit once.
-    const frozen = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/frozen-format-v0.6-stage8.json"), "utf8"));
+    const frozen = JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures/legacy-oracles-v0.6.json"), "utf8"));
     const part = frozen.cases.find(c => c.source.endsWith("opaque-part-mapping-oracle"));
     const tree = path.join(directory, "mask-tree"); fs.mkdirSync(tree);
     for (const opt of [false, true]) {

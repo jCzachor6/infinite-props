@@ -5,9 +5,8 @@ import base64
 from fractions import Fraction
 import hashlib
 import json
-from pathlib import Path
+import sys
 
-ROOT = Path(__file__).resolve().parent.parent
 
 
 def rounded(value):
@@ -98,11 +97,16 @@ def reference():
             'cases':cases}
 
 
+# Pins the oracle itself: a change here must be reviewed, never regenerated blindly.
+REFERENCE_SHA256 = 'a5807defe570d260d6ed5a3356ae750091251b070d2402c21583589fcb556a26'
+
+
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--write',action='store_true');args=parser.parse_args()
-    path=ROOT/'tests/fixtures/resource-exports-v0.6.json';expected=reference()
-    if args.write: path.write_text(json.dumps(expected,indent=2)+'\n')
-    assert json.loads(path.read_text())==expected, 'resource export reference differs from independent oracle'
+    parser=argparse.ArgumentParser();parser.add_argument('--print',action='store_true');args=parser.parse_args()
+    expected=reference()
+    if args.print: json.dump(expected,sys.stdout);return
+    canonical=json.dumps(expected,sort_keys=True,separators=(',',':')).encode()
+    assert hashlib.sha256(canonical).hexdigest()==REFERENCE_SHA256, 'resource export oracle changed'
     print(f'Resource export reference: {len(expected["cases"])} trees, 216 full images, 64 D4 pairs, three host scales')
 
 

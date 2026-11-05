@@ -2,6 +2,7 @@
 #include "support/contour_fixture.hpp"
 #include "iprop/VmInternals.hpp"
 #include <cstdio>
+using namespace fault_injection;
 
 int main() {
     using namespace iprop;

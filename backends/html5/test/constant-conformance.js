@@ -5,11 +5,8 @@ const {execFileSync} = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const {decodePng} = require("./png.js");
+const {outputBits}=require("./harness.js");
 
-function outputBits(outputs) {
-    return outputs.map(slot => ({name: slot.name, kind: ["point", "rect", "circle"][slot.kind],
-        list: slot.isList, values: slot.valueBits}));
-}
 
 function run(iprop, tool, directory) {
     const catalogue = JSON.parse(execFileSync(tool("ipc"), ["--describe-language"], {encoding:"utf8"}));

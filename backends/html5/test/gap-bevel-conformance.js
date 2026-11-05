@@ -1,7 +1,8 @@
 "use strict";
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
-const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js'),{instructions}=require('./sampler-conformance.js');
+const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js');
 const reference=require('../../../tests/reference/gap-bevel-reference.js');
+const {instructions,outputBits}=require("./harness.js");
 const fixture=path.resolve(__dirname,'../../../tests/fixtures/gap-bevel-v0.9.json');
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const numeric=n=>Math.fround(n).toString(),vector=p=>'{'+p.map(numeric).join(',')+'}';
@@ -53,7 +54,7 @@ function expectedPixels(record,width,height,mode){const frame=record.layer||reco
 function run(iprop,tool,directory,probes={}){
     const owned=!directory;if(owned)directory=fs.mkdtempSync(path.join(os.tmpdir(),'iprop-gap-bevel-'));
     const base=path.join(directory,'gap-bevel'),corpus=JSON.parse(fs.readFileSync(fixture));
-    const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/gap_bevel_probe'+(process.platform==='win32'?'.exe':'')),hasNative=fs.existsSync(nativeProbe);
+    const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/gap_bevel_probe'+(process.platform==='win32'?'.exe':''));assert(fs.existsSync(nativeProbe),'build the native gap_bevel_probe target: complete records come only from it');const hasNative=true;
     const native=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe'});
     let generations=0,topologies=0,traps=0,rejections=0,compilerErrors=0;const resourceBoundaries=[];
     function compile(text,flags=[]){fs.writeFileSync(base+'.ips',text);native('ipc',[base+'.ips',...flags,'-o',base+'.iprop']);return fs.readFileSync(base+'.iprop');}
@@ -66,7 +67,7 @@ function run(iprop,tool,directory,probes={}){
             assert.equal(result.fuel.spent,scene.fuel);assert.deepEqual([image.width,image.height],scene.size);}
         if(record)assert.deepEqual([...image.data],expectedPixels(record,image.width,image.height,mode),'independent layer/mask paint and existing composition');
         if(iprop){const wasm=iprop.generate(new Uint8Array(bytes),options);assert.deepEqual([...wasm.data],[...image.data],'gap/bevel whole native/WASM canvas');
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:['point','rect','circle'][s.kind],list:s.isList,values:s.valueBits})),result.outputs,'gap/bevel metadata and RNG');}
+            assert.deepEqual(outputBits(wasm.outputs),result.outputs,'gap/bevel metadata and RNG');}
         generations++;return result.outputs;
     }
     function reject(bytes,message,validation=false){fs.writeFileSync(base+'.iprop',bytes);fs.rmSync(base+'-failed.png',{force:true});
@@ -79,8 +80,8 @@ function run(iprop,tool,directory,probes={}){
         for(const scene of corpus.scenes)generate(compile(fs.readFileSync(path.resolve(__dirname,'../../..',scene.source),'utf8')),{seed:scene.seed},null,'layer',scene);
         let publicVectors=0;
         for(const c of corpus.cases){
-            const record=hasNative?JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c))):c.record;
-            reference.check(c,record);assert.equal(digest(record),c.record_sha256,c.name+' complete regression record');if(hasNative)topologies++;
+            const record=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c)));
+            reference.check(c,record);assert.equal(digest(record),c.record_sha256,c.name+' complete regression record');topologies++;
             if(probes.wasm){const wasm=JSON.parse(execFileSync(process.execPath,[probes.wasm,...reference.argumentsOf(c)]));assert.deepEqual(wasm,record,c.name+' complete WASM record');}
             if(c.profileCheck){const shared=record.source.edges.findIndex(e=>{const a=record.source.points[e[0]].map(reference.value),b=record.source.points[e[1]].map(reference.value);return a[0]===8&&b[0]===8;});
                 const profile=reference.profile(record.source,shared,c.width,c.variation,c.seed);
@@ -121,8 +122,8 @@ function run(iprop,tool,directory,probes={}){
         for(const body of['regions.gap(1,1)',setup+'regions.gap(rs,1,0.5)',setup+'regions.gap(rs,width=1,unknown=0,seed=7)',setup+'regions.bevel(rs,1)',setup+'regions.bevel(rs,1,{1,1},#fff)',setup+'regions.bevel(rs,1,1)',setup+'regions.bevel(rs,1,{1,1},1,#000,1)']){
             fs.writeFileSync(base+'.ips',`asset t{size 8x6 draw{${body}}}`);const r=spawnSync(tool('ipc'),[base+'.ips','--check'],{encoding:'utf8'});assert.equal(r.status,1,r.stderr);compilerErrors++;
         }
-        if(hasNative)for(const name of['rectangle-variable','hole-variable','diagram-scaled']){
-            const c=corpus.cases.find(c=>c.name===name),normal=c.record,probe=(budget,occupied,wasm=false)=>spawnSync(wasm?process.execPath:nativeProbe,[...(wasm?[probes.wasm]:[]),...reference.argumentsOf(c,budget,occupied)],{encoding:'utf8'});
+        for(const name of['rectangle-variable','hole-variable','diagram-scaled']){
+            const c=corpus.cases.find(c=>c.name===name),normal=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c))),probe=(budget,occupied,wasm=false)=>spawnSync(wasm?process.execPath:nativeProbe,[...(wasm?[probes.wasm]:[]),...reference.argumentsOf(c,budget,occupied)],{encoding:'utf8'});
             let lo=0,hi=64*1024*1024-normal.sourceBytes;
             while(lo+1<hi){const mid=Math.floor((lo+hi)/2),r=probe(1e9,mid);if(r.status===0)lo=mid;else{assert.equal(r.status,4);assert.match(r.stderr,/64 MiB/);hi=mid;}}
             for(const wasm of probes.wasm?[false,true]:[false]){

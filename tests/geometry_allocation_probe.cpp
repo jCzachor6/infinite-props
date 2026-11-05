@@ -2,6 +2,7 @@
 #include "support/geometry_fixture.hpp"
 #include <cstdio>
 #include <limits>
+using namespace fault_injection;
 
 int main(){
     using namespace iprop;

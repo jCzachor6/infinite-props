@@ -4,9 +4,10 @@
 This oracle does not call the runtime or use its integer implementation.
 The grid covers every source/destination alpha pair with unequal RGB channels.
 """
+import base64
 from fractions import Fraction
 import hashlib
-from pathlib import Path
+import json
 import sys
 
 
@@ -29,15 +30,19 @@ def reference_grid():
                  for channel in source_over((201, 4, 172, ad), (17, 213, 88, a)))
 
 
+# Pins the oracle itself: a change here must be reviewed, never regenerated blindly.
+GRID_SHA256 = 'a011f9f4092fd0ef15253e30cd44a925cde66602b760364bcba1a8dd1450036a'
+
+
 def main():
-    target = Path(__file__).resolve().parent.parent / 'tests/fixtures/source-over-v0.6.rgba'
+    args = sys.argv[1:]
+    assert args in ([], ['--print']), 'usage: check_source_over_reference.py [--print]'
     expected = reference_grid()
-    if sys.argv[1:] == ['--write']:
-        target.write_bytes(expected)
-    else:
-        assert not sys.argv[1:], 'usage: check_source_over_reference.py [--write]'
-        assert target.read_bytes() == expected, 'RGBA8 reference differs from exact rational oracle'
-    print('Source-over reference: 65,536 alpha pairs, SHA256 ' + hashlib.sha256(expected).hexdigest())
+    if args:
+        json.dump({'rgba_base64': base64.b64encode(expected).decode()}, sys.stdout)
+        return
+    assert hashlib.sha256(expected).hexdigest() == GRID_SHA256, 'rational source-over oracle changed'
+    print('Source-over reference: 65,536 alpha pairs, SHA256 ' + GRID_SHA256)
 
 
 if __name__ == '__main__':

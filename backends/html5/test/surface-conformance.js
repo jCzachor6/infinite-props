@@ -4,18 +4,14 @@ const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const crypto = require("node:crypto"), {execFileSync, spawnSync} = require("node:child_process");
 const {decodePng} = require("./png.js");
-const {sections, instructions} = require("./sampler-conformance.js");
+const {canonical,instructions,outputBits,sections}=require("./harness.js");
 const repo = path.resolve(__dirname,"../../..");
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
-const bits = result => result.outputs.map(slot => ({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
-function canonical(value) {
-    if(Array.isArray(value)) return value.map(canonical);
-    return value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])) : value;
-}
+const bits = result => outputBits(result.outputs);
 function run(iprop,tool,directory) {
     const base=path.join(directory,"surfaces"), seeds=[0,1,7,26,0xffffffff];
     let comparisons=0,traps=0,rejections=0,pins=0;
-    const preserved=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/frozen-format-v0.6-stage7.json"),"utf8"));
+    const preserved=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/legacy-oracles-v0.6.json"),"utf8"));
     const panel=preserved.cases.find(c=>c.source.endsWith("direct-panel-reference"));
     function compile(source,opt=true,suffix="") {
         const input=base+suffix+".ips",binary=base+suffix+".iprop";fs.writeFileSync(input,source);

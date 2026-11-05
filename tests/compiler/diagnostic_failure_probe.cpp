@@ -2,47 +2,19 @@
 // fault flag. Allocation faults must never leave partial JSON on stdout.
 #include <cstdlib>
 #include <cstdio>
-#include <new>
 
-namespace {
-bool faultArmed=false, persistentFault=false;
-std::size_t allocationIndex=0, failAt=0;
-}
-
-// The replacements below pair malloc/free; GCC sees free() on memory from
-// the replaced operator new after inlining and warns about a mismatch.
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
-#endif
-void* operator new(std::size_t size) {
-    if (faultArmed && allocationIndex++ >= failAt) {
-        if (!persistentFault) faultArmed=false;
-        throw std::bad_alloc();
-    }
-    if (void* pointer=std::malloc(size ? size : 1)) return pointer;
-    throw std::bad_alloc();
-}
-void* operator new[](std::size_t size) { return ::operator new(size); }
-void operator delete(void* pointer) noexcept { std::free(pointer); }
-void operator delete[](void* pointer) noexcept { std::free(pointer); }
-void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
-void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
+#include "../support/fault_injection.hpp"
 
 #define main ipropActualCompilerMain
 #include "../../tools/ipc.cpp"
 #undef main
+using namespace fault_injection;
 
 int main(int argc, char* argv[]) {
     if (const auto* value=std::getenv("IPROP_DIAGNOSTIC_FAIL_AT")) {
-        failAt=std::strtoull(value,nullptr,10);
-        persistentFault=std::getenv("IPROP_DIAGNOSTIC_FAIL_PERSIST")!=nullptr;
-        faultArmed=true;
+        arm(std::strtoull(value,nullptr,10),std::getenv("IPROP_DIAGNOSTIC_FAIL_PERSIST")!=nullptr);
     }
     const int status=ipropActualCompilerMain(argc,argv);
-    if (std::getenv("IPROP_DIAGNOSTIC_MEASURE")) std::fprintf(stderr,"%zu\n",allocationIndex);
+    if (std::getenv("IPROP_DIAGNOSTIC_MEASURE")) std::fprintf(stderr,"%zu\n",allocations);
     return status;
 }

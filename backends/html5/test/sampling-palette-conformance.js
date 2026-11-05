@@ -3,14 +3,9 @@ const assert=require("node:assert/strict");
 const {execFileSync,spawnSync}=require("node:child_process");
 const fs=require("node:fs"),path=require("node:path"),crypto=require("node:crypto");
 const {decodePng}=require("./png.js");
-const {sections,instructions}=require("./sampler-conformance.js");
+const {canonical,instructions,outputBits,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../..");
 const sha=data=>crypto.createHash("sha256").update(data).digest("hex");
-function canonical(value){
-    if(Array.isArray(value))return value.map(canonical);
-    if(value && typeof value==="object")return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
-    return value;
-}
 function replaceSections(original,replacements){
     const entries=[];
     for(let i=0;i<original.readUInt32LE(12);++i){
@@ -34,12 +29,12 @@ function run(iprop,tool,directory){
         const png=base+".png",flags=size.sizeX?["--size",`${size.sizeX}x${size.sizeY}`]:[];
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const image=decodePng(fs.readFileSync(png)),wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...size});
-        const outputs=wasm.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+        const outputs=outputBits(wasm.outputs);
         assert.deepEqual(outputs,native.outputs,"palette output bits");assert.equal(wasm.width,image.width);assert.equal(wasm.height,image.height);
         assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"palette RGBA");++comparisons;
         return {rgba_sha256:sha(image.data),outputs_sha256:sha(JSON.stringify(canonical(native.outputs)))};
     }
-    const fixture=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/frozen-format-v0.6-stage4.json"),"utf8"));
+    const fixture=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/legacy-oracles-v0.6.json"),"utf8"));
     const oracle=fixture.cases.find(entry=>entry.source==="inline:sampling-palette-runtime-reference");
     for(const optimized of [false,true])for(const debug of [false,true])for(const compressed of [false,true]){
         const binary=base+"-example.iprop",flags=[...(optimized?[]:["--no-opt"]),debug?"--debug":"--strip",compressed?"--compress":"--no-compress"];

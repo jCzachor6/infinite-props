@@ -1,7 +1,8 @@
 "use strict";
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
-const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js'),{instructions}=require('./sampler-conformance.js');
+const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js');
 const reference=require('../../../tests/reference/regions-reference.js');
+const {instructions,outputBits}=require("./harness.js");
 const fixture=path.resolve(__dirname,'../../../tests/fixtures/regions-v0.9.json');
 const digest=v=>crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const numeric=n=>Math.fround(n).toString(),vector=p=>'{'+p.map(numeric).join(',')+'}';
@@ -39,7 +40,7 @@ function expectedTrace(record,control){
 function run(iprop,tool,directory,probes={}){
     const owned=!directory;if(owned)directory=fs.mkdtempSync(path.join(os.tmpdir(),'iprop-regions-'));
     const base=path.join(directory,'regions'),corpus=JSON.parse(fs.readFileSync(fixture));
-    const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/regions_probe'+(process.platform==='win32'?'.exe':'')),hasNative=fs.existsSync(nativeProbe);
+    const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/regions_probe'+(process.platform==='win32'?'.exe':''));assert(fs.existsSync(nativeProbe),'build the native regions_probe target: complete records come only from it');const hasNative=true;
     let generations=0,topologies=0,traps=0,rejections=0,compilerErrors=0;const resourceBoundaries=[];
     const nativeRun=(name,args)=>execFileSync(tool(name),args,{encoding:'utf8',stdio:'pipe'});
     function compile(text,flags=[]){fs.writeFileSync(base+'.ips',text);nativeRun('ipc',[base+'.ips',...flags,'-o',base+'.iprop']);return fs.readFileSync(base+'.iprop');}
@@ -56,7 +57,7 @@ function run(iprop,tool,directory,probes={}){
             }assert.deepEqual([...image.data],expected,'public paint/clip reproduces independent mask including off-target bounds');
         }
         if(iprop){const wasm=iprop.generate(new Uint8Array(bytes),options);assert.deepEqual([...wasm.data],[...image.data],'regions native/WASM whole canvas');
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:['point','rect','circle'][s.kind],list:s.isList,values:s.valueBits})),output.outputs,'regions metadata and RNG');}
+            assert.deepEqual(outputBits(wasm.outputs),output.outputs,'regions metadata and RNG');}
         ++generations;return output.outputs;
     }
     function reject(bytes,message,validation=false){
@@ -70,10 +71,9 @@ function run(iprop,tool,directory,probes={}){
         const control=generate(compile('asset t{size 1x1 output list point trace draw{trace={-1,unit()}trace={-2,unit()}}}'))[0].values;
         for(const c of corpus.cases){
             let data;
-            if(hasNative){data=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c)));reference.check(c,data);assert.equal(digest(data),c.geometry_sha256,c.name+' frozen complete record');++topologies;}
-            else {data=c.public_record;if(data){reference.check(c,data);assert.equal(digest(data),c.geometry_sha256);}}
-            if(probes.wasm){const wasm=JSON.parse(execFileSync(process.execPath,[probes.wasm,...reference.argumentsOf(c)]));reference.check(c,wasm);assert.equal(digest(wasm),c.geometry_sha256,c.name+' WASM complete record');if(data)assert.deepEqual(wasm,data);}
-            if(!data||!publicInput(c))continue;records.set(c.name,data);
+            data=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c)));reference.check(c,data);assert.equal(digest(data),c.geometry_sha256,c.name+' frozen complete record');++topologies;
+            if(probes.wasm){const wasm=JSON.parse(execFileSync(process.execPath,[probes.wasm,...reference.argumentsOf(c)]));reference.check(c,wasm);assert.equal(digest(wasm),c.geometry_sha256,c.name+' WASM complete record');assert.deepEqual(wasm,data);}
+            if(!publicInput(c))continue;records.set(c.name,data);
             for(const optimize of[false,true])for(const debug of[false,true])for(const compressed of[false,true]){
                 const flags=[...(optimize?[]:['--no-opt']),debug?'--debug':'--strip',...(compressed?[]:['--no-compress'])],text=source(c,data);
                 const bytes=compile(text,flags),output=generate(bytes,{},data);assert.deepEqual(output[0].values,expectedTrace(data,control),'all public metadata and points');
@@ -82,11 +82,11 @@ function run(iprop,tool,directory,probes={}){
             nativeRun('ipc',[base+'.ips','--format',base+'-formatted.ips','--format-only']);const formatted=fs.readFileSync(base+'-formatted.ips','utf8');assert.deepEqual(generate(compile(formatted),{},data)[0].values,expectedTrace(data,control),'formatter round trip');
             for(const mode of['clip','algebra','creation-in-clip','legacy'])assert.deepEqual(generate(compile(source(c,data,mode)),{},{...data,legacy:mode==='legacy'})[0].values,expectedTrace(data,control));
             if(!c.inset&&!c.minArea)assert.deepEqual(generate(compile(source(c,data,'union',true)),{},data)[0].values,expectedTrace(data,control),'short defaults equal full');
-            if(data.result.regions.length){const selected={...c,maskIndex:0},one=hasNative?JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(selected))):{...data,mask:reference.makeMask(data.result,(c.scale||[1,1]),0)};reference.check(selected,one);
+            if(data.result.regions.length){const selected={...c,maskIndex:0},one=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(selected)));reference.check(selected,one);
                 assert.deepEqual(generate(compile(source(c,data,'single')),{},one)[0].values,expectedTrace(data,control),'single region including holes');}
         }
         for(const c of corpus.cases.filter(v=>v.diagram)){
-            const scaled={...c,scale:[2,3]},original=records.get(c.name),data=hasNative?JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(scaled))):{...original,mask:reference.makeMask(original.result,[2,3])};reference.check(scaled,data);
+            const scaled={...c,scale:[2,3]},data=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(scaled)));reference.check(scaled,data);
             generate(compile(source(c,data)),{sizeX:32,sizeY:36},data);
             if(probes.wasm)assert.deepEqual(JSON.parse(execFileSync(process.execPath,[probes.wasm,...reference.argumentsOf(scaled)])),data);
         }
@@ -94,7 +94,7 @@ function run(iprop,tool,directory,probes={}){
             const moved={...data,mask:{...data.mask,origin:data.mask.origin.map(v=>v-20)}};
             generate(compile(source(c,data).replace('surface.paint(m,','surface.paint(mask.offset(m,-20,-20),')),{},moved);
         }
-        if(hasNative)for(const name of['rectangle-inset','dumbbell-split','hole-inset']){
+        for(const name of['rectangle-inset','dumbbell-split','hole-inset']){
             const c=corpus.cases.find(v=>v.name===name),normal=JSON.parse(execFileSync(nativeProbe,reference.argumentsOf(c)));
             const probe=(budget,occupied,wasm=false)=>spawnSync(wasm?process.execPath:nativeProbe,[...(wasm?[probes.wasm]:[]),...reference.argumentsOf(c,budget,occupied)],{encoding:'utf8'});
             assert.equal(probe(normal.fuel,0).status,0);assert.equal(probe(normal.fuel-1,0).status,4);assert.match(probe(normal.fuel-1,0).stderr,/fuel exhausted/);

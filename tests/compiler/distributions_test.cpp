@@ -26,6 +26,10 @@
 // the spec algorithms.
 
 using namespace iprop;
+using compiler_test::outputPointBits;
+using compiler_test::generateVariant;
+using compiler_test::checkErrorMessage;
+using compiler_test::compileChecked;
 
 namespace {
 constexpr u8 kStreamPush = 0x60, kGaussian = 0xAA, kTriangular = 0xAB, kBeta = 0xAC;
@@ -35,44 +39,10 @@ double relative(double actual, double expected) {
     return expected == 0.0 ? std::fabs(actual) : std::fabs(actual - expected) / std::fabs(expected);
 }
 
-std::vector<u8> compileSource(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-
-GenerationResult generate(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
-    const auto loaded = loadFile(bytes);
-    validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
-    vm.run();
-    return vm.result();
-}
-
 std::vector<f32> xs(const GenerationResult& result, std::size_t output = 0) {
     std::vector<f32> values;
     for (const auto& point : result.outputs.at(output).points) values.push_back(point.x);
     return values;
-}
-
-std::vector<u32> pointBits(const GenerationResult& result) {
-    std::vector<u32> bits;
-    for (const auto& output : result.outputs)
-        for (const auto& point : output.points) {
-            bits.push_back(std::bit_cast<u32>(point.x));
-            bits.push_back(std::bit_cast<u32>(point.y));
-        }
-    return bits;
-}
-
-std::string sourceError(const std::string& source) {
-    try {
-        ips::checkAsset(ips::parse(source), {});
-    } catch (const ips::SourceError& error) {
-        return error.message;
-    }
-    FAIL("expected a source error");
-    return {};
 }
 
 std::string format(const std::string& source) { return ips::formatProgram(ips::parse(source)); }
@@ -229,7 +199,7 @@ TEST_CASE("constructors validate their parameters and draws trap on invalid rang
 
 TEST_CASE("truncated draws follow the distribution, not a clamped one") {
     const auto sample = [](const std::string& setup, const std::string& expression) {
-        return xs(generate(compileSource(drawProgram(setup, expression, 4000), true), 11));
+        return xs(generateVariant(compileChecked(drawProgram(setup, expression, 4000), true), 11));
     };
     // p = 0.001 Kolmogorov-Smirnov bound for 4000 draws.
     constexpr double bound = 1.95 / 63.245553203367585;
@@ -264,7 +234,7 @@ TEST_CASE("truncated draws follow the distribution, not a clamped one") {
 }
 
 TEST_CASE("integer draws round the continuous draw half away from zero") {
-    const auto values = xs(generate(compileSource(drawProgram("d = gaussian(mean=0.0, sigma=2.0)", "-5 to 5 with d", 11000), true), 3));
+    const auto values = xs(generateVariant(compileChecked(drawProgram("d = gaussian(mean=0.0, sigma=2.0)", "-5 to 5 with d", 11000), true), 3));
     std::array<int, 11> counts{};
     for (const f32 v : values) {
         REQUIRE(v == std::round(v));
@@ -279,7 +249,7 @@ TEST_CASE("integer draws round the continuous draw half away from zero") {
     }
     CHECK(chi < 29.59); // p = 0.001, 10 degrees of freedom
     // beta(1, 1) is uniform before rounding: the end values cover half intervals.
-    const auto flat = xs(generate(compileSource(drawProgram("d = beta(alpha=1.0, beta=1.0, min=0.0, max=4.0)", "0 to 4 with d", 8000), true), 5));
+    const auto flat = xs(generateVariant(compileChecked(drawProgram("d = beta(alpha=1.0, beta=1.0, min=0.0, max=4.0)", "0 to 4 with d", 8000), true), 5));
     const auto ends = std::count(flat.begin(), flat.end(), 0.f) + std::count(flat.begin(), flat.end(), 4.f);
     const auto middle = std::count(flat.begin(), flat.end(), 2.f);
     CHECK(std::abs(static_cast<double>(ends) - static_cast<double>(middle)) < 0.15 * middle);
@@ -307,10 +277,10 @@ TEST_CASE("distributions are copied values with runtime parameters") {
   }
 })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileSource(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         CHECK(bytes[6] == 0);
         for (u32 variant = 0; variant < 3; ++variant) {
-            const auto result = generate(bytes, 9, variant);
+            const auto result = generateVariant(bytes, 9, variant);
             const auto& points = result.outputs[0].points;
             REQUIRE(points.size() == 4);
             // The copy kept the mean 8 + v although `center` and `shape` changed later.
@@ -323,10 +293,10 @@ TEST_CASE("distributions are copied values with runtime parameters") {
             CHECK(points[2].x == 0.f);
             CHECK(points[2].y == 0.f);
         }
-        CHECK(pointBits(generate(bytes, 9, 1)) == pointBits(generate(compileSource(source, !optimize), 9, 1)));
+        CHECK(outputPointBits(generateVariant(bytes, 9, 1)) == outputPointBits(generateVariant(compileChecked(source, !optimize), 9, 1)));
     }
     // Two draws with one description are two independent draws.
-    const auto twice = xs(generate(compileSource(drawProgram("d = gaussian(mean=0.0, sigma=3.0)", "-9 to 9 with d", 64), true), 2));
+    const auto twice = xs(generateVariant(compileChecked(drawProgram("d = gaussian(mean=0.0, sigma=3.0)", "-9 to 9 with d", 64), true), 2));
     CHECK(std::adjacent_find(twice.begin(), twice.end(), std::not_equal_to<>()) != twice.end());
 }
 
@@ -351,8 +321,8 @@ TEST_CASE("bounds and then the distribution evaluate once before one draw") {
         INFO(direct);
         for (const bool optimize : {false, true})
             for (const u32 seed : {0u, 7u, 26u})
-                CHECK(pointBits(generate(compileSource(program(direct), optimize), seed)) ==
-                      pointBits(generate(compileSource(program(stored), false), seed)));
+                CHECK(outputPointBits(generateVariant(compileChecked(program(direct), optimize), seed)) ==
+                      outputPointBits(generateVariant(compileChecked(program(stored), false), seed)));
     }
 }
 
@@ -360,13 +330,13 @@ TEST_CASE("invalid dynamic parameters and unassigned distributions trap, even un
     const std::string unused = "asset t { input i32 v = 0  size 1x1 draw { dead = gaussian(mean=0.0, sigma=float(v) - 0.5) } }";
     const std::string unset = "asset t { input i32 v = 0  size 1x1 output point p draw {\n  if (v == 1) { distribution d = gaussian(mean=0.0, sigma=1.0) }\n  p = {0 to 5 with d, 0} } }";
     for (const bool optimize : {false, true}) {
-        CHECK_THROWS_AS(generate(compileSource(unused, optimize), 0, 0), Trap);
-        CHECK_NOTHROW(generate(compileSource(unused, optimize), 0, 1) );
-        CHECK_THROWS_AS(generate(compileSource(unset, optimize), 0, 0), Trap);
-        CHECK_NOTHROW(generate(compileSource(unset, optimize), 0, 1));
+        CHECK_THROWS_AS(generateVariant(compileChecked(unused, optimize), 0, 0), Trap);
+        CHECK_NOTHROW(generateVariant(compileChecked(unused, optimize), 0, 1) );
+        CHECK_THROWS_AS(generateVariant(compileChecked(unset, optimize), 0, 0), Trap);
+        CHECK_NOTHROW(generateVariant(compileChecked(unset, optimize), 0, 1));
     }
     try {
-        generate(compileSource(unset, false), 0, 0);
+        generateVariant(compileChecked(unset, false), 0, 0);
     } catch (const Trap& trap) {
         CHECK(std::string(trap.what()).find("distribution is not initialized") != std::string::npos);
     }
@@ -374,18 +344,18 @@ TEST_CASE("invalid dynamic parameters and unassigned distributions trap, even un
 
 TEST_CASE("distribution types are checked in source") {
     const auto wrap = [](const std::string& body) { return "asset t { size 1x1 output point p draw { " + body + " } }"; };
-    CHECK(sourceError(wrap("x = 0 to 5 with 2.0")) == "'with' needs a distribution, got f32");
-    CHECK(sourceError(wrap("distribution d = 2.0")) == "distribution 'd' needs a distribution, got f32");
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) d = 1.0")) == "local 'd' is distribution, cannot assign f32");
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) x = d + 1")) ==
+    CHECK(checkErrorMessage(wrap("x = 0 to 5 with 2.0")) == "'with' needs a distribution, got f32");
+    CHECK(checkErrorMessage(wrap("distribution d = 2.0")) == "distribution 'd' needs a distribution, got f32");
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) d = 1.0")) == "local 'd' is distribution, cannot assign f32");
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) x = d + 1")) ==
           "arithmetic requires numeric operands, got distribution and i32");
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) e = d x = d == e")).find("distribution") != std::string::npos);
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) p = d")).find("distribution") != std::string::npos);
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) x = float(d)")).find("distribution") != std::string::npos);
-    CHECK(sourceError(wrap("d = gaussian(mean=0.0, sigma=1.0) x = d.sigma")) == "distribution has no components, got '.sigma'");
-    CHECK(sourceError(wrap("d = gaussian(mean=#fff, sigma=1.0)")).find("must be f32, got color") != std::string::npos);
-    CHECK(sourceError(wrap("d = beta(alpha=1.0, beta=1.0, min=0.0)")).find("beta") != std::string::npos);
-    CHECK(sourceError("asset t { size 1x1 input distribution d = 1 draw { } }").find("input type") != std::string::npos);
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) e = d x = d == e")).find("distribution") != std::string::npos);
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) p = d")).find("distribution") != std::string::npos);
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) x = float(d)")).find("distribution") != std::string::npos);
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=0.0, sigma=1.0) x = d.sigma")) == "distribution has no components, got '.sigma'");
+    CHECK(checkErrorMessage(wrap("d = gaussian(mean=#fff, sigma=1.0)")).find("must be f32, got color") != std::string::npos);
+    CHECK(checkErrorMessage(wrap("d = beta(alpha=1.0, beta=1.0, min=0.0)")).find("beta") != std::string::npos);
+    CHECK(checkErrorMessage("asset t { size 1x1 input distribution d = 1 draw { } }").find("input type") != std::string::npos);
 }
 
 TEST_CASE("'with' parses after a range and formats alongside ordinary constructor helpers") {
@@ -411,7 +381,7 @@ TEST_CASE("'with' parses after a range and formats alongside ordinary constructo
         y = (1 to 3 with triangular(min=1.0, peak=2.0, max=3.0)) p = {x, y}
       } })";
     for (const bool optimize : {false, true}) {
-        const auto result = generate(compileSource(old, optimize), 0);
+        const auto result = generateVariant(compileChecked(old, optimize), 0);
         const auto& points = result.outputs[0].points;
         REQUIRE(points.size() == 3);
         CHECK(points[0].x == 3.f);
@@ -425,13 +395,13 @@ TEST_CASE("'with' parses after a range and formats alongside ordinary constructo
     }
     const auto formatted = format(old);
     CHECK(format(formatted) == formatted);
-    CHECK(stripDebug(compileSource(formatted, false)) == stripDebug(compileSource(old, false)));
+    CHECK(stripDebug(compileChecked(formatted, false)) == stripDebug(compileChecked(old, false)));
 }
 
 TEST_CASE("files with distribution slots load like any other file") {
     for (const auto* source : {"asset t { size 1x1 f(d: distribution) -> i32 { return 1 } draw { } }",
                                "asset t { size 1x1 draw { pixel(0, 0, #fff) } }"}) {
-        const auto bytes = compileSource(source, false);
+        const auto bytes = compileChecked(source, false);
         CHECK(bytes[6] == 0);
         CHECK_NOTHROW(validate(loadFile(bytes)));
     }

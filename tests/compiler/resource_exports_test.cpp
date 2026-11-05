@@ -8,12 +8,15 @@
 #include "ips/Printer.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/test_support.hpp"
 
 #include <array>
 #include <map>
 #include <string>
 
 using namespace iprop;
+using test_support::patch16;
+using test_support::patch32;
 namespace {
 using Sources = std::map<std::string, std::string>;
 std::vector<u8> compileExports(const Sources& sources, bool optimize = false) {
@@ -42,8 +45,6 @@ RasterPoint oracle(u8 kind, RasterPoint p, RasterPoint extent) {
     default: return {extent.y-1-p.y,extent.x-1-p.x};
     }
 }
-void set16(std::vector<u8>& bytes, std::size_t at, u16 value) { bytes.at(at)=static_cast<u8>(value);bytes.at(at+1)=static_cast<u8>(value>>8); }
-void set32(std::vector<u8>& bytes, std::size_t at, u32 value) { for(u32 i=0;i<4;++i)bytes.at(at+i)=static_cast<u8>(value>>(8*i)); }
 }
 
 TEST_CASE("resource exports map shared views once for every D4 pair including outside bounds", "[resource-exports]") {
@@ -164,20 +165,20 @@ TEST_CASE("resource export validation rejects invalid table fields and dead-code
         {"child.ips","asset t{size 1x1 output layer image draw{layer captured{}image=captured}}"}};
     const auto bytes=compileExports(sources);const auto file=loadFile(bytes);const auto section=*file.layout.find(SectionId::ResourceExports);
     for(const auto& [offset,value]:{std::pair{0u,65537u},{4u,1000u},{8u,100000u},{28u,100000u}}){
-        auto broken=bytes;set32(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
+        auto broken=bytes;patch32(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
     for(const auto& [offset,value]:{std::pair{12u,u16{65535}},{14u,u16{1}}}){
-        auto broken=bytes;set16(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
+        auto broken=bytes;patch16(broken,section.offset+offset,value);CHECK_THROWS_AS(loadFile(broken),FormatError);
     }
     for(const auto opcode:{Opcode::OutLayer,Opcode::PartGetLayer}){
         auto broken=bytes;const auto& fn=file.code.functions[1];
         bool changed=false;
         for(u32 pc=0;pc<fn.code.size()/4;++pc){const auto ins=decodeInstruction(fn.code.subspan(pc*4,4));
-            if(ins.opcode==Opcode::OutLayer){broken[fn.fileOffset+pc*4]=static_cast<u8>(opcode);set16(broken,fn.fileOffset+pc*4+2,opcode==Opcode::OutLayer?1:0);changed=true;}}
+            if(ins.opcode==Opcode::OutLayer){broken[fn.fileOffset+pc*4]=static_cast<u8>(opcode);patch16(broken,fn.fileOffset+pc*4+2,opcode==Opcode::OutLayer?1:0);changed=true;}}
         REQUIRE(changed);CHECK_THROWS_AS(validate(loadFile(broken)),FormatError);
     }
-    auto broken=bytes;set16(broken,6,5);CHECK_THROWS_AS(loadFile(broken),FormatError);
-    broken=bytes;set32(broken,section.offset+32,0);CHECK_THROWS_AS(validate(loadFile(broken)),FormatError);
+    auto broken=bytes;patch16(broken,6,5);CHECK_THROWS_AS(loadFile(broken),FormatError);
+    broken=bytes;patch32(broken,section.offset+32,0);CHECK_THROWS_AS(validate(loadFile(broken)),FormatError);
 }
 
 TEST_CASE("resource output formatting typing and namespace diagnostics match compilation", "[resource-exports]") {

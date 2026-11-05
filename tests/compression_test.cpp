@@ -8,15 +8,14 @@
 #include "iprop/Debug.hpp"
 #include "ipdis.hpp"
 #include "support/compiler_support.hpp"
+#include "support/test_support.hpp"
 
 using namespace iprop;
+using test_support::patch32;
 
 namespace {
 std::vector<u8> original() {
     return compiler_test::compileChecked("asset t { input i32 v=0 input i32 a=0 size 8x8 output point p draw { pixel(v,0,#abcdef) p={v,a} } }");
-}
-void word(std::vector<u8>& bytes, std::size_t offset, u32 value) {
-    for (unsigned i=0;i<4;++i) bytes.at(offset+i)=static_cast<u8>(value>>(8*i));
 }
 std::vector<u8> envelope(const std::vector<u8>& inner, bool dictionary = false) {
     auto header = parseHeader(original());
@@ -82,18 +81,18 @@ TEST_CASE("compressed stream framing checksum lengths nesting and dictionaries a
     changed=packed; changed.insert(changed.end(),packed.begin()+24,packed.end());
     CHECK_THROWS_AS(loadFile(changed),FormatError);
     for (const auto size : {u32{0},u32{20},static_cast<u32>(plain.size()-1),static_cast<u32>(plain.size()+1),kMaxCompressedFileSize+1}) {
-        changed=packed; word(changed,20,size);
+        changed=packed; patch32(changed,20,size);
         CHECK_THROWS_AS(loadFile(changed),FormatError);
     }
-    changed=packed; word(changed,8,parseHeader(packed).flags^kFlagDebug);
+    changed=packed; patch32(changed,8,parseHeader(packed).flags^kFlagDebug);
     CHECK_THROWS_AS(loadFile(changed),FormatError);
-    changed=packed; word(changed,12,parseHeader(packed).sectionCount-1);
+    changed=packed; patch32(changed,12,parseHeader(packed).sectionCount-1);
     CHECK_THROWS_AS(loadFile(changed),FormatError);
     changed=packed; changed[6]=3;
     CHECK_THROWS_AS(loadFile(changed),FormatError);
-    changed=packed; word(changed,16,1);
+    changed=packed; patch32(changed,16,1);
     CHECK_THROWS_AS(loadFile(changed),FormatError);
-    changed=packed; word(changed,8,parseHeader(packed).flags|4u);
+    changed=packed; patch32(changed,8,parseHeader(packed).flags|4u);
     CHECK_THROWS_AS(loadFile(changed),FormatError);
     CHECK_THROWS_AS(loadFile(envelope(packed)),FormatError);
     CHECK_THROWS_AS(loadFile(envelope(plain,true)),FormatError);
@@ -105,7 +104,7 @@ TEST_CASE("uncompressed files retain identity and malformed inner layouts are re
     const auto plain=original();
     CHECK(decompressFile(plain)==plain);
     auto invalid=plain;
-    word(invalid,20,99); // first inner section id
+    patch32(invalid,20,99); // first inner section id
     CHECK_THROWS_AS(loadFile(envelope(invalid)),FormatError);
     for (std::size_t size=0;size<=24;++size) {
         auto truncated=envelope(plain); truncated.resize(size);

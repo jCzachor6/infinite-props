@@ -2,7 +2,7 @@
 const assert=require("node:assert/strict"),fs=require("node:fs"),os=require("node:os"),path=require("node:path"),crypto=require("node:crypto");
 const {execFileSync,spawnSync}=require("node:child_process");
 const reference=require("../../../tests/reference/voronoi-reference.js");
-const {sections}=require("./sampler-conformance.js");
+const {outputBits,sections}=require("./harness.js");
 const repo=path.resolve(__dirname,"../../.."),fixturePath=path.join(repo,"tests/fixtures/voronoi-v0.9.json");
 const digest=v=>crypto.createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const vec=v=>"{"+v.join(",")+"}";
@@ -34,7 +34,7 @@ function run(iprop,tool,directory,probes={}){
     function generate(bytes){
         fs.writeFileSync(base+".iprop",bytes);const native=JSON.parse(nativeRun("ipgen",[base+".iprop","--float-bits","--seed","26","-o",base+".png"]));
         if(iprop){const wasm=iprop.generate(new Uint8Array(bytes),{seed:26});
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:["point","rect","circle"][s.kind],list:s.isList,values:s.valueBits})),native.outputs,"Voronoi public native/WASM bits");
+            assert.deepEqual(outputBits(wasm.outputs),native.outputs,"Voronoi public native/WASM bits");
             assert.deepEqual([...wasm.data],[17,34,51,255]);
         }
         ++generations;return native.outputs;

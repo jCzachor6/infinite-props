@@ -25,8 +25,13 @@
 // the spec formulas by an independent reference program.
 
 using namespace iprop;
+using compiler_test::generateVariant;
+using compiler_test::outputPointBits;
+using compiler_test::checkErrorMessage;
+using compiler_test::compileChecked;
 
 namespace {
+std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) { return outputPointBits(generateVariant(bytes, seed, variant)); }
 constexpr u8 kStreamPush = 0x60, kStreamState = 0x66, kRngInt = 0xA8, kRngFloat = 0xA9;
 constexpr i32 kMin = std::numeric_limits<i32>::min(), kMax = std::numeric_limits<i32>::max();
 
@@ -61,36 +66,6 @@ struct IntVector {
     i32 lo, hi, value;
     u32 state, draws;
 };
-
-std::vector<u8> compileSource(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-
-std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
-    const auto loaded = loadFile(bytes);
-    validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
-    vm.run();
-    std::vector<u32> bits;
-    for (const auto& output : vm.result().outputs)
-        for (const auto& point : output.points) {
-            bits.push_back(std::bit_cast<u32>(point.x));
-            bits.push_back(std::bit_cast<u32>(point.y));
-        }
-    return bits;
-}
-
-std::string sourceError(const std::string& source) {
-    try {
-        ips::checkAsset(ips::parse(source), {});
-    } catch (const ips::SourceError& error) {
-        return error.message;
-    }
-    FAIL("expected a source error");
-    return {};
-}
 
 std::string format(const std::string& source) { return ips::formatProgram(ips::parse(source)); }
 
@@ -224,7 +199,7 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
   base(i: i32) -> i32 { return i * 3 }
 })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileSource(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         CHECK(bytes[6] == 0);
         CHECK(usesOpcode(bytes, Opcode::RngInt));
         CHECK(usesOpcode(bytes, Opcode::RngFloat));
@@ -246,11 +221,11 @@ TEST_CASE("'to' types its result from the bounds and draws in source order") {
             CHECK(points[3 * i + 2].x <= 8.f);
         }
     }
-    CHECK(sourceError("asset t { size 1x1 draw { x = 0 to 5 x = 1.5 } }").find("cannot assign f32") !=
+    CHECK(checkErrorMessage("asset t { size 1x1 draw { x = 0 to 5 x = 1.5 } }").find("cannot assign f32") !=
           std::string::npos);
-    CHECK(sourceError("asset t { size 1x1 draw { x = #000 to 5 } }") ==
+    CHECK(checkErrorMessage("asset t { size 1x1 draw { x = #000 to 5 } }") ==
           "'to' needs two numbers, two colors or two vec2 values, got color and i32");
-    CHECK(sourceError("asset t { size 1x1 draw { x = {0, 0} to 5 } }") ==
+    CHECK(checkErrorMessage("asset t { size 1x1 draw { x = {0, 0} to 5 } }") ==
           "'to' needs two numbers, two colors or two vec2 values, got vec2 and i32");
 }
 
@@ -270,12 +245,12 @@ TEST_CASE("bounds evaluate once, lower first, before the draw") {
         INFO(direct);
         for (const bool optimize : {false, true})
             for (const u32 seed : {0u, 7u, 26u, 0xffffffffu})
-                CHECK(pointBits(compileSource(program(direct), optimize), seed) ==
-                      pointBits(compileSource(program(stored), false), seed));
+                CHECK(pointBits(compileChecked(program(direct), optimize), seed) ==
+                      pointBits(compileChecked(program(stored), false), seed));
     }
     // An unused draw still advances the stream, and two equal ranges are two draws.
-    const auto removed = compileSource(program("p = {0 to 9, 0 to 9}"), true);
-    CHECK(pointBits(removed, 7) != pointBits(compileSource(program("dead = 0 to 9 p = {0 to 9, 0 to 9}"), true), 7));
+    const auto removed = compileChecked(program("p = {0 to 9, 0 to 9}"), true);
+    CHECK(pointBits(removed, 7) != pointBits(compileChecked(program("dead = 0 to 9 p = {0 to 9, 0 to 9}"), true), 7));
     const auto stack = run(test_support::Prog{}.I(3).emit(kStreamPush).I(4).I(4).emit(kRngInt).emit(kStreamState)).stack;
     CHECK(std::get<i32>(stack[0]) == 4);
     CHECK(static_cast<u32>(std::get<i32>(stack[1])) == 3 + 0x9e3779b9u);
@@ -285,9 +260,9 @@ TEST_CASE("runtime traps keep their reason through compiled ranges") {
     const std::string reversed = "asset t { input i32 v = 0  size 1x1 output point p draw { p = {v to 0, 0} } }";
     const std::string nonfinite = "asset t { size 1x1 output point p draw { z = 0.0 p = {z / z to 1.0, 0} } }";
     for (const bool optimize : {false, true}) {
-        CHECK(pointBits(compileSource(reversed, optimize), 0, 0) == std::vector<u32>{0, 0});
-        CHECK_THROWS_AS(pointBits(compileSource(reversed, optimize), 0, 1), Trap);
-        CHECK_THROWS_AS(pointBits(compileSource(nonfinite, optimize), 0), Trap);
+        CHECK(pointBits(compileChecked(reversed, optimize), 0, 0) == std::vector<u32>{0, 0});
+        CHECK_THROWS_AS(pointBits(compileChecked(reversed, optimize), 0, 1), Trap);
+        CHECK_THROWS_AS(pointBits(compileChecked(nonfinite, optimize), 0), Trap);
     }
 }
 
@@ -304,7 +279,7 @@ TEST_CASE("'to' binds between shifts and comparisons and cannot be chained") {
     const auto formatted = format(grouped);
     CHECK(formatted.find("x = ((1 to 3) to (5 to 8))") != std::string::npos);
     CHECK(format(formatted) == formatted);
-    CHECK(stripDebug(compileSource(formatted, false)) == stripDebug(compileSource(grouped, false)));
+    CHECK(stripDebug(compileChecked(formatted, false)) == stripDebug(compileChecked(grouped, false)));
     try {
         (void)ips::parse("asset t { size 1x1 draw { x = 1 to 2 to 3 } }");
         FAIL("expected a parse error");

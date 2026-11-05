@@ -8,12 +8,14 @@
 #include "ips/Printer.hpp"
 #include "ips/Semantics.hpp"
 #include "support/test_support.hpp"
+#include "support/compiler_support.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
 using namespace iprop;
+using compiler_test::compileChecked;
 using namespace test_support;
 namespace {
 struct Args {
@@ -26,10 +28,6 @@ struct Args {
     i32 comparison = 0;
     f32 warp = 0;
 };
-std::vector<u8> compile(const std::string& text, bool optimize = true) {
-    const auto program = ips::parse(text); ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
 void invoke(detail::Execution& ex, const Args& a, bool full = true) {
     ex.push(a.origin); ex.push(a.size); ex.push(a.kind); ex.push(a.frequency); ex.push(a.threshold); ex.push(a.seed);
     if (full) { ex.push(a.octaves); ex.push(a.softness); ex.push(a.comparison); ex.push(a.warp); }
@@ -62,7 +60,7 @@ u8 quantize(f32 value, const Args& a) {
 }
 
 TEST_CASE("noise masks match scalar pixel-center sampling in every mode and scale", "[noise-mask-v09]") {
-    const auto file=loadFile(compile("asset t{size 4x3 draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 4x3 draw{}}"));
     detail::Execution ex(file); ex.frames.emplace_back(); ex.fuel=100000000;
     for (const auto scale : {Vec2{1,1},Vec2{2,0.5f},Vec2{0.75f,1.5f}}) {
         ex.target=RenderTarget::create(8,6,scale);
@@ -88,7 +86,7 @@ TEST_CASE("noise masks match scalar pixel-center sampling in every mode and scal
 }
 
 TEST_CASE("noise mask validation and sample traps never publish or retain provisional buffers", "[noise-mask-v09]") {
-    const auto file=loadFile(compile("asset t{size 1x1 draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 1x1 draw{}}"));
     detail::Execution ex(file); ex.frames.emplace_back(); ex.target=RenderTarget::create(1,1,{1,1}); ex.fuel=100000000;
     const f32 inf=std::numeric_limits<f32>::infinity(),nan=std::numeric_limits<f32>::quiet_NaN();
     const auto reject=[&](const Args& a,const char* message){
@@ -125,7 +123,7 @@ TEST_CASE("noise mask validation and sample traps never publish or retain provis
 }
 
 TEST_CASE("noise mask fuel memory zero cases and lifetime are bounded before work", "[noise-mask-v09]") {
-    const auto file=loadFile(compile("asset t{size 1x1 draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 1x1 draw{}}"));
     detail::Execution ex(file);ex.frames.emplace_back();ex.target=RenderTarget::create(1,1,{1,1});
     for(i32 mode=0;mode<6;++mode)for(i32 n:{1,4,8})for(f32 warp:{0.f,-0.f,0.5f}){
         Args a;a.kind=mode;a.octaves=n;a.warp=warp;a.origin={20,30};
@@ -153,18 +151,18 @@ TEST_CASE("noise masks compose with clips algebra blur morphology and preserve g
         "state={seed==before,unit()}}}";
     const auto parsed=ips::parse(source);const auto formatted=ips::formatProgram(parsed);
     for(const bool opt:{false,true}){
-        const auto bytes=compile(source,opt);
+        const auto bytes=compileChecked(source,opt);
         const auto file=loadFile(bytes);validate(file);VM vm(file,{26,8,6,{}});vm.run();auto result=vm.takeResult();
         CHECK(result.image.width==8); CHECK(result.image.height==6);
-        const auto roundtripFile=loadFile(compile(formatted,opt));validate(roundtripFile);
+        const auto roundtripFile=loadFile(compileChecked(formatted,opt));validate(roundtripFile);
         VM roundtrip(roundtripFile,{26,8,6,{}});roundtrip.run();
         CHECK(roundtrip.result().image.pixels==result.image.pixels);
-        const auto controlFile=loadFile(compile("asset t{size 4x3 output point state draw{state={1,unit()}}}"));VM control(controlFile,{26,8,6,{}});control.run();
+        const auto controlFile=loadFile(compileChecked("asset t{size 4x3 output point state draw{state={1,unit()}}}"));VM control(controlFile,{26,8,6,{}});control.run();
         CHECK(result.outputs[0].points[0].x==1);CHECK(result.outputs[0].points[0].y==control.result().outputs[0].points[0].y);
     }
     for(const std::string body:{"output mask result draw{result=noise.mask({0,0},{2,1},0,{1.0/0.0,1},0,7)}",
         "output mask result draw{result=noise.mask({0,0},{2,1},0,{1,1},0,7)bad=noise.mask({0,0},{2,1},0,{1.0/0.0,1},0,7)}"}){
-        const auto file=loadFile(compile("asset t{size 2x1 "+body+"}"));validate(file);VM vm(file,{});CHECK_THROWS_AS(vm.run(),Trap);CHECK_THROWS_AS(vm.takeResult(),std::logic_error);
+        const auto file=loadFile(compileChecked("asset t{size 2x1 "+body+"}"));validate(file);VM vm(file,{});CHECK_THROWS_AS(vm.run(),Trap);CHECK_THROWS_AS(vm.takeResult(),std::logic_error);
     }
 }
 
@@ -173,7 +171,7 @@ TEST_CASE("noise mask arguments bind once in signature order and constants remai
         "v(n:i32)->vec2{trace={n,0}return {1,1}}i(n:i32)->i32{trace={n,0}return 1}f(n:i32)->f32{trace={n,0}return 0.2}draw{";
     const std::string call="m=noise.mask(warp_amount=f(10),comparison=i(9),softness=f(8),octaves=i(7),seed=i(6),threshold=f(5),frequency=v(4),kind=i(3),size=v(2),origin=v(1))";
     for(bool opt:{false,true}){
-        const auto file=loadFile(compile(prefix+call+"}}",opt));validate(file);VM vm(file,{});vm.run();const auto result=vm.result();const auto& trace=result.outputs[0].points;
+        const auto file=loadFile(compileChecked(prefix+call+"}}",opt));validate(file);VM vm(file,{});vm.run();const auto result=vm.result();const auto& trace=result.outputs[0].points;
         REQUIRE(trace.size()==10);for(std::size_t j=0;j<10;++j)CHECK(trace[j].x==static_cast<f32>(j+1));
     }
     for(const std::string bad:{"const mask m=noise.mask({0,0},{1,1},0,{1,1},0,7)","draw{m=noise.mask({0,0},{1,1},0,{1,1},0,7,4)}",
@@ -185,7 +183,7 @@ TEST_CASE("noise mask arguments bind once in signature order and constants remai
 }
 
 TEST_CASE("noise mask views retain D4 through positive morphology blur and export sharing", "[noise-mask-v09]") {
-    const auto file=loadFile(compile("asset t{size 8x8 output mask result draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 8x8 output mask result draw{}}"));
     detail::Execution ex(file);ex.frames.emplace_back();ex.target=RenderTarget::create(8,8,{1,1});ex.fuel=10000000;
     Args a;a.kind=4;a.softness=0.2f;a.warp=0.3f;
     auto generated=generate(ex,a);

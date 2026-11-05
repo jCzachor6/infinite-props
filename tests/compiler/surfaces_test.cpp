@@ -10,6 +10,8 @@
 #include "ips/Semantics.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
+#include "support/test_support.hpp"
 
 #include <algorithm>
 #include <bit>
@@ -17,10 +19,10 @@
 #include <string>
 
 using namespace iprop;
+using test_support::patch16;
+using compiler_test::rejectSource;
+using compiler_test::compileChecked;
 namespace {
-std::vector<u8> surfaceProgram(const std::string& text, bool optimize = true) {
-    const auto p = ips::parse(text); ips::checkAsset(p, {}); return compileProgram(p, {}, optimize);
-}
 GenerationResult surfaceResult(const std::vector<u8>& bytes, u32 seed = 26, u32 width = 0, u32 height = 0) {
     const auto file = loadFile(bytes); validate(file); VM vm(file, {seed,width,height,{}}); vm.run(); return vm.result();
 }
@@ -35,13 +37,6 @@ void sameOutputs(const GenerationResult& a, const GenerationResult& b) {
         }
     }
 }
-void rejectSurface(const std::string& text, const std::string& message) {
-    try { (void)surfaceProgram(text); FAIL("invalid surface source accepted"); }
-    catch (const ips::SourceError& error) {
-        INFO(error.what()); CHECK(std::string(error.what()).find(message) != std::string::npos);
-        CHECK(error.location.line > 0); CHECK(error.location.column > 0);
-    }
-}
 using Sources = std::map<std::string, std::string>;
 std::vector<u8> surfaceTree(const Sources& sources, bool optimize) {
     SourceCompilationOptions options; options.optimize = optimize;
@@ -49,16 +44,13 @@ std::vector<u8> surfaceTree(const Sources& sources, bool optimize) {
     for (const auto& diagnostic : result.diagnostics) INFO(diagnostic.message);
     REQUIRE(result.succeeded()); return result.bytes;
 }
-void raw16(std::vector<u8>& bytes, std::size_t at, u16 value) {
-    bytes.at(at) = static_cast<u8>(value); bytes.at(at+1) = static_cast<u8>(value >> 8);
-}
 }
 
 TEST_CASE("layers capture once and do not automatically paint the parent", "[surfaces]") {
     const std::string declarations = "asset t{size 8x6 output point p output point state ";
-    const auto reference = surfaceProgram(declarations + "draw{w=2 to 6 rect(1,1,w,3,#929ca8) p={w,w} state={seed&65535,seed>>16}}}", false);
+    const auto reference = compileChecked(declarations + "draw{w=2 to 6 rect(1,1,w,3,#929ca8) p={w,w} state={seed&65535,seed>>16}}}", false);
     for (const bool optimize : {false,true}) {
-        const auto bytes = surfaceProgram(declarations +
+        const auto bytes = compileChecked(declarations +
             "echo(image:layer)->layer{return image} draw{layer image(alpha=surface.legacy){w=2 to 6 rect(1,1,w,3,#929ca8) p={w,w}} "
             "copy=echo(image);surface.paint(copy,blend=surface.legacy);surface.paint(image) state={seed&65535,seed>>16}}}", optimize);
         for (const u32 seed : {0u,1u,7u,26u,0xffffffffu}) {
@@ -68,7 +60,7 @@ TEST_CASE("layers capture once and do not automatically paint the parent", "[sur
             CHECK(actual.outputs[1].points[0].x == static_cast<f32>(state & 65535));
             CHECK(actual.outputs[1].points[0].y == static_cast<f32>(state >> 16));
         }
-        const auto hidden = surfaceResult(surfaceProgram("asset t{size 2x2 draw{layer image{pixel(0,0,#ff0000)} pixel(1,1,#0000ff)}}",optimize));
+        const auto hidden = surfaceResult(compileChecked("asset t{size 2x2 draw{layer image{pixel(0,0,#ff0000)} pixel(1,1,#0000ff)}}",optimize));
         CHECK(hidden.image.at(0,0) == Color{}); CHECK(hidden.image.at(1,1) == Color{0,0,255,255});
     }
 }
@@ -83,7 +75,7 @@ TEST_CASE("layer snapshots survive parent writes and later captures", "[surfaces
         weather(7,20) surface.paint(copy)}
     })";
     for (const bool optimize : {false,true}) {
-        const auto result = surfaceResult(surfaceProgram(source,optimize));
+        const auto result = surfaceResult(compileChecked(source,optimize));
         CHECK(result.image.at(0,0) == Color{146,156,168,255});
         CHECK(result.image.at(1,0) == Color{52,58,66,255});
         CHECK(result.image.at(2,0) == Color{192,144,96,255});
@@ -93,7 +85,7 @@ TEST_CASE("layer snapshots survive parent writes and later captures", "[surfaces
 
 TEST_CASE("surface compositing preserves legacy hidden RGB and transparent skips", "[surfaces]") {
     for (const bool optimize : {false,true}) {
-        const auto result = surfaceResult(surfaceProgram(R"(asset t{size 4x1 draw{
+        const auto result = surfaceResult(compileChecked(R"(asset t{size 4x1 draw{
           pixel(0,0,#11223380) pixel(1,0,#112233) pixel(2,0,#112233)
           layer image{pixel(0,0,#ff000080) pixel(1,0,#0000ff00)
             pixel(2,0,#929ca8) pixel(2,0,#ff000080)}
@@ -117,7 +109,7 @@ TEST_CASE("return break and continue freeze captures and restore every caller ta
         surface.paint(outer) surface.paint(inner) state={seed&65535,seed>>16}
       }})";
     for (const bool optimize : {false,true}) {
-        const auto r = surfaceResult(surfaceProgram(source,optimize));
+        const auto r = surfaceResult(compileChecked(source,optimize));
         CHECK(r.image.at(0,0) == Color{}); CHECK(r.image.at(1,0) == Color{255,0,0,255});
         CHECK(r.image.at(2,0) == Color{}); CHECK(r.image.at(3,0) == Color{0,0,255,255});
         CHECK(r.image.at(4,0) == Color{255,255,255,255});
@@ -153,7 +145,7 @@ TEST_CASE("captured part trees retain D4 placement scale outputs and isolated RN
 }
 
 TEST_CASE("surface buffers share storage and quota and fuel preflight precede work", "[surfaces]") {
-    const auto bytes = surfaceProgram("asset t{size 2x2 echo(image:layer)->layer{return image} draw{layer image{}surface.paint(image)}}",false);
+    const auto bytes = compileChecked("asset t{size 2x2 echo(image:layer)->layer{return image} draw{layer image{}surface.paint(image)}}",false);
     auto file = loadFile(bytes);
     detail::Execution ex(file); ex.target=RenderTarget::create(2,2,{0.5f,2}); ex.fuel=100;
     detail::Frame root;root.locals={i32{0},i32{0},LayerValue{}};root.stream=26;ex.frames.push_back(std::move(root));
@@ -191,8 +183,8 @@ TEST_CASE("surface scope and shared arena limits fail without publishing an imag
     nested += "pixel(0,0,#fff)";
     for(int i=31;i>=0;--i)nested += "}surface.paint(image"+std::to_string(i)+")";
     nested += "}}";
-    CHECK(surfaceResult(surfaceProgram(nested)).image.at(0,0)==Color{255,255,255,255});
-    const auto innerLoop=surfaceResult(surfaceProgram("asset t{size 2x1 draw{layer image{while(true){pixel(0,0,#fff)break;}pixel(1,0,#929ca8)}surface.paint(image)}}"));
+    CHECK(surfaceResult(compileChecked(nested)).image.at(0,0)==Color{255,255,255,255});
+    const auto innerLoop=surfaceResult(compileChecked("asset t{size 2x1 draw{layer image{while(true){pixel(0,0,#fff)break;}pixel(1,0,#929ca8)}surface.paint(image)}}"));
     CHECK(innerLoop.image.at(0,0)==Color{255,255,255,255});CHECK(innerLoop.image.at(1,0)==Color{146,156,168,255});
     const auto recursive=assemble("meta: size=1x1\ntypes: layer\nfn draw ( ) -> ( ):\ncall nested\nreturn\nendfn\nfn nested ( ) -> ( ):\nlocals: layer\nlayer.begin 0\ncall nested\nend\nreturn\nendfn\n");
     const auto file=loadFile(recursive);validate(file);VM vm(file,{});
@@ -205,12 +197,12 @@ TEST_CASE("surface scope and shared arena limits fail without publishing an imag
     const auto oversized=loadFile(assemble(assembly));VM quota(oversized,{});
     try{quota.run();FAIL("surface arena exceeded");}catch(const Trap& error){CHECK(error.reason==ErrorReason::OutOfMemory);}
     CHECK_THROWS_AS(quota.takeResult(),std::logic_error);
-    const auto shared=surfaceProgram("asset t{size 1024x1024 echo(image:layer)->layer{return image} draw{layer image{} for i in 0..10000{copy=echo(image)}}}",false);
+    const auto shared=compileChecked("asset t{size 1024x1024 echo(image:layer)->layer{return image} draw{layer image{} for i in 0..10000{copy=echo(image)}}}",false);
     CHECK_NOTHROW(surfaceResult(shared));
 }
 
 TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed wire data", "[surfaces]") {
-    const auto bytes=surfaceProgram("asset t{size 2x2 draw{layer image(alpha=surface.legacy){pixel(1,1,#fff)}surface.paint(image,blend=surface.legacy)}}",false);
+    const auto bytes=compileChecked("asset t{size 2x2 draw{layer image(alpha=surface.legacy){pixel(1,1,#fff)}surface.paint(image,blend=surface.legacy)}}",false);
     const auto file=loadFile(bytes);
     REQUIRE(file.collections.types==std::vector<ValueType>{ValueType::Layer});
     const auto restored=assemble(disassemble(bytes));CHECK(surfaceResult(restored).image.pixels==surfaceResult(bytes).image.pixels);
@@ -223,15 +215,15 @@ TEST_CASE("layer descriptors scopes and modes survive tools and reject malformed
     for(std::size_t i=0;i<file.code.functions[0].code.size()/4;++i){
         const auto at=file.code.functions[0].fileOffset+i*4;const auto ins=decodeInstruction(file.code.functions[0].code.subspan(i*4,4));
         if(ins.opcode==Opcode::LayerBegin){
-            for(const u16 destination:{u16{1},u16{2},u16{65535}}){auto bad=bytes;raw16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
+            for(const u16 destination:{u16{1},u16{2},u16{65535}}){auto bad=bytes;patch16(bad,at+2,destination);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);}
             auto bad=bytes;bad.at(at+1)=3;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
         if(ins.opcode==Opcode::SurfacePaint){
-            auto bad=bytes;raw16(bad,at+2,3);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
+            auto bad=bytes;patch16(bad,at+2,3);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
             bad=bytes;bad.at(at+1)=1;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
     }
-    auto old=bytes;raw16(old,6,5);CHECK_THROWS_AS(loadFile(old),FormatError);
+    auto old=bytes;patch16(old,6,5);CHECK_THROWS_AS(loadFile(old),FormatError);
     for(const std::string dead:{"layer.begin 0 3\nend\n", "layer.begin 65535\nend\n", "surface.paint 3\n"})
         CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\n"+dead+"endfn\n"),std::exception);
 }
@@ -241,21 +233,21 @@ TEST_CASE("layer formatting and illegal handle operations have located diagnosti
         "draw{for i in 0..copies{layer image(alpha=/* mode */surface.legacy){pixel(0,0,#fff)}} "
         "layer copy=image;surface.paint(blend=surface.legacy,image=copy);x=count(2)}}";
     const auto formatted=ips::formatProgram(ips::parse(source));CHECK(formatted.find("/* mode */")!=std::string::npos);
-    CHECK(ips::formatProgram(ips::parse(formatted))==formatted);CHECK(stripDebug(surfaceProgram(source))==stripDebug(surfaceProgram(formatted)));
+    CHECK(ips::formatProgram(ips::parse(formatted))==formatted);CHECK(stripDebug(compileChecked(source))==stripDebug(compileChecked(formatted)));
     for(const auto& [body,message]:std::initializer_list<std::pair<const char*,const char*>>{
         {"layer image{surface.paint(image)}","undefined"}, {"image=1;layer image{}","conflicts"},
         {"layer image{}x=image+image","numeric"}, {"layer image{}x=image==image","numeric"},
         {"layer image{}x=image[0]","list"}, {"layer image{}x=image.r","needs a color"},
         {"layer image{}surface.paint(image,blend=1)","surface.legacy"},
         {"layer image(alpha=surface.unknown){}","surface.source_over"}})
-        rejectSurface("asset t{size 1x1 draw{"+std::string(body)+"}}",message);
-    rejectSurface("asset t{size 1x1 const layer image=1 draw{}}","cannot be const");
-    rejectSurface("asset t{size 1x1 f(images:list<layer>){}draw{}}","lists of surfaces");
-    rejectSurface("asset t{size 1x1 f(images:sampler<layer>){}draw{}}","supports only");
-    rejectSurface("asset t{size 1x1 input layer image draw{}}","input type");
-    rejectSurface("asset t{size 1x1 output list layer image draw{}}","cannot be lists");
+        rejectSource("asset t{size 1x1 draw{"+std::string(body)+"}}",message);
+    rejectSource("asset t{size 1x1 const layer image=1 draw{}}","cannot be const");
+    rejectSource("asset t{size 1x1 f(images:list<layer>){}draw{}}","lists of surfaces");
+    rejectSource("asset t{size 1x1 f(images:sampler<layer>){}draw{}}","supports only");
+    rejectSource("asset t{size 1x1 input layer image draw{}}","input type");
+    rejectSource("asset t{size 1x1 output list layer image draw{}}","cannot be lists");
     for(const bool optimize:{false,true}) {
-        const auto unset=loadFile(surfaceProgram("asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",optimize));VM vm(unset,{});
+        const auto unset=loadFile(compileChecked("asset t{size 1x1 draw{if(false){layer image{}}surface.paint(image)}}",optimize));VM vm(unset,{});
         try{vm.run();FAIL("unset layer accepted");}catch(const Trap& error){CHECK(std::string(error.what())=="layer is unassigned");CHECK((error.location.flags & ErrorLocation::PC) != 0);}
     }
 }

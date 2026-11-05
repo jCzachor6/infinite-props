@@ -2,6 +2,7 @@
 #include "iprop/Voronoi.hpp"
 #include "iprop/VmInternals.hpp"
 #include <cstdio>
+using namespace fault_injection;
 
 int main() {
     using namespace iprop;

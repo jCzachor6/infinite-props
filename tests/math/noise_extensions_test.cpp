@@ -13,6 +13,7 @@
 #include <limits>
 
 using namespace iprop;
+using compiler_test::compileChecked;
 using namespace test_support;
 
 namespace {
@@ -48,11 +49,6 @@ void numericTrap(Prog program, const char* message) {
 u32 hash(u32 x) {
     x ^= x >> 16; x *= 0x7feb352d; x ^= x >> 15; x *= 0x846ca68b;
     return x ^ (x >> 16);
-}
-std::vector<u8> compile(const std::string& text, bool optimize) {
-    const auto source = ips::parse(text);
-    ips::checkAsset(source, {});
-    return compileProgram(source, {}, optimize);
 }
 } // namespace
 
@@ -203,11 +199,11 @@ TEST_CASE("noise extensions bind named arguments once in signature order and rou
          "p=point() n=octaves() l=lac() g=weight() s=key() value={noise.fbm(p.x,p.y,n,l,g,s),0}"}};
     for (const auto& [expression, expanded] : expressions) {
         const auto wrap = [&](const std::string& body) { return header + body + " state={unit(),unit()}}}"; };
-        const auto expected = compile(wrap(expanded), false);
+        const auto expected = compileChecked(wrap(expanded), false);
         for (const bool optimize : {false, true}) {
             const auto formatted = ips::formatProgram(ips::parse(wrap(expression)));
             for (const u32 seed : {0u, 7u, 0xffffffffu}) {
-                const auto a = compiler_test::execute(compile(formatted, optimize), seed);
+                const auto a = compiler_test::execute(compileChecked(formatted, optimize), seed);
                 const auto b = compiler_test::execute(expected, seed);
                 REQUIRE(a.outputs.size() == b.outputs.size());
                 for (std::size_t i = 0; i < a.outputs.size(); ++i) {
@@ -223,5 +219,5 @@ TEST_CASE("noise extensions bind named arguments once in signature order and rou
     for (const auto* expression : {"noise.cell_id({1,2},1.0)", "noise.cell2({1,2},#fff)",
          "noise.warp_vec({1,2},0.5)", "noise.fbm({1,2},2.0,2,0.5,1)",
          "noise.fbm({1,2},octaves=4,lacunarity=2,gain=0.5,seed=1,x=0)"})
-        CHECK_THROWS_AS(compile("asset t{size 1x1 draw{" + std::string(expression) + "}}", true), ips::SourceError);
+        CHECK_THROWS_AS(compileChecked("asset t{size 1x1 draw{" + std::string(expression) + "}}", true), ips::SourceError);
 }

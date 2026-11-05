@@ -2,6 +2,7 @@
 #include "support/geometry_fixture.hpp"
 #include "iprop/DynamicParts.hpp"
 #include <cstdio>
+using namespace fault_injection;
 
 int main(){
     using namespace iprop;LoadedFile file;file.code.functions.emplace_back();std::size_t faults=0;

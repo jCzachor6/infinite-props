@@ -6,17 +6,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const {decodePng} = require("./png.js");
+const {canonical,outputBits}=require("./harness.js");
 
 const repo = path.resolve(__dirname,"../../..");
 const sha = bytes => crypto.createHash("sha256").update(bytes).digest("hex");
 function bits(outputs) {
-    return outputs.map(slot => ({name:slot.name,kind:["point","rect","circle"][slot.kind],
-        list:slot.isList,values:slot.valueBits}));
-}
-function canonical(value) {
-    if (Array.isArray(value)) return value.map(canonical);
-    if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map(key => [key,canonical(value[key])]));
-    return value;
+    return outputBits(outputs);
 }
 function run(iprop, tool, directory) {
     const base = path.join(directory,"collection");
@@ -34,7 +29,7 @@ function run(iprop, tool, directory) {
         ++comparisons;
         return {rgba_sha256:sha(image.data),outputs_sha256:sha(JSON.stringify(canonical(native.outputs)))};
     }
-    const fixture = JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/frozen-format-v0.6-stage2.json"),"utf8"))
+    const fixture = JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/legacy-oracles-v0.6.json"),"utf8"))
         .cases.find(entry=>entry.source==="inline:collections-runtime-reference");
     for(const optimized of [false,true]) for(const debug of [false,true]) for(const compressed of [false,true]) {
         const flags = [...(optimized?[]:["--no-opt"]),debug?"--debug":"--strip",compressed?"--compress":"--no-compress"];

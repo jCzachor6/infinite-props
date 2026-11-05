@@ -3,26 +3,11 @@
 #include "iprop/VM.hpp"
 #include "ips/Parser.hpp"
 #include "ips/Semantics.hpp"
+#include "support/fault_injection.hpp"
 
 #include <cstdio>
-#include <cstdlib>
-#include <limits>
-#include <new>
 
-namespace {
-bool armed = false;
-std::size_t allocations = 0, failAt = std::numeric_limits<std::size_t>::max();
-}
-void* operator new(std::size_t size) {
-    if (armed && allocations++ >= failAt) throw std::bad_alloc{};
-    if (void* p = std::malloc(size ? size : 1)) return p;
-    throw std::bad_alloc{};
-}
-void* operator new[](std::size_t size) { return ::operator new(size); }
-void operator delete(void* p) noexcept { std::free(p); }
-void operator delete[](void* p) noexcept { std::free(p); }
-void operator delete(void* p, std::size_t) noexcept { std::free(p); }
-void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+using namespace fault_injection;
 
 int main() {
     const auto program = iprop::ips::parse(R"(asset Transfer { size 16x16;
@@ -42,7 +27,7 @@ int main() {
     const auto expected = vm.result();
     const auto* pixels = vm.canvas().pixels.data();
     const auto remaining = vm.fuel();
-    failAt = 0; allocations = 0; armed = true;
+    arm(0, true);
     bool failed = false;
     try { auto result = vm.takeResult(); armed = false; }
     catch (const std::bad_alloc&) { armed = false; failed = true; }
@@ -57,7 +42,7 @@ int main() {
             preserved.outputs[i].circles.size() != expected.outputs[i].circles.size()) return 4;
     // Keep failure armed at the *second* allocation. Payload or name copies
     // would allocate and fail; only the destination slot table may allocate.
-    failAt = 1; allocations = 0; armed = true;
+    arm(1, true);
     auto moved = vm.takeResult();
     armed = false;
     if (allocations != 1 || moved.image.pixels.data() != pixels ||
@@ -80,7 +65,7 @@ int main() {
     iprop::validate(emptyFile);
     iprop::VM emptyVm(emptyFile, {});
     emptyVm.run();
-    allocations = 0; failAt = 0; armed = true;
+    arm(0, true);
     auto emptyResult = emptyVm.takeResult();
     armed = false;
     if (allocations != 0 || !emptyResult.outputs.empty() || emptyResult.image.pixels.size() != 256) return 8;

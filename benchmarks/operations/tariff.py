@@ -10,6 +10,7 @@ import platform
 import statistics
 import struct
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -21,7 +22,8 @@ def module(name, path):
     return value
 
 
-png_rgba = module("pixels", ROOT / "scripts/capture_v04_baseline.py").png_rgba
+sys.path.insert(0, str(ROOT / "backends/test"))  # prepare-bindings imports its sibling
+rgba_png = module("pixels", ROOT / "backends/test/prepare-bindings.py").rgba_png
 
 
 def workloads():
@@ -135,7 +137,7 @@ def main():
                     raise RuntimeError(f"{index} {label}: nondeterministic {key}")
             png = output / (str(index) + "-" + label + ".png")
             info = json.loads(run([build / "tools/ipgen", binary, "--seed", row["seed"], "--float-bits", "--work-limit", 1_000_000_000, "-o", png]))
-            pixels = png_rgba(png.read_bytes())[2]
+            pixels = rgba_png(png)
             info.pop("fuel")
             observations[label] = (info, pixels)
             row[label] = dict(measurement=measured, median_cpu_ns=statistics.median(s["cpu_ns"] for s in samples),

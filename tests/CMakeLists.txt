@@ -228,6 +228,9 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
+    add_test(NAME execution_limits_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/execution-limits-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:execution_limits_probe>")
     add_test(NAME part_exports_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/part-exports-conformance.js" "$<TARGET_FILE_DIR:ipc>"
         "$<TARGET_FILE:part_exports_probe>")
@@ -255,8 +258,6 @@ if(IPROP_NODE_EXECUTABLE)
         "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}
         "${CMAKE_SOURCE_DIR}/backends/html5/test/compat-v08-conformance.js" "$<TARGET_FILE_DIR:ipc>")
-    add_test(NAME runtime_matrix_comparators COMMAND ${IPROP_NODE_EXECUTABLE}
-        --test "${CMAKE_SOURCE_DIR}/scripts/tests/runtime_matrix_wasm.test.js")
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")

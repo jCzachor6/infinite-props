@@ -1,43 +1,39 @@
 #!/usr/bin/env python3
-"""Verify immutable historical binaries and reject them before generation."""
-import base64
-import hashlib
-import json
+"""Reject retired format headers before generation.
+
+Binaries from the 0.5 and 0.6 development stages stored a format minor (1-6)
+in the u16 at offset 6. The current header reserves offsets 4-7, so a loader
+must reject every such file before reading anything else. Patching a current
+binary covers exactly the headers those retired files used.
+"""
 from pathlib import Path
 import struct
 import subprocess
 import sys
 import tempfile
 
-
-
-def sha(data):
-    return hashlib.sha256(data).hexdigest()
+RETIRED_MINORS = range(1, 7)
 
 
 def main():
     generator = Path(sys.argv[1]).resolve()
-    fixtures = Path(__file__).resolve().parent.parent / 'tests/fixtures'
-    cases = [case for name in ('frozen-format-v0.5.json', 'frozen-format-v0.6-stage1.json', 'frozen-format-v0.6-stage2.json', 'frozen-format-v0.6-stage3.json', 'frozen-format-v0.6-stage4.json', 'frozen-format-v0.6-stage5.json', 'frozen-format-v0.6-stage6.json', 'frozen-format-v0.6-stage7.json', 'frozen-format-v0.6-stage8.json', 'frozen-format-v0.6-stage9.json', 'frozen-format-v0.6-stage10.json')
-             for case in json.loads((fixtures / name).read_text())['cases']]
+    current = (Path(__file__).resolve().parent.parent / 'examples/portrait.iprop').read_bytes()
+    assert struct.unpack_from('<I', current, 4)[0] == 0, 'current header must keep offsets 4-7 zero'
     count = 0
-    with tempfile.TemporaryDirectory(prefix='iprop-frozen-math-') as directory:
+    with tempfile.TemporaryDirectory(prefix='iprop-retired-format-') as directory:
         directory = Path(directory)
-        for index, case in enumerate(cases):
-            binary = directory / f'{index}.iprop'
-            data = base64.b64decode(case['binary_base64'], validate=True)
-            assert sha(data) == case['binary_sha256'], case['source']
-            assert struct.unpack_from('<H', data, 6)[0] == case['format_minor']
+        for minor in RETIRED_MINORS:
+            data = bytearray(current)
+            struct.pack_into('<H', data, 6, minor)
+            binary, png = directory / f'minor-{minor}.iprop', directory / 'render.png'
             binary.write_bytes(data)
-            png = directory / 'render.png'
             result = subprocess.run([str(generator), str(binary), '-o', str(png)],
                                     capture_output=True, text=True, timeout=30)
-            assert result.returncode == 1, (case['source'], result.stderr)
-            assert 'reserved header field must be zero' in result.stderr, (case['source'], result.stderr)
-            assert not result.stdout and not png.exists(), case['source']
+            assert result.returncode == 1, (minor, result.stderr)
+            assert 'reserved header field must be zero' in result.stderr, (minor, result.stderr)
+            assert not result.stdout and not png.exists(), minor
             count += 1
-    print(f'Retired formats: {count} immutable binaries rejected before generation')
-
+    print(f'Retired formats: {count} retired header minors rejected before generation')
 
 
 if __name__ == '__main__':

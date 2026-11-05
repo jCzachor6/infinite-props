@@ -1,7 +1,8 @@
 "use strict";
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),os=require('node:os'),crypto=require('node:crypto');
-const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js'),{instructions}=require('./sampler-conformance.js');
+const {execFileSync,spawnSync}=require('node:child_process'),{decodePng}=require('./png.js');
 const ref=require('../../../tests/reference/dynamic-parts-reference.js');
+const {instructions,outputBits}=require("./harness.js");
 const repo=path.resolve(__dirname,'../../..'),fixture=path.join(repo,'tests/fixtures/dynamic-parts-v0.9.json');
 const params=[[0,0,0],[90,0,0],[180,0,0],[270,0,0],[0,1,0],[0,0,1],[90,0,1],[90,1,0]];
 const opcodes=[0x18,0x19,0x1a,0x1b,0x1c,0x1d,0x1e,0x1f,0x3a,0x3b,0x3c,0x3d,0x3e,0x3f,0x67,0x68];
@@ -51,6 +52,10 @@ function shapePixels(mask){const pixels=Array(32*32*4).fill(0);for(let y=0;y<mas
 function run(iprop,tool,directory,probes={}){
     const owned=!directory;if(owned)directory=fs.mkdtempSync(path.join(os.tmpdir(),'iprop-dynamic-parts-'));
     const base=path.join(directory,'dynamic-parts'),corpus=JSON.parse(fs.readFileSync(fixture));
+    // Core records come from the independent reference; only fuel, bytes and the canvas digest are stored.
+    const keys=['original','view','mask','creations','released'],derived=corpus.cases.map(c=>{const e=ref.reference(c);return Object.fromEntries(keys.map(k=>[k,e[k]]));});
+    assert.equal(sha(JSON.stringify(derived)),corpus.reference_sha256,'dynamic part reference outputs changed');
+    corpus.cases.forEach((c,i)=>{c.result={...derived[i],...c.result};});
     const nativeProbe=probes.native||path.resolve(path.dirname(tool('ipc')),'../tests/dynamic_parts_probe'+(process.platform==='win32'?'.exe':''));
     const hasNative=fs.existsSync(nativeProbe),hasWasm=!!probes.wasm;
     let generations=0,records=0,traps=0,rejections=0,compilerErrors=0,publicVectors=0,coreRejections=0;
@@ -65,7 +70,7 @@ function run(iprop,tool,directory,probes={}){
         if(expected)assert.deepEqual([...image.data],expected,'independent dynamic part RGBA');
         if(trace)assert.deepEqual(result.outputs[0].values,trace,'independent effective part metadata and unchanged RNG');
         if(iprop){const wasm=iprop.generate(bytes,{seed});assert.deepEqual([...wasm.data],[...image.data],'whole native/WASM dynamic part render');
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:['point','rect','circle'][s.kind],list:s.isList,values:s.valueBits})),result.outputs);
+            assert.deepEqual(outputBits(wasm.outputs),result.outputs);
             assert.equal(wasm.fuel.used,result.fuel.spent);assert.equal(wasm.fuel.remaining,result.fuel.budget-result.fuel.spent);assert.equal(wasm.fuel.budget,result.fuel.budget);}
         generations++;return result;
     }
@@ -76,7 +81,6 @@ function run(iprop,tool,directory,probes={}){
     }
     try{
         for(const c of corpus.cases){const expected=ref.reference(c);
-            for(const key of ['original','view','mask','creations','released'])assert.deepEqual(c.result[key],expected[key],c.name+' frozen oracle '+key);
             assert.equal(c.result.canvas_sha256,sha(Buffer.from(expected.canvas)),c.name+' oracle full RGBA digest');
             if(hasNative){const r=JSON.parse(execFileSync(nativeProbe,probeArgs(c),{encoding:'utf8'}));
                 assert.deepEqual(compact(r),c.result,c.name+' full core/fuel/bytes pin');for(const key of Object.keys(expected))assert.deepEqual(r[key],expected[key],c.name+' native '+key);records++;}

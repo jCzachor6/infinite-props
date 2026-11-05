@@ -3,8 +3,6 @@
 Retained datasets are historical observations for the commits and platforms
 recorded in their manifests, rather than current performance guarantees:
 
-- [Released 0.4 baseline](baselines/v0.4.0/README.md): source/fixture hashes,
-  compiler results, image/output bits, traps and RNG observations.
 - [C API captures](capi/README.md): load/generation samples, allocation traffic
   and adapter comparisons with executable/input identities.
 - [Operation baseline for 0.9](operations/README.md): CPU, total/isolated fuel,

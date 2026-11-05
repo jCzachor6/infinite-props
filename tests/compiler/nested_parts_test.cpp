@@ -8,6 +8,7 @@
 #include "ips/Imports.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
 
 #include <bit>
 #include <filesystem>
@@ -19,8 +20,10 @@
 #include <vector>
 
 using namespace iprop;
+using compiler_test::generateVariant;
 
 namespace {
+GenerationResult generate(const std::vector<u8>& bytes, u32 seed = 7, u32 variant = 0) { return generateVariant(bytes, seed, variant); }
 
 using Sources = std::map<std::string, std::string>;
 
@@ -42,14 +45,6 @@ std::vector<u8> build(const Sources& sources, const std::string& entry, SourceCo
     INFO(diagnostics);
     REQUIRE(result.succeeded());
     return result.bytes;
-}
-
-GenerationResult generate(const std::vector<u8>& bytes, u32 seed = 7, u32 variant = 0) {
-    const auto file = loadFile(bytes);
-    validate(file);
-    VM vm(file, GenerationInputs{seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});
-    vm.run();
-    return vm.result();
 }
 
 struct Instance {
@@ -393,6 +388,9 @@ TEST_CASE("import cycles name the whole chain including equivalent paths") {
            {"dir/b.ips", "import c from \"c.ips\"\n" + leaf},
            {"dir/c.ips", "import a from \"../dir/../a.ips\"\n" + leaf}}, "a.ips",
           "a.ips -> dir/b.ips -> dir/c.ips -> a.ips", "dir/c.ips");
+    // A cycle that does not pass through the entry.
+    check({{"x.ips", "import y from \"y.ips\"\n" + leaf}, {"y.ips", "import z from \"z.ips\"\n" + leaf},
+           {"z.ips", "import y from \"y.ips\"\n" + leaf}}, "x.ips", "y.ips -> z.ips -> y.ips", "z.ips");
     // A file reached from two branches is not a cycle.
     const auto diamond = compileTree({{"top.ips", "import l from \"x/l.ips\" import r from \"y/r.ips\"\n" + leaf},
                                       {"x/l.ips", "import s from \"../s.ips\"\n" + leaf},

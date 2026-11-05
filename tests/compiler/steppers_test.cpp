@@ -14,33 +14,23 @@
 #include "ipa.hpp"
 #include "ipdis.hpp"
 #include "support/compiler_support.hpp"
+#include "support/test_support.hpp"
 #include <algorithm>
 #include <bit>
 #include <cmath>
 #include <limits>
 
 using namespace iprop;
+using test_support::patch16;
+using test_support::patch32;
+using compiler_test::rejectDiagnostic;
+using compiler_test::sameOutcome;
+using compiler_test::compileChecked;
 namespace {
-std::vector<u8> compileSteps(const std::string& source, bool optimize = true) {
-    auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
+void rejectSteps(const std::string& body, const std::string& message) { rejectDiagnostic("asset t{size 1x1 " + body + "}", message); }
 std::string asset(const std::string& body, const std::string& helpers = {}) {
     return "asset t{size 16x16 output list point values output point state " + helpers +
         " draw{" + body + " state={seed&65535,seed>>16}}}";
-}
-void sameResults(const std::vector<u8>& a, const std::vector<u8>& b, u32 seed) {
-    const auto left = compiler_test::execute(a, seed), right = compiler_test::execute(b, seed);
-    CHECK(left.canvas.pixels == right.canvas.pixels);
-    REQUIRE(left.outputs.size() == right.outputs.size());
-    for (std::size_t i = 0; i < left.outputs.size(); ++i) {
-        REQUIRE(left.outputs[i].points.size() == right.outputs[i].points.size());
-        for (std::size_t j = 0; j < left.outputs[i].points.size(); ++j) {
-            CHECK(std::bit_cast<u32>(left.outputs[i].points[j].x) == std::bit_cast<u32>(right.outputs[i].points[j].x));
-            CHECK(std::bit_cast<u32>(left.outputs[i].points[j].y) == std::bit_cast<u32>(right.outputs[i].points[j].y));
-        }
-    }
 }
 void sameValue(const Value& actual, const Value& expected) {
     REQUIRE(valueType(actual) == valueType(expected));
@@ -80,19 +70,6 @@ Distribution analytic(DistributionFamily family, std::array<f32, 4> parameters) 
 }
 Distribution points(DistributionFamily family, std::vector<DistributionPoint> values) {
     return {family, {}, std::make_shared<PointDistributionData>(PointDistributionData{family, std::move(values)})};
-}
-void rejectSteps(const std::string& body, const std::string& message) {
-    const auto result = compileSource("stepper-error.ips", [&](std::string_view) { return "asset t{size 1x1 " + body + "}"; });
-    CHECK_FALSE(result.succeeded()); CHECK(result.bytes.empty()); REQUIRE_FALSE(result.diagnostics.empty());
-    INFO(result.diagnostics[0].message);
-    CHECK(result.diagnostics[0].message.find(message) != std::string::npos);
-    CHECK(result.diagnostics[0].location.has_value());
-}
-void put16(std::vector<u8>& bytes, std::size_t at, u16 value) {
-    bytes.at(at) = static_cast<u8>(value); bytes.at(at + 1) = static_cast<u8>(value >> 8);
-}
-void put32(std::vector<u8>& bytes, std::size_t at, u32 value) {
-    for (unsigned i = 0; i < 4; ++i) bytes.at(at + i) = static_cast<u8>(value >> (8 * i));
 }
 } // namespace
 
@@ -230,19 +207,19 @@ TEST_CASE("stepper supports helpers constants lists formatter assembly and compr
         values={list.len(empty),list.len(specs)} values={list.len(descriptions),seed==before}
         state={seed&65535,seed>>16}}
     })";
-    const auto reference = compileSteps(asset(R"(
+    const auto reference = compileChecked(asset(R"(
       values={1,1} for i in 0..10{xs=[0,1,1,2,2,3,3,4,4,5] values={xs[i],xs[i]}}
       values={4,4} values={-0.0,-0.0} values={0,4} values={3,1}
     )"), false);
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileSteps(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         const auto file = loadFile(bytes); REQUIRE_NOTHROW(validate(file));
         CHECK_FALSE(file.collections.steppers.empty());
         const auto formatted = ips::formatProgram(ips::parse(source));
         CHECK(formatted.find("stepper(") != std::string::npos);
         CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
-        for (const auto& variant : {bytes, compressFile(bytes), stripDebug(bytes), assemble(disassemble(bytes)), compileSteps(formatted, optimize)})
-            for (const u32 seed : {0u, 1u, 26u, 0xffffffffu}) sameResults(variant, reference, seed);
+        for (const auto& variant : {bytes, compressFile(bytes), stripDebug(bytes), assemble(disassemble(bytes)), compileChecked(formatted, optimize)})
+            for (const u32 seed : {0u, 1u, 26u, 0xffffffffu}) sameOutcome(variant, reference, seed);
     }
 }
 
@@ -263,20 +240,20 @@ TEST_CASE("stepper capture and pick preserve eager effects snapshots and caller 
       values={one[0]==two[0] && one[255]==two[255],seed==before}
       skipped=0 && list.len(stepper(unit()).pick(1))
     )", helpers);
-    const auto reference = compileSteps(asset(R"(
+    const auto reference = compileChecked(asset(R"(
       values={1,seed&65535} lower=10 to 15 values={2,seed&65535} upper=20 to 30
       values={3,seed&65535} mean=15 to 18 values={4,seed&65535} n=1 to 3
       values={n,seed&65535} values={1,1} values={1,1}
     )"), false);
     for (const bool optimize : {false, true}) for (const u32 seed : {0u, 26u, 0xffffffffu})
-        sameResults(compileSteps(source, optimize), reference, seed);
-    const auto drawConstant = compileSteps(asset("spec=stepper(unit()) before=seed a=spec.pick(10) values={a[0]==a[9],seed==before}"));
-    const auto constantReference = compileSteps(asset("v=unit() values={1,1}"));
-    sameResults(drawConstant, constantReference, 26);
+        sameOutcome(compileChecked(source, optimize), reference, seed);
+    const auto drawConstant = compileChecked(asset("spec=stepper(unit()) before=seed a=spec.pick(10) values={a[0]==a[9],seed==before}"));
+    const auto constantReference = compileChecked(asset("v=unit() values={1,1}"));
+    sameOutcome(drawConstant, constantReference, 26);
 }
 
 TEST_CASE("stepper descriptions and constant lists share retention and structural distinctness", "[stepper]") {
-    const auto bytes = compileSteps(R"(asset t{size 1x1 const distribution d=weighted{0:1,1:2}
+    const auto bytes = compileChecked(R"(asset t{size 1x1 const distribution d=weighted{0:1,1:2}
       const stepper<i32> s=stepper(0 to 1 with d) const list<stepper<i32>> descriptions=[s,s]
       draw{a=s b=descriptions c=descriptions last=s}})", false);
     const auto file = loadFile(bytes); REQUIRE(file.collections.steppers.size() == 1);
@@ -291,13 +268,13 @@ TEST_CASE("stepper descriptions and constant lists share retention and structura
     CHECK(ex.resources.bytes == retained); CHECK(ex.fuel == fuel);
     const auto result = selectList(checkListSelection(list, false)); CHECK(result.count == 1);
     CHECK_THROWS_AS(checkListSelection(list, true), std::invalid_argument);
-    const auto distinct = compileSteps(asset(R"(
+    const auto distinct = compileChecked(asset(R"(
       xs=[stepper(1),stepper(1),stepper(1 to 1),stepper(1 to 1 with gaussian(1,1))]
       fs=[stepper(-0.0),stepper(0.0),stepper(-0.0)]
       ds=[stepper(0 to 1 with weighted{0:1,1:2}),stepper(0 to 1 with weighted{0.0:1,1:2})]
       values={list.len(xs.distinct()),list.len(fs.distinct())} values={list.len(ds.distinct()),seed==seed}
     )"));
-    sameResults(distinct, compileSteps(asset("values={3,2} values={2,1}")), 26);
+    sameOutcome(distinct, compileChecked(asset("values={3,2} values={2,1}")), 26);
 }
 
 TEST_CASE("stepper checks counts handles mass memory and fuel without publishing partial lists", "[stepper]") {
@@ -324,7 +301,7 @@ TEST_CASE("stepper checks counts handles mass memory and fuel without publishing
     sameValue(h.pick(equal, 1).data->elements[0], i32{0});
     const auto outside = h.capture(i32{10}, i32{10}, analytic(DistributionFamily::Beta, {2, 2, 0, 1}));
     trap(outside, 1, ErrorReason::NumericRange);
-    auto file = loadFile(compileSteps("asset t{size 1x1 draw{if(false){s=stepper(0 to 5)} xs=s.pick(0)}}"));
+    auto file = loadFile(compileChecked("asset t{size 1x1 draw{if(false){s=stepper(0 to 5)} xs=s.pick(0)}}"));
     VM vm(file, {}); CHECK_THROWS_AS(vm.run(), Trap);
     CHECK_THROWS_AS(vm.result(), std::logic_error); CHECK_THROWS_AS(vm.run(), std::logic_error);
 }
@@ -411,18 +388,18 @@ TEST_CASE("sampler and stepper constants with matching payloads retain separate 
       const list<sampler<i32>> sampleDescriptions=[randomSpec]
       const list<stepper<i32>> stepDescriptions=[stepSpec]
     )");
-    const auto reference=compileSteps(asset("a=sampler(0 to 1 with weighted{0:1,1:1}).pick(2) values={0,1} values={1,1}"));
+    const auto reference=compileChecked(asset("a=sampler(0 to 1 with weighted{0:1,1:1}).pick(2) values={0,1} values={1,1}"));
     for(const bool optimize:{false,true}) {
-        const auto bytes=compileSteps(source,optimize);const auto file=loadFile(bytes);
+        const auto bytes=compileChecked(source,optimize);const auto file=loadFile(bytes);
         CHECK(file.collections.samplers.size()==1);CHECK(file.collections.steppers.size()==1);
         CHECK(file.collections.lists.size()==2);CHECK(file.collections.distributions.size()==1);
         for(const auto& variant:{bytes,assemble(disassemble(bytes)),compressFile(bytes)})
-            for(const u32 seed:{0u,26u,0xffffffffu})sameResults(variant,reference,seed);
+            for(const u32 seed:{0u,26u,0xffffffffu})sameOutcome(variant,reference,seed);
     }
 }
 
 TEST_CASE("stepper binary descriptors constants instructions and references reject corruption", "[stepper]") {
-    const auto bytes = stripDebug(compileSteps(R"(asset t{size 1x1
+    const auto bytes = stripDebug(compileChecked(R"(asset t{size 1x1
       const stepper<f32> s=stepper(0.0 to 1.0 with beta(2,3)) const list<stepper<f32>> specs=[s]
       draw{items=specs value=s xs=stepper(2).pick(2) ys=stepper(0 to 5).pick(2)
         zs=stepper(0.0 to 1.0 with gaussian(0.5,0.2)).pick(2)}})", false));
@@ -431,17 +408,17 @@ TEST_CASE("stepper binary descriptors constants instructions and references reje
     for (const auto& [at, value] : std::vector<std::pair<std::size_t, u8>>{{pool+6,3},{pool+7,1},{pool+16,0},{types+5,4}}) {
         auto bad=bytes;bad.at(at)=value;CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
-    for (const auto at : {pool+4,lists+8}) {auto bad=bytes;put16(bad,at,65535);CHECK_THROWS_AS(loadFile(bad),FormatError);}
+    for (const auto at : {pool+4,lists+8}) {auto bad=bytes;patch16(bad,at,65535);CHECK_THROWS_AS(loadFile(bad),FormatError);}
     for (const auto& [at,value] : std::vector<std::pair<std::size_t,u32>>{{pool,65537},{pool+8,0x7f800000},{pool+8,0x40000000},{pool+17,0}}) {
-        auto bad=bytes;put32(bad,at,value);CHECK_THROWS_AS(loadFile(bad),FormatError);
+        auto bad=bytes;patch32(bad,at,value);CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
     for (const auto& fn : file.code.functions) for (std::size_t i=0;i<fn.code.size();i+=4) {
         const auto ins=decodeInstruction(fn.code.subspan(i,4));
         if (ins.opcode<Opcode::StepperValue || ins.opcode>Opcode::ConstStepper) continue;
         auto bad=bytes;bad.at(fn.fileOffset+i+1)=1;CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
-        bad=bytes;put16(bad,fn.fileOffset+i+2,65535);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
+        bad=bytes;patch16(bad,fn.fileOffset+i+2,65535);CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
     }
-    for (u16 minor=1;minor<7;++minor) {auto bad=bytes;put16(bad,6,minor);CHECK_THROWS_AS(loadFile(bad),FormatError);}
+    for (u16 minor=1;minor<7;++minor) {auto bad=bytes;patch16(bad,6,minor);CHECK_THROWS_AS(loadFile(bad),FormatError);}
     CHECK_THROWS_AS(assemble("meta: size=1x1\ntypes: sampler<i32>\nfn draw ( ) -> ( ):\nreturn\nstepper.pick.list 0\nendfn\n"),std::exception);
     CHECK_THROWS_AS(assemble("meta: size=1x1\nfn draw ( ) -> ( ):\nreturn\nconst.stepper 0\nendfn\n"),std::exception);
 }

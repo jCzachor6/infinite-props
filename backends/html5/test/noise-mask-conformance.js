@@ -1,9 +1,10 @@
 "use strict";
 const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
 const {execFileSync,spawnSync}=require("node:child_process");
-const {decodePng}=require("./png.js"),{sections,instructions}=require("./sampler-conformance.js");
+const {decodePng}=require("./png.js");
 const {replaceFloatConstants}=require("./vector-conformance.js"),reference=require("./noise-mask-reference.js");
 const B=require("./noise-v09-reference.js").bits,repo=path.resolve(__dirname,"../../..");
+const {instructions,outputBits,sections}=require("./harness.js");
 const numeric=n=>Number.isInteger(n)?n+".0":Math.fround(n).toPrecision(9);
 const vector=p=>"{"+p.map(numeric).join(",")+"}";
 const pin=r=>({...r,coverage:Buffer.from(r.coverage).toString("hex"),visible:Buffer.from(r.visible).toString("hex")});
@@ -33,7 +34,7 @@ function run(iprop,tool,directory){
         if(iprop){
             const wasm=iprop.generate(new Uint8Array(bytes),options);
             assert.deepEqual(Buffer.from(wasm.data),Buffer.from(image.data),"noise mask native/WASM pixels");
-            assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:["point","rect","circle"][s.kind],list:s.isList,values:s.valueBits})),output.outputs,"noise mask native/WASM RNG bits");
+            assert.deepEqual(outputBits(wasm.outputs),output.outputs,"noise mask native/WASM RNG bits");
         }
         ++generations;return {image,output};
     }

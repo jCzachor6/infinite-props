@@ -5,9 +5,10 @@ const {execFileSync, spawnSync} = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const {decodePng} = require("./png.js");
+const {outputBits}=require("./harness.js");
 
 function bits(outputs) {
-    return outputs.map(s => ({name:s.name, kind:["point","rect","circle"][s.kind], list:s.isList, values:s.valueBits}));
+    return outputBits(outputs);
 }
 
 function run(iprop, tool, directory) {

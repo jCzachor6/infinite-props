@@ -34,10 +34,7 @@ TEST_CASE("break and continue are rejected outside loops") {
         })")),
         {}));
     // In a helper function, the loop depth resets per function body.
-    expectCheckError(
-        "asset t { size 8x8 draw { }\n"
-        "  helper() { break } }",
-        "'break' outside a loop");
+    expectCheckError("asset t { size 8x8 draw { }\n" "  helper() { break } }", "'break' outside a loop");
 }
 
 TEST_CASE("for loops are checked") {
@@ -103,20 +100,12 @@ asset t {
 })";
     CHECK_NOTHROW(checkAsset(parse(forward), {}));
 
-    expectCheckError(
-        "asset t { size 8x8 draw { x = f(1) } f(n: i32) -> i32 { return f(n) } }",
-        "recursive call");
-    expectCheckError(
-        "asset t { size 8x8 draw { x = f(1, 2) } f(n: i32) -> i32 { return n } }",
-        "too many positional arguments");
+    expectCheckError("asset t { size 8x8 draw { x = f(1) } f(n: i32) -> i32 { return f(n) } }", "recursive call");
+    expectCheckError("asset t { size 8x8 draw { x = f(1, 2) } f(n: i32) -> i32 { return n } }", "too many positional arguments");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 draw { f(n = 1) } f(n: i32) -> i32 { return n } }"),{}));
-    expectCheckError(
-        "asset t { size 8x8 draw { x = f(1.5) } f(n: i32) -> i32 { return n } }",
-        "must be i32");
-    expectCheckError(
-        "asset t { size 8x8 draw { x = f() } f() { } }",
-        "cannot store void");
+    expectCheckError("asset t { size 8x8 draw { x = f(1.5) } f(n: i32) -> i32 { return n } }", "must be i32");
+    expectCheckError("asset t { size 8x8 draw { x = f() } f() { } }", "cannot store void");
     // A void function called as a statement is fine.
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 draw { f() } f() { } }"), {}));
@@ -133,22 +122,12 @@ TEST_CASE("declared return types are checked against the body") {
         "f(n: i32) -> i32 { if (n) { return 1 } return 2.5 } }",
         "return type of 'f' is i32, got f32");
     // A returning function must declare its return type (no inference).
-    expectCheckError(
-        "asset t { size 8x8 draw { x = f(1) } "
-        "f(n: i32) { return n } }",
-        "declares no return type");
+    expectCheckError("asset t { size 8x8 draw { x = f(1) } " "f(n: i32) { return n } }", "declares no return type");
     // A declared return type forbids bare returns.
-    expectCheckError(
-        "asset t { size 8x8 draw { f(1) } "
-        "f(n: i32) -> i32 { return } }",
-        "has no value");
+    expectCheckError("asset t { size 8x8 draw { f(1) } " "f(n: i32) -> i32 { return } }", "has no value");
     // draw cannot declare a return type.
-    expectCheckError(
-        "asset t { size 8x8 draw -> i32 { return 1 } }",
-        "'draw' cannot return a value");
-    expectCheckError(
-        "asset t { size 8x8 draw(v: f32, a: i32) { } }",
-        "takes no declared parameters");
+    expectCheckError("asset t { size 8x8 draw -> i32 { return 1 } }", "'draw' cannot return a value");
+    expectCheckError("asset t { size 8x8 draw(v: f32, a: i32) { } }", "takes no declared parameters");
 }
 
 TEST_CASE("typed parameters drive call-site validation") {
@@ -169,10 +148,7 @@ asset t {
 })";
     CHECK_NOTHROW(checkAsset(parse(source), {}));
 
-    expectCheckError(
-        "asset t { size 8x8 draw { x = h(#ff0000) } "
-        "h(u: f32) -> f32 { return u } }",
-        "argument 1 of 'h' must be f32, got color");
+    expectCheckError("asset t { size 8x8 draw { x = h(#ff0000) } " "h(u: f32) -> f32 { return u } }", "argument 1 of 'h' must be f32, got color");
     expectCheckError(
         "asset t { size 8x8 draw { c = tint(1) } "
         "tint(c: color) -> color { return c } }",
