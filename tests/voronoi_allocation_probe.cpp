@@ -1,19 +1,7 @@
+#include "support/fault_injection.hpp"
 #include "iprop/Voronoi.hpp"
 #include "iprop/VmInternals.hpp"
 #include <cstdio>
-#include <cstdlib>
-#include <new>
-
-namespace { bool armed=false,persistent=false;std::size_t allocations=0,failAt=0,live=0; }
-void* operator new(std::size_t size) {
-    if(armed && allocations++>=failAt){if(!persistent)armed=false;throw std::bad_alloc{};}
-    if(void* p=std::malloc(size?size:1)){++live;return p;}throw std::bad_alloc{};
-}
-void* operator new[](std::size_t n){return ::operator new(n);}
-void operator delete(void* p) noexcept {if(p){--live;std::free(p);}}
-void operator delete[](void* p) noexcept {::operator delete(p);}
-void operator delete(void* p,std::size_t) noexcept {::operator delete(p);}
-void operator delete[](void* p,std::size_t) noexcept {::operator delete(p);}
 
 int main() {
     using namespace iprop;
@@ -25,7 +13,7 @@ int main() {
             {
                 detail::Execution ex(file);ex.fuel=100000000;
                 std::shared_ptr<const GeometryData> data;
-                persistent=mode;allocations=0;failAt=at;armed=true;
+                arm(at,mode);
                 try {
                     if(generated){detail::VoronoiOptions o;o.count=19;o.relax=4;o.anisotropy=4;o.direction={3,4};o.rowBias=1;o.rowJitter=1;
                         data=detail::generatedVoronoi(ex,{0,0},{31,17},o);}

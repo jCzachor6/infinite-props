@@ -1,16 +1,7 @@
+#include "support/fault_injection.hpp"
 #include "support/regions_fixture.hpp"
 #include "support/geometry_fixture.hpp"
 #include <cstdio>
-#include <cstdlib>
-#include <new>
-
-namespace{bool armed=false,persistent=false;std::size_t allocations=0,failAt=0,live=0;}
-void* operator new(std::size_t n){if(armed&&allocations++>=failAt){if(!persistent)armed=false;throw std::bad_alloc{};}if(auto p=std::malloc(n?n:1)){++live;return p;}throw std::bad_alloc{};}
-void* operator new[](std::size_t n){return ::operator new(n);}
-void operator delete(void* p)noexcept{if(p){--live;std::free(p);}}
-void operator delete[](void* p)noexcept{::operator delete(p);}
-void operator delete(void* p,std::size_t)noexcept{::operator delete(p);}
-void operator delete[](void* p,std::size_t)noexcept{::operator delete(p);}
 
 int main(){
     using namespace iprop;LoadedFile file;file.code.functions.emplace_back();std::size_t faults=0;
@@ -22,7 +13,7 @@ int main(){
                 const auto source=path==5?geometry_fixture::adjacent(ex):geometry_fixture::holes(ex);
                 const auto bytes=ex.resources.bytes;std::shared_ptr<const GeometryData> result;MaskValue mask;
                 if(path>=4){ex.frames.emplace_back();ex.frames.back().stack.reserve(4);ex.push(Regions2dValue{source});ex.push(i32{path==4?1:0});}
-                persistent=mode;allocations=0;failAt=at;armed=true;
+                arm(at,mode);
                 try{
                     if(path==0)result=detail::geometryRegions(ex,source,2);
                     if(path==1)result=detail::offsetRegions(ex,source,0.25f);
