@@ -26,7 +26,9 @@ def main():
     run("cmake", "-S", source / "cpp", "-B", build, "-DCMAKE_BUILD_TYPE=Release")
     run("cmake", "--build", build, "--target", "iprop_jni", "--parallel", "4")
     run(args.kotlinc, source / "java/dev/infiniteprops/Program.kt",
-        root / "backends/android/tests/shared/Conformance.kt", root / "backends/android/tests/shared/PixelCorpus.kt", root / "backends/android/tests/Main.kt",
+        source / "java/dev/infiniteprops/PartOutputs.kt", source / "java/dev/infiniteprops/ExecutionLimits.kt",
+        root / "backends/android/tests/shared/Conformance.kt", root / "backends/android/tests/shared/PixelCorpus.kt",
+        root / "backends/android/tests/shared/FixtureJson.kt", root / "backends/android/tests/shared/PartOutputConformance.kt", root / "backends/android/tests/Main.kt",
         "-jvm-target", "17", "-include-runtime", "-d", build / "conformance.jar")
     run(Path(args.java_home) / "bin/java", "-Xcheck:jni", f"-Djava.library.path={build}",
         "-jar", build / "conformance.jar", args.fixtures.resolve(), args.corpus.resolve())

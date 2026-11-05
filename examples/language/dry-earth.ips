@@ -1,0 +1,12 @@
+asset DryEarth {
+  size 128x128
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 128, 128, #493628)
+    d = voronoi({0, 0}, {128, 128}, 32, pattern_seed, voronoi.random, 1, 0)
+    plates = regions.gap(regions(d), 1.4, 0.8, pattern_seed)
+    surface.paint(regions.mask(plates), #aa8053)
+    surface.paint(regions.bevel(plates, 2, {(-1), (-1)}, #d4ad75, #523b2c, 0.5), blend = surface.source_over)
+  }
+}

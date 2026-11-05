@@ -82,7 +82,6 @@ TEST_CASE("the reserved former version field must be zero") {
 
 TEST_CASE("unknown flag bits fail") {
     expectError(rawLayout(0, 4, 1, 0, {{1, 0, 0}}), 8);
-    expectError(rawLayout(0, 4, 1, 0, {{1, 0, 0}}), 8); // unknown flags in the current envelope
 }
 
 TEST_CASE("section count out of range fails") {

@@ -18,6 +18,7 @@
       "samplers",
       "part",
       "surfaces",
+      "procedural",
       "limits",
       "grammar",
       "builtins",
@@ -246,6 +247,26 @@
       "examples": [
         "captured-panels.ips",
         "blur.ips"
+      ]
+    },
+    {
+      "id": "procedural",
+      "title": "Geometry, masks and typed parts",
+      "chapter": "migration-v0.9.md",
+      "parts": [
+        {
+          "heading": "Pick the smallest pipeline"
+        },
+        {
+          "heading": "Handle ownership and placement"
+        },
+        {
+          "heading": "Programs and generated results"
+        }
+      ],
+      "examples": [
+        "part-export.ips",
+        "cheetah-spots.ips"
       ]
     }
   ],

@@ -16,6 +16,11 @@ These API 0.4 operations use ABI line 0.5:
 | `iprop_result_output_view_ex_init` | Initializes a sized generated output view |
 | `iprop_result_output_point/rect/circle` | Copies one complete typed element after kind/index/capacity checks |
 
+API 0.5 adds [typed dynamic-part/resource queries](c-api-part-outputs.md), with
+their own capabilities and sized descriptors. Output count/find include these
+slots; packed-float get and scalar copies return `E_UNSUPPORTED` for a part
+slot. The sized image/statistics queries work for every successful typed result.
+
 `iprop_library_query` advertises `IPROP_CAP_PROGRAM_LOAD_EX`,
 `IPROP_CAP_PROGRAM_QUERY`, `IPROP_CAP_STRUCTURED_ERRORS` and
 `IPROP_CAP_LIBRARY_QUERY_EX`, alongside its existing library-query/sized bits.
@@ -140,19 +145,21 @@ iprop_status_ex iprop_generate_ex(const iprop_program *program,
 ```
 
 Program, options and result output are required. Options require a four-byte
-sized prefix; absent seed/variant/archetype/dimensions default to zero, with
+sized prefix; absent seed/dimensions default to zero, with
 zero dimensions selecting source size. Parameters are optional: NULL uses the
 stored defaults, and a supplied set must come from the same program load.
 
 One private validator, `checkGenerationRequest`, checks every new generation
-request and is meant for the future generation context as well. In this order
-and before any VM setup or allocation it rejects a NULL,
-shorter-than-four-byte or nonzero-flags options descriptor
-(`INVALID_ARGUMENT`); parameters from another program load
-(`FOREIGN_PARAMETERS`, even for identical bytes); then `VARIANT_RANGE`,
-`ARCHETYPE_RANGE` and `CANVAS_SIZE`. The ranges come from the same
-`checkGenerationArguments` the VM constructor uses, so each verdict equals the
-VM's own setup check. All are `E_ARGUMENT` at `ARGUMENTS` stage. Parameter
+request and is meant for the future generation context as well. Before VM setup
+or result allocation it checks a NULL/shorter-than-four-byte options descriptor
+and unknown flag bits (`INVALID_ARGUMENT`); parameters from another program
+load (`FOREIGN_PARAMETERS`, even for identical bytes); then `CANVAS_SIZE` from
+the VM's `checkGenerationArguments`. These are `E_ARGUMENT` at `ARGUMENTS`
+stage. API 0.5 then requires `IPROP_GENERATE_PART_OUTPUTS` for any part output
+declaration, including empty or uncalled slots. Missing opt-in is
+`E_UNSUPPORTED` / `UNSUPPORTED_FEATURE`, with the output handle preserved.
+This prevents older checked callers from receiving an unrepresentable result.
+Parameter
 IDs, names, types and duplicates were already enforced when the values were
 set, by single setters or
 [strict override lists](c-api-parameters.md#strict-override-lists).

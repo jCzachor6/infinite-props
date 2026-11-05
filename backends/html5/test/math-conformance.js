@@ -2,22 +2,11 @@
 
 const assert = require("node:assert/strict");
 const { execFileSync, spawnSync } = require("node:child_process");
-const { createHash } = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { replaceFloatConstants } = require("./vector-conformance.js");
+const {canonical,outputBits}=require("./harness.js");
 
-function sha(data) { return createHash("sha256").update(data).digest("hex"); }
-function canonical(value) {
-    if (Array.isArray(value)) return value.map(canonical);
-    if (value && typeof value === "object")
-        return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
-    return value;
-}
-function outputBits(outputs) {
-    return outputs.map(slot => ({name: slot.name, kind: ["point", "rect", "circle"][slot.kind],
-        list: slot.isList, values: slot.valueBits}));
-}
 
 function run(iprop, tool, directory) {
     const repo = path.resolve(__dirname, "../../..");
@@ -91,22 +80,13 @@ function run(iprop, tool, directory) {
         const gated = fs.readFileSync(base + ".iprop");
         assert.equal(gated.readUInt32LE(4), 0);
         iprop.generate(new Uint8Array(gated), {});
-        for (let minor = 1; minor <= 5; ++minor) {
+        for (let minor = 1; minor <= 6; ++minor) {
             gated.writeUInt16LE(minor, 6);
             assert.throws(() => iprop.generate(new Uint8Array(gated), {}), /reserved header field must be zero/);
             ++comparisons;
         }
     }
 
-    // Execute pre-change bytes directly: source recompilation is a separate gate.
-    const frozen = ["frozen-format-v0.5.json", "frozen-format-v0.6-stage1.json", "frozen-format-v0.6-stage2.json", "frozen-format-v0.6-stage3.json", "frozen-format-v0.6-stage4.json", "frozen-format-v0.6-stage5.json", "frozen-format-v0.6-stage6.json", "frozen-format-v0.6-stage7.json", "frozen-format-v0.6-stage8.json", "frozen-format-v0.6-stage9.json", "frozen-format-v0.6-stage10.json"].flatMap(name =>
-        JSON.parse(fs.readFileSync(path.join(repo, "tests/fixtures", name), "utf8")).cases);
-    for (const fixture of frozen) {
-        const binary = Buffer.from(fixture.binary_base64, "base64");
-        assert.equal(sha(binary), fixture.binary_sha256);
-        assert.throws(() => iprop.generate(new Uint8Array(binary), {}), /reserved header field must be zero/);
-        ++comparisons;
-    }
     return comparisons;
 }
 

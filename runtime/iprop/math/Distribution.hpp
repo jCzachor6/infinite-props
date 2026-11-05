@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Types.hpp"
+#include "iprop/ExecutionLimits.hpp"
 #include <string_view>
 
 namespace iprop::math {
@@ -10,10 +11,10 @@ namespace iprop::math {
 // bit; `steps` counts the iterations that cost fuel.
 double pinnedExp(double x);
 double pinnedLog(double x);
-double normalCdf(double z, u32& steps);
+double normalCdf(double z, u32& steps, detail::WorkBudget* work = nullptr);
 double normalQuantile(double p);
 double logGamma(double x);
-double incompleteBeta(double a, double b, double t, u32& steps);
+double incompleteBeta(double a, double b, double t, u32& steps, detail::WorkBudget* work = nullptr);
 
 // Constructor parameter rules (spec v0.5 §4.2).
 bool validDistribution(const Distribution& distribution);
@@ -49,13 +50,13 @@ struct TruncatedDraw {
     u32 steps = 0;
     DrawStatus status = DrawStatus::Ok;
 };
-TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u);
-TruncatedDraw densityDistributionDraw(const Distribution& distribution, double lo, double hi, double u);
+TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work = nullptr);
+TruncatedDraw densityDistributionDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work = nullptr);
 TruncatedDraw invertDensitySegment(double length, double p, double q, double area);
 
 // A draw from `distribution` truncated to [lo, hi] (finite, lo <= hi) for the
 // unit coefficient u in [0, 1]. Random draws use the original open interval
 // (spec v0.5 §4.4); steppers also use the exact truncated support endpoints.
-TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u);
+TruncatedDraw truncatedDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work = nullptr);
 
 } // namespace iprop::math

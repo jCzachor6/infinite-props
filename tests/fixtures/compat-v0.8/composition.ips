@@ -1,0 +1,30 @@
+import branch from "branch.ips"
+
+asset CompatibilityComposition {
+  size 24x20
+  input i32 variant = 0
+  output point anchor
+  output rect box
+  output circle disk
+  output list point draws
+
+  draw {
+    draws = {unit(), unit()}
+    layer bounds { rect(1, 1, 20, 16, #ffffff9d) }
+    clip(mask.from(bounds)) {
+      if (variant == 0) { branch.draw(73, at={3.5, 2.5}) }
+      else if (variant == 1) { branch.draw(73, at={3.5, 2.5}, rot=90) }
+      else if (variant == 2) { branch.draw(73, at={3.5, 2.5}, rot=180) }
+      else if (variant == 3) { branch.draw(73, at={3.5, 2.5}, rot=270) }
+      else if (variant == 4) { branch.draw(73, at={3.5, 2.5}, mirror_x=true) }
+      else if (variant == 5) { branch.draw(73, at={3.5, 2.5}, mirror_y=true) }
+      else if (variant == 6) { branch.draw(73, at={3.5, 2.5}, rot=90, mirror_x=true) }
+      else { branch.draw(73, at={3.5, 2.5}, rot=90, mirror_y=true) }
+    }
+    anchor = branch.outputs.anchor
+    box = branch.outputs.box
+    disk = branch.outputs.disk
+    draws = {unit(), unit()}
+    draws = {seed & 65535, seed >> 16}
+  }
+}

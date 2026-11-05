@@ -40,6 +40,8 @@ function editorHarness(dir, execute) {
                 clear: () => collection.clear() }),
             registerCodeLensProvider: disposable,
             registerCodeActionsProvider(_selector, provider) { vscode.provider = provider; return disposable(); },
+            registerCompletionItemProvider: () => ({ dispose() {} }),
+            registerHoverProvider: () => ({ dispose() {} }),
             registerDocumentFormattingEditProvider(_selector, provider) { vscode.formatter = provider; return disposable(); },
         },
         workspace: {

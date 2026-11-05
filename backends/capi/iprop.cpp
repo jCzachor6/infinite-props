@@ -3,6 +3,7 @@
 #include "CheckedBoundary.hpp"
 #include "LegacyBoundary.hpp"
 #include "Operations.hpp"
+#include "ExecutionOptions.hpp"
 
 #include <array>
 #include <limits>
@@ -19,6 +20,9 @@ iprop_status iprop_program_load(const uint8_t* bytes, size_t length,
         auto program = std::make_unique<iprop_program>();
         iprop::capi::ErrorContext context;
         iprop::capi::loadProgram(*program, {bytes, length}, context);
+        if (iprop::hasPartOutputs(*program->data))
+            throw iprop::FormatError("part outputs are unsupported by legacy load; use checked API 0.5",
+                                    iprop::ErrorReason::UnsupportedFeature, iprop::ErrorStage::Arguments);
         *out_program = program.release();
         return iprop::capi::CallOutcome{};
     });
@@ -76,6 +80,9 @@ iprop_status iprop_generate(const iprop_program* program,
             return iprop::capi::CallOutcome::argument();
         if (options->uniform_count != 0 && options->uniforms == nullptr)
             return iprop::capi::CallOutcome::argument();
+        if (iprop::hasPartOutputs(*program->data))
+            throw iprop::FormatError("part outputs are unsupported by legacy generate; use checked API 0.5",
+                                    iprop::ErrorReason::UnsupportedFeature, iprop::ErrorStage::Arguments);
         iprop::GenerationInputs inputs;
         const auto read = iprop::capi::legacyInputs(*options, inputs);
         if (!read.succeeded) return read;
@@ -87,9 +94,9 @@ iprop_status iprop_generate(const iprop_program* program,
     });
 }
 
-iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
-                                 const iprop_parameters* parameters, iprop_result** out_result,
-                                 iprop_error_ex* error) {
+static iprop_status_ex generateChecked(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
+    iprop_result** out_result, iprop_error_ex* error) {
     using namespace iprop::capi;
     // These owners survive the guarded callable and every diagnostic catch.
     std::unique_ptr<iprop_result> result;
@@ -98,17 +105,22 @@ iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_gene
         ProtectedSpan{options, queryCapacity(options)},
         ProtectedSpan{parameters, parameters != nullptr ? sizeof(*parameters) : 0},
         ProtectedSpan{parameters != nullptr ? parameters->values.data() : nullptr,
-                      parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0}};
+                      parameters != nullptr ? parameters->values.size() * sizeof(iprop::UniformValue) : 0},
+        ProtectedSpan{limits, queryCapacity(limits)}};
     return checkedBoundary(error, out_result, sizeof(iprop_result*), context, [&] {
         if (program == nullptr) return CallOutcome::argument("program is null");
         if (out_result == nullptr) return CallOutcome::argument("out_result is null");
         GenerateOptions request;
         const auto checked = checkGenerationRequest(*program, options, parameters, request);
         if (!checked.succeeded) return checked;
+        ExecutionRequest execution;
+        const auto control = readExecutionRequest(limits, execution);
+        if (!control.succeeded) return control;
         iprop::GenerationInputs inputs;
         inputs.seed = request.seed;
         inputs.sizeX = request.sizeX;
         inputs.sizeY = request.sizeY;
+        inputs.limits = execution.limits;
         result = std::make_unique<iprop_result>();
         // Parameters are read only, by root-input ID; NULL selects defaults.
         generateProgram(*program, inputs, *result, context, parameters);
@@ -117,10 +129,22 @@ iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_gene
     }, spans);
 }
 
+iprop_status_ex iprop_generate_ex(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, iprop_result** out_result, iprop_error_ex* error) {
+    return generateChecked(program, options, parameters, nullptr, out_result, error);
+}
+
+iprop_status_ex iprop_generate_controlled(const iprop_program* program, const iprop_generate_options_ex* options,
+    const iprop_parameters* parameters, const iprop_execution_limits_ex* limits,
+    iprop_result** out_result, iprop_error_ex* error) {
+    return generateChecked(program, options, parameters, limits, out_result, error);
+}
+
 void iprop_result_free(iprop_result* result) { delete result; }
 
 void iprop_result_image(const iprop_result* result, iprop_image* out) {
     if (result == nullptr || out == nullptr) return;
+    if (iprop_result_check_legacy(result, nullptr) != IPROP_EX_OK) return;
     const auto image = iprop::capi::resultImage(*result);
     out->width = image.width;
     out->height = image.height;

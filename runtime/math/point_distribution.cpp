@@ -64,13 +64,14 @@ u32 pointDrawWork(const Distribution& distribution, double lo, double hi) {
     return static_cast<u32>(2 * distribution.points->points.size());
 }
 
-TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u) {
-    if (distribution.family == DistributionFamily::Density) return densityDistributionDraw(distribution, lo, hi, u);
+TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo, double hi, double u, detail::WorkBudget* work) {
+    if (distribution.family == DistributionFamily::Density) return densityDistributionDraw(distribution, lo, hi, u, work);
     TruncatedDraw result;
     if (!distribution.points) { result.status = DrawStatus::NoMass; return result; }
     const auto& points = distribution.points->points;
     double mass = 0.0;
     for (const auto& point : points) {
+        if (work) work->spend();
         const double key = distributionNumber(point.key);
         if (key >= lo && key <= hi) mass = mass + distributionNumber(point.value);
     }
@@ -80,6 +81,7 @@ TruncatedDraw pointDistributionDraw(const Distribution& distribution, double lo,
     // Scan every point in both passes. The pinned cost is two fuel per point,
     // reserved before the kernel runs, including zero/excluded points.
     for (const auto& point : points) {
+        if (work) work->spend();
         const double key = distributionNumber(point.key);
         const double weight = distributionNumber(point.value);
         if (key >= lo && key <= hi && weight > 0.0) {

@@ -1,0 +1,14 @@
+// Used to cancel inside an active native scan, then recover on the same
+// program with enabled=0. prepare-bindings.py raises only this fixture's fuel.
+asset Slow {
+    size 1x1
+    input i32 enabled = 1
+    output point state
+    draw {
+        if (enabled != 0) {
+            field = noise.mask({0, 0}, {2048, 2048}, noise.mode_cell_edge,
+                               {0.01, 0.01}, 0.2, seed)
+        }
+        state = {unit(), unit()}
+    }
+}

@@ -14,7 +14,9 @@ desktop tools, so every frame is byte-identical to the desktop output.
 | `js/api.js` | the browser-facing wrapper (`Iprop.create`) |
 | `demo/index.html` | a demo page: three 5×5 seed grids (portrait/noise/plant) with a Regenerate button |
 | `demo/assets/noise.ips` | the seed-varying noise demo; composed plant sources live in `examples/` |
-| `test/conformance.js` | the shared conformance suite (browser + Node) |
+| `test/conformance.js` | the golden conformance suite with pinned FNV-1a hashes |
+| `test/harness.js` | pure helpers shared by the conformance scripts (sections, instructions, output bits) |
+| `test/oracle.js` | expected values computed at test time by the independent Python oracles |
 | `test/run-tests.js` | the Node test runner |
 | `test/native-conformance.js` | compares WASM pixels and structured outputs with fresh native renders and verifies the pins |
 | `test/png.js` | RGBA8 PNG decoder for native comparisons; regression tests cover all five row filters |
@@ -53,7 +55,7 @@ cp build/wasm/iprop.js build/wasm/iprop.wasm backends/html5/demo/
   its pot and flower parts; the noise uses `demo/assets/noise.ips`. Both
   vary with the seed (the noise golden fixture is seed-independent).
 - **Conformance:** `node backends/html5/test/run-tests.js build/wasm` —
-  runs the seven browser golden entries, verifies their FNV-1a pins against
+  runs the seven golden entries, verifies their FNV-1a pins against
   fresh native renders and the committed golden PNGs, and compares every
   RGBA byte and structured output across both backends. It also compiles
   the loop regression, noise, shapes, portrait, plant, language, math edges,
@@ -89,13 +91,34 @@ const glow = iprop.generate(bytes, { seed: 26, uniforms: { v: 2, renderLayer: 1,
 ```
 
 `data` is a copied `Uint8Array` of RGBA pixels; `outputs` mirrors the desktop
-`GenerationResult` (points/rects/circles per named slot). The raw module
+`GenerationResult` (points/rects/circles/parts per named slot, with shared
+`resources`). The raw module
 function is `generate(fileBytes, seed, sizeX, sizeY[,
 uniforms])`.
 
 `fuel` contains the successful invocation's `budget`, `used` and `remaining`
-instruction counts, read directly from the VM. Wall-clock time is measured
+fuel units, read directly from the VM. Wall-clock time is measured
 by the host and is independent of these deterministic counts.
+
+## Typed part results
+
+Generation uses the same checked C API 0.6 implementation as native hosts.
+Every output has `index`, `owner`, `count` and an ordered `parts` array in
+addition to its existing fields. Kind 3 denotes `output list part`; old float
+outputs retain their exact `valueBits`. Empty declarations remain present.
+Each snapshot exposes every [C API part field](../../docs/c-api-part-outputs.md)
+using camelCase names, with `{x,y}` points and four tint bytes. D4 and integer
+translation are already effective, including enclosing static imports.
+
+`result.resources[id - 1]` resolves each nonzero resource ID. One table entry
+holds exact A8/RGBA `data`, or ordered `rings`/`regions` with explicit holes.
+IDs are local to one result; zero means an absent optional texture and
+`regionIndex == 0xffffffff` denotes a raster shape. Resources and snapshots
+are owned JavaScript values, surviving later calls and WASM heap growth.
+The public `Iprop` wrapper also owns its RGBA copy. Only the low-level module's
+RGBA view remains borrowed until the next call. No persisted result format
+is introduced. Checked errors additionally expose status/reason/stage and
+location fields.
 
 ## Notes
 
@@ -103,8 +126,12 @@ by the host and is independent of these deterministic counts.
   same build serves the demo page and the Node test runner.
 - The WASM heap is reused between `generate` calls; `js/api.js` copies the
   result so earlier results stay valid.
-- C++ exception handling is enabled at compilation and linking so validation
-  failures and runtime traps become catchable JavaScript `Error` objects.
+- C++ exceptions use native WebAssembly exception handling
+  (`-fwasm-exceptions`) at compilation and linking, so validation failures and
+  runtime traps become catchable JavaScript `Error` objects without routing
+  every throwing call through JavaScript. It needs Chrome 95, Firefox 100,
+  Safari 15.2, Node 17 or later; the butterfly benchmark generates about 3x
+  faster than with Emscripten's JavaScript-based `-fexceptions`.
 - Rebuild the pinned hashes in `test/conformance.js` whenever the semantics
   change intentionally (spec update first).
 

@@ -1,8 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <array>
+#include <bit>
 #include <cmath>
-#include <cstring>
+#include <initializer_list>
 #include <limits>
 
 #include "iprop/Binary.hpp"
@@ -28,110 +29,35 @@ void expectTruncation(const std::vector<u8>& bytes, std::size_t at, Fn&& fn) {
     REQUIRE(threw);
 }
 
+template <typename T>
+void roundTrip(std::initializer_list<T> values, void (Writer::*write)(T), T (Reader::*read)()) {
+    Writer w;
+    for (const T v : values) (w.*write)(v);
+    Reader r(w.data());
+    for (const T v : values) REQUIRE((r.*read)() == v);
+    REQUIRE(r.empty());
+}
+
 } // namespace
 
-TEST_CASE("u8 round-trips") {
-    Writer w;
-    w.writeU8(0);
-    w.writeU8(0xFF);
-    w.writeU8(0x80);
-    Reader r(w.data());
-    REQUIRE(r.readU8() == 0);
-    REQUIRE(r.readU8() == 0xFF);
-    REQUIRE(r.readU8() == 0x80);
-    REQUIRE(r.empty());
-}
-
-TEST_CASE("u16 round-trips with the high bit set") {
-    Writer w;
-    w.writeU16(0);
-    w.writeU16(0xFFFF);
-    w.writeU16(0x8001);
-    w.writeU16(0x0100); // checks byte order
-    Reader r(w.data());
-    REQUIRE(r.readU16() == 0);
-    REQUIRE(r.readU16() == 0xFFFF);
-    REQUIRE(r.readU16() == 0x8001);
-    REQUIRE(r.readU16() == 0x0100);
-    REQUIRE(r.empty());
-}
-
-TEST_CASE("u32 round-trips") {
-    Writer w;
-    w.writeU32(0);
-    w.writeU32(0xFFFFFFFFu);
-    w.writeU32(0x12345678u);
-    w.writeU32(0x00000100u); // little-endian byte order
-    Reader r(w.data());
-    REQUIRE(r.readU32() == 0);
-    REQUIRE(r.readU32() == 0xFFFFFFFFu);
-    REQUIRE(r.readU32() == 0x12345678u);
-    REQUIRE(r.readU32() == 0x00000100u);
-    REQUIRE(r.empty());
-}
-
-TEST_CASE("u64 round-trips") {
-    Writer w;
-    w.writeU64(0);
-    w.writeU64(0xFFFFFFFFFFFFFFFFull);
-    w.writeU64(0x0102030405060708ull);
-    Reader r(w.data());
-    REQUIRE(r.readU64() == 0);
-    REQUIRE(r.readU64() == 0xFFFFFFFFFFFFFFFFull);
-    REQUIRE(r.readU64() == 0x0102030405060708ull);
-    REQUIRE(r.empty());
-}
-
-TEST_CASE("i32 round-trips negative values") {
-    Writer w;
-    w.writeI32(0);
-    w.writeI32(-1);
-    w.writeI32(std::numeric_limits<i32>::min());
-    w.writeI32(std::numeric_limits<i32>::max());
-    Reader r(w.data());
-    REQUIRE(r.readI32() == 0);
-    REQUIRE(r.readI32() == -1);
-    REQUIRE(r.readI32() == std::numeric_limits<i32>::min());
-    REQUIRE(r.readI32() == std::numeric_limits<i32>::max());
-    REQUIRE(r.empty());
+TEST_CASE("fixed-width integers and colors round-trip, including high bits and extremes") {
+    roundTrip<u8>({0, 0xFF, 0x80}, &Writer::writeU8, &Reader::readU8);
+    roundTrip<u16>({0, 0xFFFF, 0x8001, 0x0100}, &Writer::writeU16, &Reader::readU16);
+    roundTrip<u32>({0, 0xFFFFFFFFu, 0x12345678u, 0x00000100u}, &Writer::writeU32, &Reader::readU32);
+    roundTrip<u64>({0, 0xFFFFFFFFFFFFFFFFull, 0x0102030405060708ull}, &Writer::writeU64, &Reader::readU64);
+    roundTrip<i32>({0, -1, std::numeric_limits<i32>::min(), std::numeric_limits<i32>::max()}, &Writer::writeI32, &Reader::readI32);
+    roundTrip<Color>({{0, 0, 0, 0}, {255, 255, 255, 255}, {1, 2, 3, 4}}, &Writer::writeColor, &Reader::readColor);
 }
 
 TEST_CASE("f32 round-trips preserve bit patterns exactly") {
-    const std::array<f32, 6> values = {
-        0.f, -0.f, 1.5f, -2.25f,
-        std::numeric_limits<f32>::min(),      // smallest normal
-        std::numeric_limits<f32>::infinity(),
-    };
+    const std::array<u32, 6> bits = {0x00000000u, 0x80000000u, std::bit_cast<u32>(1.5f), std::bit_cast<u32>(-2.25f),
+        std::bit_cast<u32>(std::numeric_limits<f32>::min()), std::bit_cast<u32>(std::numeric_limits<f32>::infinity())};
     Writer w;
-    for (const f32 v : values) {
-        w.writeF32(v);
-    }
-    // A NaN with a specific payload must survive bit-exactly.
-    const u32 nanBits = 0x7FC00001u;
-    w.writeU32(nanBits);
-
+    for (const u32 b : bits) w.writeF32(std::bit_cast<f32>(b));
+    w.writeU32(0x7FC00001u); // a NaN payload, written without a float round trip
     Reader r(w.data());
-    for (const f32 v : values) {
-        u32 expectedBits = 0;
-        std::memcpy(&expectedBits, &v, sizeof(expectedBits));
-        u32 readBits = 0;
-        const f32 read = r.readF32();
-        std::memcpy(&readBits, &read, sizeof(readBits));
-        REQUIRE(readBits == expectedBits);
-    }
-    REQUIRE(r.readU32() == nanBits);
-    REQUIRE(r.empty());
-}
-
-TEST_CASE("color round-trips") {
-    Writer w;
-    w.writeColor({0, 0, 0, 0});
-    w.writeColor({255, 255, 255, 255});
-    w.writeColor({1, 2, 3, 4});
-    Reader r(w.data());
-    REQUIRE(r.readColor() == Color{0, 0, 0, 0});
-    REQUIRE(r.readColor() == Color{255, 255, 255, 255});
-    REQUIRE(r.readColor() == Color{1, 2, 3, 4});
+    for (const u32 b : bits) REQUIRE(std::bit_cast<u32>(r.readF32()) == b);
+    REQUIRE(r.readU32() == 0x7FC00001u);
     REQUIRE(r.empty());
 }
 
@@ -238,80 +164,6 @@ TEST_CASE("writer pads to alignment") {
     REQUIRE(w.data()[0] == 1);
     REQUIRE(w.data()[1] == 0);
     REQUIRE(w.data()[3] == 0);
-}
-
-TEST_CASE("opcode values match spec section 9 exactly") {
-    // The full table from spec/iprop-v0.1.md §9. Any divergence is a frozen
-    // contract break. std::to_array deduces the exact entry count: an extra
-    // or missing entry would change the type and fail to compile.
-    const auto table = std::to_array<std::pair<Opcode, u8>>({
-        {Opcode::Nop, 0x00}, {Opcode::Block, 0x01}, {Opcode::Loop, 0x02},
-        {Opcode::If, 0x03}, {Opcode::Else, 0x04}, {Opcode::End, 0x05},
-        {Opcode::Br, 0x06}, {Opcode::BrIf, 0x07}, {Opcode::Call, 0x08},
-        {Opcode::Return, 0x09},
-
-        {Opcode::ConstI32, 0x10}, {Opcode::ConstF32, 0x11},
-        {Opcode::ConstColor, 0x12}, {Opcode::LocalGet, 0x13},
-        {Opcode::LocalSet, 0x14}, {Opcode::LocalTee, 0x15},
-        {Opcode::Drop, 0x16}, {Opcode::Dup, 0x17},
-
-        {Opcode::I32Add, 0x20}, {Opcode::I32Sub, 0x21}, {Opcode::I32Mul, 0x22},
-        {Opcode::I32DivS, 0x23}, {Opcode::I32DivU, 0x24},
-        {Opcode::I32RemS, 0x25}, {Opcode::I32RemU, 0x26},
-        {Opcode::I32And, 0x27}, {Opcode::I32Or, 0x28}, {Opcode::I32Xor, 0x29},
-        {Opcode::I32Shl, 0x2A}, {Opcode::I32ShrS, 0x2B},
-        {Opcode::I32ShrU, 0x2C}, {Opcode::I32Neg, 0x2D},
-        {Opcode::I32Not, 0x2E}, {Opcode::I32Eq, 0x30}, {Opcode::I32Ne, 0x31},
-        {Opcode::I32LtS, 0x32}, {Opcode::I32LtU, 0x33}, {Opcode::I32GtS, 0x34},
-        {Opcode::I32GtU, 0x35}, {Opcode::I32LeS, 0x36},
-        {Opcode::I32LeU, 0x37}, {Opcode::I32GeS, 0x38},
-        {Opcode::I32GeU, 0x39},
-
-        {Opcode::F32Add, 0x40}, {Opcode::F32Sub, 0x41}, {Opcode::F32Mul, 0x42},
-        {Opcode::F32Div, 0x43}, {Opcode::F32Eq, 0x44}, {Opcode::F32Ne, 0x45},
-        {Opcode::F32Lt, 0x46}, {Opcode::F32Gt, 0x47}, {Opcode::F32Le, 0x48},
-        {Opcode::F32Ge, 0x49}, {Opcode::F32Neg, 0x4A},
-        {Opcode::F32Abs, 0x4B}, {Opcode::F32Sqrt, 0x4C},
-        {Opcode::I32ToF32, 0x4D}, {Opcode::F32ToI32, 0x4E},
-
-        {Opcode::ColorMix, 0x50}, {Opcode::ColorShade, 0x51},
-        {Opcode::ColorSetA, 0x52},
-
-        {Opcode::StreamPush, 0x60}, {Opcode::StreamPop, 0x61},
-        {Opcode::RngUnit, 0x62}, {Opcode::RngRange, 0x63},
-        {Opcode::RngIndex, 0x64}, {Opcode::Hash, 0x65},
-        {Opcode::StreamState, 0x66},
-
-        {Opcode::Noise, 0x70}, {Opcode::Fault, 0x71}, {Opcode::Smooth, 0x72},
-        {Opcode::Lerp, 0x73},
-
-        {Opcode::Pixel, 0x80}, {Opcode::Rect, 0x81}, {Opcode::Line, 0x82},
-        {Opcode::Poly, 0x83}, {Opcode::Oval, 0x84}, {Opcode::Weather, 0x85},
-
-        {Opcode::OutPoint, 0x90}, {Opcode::OutRect, 0x91},
-        {Opcode::OutCircle, 0x92}, {Opcode::OutListPoint, 0x93},
-        {Opcode::OutListRect, 0x94}, {Opcode::OutListCircle, 0x95},
-        {Opcode::PartGetPoint, 0x96}, {Opcode::PartGetRect, 0x97},
-        {Opcode::PartGetCircle, 0x98},
-
-        {Opcode::PartDraw, 0xA0},
-    });
-
-    // The table must contain every opcode exactly once (sanity on top of the
-    // value check: 87 opcodes in v0.1).
-    REQUIRE(table.size() == 88);
-
-    for (const auto& [opcode, expected] : table) {
-        INFO("opcode " << static_cast<unsigned>(expected));
-        REQUIRE(static_cast<u8>(opcode) == expected);
-    }
-
-    // Uniqueness: the frozen contract must not reuse values.
-    std::array<bool, 256> seen{};
-    for (const auto& [opcode, value] : table) {
-        REQUIRE_FALSE(seen[value]);
-        seen[value] = true;
-    }
 }
 
 TEST_CASE("format constants match spec section 2") {

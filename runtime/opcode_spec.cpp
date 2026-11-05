@@ -10,6 +10,23 @@ constexpr OperationEffects effects(Opcode op) {
     using C = EffectCheck;
     const auto check = [](C value) { return static_cast<u16>(value); };
     switch (op) {
+    case Opcode::PartCreateRegion:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::IndexRange)),true};
+    case Opcode::PartCreateMask: case Opcode::PartCreateLayer:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)),true};
+    case Opcode::PartsFromRegions:
+        return {R::None,false,false,check(C::UnassignedHandle),true};
+    case Opcode::PartPlace: case Opcode::PartTexture:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::PartMask:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::DynamicPartDraw:
+        return {R::None,true,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::NumericRange)|check(C::PartRenderArguments))};
+    case Opcode::PartCenter: case Opcode::PartBoundsOrigin: case Opcode::PartBoundsSize: case Opcode::PartFill:
+    case Opcode::PartsCount: case Opcode::PartId: case Opcode::PartSourceId:
+        return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::PartsGet:
+        return {R::None,false,false,static_cast<u16>(check(C::UnassignedHandle)|check(C::IndexRange))};
     case Opcode::RngUnit: case Opcode::RngRange: case Opcode::RngIndex:
         return {R::AdvanceCurrent};
     case Opcode::RngInt: case Opcode::RngFloat: case Opcode::RngIntWith: case Opcode::RngFloatWith:
@@ -22,7 +39,30 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::Noise: case Opcode::Fault: return {R::SeededComputation};
     case Opcode::NoiseGrad: case Opcode::NoiseFbm: case Opcode::NoiseCell:
     case Opcode::Warp: case Opcode::CellJitter: case Opcode::NoiseRidge:
+    case Opcode::NoiseCell2: case Opcode::NoiseCellId:
+    case Opcode::NoiseWarpVec: case Opcode::NoiseFbmConfig:
+    case Opcode::NoiseMask: case Opcode::NoiseMaskConfig:
+    case Opcode::Voronoi: case Opcode::VoronoiConfig:
+    case Opcode::VoronoiMetric: case Opcode::VoronoiRows:
         return {R::SeededComputation,false,false,check(C::NumericRange)};
+    case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+    case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
+    case Opcode::RegionsMaskAll:
+    case Opcode::RegionsGap:
+    case Opcode::RegionsBevel: case Opcode::RegionsBevelConfig:
+    case Opcode::Contour: case Opcode::ContourConfig:
+        return {R::None,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
+    case Opcode::RegionsGapConfig:
+        return {R::SeededComputation,false,false,static_cast<u16>(check(C::NumericRange)|check(C::UnassignedHandle))};
+    case Opcode::RegionsDiagram: case Opcode::RegionsContours:
+    case Opcode::RegionsCount:
+    case Opcode::DiagramCount:
+        return {R::None,false,false,check(C::UnassignedHandle)};
+    case Opcode::RegionsPoints: case Opcode::RegionsMask:
+        return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle)|check(C::NumericRange))};
+    case Opcode::RegionsId: case Opcode::RegionsArea: case Opcode::RegionsCenter: case Opcode::RegionsNeighbors:
+    case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
+        return {R::None,false,false,static_cast<u16>(check(C::IndexRange)|check(C::UnassignedHandle))};
     case Opcode::Weather: return {R::SeededComputation,true};
     case Opcode::Pixel: case Opcode::Rect: case Opcode::Line: case Opcode::Poly:
     case Opcode::Oval: case Opcode::Curve: case Opcode::CurveCubic:
@@ -63,6 +103,7 @@ constexpr OperationEffects effects(Opcode op) {
     case Opcode::OutListPoint: case Opcode::OutListRect: case Opcode::OutListCircle:
         return {R::None,false,true};
     case Opcode::OutMask: case Opcode::OutLayer:
+    case Opcode::OutListPart:
         return {R::None,false,true,static_cast<u16>(check(C::UnassignedHandle)|check(C::PartOutputContext)|check(C::NumericRange))};
     case Opcode::PartGetMask: case Opcode::PartGetLayer:
         return {R::None,false,false,static_cast<u16>(check(C::PartOutputMissing)|check(C::PartOutputContext))};
@@ -80,7 +121,9 @@ constexpr OperationEffects effects(Opcode op) {
     }
 }
 constexpr OpcodeSpec fixed(Opcode op, const char* name, StackSignature stack) {
-    return {op,name,OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
+    const bool voronoi=op == Opcode::Voronoi || op == Opcode::VoronoiConfig ||
+        op == Opcode::VoronoiMetric || op == Opcode::VoronoiRows;
+    return {op,name,voronoi ? OperandKind::Zero : OperandKind::None,AuxPolicy::Zero,stack,effects(op)};
 }
 constexpr OpcodeSpec dynamic(Opcode op, const char* name, OperandKind operand,
                              AuxPolicy aux = AuxPolicy::Zero) {
@@ -201,6 +244,63 @@ constexpr OpcodeSpec kSpecs[] = {
     fixed(Opcode::Warp, "warp", StackSignature({S::F32, S::F32, S::F32, S::I32}, V::F32)),
     fixed(Opcode::CellJitter, "cell.jitter", StackSignature({S::I32, S::I32, S::I32}, V::Vec2)),
     fixed(Opcode::NoiseRidge, "noise.ridge", StackSignature({S::F32, S::F32, S::I32, S::I32}, V::F32)),
+    fixed(Opcode::NoiseCell2, "noise.cell2", StackSignature({S::F32, S::F32, S::I32}, V::F32)),
+    fixed(Opcode::NoiseCellId, "noise.cell_id", StackSignature({S::F32, S::F32, S::I32}, V::I32)),
+    fixed(Opcode::NoiseWarpVec, "noise.warp_vec", StackSignature({S::F32, S::F32, S::F32, S::I32}, V::Vec2)),
+    fixed(Opcode::NoiseFbmConfig, "noise.fbm_config",
+          StackSignature({S::F32, S::F32, S::I32, S::F32, S::F32, S::I32}, V::F32)),
+    fixed(Opcode::NoiseMask, "noise.mask",
+        StackSignature({S::Vec2, S::Vec2, S::I32, S::Vec2, S::F32, S::I32}, V::Mask)),
+    fixed(Opcode::NoiseMaskConfig, "noise.mask_config",
+        StackSignature({S::Vec2, S::Vec2, S::I32, S::Vec2, S::F32, S::I32,
+                        S::I32, S::F32, S::I32, S::F32}, V::Mask)),
+    fixed(Opcode::Voronoi, "voronoi", StackSignature({S::Vec2,S::Vec2,S::I32,S::I32},V::Diagram2d)),
+    fixed(Opcode::VoronoiConfig, "voronoi.config",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32},V::Diagram2d)),
+    fixed(Opcode::VoronoiMetric, "voronoi.metric",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32,S::F32,S::Vec2},V::Diagram2d)),
+    fixed(Opcode::VoronoiRows, "voronoi.rows",
+        StackSignature({S::Vec2,S::Vec2,S::I32,S::I32,S::I32,S::F32,S::I32,S::F32,S::Vec2,
+                        S::F32,S::F32,S::F32},V::Diagram2d)),
+    dynamic(Opcode::VoronoiSites, "voronoi.sites", OperandKind::Zero),
+    dynamic(Opcode::VoronoiSitesRelax, "voronoi.sites_relax", OperandKind::Zero),
+    dynamic(Opcode::DiagramCount, "diagram.count", OperandKind::Zero),
+    dynamic(Opcode::DiagramSite, "diagram.site", OperandKind::Zero),
+    dynamic(Opcode::DiagramNeighbors, "diagram.neighbors", OperandKind::Zero),
+    dynamic(Opcode::Contour, "contour", OperandKind::Zero),
+    dynamic(Opcode::ContourConfig, "contour.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsDiagram, "regions.diagram", OperandKind::Zero),
+    dynamic(Opcode::RegionsContours, "regions.contours", OperandKind::Zero),
+    dynamic(Opcode::RegionsCount, "regions.count", OperandKind::Zero),
+    dynamic(Opcode::RegionsId, "regions.id", OperandKind::Zero),
+    dynamic(Opcode::RegionsArea, "regions.area", OperandKind::Zero),
+    dynamic(Opcode::RegionsCenter, "regions.center", OperandKind::Zero),
+    dynamic(Opcode::RegionsNeighbors, "regions.neighbors", OperandKind::Zero),
+    dynamic(Opcode::RegionsDiagramConfig, "regions.diagram.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsContoursConfig, "regions.contours.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsPoints, "regions.points", OperandKind::Zero),
+    dynamic(Opcode::RegionsMask, "regions.mask", OperandKind::Zero),
+    dynamic(Opcode::RegionsMaskAll, "regions.mask_all", OperandKind::Zero),
+    dynamic(Opcode::PartCreateRegion, "part.create.region", OperandKind::Zero),
+    dynamic(Opcode::PartCreateMask, "part.create.mask", OperandKind::Zero),
+    dynamic(Opcode::PartCreateLayer, "part.create.layer", OperandKind::Zero),
+    dynamic(Opcode::PartsFromRegions, "parts.from_regions", OperandKind::Zero),
+    dynamic(Opcode::PartsCount, "parts.count", OperandKind::Zero),
+    dynamic(Opcode::PartsGet, "parts.get", OperandKind::Zero),
+    dynamic(Opcode::PartId, "part.id", OperandKind::Zero),
+    dynamic(Opcode::PartSourceId, "part.source_id", OperandKind::Zero),
+    dynamic(Opcode::PartCenter, "part.center", OperandKind::Zero),
+    dynamic(Opcode::PartBoundsOrigin, "part.bounds_origin", OperandKind::Zero),
+    dynamic(Opcode::PartBoundsSize, "part.bounds_size", OperandKind::Zero),
+    dynamic(Opcode::PartPlace, "part.place", OperandKind::Zero),
+    dynamic(Opcode::PartFill, "part.fill", OperandKind::Zero),
+    dynamic(Opcode::PartTexture, "part.texture", OperandKind::Zero),
+    dynamic(Opcode::DynamicPartDraw, "part.draw.dynamic", OperandKind::Zero),
+    dynamic(Opcode::PartMask, "part.mask", OperandKind::Zero),
+    dynamic(Opcode::RegionsGap, "regions.gap", OperandKind::Zero),
+    dynamic(Opcode::RegionsGapConfig, "regions.gap.config", OperandKind::Zero),
+    dynamic(Opcode::RegionsBevel, "regions.bevel", OperandKind::Zero),
+    dynamic(Opcode::RegionsBevelConfig, "regions.bevel.config", OperandKind::Zero),
     fixed(Opcode::Gain, "gain", StackSignature({S::F32, S::F32}, V::F32)),
     dynamic(Opcode::OutPoint, "out.point", OperandKind::Name),
     dynamic(Opcode::OutRect, "out.rect", OperandKind::Name),
@@ -208,6 +308,7 @@ constexpr OpcodeSpec kSpecs[] = {
     dynamic(Opcode::OutListPoint, "out.list.point", OperandKind::Name),
     dynamic(Opcode::OutListRect, "out.list.rect", OperandKind::Name),
     dynamic(Opcode::OutListCircle, "out.list.circle", OperandKind::Name),
+    dynamic(Opcode::OutListPart, "out.list.part", OperandKind::Name),
     dynamic(Opcode::PartGetPoint, "part.get.point", OperandKind::Name),
     dynamic(Opcode::PartGetRect, "part.get.rect", OperandKind::Name),
     dynamic(Opcode::PartGetCircle, "part.get.circle", OperandKind::Name),

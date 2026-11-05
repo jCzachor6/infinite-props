@@ -122,7 +122,7 @@ function wasmOutputBits(outputs) {
     });
 }
 
-function run(iprop, toolsDir) {
+function run(iprop, toolsDir, geometryProbes = {}) {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "iprop-conformance-"));
     const tool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
     let comparisons = 0;
@@ -137,7 +137,7 @@ function run(iprop, toolsDir) {
     let listMethodEvidence = {};
     let samplerEvidence = {};
     let stepperEvidence = {};
-    let blurEvidence = {};
+    let blurEvidence = {}, compatibilityV08 = {}, noiseV09 = {}, noiseMaskV09 = {}, geometryV09 = {}, voronoiV09 = {}, contoursV09 = {}, regionsV09 = {}, gapBevelV09 = {}, dynamicPartsV09 = {}, partExportsV09 = {};
     let samplingPaletteEvidence = {}, pointDistributionEvidence = {}, densityEvidence = {}, surfaceEvidence = {}, sourceOverEvidence = {}, maskEvidence = {}, resourceExportEvidence = {};
     const failures = [];
     const declaredInputs = require("./declared-input-conformance.js").run(iprop, tool, temporary);
@@ -313,7 +313,7 @@ function run(iprop, toolsDir) {
                     {x: 0x3f800000, y: 0x3f800000}, {x: 0x3f19999a, y: 0x3f4ccccd}, {x: 0, y: 0}
                 ], label + ": constant exact integers and normalization pins");
                 const baseline = JSON.parse(fs.readFileSync(path.join(repo,
-                    "tests/fixtures/frozen-format-v0.6-stage1.json"), "utf8")).cases[1];
+                    "tests/fixtures/legacy-oracles-v0.6.json"), "utf8")).cases.find(c => c.source === "inline runtime reference");
                 const expected = baseline.generations.find(g => g.seed === seed);
                 if (expected) assert.deepEqual(result.outputs, expected.outputs,
                     label + ": preserved runtime constructor outputs and RNG state");
@@ -432,7 +432,7 @@ function run(iprop, toolsDir) {
         for (const weapon of ["sword", "staff"]) {
             const file = path.join(repo, "examples/showcase", weapon + ".iprop");
             for (const layer of [0, 1])
-                compare(file, 26, null, {uniforms: {v:2,quality: 2, glowStrength: 4, renderPass:layer}});
+                compare(file, 26, null, {uniforms: {enchant: 2, quality: 2, glowStrength: 4, renderPass: layer}});
         }
         for (const [uniforms, message] of [[{missing: 1}, /unknown uniform 'missing'/],
                                            [{accent: "#12345"}, /'accent' must be a #RRGGBB/],
@@ -469,12 +469,22 @@ function run(iprop, toolsDir) {
         maskEvidence = require("./mask-conformance.js").run(iprop, tool, temporary);
         blurEvidence = require("./blur-conformance.js").run(iprop, tool, temporary);
         resourceExportEvidence = require("./resource-export-conformance.js").run(iprop, tool, temporary);
+        compatibilityV08 = require("./compat-v08-conformance.js").run(iprop, tool, temporary);
+        noiseV09 = require("./noise-v09-conformance.js").run(iprop, tool, temporary);
+        noiseMaskV09 = require("./noise-mask-conformance.js").run(iprop, tool, temporary);
+        geometryV09 = require("./geometry-v09-conformance.js").run(iprop, tool, temporary, geometryProbes);
+        voronoiV09 = require("./voronoi-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.voronoiWasm});
+        contoursV09 = require("./contours-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.contoursWasm});
+        regionsV09 = require("./regions-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.regionsWasm});
+        gapBevelV09 = require("./gap-bevel-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.gapBevelWasm});
+        dynamicPartsV09 = require("./dynamic-parts-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.dynamicPartsWasm});
+        partExportsV09 = require("./part-exports-conformance.js").run(iprop, tool, temporary, {wasm:geometryProbes.partExportsWasm});
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });
     }
     return { passed: failures.length === 0, failures, declaredInputs, comparisons, trapComparisons, vectorComparisons,
         vectorOverloads, colorComparisons, mathComparisons, constantComparisons, constantOverloads, collections: collectionEvidence, listMethods: listMethodEvidence,
-        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence };
+        samplers: samplerEvidence, steppers: stepperEvidence, samplingPalettes: samplingPaletteEvidence, pointDistributions: pointDistributionEvidence, density: densityEvidence, surfaces: surfaceEvidence, sourceOver: sourceOverEvidence, masks: maskEvidence, blur: blurEvidence, resourceExports: resourceExportEvidence, compatibilityV08, noiseV09, noiseMaskV09, geometryV09, voronoiV09, contoursV09, regionsV09, gapBevelV09, dynamicPartsV09, partExportsV09 };
 }
 
 module.exports = { run, checkImage, nativeOutputs, wasmOutputs, wasmOutputBits };

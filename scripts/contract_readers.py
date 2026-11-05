@@ -8,10 +8,12 @@ import re
 from release_common import read_version_matrix
 from pathlib import PurePosixPath
 
-LANGUAGE_SCHEMA_VERSION = 4
+LANGUAGE_SCHEMA_VERSION = 6
 DIAGNOSTICS_SCHEMA_VERSION = 1
 DOCUMENTATION_SCHEMA_VERSION = 3
 VALUE_TYPES = {'i32', 'f32', 'color', 'vec2', 'distribution', 'circle', 'rect', 'void', 'T', 'palette<f32>', 'palette<color>', 'layer', 'mask'}
+GEOMETRY_TYPES = {'diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d'}
+VALUE_TYPES |= GEOMETRY_TYPES
 SAMPLER_TYPES = {'sampler<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 STEPPER_TYPES = {'stepper<' + item + '>' for item in ('i32', 'f32', 'color', 'vec2')}
 DESCRIPTION_TYPES = SAMPLER_TYPES | STEPPER_TYPES
@@ -197,7 +199,7 @@ def read_language(value):
     require(len(source_types) == len(set(source_types)), 'unique source input types')
     types = obj(rules['types'], ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry', 'point_value_type', 'implicit_widening', 'local_reassignment'], 'types')
     for key in ['storable', 'helper_parameters', 'helper_value_returns', 'output_only_geometry']:
-        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES), True)
+        strings(types[key], key, {'circle', 'rect'} if key == 'output_only_geometry' else ({'i32', 'f32', 'color', 'vec2', 'distribution', 'layer', 'mask'} | LIST_TYPES | DESCRIPTION_TYPES | GEOMETRY_TYPES), True)
     if 'parameterized' in types:
         parameters = types['parameterized']
         require(type(parameters) is list and 1 <= len(parameters) <= 3, 'parameterized type descriptors')
@@ -306,8 +308,8 @@ def read_language(value):
             'source_over_kernel': {'straight_rgba8_u64_nearest_half_up'},
             'rounding_boundary': {'every_primitive_blit_and_paint'},
             'paint_opcode': {'surface.paint'}, 'capture_opcode': {'layer.begin'},
-            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'one_plus_target_pixels'},
-            'paint_fuel': {'one_plus_source_pixels'}, 'unset_handle': {'trap'}},
+            'capture_bytes': {'128_plus_4_per_pixel'}, 'capture_fuel': {'two_plus_ceil_70_percent_target_pixels'},
+            'paint_fuel': {'ceil_60_percent_one_plus_source_pixels'}, 'unset_handle': {'trap'}},
             ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections'], 'surface policy')
         require(not any(surface[k] for k in ['automatic_paint', 'host_inputs', 'asset_constants', 'surface_collections']), 'surface restrictions')
         require(surface['alpha_modes'] == ['surface.legacy', 'surface.source_over'], 'surface alpha modes')
@@ -341,7 +343,7 @@ def read_language(value):
                 'color': 'premultiplied_stored_channels_unpremultiply_after_both_passes',
                 'rounding': 'nearest_half_up_zero_alpha_zero_rgb', 'mask_result': 'A8_alpha_equivalent',
                 'geometry': 'preserve_dimensions_scale_placement_D4', 'zero_sigma': 'validate_then_share_no_allocation',
-                'clip': 'paint_only', 'positive_sigma_fuel': 'one_plus_K_plus_W_H_times_1_plus_2_K',
+                'clip': 'paint_only', 'positive_sigma_fuel': 'ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K',
                 'scratch_bytes': '8_times_W_min_H_K_channels', 'scratch_channels': {'layer': 4, 'mask': 1},
                 'scratch_release': 'success_and_error', 'preflight': 'fuel_and_shared_arena_before_filter'}
             blur = obj(surface['blur'], list(expected), 'surface blur policy')
@@ -382,8 +384,8 @@ def read_language(value):
             'clip_evaluation': {'mask_once_no_rng'}, 'from_opcode': {'mask.from'},
             'clip_opcode': {'clip.begin'}, 'paint_opcode': {'surface.paint.mask'},
             'result_bytes': {'128_plus_1_per_pixel'}, 'view_fuel': {'one_no_scan'},
-            'algebra_fuel': {'one_plus_zeroed_pixels_plus_result_pixels'},
-            'morphology_fuel': {'one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
+            'algebra_fuel': {'ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels'},
+            'morphology_fuel': {'ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples'},
             'clip_write_fuel': {'one_per_active_level'}},
             ['zero_coverage_write', 'geometry_outputs_clipped'], 'mask policy')
         require(not masks['zero_coverage_write'] and not masks['geometry_outputs_clipped'], 'mask write policy')
@@ -395,6 +397,127 @@ def read_language(value):
         require(len(operators) == 8 and all(o['result'] == 'mask' and
             o['effects']['rng'] == 'none' and 'unassigned_handle' in o['effects']['may_trap'] and
             not o['constant_evaluable'] for b in operators for o in b['overloads']), 'mask operator effects')
+    if 'geometry_handles' in rules:
+        geometry = rules['geometry_handles']
+        _strings_and_bools(geometry, {'type_names': {'contextual'}, 'storage': {'shared_immutable_topology'},
+            'unassigned_read': {'trap'}}, ['host_inputs', 'asset_constants', 'collections'], 'geometry handle policy')
+        require(not any(geometry[k] for k in ['host_inputs', 'asset_constants', 'collections']), 'geometry restrictions')
+        names = ['diagram2d', 'contours2d', 'regions2d', 'part2d', 'parts2d']
+        require(geometry.get('types') == names, 'geometry types')
+        codes = obj(geometry.get('descriptor_codes'), names, 'geometry descriptor codes')
+        for i, name in enumerate(names, 15):
+            integer(codes[name], 'geometry descriptor code')
+            require(codes[name] == i, 'geometry descriptor code')
+        for key, expected in [('generation_data_limit_bytes', 67108864), ('maximum_sites', 256),
+                ('maximum_regions', 256), ('maximum_ring_vertices', 2048), ('maximum_vertices', 65536)]:
+            integer(geometry.get(key), 'geometry ' + key)
+            require(geometry[key] == expected, 'geometry limit')
+        require(all(set(names) <= set(types[key]) for key in ['storable', 'helper_parameters', 'helper_value_returns']), 'geometry storage and transfer')
+        require(not set(names) & set(constants['types']), 'geometry const prohibition')
+    if 'regions' in rules:
+        regions = rules['regions']
+        _strings_and_bools(regions, {
+            'offset': {'positive_winding_round_joins'},
+            'arc_tolerance_world': {'1/64'},
+            'source_ids': {'original_source_fragment_ids_may_repeat'},
+            'order': {'source_then_net_area_bounds_discovery'},
+            'neighbors': {'surviving_fragments_common_original_edge'},
+            'min_area': {'after_offset_before_result_region_limit'},
+            'points': {'one_ring_no_holes_no_truncation'},
+            'raster': {'4x4_half_open_union_before_A8'},
+            'mask_clip': {'ignored_until_paint'}}, ['asset_constants'], 'regions policy')
+        require(not regions['asset_constants'], 'regions generation dependency')
+        integer(regions.get('maximum_points'), 'regions.maximum_points')
+        require(regions['maximum_points'] == 256, 'regions point bound')
+    if 'gap_bevel' in rules:
+        policy = rules['gap_bevel']
+        _strings_and_bools(policy, {
+            'constant_gap': {'same_offset_width_half'},
+            'variable_gap': {'original_edge_linear_knots_shared_vertex_endpoints'},
+            'bevel': {'nearest_edge_faceted_linear_fade_4x4_RGBA8'},
+            'bevel_ties': {'original_edge_then_current_use'},
+            'overlap': {'lowest_current_region_index'},
+            'raster_clip': {'ignored_until_paint'},
+            'rng': {'explicit_gap_seed_no_stream_draws'}}, ['asset_constants'], 'gap/bevel policy')
+        require(not policy['asset_constants'], 'gap/bevel generation dependency')
+        integer(policy.get('profile_knots'), 'gap/bevel profile knots')
+        require(policy['profile_knots'] == 9, 'gap/bevel profile knot bound')
+    if 'dynamic_parts' in rules:
+        policy = rules['dynamic_parts']
+        _strings_and_bools(policy, {
+            'identity': {'generation_counter_never_recycled'},
+            'source': {'shared_region_A8_RGBA8'}, 'views': {'immutable_id_preserving'},
+            'placement': {'absolute_D4_then_floor_t_plus_half'},
+            'anchor': {'net_centroid_or_alpha_pixel_bbox'}, 'coordinates': {'original_pixel_frame'},
+            'appearance': {'last_fill_or_texture_original_coordinates'},
+            'layer_alpha': {'default_once_override_shape_times_appearance'},
+            'mask': {'A8_shape_ignore_appearance_clip'}, 'draw': {'active_composition_clip_no_implicit_export'},
+            'scale': {'exact_D4_mapped_source_scale'}, 'metadata': {'cached_effective_post_rounding'},
+            'part_draw': {'one_argument_dynamic_seed_at_static'}}, ['asset_constants'], 'dynamic parts policy')
+        require(not policy['asset_constants'], 'dynamic parts generation dependency')
+        integer(policy.get('creation_limit'), 'dynamic part creation limit')
+        require(policy['creation_limit'] == 256, 'dynamic part creation limit')
+        if 'geometry_scale' in policy:
+            require(policy['geometry_scale'] == 'inverse_D4_target_grid_without_resampling', 'dynamic part geometry scale')
+    if 'part_exports' in rules:
+        policy = rules['part_exports']
+        _strings_and_bools(policy, {
+            'syntax': {'output list part <name>'}, 'value_type': {'part2d'},
+            'write': {'append_immutable_root_snapshot_no_draw'}, 'read': {'forbidden'},
+            'resources': {'shared_result_owned'},
+            'index': {'slot_append_order_independent_of_instance_id'}}, ['serialization'], 'part exports policy')
+        integer(policy.get('maximum_records'), 'part export record limit')
+        require(policy['maximum_records'] == 256 and not policy['serialization'], 'part export bounds and serialization')
+    if 'contour' in rules:
+        contour = rules['contour']
+        _strings_and_bools(contour, {
+            'algorithm': {'marching_squares_clamped_alpha_interpolation'},
+            'boundary': {'replicated_edge_samples_closed_rectangle'},
+            'coordinates': {'source_scale_placement_and_D4'},
+            'simplify': {'bounded_original_arc_error_preserve_intersections_and_nesting'},
+            'min_area': {'net_component_area_keep_holes'}}, ['asset_constants'], 'contour policy')
+        require(not contour['asset_constants'], 'contour generation dependency')
+        constants = obj(contour.get('constants'), ['contour.four', 'contour.eight'], 'contour constants')
+        for name, expected in [('contour.four', 0), ('contour.eight', 1)]:
+            integer(constants[name], name)
+            require(constants[name] == expected, 'contour constant')
+    if 'voronoi' in rules:
+        diagram = rules['voronoi']
+        _strings_and_bools(diagram, {
+            'rng': {'counter_hash_explicit_seed_no_stream_draws'},
+            'metric': {'squared_parallel_over_anisotropy_plus_squared_perpendicular'},
+            'neighbors': {'sorted_shared_positive_length_edges'},
+            'numeric_kernel': {'binary64_half_planes_shared_f32_topology'}},
+            ['asset_constants'], 'voronoi policy')
+        require(not diagram['asset_constants'], 'voronoi generation dependency')
+        for key, expected in [('minimum_sites', 1), ('maximum_sites', 256), ('maximum_relax', 4)]:
+            integer(diagram.get(key), 'voronoi.' + key)
+            require(diagram[key] == expected, 'voronoi bounds')
+        constants = obj(diagram.get('constants'), ['voronoi.random', 'voronoi.grid'], 'voronoi constants')
+        for name, expected in [('voronoi.random', 0), ('voronoi.grid', 1)]:
+            integer(constants[name], name)
+            require(constants[name] == expected, 'voronoi constant')
+    if 'noise_mask' in rules:
+        noise = rules['noise_mask']
+        _strings_and_bools(noise, {
+            'buffer_format': {'A8'}, 'coordinate_space': {'local_pixel_centers_times_frequency'},
+            'origin': {'crop_without_phase_shift'}, 'rng': {'explicit_seed_no_stream_draws'}},
+            ['asset_constants'], 'noise mask policy')
+        require(not noise['asset_constants'], 'noise mask generation dependency')
+        for key, expected in [('octaves_min', 1), ('octaves_max', 8)]:
+            integer(noise.get(key), 'noise_mask.' + key)
+            require(noise[key] == expected, 'noise mask octave bounds')
+        constants = obj(noise.get('constants'), [], 'noise mask constants')
+        for name, expected in [(name, i) for i, name in enumerate(
+                ['mode_value', 'mode_grad', 'mode_fbm', 'mode_cell', 'mode_cell_edge', 'mode_ridge'])] + [('above', 0), ('below', 1)]:
+            actual = constants.get('noise.' + name)
+            integer(actual, 'noise.' + name)
+            require(actual == expected, 'noise namespace constant')
+        defaults = obj(noise.get('short_defaults'), ['octaves', 'softness', 'comparison', 'warp_amount'], 'noise mask defaults')
+        for key, expected in [('octaves', 4), ('softness', 0), ('warp_amount', 0)]:
+            integer(defaults[key], 'noise mask default ' + key)
+            require(defaults[key] == expected, 'noise mask default value')
+        require(defaults['comparison'] == 'noise.above', 'noise mask default comparison')
     if 'point_distributions' in rules:
         points = obj(rules['point_distributions'], ['families', 'operand_types'], 'point distributions')
         _strings_and_bools(points, {
@@ -513,7 +636,7 @@ def read_language(value):
     ordered_signature(call['part'], 'part', typed=False)
     effect = obj(value['effect_rules'], ['intrinsic_scope', 'argument_effects', 'resource_traps', 'validation_limits', 'allocation_failure', 'helper', 'part', 'seed_read', 'output_write', 'output_write_policy', 'part_output_read', 'integer_division', 'integer_remainder'], 'effect_rules')
     require(effect['intrinsic_scope'] == 'operation_excluding_arguments_and_resources' and effect['argument_effects'] == 'evaluated_before_operation_in_caller_stream', 'effect scope')
-    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit'})
+    strings(effect['resource_traps'], 'resource traps', {'fuel_exhausted', 'call_depth_limit', 'generation_data_limit', 'work_limit', 'cancelled', 'deadline_exceeded'})
     strings(effect['validation_limits'], 'validation limits', {'operand_stack_limit'})
     boolean(effect['allocation_failure'], 'allocation failure')
     for key in ['helper', 'part', 'seed_read', 'output_write', 'part_output_read', 'integer_division', 'integer_remainder']:

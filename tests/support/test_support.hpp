@@ -38,6 +38,13 @@ std::vector<u8> rawLayout(u32 former, u32 flags, u32 count, u32 reserved,
 
 void appendZeros(std::vector<u8>& bytes, std::size_t n);
 
+// Overwrite a little-endian field in place (bounds-checked).
+void patch16(std::vector<u8>& bytes, std::size_t at, u16 value);
+void patch32(std::vector<u8>& bytes, std::size_t at, u32 value);
+
+// Appends encoded instructions to a function body.
+void append(std::vector<u8>& body, std::initializer_list<std::vector<u8>> instructions);
+
 // `const` section bytes (spec §5).
 std::vector<u8> constSection(const std::vector<std::string>& strings,
                              const std::vector<i32>& ints,

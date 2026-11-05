@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_generate_ex(portrait,&request,NULL,NULL,&error)==IPROP_EX_E_ARGUMENT && error.reason==IPROP_REASON_INVALID_ARGUMENT);
     for(index=0;index<4;++index) { request.struct_size=index;
         CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0); }
-    request=options_ex(0,0,0); request.flags=1;
+    request=options_ex(0,0,0); request.flags=2;
     CHECK(reject(portrait,&request,NULL,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_INVALID_ARGUMENT,IPROP_STAGE_ARGUMENTS)==0);
     request=options_ex(0,0,0);
     CHECK(reject(portrait,&request,foreign,&error,IPROP_EX_E_ARGUMENT,IPROP_REASON_FOREIGN_PARAMETERS,IPROP_STAGE_ARGUMENTS)==0);

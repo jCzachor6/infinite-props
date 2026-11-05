@@ -2,5 +2,6 @@
 # Match its allocator frames only; never suppress libpython/ctypes wholesale,
 # which would also hide leaks allocated by the native library below them.
 leak:PyMem_RawMalloc
+leak:PyMem_Malloc
 leak:PyObject_Malloc
 leak:PyUnicode_New

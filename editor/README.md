@@ -147,3 +147,9 @@ status/exit mismatches are rejected. UTF-8/source-id checks still guard every
 applied fix.
 The same real diagnostic mutation corpus is checked by Python, the editor and
 the formal schema in `compiler_export_contracts`.
+
+Completion and hover signatures come from the selected `ipc --describe-language`
+catalogue (schema 6), including namespace constants and geometry/part handle types.
+The executable identity invalidates the cache after a compiler change. Preview
+renders use `--omit-part-outputs`: images and ordinary outputs remain visible;
+typed snapshots/resources require a host API and are not serialized by the editor.

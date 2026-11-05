@@ -10,13 +10,34 @@ import weakref
 from . import _native as n
 from ._native import IpropError
 
-__all__ = ["Program", "Color", "F32", "U32", "I32", "Input", "Metadata", "Output", "OutputKind", "Statistics", "GeneratedImage", "IpropError"]
+__all__ = ["Program", "Color", "F32", "U32", "I32", "Input", "Metadata", "Output", "OutputKind", "Statistics", "GeneratedImage", "IpropError",
+    "Point", "PartSnapshot", "Resource", "Ring", "Region", "CancellationToken"]
 
 
 def _integer(value, minimum, maximum):
     if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
         raise ValueError(f"Expected an integer in {minimum}..{maximum}")
     return value
+
+
+class CancellationToken:
+    """One-way native cancellation; cancel() may run on another thread.
+
+    The flag is freed automatically after the last reference, including a
+    generation currently using it. Create a new token for a new operation.
+    """
+    def __init__(self, *, library=None, _native=None):
+        self._native = _native or n.Native(library)
+        self._handle = c.c_void_p()
+        self._native.call("cancellation_create", c.byref(self._handle))
+        self._finalizer = weakref.finalize(self, self._native.cancellation_free, self._handle)
+
+    def cancel(self):
+        self._native.cancellation_cancel(self._handle)
+
+    @property
+    def is_cancelled(self):
+        return bool(self._native.cancellation_is_cancelled(self._handle))
 
 
 @dataclass(frozen=True)
@@ -89,6 +110,88 @@ class OutputKind(IntEnum):
     POINT = 0
     RECT = 1
     CIRCLE = 2
+    PART = 3
+
+
+@dataclass(frozen=True)
+class Point:
+    x: float
+    y: float
+
+
+@dataclass(frozen=True)
+class PartSnapshot:
+    """Exact C API snapshot. Resource IDs address this result's resource table.
+
+    D4 and integer translations are already effective; do not round or apply
+    the import transform again. 0xffffffff is the absent raster region index.
+    """
+    output_index: int
+    element_index: int
+    id: int
+    source_id: int
+    shape_kind: int
+    appearance_kind: int
+    shape_resource: int
+    region_index: int
+    texture_resource: int
+    tint: Color
+    d4: int
+    translation_x: int
+    translation_y: int
+    source_scale: Point
+    target_scale: Point
+    source_anchor: Point
+    center: Point
+    bounds_origin: Point
+    bounds_size: Point
+    source_d4: int
+    source_origin_x: int
+    source_origin_y: int
+    texture_d4: int
+    texture_origin_x: int
+    texture_origin_y: int
+
+
+@dataclass(frozen=True)
+class Ring:
+    index: int
+    parent_ring: int
+    is_hole: bool
+    vertices: tuple[Point, ...]
+
+
+@dataclass(frozen=True)
+class Region:
+    index: int
+    outer_ring: int
+    holes: tuple[int, ...]
+    source_id: int
+    area: float
+    center: Point
+    bounds_origin: Point
+    bounds_size: Point
+
+
+@dataclass(frozen=True)
+class Resource:
+    """One owned copy per C resource ID; geometry keeps rings and holes."""
+    id: int
+    kind: int
+    pixel_format: int
+    width: int
+    height: int
+    row_stride: int
+    data: bytes
+    scale: Point
+    vertex_count: int
+    edge_count: int
+    rings: tuple[Ring, ...]
+    regions: tuple[Region, ...]
+
+    @property
+    def byte_count(self):
+        return len(self.data)
 
 
 @dataclass(frozen=True)
@@ -100,6 +203,7 @@ class Output:
     is_list: bool
     count: int
     value_bits: tuple[int, ...]
+    parts: tuple[PartSnapshot, ...] = ()
 
     @property
     def values(self):
@@ -114,6 +218,9 @@ class Statistics:
     fuel_used: int
     image_byte_count: int
     output_element_count: int
+    work_budget: int = 0
+    work_remaining: int = 0
+    work_used: int = 0
 
 
 @dataclass(frozen=True)
@@ -127,6 +234,12 @@ class GeneratedImage:
     rgba: bytes
     outputs: tuple[Output, ...]
     statistics: Statistics
+    resources: tuple[Resource, ...] = ()
+
+    def resource(self, resource_id):
+        """Resolve a result-local nonzero ID; invalid IDs are never indices."""
+        _integer(resource_id, 1, len(self.resources))
+        return self.resources[resource_id - 1]
 
     def output(self, name, owner=0):
         return next((slot for slot in self.outputs if slot.owner == owner and slot.name == name), None)
@@ -194,9 +307,17 @@ class Program:
     def __exit__(self, *exc):
         self.close()
 
-    def generate(self, seed=0, *, inputs=None, width=0, height=0):
+    def cancellation_token(self):
+        return CancellationToken(_native=self._native)
+
+    def generate(self, seed=0, *, inputs=None, width=0, height=0, work_limit=0, timeout_ns=0, cancellation=None):
         for number in (seed, width, height):
             _integer(number, 0, 0xffffffff)
+        for number in (work_limit, timeout_ns):
+            _integer(number, 0, 0xffffffffffffffff)
+        if cancellation is not None and (not isinstance(cancellation, CancellationToken) or
+                cancellation._native.library._handle != self._native.library._handle):
+            raise ValueError("Cancellation token must use this runtime library")
         with self._lock:
             if not self._finalizer.alive:
                 raise RuntimeError("Program is closed")
@@ -222,9 +343,14 @@ class Program:
                         raise TypeError("Inputs must be Color, F32, U32 or I32")
                     self._native.call("parameters_set_named", parameters, view, c.byref(parameter))
                 options = n.sized(n.Options)
+                options.flags = 1  # IPROP_GENERATE_PART_OUTPUTS, negotiated by Native.
                 options.seed, options.size_x, options.size_y = seed, width, height
+                limits = n.sized(n.Limits)
+                limits.work_limit, limits.timeout_ns = work_limit, timeout_ns
+                if cancellation is not None:
+                    limits.cancellation = cancellation._handle.value
                 result = c.c_void_p()
-                self._native.call("generate_ex", self._handle, c.byref(options), parameters, c.byref(result))
+                self._native.call("generate_controlled", self._handle, c.byref(options), parameters, c.byref(limits), c.byref(result))
                 try:
                     return self._read_result(result)
                 finally:
@@ -233,19 +359,68 @@ class Program:
                 self._native.parameters_free(parameters)
 
     def _read_result(self, result):
-        image, stats = n.sized(n.Image), n.sized(n.Stats)
+        image, stats, work = n.sized(n.Image), n.sized(n.Stats), n.sized(n.Work)
         self._native.call("result_query_image", result, c.byref(image))
         self._native.call("result_query_stats", result, c.byref(stats))
+        self._native.call("result_query_work", result, c.byref(work))
         count = c.c_uint32()
         self._native.call("result_output_count", result, c.byref(count))
         outputs = []
         for index in range(count.value):
-            slot = n.sized(n.Output)
-            self._native.call("result_output_get", result, index, c.byref(slot))
-            size = slot.element_count * slot.stride_floats
-            bits = struct.unpack("=" + "I" * size, c.string_at(slot.values, size * 4)) if size else ()
+            slot = n.sized(n.Slot)
+            self._native.call("result_output_slot", result, index, c.byref(slot))
+            parts, bits = (), ()
+            if slot.kind == OutputKind.PART:
+                parts = tuple(self._read_part(result, index, entry) for entry in range(slot.element_count))
+            else:
+                old = n.sized(n.Output)
+                self._native.call("result_output_get", result, index, c.byref(old))
+                size = old.element_count * old.stride_floats
+                bits = struct.unpack("=" + "I" * size, c.string_at(old.values, size * 4)) if size else ()
             outputs.append(Output(slot.output_index, slot.owner, n.text(slot.name), OutputKind(slot.kind),
-                bool(slot.is_list), slot.element_count, bits))
+                bool(slot.is_list), slot.element_count, bits, parts))
+        self._native.call("result_resource_count", result, c.byref(count))
+        resources = tuple(self._read_resource(result, resource_id) for resource_id in range(1, count.value + 1))
         return GeneratedImage(image.width, image.height, image.row_stride, image.pixel_format, image.alpha_mode,
             image.origin, c.string_at(image.pixels, image.byte_count), tuple(outputs),
-            Statistics(stats.fuel_budget, stats.fuel_remaining, stats.fuel_used, stats.image_byte_count, stats.output_element_count))
+            Statistics(stats.fuel_budget, stats.fuel_remaining, stats.fuel_used, stats.image_byte_count, stats.output_element_count,
+                work.budget, work.remaining, work.used), resources)
+
+    def _read_part(self, result, slot, entry):
+        value = n.sized(n.Part)
+        self._native.call("result_output_part", result, slot, entry, c.byref(value))
+        fields = {}
+        for field in PartSnapshot.__dataclass_fields__:
+            item = getattr(value, field)
+            if isinstance(item, n.Point):
+                item = Point(item.x, item.y)
+            elif isinstance(item, n.Color):
+                item = Color(item.r, item.g, item.b, item.a)
+            fields[field] = item
+        return PartSnapshot(**fields)
+
+    def _read_resource(self, result, resource_id):
+        info = n.sized(n.Resource)
+        self._native.call("result_resource_get", result, resource_id, c.byref(info))
+        rings, regions = [], []
+        for index in range(info.ring_count):
+            ring = n.sized(n.Ring)
+            self._native.call("result_resource_ring", result, resource_id, index, c.byref(ring))
+            vertices = (n.Point * ring.vertex_count)()
+            if ring.vertex_count:
+                self._native.call("result_resource_ring_copy_vertices", result, resource_id, index, vertices, c.sizeof(vertices))
+            rings.append(Ring(ring.ring_index, ring.parent_ring, bool(ring.is_hole), tuple(Point(p.x, p.y) for p in vertices)))
+        for index in range(info.region_count):
+            region = n.sized(n.Region)
+            self._native.call("result_resource_region", result, resource_id, index, c.byref(region))
+            holes = []
+            for hole in range(region.hole_count):
+                value = c.c_uint32()
+                self._native.call("result_resource_region_hole", result, resource_id, index, hole, c.byref(value))
+                holes.append(value.value)
+            regions.append(Region(region.region_index, region.outer_ring, tuple(holes), region.source_id, region.area,
+                Point(region.center.x, region.center.y), Point(region.bounds_origin.x, region.bounds_origin.y),
+                Point(region.bounds_size.x, region.bounds_size.y)))
+        return Resource(info.resource_id, info.kind, info.pixel_format, info.width, info.height, info.row_stride,
+            c.string_at(info.data, info.byte_count) if info.byte_count else b"", Point(info.scale.x, info.scale.y),
+            info.vertex_count, info.edge_count, tuple(rings), tuple(regions))

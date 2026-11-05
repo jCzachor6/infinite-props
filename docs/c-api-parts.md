@@ -1,8 +1,9 @@
 # Part geometry and signatures
 
-Part output ranges and counts refer only to the host geometry table. Internal
-mask/layer exports are separate and do not change these indices, owners or
-point/rect/circle tags.
+Static part output ranges and counts refer to the public structured-output
+table, including API 0.5 [dynamic part lists](c-api-part-outputs.md). Internal
+mask/layer exports remain separate. Existing point/rect/circle tags keep their
+values, and every declared public slot keeps its stored owner/order.
 
 API 0.4 provides the loaded executable's stored part table through checked
 queries. `IPROP_CAP_PART_REFLECTION` advertises these implemented operations.

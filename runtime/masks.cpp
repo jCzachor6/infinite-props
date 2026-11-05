@@ -1,4 +1,5 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/Noise.hpp"
 
 #include <algorithm>
 #include <array>
@@ -75,7 +76,7 @@ MaskBounds boundsFromEdges(Execution& ex, i64 left, i64 top, i64 right, i64 bott
         static_cast<u32>(right - left), static_cast<u32>(bottom - top)};
 }
 
-std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bounds, u64 samples) {
+std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bounds, u64 samples, u8 initial = 0) {
     const u64 count = static_cast<u64>(bounds.width) * bounds.height;
     if (samples && count > std::numeric_limits<u64>::max() / samples)
         ex.trap("fuel exhausted", ErrorReason::FuelExhausted);
@@ -89,8 +90,72 @@ std::shared_ptr<SurfaceBuffer> createMask(Execution& ex, const MaskBounds& bound
     buffer->raster.height = bounds.height;
     buffer->raster.scaleX = ex.canvas().scaleX;
     buffer->raster.scaleY = ex.canvas().scaleY;
-    buffer->coverage.assign(static_cast<std::size_t>(count), 0);
+    initializeWork(buffer->coverage, static_cast<std::size_t>(count), initial, *ex.workBudget);
     return buffer;
+}
+
+MaskValue noiseMask(Execution& ex, Vec2 origin, Vec2 size, i32 kind, Vec2 frequency,
+                    f32 threshold, u32 seed, i32 octaves, f32 softness, i32 comparison, f32 warpAmount) {
+    const auto finite = [](Vec2 p) { return std::isfinite(p.x) && std::isfinite(p.y); };
+    const Vec2 end{origin.x + size.x, origin.y + size.y};
+    if (!finite(origin) || !finite(size) || size.x <= 0 || size.y <= 0 || !finite(end) ||
+        end.x <= origin.x || end.y <= origin.y)
+        ex.trap("noise mask rectangle must be finite, positive and representable", ErrorReason::NumericRange);
+    if (kind < 0 || kind >= static_cast<i32>(kNoiseModeNames.size()))
+        ex.trap("unknown noise mask kind", ErrorReason::NumericRange);
+    if (!finite(frequency) || frequency.x <= 0 || frequency.y <= 0)
+        ex.trap("noise mask frequency must be finite and positive", ErrorReason::NumericRange);
+    if (!std::isfinite(threshold))
+        ex.trap("noise mask threshold must be finite", ErrorReason::NumericRange);
+    if (octaves < 1 || octaves > 8)
+        ex.trap("noise mask octaves must be in 1..8", ErrorReason::NumericRange);
+    if (!std::isfinite(softness) || softness < 0)
+        ex.trap("noise mask softness must be finite and nonnegative", ErrorReason::NumericRange);
+    if (comparison != kNoiseAbove && comparison != kNoiseBelow)
+        ex.trap("unknown noise mask comparison", ErrorReason::NumericRange);
+    if (!std::isfinite(warpAmount))
+        ex.trap("warp amount out of range", ErrorReason::NumericRange);
+    const Vec2 scale{ex.canvas().scaleX, ex.canvas().scaleY};
+    if (!finite(scale) || scale.x <= 0 || scale.y <= 0)
+        ex.trap("surface raster scale must be finite and positive", ErrorReason::NumericRange);
+
+    // Keep the complete rectangle, including off-target pixels. A conservative
+    // pixel bounding box also represents rectangles smaller than one pixel.
+    const auto edge = [&](f32 coordinate, f32 component, bool upper) -> i64 {
+        const f32 scaled = coordinate * component;
+        const double rounded = upper ? std::ceil(static_cast<double>(scaled)) : std::floor(static_cast<double>(scaled));
+        if (!std::isfinite(rounded) || rounded < std::numeric_limits<i32>::min() ||
+            rounded > static_cast<double>(std::numeric_limits<i32>::max()) + (upper ? 1.0 : 0.0))
+            ex.trap("mask mapping is not representable", ErrorReason::NumericRange);
+        return static_cast<i64>(rounded);
+    };
+    const i64 left = edge(origin.x, scale.x, false), top = edge(origin.y, scale.y, false);
+    const auto bounds = boundsFromEdges(ex, left, top,
+        std::max(left + 1, edge(end.x, scale.x, true)), std::max(top + 1, edge(end.y, scale.y, true)));
+    const auto mode = static_cast<NoiseMode>(kind);
+    // Kernel units before the single whole-operation tariff: four lattice
+    // corners per octave, 25 Worley candidates, eight inner warp octaves.
+    const u64 samples = mode == NoiseMode::Cell || mode == NoiseMode::CellEdge ? 25u :
+        (mode == NoiseMode::Fbm || mode == NoiseMode::Ridge ? 4u * static_cast<u64>(octaves) : 4u);
+    auto buffer = createMask(ex, bounds, 1u + samples + (warpAmount == 0.f ? 0u : 32u));
+    for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+        ex.work();
+        const f32 localX = (static_cast<f32>(left + x) + 0.5f) / scale.x;
+        const f32 localY = (static_cast<f32>(top + y) + 0.5f) / scale.y;
+        if (localX < origin.x || localX >= end.x || localY < origin.y || localY >= end.y) continue;
+        Vec2 point{localX * frequency.x, localY * frequency.y};
+        if (warpAmount != 0.f) point = warpNoisePoint(ex, point, warpAmount, seed);
+        const f32 value = sampleNoise(ex, mode, point, octaves, seed);
+        f32 alpha;
+        if (softness == 0.f) alpha = (comparison == kNoiseAbove ? value >= threshold : value <= threshold) ? 1.f : 0.f;
+        else {
+            const f32 t = std::clamp((value - threshold) / softness + 0.5f, 0.f, 1.f);
+            const f32 above = t * t * (3.f - 2.f * t);
+            alpha = comparison == kNoiseAbove ? above : 1.f - above;
+        }
+        buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = static_cast<u8>(std::floor(alpha * 255.f + 0.5f));
+    } }
+    return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
 }
 
 MaskValue algebra(Execution& ex, Opcode op, const MaskValue& a, const MaskValue* b) {
@@ -103,7 +168,8 @@ MaskValue algebra(Execution& ex, Opcode op, const MaskValue& a, const MaskValue*
             std::max(static_cast<i64>(ab.y) + ab.height, static_cast<i64>(bb.y) + bb.height));
     }
     auto buffer = createMask(ex, bounds, 1);
-    for (u32 y = 0; y < bounds.height; ++y) for (u32 x = 0; x < bounds.width; ++x) {
+    for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+        ex.work();
         const i64 px = static_cast<i64>(bounds.x) + x, py = static_cast<i64>(bounds.y) + y;
         const auto av = maskCoverage(a, px, py), bv = b ? maskCoverage(*b, px, py) : u8{0};
         const auto coverage = op == Opcode::MaskUnion ? std::max(av, bv) :
@@ -111,7 +177,7 @@ MaskValue algebra(Execution& ex, Opcode op, const MaskValue& a, const MaskValue*
             op == Opcode::MaskSubtract ? std::min(av, static_cast<u8>(255u - bv)) :
             static_cast<u8>(255u - av);
         buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = coverage;
-    }
+    } }
     return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
 }
 
@@ -128,25 +194,64 @@ MaskValue morph(Execution& ex, const MaskValue& mask, i32 radius, bool expand) {
     u64 samples = 0;
     i32 horizontal = radius;
     for (i32 dy = 0; dy <= radius; ++dy) {
-        while (horizontal * horizontal + dy * dy > radius * radius) --horizontal;
+        ex.work();
+        while (horizontal * horizontal + dy * dy > radius * radius) { ex.work(); --horizontal; }
         halfWidths[static_cast<std::size_t>(radius + dy)] = horizontal;
         halfWidths[static_cast<std::size_t>(radius - dy)] = horizontal;
         samples += static_cast<u64>(2 * horizontal + 1) * (dy ? 2u : 1u);
     }
-    auto buffer = createMask(ex, bounds, samples);
-    for (u32 y = 0; y < bounds.height; ++y) for (u32 x = 0; x < bounds.width; ++x) {
+    const bool vanishes = !expand && (bounds.width <= static_cast<u32>(2 * radius) ||
+        bounds.height <= static_cast<u32>(2 * radius));
+    auto buffer = createMask(ex, bounds, samples, expand || vanishes || radius > 1 ? 0 : 255);
+    if (vanishes) return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
+    if (radius > 1) {
+        // A disk is the union of horizontal intervals. A monotone deque finds
+        // each interval's exact max/min in linear time; combine its rows using
+        // integer max/min. No approximation, extra raster or changed A8 bits.
+        struct Entry { i64 position; u8 value; };
+        std::array<Entry, 2 * kMaxMaskRadius + 1> queue{};
+        const ResourceReservation scratch(ex.resources, sizeof(queue) + sizeof(halfWidths));
+        // Erosion's radius-wide border is zero even before reading the source.
+        const auto border = expand ? 0u : static_cast<u32>(radius);
+        for (i32 dy = -radius; dy <= radius; ++dy) {
+            const auto half = halfWidths[static_cast<std::size_t>(radius + dy)];
+            for (u32 y = border; y < bounds.height - border; ++y) {
+                ex.work();
+                u64 head = 0, tail = 0;
+                for (i64 x = static_cast<i64>(border) - half; x < static_cast<i64>(bounds.width - border) + half; ++x) {
+                    ex.work();
+                    while (head != tail && queue[head % queue.size()].position < x - 2 * half) { ex.work(); ++head; }
+                    const auto value = maskCoverage(mask, static_cast<i64>(bounds.x) + x,
+                        static_cast<i64>(bounds.y) + y + dy);
+                    while (head != tail && (expand ? value >= queue[(tail - 1) % queue.size()].value :
+                            value <= queue[(tail - 1) % queue.size()].value)) { ex.work(); --tail; }
+                    queue[tail++ % queue.size()] = {x, value};
+                    if (x >= static_cast<i64>(border) + half) {
+                        auto& output = buffer->coverage[static_cast<std::size_t>(y) * bounds.width + static_cast<std::size_t>(x - half)];
+                        const auto extreme = queue[head % queue.size()].value;
+                        output = dy == -radius ? extreme : expand ? std::max(output, extreme) : std::min(output, extreme);
+                    }
+                }
+            }
+        }
+        return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
+    }
+    for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+        ex.work();
         u8 result = expand ? 0 : 255;
         const u8 terminal = expand ? 255 : 0;
         for (i32 dy = -radius; dy <= radius && result != terminal; ++dy) {
+            ex.work();
             const auto half = halfWidths[static_cast<std::size_t>(radius + dy)];
             for (i32 dx = -half; dx <= half && result != terminal; ++dx) {
+                ex.work();
                 const auto value = maskCoverage(mask, static_cast<i64>(bounds.x) + x + dx,
                     static_cast<i64>(bounds.y) + y + dy);
                 result = expand ? std::max(result, value) : std::min(result, value);
             }
         }
         buffer->coverage[static_cast<std::size_t>(y) * bounds.width + x] = result;
-    }
+    } }
     return {std::move(buffer), {{}, {bounds.x, bounds.y}}};
 }
 
@@ -172,10 +277,10 @@ void Execution::beginClip() {
 }
 
 u8 clipCoverage(Execution& ex, i32 x, i32 y) {
-    ex.spend(ex.target.clips.size());
+    ex.spendRaw(ex.target.clips.size());
     u8 coverage = 255;
     for (const auto& mask : ex.target.clips)
-        coverage = multiplyCoverage(coverage, maskCoverage(mask, x, y));
+        { ex.work(); coverage = multiplyCoverage(coverage, maskCoverage(mask, x, y)); }
     return coverage;
 }
 
@@ -196,6 +301,22 @@ void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed) {
 
 bool stepMasks(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
+    case Opcode::NoiseMask: case Opcode::NoiseMaskConfig: {
+        f32 warpAmount = 0.f, softness = 0.f;
+        i32 comparison = kNoiseAbove, octaves = 4;
+        if (ins.opcode == Opcode::NoiseMaskConfig) {
+            warpAmount = ex.popF32(); comparison = ex.popI32();
+            softness = ex.popF32(); octaves = ex.popI32();
+        }
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 threshold = ex.popF32();
+        const Vec2 frequency = ex.popVec2();
+        const i32 kind = ex.popI32();
+        const Vec2 size = ex.popVec2(), origin = ex.popVec2();
+        ex.push(noiseMask(ex, origin, size, kind, frequency, threshold, seed, octaves, softness, comparison, warpAmount));
+        ++ex.frame().ip;
+        return true;
+    }
     case Opcode::MaskFrom: {
         const auto image = ex.popLayer();
         validateSurfaceView(ex, *image.buffer, image.mapping, true);
@@ -235,7 +356,8 @@ bool stepMasks(Execution& ex, Instruction ins) {
         const auto mask = ex.popMask();
         const auto bounds = maskBounds(mask);
         ex.spend(static_cast<u64>(bounds.width) * bounds.height);
-        for (u32 y = 0; y < bounds.height; ++y) for (u32 x = 0; x < bounds.width; ++x) {
+        for (u32 y = 0; y < bounds.height; ++y) { ex.work(); for (u32 x = 0; x < bounds.width; ++x) {
+            ex.work();
             const i64 px = static_cast<i64>(bounds.x) + x, py = static_cast<i64>(bounds.y) + y;
             const auto coverage = maskCoverage(mask, px, py);
             // Zero mask coverage never touches hidden RGB, even in source-over.
@@ -244,7 +366,7 @@ bool stepMasks(Execution& ex, Instruction ins) {
             source.a = multiplyCoverage(source.a, coverage);
             compositePixel(ex, static_cast<i32>(px), static_cast<i32>(py), source,
                 static_cast<CompositionMode>(ins.operand));
-        }
+        } }
         break;
     }
     default: return false;

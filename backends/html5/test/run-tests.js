@@ -3,7 +3,8 @@
 //   node test/run-tests.js [path-to-wasm-build-dir] [path-to-native-tools]
 //
 // Requires the emscripten build, native ipa/ipc/ipgen tools and the test
-// assets prepared by prepare.sh. Exits 0 on success, 1 on failure.
+// assets prepared by prepare.sh. Python prepares the common binding fixtures.
+// Exits 0 on success, 1 on failure.
 
 "use strict";
 
@@ -38,9 +39,29 @@ async function main() {
     };
 
     const result = await conformance.run(iprop, fetchBytes);
-    const native = require("./native-conformance.js").run(iprop, toolsDir);
+    // Source builds include an internal-core test executable; the web SDK
+    // deliberately ships only iprop.js/iprop.wasm and the ordinary JS API.
+    const geometryProbe=path.join(buildDir,"geometry_representation_probe.js");
+    const voronoiProbe=path.join(buildDir,"voronoi_probe.js");
+    const contoursProbe=path.join(buildDir,"contours_probe.js");
+    const regionsProbe=path.join(buildDir,"regions_probe.js");
+    const gapBevelProbe=path.join(buildDir,"gap_bevel_probe.js");
+    const dynamicPartsProbe=path.join(buildDir,"dynamic_parts_probe.js");
+    const partExportsProbe=path.join(buildDir,"part_exports_probe.js");
+    const native = require("./native-conformance.js").run(iprop, toolsDir,
+        {...(fs.existsSync(geometryProbe)?{wasm:geometryProbe}:{}),
+         ...(fs.existsSync(voronoiProbe)?{voronoiWasm:voronoiProbe}:{}),
+         ...(fs.existsSync(contoursProbe)?{contoursWasm:contoursProbe}:{}),
+         ...(fs.existsSync(regionsProbe)?{regionsWasm:regionsProbe}:{}),
+         ...(fs.existsSync(gapBevelProbe)?{gapBevelWasm:gapBevelProbe}:{}),
+         ...(fs.existsSync(dynamicPartsProbe)?{dynamicPartsWasm:dynamicPartsProbe}:{}),
+         ...(fs.existsSync(partExportsProbe)?{partExportsWasm:partExportsProbe}:{})});
+    const executionLimits = require("./execution-limits-conformance.js");
+    const workTool = name => path.join(toolsDir, name + (process.platform === "win32" ? ".exe" : ""));
+    const work = executionLimits.run(iprop, workTool);
+    const worker = await executionLimits.workerCancellation(iprop, workTool);
     const compression = require("./compression-conformance.js").run(iprop, toolsDir);
-    report({ passed: result.passed && native.passed, golden: result, native, compression });
+    report({ passed: result.passed && native.passed, golden: result, native, compression, executionLimits: { ...work, worker } });
     if (result.passed && native.passed) {
         console.log("conformance: PASS (" + conformance.GOLDEN.length + " entries)");
         console.log("native/WASM compression: PASS (" + compression.images + " exact current images; " + compression.rejections + " matching rejected envelopes)");
@@ -94,6 +115,45 @@ async function main() {
             native.resourceExports.traps + " matching traps; " + native.resourceExports.rejections + " malformed/version rejections)");
         console.log("native/WASM blur: PASS (" + native.blur.comparisons + " exact generations; " + native.blur.pins +
             " independent 2D pins; " + native.blur.traps + " matching traps; " + native.blur.rejections + " malformed/version rejections)");
+        console.log("native/WASM 0.8 compatibility: PASS (" + native.compatibilityV08.generations +
+            " frozen/reference generations; " + native.compatibilityV08.traps + " matching traps; " +
+            native.compatibilityV08.compilerErrors + " constant diagnostics)");
+        console.log("native/WASM 0.9 noise: PASS (" + native.noiseV09.vectors + " independent vectors; " +
+            native.noiseV09.generations + " exact generations; " + native.noiseV09.traps + " matching traps; " +
+            native.noiseV09.compilerErrors + " constant diagnostics; " + native.noiseV09.rejections + " bytecode rejections)");
+        console.log("native/WASM 0.9 noise masks: PASS (" + native.noiseMaskV09.vectors + " independent A8 images; " +
+            native.noiseMaskV09.generations + " exact generations; " + native.noiseMaskV09.traps + " matching traps; " +
+            native.noiseMaskV09.rejections + " bytecode rejections)");
+        console.log("native/WASM 0.9 geometry: PASS (" + native.geometryV09.types + " distinct handles; " +
+            native.geometryV09.vectors + " independent topology/metadata vectors; " + native.geometryV09.generations +
+            " exact generations; " + native.geometryV09.traps + " matching traps; " + native.geometryV09.rejections + " bytecode rejections; core probes native=" +
+            native.geometryV09.nativeRepresentation + ", WASM=" + native.geometryV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 contours: PASS (" + native.contoursV09.vectors + " reference vectors; " +
+            native.contoursV09.generations + " exact generations; " + native.contoursV09.traps + " matching traps; " +
+            native.contoursV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.contoursV09.nativeRepresentation + ", WASM=" + native.contoursV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 Voronoi: PASS (" + native.voronoiV09.vectors + " reference vectors; " +
+            native.voronoiV09.generations + " exact generations; " + native.voronoiV09.traps + " matching traps; " +
+            native.voronoiV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.voronoiV09.nativeRepresentation + ", WASM=" + native.voronoiV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 regions: PASS (" + native.regionsV09.vectors + " vectors; " +
+            native.regionsV09.generations + " exact generations; " + native.regionsV09.traps + " matching traps; " +
+            native.regionsV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.regionsV09.nativeRepresentation + ", WASM=" + native.regionsV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 gaps/bevels: PASS (" + native.gapBevelV09.vectors + " vectors; " +
+            native.gapBevelV09.generations + " exact generations; " + native.gapBevelV09.traps + " matching traps; " +
+            native.gapBevelV09.rejections + " bytecode rejections; complete-topology probes native=" +
+            native.gapBevelV09.nativeRepresentation + ", WASM=" + native.gapBevelV09.wasmRepresentation + ")");
+        console.log("native/WASM 0.9 dynamic parts: PASS (" + native.dynamicPartsV09.vectors + " vectors; " +
+            native.dynamicPartsV09.generations + " exact generations; " + native.dynamicPartsV09.traps + " matching traps; " +
+            native.dynamicPartsV09.rejections + " bytecode rejections; core native=" + native.dynamicPartsV09.internalNative +
+            ", WASM=" + native.dynamicPartsV09.internalWasm + ")");
+        console.log("native/WASM 0.9 part exports: PASS (" + native.partExportsV09.generations + " full typed generations; " +
+            native.partExportsV09.nativeWasmPairs + " complete pairs; " + native.partExportsV09.traps + " traps; " +
+            native.partExportsV09.rejections + " bytecode rejections; checked C API=" + native.partExportsV09.checkedCapi +
+            "; core native=" + native.partExportsV09.internalNative + ", WASM=" + native.partExportsV09.internalWasm + ")");
+        console.log("public WASM shared part fixtures: PASS (" + native.partExportsV09.sharedBindingScenes + " complete C++/C scenes and independent lifetime)");
+        console.log("native/WASM work limits: PASS (" + work.pipelines + " pipelines; " + work.nativePairs + " exact C/native/WASM counters; worker cancellation inside noise.mask)");
         if (publishCorpus) publishCorpus();
         process.exit(0);
     }

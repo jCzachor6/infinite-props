@@ -8,6 +8,7 @@ namespace iprop::capi {
 struct GenerateOptions {
     uint32_t seed = 0;
     uint32_t sizeX = 0, sizeY = 0;
+    uint32_t flags = 0;
 };
 
 enum class OptionIssue { None, NullDescriptor, DescriptorTooSmall, UnknownFlags };
@@ -21,11 +22,12 @@ inline OptionIssue readGenerateOptions(const iprop_generate_options_ex* descript
     if (descriptor == nullptr) return OptionIssue::NullDescriptor;
     if (!descriptorSize(descriptor, size)) return OptionIssue::DescriptorTooSmall;
 #define READ(field) readField<uint32_t>(descriptor, size, offsetof(iprop_generate_options_ex, field))
-    if (READ(flags) != 0) return OptionIssue::UnknownFlags;
+    if (READ(flags) & ~IPROP_GENERATE_PART_OUTPUTS) return OptionIssue::UnknownFlags;
     GenerateOptions value;
     value.seed = READ(seed);
     value.sizeX = READ(size_x);
     value.sizeY = READ(size_y);
+    value.flags = READ(flags);
 #undef READ
     out = value;
     return OptionIssue::None;

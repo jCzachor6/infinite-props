@@ -8,12 +8,10 @@ from fractions import Fraction
 import base64
 import hashlib
 import json
-from pathlib import Path
 import sys
 
 from check_source_over_reference import nearest, source_over
 
-ROOT = Path(__file__).resolve().parent.parent
 COLOR = (37, 149, 213, 173)
 
 
@@ -124,20 +122,22 @@ def clip_grid():
     return bytes(pixels)
 
 
+# Pins the oracle itself: a change here must be reviewed, never regenerated blindly.
+CASES_SHA256 = '92b7b03c30be25b1f42e731fcc03ef2efb0eadfa1ad19f194e59d50bcfaf70db'
+GRID_SHA256 = 'cb946290705ca2ed5c02ac5d2b95cb74d31473f4ed40892d3c086d85b19375bc'
+
+
 def main():
-    write = sys.argv[1:] == ['--write']
-    assert write or not sys.argv[1:], 'usage: check_mask_reference.py [--write]'
-    fixture = ROOT / 'tests/fixtures/masks-v0.6.json'
-    grid = ROOT / 'tests/fixtures/clip-coverage-v0.6.rgba'
-    expected = references()
-    raw = clip_grid()
-    if write:
-        fixture.write_text(json.dumps(expected, indent=2) + '\n')
-        grid.write_bytes(raw)
-    else:
-        assert json.loads(fixture.read_text()) == expected, 'mask pins differ from independent oracle'
-        assert grid.read_bytes() == raw, 'clip grid differs from rational coverage oracle'
-    print(f'Mask reference: {len(expected["cases"])} complete images, 65,536 nested coverage pairs; grid SHA256 ' + hashlib.sha256(raw).hexdigest())
+    args = sys.argv[1:]
+    assert args in ([], ['--print']), 'usage: check_mask_reference.py [--print]'
+    expected, raw = references(), clip_grid()
+    if args:
+        json.dump({**expected, 'clip_grid_base64': base64.b64encode(raw).decode()}, sys.stdout)
+        return
+    canonical = json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()
+    assert hashlib.sha256(canonical).hexdigest() == CASES_SHA256, 'mask oracle images changed'
+    assert hashlib.sha256(raw).hexdigest() == GRID_SHA256, 'rational clip coverage oracle changed'
+    print(f'Mask reference: {len(expected["cases"])} complete images, 65,536 nested coverage pairs; grid SHA256 {GRID_SHA256}')
 
 
 if __name__ == '__main__':

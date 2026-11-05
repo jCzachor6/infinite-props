@@ -2,7 +2,9 @@
 
 `ipc --describe-language` writes one JSON document describing the implemented
 source contract. It needs no input file and writes no artifacts. It uses
-`schema_version: 4`, which removes implicit draw controls. Schema 3 added typed
+`schema_version: 6`, which finalizes discounted fuel formulas and execution-wide
+work/cancellation/deadline traps. Schema 5 added geometry/dynamic-part handle types.
+Schema 4 removed implicit draw controls. Schema 3 added typed
 asset declarations and intrinsic `constant_evaluable` flags. Schema 2 removed the
 schema 1 emoji aliases. Consumers require the supported schema version and
 ignore unknown additive fields within it, while rejecting retired draw-control metadata.
@@ -20,24 +22,39 @@ The binary format is unversioned, so operations carry no minimum format version.
 | `abi_version.major`, `.minor` | C ABI compatibility line configured in `cmake/CAbi.cmake`; the structured form of `c_abi_soversion`. |
 | `c_abi_soversion` | Optional additive alias since schema 1: the runtime C library's SOVERSION string from `cmake/CAbi.cmake`, equal to `abi_version` as `major.minor`. Producers emit it; readers validate consistency when present. |
 
-The current values are product `0.8.0`, source language `0.8.0`,
-C header API `0.4` and ABI line/SOVERSION `0.5`. These values are
+The current values are product `0.9.0`, source language `0.9.0`,
+C header API `0.6` and ABI line/SOVERSION `0.5`. These values are
 independent: signed source inputs do not introduce a new binary input type.
 The C versions describe the bundled contract without loading the C library;
 query a loaded library with `iprop_library_query` for its actual capabilities.
 See [the ABI policy](c-api-abi.md).
 
-Schema 4 describes the constant policy, parameterized lists, samplers/steppers,
+Schema 6 describes the constant policy, parameterized lists, samplers/steppers,
 point distributions, surfaces, collection limits and receiver-first methods.
 Source language 0.8 adds the optional `materials` object without changing
 schema 4. See [0.8 migration](language/migration-v0.8.md).
+
+## Migrating schemas 4 and 5 to 6
+
+Require schema 6 and add `diagram2d`, `contours2d`, `regions2d`, `part2d` and
+`parts2d` to value-type readers and renderers. These names appear in storable,
+helper and variadic choice type arrays. They denote opaque immutable generation
+resources, and cannot be host inputs, constants, palette elements or generic
+list/sampler/stepper elements. Read optional `source_rules.geometry_handles`
+for descriptor codes and limits. Keep product, language, C API/ABI and diagnostic
+version handling independent; existing binary type/opcode IDs remain unchanged.
+All older description protocol versions are rejected by the current reader.
 
 Release preflight and package manifests (`release.json`) use the same names as
 strings: `product_version`, `language_version`, `c_api_version` and
 `c_abi_soversion`. Packaging and documentation builds reject a compiler whose
 export differs from the versions in the source tree. A release requires the
-frozen format specification of its product line (`spec/iprop-v0.8.md` for
-0.8.x, frozen with product 0.8.0).
+frozen format specification of its product line (`spec/iprop-v0.9.md` for
+0.9.x, frozen with product 0.9.0).
+
+Schema 5 consumers also update the closed fuel formula strings and resource-trap
+enum; see [the schema-6 migration](language/migration-v0.9.md#programs-and-generated-results).
+The complete prices are defined by the [0.9 tariff](../spec/fuel-v0.9.md).
 
 ## Source rules
 
@@ -51,6 +68,7 @@ identified by `source_type`.
 | `inputs[].binary_type` | Metadata/host override type in the emitted binary; both source integer types use `u32` bit patterns. |
 | `inputs[].value_type` | Type visible to expressions; both integer input types are interpreted as `i32`. |
 | `types.storable` | Types admitted in local slots. |
+| `geometry_handles` | Optional geometry capability: five contextual handle types, descriptor codes, ownership, unassigned reads, storage restrictions and geometry/memory limits. |
 | `types.parameterized` | Supported list/sampler/stepper constructors, element types and immutable arena ownership. Lists of sampler and stepper descriptions are allowed; lists of lists are not. |
 | `point_distributions` | Contextual literal families, point counts, original numeric types, snapshot/evaluation order, bounded sampling and quota. |
 | `materials` | Optional since 0.8.0: contextual declarations in separate files, alias qualification, private declarations, required color base, scalar field types, earlier-field reads, named overrides, field-order construction and atomic replacement. Records nominal helper parameters, zero-RNG copies, unsupported storage/host boundaries, standalone checks/formatting and scalar lowering with no format change. |
@@ -165,7 +183,7 @@ intrinsic numeric-range trap.
 | --- | --- |
 | `intrinsic_scope` | `operation_excluding_arguments_and_resources`: the scope of each intrinsic summary. |
 | `argument_effects` | `evaluated_before_operation_in_caller_stream`: compose runtime argument effects with the intrinsic operation in exported signature order. |
-| `resource_traps` | Execution-wide fuel and call-depth limits can fail even around operations with an empty intrinsic `may_trap` array. |
+| `resource_traps` | Execution-wide fuel/work, cancellation/deadline, arena and call-depth limits can fail even around operations with an empty intrinsic `may_trap` array. |
 | `validation_limits` | The validator bounds operand-stack depth before executing compiled source; the VM also defends this limit when given unvalidated bytecode. |
 | `allocation_failure` | Execution also allocates storage; allocation can fail independently of intrinsic domain checks. This failure need not be a VM `Trap`. |
 | `helper`, `part` | Conservative operation summaries from the shared call/part opcode metadata. |
@@ -254,3 +272,13 @@ The optional `source_rules.resource_exports` policy describes internal mask/laye
 slots, direct-child and last-called-part reads, immutable snapshots, no-write
 placement retention, shared buffer lifetime, per-generation cleanup and fixed
 slot accounting. These slots are separate from every host geometry output index.
+
+`source_rules.dynamic_parts` describes the implemented dynamic-part contract. It pins the
+creation counter/limit, shared sources, immutable ID-preserving views, original
+pixel-frame anchors, absolute D4 placement with one translation rounding,
+alpha-once layer drawing and shape-only A8 masks. Creation is generation state
+with a conservative effect summary, never asset-constant evaluation. Dynamic
+`part.draw(p)` writes the canvas and checks required appearance. Static imports
+continue to bind seed/at calls, including an import aliased `part`.
+The optional `geometry_scale` detail selects the inverse-D4 target grid for
+vector geometry; raster sources and textures keep exact pixel-scale matching.

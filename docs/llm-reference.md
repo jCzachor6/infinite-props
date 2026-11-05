@@ -11,12 +11,13 @@ The reference teaches the whole language and pushes one style. It opens with
 the idioms chapter ([Writing idiomatic props](language/idioms.md)) and its
 examples, then before/after pairs that each fix one broken rule, then the
 compiler rules in plain sentences. The handbook follows: assets, syntax,
-types, control flow, helpers, randomness, colors, palettes, parts, execution
-limits, materials and the grammar. Every builtin is listed, and checked repairs close the
-document. For source language 0.8 the default document has a **131,072-byte
-UTF-8 budget (128 KiB)**, with the same maximum allowed budget. The 0.7
-release used 102,400 bytes (100 KiB); the expanded budget includes the complete
-material rules, library source and importing asset.
+types, control flow, helpers, randomness, colors, palettes, materials,
+collections, samplers, parts, surfaces, geometry and masks, execution limits
+and the grammar. Every builtin is listed, and checked repairs close the
+document. For source language 0.9 the default document has a **131,072-byte
+UTF-8 budget (128 KiB)**, with the same maximum allowed budget, and covers
+materials, surfaces, geometry, masks and typed parts. The 0.7 release used
+102,400 bytes (100 KiB).
 Generation fails before replacing
 output if the selected content exceeds that budget. No section, signature or
 example is silently truncated. Reduce the selection when more detail would
@@ -33,8 +34,8 @@ python3 scripts/language_docs.py check --compiler build/tools/ipc \
 ```
 
 Configured section ids are `idioms`, `asset`, `assets`, `syntax`, `types`,
-`control`, `helper`, `random`, `colors`, `palette`, `collections`, `samplers`, `part`, `limits` and
-`grammar`; `style`, `builtins`, `symbols` and `diagnostics` are generated.
+`control`, `helper`, `random`, `colors`, `palette`, `materials`, `collections`,
+`samplers`, `part`, `surfaces`, `procedural`, `limits` and `grammar`; `style`, `builtins`, `symbols` and `diagnostics` are generated.
 The compiler rules follow `idioms` and `style` and appear in every document,
 even with an empty selection. Each configured section names a handbook chapter
 and either `"parts": "chapter"` (its introduction and every subsection with

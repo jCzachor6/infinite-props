@@ -43,10 +43,14 @@ struct CallOutcome {
     bool succeeded = true;
     ErrorReason argumentReason = ErrorReason::InvalidArgument;
     std::string_view message;
+    iprop_status_ex status = IPROP_EX_E_ARGUMENT;
 
     static CallOutcome argument(std::string_view message = "invalid argument",
                                 ErrorReason reason = ErrorReason::InvalidArgument) noexcept {
         return {false, reason, message};
+    }
+    static CallOutcome unsupported(std::string_view message) noexcept {
+        return {false, ErrorReason::UnsupportedFeature, message, IPROP_EX_E_UNSUPPORTED};
     }
 };
 
@@ -77,8 +81,8 @@ iprop_status_ex errorBoundary(iprop_error_ex* output, ErrorContext& context,
     try {
         const CallOutcome outcome = std::forward<Operation>(operation)();
         if (!outcome.succeeded) {
-            sink.report(IPROP_EX_E_ARGUMENT, outcome.argumentReason, ErrorStage::Arguments, outcome.message);
-            return IPROP_EX_E_ARGUMENT;
+            sink.report(outcome.status, outcome.argumentReason, ErrorStage::Arguments, outcome.message);
+            return outcome.status;
         }
         sink.success();
         return IPROP_EX_OK;

@@ -7,26 +7,20 @@
 #include "ips/Parser.hpp"
 #include "ips/Printer.hpp"
 #include "ips/Semantics.hpp"
+#include "ips/SourceText.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
 
 #include <bit>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <map>
 
 using namespace iprop;
+using compiler_test::generateVariant;
+using compiler_test::compileChecked;
 namespace {
-std::vector<u8> sourceOverProgram(const std::string& source, bool optimize = true) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-GenerationResult runSourceOver(const std::vector<u8>& bytes, u32 seed = 26, u32 variant = 0,
-        u32 width = 0, u32 height = 0) {
-    const auto file = loadFile(bytes); validate(file);
-    VM vm(file, {seed,width,height,{{"v",{InputType::U32,{},0.f,variant}}}}); vm.run(); return vm.result();
+GenerationResult runSourceOver(const std::vector<u8>& bytes, u32 seed = 26, u32 variant = 0, u32 width = 0, u32 height = 0) {
+    return generateVariant(bytes, seed, variant, width, height);
 }
 std::vector<u8> sourceOverTree(const std::map<std::string, std::string>& files, bool optimize) {
     SourceCompilationOptions options; options.optimize = optimize;
@@ -37,16 +31,14 @@ std::vector<u8> sourceOverTree(const std::map<std::string, std::string>& files, 
 }
 
 TEST_CASE("source-over agrees with exact rational pins for every alpha pair", "[source-over]") {
-    const auto path = std::filesystem::path(__FILE__).parent_path().parent_path() / "fixtures/source-over-v0.6.rgba";
-    std::ifstream input(path, std::ios::binary);
-    const std::vector<u8> expected{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
-    REQUIRE(expected.size() == 256u * 256u * 4u);
+    // GRID_SHA256 of scripts/check_source_over_reference.py; its --print mode
+    // emits the expected bytes for locating a mismatch.
+    std::string grid;
     for (unsigned ad = 0; ad < 256; ++ad) for (unsigned as = 0; as < 256; ++as) {
         const auto actual = composePixel({201,4,172,static_cast<u8>(ad)}, {17,213,88,static_cast<u8>(as)}, CompositionMode::SourceOver);
-        const auto at = (ad * 256u + as) * 4u;
-        INFO("destination alpha=" << ad << ", source alpha=" << as);
-        REQUIRE(actual == Color{expected[at],expected[at+1],expected[at+2],expected[at+3]});
+        grid += {static_cast<char>(actual.r), static_cast<char>(actual.g), static_cast<char>(actual.b), static_cast<char>(actual.a)};
     }
+    REQUIRE(ips::sourceContentId(grid) == "sha256:a011f9f4092fd0ef15253e30cd44a925cde66602b760364bcba1a8dd1450036a");
     CHECK(composePixel({123,77,91,0},{19,23,29,0},CompositionMode::SourceOver) == Color{});
     CHECK(composePixel({255,0,255,255},{0,1,2,255},CompositionMode::SourceOver) == Color{0,1,2,255});
     // Exact half-way RGB (127.5) rounds up.
@@ -71,7 +63,7 @@ TEST_CASE("source-over captures round each draw and paint without changing root 
         surface.paint(hidden,blend=surface.source_over)
       }})";
     for (const bool optimize : {false,true}) {
-        const auto bytes = sourceOverProgram(source,optimize), restored = assemble(disassemble(bytes));
+        const auto bytes = compileChecked(source,optimize), restored = assemble(disassemble(bytes));
         const auto actual = runSourceOver(bytes);
         CHECK(actual.image.at(0,0) == Color{176,11,17,192});
         CHECK(actual.image.at(1,0) == Color{17,34,51,128});
@@ -83,7 +75,7 @@ TEST_CASE("source-over captures round each draw and paint without changing root 
         CHECK(runSourceOver(restored).image.pixels == actual.image.pixels);
         const auto formatted = ips::formatProgram(ips::parse(source));
         CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
-        CHECK(runSourceOver(sourceOverProgram(formatted,optimize)).image.pixels == actual.image.pixels);
+        CHECK(runSourceOver(compileChecked(formatted,optimize)).image.pixels == actual.image.pixels);
         CHECK(disassemble(bytes).find("surface.paint 2") != std::string::npos);
     }
 }
@@ -104,7 +96,7 @@ TEST_CASE("helpers inherit alpha and paint overrides only one operation", "[sour
         mark(4) state={seed&65535,seed>>16}
       }})";
     for (const bool optimize : {false,true}) {
-        const auto result = runSourceOver(sourceOverProgram(source,optimize));
+        const auto result = runSourceOver(compileChecked(source,optimize));
         CHECK(result.image.at(0,0) == Color{17,34,51,128});
         CHECK(result.image.at(1,0) == Color{17,34,51,128});
         CHECK(result.image.at(2,0) == Color{});
@@ -125,7 +117,7 @@ TEST_CASE("source-over grouping preserves each RGBA8 rounding boundary", "[sourc
       surface.paint(image,blend=surface.source_over)
     }})";
     for (const bool optimize : {false,true}) {
-        const auto result = runSourceOver(sourceOverProgram(source,optimize));
+        const auto result = runSourceOver(compileChecked(source,optimize));
         CHECK(result.image.at(0,0) == Color{153,15,22,224});
         CHECK(result.image.at(1,0) == Color{154,14,22,224});
     }
@@ -133,7 +125,7 @@ TEST_CASE("source-over grouping preserves each RGBA8 rounding boundary", "[sourc
 
 TEST_CASE("weather operates on inherited targets without changing source-over alpha", "[source-over]") {
     for (const bool optimize : {false,true}) {
-        const auto result = runSourceOver(sourceOverProgram(R"(asset t{size 3x2 output point state
+        const auto result = runSourceOver(compileChecked(R"(asset t{size 3x2 output point state
           age(){weather(7,20)} draw{layer image(alpha=surface.source_over){rect(0,0,3,2,#11223380)age()}
           surface.paint(image,blend=surface.source_over) state={seed&65535,seed>>16}}})",optimize));
         for (const auto pixel : result.image.pixels) CHECK(pixel.a == 128);
@@ -158,11 +150,11 @@ TEST_CASE("return break continue and traps restore the full target mode", "[sour
         layer discarded(alpha=surface.source_over){pixel(4,0,#fff) return;}
       }})";
     for (const bool optimize : {false,true}) {
-        const auto result = runSourceOver(sourceOverProgram(source,optimize));
+        const auto result = runSourceOver(compileChecked(source,optimize));
         for (const u32 x : {0u,1u,2u}) CHECK(result.image.at(x,0) == Color{17,34,51,128});
         CHECK(result.image.at(3,0) == Color{8,17,25,0}); CHECK(result.image.at(4,0) == Color{});
         CHECK(result.image.at(0,1) == Color{}); CHECK(result.image.at(1,1) == Color{255,0,0,128});
-        const auto file = loadFile(sourceOverProgram("asset t{ input i32 v = 0 size 1x1 draw{pixel(0,0,#11223380) layer outer(alpha=surface.source_over){layer inner(alpha=surface.legacy){x=1/(v-v)}}}}",optimize));
+        const auto file = loadFile(compileChecked("asset t{ input i32 v = 0 size 1x1 draw{pixel(0,0,#11223380) layer outer(alpha=surface.source_over){layer inner(alpha=surface.legacy){x=1/(v-v)}}}}",optimize));
         VM vm(file,{}); CHECK_THROWS_AS(vm.run(),Trap); CHECK(vm.canvas().at(0,0) == Color{8,17,25,0});
         CHECK_THROWS_AS(vm.result(),std::logic_error); CHECK_THROWS_AS(vm.takeResult(),std::logic_error);
     }
@@ -202,7 +194,7 @@ TEST_CASE("part canvases and blits inherit source-over across nested D4 and scal
 }
 
 TEST_CASE("paint canonicalizes transparent hidden RGB only in source-over", "[source-over]") {
-    const auto bytes = sourceOverProgram("asset t{size 1x1 draw{layer image{}surface.paint(image)}}",false);
+    const auto bytes = compileChecked("asset t{size 1x1 draw{layer image{}surface.paint(image)}}",false);
     const auto file = loadFile(bytes);
     detail::Execution ex(file); ex.target = RenderTarget::create(1,1,{1,1}); ex.frames.push_back({}); ex.fuel = 100;
     auto source = RenderTarget::create(1,1,{1,1}); source.canvas().at(0,0) = {255,7,9,0};

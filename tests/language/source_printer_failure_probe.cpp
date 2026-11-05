@@ -2,33 +2,14 @@
 // faults are armed. Every measured formatter allocation fails in each mode.
 #include "ips/Parser.hpp"
 #include "ips/Printer.hpp"
+#include "../support/fault_injection.hpp"
 
 #include <array>
 #include <cstdio>
-#include <cstdlib>
 #include <limits>
-#include <new>
 #include <string>
 
-namespace {
-bool armed = false, persistent = false, triggered = false;
-std::size_t allocations = 0, failAt = 0;
-}
-
-void* operator new(std::size_t size) {
-    if (armed && allocations++ >= failAt) {
-        triggered = true;
-        if (!persistent) armed = false;
-        throw std::bad_alloc{};
-    }
-    if (void* pointer = std::malloc(size ? size : 1)) return pointer;
-    throw std::bad_alloc{};
-}
-void* operator new[](std::size_t size) { return ::operator new(size); }
-void operator delete(void* pointer) noexcept { std::free(pointer); }
-void operator delete[](void* pointer) noexcept { std::free(pointer); }
-void operator delete(void* pointer, std::size_t) noexcept { std::free(pointer); }
-void operator delete[](void* pointer, std::size_t) noexcept { std::free(pointer); }
+using namespace fault_injection;
 
 int main() {
     const std::string longComment = "/* " + std::string(4096, 'X') + " */";
@@ -53,9 +34,7 @@ int main() {
         const auto program = iprop::ips::parse(sources[fixture]);
         // Warm any library initialization before counting the same call shape.
         const auto expected = iprop::ips::formatProgram(program);
-        allocations = 0;
-        failAt = std::numeric_limits<std::size_t>::max();
-        armed = true;
+        arm(std::numeric_limits<std::size_t>::max(), false);
         const auto measured = iprop::ips::formatProgram(program);
         armed = false;
         const auto count = allocations;
@@ -65,12 +44,8 @@ int main() {
             return 1;
         }
         for (const bool mode : {false, true}) {
-            persistent = mode;
             for (std::size_t at = 0; at < count; ++at) {
-                allocations = 0;
-                failAt = at;
-                triggered = false;
-                armed = true;
+                arm(at, mode);
                 bool caught = false;
                 try {
                     const auto output = iprop::ips::formatProgram(program);

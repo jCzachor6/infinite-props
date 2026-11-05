@@ -18,11 +18,6 @@ using namespace iprop;
 using namespace compiler_test;
 
 namespace {
-std::vector<u8> compileMath(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
 }
 
 TEST_CASE("integer bounds select exact overloads in helpers and named calls") {
@@ -47,7 +42,7 @@ TEST_CASE("integer bounds select exact overloads in helpers and named calls") {
       }
     })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileMath(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         const auto result = execute(bytes);
         CHECK(result.outputs[0].points[0].x == 1.f);
         CHECK(result.outputs[0].points[0].y == 1.f);
@@ -73,7 +68,7 @@ TEST_CASE("integer overload migration reports exact local types without an artif
         CHECK(formatted.find("float(") == std::string::npos);
         const std::string repaired = "asset t { size 1x1 draw { x=1.0 x=float(" +
             std::string(expression) + ") } }";
-        CHECK_NOTHROW(compileMath(repaired, true));
+        CHECK_NOTHROW(compileChecked(repaired, true));
     }
 }
 
@@ -82,14 +77,14 @@ TEST_CASE("normalize folds finite values and retains unused nonfinite traps") {
       draw { p=vec2.normalize({3,4}) z=vec2.normalize({-0.0,-0.0}) }
     })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileMath(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         const auto result = execute(bytes);
         CHECK(std::bit_cast<u32>(result.outputs[0].points[0].x) == 0x3f19999a);
         CHECK(std::bit_cast<u32>(result.outputs[0].points[0].y) == 0x3f4ccccd);
         CHECK(std::bit_cast<u32>(result.outputs[1].points[0].x) == 0);
         CHECK(std::bit_cast<u32>(result.outputs[1].points[0].y) == 0);
         for (const auto value : {"{1.0/0.0,1}", "{1,0.0/0.0}", "{1,-1.0/0.0}"}) {
-            const auto invalid = compileMath("asset t { size 1x1 draw { vec2.normalize(" +
+            const auto invalid = compileChecked("asset t { size 1x1 draw { vec2.normalize(" +
                 std::string(value) + ") } }", optimize);
             try {
                 (void)execute(invalid);
@@ -125,7 +120,7 @@ TEST_CASE("normalization constant folding retains extreme and subnormal encoding
         const std::string source = "asset t {size 1x1 output point p draw{p=vec2.normalize(" +
             std::string(test.vector) + ")}}";
         for (const bool optimize : {false, true}) {
-            const auto bytes = compileMath(source, optimize);
+            const auto bytes = compileChecked(source, optimize);
             const auto result = execute(bytes);
             CHECK(std::bit_cast<u32>(result.outputs[0].points[0].x) == test.x);
             CHECK(std::bit_cast<u32>(result.outputs[0].points[0].y) == test.y);
@@ -150,15 +145,15 @@ TEST_CASE("math overloads and normalization preserve argument RNG order and stre
         "q=vec2.normalize({float(n),float(m)}) "
         "if(false && vec2.normalize({1.0/0.0,0}).x>0.0) { pixel(0,0,#fff) } p={seed==before,c==clamp(before,1,8)}";
     for (const bool optimize : {false, true}) {
-        const auto actual = compileMath(wrap(calls), optimize);
-        const auto reference = compileMath(wrap(sequential), false);
+        const auto actual = compileChecked(wrap(calls), optimize);
+        const auto reference = compileChecked(wrap(sequential), false);
         for (const u32 seed : {0u, 1u, 42u, 0xffffffffu}) {
             const auto a = execute(actual, seed), b = execute(reference, seed);
             for (std::size_t i = 0; i < a.outputs.size(); ++i) {
                 CHECK(std::bit_cast<u32>(a.outputs[i].points[0].x) == std::bit_cast<u32>(b.outputs[i].points[0].x));
                 CHECK(std::bit_cast<u32>(a.outputs[i].points[0].y) == std::bit_cast<u32>(b.outputs[i].points[0].y));
             }
-            const auto p = execute(compileMath(wrap(pure), optimize), seed);
+            const auto p = execute(compileChecked(wrap(pure), optimize), seed);
             CHECK(p.outputs[0].points[0].x == 1.f);
             CHECK(p.outputs[0].points[0].y == 1.f);
         }
@@ -172,8 +167,8 @@ TEST_CASE("new math instructions roundtrip through formatter assembler and compr
     const auto formatted = ips::formatProgram(ips::parse(source));
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     for (const bool optimize : {false, true}) {
-        const auto bytes = stripDebug(compileMath(source, optimize));
-        CHECK(bytes == stripDebug(compileMath(formatted, optimize)));
+        const auto bytes = stripDebug(compileChecked(source, optimize));
+        CHECK(bytes == stripDebug(compileChecked(formatted, optimize)));
         const auto text = disassemble(bytes);
         const auto restored = assemble(text);
         CHECK(disassemble(restored) == text);

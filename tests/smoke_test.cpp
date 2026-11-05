@@ -4,15 +4,10 @@
 
 #include "iprop/Version.hpp"
 
-// Smoke test: proves the build, CTest wiring and the runtime library link
-// work end to end. Real tests arrive with the interpreter phases.
+// The runtime library reports the project version it was built as.
 TEST_CASE("runtime version matches the project version") {
     REQUIRE(iprop::versionMajor == 0);
-    REQUIRE(iprop::versionMinor == 8);
+    REQUIRE(iprop::versionMinor == 9);
     REQUIRE(iprop::versionPatch == 0);
-    REQUIRE(std::string(iprop::versionString()) == "0.8.0");
-}
-
-TEST_CASE("catch2 is wired up") {
-    REQUIRE(1 + 1 == 2);
+    REQUIRE(std::string(iprop::versionString()) == "0.9.0");
 }

@@ -143,20 +143,17 @@ brings the language into your editor.
 
 | Start here | Go deeper |
 | :--- | :--- |
-| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v0.8.md) |
+| [Language handbook](docs/language/index.md) | [Format and VM specification](spec/iprop-v0.9.md) |
 | [Example recipes](examples/recipes/README.md) | [C API and ABI policy](docs/c-api-abi.md) |
 | [Compact LLM reference](docs/llm-reference.md) | [Export contracts](docs/export-contracts.md) |
 | [Building and installation](docs/building.md) | [CI and publication](docs/ci.md) |
 | [Website build](website/README.md) | [Changelog](CHANGELOG.md) |
 
-**Product 0.8.0 · Source language 0.8.0.** The compiler and runtime use an
-**unversioned** file format; C API **0.4** uses ABI / SONAME **0.5**.
-New in 0.8: reusable [materials](docs/language/materials.md) with private
-libraries, typed helper parameters and named overrides. See the
-[material tree example](examples/language/material-tree.ips),
-[0.7 to 0.8 migration](docs/language/migration-v0.8.md) and
-[release preparation guide](docs/release-v0.8.md).
-Coming from 0.6? Start with the [0.7 migration](docs/language/migration-v0.7.md).
+**Product 0.9.0 · Source language 0.9.0.** Binary format remains unversioned;
+C API 0.6 retains ABI/SONAME 0.5. New direct noise masks, Voronoi/contour regions,
+gaps/bevels and immutable dynamic parts support textures, geometry and typed
+exports. Fuel follows the new tariff; independent work/cancellation/deadline
+controls bound execution. See [0.8 to 0.9 migration](docs/language/migration-v0.9.md).
 
 ## License
 

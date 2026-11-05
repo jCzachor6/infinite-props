@@ -1,0 +1,4 @@
+asset UncalledNoOutputs {
+  size 1x1
+  draw {}
+}

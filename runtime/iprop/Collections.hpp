@@ -2,6 +2,7 @@
 
 #include "iprop/Format.hpp"
 #include "iprop/Value.hpp"
+#include "iprop/ExecutionLimits.hpp"
 #include <map>
 #include <set>
 
@@ -74,11 +75,13 @@ struct ResourceArena {
     std::set<const PointDistributionData*> distributionConstants;
     // The weak accounting token makes externally retained internal handles safe
     // even after an execution is cleared or destroyed.
-    struct SurfaceLifetime { u64* bytes = nullptr; };
+    struct SurfaceLifetime { u64* bytes = nullptr; ErrorLocation location; std::weak_ptr<detail::WorkBudget> work; };
+    std::weak_ptr<detail::WorkBudget> workBudget;
     std::shared_ptr<SurfaceLifetime> surfaceLifetime;
+    std::shared_ptr<SurfaceLifetime> resourceLifetime();
     std::shared_ptr<SurfaceBuffer> makeSurface(u64 chargedBytes);
     void clear();
-    bool canAllocate(u64 size) const { return size <= kMaxGenerationData - bytes; }
+    bool canAllocate(u64 size) const { return bytes <= kMaxGenerationData && size <= kMaxGenerationData - bytes; }
     void charge(u64 size) { bytes += size; }
     void release(u64 size) { bytes -= size; }
     // Fixed accounting is identical on native and WASM, covering storage,

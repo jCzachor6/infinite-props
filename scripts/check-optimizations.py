@@ -81,7 +81,8 @@ def main():
                     outcomes = []
                     for index, file in enumerate(files):
                         png = temporary / (str(index) + ".png")
-                        generated = run([generator, file, "--seed", seed, "--float-bits", "-o", png])
+                        generated = run([generator, file, "--seed", seed, "--float-bits", "-o", png,
+                                         *(["--omit-part-outputs"] if expected.get("omit_part_outputs") else [])])
                         if generated.returncode:
                             reason = re.sub(r"byte offset [0-9]+", "byte offset <relocated>", generated.stderr)
                             outcomes.append({"status": generated.returncode, "reason": reason})

@@ -1,0 +1,10 @@
+asset CheetahTexture {
+  size 128x128
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 128, 128, #d5b37d)
+    spots = noise.mask({0, 0}, {128, 128}, noise.mode_cell, {0.085, 0.085}, 0.3, pattern_seed, octaves = 1, softness = 0.0, comparison = noise.below, warp_amount = 0.32)
+    surface.paint(spots, #34271d)
+  }
+}

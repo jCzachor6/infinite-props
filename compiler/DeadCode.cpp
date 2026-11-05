@@ -124,6 +124,13 @@ bool droppedValues(PlannedFunction& f) {
         if (f.code[i].opcode != Opcode::Drop) continue;
         std::size_t need = 1, start = i;
         while (start > 0 && need != 0) {
+            const auto candidate = f.code[start - 1];
+            if (candidate.opcode == Opcode::LocalGet) {
+                const auto type = candidate.operand < f.params.size() ? f.params[candidate.operand] :
+                    f.locals.at(candidate.operand - f.params.size());
+                // A geometry read can trap even if its value is discarded.
+                if (type.isGeometry()) break;
+            }
             const auto inputs = discardableInputs(f.code[start - 1].opcode);
             if (remove[start - 1] || !inputs) break;
             --start;

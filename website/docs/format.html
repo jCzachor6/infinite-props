@@ -24,16 +24,16 @@
     <article class="prose">
 <p>This page summarises the format. The canonical contract is the specification:
 <a href="../spec/iprop-v{{SPEC_VERSION}}.md">iprop-v{{SPEC_VERSION}}.md</a>.
-It contains the complete frozen contract. Earlier versions remain in Git history.</p>
+It indexes the complete frozen contract set and its retained baseline. Earlier versions remain in Git history.</p>
 
 <h2 id="versions">Versions</h2>
 <p>The format is unversioned: the four header bytes after the magic are reserved and must be
 zero in a file, in a compressed envelope and in its expanded payload, so files written before
 product 0.7 are rejected and need recompiling. The contract is the
-<a href="../spec/iprop-v0.8.md">0.8 specification</a>. Numerical, drawing, RNG and collection
+<a href="../spec/iprop-v0.9.md">0.9 specification</a>. Numerical, drawing, RNG and collection
 algorithms retain their specified behavior. Variants, archetypes and their implicit arguments
-are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.4 /
-ABI 0.5. The 0.7 specification is frozen with product 0.7.0.</p>
+are removed from metadata, bytecode signatures and host APIs. C clients rebuild for API 0.6 /
+ABI 0.5. The new fuel tariff and independent work/cancellation/deadline controls apply to older programs too.</p>
 
 <h2 id="layout">The file layout</h2>
 <pre><code>header (20 bytes)              magic "IPRP", reserved, flags, section count

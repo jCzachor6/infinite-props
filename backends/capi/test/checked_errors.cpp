@@ -13,7 +13,7 @@
 namespace {
 enum class Failure { Oom, Standard, Unknown };
 bool armed = false;
-std::size_t count = 0, failAt = 0, injected = 0;
+std::size_t allocations = 0, failAt = 0, injected = 0;
 Failure failure = Failure::Oom;
 struct Unexpected : std::exception {
     const char* what() const noexcept override { return "bad magic, argument and trap wording is irrelevant"; }
@@ -21,7 +21,7 @@ struct Unexpected : std::exception {
 }
 
 void* operator new(std::size_t size) {
-    if (armed && ++count == failAt) {
+    if (armed && ++allocations == failAt) {
         ++injected;
         if (failure == Failure::Standard) throw Unexpected{};
         if (failure == Failure::Unknown) throw 17;
@@ -72,12 +72,12 @@ int main(int argc, char** argv) {
         std::size_t measured = 0;
         for (std::size_t ordinal = 0; ordinal <= measured + 1; ++ordinal) {
             auto* candidate = original;
-            count = 0; injected = 0; failAt = ordinal; failure = Failure::Oom;
+            allocations = 0; injected = 0; failAt = ordinal; failure = Failure::Oom;
             std::strcpy(message, "SENTINEL");
             armed = true;
             const auto status = iprop_program_load_ex(input, length, &candidate, &error);
             armed = false;
-            if (ordinal == 0) measured = count;
+            if (ordinal == 0) measured = allocations;
             if (ordinal != 0 && ordinal <= measured) {
                 ++faultCases;
                 CHECK(injected == 1 && status == IPROP_EX_E_OOM && candidate == original);
@@ -107,26 +107,26 @@ int main(int argc, char** argv) {
 
     for (const auto kind : {Failure::Standard, Failure::Unknown}) {
         auto* candidate = original;
-        count = 0; injected = 0; failAt = 1; failure = kind;
+        allocations = 0; injected = 0; failAt = 1; failure = kind;
         armed = true;
         const auto status = iprop_program_load_ex(bytes.data(), bytes.size(), &candidate, &error);
         armed = false;
-        CHECK(status == IPROP_EX_E_INTERNAL && count == 1 && injected == 1 && candidate == original);
+        CHECK(status == IPROP_EX_E_INTERNAL && allocations == 1 && injected == 1 && candidate == original);
         CHECK(error.reason == IPROP_REASON_INTERNAL && error.stage == IPROP_STAGE_LOAD && error.location_flags == 0);
         CHECK(std::strcmp(message, kind == Failure::Standard ? Unexpected{}.what() : "unexpected internal exception") == 0);
-        count = 0; injected = 0;
+        allocations = 0; injected = 0;
         armed = true;
         const auto oldLoad = iprop_program_load(bytes.data(), bytes.size(), &candidate, message, sizeof(message));
         armed = false;
-        CHECK(oldLoad == IPROP_E_FORMAT && candidate == original && count == 1 && injected == 1);
+        CHECK(oldLoad == IPROP_E_FORMAT && candidate == original && allocations == 1 && injected == 1);
         if (kind == Failure::Unknown) CHECK(std::strcmp(message, "unexpected exception while loading program") == 0);
         iprop_generate_options options{};
         iprop_result* result = nullptr;
-        count = 0; injected = 0;
+        allocations = 0; injected = 0;
         armed = true;
         const auto oldGenerate = iprop_generate(original, &options, &result, message, sizeof(message));
         armed = false;
-        CHECK(oldGenerate == IPROP_E_TRAP && result == nullptr && count == 1 && injected == 1);
+        CHECK(oldGenerate == IPROP_E_TRAP && result == nullptr && allocations == 1 && injected == 1);
         if (kind == Failure::Unknown) CHECK(std::strcmp(message, "unexpected exception during generation") == 0);
     }
 
@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
         return std::make_shared<const iprop::LoadedFile>(std::move(file));
     };
     const iprop_program emissive{metadataData(true)}, inactive{metadataData(false)};
-    count = 0; injected = 0; failAt = 1; failure = Failure::Oom;
+    allocations = 0; injected = 0; failAt = 1; failure = Failure::Oom;
     armed = true;
     CHECK(iprop_program_load_ex(nullptr, 0, &original, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_query(nullptr, &info, &error) == IPROP_EX_E_ARGUMENT);
@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
     CHECK(iprop_program_input_find(original, {nullptr, 1}, &inputIndex, &error) == IPROP_EX_E_ARGUMENT);
     CHECK(iprop_program_input_count(original, &inputCount, &error) == IPROP_EX_OK);
     armed = false;
-    CHECK(count == 0 && injected == 0 && message[0] == '\0');
+    CHECK(allocations == 0 && injected == 0 && message[0] == '\0');
     CHECK(error.status == IPROP_EX_OK && error.reason == IPROP_REASON_NONE);
     iprop_program_free(original);
     iprop_program_free(schema);

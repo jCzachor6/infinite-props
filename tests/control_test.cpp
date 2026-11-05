@@ -39,7 +39,7 @@ TEST_CASE("a loop with br_if sums 1..1000 in exactly 1000 iterations") {
     std::vector<u8> body;
     const auto ci = [&](u16 idx) { for (const auto b : ins(0x10, 0, idx)) body.push_back(b); };
     const auto op = [&](u8 code, u16 operand = 0) {
-        for (const auto b : ins(code, 0, operand)) body.push_back(b);
+        append(body, {ins(code, 0, operand)});
     };
     ci(0); op(0x14, 0);              // sum = 0
     ci(1); op(0x14, 1);              // i = 1
@@ -59,7 +59,7 @@ TEST_CASE("nested if/else with an early br skips the tail") {
     const auto make = [](u16 condIndex) {
         std::vector<u8> body;
         const auto op = [&](u8 code, u16 operand = 0) {
-            for (const auto b : ins(code, 0, operand)) body.push_back(b);
+            append(body, {ins(code, 0, operand)});
         };
         op(0x01);             // block
         op(0x10, condIndex);  // const.i32 condition
@@ -83,7 +83,7 @@ TEST_CASE("if without else runs both paths correctly") {
     const auto make = [](u16 condIndex) {
         std::vector<u8> body;
         const auto op = [&](u8 code, u16 operand = 0) {
-            for (const auto b : ins(code, 0, operand)) body.push_back(b);
+            append(body, {ins(code, 0, operand)});
         };
         op(0x10, condIndex); // const.i32 condition
         op(0x03);            // if
@@ -101,7 +101,7 @@ TEST_CASE("if without else runs both paths correctly") {
 TEST_CASE("an unconditional br inside a loop exhausts fuel at the loop start") {
     std::vector<u8> body;
     const auto op = [&](u8 code, u16 operand = 0) {
-        for (const auto b : ins(code, 0, operand)) body.push_back(b);
+        append(body, {ins(code, 0, operand)});
     };
     op(0x02); // loop
     op(0x06, 0); // br 0 → back to the loop body, forever
@@ -128,7 +128,7 @@ TEST_CASE("an unconditional br inside a loop exhausts fuel at the loop start") {
 TEST_CASE("br escapes ten nested blocks") {
     std::vector<u8> body;
     const auto op = [&](u8 code, u16 operand = 0) {
-        for (const auto b : ins(code, 0, operand)) body.push_back(b);
+        append(body, {ins(code, 0, operand)});
     };
     for (int i = 0; i < 10; ++i) {
         op(0x01); // block

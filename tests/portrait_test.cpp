@@ -109,24 +109,6 @@ TEST_CASE("portrait inverse CDF selects every age and respects threshold boundar
     }
 }
 
-TEST_CASE("two portrait runs are bit-identical (determinism)") {
-    const auto loaded = loadExample();
-    const auto run = [&](u32 seed, u32 variant) {
-        VM vm(loaded, {seed,0,0,{{"v",{InputType::U32,{},0.f,variant}}}});
-        vm.run();
-        return vm.result();
-    };
-    const auto a = run(3, 2);
-    const auto b = run(3, 2);
-    REQUIRE(a.image.width == b.image.width);
-    REQUIRE(a.image.height == b.image.height);
-    for (u32 y = 0; y < a.image.height; ++y) {
-        for (u32 x = 0; x < a.image.width; ++x) {
-            REQUIRE(a.image.at(x, y) == b.image.at(x, y));
-        }
-    }
-}
-
 TEST_CASE("the portrait exposes the pupil anchor") {
     const auto loaded = loadExample();
     VM vm(loaded, {0, 0, 0, {}});

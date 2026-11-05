@@ -21,6 +21,8 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
         case T::Color: return ValueType::Color;
         case T::Vec2: return ValueType::Vec2;
         case T::Distribution: return ValueType::Distribution;
+        case T::Mask: return ValueType::Mask;
+        case T::Diagram2d: return ValueType::Diagram2d;
         default: throw std::logic_error("not a VM value");
         }
     };
@@ -31,7 +33,7 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             const ips::BuiltinSpec concrete{spec.lowering,{overload}};
             const auto signature = ips::builtinCallSignature(concrete, overload.params.size(), {1,1}, name);
             CHECK(signature.effects == effects);
-            CHECK_FALSE(effects.conservative);
+            CHECK(effects.conservative == (name=="part.create" || name=="parts.from_regions"));
             if (overload.result == T::Void)
                 CHECK((effects.rng != RngEffect::None || effects.writesCanvas || effects.writesOutputs));
             if (overload.opcode) {
@@ -41,8 +43,8 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 if (!opcode->stack) {
                     REQUIRE((spec.lowering == ips::BuiltinLowering::ListLength || spec.lowering == ips::BuiltinLowering::Polygon ||
                              spec.lowering == ips::BuiltinLowering::SurfacePaint ||
-                             (overload.result.isResource() && std::any_of(overload.params.begin(),overload.params.end(),
-                                [](const auto& parameter){return parameter.type.isResource();}))));
+                             std::any_of(overload.params.begin(),overload.params.end(),
+                                [](const auto& parameter){return parameter.type.isResource() || parameter.type.isList();})));
                     CHECK((effects.checks & static_cast<u16>(EffectCheck::UnassignedHandle)) != 0);
                 } else if (overload.adaptation != ips::BuiltinAdaptation::Direct) {
                     std::vector<ValueType> stack;
@@ -84,7 +86,15 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
                 ++position;
                 // Exact argument types exercise each overload, including identity
                 // casts; distribution parameters increase so that min < max.
-                const std::string value = type == T::Layer ? "image" : type == T::Mask ? "region" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
+                const std::string value = type == T::Part2d ? "partValue" : type == T::Parts2d ? "partsValue" :
+                    name.starts_with("part") && (param.name=="index" || param.name=="rot") ? "0" :
+                    type == T::Regions2d ? "regionsValue" : type == T::Contours2d ? "contoursValue" :
+                    type == T::Diagram2d ? "diagramValue" :
+                    name.starts_with("regions.") && param.name=="index" ? "0" :
+                    name == "diagram.site" || name == "diagram.neighbors" ? "0" :
+                    name == "voronoi" && param.name == "size" ? "{8,8}" :
+                    name == "voronoi" && param.name == "row_bias" ? "0.0" :
+                    type == T::Layer ? "image" : type == T::Mask ? "region" : name == "surface.paint" && param.name == "blend" ? "surface.legacy" :
                     type.isList() ? (type.item().isStepper() ?
                     (type.item().item() == T::Color ? "[stepper(#abc)]" : type.item().item() == T::Vec2 ? "[stepper({1,1})]" :
                      type.item().item() == T::F32 ? "[stepper(1.0)]" : "[stepper(1)]") : type.item().isSampler() ?
@@ -98,7 +108,16 @@ TEST_CASE("every builtin overload compiles and agrees with its VM opcode contrac
             }
             const bool layer = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type.isResource();});
             const bool mask = std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Mask;});
-            const std::string capture = layer ? "layer image{} " + std::string(mask ? "region=mask.from(image) " : "") : "";
+            const bool diagram=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Diagram2d;});
+            const bool regions=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Regions2d;});
+            const bool contours=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Contours2d;});
+            const bool parts=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Parts2d;});
+            const bool part=std::any_of(overload.params.begin(),overload.params.end(),[](const auto& param){return param.type==T::Part2d;});
+            const std::string capture = parts ? "partsValue=parts.from_regions(regions(voronoi({0,0},{8,8},1,1))) " :
+                part ? "layer image{rect(0,0,8,8,#fff)} partValue=part.create(image) " :
+                regions ? "regionsValue=regions(voronoi({0,0},{8,8},1,1)) " :
+                contours ? "layer image{rect(0,0,8,8,#fff)} contoursValue=contour(mask.from(image),0.5) " : diagram ? "diagramValue=voronoi({0,0},{8,8},1,1) " :
+                layer ? "layer image{rect(0,0,8,8,#fff)} " + std::string(mask ? "region=mask.from(image) " : "") : "";
             const auto program = ips::parse("asset t { size 8x8 draw { " + capture +
                 "stream_push(1) " + name + "(" + args + ") } }");
             REQUIRE_NOTHROW(ips::checkAsset(program,{}));

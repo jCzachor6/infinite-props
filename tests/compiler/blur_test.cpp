@@ -11,6 +11,7 @@
 #include "ips/Semantics.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
 
 #include <algorithm>
 #include <array>
@@ -19,6 +20,8 @@
 #include <string>
 
 using namespace iprop;
+using compiler_test::rejectSource;
+using compiler_test::compileChecked;
 namespace {
 struct BlurExecution {
     LoadedFile file;
@@ -72,19 +75,8 @@ std::vector<Color> reference(const Canvas& source, f32 sigma) {
     }
     return result;
 }
-std::vector<u8> compileBlur(const std::string& source, bool optimize = true) {
-    const auto program = ips::parse(source); ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
 GenerationResult generateBlur(const std::vector<u8>& bytes, u32 seed = 26, u32 w = 0, u32 h = 0) {
     const auto file = loadFile(bytes); validate(file); VM vm(file, {seed,w,h,{}}); vm.run(); return vm.result();
-}
-void reject(const std::string& source, const std::string& expected) {
-    try { (void)compileBlur(source); FAIL("invalid blur source accepted"); }
-    catch (const ips::SourceError& error) {
-        INFO(error.what()); CHECK(std::string(error.what()).find(expected) != std::string::npos);
-        CHECK(error.location.line > 0); CHECK(error.location.column > 0);
-    }
 }
 }
 
@@ -229,7 +221,7 @@ TEST_CASE("blur runtime rejects invalid sigmas handles and encodings before publ
     for (const bool optimize : {false,true}) for (const auto body : {
         "if(false){layer image{}} image.blur(0)","if(false){layer image{}m=mask.from(image)}m.blur(0)",
         "layer image{}x=image.blur(sigma)","layer image{}x=mask.from(image).blur(sigma)"}) {
-        const auto bytes=compileBlur("asset t{size 1x1 input f32 sigma=-1 draw{"+std::string(body)+"}}",optimize);
+        const auto bytes=compileChecked("asset t{size 1x1 input f32 sigma=-1 draw{"+std::string(body)+"}}",optimize);
         const auto file=loadFile(bytes); VM vm(file,{});
         CHECK_THROWS_AS(vm.run(),Trap); CHECK_THROWS_AS(vm.result(),std::logic_error);
         CHECK_THROWS_AS(vm.takeResult(),std::logic_error);
@@ -249,7 +241,7 @@ TEST_CASE("blur helpers chains aliases argument effects and later clip retain la
         clip(region){softened=alias.blur(0) surface.paint(softened,blend=surface.source_over)}
         image.blur(2) x=blur(3) state={seed&65535,seed>>16}}})";
     for (const bool optimize : {false,true}) {
-        const auto result=generateBlur(compileBlur(source,optimize),26);
+        const auto result=generateBlur(compileChecked(source,optimize),26);
         REQUIRE(result.outputs[0].points.size()==2);
         CHECK(result.outputs[0].points[0].x==1); CHECK(result.outputs[0].points[0].y==26);
         CHECK(result.outputs[0].points[1].x==2);
@@ -265,7 +257,7 @@ TEST_CASE("blur helpers chains aliases argument effects and later clip retain la
           layer image(alpha=surface.source_over){pixel(2,0,#ff0000)}
           layer limit{rect(3,0,4,1,#fff)}clip(mask.from(limit)){
             surface.paint(image.blur(1),blend=surface.source_over)}}})";
-        const auto clipped=generateBlur(compileBlur(outside,optimize));
+        const auto clipped=generateBlur(compileChecked(outside,optimize));
         CHECK(clipped.image.at(2,0)==Color{}); CHECK(clipped.image.at(3,0)==Color{255,0,0,62});
     }
 }
@@ -277,10 +269,10 @@ TEST_CASE("blur compiler formatter tools and format reject malformed instruction
     const auto formatted=ips::formatProgram(ips::parse(source));
     CHECK(formatted.find("/* receiver */")!=std::string::npos); CHECK(formatted.find("/* sigma */")!=std::string::npos);
     CHECK(ips::formatProgram(ips::parse(formatted))==formatted);
-    const auto expected=generateBlur(compileBlur(source,false)).image.pixels;
+    const auto expected=generateBlur(compileChecked(source,false)).image.pixels;
     for (const bool optimize : {false,true}) {
-        const auto bytes=compileBlur(source,optimize); const auto file=loadFile(bytes);
-        CHECK(stripDebug(bytes)==stripDebug(compileBlur(formatted,optimize)));
+        const auto bytes=compileChecked(source,optimize); const auto file=loadFile(bytes);
+        CHECK(stripDebug(bytes)==stripDebug(compileChecked(formatted,optimize)));
         const auto text=disassemble(bytes); CHECK(text.find("layer.blur")!=std::string::npos); CHECK(text.find("mask.blur")!=std::string::npos);
         for (const auto& candidate : {bytes,stripDebug(bytes),compressFile(bytes),assemble(text)})
             CHECK(generateBlur(candidate).image.pixels==expected);
@@ -307,13 +299,13 @@ TEST_CASE("blur compiler formatter tools and format reject malformed instruction
     CHECK(ips::surfaceMethodSpecs().at("blur").overloads.size()==2);
     for (const auto body : {"layer image{}image.blur()","layer image{}image.blur(1,2)",
         "layer image{}image.blur(radius=1)","layer image{}image.blur(sigma=1,sigma=2)"})
-        reject("asset t{size 1x1 draw{"+std::string(body)+"}}",".blur takes one f32 sigma");
+        rejectSource("asset t{size 1x1 draw{"+std::string(body)+"}}",".blur takes one f32 sigma");
     for (const auto body : {"x=(1).blur(1)","x=[1].blur(1)","x=(#fff).blur(1)","x=sampler(1).blur(1)"})
-        reject("asset t{size 1x1 draw{"+std::string(body)+"}}","layer or mask receiver");
+        rejectSource("asset t{size 1x1 draw{"+std::string(body)+"}}","layer or mask receiver");
     for (const auto sigma : {"#fff","{1,2}","[1]"})
-        reject("asset t{size 1x1 draw{layer image{}image.blur("+std::string(sigma)+")}}","sigma must be f32");
+        rejectSource("asset t{size 1x1 draw{layer image{}image.blur("+std::string(sigma)+")}}","sigma must be f32");
     for (const auto sigma : {"-1","64.1","65","2*40"})
-        reject("asset t{size 1x1 draw{layer image{}image.blur("+std::string(sigma)+")}}","finite and in 0..64");
-    reject("asset t{size 1x1 const f32 bad=65 draw{layer image{}mask.from(image).blur(bad)}}","finite and in 0..64");
-    reject("asset t{size 1x1 draw{x=blur(1)}}","undefined function 'blur'");
+        rejectSource("asset t{size 1x1 draw{layer image{}image.blur("+std::string(sigma)+")}}","finite and in 0..64");
+    rejectSource("asset t{size 1x1 const f32 bad=65 draw{layer image{}mask.from(image).blur(bad)}}","finite and in 0..64");
+    rejectSource("asset t{size 1x1 draw{x=blur(1)}}","undefined function 'blur'");
 }

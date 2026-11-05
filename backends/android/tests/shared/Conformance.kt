@@ -52,4 +52,25 @@ fun verifyBindings(load: (String) -> ByteArray) {
         catch (e: IpropException) { check(e.status == 3 && e.reason == 3008 && e.stage == 4 && (e.locationFlags and 8) != 0 && e.debugLine > 0) }
         check(trap.generate(inputs = mapOf("divisor" to InputValue.I32(1))).output("value")!!.values.contentEquals(floatArrayOf(1f, 0f)))
     }
+    Program(load("execution-slow.iprop")).use { slow ->
+        val token = CancellationToken()
+        check(!token.isCancelled)
+        val thread = Thread { Thread.sleep(10); token.cancel(); token.close() }
+        thread.start()
+        try {
+            try { slow.generate(limits = ExecutionLimits(workLimit = 1_000_000_000u, cancellation = token)); error("Cancellation was ignored") }
+            catch (failure: IpropException) { check(failure.reason == 3016 && failure.stage == 4 && (failure.locationFlags and 4) != 0) }
+        } finally { thread.join(); token.close() }
+        try { token.cancel(); error("Closed token accepted") } catch (_: IllegalStateException) { }
+        CancellationToken().use { cancelled ->
+            cancelled.cancel(); check(cancelled.isCancelled)
+            repeat(32) {
+                try { slow.generate(limits = ExecutionLimits(cancellation = cancelled)); error("Pre-cancel ignored") }
+                catch (failure: IpropException) { check(failure.reason == 3016) }
+            }
+        }
+        check(slow.generate(inputs = mapOf("enabled" to InputValue.I32(0))).width == 1u)
+    }
+    println("Kotlin/JNI execution limits: PASS work/deadline, active cancellation, deferred token close and recovery")
+
 }

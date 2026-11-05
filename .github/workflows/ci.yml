@@ -150,7 +150,7 @@ jobs:
           cmake -B build -DCMAKE_BUILD_TYPE=Release -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
 
       - name: Build native tools for asset preparation and comparison
-        run: python scripts/ci_report.py run build cmake --build build --parallel --target ipa ipc ipdis ipgen ipval
+        run: python scripts/ci_report.py run build cmake --build build --parallel --target ipa ipc ipdis ipgen ipval execution_limits_probe regions_probe gap_bevel_probe
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -277,41 +277,86 @@ jobs:
           retention-days: 14
           overwrite: true
 
-  sanitizers:
+  # The ASan/UBSan tests take about 46 minutes one after another, so four
+  # runners build the same tree and each runs a part. The lists name the
+  # slowest tests (seconds in CI: optimizer 676, diagnostics 676, parts 651);
+  # rest runs every other test (762), so a new or renamed test always runs.
+  sanitizer-shards:
+    name: sanitizers (${{ matrix.shard }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [optimizer, diagnostics, parts, rest]
     env:
       # GCC's ASan enables stack-use-after-return by default; its fake stack
       # frames make the interpreter's tiny push/pop calls over 100x slower
       # (a full-budget fuel trap: 0.4 s without, 5.5 min with).
       ASAN_OPTIONS: detect_leaks=1:halt_on_error=1:detect_stack_use_after_return=0
       UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      OPTIMIZER_TESTS: compiler_optimization_acceptance|language_llm_reference
+      DIAGNOSTICS_TESTS: compiler_diagnostic_failures|smoke|capi_generate_ex_errors
+      PARTS_TESTS: dynamic_parts_v09|regions_v09|gap_bevel_v09
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - name: Configure ASan and UBSan
         run: >-
-          python scripts/ci_report.py run configure
+          python scripts/ci_report.py run configure-${{ matrix.shard }}
           cmake -B build -DCMAKE_BUILD_TYPE=Debug
           -DIPROP_SFML=OFF -DIPROP_GODOT=OFF
           '-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -fno-sanitize-recover=all'
           '-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all'
-      - name: Build and test all compiler, VM and shared/static C API regressions
+      - name: Build and test this part of the compiler, VM and shared/static C API regressions
         run: |
-          python scripts/ci_report.py run build cmake --build build --parallel 4
-          python scripts/ci_report.py run test ctest --test-dir build --stop-on-failure --output-on-failure --output-junit ci-reports/ctest.xml
+          case "${{ matrix.shard }}" in
+            optimizer) select=(-R "^($OPTIMIZER_TESTS)\$") ;;
+            diagnostics) select=(-R "^($DIAGNOSTICS_TESTS)\$") ;;
+            parts) select=(-R "^($PARTS_TESTS)\$") ;;
+            rest) select=(-E "^($OPTIMIZER_TESTS|$DIAGNOSTICS_TESTS|$PARTS_TESTS)\$") ;;
+            *) echo "Unknown sanitizer shard" >&2; exit 1 ;;
+          esac
+          python scripts/ci_report.py run build-${{ matrix.shard }} cmake --build build --parallel 4
+          python scripts/ci_report.py run test-${{ matrix.shard }} ctest --test-dir build --stop-on-failure --no-tests=error --output-on-failure --output-junit ci-reports/ctest-${{ matrix.shard }}.xml "${select[@]}"
 
       - name: Summarize the checks
         if: ${{ !cancelled() }}
-        run: python scripts/ci_report.py summary
+        run: |
+          if [ -f build/Testing/Temporary/LastTest.log ]; then
+            cp build/Testing/Temporary/LastTest.log build/ci-reports/LastTest-${{ matrix.shard }}.log
+          fi
+          python scripts/ci_report.py summary
 
       - name: Retain sanitizer diagnostics even on failure
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
+          name: sanitizers-${{ matrix.shard }}
+          path: build/ci-reports/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: true
+
+  # The release check reads one sanitizer report: merge the parts.
+  sanitizers:
+    needs: sanitizer-shards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Collect the reports of every part
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sanitizers-*
+          path: build/ci-reports
+          merge-multiple: true
+      - name: Summarize the checks
+        run: python scripts/ci_report.py summary
+      - name: Retain the merged sanitizer reports
+        uses: actions/upload-artifact@v4
+        with:
           name: reports-sanitizers
-          path: |
-            build/ci-reports/
-            build/Testing/Temporary/
+          path: build/ci-reports/
           if-no-files-found: error
           retention-days: 14
           overwrite: true

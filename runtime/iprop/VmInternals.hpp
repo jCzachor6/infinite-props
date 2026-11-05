@@ -8,9 +8,12 @@
 #include "iprop/Instruction.hpp"
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartOutput.hpp"
 #include "iprop/PartRenderPlan.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
+#include "iprop/ExecutionLimits.hpp"
+#include "iprop/FuelTariff.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -48,6 +51,7 @@ struct OutputSlot {
     std::vector<OutputPoint> points;
     std::vector<OutputRect> rects;
     std::vector<OutputCircle> circles;
+    std::shared_ptr<PartOutputData> parts;
     // The latest value as part.get returns it to the owner's caller.
     OutputPoint readPoint{};
     OutputRect readRect{};
@@ -100,6 +104,9 @@ struct Execution {
     RenderTarget rootTarget; // preserves the existing failed-run canvas tooling hook
     u64 budget = 0;
     u64 fuel = 0;
+    u64 fuelUnits = 0, fuelPaid = 0;
+    u8 fuelRate = 100;
+    std::shared_ptr<WorkBudget> workBudget = std::make_shared<WorkBudget>();
     std::vector<Frame> frames;
     // Snapshot before dispatch: call/part operations may advance the frame PC
     // before a trap. Structured locations identify the failing instruction.
@@ -119,8 +126,12 @@ struct Execution {
     // and tests (valid draw programs leave it empty).
     std::vector<Value> entryStack;
     ResourceArena resources;
+    // Whole-generation identity, shared by helper and static component calls.
+    // Releasing a view or a resource never refunds an instance creation.
+    u32 dynamicPartCreations = 0;
+    u32 exportedParts = 0; // all slots/static calls share the append limit
 
-    explicit Execution(const LoadedFile& f) : file(f) {}
+    explicit Execution(const LoadedFile& f) : file(f) { resources.workBudget = workBudget; }
     Canvas& canvas() { return target.canvas(); }
     const Canvas& canvas() const { return target.canvas(); }
 
@@ -165,6 +176,10 @@ struct Execution {
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted".
     void spend(u64 cost);
+    void spendRaw(u64 cost);
+    void beginInstruction(Opcode op) { fuelRate = fuelPercent(op); fuelUnits = fuelPaid = 0; }
+    void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    void checkpoint() const { workBudget->checkpoint(); }
 
     // Frame lifecycle.
     void callFunction(u16 functionIndex);
@@ -215,6 +230,10 @@ bool stepSteppers(Execution& ex, Instruction ins);
 bool stepPointDistributions(Execution& ex, Instruction ins);
 bool stepSurfaces(Execution& ex, Instruction ins);
 bool stepMasks(Execution& ex, Instruction ins);
+bool stepVoronoi(Execution& ex, Instruction ins);
+bool stepContours(Execution& ex, Instruction ins);
+bool stepRegions(Execution& ex, Instruction ins);
+bool stepDynamicParts(Execution& ex, Instruction ins);
 bool stepBlur(Execution& ex, Instruction ins);
 bool stepResourceExports(Execution& ex, Instruction ins);
 Value drawSampler(Execution& ex, const SamplerData& sampler);

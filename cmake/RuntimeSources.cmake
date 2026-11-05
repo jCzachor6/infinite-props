@@ -40,11 +40,20 @@ set(IPROP_RUNTIME_SOURCES
     canvas.cpp
     compositor.cpp
     surfaces.cpp
+    geometry.cpp
+    voronoi.cpp
+    contours.cpp
+    regions.cpp
+    region_offset.cpp
+    region_raster.cpp
     blur.cpp
     resource_exports.cpp
     masks.cpp
     outputs.cpp
     parts.cpp
+    dynamic_parts.cpp
+    dynamic_part_render.cpp
+    part_output.cpp
     part_render_plan.cpp
     utf8.cpp)
 list(TRANSFORM IPROP_RUNTIME_SOURCES

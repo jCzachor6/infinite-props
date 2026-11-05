@@ -8,7 +8,7 @@
 // Weapons glow the way a game host would make them: the pack renders its
 // emission map (input `renderPass` 1) and reports the bloom in its `glow` output
 // {palette, power, sigma, gain}; the page blurs the map by sigma and adds it
-// over the sprite.
+// behind the sprite.
 //
 // Each weapon also shows its loot rarity: common (plain), rare (soldier), epic
 // (ornate) or legendary (ornate, enchanted and at full power, glow power 4).
@@ -73,7 +73,7 @@ function weaponLook(seed: number) {
     const pick = hash % 10;
     const quality = pick < 5 ? 2 : pick < 8 ? 3 : 1;
     const enchantment = (hash >>> 8) % 5 === 0 ? 1 : 2;
-    return { enchantment, quality, uniforms: { quality, v: enchantment } as Uniforms };
+    return { enchantment, quality, uniforms: { quality, enchant: enchantment } as Uniforms };
 }
 
 type Rarity = "common" | "rare" | "epic" | "legendary";
@@ -96,8 +96,8 @@ function showRarity(badge: HTMLElement, rarity: Rarity) {
 }
 
 // Room around the 96x96 sprite for the halo, in native pixels; the CSS for
-// canvas.glow places the larger canvas to match (-25%, 150%).
-const GLOW_PAD = 24;
+// canvas.glow places the larger canvas to match (-50%, 200%).
+const GLOW_PAD = 48;
 const emission = document.createElement("canvas");
 
 // Paints the bloom of a weapon render into its glow canvas, or hides it when
@@ -106,7 +106,7 @@ const emission = document.createElement("canvas");
 // raise alpha as well as colour, so thin glowing lines still make a visible
 // halo), plus a wider, softer pass.
 function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
-    uniforms: Uniforms, outputs: Output[]) {
+    uniforms: Uniforms, outputs: Output[], intensity = 1) {
     const glow = glowOf(outputs);
     canvas.hidden = !glow || glow.y <= 0;
     if (!glow || canvas.hidden) return;
@@ -115,13 +115,16 @@ function paintGlow(canvas: HTMLCanvasElement, asset: string, seed: number,
     canvas.height = emission.height + 2 * GLOW_PAD;
     const context = canvas.getContext("2d")!;
     context.globalCompositeOperation = "lighter";
-    // Without HDR the full gain would bury the sprite in white, so it is
-    // scaled down: 1 to 4 half-strength passes, then two softer wide ones.
-    const passes = Math.min(4, Math.max(1, Math.round(glow.h * 0.4)));
-    for (const [sigma, count, alpha] of [[glow.w, passes, 0.5], [glow.w * 2.5, 2, 0.35]]) {
+    // A bright core and a wider halo spread out from under the opaque sprite.
+    // Scale the core with the reported gain while keeping the colour visible.
+    const passes = Math.min(6, Math.max(2, Math.round(glow.h * 0.6)));
+    for (const [sigma, count, alpha] of [[glow.w, passes, 0.84], [glow.w * 3, 3, 0.6]]) {
         context.filter = `blur(${sigma}px)`;
-        context.globalAlpha = alpha;
-        for (let i = 0; i < count; ++i) context.drawImage(emission, GLOW_PAD, GLOW_PAD);
+        // Split the exposure into passes so alpha never exceeds its 0..1 range.
+        for (let exposure = count * alpha * intensity; exposure > 0; --exposure) {
+            context.globalAlpha = Math.min(1, exposure);
+            context.drawImage(emission, GLOW_PAD, GLOW_PAD);
+        }
     }
     context.filter = "none";
     context.globalAlpha = 1;
@@ -262,7 +265,7 @@ function schedule(tile: Tile) {
 // ---- the game slots ----------------------------------------------------------------------
 
 // Only the finest: ornate, enchanted and at full power.
-const LEGENDARY: Uniforms = { v: 2, quality: 2, glowStrength: 4 };
+const LEGENDARY: Uniforms = { enchant: 2, quality: 2, glowStrength: 4 };
 
 function drawSilhouettes() {
     for (const canvas of Array.from(document.querySelectorAll<HTMLCanvasElement>("[data-silhouette]"))) {
@@ -288,7 +291,7 @@ const track = document.querySelector<HTMLElement>("[data-reel]");
 const ROLL_LINK = /^#roll\/(sword|axe|spear|staff)\/(\d{1,10})$/;
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-interface Item { asset: string; seed: number; rarity: Rarity; image: ImageData }
+interface Item { asset: string; seed: number; rarity: Rarity; image: ImageData; glow: HTMLCanvasElement }
 interface Case { items: Item[]; winner: Item }
 
 const REEL_LENGTH = 40;
@@ -317,7 +320,14 @@ function rollItem(wanted: Rarity): Item {
         if (look.quality !== QUALITY[wanted] || (wanted === "legendary" && look.enchantment !== 2)) continue;
         const { image, outputs } = render(asset, seed, look.uniforms);
         const rarity = rarityOf(look.quality, look.enchantment, outputs);
-        if (rarity === wanted || tries > 50000) return { asset, seed, rarity, image };
+        if (rarity === wanted || tries > 50000) {
+            // Prepare the halo with the case, keeping WASM and blur work off the spin.
+            const glow = document.createElement("canvas");
+            glow.className = "glow";
+            glow.setAttribute("aria-hidden", "true");
+            paintGlow(glow, asset, seed, look.uniforms, outputs);
+            return { asset, seed, rarity, image, glow };
+        }
     }
 }
 
@@ -362,7 +372,19 @@ function showWin(asset: string, seed: number) {
     const look = weaponLook(seed);
     const { image, outputs } = render(asset, seed, look.uniforms);
     paint(dropCanvas, image);
-    paintGlow(drop.querySelector<HTMLCanvasElement>(".win canvas.glow")!, asset, seed, look.uniforms, outputs);
+    const halo = drop.querySelector<HTMLCanvasElement>(".win canvas.glow:not(.glow--front)")!;
+    paintGlow(halo, asset, seed, look.uniforms, outputs, 1.2);
+    const overlay = drop.querySelector<HTMLCanvasElement>(".win canvas.glow--front")!;
+    overlay.hidden = halo.hidden;
+    overlay.width = halo.width;
+    overlay.height = halo.height;
+    if (!halo.hidden) {
+        // Reuse the halo, clipped to the weapon; CSS applies one third of its intensity.
+        const context = overlay.getContext("2d")!;
+        context.putImageData(image, GLOW_PAD, GLOW_PAD);
+        context.globalCompositeOperation = "source-in";
+        context.drawImage(halo, 0, 0);
+    }
     const rarity = rarityOf(look.quality, look.enchantment, outputs);
     showRarity(drop.querySelector<HTMLElement>("[data-drop-rarity]")!, rarity);
     drop.querySelector("[data-drop-title]")!.textContent = `${WEAPONS[asset]} #${seed}`;
@@ -410,9 +432,12 @@ async function openCase() {
         const card = document.createElement("div");
         card.className = "reel__item";
         card.dataset.tier = item.rarity;
+        const sprite = document.createElement("div");
+        sprite.className = "reel__sprite";
         const canvas = document.createElement("canvas");
         paint(canvas, item.image);
-        card.append(canvas);
+        sprite.append(canvas, item.glow);
+        card.append(sprite);
         return card;
     }));
     // Stop with the marker somewhere on the winner, never quite centred.
@@ -475,20 +500,64 @@ const forestRoll = document.querySelector<HTMLButtonElement>("[data-forest-roll]
 
 // Only the cells shown are drawn: 36 on a wide screen, 18 on a phone.
 const wideForest = window.matchMedia("(min-width: 48rem)");
+// Beside the code (two columns), the forest takes as many rows as fit next to
+// the text and code above its foot, and spreads the leftover height between
+// the rows, so both columns end together.
+const sideBySide = window.matchMedia("(min-width: 64rem)");
+const forestText = document.querySelector<HTMLElement>(".first-prop__text");
+const forestFoot = document.querySelector<HTMLElement>(".forest__foot");
+const markupTrees = forest ? forest.children.length : 0;
+
+function shownTrees() {
+    return Array.from(forest!.querySelectorAll<HTMLElement>(".forest__tree"))
+        .filter((cell) => cell.offsetParent !== null);
+}
+
+function plantTree(cell: HTMLElement) {
+    const seed = (Math.random() * SEED_LIMIT) >>> 0;
+    // The crown and its shadow fill the middle 144 of the 176 canvas.
+    const canvas = cell.querySelector("canvas")!;
+    canvas.width = canvas.height = 144;
+    canvas.getContext("2d")!.putImageData(render("tree", seed).image, -16, -16);
+    cell.querySelector("figcaption")!.textContent = `seed ${seed.toString(16).padStart(8, "0")}`;
+    cell.dataset.planted = "";
+}
 
 function drawForest() {
     if (!forest || !files.has("tree")) return;
-    const cells = Array.from(forest.querySelectorAll<HTMLElement>(".forest__tree"))
-        .filter((cell) => cell.offsetParent !== null);
+    const cells = shownTrees();
     if (forestRoll) forestRoll.textContent = `Roll ${cells.length} new trees`;
-    for (const cell of cells) {
-        const seed = (Math.random() * SEED_LIMIT) >>> 0;
-        // The crown and its shadow fill the middle 144 of the 176 canvas.
-        const canvas = cell.querySelector("canvas")!;
-        canvas.width = canvas.height = 144;
-        canvas.getContext("2d")!.putImageData(render("tree", seed).image, -16, -16);
-        cell.querySelector("figcaption")!.textContent = `seed ${seed.toString(16).padStart(8, "0")}`;
+    for (const cell of cells) plantTree(cell);
+}
+
+function fitForest() {
+    if (!forest || !forestText || !forestFoot || !forest.firstElementChild) return;
+    let count = markupTrees;
+    let rowGap = "";
+    if (sideBySide.matches) {
+        const grid = getComputedStyle(forest);
+        const columns = grid.gridTemplateColumns.split(" ").length;
+        const gap = parseFloat(grid.columnGap) || 0;
+        // Fractional sizes: rounding one cell would add up over every row.
+        const cell = forest.firstElementChild.getBoundingClientRect().height;
+        const height = forestText.getBoundingClientRect().height - forestFoot.getBoundingClientRect().height
+            - parseFloat(getComputedStyle(forestFoot).marginTop);
+        const rows = Math.max(1, Math.floor((height + gap) / (cell + gap)));
+        count = rows * columns;
+        if (rows > 1) rowGap = `${(height - rows * cell) / (rows - 1)}px`;
     }
+    forest.style.rowGap = rowGap;
+    while (forest.children.length > count) forest.lastElementChild!.remove();
+    while (forest.children.length < count) {
+        const cell = forest.firstElementChild!.cloneNode(true) as HTMLElement;
+        delete cell.dataset.planted;
+        cell.querySelector("figcaption")!.textContent = "seed …";
+        forest.append(cell);
+    }
+    if (!files.has("tree")) return;
+    // New cells get a tree; the trees already shown stay.
+    for (const cell of shownTrees()) if (!("planted" in cell.dataset)) plantTree(cell);
+    if (forestRoll) forestRoll.textContent = `Roll ${shownTrees().length} new trees`;
 }
 
 async function startForest() {
@@ -500,12 +569,20 @@ async function startForest() {
         for (const size of Array.from(document.querySelectorAll("[data-forest-size]"))) {
             size.textContent = formatSize(files.get("tree")!.byteLength);
         }
+        fitForest();
         drawForest();
         if (forestRoll) {
             forestRoll.disabled = false;
             forestRoll.addEventListener("click", drawForest);
         }
         wideForest.addEventListener("change", drawForest);
+        // Tabs, fonts and the window change the code column's height; refit
+        // on the next frame, outside the observer's own layout pass.
+        let fitting = 0;
+        const refit = () => { cancelAnimationFrame(fitting); fitting = requestAnimationFrame(fitForest); };
+        const resized = new ResizeObserver(refit);
+        if (forestText) resized.observe(forestText);
+        resized.observe(forest);
     } catch {
         // The forest stays empty; the rest of the page does not depend on it.
     }

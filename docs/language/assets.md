@@ -135,6 +135,11 @@ kind must have unique names. Inputs cannot be assigned or used as loop counters.
 
 ## Structured outputs
 
+`output list part pieces` appends an immutable dynamic-part snapshot on each
+assignment. It has no singular form. Results own shared geometry/raster resources
+independently of the VM; `part.draw` does not append. Use typed host APIs rather
+than legacy JSON; `.iprop` stores the program, not generated results.
+
 `output kind name` declares a scalar slot. Assignment replaces its current
 value; an unwritten slot remains unset. `output list kind name` appends each
 assignment in execution order. Outputs are written by `draw` or a helper
@@ -148,6 +153,14 @@ immutable handles, cannot be lists, and never add host geometry slots.
 | `point` | `{x, y}`, a `vec2` |
 | `circle` | `{x, y, radius}` |
 | `rect` | `{x, y, width, height}` |
+| `part` (list only) | A `part2d` immutable snapshot |
+
+`output list part tiles` appends each assigned part without drawing it.
+Snapshots retain shared geometry with holes, A8/RGBA and appearance, effective
+root placement, ID and append order. Empty slots are returned. The global
+limit is 256 snapshots across all slots; exporting an ID twice is allowed.
+Only typed C++/C host results represent these records; legacy float/JSON paths
+reject them explicitly. See the [part export contract](../../spec/part-exports-v0.9.md).
 
 Components must be numeric and widen to `f32`. Scalar part outputs can be
 read and propagated; list outputs cannot be read as expressions. Outputs

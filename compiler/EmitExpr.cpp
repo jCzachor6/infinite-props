@@ -236,6 +236,8 @@ ips::ValueType Emitter::emitPartRead(const ips::Expr& expr) {
     const auto slot = [&] { return static_cast<u16>(plan_.partSlot(part, read.output->name)); };
     const auto resource = [&] { return plan_.resourceSlotIndex.at({part, read.output->name}); };
     switch (read.kind) {
+    case ips::OutputKind::Part:
+        error(ips::locationOf(expr), "cannot read list part output");
     case ips::OutputKind::Mask:
         ins(Opcode::PartGetMask, 0, resource());
         return ips::ValueType::Mask;

@@ -2,8 +2,10 @@
 
 #include "iprop/Canvas.hpp"
 #include "iprop/Outputs.hpp"
+#include "iprop/PartOutput.hpp"
 #include "iprop/Validator.hpp"
 #include "iprop/Value.hpp"
+#include "iprop/ExecutionLimits.hpp"
 
 #include <cstdint>
 #include <map>
@@ -33,6 +35,10 @@ struct NamedOutput {
     std::vector<OutputPoint> points;
     std::vector<OutputRect> rects;
     std::vector<OutputCircle> circles;
+    std::shared_ptr<const PartOutputData> parts;
+    std::span<const OutputPart> partSnapshots() const {
+        return parts ? std::span<const OutputPart>(parts->records.data(), parts->records.size()) : std::span<const OutputPart>{};
+    }
 };
 
 // The generation result (spec §8.1/§5.4): the image plus every declared
@@ -51,6 +57,7 @@ struct GenerationInputs {
     u32 sizeX = 0;
     u32 sizeY = 0;
     std::map<std::string, UniformValue> uniforms;
+    ExecutionLimits limits{};
 };
 
 // Host-argument checks of spec §8.1, for the requested canvas size;
@@ -87,6 +94,11 @@ public:
     const Canvas& canvas() const;
     u64 fuel() const;       // remaining budget
     u64 fuelBudget() const; // total budget from meta.fuel
+    u64 work() const;
+    u64 workBudget() const;
+    // Shared through final host packing; internal adapters must finish it
+    // before publishing a result. Retaining this owner does not retain VM data.
+    std::shared_ptr<detail::WorkBudget> executionBudget() const;
 
     // Tooling hook: the entry frame's operand stack as it was when run()
     // finished (empty for a validated draw, which has no results). Useful

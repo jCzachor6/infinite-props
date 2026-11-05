@@ -1,26 +1,11 @@
 // Sweep real heap failures separately from Catch2, including persistent OOM
 // during unwinding. Both output ownership and temporary row charges must unwind.
 #include "iprop/VmInternals.hpp"
+#include "../support/fault_injection.hpp"
 
 #include <cstdio>
-#include <cstdlib>
-#include <limits>
-#include <new>
 
-namespace {
-bool armed = false;
-std::size_t allocations = 0, failAt = std::numeric_limits<std::size_t>::max();
-}
-void* operator new(std::size_t size) {
-    if (armed && allocations++ >= failAt) throw std::bad_alloc{};
-    if (void* p = std::malloc(size ? size : 1)) return p;
-    throw std::bad_alloc{};
-}
-void* operator new[](std::size_t size) { return ::operator new(size); }
-void operator delete(void* p) noexcept { std::free(p); }
-void operator delete[](void* p) noexcept { std::free(p); }
-void operator delete(void* p, std::size_t) noexcept { std::free(p); }
-void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+using namespace fault_injection;
 
 int main() {
     using namespace iprop;
@@ -33,7 +18,7 @@ int main() {
         for (std::size_t limit = 0; limit < 32; ++limit) {
             detail::Execution ex(file); ex.frames.emplace_back(); ex.fuel=1000000;
             ex.push(op==Opcode::LayerBlur ? Value(LayerValue{source,{}}) : Value(MaskValue{source,{}})); ex.push(sigma);
-            allocations=0; failAt=limit; armed=true;
+            arm(limit, true);
             bool succeeded = false;
             try { succeeded=detail::stepBlur(ex,{op,0,0}); armed=false; }
             catch (const std::bad_alloc&) { armed=false; }

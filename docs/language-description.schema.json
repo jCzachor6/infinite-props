@@ -3,7 +3,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 4,
+      "const": 6,
       "description": "Language export protocol version, independent of language and product versions."
     },
     "product_version": {
@@ -111,7 +111,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted by local values and uniform expression values."
               },
@@ -151,7 +156,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted in typed helper parameters."
               },
@@ -191,7 +201,12 @@
                   "list<stepper<i32>>",
                   "list<stepper<f32>>",
                   "list<stepper<color>>",
-                  "list<stepper<vec2>>"
+                  "list<stepper<vec2>>",
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
                 ],
                 "description": "Types accepted by value-returning helpers."
               },
@@ -1938,12 +1953,12 @@
             },
             "capture_fuel": {
               "type": "string",
-              "const": "one_plus_target_pixels",
+              "const": "two_plus_ceil_70_percent_target_pixels",
               "description": "Capture fuel."
             },
             "paint_fuel": {
               "type": "string",
-              "const": "one_plus_source_pixels",
+              "const": "ceil_60_percent_one_plus_source_pixels",
               "description": "Paint fuel."
             },
             "unset_handle": {
@@ -2222,7 +2237,7 @@
                   "description": "Gaussian blur clip."
                 },
                 "positive_sigma_fuel": {
-                  "const": "one_plus_K_plus_W_H_times_1_plus_2_K",
+                  "const": "ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K",
                   "description": "Gaussian blur positive sigma fuel."
                 },
                 "scratch_bytes": {
@@ -2500,12 +2515,12 @@
             },
             "algebra_fuel": {
               "type": "string",
-              "const": "one_plus_zeroed_pixels_plus_result_pixels",
+              "const": "ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels",
               "description": "Algebra fuel."
             },
             "morphology_fuel": {
               "type": "string",
-              "const": "one_plus_zeroed_pixels_plus_all_logical_disk_samples",
+              "const": "ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples",
               "description": "Morphology fuel."
             },
             "clip_write_fuel": {
@@ -2583,6 +2598,149 @@
           ],
           "additionalProperties": true,
           "description": "Immutable coverage views and A8 results, exact disk morphology and scoped pixel clipping."
+        },
+        "noise_mask": {
+          "type": "object",
+          "properties": {
+            "constants": {
+              "type": "object",
+              "properties": {
+                "noise.mode_value": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_grad": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_fbm": {
+                  "type": "integer",
+                  "const": 2,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_cell": {
+                  "type": "integer",
+                  "const": 3,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_cell_edge": {
+                  "type": "integer",
+                  "const": 4,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.mode_ridge": {
+                  "type": "integer",
+                  "const": 5,
+                  "description": "Stable i32 value of this noise mask mode."
+                },
+                "noise.above": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Inclusive above comparison."
+                },
+                "noise.below": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Inclusive below comparison."
+                }
+              },
+              "required": [
+                "noise.mode_value",
+                "noise.mode_grad",
+                "noise.mode_fbm",
+                "noise.mode_cell",
+                "noise.mode_cell_edge",
+                "noise.mode_ridge",
+                "noise.above",
+                "noise.below"
+              ],
+              "additionalProperties": true,
+              "description": "Scalar constants in the reserved noise namespace."
+            },
+            "buffer_format": {
+              "type": "string",
+              "const": "A8",
+              "description": "Standard one-byte mask coverage."
+            },
+            "coordinate_space": {
+              "type": "string",
+              "const": "local_pixel_centers_times_frequency",
+              "description": "Sample local target pixel centers after frequency scaling."
+            },
+            "origin": {
+              "type": "string",
+              "const": "crop_without_phase_shift",
+              "description": "Origin limits coverage without moving the field."
+            },
+            "octaves_min": {
+              "type": "integer",
+              "const": 1,
+              "description": "Minimum accepted declared octave count in every mode."
+            },
+            "octaves_max": {
+              "type": "integer",
+              "const": 8,
+              "description": "Maximum accepted declared octave count in every mode."
+            },
+            "rng": {
+              "type": "string",
+              "const": "explicit_seed_no_stream_draws",
+              "description": "Only argument expressions can advance generation RNG."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Masks depend on generation and cannot be constant values."
+            },
+            "short_defaults": {
+              "type": "object",
+              "properties": {
+                "octaves": {
+                  "type": "integer",
+                  "const": 4,
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "softness": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "comparison": {
+                  "type": "string",
+                  "const": "noise.above",
+                  "description": "Value supplied by the six-argument overload."
+                },
+                "warp_amount": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Value supplied by the six-argument overload."
+                }
+              },
+              "required": [
+                "octaves",
+                "softness",
+                "comparison",
+                "warp_amount"
+              ],
+              "additionalProperties": true,
+              "description": "Parameters supplied by the short overload."
+            }
+          },
+          "required": [
+            "constants",
+            "buffer_format",
+            "coordinate_space",
+            "origin",
+            "octaves_min",
+            "octaves_max",
+            "rng",
+            "asset_constants",
+            "short_defaults"
+          ],
+          "additionalProperties": true,
+          "description": "Optional 0.9 direct-noise mask contract; earlier exports may omit it."
         },
         "resource_exports": {
           "type": "object",
@@ -3124,6 +3282,589 @@
             "format_change"
           ],
           "additionalProperties": true
+        },
+        "geometry_handles": {
+          "type": "object",
+          "properties": {
+            "types": {
+              "type": "array",
+              "const": [
+                "diagram2d",
+                "contours2d",
+                "regions2d",
+                "part2d",
+                "parts2d"
+              ],
+              "description": "Distinct geometry and dynamic-part handle types in descriptor order.",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "diagram2d",
+                  "contours2d",
+                  "regions2d",
+                  "part2d",
+                  "parts2d"
+                ],
+                "description": "One distinct immutable VM handle type."
+              }
+            },
+            "descriptor_codes": {
+              "type": "object",
+              "properties": {
+                "diagram2d": {
+                  "type": "integer",
+                  "const": 15,
+                  "description": "Stable descriptor kind for diagram2d."
+                },
+                "contours2d": {
+                  "type": "integer",
+                  "const": 16,
+                  "description": "Stable descriptor kind for contours2d."
+                },
+                "regions2d": {
+                  "type": "integer",
+                  "const": 17,
+                  "description": "Stable descriptor kind for regions2d."
+                },
+                "part2d": {
+                  "type": "integer",
+                  "const": 18,
+                  "description": "Stable descriptor kind for part2d."
+                },
+                "parts2d": {
+                  "type": "integer",
+                  "const": 19,
+                  "description": "Stable descriptor kind for parts2d."
+                }
+              },
+              "required": [
+                "diagram2d",
+                "contours2d",
+                "regions2d",
+                "part2d",
+                "parts2d"
+              ],
+              "additionalProperties": true,
+              "description": "Append-only kind codes in the existing types section."
+            },
+            "type_names": {
+              "type": "string",
+              "const": "contextual",
+              "description": "Geometry type spellings are contextual and remain ordinary identifiers elsewhere."
+            },
+            "storage": {
+              "type": "string",
+              "const": "shared_immutable_topology",
+              "description": "Immutable shared topology and source buffers."
+            },
+            "unassigned_read": {
+              "type": "string",
+              "const": "trap",
+              "description": "A local read of a null geometry handle traps."
+            },
+            "host_inputs": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether host inputs can contain geometry handles."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether asset constants can contain geometry handles."
+            },
+            "collections": {
+              "type": "boolean",
+              "const": false,
+              "description": "Whether generic list, sampler, stepper or palette elements can contain geometry handles."
+            },
+            "generation_data_limit_bytes": {
+              "type": "integer",
+              "const": 67108864,
+              "description": "Shared generation allocation limit in bytes."
+            },
+            "maximum_sites": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum diagram site count."
+            },
+            "maximum_regions": {
+              "type": "integer",
+              "const": 256,
+              "description": "Maximum result region count."
+            },
+            "maximum_ring_vertices": {
+              "type": "integer",
+              "const": 2048,
+              "description": "Maximum directed vertices in one ring, including a hole."
+            },
+            "maximum_vertices": {
+              "type": "integer",
+              "const": 65536,
+              "description": "Maximum directed vertices in a complete result, including holes."
+            }
+          },
+          "required": [
+            "types",
+            "descriptor_codes",
+            "type_names",
+            "storage",
+            "unassigned_read",
+            "host_inputs",
+            "asset_constants",
+            "collections",
+            "generation_data_limit_bytes",
+            "maximum_sites",
+            "maximum_regions",
+            "maximum_ring_vertices",
+            "maximum_vertices"
+          ],
+          "additionalProperties": true,
+          "description": "Optional 0.9 geometry handle contract; previous exports may omit it."
+        },
+        "voronoi": {
+          "type": "object",
+          "properties": {
+            "minimum_sites": {
+              "type": "integer",
+              "const": 1,
+              "description": "Pinned Voronoi minimum sites."
+            },
+            "maximum_sites": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned Voronoi maximum sites."
+            },
+            "maximum_relax": {
+              "type": "integer",
+              "const": 4,
+              "description": "Pinned Voronoi maximum relax."
+            },
+            "rng": {
+              "type": "string",
+              "const": "counter_hash_explicit_seed_no_stream_draws",
+              "description": "Pinned Voronoi rng."
+            },
+            "metric": {
+              "type": "string",
+              "const": "squared_parallel_over_anisotropy_plus_squared_perpendicular",
+              "description": "Pinned Voronoi metric."
+            },
+            "neighbors": {
+              "type": "string",
+              "const": "sorted_shared_positive_length_edges",
+              "description": "Pinned Voronoi neighbors."
+            },
+            "numeric_kernel": {
+              "type": "string",
+              "const": "binary64_half_planes_shared_f32_topology",
+              "description": "Pinned Voronoi numeric kernel."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned Voronoi asset constants."
+            },
+            "constants": {
+              "type": "object",
+              "properties": {
+                "voronoi.random": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable Voronoi method constant."
+                },
+                "voronoi.grid": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable Voronoi method constant."
+                }
+              },
+              "required": [
+                "voronoi.random",
+                "voronoi.grid"
+              ],
+              "additionalProperties": true,
+              "description": "Contextual i32 generation methods."
+            }
+          },
+          "required": [
+            "minimum_sites",
+            "maximum_sites",
+            "maximum_relax",
+            "rng",
+            "metric",
+            "neighbors",
+            "numeric_kernel",
+            "asset_constants",
+            "constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 05 bounded Voronoi policy, using schema 5 geometry handles."
+        },
+        "contour": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "type": "string",
+              "const": "marching_squares_clamped_alpha_interpolation",
+              "description": "Pinned contour algorithm."
+            },
+            "boundary": {
+              "type": "string",
+              "const": "replicated_edge_samples_closed_rectangle",
+              "description": "Pinned contour boundary."
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "source_scale_placement_and_D4",
+              "description": "Pinned contour coordinates."
+            },
+            "simplify": {
+              "type": "string",
+              "const": "bounded_original_arc_error_preserve_intersections_and_nesting",
+              "description": "Pinned contour simplify."
+            },
+            "min_area": {
+              "type": "string",
+              "const": "net_component_area_keep_holes",
+              "description": "Pinned contour min area."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned contour asset constants."
+            },
+            "constants": {
+              "type": "object",
+              "properties": {
+                "contour.four": {
+                  "type": "integer",
+                  "const": 0,
+                  "description": "Stable contour connectivity constant."
+                },
+                "contour.eight": {
+                  "type": "integer",
+                  "const": 1,
+                  "description": "Stable contour connectivity constant."
+                }
+              },
+              "required": [
+                "contour.four",
+                "contour.eight"
+              ],
+              "additionalProperties": true,
+              "description": "Contextual i32 contour connectivity."
+            }
+          },
+          "required": [
+            "algorithm",
+            "boundary",
+            "coordinates",
+            "simplify",
+            "min_area",
+            "asset_constants",
+            "constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 06 mask contours policy in schema 5."
+        },
+        "regions": {
+          "type": "object",
+          "properties": {
+            "offset": {
+              "type": "string",
+              "const": "positive_winding_round_joins",
+              "description": "Pinned regions offset."
+            },
+            "arc_tolerance_world": {
+              "type": "string",
+              "const": "1/64",
+              "description": "Pinned regions arc tolerance world."
+            },
+            "source_ids": {
+              "type": "string",
+              "const": "original_source_fragment_ids_may_repeat",
+              "description": "Pinned regions source ids."
+            },
+            "order": {
+              "type": "string",
+              "const": "source_then_net_area_bounds_discovery",
+              "description": "Pinned regions order."
+            },
+            "neighbors": {
+              "type": "string",
+              "const": "surviving_fragments_common_original_edge",
+              "description": "Pinned regions neighbors."
+            },
+            "min_area": {
+              "type": "string",
+              "const": "after_offset_before_result_region_limit",
+              "description": "Pinned regions min area."
+            },
+            "points": {
+              "type": "string",
+              "const": "one_ring_no_holes_no_truncation",
+              "description": "Pinned regions points."
+            },
+            "maximum_points": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned regions maximum points."
+            },
+            "raster": {
+              "type": "string",
+              "const": "4x4_half_open_union_before_A8",
+              "description": "Pinned regions raster."
+            },
+            "mask_clip": {
+              "type": "string",
+              "const": "ignored_until_paint",
+              "description": "Pinned regions mask clip."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned regions asset constants."
+            }
+          },
+          "required": [
+            "offset",
+            "arc_tolerance_world",
+            "source_ids",
+            "order",
+            "neighbors",
+            "min_area",
+            "points",
+            "maximum_points",
+            "raster",
+            "mask_clip",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 07 regions policy in schema 5."
+        },
+        "gap_bevel": {
+          "type": "object",
+          "properties": {
+            "constant_gap": {
+              "type": "string",
+              "const": "same_offset_width_half",
+              "description": "Pinned gap/bevel constant gap."
+            },
+            "variable_gap": {
+              "type": "string",
+              "const": "original_edge_linear_knots_shared_vertex_endpoints",
+              "description": "Pinned gap/bevel variable gap."
+            },
+            "profile_knots": {
+              "type": "integer",
+              "const": 9,
+              "description": "Pinned gap/bevel profile knots."
+            },
+            "bevel": {
+              "type": "string",
+              "const": "nearest_edge_faceted_linear_fade_4x4_RGBA8",
+              "description": "Pinned gap/bevel bevel."
+            },
+            "bevel_ties": {
+              "type": "string",
+              "const": "original_edge_then_current_use",
+              "description": "Pinned gap/bevel bevel ties."
+            },
+            "overlap": {
+              "type": "string",
+              "const": "lowest_current_region_index",
+              "description": "Pinned gap/bevel overlap."
+            },
+            "raster_clip": {
+              "type": "string",
+              "const": "ignored_until_paint",
+              "description": "Pinned gap/bevel raster clip."
+            },
+            "rng": {
+              "type": "string",
+              "const": "explicit_gap_seed_no_stream_draws",
+              "description": "Pinned gap/bevel rng."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned gap/bevel asset constants."
+            }
+          },
+          "required": [
+            "constant_gap",
+            "variable_gap",
+            "profile_knots",
+            "bevel",
+            "bevel_ties",
+            "overlap",
+            "raster_clip",
+            "rng",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 08 gaps and bevels policy in schema 5."
+        },
+        "dynamic_parts": {
+          "type": "object",
+          "properties": {
+            "creation_limit": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned dynamic part creation limit."
+            },
+            "identity": {
+              "type": "string",
+              "const": "generation_counter_never_recycled",
+              "description": "Pinned dynamic part identity."
+            },
+            "source": {
+              "type": "string",
+              "const": "shared_region_A8_RGBA8",
+              "description": "Pinned dynamic part source."
+            },
+            "views": {
+              "type": "string",
+              "const": "immutable_id_preserving",
+              "description": "Pinned dynamic part views."
+            },
+            "placement": {
+              "type": "string",
+              "const": "absolute_D4_then_floor_t_plus_half",
+              "description": "Pinned dynamic part placement."
+            },
+            "anchor": {
+              "type": "string",
+              "const": "net_centroid_or_alpha_pixel_bbox",
+              "description": "Pinned dynamic part anchor."
+            },
+            "coordinates": {
+              "type": "string",
+              "const": "original_pixel_frame",
+              "description": "Pinned dynamic part coordinates."
+            },
+            "appearance": {
+              "type": "string",
+              "const": "last_fill_or_texture_original_coordinates",
+              "description": "Pinned dynamic part appearance."
+            },
+            "layer_alpha": {
+              "type": "string",
+              "const": "default_once_override_shape_times_appearance",
+              "description": "Pinned dynamic part layer alpha."
+            },
+            "mask": {
+              "type": "string",
+              "const": "A8_shape_ignore_appearance_clip",
+              "description": "Pinned dynamic part mask."
+            },
+            "draw": {
+              "type": "string",
+              "const": "active_composition_clip_no_implicit_export",
+              "description": "Pinned dynamic part draw."
+            },
+            "scale": {
+              "type": "string",
+              "const": "exact_D4_mapped_source_scale",
+              "description": "Pinned dynamic part scale."
+            },
+            "metadata": {
+              "type": "string",
+              "const": "cached_effective_post_rounding",
+              "description": "Pinned dynamic part metadata."
+            },
+            "part_draw": {
+              "type": "string",
+              "const": "one_argument_dynamic_seed_at_static",
+              "description": "Pinned dynamic part part draw."
+            },
+            "asset_constants": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned dynamic part asset constants."
+            },
+            "geometry_scale": {
+              "type": "string",
+              "const": "inverse_D4_target_grid_without_resampling",
+              "description": "Optional vector geometry grid selection; raster buffers retain their intrinsic scale."
+            }
+          },
+          "required": [
+            "creation_limit",
+            "identity",
+            "source",
+            "views",
+            "placement",
+            "anchor",
+            "coordinates",
+            "appearance",
+            "layer_alpha",
+            "mask",
+            "draw",
+            "scale",
+            "metadata",
+            "part_draw",
+            "asset_constants"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 09 runtime instances policy in schema 5."
+        },
+        "part_exports": {
+          "type": "object",
+          "properties": {
+            "syntax": {
+              "type": "string",
+              "const": "output list part <name>",
+              "description": "Pinned part export syntax."
+            },
+            "value_type": {
+              "type": "string",
+              "const": "part2d",
+              "description": "Pinned part export value type."
+            },
+            "write": {
+              "type": "string",
+              "const": "append_immutable_root_snapshot_no_draw",
+              "description": "Pinned part export write."
+            },
+            "read": {
+              "type": "string",
+              "const": "forbidden",
+              "description": "Pinned part export read."
+            },
+            "resources": {
+              "type": "string",
+              "const": "shared_result_owned",
+              "description": "Pinned part export resources."
+            },
+            "index": {
+              "type": "string",
+              "const": "slot_append_order_independent_of_instance_id",
+              "description": "Pinned part export index."
+            },
+            "maximum_records": {
+              "type": "integer",
+              "const": 256,
+              "description": "Pinned part export maximum records."
+            },
+            "serialization": {
+              "type": "boolean",
+              "const": false,
+              "description": "Pinned part export serialization."
+            }
+          },
+          "required": [
+            "syntax",
+            "value_type",
+            "write",
+            "read",
+            "resources",
+            "index",
+            "maximum_records",
+            "serialization"
+          ],
+          "additionalProperties": true,
+          "description": "Optional stage 10 typed part export policy in schema 5."
         }
       },
       "required": [
@@ -3163,7 +3904,10 @@
             "enum": [
               "call_depth_limit",
               "fuel_exhausted",
-              "generation_data_limit"
+              "generation_data_limit",
+              "work_limit",
+              "cancelled",
+              "deadline_exceeded"
             ],
             "description": "Program-wide execution resource limits."
           },
@@ -3327,9 +4071,9 @@
     "builtins"
   ],
   "additionalProperties": true,
-  "description": "Language export schema 4: explicit asset inputs, typed constants, immutable collections and independent product, source-language, C API and ABI contracts.",
+  "description": "Language export schema 5: explicit asset inputs, typed constants, immutable collections and independent product, source-language, C API and ABI contracts. Includes opaque geometry and dynamic-part handle types.",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "infinite-props language-description schema 4",
+  "title": "infinite-props language-description schema 5",
   "$defs": {
     "version": {
       "type": "object",
@@ -3465,7 +4209,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Source value type; T is a variadic choice template."
         }
@@ -3524,7 +4273,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -3632,7 +4386,12 @@
             "list<stepper<i32>>",
             "list<stepper<f32>>",
             "list<stepper<color>>",
-            "list<stepper<vec2>>"
+            "list<stepper<vec2>>",
+            "diagram2d",
+            "contours2d",
+            "regions2d",
+            "part2d",
+            "parts2d"
           ],
           "description": "Return value type; void produces no value."
         },
@@ -3702,7 +4461,12 @@
               "list<stepper<i32>>",
               "list<stepper<f32>>",
               "list<stepper<color>>",
-              "list<stepper<vec2>>"
+              "list<stepper<vec2>>",
+              "diagram2d",
+              "contours2d",
+              "regions2d",
+              "part2d",
+              "parts2d"
             ],
             "description": "Allowed value types for every eager choice."
           },

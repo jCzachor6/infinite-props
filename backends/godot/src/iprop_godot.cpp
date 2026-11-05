@@ -1,6 +1,7 @@
 // The GDExtension implementation (see iprop_godot.hpp).
 
 #include "iprop_godot.hpp"
+#include "part_values.hpp"
 #include "../../ResultQueries.hpp"
 
 #include <godot_cpp/classes/file_access.hpp>
@@ -61,6 +62,16 @@ public:
     Failure& operator=(const Failure&) = delete;
 
     iprop_error_ex* get() { return &error_; }
+    Dictionary details() const {
+        Dictionary result;
+        result["status"] = static_cast<int64_t>(error_.status);
+        result["reason"] = static_cast<int64_t>(error_.reason);
+        result["stage"] = static_cast<int64_t>(error_.stage);
+        result["location_flags"] = static_cast<int64_t>(error_.location_flags);
+        result["pc"] = static_cast<int64_t>(error_.pc);
+        result["message"] = String::utf8(message_);
+        return result;
+    }
 
     // Prints "iprop: <operation> failed: <message> (reason N)".
     void print(const char* operation, const char* fallback = "unknown error") const {
@@ -92,6 +103,18 @@ Variant inputValue(iprop_input_type type, iprop_color_rgba8 color, float f32, ui
 
 } // namespace
 
+void IpropCancellation::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("is_valid"), &IpropCancellation::is_valid);
+    ClassDB::bind_method(D_METHOD("cancel"), &IpropCancellation::cancel);
+    ClassDB::bind_method(D_METHOD("is_cancelled"), &IpropCancellation::is_cancelled);
+}
+IpropCancellation::IpropCancellation() {
+    Failure failure;
+    if (iprop_cancellation_create(&token_, failure.get()) != IPROP_EX_OK)
+        failure.print("cancellation setup");
+}
+IpropCancellation::~IpropCancellation() { iprop_cancellation_free(token_); }
+
 // ---- IpropAsset -----------------------------------------------------------
 
 void IpropAsset::_bind_methods() {
@@ -100,14 +123,18 @@ void IpropAsset::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_inputs"), &IpropAsset::get_inputs);
     ClassDB::bind_method(D_METHOD("set_input", "name", "value"), &IpropAsset::set_input);
     ClassDB::bind_method(D_METHOD("reset_inputs"), &IpropAsset::reset_inputs);
-    ClassDB::bind_method(D_METHOD("generate", "seed", "width", "height"),
-                         &IpropAsset::generate, DEFVAL(0), DEFVAL(0));
+    ClassDB::bind_method(D_METHOD("generate", "seed", "width", "height", "limits"),
+                         &IpropAsset::generate, DEFVAL(0), DEFVAL(0), DEFVAL(Dictionary()));
     ClassDB::bind_method(D_METHOD("get_size"), &IpropAsset::get_size);
     ClassDB::bind_method(D_METHOD("get_origin"), &IpropAsset::get_origin);
     ClassDB::bind_method(D_METHOD("get_fuel"), &IpropAsset::get_fuel);
     ClassDB::bind_method(D_METHOD("get_outputs"), &IpropAsset::get_outputs);
     ClassDB::bind_method(D_METHOD("get_part_outputs"), &IpropAsset::get_part_outputs);
     ClassDB::bind_method(D_METHOD("get_output_slots"), &IpropAsset::get_output_slots);
+    ClassDB::bind_method(D_METHOD("get_resources"), &IpropAsset::get_resources);
+    ClassDB::bind_method(D_METHOD("get_work"), &IpropAsset::get_work);
+    ClassDB::bind_method(D_METHOD("get_last_error"), &IpropAsset::get_last_error);
+    ClassDB::bind_method(D_METHOD("get_resource", "id"), &IpropAsset::get_resource);
 
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2I, "size"), "", "get_size");
     ADD_PROPERTY(PropertyInfo(Variant::VECTOR2, "origin"), "", "get_origin");
@@ -119,6 +146,9 @@ void IpropAsset::_bind_methods() {
                  "get_part_outputs");
     ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "output_slots"), "",
                  "get_output_slots");
+    ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "resources"), "", "get_resources");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "work"), "", "get_work");
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "last_error"), "", "get_last_error");
 }
 
 IpropAsset::IpropAsset() = default;
@@ -161,9 +191,12 @@ Error IpropAsset::load_file(const String& path) {
     iprop_program_free(program_);
     parameters_ = parameters;
     program_ = candidate.release();
-    outputs_.clear();
-    part_outputs_.clear();
-    output_slots_.clear();
+    // Replace shared containers; retained previous results must survive reload.
+    outputs_ = Dictionary();
+    part_outputs_ = Dictionary();
+    output_slots_ = Array();
+    resources_ = Array();
+    work_ = Dictionary(); last_error_ = Dictionary();
     size_ = Vector2i(static_cast<int>(meta.size_x),
                      static_cast<int>(meta.size_y));
     origin_ = Vector2(meta.origin_x, meta.origin_y);
@@ -264,35 +297,77 @@ Error IpropAsset::reset_inputs() {
     return OK;
 }
 
-Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
-    if (width < 0 || height < 0 || width > UINT32_MAX || height > UINT32_MAX) {
-        UtilityFunctions::printerr("iprop: width/height must be in 0..4294967295");
+Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height, const Dictionary& limits) {
+    last_error_ = Dictionary();
+    const auto invalid = [&](const char* message) -> Ref<Image> {
+        last_error_["status"] = static_cast<int64_t>(IPROP_EX_E_ARGUMENT);
+        last_error_["reason"] = static_cast<int64_t>(IPROP_REASON_INVALID_ARGUMENT);
+        last_error_["stage"] = static_cast<int64_t>(IPROP_STAGE_ARGUMENTS);
+        last_error_["location_flags"] = 0;
+        last_error_["pc"] = 0;
+        last_error_["message"] = message;
+        UtilityFunctions::printerr("iprop: ", message);
         return {};
+    };
+    iprop_execution_limits_ex execution;
+    iprop_execution_limits_ex_init(&execution, sizeof(execution));
+    Ref<IpropCancellation> cancellation;
+    const Array keys = limits.keys();
+    for (int64_t i = 0; i < keys.size(); ++i) {
+        const Variant key = keys[i];
+        if (key.get_type() != Variant::STRING && key.get_type() != Variant::STRING_NAME)
+            return invalid("execution limit keys must be strings");
+        const String name = key;
+        const Variant value = limits[key];
+        if (name == "work_limit" || name == "timeout_ns") {
+            if (value.get_type() != Variant::INT || static_cast<int64_t>(value) < 0)
+                return invalid("execution counters must be nonnegative int values");
+            const auto count = static_cast<uint64_t>(static_cast<int64_t>(value));
+            if (name == "work_limit") execution.work_limit = count;
+            else execution.timeout_ns = count;
+        } else if (name == "cancellation") {
+            if (value.get_type() != Variant::OBJECT)
+                return invalid("cancellation requires IpropCancellation");
+            cancellation = Ref<IpropCancellation>(Object::cast_to<IpropCancellation>(static_cast<Object*>(value)));
+            if (cancellation.is_null() || !cancellation->is_valid())
+                return invalid("cancellation requires a valid IpropCancellation");
+            execution.cancellation = cancellation->handle();
+        } else return invalid("unknown execution limit");
+    }
+    if (width < 0 || height < 0 || width > UINT32_MAX || height > UINT32_MAX) {
+        return invalid("width/height must be in 0..4294967295");
     }
     const auto validU32 = [](int64_t value) {
         return value >= 0 && value <= std::numeric_limits<uint32_t>::max();
     };
     if (!validU32(seed)) {
-        UtilityFunctions::printerr("iprop: seed must fit u32");
-        return Ref<Image>();
+        return invalid("seed must fit u32");
     }
     if (program_ == nullptr) {
-        UtilityFunctions::printerr("iprop: generate before load_file");
-        return Ref<Image>();
+        return invalid("generate before load_file");
     }
     iprop_generate_options_ex options;
     iprop_generate_options_ex_init(&options, sizeof(options));
+    options.flags = IPROP_GENERATE_PART_OUTPUTS;
     options.seed = static_cast<uint32_t>(seed);
     options.size_x = static_cast<uint32_t>(width);
     options.size_y = static_cast<uint32_t>(height);
     Failure failure;
     iprop_result* result = nullptr;
-    if (iprop_generate_ex(program_, &options, parameters_, &result, failure.get()) != IPROP_EX_OK) {
+    if (iprop_generate_controlled(program_, &options, parameters_, &execution, &result, failure.get()) != IPROP_EX_OK) {
+        last_error_ = failure.details();
         failure.print("generate");
         return Ref<Image>();
     }
     const std::unique_ptr<iprop_result, decltype(&iprop_result_free)> owned(result, iprop_result_free);
     const auto readFailure = [&]() {
+        last_error_ = failure.details();
+        if (failure.get()->status == IPROP_EX_OK) {
+            last_error_["status"] = static_cast<int64_t>(IPROP_EX_E_INTERNAL);
+            last_error_["reason"] = static_cast<int64_t>(IPROP_REASON_INTERNAL);
+            last_error_["stage"] = static_cast<int64_t>(IPROP_STAGE_ARGUMENTS);
+            last_error_["message"] = "unsupported result or allocation failure";
+        }
         failure.print("result read", "unsupported result or allocation failure");
         return Ref<Image>();
     };
@@ -315,13 +390,14 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
         static_cast<int>(image.height), false, Image::FORMAT_RGBA8, bytes);
     if (candidate_image.is_null() || candidate_image->is_empty()) return readFailure();
 
+    try {
     Dictionary candidate_outputs, candidate_parts;
     Array candidate_slots;
     uint32_t output_count;
     if (iprop_result_output_count(result, &output_count, failure.get()) != IPROP_EX_OK) return readFailure();
     for (uint32_t i = 0; i < output_count; ++i) {
-        iprop_result_output_view_ex slot;
-        if (iprop::backend::queryOutput(result, i, slot, failure.get()) != IPROP_EX_OK) return readFailure();
+        iprop_output_slot_ex slot;
+        if (iprop::backend::querySlot(result, i, slot, failure.get()) != IPROP_EX_OK) return readFailure();
         String name;
         if (!decodeName(slot.name, name)) {
             return readFailure();
@@ -330,13 +406,26 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
         entry["kind"] = static_cast<int64_t>(slot.kind);
         entry["list"] = slot.is_list != 0;
         const auto components = iprop::backend::outputComponents(slot.kind);
-        if (components == 0) return readFailure();
         PackedFloat32Array values;
-        if (values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
-            iprop::backend::copyOutputValues(result, slot, values.ptrw(), failure.get()) != IPROP_EX_OK) {
-            return readFailure();
+        Array pieces;
+        if (slot.kind == IPROP_OUTPUT_KIND_PART) {
+            std::vector<iprop_part_snapshot_ex> records;
+            if (iprop::backend::copyParts(result, slot, records, failure.get()) != IPROP_EX_OK) return readFailure();
+            for (const auto& p : records) {
+                Dictionary value;
+                if (!partValue(p, value)) return readFailure();
+                pieces.append(value);
+            }
+        } else {
+            if (components == 0) return readFailure();
+            iprop_result_output_view_ex old;
+            if (iprop::backend::queryOutput(result, i, old, failure.get()) != IPROP_EX_OK ||
+                values.resize(static_cast<int64_t>(slot.element_count) * components) != OK ||
+                iprop::backend::copyOutputValues(result, old, values.ptrw(), failure.get()) != IPROP_EX_OK) return readFailure();
         }
         entry["values"] = values;
+        entry["parts"] = pieces;
+        entry["count"] = static_cast<int64_t>(slot.element_count);
         entry["name"] = name;
         entry["index"] = static_cast<int64_t>(slot.output_index);
         entry["owner"] = static_cast<int64_t>(slot.owner);
@@ -350,10 +439,24 @@ Ref<Image> IpropAsset::generate(int64_t seed, int64_t width, int64_t height) {
             candidate_parts[owner] = part;
         }
     }
+    std::vector<iprop::backend::ResultResource> stores;
+    Array candidate_resources;
+    if (iprop::backend::copyResources(result, stores, failure.get()) != IPROP_EX_OK ||
+        !resourceValues(stores, candidate_resources)) return readFailure();
+    iprop_work_stats_ex stats;
+    if (iprop_work_stats_ex_init(&stats, sizeof(stats)) != IPROP_EX_OK ||
+        iprop_result_query_work(result, &stats, failure.get()) != IPROP_EX_OK) return readFailure();
+    Dictionary candidate_work;
+    candidate_work["budget"] = static_cast<int64_t>(stats.work_budget);
+    candidate_work["remaining"] = static_cast<int64_t>(stats.work_remaining);
+    candidate_work["used"] = static_cast<int64_t>(stats.work_used);
     outputs_ = candidate_outputs;
     part_outputs_ = candidate_parts;
     output_slots_ = candidate_slots;
+    resources_ = candidate_resources;
+    work_ = candidate_work;
     return candidate_image;
+    } catch (const std::exception&) { return readFailure(); }
 }
 
 // ---- IpropSprite2D --------------------------------------------------------

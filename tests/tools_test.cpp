@@ -64,14 +64,7 @@ std::vector<u8> fixtureFile() {
     const auto meta = metaSection(8, 8, 0, 0, 1000, false, {}, 0, 0, 0,
                                   {{0, 1, {10, 20, 30, 255}, 0, 0}}, {{0, 0, 2}});
     std::vector<u8> body;
-    for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (x)
-    for (const auto b : ins(0x10, 0, 1)) body.push_back(b); // const.i32 1 (y)
-    for (const auto b : ins(0x13, 0, 0)) body.push_back(b); // local.get 2 (palette)
-    for (const auto b : ins(0x80, 0, 0)) body.push_back(b); // pixel
-    for (const auto b : ins(0x11, 0, 0)) body.push_back(b); // const.f32 1
-    for (const auto b : ins(0x11, 0, 1)) body.push_back(b); // const.f32 2
-    for (const auto b : ins(0x90, 0, 0)) body.push_back(b); // out.point 0
-    for (const auto b : retIns()) body.push_back(b);
+    append(body, {ins(0x10, 0, 1), ins(0x10, 0, 1), ins(0x13, 0, 0), ins(0x80, 0, 0), ins(0x11, 0, 0), ins(0x11, 0, 1), ins(0x90, 0, 0), retIns()}); // const.i32 1 (x); const.i32 1 (y); local.get 2 (palette); pixel; const.f32 1; const.f32 2; out.point 0
 
     const auto pool = constSection({"draw", "palette", "anchor"}, {0, 1}, {1.f, 2.f}, {});
     return fullFile(meta, pool, codeSection({{0, {2}, {}, {}, body}}, {}));
@@ -246,4 +239,51 @@ TEST_CASE("PNG files round-trip RGBA pixels and reject other forms") {
     png[25] = 2; // RGB colour type
     REQUIRE_THROWS(tools::decodePng(png));
     REQUIRE_THROWS(tools::encodePng({2, 2, {0, 0, 0, 0}}));
+}
+
+TEST_CASE("ipgen enforces an independent work limit before publishing files", "[execution-limits]") {
+    TempPath temp("work-limit"); writeFixture(temp);
+    const std::string file = temp.path.string(), png = temp.pngPath().string();
+    {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", "1", "-o", png.c_str()};
+        CHECK(ipgenMain(6, const_cast<char**>(args)) == 1);
+        CHECK(captured.errText().find("native work limit exhausted") != std::string::npos);
+        CHECK(captured.text().empty());
+        CHECK_FALSE(std::filesystem::exists(png));
+    }
+    for (const char* invalid : {"-1", "18446744073709551616", "1.0", "1x"}) {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", invalid};
+        CHECK(ipgenMain(4, const_cast<char**>(args)) == 1);
+        CHECK(captured.errText().find("bad --work-limit value") != std::string::npos);
+    }
+    {
+        CapturedStdout captured;
+        const char* args[] = {"ipgen", file.c_str(), "--work-limit", "0", "--work-stats", "-o", png.c_str()};
+        CHECK(ipgenMain(7, const_cast<char**>(args)) == 0);
+        CHECK(captured.text().find("\"work\": {\"budget\": 100000000") != std::string::npos);
+        CHECK(std::filesystem::exists(png));
+    }
+}
+
+TEST_CASE("ipgen previews typed part outputs only with explicit omission") {
+    TempPath temp("typed-preview");
+    const auto bytes = compiler_test::compileChecked(
+        "asset t { size 8x8 output list part pieces output point anchor draw {"
+        "layer image {rect(0,0,8,8,#123456)} p=part.create(image) "
+        "pieces=p part.draw(p) anchor={2,3} } }");
+    { std::ofstream out(temp.path, std::ios::binary);
+      out.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()); }
+    CapturedStdout captured;
+    const auto file = temp.path.string(), png = temp.pngPath().string();
+    const char* rejected[] = {"ipgen", file.c_str(), "-o", png.c_str()};
+    REQUIRE(ipgenMain(4, const_cast<char**>(rejected)) == 1);
+    REQUIRE_FALSE(std::filesystem::exists(png));
+    const char* preview[] = {"ipgen", file.c_str(), "--omit-part-outputs", "-o", png.c_str()};
+    REQUIRE(ipgenMain(5, const_cast<char**>(preview)) == 0);
+    CHECK(std::filesystem::exists(png));
+    CHECK(captured.stream.str().find("\"part_outputs_omitted\": true") != std::string::npos);
+    CHECK(captured.stream.str().find("anchor") != std::string::npos);
+    CHECK(captured.stream.str().find("pieces") == std::string::npos);
 }

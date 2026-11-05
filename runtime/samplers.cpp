@@ -46,9 +46,7 @@ bool stepSamplers(Execution& ex, Instruction ins) {
         break;
     }
     case Opcode::SamplerPickList:
-        // A batch charges one more fuel per nonconstant draw than a single pick.
         pickDescriptionList(ex, descriptionType(ex, ins, kind), [](Execution& ex, const CapturedRangeData& sampler, i32, i32) {
-            if (sampler.mode != SamplerMode::Constant) ex.spend(1);
             return drawSampler(ex, sampler);
         });
         break;

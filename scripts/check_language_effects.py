@@ -40,7 +40,8 @@ def main():
             signatures += 1
             effects = entry['effects']
             valid(effects)
-            assert effects['summary'] == 'intrinsic', builtin
+            expected_summary = 'conservative' if builtin['name'] in {'part.create', 'parts.from_regions'} else 'intrinsic'
+            assert effects['summary'] == expected_summary, builtin
             if 'opcode' in entry:
                 previous = opcode_effects.setdefault(entry['opcode'], effects)
                 assert previous == effects, builtin
@@ -67,7 +68,7 @@ def main():
         assert method['effects']['may_trap'] == ['numeric_range', 'unassigned_handle']
     assert rules['intrinsic_scope'] == 'operation_excluding_arguments_and_resources'
     assert rules['argument_effects'] == 'evaluated_before_operation_in_caller_stream'
-    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit']
+    assert rules['resource_traps'] == ['fuel_exhausted', 'call_depth_limit', 'generation_data_limit', 'work_limit', 'cancelled', 'deadline_exceeded']
     assert rules['validation_limits'] == ['operand_stack_limit']
     assert rules['allocation_failure'] is True
     assert rules['output_write_policy'] == {'singular': 'replace', 'list': 'append'}

@@ -2,7 +2,7 @@ import argparse
 from dataclasses import asdict
 import json
 
-from . import Program, Color, F32, U32, I32
+from . import Program, Color, F32, U32, I32, OutputKind
 
 
 def main():
@@ -34,9 +34,12 @@ def main():
             except (ValueError, OverflowError) as error:
                 parser.error(str(error))
         image = program.generate(args.seed, inputs=overrides)
+    if any(slot.kind == OutputKind.PART for slot in image.outputs):
+        parser.error("part outputs are unsupported by the CLI JSON format; use Program.generate() for typed resources")
     image.to_pillow().save(args.output)
     print(json.dumps({"width": image.width, "height": image.height, "alpha_mode": image.alpha_mode,
-        "outputs": [asdict(slot) for slot in image.outputs], "statistics": asdict(image.statistics)}, ensure_ascii=False))
+        "outputs": [{key: value for key, value in asdict(slot).items() if key != "parts"} for slot in image.outputs],
+        "statistics": asdict(image.statistics)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

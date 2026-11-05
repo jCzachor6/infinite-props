@@ -1,0 +1,11 @@
+asset ExportLimit {
+  size 1x1
+  output list part pieces
+  draw {
+    for i in 0..256 {
+      layer source(alpha=surface.source_over) { pixel(0, 0, #123456ff) }
+      layer texture(alpha=surface.source_over) { pixel(0, 0, #123456ff) }
+      pieces = part.texture(part.create(source), texture)
+    }
+  }
+}

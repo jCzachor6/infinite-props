@@ -70,7 +70,7 @@ func _init() -> void:
 		var expected_width := word()
 		var expected_height := word()
 		var expected := blob()
-		var image := asset.generate(seed, width, height)
+		var image := asset.generate(seed, width, height, {"work_limit": 1000000000})
 		var label := "Godot corpus case %d seed %d" % [index, seed]
 		demand(image != null and image.get_size() == Vector2i(expected_width, expected_height), label + ": size")
 		demand(image.get_data() == expected, label + ": RGBA")
@@ -84,7 +84,7 @@ func _init() -> void:
 			var elements := word()
 			var leaves := word()
 			var values: PackedFloat32Array = output["values"]
-			demand(output.kind == kind and output.list == list_flag and values.size() == leaves and leaves == elements * [2, 4, 3][kind], label + ": slot")
+			demand(output.kind == kind and output.list == list_flag and output.count == elements and values.size() == leaves and leaves == elements * [2, 4, 3, 0][kind], label + ": slot")
 			var packed := values.to_byte_array()
 			for leaf in range(leaves):
 				demand(packed.decode_u32(leaf * 4) == word(), label + ": f32 bits")

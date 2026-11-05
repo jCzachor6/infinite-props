@@ -26,7 +26,8 @@ CallOutcome checkGenerationRequest(const iprop_program& program,
 // Consumes a completed C++ result into an unpublished, empty C handle. Names
 // and pixels move; typed payloads are packed field by field, then released.
 // The adapter owns the handle until every allocation succeeds.
-void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file);
+void packResult(iprop_result& result, GenerationResult generation, const LoadedFile& file,
+                detail::WorkBudget* work = nullptr);
 // Runs the shared VM. With a parameter set, its values are passed by root-input
 // ID and `inputs.uniforms` must be empty: names were resolved once, when the
 // values were set. Without one, the VM resolves `inputs.uniforms` by name.

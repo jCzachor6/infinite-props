@@ -75,6 +75,7 @@ std::string outputEntryText(const OutputDecl& output, const ConstPool& pool) {
     case OutputKind::Point: kind = "point"; break;
     case OutputKind::Rect: kind = "rect"; break;
     case OutputKind::Circle: kind = "circle"; break;
+    case OutputKind::Part: kind = "part"; break;
     }
     std::string result = "output: ";
     if (output.isList) {
@@ -326,7 +327,7 @@ std::string disassembleImpl(std::span<const u8> bytes, bool annotated) {
         for (const auto& output : part.outputs) {
             out << "  " << outputEntryText(output, pool) << "\n";
         }
-        appendFunction(out, loaded.resourceExports.empty() ? "draw" : names.functions[functionIndex], code.functions[functionIndex], names, true,
+        appendFunction(out, loaded.functionOwners.empty() ? "draw" : names.functions[functionIndex], code.functions[functionIndex], names, true,
                        debug);
         out << "endpart\n";
     }

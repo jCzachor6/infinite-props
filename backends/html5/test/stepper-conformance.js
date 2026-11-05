@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { decodePng } = require("./png.js");
-const { sections, instructions } = require("./sampler-conformance.js");
+const {instructions,outputBits,sections}=require("./harness.js");
 const repo = path.resolve(__dirname, "../../..");
 const bits = value => new Uint32Array(new Float32Array([value]).buffer)[0];
 
@@ -23,8 +23,7 @@ function run(iprop, tool, directory) {
             "--float-bits", "-o", base + ".png"], { encoding: "utf8" }));
         const png = decodePng(fs.readFileSync(base + ".png"));
         const wasm = iprop.generate(new Uint8Array(bytes), { seed });
-        const outputs = wasm.outputs.map(slot => ({ name: slot.name, kind: ["point", "rect", "circle"][slot.kind],
-            list: slot.isList, values: slot.valueBits }));
+        const outputs = outputBits(wasm.outputs);
         assert.deepEqual(outputs, native.outputs, "stepper output bits");
         assert.deepEqual(Buffer.from(wasm.data), Buffer.from(png.data), "stepper pixels");
         assert.equal(wasm.width, png.width); assert.equal(wasm.height, png.height);

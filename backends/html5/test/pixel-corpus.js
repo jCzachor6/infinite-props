@@ -35,8 +35,11 @@ function record(iprop, directory) {
         u32(result.outputs.length);
         for (const output of result.outputs) {
             blob(Buffer.from(output.name, "utf8")); u32(0); u32(output.kind); u32(output.isList);
-            const keys = [["x", "y"], ["x", "y", "w", "h"], ["x", "y", "r"]][output.kind];
-            u32(output.valueBits.length); u32(output.valueBits.length * keys.length);
+            // The shared pixel corpus checks kind/count for typed slots;
+            // complete snapshots/resources use the shared part-binding gate.
+            const keys = [["x", "y"], ["x", "y", "w", "h"], ["x", "y", "r"], []][output.kind];
+            if (!keys) throw new Error("Unsupported output kind in pixel corpus");
+            u32(output.kind === 3 ? output.parts.length : output.valueBits.length); u32(output.valueBits.length * keys.length);
             for (const value of output.valueBits) for (const key of keys) u32(value[key]);
         }
         cases.push(Buffer.concat(words));

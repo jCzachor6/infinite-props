@@ -181,6 +181,16 @@ def resources(root):
     files += list((root / "examples/language").rglob("*.ips"))
     files += list((root / "examples/recipes").glob("*.ips")) + [root / "examples/recipes/README.md"]
     files += list((root / "spec").glob("*.md"))
+    # Authored extension contracts link their versioned verification reports.
+    files += list((root / "spec/verification").glob("*.json"))
+    files += list((root / "tests/fixtures").glob("contours-v0.9.json"))
+    files += list((root / "tests/fixtures").glob("regions-v0.9.json"))
+    files += list((root / "tests/fixtures").glob("gap-bevel-v0.9.json"))
+    files += list((root / "tests/fixtures").glob("dynamic-parts-v0.9.json"))
+    files += list((root / "tests/fixtures").glob("part-exports-*.ips"))
+    files += list((root / "tests/fixtures").glob("part-exports-v0.9.json"))
+    files += list((root / "backends/capi/test").glob("part-output-*.ips"))
+    files += list((root / "tests/reference").glob("dynamic-parts-reference.js"))
     files += [p for p in (root / "docs").glob("*.md") if not p.name.startswith("language-v")]
     files += list((root / "docs").glob("*.schema.json"))
     files += [root / "docs/llm-reference.json"]
@@ -189,6 +199,8 @@ def resources(root):
     files += list((root / "backends").glob("*/README.md"))
     if (root / "backends/capi/iprop.h").is_file():
         files.append(root / "backends/capi/iprop.h")
+    files += [root / name for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp")
+              if (root / name).is_file()]
     # Ship the binding source packages with their linked guides. Never absorb
     # local native binaries, SDK downloads, compiler caches or build products.
     excluded = {".build", ".swiftpm", "Artifacts", ".gradle", ".kotlin", ".cxx", "build", "bin", "obj", "Plugins", "__pycache__", "dist"}
@@ -200,7 +212,7 @@ def resources(root):
                   and not any(part.endswith(".egg-info") for part in p.parts)
                   and p.name != "local.properties"
                   and (p.suffix in suffixes or p.name in {"LICENSE", "CMakeLists.txt"})]
-    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp")
+    files += [root / "backends/test" / name for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "execution-slow.ips", "prepare-bindings.py", "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp", "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py")
               if (root / "backends/test" / name).is_file()]
     files += [p for p in (root / "editor/README.md", root / "website/README.md") if p.is_file()]
     files += list((root / "examples/c").glob("*.c"))
@@ -426,7 +438,8 @@ def check_examples(compiler, language, cases, root=ROOT):
             else:
                 require(compiled.returncode == 0, "Example did not compile: " + str(source) + "\n" + compiled.stderr)
                 image = Path(temporary) / f"{number}.png"
-                generated = run(generator, binary, "--seed", 7, "-o", image)
+                generated = run(generator, binary, "--seed", 7, "-o", image,
+                                *(["--omit-part-outputs"] if case.get("omit_part_outputs") else []))
                 if case["expect"] == "trap":
                     require(generated.returncode != 0 and case["message"] in generated.stdout + generated.stderr,
                             "Expected runtime trap: " + str(source) + "\n" + generated.stdout + generated.stderr)

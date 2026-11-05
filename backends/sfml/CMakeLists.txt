@@ -33,6 +33,20 @@ if(SFML_FOUND)
 
     if(IPROP_BUILD_TESTS)
         include(${CMAKE_CURRENT_SOURCE_DIR}/../ResultTests.cmake)
+        find_package(Threads REQUIRED)
+        add_executable(sfml_execution_limits test/execution-limits.cpp)
+        target_link_libraries(sfml_execution_limits PRIVATE iprop_capi_static Threads::Threads)
+        iprop_warnings(sfml_execution_limits)
+        add_dependencies(sfml_execution_limits backend_execution_fixture)
+        add_test(NAME sfml_execution_limits COMMAND sfml_execution_limits
+            ${CMAKE_BINARY_DIR}/binding-fixtures/execution-slow.iprop)
+        add_executable(sfml_part_outputs test/part-outputs.cpp)
+        target_link_libraries(sfml_part_outputs PRIVATE iprop_capi_static SFML::Graphics)
+        iprop_warnings(sfml_part_outputs)
+        add_dependencies(sfml_part_outputs backend_part_fixtures)
+        add_test(NAME sfml_part_outputs COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_SOURCE_DIR}/backends/test/check-part-outputs.py
+            $<TARGET_FILE:sfml_part_outputs> ${CMAKE_BINARY_DIR}/binding-fixtures)
         add_executable(sfml_pixel_corpus test/pixel-corpus.cpp)
         target_link_libraries(sfml_pixel_corpus PRIVATE iprop_capi_static SFML::Graphics)
         target_include_directories(sfml_pixel_corpus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

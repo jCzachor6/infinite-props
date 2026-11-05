@@ -48,7 +48,8 @@ int main(int argc, char** argv) {
                 else error.check(iprop_parameters_set_u32_named(parameters.get(), view, integer, error.get()), "uint");
             }
             const auto expectedWidth = r.word(), expectedHeight = r.word(); const auto expected = r.blob();
-            Result result(generate(program.get(), seed, parameters.get(), width, height), iprop_result_free);
+            Result result(generate(program.get(), seed, parameters.get(), width, height,
+                                   {1'000'000'000, 0, {}}), iprop_result_free);
             const auto image = queryImage(result.get()); const std::string label = "case " + std::to_string(i);
             require(image.width == expectedWidth && image.height == expectedHeight, label + ": size");
             require(image.byte_count == expected.size() && std::memcmp(image.pixels, expected.data(), expected.size()) == 0, label + ": RGBA");
@@ -57,7 +58,7 @@ int main(int argc, char** argv) {
                 const auto name = r.blob(); r.word(); const auto kind = r.word(), list = r.word(), elements = r.word(), leaves = r.word();
                 require(output.name.size() == name.size() && std::memcmp(output.name.data(), name.data(), name.size()) == 0, label + ": name");
                 const auto components = iprop::backend::outputComponents(output.kind);
-                require(static_cast<std::uint32_t>(output.kind) == kind && output.isList == (list != 0) && output.values.size() == leaves && output.values.size() == elements * components, label + ": slot");
+                require(static_cast<std::uint32_t>(output.kind) == kind && output.isList == (list != 0) && output.count == elements && output.values.size() == leaves && output.values.size() == elements * components, label + ": slot");
                 for (const auto value : output.values) require(std::bit_cast<std::uint32_t>(value) == r.word(), label + ": bits");
             }
             uploadTexture(texture, sprite, {image.width, image.height}, image.pixels);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "iprop/Types.hpp"
+#include "iprop/ExecutionLimits.hpp"
 
 #include <vector>
 
@@ -16,10 +17,13 @@ struct Canvas {
     f32 scaleY = 1.f;
     std::vector<Color> pixels;
 
-    void resize(u32 w, u32 h) {
+    void resize(u32 w, u32 h, detail::WorkBudget* work = nullptr) {
         width = w;
         height = h;
-        pixels.assign(static_cast<std::size_t>(w) * h, Color{0, 0, 0, 0});
+        if (work) {
+            pixels.clear();
+            detail::initializeWork(pixels, static_cast<std::size_t>(w) * h, Color{0, 0, 0, 0}, *work);
+        } else pixels.assign(static_cast<std::size_t>(w) * h, Color{0, 0, 0, 0});
     }
 
     Color& at(u32 x, u32 y) { return pixels[static_cast<std::size_t>(y) * width + x]; }

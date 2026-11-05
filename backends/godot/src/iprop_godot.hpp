@@ -13,6 +13,7 @@
 
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/resource.hpp>
+#include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -26,6 +27,22 @@
 
 namespace iprop_godot {
 
+// Independent one-way atomic cancellation; a Ref held by generate keeps its
+// native handle alive while another thread cancels it.
+class IpropCancellation : public godot::RefCounted {
+    GDCLASS(IpropCancellation, godot::RefCounted)
+    iprop_cancellation* token_ = nullptr;
+protected:
+    static void _bind_methods();
+public:
+    IpropCancellation();
+    ~IpropCancellation() override;
+    bool is_valid() const { return token_ != nullptr; }
+    void cancel() { iprop_cancellation_cancel(token_); }
+    bool is_cancelled() const { return iprop_cancellation_is_cancelled(token_) != 0; }
+    const iprop_cancellation* handle() const { return token_; }
+};
+
 // A loaded .iprop plus the latest generation's outputs.
 class IpropAsset : public godot::Resource {
     GDCLASS(IpropAsset, godot::Resource)
@@ -38,6 +55,8 @@ class IpropAsset : public godot::Resource {
     godot::Dictionary outputs_{};
     godot::Dictionary part_outputs_{};
     godot::Array output_slots_{};
+    godot::Array resources_{};
+    godot::Dictionary work_{}, last_error_{};
 
 protected:
     static void _bind_methods();
@@ -68,7 +87,8 @@ public:
     // Generates one tuple; returns the RGBA8 image. The structured outputs
     // are copied and exposed through get_outputs(). A failure preserves the
     // previously completed generation's maps; returned Images own their bytes.
-    godot::Ref<godot::Image> generate(int64_t seed, int64_t width = 0, int64_t height = 0);
+    godot::Ref<godot::Image> generate(int64_t seed, int64_t width = 0, int64_t height = 0,
+                                    const godot::Dictionary& limits = godot::Dictionary());
 
     godot::Vector2i get_size() const { return size_; }
     godot::Vector2 get_origin() const { return origin_; }
@@ -76,6 +96,12 @@ public:
     godot::Dictionary get_outputs() const { return outputs_; }
     godot::Dictionary get_part_outputs() const { return part_outputs_; }
     godot::Array get_output_slots() const { return output_slots_; }
+    godot::Array get_resources() const { return resources_; }
+    godot::Dictionary get_work() const { return work_; }
+    godot::Dictionary get_last_error() const { return last_error_; }
+    godot::Dictionary get_resource(int64_t id) const {
+        return id > 0 && id <= resources_.size() ? godot::Dictionary(resources_[id - 1]) : godot::Dictionary();
+    }
 };
 
 class IpropSprite2D : public godot::Sprite2D {

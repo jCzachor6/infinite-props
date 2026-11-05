@@ -10,7 +10,10 @@ if(IPROP_FETCH_DEPS)
 endif()
 
 add_executable(iprop_tests
+    fuel_tariff_test.cpp
     smoke_test.cpp
+    dynamic_parts_test.cpp
+    part_outputs_test.cpp
     lexer_test.cpp
     language/parser_assets_test.cpp
     language/parser_statements_test.cpp
@@ -58,6 +61,7 @@ add_executable(iprop_tests
     compiler/surfaces_test.cpp
     compiler/source_over_test.cpp
     compiler/masks_test.cpp
+    compiler/noise_masks_test.cpp
     compiler/blur_test.cpp
     compiler/resource_exports_test.cpp
     compiler/gradients_test.cpp
@@ -78,6 +82,7 @@ add_executable(iprop_tests
     golden_test.cpp
     binary_test.cpp
     format_test.cpp
+    compat_v08_ids_test.cpp
     compression_test.cpp
     asset_test.cpp
     code_test.cpp
@@ -87,6 +92,7 @@ add_executable(iprop_tests
     opcode_spec_test.cpp
     vm_test.cpp
     vm_result_test.cpp
+    execution_limits_test.cpp
     control_test.cpp
     control_validation_test.cpp
     math/integer_test.cpp
@@ -95,6 +101,7 @@ add_executable(iprop_tests
     math/vectors_test.cpp
     math/distance_test.cpp
     math/noise_test.cpp
+    math/noise_extensions_test.cpp
     math/curves_test.cpp
     math/colors_test.cpp
     vector_determinism_test.cpp
@@ -104,6 +111,11 @@ add_executable(iprop_tests
     outputs_test.cpp
     parts_test.cpp
     part_geometry_test.cpp
+    geometry_test.cpp
+    voronoi_test.cpp
+    contours_test.cpp
+    regions_test.cpp
+    gap_bevel_test.cpp
     tools_test.cpp
     defense_test.cpp
     utf8_test.cpp
@@ -146,6 +158,65 @@ target_link_libraries(blur_allocation_probe PRIVATE iprop_runtime)
 iprop_warnings(blur_allocation_probe)
 add_test(NAME blur_allocation_failures COMMAND blur_allocation_probe)
 
+add_executable(geometry_allocation_probe geometry_allocation_probe.cpp)
+target_link_libraries(geometry_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(geometry_allocation_probe)
+add_test(NAME geometry_allocation_failures COMMAND geometry_allocation_probe)
+
+add_executable(geometry_representation_probe geometry_representation_probe.cpp)
+target_link_libraries(geometry_representation_probe PRIVATE iprop_runtime)
+iprop_warnings(geometry_representation_probe)
+add_executable(voronoi_probe voronoi_probe.cpp)
+target_link_libraries(voronoi_probe PRIVATE iprop_runtime)
+iprop_warnings(voronoi_probe)
+add_executable(voronoi_allocation_probe voronoi_allocation_probe.cpp)
+target_link_libraries(voronoi_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(voronoi_allocation_probe)
+add_test(NAME voronoi_allocation_failures COMMAND voronoi_allocation_probe)
+
+add_executable(regions_allocation_probe regions_allocation_probe.cpp)
+target_link_libraries(regions_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(regions_allocation_probe)
+add_test(NAME regions_allocation_failures COMMAND regions_allocation_probe)
+
+add_executable(regions_probe regions_probe.cpp)
+target_link_libraries(regions_probe PRIVATE iprop_runtime)
+iprop_warnings(regions_probe)
+
+add_executable(gap_bevel_probe gap_bevel_probe.cpp)
+target_link_libraries(gap_bevel_probe PRIVATE iprop_runtime)
+iprop_warnings(gap_bevel_probe)
+
+add_executable(dynamic_parts_probe dynamic_parts_probe.cpp)
+target_link_libraries(dynamic_parts_probe PRIVATE iprop_runtime)
+iprop_warnings(dynamic_parts_probe)
+
+add_executable(execution_limits_probe execution_limits_probe.cpp)
+target_link_libraries(execution_limits_probe PRIVATE iprop_capi_static)
+iprop_warnings(execution_limits_probe)
+
+add_executable(part_exports_probe part_exports_probe.cpp)
+target_link_libraries(part_exports_probe PRIVATE iprop_capi_static)
+iprop_warnings(part_exports_probe)
+
+add_executable(dynamic_parts_allocation_probe dynamic_parts_allocation_probe.cpp)
+target_link_libraries(dynamic_parts_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(dynamic_parts_allocation_probe)
+add_test(NAME dynamic_parts_allocation_failures COMMAND dynamic_parts_allocation_probe)
+
+add_executable(gap_bevel_allocation_probe gap_bevel_allocation_probe.cpp)
+target_link_libraries(gap_bevel_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(gap_bevel_allocation_probe)
+add_test(NAME gap_bevel_allocation_failures COMMAND gap_bevel_allocation_probe)
+
+add_executable(contours_probe contours_probe.cpp)
+target_link_libraries(contours_probe PRIVATE iprop_runtime)
+iprop_warnings(contours_probe)
+add_executable(contours_allocation_probe contours_allocation_probe.cpp)
+target_link_libraries(contours_allocation_probe PRIVATE iprop_runtime)
+iprop_warnings(contours_allocation_probe)
+add_test(NAME contours_allocation_failures COMMAND contours_allocation_probe)
+
 add_executable(compiler_diagnostic_failure_probe compiler/diagnostic_failure_probe.cpp
     ../tools/source_diagnostics.cpp ../tools/language_description.cpp)
 target_link_libraries(compiler_diagnostic_failure_probe PRIVATE iprop_compiler)
@@ -157,8 +228,36 @@ iprop_warnings(compiler_diagnostic_failure_probe)
 
 find_program(IPROP_NODE_EXECUTABLE NAMES node)
 if(IPROP_NODE_EXECUTABLE)
-    add_test(NAME runtime_matrix_comparators COMMAND ${IPROP_NODE_EXECUTABLE}
-        --test "${CMAKE_SOURCE_DIR}/scripts/tests/runtime_matrix_wasm.test.js")
+    add_test(NAME execution_limits_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/execution-limits-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:execution_limits_probe>")
+    add_test(NAME part_exports_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/part-exports-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:part_exports_probe>")
+    add_test(NAME dynamic_parts_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/dynamic-parts-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:dynamic_parts_probe>")
+    add_test(NAME gap_bevel_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/gap-bevel-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:gap_bevel_probe>")
+    add_test(NAME regions_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/regions-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:regions_probe>")
+    add_test(NAME contours_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/contours-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:contours_probe>")
+    add_test(NAME voronoi_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/voronoi-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:voronoi_probe>")
+    add_test(NAME geometry_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/geometry-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>"
+        "$<TARGET_FILE:geometry_representation_probe>")
+    add_test(NAME noise_mask_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-mask-conformance.js" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME noise_v09 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/noise-v09-conformance.js" "$<TARGET_FILE_DIR:ipc>")
+    add_test(NAME compatibility_v08 COMMAND ${IPROP_NODE_EXECUTABLE}
+        "${CMAKE_SOURCE_DIR}/backends/html5/test/compat-v08-conformance.js" "$<TARGET_FILE_DIR:ipc>")
     add_test(NAME editor_diagnostics COMMAND ${CMAKE_COMMAND} -E env
         "IPROP_COMPILER=$<TARGET_FILE:ipc>"
         ${IPROP_NODE_EXECUTABLE} --test "${CMAKE_SOURCE_DIR}/editor/test/diagnostics.test.js")

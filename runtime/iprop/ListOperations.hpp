@@ -29,7 +29,7 @@ struct CheckedListSelection {
 };
 CheckedListSelection checkListSelection(const ListValue& source, bool sort);
 // First occurrences (distinct) or a stable merge sort of checked input.
-ListSelection selectList(const CheckedListSelection& list);
+ListSelection selectList(const CheckedListSelection& list, detail::WorkBudget* work = nullptr);
 // A new list of a changed selection; an unchanged one shares its source.
 ListValue materializeListSelection(const ListValue& source, const ListSelection& selection);
 // The complete distinct()/sort() transformation.

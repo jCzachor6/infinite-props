@@ -45,7 +45,7 @@ namespace InfiniteProps.Tests
                     }
                     uint expectedWidth = reader.ReadUInt32(), expectedHeight = reader.ReadUInt32();
                     byte[] expected = Blob(reader);
-                    var image = program.Generate(seed, inputs, width, height);
+                    var image = program.Generate(seed, inputs, width, height, new ExecutionLimits(workLimit: 1000000000));
                     string label = "Corpus case " + i + " seed " + seed;
                     Require(image.Width == expectedWidth && image.Height == expectedHeight, label + ": size");
                     Require(image.Rgba.SequenceEqual(expected), label + ": RGBA");

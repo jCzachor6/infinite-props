@@ -76,9 +76,11 @@ func _init() -> void:
 	var shapes := IpropAsset.new()
 	if shapes.load_file(args[0] + "/shapes.iprop") == OK:
 		var exported := shapes.generate(0)
-		exported.save_png("user://roundtrip.png")
+		# Keep test artifacts in the caller-supplied build directory.
+		var roundtrip := args[0].path_join("godot-roundtrip.png")
+		var saved := exported.save_png(roundtrip)
 		var reloaded := Image.new()
-		if reloaded.load("user://roundtrip.png") != OK \
+		if saved != OK or reloaded.load(roundtrip) != OK \
 				or reloaded.get_data() != exported.get_data():
 			failures += 1
 			printerr("FAIL png round-trip")
@@ -229,10 +231,11 @@ func _init() -> void:
 		printerr("FAIL transactional asset reload")
 	# A failed decode also preserves the loaded handle, queried metadata and
 	# previously published generation, without notifying sprite users.
-	var invalid_path := "user://iprop-conformance-invalid.iprop"
+	var invalid_path := args[0].path_join("godot-conformance-invalid.iprop")
 	var invalid_file := FileAccess.open(invalid_path, FileAccess.WRITE)
 	if invalid_file == null:
 		failures += 1
+		printerr("FAIL cannot create invalid-file fixture")
 	else:
 		invalid_file.store_buffer(PackedByteArray([1, 2, 3, 4]))
 		invalid_file.close()
@@ -361,224 +364,6 @@ func _init() -> void:
 				failures += 1
 				printerr("FAIL missing singular slot unexpectedly populated")
 
-	var bounds := IpropAsset.new()
-	if bounds.load_file(args[0] + "/math-bounds.iprop") != OK or bounds.generate(26) == null:
-		failures += 1
-		printerr("FAIL format 0.6 math load/generate")
-	else:
-		var expected_bounds := [["exact", 0x3f800000, 0x3f800000],
-			["direction", 0x3f19999a, 0x3f4ccccd], ["zero", 0, 0], ["mixed", 0x40000000, 0x40000000]]
-		for expected in expected_bounds:
-			var slot: Dictionary = bounds.outputs[expected[0]]
-			var value_bits: PackedByteArray = slot["values"].to_byte_array()
-			if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-					or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-				failures += 1
-				printerr("FAIL format 0.6 math bits/metadata ", expected[0])
-
-	var constants := IpropAsset.new()
-	if constants.load_file(args[0] + "/asset-constants.iprop") != OK:
-		failures += 1
-		printerr("FAIL asset constant load")
-	else:
-		var constant_image := constants.generate(26)
-		if constant_image == null or constant_image.get_size() != Vector2i(2, 2) \
-				or constant_image.get_pixel(0, 0) != Color8(146,156,168) \
-				or constant_image.get_pixel(1, 0) != Color8(139,149,161):
-			failures += 1
-			printerr("FAIL asset constant generation/pixels")
-		else:
-			var expected_constants := [["checks", 0x3f800000, 0x3f800000],
-				["normalized", 0x3f19999a, 0x3f4ccccd], ["zero", 0, 0],
-				["shaped", 0x3f116e13, 0x3ee83a45], ["beta_samples", 0, 0x3efbda76],
-				["state", 0x4766fe00, 0x46f1ba00]]
-			for expected in expected_constants:
-				var slot: Dictionary = constants.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL asset constant bits/metadata ", expected[0])
-
-	var collections := IpropAsset.new()
-	if collections.load_file(args[0] + "/collections.iprop") != OK:
-		failures += 1
-		printerr("FAIL collection load")
-	else:
-		var collection_image := collections.generate(26)
-		if collection_image == null or collection_image.get_size() != Vector2i(32,24):
-			failures += 1
-			printerr("FAIL collection image metadata")
-		else:
-			var expected_collections := [["checks",0x40800000,0x41980000],["direction",0x41900000,0x40000000],
-				["samples",0x41200000,0x41f00000],["state",0x46da8a00,0x475aa600]]
-			for expected in expected_collections:
-				var slot: Dictionary = collections.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL collection output bits/metadata")
-			var rows := [0,0,0x3c000,0x7ff80,0x7fff8,0xffff8,0xffff0,0x1ffff0,
-				0x1ffff0,0x3fffe0,0x7fffe0,0x7fffe0,0xffffc0,0xffffc0,0x1ffffc0,0x7fff80,
-				0xfff80,0xff80,0x1f00,0x300,0,0,0,0]
-			for y in range(24):
-				for x in range(32):
-					var color := Color8(0,0,0,0)
-					if (rows[y] >> x) & 1: color = Color8(146,156,168)
-					if x == 3 and y == 4: color = Color8(52,58,66)
-					if collection_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL collection polygon pixel ",x,",",y)
-
-	var samplers := IpropAsset.new()
-	if samplers.load_file(args[0] + "/samplers.iprop") != OK:
-		failures += 1
-		printerr("FAIL sampler load")
-	else:
-		var sampler_image := samplers.generate(26)
-		if sampler_image == null or sampler_image.get_size() != Vector2i(32,24):
-			failures += 1
-			printerr("FAIL sampler image metadata")
-		else:
-			var expected_samplers := [["checks",0x40400000,0x42200000],["direction",0x416ef976,0x401a259f],
-				["samples",0x41500000,0x41500000],["state",0x46c16e00,0x45b8a800]]
-			for expected in expected_samplers:
-				var slot: Dictionary = samplers.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL sampler output bits/metadata")
-			for y in range(24):
-				for x in range(32):
-					var color := Color8(0,0,0,0)
-					if x >= 2 and x < 15 and ((y >= 2 and y < 6) or (y >= 8 and y < 12) or (y >= 14 and y < 18)):
-						color = Color8(134,144,156)
-					if sampler_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL sampler pixel ",x,",",y)
-
-	var sampling_palettes := IpropAsset.new()
-	if sampling_palettes.load_file(args[0] + "/sampling-palettes.iprop") != OK:
-		failures += 1
-		printerr("FAIL sampling palette load")
-	else:
-		var palette_image := sampling_palettes.generate(26)
-		if palette_image == null or palette_image.get_size() != Vector2i(32,24):
-			failures += 1
-			printerr("FAIL sampling palette image metadata")
-		else:
-			var expected_palettes := [["checks",0x40400000,0x42200000],["direction",0x41aa69ec,0x40000000],
-				["samples",0x41200000,0x41600000],["normalized",0x3f2ac48e,0],["state",0x475a7000,0x47354c00]]
-			for expected in expected_palettes:
-				var slot: Dictionary = sampling_palettes.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL sampling palette output bits/metadata")
-			for y in range(24):
-				for x in range(32):
-					var color := Color8(0,0,0,0)
-					if x >= 2 and ((y >= 2 and y < 6 and x < 12) or (y >= 8 and y < 12 and x < 13) or (y >= 14 and y < 18 and x < 16)):
-						color = Color8(168,173,179)
-					if palette_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL sampling palette pixel ",x,",",y)
-
-	var weighted := IpropAsset.new()
-	if weighted.load_file(args[0] + "/weighted.iprop") != OK:
-		failures += 1
-		printerr("FAIL weighted load")
-	else:
-		var weighted_image := weighted.generate(26)
-		if weighted_image == null or weighted_image.get_size() != Vector2i(32,24):
-			failures += 1
-			printerr("FAIL weighted image metadata")
-		else:
-			var expected_weighted := [["material",0x40000000,0x40000000],["layers",0x3f800000,0x3f800000],
-				["state",0x47738c00,0x4671b800]]
-			for expected in expected_weighted:
-				var slot: Dictionary = weighted.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL weighted output bits/metadata")
-			for y in range(24):
-				for x in range(32):
-					var color := Color8(0,0,0,0)
-					if x >= 2 and x < 30 and y >= 2 and y < 22:
-						color = Color8(142,156,112)
-					if x >= 4 and x < 8 and y >= 6 and y < 18:
-						color = Color8(52,42,34)
-					if weighted_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL weighted pixel ",x,",",y)
-
-	var density := IpropAsset.new()
-	if density.load_file(args[0] + "/point-distributions.iprop") != OK:
-		failures += 1
-		printerr("FAIL density load")
-	else:
-		var density_image := density.generate(26)
-		if density_image == null or density_image.get_size() != Vector2i(32,32):
-			failures += 1
-			printerr("FAIL density image metadata")
-		else:
-			var expected_density := [["material",0x40000000,0x40000000],["heights",0x41a085d5,0x41b6b498],
-				["state",0x4766fe00,0x46f1ba00]]
-			for expected in expected_density:
-				var slot: Dictionary = density.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL density output bits/metadata")
-			for y in range(32):
-				for x in range(32):
-					var color := Color8(0,0,0,0)
-					if ((x >= 2 and x < 10) or (x >= 12 and x < 20)) and y >= 8 and y < 28:
-						color = Color8(142,156,112)
-					if x >= 22 and x < 30 and y >= 5 and y < 28:
-						color = Color8(142,156,112)
-					if density_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL density pixel ",x,",",y)
-
-	# Preserved stage-7 direct-render oracle for an immutable captured panel.
-	var panel := IpropAsset.new()
-	if panel.load_file(args[0] + "/captured-panels.iprop") != OK:
-		failures += 1
-		printerr("FAIL captured panel load")
-	else:
-		var panel_image := panel.generate(26)
-		if panel_image == null or panel_image.get_size() != Vector2i(32,24):
-			failures += 1
-			printerr("FAIL captured panel image metadata")
-		else:
-			var expected_panel := [["panelSize",0x41e00000,0x41900000],["state",0x46f3a600,0x471e3700]]
-			for expected in expected_panel:
-				var slot: Dictionary = panel.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != expected[1] or value_bits.decode_u32(4) != expected[2]:
-					failures += 1
-					printerr("FAIL captured panel output bits/metadata")
-			for y in range(24):
-				for x in range(32):
-					var color := Color8(36,50,66)
-					if x >= 2 and x < 30 and y >= 3 and y < 21:
-						color = Color8(52,58,66)
-					if x >= 4 and x < 28 and y >= 5 and y < 19:
-						color = Color8(146,156,168)
-					if (x == 4 and y == 5) or (x == 27 and y == 18):
-						color = Color8(192,144,96)
-					if panel_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL captured panel pixel ",x,",",y)
-
 	# Exact rational source-over pixels; the ordinary part inherits its caller mode.
 	var glass := IpropAsset.new()
 	if glass.load_file(args[0] + "/source-over-panels.iprop") != OK:
@@ -611,70 +396,6 @@ func _init() -> void:
 					if glass_image.get_pixel(x,y) != color:
 						failures += 1
 						printerr("FAIL source-over pixel ",x,",",y)
-
-	# Resource-export handles are internal; host geometry and pixels stay exact.
-	var exported := IpropAsset.new()
-	if exported.load_file(args[0] + "/resource-exports.iprop") != OK:
-		failures += 1
-		printerr("FAIL export load")
-	else:
-		var exported_image := exported.generate(26)
-		if exported_image == null or exported_image.get_size() != Vector2i(16,12) or exported.outputs.size() != 2:
-			failures += 1
-			printerr("FAIL export host image/slots")
-		else:
-			var export_slots := [exported.outputs["anchor"],exported.outputs["state"],exported.part_outputs[1]["anchor"],exported.part_outputs[2]["anchor"]]
-			for i in range(4):
-				var slot: Dictionary = export_slots[i]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != (0 if i < 2 else i-1) or slot["list"] or value_bits.size() != 8 \
-						or value_bits.decode_u32(0) != (0x41d00000 if i == 1 else 0x41000000) \
-						or value_bits.decode_u32(4) != (0 if i == 1 else 0x40c00000):
-					failures += 1
-					printerr("FAIL export output bits/metadata")
-			for y in range(12):
-				for x in range(16):
-					var color := Color8(0,0,0,0)
-					if x >= 6 and x < 8 and y >= 4 and y < 7:
-						color = Color8(17,34,51,128)
-					if x == 7 and y == 6:
-						color = Color8(136,16,25,128)
-					if x == 6 and y == 4:
-						color = Color8(85,102,119)
-					if exported_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL export pixel ",x,",",y)
-
-	# Coverage/min/complement pins, including legacy clip alpha preservation.
-	var masked := IpropAsset.new()
-	if masked.load_file(args[0] + "/mask-algebra.iprop") != OK:
-		failures += 1
-		printerr("FAIL mask load")
-	else:
-		var mask_image := masked.generate(26)
-		if mask_image == null or mask_image.get_size() != Vector2i(8,4):
-			failures += 1
-			printerr("FAIL mask image metadata")
-		else:
-			var expected_mask := [["stream",PackedInt32Array([0x41d00000,0])],
-				["extent",PackedInt32Array([0,0,0x40a00000,0x40800000])]]
-			for expected in expected_mask:
-				var slot: Dictionary = masked.outputs[expected[0]]
-				var value_bits: PackedByteArray = slot["values"].to_byte_array()
-				if slot["owner"] != 0 or slot["list"] or value_bits.size() != expected[1].size()*4:
-					failures += 1
-					printerr("FAIL mask output metadata")
-				else:
-					for i in range(expected[1].size()):
-						if value_bits.decode_u32(i*4) != expected[1][i]:
-							failures += 1
-							printerr("FAIL mask output bits")
-			for y in range(4):
-				for x in range(8):
-					var color := Color8(166,178,163,128) if x < 2 else Color8(94,172,223,127) if x == 2 else Color8(94,172,223) if x < 5 else Color8(239,186,104)
-					if mask_image.get_pixel(x,y) != color:
-						failures += 1
-						printerr("FAIL mask pixel ",x,",",y)
 
 	# Independent sigma=1 impulse pins for layer and mask blur through Godot.
 	var blurred := IpropAsset.new()

@@ -24,6 +24,11 @@ const char* kindName(Kind kind) {
     case Kind::Layer: return "layer";
     case Kind::Mask: return "mask";
     case Kind::Stepper: return "stepper";
+    case Kind::Diagram2d: return "diagram2d";
+    case Kind::Contours2d: return "contours2d";
+    case Kind::Regions2d: return "regions2d";
+    case Kind::Part2d: return "part2d";
+    case Kind::Parts2d: return "parts2d";
     }
     return "?";
 }

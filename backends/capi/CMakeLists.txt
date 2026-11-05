@@ -4,8 +4,8 @@
 # part of the ABI (see README.md in this directory).
 
 configure_file(BuildVersion.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/BuildVersion.hpp @ONLY)
-set(iprop_capi_sources iprop.cpp operations.cpp library.cpp descriptors.cpp reflection.cpp results.cpp parameters.cpp parameter_setters.cpp outputs.cpp)
-add_library(iprop_capi SHARED ${iprop_capi_sources})
+include(../../cmake/CApiSources.cmake)
+add_library(iprop_capi SHARED ${IPROP_CAPI_IMPLEMENTATION_SOURCES})
 
 add_library(iprop::capi ALIAS iprop_capi)
 target_link_libraries(iprop_capi PRIVATE iprop::runtime)
@@ -21,7 +21,7 @@ set_target_properties(iprop_capi PROPERTIES
     SOVERSION ${IPROP_C_ABI_SOVERSION}
     EXPORT_NAME capi)
 
-add_library(iprop_capi_static STATIC ${iprop_capi_sources})
+add_library(iprop_capi_static STATIC ${IPROP_CAPI_IMPLEMENTATION_SOURCES})
 
 target_link_libraries(iprop_capi_static PUBLIC iprop::runtime)
 add_library(iprop::capi_static ALIAS iprop_capi_static)
@@ -123,6 +123,21 @@ add_custom_command(OUTPUT ${result_output_fixture}
 add_custom_target(capi_result_output_fixture DEPENDS ${result_output_fixture})
 add_dependencies(capi_golden capi_result_output_fixture)
 
+set(part_output_fixture ${golden}/part-output-values.iprop)
+add_custom_command(OUTPUT ${part_output_fixture}
+    COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/part-output-values.ips --no-compress -o ${part_output_fixture}
+    DEPENDS ipc test/part-output-values.ips)
+add_custom_target(capi_part_output_fixture DEPENDS ${part_output_fixture})
+add_dependencies(capi_golden capi_part_output_fixture)
+foreach(name part-output-limit part-output-empty)
+    set(out ${golden}/${name}.iprop)
+    add_custom_command(OUTPUT ${out}
+        COMMAND $<TARGET_FILE:ipc> ${CMAKE_CURRENT_SOURCE_DIR}/test/${name}.ips --no-compress -o ${out}
+        DEPENDS ipc test/${name}.ips)
+    add_custom_target(capi_${name}_fixture DEPENDS ${out})
+    add_dependencies(capi_golden capi_${name}_fixture)
+endforeach()
+
 foreach(source test/language.ips test/gaussian-blur.ips ../../examples/plant.ips ../../examples/language/math-bounds.ips
         ../../examples/language/asset-constants.ips ../../examples/language/collections.ips
         ../../examples/language/samplers.ips ../../examples/language/steppers.ips ../../examples/language/sampling-palettes.ips
@@ -191,6 +206,11 @@ endfunction()
 iprop_capi_test(capi_descriptors test/descriptors.cpp)
 iprop_capi_test(capi_error_descriptor test/error_descriptor.c BOTH)
 iprop_capi_test(capi_library test/library.c BOTH)
+iprop_capi_test(capi_part_results test/part_results.c BOTH ARGS ${part_output_fixture})
+iprop_capi_test(capi_part_result_contracts test/part_result_contracts.cpp ARGS
+    ${part_output_fixture} ${golden}/part-output-limit.iprop ${golden}/part-output-empty.iprop)
+iprop_capi_test(capi_part_result_failures test/part_result_failures.cpp)
+target_link_libraries(capi_part_result_failures PRIVATE iprop_compiler)
 foreach(linkage shared static)
     target_compile_definitions(capi_library_${linkage} PRIVATE
         IPROP_TEST_PRODUCT_MAJOR=${PROJECT_VERSION_MAJOR}
@@ -222,6 +242,7 @@ iprop_capi_test(capi_parameter_setters test/parameter_setters.c BOTH
 iprop_capi_test(capi_parameter_overrides test/parameter_overrides.c BOTH
     ARGS ${golden}/reflection-defaults.iprop)
 iprop_capi_test(capi_generate_ex test/generate_ex.c BOTH ARGS ${golden})
+iprop_capi_test(capi_execution_limits test/execution_limits.c BOTH ARGS ${golden}/portrait.iprop)
 
 iprop_capi_test(capi_error_sink test/error_sink.cpp
     ARGS ${golden}/uniforms.iprop ${owner_fixture})

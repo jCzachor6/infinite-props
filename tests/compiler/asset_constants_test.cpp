@@ -17,26 +17,6 @@
 using namespace iprop;
 using namespace compiler_test;
 
-namespace {
-std::vector<u8> compileConstants(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-void sameGeneration(const std::vector<u8>& actual, const std::vector<u8>& reference, u32 seed) {
-    const auto a = execute(actual, seed), b = execute(reference, seed);
-    REQUIRE(a.canvas.pixels == b.canvas.pixels);
-    REQUIRE(a.outputs.size() == b.outputs.size());
-    for (std::size_t i = 0; i < a.outputs.size(); ++i) {
-        REQUIRE(a.outputs[i].points.size() == b.outputs[i].points.size());
-        for (std::size_t j = 0; j < a.outputs[i].points.size(); ++j) {
-            CHECK(std::bit_cast<u32>(a.outputs[i].points[j].x) == std::bit_cast<u32>(b.outputs[i].points[j].x));
-            CHECK(std::bit_cast<u32>(a.outputs[i].points[j].y) == std::bit_cast<u32>(b.outputs[i].points[j].y));
-        }
-    }
-}
-}
-
 TEST_CASE("asset constants resolve forward dependencies and all five declared types") {
     const std::string source = R"(asset t {
       size 1x1 output point checks output point normalized output point zero
@@ -62,7 +42,7 @@ TEST_CASE("asset constants resolve forward dependencies and all five declared ty
       }
     })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileConstants(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         const auto result = execute(bytes);
         CHECK(result.outputs[0].points[0].x == 1.f);
         CHECK(result.outputs[0].points[0].y == 1.f);
@@ -117,11 +97,11 @@ TEST_CASE("constant builtins agree with runtime including named arguments and di
                     " draw{" + body + observation + " state={seed&65535,seed>>16}}}";
             };
             INFO(call);
-            const auto reference = compileConstants(wrap("", "value=" + call + " "), false);
+            const auto reference = compileChecked(wrap("", "value=" + call + " "), false);
             for (const bool optimize : {false, true}) {
-                const auto actual = compileConstants(wrap("const " + std::string(ips::typeName(overload.result)) +
+                const auto actual = compileChecked(wrap("const " + std::string(ips::typeName(overload.result)) +
                     " value=" + call, ""), optimize);
-                for (const u32 seed : {0u,1u,26u,0xffffffffu}) sameGeneration(actual, reference, seed);
+                for (const u32 seed : {0u,1u,26u,0xffffffffu}) sameOutcome(actual, reference, seed);
             }
             ++checked;
         }
@@ -146,9 +126,9 @@ TEST_CASE("const arithmetic and short circuit preserve exact bits and runtime tr
         INFO(expression);
         const std::string observation = type == "i32" ? "p={value&65535,value>>16}" :
             type == "f32" ? "p={value,0}" : type == "color" ? "pixel(0,0,value) p={value.r,value.a}" : "p=value";
-        const auto reference = compileConstants("asset t{size 1x1 output point p draw{value=" + expression + " " + observation + "}}", false);
+        const auto reference = compileChecked("asset t{size 1x1 output point p draw{value=" + expression + " " + observation + "}}", false);
         for (const bool optimize : {false, true})
-            sameGeneration(compileConstants("asset t{size 1x1 output point p const " + type + " value=" +
+            sameOutcome(compileChecked("asset t{size 1x1 output point p const " + type + " value=" +
                 expression + " draw{" + observation + "}}", optimize), reference, 7);
     }
 }
@@ -205,7 +185,7 @@ TEST_CASE("constant effects cycles and invalid constructors fail without compile
         }
     }
     for (const auto body : {"x=2", "for x in 0..2{}"})
-        CHECK_THROWS_AS(compileConstants("asset t{size 1x1 const i32 x=1 draw{" + std::string(body) + "}}", false), ips::SourceError);
+        CHECK_THROWS_AS(compileChecked("asset t{size 1x1 const i32 x=1 draw{" + std::string(body) + "}}", false), ips::SourceError);
 }
 
 TEST_CASE("each part owns its constants") {
@@ -233,7 +213,7 @@ TEST_CASE("const palette reads retain legacy fallback and immutable declarations
     for (std::size_t i = 0; i < 1500; ++i) chain += "const i32 n" + std::to_string(i) + "=" +
         (i == 1499 ? "1" : "n" + std::to_string(i + 1) + "+1") + " ";
     chain += "draw{p={n0,0}}}";
-    CHECK(execute(compileConstants(chain, false)).outputs[0].points[0].x == 1500.f);
+    CHECK(execute(compileChecked(chain, false)).outputs[0].points[0].x == 1500.f);
 }
 
 TEST_CASE("const formatter comments assembly debug stripping and oldest formats roundtrip") {
@@ -249,11 +229,11 @@ TEST_CASE("const formatter comments assembly debug stripping and oldest formats 
     CHECK(formatted.find("forward reference") != std::string::npos);
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileConstants(source, optimize);
-        CHECK(stripDebug(bytes) == stripDebug(compileConstants(formatted, optimize)));
+        const auto bytes = compileChecked(source, optimize);
+        CHECK(stripDebug(bytes) == stripDebug(compileChecked(formatted, optimize)));
         const auto restored = assemble(disassemble(bytes));
         CHECK(disassemble(restored) == disassemble(bytes));
         const auto packed = compressFile(bytes);
-        sameGeneration(packed, bytes, 42); sameGeneration(restored, bytes, 42);
+        sameOutcome(packed, bytes, 42); sameOutcome(restored, bytes, 42);
     }
 }

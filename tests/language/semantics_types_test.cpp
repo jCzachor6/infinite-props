@@ -41,30 +41,14 @@ asset t { input i32 v = 0
   }
 })"), {}));
 
-    expectCheckError(
-        "asset t { size 8x8 palette p = [] draw { } }",
-        "needs at least one element");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [#111111, 2] draw { } }",
-        "elements of one type");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [#111111 + #000000] draw { } }",
-        "must be literals");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [\"x\"] draw { } }",
-        "string elements");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw { } }",
-        "duplicate palette 'p'");
-    expectCheckError(
-        "asset t { size 8x8 palette seed = [#111111] draw { } }",
-        "reserved name");
-    expectCheckError(
-        "asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }",
-        "collides with an input or output");
-    expectCheckError(
-        "asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }",
-        "collides with a function");
+    expectCheckError("asset t { size 8x8 palette p = [] draw { } }", "needs at least one element");
+    expectCheckError("asset t { size 8x8 palette p = [#111111, 2] draw { } }", "elements of one type");
+    expectCheckError("asset t { size 8x8 palette p = [#111111 + #000000] draw { } }", "must be literals");
+    expectCheckError("asset t { size 8x8 palette p = [\"x\"] draw { } }", "string elements");
+    expectCheckError("asset t { size 8x8 palette p = [#111111] palette p = [#222222] draw { } }", "duplicate palette 'p'");
+    expectCheckError("asset t { size 8x8 palette seed = [#111111] draw { } }", "reserved name");
+    expectCheckError("asset t { size 8x8 input color c = #ffffff palette c = [#111111] draw { } }", "collides with an input or output");
+    expectCheckError("asset t { size 8x8 palette f = [#111111] draw { } f(x: i32) { return x } }", "collides with a function");
 }
 
 TEST_CASE("palette indexing is type checked") {
@@ -96,15 +80,9 @@ asset t { size 8x8 palette p = [1, 2] draw { c = p[0] c = 0.5 } })",
 }
 
 TEST_CASE("ramp is checked") {
-    expectCheckError(
-        "asset t { size 8x8 draw { x = ramp(nope, 0.5) } }",
-        "is not a palette");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [1, 2] draw { x = ramp(p, 0.5) } }",
-        "ramp requires a color or f32 palette");
-    expectCheckError(
-        "asset t { size 8x8 palette p = [1.0] draw { x = ramp(p, #ffffff) } }",
-        "ramp's t must be numeric");
+    expectCheckError("asset t { size 8x8 draw { x = ramp(nope, 0.5) } }", "is not a palette");
+    expectCheckError("asset t { size 8x8 palette p = [1, 2] draw { x = ramp(p, 0.5) } }", "ramp requires a color or f32 palette");
+    expectCheckError("asset t { size 8x8 palette p = [1.0] draw { x = ramp(p, #ffffff) } }", "ramp's t must be numeric");
     for (const std::string arguments : {"palette = p, t = 0.5", "t = 0.5, palette = p", "p, t = 0.5"}) {
         CAPTURE(arguments);
         CHECK_NOTHROW(checkAsset(parse("asset t { size 8x8 palette p = [1.0] "
@@ -148,15 +126,9 @@ TEST_CASE("the seed builtin is read-only via inputs") {
 }
 
 TEST_CASE("input default values must match the declared type") {
-    expectCheckError(
-        "asset t { size 8x8 input color c = 5 draw { } }",
-        "default value");
-    expectCheckError(
-        "asset t { size 8x8 input f32 f = #808d74 draw { } }",
-        "default value");
-    expectCheckError(
-        "asset t { size 8x8 input i32 i = 2.5 draw { } }",
-        "default value");
+    expectCheckError("asset t { size 8x8 input color c = 5 draw { } }", "default value");
+    expectCheckError("asset t { size 8x8 input f32 f = #808d74 draw { } }", "default value");
+    expectCheckError("asset t { size 8x8 input i32 i = 2.5 draw { } }", "default value");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 input color c = #808d74 input f32 f = 2.5 "
         "input u32 u = 7 input i32 i = 3 draw { } }"),
@@ -204,15 +176,9 @@ TEST_CASE("vector arity errors") {
 }
 
 TEST_CASE("output slot kinds are checked") {
-    expectCheckError(
-        "asset t { size 8x8 output rect r draw { r = {1, 2} } }",
-        "expects rect, got vec2");
-    expectCheckError(
-        "asset t { size 8x8 output point p draw { p = {1, 2, 3, 4} } }",
-        "expects vec2, got rect");
-    expectCheckError(
-        "asset t { size 8x8 output point p draw { p = 5 } }",
-        "expects vec2, got i32");
+    expectCheckError("asset t { size 8x8 output rect r draw { r = {1, 2} } }", "expects rect, got vec2");
+    expectCheckError("asset t { size 8x8 output point p draw { p = {1, 2, 3, 4} } }", "expects vec2, got rect");
+    expectCheckError("asset t { size 8x8 output point p draw { p = 5 } }", "expects vec2, got i32");
     CHECK_NOTHROW(checkAsset(parse(
         "asset t { size 8x8 output point p draw { p = {1, 2} } }"),
         {}));

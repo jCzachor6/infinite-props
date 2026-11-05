@@ -1,0 +1,18 @@
+asset CheetahTexture {
+  size 64x48
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 64, 48, #d5b37d)
+    spots = noise.mask({0, 0}, {64, 48}, noise.mode_cell,
+                       {0.085, 0.085}, 0.30, pattern_seed,
+                       octaves=1, softness=0.08,
+                       comparison=noise.below, warp_amount=0.32)
+    surface.paint(spots, #34271d)
+    cracks = noise.mask({32, 0}, {32, 48}, noise.mode_cell_edge,
+                        {0.12, 0.12}, 0.08, pattern_seed)
+    clip(mask.invert(cracks)) {
+      rect(32, 0, 32, 48, #edca8b)
+    }
+  }
+}

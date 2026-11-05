@@ -13,24 +13,6 @@ using namespace iprop;
 using namespace compiler_test;
 
 namespace {
-std::vector<u8> compileOverload(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-void equalOverloads(const RunOutcome& actual, const RunOutcome& expected) {
-    REQUIRE(actual.canvas.width == expected.canvas.width);
-    REQUIRE(actual.canvas.height == expected.canvas.height);
-    REQUIRE(actual.canvas.pixels == expected.canvas.pixels);
-    REQUIRE(actual.outputs.size() == expected.outputs.size());
-    for (std::size_t i = 0; i < actual.outputs.size(); ++i) {
-        REQUIRE(actual.outputs[i].points.size() == expected.outputs[i].points.size());
-        for (std::size_t j = 0; j < actual.outputs[i].points.size(); ++j) {
-            CHECK(std::bit_cast<u32>(actual.outputs[i].points[j].x) == std::bit_cast<u32>(expected.outputs[i].points[j].x));
-            CHECK(std::bit_cast<u32>(actual.outputs[i].points[j].y) == std::bit_cast<u32>(expected.outputs[i].points[j].y));
-        }
-    }
-}
 std::string wrapOverload(const std::string& body) {
     return R"(asset t { size 24x24 output point value output point following
       draw {
@@ -69,13 +51,13 @@ TEST_CASE("all twenty vec2 overloads preserve scalar pixels and output bits") {
     REQUIRE(cases.size() == 20);
     for (const auto& [vector, scalar] : cases) {
         INFO(vector);
-        const auto expected = compileOverload(wrapOverload(scalar), false);
+        const auto expected = compileChecked(wrapOverload(scalar), false);
         for (const bool optimize : {false, true}) {
-            const auto actual = compileOverload(wrapOverload(vector), optimize);
+            const auto actual = compileChecked(wrapOverload(vector), optimize);
             for (const auto seed : {0u, 1u, 7u, 42u, 0xffffffffu})
-                equalOverloads(execute(actual, seed), execute(expected, seed));
+                sameOutcome(execute(actual, seed), execute(expected, seed));
             const auto formatted = ips::formatProgram(ips::parse(wrapOverload(vector)));
-            equalOverloads(execute(compileOverload(formatted, optimize)), execute(expected));
+            sameOutcome(execute(compileChecked(formatted, optimize)), execute(expected));
         }
     }
 }
@@ -115,14 +97,14 @@ TEST_CASE("vec2 overload arguments evaluate once in signature order") {
     };
     for (const auto& [vector, scalar] : cases) {
         INFO(vector);
-        const auto expected = compileOverload(wrap(scalar), false);
+        const auto expected = compileChecked(wrap(scalar), false);
         for (const bool optimize : {false, true}) {
-            const auto actual = compileOverload(wrap(vector), optimize);
+            const auto actual = compileChecked(wrap(vector), optimize);
             const auto formatted = ips::formatProgram(ips::parse(wrap(vector)));
-            const auto printed = compileOverload(formatted, optimize);
+            const auto printed = compileChecked(formatted, optimize);
             for (const auto seed : {0u, 1u, 7u, 0xffffffffu}) {
-                equalOverloads(execute(actual, seed), execute(expected, seed));
-                equalOverloads(execute(printed, seed), execute(expected, seed));
+                sameOutcome(execute(actual, seed), execute(expected, seed));
+                sameOutcome(execute(printed, seed), execute(expected, seed));
             }
         }
     }
@@ -141,14 +123,14 @@ TEST_CASE("integer vec2 coordinates use exact int conversion including nonfinite
             {"value=cell.jitter(q,seed)", "value=cell.jitter(int(q.x),int(q.y),seed)"},
             {"layer image(alpha=surface.source_over){pixel(1,1,#fff)} surface.paint(mask.offset(mask.from(image),q),#fff)",
              "layer image(alpha=surface.source_over){pixel(1,1,#fff)} surface.paint(mask.offset(mask.from(image),int(q.x),int(q.y)),#fff)"}}) {
-            const auto expected = compileOverload(wrap(scalar), false);
+            const auto expected = compileChecked(wrap(scalar), false);
             std::optional<RunOutcome> result;
             std::string trap;
             try { result = execute(expected); }
             catch (const Trap& error) { trap = error.what(); }
             for (const bool optimize : {false, true}) {
-                const auto actual = compileOverload(wrap(vector), optimize);
-                if (result) equalOverloads(execute(actual), *result);
+                const auto actual = compileChecked(wrap(vector), optimize);
+                if (result) sameOutcome(execute(actual), *result);
                 else CHECK_THROWS_WITH(execute(actual), trap);
             }
         }
@@ -159,7 +141,7 @@ TEST_CASE("nested and sequential vector overloads reuse temporary slots") {
     std::string body = "q={1,2} ";
     for (unsigned i = 0; i < 1024; ++i)
         body += "q=lerp(lerp(q,{3,4},t),lerp({5,6},q,t),t) ";
-    const auto bytes = compileOverload("asset t{size 1x1 input f32 t=0.25 output point value draw{" + body + "value=q}}", false);
+    const auto bytes = compileChecked("asset t{size 1x1 input f32 t=0.25 output point value draw{" + body + "value=q}}", false);
     const auto file = loadFile(bytes);
     CHECK(file.code.entry().locals.size() <= 8);
     REQUIRE_NOTHROW(execute(bytes));
@@ -173,10 +155,10 @@ TEST_CASE("vec2 lerp and atan2 retain scalar boundary bits and support constants
                 return "asset t{size 1x1 output point value output point angle " + declarations + " draw{" + body + "}}";
             };
             const std::string inputs = "q=" + a + " r=-q t=" + t + " ";
-            const auto expected = compileOverload(wrap("", inputs + "value={lerp(q.x,r.x,t),lerp(q.y,r.y,t)} angle={atan2(q.y,q.x),0}"), false);
+            const auto expected = compileChecked(wrap("", inputs + "value={lerp(q.x,r.x,t),lerp(q.y,r.y,t)} angle={atan2(q.y,q.x),0}"), false);
             for (const bool optimize : {false, true}) {
-                equalOverloads(execute(compileOverload(wrap("", inputs + "value=lerp(q,r,t) angle={atan2(q),0}"), optimize)), execute(expected));
-                equalOverloads(execute(compileOverload(wrap("const vec2 q=" + a + " const vec2 r=-q const f32 t=" + t +
+                sameOutcome(execute(compileChecked(wrap("", inputs + "value=lerp(q,r,t) angle={atan2(q),0}"), optimize)), execute(expected));
+                sameOutcome(execute(compileChecked(wrap("const vec2 q=" + a + " const vec2 r=-q const f32 t=" + t +
                     " const vec2 p=lerp(q,r,t) const f32 ang=atan2(q)", "value=p angle={ang,0}"), optimize)), execute(expected));
             }
         }
@@ -189,6 +171,6 @@ TEST_CASE("vec2 overloads reject invalid types and keep scalar signatures strict
          "rect(position={1,2},size={3,4})", "atan2(#fff)", "lerp({1,2},2,0.5)",
          "mask.offset({1,2},{3,4})", "dither(0.5,#fff)", "cell.jitter({1,2},0.5)"}) {
         INFO(body);
-        CHECK_THROWS_AS(compileOverload("asset t{size 8x8 draw{" + std::string(body) + "}}", true), ips::SourceError);
+        CHECK_THROWS_AS(compileChecked("asset t{size 8x8 draw{" + std::string(body) + "}}", true), ips::SourceError);
     }
 }

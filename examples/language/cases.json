@@ -1,5 +1,15 @@
 {
   "cases": [
+    {"file":"dynamic-parts.ips","expect":"pass"},
+    {"file":"dynamic-tiles.ips","expect":"pass"},
+    {"file":"regions.ips","expect":"pass"},
+    {"file":"gap-bevel.ips","expect":"pass"},
+    {"file":"wall-bevel.ips","expect":"pass"},
+    {"file":"contours.ips","expect":"pass"},
+    {"file":"voronoi.ips","expect":"pass"},
+    {"file":"geometry-handles.ips","expect":"pass"},
+    {"file":"noise-mask.ips","expect":"pass"},
+    {"file":"noise-extensions.ips","expect":"pass"},
     {"file":"vector-overloads.ips","expect":"pass"},
     {"file":"blur.ips","expect":"pass"},
     {"file":"blurred-layer.ips","expect":"pass"},
@@ -150,6 +160,12 @@
     {"file": "errors/reserved-clip.ips", "expect": "compile-error", "message": "expected a declaration inside the asset block, got clip"},
     {"file": "traps/mask-unset.ips", "expect": "trap", "message": "mask is unassigned"},
     {"file": "traps/mask-radius.ips", "expect": "trap", "message": "mask radius must be in 0..64"},
-    {"file": "traps/mask-fuel.ips", "expect": "trap", "message": "fuel exhausted"}
+    {"file": "traps/mask-fuel.ips", "expect": "trap", "message": "fuel exhausted"},
+    {"file": "cheetah-spots.ips", "expect": "pass"},
+    {"file": "giraffe-spots.ips", "expect": "pass"},
+    {"file": "stone-wall.ips", "expect": "pass"},
+    {"file": "paving.ips", "expect": "pass"},
+    {"file": "dry-earth.ips", "expect": "pass"},
+    {"file": "part-export.ips", "expect": "pass", "omit_part_outputs": true}
   ]
 }

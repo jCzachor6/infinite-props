@@ -27,13 +27,15 @@ InputDecl readInputEntry(Reader& reader, const ConstPool& pool) {
 
 OutputDecl readOutputEntry(Reader& reader, const ConstPool& pool) {
     const u8 rawKind = reader.readU8();
-    if (rawKind > 2) {
+    if (rawKind > static_cast<u8>(OutputKind::Part)) {
         throw FormatError("unknown output kind", reader.position() - 1, ErrorReason::InvalidMetadata);
     }
     const u8 listFlag = reader.readU8();
     if (listFlag > 1) {
         throw FormatError("invalid list flag", reader.position() - 1, ErrorReason::InvalidMetadata);
     }
+    if (rawKind == static_cast<u8>(OutputKind::Part) && listFlag != 1)
+        throw FormatError("part outputs must be lists", reader.position() - 1, ErrorReason::InvalidMetadata);
     for (int k = 0; k < 2; ++k) { // reserved, MUST be 0 (spec §4.2)
         if (reader.readU8() != 0) {
             throw FormatError("reserved output bytes must be zero", reader.position() - 1, ErrorReason::InvalidMetadata);

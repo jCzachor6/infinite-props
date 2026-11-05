@@ -14,25 +14,8 @@
 using namespace iprop;
 using namespace compiler_test;
 namespace {
-std::vector<u8> samplers(const std::string& source, bool optimize = true) {
-    auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-void sameSamples(const std::vector<u8>& actual, const std::vector<u8>& reference, u32 seed) {
-    const auto a = execute(actual, seed), b = execute(reference, seed);
-    REQUIRE(a.canvas.pixels == b.canvas.pixels);
-    REQUIRE(a.outputs.size() == b.outputs.size());
-    for (std::size_t i = 0; i < a.outputs.size(); ++i) {
-        REQUIRE(a.outputs[i].points.size() == b.outputs[i].points.size());
-        for (std::size_t n = 0; n < a.outputs[i].points.size(); ++n) {
-            CHECK(std::bit_cast<u32>(a.outputs[i].points[n].x) == std::bit_cast<u32>(b.outputs[i].points[n].x));
-            CHECK(std::bit_cast<u32>(a.outputs[i].points[n].y) == std::bit_cast<u32>(b.outputs[i].points[n].y));
-        }
-    }
-}
 void rejectSampler(const std::string& body, const std::string& diagnostic) {
-    try { (void)samplers("asset t {size 1x1 " + body + "}"); FAIL("invalid sampler accepted"); }
+    try { (void)compileChecked("asset t {size 1x1 " + body + "}"); FAIL("invalid sampler accepted"); }
     catch (const ips::SourceError& error) {
         INFO(body << " -> " << error.what());
         CHECK(std::string(error.what()).find(diagnostic) != std::string::npos);
@@ -72,16 +55,16 @@ TEST_CASE("samplers replay scalar and batch draws through the existing range ker
         INFO(sample.range);
         for (const int count : {0, 1, 3, 256}) {
             const auto number = std::to_string(count);
-            const auto reference = samplers(asset("for i in 0.." + number + " {value=" + sample.range + " " + sample.publish + "}"), false);
+            const auto reference = compileChecked(asset("for i in 0.." + number + " {value=" + sample.range + " " + sample.publish + "}"), false);
             const auto helpers = "echo(s:sampler<" + std::string(sample.type) + ">)->sampler<" + sample.type + ">{return s}";
             for (const bool optimize : {false, true}) {
-                const auto batch = samplers(asset("s=echo(sampler((" + std::string(sample.range) + "))) items=s.pick(n=" + number + ") "
+                const auto batch = compileChecked(asset("s=echo(sampler((" + std::string(sample.range) + "))) items=s.pick(n=" + number + ") "
                     "for i in 0..list.len(items){value=items[i] " + sample.publish + "}", helpers), optimize);
-                const auto singles = samplers(asset("s=echo(sampler(" + std::string(sample.range) + ")) "
+                const auto singles = compileChecked(asset("s=echo(sampler(" + std::string(sample.range) + ")) "
                     "for i in 0.." + number + "{value=s.pick() " + sample.publish + "}", helpers), optimize);
                 for (const u32 seed : {0u, 1u, 26u, 0x80000000u, 0xffffffffu}) {
-                    sameSamples(batch, reference, seed);
-                    sameSamples(singles, reference, seed);
+                    sameOutcome(batch, reference, seed);
+                    sameOutcome(singles, reference, seed);
                 }
             }
         }
@@ -105,18 +88,18 @@ TEST_CASE("sampler capture snapshots values once and handle transfer does not dr
       echo(items:list<sampler<i32>>)->list<sampler<i32>>{return items}
       valuesOf(items:list<i32>)->list<i32>{return items}
     )");
-    const auto reference = samplers(asset(R"(
+    const auto reference = compileChecked(asset(R"(
       values={1,1} value=10 to 15 with gaussian(12,2) values={value,value}
       values={40,1} values={40,40}
     )"), false);
     for (const bool optimize : {false,true}) {
-        const auto bytes = samplers(source, optimize);
-        for (const u32 seed : {0u,26u,0xffffffffu}) sameSamples(bytes,reference,seed);
-        sameSamples(assemble(disassemble(bytes)),bytes,26);
-        sameSamples(compressFile(bytes),bytes,26);
+        const auto bytes = compileChecked(source, optimize);
+        for (const u32 seed : {0u,26u,0xffffffffu}) sameOutcome(bytes,reference,seed);
+        sameOutcome(assemble(disassemble(bytes)),bytes,26);
+        sameOutcome(compressFile(bytes),bytes,26);
         const auto formatted = ips::formatProgram(ips::parse(source));
         CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
-        sameSamples(samplers(formatted,optimize),bytes,26);
+        sameOutcome(compileChecked(formatted,optimize),bytes,26);
     }
 }
 
@@ -126,20 +109,20 @@ TEST_CASE("sampler receivers and counts evaluate once in order before batch pref
       count()->i32{return 1 to 3}
     )";
     const auto source = asset("items=description().pick(count()) for i in 0..list.len(items){value=items[i] values={value,value}}",helpers);
-    const auto reference = samplers(asset(R"(
+    const auto reference = compileChecked(asset(R"(
       lo=10 to 15 hi=20 to 30 d=gaussian(float(15 to 18),2) n=1 to 3
       for i in 0..n {value=lo to hi with d values={value,value}}
     )"),false);
     for (const bool optimize : {false,true}) for (const u32 seed : {0u,1u,26u,0xffffffffu})
-        sameSamples(samplers(source,optimize),reference,seed);
+        sameOutcome(compileChecked(source,optimize),reference,seed);
     // Explicit calls remain distinct and short circuit leaves the stream alone.
     const auto independent = asset(R"(
       s=sampler(10 to 15) skipped=0 && s.pick() alsoSkipped=1 || s.pick()
       values={skipped,alsoSkipped} value=pick(s.pick(),s.pick()) values={value,value}
     )");
-    const auto eager = samplers(asset("values={0,1} value=pick(10 to 15,10 to 15) values={value,value}"),false);
+    const auto eager = compileChecked(asset("values={0,1} value=pick(10 to 15,10 to 15) values={value,value}"),false);
     for (const bool optimize : {false,true}) for (const u32 seed : {0u,26u,0xffffffffu})
-        sameSamples(samplers(independent,optimize),eager,seed);
+        sameOutcome(compileChecked(independent,optimize),eager,seed);
 }
 
 TEST_CASE("sampler syntax types and known invalid arguments have located diagnostics", "[sampler]") {
@@ -160,11 +143,11 @@ TEST_CASE("sampler syntax types and known invalid arguments have located diagnos
     rejectSampler("draw{s=sampler(1) s=sampler(1.0)}", "cannot assign sampler<f32>");
     rejectSampler("draw{rect(0,0,sampler(1),1,#abc)}", "must be f32");
     rejectSampler("draw{s=sampler(sampler(1))}", "needs i32, f32, color or vec2");
-    CHECK_NOTHROW(samplers("asset t{size 1x1 const sampler<i32> s=sampler(1) draw{}}"));
+    CHECK_NOTHROW(compileChecked("asset t{size 1x1 const sampler<i32> s=sampler(1) draw{}}"));
     rejectSampler("sampler(x:i32)->i32{return x} draw{s=sampler(1 to 2)}", "declaration inside");
     rejectSampler("sampler(x:i32)->i32{return x} draw{x=sampler(1)}", "declaration inside");
-    const auto captured = samplers(asset("s=sampler((1 to 2)+3) value=s.pick() values={value,value}"));
-    sameSamples(captured,samplers(asset("value=(1 to 2)+3 values={value,value}")),26);
+    const auto captured = compileChecked(asset("s=sampler((1 to 2)+3) value=s.pick() values={value,value}"));
+    sameOutcome(captured,compileChecked(asset("value=(1 to 2)+3 values={value,value}")),26);
 }
 
 TEST_CASE("sampler arena sharing and batch preflight preserve RNG and publish no partial list", "[sampler]") {
@@ -210,13 +193,17 @@ TEST_CASE("sampler arena sharing and batch preflight preserve RNG and publish no
     trapped(ex,1,handle,ErrorReason::OutOfMemory);
     ex.resources.bytes = 0; ex.fuel = 2;
     trapped(ex,3,handle,ErrorReason::FuelExhausted);
-    // A later fuel trap during draws keeps all partial elements private.
-    ex.fuel = 3;
-    trapped(ex,3,handle,ErrorReason::FuelExhausted);
-    ex.frame().stack.clear(); ex.fuel=4;ex.push(handle);ex.push(i32{3});
+    // Scalar batches now cost exactly one per element. Vec2 interpolation
+    // still has its own cost; failure after a private element never publishes.
+    const auto vectorType = ValueType::sampler(ValueType::Vec2);
+    file.collections.types[0] = vectorType;
+    auto data = std::make_shared<CapturedRangeData>();
+    data->type = vectorType; data->mode = SamplerMode::Uniform;
+    data->lower = Vec2{0,0}; data->upper = Vec2{1,1};
+    ex.frame().stack.clear(); ex.fuel=4;ex.push(SamplerValue{vectorType,data});ex.push(i32{3});
     const auto before=ex.frame().stream;
     CHECK_THROWS_AS(detail::stepSamplers(ex,{Opcode::SamplerPickList,0,0}),Trap);
-    CHECK(ex.frame().stream==before+0x9e3779b9u);
+    CHECK(ex.frame().stream==before+2u*0x9e3779b9u);
     CHECK(ex.frame().stack.empty());
     CHECK(ex.resources.lists.size()==1); // only the earlier successful empty list
 }
@@ -248,7 +235,7 @@ TEST_CASE("sampler captures validate dynamic bounds before allocating or drawing
 }
 
 TEST_CASE("sampler descriptors preserve full nested item identity and reject malformed references", "[sampler]") {
-    const auto bytes=samplers(asset("items=[sampler(1),sampler(2 to 4)] value=items[0].pick() values={value,list.len(items)}"),false);
+    const auto bytes=compileChecked(asset("items=[sampler(1),sampler(2 to 4)] value=items[0].pick() values={value,list.len(items)}"),false);
     const auto loaded=loadFile(bytes); REQUIRE_NOTHROW(validate(loaded));
     CHECK(loaded.collections.types.size()==2);
     const auto section=loaded.layout.find(SectionId::Types)->offset;
@@ -279,12 +266,12 @@ TEST_CASE("all sampler list types share helper data and construct 256 descriptio
         descriptions+=']';
         const auto source=asset("before=seed items=echo("+descriptions+") shared=items items=[] "
             "value=shared[255].pick() values={list.len(shared),list.len(items)+list.len(empty())} values={seed==before,seed==before}",helpers);
-        const auto bytes=samplers(source,optimize);
-        sameSamples(bytes,samplers(asset("values={256,0} values={1,1}")),26);
-        sameSamples(assemble(disassemble(bytes)),bytes,26);
+        const auto bytes=compileChecked(source,optimize);
+        sameOutcome(bytes,compileChecked(asset("values={256,0} values={1,1}")),26);
+        sameOutcome(assemble(disassemble(bytes)),bytes,26);
     }
     rejectSampler("draw{items=[sampler(1),sampler(1.0)]}","list element needs sampler<i32>");
-    CHECK_NOTHROW(samplers(asset("chosen=pick(sampler(1),sampler(2 to 4)) value=chosen.pick() values={value,value}")));
+    CHECK_NOTHROW(compileChecked(asset("chosen=pick(sampler(1),sampler(2 to 4)) value=chosen.pick() values={value,value}")));
 }
 
 TEST_CASE("sampler helper draws preserve imported part stream isolation", "[sampler]") {
@@ -297,12 +284,12 @@ TEST_CASE("sampler helper draws preserve imported part stream isolation", "[samp
     for(const bool optimize:{false,true}){
         const auto bytes=compileProgram(root,{{"child",&part}},optimize);
         const auto reference=compileProgram(oldRoot,{{"child",&oldPart}},false);
-        for(const u32 seed:{0u,26u,0xffffffffu})sameSamples(bytes,reference,seed);
+        for(const u32 seed:{0u,26u,0xffffffffu})sameOutcome(bytes,reference,seed);
     }
 }
 
 TEST_CASE("invalid dynamic sampler batches retain actual receiver and count effects", "[sampler]") {
-    const auto bytes=samplers(R"(asset t{size 1x1
+    const auto bytes=compileChecked(R"(asset t{size 1x1
       receiver()->sampler<i32>{lo=10 to 15 return sampler(lo to 30)}
       count()->i32{discarded=20 to 30 return -1}
       draw{items=receiver().pick(count())}

@@ -26,7 +26,7 @@
             .then(function (Module) {
                 function generate(fileBytes, inputs) {
                     inputs = inputs || {};
-                    const allowed = new Set(["seed", "sizeX", "sizeY", "uniforms"]);
+                    const allowed = new Set(["seed", "sizeX", "sizeY", "uniforms", "workLimit", "timeoutMs", "signal", "cancelFlag"]);
                     for (const name of Object.keys(inputs)) {
                         if (!allowed.has(name)) throw new Error("unknown generation option '" + name + "'");
                     }
@@ -35,14 +35,26 @@
                         inputs.seed >>> 0 || 0,
                         inputs.sizeX >>> 0 || 0,
                         inputs.sizeY >>> 0 || 0];
-                    if (inputs.uniforms) args.push(inputs.uniforms);
+                    const controls = ["workLimit", "timeoutMs", "signal", "cancelFlag"];
+                    if (controls.some(name => Object.prototype.hasOwnProperty.call(inputs, name))) {
+                        args.push(inputs.uniforms);
+                        const execution = {};
+                        for (const name of controls) if (inputs[name] !== undefined) execution[name] = inputs[name];
+                        args.push(execution);
+                    } else if (inputs.uniforms) args.push(inputs.uniforms);
                     const result = Module.generate.apply(Module, args);
                     return {
                         width: result.width,
                         height: result.height,
                         data: new Uint8Array(result.data),
                         outputs: result.outputs,
+                        resources: result.resources,
+                        rowStride: result.rowStride,
+                        pixelFormat: result.pixelFormat,
+                        alphaMode: result.alphaMode,
+                        storageOrigin: result.storageOrigin,
                         fuel: result.fuel,
+                        work: result.work,
                     };
                 }
 

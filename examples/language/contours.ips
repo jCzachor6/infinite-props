@@ -1,0 +1,24 @@
+asset contour_islands {
+    size 32x24
+    output mask spots
+
+    outlines(source: mask) -> contours2d {
+        return contour(source, threshold = 0.5, simplify = 0.15,
+                       min_area = 1, connectivity = contour.four)
+    }
+
+    draw {
+        layer image {
+            rect({2, 2}, {17, 4}, #fff)
+            rect({2, 15}, {17, 4}, #fff)
+            rect({2, 6}, {4, 9}, #fff)
+            rect({15, 6}, {4, 9}, #fff)
+            oval({23, 7}, {6, 8}, #fff)
+        }
+        m = mask.from(image)
+        spots = m
+        closed = contour(m, 0.5)
+        reduced = outlines(m)
+        surface.paint(m, #d6ad74)
+    }
+}

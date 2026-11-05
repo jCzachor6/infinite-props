@@ -9,13 +9,16 @@
 #include "ips/Semantics.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
 
 #include <algorithm>
 #include <bit>
 #include <limits>
 
 using namespace iprop;
+using compiler_test::rejectDiagnostic;
 namespace {
+void rejected(const std::string& body, const std::string& message) { rejectDiagnostic("asset t{size 1x1 " + body + "}", message); }
 ListValue list(TypeDescriptor item, std::vector<Value> values) {
     auto data=std::make_shared<ListData>(ListData{ValueType::list(item),std::move(values)});
     return {data->type,std::move(data)};
@@ -26,12 +29,6 @@ std::vector<u8> compile(const std::string& source, bool optimize=false) {
 }
 GenerationResult generate(const std::vector<u8>& bytes, u32 seed=26) {
     auto file=loadFile(bytes);validate(file);VM vm(file,{seed, 0, 0, {}});vm.run();return vm.result();
-}
-void rejected(const std::string& body,const std::string& message) {
-    const auto result=compileSource("bad-list-method.ips",[&](std::string_view){return "asset t{size 1x1 "+body+"}";});
-    CHECK_FALSE(result.succeeded());CHECK(result.bytes.empty());REQUIRE_FALSE(result.diagnostics.empty());
-    INFO(result.diagnostics[0].message);CHECK(result.diagnostics[0].message.find(message)!=std::string::npos);
-    CHECK(result.diagnostics[0].location.has_value());
 }
 }
 

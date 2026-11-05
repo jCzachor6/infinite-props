@@ -89,6 +89,37 @@ The shared header is installed as `include/iprop/backend/ResultQueries.hpp`
 with its `iprop.h` dependency. Its query helpers publish a full view on success;
 typed array copies are intended for unpublished candidate arrays.
 
+For a complete owned result, use `iprop::sfml_host::copyResult(result)` from
+`src/Host.hpp`. Its `GeneratedResult` contains the image, statistics, output
+slots and one resource copy per ID. Kind `IPROP_OUTPUT_KIND_PART` slots keep
+their `count` and complete C API snapshots in `parts`; `values` remains
+empty. Other kinds retain their existing float leaves. A snapshot's resource
+IDs refer to `GeneratedResult::resources`, whose entries own A8/RGBA pixels
+or all geometry rings, vertices, parents and region hole indices.
+
+```cpp
+auto native = iprop::sfml_host::Result(
+    iprop::sfml_host::generate(program.get(), 26), iprop_result_free);
+auto owned = iprop::sfml_host::copyResult(native.get());
+native.reset(); // owned.outputs, owned.resources and owned.pixels remain valid.
+```
+
+The adapter opts into typed generation and execution controls through C API 0.6
+(ABI 0.5). Image-only viewers
+can continue using `queryImage` without copying the resource payload. The
+installed SDK includes `Host.hpp` and its shared query dependency under
+`share/iprop/backends/`. See the
+[shared part contract](../../docs/native-bindings.md#typed-part-results).
+
+`generate` also accepts a final optional `ExecutionLimits` value:
+`{workLimit, timeoutNanoseconds, cancellation}`. Zero work selects the finite
+native default; zero timeout disables the monotonic clock. `createCancellation()`
+returns a shared native token; `iprop_cancellation_cancel(token.get())` can run
+on another thread. The generation's value copy retains it until completion.
+`copyResult` exposes native counters in `GeneratedResult::work`. A thrown
+`Failure` retains status, reason, stage and executing PC without borrowing
+an error buffer. Work, deadline and cancellation errors do not publish a result.
+
 Installed hosts live at `<prefix>/bin/iprop_sfml` with selected shared
 SFML libraries under `<prefix>/lib` (DLLs under `bin` on Windows). A Linux
 installation still requires system graphics/font libraries and a display
@@ -104,3 +135,7 @@ also runs through the production SFML host, texture upload and a 1:1 render with
 ```sh
 build/backends/sfml/sfml_pixel_corpus build/pixel-corpus/pixel-corpus.bin
 ```
+
+`sfml_part_outputs` separately compares all fields of 23 shared C++/C
+reference scenes through `copyResult`, including holes, D4 mappings and exact
+resource bytes, after freeing both native results and their program.

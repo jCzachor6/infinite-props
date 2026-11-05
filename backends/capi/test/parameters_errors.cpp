@@ -12,14 +12,14 @@
 namespace {
 enum class Failure { Oom, Standard, Unknown };
 bool armed = false;
-std::size_t count = 0, failAt = 0, injected = 0;
+std::size_t allocations = 0, failAt = 0, injected = 0;
 Failure failure = Failure::Oom;
 struct Unexpected : std::exception {
     const char* what() const noexcept override { return "parameter allocation failure is internal"; }
 };
 struct AllocationGuard {
     explicit AllocationGuard(std::size_t ordinal, Failure kind = Failure::Oom) {
-        count = 0; injected = 0; failAt = ordinal; failure = kind; armed = true;
+        allocations = 0; injected = 0; failAt = ordinal; failure = kind; armed = true;
     }
     ~AllocationGuard() { armed = false; }
 };
@@ -29,7 +29,7 @@ uint32_t bits(const float& value) noexcept {
 }
 
 void* operator new(std::size_t size) {
-    if (armed && ++count == failAt) {
+    if (armed && ++allocations == failAt) {
         ++injected;
         if (failure == Failure::Standard) throw Unexpected{};
         if (failure == Failure::Unknown) throw 17;
@@ -85,10 +85,10 @@ int main(int argc, char** argv) {
                 status = operation % 2 == 0 ? iprop_parameters_create(sourceProgram, &candidate, &error) :
                     iprop_parameters_clone(sourceParameters, &candidate, &error);
             }
-            if (ordinal == 0) measured = count;
+            if (ordinal == 0) measured = allocations;
             if (ordinal != 0 && ordinal <= measured) {
                 ++faultCases;
-                CHECK(injected == 1 && count == ordinal && status == IPROP_EX_E_OOM && candidate == parameters);
+                CHECK(injected == 1 && allocations == ordinal && status == IPROP_EX_E_OOM && candidate == parameters);
                 CHECK(error.status == status && error.reason == IPROP_REASON_OUT_OF_MEMORY);
                 CHECK(error.stage == IPROP_STAGE_ARGUMENTS && error.location_flags == 0);
                 CHECK(error.message_required_bytes == 13 && std::strcmp(message, "out of memory") == 0);
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
                     status = operation % 2 == 0 ? iprop_parameters_create(sourceProgram, &candidate, &error) :
                         iprop_parameters_clone(sourceParameters, &candidate, &error);
                 }
-                CHECK(injected == 1 && count == ordinal && status == IPROP_EX_E_INTERNAL && candidate == parameters);
+                CHECK(injected == 1 && allocations == ordinal && status == IPROP_EX_E_INTERNAL && candidate == parameters);
                 CHECK(error.reason == IPROP_REASON_INTERNAL && error.stage == IPROP_STAGE_ARGUMENTS && error.location_flags == 0);
                 CHECK(std::strcmp(message, kind == Failure::Standard ? Unexpected{}.what() : "unexpected internal exception") == 0);
                 CHECK(sourceProgram->data.use_count() == owners);
@@ -177,7 +177,7 @@ int main(int argc, char** argv) {
         CHECK(iprop_parameters_reset(parameters, &error) == IPROP_EX_OK);
         CHECK(iprop_parameters_get(parameters, 1, &got, &error) == IPROP_EX_OK && bits(got.f32) == UINT32_C(0x80000000));
     }
-    CHECK(count == 0 && injected == 0 && message[0] == '\0' && error.status == IPROP_EX_OK);
+    CHECK(allocations == 0 && injected == 0 && message[0] == '\0' && error.status == IPROP_EX_OK);
 
     // Protected handle/value storage is rejected before even interpreting an
     // overlapping error descriptor's optional fields (ASan checks exact sizes).
@@ -211,7 +211,7 @@ int main(int argc, char** argv) {
         CHECK(iprop_parameters_reset(parameters, &error) == IPROP_EX_E_ARGUMENT);
         error.message_buffer = message; error.message_capacity = sizeof(message);
     }
-    CHECK(count == 0 && injected == 0);
+    CHECK(allocations == 0 && injected == 0);
     CHECK(std::memcmp(handleBefore.data(), parameters, sizeof(*parameters)) == 0);
     CHECK(std::memcmp(valuesBefore.data(), parameters->values.data(), sizeof(valuesBefore)) == 0);
     for (uint32_t size = 0; size <= sizeof(error) + 8; ++size) {
@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
             CHECK(iprop_error_ex_init(reinterpret_cast<iprop_error_ex*>(storage), size) == (size < 4 ? IPROP_EX_E_ARGUMENT : IPROP_EX_OK));
             status = iprop_parameters_get(parameters, 1, &got, reinterpret_cast<iprop_error_ex*>(storage));
         }
-        CHECK(status == (size < 4 ? IPROP_EX_E_ARGUMENT : IPROP_EX_OK) && count == 0 && injected == 0);
+        CHECK(status == (size < 4 ? IPROP_EX_E_ARGUMENT : IPROP_EX_OK) && allocations == 0 && injected == 0);
         std::free(storage);
     }
 
@@ -257,7 +257,7 @@ int main(int argc, char** argv) {
             CHECK(iprop_parameters_get(parameters, 4, &got, nullptr) == IPROP_EX_OK && got.u32 == 9);
             CHECK(iprop_parameters_get(parameters, 1, &got, nullptr) == IPROP_EX_OK && bits(got.f32) == nan);
         }
-        CHECK(count == 0 && injected == 0);
+        CHECK(allocations == 0 && injected == 0);
         std::memcpy(handleBefore.data(), parameters, sizeof(*parameters));
         std::memcpy(valuesBefore.data(), parameters->values.data(), sizeof(valuesBefore));
         const iprop_error_ex errorBefore = error;
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
             CHECK(iprop_parameters_set_overrides(parameters, inValues, 1, sizeof(iprop::UniformValue), &error) == IPROP_EX_E_ARGUMENT);
             CHECK(iprop_parameters_set_overrides(parameters, inHandle, 1, sizeof(uint32_t), &error) == IPROP_EX_E_ARGUMENT);
         }
-        CHECK(count == 0 && injected == 0 && std::memcmp(&error, &errorBefore, sizeof(error)) == 0);
+        CHECK(allocations == 0 && injected == 0 && std::memcmp(&error, &errorBefore, sizeof(error)) == 0);
         CHECK(std::memcmp(handleBefore.data(), parameters, sizeof(*parameters)) == 0);
         CHECK(std::memcmp(valuesBefore.data(), parameters->values.data(), sizeof(valuesBefore)) == 0);
     }
@@ -291,7 +291,7 @@ int main(int argc, char** argv) {
         CHECK(iprop_parameters_reset(customParameters, nullptr) == IPROP_EX_OK);
         CHECK(iprop_parameters_get(customParameters, 1, &got, nullptr) == IPROP_EX_OK && bits(got.f32) == nan);
     }
-    CHECK(count == 0 && injected == 0);
+    CHECK(allocations == 0 && injected == 0);
     iprop_parameters_free(customParameters);
 
     iprop_program_free(program);

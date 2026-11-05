@@ -23,43 +23,13 @@
 // Color gradients and vec2 segments drawn with `to` (spec v0.5 §5).
 
 using namespace iprop;
+using compiler_test::outputPointBits;
+using compiler_test::generateVariant;
+using compiler_test::checkErrorMessage;
+using compiler_test::compileChecked;
 
 namespace {
 constexpr u8 kColorMixRgba = 0xAF, kVec2Mix = 0xB0, kVec2Make = 0x5B;
-
-std::vector<u8> compileSource(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-
-GenerationResult generate(const std::vector<u8>& bytes, u32 seed, u32 variant = 0) {
-    const auto loaded = loadFile(bytes);
-    validate(loaded);
-    VM vm(loaded, GenerationInputs{seed, 0, 0, {{"v", {InputType::U32, {}, 0.f, variant}}}});
-    vm.run();
-    return vm.result();
-}
-
-std::vector<u32> pointBits(const GenerationResult& result) {
-    std::vector<u32> bits;
-    for (const auto& output : result.outputs)
-        for (const auto& point : output.points) {
-            bits.push_back(std::bit_cast<u32>(point.x));
-            bits.push_back(std::bit_cast<u32>(point.y));
-        }
-    return bits;
-}
-
-std::string sourceError(const std::string& source) {
-    try {
-        ips::checkAsset(ips::parse(source), {});
-    } catch (const ips::SourceError& error) {
-        return error.message;
-    }
-    FAIL("expected a source error");
-    return {};
-}
 
 Vec2 vec2Mix(Vec2 a, Vec2 b, f32 t) {
     test_support::Prog prog;
@@ -136,9 +106,9 @@ TEST_CASE("a color gradient shares one position across all channels") {
   }
 })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileSource(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         CHECK(bytes[6] == 0);
-        const auto result = generate(bytes, 13);
+        const auto result = generateVariant(bytes, 13);
         for (const auto& point : result.outputs[0].points) {
             CHECK(point.x == 0.f);
             CHECK(point.y == 0.f);
@@ -175,8 +145,8 @@ TEST_CASE("gradients and segments draw once, after both ends and the distributio
         INFO(direct);
         for (const bool optimize : {false, true})
             for (const u32 seed : {0u, 7u, 26u})
-                CHECK(pointBits(generate(compileSource(program(direct), optimize), seed)) ==
-                      pointBits(generate(compileSource(program(stored), false), seed)));
+                CHECK(outputPointBits(generateVariant(compileChecked(program(direct), optimize), seed)) ==
+                      outputPointBits(generateVariant(compileChecked(program(stored), false), seed)));
     }
 }
 
@@ -200,7 +170,7 @@ TEST_CASE("segments keep their direction, accept distributions and feed points")
   }
 })";
     for (const bool optimize : {false, true}) {
-        const auto result = generate(compileSource(source, optimize), 21);
+        const auto result = generateVariant(compileChecked(source, optimize), 21);
         for (const auto& point : result.outputs[0].points) {
             CHECK(point.x >= 10.f);
             CHECK(point.x <= 30.f);
@@ -220,7 +190,7 @@ TEST_CASE("segments keep their direction, accept distributions and feed points")
         CHECK(last.x <= 40.f);
     }
     // Independent components are two explicit draws.
-    const auto twice = generate(compileSource(
+    const auto twice = generateVariant(compileChecked(
         "asset t { size 1x1 output list point p draw { for i in 0..64 { p = {0.0 to 1.0, 0.0 to 1.0} } } }", true), 5);
     CHECK(std::any_of(twice.outputs[0].points.begin(), twice.outputs[0].points.end(),
                       [](const auto& p) { return p.x != p.y; }));
@@ -228,17 +198,17 @@ TEST_CASE("segments keep their direction, accept distributions and feed points")
 
 TEST_CASE("gradient and segment types are checked and traps keep their reason") {
     const auto wrap = [](const std::string& body) { return "asset t { size 1x1 draw { " + body + " } }"; };
-    CHECK(sourceError(wrap("x = #fff to {0, 0}")) ==
+    CHECK(checkErrorMessage(wrap("x = #fff to {0, 0}")) ==
           "'to' needs two numbers, two colors or two vec2 values, got color and vec2");
-    CHECK(sourceError(wrap("x = {0, 0} to 1.0")) ==
+    CHECK(checkErrorMessage(wrap("x = {0, 0} to 1.0")) ==
           "'to' needs two numbers, two colors or two vec2 values, got vec2 and f32");
-    CHECK(sourceError(wrap("x = 0.5 to #fff")) ==
+    CHECK(checkErrorMessage(wrap("x = 0.5 to #fff")) ==
           "'to' needs two numbers, two colors or two vec2 values, got f32 and color");
-    CHECK(sourceError(wrap("x = #000 to #fff with 0.5")) == "'with' needs a distribution, got f32");
+    CHECK(checkErrorMessage(wrap("x = #000 to #fff with 0.5")) == "'with' needs a distribution, got f32");
     const std::string infinite = "asset t { input i32 v = 0  size 1x1 output point p draw {\n  z = 0.0 p = {0.0, 0.0} to {1.0 / (z + float(1 - v)), 1.0} } }";
     for (const bool optimize : {false, true}) {
-        CHECK_NOTHROW(generate(compileSource(infinite, optimize), 0, 0));
-        CHECK_THROWS_AS(generate(compileSource(infinite, optimize), 0, 1), Trap);
+        CHECK_NOTHROW(generateVariant(compileChecked(infinite, optimize), 0, 0));
+        CHECK_THROWS_AS(generateVariant(compileChecked(infinite, optimize), 0, 1), Trap);
     }
     const auto formatted = ips::formatProgram(ips::parse(
         "asset t { size 1x1 draw { c=#705845ff to #c8c8c8ff with beta(alpha=5.0,beta=2.0) q={1,2} to {3,4} } }"));

@@ -20,6 +20,7 @@ ValueType outputValueType(OutputKind kind) {
     case OutputKind::Circle: return ValueType::Circle;
     case OutputKind::Mask: return ValueType::Mask;
     case OutputKind::Layer: return ValueType::Layer;
+    case OutputKind::Part: return ValueType::Part2d;
     }
     return ValueType::Vec2;
 }
@@ -279,7 +280,7 @@ ValueType Typer::infer(const Expr& expr) {
         // Resolve the complete part-output path first, including outputs
         // named x or y; a component access then types that point recursively.
         const Path path = flatten(expr);
-        if (surfaceMode(expr))
+        if (builtinConstant(expr))
             return ValueType::I32;
         if (path.segments.size() == 2 && path.segments[0] == "outputs") {
             return typePartRead(expr);

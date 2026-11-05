@@ -38,6 +38,8 @@ bool stepParts(Execution& ex, Instruction ins) {
         // The read copy is in the caller's coordinates with a parts section
         // (spec v0.5 §6); otherwise it equals the published value.
         switch (want) {
+        case OutputKind::Part:
+            ex.trap("cannot read list part output", ErrorReason::InvalidOutput);
         case OutputKind::Point:
             if (output.points.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);

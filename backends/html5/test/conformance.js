@@ -2,15 +2,8 @@
 // WASM interpreter over the golden seeds and compares FNV-1a hashes of the
 // RGBA output and the structured outputs against pinned desktop values.
 //
-// Usable from Node (module.exports) and from a browser page (window).
 
-(function (root, factory) {
-    if (typeof module === "object" && module.exports) {
-        module.exports = factory();
-    } else {
-        root.Conformance = factory();
-    }
-})(typeof self !== "undefined" ? self : this, function () {
+module.exports = (function () {
 
     // Pinned by the desktop reference (ipgen + a hash over decoded RGBA).
     // native-conformance.js verifies these against both a fresh native
@@ -64,4 +57,4 @@
     }
 
     return { GOLDEN: GOLDEN, fnv1a: fnv1a, run: run };
-});
+})();

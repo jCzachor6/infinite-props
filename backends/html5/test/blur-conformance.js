@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const {execFileSync, spawnSync} = require("node:child_process");
 const {decodePng} = require("./png.js");
-const {sections, instructions} = require("./sampler-conformance.js");
+const {instructions,outputBits,sections}=require("./harness.js");
 
 // Independent full 2D convolution with host Math.exp, no runtime kernel or
 // horizontal intermediate. Fixed impulse/edge pins below also guard the oracle.
@@ -48,7 +48,7 @@ function run(iprop,tool,directory) {
         const wasm=iprop.generate(new Uint8Array(data),{seed:26,...options});
         assert.deepEqual(Buffer.from(wasm.data),rgba,"blur native/WASM RGBA");
         assert.deepEqual({x:wasm.width,y:wasm.height},native.size,"blur dimensions");
-        assert.deepEqual(wasm.outputs.map(s=>({name:s.name,kind:["point","rect","circle"][s.kind],list:s.isList,values:s.valueBits})),native.outputs,"blur output bits");
+        assert.deepEqual(outputBits(wasm.outputs),native.outputs,"blur output bits");
         ++comparisons;
         if(expected) {assert.deepEqual(rgba,expected,"blur independent 2D reference");++pins;}
         return {rgba,outputs:native.outputs};

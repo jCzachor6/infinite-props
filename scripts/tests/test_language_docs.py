@@ -107,6 +107,8 @@ class DocumentationTest(unittest.TestCase):
         source = Path(__file__).resolve().parents[2]
         files = {
             "backends/ResultQueries.hpp": "// fixture\n",
+            "backends/sfml/src/Host.hpp": "// host fixture\n",
+            "backends/sfml/src/Render.hpp": "// render fixture\n",
             "runtime/iprop/Fixture.hpp": "// fixture\n",
             "examples/showcase/readme-collection.png": "fixture image",
             "examples/showcase/LICENSE.md": "# License\n",
@@ -125,8 +127,9 @@ class DocumentationTest(unittest.TestCase):
         }
         for backend in ("capi", "html5", "sfml", "godot", "apple", "unity", "android", "python"):
             files[f"backends/{backend}/README.md"] = "# Backend\n"
-        for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "prepare-bindings.py",
-                     "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp"):
+        for name in ("bindings.ips", "binding-trap.ips", "binding-unicode.ips", "execution-slow.ips", "prepare-bindings.py",
+                     "result_fixture.py", "check-python.py", "check-csharp.py", "python-asan.supp",
+                     "part_bindings.py", "part-bindings-v0.9.json", "check-part-outputs.py"):
             files[f"backends/test/{name}"] = "\n"
         for name, content in files.items():
             file = self.root / name
@@ -159,6 +162,9 @@ class DocumentationTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         installed = prefix / "share/iprop"
         docs.verify(installed, "0.4.0")
+        for name in ("backends/ResultQueries.hpp", "backends/sfml/src/Host.hpp", "backends/sfml/src/Render.hpp",
+                     "backends/test/part_bindings.py", "backends/test/part-bindings-v0.9.json"):
+            self.assertEqual((installed / name).read_bytes(), (self.output / name).read_bytes())
         self.assertEqual((installed / "CHANGELOG.md").read_bytes(),
                          (self.output / "CHANGELOG.md").read_bytes())
 

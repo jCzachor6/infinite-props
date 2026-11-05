@@ -9,6 +9,8 @@
 #include "ips/Semantics.hpp"
 #include "ipa.hpp"
 #include "ipdis.hpp"
+#include "support/compiler_support.hpp"
+#include "support/test_support.hpp"
 
 #include <array>
 #include <bit>
@@ -16,12 +18,10 @@
 #include <map>
 
 using namespace iprop;
+using test_support::patch16;
+using compiler_test::rejectDiagnostic;
+using compiler_test::compileChecked;
 namespace {
-std::vector<u8> maskProgram(const std::string& source, bool optimize = true) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
 GenerationResult runMask(const std::vector<u8>& bytes, u32 seed = 26, u32 width = 0, u32 height = 0) {
     const auto file = loadFile(bytes); validate(file);
     VM vm(file, {seed,width,height,{}}); vm.run(); return vm.result();
@@ -33,21 +33,10 @@ MaskValue coverage(std::initializer_list<u8> values, u32 width, u32 height) {
     buffer->coverage = values;
     return {buffer, {}};
 }
-void rejectMask(const std::string& source, const std::string& message) {
-    const auto result = compileSource("bad-mask.ips", [&](std::string_view) { return source; });
-    CHECK_FALSE(result.succeeded()); CHECK(result.bytes.empty());
-    REQUIRE_FALSE(result.diagnostics.empty());
-    INFO(result.diagnostics.front().message);
-    CHECK(result.diagnostics.front().message.find(message) != std::string::npos);
-    REQUIRE(result.diagnostics.front().location.has_value());
-}
-void set16(std::vector<u8>& bytes, std::size_t at, u16 value) {
-    bytes.at(at) = static_cast<u8>(value); bytes.at(at + 1) = static_cast<u8>(value >> 8);
-}
 }
 
 TEST_CASE("mask views share alpha and exact D4 rectangles without allocation", "[masks]") {
-    const auto file = loadFile(maskProgram("asset t{size 8x8 draw{}}"));
+    const auto file = loadFile(compileChecked("asset t{size 8x8 draw{}}"));
     detail::Execution ex(file); ex.target = RenderTarget::create(8,8,{1,1}); ex.frames.emplace_back(); ex.fuel = 1000;
     auto layer = RenderTarget::create(2,3,{1,1});
     const std::array<u8,6> original{10,20,30,40,50,60};
@@ -77,7 +66,7 @@ TEST_CASE("mask views share alpha and exact D4 rectangles without allocation", "
 }
 
 TEST_CASE("mask algebra retains partial coverage and the union rectangle", "[masks]") {
-    const auto file = loadFile(maskProgram("asset t{size 8x8 draw{}}"));
+    const auto file = loadFile(compileChecked("asset t{size 8x8 draw{}}"));
     detail::Execution ex(file); ex.target=RenderTarget::create(8,8,{1,1}); ex.frames.emplace_back(); ex.fuel=1000;
     const auto a = coverage({0,128,255,64},2,2);
     auto b = coverage({255,128,32,192},2,2); b.mapping.origin={1,0};
@@ -99,7 +88,7 @@ TEST_CASE("mask algebra retains partial coverage and the union rectangle", "[mas
 }
 
 TEST_CASE("mask morphology uses a disk border and normative logical sample fuel", "[masks]") {
-    const auto file=loadFile(maskProgram("asset t{size 1x1 draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 1x1 draw{}}"));
     detail::Execution ex(file); ex.target=RenderTarget::create(1,1,{1,1}); ex.frames.emplace_back(); ex.fuel=1000000;
     const auto source=coverage({128},1,1);
     ex.push(source);ex.push(i32{1});REQUIRE(detail::stepMasks(ex,{Opcode::MaskExpand,0,0}));
@@ -130,7 +119,7 @@ TEST_CASE("mask morphology uses a disk border and normative logical sample fuel"
 }
 
 TEST_CASE("mask use rejects nonfinite mismatched and unrepresentable views before scanning", "[masks]") {
-    const auto file=loadFile(maskProgram("asset t{size 1x1 draw{}}"));
+    const auto file=loadFile(compileChecked("asset t{size 1x1 draw{}}"));
     detail::Execution ex(file);ex.target=RenderTarget::create(1,1,{1,1});ex.frames.emplace_back();ex.fuel=1000;
     for(const float scale:{NAN,INFINITY,0.f,-1.f,2.f}){
         auto source=RenderTarget::create(1,1,{scale,1});
@@ -161,7 +150,7 @@ TEST_CASE("clip combines coverage before alpha and zero never changes hidden RGB
         state={seed&65535,seed>>16}
       }})";
     for (const bool optimize:{false,true}) {
-        const auto bytes=maskProgram(source,optimize);const auto result=runMask(bytes);
+        const auto bytes=compileChecked(source,optimize);const auto result=runMask(bytes);
         CHECK(result.image.at(0,0)==Color{17,34,51,88});
         CHECK(result.image.at(1,0)==Color{17,34,51,60});
         CHECK(result.image.at(2,0)==Color{17,34,51,32});
@@ -171,7 +160,7 @@ TEST_CASE("clip combines coverage before alpha and zero never changes hidden RGB
         CHECK(runMask(compressFile(bytes)).image.pixels==result.image.pixels);
         const auto formatted=ips::formatProgram(ips::parse(source));
         CHECK(ips::formatProgram(ips::parse(formatted))==formatted);
-        CHECK(runMask(maskProgram(formatted,optimize)).image.pixels==result.image.pixels);
+        CHECK(runMask(compileChecked(formatted,optimize)).image.pixels==result.image.pixels);
     }
 }
 
@@ -187,7 +176,7 @@ TEST_CASE("clip cleanup restores callers through nested capture return break and
         }surface.paint(image,blend=surface.source_over)
       }})";
     for (const bool optimize:{false,true}) {
-        const auto result=runMask(maskProgram(source,optimize));
+        const auto result=runMask(compileChecked(source,optimize));
         CHECK(result.image.at(0,0)==Color{});CHECK(result.image.at(1,0)==Color{17,34,51,64});
         CHECK(result.image.at(3,0)==Color{17,34,51,128});CHECK(result.image.at(4,0)==Color{17,34,51,128});
         // A capture ignores the clips around it; this one is painted unclipped.
@@ -230,7 +219,7 @@ TEST_CASE("zero mask coverage skips while rounded zero source alpha still compos
       rect(0,0,3,1,#10203080)surface.paint(region,color=#2595d501,blend=surface.source_over)
     }})";
     for(const bool optimize:{false,true}){
-        const auto result=runMask(maskProgram(source,optimize));
+        const auto result=runMask(compileChecked(source,optimize));
         CHECK(result.image.at(0,0)==Color{8,16,24,0});CHECK(result.image.at(1,0)==Color{});
         CHECK(result.image.at(2,0)==Color{37,149,213,1});
     }
@@ -262,12 +251,12 @@ TEST_CASE("parent clip applies to the part blit once and geometric outputs stay 
 }
 
 TEST_CASE("weather interpolates proposed RGBA by clip coverage without changing stream", "[masks]") {
-    const auto full=runMask(maskProgram("asset t{size 4x2 draw{rect(0,0,4,2,#929ca8)weather(0,40)}}"));
+    const auto full=runMask(compileChecked("asset t{size 4x2 draw{rect(0,0,4,2,#929ca8)weather(0,40)}}"));
     const std::string source=R"(asset t{size 4x2 output point state draw{
       layer regionImage(alpha=surface.source_over){pixel(0,0,#ffffff80)pixel(1,0,#fff)}region=mask.from(regionImage)
       rect(0,0,4,2,#929ca8)clip(region){weather(0,40)}state={seed&65535,seed>>16}}})";
     for (const bool optimize:{false,true}) {
-        const auto result=runMask(maskProgram(source,optimize));
+        const auto result=runMask(compileChecked(source,optimize));
         CHECK(full.image.at(0,0)==Color{106,116,128,255});
         CHECK(result.image.at(0,0)==Color{126,136,148,255});CHECK(result.image.at(1,0)==full.image.at(1,0));
         for (u32 y=0;y<2;++y)for(u32 x=0;x<4;++x)if(y||x>=2)CHECK(result.image.at(x,y)==Color{146,156,168,255});
@@ -284,7 +273,7 @@ TEST_CASE("mask paint signature order and clip operand execute once in the calle
         clip(make(64)){unused=1 to 2 pixel(1,0,#fff)}state={seed&65535,seed>>16}}
     })";
     for(const bool optimize:{false,true}){
-        const auto result=runMask(maskProgram(source,optimize));
+        const auto result=runMask(compileChecked(source,optimize));
         REQUIRE(result.outputs[0].points.size()==3);
         CHECK(result.outputs[0].points[0].x==128);CHECK(result.outputs[0].points[0].y==26);
         CHECK(result.outputs[0].points[1].x==-1);CHECK(result.outputs[0].points[1].y==31187);
@@ -292,7 +281,7 @@ TEST_CASE("mask paint signature order and clip operand execute once in the calle
         CHECK(result.outputs[1].points[0].x==59134);CHECK(result.outputs[1].points[0].y==30941);
         CHECK(result.image.at(0,0)==Color{18,52,86,64});CHECK(result.image.at(1,0)==Color{});
         const auto formatted=ips::formatProgram(ips::parse(source));
-        const auto after=runMask(maskProgram(formatted,optimize));
+        const auto after=runMask(compileChecked(formatted,optimize));
         CHECK(after.image.pixels==result.image.pixels);
         REQUIRE(after.outputs[0].points.size()==3);
         for(std::size_t i=0;i<3;++i)CHECK(after.outputs[0].points[i].y==result.outputs[0].points[i].y);
@@ -300,7 +289,7 @@ TEST_CASE("mask paint signature order and clip operand execute once in the calle
 }
 
 TEST_CASE("mask source types diagnostics and format gates reject invalid uses", "[masks]") {
-    rejectMask("asset t{size 1x1 const i32 invalidRadius=65 draw{layer image{}region=mask.from(image)"
+    rejectDiagnostic("asset t{size 1x1 const i32 invalidRadius=65 draw{layer image{}region=mask.from(image)"
         "wide=mask.expand(region,invalidRadius)}}", "mask radius must be in 0..64");
     for (const auto& [body,message]:std::map<std::string,std::string>{
         {"clip(1){}","clip requires mask"}, {"m=mask.from(1)","must be layer"},
@@ -310,23 +299,23 @@ TEST_CASE("mask source types diagnostics and format gates reject invalid uses", 
         {"surface.paint(region)","expects 2 or 3 arguments"},
         {"surface.paint(region,#fff,blend=1)","blend must be surface.legacy"},
         {"m=region+region","arithmetic requires numeric"}, {"m=region==region","comparison"}})
-        rejectMask("asset t{size 1x1 draw{layer image{}region=mask.from(image)"+body+"}}",message);
+        rejectDiagnostic("asset t{size 1x1 draw{layer image{}region=mask.from(image)"+body+"}}",message);
     for (const auto& source:{"asset t{size 1x1 input mask image draw{}}", "asset t{size 1x1 output list mask image draw{}}",
             "asset t{size 1x1 const mask image=1 draw{}}", "asset t{size 1x1 echo(images:list<mask>){}draw{}}"}) {
         const auto result=compileSource("bad.ips",[&](std::string_view){return source;});
         CHECK_FALSE(result.succeeded());CHECK(result.bytes.empty());
     }
-    const auto valid=maskProgram("asset t{size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false);
+    const auto valid=compileChecked("asset t{size 1x1 draw{layer image{}region=mask.from(image)clip(region){}surface.paint(region,#fff,blend=surface.source_over)}}",false);
     const auto file=loadFile(valid);
     for(const auto& fn:file.code.functions)for(std::size_t pc=0;pc<fn.code.size()/4;++pc){
         const auto ins=decodeInstruction(fn.code.subspan(pc*4,4));
         if(ins.opcode==Opcode::SurfacePaintMask)for(const u16 mode:{u16{3},u16{257},u16{65535}}){
-            auto bad=valid;set16(bad,static_cast<std::size_t>(fn.code.data()-file.bytes().data())+pc*4+2,mode);
+            auto bad=valid;patch16(bad,static_cast<std::size_t>(fn.code.data()-file.bytes().data())+pc*4+2,mode);
             CHECK_THROWS_AS(validate(loadFile(bad)),FormatError);
         }
     }
     for (const u16 minor:{u16{1},u16{2},u16{3},u16{4},u16{5}}) {
-        auto bad=valid;set16(bad,6,minor);CHECK_THROWS_AS(loadFile(bad),FormatError);
+        auto bad=valid;patch16(bad,6,minor);CHECK_THROWS_AS(loadFile(bad),FormatError);
     }
 }
 
@@ -334,15 +323,15 @@ TEST_CASE("combined surface scopes unset masks and failure release generation re
     for (const auto& body:{"if(v==1){layer image{}region=mask.from(image)}clip(region){}",
             "layer image{}region=mask.from(image)x=mask.expand(region,v+65)",
             "layer image{}region=mask.from(image)x=mask.expand(region,64)"}) {
-        const auto file=loadFile(maskProgram("asset t{input i32 v=0 size 1x1 draw{"+std::string(body)+"}}",false));
+        const auto file=loadFile(compileChecked("asset t{input i32 v=0 size 1x1 draw{"+std::string(body)+"}}",false));
         VM vm(file,{26, 0, 0, {}});CHECK_THROWS_AS(vm.run(),Trap);
         CHECK_THROWS_AS(vm.result(),std::logic_error);CHECK(vm.canvas().width==1);
     }
     std::string scopes="layer image{}region=mask.from(image)";
     for (int i=0;i<32;++i) scopes+="clip(region){";
-    scopes+=std::string(32,'}');CHECK_NOTHROW(maskProgram("asset t{size 1x1 draw{"+scopes+"}}",false));
+    scopes+=std::string(32,'}');CHECK_NOTHROW(compileChecked("asset t{size 1x1 draw{"+scopes+"}}",false));
     scopes="layer image{}region=mask.from(image)";
     for (int i=0;i<16;++i) scopes+="clip(region){layer nested"+std::to_string(i)+"{";
     scopes+="clip(region){}"+std::string(32,'}');
-    CHECK_THROWS_AS(maskProgram("asset t{size 1x1 draw{"+scopes+"}}",false),ips::SourceError);
+    CHECK_THROWS_AS(compileChecked("asset t{size 1x1 draw{"+scopes+"}}",false),ips::SourceError);
 }

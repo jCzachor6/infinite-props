@@ -89,6 +89,14 @@ iprop_result_output_view_ex output(jlong value, jint index) {
     f.check(iprop_result_output_get(result(value), static_cast<std::uint32_t>(index), &view, &f.error));
     return view;
 }
+iprop_output_slot_ex slot(jlong value, jint index) {
+    Failure f; iprop_output_slot_ex view{}; iprop_output_slot_ex_init(&view, sizeof(view));
+    f.check(iprop_result_output_slot(result(value), static_cast<std::uint32_t>(index), &view, &f.error)); return view;
+}
+iprop_resource_info_ex resource(jlong value, jint id) {
+    Failure f; iprop_resource_info_ex view{}; iprop_resource_info_ex_init(&view, sizeof(view));
+    f.check(iprop_result_resource_get(result(value), static_cast<std::uint32_t>(id), &view, &f.error)); return view;
+}
 iprop_input_info_ex input(jlong value, jint index) {
     Failure f;
     iprop_input_info_ex info{};
@@ -113,8 +121,9 @@ JNI_METHOD(jlong, load)(JNIEnv* env, jobject, jbyteArray data) {
         iprop_library_info_ex library{};
         iprop_library_info_ex_init(&library, sizeof(library));
         f.check(iprop_library_query_ex(&library, &f.error));
-        if (library.api_major != 0 || library.api_minor < 4 || library.abi_major != 0 || library.abi_minor != 5)
-            throw std::invalid_argument("C API 0.4 / ABI 0.5 required");
+        if (library.api_major != 0 || library.api_minor < 6 || library.abi_major != 0 || library.abi_minor != 5 ||
+            (library.capabilities & (IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS)) != (IPROP_CAP_PART_OUTPUTS | IPROP_CAP_RESULT_RESOURCES | IPROP_CAP_EXECUTION_LIMITS))
+            throw std::invalid_argument("C API 0.6 / ABI 0.5 with typed results and execution limits required");
         auto owner = std::make_unique<Context>();
         const auto count = env->GetArrayLength(data);
         std::vector<std::uint8_t> buffer(static_cast<std::size_t>(count) + 1);
@@ -167,12 +176,29 @@ JNI_METHOD(void, set)(JNIEnv* env, jobject, jlong value, jbyteArray name, jint t
         return 0;
     });
 }
-JNI_METHOD(jlong, generate)(JNIEnv* env, jobject, jlong value, jint seed, jint width, jint height) {
+JNI_METHOD(jlong, generate)(JNIEnv* env, jobject, jlong value, jint seed, jint width, jint height, jlong work, jlong timeout, jlong cancellation) {
     return guarded<jlong>(env, [&] { Failure f; auto& c = context(value);
         iprop_generate_options_ex options{}; iprop_generate_options_ex_init(&options, sizeof(options));
+        options.flags = IPROP_GENERATE_PART_OUTPUTS;
         options.seed = static_cast<std::uint32_t>(seed); options.size_x = static_cast<std::uint32_t>(width); options.size_y = static_cast<std::uint32_t>(height);
+        iprop_execution_limits_ex limits{}; iprop_execution_limits_ex_init(&limits, sizeof(limits));
+        limits.work_limit = static_cast<std::uint64_t>(work); limits.timeout_ns = static_cast<std::uint64_t>(timeout);
+        limits.cancellation = reinterpret_cast<iprop_cancellation*>(static_cast<std::uintptr_t>(cancellation));
         iprop_result* generated = nullptr;
-        f.check(iprop_generate_ex(c.program.get(), &options, c.parameters.get(), &generated, &f.error)); return pointer(generated); });
+        f.check(iprop_generate_controlled(c.program.get(), &options, c.parameters.get(), &limits, &generated, &f.error)); return pointer(generated); });
+}
+JNI_METHOD(jlong, createCancellation)(JNIEnv* env, jobject) {
+    return guarded<jlong>(env, [&] { Failure f; iprop_cancellation* token = nullptr;
+        f.check(iprop_cancellation_create(&token, &f.error)); return pointer(token); });
+}
+JNI_METHOD(void, cancel)(JNIEnv*, jobject, jlong value) {
+    iprop_cancellation_cancel(reinterpret_cast<iprop_cancellation*>(static_cast<std::uintptr_t>(value)));
+}
+JNI_METHOD(jboolean, isCancelled)(JNIEnv*, jobject, jlong value) {
+    return static_cast<jboolean>(iprop_cancellation_is_cancelled(reinterpret_cast<iprop_cancellation*>(static_cast<std::uintptr_t>(value))) != 0);
+}
+JNI_METHOD(void, freeCancellation)(JNIEnv*, jobject, jlong value) {
+    iprop_cancellation_free(reinterpret_cast<iprop_cancellation*>(static_cast<std::uintptr_t>(value)));
 }
 JNI_METHOD(void, freeResult)(JNIEnv*, jobject, jlong value) { iprop_result_free(result(value)); }
 JNI_METHOD(jlongArray, imageInfo)(JNIEnv* env, jobject, jlong value) {
@@ -184,19 +210,22 @@ JNI_METHOD(jbyteArray, pixels)(JNIEnv* env, jobject, jlong value) {
 }
 JNI_METHOD(jlongArray, statistics)(JNIEnv* env, jobject, jlong value) {
     return guarded<jlongArray>(env, [&] { Failure f; iprop_result_stats_ex s{}; iprop_result_stats_ex_init(&s, sizeof(s));
-        f.check(iprop_result_query_stats(result(value), &s, &f.error)); return longs(env,
+        f.check(iprop_result_query_stats(result(value), &s, &f.error));
+        iprop_work_stats_ex w{}; iprop_work_stats_ex_init(&w, sizeof(w));
+        f.check(iprop_result_query_work(result(value), &w, &f.error)); return longs(env,
             {static_cast<jlong>(s.fuel_budget), static_cast<jlong>(s.fuel_remaining), static_cast<jlong>(s.fuel_used),
-             static_cast<jlong>(s.image_byte_count), static_cast<jlong>(s.output_element_count)}); });
+             static_cast<jlong>(s.image_byte_count), static_cast<jlong>(s.output_element_count),
+             static_cast<jlong>(w.work_budget), static_cast<jlong>(w.work_remaining), static_cast<jlong>(w.work_used)}); });
 }
 JNI_METHOD(jint, outputCount)(JNIEnv* env, jobject, jlong value) {
     return guarded<jint>(env, [&] { Failure f; std::uint32_t count = 0;
         f.check(iprop_result_output_count(result(value), &count, &f.error)); return static_cast<jint>(count); });
 }
 JNI_METHOD(jlongArray, outputInfo)(JNIEnv* env, jobject, jlong value, jint index) {
-    return guarded<jlongArray>(env, [&] { auto v = output(value, index); return longs(env, {v.owner, v.kind, v.is_list, v.element_count}); });
+    return guarded<jlongArray>(env, [&] { auto v = slot(value, index); return longs(env, {v.owner, v.kind, v.is_list, v.element_count}); });
 }
 JNI_METHOD(jbyteArray, outputName)(JNIEnv* env, jobject, jlong value, jint index) {
-    return guarded<jbyteArray>(env, [&] { auto v = output(value, index); return bytes(env, v.name.data, v.name.byte_count); });
+    return guarded<jbyteArray>(env, [&] { auto v = slot(value, index); return bytes(env, v.name.data, v.name.byte_count); });
 }
 JNI_METHOD(jintArray, outputValues)(JNIEnv* env, jobject, jlong value, jint index) {
     return guarded<jintArray>(env, [&] {
@@ -208,5 +237,64 @@ JNI_METHOD(jintArray, outputValues)(JNIEnv* env, jobject, jlong value, jint inde
         auto array = env->NewIntArray(static_cast<jsize>(count));
         if (array && count) env->SetIntArrayRegion(array, 0, static_cast<jsize>(count), packed.data());
         return array;
+    });
+}
+
+JNI_METHOD(jlongArray, partInfo)(JNIEnv* env, jobject, jlong value, jint slotIndex, jint index) {
+    return guarded<jlongArray>(env, [&] {
+        Failure f; iprop_part_snapshot_ex p{}; iprop_part_snapshot_ex_init(&p, sizeof(p));
+        f.check(iprop_result_output_part(result(value), static_cast<std::uint32_t>(slotIndex), static_cast<std::uint32_t>(index), &p, &f.error));
+        // Fixed JNI argument bridge, not a persisted/exported result format.
+        return longs(env, {p.output_index,p.element_index,p.id,p.source_id,p.shape_kind,p.appearance_kind,
+            p.shape_resource,p.region_index,p.texture_resource,color(p.tint),p.d4,p.translation_x,p.translation_y,
+            bits(p.source_scale.x),bits(p.source_scale.y),bits(p.target_scale.x),bits(p.target_scale.y),
+            bits(p.source_anchor.x),bits(p.source_anchor.y),bits(p.center.x),bits(p.center.y),
+            bits(p.bounds_origin.x),bits(p.bounds_origin.y),bits(p.bounds_size.x),bits(p.bounds_size.y),
+            p.source_d4,p.source_origin_x,p.source_origin_y,p.texture_d4,p.texture_origin_x,p.texture_origin_y});
+    });
+}
+JNI_METHOD(jint, resourceCount)(JNIEnv* env, jobject, jlong value) {
+    return guarded<jint>(env, [&] { Failure f; std::uint32_t count = 0;
+        f.check(iprop_result_resource_count(result(value), &count, &f.error)); return static_cast<jint>(count); });
+}
+JNI_METHOD(jlongArray, resourceInfo)(JNIEnv* env, jobject, jlong value, jint id) {
+    return guarded<jlongArray>(env, [&] { const auto r = resource(value,id);
+        return longs(env, {r.resource_id,r.kind,r.pixel_format,r.width,r.height,static_cast<jlong>(r.row_stride),
+            static_cast<jlong>(r.byte_count),bits(r.scale.x),bits(r.scale.y),r.vertex_count,r.edge_count,r.ring_count,r.region_count}); });
+}
+JNI_METHOD(jbyteArray, resourcePixels)(JNIEnv* env, jobject, jlong value, jint id) {
+    return guarded<jbyteArray>(env, [&] { const auto r = resource(value,id); return bytes(env,r.data,r.byte_count); });
+}
+JNI_METHOD(jlongArray, ringInfo)(JNIEnv* env, jobject, jlong value, jint id, jint index) {
+    return guarded<jlongArray>(env, [&] { Failure f; iprop_ring_info_ex r{}; iprop_ring_info_ex_init(&r,sizeof(r));
+        f.check(iprop_result_resource_ring(result(value),static_cast<std::uint32_t>(id),static_cast<std::uint32_t>(index),&r,&f.error));
+        return longs(env,{r.ring_index,r.vertex_count,r.parent_ring,r.is_hole}); });
+}
+JNI_METHOD(jintArray, ringVertices)(JNIEnv* env, jobject, jlong value, jint id, jint index) {
+    return guarded<jintArray>(env, [&] { Failure f; iprop_ring_info_ex r{}; iprop_ring_info_ex_init(&r,sizeof(r));
+        f.check(iprop_result_resource_ring(result(value),static_cast<std::uint32_t>(id),static_cast<std::uint32_t>(index),&r,&f.error));
+        std::vector<iprop_point_value> vertices(r.vertex_count);
+        if (!vertices.empty()) f.check(iprop_result_resource_ring_copy_vertices(result(value),static_cast<std::uint32_t>(id),
+            static_cast<std::uint32_t>(index),vertices.data(),vertices.size()*sizeof(iprop_point_value),&f.error));
+        std::vector<jint> packed; packed.reserve(vertices.size()*2);
+        for (const auto p : vertices) { packed.push_back(std::bit_cast<jint>(p.x)); packed.push_back(std::bit_cast<jint>(p.y)); }
+        auto array=env->NewIntArray(static_cast<jsize>(packed.size()));
+        if(array&&!packed.empty()) env->SetIntArrayRegion(array,0,static_cast<jsize>(packed.size()),packed.data()); return array;
+    });
+}
+JNI_METHOD(jlongArray, regionInfo)(JNIEnv* env, jobject, jlong value, jint id, jint index) {
+    return guarded<jlongArray>(env, [&] { Failure f; iprop_region_info_ex r{}; iprop_region_info_ex_init(&r,sizeof(r));
+        f.check(iprop_result_resource_region(result(value),static_cast<std::uint32_t>(id),static_cast<std::uint32_t>(index),&r,&f.error));
+        return longs(env,{r.region_index,r.outer_ring,r.hole_count,r.source_id,bits(r.area),bits(r.center.x),bits(r.center.y),
+            bits(r.bounds_origin.x),bits(r.bounds_origin.y),bits(r.bounds_size.x),bits(r.bounds_size.y)}); });
+}
+JNI_METHOD(jintArray, regionHoles)(JNIEnv* env, jobject, jlong value, jint id, jint index) {
+    return guarded<jintArray>(env, [&] { Failure f; iprop_region_info_ex r{}; iprop_region_info_ex_init(&r,sizeof(r));
+        f.check(iprop_result_resource_region(result(value),static_cast<std::uint32_t>(id),static_cast<std::uint32_t>(index),&r,&f.error));
+        std::vector<jint> holes(r.hole_count);
+        for(std::uint32_t h=0;h<r.hole_count;++h) {std::uint32_t ring=0;
+            f.check(iprop_result_resource_region_hole(result(value),static_cast<std::uint32_t>(id),static_cast<std::uint32_t>(index),h,&ring,&f.error)); holes[h]=std::bit_cast<jint>(ring);}
+        auto array=env->NewIntArray(static_cast<jsize>(holes.size()));
+        if(array&&!holes.empty()) env->SetIntArrayRegion(array,0,static_cast<jsize>(holes.size()),holes.data()); return array;
     });
 }

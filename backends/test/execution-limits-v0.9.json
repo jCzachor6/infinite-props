@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "description": "Real generation pipelines for work boundaries and cancellation; successful counters are compared through the same C API on native and WASM.",
+  "cases": [
+    {
+      "name": "capture",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { pixel(0,0,#abc) }; surface.paint(image); state = {unit(), unit()} } }",
+      "opcode": "LayerBegin"
+    },
+    {
+      "name": "sampler batch",
+      "source": "asset Metered { size 64x64 output point state draw { values=sampler(0.0 to 1.0 with gaussian(0.5,0.15)).pick(256); state={values[255],0}; state = {unit(), unit()} } }",
+      "opcode": "SamplerPickList"
+    },
+    {
+      "name": "stepper batch",
+      "source": "asset Metered { size 64x64 output point state draw { values=stepper(0.0 to 1.0 with gaussian(0.5,0.15)).pick(256); state={values[255],0}; state = {unit(), unit()} } }",
+      "opcode": "StepperPickList"
+    },
+    {
+      "name": "noise mask",
+      "source": "asset Metered { size 64x64 output point state draw { m = noise.mask({0,0},{64,64},noise.mode_cell_edge,{0.1,0.1},0.2,seed); surface.paint(m,#abc); state = {unit(), unit()} } }",
+      "opcode": "NoiseMask"
+    },
+    {
+      "name": "morphology",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; m=mask.expand(mask.from(image),4); surface.paint(m,#abc); state = {unit(), unit()} } }",
+      "opcode": "MaskExpand"
+    },
+    {
+      "name": "algebra",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; m=mask.invert(mask.from(image)); surface.paint(m,#abc); state = {unit(), unit()} } }",
+      "opcode": "MaskInvert"
+    },
+    {
+      "name": "layer blur",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image.blur(2.0)); state = {unit(), unit()} } }",
+      "opcode": "LayerBlur"
+    },
+    {
+      "name": "mask blur",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image).blur(2.0),#abc); state = {unit(), unit()} } }",
+      "opcode": "MaskBlur"
+    },
+    {
+      "name": "layer paint",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(image); state = {unit(), unit()} } }",
+      "opcode": "SurfacePaint"
+    },
+    {
+      "name": "mask paint",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(8,8,40,40,#abc8) }; surface.paint(mask.from(image),#abc); state = {unit(), unit()} } }",
+      "opcode": "SurfacePaintMask"
+    },
+    {
+      "name": "polygon",
+      "source": "asset Metered { size 64x64 output point state draw { poly(#abc8,1,1,61,3,59,61,2,59); state = {unit(), unit()} } }",
+      "opcode": "Poly"
+    },
+    {
+      "name": "curve",
+      "source": "asset Metered { size 64x64 output point state draw { curve({1,1},{32,1},{60,60},2,#abc8); state = {unit(), unit()} } }",
+      "opcode": "Curve"
+    },
+    {
+      "name": "oval",
+      "source": "asset Metered { size 64x64 output point state draw { oval(1,1,62,62,#abc8); state = {unit(), unit()} } }",
+      "opcode": "Oval"
+    },
+    {
+      "name": "voronoi",
+      "source": "asset Metered { size 64x64 output point state draw { d=voronoi({0,0},{64,64},36,seed); state=diagram.site(d,0); state = {unit(), unit()} } }",
+      "opcode": "Voronoi"
+    },
+    {
+      "name": "contour",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(4,4,56,56,#fff) }; c=contour(mask.from(image),0.5); state={regions.count(regions(c)),0}; state = {unit(), unit()} } }",
+      "opcode": "Contour"
+    },
+    {
+      "name": "offset",
+      "source": "asset Metered { size 64x64 output point state draw { r=regions(voronoi({0,0},{64,64},36,seed)); r=regions.gap(r,0.5); state={regions.count(r),0}; state = {unit(), unit()} } }",
+      "opcode": "RegionsGap"
+    },
+    {
+      "name": "region raster",
+      "source": "asset Metered { size 64x64 output point state draw { r=regions(voronoi({0,0},{64,64},16,seed)); surface.paint(regions.mask(r),#abc); state = {unit(), unit()} } }",
+      "opcode": "RegionsMaskAll"
+    },
+    {
+      "name": "bevel",
+      "source": "asset Metered { size 64x64 output point state draw { r=regions(voronoi({0,0},{64,64},16,seed)); surface.paint(regions.bevel(r,2,{-1,-1})); state = {unit(), unit()} } }",
+      "opcode": "RegionsBevel"
+    },
+    {
+      "name": "part scan",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(4,4,56,56,#abc8) }; p=part.create(image); part.draw(p); state = {unit(), unit()} } }",
+      "opcode": "PartCreateLayer"
+    },
+    {
+      "name": "part mask",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(4,4,56,56,#abc8) }; p=part.create(image); surface.paint(part.mask(p),#abc); state = {unit(), unit()} } }",
+      "opcode": "PartMask"
+    },
+    {
+      "name": "part draw",
+      "source": "asset Metered { size 64x64 output point state draw { layer image(alpha=surface.source_over) { rect(4,4,56,56,#abc8) }; p=part.fill(part.create(mask.from(image)),#abc); part.draw(p); state = {unit(), unit()} } }",
+      "opcode": "DynamicPartDraw"
+    }
+  ]
+}

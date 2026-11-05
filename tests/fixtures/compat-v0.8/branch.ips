@@ -1,0 +1,21 @@
+import leaf from "leaf.ips"
+
+asset CompatibilityBranch {
+  size 15x11
+  origin 2.5, 1.5
+  output point anchor
+  output rect box
+  output circle disk
+  output list point draws
+
+  draw {
+    draws = {unit(), unit()}
+    leaf.draw(hash(seed ^ 17), at={2.5, 3.5}, rot=90, mirror_y=true)
+    draws = leaf.outputs.anchor
+    leaf.draw(hash(seed ^ 29), at={10.5, 6.5}, rot=270, mirror_x=true)
+    anchor = leaf.outputs.anchor
+    box = leaf.outputs.box
+    disk = leaf.outputs.disk
+    draws = {unit(), unit()}
+  }
+}

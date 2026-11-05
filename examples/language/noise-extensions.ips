@@ -1,0 +1,24 @@
+// 0.9: Worley edges and coordinate warp, with an explicit seed throughout.
+asset NoiseExtensions {
+  size 16x16
+  output point distances
+  output point warped
+  output point identity
+  const f32 reference = noise.cell2({0.5, 0.5}, 7)
+  draw {
+    p = {0.5, 0.5}
+    distances = {noise.cell(p, seed), noise.cell2(p, seed)}
+    warped = noise.warp_vec(p, amount=0.2, seed=seed)
+    id = noise.cell_id(p, seed)
+    // Two exactly representable halves preserve the full i32 in a point output.
+    identity = {id & 65535, id >> 16}
+    for y in 0..16 {
+      for x in 0..16 {
+        q = noise.warp_vec({float(x) / 4, float(y) / 4}, 0.4, seed)
+        edge = noise.cell2(q, seed) - noise.cell(q, seed)
+        texture = noise.fbm(q, octaves=5, lacunarity=2.2, gain=0.6, seed=seed)
+        pixel(x, y, lerp(#17242e, #a9d4c0, clamp(edge + texture * 0.2, 0, 1)))
+      }
+    }
+  }
+}

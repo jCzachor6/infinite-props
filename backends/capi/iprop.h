@@ -36,17 +36,18 @@ extern "C" {
 #endif
 
 /* Header API feature version, independent of the product/file versions.
- * API 0.4 uses ABI line 0.5. Its declarations, enum values,
+ * API 0.6 uses ABI line 0.5. API 0.4/0.5 declarations, enum values,
  * layouts and ownership cannot change in an additive API release.
  * Later APIs add symbols and separate sized descriptors; they do not
  * append fields to these structs. See docs/c-api-abi.md for the policy.
  * These macros describe this header, not a loaded library's capabilities. */
 #define IPROP_API_VERSION_MAJOR 0
-#define IPROP_API_VERSION_MINOR 4
+#define IPROP_API_VERSION_MINOR 6
 
 /* Opaque handles. */
 typedef struct iprop_program iprop_program; /* a loaded, validated .iprop */
 typedef struct iprop_result iprop_result;   /* one generation's outputs */
+typedef struct iprop_cancellation iprop_cancellation;
 
 typedef enum {
     IPROP_OK = 0,        /* success */
@@ -163,6 +164,7 @@ typedef uint32_t iprop_status_ex;
 #define IPROP_EX_E_TRAP UINT32_C(3)
 #define IPROP_EX_E_ARGUMENT UINT32_C(4)
 #define IPROP_EX_E_INTERNAL UINT32_C(5)
+#define IPROP_EX_E_UNSUPPORTED UINT32_C(6)
 
 /* Fixed leaf record for byte-counted UTF-8, never an extensible descriptor.
  * No NUL terminator is required; embedded U+0000 remains part of the view.
@@ -201,6 +203,9 @@ typedef struct {
 #define IPROP_CAP_GENERATE_EX (UINT64_C(1) << 15)
 #define IPROP_CAP_RESULT_OUTPUTS (UINT64_C(1) << 16)
 #define IPROP_CAP_TYPED_OUTPUTS (UINT64_C(1) << 17)
+#define IPROP_CAP_PART_OUTPUTS (UINT64_C(1) << 18)
+#define IPROP_CAP_RESULT_RESOURCES (UINT64_C(1) << 19)
+#define IPROP_CAP_EXECUTION_LIMITS (UINT64_C(1) << 20)
 
 /* All fields except struct_size are output-only. Set struct_size to the
  * actual caller capacity, at least sizeof(uint32_t). Only complete fields
@@ -229,10 +234,14 @@ IPROP_API iprop_status_ex iprop_library_info_ex_init(iprop_library_info_ex* out,
 
 /* New generation options, separate from the frozen API 0.2 structure.
  * All absent optional fields default to zero: current seed/index defaults,
- * source dimensions (size_x/size_y == 0), no requested flags. No flags are
- * supported yet; any nonzero complete flags field is rejected by consumers.
- * Future requests must negotiate a capability and set a recognized flag;
+ * source dimensions (size_x/size_y == 0), no requested flags. API 0.5 accepts
+ * IPROP_GENERATE_PART_OUTPUTS after negotiating IPROP_CAP_PART_OUTPUTS. It is
+ * required for any part declaration (also empty/uncalled slots); without it
+ * generate_ex returns E_UNSUPPORTED before execution or result publication.
+ * Unknown flag bits are E_ARGUMENT. Future requests must negotiate a
+ * capability and set a recognized flag;
  * appending a nonzero unknown tail alone never requests behavior. */
+#define IPROP_GENERATE_PART_OUTPUTS UINT32_C(1)
 typedef struct {
     uint32_t struct_size;
     uint32_t flags;
@@ -278,12 +287,16 @@ typedef uint32_t iprop_error_reason;
 #define IPROP_REASON_PART_OUTPUT_MISSING UINT32_C(3012)
 #define IPROP_REASON_INVALID_PART UINT32_C(3013)
 #define IPROP_REASON_STREAM_UNDERFLOW UINT32_C(3014)
+#define IPROP_REASON_WORK_EXHAUSTED UINT32_C(3015)
+#define IPROP_REASON_CANCELLED UINT32_C(3016)
+#define IPROP_REASON_DEADLINE_EXCEEDED UINT32_C(3017)
 #define IPROP_REASON_INVALID_ARGUMENT UINT32_C(4000)
 #define IPROP_REASON_CANVAS_SIZE UINT32_C(4003)
 #define IPROP_REASON_UNIFORM_TYPE UINT32_C(4004)
 #define IPROP_REASON_UNKNOWN_PARAMETER UINT32_C(4005)
 #define IPROP_REASON_DUPLICATE_PARAMETER UINT32_C(4006)
 #define IPROP_REASON_FOREIGN_PARAMETERS UINT32_C(4007)
+#define IPROP_REASON_UNSUPPORTED_FEATURE UINT32_C(4008)
 #define IPROP_REASON_OUT_OF_MEMORY UINT32_C(5000)
 #define IPROP_REASON_INTERNAL UINT32_C(5001)
 
@@ -560,6 +573,7 @@ typedef uint32_t iprop_output_kind_ex;
 #define IPROP_OUTPUT_KIND_POINT UINT32_C(0)
 #define IPROP_OUTPUT_KIND_RECT UINT32_C(1)
 #define IPROP_OUTPUT_KIND_CIRCLE UINT32_C(2)
+#define IPROP_OUTPUT_KIND_PART UINT32_C(3)
 
 /* Output schema available before generation, including unassigned singular
  * slots and empty lists. Global output_index follows stored root declarations,
@@ -599,7 +613,7 @@ IPROP_API iprop_status_ex iprop_program_output_find(const iprop_program* program
  * input_count describes the part's own input signature; output_begin/count
  * select its contiguous geometry output range for program_output_get, and
  * exclude internal format-0.6 mask/layer resource exports. All output_count
- * fields and output indices count point/rect/circle geometry only.
+ * fields and output indices include point/rect/circle/part declarations.
  * program_output_find uses this owner. An empty part may have the same
  * output_begin as the following part while keeping its own owner.
  * Files with a v0.5 parts section store each part's instance name, its alias
@@ -774,12 +788,144 @@ IPROP_API iprop_status_ex iprop_result_output_circle(const iprop_result* result,
                                                     uint32_t element_index, iprop_circle_value* out,
                                                     uint32_t out_capacity, iprop_error_ex* error);
 
+/* API 0.5 additive typed part results. Existing structs/enums are frozen.
+ * Every new descriptor has the same complete-field, four-byte minimum,
+ * flags-zero, preserved-tail and transactional failure policy as image views.
+ * Resource IDs are result-local: 1..resource_count; 0 means absent. They are
+ * deterministic in global slot/append order, source before optional texture.
+ * The same immutable store has one ID, independently of mappings and IDs of
+ * part instances. All borrowed bytes/names live until result_free, including
+ * after program_free and later generations. Copy calls fill host-owned storage.
+ * No pointer or resource ID is portable to another result or persistent file.
+ */
+#define IPROP_PART_SHAPE_REGION UINT32_C(1)
+#define IPROP_PART_SHAPE_MASK UINT32_C(2)
+#define IPROP_PART_SHAPE_LAYER UINT32_C(3)
+#define IPROP_PART_APPEARANCE_NONE UINT32_C(0)
+#define IPROP_PART_APPEARANCE_FILL UINT32_C(1)
+#define IPROP_PART_APPEARANCE_TEXTURE UINT32_C(2)
+#define IPROP_PART_APPEARANCE_SOURCE_RGBA UINT32_C(3)
+#define IPROP_RESOURCE_GEOMETRY UINT32_C(1)
+#define IPROP_RESOURCE_RASTER UINT32_C(2)
+#define IPROP_PIXEL_FORMAT_A8 UINT32_C(2)
+#define IPROP_NO_REGION UINT32_MAX
+
+/* Kind-neutral slot metadata, including empty part slots. The older
+ * result_output_get (packed floats) returns E_UNSUPPORTED for part slots.
+ * count/find and program declaration queries include every kind unchanged. */
+typedef struct {
+    uint32_t struct_size, flags;
+    uint32_t output_index, owner;
+    iprop_output_kind_ex kind;
+    uint32_t is_list, element_count;
+    iprop_utf8_view name;
+} iprop_output_slot_ex;
+
+/* Geometry q maps to root pixels as linear_D4(q*source_scale)+translation.
+ * Raster edges first use source_d4/source_origin on the buffer's dimensions,
+ * then this affine map. Divide root pixels by target_scale for root units.
+ * D4 kind uses the existing 0..7 contract; translation is already rounded.
+ * source_anchor is in original source units; center/bounds are effective root
+ * units. Texture mapping samples in original source pixels, before placement.
+ * Shape MASK may refer to A8 or a zero-copy RGBA alpha view. Source RGBA
+ * appearance uses alpha once; fill/texture multiply their alpha by shape alpha.
+ * region_index is IPROP_NO_REGION for raster shapes; zero resource IDs and
+ * tint fields are used for absent appearance. element_index is append order.
+ */
+typedef struct {
+    uint32_t struct_size, flags;
+    uint32_t output_index, element_index;
+    int32_t id, source_id;
+    uint32_t shape_kind, appearance_kind;
+    uint32_t shape_resource, region_index, texture_resource;
+    iprop_color_rgba8 tint;
+    uint32_t d4;
+    int32_t translation_x, translation_y;
+    iprop_point_value source_scale, target_scale, source_anchor;
+    iprop_point_value center, bounds_origin, bounds_size;
+    uint32_t source_d4;
+    int32_t source_origin_x, source_origin_y;
+    uint32_t texture_d4;
+    int32_t texture_origin_x, texture_origin_y;
+} iprop_part_snapshot_ex;
+
+/* Geometry exposes topology through ring/region queries, without flattening
+ * holes. Raster data is tight A8 or straight RGBA8, top-left row order, with
+ * exact soft alpha/hidden RGB. Mapping belongs to the snapshot, not this
+ * shared store. Geometry-only fields are zero for rasters and vice versa. */
+typedef struct {
+    uint32_t struct_size, flags;
+    uint32_t resource_id, kind;
+    uint32_t pixel_format, width, height;
+    uint64_t row_stride, byte_count;
+    const uint8_t* data;
+    iprop_point_value scale;
+    uint32_t vertex_count, edge_count, ring_count, region_count;
+} iprop_resource_info_ex;
+
+typedef struct {
+    uint32_t struct_size, flags;
+    uint32_t ring_index, vertex_count;
+    uint32_t parent_ring; /* UINT32_MAX = none */
+    uint32_t is_hole;
+} iprop_ring_info_ex;
+
+typedef struct {
+    uint32_t struct_size, flags;
+    uint32_t region_index, outer_ring, hole_count;
+    int32_t source_id;
+    float area;
+    iprop_point_value center, bounds_origin, bounds_size;
+} iprop_region_info_ex;
+
+IPROP_API iprop_status_ex iprop_output_slot_ex_init(iprop_output_slot_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_part_snapshot_ex_init(iprop_part_snapshot_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_resource_info_ex_init(iprop_resource_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_ring_info_ex_init(iprop_ring_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_region_info_ex_init(iprop_region_info_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_result_output_slot(const iprop_result* result, uint32_t output_index,
+                                                  iprop_output_slot_ex* out, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_output_part(const iprop_result* result, uint32_t output_index,
+                                                  uint32_t element_index, iprop_part_snapshot_ex* out,
+                                                  iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_count(const iprop_result* result, uint32_t* out_count,
+                                                     iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_get(const iprop_result* result, uint32_t resource_id,
+                                                   iprop_resource_info_ex* out, iprop_error_ex* error);
+/* Copies all raster bytes or all ordered vertices of a ring (without repeating
+ * its first vertex). Capacity is actual writable BYTES, may exceed required
+ * size, and extra bytes are preserved. Null/short/overlapping source storage,
+ * wrong resource kind/index, and invalid flags fail before any payload write. */
+IPROP_API iprop_status_ex iprop_result_resource_copy_pixels(const iprop_result* result, uint32_t resource_id,
+                                                           uint8_t* out, uint64_t out_capacity,
+                                                           iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_ring(const iprop_result* result, uint32_t resource_id,
+                                                    uint32_t ring_index, iprop_ring_info_ex* out,
+                                                    iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_ring_copy_vertices(const iprop_result* result,
+                                                                  uint32_t resource_id, uint32_t ring_index,
+                                                                  iprop_point_value* out, uint64_t out_capacity,
+                                                                  iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_region(const iprop_result* result, uint32_t resource_id,
+                                                      uint32_t region_index, iprop_region_info_ex* out,
+                                                      iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_resource_region_hole(const iprop_result* result, uint32_t resource_id,
+                                                           uint32_t region_index, uint32_t hole_index,
+                                                           uint32_t* out_ring, iprop_error_ex* error);
+/* An explicit compatibility check for void legacy result_image. It returns
+ * E_UNSUPPORTED on ANY part declaration, including empty slots. Legacy load
+ * and generate reject such programs too. result_image requires this check to
+ * pass; on an incompatible checked result it preserves its entire output.
+ * query_image remains available for every successful typed result. */
+IPROP_API iprop_status_ex iprop_result_check_legacy(const iprop_result* result, iprop_error_ex* error);
+
 /* Checked generation from validated parameters. program, options and
  * out_result are required. parameters is optional: NULL selects the stored
  * defaults, and a set must come from this program load (FOREIGN_PARAMETERS
  * otherwise, even for identical bytes). options follow
  * iprop_generate_options_ex: a four-byte prefix suffices, absent fields are
- * zero and nonzero complete flags are rejected. Before any VM setup, invalid
+ * zero; complete flags accept IPROP_GENERATE_PART_OUTPUTS and reject other
+ * bits. Every part declaration requires this opt-in. Before VM setup, invalid
  * options, foreign parameters and CANVAS_SIZE
  * fail as E_ARGUMENT at ARGUMENTS stage. Parameter IDs, names, types and
  * duplicates were enforced when the values were set; generation only reads
@@ -795,6 +941,55 @@ IPROP_API iprop_status_ex iprop_generate_ex(const iprop_program* program,
                                           const iprop_generate_options_ex* options,
                                           const iprop_parameters* parameters,
                                           iprop_result** out_result, iprop_error_ex* error);
+
+/* API 0.6, IPROP_CAP_EXECUTION_LIMITS. Every generation, including legacy
+ * entries, has a finite independent work budget; fuel remains unchanged.
+ * A zero/absent work_limit selects IPROP_DEFAULT_WORK_LIMIT. timeout_ns is
+ * a relative monotonic generation timeout, zero/absent disables the clock.
+ * UINT64_MAX requests a finite large budget/timeout (saturated at clock max).
+ * Cancellation is one-way and thread safe. Keep the token handle alive for
+ * every call using it; execution retains the shared flag during the call.
+ * An optional poll returns nonzero to cancel. It runs on the generation's
+ * thread, must be bounded, and must not throw or reenter generation. It can
+ * read host-owned atomic/shared memory. poll_context is borrowed for the call.
+ * Polls also occur inside long operations and copies; OS allocation/scheduling
+ * and host callback time cannot be bounded by the interpreter.
+ * flags must be zero. Sized descriptors use the existing complete-field and
+ * unknown-tail policy. A null limits pointer uses finite defaults.
+ * Loading/validation and host rendering/encoding are outside the deadline.
+ * Failure preserves *out_result, publishes no partial result and returns a
+ * structured reason; WORK_EXHAUSTED/CANCELLED/DEADLINE_EXCEEDED are E_TRAP at
+ * Execute stage, including generation setup, without a fabricated PC. */
+#define IPROP_DEFAULT_WORK_LIMIT UINT64_C(100000000)
+#define IPROP_WORK_POLL_INTERVAL UINT64_C(1024)
+typedef uint32_t (*iprop_cancel_poll)(void* context);
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint64_t work_limit;
+    uint64_t timeout_ns;
+    const iprop_cancellation* cancellation;
+    iprop_cancel_poll poll;
+    void* poll_context;
+} iprop_execution_limits_ex;
+typedef struct {
+    uint32_t struct_size;
+    uint32_t flags;
+    uint64_t work_budget;
+    uint64_t work_remaining;
+    uint64_t work_used;
+} iprop_work_stats_ex;
+IPROP_API iprop_status_ex iprop_execution_limits_ex_init(iprop_execution_limits_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_work_stats_ex_init(iprop_work_stats_ex* out, uint32_t capacity);
+IPROP_API iprop_status_ex iprop_cancellation_create(iprop_cancellation** out, iprop_error_ex* error);
+IPROP_API void iprop_cancellation_cancel(iprop_cancellation* token);
+IPROP_API uint32_t iprop_cancellation_is_cancelled(const iprop_cancellation* token);
+IPROP_API void iprop_cancellation_free(iprop_cancellation* token);
+IPROP_API iprop_status_ex iprop_generate_controlled(const iprop_program* program,
+    const iprop_generate_options_ex* options, const iprop_parameters* parameters,
+    const iprop_execution_limits_ex* limits, iprop_result** out_result, iprop_error_ex* error);
+IPROP_API iprop_status_ex iprop_result_query_work(const iprop_result* result,
+    iprop_work_stats_ex* out, iprop_error_ex* error);
 
 #ifdef __cplusplus
 } /* extern "C" */

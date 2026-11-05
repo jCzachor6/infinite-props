@@ -1,0 +1,11 @@
+import unused from "part-exports-unused.ips"
+import middle from "part-exports-middle.ips"
+import tail from "part-exports-tail.ips"
+
+asset NestedPartOutputs {
+  size 24x20
+  output list part empty
+  draw {
+    middle.draw(seed, at={5.25, -2.5}, rot=90, mirror_x=0, mirror_y=0)
+  }
+}

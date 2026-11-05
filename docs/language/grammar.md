@@ -22,8 +22,8 @@ size          = "size", integer, (integer | xdigits), [ ";" ] ;
 origin        = "origin", expression, ",", expression, [ ";" ] ;
 input         = "input", input_type, name, "=", declaration_constant, [ ";" ] ;
 input_type    = "color" | "f32" | "u32" | "i32" ;
-output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* list: geometry only *)
-output_kind   = "point" | "circle" | "rect" | "mask" | "layer" ;
+output        = "output", [ "list" ], output_kind, name, [ ";" ] ; (* part requires list; mask/layer forbid list *)
+output_kind   = "point" | "circle" | "rect" | "mask" | "layer" | "part" ;
 palette       = "palette", name, "=", "[", [ expressions ], "]", [ ";" ] ;
 asset_constant = "const", value_type, name, "=", expression, [ ";" ] ;  (* reserved "const" *)
 draw          = "draw", block ;

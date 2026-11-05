@@ -1,6 +1,6 @@
 # Python
 
-A Python 3.10+ package using stdlib `ctypes` and the native C API 0.4 / ABI 0.5.
+A Python 3.10+ package using stdlib `ctypes` and the native C API 0.6 / ABI 0.5.
 The runtime library is loaded separately; Pillow is an optional image-export
 dependency. See the [shared contract](../../docs/native-bindings.md).
 
@@ -39,11 +39,36 @@ packed `values` as Python floats and `value_bits` as exact uint32 leaves,
 including NaN payloads and negative zero. Results are immutable copies and
 survive context-manager exit. Calls and close serialize per program.
 
+`generate(work_limit=0, timeout_ns=0, cancellation=None)` controls native
+execution independently of fuel. Zero work selects the finite default; zero
+timeout disables the monotonic clock. `program.cancellation_token()` returns
+a one-way token whose `cancel()` may be called from another thread while
+generation is running; it uses a separate native atomic flag and is freed
+automatically after its last reference. A token can also be constructed with
+`CancellationToken(library=...)` for the same runtime library. Errors keep
+their structured reasons (3015 work, 3016 cancellation, 3017 deadline).
+Completed statistics include `work_budget`, `work_remaining` and `work_used`.
+
+`output list part` slots have `kind == OutputKind.PART`, an ordered `parts`
+tuple and no packed float values. Each `PartSnapshot` exposes the complete
+[C API record](../../docs/c-api-part-outputs.md), including source/texture
+mapping, effective D4, integer translation, scales, anchor and bounds.
+`image.resource(part.shape_resource)` resolves an entry in `image.resources`;
+zero denotes an absent optional texture, and `region_index == 0xffffffff`
+denotes a raster shape. A resource is copied once per result-local ID and
+contains either exact A8/RGBA `data`, or `rings` and `regions` with explicit
+hole indices. Tuples/bytes are immutable and survive native result/program
+destruction and later generations. The wrapper negotiates both capabilities
+and enables typed generation automatically.
+
 `to_pillow()` copies top-left RGBA bytes and interprets stored channels as
 straight RGBA for presentation. Raw data retains the runtime's legacy
 destination alpha tag, as described in the shared guide.
 
-The CLI accepts repeated named overrides and prints geometry/statistics JSON:
+The CLI accepts repeated named overrides and prints the existing
+point/rect/circle geometry/statistics JSON. Programs declaring part outputs
+receive an explicit error before writing an image; use the Python result API
+for full typed data. No persisted result format is introduced.
 
 ```sh
 iprop-python stone.iprop stone.png --seed 7 --input 'tint=#8a9299'
@@ -71,3 +96,10 @@ through Python and Pillow after generating it:
 ```sh
 python3 backends/test/check-pixel-corpus.py build/backends/capi/libipropc.dylib build/pixel-corpus
 ```
+
+The Linux sanitizer harness runs both allocators: `malloc` with ASan/UBSan
+checks Python-owned buffer bounds, then ordinary `pymalloc` with LSan checks
+native lifetime without CPython 3.12's retained small-string noise. A separate
+interpreter baseline must pass; intentional native heap overflow and leak
+probes must still fail with their named C++ frames. Suppressions match only
+CPython allocator functions, never the native library or ctypes as a whole.

@@ -26,6 +26,7 @@ using namespace iprop;
 using namespace compiler_test;
 
 namespace {
+std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed) { return outputPointBits(execute(bytes, seed)); }
 // Odd multipliers permute 0-255, so every channel takes all 256 values.
 Color channelSample(u32 i) {
     return {static_cast<u8>(i), static_cast<u8>(255 - i), static_cast<u8>(i * 7),
@@ -38,22 +39,7 @@ std::string colorText(Color c) {
     return text;
 }
 
-std::vector<u8> compileSource(const std::string& source, bool optimize) {
-    const auto program = ips::parse(source);
-    ips::checkAsset(program, {});
-    return compileProgram(program, {}, optimize);
-}
-
 // Exact output bits of every point, joined across output slots.
-std::vector<u32> pointBits(const std::vector<u8>& bytes, u32 seed) {
-    std::vector<u32> bits;
-    for (const auto& output : execute(bytes, seed).outputs)
-        for (const auto& point : output.points) {
-            bits.push_back(std::bit_cast<u32>(point.x));
-            bits.push_back(std::bit_cast<u32>(point.y));
-        }
-    return bits;
-}
 
 bool usesChannelOpcode(const std::vector<u8>& bytes) {
     for (const auto& function : loadFile(bytes).code.functions)
@@ -63,16 +49,6 @@ bool usesChannelOpcode(const std::vector<u8>& bytes) {
                 return true;
         }
     return false;
-}
-
-std::string checkError(const std::string& source) {
-    try {
-        ips::checkAsset(ips::parse(source), {});
-    } catch (const ips::SourceError& error) {
-        return error.message;
-    }
-    FAIL("expected a source error");
-    return {};
 }
 } // namespace
 
@@ -119,7 +95,7 @@ TEST_CASE("source channel reads return every byte of runtime colors as i32") {
   }
 })";
     for (const bool optimize : {false, true}) {
-        const auto bytes = compileSource(source, optimize);
+        const auto bytes = compileChecked(source, optimize);
         CHECK(bytes[6] == 0);
         CHECK(usesChannelOpcode(bytes));
         const auto result = execute(bytes);
@@ -164,7 +140,7 @@ TEST_CASE("channel reads accept every color base and fold constant literals") {
                                        8, 0, 127, 0, 77, static_cast<f32>(0xba) / 255.0f};
     for (const bool optimize : {false, true}) {
         INFO(optimize);
-        const auto result = execute(compileSource(source, optimize));
+        const auto result = execute(compileChecked(source, optimize));
         REQUIRE(result.outputs[0].points.size() * 2 == expected.size());
         for (std::size_t i = 0; i < expected.size(); ++i) {
             INFO(i);
@@ -173,12 +149,12 @@ TEST_CASE("channel reads accept every color base and fold constant literals") {
         }
     }
     // A literal's channel folds in the source front end, even without optimization.
-    CHECK_FALSE(usesChannelOpcode(compileSource(
+    CHECK_FALSE(usesChannelOpcode(compileChecked(
         "asset t { size 1x1 output point p draw { p = {#9c785a.r, (#9c785a40).a} } }", false)));
     const std::string local = "asset t { size 1x1 output point p draw { c = #9c785a p = {c.r, c.g} } }";
-    CHECK(usesChannelOpcode(compileSource(local, false)));
-    CHECK_FALSE(usesChannelOpcode(compileSource(local, true)));
-    CHECK(pointBits(compileSource(local, true), 0) == pointBits(compileSource(local, false), 0));
+    CHECK(usesChannelOpcode(compileChecked(local, false)));
+    CHECK_FALSE(usesChannelOpcode(compileChecked(local, true)));
+    CHECK(pointBits(compileChecked(local, true), 0) == pointBits(compileChecked(local, false), 0));
 }
 
 TEST_CASE("a channel read evaluates its base once and each read is its own call") {
@@ -197,11 +173,11 @@ TEST_CASE("a channel read evaluates its base once and each read is its own call"
         INFO(direct);
         for (const bool optimize : {false, true})
             for (const u32 seed : {0u, 7u, 26u, 0xffffffffu})
-                CHECK(pointBits(compileSource(program(direct), optimize), seed) ==
-                      pointBits(compileSource(program(stored), false), seed));
+                CHECK(pointBits(compileChecked(program(direct), optimize), seed) ==
+                      pointBits(compileChecked(program(stored), false), seed));
     }
     // Two reads of one stored color share a single draw from the stream.
-    const auto shared = compileSource(program("c = make() p = {c.r, c.r}"), true);
+    const auto shared = compileChecked(program("c = make() p = {c.r, c.r}"), true);
     for (const u32 seed : {3u, 99u}) {
         const auto bits = pointBits(shared, seed);
         CHECK(bits[0] == bits[1]);
@@ -212,15 +188,15 @@ TEST_CASE("channel diagnostics name the expected type and the available channels
     const auto wrap = [](const std::string& body) {
         return "asset t { size 8x8 draw { " + body + " } }";
     };
-    CHECK(checkError(wrap("c = #336699 r = c.red")) ==
+    CHECK(checkErrorMessage(wrap("c = #336699 r = c.red")) ==
           "color has only .r, .g, .b and .a channels, got '.red'");
-    CHECK(checkError(wrap("c = #336699 r = c.x")) ==
+    CHECK(checkErrorMessage(wrap("c = #336699 r = c.x")) ==
           "color has only .r, .g, .b and .a channels, got '.x'");
-    CHECK(checkError(wrap("n = 3 r = n.r")) == "'.r' reads a color channel and needs a color, got i32");
-    CHECK(checkError(wrap("f = 0.5 x = f.x")) == "'.x' reads a vec2 component and needs a vec2, got f32");
-    CHECK(checkError(wrap("p = {1.0, 2.0} r = p.r")) == "vec2 has only .x and .y components, got 'r'");
-    CHECK(checkError(wrap("n = 3 m = n.w")) == "i32 has no components, got '.w'");
-    CHECK(checkError(wrap("c = #336699 r = c.r.g")) ==
+    CHECK(checkErrorMessage(wrap("n = 3 r = n.r")) == "'.r' reads a color channel and needs a color, got i32");
+    CHECK(checkErrorMessage(wrap("f = 0.5 x = f.x")) == "'.x' reads a vec2 component and needs a vec2, got f32");
+    CHECK(checkErrorMessage(wrap("p = {1.0, 2.0} r = p.r")) == "vec2 has only .x and .y components, got 'r'");
+    CHECK(checkErrorMessage(wrap("n = 3 m = n.w")) == "i32 has no components, got '.w'");
+    CHECK(checkErrorMessage(wrap("c = #336699 r = c.r.g")) ==
           "'.g' reads a color channel and needs a color, got i32");
     try {
         ips::checkAsset(ips::parse(wrap("n = 3 r = n.a")), {});
@@ -249,17 +225,17 @@ TEST_CASE("channel reads format canonically and survive the assembler roundtrip"
     CHECK(formatted.find("q = {(c.r + p[1].g), color.shade(c, 3).a}") != std::string::npos);
     CHECK(formatted.find("pixel(0, 0, rgba((c.r + 5), (c.g - 3), c.b, c.a))") != std::string::npos);
     CHECK(ips::formatProgram(ips::parse(formatted)) == formatted);
-    const auto original = compileSource(source, false), reformatted = compileSource(formatted, false);
+    const auto original = compileChecked(source, false), reformatted = compileChecked(formatted, false);
     CHECK(stripDebug(original) == stripDebug(reformatted));
     for (const bool optimize : {false, true}) {
-        const auto bytes = stripDebug(compileSource(source, optimize));
+        const auto bytes = stripDebug(compileChecked(source, optimize));
         const auto text = disassemble(bytes);
         const auto restored = assemble(text);
         CHECK(disassemble(restored) == text);
         CHECK(execute(restored).canvas.pixels == execute(bytes).canvas.pixels);
-        CHECK(pointBits(restored, 0) == pointBits(compileSource(source, !optimize), 0));
+        CHECK(pointBits(restored, 0) == pointBits(compileChecked(source, !optimize), 0));
     }
-    CHECK(disassemble(compileSource(source, false)).find("color.r\n") != std::string::npos);
+    CHECK(disassemble(compileChecked(source, false)).find("color.r\n") != std::string::npos);
 }
 
 TEST_CASE("writers leave the reserved former version bytes zero") {
@@ -269,18 +245,18 @@ TEST_CASE("writers leave the reserved former version bytes zero") {
     const std::string plain = "asset t { size 1x1 output point p draw { c = #9c785a pixel(0, 0, c) p = {1, 2} } }";
     const std::string channels = "asset t { size 1x1 output point p draw { c = #9c785a pixel(0, 0, c) p = {c.r, c.a} } }";
     for (const bool optimize : {false, true}) {
-        CHECK(reserved(compileSource(plain, optimize)));
-        CHECK(reserved(compileSource(channels, optimize)));
+        CHECK(reserved(compileChecked(plain, optimize)));
+        CHECK(reserved(compileChecked(channels, optimize)));
     }
     const std::string ipa = "meta: size=1x1 origin=0,0 fuel=100\nfn draw ( ) -> ( ):\n  const.color #9c785aff\n";
     CHECK(reserved(assemble(ipa + "  drop\nendfn\n")));
     CHECK(reserved(assemble(ipa + "  color.b\n  drop\nendfn\n")));
     // The compressed envelope and the stripped file keep them zero too.
-    const auto packed = compressFile(compileSource(channels, false));
+    const auto packed = compressFile(compileChecked(channels, false));
     REQUIRE(parseHeader(packed).hasCompression());
     CHECK(reserved(packed));
-    CHECK(reserved(stripDebug(compileSource(channels, false))));
+    CHECK(reserved(stripDebug(compileChecked(channels, false))));
     const auto loaded = loadFile(packed);
     CHECK(reserved(std::vector<u8>(loaded.bytes().begin(), loaded.bytes().end())));
-    CHECK(pointBits(packed, 0) == pointBits(compileSource(channels, true), 0));
+    CHECK(pointBits(packed, 0) == pointBits(compileChecked(channels, true), 0));
 }

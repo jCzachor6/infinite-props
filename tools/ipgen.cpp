@@ -6,6 +6,7 @@
 #include "iprop/VM.hpp"
 
 #include <cmath>
+#include <charconv>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -21,9 +22,13 @@ namespace {
 struct Options {
     std::string file;
     bool floatBits = false;
+    bool omitPartOutputs = false;
     u32 seed = 0;
     u32 sizeX = 0; // 0 = use the meta size
     u32 sizeY = 0;
+    u64 workLimit = kDefaultWorkLimit;
+    u64 timeoutMs = 0;
+    bool workStats = false;
     std::string output; // PNG path; empty = <stem>-<seed>.png
     std::vector<std::pair<std::string, std::string>> uniforms;
 };
@@ -41,6 +46,10 @@ void printUsage(std::FILE* out) {
                  "                      #RRGGBB or #RRGGBBAA, numbers are decimal\n"
                  "  -o, --output PATH   PNG output path (default: <stem>-<seed>.png)\n"
                  "  --float-bits        encode output coordinates as raw binary32 bits\n"
+                 "  --omit-part-outputs preview PNG/legacy outputs without typed part records\n"
+                 "  --work-limit N      independent native work budget (0 = finite default)\n"
+                 "  --timeout-ms N      monotonic generation timeout (0 = none)\n"
+                 "  --work-stats        include work counters in result JSON\n"
                  "  -h, --help          show this help\n"
                  "\n"
                  "The result JSON (outputs and fuel) is printed to stdout.\n");
@@ -76,6 +85,11 @@ bool parseSize(const std::string& text, u32& w, u32& h) {
         return false;
     }
     return parseU32(text.substr(0, x), w) && parseU32(text.substr(x + 1), h) && w > 0 && h > 0;
+}
+
+bool parseU64(std::string_view text, u64& out) {
+    const auto parsed = std::from_chars(text.data(), text.data() + text.size(), out);
+    return !text.empty() && parsed.ec == std::errc{} && parsed.ptr == text.data() + text.size();
 }
 
 bool hexDigit(char c, u8& out) {
@@ -138,6 +152,15 @@ int ipgenMain(int argc, char* argv[]) {
             wantHelp = true;
         } else if (arg == "--float-bits") {
             options.floatBits = true;
+        } else if (arg == "--omit-part-outputs") {
+            options.omitPartOutputs = true;
+        } else if (arg == "--work-stats") {
+            options.workStats = true;
+        } else if (arg == "--work-limit") {
+            if (!parseU64(next("--work-limit"), options.workLimit)) invalid = "bad --work-limit value";
+        } else if (arg == "--timeout-ms") {
+            if (!parseU64(next("--timeout-ms"), options.timeoutMs) || options.timeoutMs > UINT64_MAX / 1'000'000)
+                invalid = "bad --timeout-ms value";
         } else if (arg == "--seed") {
             if (!parseU32(next("--seed"), options.seed)) invalid = "bad --seed value";
         } else if (arg == "--size") {
@@ -193,6 +216,8 @@ int ipgenMain(int argc, char* argv[]) {
     }
 
     GenerationInputs inputs;
+    if (hasPartOutputs(loaded) && !options.omitPartOutputs)
+        return fail("part outputs are unsupported by the legacy JSON result; use the typed host API");
     inputs.seed = options.seed;
     inputs.sizeX = options.sizeX;
     inputs.sizeY = options.sizeY;
@@ -233,13 +258,17 @@ int ipgenMain(int argc, char* argv[]) {
     GenerationResult result;
     u64 budget = 0;
     u64 spent = 0;
+    u64 workBudget = 0, workUsed = 0;
     try {
+        inputs.limits.workLimit = options.workLimit;
+        inputs.limits.deadline = ExecutionLimits::deadlineAfter(options.timeoutMs * 1'000'000);
         VM vm(loaded, inputs); // setup traps (canvas
                                // size) throw here too
         vm.run();
         result = vm.result();
         budget = vm.fuelBudget();
         spent = budget - vm.fuel();
+        workBudget = vm.workBudget(); workUsed = workBudget - vm.work();
     } catch (const Trap& error) {
         return fail("generation failed at byte offset " + std::to_string(error.offset) + ": " +
                     error.what());
@@ -261,7 +290,9 @@ int ipgenMain(int argc, char* argv[]) {
          << canvas.width << ", \"y\": " << canvas.height
          << "},\n  \"fuel\": {\"budget\": " << budget
          << ", \"spent\": " << spent
-         << "},\n  \"inputs\": [";
+         << "}";
+    if (options.workStats) json << ",\n  \"work\": {\"budget\": " << workBudget << ", \"spent\": " << workUsed << "}";
+    json << ",\n  \"inputs\": [";
     for (std::size_t i = 0; i < loaded.meta.inputs.size(); ++i) {
         if (i != 0) {
             json << ",";
@@ -286,14 +317,19 @@ int ipgenMain(int argc, char* argv[]) {
         json << "}";
     }
     json << "\n  ],\n  \"outputs\": [";
+    bool firstOutput = true;
     for (std::size_t i = 0; i < result.outputs.size(); ++i) {
-        if (i != 0) {
+        if (options.omitPartOutputs && result.outputs[i].kind == OutputKind::Part) continue;
+        if (!firstOutput) {
             json << ",";
         }
         json << "\n    ";
+        firstOutput = false;
         tools::writeOutputJson(json, result.outputs[i], options.floatBits);
     }
-    json << "\n  ]\n}\n";
+    json << "\n  ]";
+    if (options.omitPartOutputs && hasPartOutputs(loaded)) json << ",\n  \"part_outputs_omitted\": true";
+    json << "\n}\n";
     std::cout << json.str();
 
     return 0;

@@ -1,27 +1,56 @@
 import clump from "clump.ips"
 import foliage from "foliage.ips"
 // A tree from above: rings of leaf clumps, the rim first and the
-// top last.
+// top last, the rim bulging with smooth noise. A noise mask opens
+// gaps into the crown.
+// Variety: high
 asset Tree {
   size 176x176
   origin 88,88
 
+  // Most crowns are dense; a few open up.
+  const distribution dense = gaussian(mean=0.2, sigma=0.3)
+  const i32 rimKey = 0x6e1d3b07
+  const i32 gapKey = 0x3a90c5d1
+
   draw {
-    R = 34.0 to 58.0 with gaussian(mean=46.0, sigma=5.0)
+    start = seed
+    R = 34.0 to 56.0 with gaussian(mean=46.0, sigma=5.0)
     leaf = foliage.Leaf()
-    for ring in 0..3 {
-      n = max(1, (6 to 8) - ring * 3)
-      turn = 0.0 to 6.2832
-      for i in 0..n {
-        a = turn + float(i) * 6.2832 / float(n)
-        a = a + (-0.25 to 0.25)
-        d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15)
-        r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
-        clump.draw(hash(seed ^ (ring * 16 + i)),
-                   at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
-                   r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
-                   leaf=color.shade(leaf.base, -8 to 8))
+    // How far the rim bulges and how open the crown is.
+    wobble = 0.0 to 0.3
+    open = 0.0 to 1.0 with dense
+    layer crown(alpha=surface.source_over) {
+      for ring in 0..3 {
+        n = max(1, (6 to 8) - ring * 3)
+        turn = 0.0 to 6.2832
+        for i in 0..n {
+          a = turn + float(i) * 6.2832 / float(n)
+          a = a + (-0.25 to 0.25)
+          bulge = 1.0 + wobble * noise(cos(a) * 1.5, sin(a) * 1.5, hash(start ^ rimKey))
+          d = R * (0.6 - float(ring) * 0.3) * (0.8 to 1.15) * bulge
+          r = R * (0.44 - float(ring) * 0.06) * (0.8 to 1.15)
+          clump.draw(hash(start ^ (ring * 16 + i)),
+                     at={88.0 + cos(a) * d, 88.0 + sin(a) * d},
+                     r=r, lift=-(cos(a) + sin(a)) * 0.2 * d / R,
+                     leaf=color.shade(leaf.base, -8 to 8))
+        }
       }
     }
+    surface.paint(crown)
+    shape = mask.from(crown)
+    box = {88.0 - R * 1.4, 88.0 - R * 1.4}
+    span = {R * 2.8, R * 2.8}
+    // Gaps: two octaves of noise open the crown into its own shade,
+    // the deepest on the upper-left wall that hides the light.
+    gaps = noise.mask(box, span, noise.mode_fbm, {0.08, 0.08}, 0.42 - open * 0.2,
+                      hash(start ^ gapKey), octaves=2, softness=0.0,
+                      comparison=noise.above, warp_amount=0.0)
+    layer inner(alpha=surface.source_over) {
+      oval(88.0, 88.0, R * 0.95, R * 0.95, #ffffff)
+    }
+    gaps = mask.intersect(gaps, mask.intersect(shape, mask.from(inner)))
+    surface.paint(gaps, leaf.shadow)
+    surface.paint(mask.intersect(gaps, mask.offset(gaps, 2, 2)), leaf.rim)
   }
 }

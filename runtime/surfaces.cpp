@@ -3,19 +3,24 @@
 
 namespace iprop {
 
-RenderTarget RenderTarget::create(u32 width, u32 height, Vec2 scale, CompositionMode mode) {
-    return create(std::make_shared<SurfaceBuffer>(), width, height, scale, mode);
+RenderTarget RenderTarget::create(u32 width, u32 height, Vec2 scale, CompositionMode mode, detail::WorkBudget* work) {
+    return create(std::make_shared<SurfaceBuffer>(), width, height, scale, mode, work);
 }
 
 RenderTarget RenderTarget::create(std::shared_ptr<SurfaceBuffer> buffer,
-        u32 width, u32 height, Vec2 scale, CompositionMode mode) {
-    buffer->raster.resize(width, height);
+        u32 width, u32 height, Vec2 scale, CompositionMode mode, detail::WorkBudget* work) {
+    buffer->raster.resize(width, height, work);
     buffer->raster.scaleX = scale.x;
     buffer->raster.scaleY = scale.y;
     return {std::move(buffer), mode, {}};
 }
 
 ResourceArena::~ResourceArena() { clear(); }
+
+std::shared_ptr<ResourceArena::SurfaceLifetime> ResourceArena::resourceLifetime() {
+    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes, {}, workBudget});
+    return surfaceLifetime;
+}
 
 void ResourceArena::clear() {
     if (surfaceLifetime) surfaceLifetime->bytes = nullptr;
@@ -33,7 +38,7 @@ std::shared_ptr<SurfaceBuffer> ResourceArena::makeSurface(u64 chargedBytes) {
         u64 bytes;
         ~Refund() { arena.release(bytes); }
     } refund{*this, chargedBytes};
-    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes});
+    if (!surfaceLifetime) surfaceLifetime = std::make_shared<SurfaceLifetime>(SurfaceLifetime{&bytes, {}, workBudget});
     const std::weak_ptr<SurfaceLifetime> lifetime = surfaceLifetime;
     auto* raw = new SurfaceBuffer;
     refund.bytes = 0; // shared_ptr invokes the deleter if its control allocation fails
@@ -64,7 +69,9 @@ void paintSurface(Execution& ex, const LayerValue& image, CompositionMode mode) 
     const auto& destination = ex.canvas();
     const RasterPoint extent{static_cast<i32>(source.width), static_cast<i32>(source.height)};
     for (u32 sy = 0; sy < source.height; ++sy) {
+        ex.work();
         for (u32 sx = 0; sx < source.width; ++sx) {
+            ex.work();
             const auto& pixel = source.at(sx, sy);
             if (pixel.a == 0 && mode == CompositionMode::Legacy) continue;
             const auto mapped = image.mapping.transform.mapPixel(
@@ -86,12 +93,12 @@ void Execution::beginLayer(u16 local, u8 mode) {
         trap("surface scope depth exceeds 32", ErrorReason::RuntimeViolation);
     const auto width = canvas().width, height = canvas().height;
     const Vec2 scale{canvas().scaleX, canvas().scaleY};
-    spend(static_cast<u64>(width) * height);
+    spend(fuelScaled(static_cast<u64>(width) * height, 70));
     allocateResource(surfaceBytes(width, height));
     // Like a part canvas, a capture starts without the parent's clips: they
     // apply exactly once, when the snapshot is painted.
     auto next = RenderTarget::create(resources.makeSurface(surfaceBytes(width, height)), width, height, scale,
-        resolveComposition(static_cast<CompositionMode>(mode), target.mode));
+        resolveComposition(static_cast<CompositionMode>(mode), target.mode), workBudget.get());
     LayerScope scope{frames.size(), frame().labels.size() + 1, local, std::move(target)};
     layerScopes.push_back(std::move(scope));
     target = std::move(next);

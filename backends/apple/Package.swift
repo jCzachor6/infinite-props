@@ -2,7 +2,7 @@
 import PackageDescription
 import Foundation
 
-// The source checkout uses the installed C SDK. build-xcframework.sh prepares
+// The source checkout uses the installed C SDK. build-xcframework.py prepares
 // the self-contained binary dependency for Apple application distributions.
 let packageRoot = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
 let binary = FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent("Artifacts/CIprop.xcframework").path)

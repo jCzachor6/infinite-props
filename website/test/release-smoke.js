@@ -62,7 +62,7 @@ async function main() {
     const docs = JSON.parse(fs.readFileSync(path.join(site, "docs/language-manifest.json"), "utf8"));
     assert.equal(docs.schema_version, 3);
     const catalogue = JSON.parse(fs.readFileSync(path.join(site, "docs/language.json"), "utf8"));
-    assert.equal(catalogue.schema_version, 4);
+    assert.equal(catalogue.schema_version, 6);
     assert.equal(catalogue.source_rules.asset_constants.evaluation, "compile_time");
     const version = JSON.parse(fs.readFileSync(path.join(root, "website/package.json"), "utf8")).version;
     assert.equal(docs.product_version, version);
@@ -88,7 +88,7 @@ async function main() {
     // A correct manifest must not mask stale files left by a previous build.
     const inventory = directory => fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
         entry.isDirectory() ? inventory(path.join(directory, entry.name)) : [path.relative(site, path.join(directory, entry.name)).replaceAll(path.sep, "/")]);
-    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website"]) {
+    for (const directory of ["docs", "examples", "spec", "backends", "editor", "website", "tests"]) {
         const expected = Object.keys(docs.files).filter(file => file.startsWith(directory + "/"));
         if (directory === "docs") expected.push("docs/language-manifest.json", "docs/nav.js", "docs/language-index.js");
         assert.deepEqual(inventory(path.join(site, directory)).filter(file => !file.endsWith(".html")).sort(), expected.sort());
@@ -112,16 +112,18 @@ async function main() {
             assert.equal(bytes.readUInt32LE(4), 0);
             assert.equal(bytes.readUInt32LE(8) & 1, 0);
             assert.equal(bytes.readUInt32LE(8) & 2, 2);
+            // Each pack's first selector: a weapon's enchantment, a portrait's sex.
+            const selector = asset.startsWith("portraits") ? "sex" : "enchant";
             for (const seed of [0, 7, 26]) for (const choice of [0, 2]) {
-                const rendered = Module.generate(bytes, seed, 0, 0, {v: choice});
+                const rendered = Module.generate(bytes, seed, 0, 0, {[selector]: choice});
                 const png = path.join(temporary, "native.png");
-                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", "v=" + choice, "-o", png],
+                const native = spawnSync(generator, [file, "--seed", String(seed), "--uniform", `${selector}=${choice}`, "-o", png],
                                         { encoding: "utf8" });
                 assert.equal(native.status, 0, native.stderr || String(native.error));
                 const decoded = decodePng(fs.readFileSync(png));
                 assert.equal(rendered.width, decoded.width);
                 assert.equal(rendered.height, decoded.height);
-                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input v ${choice}`);
+                assert.deepEqual(Buffer.from(rendered.data), decoded.data, `${asset} seed ${seed} input ${selector} ${choice}`);
                 comparisons++;
             }
         }

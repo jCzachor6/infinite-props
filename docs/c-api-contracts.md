@@ -1,6 +1,6 @@
 # C API handle and descriptor contracts
 
-These rules govern API 0.4 sized descriptors and handles on ABI line 0.5.
+These rules govern API 0.4/0.5/0.6 sized descriptors and handles on ABI line 0.5.
 Query the loaded library's capability bits before using optional operations.
 The [ABI policy](c-api-abi.md) applies to both checked and untyped entry points;
 clients built against earlier layouts must rebuild.
@@ -39,6 +39,7 @@ array stride.
 | Parameter set | Owns mutable values and retains the necessary loaded program data; remains usable after the originating program handle is freed |
 | Parameter value descriptor | Caller-owned copied value; remains valid after parameter mutations or destruction; cloning creates independent stored values |
 | Generation result, pixels, output names and values | Result owns all required storage independently of program/parameter handles; views expire at `result_free` |
+| Dynamic part snapshots, geometry with holes, A8/RGBA and textures | Result retains shared immutable sources; borrowed bytes expire at `result_free`; explicit host copies remain valid |
 | Error descriptor and message buffer | Caller owns both; no borrowed global error string, and no release call is required |
 | Input descriptors, byte buffers and strings | Caller owns readable storage for the duration of the call; load copies the bytes it needs |
 

@@ -10,6 +10,8 @@
 #include "iprop/OpcodeSpec.hpp"
 #include "iprop/Collections.hpp"
 #include "iprop/Samplers.hpp"
+#include "iprop/Noise.hpp"
+#include "iprop/Geometry.hpp"
 #include "../backends/capi/iprop.h"
 
 #include <algorithm>
@@ -39,7 +41,7 @@ Json operationEffects(const OperationEffects& effects) {
 Json effectRules() {
     auto rules = Json::object({{"intrinsic_scope", "operation_excluding_arguments_and_resources"},
         {"argument_effects", "evaluated_before_operation_in_caller_stream"},
-        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit"})},
+        {"resource_traps", Json::array({"fuel_exhausted", "call_depth_limit", "generation_data_limit", "work_limit", "cancelled", "deadline_exceeded"})},
         {"validation_limits", Json::array({"operand_stack_limit"})}, {"allocation_failure", true}});
     rules["helper"] = operationEffects(findOpcode(Opcode::Call)->effects);
     rules["part"] = operationEffects(findOpcode(Opcode::PartDraw)->effects);
@@ -69,7 +71,8 @@ constexpr ips::ValueType valueTypes[]{ips::ValueType::I32, ips::ValueType::F32,
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::I32)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::F32)),
     ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Color)),
-    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask};
+    ips::ValueType::list(ips::ValueType::stepper(ips::ValueType::Vec2)), ips::ValueType::Layer, ips::ValueType::Mask,
+    ips::ValueType::Diagram2d, ips::ValueType::Contours2d, ips::ValueType::Regions2d, ips::ValueType::Part2d, ips::ValueType::Parts2d};
 
 Json receiverMethod(const std::string& name, const ips::BuiltinOverload& signature) {
     Json parameters = Json::array();
@@ -234,6 +237,16 @@ Json sourceRules() {
         components(ips::ValueType::Color, ips::ValueType::I32,
                    {{"r", Opcode::ColorR}, {"g", Opcode::ColorG}, {"b", Opcode::ColorB}, {"a", Opcode::ColorA}})});
     auto rules = Json::object({{"inputs", std::move(inputs)}, {"types", std::move(typeRules)}});
+    Json geometryCodes = Json::object();
+    for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d, ValueType::Part2d, ValueType::Parts2d})
+        geometryCodes[valueTypeName(type)] = static_cast<u8>(type);
+    rules["geometry_handles"] = Json::object({{"types", types([](ips::ValueType type) { return type.isGeometry(); })},
+        {"descriptor_codes", std::move(geometryCodes)}, {"type_names", "contextual"},
+        {"storage", "shared_immutable_topology"}, {"unassigned_read", "trap"},
+        {"host_inputs", false}, {"asset_constants", false}, {"collections", false},
+        {"generation_data_limit_bytes", kMaxGenerationData}, {"maximum_sites", kMaxGeometrySites},
+        {"maximum_regions", kMaxGeometryRegions}, {"maximum_ring_vertices", kMaxRingVertices},
+        {"maximum_vertices", kMaxGeometryVertices}});
     // Fixed rules of the current compiler, in their published order.
     rules["locals"] = Json::object({{"declaration", "first_assignment"}, {"scope", "function"},
         {"type_inference_order", "source_traversal"}, {"definite_assignment_analysis", false},
@@ -298,7 +311,7 @@ Json sourceRules() {
             {"color", "premultiplied_stored_channels_unpremultiply_after_both_passes"},
             {"rounding", "nearest_half_up_zero_alpha_zero_rgb"}, {"mask_result", "A8_alpha_equivalent"},
             {"geometry", "preserve_dimensions_scale_placement_D4"}, {"zero_sigma", "validate_then_share_no_allocation"},
-            {"clip", "paint_only"}, {"positive_sigma_fuel", "one_plus_K_plus_W_H_times_1_plus_2_K"},
+            {"clip", "paint_only"}, {"positive_sigma_fuel", "ceil_60_percent_one_plus_K_plus_W_H_times_1_plus_2_K"},
             {"scratch_bytes", "8_times_W_min_H_K_channels"}, {"scratch_channels", Json::object({{"layer", 4}, {"mask", 1}})},
             {"scratch_release", "success_and_error"}, {"preflight", "fuel_and_shared_arena_before_filter"}})},
         {"types", Json::array({ips::typeName(ips::ValueType::Layer), ips::typeName(ips::ValueType::Mask)})},
@@ -317,9 +330,66 @@ Json sourceRules() {
         {"capture_opcode", findOpcode(Opcode::LayerBegin)->mnemonic},
         {"scope_cleanup", Json::array({"end", "return", "break", "continue"})},
         {"maximum_active_scopes", kMaxSurfaceScopes}, {"generation_data_limit_bytes", kMaxGenerationData},
-        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "one_plus_target_pixels"},
-        {"paint_fuel", "one_plus_source_pixels"}, {"unset_handle", "trap"},
+        {"capture_bytes", "128_plus_4_per_pixel"}, {"capture_fuel", "two_plus_ceil_70_percent_target_pixels"},
+        {"paint_fuel", "ceil_60_percent_one_plus_source_pixels"}, {"unset_handle", "trap"},
         {"host_inputs", false}, {"asset_constants", false}, {"surface_collections", false}});
+    Json noiseConstants = Json::object();
+    for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
+        noiseConstants["noise." + std::string(detail::kNoiseModeNames[i])] = static_cast<i32>(i);
+    noiseConstants["noise.above"] = detail::kNoiseAbove;
+    noiseConstants["noise.below"] = detail::kNoiseBelow;
+    rules["noise_mask"] = Json::object({{"constants", std::move(noiseConstants)},
+        {"buffer_format", "A8"}, {"coordinate_space", "local_pixel_centers_times_frequency"},
+        {"origin", "crop_without_phase_shift"}, {"octaves_min", 1}, {"octaves_max", 8},
+        {"rng", "explicit_seed_no_stream_draws"}, {"asset_constants", false},
+        {"short_defaults", Json::object({{"octaves", 4}, {"softness", 0}, {"comparison", "noise.above"}, {"warp_amount", 0}})}});
+    rules["regions"] = Json::object({
+        {"offset","positive_winding_round_joins"},{"arc_tolerance_world","1/64"},
+        {"source_ids","original_source_fragment_ids_may_repeat"},
+        {"order","source_then_net_area_bounds_discovery"},
+        {"neighbors","surviving_fragments_common_original_edge"},
+        {"min_area","after_offset_before_result_region_limit"},
+        {"points","one_ring_no_holes_no_truncation"},{"maximum_points",256},
+        {"raster","4x4_half_open_union_before_A8"},{"mask_clip","ignored_until_paint"},
+        {"asset_constants",false}});
+    rules["gap_bevel"] = Json::object({
+        {"constant_gap","same_offset_width_half"},
+        {"variable_gap","original_edge_linear_knots_shared_vertex_endpoints"},{"profile_knots",9},
+        {"bevel","nearest_edge_faceted_linear_fade_4x4_RGBA8"},
+        {"bevel_ties","original_edge_then_current_use"},{"overlap","lowest_current_region_index"},
+        {"raster_clip","ignored_until_paint"},{"rng","explicit_gap_seed_no_stream_draws"},{"asset_constants",false}});
+    rules["dynamic_parts"] = Json::object({
+        {"creation_limit",kMaxDynamicParts},{"identity","generation_counter_never_recycled"},
+        {"source","shared_region_A8_RGBA8"},{"views","immutable_id_preserving"},
+        {"placement","absolute_D4_then_floor_t_plus_half"},{"anchor","net_centroid_or_alpha_pixel_bbox"},
+        {"coordinates","original_pixel_frame"},{"appearance","last_fill_or_texture_original_coordinates"},
+        {"layer_alpha","default_once_override_shape_times_appearance"},{"mask","A8_shape_ignore_appearance_clip"},
+        {"draw","active_composition_clip_no_implicit_export"},{"scale","exact_D4_mapped_source_scale"},
+        {"geometry_scale","inverse_D4_target_grid_without_resampling"},
+        {"metadata","cached_effective_post_rounding"},{"part_draw","one_argument_dynamic_seed_at_static"},
+        {"asset_constants",false}});
+    rules["part_exports"] = Json::object({
+        {"syntax","output list part <name>"},{"value_type","part2d"},
+        {"write","append_immutable_root_snapshot_no_draw"},{"read","forbidden"},
+        {"maximum_records",kMaxExportedParts},{"resources","shared_result_owned"},
+        {"index","slot_append_order_independent_of_instance_id"},
+        {"serialization",false}});
+    rules["contour"] = Json::object({
+        {"constants",Json::object({{"contour.four",0},{"contour.eight",1}})},
+        {"algorithm","marching_squares_clamped_alpha_interpolation"},
+        {"boundary","replicated_edge_samples_closed_rectangle"},
+        {"coordinates","source_scale_placement_and_D4"},
+        {"simplify","bounded_original_arc_error_preserve_intersections_and_nesting"},
+        {"min_area","net_component_area_keep_holes"},
+        {"asset_constants",false}});
+    rules["voronoi"] = Json::object({
+        {"constants",Json::object({{"voronoi.random",0},{"voronoi.grid",1}})},
+        {"minimum_sites",1},{"maximum_sites",256},{"maximum_relax",4},
+        {"rng","counter_hash_explicit_seed_no_stream_draws"},
+        {"metric","squared_parallel_over_anisotropy_plus_squared_perpendicular"},
+        {"neighbors","sorted_shared_positive_length_edges"},
+        {"numeric_kernel","binary64_half_planes_shared_f32_topology"},
+        {"asset_constants",false}});
     rules["resource_exports"] = Json::object({
         {"types", Json::array({"mask", "layer"})}, {"table", "separate_from_host_geometry"},
         {"syntax", "output <mask|layer> <name>"}, {"read", "direct_child_last_called_part"},
@@ -349,8 +419,8 @@ Json sourceRules() {
         {"clip_opcode", findOpcode(Opcode::ClipBegin)->mnemonic},
         {"paint_opcode", findOpcode(Opcode::SurfacePaintMask)->mnemonic},
         {"result_bytes", "128_plus_1_per_pixel"}, {"view_fuel", "one_no_scan"},
-        {"algebra_fuel", "one_plus_zeroed_pixels_plus_result_pixels"},
-        {"morphology_fuel", "one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
+        {"algebra_fuel", "ceil_40_percent_one_plus_zeroed_pixels_plus_result_pixels"},
+        {"morphology_fuel", "ceil_40_percent_one_plus_zeroed_pixels_plus_all_logical_disk_samples"},
         {"clip_write_fuel", "one_per_active_level"}});
     rules["palettes"] = Json::object({{"syntax", "palette <name> = [<elements>]"},
         {"element_types", types([](ips::ValueType type) { return type.isSampler() ||

@@ -28,6 +28,8 @@ iprop_status_ex typedOutput(const iprop_result* result, uint32_t outputIndex,
         if (outputIndex >= result->outputs.size())
             return CallOutcome::argument("output index is out of range");
         const auto& output = result->outputs[outputIndex];
+        if (static_cast<uint32_t>(output.kind) == IPROP_OUTPUT_KIND_PART)
+            return CallOutcome::unsupported("part outputs require iprop_result_output_part");
         if (output.kind != kind) return CallOutcome::argument("output kind does not match accessor");
         if (elementIndex >= output.count) return CallOutcome::argument("output element index is out of range");
         Value value{};
@@ -81,6 +83,8 @@ extern "C" iprop_status_ex iprop_result_output_get(const iprop_result* result, u
             return CallOutcome::argument("output view flags are unsupported");
         if (output_index >= result->outputs.size()) return CallOutcome::argument("output index is out of range");
         const auto& output = result->outputs[output_index];
+        if (static_cast<uint32_t>(output.kind) == IPROP_OUTPUT_KIND_PART)
+            return CallOutcome::unsupported("part outputs require iprop_result_output_slot and iprop_result_output_part");
         iprop_result_output_view_ex view{};
         view.output_index = output_index;
         view.owner = output.owner;

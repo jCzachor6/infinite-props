@@ -25,10 +25,10 @@ TEST_CASE("unvalidated type mismatches trap") {
     }
 }
 
-TEST_CASE("the reserved colour opcode traps") {
+TEST_CASE("a reserved opcode traps") {
     // 0x52 became color.set.a in v0.3 and 0xA4 color.r in v0.5; the
-    // still-unassigned 0xFE traps.
-    expectProgTrap(Prog{}.emit(0xFE), "reserved opcode");
+    // 0xFE is now regions.bevel; an unassigned control byte still traps.
+    expectProgTrap(Prog{}.emit(0x0C), "reserved opcode");
     // The active color.set.a on an empty stack traps with the type
     // mismatch (defense in depth, never UB).
     expectProgTrap(Prog{}.emit(0x52), "stack");

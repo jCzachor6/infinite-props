@@ -1,0 +1,31 @@
+asset CompatibilityLeaf {
+  size 7x5
+  origin 1.5, 2.5
+  output point anchor
+  output rect box
+  output circle disk
+  output list point draws
+
+  draw {
+    rect(0, 0, 7, 5, #25486b91)
+    rect(1, 1, 5, 3, #e16a3497)
+    pixel(0, 0, #ff0000)
+    pixel(6, 4, #00ff00)
+    layer coverage(alpha=surface.source_over) {
+      oval(3, 2, 2.5, 1.5, #ffffff81)
+    }
+    clip(mask.from(coverage)) {
+      layer ink(alpha=surface.source_over) {
+        rect(-2, -1, 10, 8, #36cda957)
+        line(0, 4, 6, 0, 1, #fab73cd1)
+      }
+      surface.paint(ink, blend=surface.source_over)
+      rect(2, 1, 4, 3, #1f83b46d)
+    }
+    anchor = {-0.0, 1.25}
+    box = {-0.5, 0.25, 5.5, 3.25}
+    disk = {2.25, 1.75, 1.125}
+    draws = {unit(), unit()}
+    draws = {seed & 65535, seed >> 16}
+  }
+}

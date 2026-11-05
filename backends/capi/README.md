@@ -3,6 +3,17 @@
 The stable C interface every native host links against: SFML, Godot (the
 GDExtension wraps this library), the tools and any engine integration. It
 ships as a shared library and a static twin, both named `ipropc`.
+API 0.5 adds [typed dynamic-part results](../../docs/c-api-part-outputs.md),
+shared geometry with holes and exact A8/RGBA resources, on the same ABI 0.5
+line. Existing structures and enum values remain unchanged.
+
+API 0.6 adds `IPROP_CAP_EXECUTION_LIMITS`: `iprop_generate_controlled` accepts
+separate work/timeout/cancellation controls and `iprop_result_query_work`
+reports deterministic native work. Zero work selects the finite default;
+zero timeout disables the clock. Every generation, including legacy entries,
+retains the independent work guard. Fuel and the ABI 0.5 install identity are
+unchanged. New descriptors use the same sized-prefix/canary rules as existing
+queries; controlled failures preserve the caller's result pointer.
 On Windows the static archive is named `ipropc_static` to avoid colliding
 with the DLL's import library. Shared consumers use the header's DLL import
 annotations; static consumers define `IPROP_CAPI_STATIC` (the CMake target
@@ -137,8 +148,8 @@ message.
    guarantees; the C++ runtime, compiler and tools are implementation
    details and may change freely.
 2. **Independent versions.** `IPROP_API_VERSION_MAJOR`/`_MINOR` describe
-   the header's API feature set, currently `0.4`. Product, source language,
-   binary format and ABI loader identity are separate contracts. API `0.4` uses ABI line `0.5`; its migration intentionally removes
+   the header's API feature set, currently `0.5`. Product, source language,
+   binary format and ABI loader identity are separate contracts. API `0.4`/`0.5` use ABI line `0.5`; its migration intentionally removes
    variant/archetype fields and requires clients to rebuild.
 3. **Opaque handles.** `iprop_program`/`iprop_result` are incomplete
    types to consumers; their layout is private.
@@ -153,7 +164,7 @@ message.
 
 The [ABI contract](../../docs/c-api-abi.md) records the current loader line,
 supported layouts, generation behavior and rules for sized descriptors, UTF-8
-views, collection strides and safe initialization. It specifies the API `0.4`
+views, collection strides and safe initialization. It specifies the API `0.4`/`0.5`
 conventions; the capability query identifies the loaded library's functions.
 
 ## The loaded library
@@ -182,9 +193,13 @@ The initializer also writes only complete known fields in that allocation.
 Use `iprop_generate_options_ex_init(&options, sizeof(options))` to initialize
 seed and dimensions to zero (source dimensions), with
 no requested flags. The common options reader supplies these defaults for
-absent fields and rejects all nonzero flags currently. It snapshots values
+absent fields and rejects unknown flag bits. API 0.5 requires
+`IPROP_GENERATE_PART_OUTPUTS` (after negotiating `IPROP_CAP_PART_OUTPUTS`)
+for any part output declaration, including empty and uncalled slots. Without
+that opt-in, checked generation returns `E_UNSUPPORTED` before execution or
+result allocation. It snapshots values
 before passing them to execution; failed validation publishes no partial
-options. Its public generation consumer is added in the parameters stage.
+options. The public consumer is `iprop_generate_ex`.
 Future input fields requesting behavior must use a recognized flag and
 negotiated capability. A nonzero unknown tail alone does not request behavior.
 

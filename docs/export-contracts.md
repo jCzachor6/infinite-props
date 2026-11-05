@@ -1,8 +1,8 @@
 # Export contracts
 
-The development compiler exports source language **0.8.0** with product
-**0.8.0**, an unversioned format, C API **0.4** and ABI **0.5**. JSON protocol versions
-are independent: language-description schema **4**, diagnostic schema **1**
+The development compiler exports source language **0.9.0** with product
+**0.9.0**, an unversioned format, C API **0.6** and ABI **0.5**. JSON protocol versions
+are independent: language-description schema **6**, diagnostic schema **1**
 and documentation-manifest schema **3**.
 
 | Payload | Formal contract | Consumer |
@@ -16,6 +16,13 @@ binding and effects come from the compiler's shared registries; schemas contain
 no builtin signature catalogue. [Descriptive rules](language-description.md)
 and [diagnostic semantics](compiler-diagnostics.md) explain their runtime meaning.
 
+Schema 6 retains the geometry/dynamic-part vocabulary and capability objects
+introduced during 0.9 development in schema 5. It replaces the closed surface
+and mask fuel formulas with the final discounted tariff (including capture
+begin/end), and adds execution-wide work/cancellation/deadline trap names.
+Update version gates and known enums/strings together; earlier schemas are
+rejected. No program header or C API/ABI migration follows from this JSON change.
+
 A schema version fixes known field types and meanings. Consumers accept unknown
 additive fields, including additions inside signatures or diagnostics. They
 reject missing required fields, malformed known fields and unsupported schema
@@ -23,58 +30,17 @@ versions. Changing a known field's type, meaning or enum domain requires a new
 schema version, a documented migration and updated executable consumer cases;
 changing the source-language or product version alone does not migrate JSON.
 
-Language-description schema 4 describes explicit asset inputs, without
-implicit draw controls. It includes typed constants, parameterized lists,
-samplers/steppers, point distributions and surfaces, with signatures and effects
-from shared compiler/runtime registries. Older schema versions are rejected.
-Diagnostic and documentation-manifest schemas retain their independent versions.
-Source language 0.8 adds optional `source_rules.materials` in schema 4.
-It describes the source-only capability separately from VM storable types;
-readers validate it when present and continue to accept earlier exports without it.
+The source-rule capabilities describe materials, geometry handles, direct noise
+masks, Voronoi, contours, regions, gaps/bevels, dynamic parts and typed exports.
+Known optional fields are validated when present. Signatures/effects remain
+registry-generated; [descriptive rules](language-description.md) define each
+capability and [0.9 migration](language/migration-v0.9.md) explains the boundaries.
 
 Documentation manifest schema 3 replaces schema 2, which also required
 `format_version` before the file format became unversioned. It requires four
 independent flat strings: `product_version` and `language_version`
 (major.minor.patch), plus `c_api_version` and `c_abi_soversion` (major.minor).
 Earlier schema-3 bundles may use major.minor for `language_version`.
-Current values are `0.8.0`, `0.8.0`, `0.4` and `0.5`. The file format is
+Current values are `0.9.0`, `0.9.0`, `0.6` and `0.5`. The file format is
 unversioned and has no field.
 SDK/Web manifests, preflight and CI/collector reports carry the same fields.
-The language export and diagnostics add an optional integer `patch` to
-`language_version`; current exports emit all three components. This additive
-field keeps the JSON schema versions unchanged. C API and ABI retain their
-major/minor pairs; `c_abi_soversion` is checked against the ABI pair.
-Verification compares source constants, compiler exports and every artifact
-matrix. Valid checksums cannot override version mismatches.
-
-Current handbooks use the source-language filename `language-v0.8.0.md`, not
-the product version. The emitted, unversioned format is specified by the
-frozen [self-contained 0.8 contract](../spec/iprop-v0.8.md), named after
-the product line. Product release tags, source language, C API features and the
-ABI loader line are never inferred from one another.
-
-Formal schemas check structure. Small protocol readers additionally check
-unique names, evaluation-order permutations, source/binary input mappings,
-part defaults, effect domains, safe relative manifest paths and ordered ranges.
-Bundle readers verify the complete file inventory, content hashes, builtin and
-example counts, and optional source/compiler identity. Correct checksums cannot
-make a malformed catalog valid. Current bundles carry the three schema files
-and the bounded `LLM_REFERENCE.md`, so the SDK and website expose the same
-contracts offline.
-
-The editor also checks diagnostic status against process exit, exact source
-hashes, UTF-8 boundaries and transactional fix ranges before applying edits.
-Offsets are half-open UTF-8 byte ranges; lines and columns are one-based, with
-columns counting Unicode codepoints. Protocol integers fit JavaScript's exact
-integer range.
-
-Readers accept only these current schemas. A schema 1/2/3 language export or
-a schema 1 or 2 documentation manifest is rejected; no reader falls back to an older
-shape.
-
-`compiler_export_contracts` checks actual registry exports, every registered
-language example, CLI and allocation-failure diagnostics, shared mutation cases
-and a malformed rehashed archive. The editor receives the same diagnostic
-mutations. CI repeats the check with the pinned JSON Schema implementation from
-`scripts/requirements-ci.txt`. Normal documentation builds use only Python's
-standard library; they do not install or import the CI schema dependency.

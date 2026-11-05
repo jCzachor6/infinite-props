@@ -181,6 +181,90 @@ private:
         const u16 op = ins.operand;
         switch (ins.opcode) {
 
+        case Opcode::PartCreateRegion:
+            expect(at,ValueType::I32,"part region index");expect(at,ValueType::Regions2d,"part region source");
+            push(at,ValueType::Part2d);return;
+        case Opcode::PartCreateMask: case Opcode::PartCreateLayer:
+            expect(at,ins.opcode==Opcode::PartCreateMask?ValueType::Mask:ValueType::Layer,"part raster source");
+            push(at,ValueType::Part2d);return;
+        case Opcode::PartsFromRegions:
+            expect(at,ValueType::Regions2d,"parts source");push(at,ValueType::Parts2d);return;
+        case Opcode::PartsCount: case Opcode::PartsGet:
+            if(ins.opcode==Opcode::PartsGet)expect(at,ValueType::I32,"parts index");
+            expect(at,ValueType::Parts2d,"parts source");
+            push(at,ins.opcode==Opcode::PartsCount?ValueType::I32:ValueType::Part2d);return;
+        case Opcode::PartId: case Opcode::PartSourceId:
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::I32);return;
+        case Opcode::PartCenter: case Opcode::PartBoundsOrigin: case Opcode::PartBoundsSize:
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Vec2);return;
+        case Opcode::PartPlace:
+            expect(at,ValueType::I32,"part mirror_y");expect(at,ValueType::I32,"part mirror_x");expect(at,ValueType::I32,"part rot");
+            expect(at,ValueType::Vec2,"part at");expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Part2d);return;
+        case Opcode::PartFill: case Opcode::PartTexture:
+            expect(at,ins.opcode==Opcode::PartFill?ValueType::Color:ValueType::Layer,"part appearance");
+            expect(at,ValueType::Part2d,"part receiver");push(at,ValueType::Part2d);return;
+        case Opcode::DynamicPartDraw: case Opcode::PartMask:
+            expect(at,ValueType::Part2d,"part receiver");if(ins.opcode==Opcode::PartMask)push(at,ValueType::Mask);return;
+
+        case Opcode::RegionsGap: case Opcode::RegionsGapConfig:
+            if(ins.opcode==Opcode::RegionsGapConfig){
+                expect(at,ValueType::I32,"regions gap seed");expect(at,ValueType::F32,"regions gap variation");
+            }
+            expect(at,ValueType::F32,"regions gap width");
+            expect(at,ValueType::Regions2d,"regions gap source");
+            push(at,ValueType::Regions2d);return;
+
+        case Opcode::RegionsBevel: case Opcode::RegionsBevelConfig:
+            if(ins.opcode==Opcode::RegionsBevelConfig){
+                expect(at,ValueType::F32,"regions bevel strength");expect(at,ValueType::Color,"regions bevel shadow");
+                expect(at,ValueType::Color,"regions bevel highlight");
+            }
+            expect(at,ValueType::Vec2,"regions bevel light");expect(at,ValueType::F32,"regions bevel width");
+            expect(at,ValueType::Regions2d,"regions bevel source");push(at,ValueType::Layer);return;
+
+        case Opcode::RegionsDiagram: case Opcode::RegionsContours:
+        case Opcode::RegionsDiagramConfig: case Opcode::RegionsContoursConfig:
+            if(ins.opcode==Opcode::RegionsDiagramConfig||ins.opcode==Opcode::RegionsContoursConfig){
+                expect(at,ValueType::F32,"regions min_area");expect(at,ValueType::F32,"regions inset");
+            }
+            expect(at,ins.opcode==Opcode::RegionsDiagram||ins.opcode==Opcode::RegionsDiagramConfig?ValueType::Diagram2d:ValueType::Contours2d,"regions source");
+            push(at,ValueType::Regions2d);return;
+        case Opcode::RegionsCount: case Opcode::RegionsId: case Opcode::RegionsArea:
+        case Opcode::RegionsCenter: case Opcode::RegionsNeighbors: case Opcode::RegionsPoints:
+        case Opcode::RegionsMask: case Opcode::RegionsMaskAll:
+            if(ins.opcode!=Opcode::RegionsCount&&ins.opcode!=Opcode::RegionsMaskAll)expect(at,ValueType::I32,"regions index");
+            expect(at,ValueType::Regions2d,"regions receiver");
+            push(at,ins.opcode==Opcode::RegionsPoints?ValueType::list(ValueType::Vec2):
+                ins.opcode==Opcode::RegionsMask||ins.opcode==Opcode::RegionsMaskAll?ValueType::Mask:
+                ins.opcode==Opcode::RegionsArea?ValueType::F32:
+                ins.opcode==Opcode::RegionsCenter?ValueType::Vec2:
+                ins.opcode==Opcode::RegionsNeighbors?ValueType::list(ValueType::I32):ValueType::I32);return;
+
+        case Opcode::Contour: case Opcode::ContourConfig:
+            if (ins.opcode == Opcode::ContourConfig) {
+                expect(at,ValueType::I32,"contour connectivity");
+                expect(at,ValueType::F32,"contour min_area");
+                expect(at,ValueType::F32,"contour simplify");
+            }
+            expect(at,ValueType::F32,"contour threshold");
+            expect(at,ValueType::Mask,"contour source");
+            push(at,ValueType::Contours2d);
+            return;
+
+        case Opcode::VoronoiSites: case Opcode::VoronoiSitesRelax:
+            if (ins.opcode == Opcode::VoronoiSitesRelax) expect(at,ValueType::I32,"voronoi relax");
+            expect(at,ValueType::list(ValueType::Vec2),"voronoi sites");
+            expect(at,ValueType::Vec2,"voronoi size");
+            expect(at,ValueType::Vec2,"voronoi origin");
+            push(at,ValueType::Diagram2d);
+            return;
+        case Opcode::DiagramCount: case Opcode::DiagramSite: case Opcode::DiagramNeighbors:
+            if (ins.opcode != Opcode::DiagramCount) expect(at,ValueType::I32,"diagram index");
+            expect(at,ValueType::Diagram2d,"diagram receiver");
+            push(at,ins.opcode == Opcode::DiagramCount ? ValueType::I32 :
+                ins.opcode == Opcode::DiagramSite ? ValueType::Vec2 : ValueType::list(ValueType::I32));
+            return;
+
         case Opcode::LayerBegin:
         case Opcode::ClipBegin:
             if (ins.opcode == Opcode::ClipBegin) expect(at, ValueType::Mask, "clip mask");
@@ -475,6 +559,10 @@ private:
         case Opcode::OutListCircle:
             checkSlot(at, op, OutputKind::Circle, true, false);
             for (int i = 0; i < 3; ++i) expect(at, ValueType::F32, "circle value");
+            return;
+        case Opcode::OutListPart:
+            checkSlot(at, op, OutputKind::Part, true, false);
+            expect(at, ValueType::Part2d, "part snapshot");
             return;
         case Opcode::PartGetPoint:
             checkSlot(at, op, OutputKind::Point, false, true);

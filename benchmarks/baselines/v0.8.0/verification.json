@@ -1,0 +1,175 @@
+{
+  "baseline_revision": "dc67f3355e9ead7b6ab0479f0208cfec3a4237d3",
+  "runtime_version": "0.8.0",
+  "host": "local macOS arm64",
+  "compatibility_sources_sha256": {
+    "backends/html5/test/compat-v08-conformance.js": "74fa08a2ddcd6f16c1c9c348dc1531dd1116355e789866e75b8842aafee65972",
+    "backends/html5/test/native-conformance.js": "b35131e1fbfc013406eee5e1590594303d7fc8e95dcd145bf8e7fa53fd3cdba2",
+    "backends/html5/test/run-tests.js": "e6ffc5fcba0324710bf16de497b79fbc59fe41d2593639cd795a41a90ba129f0",
+    "tests/compat_v08_ids_test.cpp": "4491c152cf7c8126fb762317550acafc3fa72998ac6f8f9a2339620c4376c7dc",
+    "tests/fixtures/compat-v0.8.json": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa"
+  },
+  "ctest": {
+    "passed": 72,
+    "failed": 0,
+    "log": "ctest-macos-arm64.txt",
+    "sha256": "e0f870e7e143350b72f727f1d3300e87df3cb40bf18e59fa8c768f1a644d97ea"
+  },
+  "node_comparator_tests": {
+    "passed": 10,
+    "failed": 0
+  },
+  "full_native_wasm_conformance": {
+    "passed": true,
+    "golden": {
+      "passed": true,
+      "failures": []
+    },
+    "native": {
+      "passed": true,
+      "failures": [],
+      "declaredInputs": {
+        "authoredInputs": 2,
+        "retiredOptions": 6,
+        "rejectedVersions": 8
+      },
+      "comparisons": 364,
+      "trapComparisons": 35,
+      "vectorComparisons": 6292,
+      "vectorOverloads": {
+        "signatures": 20,
+        "comparisons": 176,
+        "traps": 8
+      },
+      "colorComparisons": 1053,
+      "mathComparisons": 278,
+      "constantComparisons": 53,
+      "constantOverloads": 89,
+      "collections": {
+        "comparisons": 170,
+        "traps": 11,
+        "rejections": 39
+      },
+      "listMethods": {
+        "comparisons": 371,
+        "pins": 5267,
+        "traps": 10,
+        "rejections": 21,
+        "signatures": 13
+      },
+      "samplers": {
+        "comparisons": 1455,
+        "traps": 16,
+        "rejections": 45
+      },
+      "steppers": {
+        "comparisons": 144,
+        "traps": 9,
+        "rejections": 26,
+        "pins": 16
+      },
+      "samplingPalettes": {
+        "comparisons": 2776,
+        "traps": 13,
+        "rejections": 31
+      },
+      "pointDistributions": {
+        "comparisons": 2245,
+        "traps": 15,
+        "rejections": 39
+      },
+      "density": {
+        "comparisons": 3626,
+        "traps": 15,
+        "rejections": 30,
+        "vectors": 195
+      },
+      "surfaces": {
+        "comparisons": 410,
+        "traps": 8,
+        "rejections": 14,
+        "pins": 184
+      },
+      "sourceOver": {
+        "comparisons": 286,
+        "pins": 185,
+        "traps": 4,
+        "rejections": 6,
+        "alpha_pairs": 65536
+      },
+      "masks": {
+        "comparisons": 1543,
+        "pins": 1075,
+        "traps": 10,
+        "rejections": 36,
+        "coverage_pairs": 65536,
+        "oracle_images": 23
+      },
+      "blur": {
+        "comparisons": 253,
+        "pins": 151,
+        "traps": 32,
+        "rejections": 19
+      },
+      "resourceExports": {
+        "comparisons": 2459,
+        "pins": 2170,
+        "traps": 3,
+        "rejections": 38,
+        "trees": 72,
+        "oracle_images": 216
+      },
+      "compatibilityV08": {
+        "generations": 480,
+        "traps": 64,
+        "compilerErrors": 16,
+        "noiseVectors": 78,
+        "frozenPrograms": 2,
+        "wasm": true
+      }
+    },
+    "compression": {
+      "images": 7,
+      "rejections": 12
+    }
+  },
+  "negative_controls": {
+    "output_bit_change_detected": true,
+    "rgba_bit_change_detected": true
+  },
+  "benchmark": {
+    "cases": 141,
+    "samples": 15,
+    "repeat_samples": 3,
+    "generations_per_sample": 16,
+    "warmup_samples": 3,
+    "all_fuel_allocation_and_hash_values_identical_on_repeat": true,
+    "minimum_median_cpu_ns": 125,
+    "report_sha256": "aa02693bf7893089d69b6139642d841faa351b744df42ffe4419d7d9722a1621",
+    "report_gzip_sha256": "94c8dfd0cb2f36de80138ac2115afd2b117d28e320f55b4e6f36e76fa6f618f4"
+  },
+  "existing_retired_format_fixtures_unchanged_sha256": {
+    "tests/fixtures/frozen-format-v0.5.json": "0d3054e65dbc4337271e2ebd6b8a39d4ec2433c5092bd86e09ab0b3850f9c2d3",
+    "tests/fixtures/frozen-format-v0.6-stage1.json": "884aab1bb089130e155830660e3341e7437c37efd64c265239a84a8b66546296",
+    "tests/fixtures/frozen-format-v0.6-stage10.json": "4d193ef22eadbbfe4293810ac4cdb262ec231d6bbed0694da991380d391a8ced",
+    "tests/fixtures/frozen-format-v0.6-stage2.json": "5d63a76f9e34bdb1612b0788d716086ca977733233a1ebb5f79f69fb6d5d1055",
+    "tests/fixtures/frozen-format-v0.6-stage3.json": "933e0ef19f2e90430baa12dfa77c914413b678c4909c6f061ea1756157c2c4c1",
+    "tests/fixtures/frozen-format-v0.6-stage4.json": "1c974637736f53d5de0e019b73e9cbb31c0a14948f4c885c74aeb02425e9d4a6",
+    "tests/fixtures/frozen-format-v0.6-stage5.json": "f5a1ffb56c2fb7d70767161e80316f10e555bdb873b967194d5bb6ef8e6e1ed8",
+    "tests/fixtures/frozen-format-v0.6-stage6.json": "4110cbf1fb1c15d2af3805ae28af76c5c7d55ec3c115665a6aaa075b534ba934",
+    "tests/fixtures/frozen-format-v0.6-stage7.json": "170b822e00cf0d68c939ac60872dff75dc95459c155713a7751e5200cf476e9a",
+    "tests/fixtures/frozen-format-v0.6-stage8.json": "3c1dc1272d45a8a31b0f22710826c98d79a0d69949b7ca3efe11fc3d197433f3",
+    "tests/fixtures/frozen-format-v0.6-stage9.json": "b6744497dd401bc9a0b9c99b7f96dfb89b235732fb9b1f11e0a31d6135e106bf"
+  },
+  "note": "Final full CTest and native/WASM suites passed with the complete expanded gate. Performance captures ran without concurrent build/test jobs. This is local macOS/Node/WASM evidence, not release or deployment validation.",
+  "focused_compatibility_gate": {
+    "generations": 480,
+    "traps": 64,
+    "compilerErrors": 16,
+    "noiseVectors": 78,
+    "frozenPrograms": 2,
+    "wasm": true,
+    "fixture_sha256": "515f0ad0168622400a1ef907d5319056df8b7ca12c9c714cb34f4caecaf84cfa",
+    "wasm_sha256": "fa4022d8e2f6b81137b4d5334730c67da75e00a126bd21497d69ae8247a46d00"
+  }
+}

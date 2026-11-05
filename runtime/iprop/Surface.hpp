@@ -38,9 +38,9 @@ struct RenderTarget {
     const Canvas& canvas() const { return buffer->raster; }
     LayerValue view(SurfaceMapping mapping = {}) const { return {buffer, mapping}; }
     static RenderTarget create(u32 width, u32 height, Vec2 scale,
-        CompositionMode mode = CompositionMode::Legacy);
+        CompositionMode mode = CompositionMode::Legacy, detail::WorkBudget* work = nullptr);
     static RenderTarget create(std::shared_ptr<SurfaceBuffer> buffer,
-        u32 width, u32 height, Vec2 scale, CompositionMode mode);
+        u32 width, u32 height, Vec2 scale, CompositionMode mode, detail::WorkBudget* work = nullptr);
 };
 
 inline constexpr u32 kMaxSurfaceScopes = 32;

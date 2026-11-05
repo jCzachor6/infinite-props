@@ -144,6 +144,10 @@ std::string clean(const std::string& token) {
 bool parseValueType(const std::string& text, ValueType& out) {
     if (text == "layer") { out = ValueType::Layer; return true; }
     if (text == "mask") { out = ValueType::Mask; return true; }
+    for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d,
+                            ValueType::Part2d, ValueType::Parts2d}) {
+        if (text == valueTypeName(type)) { out = type; return true; }
+    }
     if (text.starts_with("list<") && text.ends_with(">")) {
         ValueType item;
         if (!parseValueType(text.substr(5, text.size() - 6), item) || (!item.isScalar() && !item.isDescription())) return false;
@@ -202,6 +206,7 @@ bool parseInputType(const std::string& text, InputType& out) {
 }
 
 bool parseOutputKind(const std::string& text, OutputKind& out) {
+    if (text == "part") { out = OutputKind::Part; return true; }
     if (text == "point") {
         out = OutputKind::Point;
         return true;
@@ -508,6 +513,7 @@ std::vector<u8> assemble(const std::string& source) {
                 throw error("bad output declaration");
             }
             output.name = words[at + 1];
+            if (output.kind == OutputKind::Part && !output.isList) throw error("part outputs must be lists");
             (currentPart != nullptr ? currentPart->outputs : program.outputs).push_back(output);
             continue;
         }
@@ -1082,7 +1088,12 @@ std::vector<u8> assemble(const std::string& source) {
     }
 
     Writer exports;
-    if (!program.resourceExports.empty()) {
+    const auto containsPart = [](const auto& outputs) {
+        return std::any_of(outputs.begin(), outputs.end(), [](const auto& output) { return output.kind == OutputKind::Part; });
+    };
+    bool partOutputs = containsPart(program.outputs);
+    for (const auto& part : program.parts) partOutputs = partOutputs || containsPart(part.outputs);
+    if (!program.resourceExports.empty() || !program.functionOwners.empty() || partOutputs) {
         if (program.resourceExports.size() > kMaxConstPoolEntries) throw SourceError(0, "too many resource exports");
         exports.writeU32(static_cast<u32>(program.resourceExports.size()));
         for (const auto& output : program.resourceExports) {
@@ -1102,7 +1113,7 @@ std::vector<u8> assemble(const std::string& source) {
             if (const auto found = program.functionOwners.find(fn->name); found != program.functionOwners.end()) owner = found->second;
             exports.writeU32(owner);
         }
-    } else if (!program.functionOwners.empty()) throw SourceError(0, "function owners require resource exports");
+    }
 
     // ---- Assemble the file ----
     Writer file;

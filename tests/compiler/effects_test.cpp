@@ -77,8 +77,10 @@ TEST_CASE("registry RNG effects agree with every current-stream and seeded built
         const auto effects = ips::builtinEffects(spec, &overload);
         if (effects.rng != RngEffect::AdvanceCurrent && effects.rng != RngEffect::SeededComputation) continue;
         INFO(name);
+        const std::string setup=name=="regions.gap"?"source=regions(voronoi({0,0},{8,8},1,0)) ":"";
+        const std::string args=name=="regions.gap"?"source,1,1,7":arguments(overload);
         const auto program = ips::parse("asset t {size 8x8 output list point trace draw{"
-            "rect(0,0,8,8,#999999);trace={0,unit()};" + name + "(" + arguments(overload) +
+            "rect(0,0,8,8,#999999);trace={0,unit()};" + setup + name + "(" + args +
             ");trace={1,unit()};}}");
         for (const bool optimize : {false,true}) for (const u32 seed : {0u,7u,0xffffffffu}) {
             const auto actual = execute(compileProgram(program, {}, optimize), seed);
@@ -149,6 +151,24 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
     for (const auto& [name,spec] : ips::builtinSpecs()) for (const auto& overload : spec.overloads) {
         if ((ips::builtinEffects(spec, &overload).checks & static_cast<u8>(EffectCheck::NumericRange)) == 0) continue;
         INFO(name << " arity " << overload.params.size());
+        if (name == "part.create") {
+            const std::string use=overload.params[0].type==ips::ValueType::Mask?"part.create(region)":"part.create(image)";
+            for(const bool optimize:{false,true})
+                expectTrap(staleExportScale(use,optimize),ErrorReason::NumericRange,{0,8,4,{}});
+            continue;
+        }
+        if(name=="part.texture"){
+            for(const bool optimize:{false,true})
+                expectTrap(staleExportScale("layer current{pixel(0,0,#fff)} p=part.create(current) part.texture(p,image)",optimize),
+                    ErrorReason::NumericRange,{0,8,4,{}});
+            continue;
+        }
+        if(name=="part.draw"||name=="part.mask"){
+            const auto source=ips::parse("asset t{size 8x8 draw{p=part.create(regions(voronoi({2147483000,0},{1024,8},1,0)),0) "+
+                name+"(part.fill(p,#fff))}}");
+            for(const bool optimize:{false,true})expectTrap(compileProgram(source,{},optimize),ErrorReason::NumericRange);
+            continue;
+        }
         if (name == "mask.from" || name == "mask.invert" || name == "surface.paint") {
             const std::string use = name == "mask.from" ? "mask.from(image)" : name == "mask.invert" ?
                 "mask.invert(region)" : overload.params.size() == 2 ? "surface.paint(region,#ffffff)" :
@@ -158,6 +178,34 @@ TEST_CASE("every builtin numeric-range effect has an executable accepted-source 
             continue;
         }
         std::string setup, args=arguments(overload,true);
+        if(name=="part.place"){
+            setup="p=part.create(regions(voronoi({0,0},{8,8},1,0)),0) ";args="p,{float(v)/float(v),0},0,0,0";
+        }
+        if (name == "contour") {
+            setup="layer image{}region=mask.from(image) ";
+            args=overload.params.size()==2 ? "region,float(v+2)" : "region,float(v+2),0,0,contour.four";
+        }
+        if (name == "regions") {
+            setup=overload.params[0].type==ips::ValueType::Diagram2d ? "source=voronoi({0,0},{8,8},1,0) " :
+                "layer image{} source=contour(mask.from(image),0.5) ";
+            args="source,float(v)/float(v),0";
+        }
+        if (name == "regions.points") {
+            setup="layer image{rect(0,0,8,1,#fff)rect(0,7,8,1,#fff)rect(0,1,1,6,#fff)rect(7,1,1,6,#fff)} source=regions(contour(mask.from(image),0.5)) ";
+            args="source,0";
+        }
+        if (name == "regions.gap") {
+            setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
+            args=overload.params.size()==2?"source,float(v-1)":"source,0,float(v-1),7";
+        }
+        if (name == "regions.bevel") {
+            setup="source=regions(voronoi({0,0},{8,8},1,0)) ";
+            args=overload.params.size()==3?"source,0,{1,1}":"source,1,{1,1},#fff,#000,float(v-1)";
+        }
+        if (name == "regions.mask") {
+            setup="source=regions(voronoi({2147483000,0},{1024,8},1,0)) ";
+            args=overload.params.size()==1?"source":"source,0";
+        }
         if (name.starts_with("mask.")) {
             setup="layer image{}region=mask.from(image) ";
             if (name=="mask.expand" || name=="mask.shrink") args="region,v+65";

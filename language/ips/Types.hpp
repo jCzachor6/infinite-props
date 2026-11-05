@@ -16,6 +16,8 @@ namespace iprop::ips {
 using ValueType = iprop::TypeDescriptor;
 
 const char* typeName(ValueType type);
+// Contextual type spellings remain ordinary identifiers outside declarations.
+std::optional<ValueType> geometryType(std::string_view name);
 
 bool isNumeric(ValueType type);
 
@@ -37,6 +39,8 @@ std::optional<unsigned> colorChannel(std::string_view member);
 // Mode arguments accept only literal surface namespace constants, never
 // runtime integers. The registry also preserves their scalar constant values.
 const CompositionSpec* surfaceMode(const Expr& expression);
+// Scalar constants in reserved namespaces, also available to asset constants.
+std::optional<i32> builtinConstant(const Expr& expression);
 
 // The ValueType of a declared parameter/return type (ParamType in Ast.hpp).
 ValueType valueTypeOf(ParamType type);

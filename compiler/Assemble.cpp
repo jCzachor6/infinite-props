@@ -1,6 +1,7 @@
 #include "Assemble.hpp"
 
 #include <utility>
+#include <algorithm>
 
 #include "iprop/Binary.hpp"
 #include "iprop/Constants.hpp"
@@ -34,7 +35,7 @@ f32 Assembler::foldOrigin(const ips::Expr& expr) {
 void Assembler::writeSlots(Writer& out, const std::vector<SlotInfo>& slots) {
     out.writeU16(static_cast<u16>(slots.size()));
     for (const auto& slot : slots) {
-        out.writeU8(static_cast<u8>(slot.kind));
+        out.writeU8(slot.kind == ips::OutputKind::Part ? static_cast<u8>(OutputKind::Part) : static_cast<u8>(slot.kind));
         out.writeU8(slot.isList ? 1 : 0);
         out.writeU8(0);
         out.writeU8(0);
@@ -225,7 +226,12 @@ std::vector<u8> Assembler::assemble() {
     }
 
     Writer exports;
-    if (!plan_.resourceExports.empty()) {
+    const auto partSlots = [](const auto& slots) {
+        return std::any_of(slots.begin(), slots.end(), [](const auto& slot) { return slot.kind == ips::OutputKind::Part; });
+    };
+    bool exportsParts = partSlots(plan_.rootSlots);
+    for (const auto& slots : plan_.partSlots) exportsParts = exportsParts || partSlots(slots);
+    if (!plan_.resourceExports.empty() || exportsParts) {
         exports.writeU32(static_cast<u32>(plan_.resourceExports.size()));
         for (const auto& output : plan_.resourceExports) {
             exports.writeU32(output.owner);

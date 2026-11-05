@@ -1,10 +1,12 @@
 #include "iprop/VmInternals.hpp"
+#include "iprop/Noise.hpp"
 #include "iprop/math/Curves.hpp"
 #include "iprop/math/Distribution.hpp"
 #include "iprop/math/Color.hpp"
 #include "iprop/math/Vector.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <limits>
 
@@ -40,7 +42,8 @@ f32 latticeValue(u32 seed, i32 a, i32 b) {
 }
 
 // Smoothstep-interpolated value noise (spec §12.4).
-f32 noise(f32 x, f32 y, u32 seed) {
+f32 noise(Execution& ex, f32 x, f32 y, u32 seed) {
+    ex.work(4);
     const i32 ix = static_cast<i32>(std::floor(x));
     const i32 iy = static_cast<i32>(std::floor(y));
     const f32 u = smoothStep(x - static_cast<f32>(ix));
@@ -52,7 +55,8 @@ f32 noise(f32 x, f32 y, u32 seed) {
 }
 
 // Triangular-interpolated noise (spec §12.5).
-f32 fault(f32 x, f32 y, u32 seed) {
+f32 fault(Execution& ex, f32 x, f32 y, u32 seed) {
+    ex.work(3);
     const i32 ix = static_cast<i32>(std::floor(x));
     const i32 iy = static_cast<i32>(std::floor(y));
     const f32 u = x - static_cast<f32>(ix);
@@ -115,6 +119,7 @@ f32 gradCorner(u32 seed, i32 cx, i32 cy, f32 fx, f32 fy, f32 ox, f32 oy) {
 }
 
 f32 gradNoise(Execution& ex, f32 x, f32 y, u32 seed) {
+    ex.work(4);
     const i32 ix = latticeIndex(ex, x, std::numeric_limits<i32>::min(),
                                std::numeric_limits<i32>::max() - 1);
     const i32 iy = latticeIndex(ex, y, std::numeric_limits<i32>::min(),
@@ -139,6 +144,7 @@ f32 fbmNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
     f32 frequency = 1.f;
     f32 total = 0.f;
     for (i32 i = 0; i < octaves; ++i) {
+        ex.work();
         const f32 g = gradNoise(ex,
             x * frequency, y * frequency,
             seed + static_cast<u32>(i) * 0x9e3779b9u);
@@ -157,25 +163,83 @@ Vec2 cellJitter(Execution& ex, i32 cx, i32 cy, u32 seed) {
     return {jitterCoordinate(ex, cx, u), jitterCoordinate(ex, cy, v)};
 }
 
-f32 cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
+struct CellSample {
+    f32 first = std::numeric_limits<f32>::infinity();
+    f32 second = std::numeric_limits<f32>::infinity();
+    u32 winner = 0;
+};
+
+CellSample cellNoise(Execution& ex, f32 x, f32 y, u32 seed) {
     // All cells in the 5x5 window must have exactly representable origins.
     const i32 ix = latticeIndex(ex, x, -kExactCellLimit + 2, kExactCellLimit - 2);
     const i32 iy = latticeIndex(ex, y, -kExactCellLimit + 2, kExactCellLimit - 2);
-    f32 best = std::numeric_limits<f32>::infinity();
+    CellSample sample;
     for (i32 dy = -2; dy <= 2; ++dy) {
+        ex.work();
         for (i32 dx = -2; dx <= 2; ++dx) {
+            ex.work();
             const i32 cx = ix + dx;
             const i32 cy = iy + dy;
             const Vec2 point = cellJitter(ex, cx, cy, seed);
             const f32 rx = point.x - x;
             const f32 ry = point.y - y;
             const f32 d = std::sqrt(rx * rx + ry * ry);
-            if (d < best) {
-                best = d;
+            // Strict comparison preserves the first (cy, cx) on a tie.
+            // Equal distances from distinct cells still count toward F2.
+            if (d < sample.first) {
+                sample.second = sample.first;
+                sample.first = d;
+                sample.winner = cellHash(seed, cx, cy);
+            } else if (d < sample.second) {
+                sample.second = d;
             }
         }
     }
-    return best;
+    return sample;
+}
+
+f32 configuredFbm(Execution& ex, f32 x, f32 y, i32 octaves,
+                  f32 lacunarity, f32 gain, u32 seed) {
+    if (!std::isfinite(lacunarity) || lacunarity <= 0.f || lacunarity > 8.f)
+        ex.trap("fbm lacunarity out of range", ErrorReason::NumericRange);
+    if (!std::isfinite(gain) || gain < 0.f || gain > 1.f)
+        ex.trap("fbm gain out of range", ErrorReason::NumericRange);
+    octaves = std::clamp(octaves, 1, 8);
+    // Including dispatch, one fuel per declared effective octave, even if
+    // gain=0 lets us skip the remaining samples. Reserve before any sampling.
+    ex.spend(static_cast<u64>(octaves - 1));
+    const i32 samples = gain == 0.f ? 1 : octaves;
+    f32 sum = 0.f, total = 0.f, amplitude = 1.f, frequency = 1.f;
+    for (i32 i = 0; i < samples; ++i) {
+        ex.work();
+        const f32 g = gradNoise(ex, x * frequency, y * frequency,
+            seed + static_cast<u32>(i) * 0x9e3779b9u);
+        sum += amplitude * g;
+        total += amplitude;
+        amplitude *= gain;
+        frequency *= lacunarity;
+    }
+    return sum / total;
+}
+
+Vec2 warpVector(Execution& ex, f32 x, f32 y, f32 amount, u32 seed, bool charge = true) {
+    if (!std::isfinite(amount))
+        ex.trap("warp amount out of range", ErrorReason::NumericRange);
+    const auto check = [&](f32 coordinate) {
+        (void)latticeIndex(ex, coordinate, std::numeric_limits<i32>::min(),
+                           std::numeric_limits<i32>::max() - 1);
+    };
+    check(x);
+    check(y);
+    // No offset, multiplication or sampling: retain even negative-zero bits.
+    if (amount == 0.f) return {x, y};
+    if (charge) ex.spend(7); // Dispatch + eight inner gradient samples; no outer fBm.
+    const f32 qx = fbmNoise(ex, x, y, 4, seed);
+    const f32 qy = fbmNoise(ex, x + 3.7f, y + 9.1f, 4, seed);
+    const Vec2 result{x + amount * qx, y + amount * qy};
+    check(result.x);
+    check(result.y);
+    return result;
 }
 
 f32 warpNoise(Execution& ex, f32 x, f32 y, f32 amount, u32 seed) {
@@ -196,6 +260,7 @@ f32 ridgeNoise(Execution& ex, f32 x, f32 y, i32 octaves, u32 seed) {
     f32 frequency = 1.f;
     f32 total = 0.f;
     for (i32 i = 0; i < octaves; ++i) {
+        ex.work();
         const f32 g = gradNoise(ex,
             x * frequency, y * frequency,
             seed + static_cast<u32>(i) * 0x9e3779b9u);
@@ -217,6 +282,7 @@ i32 uniformInt(Execution& ex, i32 lo, i32 hi) {
     const u64 width = static_cast<u64>(static_cast<i64>(hi) - lo) + 1; // 1 .. 2^32
     const u64 accepted = kDrawSpace / width * width;
     for (u32 draw = 1;; ++draw) {
+        ex.work();
         Frame& frame = ex.frame();
         frame.stream += 0x9e3779b9u;
         const u32 x = hash32(frame.stream);
@@ -258,7 +324,7 @@ f32 distributionFloat(Execution& ex, const Distribution& distribution, f32 lo, f
 Distribution constructed(Execution& ex, DistributionFamily family, std::size_t count, const char* rule) {
     Distribution distribution;
     distribution.family = family;
-    for (std::size_t i = count; i > 0; --i) distribution.parameters[i - 1] = ex.popF32();
+    for (std::size_t i = count; i > 0; --i) { ex.work(); distribution.parameters[i - 1] = ex.popF32(); }
     if (!math::validDistribution(distribution)) ex.trap(rule, ErrorReason::NumericRange);
     return distribution;
 }
@@ -273,9 +339,34 @@ void advanceAndPushUnit(Execution& ex) {
 
 } // namespace
 
+f32 sampleNoise(Execution& ex, NoiseMode kind, Vec2 point, i32 octaves, u32 seed) {
+    const auto [x, y] = point;
+    switch (kind) {
+    case NoiseMode::Value:
+        // Legacy value noise predates domain guards. Guard this new caller
+        // without changing the frozen scalar instruction's error behavior.
+        (void)latticeIndex(ex, x, std::numeric_limits<i32>::min(), std::numeric_limits<i32>::max() - 1);
+        (void)latticeIndex(ex, y, std::numeric_limits<i32>::min(), std::numeric_limits<i32>::max() - 1);
+        return noise(ex, x, y, seed);
+    case NoiseMode::Grad: return gradNoise(ex, x, y, seed);
+    case NoiseMode::Fbm: return fbmNoise(ex, x, y, octaves, seed);
+    case NoiseMode::Cell: return cellNoise(ex, x, y, seed).first;
+    case NoiseMode::CellEdge: {
+        const auto sample = cellNoise(ex, x, y, seed);
+        return sample.second - sample.first;
+    }
+    case NoiseMode::Ridge: return ridgeNoise(ex, x, y, octaves, seed);
+    }
+    ex.trap("unknown noise mask kind", ErrorReason::NumericRange);
+}
+
+Vec2 warpNoisePoint(Execution& ex, Vec2 point, f32 amount, u32 seed) {
+    return warpVector(ex, point.x, point.y, amount, seed, false);
+}
+
 double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, double lo, double hi, double u) {
     ex.spend(math::pointDrawWork(distribution, lo, hi));
-    const auto draw = math::truncatedDraw(distribution, lo, hi, u);
+    const auto draw = math::truncatedDraw(distribution, lo, hi, u, ex.workBudget.get());
     switch (draw.status) {
     case math::DrawStatus::Outside:
         ex.trap("random range lies outside the distribution", ErrorReason::NumericRange);
@@ -439,7 +530,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(noise(x, y, seed)));
+        ex.push(Value(noise(ex, x, y, seed)));
         ++ex.frame().ip;
         return true;
     }
@@ -447,7 +538,7 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(fault(x, y, seed)));
+        ex.push(Value(fault(ex, x, y, seed)));
         ++ex.frame().ip;
         return true;
     }
@@ -476,7 +567,39 @@ bool stepSeeded(Execution& ex, Instruction ins) {
         const u32 seed = static_cast<u32>(ex.popI32());
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(cellNoise(ex, x, y, seed)));
+        ex.push(Value(cellNoise(ex, x, y, seed).first));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseCell2:
+    case Opcode::NoiseCellId: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.spend(24); // Dispatch + all 25 Worley feature candidates.
+        const auto sample = cellNoise(ex, x, y, seed);
+        if (ins.opcode == Opcode::NoiseCell2) ex.push(Value(sample.second));
+        else ex.push(Value(std::bit_cast<i32>(sample.winner)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseWarpVec: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 amount = ex.popF32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(warpVector(ex, x, y, amount, seed)));
+        ++ex.frame().ip;
+        return true;
+    }
+    case Opcode::NoiseFbmConfig: {
+        const u32 seed = static_cast<u32>(ex.popI32());
+        const f32 gain = ex.popF32();
+        const f32 lacunarity = ex.popF32();
+        const i32 octaves = ex.popI32();
+        const f32 y = ex.popF32();
+        const f32 x = ex.popF32();
+        ex.push(Value(configuredFbm(ex, x, y, octaves, lacunarity, gain, seed)));
         ++ex.frame().ip;
         return true;
     }

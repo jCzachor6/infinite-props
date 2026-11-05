@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import struct
 import zlib
+from part_bindings import prepare as prepare_parts
 
 
 def rgba_png(file):
@@ -73,13 +74,30 @@ def replace_pool_name(original, old, replacement):
     raise AssertionError("Missing name-pool entry: " + repr(old))
 
 
+def prepare_execution(tools, output):
+    suffix = ".exe" if __import__("os").name == "nt" else ""
+    slow = output / "execution-slow.iprop"
+    subprocess.run([tools / ("ipc" + suffix), Path(__file__).resolve().parent / "execution-slow.ips",
+        "--no-opt", "--no-compress", "-o", slow], check=True)
+    data = bytearray(slow.read_bytes())
+    section_count = struct.unpack_from("<I", data, 12)[0]
+    meta = next(offset for tag, offset, _ in [struct.unpack_from("<III", data, 20 + i * 12)
+        for i in range(section_count)] if tag == 1)
+    struct.pack_into("<Q", data, meta + 16, 1_000_000_000)
+    slow.write_bytes(data)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("tools", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--execution-only", action="store_true")
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     args.output.mkdir(parents=True, exist_ok=True)
+    prepare_execution(args.tools, args.output)
+    if args.execution_only:
+        return
     suffix = ".exe" if __import__("os").name == "nt" else ""
     subprocess.run([args.tools / ("ipc" + suffix), here / "bindings.ips", "-o", args.output / "bindings.iprop"], check=True)
     for name in ("binding-trap", "binding-unicode"):
@@ -101,7 +119,8 @@ def main():
     canonical = replace_pool_name(module.fixture(True), b"", "é".encode("utf-8"))
     canonical = replace_pool_name(canonical, b"\0c\0\0", "e\u0301".encode("utf-8"))
     (args.output / "backend-normalized-names.iprop").write_bytes(canonical)
-    print(json.dumps({"fixtures": str(args.output.resolve()), "rgba_bytes": 128}))
+    parts = prepare_parts(args.tools, args.output)
+    print(json.dumps({"fixtures": str(args.output.resolve()), "rgba_bytes": 128, "part_binding_cases": parts}))
 
 
 if __name__ == "__main__":

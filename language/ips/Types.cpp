@@ -1,4 +1,5 @@
 #include "ips/Types.hpp"
+#include "iprop/Noise.hpp"
 
 namespace iprop::ips {
 
@@ -8,7 +9,34 @@ const CompositionSpec* surfaceMode(const Expr& expression) {
     return base && base->name == "surface" ? compositionSpec(member->name) : nullptr;
 }
 
+std::optional<i32> builtinConstant(const Expr& expression) {
+    if (const auto* mode = surfaceMode(expression)) return mode->sourceConstant;
+    const auto* member = std::get_if<Member>(&expression);
+    const auto* base = member ? std::get_if<Identifier>(member->object.get()) : nullptr;
+    if (base && base->name == "voronoi") {
+        if (member->name == "random") return 0;
+        if (member->name == "grid") return 1;
+    }
+    if (base && base->name == "contour") {
+        if (member->name == "four") return 0;
+        if (member->name == "eight") return 1;
+    }
+    if (!base || base->name != "noise") return std::nullopt;
+    for (std::size_t i = 0; i < detail::kNoiseModeNames.size(); ++i)
+        if (member->name == detail::kNoiseModeNames[i]) return static_cast<i32>(i);
+    if (member->name == "above") return detail::kNoiseAbove;
+    if (member->name == "below") return detail::kNoiseBelow;
+    return std::nullopt;
+}
+
 const char* typeName(ValueType type) { return iprop::valueTypeName(type); }
+
+std::optional<ValueType> geometryType(std::string_view name) {
+    for (const auto type : {ValueType::Diagram2d, ValueType::Contours2d, ValueType::Regions2d,
+                            ValueType::Part2d, ValueType::Parts2d})
+        if (name == typeName(type)) return type;
+    return std::nullopt;
+}
 
 std::optional<unsigned> colorChannel(std::string_view member) {
     constexpr std::string_view names[] = {"r", "g", "b", "a"};

@@ -130,9 +130,11 @@ can exceed a resource limit or encounter invalid data.
 
 ## Execution limits
 
-The compiler currently emits a default fuel budget of 5,000,000. The host
-can supply its invocation budget; each executed instruction/drawing operation
-retains its normative cost. Optimizations may reduce total fuel without
+The compiler emits a default fuel budget of 5,000,000 in program metadata.
+Runtime 0.9 applies the [current tariff](../../spec/fuel-v0.9.md) to old programs
+too; historical fuel totals are not guaranteed. Hosts independently control
+work (default 100,000,000), cancellation and monotonic deadlines through
+[execution limits](../execution-limits.md). Optimizations may reduce total fuel without
 changing image/output bits. A loop need not be statically bounded, but
 execution traps when fuel runs out.
 

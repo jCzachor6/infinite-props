@@ -8,9 +8,12 @@ returned by the current untyped accessors.
 
 ## Slots and names
 
-`output_count` and these accessors count geometry only. Internal mask/layer
-exports never appear in the result table; point/rect/circle indices and part
-output ranges retain their existing geometry-table meaning.
+`output_count`, count/find and declaration ranges include all public structured
+slots, including API 0.5 list-part outputs. Internal mask/layer exports never
+appear in this table. Packed-float `output_get` and scalar accessors explicitly
+reject a part slot with `E_UNSUPPORTED`, including an empty list. Use the
+[kind-neutral slot and typed part queries](c-api-part-outputs.md) for those
+records; existing point/rect/circle slots in a mixed result remain readable.
 
 `iprop_result_output_count` counts every declared slot, not only assigned
 values. `iprop_result_output_get(result, output_index, &view, error)` reads one

@@ -3,7 +3,7 @@
 The [Apple](../backends/apple/README.md), [Unity](../backends/unity/README.md),
 [Android](../backends/android/README.md) and [Python](../backends/python/README.md)
 packages call the same [C API](../backends/capi/README.md). They require C API
-0.4 / ABI 0.5 and load compiled `.iprop` files. Compile `.ips` with `ipc` before
+0.5 / ABI 0.5 and load compiled `.iprop` files. Compile `.ips` with `ipc` before
 shipping assets. No compiler, server or network connection is needed at runtime.
 
 ## Shared contract
@@ -36,6 +36,48 @@ shipping assets. No compiler, server or network connection is needed at runtime.
 
 See the [ownership and error contracts](c-api-contracts.md) and
 [ABI policy](c-api-abi.md).
+
+## Typed part results
+
+`output list part` uses the additive C API 0.5 contract; the C ABI remains 0.5.
+Managed wrappers negotiate both typed-part/resource capabilities and enable
+`IPROP_GENERATE_PART_OUTPUTS`. Each part slot keeps its declaration index,
+static owner, exact name and append order, including empty slots. Old packed
+float fields remain available for point/rect/circle slots; parts have their own
+records. They are never encoded as float arrays or a flattened image.
+
+| Host | Snapshots | Shared result-local resource table |
+| --- | --- | --- |
+| Python | `output.parts` | `image.resources`, `image.resource(id)` |
+| Swift | `output.parts` | `image.resources`, `image.resource(id)` |
+| C#/Unity | `output.Parts` | `image.Resources`, `image.Resource(id)` |
+| Kotlin/Android | `output.parts` | `image.resources`, `image.resource(id)` |
+| HTML5/WASM | `result.outputs[i].parts` | `result.resources[id - 1]` |
+| Godot | `asset.get_output_slots()[i].parts` | `asset.get_resources()`, `asset.get_resource(id)` |
+| SFML | `copyResult(result).outputs[i].parts` | `copyResult(result).resources` |
+
+Snapshots carry all [C API part fields](c-api-part-outputs.md), using each host's
+normal naming style. Resource IDs start at one, are local to one generation,
+and share one owned table entry across snapshots and mappings. Zero denotes an
+absent optional texture; `0xffffffff` denotes no region for a raster shape.
+Geometry keeps ordered rings, parents, hole assignments and region metadata.
+Raster resources retain exact top-left A8 or straight RGBA bytes, including
+soft alpha and hidden RGB. Geometry vertices and source/texture mappings stay
+in their original source space; effective D4/translation and root metadata
+are copied without applying a second transform.
+
+Every host makes one owned copy per resource ID. Old results survive native
+result/program destruction and later generations. Godot also preserves retained
+arrays across asset reload; SFML's complete `copyResult` is optional for the
+image-only viewer. The low-level WASM module's RGBA image view remains borrowed
+until its next call, while `Iprop.generate` owns that image copy. Typed WASM
+resources are owned in both interfaces. No new persisted result format is added.
+
+The shared part gate has 23 complete C++/checked-C observations covering holes,
+soft A8/RGBA, shared resources, 256 snapshots/512 stores, empty and mixed slots,
+all dynamic/static D4 and retained data. These are test fixtures, separate from
+the image corpus and from any public export format. The pixel corpus keeps
+part kind/count with zero float leaves; full snapshots/resources use this gate.
 
 ## Pixels and presentation
 

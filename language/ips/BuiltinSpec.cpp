@@ -20,6 +20,67 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"choose", {L::Choose, {}}},
         {"hash", {V::I32, L::Opcode, {{{{"x", V::I32}}, Opcode::Hash}}}},
         {"noise", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Noise}}}},
+        {"regions", {V::Regions2d,L::Opcode,{
+            {{{"source",V::Diagram2d}},Opcode::RegionsDiagram},
+            {{{"source",V::Diagram2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsDiagramConfig},
+            {{{"source",V::Contours2d}},Opcode::RegionsContours},
+            {{{"source",V::Contours2d},{"inset",V::F32},{"min_area",V::F32}},Opcode::RegionsContoursConfig}}}},
+        {"part.create", {V::Part2d,L::Opcode,{
+            {{{"source",V::Regions2d},{"index",V::I32}},Opcode::PartCreateRegion},
+            {{{"source",V::Mask}},Opcode::PartCreateMask},
+            {{{"source",V::Layer}},Opcode::PartCreateLayer}}}},
+        {"parts.from_regions", {V::Parts2d,L::Opcode,{{{{"source",V::Regions2d}},Opcode::PartsFromRegions}}}},
+        {"parts.count", {V::I32,L::Opcode,{{{{"source",V::Parts2d}},Opcode::PartsCount}}}},
+        {"parts.get", {V::Part2d,L::Opcode,{{{{"source",V::Parts2d},{"index",V::I32}},Opcode::PartsGet}}}},
+        {"part.id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartId}}}},
+        {"part.source_id", {V::I32,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartSourceId}}}},
+        {"part.center", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartCenter}}}},
+        {"part.bounds_origin", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartBoundsOrigin}}}},
+        {"part.bounds_size", {V::Vec2,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartBoundsSize}}}},
+        {"part.place", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"at",V::Vec2},{"rot",V::I32},{"mirror_x",V::I32},{"mirror_y",V::I32}},Opcode::PartPlace}}}},
+        {"part.fill", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"tint",V::Color}},Opcode::PartFill}}}},
+        {"part.texture", {V::Part2d,L::Opcode,{{{{"p",V::Part2d},{"image",V::Layer}},Opcode::PartTexture}}}},
+        {"part.draw", {V::Void,L::Opcode,{{{{"p",V::Part2d}},Opcode::DynamicPartDraw}}}},
+        {"part.mask", {V::Mask,L::Opcode,{{{{"p",V::Part2d}},Opcode::PartMask}}}},
+        {"regions.gap", {V::Regions2d,L::Opcode,{
+            {{{"source",V::Regions2d},{"width",V::F32}},Opcode::RegionsGap},
+            {{{"source",V::Regions2d},{"width",V::F32},{"variation",V::F32},{"seed",V::I32}},Opcode::RegionsGapConfig}}}},
+        {"regions.bevel", {V::Layer,L::Opcode,{
+            {{{"source",V::Regions2d},{"width",V::F32},{"light",V::Vec2}},Opcode::RegionsBevel},
+            {{{"source",V::Regions2d},{"width",V::F32},{"light",V::Vec2},{"highlight",V::Color},{"shadow",V::Color},{"strength",V::F32}},Opcode::RegionsBevelConfig}}}},
+        {"regions.count", {V::I32,L::Opcode,{{{{"rs",V::Regions2d}},Opcode::RegionsCount}}}},
+        {"regions.id", {V::I32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsId}}}},
+        {"regions.area", {V::F32,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsArea}}}},
+        {"regions.center", {V::Vec2,L::Opcode,{{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsCenter}}}},
+        {"regions.neighbors", {V::list(V::I32),L::Opcode,
+            {{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsNeighbors}}}},
+        {"regions.points", {V::list(V::Vec2),L::Opcode,
+            {{{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsPoints}}}},
+        {"regions.mask", {V::Mask,L::Opcode,{
+            {{{"rs",V::Regions2d},{"index",V::I32}},Opcode::RegionsMask},
+            {{{"rs",V::Regions2d}},Opcode::RegionsMaskAll}}}},
+        {"contour", {V::Contours2d, L::Opcode, {
+            {{{"source",V::Mask},{"threshold",V::F32}},Opcode::Contour},
+            {{{"source",V::Mask},{"threshold",V::F32},{"simplify",V::F32},
+              {"min_area",V::F32},{"connectivity",V::I32}},Opcode::ContourConfig}}}},
+        {"voronoi", {V::Diagram2d, L::Opcode, {
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32}},Opcode::Voronoi},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32}},Opcode::VoronoiConfig},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
+              {"anisotropy",V::F32},{"direction",V::Vec2}},Opcode::VoronoiMetric},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"count",V::I32},{"seed",V::I32},
+              {"method",V::I32},{"jitter",V::F32},{"relax",V::I32},
+              {"anisotropy",V::F32},{"direction",V::Vec2},{"row_bias",V::F32},
+              {"row_jitter",V::F32},{"row_offset",V::F32}},Opcode::VoronoiRows},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"sites",V::list(V::Vec2)}},Opcode::VoronoiSites},
+            {{{"origin",V::Vec2},{"size",V::Vec2},{"sites",V::list(V::Vec2)},
+              {"relax",V::I32}},Opcode::VoronoiSitesRelax}}}},
+        {"diagram.count", {V::I32,L::Opcode,{{{{"d",V::Diagram2d}},Opcode::DiagramCount}}}},
+        {"diagram.site", {V::Vec2,L::Opcode,{{{{"d",V::Diagram2d},{"index",V::I32}},Opcode::DiagramSite}}}},
+        {"diagram.neighbors", {V::list(V::I32),L::Opcode,
+            {{{{"d",V::Diagram2d},{"index",V::I32}},Opcode::DiagramNeighbors}}}},
         {"fault", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::Fault}}}},
         {"smooth", {V::F32, L::Opcode, {{{{"t", V::F32}}, Opcode::Smooth}}}},
         {"sqrt", {V::F32, L::Opcode, {{{{"x", V::F32}}, Opcode::F32Sqrt}}}},
@@ -50,6 +111,15 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         {"noise.grad", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseGrad}}}},
         {"noise.fbm", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseFbm}}}},
         {"noise.cell", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell}}}},
+        {"noise.cell2", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCell2}}}},
+        {"noise.cell_id", {V::I32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"seed", V::I32}}, Opcode::NoiseCellId}}}},
+        {"noise.mask", {V::Mask, L::Opcode, {
+            {{{"origin", V::Vec2}, {"size", V::Vec2}, {"kind", V::I32}, {"frequency", V::Vec2},
+              {"threshold", V::F32}, {"seed", V::I32}}, Opcode::NoiseMask},
+            {{{"origin", V::Vec2}, {"size", V::Vec2}, {"kind", V::I32}, {"frequency", V::Vec2},
+              {"threshold", V::F32}, {"seed", V::I32}, {"octaves", V::I32}, {"softness", V::F32},
+              {"comparison", V::I32}, {"warp_amount", V::F32}}, Opcode::NoiseMaskConfig}}}},
+        {"noise.warp_vec", {V::Vec2, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::NoiseWarpVec}}}},
         {"warp", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"amount", V::F32}, {"seed", V::I32}}, Opcode::Warp}}}},
         {"cell.jitter", {V::Vec2, L::Opcode, {{{{"cx", V::I32}, {"cy", V::I32}, {"seed", V::I32}}, Opcode::CellJitter}}}},
         {"noise.ridge", {V::F32, L::Opcode, {{{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32}, {"seed", V::I32}}, Opcode::NoiseRidge}}}},
@@ -135,11 +205,18 @@ std::map<std::string, BuiltinSpec> makeBuiltinSpecs() {
         spec.overloads.push_back({std::move(params), scalar.opcode,
             adaptation == BuiltinAdaptation::VectorLerp ? V::Vec2 : scalar.result, adaptation});
     };
-    for (const auto* name : {"noise", "fault", "noise.grad", "noise.cell"})
+    for (const auto* name : {"noise", "fault", "noise.grad", "noise.cell", "noise.cell2", "noise.cell_id"})
         add(name, {{"p", V::Vec2}, {"seed", V::I32}});
     for (const auto* name : {"noise.fbm", "noise.ridge"})
         add(name, {{"p", V::Vec2}, {"octaves", V::I32}, {"seed", V::I32}});
     add("warp", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+    add("noise.warp_vec", {{"p", V::Vec2}, {"amount", V::F32}, {"seed", V::I32}});
+    // Append both new fBm overloads after the frozen scalar/vec2 pair.
+    auto& fbm = table.at("noise.fbm").overloads;
+    fbm.push_back({{{"x", V::F32}, {"y", V::F32}, {"octaves", V::I32},
+        {"lacunarity", V::F32}, {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32});
+    fbm.push_back({{{"p", V::Vec2}, {"octaves", V::I32}, {"lacunarity", V::F32},
+        {"gain", V::F32}, {"seed", V::I32}}, Opcode::NoiseFbmConfig, V::F32, BuiltinAdaptation::Coordinates});
     add("rect", {{"position", V::Vec2}, {"size", V::Vec2}, {"color", V::Color}});
     add("rect", {{"position", V::Vec2}, {"w", V::F32}, {"h", V::F32}, {"color", V::Color}});
     add("rect", {{"x", V::F32}, {"y", V::F32}, {"size", V::Vec2}, {"color", V::Color}});
@@ -287,7 +364,7 @@ std::optional<ValueType> selectionType(std::span<const ValueType> arguments) {
 }
 
 bool builtinYieldsToHelper(std::string_view name) {
-    return name == "gaussian" || name == "triangular" || name == "beta";
+    return name == "gaussian" || name == "triangular" || name == "beta" || name == "voronoi" || name == "contour" || name == "regions";
 }
 
 OperationEffects builtinEffects(const BuiltinSpec& spec, const BuiltinOverload* overload) {

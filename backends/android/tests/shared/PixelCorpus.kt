@@ -27,7 +27,7 @@ fun verifyPixelCorpus(load: (String) -> ByteArray, transport: (GeneratedImage, B
                     else InputValue.U32(integer.toUInt())
             }
             val expectedWidth = word().toUInt(); val expectedHeight = word().toUInt(); val expected = blob()
-            val image = program.generate(seed, inputs, width, height)
+            val image = program.generate(seed, inputs, width, height, ExecutionLimits(workLimit = 1_000_000_000u))
             val label = "Corpus case $index seed $seed"
             check(image.width == expectedWidth && image.height == expectedHeight) { "$label: size" }
             check(image.rgba.contentEquals(expected)) { "$label: RGBA" }

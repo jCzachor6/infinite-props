@@ -7,6 +7,8 @@ import json, math, struct
 from decimal import Decimal, localcontext
 from pathlib import Path
 
+from fixture_json import dumps
+
 def f32(x):return struct.unpack('<f',struct.pack('<f',x))[0]
 def bits(x):return struct.unpack('<I',struct.pack('<f',x))[0]
 def hash32(x):
@@ -100,7 +102,7 @@ with localcontext() as context:
    case['rows'].append({'seed':seed,'raw_hash':raw,'value_bits':bits(actual),'mathematical_value_bits':mathematical_bits,'state_bits':[bits(state&65535),bits(state>>16)]})
   cases.append(case)
 fixture={'note':'Independent Python binary64 reference of spec 0.6 density integration; cross-checked against independent 90-digit Decimal integrals/CDFs within 2^-42 times max(1,abs(coordinate)/span), accounting for binary64 coordinate quantization; operation-order and ideal-real f32 bits are recorded separately. No expected values come from the C++/WASM runtime.','maximum_cdf_error':str(maximum_error),'cases':cases}
-(Path(__file__).resolve().parents[1]/'tests/fixtures/density-v0.6-vectors.json').write_text(json.dumps(fixture,indent=2)+'\n')
+(Path(__file__).resolve().parents[1]/'tests/fixtures/density-v0.6-vectors.json').write_text(dumps(fixture)+'\n')
 # Independently pin the visible example after its weighted material draw.
 state=26;values=[]
 for i in range(4):

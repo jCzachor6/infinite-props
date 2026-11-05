@@ -3,10 +3,10 @@ const {renderSource, renderArguments} = require("./authored-fixtures.js");
 const assert = require("node:assert/strict"), fs = require("node:fs"), path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const { decodePng } = require("./png.js");
-const { sections } = require("./sampler-conformance.js");
+const {outputBits:slotBits,sections}=require("./harness.js");
 const repo = path.resolve(__dirname,"../../..");
 const bits = value => { const b=Buffer.alloc(4);b.writeFloatLE(value);return b.readUInt32LE(); };
-const outputBits = result => result.outputs.map(slot=>({name:slot.name,kind:["point","rect","circle"][slot.kind],list:slot.isList,values:slot.valueBits}));
+const outputBits=result=>slotBits(result.outputs);
 function instructions(data) {
     const start=sections(data).get(3), functions=[];let at=start+4;
     for(let i=0;i<data.readUInt32LE(start);++i){
@@ -25,13 +25,14 @@ function run(iprop,tool,directory) {
     }
     function generate(binary,seed=26,options={}) {
         const png=base+".png",flags=options.sizeX?["--size",`${options.sizeX}x${options.sizeY}`]:[];
+        if(options.workLimit) flags.push("--work-limit",String(options.workLimit));
         const native=JSON.parse(execFileSync(tool("ipgen"),[binary,"--seed",String(seed),"--float-bits",...flags,"-o",png],{encoding:"utf8"}));
         const rgba=Buffer.from(decodePng(fs.readFileSync(png)).data);
         const wasm=iprop.generate(new Uint8Array(fs.readFileSync(binary)),{seed,...options});
         assert.deepEqual(Buffer.from(wasm.data),rgba,"export native/WASM pixels");assert.deepEqual(outputBits(wasm),native.outputs,"export output bits");
         ++comparisons;return {rgba,outputs:native.outputs,fuel:native.fuel};
     }
-    const oracle=JSON.parse(fs.readFileSync(path.join(repo,"tests/fixtures/resource-exports-v0.6.json"),"utf8"));
+    const oracle=require("./oracle.js").oracle("check_resource_export_reference.py");
     for(const expected of oracle.cases) for(const opt of [false,true]) {
         for(const [name,source] of Object.entries(expected.source_texts)) fs.writeFileSync(path.join(tree,name),renderSource(source));
         const binary=path.join(tree,"tree.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"--no-compress",...(opt?[]:["--no-opt"]),"-o",binary]);
@@ -65,7 +66,7 @@ function run(iprop,tool,directory) {
     fs.writeFileSync(path.join(tree,"root.ips"),wrong);const wrongBinary=path.join(tree,"wrong.iprop");execFileSync(tool("ipc"),[path.join(tree,"root.ips"),"-o",wrongBinary]);trap(wrongBinary,/last called part/);
     // Repeated replacement is bounded by live handles, rather than arena history.
     const reusable=compile('asset t{size 1024x1024 draw{layer image{}region=mask.from(image)for i in 0..64{region=mask.invert(region)}}}',["--no-opt"]);
-    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large);
+    const assembly=base+"-large.ipa",large=base+"-large.iprop";fs.writeFileSync(assembly,execFileSync(tool("ipdis"),[reusable],{encoding:"utf8"}).replace(/fuel=\d+/,'fuel=200000000'));execFileSync(tool("ipa"),[assembly,"-o",large]);generate(large,26,{workLimit:1000000000});
     // A real snapshot survives slot replacement and keeps its allocation alive.
     fs.writeFileSync(path.join(tree,"leaf.ips"),'asset t{size 1024x1024 output layer image draw{layer captured{}image=captured}}');
     const many=Array.from({length:16},(_,i)=>`leaf.draw(seed,at={0,0})snapshot${i}=leaf.outputs.image`).join(';');

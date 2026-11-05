@@ -1,0 +1,15 @@
+asset Paving {
+  size 128x128
+
+  draw {
+    pattern_seed = seed
+    rect(0, 0, 128, 128, #393c3e)
+    d = voronoi({0, 0}, {128, 128}, 36, pattern_seed, voronoi.grid, 0.35, 1)
+    stones = regions.gap(regions(d), 1.5, 0.15, pattern_seed)
+    for i in 0..regions.count(stones) {
+      tint = color.shade(#81858a, ((regions.id(stones, i) & 7) - 3))
+      surface.paint(regions.mask(stones, i), tint)
+    }
+    surface.paint(regions.bevel(stones, 2, {(-1), (-1)}), blend = surface.source_over)
+  }
+}

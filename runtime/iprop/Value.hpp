@@ -41,8 +41,21 @@ struct PointDistributionBuilderData {
 struct PointDistributionBuilder {
     std::shared_ptr<PointDistributionBuilderData> data;
 };
+struct GeometryData;
+struct DynamicPartData;
+struct DynamicPartsData;
+template<TypeDescriptor::Kind Kind, class Data = GeometryData>
+struct GeometryValue {
+    std::shared_ptr<const Data> data;
+};
+using Diagram2dValue = GeometryValue<TypeDescriptor::Kind::Diagram2d>;
+using Contours2dValue = GeometryValue<TypeDescriptor::Kind::Contours2d>;
+using Regions2dValue = GeometryValue<TypeDescriptor::Kind::Regions2d>;
+using Part2dValue = GeometryValue<TypeDescriptor::Kind::Part2d, DynamicPartData>;
+using Parts2dValue = GeometryValue<TypeDescriptor::Kind::Parts2d, DynamicPartsData>;
 using Value = std::variant<i32, f32, Color, Vec2, Distribution, ListValue, ListBuilder, SamplerValue,
-                           PointDistributionBuilder, LayerValue, MaskValue, StepperValue>;
+                           PointDistributionBuilder, LayerValue, MaskValue, StepperValue,
+                           Diagram2dValue, Contours2dValue, Regions2dValue, Part2dValue, Parts2dValue>;
 
 enum class SamplerMode : u8 { Constant, Uniform, With };
 // Both descriptions share storage and validation, but have distinct Value

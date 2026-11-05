@@ -39,6 +39,7 @@ enum class OutputKind : u8 {
     Point = 0,
     Rect = 1,
     Circle = 2,
+    Part = 3, // v0.9: list-only immutable dynamic-part snapshots
 };
 
 // Opcodes (spec §9). Values are part of the frozen format contract: they
@@ -55,6 +56,24 @@ enum class Opcode : u8 {
     BrIf = 0x07,
     Call = 0x08,
     Return = 0x09,
+
+    // Dynamic instances (v0.9), allocated in previously reserved gaps.
+    PartCreateRegion = 0x18,
+    PartCreateMask = 0x19,
+    PartCreateLayer = 0x1A,
+    PartsFromRegions = 0x1B,
+    PartsCount = 0x1C,
+    PartsGet = 0x1D,
+    PartId = 0x1E,
+    PartSourceId = 0x1F,
+    PartCenter = 0x3A,
+    PartBoundsOrigin = 0x3B,
+    PartBoundsSize = 0x3C,
+    PartPlace = 0x3D,
+    PartFill = 0x3E,
+    PartTexture = 0x3F,
+    DynamicPartDraw = 0x67,
+    PartMask = 0x68,
 
     // Stack and constants (§9.2)
     ConstI32 = 0x10,
@@ -192,6 +211,7 @@ enum class Opcode : u8 {
     OutListPoint = 0x93,
     OutListRect = 0x94,
     OutListCircle = 0x95,
+    OutListPart = 0x69, // v0.9, previously reserved
     PartGetPoint = 0x96,
     PartGetRect = 0x97,
     PartGetCircle = 0x98,
@@ -283,6 +303,41 @@ enum class Opcode : u8 {
     LayerBlur = 0xDD,
     MaskBlur = 0xDE,
 
+    // Noise extensions (v0.9); existing instruction IDs stay frozen.
+    NoiseCell2 = 0xDF,
+    NoiseCellId = 0xE0,
+    NoiseWarpVec = 0xE1,
+    NoiseFbmConfig = 0xE2,
+    NoiseMask = 0xE3,
+    NoiseMaskConfig = 0xE4,
+    Voronoi = 0xE5,
+    VoronoiConfig = 0xE6,
+    VoronoiMetric = 0xE7,
+    VoronoiRows = 0xE8,
+    VoronoiSites = 0xE9,
+    VoronoiSitesRelax = 0xEA,
+    DiagramCount = 0xEB,
+    DiagramSite = 0xEC,
+    DiagramNeighbors = 0xED,
+    Contour = 0xEE,
+    ContourConfig = 0xEF,
+    RegionsDiagram = 0xF0,
+    RegionsDiagramConfig = 0xF1,
+    RegionsContours = 0xF2,
+    RegionsContoursConfig = 0xF3,
+    RegionsCount = 0xF4,
+    RegionsId = 0xF5,
+    RegionsArea = 0xF6,
+    RegionsCenter = 0xF7,
+    RegionsNeighbors = 0xF8,
+    RegionsPoints = 0xF9,
+    RegionsMask = 0xFA,
+    RegionsMaskAll = 0xFB,
+    RegionsGap = 0xFC,
+    RegionsGapConfig = 0xFD,
+    RegionsBevel = 0xFE,
+    RegionsBevelConfig = 0xFF,
+
     // Parts (§9.10)
     PartDraw = 0xA0,
 };
@@ -291,6 +346,7 @@ enum class Opcode : u8 {
 // format semantics; MAY be relaxed without a spec change).
 inline constexpr u16 kMaxFunctions = 1024;
 inline constexpr u16 kMaxParts = 256;
+inline constexpr u16 kMaxDynamicParts = 256;
 inline constexpr u16 kMaxLocals = 1024;
 inline constexpr u32 kMaxSectionSize = 1u << 26; // 64 MiB
 inline constexpr u16 kMaxStackDepth = 512;

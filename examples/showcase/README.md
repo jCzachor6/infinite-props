@@ -6,12 +6,13 @@ packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`).
 
 The `.ips` sources are kept outside this repository; the programs here are
-compiled binaries. They are compiled by product 0.7.1, in the unversioned format,
-from props commit `6697876`. The compiler's default fuel budget is
+compiled binaries. They are compiled by product 0.9.0, in the unversioned format,
+from the props working tree at commit `855ba99`. The compiler's default fuel budget is
 5,000,000. `showcase-manifest.json` records the full source commit, every
-binary's byte size and SHA-256, and the hashes of all imported sources. Selection is implemented by ordinary inputs: `v` selects
-authored styles and `a` selects an authored class where declared; default 0
-rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
+binary's byte size and SHA-256, and the hashes of all imported sources. Selection is implemented by ordinary inputs named after what they choose:
+`enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
+`coating` where declared) for weapons, `sex` and `role` for portraits;
+default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
 native glow. The website uses `bloom=0` and adds its own blurred emission
 pass (`renderPass=1`).
 The runtime provides no variant/archetype counts or selectors.

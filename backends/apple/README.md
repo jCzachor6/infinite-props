@@ -1,9 +1,18 @@
 # Apple / Swift
 
-A Swift package over C API 0.4 / ABI 0.5 for macOS 12+ and iOS 15+.
+A Swift package over C API 0.6 / ABI 0.5 for macOS 12+ and iOS 15+.
 It provides typed inputs, metadata, owned RGBA/geometry/statistics results,
 structured errors and CGImage, SpriteKit and Metal helpers. It has no game
 dependencies. See the [shared binding contract](../../docs/native-bindings.md).
+
+Part slots have `kind == .part`, ordered `parts` snapshots and empty float
+`values`. Resolve nonzero `shapeResource`/`textureResource` IDs with
+`image.resource(id)` in the result's shared `resources` table. Geometry keeps
+ordered rings, parents and explicit hole indices; rasters keep exact A8/RGBA
+`Data`. All snapshot fields, original mappings and effective D4/translation
+follow the [typed C API contract](../../docs/c-api-part-outputs.md).
+Resources are copied once per ID and survive program close and later calls.
+Zero means an absent optional texture; `UInt32.max` is the raster region index.
 
 ## Build from source
 
@@ -50,6 +59,15 @@ earlier and is idempotent. Results remain usable after close.
 For distinct Unicode names that Swift dictionaries consider canonically
 equivalent, use `generate(overrides: [InputOverride(name, value), ...])`.
 This array API and output lookup compare the exact UTF-8 bytes.
+
+`generate(..., limits: ExecutionLimits(...))` accepts `workLimit`,
+`timeoutNanoseconds` and an optional `CancellationToken`. Zero work selects
+its finite native default; zero timeout disables the monotonic deadline.
+Call `token.cancel()` from another thread while synchronous generation runs.
+ARC retains the atomic token through the native call and frees it after its
+last reference. Results expose `statistics.workBudget`, `workRemaining` and
+`workUsed`; `IpropError.reason` distinguishes work (3015), cancel (3016) and
+deadline (3017). Successful pixels, RNG and fuel remain unchanged.
 
 Raw `rgba` is unchanged top-left RGBA8 with the runtime's legacy destination
 alpha tag. CGImage/SpriteKit presentation interprets stored channels as

@@ -5,10 +5,10 @@ programs generate deterministic raster images and structured geometry. The
 compiler produces a self-contained `.iprop` file; hosts execute it with a
 seed and optional declared input uniforms.
 
-This handbook describes source language **0.8.0** and product **0.8.0**.
+This handbook describes source language **0.9.0** and product **0.9.0**.
 Product, source, C API and ABI versions are independent, and the binary format
 is unversioned: `ipc --describe-language` reports the compiler's contracts.
-C API 0.4 uses ABI 0.5.
+C API 0.6 uses ABI 0.5.
 The generated book identifies its product, development/release status and source
 commit. Earlier documentation is available in Git history.
 
@@ -40,6 +40,7 @@ files; their contents are included in the generated book and tested by CI.
 22. [Maintaining this documentation](development.md)
 23. [Migrating from 0.6 to 0.7](migration-v0.7.md)
 24. [Migrating from 0.7 to 0.8](migration-v0.8.md)
+25. [Migrating from 0.8 to 0.9](migration-v0.9.md)
 
 The [format and VM specifications](../../spec/README.md) define binary
 encoding, exact numerical/raster algorithms, validation and deterministic

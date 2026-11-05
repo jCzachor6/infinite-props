@@ -354,6 +354,7 @@ function previewHtml() {
       outputs.textContent = json.outputs.map((o) =>
         o.name + " (" + o.kind + (o.list ? ", list" : "") + "): " +
         o.values.map((v) => JSON.stringify(v)).join(", ")).join("\\n");
+      if (json.part_outputs_omitted) outputs.textContent += "\\nPart snapshots are available through the typed host API.";
       document.getElementById("inputs").textContent = "";
       for (const input of json.inputs) {
         const row = document.createElement("div");
@@ -442,7 +443,7 @@ function renderCell(ipropPath, seed, uniforms) {
         const pngPath = path.join(os.tmpdir(),
             "iprop-cell-" + process.pid + "-" + Math.random().toString(36).slice(2) + ".png");
         const args = [ipropPath, "--seed", String(seed >>> 0),
-            "-o", pngPath];
+            "-o", pngPath, "--omit-part-outputs"];
         for (const [name, value] of Object.entries(uniforms || {})) {
             args.push("--uniform", name + "=" + value);
         }
@@ -478,7 +479,7 @@ function renderOnly() {
         return;
     }
     const args = [ipropPath, "--seed", String(previewState.seed >>> 0),
-        "-o", pngPath];
+        "-o", pngPath, "--omit-part-outputs"];
     for (const [name, value] of Object.entries(previewState.uniforms)) {
         args.push("--uniform", name + "=" + value);
     }
@@ -926,6 +927,7 @@ class IpsCodeLensProvider {
 }
 
 function activate(context) {
+    require("./authoring").registerAuthoring(vscode, context, compilerBinary);
     log = vscode.window.createOutputChannel("iprop");
     context.subscriptions.push(log);
     diagnostics = vscode.languages.createDiagnosticCollection("iprop");
