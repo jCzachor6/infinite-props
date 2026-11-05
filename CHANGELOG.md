@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## v0.9.0 — 2026-11-04
+## v0.9.0 — 2026-11-05
 
 Product/source and editor, website, Unity/Python packages: **0.9.0**.
 C API **0.6**, ABI/SONAME **0.5**; binary format remains unversioned.
