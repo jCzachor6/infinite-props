@@ -328,6 +328,71 @@
     </div>
   </section>
 
+  <section class="section section--band strike" id="lightning" aria-labelledby="strike-title" data-strike>
+    <div class="container strike__grid">
+      <div class="strike__head">
+        <p class="eyebrow">Animated effects</p>
+        <h2 class="section-title" id="strike-title">One strike, <b>never the same twice</b></h2>
+        <p class="lead">An animation is a program too: the frame is just one more input. Each seed grows its own bolt: the branching tree, the colour, the re&#8209;strikes, the frame count and the timing. Every frame also draws the light it throws, and the page adds it under the pixels. When a strike ends, the next seed strikes.</p>
+      </div>
+
+      <figure class="tile strike__stage">
+        <div class="strike__screen">
+          <div class="tile__file"><span>lightning-strike.iprop</span><span data-strike-size>10.2 KB</span></div>
+          <canvas width="144" height="192" role="img" aria-label="A lightning strike" data-strike-canvas></canvas>
+        </div>
+        <figcaption class="tile__bar strike__bar">
+          <span class="stepper strike__seed">
+            <button type="button" data-strike-step="-1" aria-label="Previous seed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+            <input type="text" inputmode="numeric" maxlength="10" autocomplete="off" spellcheck="false" aria-label="Seed" title="Type a seed and press Enter" data-strike-seed>
+            <button type="button" data-strike-step="1" aria-label="Next seed"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+          </span>
+          <dl class="strike__data">
+            <div><dt>frame</dt><dd><output data-strike-frame>…</output></dd></div>
+            <div><dt>light</dt><dd><output data-strike-power>…</output></dd></div>
+          </dl>
+          <button class="autoroll" type="button" data-strike-pause>Pause</button>
+        </figcaption>
+      </figure>
+
+      <div class="strike__controls">
+        <fieldset class="strike__field">
+          <legend>Colour <code>tint</code></legend>
+          <div class="strike__choices">
+            <label title="Rolled by the seed"><input type="radio" name="strike-tint" value="" checked><span>Seed</span></label>
+            <label class="strike__swatch" style="--swatch: #58c0ff" title="Electric blue"><input type="radio" name="strike-tint" value="#58c0ff" aria-label="Electric blue"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #b878ff" title="Violet"><input type="radio" name="strike-tint" value="#b878ff" aria-label="Violet"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #ffc23d" title="Gold"><input type="radio" name="strike-tint" value="#ffc23d" aria-label="Gold"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #ff4a5e" title="Crimson"><input type="radio" name="strike-tint" value="#ff4a5e" aria-label="Crimson"><span></span></label>
+            <label class="strike__swatch" style="--swatch: #4cff8a" title="Toxic green"><input type="radio" name="strike-tint" value="#4cff8a" aria-label="Toxic green"><span></span></label>
+            <label class="strike__swatch strike__swatch--custom" title="Any colour"><input type="radio" name="strike-tint" value="custom" aria-label="The picked colour"><input type="color" value="#ff8a3d" aria-label="Pick any colour" data-strike-custom></label>
+          </div>
+        </fieldset>
+        <fieldset class="strike__field">
+          <legend>Branches <code>branching</code></legend>
+          <div class="strike__choices">
+            <label><input type="radio" name="strike-branching" value="0" checked><span>Seed</span></label>
+            <label><input type="radio" name="strike-branching" value="1"><span>Forked</span></label>
+            <label><input type="radio" name="strike-branching" value="2"><span>Spider</span></label>
+            <label><input type="radio" name="strike-branching" value="3"><span>Bare</span></label>
+            <label><input type="radio" name="strike-branching" value="4"><span>Twin</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="strike__field">
+          <legend>View <code>renderPass</code></legend>
+          <div class="strike__choices">
+            <label><input type="radio" name="strike-view" value="lit" checked><span>Lit <small>0 + 2</small></span></label>
+            <label><input type="radio" name="strike-view" value="sprite"><span>Sprite <small>0</small></span></label>
+            <label><input type="radio" name="strike-view" value="mask"><span>Mask <small>1</small></span></label>
+            <label><input type="radio" name="strike-view" value="light"><span>Light <small>2</small></span></label>
+          </div>
+        </fieldset>
+        <p class="strike__note">One <code>.iprop</code> of <span data-strike-size>10.2 KB</span>. Every frame and its light are rendered right here, in a worker, while the strike plays. <a href="effects/lightning-strike.ips" download>Download the source</a></p>
+        <p class="strike__status" data-strike-status role="status" hidden></p>
+      </div>
+    </div>
+  </section>
+
   <section class="section section--band" id="examples">
     <div class="container">
       <div class="section-head">

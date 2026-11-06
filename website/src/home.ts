@@ -18,6 +18,7 @@
 
 import "./site";
 import "./butterfly";
+import "./lightning";
 
 interface Output {
     name: string;

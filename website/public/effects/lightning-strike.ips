@@ -1,0 +1,1220 @@
+// Lightning strike: the scene darkens over the target and the ground starts
+// to crackle. A stepped leader jerks down out of the sky, branching as it
+// comes, every tip burning white, and a streamer climbs off the ground to
+// meet it. Then the return stroke: one white frame, the whole branching tree
+// lit at once, the ground blown white. One to three re-strikes flicker down
+// the main channel, a dart running down it before each; then the channel
+// cools and crumbles from the top down into falling motes. On the floor,
+// cracks race out and glow with heat, arcs crawl along them with every
+// stroke, sparks, hot chips and grit fly and bounce, dust rolls out, and a
+// scorch cools under rising smoke.
+//
+// Category: lightning. One-shot. Canvas 144x192, origin 72,180 (where the
+// bolt hits the floor). Side view at the scale of a 24x38 character, light
+// from the upper left.
+// Frames: the seed rolls 32, 38 or 44 frames over 1.5-1.8 s; `frames`
+// retimes it. The strike is choreographed over 1.6 s and played to fit. The
+// return stroke always lands on a frame of its own, and frame 0 shows it.
+// Branches: every seed grows its own tree, and none of it is fixed.
+// - The trunk is midpoint displacement down to 3 px kinks, with a rolled
+//   jaggedness and roughness; two kinks in eight swing wider.
+// - The tree rolls its own density, spread and arch.
+// - Each fork rolls where it leaves the trunk (a beta, the upper part
+//   favoured), how far it turns off (a gaussian), how far it reaches (a beta:
+//   mostly short, now and then long), how it bows, and how many forks it
+//   grows (weighted).
+// - Its forks roll the same, and so do their twigs.
+// - Forks arch out and down, and thin and darken toward their tips.
+// The family is rolled too:
+// - forked (35%): forks all the way down;
+// - spider (25%): a canopy of long forks spreading from the top;
+// - bare (20%): a lone jagged channel;
+// - twin (20%): a fork reaches the ground too and strikes a second spot.
+// Light: the mask holds the leader's tips, the bolt and its forks, a flash
+// over the scene and the ground, the hot cracks, the sparks and the arcs. It
+// fades toward the sky, so the top edge never cuts it. Power charges to about
+// 1.6, flashes to about 12 on the return stroke and 6-9 on each re-strike,
+// then fades with the channel; sigma 7, blur 1.5.
+//   tint       transparent rolls the colour (50% electric blue, 22% violet,
+//              12% gold, 8% crimson, 8% toxic green); a colour recolours the
+//              bolt
+//   branching  0 rolls the family; 1 forked, 2 spider, 3 bare, 4 twin
+//   lightColor transparent lights the scene in the bolt's own colours; a
+//              colour sets the colour of the light it throws (the mask and
+//              the baked light), not of the bolt. The hot cracks keep their
+//              heat.
+//
+// Variety: high
+asset LightningStrike {
+  size 144x192
+  origin 72,180
+
+  // ---- the effect contract -------------------------------------------------
+  // 0 draws the hero frame (the return stroke); 1..frames play the effect;
+  // past its end it draws nothing.
+  input u32 frame = 0
+  // 0 rolls the frame count from the seed; 2..64 retimes the effect.
+  input u32 frames = 0
+  // 0 colour sprite, 1 light mask, 2 light under the pixels (the mask with
+  // power, sigma and blur applied, ready to add under the sprite).
+  input u32 renderPass = 0
+  // 0 keeps this frame's own value; above 0 forces it.
+  input f32 power = 0.0
+  input f32 sigma = 0.0
+  input f32 blur = 0.0
+  // Transparent rolls the colour from the seed; a colour recolours it.
+  input color tint = #00000000
+  // 0 rolls the branching; 1 forked, 2 spider, 3 bare, 4 twin.
+  input u32 branching = 0
+  // Transparent keeps the light the bolt's colour; a colour sets the colour of
+  // the light it throws (renderPass 1 and 2), not of the bolt.
+  input color lightColor = #00000000
+
+  // {frames, fps, loop (1) or one-shot (0), the frame drawn (0 when done)}
+  output rect anim
+  // {x: power, y: sigma, radius: blur} of this frame's light
+  output circle glow
+
+  palette electric = [#0a0f2a, #142a66, #1f4fb0, #2f86e8, #58c0ff, #9ae4ff, #d8f6ff, #ffffff]
+  palette violet = [#140a2a, #2e1466, #5424b0, #8a40e8, #b878ff, #dcb0ff, #f2e0ff, #ffffff]
+  palette golden = [#2a1608, #5c3010, #a05a14, #e09420, #ffc23d, #ffe07a, #fff4c0, #ffffff]
+  palette crimson = [#1c0610, #440a1e, #8a1230, #d01e3c, #ff4a5e, #ff9aa6, #ffe0e4, #ffffff]
+  palette toxic = [#04140c, #0a3a20, #127a3c, #1ebe5a, #4cff8a, #a8ffc8, #e4fff0, #ffffff]
+  // The floor's heat, cold to white-hot.
+  palette heat = [#2a0e0a, #6a1a0c, #c83a10, #ff7a1a, #ffc040, #fff0b0, #ffffff]
+  palette smokeTones = [#27242c, #38343f, #4c4754, #5f596a]
+  palette stoneTones = [#655b7a, #4a4263, #342d45]
+
+  const distribution colours = weighted {1: 50, 2: 22, 3: 12, 4: 8, 5: 8}
+  const distribution families = weighted {1: 35, 2: 25, 3: 20, 4: 20}
+  const distribution restrikeCounts = weighted {1: 30, 2: 45, 3: 25}
+  // The tree: where a fork leaves its parent (the upper part favoured), how
+  // far it turns off (radians), how far it reaches (mostly short, now and
+  // then long), how much it bows, and how many forks and twigs it grows.
+  const distribution rootAt = beta(1.3, 2.1)
+  const distribution forkAngle = gaussian(mean = 0.55, sigma = 0.24)
+  const distribution forkReach = beta(1.5, 3.0)
+  const distribution bendLean = gaussian(mean = 0.0, sigma = 0.14)
+  const distribution subCounts = weighted {0: 18, 1: 34, 2: 30, 3: 18}
+  const distribution twigCounts = weighted {0: 38, 1: 40, 2: 22}
+  // The return stroke and the re-strikes, each fainter than the last.
+  const list<f32> strengths = [1.0, 0.82, 0.66, 0.52]
+  const f32 natural = 1.6       // the length the strike is choreographed over
+  const f32 sigmaMax = 7.0      // keeps renderPass 2 inside the fuel budget
+  const f32 cx = 72.0
+  const f32 floorY = 180.0
+  const f32 skyY = 3.0          // where the bolt comes out of the clouds
+  const f32 meetY = 150.0       // where the leader and the streamer meet
+  const f32 reach = 52.0        // how far the cracks run
+  const f32 right = 141.0       // the last column a branch may reach
+
+  // Stream keys, one per purpose; per-item streams add i * 0x9e3779b1.
+  const i32 timeKey = 0x68e31da4
+  const i32 lookKey = 0x2f6b9a13
+  const i32 strokeKey = 0x1b873593
+  const i32 leaderKey = 0x27d4eb2f
+  const i32 boltKey = 0x3c6ef372
+  const i32 forkKey = 0x5bd1e995
+  const i32 subKey = 0x7feb352d
+  const i32 twigKey = 0x165667b1
+  const i32 staticKey = 0x0bdc4f61
+  const i32 crackKey = 0x4f1bbcdc
+  const i32 sparkKey = 0x2545f491
+  const i32 chipKey = 0x61c88647
+  const i32 emberKey = 0x3243f6a9
+  const i32 dustKey = 0x52dce729
+  const i32 smokeKey = 0x632be5ab
+  const i32 moteKey = 0x6c078965
+
+  draw {
+    start = seed
+    // ---- timing: the seed's own frame count, or the one asked for ----------
+    stream_push(hash(start ^ timeKey))
+    rolled = pick(32, 38, 44)
+    dur = 1.5 to 1.8
+    stream_pop()
+    n = rolled
+    if (frames >= 2) { n = min(frames, 64) }
+    // The return stroke lands on the frame nearest 27% in, at that frame's
+    // own moment, so every frame count shows its white flash.
+    fs = clamp(int(0.27 * float(n) + 0.5), 1, n)
+    ts = (float(fs) - 0.5) / float(n) * natural - 0.004
+    f = frame
+    if (f == 0) { f = fs }
+    t = (float(f) - 0.5) / float(n) * natural
+
+    // ---- the look: roll everything, whatever the inputs --------------------
+    stream_push(hash(start ^ lookKey))
+    kind = 1 to 5 with colours
+    family = 1 to 4 with families
+    topX = -34.0 to 34.0 with gaussian(mean = 0.0, sigma = 15.0)
+    jag = 0.1 to 0.24 with gaussian(mean = 0.16, sigma = 0.03)
+    rough = 0.48 to 0.62
+    restrikes = 1 to 3 with restrikeCounts
+    twinSide = -1.0
+    if (chance(0.5)) { twinSide = 1.0 }
+    twinX = 30.0 to 52.0
+    stream_pop()
+    if (branching == 1) { family = 1 }
+    if (branching == 2) { family = 2 }
+    if (branching == 3) { family = 3 }
+    if (branching == 4) { family = 4 }
+    cs = electric
+    if (kind == 2) { cs = violet }
+    if (kind == 3) { cs = golden }
+    if (kind == 4) { cs = crimson }
+    if (kind == 5) { cs = toxic }
+    if (tint.a != 0) { cs = rampFrom(tint) }
+    // The light's colours: the bolt's own, unless lightColor sets them.
+    lcs = cs
+    if (lightColor.a != 0) { lcs = rampFrom(lightColor) }
+
+    // ---- the strokes: when each lands and how far the channel has drifted --
+    stream_push(hash(start ^ strokeKey))
+    g1 = 0.13 to 0.2
+    g2 = 0.11 to 0.18
+    g3 = 0.1 to 0.16
+    d1 = 1.0 to 2.6
+    d2 = 1.0 to 2.6
+    d3 = 1.0 to 2.6
+    ds = -1.0
+    if (chance(0.5)) { ds = 1.0 }
+    stream_pop()
+    count = restrikes + 1
+    times = [ts, ts + g1, ts + g1 + g2, ts + g1 + g2 + g3]
+    drifts = [0.0, ds * d1, ds * (d1 + d2), ds * (d1 + d2 - d3)]
+    si = -1
+    for i in 0..count {
+      if (t >= times[i]) { si = i }
+    }
+    kNow = 0.0
+    if (si >= 0) { kNow = flicker(start, si, t - times[si]) * strengths[si] }
+
+    // ---- this frame's light ------------------------------------------------
+    charge = pow(clamp(t / ts, 0.0, 1.0), 1.5)
+    lp = 0.3 + 1.3 * charge
+    if (si >= 0) { lp = 1.0 + 1.8 * exp(-(t - ts) / 0.35) + 9.0 * kNow }
+    lp = lp * (1.0 - smoothstep(1.15, 1.48, t))
+    ls = 7.0
+    lb = 1.5
+    if (power > 0.0) { lp = power }
+    if (sigma > 0.0) { ls = sigma }
+    if (blur > 0.0) { lb = blur }
+    lp = clamp(lp, 0.0, 16.0)
+    ls = clamp(ls, 0.0, sigmaMax)
+    lb = clamp(lb, 0.0, 4.0)
+    shown = f
+    if (f > n) {
+      shown = 0
+      lp = 0.0
+    }
+    anim = {float(n), float(n) / dur, 0.0, float(shown)}
+    glow = {lp, ls, lb}
+
+    // ---- the passes (keep as is) -------------------------------------------
+    if (f <= n) {
+      if (renderPass == 1) {
+        layer mask1(alpha = surface.source_over) { scene(start, t, ts, charge, times, drifts, count, si, kNow, lcs, family, topX, jag, rough, twinSide * twinX, 1, 1.0) }
+        surface.paint(mask1, blend = surface.source_over)
+      } else if (renderPass == 2) {
+        if (lp > 0.0) {
+          k = max(1, int(ceil(lp)))
+          layer mask2(alpha = surface.source_over) { scene(start, t, ts, charge, times, drifts, count, si, kNow, lcs, family, topX, jag, rough, twinSide * twinX, 1, lp / float(k)) }
+          pool = mask2.blur(ls)
+          bloom = mask2.blur(lb)
+          for i in 0..k { surface.paint(pool, blend = surface.source_over) }
+          for i in 0..k { surface.paint(bloom, blend = surface.source_over) }
+        }
+      } else {
+        layer sprite(alpha = surface.source_over) { scene(start, t, ts, charge, times, drifts, count, si, kNow, cs, family, topX, jag, rough, twinSide * twinX, 0, 1.0) }
+        surface.paint(sprite, blend = surface.source_over)
+      }
+    }
+  }
+
+  // How bright stroke i is `a` seconds after it lands: a white first tick,
+  // then a flicker of its own, re-rolled per stroke on 30 ticks a second.
+  flicker(start: i32, i: i32, a: f32) -> f32 {
+    if (a < 0.0) { return 0.0 }
+    tick = int(a * 30.0)
+    span = strokeSpan(start, i)
+    if (tick >= span) { return 0.0 }
+    if (tick == 0) { return 1.0 }
+    return (0.25 + 0.7 * rnd((start ^ strokeKey) + i * 31, tick)) * (1.0 - 0.5 * float(tick) / float(span))
+  }
+
+  // How many 30 Hz ticks stroke i stays lit: 4 to 7.
+  strokeSpan(start: i32, i: i32) -> i32 {
+    return 4 + (hash((start ^ strokeKey) + i * 977) & 3)
+  }
+
+  // Everything at time t, back to front. pass 0 paints colour; pass 1 paints
+  // only what emits light, in its light colour, alpha scaled by amp.
+  scene(start: i32, t: f32, ts: f32, charge: f32, times: list<f32>, drifts: list<f32>, count: i32, si: i32, kNow: f32, cs: list<color>, family: i32, topX: f32, jag: f32, rough: f32, twinOff: f32, pass: i32, amp: f32) {
+    if (pass == 0) { veil(t, ts) }
+    hot = heatLevel(t, times, count)
+    fade = 1.0 - smoothstep(1.28, 1.56, t)
+    scorch(t, ts, cx, 1.0, hot, fade, pass, amp)
+    if (family == 4) { scorch(t, ts, cx + twinOff, 0.6, hot * 0.8, fade, pass, amp) }
+    if (si >= 0) { cracks(start, t, ts, times, si, hot, fade, cs, pass, amp) }
+    if (pass == 0) {
+      dust(start, t, ts)
+      smoke(start, t, ts)
+    }
+    if (t < ts) {
+      leader(start, t, ts, family, topX, jag, rough, twinOff, cs, pass, amp)
+      ground(start, t, ts, charge, cs, pass, amp)
+    } else {
+      bolt(start, t, times, drifts, count, si, kNow, cs, family, topX, jag, rough, twinOff, pass, amp)
+    }
+    if (si >= 0) {
+      impact(start, t, times, si, kNow, cs, family, topX, twinOff, pass, amp)
+      debris(start, t, times, count, cs, family, twinOff, pass, amp)
+    }
+  }
+
+  // ---- the bolt ----------------------------------------------------------------
+  // A number in -1..1 or in 0..1 for key and i, from no stream.
+  sym(key: i32, i: i32) -> f32 {
+    return float(hash(key + i * 0x9e3779b1) & 65535) / 32767.5 - 1.0
+  }
+  rnd(key: i32, i: i32) -> f32 {
+    return float(hash(key + i * 0x9e3779b1) & 65535) / 65535.0
+  }
+
+  // Midpoint displacement at u in 0..1, pinned at both ends: the first
+  // midpoint swings up to 1, each finer level `rough` as far, and two
+  // offsets in eight kink 1.8 times as far.
+  mpd(key: i32, u: f32, depth: i32, rough: f32) -> f32 {
+    d = 0.0
+    amp = 1.0
+    cells = 1
+    for l in 0..depth {
+      x = u * float(cells)
+      j = int(floor(x))
+      v = x - float(j)
+      h = hash(key + (l * 4099 + j) * 0x9e3779b1)
+      r = float(h & 65535) / 32767.5 - 1.0
+      if (((h >> 16) & 7) < 2) { r = r * 1.8 }
+      d = d + amp * r * (1.0 - abs(2.0 * v - 1.0))
+      amp = amp * rough
+      cells = cells * 2
+    }
+    return d
+  }
+
+  // A point of a jagged path from a to b at u: the straight line, pushed
+  // across by the displacement, `jag` of the path's length at the middle.
+  along(a: vec2, b: vec2, key: i32, u: f32, depth: i32, rough: f32, jag: f32) -> vec2 {
+    d = b - a
+    l = max(sqrt(d.x * d.x + d.y * d.y), 0.001)
+    return a + d * u + {-d.y / l, d.x / l} * (mpd(key, u, depth, rough) * jag * l)
+  }
+
+  // A point of one path of the tree at u: the jagged line from a to b, bowed
+  // by `bend` at its middle.
+  pathAt(a: vec2, b: vec2, key: i32, depth: i32, rough: f32, jag: f32, bend: vec2, u: f32) -> vec2 {
+    return along(a, b, key, u, depth, rough, jag) + bend * sin(3.14159 * u)
+  }
+
+  // The main channel at u (0 in the sky, 1 on the ground), drifted sideways
+  // by `drift` px at its middle for a re-strike.
+  trunkAt(start: i32, topX: f32, jag: f32, rough: f32, drift: f32, u: f32) -> vec2 {
+    return pathAt({cx + topX, skyY}, {cx, floorY - 1.0}, start ^ boltKey, 6, rough, jag, {drift, 0.0}, u)
+  }
+
+  // An angle turned down to at least `low` below level.
+  downward(a: f32, low: f32) -> f32 {
+    if (sin(a) >= low) { return a }
+    if (cos(a) >= 0.0) { return atan2(low, sqrt(1.0 - low * low)) }
+    return atan2(low, 0.0 - sqrt(1.0 - low * low))
+  }
+
+  // Levels of midpoint displacement for a path `span` px long: segments of
+  // about 3 px.
+  depthFor(span: f32) -> i32 {
+    d = 2
+    while (d < 6 && float(1 << d) * 3.2 < span) { d = d + 1 }
+    return d
+  }
+
+  // How much a pixel at p shows. The sprite fades into the clouds at the top.
+  // The light also fades toward the sky and the sides, so the canvas never
+  // cuts it.
+  fadeAt(p: vec2, pass: i32) -> f32 {
+    if (pass == 1) { return (0.1 + 0.9 * smoothstep(skyY, 64.0, p.y)) * smoothstep(2.0, 24.0, min(p.x, 144.0 - p.x)) }
+    return smoothstep(skyY - 2.0, skyY + 14.0, p.y)
+  }
+
+  // The bow of a path heading `dir`, `span` px long: `curl` of its length
+  // across it, and `arch` of it outward, so it leaves flatter and turns down.
+  bowOf(dir: vec2, span: f32, curl: f32, arch: f32) -> vec2 {
+    out = 1.0
+    if (dir.x < 0.0) { out = -1.0 }
+    return {-dir.y, dir.x} * (curl * span) + {out * arch * span, 0.0}
+  }
+
+  // The whole branching tree: the trunk, its forks, their forks and their
+  // twigs, every one rolled (see the header). The twin family's first fork
+  // runs to the ground. mode 0 draws the leader down to the front yf. mode 1
+  // draws coat `coat` (0 the halo, 1 the body, 2 the core) of the lit bolt:
+  // the trunk at k, the forks at kf and the grounded fork at kTwin.
+  tree(start: i32, family: i32, topX: f32, jag: f32, rough: f32, twinOff: f32, drift: f32, mode: i32, coat: i32, k: f32, kf: f32, kTwin: f32, yf: f32, yPrev: f32, fresh: f32, cs: list<color>, pass: i32, amp: f32) {
+    top = {cx + topX, skyY}
+    hit = {cx, floorY - 1.0}
+    if (mode == 0 || k > 0.02) { branch(top, hit, start ^ boltKey, 6, rough, jag, {drift, 0.0}, 0, mode, coat, k, yf, yPrev, fresh, cs, pass, amp) }
+    if (mode == 0 || kf > 0.02 || kTwin > 0.02) {
+      // the tree's own character: how many forks, how wide, how they arch
+      stream_push(hash(start ^ forkKey))
+      fForked = 3 to 6
+      fSpider = 6 to 9
+      fBare = 1 to 3
+      fTwin = 2 to 5
+      bushy = 0.7 to 1.4 with gaussian(mean = 1.0, sigma = 0.18)
+      spreadK = 0.7 to 1.35 with gaussian(mean = 1.0, sigma = 0.15)
+      arch = -0.05 to 0.3 with gaussian(mean = 0.12, sigma = 0.08)
+      stream_pop()
+      base = fForked
+      if (family == 2) { base = fSpider }
+      if (family == 3) { base = fBare }
+      if (family == 4) { base = fTwin }
+      forks = max(1, int(float(base) * bushy + 0.5))
+      if (family == 4) { forks = max(2, forks) }
+      for j in 0..forks {
+        stream_push(hash((start ^ forkKey) + (j + 1) * 0x9e3779b1))
+        ur = 0.0 to 1.0 with rootAt
+        side = -1.0
+        if (chance(0.5)) { side = 1.0 }
+        turn = 0.15 to 1.3 with forkAngle
+        reachK = 0.04 to 1.0 with forkReach
+        subs = 0 to 3 with subCounts
+        jk = 0.8 to 1.5 with gaussian(mean = 1.1, sigma = 0.15)
+        curl = -0.45 to 0.45 with bendLean
+        stream_pop()
+        // Forked and twin: anywhere, the upper part favoured. Spider: long,
+        // wide forks from the top. Bare: a few short ones.
+        uRoot = 0.06 + 0.8 * ur
+        spread = turn * spreadK
+        lk = 0.18 + 0.72 * reachK
+        low = 0.1
+        if (family == 2) {
+          uRoot = 0.03 + 0.42 * ur
+          spread = 0.35 + 0.85 * turn * spreadK
+          lk = 0.35 + 0.6 * reachK
+          low = 0.02
+        }
+        if (family == 3) {
+          lk = 0.12 + 0.3 * reachK
+          subs = min(subs, 1)
+        }
+        root = trunkAt(start, topX, jag, rough, drift, uRoot)
+        ahead = trunkAt(start, topX, jag, rough, drift, min(uRoot + 0.06, 1.0))
+        ang = downward(atan2(ahead - root) + side * spread, low)
+        dir = {cos(ang), sin(ang)}
+        span = (1.0 - uRoot) * (floorY - skyY) * lk
+        end = root + dir * span
+        bend = bowOf(dir, span, curl, arch)
+        lvl = 1
+        kb = kf
+        if (family == 4 && j == 0) {
+          // the twin: this fork reaches the ground and strikes it too
+          root = trunkAt(start, topX, jag, rough, drift, 0.28 + 0.25 * ur)
+          end = {cx + twinOff, floorY - 1.0}
+          span = sqrt((end.x - root.x) * (end.x - root.x) + (end.y - root.y) * (end.y - root.y))
+          bend = {-(end.y - root.y), end.x - root.x} * (curl * 0.25)
+          if (mode == 1) {
+            lvl = 0
+            kb = kTwin
+          }
+        }
+        fkey = (start ^ forkKey) + (j + 1) * 0x2545f491
+        depth = depthFor(span)
+        fj = jag * jk
+        if (mode == 0 || kb > 0.02) { branch(root, end, fkey, depth, rough, fj, bend, lvl, mode, coat, kb, yf, yPrev, fresh, cs, pass, amp) }
+        if (mode == 0 || kf > 0.02) {
+          for m in 0..subs {
+            stream_push(hash((start ^ subKey) + (j * 8 + m + 1) * 0x9e3779b1))
+            u2 = 0.08 to 0.85 with gaussian(mean = 0.36, sigma = 0.2)
+            side2 = -1.0
+            if (chance(0.5)) { side2 = 1.0 }
+            turn2 = 0.15 to 1.3 with forkAngle
+            len2 = 0.04 to 1.0 with forkReach
+            twigs = 0 to 2 with twigCounts
+            curl2 = -0.45 to 0.45 with bendLean
+            stream_pop()
+            if (family == 3) { twigs = 0 }
+            r2 = pathAt(root, end, fkey, depth, rough, fj, bend, u2)
+            a2 = pathAt(root, end, fkey, depth, rough, fj, bend, min(u2 + 0.08, 1.0))
+            ang2 = downward(atan2(a2 - r2) + side2 * turn2 * spreadK, low * 0.6)
+            dir2 = {cos(ang2), sin(ang2)}
+            span2 = (1.0 - u2) * span * (0.22 + 0.62 * len2)
+            if (span2 > 4.0) {
+              end2 = r2 + dir2 * span2
+              bend2 = bowOf(dir2, span2, curl2, arch)
+              skey = (start ^ subKey) + (j * 8 + m + 1) * 0x2545f491
+              depth2 = depthFor(span2)
+              fj2 = jag * 1.2
+              branch(r2, end2, skey, depth2, rough, fj2, bend2, 2, mode, coat, kf, yf, yPrev, fresh, cs, pass, amp)
+              for q in 0..twigs {
+                stream_push(hash((start ^ twigKey) + ((j * 8 + m) * 4 + q + 1) * 0x9e3779b1))
+                u3 = 0.1 to 0.8 with gaussian(mean = 0.4, sigma = 0.2)
+                side3 = -1.0
+                if (chance(0.5)) { side3 = 1.0 }
+                turn3 = 0.15 to 1.3 with forkAngle
+                len3 = 0.04 to 1.0 with forkReach
+                curl3 = -0.45 to 0.45 with bendLean
+                stream_pop()
+                r3 = pathAt(r2, end2, skey, depth2, rough, fj2, bend2, u3)
+                a3 = pathAt(r2, end2, skey, depth2, rough, fj2, bend2, min(u3 + 0.1, 1.0))
+                ang3 = downward(atan2(a3 - r3) + side3 * turn3 * spreadK, low * 0.4)
+                dir3 = {cos(ang3), sin(ang3)}
+                span3 = (1.0 - u3) * span2 * (0.25 + 0.55 * len3)
+                if (span3 > 3.0) {
+                  branch(r3, r3 + dir3 * span3, (start ^ twigKey) + ((j * 8 + m) * 4 + q + 1) * 0x2545f491,
+                         depthFor(span3), rough, jag * 1.3, bowOf(dir3, span3, curl3, arch), 3, mode, coat, kf, yf, yPrev, fresh, cs, pass, amp)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // One path of the tree from a to b in 2^depth segments. lvl: 0 the trunk
+  // (or a fork that grounds), 1 a fork, 2 a fork of a fork, 3 a twig. It
+  // stops where it would leave the canvas or touch the floor.
+  branch(a: vec2, b: vec2, key: i32, depth: i32, rough: f32, jag: f32, bend: vec2, lvl: i32, mode: i32, coat: i32, k: f32, yf: f32, yPrev: f32, fresh: f32, cs: list<color>, pass: i32, amp: f32) {
+    // The coat for this level and brightness: its width, its step of the
+    // palette, its alpha (halos are translucent, so the light shows through),
+    // its light, how far along the path it runs, and past which points (t1,
+    // t2) it steps down the palette as the path thins out.
+    w = 0
+    ci = 4
+    al = 1.0
+    light = 0.0
+    reachU = 1.0
+    t1 = 2.0
+    t2 = 2.0
+    if (mode == 1) {
+      if (lvl == 0) {
+        if (coat == 0 && pass == 0) {
+          w = 3
+          ci = 3
+          al = 0.5
+          if (k > 0.9) { w = 5 }
+        }
+        if (coat == 1) {
+          w = 1
+          ci = 4
+          if (k > 0.35) { ci = 5 }
+          if (k > 0.85) { ci = 6 }
+          if (k > 0.9) { w = 3 }
+          light = 1.0
+        }
+        if (coat == 2 && k > 0.3) {
+          w = 1
+          ci = 7
+          light = 1.0
+        }
+      } else if (lvl == 1) {
+        if (coat == 0 && pass == 0 && k > 0.5) {
+          w = 3
+          ci = 3
+          al = 0.42
+          reachU = 0.6
+        }
+        if (coat == 1) {
+          w = 1
+          ci = 4
+          if (k > 0.6) { ci = 5 }
+          t1 = 0.55
+          t2 = 0.85
+          light = 0.8
+        }
+        if (coat == 2 && k > 0.85) {
+          w = 1
+          ci = 6
+          reachU = 0.4
+          light = 0.8
+        }
+      } else if (lvl == 2) {
+        if (coat == 0 && pass == 0 && k > 0.85) {
+          w = 3
+          ci = 2
+          al = 0.35
+          reachU = 0.45
+        }
+        if (coat == 1) {
+          w = 1
+          ci = 3
+          if (k > 0.6) { ci = 4 }
+          t1 = 0.6
+          light = 0.55
+        }
+      } else if (coat == 1) {
+        w = 1
+        ci = 2
+        if (k > 0.6) { ci = 3 }
+        t1 = 0.6
+        light = 0.35
+      }
+      if (w == 0) { return }
+    }
+    // The light of a fork is blurred anyway: draw it one level coarser,
+    // within a pixel or two of the sprite's path, at half the cost.
+    dd = depth
+    if (pass == 1 && lvl > 0 && dd > 2) { dd = dd - 1 }
+    segs = 1 << dd
+    p = a
+    for i in 1..segs + 1 {
+      u = float(i) / float(segs)
+      q = pathAt(a, b, key, dd, rough, jag, bend, u)
+      if (q.x < 3.0 || q.x > right || q.y < skyY || q.y > floorY - 0.5) { break }
+      if (mode == 0) {
+        // The leader: what the front has reached, the last step brightest,
+        // and a white-hot tip where it is feeling its way on.
+        if (q.y > yf) {
+          if (p.y <= yf) { tip(p, fresh, lvl, cs, pass, amp) }
+          break
+        }
+        young = 0
+        if (q.y > yPrev) { young = 1 }
+        lc = cs[2]
+        la = 0.15
+        if (lvl == 0) { lc = cs[3] }
+        if (young == 1) {
+          lc = cs[4]
+          if (lvl == 0) { lc = cs[5] }
+          if (fresh > 0.4) {
+            lc = cs[5]
+            if (lvl == 0) { lc = cs[6] }
+          }
+          la = 0.3 + 0.4 * fresh
+        }
+        if (pass == 1) { lc = ink(cs[5], la * amp) }
+        line(p, q, 1, ink(lc, fadeAt(q, pass)))
+      } else if (u <= reachU + 0.001) {
+        idx = ci
+        if (u > t1) { idx = idx - 1 }
+        if (u > t2) { idx = idx - 1 }
+        c = ink(cs[max(idx, 1)], al)
+        if (pass == 1) { c = ink(cs[max(idx, 1)], light * k * amp * (1.0 - 0.45 * u * float(min(lvl, 1)))) }
+        line(p, q, w, ink(c, fadeAt(q, pass)))
+      }
+      p = q
+    }
+  }
+
+  // A leader's tip: a white point, and in the light a small flare.
+  tip(p: vec2, fresh: f32, lvl: i32, cs: list<color>, pass: i32, amp: f32) {
+    if (pass == 0) {
+      pixel(p, ink(cs[7], fadeAt(p, 0)))
+      if (lvl == 0 && fresh > 0.5) {
+        pixel(p + {-1.0, 0.0}, ink(cs[6], fadeAt(p, 0)))
+        pixel(p + {1.0, 0.0}, ink(cs[6], fadeAt(p, 0)))
+      }
+    } else { haze(p, 3.0 + 3.0 * fresh, cs[5], (0.4 + 0.6 * fresh) * amp * fadeAt(p, 1)) }
+  }
+
+  // Before the strike: the stepped leader jerks down in steps, every branch
+  // at once, each step brightest just after it lands.
+  leader(start: i32, t: f32, ts: f32, family: i32, topX: f32, jag: f32, rough: f32, twinOff: f32, cs: list<color>, pass: i32, amp: f32) {
+    stream_push(hash(start ^ leaderKey))
+    steps = 7 to 11
+    stream_pop()
+    lead0 = 0.05
+    leadEnd = ts - 0.08
+    st = 0
+    tCur = 0.0
+    tNext = -1.0
+    for j in 1..steps + 1 {
+      tj = lead0 + (leadEnd - lead0) * (float(j - 1) + 0.35 * sym(start ^ leaderKey, j)) / float(steps - 1)
+      if (t >= tj) {
+        st = j
+        tCur = tj
+      } else if (tNext < 0.0) { tNext = tj }
+    }
+    if (st > 0) {
+      if (tNext < 0.0) { tNext = tCur + 0.06 }
+      fresh = 1.0 - clamp((t - tCur) / max(tNext - tCur, 0.02), 0.0, 1.0)
+      yf = skyY + (meetY - skyY) * pow(float(st) / float(steps), 1.12)
+      yPrev = skyY + (meetY - skyY) * pow(float(st - 1) / float(steps), 1.12)
+      tree(start, family, topX, jag, rough, twinOff, 0.0, 0, 0, 0.0, 0.0, 0.0, yf, yPrev, fresh, cs, pass, amp)
+    }
+  }
+
+  // A thin crackle from a to b: midpoint displacement, one pixel wide.
+  zap(a: vec2, b: vec2, key: i32, depth: i32, jag: f32, c: color) {
+    segs = 1 << depth
+    p = a
+    for i in 1..segs + 1 {
+      q = along(a, b, key, float(i) / float(segs), depth, 0.55, jag)
+      line(p, q, 1, c)
+      p = q
+    }
+  }
+
+  // The target before the strike. Static crackles up off the ground more and
+  // more often, a hot point marks it, and at the end a streamer climbs to
+  // meet the leader.
+  ground(start: i32, t: f32, ts: f32, charge: f32, cs: list<color>, pass: i32, amp: f32) {
+    hit = {cx, floorY - 1.0}
+    tick = int(t * 30.0)
+    if (t > 0.06) {
+      crackles = 1 + int(4.0 * charge)
+      for i in 0..crackles {
+        stream_push(hash((start ^ staticKey) + (tick * 8 + i) * 0x9e3779b1))
+        ang = 0.0 to 6.2832
+        up = 3.0 to 9.0
+        dx = -2.5 to 2.5
+        stream_pop()
+        base = {cx + cos(ang) * 10.0, floorY - 1.0 + sin(ang) * 2.2}
+        c = cs[5]
+        if (charge > 0.5) { c = cs[6] }
+        if (pass == 1) { c = ink(cs[5], 0.6 * amp) }
+        zap(base, base + {dx, -up * (0.6 + charge)}, (start ^ staticKey) + tick * 977 + i, 2, 0.45, c)
+      }
+    }
+    if (pass == 0) {
+      pixel(hit, cs[6])
+      if (charge > 0.5) {
+        pixel(hit + {-1.0, 0.0}, cs[5])
+        pixel(hit + {1.0, 0.0}, cs[5])
+        pixel(hit + {0.0, -1.0}, cs[5])
+      }
+    } else { haze(hit - {0.0, 1.0}, 5.0 + 10.0 * charge, cs[5], (0.3 + 0.5 * charge) * amp) }
+    // The streamer: a crackle climbing off the target as the leader nears.
+    u = (t - (ts - 0.12)) / 0.12
+    if (u > 0.0) {
+      h = max(3.0, (floorY - meetY) * easeOut(u, 2.0))
+      stream_push(hash((start ^ staticKey) + tick * 0x2545f491))
+      dx = -2.0 to 2.0
+      stream_pop()
+      tipP = hit + {dx, -h}
+      c = cs[6]
+      if (pass == 1) { c = ink(cs[5], 0.8 * amp) }
+      zap(hit, tipP, (start ^ staticKey) + tick * 31, 3, 0.3, c)
+      if (pass == 0) { pixel(tipP, cs[7]) } else { haze(tipP, 5.0, cs[5], 0.7 * amp) }
+    }
+  }
+
+  // From the return stroke on:
+  // - while a stroke is live, the bolt, the whole tree on the first;
+  // - a dart running down the channel just before each re-strike;
+  // - a dim channel between strokes;
+  // - after the last stroke, the channel cooling and crumbling.
+  bolt(start: i32, t: f32, times: list<f32>, drifts: list<f32>, count: i32, si: i32, kNow: f32, cs: list<color>, family: i32, topX: f32, jag: f32, rough: f32, twinOff: f32, pass: i32, amp: f32) {
+    a = t - times[si]
+    last = count - 1
+    darting = 0
+    if (si < last) {
+      if (t >= times[si + 1] - 0.05) { darting = 1 }
+    }
+    if (darting == 1) {
+      dart(start, topX, jag, rough, drifts[si + 1], (t - (times[si + 1] - 0.05)) / 0.05, cs, pass, amp)
+    } else if (kNow > 0.02) {
+      kf = 0.0
+      kTwin = 0.0
+      if (si == 0) {
+        kf = kNow * (1.0 - smoothstep(0.03, 0.17, a))
+        if (family == 4) { kTwin = kNow * (1.0 - smoothstep(0.06, 0.2, a)) }
+      }
+      for coat in 0..3 {
+        if (pass == 0 || coat == 1) { tree(start, family, topX, jag, rough, twinOff, drifts[si], 1, coat, kNow, kf, kTwin, 0.0, 0.0, 0.0, cs, pass, amp) }
+      }
+      if (pass == 1) {
+        // light only: a soft tube along the channel, so it glows all along
+        p = trunkAt(start, topX, jag, rough, drifts[si], 0.0)
+        for i in 1..25 {
+          q = trunkAt(start, topX, jag, rough, drifts[si], float(i) / 24.0)
+          line(p, q, 7, ink(cs[4], 0.12 * kNow * amp * fadeAt(q, 1)))
+          line(p, q, 3, ink(cs[5], 0.18 * kNow * amp * fadeAt(q, 1)))
+          p = q
+        }
+      }
+    } else {
+      final = 0
+      if (si == last) { final = 1 }
+      cool(start, t, times[last] + float(strokeSpan(start, last)) / 30.0, final, topX, jag, rough, drifts[si], cs, pass, amp)
+    }
+  }
+
+  // The dart: a bright run down the channel, head first, ud of the way down.
+  dart(start: i32, topX: f32, jag: f32, rough: f32, drift: f32, ud: f32, cs: list<color>, pass: i32, amp: f32) {
+    p = trunkAt(start, topX, jag, rough, drift, 0.0)
+    for i in 1..65 {
+      u = float(i) / 64.0
+      q = trunkAt(start, topX, jag, rough, drift, u)
+      c = cs[3]
+      la = 0.15
+      if (u <= ud && u > ud - 0.28) {
+        c = cs[6]
+        la = 0.8
+        if (u > ud - 0.06) { c = cs[7] }
+      }
+      if (pass == 1) { c = ink(cs[5], la * amp) }
+      line(p, q, 1, ink(c, fadeAt(q, pass)))
+      p = q
+    }
+  }
+
+  // Between strokes the channel glows dim. After the last one (dark at
+  // tDark) it cools down the ramp and crumbles from the top down, each piece
+  // at its own moment, and nearly half the pieces drop as motes.
+  cool(start: i32, t: f32, tDark: f32, final: i32, topX: f32, jag: f32, rough: f32, drift: f32, cs: list<color>, pass: i32, amp: f32) {
+    window = clamp(1.4 - tDark, 0.12, 0.34)
+    p = trunkAt(start, topX, jag, rough, drift, 0.0)
+    for i in 1..65 {
+      u = float(i) / 64.0
+      q = trunkAt(start, topX, jag, rough, drift, u)
+      if (final == 0) {
+        c = cs[3]
+        if (pass == 1) { c = ink(cs[4], 0.25 * amp) }
+        line(p, q, 1, ink(c, fadeAt(q, pass)))
+      } else {
+        gone = tDark + 0.04 + window * (0.45 * rnd(start ^ moteKey, i) + 0.55 * u)
+        if (t < gone) {
+          h = 1.0 - clamp((t - tDark) / (gone - tDark), 0.0, 1.0)
+          c = cs[2]
+          if (h > 0.25) { c = cs[3] }
+          if (h > 0.5) { c = cs[4] }
+          if (h > 0.75) { c = cs[5] }
+          if (pass == 1) { c = ink(cs[4], 0.45 * h * amp) }
+          line(p, q, 1, ink(c, fadeAt(q, pass)))
+        } else if (rnd(start ^ moteKey ^ 0x55aa, i) < 0.45) {
+          age = t - gone
+          if (age < 0.42) {
+            m = q + {sym(start ^ moteKey, i) * 6.0 * age, 24.0 * age * (1.0 + age)}
+            k = (1.0 - age / 0.42) * (1.0 - smoothstep(1.34, 1.5, t))
+            c = cs[5]
+            if (age > 0.2) { c = cs[4] }
+            if (pass == 1) { c = ink(cs[5], k * amp) }
+            pixel(m, ink(c, k * fadeAt(m, pass)))
+          }
+        }
+      }
+      p = q
+    }
+  }
+
+  // ---- the ground --------------------------------------------------------------
+  // A dark veil over the scene, deepest round the bolt's path, gathering
+  // before the strike and gone with the flash.
+  veil(t: f32, ts: f32) {
+    d = 0.4 * smoothstep(0.04, 0.32, t) * (1.0 - smoothstep(ts - 0.05, ts - 0.005, t))
+    if (d > 0.01) {
+      for i in 0..8 {
+        k = 1.0 - float(i) * 0.1
+        oval(cx, 96.0, 64.0 * k, 88.0 * k, ink(#05040c, d * 0.15))
+      }
+    }
+  }
+
+  // How hot the ground is: each stroke heats it, and it cools over a second.
+  heatLevel(t: f32, times: list<f32>, count: i32) -> f32 {
+    h = 0.0
+    for i in 0..count {
+      if (t >= times[i]) { h = max(h, strengths[i] * pow(clamp(1.0 - (t - times[i]) / 1.0, 0.0, 1.0), 1.4)) }
+    }
+    return h
+  }
+
+  // A heat colour for T, 1 white-hot down to 0 cold.
+  heatTone(T: f32) -> color {
+    return heat[clamp(int(T * 7.0), 0, 6)]
+  }
+
+  // The burn where a bolt grounded: soot on the floor's top rows, widest on
+  // top, glowing in the middle while hot. It shows once the flash has passed.
+  scorch(t: f32, ts: f32, x: f32, size: f32, hot: f32, fade: f32, pass: i32, amp: f32) {
+    if (t >= ts + 0.03 && fade > 0.0) {
+      if (pass == 0) {
+        burn(x, 0.0, 11.0 * size, ink(#1c1522, 0.8 * fade))
+        burn(x, 1.0, 7.0 * size, ink(#110c16, 0.85 * fade))
+        burn(x, 2.0, 3.5 * size, ink(#110c16, 0.6 * fade))
+        if (hot > 0.06) {
+          burn(x, 0.0, (6.0 * hot + 1.0) * size, ink(heatTone(hot * 0.9), fade))
+          burn(x, 1.0, (3.0 * hot + 0.5) * size, ink(heatTone(hot * 0.75), fade))
+          burn(x, 0.0, (3.0 * hot + 0.5) * size, ink(heatTone(hot * 1.25), fade))
+        }
+      } else if (hot > 0.06) { haze({x, floorY}, 10.0 * size, heatTone(0.6), 0.6 * hot * amp * fade) }
+    }
+  }
+
+  // One row of the burn: `half` px either side of x, `row` rows into the floor.
+  burn(x: f32, row: f32, half: f32, c: color) {
+    x0 = floor(x - half)
+    rect(x0, floorY + row, floor(x + half) - x0 + 1.0, 1.0, c)
+  }
+
+  // The cracks the strike splits along the floor's top: a few walks out from
+  // the hit, forking on the way. A front races out along them, white. They
+  // glow white or electric while a stroke is live, then with heat, and cool
+  // to soot. Arcs crawl along them with every stroke.
+  cracks(start: i32, t: f32, ts: f32, times: list<f32>, si: i32, hot: f32, fade: f32, cs: list<color>, pass: i32, amp: f32) {
+    if (fade > 0.0) {
+      front = reach * easeOut((t - ts) / 0.3, 3.0)
+      a = t - times[si]
+      elec = 0.0
+      if (a < 0.14) { elec = strengths[si] * (1.0 - a / 0.14) }
+      run = -1.0
+      if (a < 0.4) {
+        run = reach * easeOut(a / 0.35, 3.0)
+        if (si > 0) { run = reach * clamp(a / 0.22, 0.0, 1.0) }
+      }
+      tick = int(t * 30.0)
+      stream_push(hash(start ^ crackKey))
+      main = 4 to 7
+      stream_pop()
+      for i in 0..main {
+        stream_push(hash((start ^ crackKey) + (i + 1) * 0x9e3779b1))
+        dir = -0.45 to 0.45
+        len = 0.4 to 1.0 with gaussian(mean = 0.72, sigma = 0.18)
+        y0 = 0.0 to 1.5
+        arced = chance(0.7)
+        stream_pop()
+        ang = 3.14159 + dir
+        if (i % 2 == 1) { ang = dir }
+        lit = 0
+        if (run > 0.0 && arced == 1 && rnd((start ^ crackKey) + tick, i) < 0.75) { lit = 1 }
+        crack(start, i, y0, ang, reach * len, front, elec, hot, run, lit, fade, cs, pass, amp)
+      }
+    }
+  }
+
+  // One crack: a walk along the floor's top rows that turns a little every
+  // 1.5 px and now and then forks off a shorter one.
+  crack(start: i32, i: i32, y0: f32, ang0: f32, len: f32, front: f32, elec: f32, hot: f32, run: f32, lit: i32, fade: f32, cs: list<color>, pass: i32, amp: f32) {
+    key = (start ^ crackKey) + (i + 1) * 0x2545f491
+    x = cx
+    y = y0
+    ang = ang0
+    d = 0.0
+    steps = int(len / 1.5)
+    arcPrev = {-1.0, 0.0}
+    for s in 0..steps {
+      ang = ang + sym(key, s) * 0.3
+      x = x + cos(ang) * 1.5
+      y = clamp(y + sin(ang) * 0.4, 0.0, 3.0)
+      d = d + 1.5
+      if (d > front) { break }
+      crackPixel(start, x, y, d, front, elec, hot, 1.0, fade, cs, pass, amp)
+      // an arc riding the crack just behind the run
+      if (lit == 1 && d > run - 15.0 && d <= run) {
+        q = {x + sym(key ^ 0x3c3c, s) * 0.6, floorY + y - 1.5 - 2.5 * rnd(key ^ 0x5a5a, s + int(run))}
+        if (arcPrev.x >= 0.0) {
+          c = cs[6]
+          if (d > run - 4.0) { c = cs[7] }
+          if (pass == 1) { c = ink(cs[5], 0.9 * amp) }
+          line(arcPrev, q, 1, c)
+        }
+        arcPrev = q
+      }
+      if (s > 2 && rnd(key ^ 0x7777, s) < 0.08) {
+        side = -1.0
+        if (rnd(key ^ 0x1111, s) < 0.5) { side = 1.0 }
+        subCrack(start, key + s * 131, x, y, ang + side * (0.5 + 0.7 * rnd(key ^ 0x2222, s)), (len - d) * (0.3 + 0.3 * rnd(key ^ 0x3333, s)), d, front, elec, hot, fade, cs, pass, amp)
+      }
+    }
+  }
+
+  // A fork of a crack: the same walk, fainter, that does not fork again.
+  subCrack(start: i32, key: i32, x0: f32, y0: f32, ang0: f32, len: f32, d0: f32, front: f32, elec: f32, hot: f32, fade: f32, cs: list<color>, pass: i32, amp: f32) {
+    x = x0
+    y = y0
+    ang = ang0
+    d = d0
+    steps = int(len / 1.5)
+    for s in 0..steps {
+      ang = ang + sym(key, s) * 0.3
+      x = x + cos(ang) * 1.5
+      y = clamp(y + sin(ang) * 0.4, 0.0, 3.0)
+      d = d + 1.5
+      if (d > front) { break }
+      crackPixel(start, x, y, d, front, elec, hot, 0.8, fade, cs, pass, amp)
+    }
+  }
+
+  // One point of a crack, d px from the hit: white at the racing front,
+  // electric while a stroke is live, then heat cooling to soot.
+  crackPixel(start: i32, x: f32, y: f32, d: f32, front: f32, elec: f32, hot: f32, k: f32, fade: f32, cs: list<color>, pass: i32, amp: f32) {
+    q = d / reach
+    nz = rnd(start ^ crackKey ^ 0x9999, int(x * 2.0) * 131 + int(y * 2.0))
+    fresh = 0
+    if (d > front - 6.0 && front < reach) { fresh = 1 }
+    T = hot * (1.15 - q) * k - nz * 0.25
+    px = int(x)
+    py = int(floorY + y)
+    zapped = 0
+    if (fresh == 1 || (elec > 0.3 && nz < 0.85)) { zapped = 1 }
+    if (pass == 0) {
+      c = #1c1522
+      if (T > 0.06) { c = heatTone(T) }
+      if (zapped == 1) {
+        c = cs[6]
+        if (q < 0.5) { c = cs[7] }
+      }
+      pixel(px, py, ink(c, fade))
+    } else {
+      if (zapped == 1) { pixel(px, py, ink(cs[5], 0.9 * amp * fade)) }
+      else if (T > 0.2) { pixel(px, py, ink(heatTone(T), 0.7 * T * amp * fade)) }
+    }
+  }
+
+  // Where a stroke lands: a white-hot core with rings round it and a star
+  // glint, and on the first stroke a shock ring racing out over the floor.
+  // The twin's second spot flashes with the first stroke.
+  impact(start: i32, t: f32, times: list<f32>, si: i32, kNow: f32, cs: list<color>, family: i32, topX: f32, twinOff: f32, pass: i32, amp: f32) {
+    a = t - times[si]
+    flash(cx, kNow, a, cs, pass, amp)
+    kTwin = 0.0
+    if (family == 4 && si == 0) {
+      kTwin = kNow * 0.8 * (1.0 - smoothstep(0.06, 0.2, a))
+      flash(cx + twinOff, kTwin, a, cs, pass, amp)
+    }
+    v = (t - times[0]) / 0.32
+    if (v > 0.0 && v < 1.0) {
+      r = 6.0 + 50.0 * easeOut(v, 3.0)
+      c = ink(cs[5], 1.0 - v)
+      if (v > 0.4) { c = ink(cs[4], 1.0 - v) }
+      if (pass == 1) { c = ink(cs[5], (1.0 - v) * 0.6 * amp) }
+      for s in 0..32 {
+        q0 = 6.28318 * float(s) / 32.0
+        q1 = 6.28318 * float(s + 1) / 32.0
+        line({cx + cos(q0) * r, floorY - 1.0 + sin(q0) * r * 0.16}, {cx + cos(q1) * r, floorY - 1.0 + sin(q1) * r * 0.16}, 1, c)
+      }
+    }
+    // The light: the floor lit round the hit, a glow over it, and on the
+    // return stroke's own frame the whole scene.
+    if (pass == 1) {
+      if (kNow > 0.02) {
+        wash({cx, floorY - 1.0}, 48.0, 5.0, cs[4], 0.1 * kNow * amp, 6)
+        wash({cx, floorY - 7.0}, 30.0, 18.0, cs[5], 0.14 * kNow * amp, 8)
+      }
+      if (kTwin > 0.02) { wash({cx + twinOff, floorY - 5.0}, 18.0, 11.0, cs[5], 0.12 * kTwin * amp, 6) }
+      if (si == 0 && a < 0.03) { wash({cx + 0.5 * topX, 98.0}, 54.0, 78.0, cs[3], 0.035 * amp, 14) }
+    }
+  }
+
+  // A grounding stroke's flash at x: rings round a white core, and a star.
+  flash(x: f32, k: f32, a: f32, cs: list<color>, pass: i32, amp: f32) {
+    if (k > 0.05) {
+      r = 4.5 * k
+      p = {x, floorY - 2.0}
+      if (pass == 0) {
+        oval(p, r + 1.5, (r + 1.5) * 0.7, ink(cs[3], 0.6))
+        oval(p, r + 0.5, (r + 0.5) * 0.7, cs[5])
+        if (r > 1.0) { oval(p, r * 0.65, r * 0.45, #ffffff) }
+      } else { oval(p, r + 2.0, (r + 2.0) * 0.7, ink(cs[6], k * amp)) }
+      if (a < 0.07) { glint(p - {0.0, 1.0}, 3.0 + 9.0 * k * (1.0 - a / 0.07), cs[7], cs[5], 1.0, pass, amp) }
+    }
+  }
+
+  // ---- debris ------------------------------------------------------------------
+  // Every stroke throws sparks, the first one more and hot chips and grit too.
+  // Embers ride the heat off the burn.
+  debris(start: i32, t: f32, times: list<f32>, count: i32, cs: list<color>, family: i32, twinOff: f32, pass: i32, amp: f32) {
+    hit = {cx, floorY - 2.0}
+    for i in 0..count {
+      sparkBurst(start, i, t - times[i], hit, 40, 1.0, cs, pass, amp)
+    }
+    if (family == 4) { sparkBurst(start, 7, t - times[0], {cx + twinOff, floorY - 2.0}, 16, 0.75, cs, pass, amp) }
+    a = t - times[0]
+    // hot chips and grit
+    for i in 0..22 {
+      stream_push(hash((start ^ chipKey) + i * 0x9e3779b1))
+      ang = -1.57 to 1.57
+      spd = 40.0 to 150.0
+      life = 0.6 to 1.2
+      shade = 0 to 2
+      big = chance(0.35)
+      stream_pop()
+      u = a / life
+      if (u > 0.0 && u < 1.0) {
+        p = fly(hit, {sin(ang) * spd, -cos(ang) * spd}, a, 420.0, 1.6)
+        if (p.x > 2.0 && p.x < right) {
+          if (i < 9) {
+            // a hot chip, cooling
+            c = heatTone(1.0 - u)
+            if (pass == 0) { pixel(p, c) } else if (u < 0.6) { pixel(p, ink(c, (1.0 - u) * amp)) }
+          } else if (pass == 0) {
+            c = stoneTones[shade]
+            pixel(p, ink(c, min(1.0, (1.0 - u) * 3.0)))
+            if (big == 1) { pixel(p + {1.0, 0.0}, ink(stoneTones[min(shade + 1, 2)], min(1.0, (1.0 - u) * 3.0))) }
+          }
+        }
+      }
+    }
+    // embers riding the heat
+    for i in 0..8 {
+      stream_push(hash((start ^ emberKey) + i * 0x9e3779b1))
+      t0 = 0.04 to 0.4
+      life = 0.6 to 1.0
+      x0 = -7.0 to 7.0
+      rise = 20.0 to 44.0
+      sway = 0.0 to 6.2832
+      stream_pop()
+      u = (a - t0) / life
+      if (u > 0.0 && u < 1.0) {
+        p = {cx + x0 + 3.0 * sin(sway + u * 7.0), floorY - 3.0 - rise * easeOut(u, 1.6)}
+        blink = 0.6 + 0.4 * rnd((start ^ emberKey) + i, int(t * 30.0))
+        c = heatTone(0.95 - u * 0.7)
+        if (pass == 0) { pixel(p, ink(c, blink)) } else { pixel(p, ink(c, blink * (1.0 - u) * amp)) }
+      }
+    }
+  }
+
+  // One stroke's sparks: white streaks thrown up and out that cool down the
+  // ramp, fall and bounce off the floor. The first stroke throws the most.
+  sparkBurst(start: i32, burst: i32, a: f32, hit: vec2, most: i32, scale: f32, cs: list<color>, pass: i32, amp: f32) {
+    if (a > 0.0 && a < 0.7) {
+      many = most
+      if (burst > 0 && burst < 7) { many = most / 3 }
+      for i in 0..many {
+        stream_push(hash((start ^ sparkKey) + (burst * 64 + i) * 0x9e3779b1))
+        ang = -1.35 to 1.35
+        spd = 70.0 to 210.0 with gaussian(mean = 130.0, sigma = 40.0)
+        life = 0.25 to 0.6
+        stream_pop()
+        u = a / life
+        if (u < 1.0) {
+          v = {sin(ang) * spd * scale, -cos(ang) * spd * scale}
+          p = fly(hit, v, a, 520.0, 2.6)
+          tail = fly(hit, v, max(0.0, a - 0.025), 520.0, 2.6)
+          if (p.x > 2.0 && p.x < right && p.y > 2.0) {
+            head = cs[7]
+            if (u > 0.3) { head = cs[6] }
+            if (u > 0.6) { head = cs[5] }
+            body = cs[5]
+            if (u > 0.4) { body = cs[4] }
+            if (u > 0.7) { body = cs[3] }
+            if (pass == 0) {
+              line(tail, p, 1, body)
+              pixel(p, head)
+            } else {
+              line(tail, p, 1, ink(body, (1.0 - u) * 0.7 * amp))
+              pixel(p, ink(head, (1.0 - u) * amp))
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Where a particle launched from p0 at v (px/s) is after t seconds, with
+  // gravity, drag and a floor it bounces off, stepped at 120 Hz.
+  fly(p0: vec2, v: vec2, t: f32, g: f32, drag: f32) -> vec2 {
+    p = p0
+    u = v
+    dt = 1.0 / 120.0
+    steps = int(t * 120.0)
+    for i in 0..steps {
+      u = {u.x * (1.0 - drag * dt), u.y * (1.0 - drag * dt) + g * dt}
+      p = p + u * dt
+      if (p.y > floorY - 1.0) {
+        p = {p.x, floorY - 1.0}
+        u = {u.x * 0.7, -abs(u.y) * 0.4}
+      }
+    }
+    return p + u * (t - float(steps) * dt)
+  }
+
+  // Dust rolling out low along the floor from the hit.
+  dust(start: i32, t: f32, ts: f32) {
+    for i in 0..10 {
+      stream_push(hash((start ^ dustKey) + i * 0x9e3779b1))
+      t0 = 0.0 to 0.08
+      life = 0.6 to 0.95
+      out = 26.0 to 56.0
+      size = 2.0 to 3.5
+      stream_pop()
+      u = (t - ts - t0) / life
+      if (u > 0.0 && u < 1.0) {
+        side = -1.0
+        if (i % 2 == 1) { side = 1.0 }
+        x = cx + side * (4.0 + out * easeOut(u, 2.5))
+        y = floorY - 1.5 - 3.0 * u
+        r = size * (1.0 + 1.2 * u)
+        al = 0.32 * (1.0 - u) * smoothstep(0.0, 0.08, u)
+        oval(x, y, r, r * 0.5, ink(stoneTones[1], al))
+        oval(x - r * 0.3, y - r * 0.2, r * 0.5, r * 0.25, ink(stoneTones[0], al))
+      }
+    }
+  }
+
+  // A curl of smoke off the burn: puffs rising, swelling and thinning, lit
+  // from the upper left.
+  smoke(start: i32, t: f32, ts: f32) {
+    for i in 0..7 {
+      stream_push(hash((start ^ smokeKey) + i * 0x9e3779b1))
+      t0 = 0.06 to 0.4
+      life = 0.75 to 1.0
+      dx = -7.0 to 7.0
+      rise = 30.0 to 52.0
+      lean = -10.0 to 10.0 with gaussian(mean = 0.0, sigma = 4.0)
+      stream_pop()
+      u = (t - ts - t0) / life
+      if (u > 0.0 && u < 1.0) {
+        e = easeOut(u, 1.8)
+        p = {cx + dx + lean * e, floorY - 4.0 - rise * e}
+        r = 2.0 + 5.5 * e
+        al = bump(u) * 0.3
+        oval(p, r, r * 0.8, ink(smokeTones[0], al))
+        oval(p - {r * 0.22, r * 0.28}, r * 0.72, r * 0.56, ink(smokeTones[2], al * 0.8))
+        oval(p - {r * 0.4, r * 0.42}, r * 0.34, r * 0.26, ink(smokeTones[3], al * 0.6))
+      }
+    }
+  }
+
+  // ---- toolkit ---------------------------------------------------------------
+  // The colour with its alpha scaled by a (clamped to 0..1).
+  ink(c: color, a: f32) -> color {
+    return color.set.a(c, int(clamp(a, 0.0, 1.0) * float(c.a)))
+  }
+  // Fast in, slow out: 1 - (1 - u)^k on u clamped to 0..1.
+  easeOut(u: f32, k: f32) -> f32 {
+    return 1.0 - pow(1.0 - clamp(u, 0.0, 1.0), k)
+  }
+  // 0 at both ends, 1 in the middle: a swell and fade over u in 0..1.
+  bump(u: f32) -> f32 {
+    return sin(3.14159 * clamp(u, 0.0, 1.0))
+  }
+  // A soft light: a few translucent ovals, the inner ones stronger.
+  haze(p: vec2, r: f32, col: color, a: f32) {
+    for i in 0..4 {
+      k = 1.0 - float(i) * 0.24
+      oval(p, r * k, r * k, ink(col, a * (0.12 + 0.08 * float(i))))
+    }
+  }
+  // A soft light with no step at its edge: `rings` nested ovals from the
+  // full size in, the outer ones faintest, so it fades out even where only
+  // the bloom's small blur touches it. About 1.6 a in the middle.
+  wash(p: vec2, rx: f32, ry: f32, col: color, a: f32, rings: i32) {
+    for i in 0..rings {
+      k = 1.0 - float(i) / float(rings)
+      oval(p, rx * k, ry * k, ink(col, a * 3.2 * float(i + 1) / float(rings * rings)))
+    }
+  }
+  // A star glint: a white centre and four arms, the side arms longer.
+  glint(p: vec2, arm: f32, core: color, tip: color, a: f32, pass: i32, amp: f32) {
+    if (arm >= 1.0 && a > 0.0) {
+      k = a
+      if (pass == 1) { k = a * amp }
+      x = floor(p.x)
+      y = floor(p.y)
+      up = floor(arm * 0.6)
+      rect(x - arm, y, arm * 2.0 + 1.0, 1.0, ink(tip, k))
+      rect(x, y - up, 1.0, up * 2.0 + 1.0, ink(tip, k))
+      inner = floor(arm * 0.4)
+      rect(x - inner, y, inner * 2.0 + 1.0, 1.0, ink(core, k))
+      rect(x, y - floor(inner * 0.6), 1.0, floor(inner * 0.6) * 2.0 + 1.0, ink(core, k))
+    }
+  }
+  // Eight steps from a dark shade of the colour, through it, to white.
+  rampFrom(c: color) -> list<color> {
+    base = color.set.a(c, 255)
+    return [color.mix(#08060c, base, 0.2), color.mix(#08060c, base, 0.4), color.mix(#08060c, base, 0.62),
+            color.mix(#08060c, base, 0.84), base, color.mix(base, #fff8e8, 0.35), color.mix(base, #fff8e8, 0.68), #ffffff]
+  }
+}
