@@ -3,13 +3,17 @@
 The compiled props rendered live on the website's home page: four weapon
 packs (`sword`, `axe`, `spear`, `staff`, 96×96) and three portrait packs
 (`portraits_rpg`, `portraits_scifi`, `portraits_civilian`, 64×64), plus three
-butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`).
+butterfly parts (`butterfly-forewing`, `butterfly-hindwing`, `butterfly-body`)
+and the three parts of the smaller 128×128 butterfly released by the swarm
+(`butterfly-forewing-128`, `butterfly-hindwing-128`, `butterfly-body-128`).
 
 The `.ips` sources are kept outside this repository; the programs here are
 compiled binaries. They are compiled by product 0.9.0, in the unversioned format,
 from the props working tree at commit `855ba99`. The compiler's default fuel budget is
 5,000,000. `showcase-manifest.json` records the full source commit, every
-binary's byte size and SHA-256, and the hashes of all imported sources. Selection is implemented by ordinary inputs named after what they choose:
+binary's byte size and SHA-256, and the hashes of all imported sources.
+`butterfly-swarm.json` records the same for the swarm's 128×128 butterfly,
+compiled by product 0.9.0 from props commit `489f337`. Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;
 default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for

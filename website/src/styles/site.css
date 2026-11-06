@@ -1503,6 +1503,8 @@ canvas.glow[hidden] { display: none; }
 .butterfly-results__auto-dot { width: .35rem; height: .35rem; flex: 0 0 auto; border-radius: 50%; background: currentColor; opacity: .25; }
 .butterfly-results__auto[aria-pressed="true"] .butterfly-results__auto-dot { opacity: 1; box-shadow: 0 0 0 3px #24140022; }
 .butterfly-results__button:disabled { opacity: .48; cursor: wait; }
+.butterfly-results__swarm { margin-top: .5rem; gap: .6rem; }
+.butterfly-results__swarm-icon { width: .9rem; height: .9rem; flex: 0 0 auto; background: radial-gradient(circle at 30% 35%, currentColor 0 1.5px, transparent 2px), radial-gradient(circle at 72% 28%, currentColor 0 1.5px, transparent 2px), radial-gradient(circle at 55% 72%, currentColor 0 1.5px, transparent 2px), radial-gradient(circle at 18% 78%, currentColor 0 1px, transparent 1.5px), radial-gradient(circle at 88% 70%, currentColor 0 1px, transparent 1.5px); }
 .butterfly-results__status { min-height: 2.8em; margin: .75rem 0; color: var(--text-dim); font-size: .72rem; line-height: 1.5; }
 .butterfly-results__note { padding-top: .75rem; border-top: 1px solid var(--line); margin: 0; color: var(--text-mute); font-size: .65rem; line-height: 1.6; }
 @media (max-width: 58rem) {
@@ -1536,4 +1538,11 @@ canvas.glow[hidden] { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .butterfly-bird:not(.is-flying) > .butterfly-bird__idle-glow { animation: butterfly-glow-pulse 3.2s ease-in-out infinite; }
 }
+/* ---- the swarm: 128 × 128 butterflies over the screen ----------------------- */
+.butterfly-swarm { position: fixed; inset: 0; z-index: 60; overflow: hidden; pointer-events: none; contain: strict; }
+.butterfly-swarm .butterfly-bird--swarm { left: 0; top: 0; width: var(--swarm-size, 128px); }
+.butterfly-swarm .butterfly-bird--swarm .butterfly-bird__rig { perspective: calc(var(--swarm-size, 128px) * 2.3); }
+.butterfly-swarm .butterfly-bird--swarm.is-flying .butterfly-bird__wing { animation-duration: var(--flap, .17s); animation-delay: var(--flap-offset, 0s); }
+.butterfly-swarm .butterfly-bird--swarm.is-flying .butterfly-bird__wing--hindwing { animation-delay: calc(var(--flap-offset, 0s) - .025s); }
+.butterfly-swarm .butterfly-bird__swarm-glow { left: 0; width: 100%; z-index: 0; opacity: .3; filter: blur(7px) brightness(1.3) saturate(1.15); }
 .butterfly-bird.butterfly-trail { z-index: 1; pointer-events: none; opacity: 0; filter: blur(4px); mix-blend-mode: screen; }

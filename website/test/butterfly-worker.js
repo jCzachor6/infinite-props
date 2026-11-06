@@ -10,7 +10,7 @@ const vm = require("node:vm");
 // the absence of SubtleCrypto on the temporary HTTP hosting address.
 module.exports = async function checkButterflyWorker(site) {
     const source = fs.readFileSync(path.join(site, "butterfly-worker.js"), "utf8");
-    function worker(secure, corrupt = false) {
+    function worker(secure, corrupt = null) {
         const messages = [];
         const context = vm.createContext({
             URL, Response, WebAssembly, TextDecoder, TextEncoder, performance,
@@ -23,7 +23,7 @@ module.exports = async function checkButterflyWorker(site) {
                 const file = path.resolve(site, name);
                 assert.ok(file.startsWith(site + path.sep), `worker request escapes website: ${url}`);
                 const bytes = fs.readFileSync(file);
-                if (corrupt && name === "showcase/butterfly-body.iprop") bytes[0] ^= 1;
+                if (name === corrupt) bytes[0] ^= 1;
                 return new Response(bytes, { headers: { "Content-Type": name.endsWith(".wasm")
                     ? "application/wasm" : "application/octet-stream" } });
             },
@@ -76,9 +76,31 @@ module.exports = async function checkButterflyWorker(site) {
             }
             generated++;
         }
-        const damaged = await worker(secure, true).send({ type: "init" });
+        // The 128x128 swarm model loads on its first request.
+        for (let i = 0; i < (secure ? 1 : 5); ++i) {
+            const frame = await active.send({ type: "generate", id: 100 + i, model: "swarm", seed: i + 7 });
+            assert.equal(frame.type, "generated", frame.message);
+            assert.ok(Number.isFinite(frame.rootY) && frame.rootY > 0 && frame.rootY < 128);
+            for (const [name, width, height] of [["forewing", 64, 128], ["hindwing", 64, 128], ["body", 28, 80]]) {
+                const image = frame.parts[name];
+                assert.equal(image.width, width, `swarm ${name} width`);
+                assert.equal(image.height, height, `swarm ${name} height`);
+                assert.equal(image.data.length, width * height * 4);
+                assert.ok(image.data.some((value, index) => index % 4 === 3 && value > 0), `swarm ${name} is empty`);
+                assert.ok(image.fuel.used > 0 && image.fuel.used <= image.fuel.budget);
+            }
+            generated++;
+        }
+        const unknown = await active.send({ type: "generate", id: 200, model: "toString", seed: 1 });
+        assert.equal(unknown.type, "error");
+        const damaged = await worker(secure, "showcase/butterfly-body.iprop").send({ type: "init" });
         assert.equal(damaged.type, "error");
         assert.match(damaged.message, /out of date/, "same-size corrupted assets must still be rejected");
+        const swarm = worker(secure, "showcase/butterfly-body-128.iprop");
+        assert.equal((await swarm.send({ type: "init" })).type, "ready", "a damaged swarm model must not block the benchmark");
+        const rejected = await swarm.send({ type: "generate", id: 1, model: "swarm", seed: 7 });
+        assert.equal(rejected.type, "error");
+        assert.match(rejected.message, /out of date/, "corrupted swarm assets must be rejected");
     }
     return generated;
 };
