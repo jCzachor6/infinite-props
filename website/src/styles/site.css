@@ -121,6 +121,10 @@ code, kbd, pre { font-family: var(--font-mono); }
   -webkit-backdrop-filter: saturate(140%) blur(10px);
   backdrop-filter: saturate(140%) blur(10px);
   transition: background-color 0.3s ease, border-color 0.3s ease;
+  /* The backdrop filter makes the header the containing block of the closed
+     phone menu, parked off to the right; clipped, it cannot widen the page,
+     which a touch screen would let slide sideways. */
+  overflow-x: clip;
 }
 .site-header__inner {
   display: flex;
