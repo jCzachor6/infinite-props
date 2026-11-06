@@ -12,8 +12,10 @@ compiled binaries. They are compiled by product 0.9.0, in the unversioned format
 from the props working tree at commit `855ba99`. The compiler's default fuel budget is
 5,000,000. `showcase-manifest.json` records the full source commit, every
 binary's byte size and SHA-256, and the hashes of all imported sources.
-`butterfly-swarm.json` records the same for the swarm's 128×128 butterfly,
-compiled by product 0.9.0 from props commit `489f337`. Selection is implemented by ordinary inputs named after what they choose:
+`butterfly-benchmark.json` and `butterfly-swarm.json` record the same for the
+two butterflies, also compiled by product 0.9.0: the 256×256 parts from
+`examples/butterfly` of the iprop-asset-skill repository at commit `0c01506`,
+the 128×128 parts from props commit `489f337`. Selection is implemented by ordinary inputs named after what they choose:
 `enchant` and `quality` (plus `bladeStyle`, `bladeSteel`, `headStyle` and
 `coating` where declared) for weapons, `sex` and `role` for portraits;
 default 0 rolls from the seed. Weapons use `renderPass` for color/emission selection and `bloom` for
