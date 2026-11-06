@@ -9,6 +9,8 @@
 // stroke, sparks, hot chips and grit fly and bounce, dust rolls out, and a
 // scorch cools under rising smoke.
 //
+// After pixelfx's lightning strike (MIT, Patch and Hugo Duprez): see NOTICE.md.
+//
 // Category: lightning. One-shot. Canvas 144x192, origin 72,180 (where the
 // bolt hits the floor). Side view at the scale of a 24x38 character, light
 // from the upper left.

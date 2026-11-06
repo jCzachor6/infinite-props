@@ -70,7 +70,9 @@ getting-started guide with the documentation, and the source page.
   **One strike, never the same twice**, between the forest and the live
   examples, plays `public/effects/lightning-strike.iprop`, the lightning strike
   from the iprop-asset-effects skill's examples (its source
-  `lightning-strike.ips` is beside it; recompile with `ipc` after editing). A
+  `lightning-strike.ips` is beside it; recompile with `ipc` after editing). It
+  follows pixelfx's lightning strike (MIT): `public/effects/NOTICE.md` keeps
+  that licence with it. A
   worker (`public/lightning-worker.js`) renders each frame's three passes and
   sends them as bitmaps while the strike plays; the page draws the `renderPass`
   view picked (lit: the baked light added to a night stage under the sprite).
