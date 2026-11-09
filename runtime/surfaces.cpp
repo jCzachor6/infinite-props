@@ -104,7 +104,7 @@ void Execution::beginLayer(u16 local, u8 mode) {
     target = std::move(next);
 }
 
-void Execution::closeLayers(std::size_t labelDepth) {
+void Execution::closeOpenLayers(std::size_t labelDepth) {
     while (!layerScopes.empty() && layerScopes.back().frameDepth == frames.size() &&
            layerScopes.back().labelDepth > labelDepth) {
         auto scope = std::move(layerScopes.back());

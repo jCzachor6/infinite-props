@@ -140,22 +140,45 @@ struct Execution {
 
     // Operand stack access with runtime traps (defense in depth: validated
     // files never hit these, unvalidated input must still trap, never UB).
-    Value pop();
-    Value peek();
+    // The checks and the scalar cases are inline; every trap is out of line.
+    Value pop() {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        Value value = std::move(stack.back());
+        stack.pop_back();
+        return value;
+    }
+    Value peek() {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        return stack.back();
+    }
     // Constructs the pushed value in place: scalars never pass through an
     // intermediate Value.
     template<class T> void push(T&& value) {
         auto& stack = frames.back().stack;
-        if (stack.size() >= kMaxStackDepth) trap("operand stack depth exceeds limit", ErrorReason::StackLimit);
+        if (stack.size() >= kMaxStackDepth) [[unlikely]] stackLimit();
         stack.emplace_back(std::forward<T>(value));
     }
 
-    // Typed pops; trap on an empty stack or a type mismatch.
-    i32 popI32();
-    f32 popF32();
-    Color popColor();
-    Vec2 popVec2();
-    Distribution popDistribution();
+    // Typed pops; trap on an empty stack or a type mismatch. A scalar is read
+    // in place and popped, without moving the whole Value.
+    template<class T> T popScalar(const char* mismatch) {
+        auto& stack = frames.back().stack;
+        if (stack.empty()) [[unlikely]] stackUnderflow();
+        const auto* value = std::get_if<T>(&stack.back());
+        if (!value) [[unlikely]] stackType(mismatch);
+        const T result = *value;
+        stack.pop_back();
+        return result;
+    }
+    i32 popI32() { return popScalar<i32>("stack type mismatch: expected i32"); }
+    f32 popF32() { return popScalar<f32>("stack type mismatch: expected f32"); }
+    Color popColor() { return popScalar<Color>("stack type mismatch: expected color"); }
+    Vec2 popVec2() { return popScalar<Vec2>("stack type mismatch: expected vec2"); }
+    Distribution popDistribution() {
+        return popScalar<Distribution>("stack type mismatch: expected distribution");
+    }
     // Every handle shares one rule: another alternative is a stack type
     // error, an unassigned handle a runtime violation.
     template<class H> H popHandle(const char* name) {
@@ -174,11 +197,20 @@ struct Execution {
     MaskValue popMask(bool matchTarget = true);
     void allocateResource(u64 bytes);
 
-    // Fuel accounting (spec §8.3): traps with "fuel exhausted".
-    void spend(u64 cost);
-    void spendRaw(u64 cost);
-    void beginInstruction(Opcode op) { fuelRate = fuelPercent(op); fuelUnits = fuelPaid = 0; }
+    // Fuel accounting (spec §8.3): traps with "fuel exhausted". Most opcodes
+    // pay the plain tariff; a discounted one rounds its cumulative units.
+    void spend(u64 cost) {
+        if (fuelRate != 100) [[unlikely]] cost = scaledCost(cost);
+        spendRaw(cost);
+    }
+    void spendRaw(u64 cost) {
+        if (cost > fuel) [[unlikely]] fuelExhausted();
+        fuel -= cost;
+    }
+    void beginInstruction(Opcode op) { fuelRate = kFuelPercent[static_cast<u8>(op)]; fuelUnits = fuelPaid = 0; }
     void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    // `count` unit steps at once, exactly as `count` calls of work().
+    void workEach(u64 count) const { workBudget->location = activeInstruction; workBudget->spendEach(count); }
     void checkpoint() const { workBudget->checkpoint(); }
 
     // Frame lifecycle.
@@ -187,13 +219,24 @@ struct Execution {
     void leaveFrame();
     void beginLayer(u16 local, u8 mode);
     void beginClip();
-    // Unwind layer and clip scopes together, in reverse entry order.
-    void closeLayers(std::size_t labelDepth);
+    // Unwind layer and clip scopes together, in reverse entry order. Most
+    // label exits have no open capture or clip at all.
+    void closeLayers(std::size_t labelDepth) { if (!layerScopes.empty()) [[unlikely]] closeOpenLayers(labelDepth); }
+    void closeOpenLayers(std::size_t labelDepth);
 
     // Precomputes the matching else/end indices of a function's control flow.
-    void ensureControl(u16 functionIndex);
+    void ensureControl(u16 functionIndex) {
+        if (functionIndex >= control.size() || control[functionIndex].empty()) [[unlikely]] scanControl(functionIndex);
+    }
+    void scanControl(u16 functionIndex);
 
     [[noreturn]] void trap(std::string message, ErrorReason reason) const;
+    [[noreturn]] void stackUnderflow() const;
+    [[noreturn]] void stackLimit() const;
+    [[noreturn]] void stackType(const char* mismatch) const;
+    [[noreturn]] void fuelExhausted() const;
+    // The increase of the rounded cumulative cost of a discounted opcode.
+    u64 scaledCost(u64 cost);
 };
 
 // Primitives, part blits and paint use the same rounded RGBA8 kernel.

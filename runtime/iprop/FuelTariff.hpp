@@ -2,6 +2,8 @@
 
 #include "iprop/Constants.hpp"
 
+#include <array>
+
 namespace iprop::detail {
 
 // Runtime 0.9 tariff; applies to old bytecode too. Kernel units stay explicit
@@ -27,6 +29,13 @@ constexpr u8 fuelPercent(Opcode op) {
         return 100;
     }
 }
+
+// The same tariff as a table: the interpreter reads one byte per instruction.
+inline constexpr std::array<u8, 256> kFuelPercent = [] {
+    std::array<u8, 256> table{};
+    for (std::size_t op = 0; op < table.size(); ++op) table[op] = fuelPercent(static_cast<Opcode>(op));
+    return table;
+}();
 
 // No product overflow, including UINT64_MAX. All percentages are in 1..100.
 constexpr u64 fuelScaled(u64 units, u8 percent) {

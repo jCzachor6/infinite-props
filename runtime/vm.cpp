@@ -2,6 +2,7 @@
 
 #include "iprop/VmInternals.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cmath>
@@ -83,61 +84,49 @@ bool stepCore(Execution& ex, Instruction ins) {
     }
 }
 
-Value Execution::pop() {
-    Frame& frame = frames.back();
-    if (frame.stack.empty()) {
-        trap("stack underflow", ErrorReason::StackUnderflow);
+void Execution::stackUnderflow() const { trap("stack underflow", ErrorReason::StackUnderflow); }
+void Execution::stackLimit() const { trap("operand stack depth exceeds limit", ErrorReason::StackLimit); }
+void Execution::stackType(const char* mismatch) const { trap(mismatch, ErrorReason::StackType); }
+void Execution::fuelExhausted() const { trap("fuel exhausted", ErrorReason::FuelExhausted); }
+
+u64 Execution::scaledCost(u64 cost) {
+    if (cost > UINT64_MAX - fuelUnits) fuelExhausted();
+    fuelUnits += cost;
+    const auto total = fuelScaled(fuelUnits, fuelRate);
+    cost = total - fuelPaid;
+    fuelPaid = total;
+    return cost;
+}
+
+void WorkBudget::exhausted() const {
+    throw Trap("native work limit exhausted", ErrorReason::WorkExhausted, stage, location);
+}
+
+void WorkBudget::poll() const {
+    if ((limits_.cancellation && limits_.cancellation->cancelled()) ||
+        (limits_.cancelled && limits_.cancelled(limits_.context)))
+        throw Trap("generation cancelled", ErrorReason::Cancelled, stage, location);
+    if (limits_.deadline && ExecutionLimits::Clock::now() >= *limits_.deadline)
+        throw Trap("generation deadline exceeded", ErrorReason::DeadlineExceeded, stage, location);
+}
+
+// Replays unit steps in runs that end at the next poll or at exhaustion, so
+// the counters match a per-unit loop at every point where it could throw.
+void WorkBudget::spendEachSlow(u64 count) {
+    while (count != 0) {
+        if (remaining_ == 0) exhausted();
+        if (untilPoll_ <= 1) {
+            poll();
+            untilPoll_ = kWorkPollInterval - 1;
+            --remaining_;
+            --count;
+            continue;
+        }
+        const u64 run = std::min({count, untilPoll_ - 1, remaining_});
+        untilPoll_ -= run;
+        remaining_ -= run;
+        count -= run;
     }
-    Value value = std::move(frame.stack.back());
-    frame.stack.pop_back();
-    return value;
-}
-
-Value Execution::peek() {
-    Frame& frame = frames.back();
-    if (frame.stack.empty()) {
-        trap("stack underflow", ErrorReason::StackUnderflow);
-    }
-    return frame.stack.back();
-}
-
-namespace {
-// Reads a scalar in place and pops it, without moving the whole Value.
-template<class T> T popScalar(Execution& ex, const char* mismatch) {
-    auto& stack = ex.frames.back().stack;
-    if (stack.empty()) ex.trap("stack underflow", ErrorReason::StackUnderflow);
-    const auto* value = std::get_if<T>(&stack.back());
-    if (!value) ex.trap(mismatch, ErrorReason::StackType);
-    const T result = *value;
-    stack.pop_back();
-    return result;
-}
-} // namespace
-
-i32 Execution::popI32() { return popScalar<i32>(*this, "stack type mismatch: expected i32"); }
-f32 Execution::popF32() { return popScalar<f32>(*this, "stack type mismatch: expected f32"); }
-Color Execution::popColor() { return popScalar<Color>(*this, "stack type mismatch: expected color"); }
-Vec2 Execution::popVec2() { return popScalar<Vec2>(*this, "stack type mismatch: expected vec2"); }
-Distribution Execution::popDistribution() {
-    return popScalar<Distribution>(*this, "stack type mismatch: expected distribution");
-}
-
-void Execution::spend(u64 cost) {
-    if (fuelRate != 100) {
-        if (cost > UINT64_MAX - fuelUnits) trap("fuel exhausted", ErrorReason::FuelExhausted);
-        fuelUnits += cost;
-        const auto total = fuelScaled(fuelUnits, fuelRate);
-        cost = total - fuelPaid;
-        fuelPaid = total;
-    }
-    spendRaw(cost);
-}
-
-void Execution::spendRaw(u64 cost) {
-    if (cost > fuel) {
-        trap("fuel exhausted", ErrorReason::FuelExhausted);
-    }
-    fuel -= cost;
 }
 
 void Execution::callFunction(u16 functionIndex) {
@@ -260,7 +249,7 @@ void Execution::leaveFrame() {
     }
 }
 
-void Execution::ensureControl(u16 functionIndex) {
+void Execution::scanControl(u16 functionIndex) {
     if (functionIndex >= control.size()) {
         initializeWork(control, file.code.functions.size(), std::vector<ControlInfo>{}, *workBudget);
     }

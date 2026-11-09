@@ -44,25 +44,25 @@ bool stepParts(Execution& ex, Instruction ins) {
             if (output.points.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.readPoint.x));
-            ex.push(Value(output.readPoint.y));
+            ex.push(output.readPoint.x);
+            ex.push(output.readPoint.y);
             break;
         case OutputKind::Rect:
             if (output.rects.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.readRect.x));
-            ex.push(Value(output.readRect.y));
-            ex.push(Value(output.readRect.w));
-            ex.push(Value(output.readRect.h));
+            ex.push(output.readRect.x);
+            ex.push(output.readRect.y);
+            ex.push(output.readRect.w);
+            ex.push(output.readRect.h);
             break;
         case OutputKind::Circle:
             if (output.circles.empty()) {
                 ex.trap("part output not written", ErrorReason::PartOutputMissing);
             }
-            ex.push(Value(output.readCircle.x));
-            ex.push(Value(output.readCircle.y));
-            ex.push(Value(output.readCircle.r));
+            ex.push(output.readCircle.x);
+            ex.push(output.readCircle.y);
+            ex.push(output.readCircle.r);
             break;
         }
         ++ex.frame().ip;

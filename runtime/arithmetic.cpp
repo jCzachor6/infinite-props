@@ -12,28 +12,28 @@ namespace {
 void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
     const u32 b = static_cast<u32>(ex.popI32());
     const u32 a = static_cast<u32>(ex.popI32());
-    ex.push(Value(static_cast<i32>(fn(a, b))));
+    ex.push(static_cast<i32>(fn(a, b)));
     ++ex.frame().ip;
 }
 
 void i32Compare(Execution& ex, i32 (*fn)(i32, i32)) {
     const i32 b = ex.popI32();
     const i32 a = ex.popI32();
-    ex.push(Value(fn(a, b)));
+    ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
 void f32Binop(Execution& ex, f32 (*fn)(f32, f32)) {
     const f32 b = ex.popF32();
     const f32 a = ex.popF32();
-    ex.push(Value(fn(a, b)));
+    ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
 void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
     const f32 b = ex.popF32();
     const f32 a = ex.popF32();
-    ex.push(Value(fn(a, b)));
+    ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
@@ -52,7 +52,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
         const i32 x = ex.popI32();
-        ex.push(Value(std::clamp(x, std::min(a, b), std::max(a, b))));
+        ex.push(std::clamp(x, std::min(a, b), std::max(a, b)));
         ++ex.frame().ip;
         return true;
     }
@@ -72,7 +72,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         if (a == std::numeric_limits<i32>::min() && b == -1) {
             ex.trap("integer overflow", ErrorReason::IntegerOverflow);
         }
-        ex.push(Value(a / b));
+        ex.push(a / b);
         ++ex.frame().ip;
         return true;
     }
@@ -80,7 +80,7 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const u32 b = static_cast<u32>(ex.popI32());
         const u32 a = static_cast<u32>(ex.popI32());
         if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
-        ex.push(Value(static_cast<i32>(a / b)));
+        ex.push(static_cast<i32>(a / b));
         ++ex.frame().ip;
         return true;
     }
@@ -89,9 +89,9 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const i32 a = ex.popI32();
         if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
         if (a == std::numeric_limits<i32>::min() && b == -1) {
-            ex.push(Value(i32{0}));
+            ex.push(i32{0});
         } else {
-            ex.push(Value(a % b));
+            ex.push(a % b);
         }
         ++ex.frame().ip;
         return true;
@@ -100,61 +100,61 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         const u32 b = static_cast<u32>(ex.popI32());
         const u32 a = static_cast<u32>(ex.popI32());
         if (b == 0) ex.trap("divide by zero", ErrorReason::DivideByZero);
-        ex.push(Value(static_cast<i32>(a % b)));
+        ex.push(static_cast<i32>(a % b));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32And: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) & static_cast<u32>(b))));
+        ex.push(static_cast<i32>(static_cast<u32>(a) & static_cast<u32>(b)));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32Or: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) | static_cast<u32>(b))));
+        ex.push(static_cast<i32>(static_cast<u32>(a) | static_cast<u32>(b)));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32Xor: {
         const i32 b = ex.popI32();
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) ^ static_cast<u32>(b))));
+        ex.push(static_cast<i32>(static_cast<u32>(a) ^ static_cast<u32>(b)));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32Shl: {
         const u32 shift = static_cast<u32>(ex.popI32()) & 31u;
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) << shift)));
+        ex.push(static_cast<i32>(static_cast<u32>(a) << shift));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32ShrS: {
         const u32 shift = static_cast<u32>(ex.popI32()) & 31u;
         const i32 a = ex.popI32();
-        ex.push(Value(math::shiftRightSigned(a, shift)));
+        ex.push(math::shiftRightSigned(a, shift));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32ShrU: {
         const u32 shift = static_cast<u32>(ex.popI32()) & 31u;
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(static_cast<u32>(a) >> shift)));
+        ex.push(static_cast<i32>(static_cast<u32>(a) >> shift));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32Neg: {
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(0u - static_cast<u32>(a))));
+        ex.push(static_cast<i32>(0u - static_cast<u32>(a)));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32Not: {
         const i32 a = ex.popI32();
-        ex.push(Value(static_cast<i32>(~static_cast<u32>(a))));
+        ex.push(static_cast<i32>(~static_cast<u32>(a)));
         ++ex.frame().ip;
         return true;
     }
@@ -229,80 +229,80 @@ bool stepArithmetic(Execution& ex, Instruction ins) {
         f32Compare(ex, [](f32 a, f32 b) { return a >= b ? 1 : 0; });
         return true;
     case Opcode::F32Neg: {
-        ex.push(Value(-ex.popF32()));
+        ex.push(-ex.popF32());
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Abs: {
-        ex.push(Value(std::fabs(ex.popF32())));
+        ex.push(std::fabs(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Sqrt: {
-        ex.push(Value(std::sqrt(ex.popF32())));
+        ex.push(std::sqrt(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Sin: {
-        ex.push(Value(math::f32Sin(ex.popF32())));
+        ex.push(math::f32Sin(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Cos: {
-        ex.push(Value(math::f32Cos(ex.popF32())));
+        ex.push(math::f32Cos(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Floor: {
-        ex.push(Value(static_cast<f32>(std::floor(ex.popF32()))));
+        ex.push(static_cast<f32>(std::floor(ex.popF32())));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Ceil: {
-        ex.push(Value(static_cast<f32>(std::ceil(ex.popF32()))));
+        ex.push(static_cast<f32>(std::ceil(ex.popF32())));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Min: {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(math::f32MinMax(a, b, false)));
+        ex.push(math::f32MinMax(a, b, false));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Max: {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(math::f32MinMax(a, b, true)));
+        ex.push(math::f32MinMax(a, b, true));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Pow: {
         const f32 b = ex.popF32();
         const f32 a = ex.popF32();
-        ex.push(Value(math::f32Pow(a, b)));
+        ex.push(math::f32Pow(a, b));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Exp: {
-        ex.push(Value(math::f32Exp(ex.popF32())));
+        ex.push(math::f32Exp(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32Atan2: {
         const f32 b = ex.popF32(); // x
         const f32 a = ex.popF32(); // y
-        ex.push(Value(math::f32Atan2(a, b)));
+        ex.push(math::f32Atan2(a, b));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::I32ToF32: {
-        ex.push(Value(static_cast<f32>(ex.popI32())));
+        ex.push(static_cast<f32>(ex.popI32()));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::F32ToI32: {
-        ex.push(Value(math::f32ToI32(ex.popF32())));
+        ex.push(math::f32ToI32(ex.popF32()));
         ++ex.frame().ip;
         return true;
     }

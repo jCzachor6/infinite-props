@@ -12,21 +12,21 @@ bool stepVector(Execution& ex, Instruction ins) {
     case Opcode::Vec2Make: {
         const f32 y = ex.popF32();
         const f32 x = ex.popF32();
-        ex.push(Value(Vec2{x, y}));
+        ex.push(Vec2{x, y});
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Add: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
-        ex.push(Value(math::vec2Add(a, b)));
+        ex.push(math::vec2Add(a, b));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Sub: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
-        ex.push(Value(math::vec2Sub(a, b)));
+        ex.push(math::vec2Sub(a, b));
         ++ex.frame().ip;
         return true;
     }
@@ -34,9 +34,9 @@ bool stepVector(Execution& ex, Instruction ins) {
         const Value right = ex.pop();
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
-            ex.push(Value(math::vec2Mul(a, *b)));
+            ex.push(math::vec2Mul(a, *b));
         } else if (const f32* s = std::get_if<f32>(&right)) {
-            ex.push(Value(math::vec2Mul(a, *s)));
+            ex.push(math::vec2Mul(a, *s));
         } else {
             ex.trap("stack type mismatch: expected f32 or vec2", ErrorReason::StackType);
         }
@@ -47,9 +47,9 @@ bool stepVector(Execution& ex, Instruction ins) {
         const Value right = ex.pop();
         const Vec2 a = ex.popVec2();
         if (const Vec2* b = std::get_if<Vec2>(&right)) {
-            ex.push(Value(math::vec2Div(a, *b)));
+            ex.push(math::vec2Div(a, *b));
         } else if (const f32* s = std::get_if<f32>(&right)) {
-            ex.push(Value(math::vec2Div(a, *s)));
+            ex.push(math::vec2Div(a, *s));
         } else {
             ex.trap("stack type mismatch: expected f32 or vec2", ErrorReason::StackType);
         }
@@ -58,13 +58,13 @@ bool stepVector(Execution& ex, Instruction ins) {
     }
     case Opcode::Vec2Neg: {
         const Vec2 v = ex.popVec2();
-        ex.push(Value(math::vec2Neg(v)));
+        ex.push(math::vec2Neg(v));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Len: {
         const Vec2 v = ex.popVec2();
-        ex.push(Value(math::vec2Len(v)));
+        ex.push(math::vec2Len(v));
         ++ex.frame().ip;
         return true;
     }
@@ -73,31 +73,31 @@ bool stepVector(Execution& ex, Instruction ins) {
         if (!std::isfinite(v.x) || !std::isfinite(v.y)) {
             ex.trap("vec2.normalize components must be finite", ErrorReason::NumericRange);
         }
-        ex.push(Value(math::vec2Normalize(v)));
+        ex.push(math::vec2Normalize(v));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Dot: {
         const Vec2 b = ex.popVec2();
         const Vec2 a = ex.popVec2();
-        ex.push(Value(math::vec2Dot(a, b)));
+        ex.push(math::vec2Dot(a, b));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Rot: {
         const f32 angle = ex.popF32();
         const Vec2 v = ex.popVec2();
-        ex.push(Value(math::vec2Rot(v, angle)));
+        ex.push(math::vec2Rot(v, angle));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2X: {
-        ex.push(Value(ex.popVec2().x));
+        ex.push(ex.popVec2().x);
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Y: {
-        ex.push(Value(ex.popVec2().y));
+        ex.push(ex.popVec2().y);
         ++ex.frame().ip;
         return true;
     }
@@ -108,19 +108,19 @@ bool stepVector(Execution& ex, Instruction ins) {
         if (!std::isfinite(a.x) || !std::isfinite(a.y) || !std::isfinite(b.x) || !std::isfinite(b.y)) {
             ex.trap("vec2 segment ends must be finite", ErrorReason::NumericRange);
         }
-        ex.push(Value(math::vec2Mix(a, b, t)));
+        ex.push(math::vec2Mix(a, b, t));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Fold: {
         const i32 n = ex.popI32();
         const Vec2 v = ex.popVec2();
-        ex.push(Value(math::vec2Fold(v, n)));
+        ex.push(math::vec2Fold(v, n));
         ++ex.frame().ip;
         return true;
     }
     case Opcode::Vec2Polar: {
-        ex.push(Value(math::vec2Polar(ex.popVec2())));
+        ex.push(math::vec2Polar(ex.popVec2()));
         ++ex.frame().ip;
         return true;
     }
