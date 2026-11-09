@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Faster generation with unchanged images, outputs, fuel and work totals;
+  existing `.iprop` files need no recompilation. The interpreter keeps its
+  per-instruction accounting and its stack, control and scalar instructions
+  inline and reuses call frames; polygons, Bézier strokes, blurs, ovals and
+  layer/mask painting do the same pixel tests with less work per pixel.
+  On an Apple M-series Mac the showcase weapons and portraits generate
+  2.0-2.5x faster, the 256x256 butterfly parts 3.6-5.4x (hindwing 58 ms to
+  11 ms) and thin strokes about 5x. In WebAssembly (Node 26) the three
+  butterfly parts take 23 ms instead of 94 ms; `iprop.wasm` is 7% larger
+  (5% gzipped).
+
 ## v0.9.0 — 2026-11-05
 
 Product/source and editor, website, Unity/Python packages: **0.9.0**.
