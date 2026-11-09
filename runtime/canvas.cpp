@@ -76,16 +76,26 @@ void strokeCurve(Execution& ex, std::array<Vec2, 4> points, std::size_t count,
     const auto kernel = count == 3
         ? math::BezierKernel::quadratic(points[0], points[1], points[2])
         : math::BezierKernel::cubic(points[0], points[1], points[2], points[3]);
+    // Most of a thin stroke's box is nowhere near the curve. A pixel outside
+    // every covering box cannot be within the radius, so its search is
+    // skipped; its work steps are reserved all the same.
+    std::array<math::BezierKernel::Box, 16> boxes;
+    const std::size_t boxCount = kernel.cover(boxes, radius);
+    std::array<std::array<double, 2>, 16> spans;
     const i32 clipX1 = std::min(x1, static_cast<i32>(ex.canvas().width) - 1);
     const i32 clipY1 = std::min(y1, static_cast<i32>(ex.canvas().height) - 1);
     for (i32 y = std::max(y0, 0); y <= clipY1; ++y) {
         ex.work();
+        std::size_t spanCount = 0;
+        for (std::size_t i = 0; i < boxCount; ++i)
+            if (boxes[i].top <= y && y <= boxes[i].bottom) spans[spanCount++] = {boxes[i].left, boxes[i].right};
         for (i32 x = std::max(x0, 0); x <= clipX1; ++x) {
             ex.work();
             const Vec2 p{static_cast<f32>(x), static_cast<f32>(y)};
             ex.work(25); // Five candidates with at most five Newton evaluations.
-            const f32 distance = kernel.distanceTo(p);
-            if (distance <= radius) {
+            bool near = boxCount == 0;
+            for (std::size_t i = 0; i < spanCount && !near; ++i) near = spans[i][0] <= x && x <= spans[i][1];
+            if (near && kernel.within(p, radius)) {
                 compositePixel(ex, x, y, colour);
             }
         }

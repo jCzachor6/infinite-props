@@ -12,10 +12,23 @@ bool finitePoint(const Vec2& p) {
     return std::isfinite(p.x) && std::isfinite(p.y);
 }
 
+// The smallest squared distance from p to the curve's ends and to every
+// evaluated point of the pinned search: five candidates of at most five
+// Newton evaluations each. The search itself never reads a distance, and a
+// square root is monotone and correctly rounded, so the nearest point's root
+// is the smallest of all the roots; callers take one root at the end.
+// A squared distance at or below `enough` ends the search early; pass a
+// negative value to always complete it.
 template <typename Point, typename Derivative, typename SecondDerivative>
-f32 bezierDistance(const Vec2& p, const Vec2& startPoint, const Vec2& endPoint,
+f32 nearestSquared(const Vec2& p, const Vec2& startPoint, const Vec2& endPoint, f32 enough,
                    Point point, Derivative derivative, SecondDerivative secondDerivative) {
-    f32 best = std::min(distCircle(p, startPoint, 0.f), distCircle(p, endPoint, 0.f));
+    const auto squared = [&](const Vec2& q) {
+        const f32 dx = p.x - q.x;
+        const f32 dy = p.y - q.y;
+        return dx * dx + dy * dy;
+    };
+    f32 best = std::min(squared(startPoint), squared(endPoint));
+    if (best <= enough) return best;
     const f32 candidates[5] = {0.f, 0.25f, 0.5f, 0.75f, 1.f};
     for (const f32 start : candidates) {
         f32 t = start;
@@ -23,8 +36,8 @@ f32 bezierDistance(const Vec2& p, const Vec2& startPoint, const Vec2& endPoint,
             const Vec2 pt = point(t);
             const f32 rx = pt.x - p.x;
             const f32 ry = pt.y - p.y;
-            const f32 distance = std::sqrt(rx * rx + ry * ry);
-            best = std::min(best, distance);
+            best = std::min(best, rx * rx + ry * ry);
+            if (best <= enough) return best;
             if (step == 4) {
                 break;
             }
@@ -82,10 +95,66 @@ BezierKernel BezierKernel::cubic(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
 f32 BezierKernel::distanceTo(Vec2 p) const {
     if (!finite_ || !finitePoint(p)) return std::numeric_limits<f32>::quiet_NaN();
     if (point_) return distCircle(p,points_[0],0.f);
-    return cubic_ ? distanceCubic(p) : distanceQuadratic(p);
+    return std::sqrt(cubic_ ? nearestCubic(p, -1.f) : nearestQuadratic(p, -1.f));
 }
 
-f32 BezierKernel::distanceQuadratic(const Vec2& p) const {
+bool BezierKernel::within(Vec2 p, f32 radius) const {
+    if (!finite_ || !finitePoint(p)) return false; // a NaN distance compares false
+    if (point_) return distCircle(p,points_[0],0.f) <= radius;
+    // One float below the rounded square is at most the exact square, and a
+    // squared distance at most radius * radius has a root at most radius.
+    const f32 enough = radius >= 0.f ? std::nextafter(radius * radius, 0.f) : -1.f;
+    const f32 nearest = cubic_ ? nearestCubic(p, enough) : nearestQuadratic(p, enough);
+    return nearest <= enough || std::sqrt(nearest) <= radius;
+}
+
+// The curve is cut into equal parameter steps. Between two samples a
+// coordinate leaves their chord by at most step^2 / 8 times the largest
+// second derivative, so the samples' box grown by that sag holds the piece.
+// Everything here is binary64; the search works in binary32 and its points
+// and distances are off by a few units in the last place of the largest
+// coordinate, which the relative margins below exceed a hundredfold.
+std::size_t BezierKernel::cover(std::span<Box> boxes, f32 radius) const {
+    if (!finite_ || point_ || boxes.empty() || !(radius >= 0.f) || !(radius <= 1e30f)) return 0;
+    const std::size_t count = cubic_ ? 4 : 3;
+    double extent = 0.0;
+    for (std::size_t i = 0; i < count; ++i)
+        extent = std::max({extent, std::fabs(static_cast<double>(points_[i].x)), std::fabs(static_cast<double>(points_[i].y))});
+    if (!(extent <= 1e30)) return 0;
+
+    const auto coordinate = [&](std::size_t i, bool vertical) {
+        return static_cast<double>(vertical ? points_[i].y : points_[i].x);
+    };
+    const auto at = [&](double t, bool vertical) {
+        const double s = 1.0 - t;
+        if (!cubic_)
+            return s * s * coordinate(0, vertical) + 2.0 * s * t * coordinate(1, vertical) + t * t * coordinate(2, vertical);
+        return s * s * s * coordinate(0, vertical) + 3.0 * s * s * t * coordinate(1, vertical) +
+            3.0 * s * t * t * coordinate(2, vertical) + t * t * t * coordinate(3, vertical);
+    };
+    const auto bend = [&](bool vertical) {
+        const auto second = [&](std::size_t i) {
+            return std::fabs(coordinate(i, vertical) - 2.0 * coordinate(i + 1, vertical) + coordinate(i + 2, vertical));
+        };
+        return cubic_ ? 6.0 * std::max(second(0), second(1)) : 2.0 * second(0);
+    };
+    const double step = 1.0 / static_cast<double>(boxes.size());
+    const double slack = static_cast<double>(radius) * 1.00001 + extent * 0.00001;
+    const double growX = step * step / 8.0 * bend(false) * 1.00001 + slack;
+    const double growY = step * step / 8.0 * bend(true) * 1.00001 + slack;
+    double x = at(0.0, false), y = at(0.0, true);
+    for (std::size_t i = 0; i < boxes.size(); ++i) {
+        const double t = i + 1 == boxes.size() ? 1.0 : static_cast<double>(i + 1) * step;
+        const double nextX = at(t, false), nextY = at(t, true);
+        boxes[i] = {std::min(x, nextX) - growX, std::min(y, nextY) - growY,
+                    std::max(x, nextX) + growX, std::max(y, nextY) + growY};
+        x = nextX;
+        y = nextY;
+    }
+    return boxes.size();
+}
+
+f32 BezierKernel::nearestQuadratic(const Vec2& p, f32 enough) const {
     const Vec2 a = points_[0], b = points_[1], c = points_[2];
     const auto point = [&](f32 t) -> Vec2 {
         if (t == 0.f) return a;
@@ -105,10 +174,10 @@ f32 BezierKernel::distanceQuadratic(const Vec2& p) const {
                 w0 * differences_[0].y + w1 * differences_[1].y};
     };
     const Vec2 dd = second_[0];
-    return bezierDistance(p, a, c, point, derivative, [&](f32) { return dd; });
+    return nearestSquared(p, a, c, enough, point, derivative, [&](f32) { return dd; });
 }
 
-f32 BezierKernel::distanceCubic(const Vec2& p) const {
+f32 BezierKernel::nearestCubic(const Vec2& p, f32 enough) const {
     const Vec2 a = points_[0], b = points_[1], c = points_[2], d = points_[3];
     const auto point = [&](f32 t) -> Vec2 {
         if (t == 0.f) return a;
@@ -135,7 +204,7 @@ f32 BezierKernel::distanceCubic(const Vec2& p) const {
         const f32 w1 = 6.f * t;
         return {w0 * ab.x + w1 * bc.x, w0 * ab.y + w1 * bc.y};
     };
-    return bezierDistance(p, a, d, point, derivative, secondDerivative);
+    return nearestSquared(p, a, d, enough, point, derivative, secondDerivative);
 }
 
 // Shared with the curve rasterizer so distance queries and strokes use the
