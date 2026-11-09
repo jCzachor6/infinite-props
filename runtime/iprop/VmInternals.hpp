@@ -1,7 +1,7 @@
 #pragma once
 
 // Internal execution machinery shared by the VM and the per-group instruction
-// implementations (stack.cpp, control.cpp, arithmetic.cpp, ...). Not part of
+// implementations (VmScalarSteps.hpp, seeded.cpp, canvas.cpp, ...). Not part of
 // the public API; consumers use VM from iprop/VM.hpp.
 
 #include "iprop/Canvas.hpp"
@@ -131,6 +131,10 @@ struct Execution {
     u32 dynamicPartCreations = 0;
     u32 exportedParts = 0; // all slots/static calls share the append limit
 
+    // Finished call frames, kept for their storage: a helper call reuses the
+    // locals, stack and label buffers of an earlier one.
+    std::vector<Frame> spareFrames;
+
     explicit Execution(const LoadedFile& f) : file(f) { resources.workBudget = workBudget; }
     Canvas& canvas() { return target.canvas(); }
     const Canvas& canvas() const { return target.canvas(); }
@@ -141,7 +145,7 @@ struct Execution {
     // Operand stack access with runtime traps (defense in depth: validated
     // files never hit these, unvalidated input must still trap, never UB).
     // The checks and the scalar cases are inline; every trap is out of line.
-    Value pop() {
+    IPROP_ALWAYS_INLINE Value pop() {
         auto& stack = frames.back().stack;
         if (stack.empty()) [[unlikely]] stackUnderflow();
         Value value = std::move(stack.back());
@@ -155,7 +159,7 @@ struct Execution {
     }
     // Constructs the pushed value in place: scalars never pass through an
     // intermediate Value.
-    template<class T> void push(T&& value) {
+    template<class T> IPROP_ALWAYS_INLINE void push(T&& value) {
         auto& stack = frames.back().stack;
         if (stack.size() >= kMaxStackDepth) [[unlikely]] stackLimit();
         stack.emplace_back(std::forward<T>(value));
@@ -163,7 +167,7 @@ struct Execution {
 
     // Typed pops; trap on an empty stack or a type mismatch. A scalar is read
     // in place and popped, without moving the whole Value.
-    template<class T> T popScalar(const char* mismatch) {
+    template<class T> IPROP_ALWAYS_INLINE T popScalar(const char* mismatch) {
         auto& stack = frames.back().stack;
         if (stack.empty()) [[unlikely]] stackUnderflow();
         const auto* value = std::get_if<T>(&stack.back());
@@ -172,10 +176,10 @@ struct Execution {
         stack.pop_back();
         return result;
     }
-    i32 popI32() { return popScalar<i32>("stack type mismatch: expected i32"); }
-    f32 popF32() { return popScalar<f32>("stack type mismatch: expected f32"); }
-    Color popColor() { return popScalar<Color>("stack type mismatch: expected color"); }
-    Vec2 popVec2() { return popScalar<Vec2>("stack type mismatch: expected vec2"); }
+    IPROP_ALWAYS_INLINE i32 popI32() { return popScalar<i32>("stack type mismatch: expected i32"); }
+    IPROP_ALWAYS_INLINE f32 popF32() { return popScalar<f32>("stack type mismatch: expected f32"); }
+    IPROP_ALWAYS_INLINE Color popColor() { return popScalar<Color>("stack type mismatch: expected color"); }
+    IPROP_ALWAYS_INLINE Vec2 popVec2() { return popScalar<Vec2>("stack type mismatch: expected vec2"); }
     Distribution popDistribution() {
         return popScalar<Distribution>("stack type mismatch: expected distribution");
     }
@@ -199,21 +203,27 @@ struct Execution {
 
     // Fuel accounting (spec §8.3): traps with "fuel exhausted". Most opcodes
     // pay the plain tariff; a discounted one rounds its cumulative units.
-    void spend(u64 cost) {
+    IPROP_ALWAYS_INLINE void spend(u64 cost) {
         if (fuelRate != 100) [[unlikely]] cost = scaledCost(cost);
         spendRaw(cost);
     }
-    void spendRaw(u64 cost) {
+    IPROP_ALWAYS_INLINE void spendRaw(u64 cost) {
         if (cost > fuel) [[unlikely]] fuelExhausted();
         fuel -= cost;
     }
     void beginInstruction(Opcode op) { fuelRate = kFuelPercent[static_cast<u8>(op)]; fuelUnits = fuelPaid = 0; }
-    void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
+    IPROP_ALWAYS_INLINE void work(u64 units = 1) const { workBudget->location = activeInstruction; workBudget->spend(units); }
     // `count` unit steps at once, exactly as `count` calls of work().
     void workEach(u64 count) const { workBudget->location = activeInstruction; workBudget->spendEach(count); }
     void checkpoint() const { workBudget->checkpoint(); }
 
     // Frame lifecycle.
+    // An empty frame, with the buffers of a finished one when there is one.
+    Frame spareFrame();
+    // A callee's frame: its arguments popped from the caller, then every
+    // declared local at its typed zero.
+    void popArguments(Frame& next, const Function& callee);
+    void zeroLocals(Frame& next, const Function& callee);
     void callFunction(u16 functionIndex);
     void callPart(u16 partIndex, u8 transform);
     void leaveFrame();
@@ -254,11 +264,9 @@ void weatherPixel(Execution& ex, i32 x, i32 y, Color proposed);
 
 // Per-domain VM adapters own stack access, traps, results and ip advancement.
 // Mathematical kernels are independent of Execution (iprop/math/*.hpp).
+// stepStack, stepControl and stepArithmetic are inline (VmScalarSteps.hpp).
 bool dispatch(Execution& ex, Instruction ins);
 bool stepCore(Execution& ex, Instruction ins);
-bool stepStack(Execution& ex, Instruction ins);
-bool stepControl(Execution& ex, Instruction ins);
-bool stepArithmetic(Execution& ex, Instruction ins);
 bool stepVector(Execution& ex, Instruction ins);
 bool stepSdf(Execution& ex, Instruction ins);
 bool stepColor(Execution& ex, Instruction ins);
@@ -307,4 +315,30 @@ double checkedTruncatedDraw(Execution& ex, const Distribution& distribution, dou
 bool isConstantOperation(const OpcodeSpec& operation);
 std::optional<Value> evaluateConstantOperation(Opcode op, std::span<const Value> args);
 
+// Moves or copies a value into a slot; plain scalars assign their alternative
+// directly instead of going through the variant's visitor.
+IPROP_ALWAYS_INLINE void moveValue(Value& target, Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) target = *i;
+    else if (const auto* f = std::get_if<f32>(&source)) target = *f;
+    else if (const auto* c = std::get_if<Color>(&source)) target = *c;
+    else if (const auto* v = std::get_if<Vec2>(&source)) target = *v;
+    else target = std::move(source);
+}
+IPROP_ALWAYS_INLINE void copyValue(Value& target, const Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) target = *i;
+    else if (const auto* f = std::get_if<f32>(&source)) target = *f;
+    else if (const auto* c = std::get_if<Color>(&source)) target = *c;
+    else if (const auto* v = std::get_if<Vec2>(&source)) target = *v;
+    else target = source;
+}
+inline void appendValue(std::vector<Value>& values, Value& source) {
+    if (const auto* i = std::get_if<i32>(&source)) values.emplace_back(*i);
+    else if (const auto* f = std::get_if<f32>(&source)) values.emplace_back(*f);
+    else if (const auto* c = std::get_if<Color>(&source)) values.emplace_back(*c);
+    else if (const auto* v = std::get_if<Vec2>(&source)) values.emplace_back(*v);
+    else values.push_back(std::move(source));
+}
+
 } // namespace iprop::detail
+
+#include "iprop/VmScalarSteps.hpp"

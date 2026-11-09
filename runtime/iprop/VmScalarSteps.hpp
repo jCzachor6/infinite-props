@@ -1,4 +1,11 @@
-#include "iprop/VmInternals.hpp"
+#pragma once
+
+// The three instruction groups a generated program spends its instructions
+// in: stack and constants, structured control flow and scalar arithmetic.
+// They are defined inline so the interpreter loop reaches them through one
+// jump table, without a call; every other group stays in its own source file.
+// Included at the end of VmInternals.hpp, which declares Execution.
+
 #include "iprop/math/Scalar.hpp"
 
 #include <algorithm>
@@ -6,41 +13,226 @@
 #include <limits>
 
 namespace iprop::detail {
-namespace {
+
+// Stack and constant instructions (spec §9.2). Returns true when handled.
+IPROP_ALWAYS_INLINE bool stepStack(Execution& ex, Instruction ins) {
+    Frame& frame = ex.frames.back();
+    switch (ins.opcode) {
+    case Opcode::ConstI32:
+        if (ins.operand >= ex.file.pool.ints.size()) {
+            ex.trap("i32 constant index out of range", ErrorReason::IndexRange);
+        }
+        ex.push(ex.file.pool.ints[ins.operand]);
+        break;
+    case Opcode::ConstF32:
+        if (ins.operand >= ex.file.pool.floats.size()) {
+            ex.trap("f32 constant index out of range", ErrorReason::IndexRange);
+        }
+        ex.push(ex.file.pool.floats[ins.operand]);
+        break;
+    case Opcode::ConstColor:
+        if (ins.operand >= ex.file.pool.colors.size()) {
+            ex.trap("color constant index out of range", ErrorReason::IndexRange);
+        }
+        ex.push(ex.file.pool.colors[ins.operand]);
+        break;
+
+    case Opcode::LocalGet: {
+        if (ins.operand >= frame.locals.size()) {
+            ex.trap("local index out of range", ErrorReason::IndexRange);
+        }
+        const Value& local = frame.locals[ins.operand];
+        // Plain scalars copy without visiting the variant.
+        if (const auto* i = std::get_if<i32>(&local)) { ex.push(*i); break; }
+        if (const auto* f = std::get_if<f32>(&local)) { ex.push(*f); break; }
+        if (const auto* c = std::get_if<Color>(&local)) { ex.push(*c); break; }
+        if (const auto* v = std::get_if<Vec2>(&local)) { ex.push(*v); break; }
+        if (valueType(local).isGeometry()) {
+            const bool assigned = std::visit([](const auto& value) {
+                if constexpr (requires { value.data; }) return static_cast<bool>(value.data);
+                return false;
+            }, local);
+            if (!assigned) ex.trap(std::string(valueTypeName(valueType(local))) +
+                " is unassigned", ErrorReason::RuntimeViolation);
+        }
+        ex.push(local);
+        break;
+    }
+    case Opcode::LocalSet: {
+        if (ins.operand >= frame.locals.size()) {
+            ex.trap("local index out of range", ErrorReason::IndexRange);
+        }
+        if (frame.stack.empty()) ex.stackUnderflow();
+        moveValue(frame.locals[ins.operand], frame.stack.back());
+        frame.stack.pop_back();
+        break;
+    }
+    case Opcode::LocalTee: {
+        if (ins.operand >= frame.locals.size()) {
+            ex.trap("local index out of range", ErrorReason::IndexRange);
+        }
+        if (frame.stack.empty()) ex.stackUnderflow();
+        copyValue(frame.locals[ins.operand], frame.stack.back());
+        break;
+    }
+    case Opcode::Drop:
+        if (frame.stack.empty()) ex.stackUnderflow();
+        frame.stack.pop_back();
+        break;
+    case Opcode::Dup: {
+        if (frame.stack.empty()) ex.stackUnderflow();
+        // Copy first: the push may move the stack's storage.
+        const Value& top = frame.stack.back();
+        if (const auto* i = std::get_if<i32>(&top)) ex.push(i32{*i});
+        else if (const auto* f = std::get_if<f32>(&top)) ex.push(f32{*f});
+        else if (const auto* c = std::get_if<Color>(&top)) ex.push(Color{*c});
+        else if (const auto* v = std::get_if<Vec2>(&top)) ex.push(Vec2{*v});
+        else ex.push(ex.peek());
+        break;
+    }
+
+    default:
+        return false;
+    }
+    ++frame.ip;
+    return true;
+}
+
+
+// Shared branch mechanics: the target label stays active (its `end` pops
+// it); inner labels unwind and the stack restores the target's entry height.
+IPROP_ALWAYS_INLINE void branch(Execution& ex, Frame& frame, u16 depth) {
+    if (depth >= frame.labels.size()) {
+        ex.trap("branch depth out of range", ErrorReason::InvalidControl);
+    }
+    const Label target = frame.labels[frame.labels.size() - 1 - depth];
+    ex.closeLayers(frame.labels.size() - depth);
+    frame.labels.resize(frame.labels.size() - depth);
+    frame.stack.resize(target.stackHeight);
+    frame.ip = target.kind == 1 ? target.cont : target.end;
+}
+
+
+// Structured control flow (spec §9.1), with WASM branch semantics.
+IPROP_ALWAYS_INLINE bool stepControl(Execution& ex, Instruction ins) {
+    Frame& frame = ex.frames.back();
+    switch (ins.opcode) {
+    case Opcode::Block:
+    case Opcode::Loop:
+    case Opcode::LayerBegin:
+    case Opcode::ClipBegin: {
+        ex.ensureControl(frame.functionIndex);
+        const auto& info = ex.control[frame.functionIndex][frame.ip];
+        Label label;
+        if (ins.opcode == Opcode::LayerBegin) ex.beginLayer(ins.operand, ins.aux);
+        if (ins.opcode == Opcode::ClipBegin) ex.beginClip();
+        label.kind = ins.opcode == Opcode::Loop ? 1u : ins.opcode == Opcode::LayerBegin ? 3u :
+            ins.opcode == Opcode::ClipBegin ? 4u : 0u;
+        label.cont = ins.opcode == Opcode::Loop ? frame.ip + 1 : info.endIndex;
+        label.end = info.endIndex;
+        label.stackHeight = frame.stack.size();
+        frame.labels.push_back(label);
+        ++frame.ip;
+        return true;
+    }
+
+    case Opcode::If: {
+        ex.ensureControl(frame.functionIndex);
+        const auto& info = ex.control[frame.functionIndex][frame.ip];
+        const i32 condition = ex.popI32();
+        Label label;
+        label.kind = 2u;
+        label.cont = info.endIndex;
+        label.end = info.endIndex;
+        label.stackHeight = frame.stack.size(); // after popping the condition
+        frame.labels.push_back(label);
+        if (condition != 0) {
+            ++frame.ip;
+        } else if (info.elseIndex != ControlInfo::kNone) {
+            frame.ip = info.elseIndex + 1;
+        } else {
+            frame.ip = info.endIndex; // the matching `end` pops the label
+        }
+        return true;
+    }
+
+    case Opcode::Else: {
+        if (frame.labels.empty()) {
+            ex.trap("else without if", ErrorReason::InvalidControl);
+        }
+        // Reached by falling through the then-branch: restore the entry
+        // height and skip the else body; the `end` pops the label.
+        const Label label = frame.labels.back();
+        frame.stack.resize(label.stackHeight);
+        frame.ip = label.end;
+        return true;
+    }
+
+    case Opcode::End: {
+        if (frame.labels.empty()) {
+            ex.trap("end without block", ErrorReason::InvalidControl);
+        }
+        const Label label = frame.labels.back();
+        frame.labels.pop_back();
+        ex.closeLayers(frame.labels.size());
+        frame.stack.resize(label.stackHeight);
+        ++frame.ip;
+        return true;
+    }
+
+    case Opcode::Br: {
+        branch(ex, frame, ins.operand);
+        return true;
+    }
+
+    case Opcode::BrIf: {
+        const i32 condition = ex.popI32();
+        if (condition != 0) {
+            branch(ex, frame, ins.operand);
+        } else {
+            ++frame.ip;
+        }
+        return true;
+    }
+
+    default:
+        return false;
+    }
+}
+
 // Shared shapes for the regular two-operand cases: pop, compute, push,
 // advance. Special cases (division, shifts, conversions) stay inline.
-void i32Binop(Execution& ex, u32 (*fn)(u32, u32)) {
+template<class Operation> IPROP_ALWAYS_INLINE void i32Binop(Execution& ex, Operation fn) {
     const u32 b = static_cast<u32>(ex.popI32());
     const u32 a = static_cast<u32>(ex.popI32());
     ex.push(static_cast<i32>(fn(a, b)));
     ++ex.frame().ip;
 }
 
-void i32Compare(Execution& ex, i32 (*fn)(i32, i32)) {
+template<class Operation> IPROP_ALWAYS_INLINE void i32Compare(Execution& ex, Operation fn) {
     const i32 b = ex.popI32();
     const i32 a = ex.popI32();
     ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
-void f32Binop(Execution& ex, f32 (*fn)(f32, f32)) {
+template<class Operation> IPROP_ALWAYS_INLINE void f32Binop(Execution& ex, Operation fn) {
     const f32 b = ex.popF32();
     const f32 a = ex.popF32();
     ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
-void f32Compare(Execution& ex, i32 (*fn)(f32, f32)) {
+template<class Operation> IPROP_ALWAYS_INLINE void f32Compare(Execution& ex, Operation fn) {
     const f32 b = ex.popF32();
     const f32 a = ex.popF32();
     ex.push(fn(a, b));
     ++ex.frame().ip;
 }
 
-} // namespace
 
 
-bool stepArithmetic(Execution& ex, Instruction ins) {
+IPROP_ALWAYS_INLINE bool stepArithmetic(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
     case Opcode::I32Min:
         i32Compare(ex, [](i32 a, i32 b) { return std::min(a, b); });

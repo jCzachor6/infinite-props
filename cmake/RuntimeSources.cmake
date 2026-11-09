@@ -20,9 +20,6 @@ set(IPROP_RUNTIME_SOURCES
     validator.cpp
     vm.cpp
     constant_evaluation.cpp
-    stack.cpp
-    control.cpp
-    arithmetic.cpp
     vector_ops.cpp
     sdf_ops.cpp
     color_ops.cpp

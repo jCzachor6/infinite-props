@@ -66,6 +66,23 @@ bool dispatch(Execution& ex, Instruction ins) {
     return false;
 }
 
+namespace {
+// The interpreter loop's dispatch. The inline groups come first, selected by
+// opcode range; a group returns false before touching any state for an
+// opcode it does not own, and those fall through to the table.
+IPROP_ALWAYS_INLINE bool step(Execution& ex, Instruction ins) {
+    const Opcode op = ins.opcode;
+    if (op >= Opcode::ConstI32 && op <= Opcode::Dup) {
+        if (stepStack(ex, ins)) return true;
+    } else if (op >= Opcode::I32Add && op <= Opcode::F32Atan2) {
+        if (stepArithmetic(ex, ins)) return true;
+    } else if (op <= Opcode::BrIf) {
+        if (stepControl(ex, ins)) return true;
+    }
+    return dispatch(ex, ins);
+}
+} // namespace
+
 // Frame-lifecycle instructions: nop, call, return (spec §9.1).
 bool stepCore(Execution& ex, Instruction ins) {
     switch (ins.opcode) {
@@ -129,30 +146,60 @@ void WorkBudget::spendEachSlow(u64 count) {
     }
 }
 
+Frame Execution::spareFrame() {
+    // Room to keep this frame's storage when it returns: leaveFrame must
+    // not allocate.
+    if (spareFrames.capacity() <= frames.size()) spareFrames.reserve(std::max<std::size_t>(8, frames.size() * 2));
+    if (spareFrames.empty()) return {};
+    Frame frame = std::move(spareFrames.back());
+    spareFrames.pop_back();
+    frame.functionIndex = 0;
+    frame.stream = 0;
+    frame.ip = 0;
+    frame.shareStream = false;
+    frame.isPart = false;
+    frame.lastPart = kNoPartIndex;
+    return frame;
+}
+
+void Execution::popArguments(Frame& next, const Function& callee) {
+    auto& locals = next.locals;
+    locals.reserve(callee.params.size() + callee.locals.size());
+    // Pop parameters in reverse: the last parameter is on top.
+    initializeWork(locals, callee.params.size(), Value{}, *workBudget);
+    auto& stack = frames.back().stack;
+    for (std::size_t p = callee.params.size(); p > 0; --p) {
+        work();
+        if (stack.empty()) stackUnderflow();
+        moveValue(locals[p - 1], stack.back());
+        stack.pop_back();
+    }
+}
+
+void Execution::zeroLocals(Frame& next, const Function& callee) {
+    for (const ValueType type : callee.locals) {
+        work();
+        switch (type.kind) {
+        case ValueType::I32: next.locals.emplace_back(i32{0}); break;
+        case ValueType::F32: next.locals.emplace_back(f32{0.f}); break;
+        case ValueType::Color: next.locals.emplace_back(Color{}); break;
+        case ValueType::Vec2: next.locals.emplace_back(Vec2{}); break;
+        default: next.locals.push_back(zeroValue(type)); break;
+        }
+    }
+}
+
 void Execution::callFunction(u16 functionIndex) {
     if (frames.size() >= kMaxCallDepth) {
         trap("call depth exceeds limit", ErrorReason::CallDepth);
     }
     const auto& callee = file.code.functions[functionIndex];
-    Frame& caller = frames.back();
-
-    // Pop parameters in reverse: the last parameter is on top.
-    std::vector<Value> args;
-    initializeWork(args, callee.params.size(), Value{}, *workBudget);
-    for (std::size_t p = callee.params.size(); p > 0; --p) {
-        work();
-        args[p - 1] = pop();
-    }
-
-    Frame next;
+    Frame next = spareFrame();
+    popArguments(next, callee);
+    zeroLocals(next, callee);
     next.functionIndex = functionIndex;
-    next.locals = std::move(args);
-    for (const ValueType type : callee.locals) {
-        work();
-        next.locals.push_back(zeroValue(type));
-    }
-    next.stream = caller.stream; // spec §8.2: call frames share the stream
-    next.shareStream = true;     // ...like a reference: state propagates back
+    next.stream = frames.back().stream; // spec §8.2: call frames share the stream
+    next.shareStream = true;            // ...like a reference: state propagates back
     frames.push_back(std::move(next));
 }
 
@@ -172,12 +219,8 @@ void Execution::callPart(u16 partIndex, u8 transform) {
     const u32 seed = static_cast<u32>(popI32());
     const auto& fn = file.code.functions[part.functionIndex];
     // A part frame receives only its declared uniforms.
-    std::vector<Value> args;
-    initializeWork(args, fn.params.size(), Value{}, *workBudget);
-    for (std::size_t p = fn.params.size(); p > 0; --p) {
-        work();
-        args[p - 1] = pop();
-    }
+    Frame next = spareFrame();
+    popArguments(next, fn);
 
     const auto d4 = D4Transform::fromKind(transform);
     if (!d4) trap("invalid part transform", ErrorReason::InvalidPart);
@@ -201,14 +244,9 @@ void Execution::callPart(u16 partIndex, u8 transform) {
 
     target = std::move(nextTarget);
 
-    Frame next;
     // parseCode bounds the index by kMaxFunctions (1024).
     next.functionIndex = static_cast<u16>(part.functionIndex);
-    next.locals = std::move(args);
-    for (const ValueType type : fn.locals) {
-        work();
-        next.locals.push_back(zeroValue(type));
-    }
+    zeroLocals(next, fn);
     next.stream = seed; // spec §8.2: a part frame starts its own stream
     next.isPart = true;
     ++frames.back().ip; // the caller resumes after the part.draw instruction
@@ -245,8 +283,15 @@ void Execution::leaveFrame() {
     }
     for (Value& value : finished.stack) {
         work();
-        caller.stack.push_back(std::move(value));
+        appendValue(caller.stack, value);
     }
+    // Release the frame's values now, as its destruction did, and keep its
+    // buffers. spareFrame() reserved the slot, so this cannot throw.
+    finished.locals.clear();
+    finished.stack.clear();
+    finished.savedStreams.clear();
+    finished.labels.clear();
+    if (spareFrames.size() < spareFrames.capacity()) spareFrames.push_back(std::move(finished));
 }
 
 void Execution::scanControl(u16 functionIndex) {
@@ -460,9 +505,22 @@ void VM::run() {
     while (!ex.frames.empty()) {
         detail::Frame& frame = ex.frames.back();
         const auto& fn = ex.file.code.functions[frame.functionIndex];
-        ex.activeInstruction = ErrorLocation::instruction(fn.fileOffset + frame.ip * 4,
+        // The snapshot and the budget's copy are both written from registers:
+        // copying one out of the other would wait on the stores just made.
+        const auto location = ErrorLocation::instruction(fn.fileOffset + frame.ip * 4,
             frame.functionIndex, static_cast<u32>(frame.ip));
-        ex.work();
+        const auto locate = [&](ErrorLocation& target) {
+            target.flags = location.flags;
+            target.offsetSpace = location.offsetSpace;
+            target.byteOffset = location.byteOffset;
+            target.functionIndex = location.functionIndex;
+            target.pc = location.pc;
+            target.debugLine = location.debugLine;
+        };
+        detail::WorkBudget& budget = *ex.workBudget;
+        locate(ex.activeInstruction);
+        locate(budget.location);
+        budget.spend();
         if (frame.ip >= fn.code.size() / 4) {
             // Implicit return: the validated function ends with its declared
             // results on the stack.
@@ -474,7 +532,7 @@ void VM::run() {
         // reservation pays only the increase of the rounded cumulative cost.
         ex.beginInstruction(ins.opcode);
         ex.spend(1);
-        if (!detail::dispatch(ex, ins)) {
+        if (!detail::step(ex, ins)) {
             ex.trap("reserved opcode", ErrorReason::RuntimeViolation);
         }
     }
