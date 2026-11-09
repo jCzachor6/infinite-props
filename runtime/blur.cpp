@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <memory>
 
 namespace iprop::detail {
 namespace {
@@ -59,45 +60,74 @@ std::shared_ptr<const SurfaceBuffer> filter(Execution& ex, const SurfaceBuffer& 
     const auto clamp = [](i64 value, u32 extent) {
         return static_cast<u32>(std::clamp(value, i64{0}, static_cast<i64>(extent) - 1));
     };
+    // Each sum still adds its taps in increasing offset order, but a whole row
+    // advances one tap at a time, so the inner loops are straight runs over
+    // adjacent doubles. One uncharged row of doubles holds the premultiplied
+    // source row of a horizontal pass, then the sums of a result row. The
+    // work steps are those of the per-pixel loops: a pixel visit, its taps and
+    // the channel steps, reserved a row at a time before the row is computed.
+    const std::size_t rowValues = static_cast<std::size_t>(width) * Channels;
+    const std::unique_ptr<double[]> line(new double[rowValues]);
+    const u64 columns = width;
     u32 nextRow = 0;
     for (u32 y = 0; y < height; ++y) {
         ex.work();
         const u32 lastRow = clamp(static_cast<i64>(y) + radius, height);
         for (; nextRow <= lastRow; ++nextRow) {
             ex.work();
-            auto* row = cache.data() + static_cast<std::size_t>(nextRow % rows) * width * Channels;
+            double* const row = cache.data() + static_cast<std::size_t>(nextRow % rows) * rowValues;
+            ex.workEach(columns * (1u + Channels)); // pixel visits and channel stores
+            const auto first = static_cast<std::size_t>(nextRow) * width;
             for (u32 x = 0; x < width; ++x) {
-                ex.work();
-                std::array<double, Channels> sum{};
-                for (i32 j = -radius; j <= radius; ++j) {
-                    ex.work();
-                    const auto index = static_cast<std::size_t>(nextRow) * width + clamp(static_cast<i64>(x) + j, width);
-                    const double weight = weights[static_cast<std::size_t>(j + radius)];
-                    if constexpr (Channels == 4) {
-                        const auto pixel = raster.pixels[index];
-                        const double alpha = pixel.a;
-                        sum[0] = sum[0] + (static_cast<double>(pixel.r) * alpha / 255.0) * weight;
-                        sum[1] = sum[1] + (static_cast<double>(pixel.g) * alpha / 255.0) * weight;
-                        sum[2] = sum[2] + (static_cast<double>(pixel.b) * alpha / 255.0) * weight;
-                        sum[3] = sum[3] + alpha * weight;
-                    } else {
-                        const double coverage = source.format == SurfaceBuffer::Format::A8 ? source.coverage[index] : raster.pixels[index].a;
-                        sum[0] = sum[0] + coverage * weight;
-                    }
+                double* const value = line.get() + static_cast<std::size_t>(x) * Channels;
+                if constexpr (Channels == 4) {
+                    const auto pixel = raster.pixels[first + x];
+                    const double alpha = pixel.a;
+                    value[0] = static_cast<double>(pixel.r) * alpha / 255.0;
+                    value[1] = static_cast<double>(pixel.g) * alpha / 255.0;
+                    value[2] = static_cast<double>(pixel.b) * alpha / 255.0;
+                    value[3] = alpha;
+                } else {
+                    value[0] = source.format == SurfaceBuffer::Format::A8 ? source.coverage[first + x] : raster.pixels[first + x].a;
                 }
-                for (std::size_t c = 0; c < Channels; ++c) { ex.work(); row[static_cast<std::size_t>(x) * Channels + c] = sum[c]; }
+            }
+            std::fill(row, row + rowValues, 0.0);
+            for (i32 j = -radius; j <= radius; ++j) {
+                ex.workEach(columns); // this tap of every pixel
+                const double weight = weights[static_cast<std::size_t>(j + radius)];
+                // Columns whose tap falls off either end read the edge pixel.
+                const i64 interiorBegin = std::clamp<i64>(-static_cast<i64>(j), 0, width);
+                const i64 interiorEnd = std::clamp<i64>(static_cast<i64>(width) - j, interiorBegin, width);
+                const double* const leftEdge = line.get();
+                const double* const rightEdge = line.get() + rowValues - Channels;
+                for (i64 x = 0; x < interiorBegin; ++x)
+                    for (std::size_t c = 0; c < Channels; ++c) {
+                        double& sum = row[static_cast<std::size_t>(x) * Channels + c];
+                        sum = sum + leftEdge[c] * weight;
+                    }
+                const double* const taps = line.get() + static_cast<std::size_t>(interiorBegin + j) * Channels;
+                double* const sums = row + static_cast<std::size_t>(interiorBegin) * Channels;
+                const auto count = static_cast<std::size_t>(interiorEnd - interiorBegin) * Channels;
+                for (std::size_t i = 0; i < count; ++i) sums[i] = sums[i] + taps[i] * weight;
+                for (i64 x = interiorEnd; x < static_cast<i64>(width); ++x)
+                    for (std::size_t c = 0; c < Channels; ++c) {
+                        double& sum = row[static_cast<std::size_t>(x) * Channels + c];
+                        sum = sum + rightEdge[c] * weight;
+                    }
             }
         }
+        ex.workEach(columns); // pixel visits
+        double* const sums = line.get();
+        std::fill(sums, sums + rowValues, 0.0);
+        for (i32 j = -radius; j <= radius; ++j) {
+            ex.workEach(columns * (1u + Channels)); // this tap of every pixel and its channels
+            const auto sy = clamp(static_cast<i64>(y) + j, height);
+            const double* const from = cache.data() + static_cast<std::size_t>(sy % rows) * rowValues;
+            const double weight = weights[static_cast<std::size_t>(j + radius)];
+            for (std::size_t i = 0; i < rowValues; ++i) sums[i] = sums[i] + from[i] * weight;
+        }
         for (u32 x = 0; x < width; ++x) {
-            ex.work();
-            std::array<double, Channels> sum{};
-            for (i32 j = -radius; j <= radius; ++j) {
-                ex.work();
-                const auto sy = clamp(static_cast<i64>(y) + j, height);
-                const auto index = (static_cast<std::size_t>(sy % rows) * width + x) * Channels;
-                const double weight = weights[static_cast<std::size_t>(j + radius)];
-                for (std::size_t c = 0; c < Channels; ++c) { ex.work(); sum[c] = sum[c] + cache[index + c] * weight; }
-            }
+            const double* const sum = sums + static_cast<std::size_t>(x) * Channels;
             const auto index = static_cast<std::size_t>(y) * width + x;
             if constexpr (Channels == 4) {
                 const auto alpha = roundedByte(sum[3]);
